@@ -136,7 +136,7 @@ cleanup labels if you mix the two.
 Widgets are ordinary library functions (WidgetText, WidgetRect, WidgetLine,
 WidgetBackground, WidgetButton) declared in `ui_widgets.h`; the compiler
 treats them exactly like any other call. Input handling is plain control
-flow: `if (UIKeyPressed(KEY_A)) { ... }`, `if (UIKeyDown(KEY_A)) { ... }`.
+flow: `if (IsKeyPressed(KEY_A)) { ... }`, `if (IsKeyDown(KEY_A)) { ... }`.
 Event-style blocks (`button ... {`, `on key ... {`, `event ... {`) and
 arithmetic/declaration sugar (`advance x by N`, `clamp_min`, `c_rect`,
 `texture`, `set_theme`) were removed in favor of their direct equivalents.

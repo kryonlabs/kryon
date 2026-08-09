@@ -167,8 +167,8 @@ write_app_main(FILE *out, const KryFile *file)
         fprintf(out, "        UILayoutTree();\n");
         fprintf(out, "        UIRouteInput();\n");
         fprintf(out, "        UIUpdateTree();\n");
-        fprintf(out, "        UIRenderTree();\n");
-        fprintf(out, "        UIRenderOverlays();\n");
+        fprintf(out, "        DrawUITree();\n");
+        fprintf(out, "        DrawUIOverlays();\n");
         fprintf(out, "        EndUIFocus();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");

@@ -200,6 +200,8 @@ typedef struct {
     int icon_size;
     int disabled;
     Color accent;
+    int italic;
+    int closeable;
 } UITab;
 
 typedef struct {
@@ -212,6 +214,10 @@ typedef struct {
     int max_tab_width;
     int *scroll_offset;
     int focus_selected;
+    int *closed_index;
 } UITabBar;
+
+int DrawUITabBar(UITabBar bar);
+int GetUITabBarHeight(void);
 
 #endif

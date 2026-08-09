@@ -34,6 +34,24 @@ mkdir -p "$(dirname "$public_header")" "$(dirname "$rename_header")" "$(dirname 
  * baseline; kryon may evolve this surface independently over time.
  */
 EOF
+    cat <<'EOF'
+
+#ifndef KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
+#define KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
+
+typedef void (*KeyInputPlatformCallback)(void);
+typedef int (*KeyPlatformCallback)(int key);
+
+int SetKeyboardInputEnabled(int enabled);
+int KeyboardInputEnabled(void);
+void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,
+                             KeyPlatformCallback key_pressed,
+                             KeyPlatformCallback key_down);
+void UpdateKeyPlatformState(void);
+
+#endif
+
+EOF
     cat "$raylib_header"
 } > "$public_header"
 
@@ -107,7 +125,31 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
     print "extern " return_type " " prefix name "(" args ");"
     print return_type " " name "(" args ")"
     print "{"
-    if(name == "IsMouseButtonPressed" || name == "IsMouseButtonDown" || name == "IsMouseButtonReleased") {
+    if(name == "IsKeyPressed") {
+        print "    if(!g_kryon_keyboard_input_enabled)"
+        print "        return false;"
+        print "    if(g_kryon_key_pressed_callback != NULL && k_key_prefers_platform(key))"
+        print "        return g_kryon_key_pressed_callback(key);"
+        print "    if(" prefix name "(" backend_args "))"
+        print "        return true;"
+        print "    return g_kryon_key_pressed_callback != NULL &&"
+        print "           g_kryon_key_pressed_callback(key);"
+        print "}"
+        print ""
+        return
+    } else if(name == "IsKeyDown") {
+        print "    if(!g_kryon_keyboard_input_enabled)"
+        print "        return false;"
+        print "    if(g_kryon_key_down_callback != NULL && k_key_prefers_platform(key))"
+        print "        return g_kryon_key_down_callback(key);"
+        print "    if(" prefix name "(" backend_args "))"
+        print "        return true;"
+        print "    return g_kryon_key_down_callback != NULL &&"
+        print "           g_kryon_key_down_callback(key);"
+        print "}"
+        print ""
+        return
+    } else if(name == "IsMouseButtonPressed" || name == "IsMouseButtonDown" || name == "IsMouseButtonReleased") {
         print "    if(g_kryon_input_override.enabled &&"
         print "       (!g_kryon_input_override.mouse_inside ||"
         print "        !g_kryon_input_override.pass_buttons))"
@@ -181,6 +223,15 @@ BEGIN {
     print "static KryonInputOverride g_kryon_input_override = {0};"
     print "static KryonInputOverride g_kryon_input_override_stack[KRYON_INPUT_OVERRIDE_STACK_CAP];"
     print "static int g_kryon_input_override_depth = 0;"
+    print "static int g_kryon_keyboard_input_enabled = 1;"
+    print "static KeyInputPlatformCallback g_kryon_key_input_update_callback = NULL;"
+    print "static KeyPlatformCallback g_kryon_key_pressed_callback = NULL;"
+    print "static KeyPlatformCallback g_kryon_key_down_callback = NULL;"
+    print ""
+    print "static int k_key_prefers_platform(int key)"
+    print "{"
+    print "    return key >= 32 && key <= 126;"
+    print "}"
     print ""
     print "void BeginKryonInputOverride(KryonInputOverride input)"
     print "{"
@@ -199,6 +250,34 @@ BEGIN {
     print "        return;"
     print "    }"
     print "    g_kryon_input_override = (KryonInputOverride){0};"
+    print "}"
+    print ""
+    print "int SetKeyboardInputEnabled(int enabled)"
+    print "{"
+    print "    int old = g_kryon_keyboard_input_enabled;"
+    print ""
+    print "    g_kryon_keyboard_input_enabled = enabled != 0;"
+    print "    return old;"
+    print "}"
+    print ""
+    print "int KeyboardInputEnabled(void)"
+    print "{"
+    print "    return g_kryon_keyboard_input_enabled;"
+    print "}"
+    print ""
+    print "void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,"
+    print "                             KeyPlatformCallback key_pressed,"
+    print "                             KeyPlatformCallback key_down)"
+    print "{"
+    print "    g_kryon_key_input_update_callback = update;"
+    print "    g_kryon_key_pressed_callback = key_pressed;"
+    print "    g_kryon_key_down_callback = key_down;"
+    print "}"
+    print ""
+    print "void UpdateKeyPlatformState(void)"
+    print "{"
+    print "    if(g_kryon_key_input_update_callback != NULL)"
+    print "        g_kryon_key_input_update_callback();"
     print "}"
     print ""
 }

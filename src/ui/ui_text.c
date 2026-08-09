@@ -38,6 +38,8 @@ static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
 static int g_ui_font_count = 0;
 static int g_ui_active_font = -1;
 static int g_ui_default_font_attempted = 0;
+static Font g_ui_italic_font = {0};
+static int g_ui_italic_font_attempted = 0;
 static int g_ui_text_selectable_stack[16];
 static int g_ui_text_selectable_stack_count = 0;
 static int g_ui_text_selectable = 1;
@@ -382,6 +384,44 @@ EnsureUIDefaultFont(void)
     return 0;
 }
 
+static int
+ensure_ui_italic_font(void)
+{
+    static const char *paths[] = {
+        "fonts/noto/NotoSans-Italic.ttf",
+        "../fonts/noto/NotoSans-Italic.ttf",
+        "vendor/kryon/fonts/noto/NotoSans-Italic.ttf",
+        "/usr/local/share/fonts/noto/NotoSans-Italic.ttf",
+        "/usr/local/share/fonts/dejavu/DejaVuSans-Oblique.ttf",
+        NULL
+    };
+
+    if(font_valid(g_ui_italic_font))
+        return 1;
+    if(!IsWindowReady())
+        return 0;
+    if(g_ui_italic_font_attempted)
+        return 0;
+
+    g_ui_italic_font_attempted = 1;
+    for(int i = 0; paths[i] != NULL; i++) {
+        g_ui_italic_font = LoadUIFontAsset(paths[i], UI_TEXT_BASE_SIZE);
+        if(font_valid(g_ui_italic_font))
+            return 1;
+    }
+
+    return 0;
+}
+
+static Font
+italic_font_for_codepoint(int codepoint, int font_size)
+{
+    (void)font_size;
+    if(ensure_ui_italic_font() && UIFontHasGlyph(g_ui_italic_font, codepoint))
+        return g_ui_italic_font;
+    return font_for_codepoint(codepoint, font_size);
+}
+
 int
 RegisterUIFont(const char *name, Font font)
 {
@@ -630,6 +670,10 @@ ClearUIFonts(void)
     for(int i = 0; i < g_ui_font_count; i++) {
         clear_font_entry(&g_ui_fonts[i]);
     }
+    if(font_valid(g_ui_italic_font))
+        UnloadFont(g_ui_italic_font);
+    g_ui_italic_font = (Font){0};
+    g_ui_italic_font_attempted = 0;
     memset(g_ui_fonts, 0, sizeof(g_ui_fonts));
     g_ui_font_count = 0;
     g_ui_active_font = -1;
@@ -810,8 +854,8 @@ ui_text_draw_selection(const char *text, int x, int y, int font_size,
 static int
 ui_text_mod_key_down(void)
 {
-    return UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL) ||
-           UIKeyDown(KEY_LEFT_SUPER) || UIKeyDown(KEY_RIGHT_SUPER);
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
 }
 
 int
@@ -899,7 +943,7 @@ MeasureScaledUIText(const char *text, int scale)
 }
 
 void
-UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
+DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
              int selectable_arg)
 {
     Font font = active_font_for_size(font_size);
@@ -959,7 +1003,7 @@ UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
             }
         }
         if(g_ui_text_selection.id == id && ui_text_mod_key_down() &&
-           UIKeyPressed(KEY_C)) {
+           IsKeyPressed(KEY_C)) {
             int start = g_ui_text_selection.anchor;
             int end = g_ui_text_selection.cursor;
 
@@ -1020,15 +1064,81 @@ UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
 }
 
 void
-UIRenderText(const char *text, int x, int y, int font_size, Color color)
+DrawUIText(const char *text, int x, int y, int font_size, Color color)
 {
-    UIRenderTextEx(text, x, y, font_size, color, 1);
+    DrawUITextEx(text, x, y, font_size, color, 1);
+}
+
+static void
+ui_render_italic_text(const char *text, int x, int y, int font_size, Color color)
+{
+    int cursor_x = x;
+
+    if(text == NULL)
+        return;
+
+    for(int i = 0; text[i] != '\0';) {
+        int codepoint_byte_count = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
+        Font glyph_font;
+        float scale;
+        GlyphInfo glyph;
+        Rectangle src;
+
+        if(codepoint == '\n')
+            break;
+        if(codepoint_byte_count <= 0)
+            codepoint_byte_count = 1;
+
+        glyph_font = italic_font_for_codepoint(codepoint, font_size);
+        if(!UIFontReady(glyph_font)) {
+            i += codepoint_byte_count;
+            continue;
+        }
+
+        scale = font_size_scale(glyph_font, font_size);
+        glyph = UIFontGlyph(glyph_font, codepoint);
+        src = UIFontAtlasRec(glyph_font, codepoint);
+
+        if(src.width > 0.0f && src.height > 0.0f) {
+            Rectangle dst = {
+                .x = (float)cursor_x + (float)glyph.offsetX * scale,
+                .y = (float)y + (float)glyph.offsetY * scale,
+                .width = src.width * scale,
+                .height = src.height * scale
+            };
+            DrawTexturePro(UIFontAtlasTexture(glyph_font), src, dst,
+                           (Vector2){0.0f, 0.0f}, 0.0f, color);
+        }
+
+        cursor_x += (int)((float)UIFontAdvance(glyph_font, codepoint) * scale + 0.5f);
+        i += codepoint_byte_count;
+    }
 }
 
 void
-UIRenderNonSelectableText(const char *text, int x, int y, int font_size, Color color)
+DrawUITextStyled(const char *text, int x, int y, UITextStyle style)
 {
-    UIRenderTextEx(text, x, y, font_size, color, 0);
+    int font_size = style.font_size > 0 ? style.font_size : UI_TEXT_BASE_SIZE;
+
+    if(!style.italic) {
+        DrawUITextEx(text, x, y, font_size, style.color, style.selectable);
+        return;
+    }
+
+    ui_render_italic_text(text, x, y, font_size, style.color);
+}
+
+void
+DrawUITextItalic(const char *text, int x, int y, int font_size, Color color)
+{
+    DrawUITextStyled(text, x, y, (UITextStyle){font_size, color, 1, 1});
+}
+
+void
+DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color color)
+{
+    DrawUITextEx(text, x, y, font_size, color, 0);
 }
 
 int
@@ -1096,11 +1206,11 @@ DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, 
     int line_h = GetUITextLineHeight(font_size);
     int y = GetUITextY("Hg", center_y - line_h / 2, line_h, font_size);
 
-    UIRenderText(text, center_x - text_w / 2, y, font_size, color);
+    DrawUIText(text, center_x - text_w / 2, y, font_size, color);
 }
 
 void
-UIRenderTextInRect(const char *text, Rectangle rect, int font_size, Color color)
+DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
     int text_w = MeasureUIText(value, font_size);
@@ -1112,7 +1222,7 @@ UIRenderTextInRect(const char *text, Rectangle rect, int font_size, Color color)
         rect.x, rect.y - clip_guard, rect.width, rect.height + clip_guard * 2
     });
     BeginUIClip((int)clip.x, (int)clip.y, (int)clip.width, (int)clip.height);
-    UIRenderText(value, x, y, font_size, color);
+    DrawUIText(value, x, y, font_size, color);
     EndUIClip();
 }
 

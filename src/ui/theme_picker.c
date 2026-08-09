@@ -101,7 +101,7 @@ ui_theme_settings_height(UIThemeSettings settings)
 }
 
 int
-UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
+DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 {
     const char *mode_options[3];
     const char *theme_options[THEME_COUNT + 1];
@@ -135,9 +135,9 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
                                      THEME_MODE_SYSTEM,
                                      THEME_MODE_DARK);
     if(show_mode) {
-        UIRenderText(ui_theme_settings_text(settings.mode_label, "Mode"),
+        DrawUIText(ui_theme_settings_text(settings.mode_label, "Mode"),
                    settings.x, y, font, c_text);
-        if(UIRenderDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
+        if(DrawUIDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
                           settings.w, row_h, mode_options, 3,
                           settings.theme_mode)) {
             if(state != NULL)
@@ -165,9 +165,9 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
         state->palette_index = ui_clampi(palette_index, 0, palette_count - 1);
         palette_index = state->palette_index;
     }
-    UIRenderText(ui_theme_settings_text(settings.palette_label, "Color"),
+    DrawUIText(ui_theme_settings_text(settings.palette_label, "Color"),
                settings.x, y, font, c_text);
-    if(UIRenderDropdown(settings.id_base + 2, settings.x, y + font + label_gap,
+    if(DrawUIDropdown(settings.id_base + 2, settings.x, y + font + label_gap,
                       settings.w, row_h, theme_options, palette_count,
                       state != NULL ? &state->palette_index : &palette_index)) {
         if(state != NULL)
@@ -196,9 +196,9 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
             if(*settings.theme_style == style_values[i])
                 style_index = i;
         }
-        UIRenderText(ui_theme_settings_text(settings.style_label, "Style"),
+        DrawUIText(ui_theme_settings_text(settings.style_label, "Style"),
                    settings.x, y, font, c_text);
-        if(UIRenderDropdown(settings.id_base + 3,
+        if(DrawUIDropdown(settings.id_base + 3,
                           settings.x, y + font + label_gap,
                           settings.w, row_h, style_options, 3,
                           &style_index)) {
@@ -217,7 +217,7 @@ UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state)
 }
 
 UIThemeSettingsResult
-UIRenderThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
+DrawUIThemeSettingsMenus(UIThemeSettings settings, UIThemeSettingsState *state)
 {
     UIThemeSettingsResult result = {0};
 
@@ -372,7 +372,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 
         const char *name = ui_theme_label(theme);
         int name_w = MeasureUIText(name, small_font);
-        UIRenderText(name, cx - name_w / 2,
+        DrawUIText(name, cx - name_w / 2,
                         cy + layout.circle_size / 2 + layout.label_gap,
                         small_font, c_text);
     }
@@ -381,7 +381,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 }
 
 int
-UIRenderThemeSwitcher(int x, int y, int w, const char *label,
+DrawUIThemeSwitcher(int x, int y, int w, const char *label,
                        const char *light_label, const char *dark_label,
                        int *theme_id, int *dark_mode)
 {
@@ -389,7 +389,7 @@ UIRenderThemeSwitcher(int x, int y, int w, const char *label,
     int font = GetUIFontSize();
     int dark = dark_mode != NULL ? *dark_mode : 0;
 
-    UIRenderText(label ? label : "Theme", x, y, font, c_text);
+    DrawUIText(label ? label : "Theme", x, y, font, c_text);
 
     int light_w = MeasureUIText(light_label ? light_label : "Light", font);
     int dark_w = MeasureUIText(dark_label ? dark_label : "Dark", font);
@@ -404,7 +404,7 @@ UIRenderThemeSwitcher(int x, int y, int w, const char *label,
     int toggle_h = ScaleUIPx(28);
     int toggle_x = x + w - toggle_w - ScaleUIPx(8);
     int toggle_y = y - ScaleUIPx(2);
-    if(UIRenderToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
+    if(DrawUIToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
                              light_label ? light_label : "Light",
                              dark_label ? dark_label : "Dark")) {
         if(dark_mode != NULL)
@@ -419,7 +419,7 @@ UIRenderThemeSwitcher(int x, int y, int w, const char *label,
 }
 
 int
-UIRenderThemePicker(int x, int y, int w, int dark_mode,
+DrawUIThemePicker(int x, int y, int w, int dark_mode,
                      int *theme_id)
 {
     int changed = 0;

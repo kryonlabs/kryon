@@ -3,7 +3,13 @@
 int
 ui_tab_bar_height(void)
 {
-    return ScaleUIPx(36);
+    return ui_material_style() ? ScaleUIPx(48) : ScaleUIPx(36);
+}
+
+int
+GetUITabBarHeight(void)
+{
+    return ui_tab_bar_height();
 }
 
 static int
@@ -22,7 +28,7 @@ ui_tab_bar_tab_width(UITabBar bar, int index, int min_tab_w, int icon_tab_w)
 }
 
 int
-UIRenderTabBar(UITabBar bar)
+DrawUITabBar(UITabBar bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -42,6 +48,9 @@ UIRenderTabBar(UITabBar bar)
     static int is_dragging = 0;
     int *scroll_offset = bar.scroll_offset != NULL ? bar.scroll_offset
                                                    : &default_scroll_offset;
+
+    if(bar.closed_index != NULL)
+        *bar.closed_index = -1;
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
@@ -157,7 +166,7 @@ UIRenderTabBar(UITabBar bar)
 
         if(!ui_material_style() && is_selected) {
             // Strong bevel for selected tab (appears raised)
-            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
                          DarkenUIColor(tab_fill, 30));
             if(cues && tab_w > ScaleUIPx(18)) {
@@ -170,7 +179,7 @@ UIRenderTabBar(UITabBar bar)
             }
         } else if(!ui_material_style() && is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
-            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, cues ? 42 : 30),
                          DarkenUIColor(tab_fill, 20));
             if(cues && tab_w > ScaleUIPx(8)) {
@@ -181,7 +190,7 @@ UIRenderTabBar(UITabBar bar)
             }
         } else if(!ui_material_style() && !is_disabled) {
             // Subtle bevel for normal tab
-            UIRenderBevel(tab_x, bar_y, tab_w, bar_h,
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 20),
                          DarkenUIColor(tab_fill, 15));
         }
@@ -194,6 +203,18 @@ UIRenderTabBar(UITabBar bar)
         int text_x = icon_x + icon_size + ScaleUIPx(4);
         int content_h = bar_h - ScaleUIPx(8);
         int content_y = bar_y + (bar_h - content_h) / 2;
+        int close_size = ScaleUIPx(18);
+        int close_pad = ScaleUIPx(6);
+        Rectangle close_rect = {
+            (float)(tab_x + tab_w - text_pad - close_size),
+            (float)(bar_y + (bar_h - close_size) / 2),
+            (float)close_size,
+            (float)close_size
+        };
+        int close_active = tab->closeable &&
+                           CheckCollisionPointRec(mouse_world, close_rect) &&
+                           !input_captured;
+        int close_hovered = close_active && UIHoverEffectsEnabled();
 
         Color text_color = ui_material_style()
                                ? ui_material_scheme().on_surface_variant
@@ -244,18 +265,40 @@ UIRenderTabBar(UITabBar bar)
         Rectangle text_rect = {
             (float)text_x,
             (float)content_y,
-            (float)(tab_x + tab_w - text_pad - text_x),
+            (float)(tab_x + tab_w - text_pad - text_x -
+                    (tab->closeable ? close_size + close_pad : 0)),
             (float)content_h
         };
 
         if(text_rect.width > 0 && has_label) {
-            if(ui_material_style())
+            if(tab->italic) {
+                int y = GetUITextY(tab->label, (int)text_rect.y,
+                                   (int)text_rect.height, font);
+                BeginUIClip((int)text_rect.x, (int)text_rect.y,
+                            (int)text_rect.width, (int)text_rect.height);
+                DrawUITextStyled(tab->label, (int)text_rect.x, y,
+                                   (UITextStyle){font, text_color, 1, 0});
+                EndUIClip();
+            } else if(ui_material_style())
                 DrawCenteredUIControlText(tab->label,
                                           (int)(text_rect.x + text_rect.width / 2),
                                           (int)(text_rect.y + text_rect.height / 2),
                                           font, text_color);
             else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
+        }
+
+        if(tab->closeable) {
+            Color close_color = close_hovered ? c_link : icon_tint;
+            if(close_hovered)
+                DrawRectangleRounded(close_rect, 0.40f, 6,
+                                     ui_material_style() ? ui_material_scheme().surface_variant
+                                                         : DarkenUIColor(c_button_hover, 8));
+            DrawUIText("x",
+                         (int)(close_rect.x + (close_rect.width -
+                                               (float)MeasureUIText("x", font)) * 0.5f),
+                         GetUITextY("x", (int)close_rect.y, (int)close_rect.height, font),
+                         font, close_color);
         }
 
         // Handle click detection
@@ -265,8 +308,14 @@ UIRenderTabBar(UITabBar bar)
             else
                 MarkUIClickable();
 
-            if(released)
+            if(close_active && released) {
+                clicked_tab = -1;
+                if(bar.closed_index != NULL)
+                    *bar.closed_index = i;
+                UIConsumeRelease();
+            } else if(!close_active && released) {
                 clicked_tab = i;
+            }
         }
 
         tab_x += tab_w + tab_gap;

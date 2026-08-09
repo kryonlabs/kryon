@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 UIToolbarResult
-UIRenderToolbar(UIToolbar toolbar)
+DrawUIToolbar(UIToolbar toolbar)
 {
     UIToolbarResult result = {-1, -1};
     int side_padding = toolbar.side_padding < 0
@@ -43,7 +43,7 @@ UIRenderToolbar(UIToolbar toolbar)
             controls_x -= action_w;
             action_x = controls_x;
             if(!toolbar.actions[i].disabled &&
-               UIRenderPaddedIconBtn(action_x, action_y, action_icon_size,
+               DrawUIPaddedIconBtn(action_x, action_y, action_icon_size,
                                        action_icon_padding,
                                        toolbar.actions[i].icon, &hover))
                 result.clicked_action = i;
@@ -72,7 +72,7 @@ UIRenderToolbar(UIToolbar toolbar)
             dropdown_w = dropdown_available_w;
         if(dropdown_w < 0)
             dropdown_w = 0;
-        if(UIRenderDropdown(toolbar.id, dropdown_x, dropdown_y,
+        if(DrawUIDropdown(toolbar.id, dropdown_x, dropdown_y,
                           dropdown_w, dropdown_h,
                           toolbar.options, toolbar.option_count,
                           toolbar.selected_index))
@@ -85,7 +85,7 @@ UIRenderToolbar(UIToolbar toolbar)
 }
 
 UIToolbarHeaderResult
-UIRenderToolbarHeader(UIToolbarHeader header)
+DrawUIToolbarHeader(UIToolbarHeader header)
 {
     UIToolbarHeaderResult result;
     UIToolbar toolbar = header.toolbar;
@@ -115,7 +115,7 @@ UIRenderToolbarHeader(UIToolbarHeader header)
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
-            result.leading_clicked = UIRenderPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
+            result.leading_clicked = DrawUIPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
                                                              icon_size, icon_padding,
                                                              header.leading_icon,
                                                              &hover);
@@ -128,6 +128,6 @@ UIRenderToolbarHeader(UIToolbarHeader header)
             toolbar.width = 0;
     }
 
-    result.toolbar = UIRenderToolbar(toolbar);
+    result.toolbar = DrawUIToolbar(toolbar);
     return result;
 }

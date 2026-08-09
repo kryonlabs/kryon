@@ -209,7 +209,7 @@ get_or_create_dropdown_state(int id)
 }
 
 int
-UIRenderDropdown(int id, int x, int y, int w, int h,
+DrawUIDropdown(int id, int x, int y, int w, int h,
                const char **options, int option_count, int *selected_index)
 {
     UIDropdownOption dropdown_options[MAX_DROPDOWN_OPTIONS];
@@ -224,12 +224,12 @@ UIRenderDropdown(int id, int x, int y, int w, int h,
         dropdown_options[i].font_name = NULL;
     }
 
-    return UIRenderDropdownEx(id, x, y, w, h, dropdown_options,
+    return DrawUIDropdownEx(id, x, y, w, h, dropdown_options,
                             option_count, selected_index);
 }
 
 int
-UIRenderDropdownEx(int id, int x, int y, int w, int h,
+DrawUIDropdownEx(int id, int x, int y, int w, int h,
                  const UIDropdownOption *options, int option_count,
                  int *selected_index)
 {
@@ -337,7 +337,7 @@ UIRenderDropdownEx(int id, int x, int y, int w, int h,
         ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
     } else {
         DrawRectangleRec(btn_bounds, button_bg);
-        UIRenderBevel(x, y, w, h,
+        DrawUIBevel(x, y, w, h,
                     state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
                     state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
     }
@@ -356,7 +356,7 @@ UIRenderDropdownEx(int id, int x, int y, int w, int h,
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
-        UIRenderText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
+        DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, c_text);
         EndUIClip();
         PopUIFont(font_token);
     }
@@ -376,7 +376,7 @@ UIRenderDropdownEx(int id, int x, int y, int w, int h,
 }
 
 int
-UIRenderLocaleDropdown(int id, int x, int y, int w, int h,
+DrawUILocaleDropdown(int id, int x, int y, int w, int h,
                      int *selected_index)
 {
     UIDropdownOption options[MAX_DROPDOWN_OPTIONS];
@@ -394,11 +394,11 @@ UIRenderLocaleDropdown(int id, int x, int y, int w, int h,
     }
     if(count <= 0) {
         const char *fallback[] = {"Language"};
-        return UIRenderDropdown(id, x, y, w, h, fallback, 1, selected_index);
+        return DrawUIDropdown(id, x, y, w, h, fallback, 1, selected_index);
     }
     if(*selected_index < 0 || *selected_index >= count)
         *selected_index = 0;
-    return UIRenderDropdownEx(id, x, y, w, h, options, count, selected_index);
+    return DrawUIDropdownEx(id, x, y, w, h, options, count, selected_index);
 }
 
 static int
@@ -525,7 +525,7 @@ draw_dropdown_menu(int id)
                                    panel, border, tokens.panel_radius);
     } else {
         DrawRectangle(x, dropdown_y, w, dropdown_h, ui_dropdown_panel_color(18));
-        UIRenderBevel(x, dropdown_y, w, dropdown_h,
+        DrawUIBevel(x, dropdown_y, w, dropdown_h,
                     ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
     }
 
@@ -607,7 +607,7 @@ draw_dropdown_menu(int id)
 
         {
             int font_token = PushUIFont(option_fonts[i]);
-            UIRenderText(options[i], x + ScaleUIPx(12),
+            DrawUIText(options[i], x + ScaleUIPx(12),
                        GetUIControlTextY(options[i], option_y, option_h, font),
                        font, c_text);
             PopUIFont(font_token);
@@ -617,7 +617,7 @@ draw_dropdown_menu(int id)
     EndUIClip();
 
     if(max_scroll > 0)
-        UIRenderScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
+        DrawUIScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
                           dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll);
 
 draw_arrow:

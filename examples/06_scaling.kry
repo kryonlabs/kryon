@@ -23,19 +23,19 @@ screen ScalingExample(viewport: Rectangle) {
     WidgetText("Scaled Box", box_x + 10, box_y + 10, UI_TEXT_16, GetThemeText())
     WidgetText(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, UI_TEXT_16, GetThemeText())
     WidgetText("SPACE cycles DPI,arrows move box", 50, 90, UI_TEXT_16, GetThemeIcon())
-    if (UIKeyDown(KEY_RIGHT)) {
+    if (IsKeyDown(KEY_RIGHT)) {
         box_x += 3
     }
-    if (UIKeyDown(KEY_LEFT)) {
+    if (IsKeyDown(KEY_LEFT)) {
         box_x -= 3
     }
-    if (UIKeyDown(KEY_DOWN)) {
+    if (IsKeyDown(KEY_DOWN)) {
         box_y += 3
     }
-    if (UIKeyDown(KEY_UP)) {
+    if (IsKeyDown(KEY_UP)) {
         box_y -= 3
     }
-    if (UIKeyPressed(KEY_SPACE)) {
+    if (IsKeyPressed(KEY_SPACE)) {
         scale_index = (scale_index + 1) % 4
     }
 }

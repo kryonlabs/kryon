@@ -78,4 +78,8 @@ typedef struct {
     int style_changed;
 } UIThemeSettingsResult;
 
+int DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
+UIThemeSettingsResult DrawUIThemeSettingsMenus(UIThemeSettings settings,
+                                                 UIThemeSettingsState *state);
+
 #endif

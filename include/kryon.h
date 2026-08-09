@@ -2,9 +2,8 @@
 #define KRYON_H
 
 #include "kryon_version.h"
-/* Kryon's graphics/input API surface (currently tracks raylib). The concrete
- * backend is selected at link time via the KRYON_BACKEND make variable; see
- * the preamble in kryon_compat.generated.h. */
+/* Kryon's owned raylib-style graphics/input surface. The concrete backend is
+ * selected at link time via KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
 
 #include "ui_color.h"

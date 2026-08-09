@@ -23,6 +23,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Web Utilities](#web-utilities)
 - [UI Components](#ui-components)
   - [Buttons](#buttons)
+  - [Sprites](#sprites)
   - [Text Input](#text-input)
   - [Navigation](#navigation)
   - [Modals](#modals)
@@ -779,6 +780,34 @@ int SyncWebWindowSize(void);
 
 ## UI Components
 
+### Sprites
+
+```c
+typedef enum UISpriteFit {
+    UI_SPRITE_FIT_STRETCH,
+    UI_SPRITE_FIT_CONTAIN,
+    UI_SPRITE_FIT_COVER
+} UISpriteFit;
+
+typedef struct UISprite {
+    const char *asset_path;
+    Rectangle bounds;
+    Rectangle source;
+    Vector2 origin;
+    float rotation;
+    Color tint;
+    UISpriteFit fit;
+} UISprite;
+
+void WidgetSprite(const char *asset_path, int x, int y, int w, int h);
+void WidgetSpriteEx(UISprite sprite);
+```
+
+Sprites are image-backed widget nodes. `asset_path` is resolved first as a
+runtime file path and then as an embedded asset path. `WidgetSprite` uses the
+full image with contain fitting; `WidgetSpriteEx` exposes source rect, origin,
+rotation, tint, and fit mode for editor-generated scenes.
+
 ### Buttons
 
 #### `UIButton`
@@ -1015,7 +1044,7 @@ int UITabBarNode(UITabBar bar);
 ```c
 int UIDropdownNode(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);
-void UIRenderOverlays(void);
+void DrawUIOverlays(void);
 ```
 
 ---

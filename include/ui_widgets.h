@@ -12,7 +12,9 @@
 
 #include "ui_color.h"        /* Color */
 #include "ui_controls.h"     /* UIButtonStyle */
+#include "ui_nav.h"          /* UITab */
 #include "ui_layout.h"       /* GetUIViewWidth, GetUIViewHeight */
+#include "ui_sprite.h"       /* UISprite */
 #include "theme.h"           /* GetThemeText, GetThemeBackground, ... */
 
 /* Declare a piece of text. */
@@ -30,5 +32,13 @@ void WidgetBackground(Color color);
 /* Declare a button and return 1 if it was clicked this frame. */
 int WidgetButton(int x, int y, int w, int h, const char *label,
                  UIButtonStyle style);
+
+/* Declare an image-backed sprite from a project-relative or embedded asset path. */
+void WidgetSprite(const char *asset_path, int x, int y, int w, int h);
+void WidgetSpriteEx(UISprite sprite);
+
+/* Declare a themed tab bar, update selected_index on click, and return the clicked tab or -1. */
+int WidgetTabBar(int x, int y, int w, int h, const UITab *tabs, int count,
+                 int *selected_index);
 
 #endif /* UI_WIDGETS_H */

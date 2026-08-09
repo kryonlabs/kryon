@@ -49,9 +49,6 @@ static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
-static UIKeyInputPlatformCallback g_ui_key_input_update_callback = NULL;
-static UIKeyPlatformCallback g_ui_key_pressed_callback = NULL;
-static UIKeyPlatformCallback g_ui_key_down_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
 static int *g_ui_text_area_drag_owner = NULL;
 static int g_ui_text_area_last_click_id = 0;
@@ -277,16 +274,10 @@ ui_iabs(int value)
     return value < 0 ? -value : value;
 }
 
-static int
-ui_key_prefers_platform(int key)
-{
-    return key >= 32 && key <= 126;
-}
-
 int
 SetUIKeyboardInputEnabled(int enabled)
 {
-    int old = g_ui_keyboard_input_enabled;
+    int old = SetKeyboardInputEnabled(enabled);
 
     g_ui_keyboard_input_enabled = enabled != 0;
     return old;
@@ -295,49 +286,7 @@ SetUIKeyboardInputEnabled(int enabled)
 int
 UIKeyboardInputEnabled(void)
 {
-    return g_ui_keyboard_input_enabled;
-}
-
-int
-UIKeyPressed(int key)
-{
-    if(!g_ui_keyboard_input_enabled)
-        return 0;
-    if(g_ui_key_pressed_callback != NULL && ui_key_prefers_platform(key))
-        return g_ui_key_pressed_callback(key);
-    if(IsKeyPressed(key))
-        return 1;
-    return g_ui_key_pressed_callback != NULL &&
-           g_ui_key_pressed_callback(key);
-}
-
-int
-UIKeyDown(int key)
-{
-    if(!g_ui_keyboard_input_enabled)
-        return 0;
-    if(g_ui_key_down_callback != NULL && ui_key_prefers_platform(key))
-        return g_ui_key_down_callback(key);
-    if(IsKeyDown(key))
-        return 1;
-    return g_ui_key_down_callback != NULL && g_ui_key_down_callback(key);
-}
-
-void
-SetUIKeyPlatformCallbacks(UIKeyInputPlatformCallback update,
-                          UIKeyPlatformCallback key_pressed,
-                          UIKeyPlatformCallback key_down)
-{
-    g_ui_key_input_update_callback = update;
-    g_ui_key_pressed_callback = key_pressed;
-    g_ui_key_down_callback = key_down;
-}
-
-void
-UpdateUIKeyPlatformState(void)
-{
-    if(g_ui_key_input_update_callback != NULL)
-        g_ui_key_input_update_callback();
+    return KeyboardInputEnabled();
 }
 
 static int
@@ -353,11 +302,11 @@ ui_backspace_repeat_count(void)
     double now;
     int count = 0;
 
-    if(UIKeyPressed(KEY_BACKSPACE)) {
+    if(IsKeyPressed(KEY_BACKSPACE)) {
         g_ui_backspace_next_repeat_at = GetTime() + 0.34;
         return 1;
     }
-    if(!UIKeyDown(KEY_BACKSPACE)) {
+    if(!IsKeyDown(KEY_BACKSPACE)) {
         g_ui_backspace_next_repeat_at = 0.0;
         return 0;
     }
@@ -383,8 +332,8 @@ ui_pointer_dy(void)
 static int
 ui_mod_key_down(void)
 {
-    return UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL) ||
-           UIKeyDown(KEY_LEFT_SUPER) || UIKeyDown(KEY_RIGHT_SUPER);
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
 }
 
 int
@@ -903,7 +852,7 @@ ui_text_draw_context_overlay(void)
                             UI_TEXT_CONTEXT_SELECT_ALL,
                             !has_text, 0, NULL, 0};
 
-    command = UIRenderContextMenu((UIContextMenu){
+    command = DrawUIContextMenu((UIContextMenu){
         .id = 8500 + g_ui_text_context_kind,
         .trigger = (Rectangle){-10000.0f, -10000.0f, 1.0f, 1.0f},
         .items = items,
@@ -973,7 +922,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    UIRenderText(value, x, y, font_size, color);
+    DrawUIText(value, x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1052,7 +1001,7 @@ DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Col
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    UIRenderText(value, (int)rect.x, y, font_size, color);
+    DrawUIText(value, (int)rect.x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1111,8 +1060,8 @@ BeginUIFocus(void)
        g_ui_text_focus_owner_frame != g_ui_text_focus_frame)
         g_ui_text_focus_owner = NULL;
     g_ui_text_focus_owner_this_frame = NULL;
-    if(UIKeyPressed(KEY_TAB))
-        g_ui_focus_tab_dir = (UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
+    if(IsKeyPressed(KEY_TAB))
+        g_ui_focus_tab_dir = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
 }
 
 void
@@ -1277,7 +1226,7 @@ int
 IsUIFocusActivatePressed(int id)
 {
     return IsUIFocusActive(id) &&
-           (UIKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && UIKeyPressed(KEY_SPACE)));
+           (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
 }
 
 void
@@ -1305,7 +1254,7 @@ SetUIFocusTextInputActive(int active)
 }
 
 void
-UIRenderFocus(Rectangle bounds)
+DrawUIFocus(Rectangle bounds)
 {
     DrawRectangleLinesEx((Rectangle){bounds.x - ScaleUIPx(3), bounds.y - ScaleUIPx(3),
                                      bounds.width + ScaleUIPx(6), bounds.height + ScaleUIPx(6)},
@@ -1351,11 +1300,11 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y,
     int h = ui_control_height_for_font(font);
     int y = GetUIControlTextY(text, center_y - h / 2, h, font);
 
-    UIRenderText(text, center_x - text_w / 2, y, font, color);
+    DrawUIText(text, center_x - text_w / 2, y, font, color);
 }
 
 static void
-UIRenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
+DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int cursor_visible, int font,
                   UITextInputStyle style, int selection_start,
                   int selection_end)
@@ -1424,7 +1373,7 @@ UIRenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                       ui_material_style() ? ui_alpha(c_circle, 82) :
                                             (Color){78, 132, 196, 135});
     }
-    UIRenderText(value, text_x, text_y, font, style.text);
+    DrawUIText(value, text_x, text_y, font, style.text);
 
     if(focused && cursor_visible) {
         char before_cursor[1024];
@@ -1444,11 +1393,11 @@ UIRenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 }
 
 void
-UIRenderTextInput(Rectangle bounds, const char *text, int cursor_position,
+DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
                          UITextInputStyle style)
 {
-    UIRenderTextInputEx(bounds, text, cursor_position, focused, cursor_visible,
+    DrawUITextInputEx(bounds, text, cursor_position, focused, cursor_visible,
                       font, style, 0, 0);
 }
 
@@ -1494,29 +1443,29 @@ EditUIText(UITextEdit edit)
     if(!UIKeyboardInputEnabled())
         return 0;
 
-    if(UIKeyPressed(KEY_LEFT)) {
+    if(IsKeyPressed(KEY_LEFT)) {
         *edit.cursor_position = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
     }
-    if(UIKeyPressed(KEY_RIGHT)) {
+    if(IsKeyPressed(KEY_RIGHT)) {
         *edit.cursor_position = ui_utf8_next_offset(edit.text, *edit.cursor_position);
     }
-    if(UIKeyPressed(KEY_HOME)) {
+    if(IsKeyPressed(KEY_HOME)) {
         *edit.cursor_position = 0;
     }
-    if(UIKeyPressed(KEY_END)) {
+    if(IsKeyPressed(KEY_END)) {
         *edit.cursor_position = (int)strlen(edit.text);
     }
 
-    if(ui_mod_key_down() && UIKeyPressed(KEY_C)) {
+    if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
         SetUIClipboardTextValue(edit.text);
     }
-    if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
+    if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
         SetUIClipboardTextValue(edit.text);
         edit.text[0] = '\0';
         *edit.cursor_position = 0;
         changed = 1;
     }
-    if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+    if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
         changed |= ui_text_paste_clipboard(edit, 0);
     }
 
@@ -1531,14 +1480,14 @@ EditUIText(UITextEdit edit)
         g_ui_text_input_backspace_count = 0;
     }
 
-    if(UIKeyPressed(KEY_DELETE)) {
+    if(IsKeyPressed(KEY_DELETE)) {
         int end = ui_utf8_next_offset(edit.text, *edit.cursor_position);
         changed |= ui_text_delete_range(edit.text, edit.text_size,
                                         edit.cursor_position,
                                         *edit.cursor_position, end);
     }
 
-    if(UIKeyPressed(KEY_ENTER) || UIKeyPressed(KEY_KP_ENTER) ||
+    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
        g_ui_text_input_enter_count > 0) {
         if(edit.commit_pressed != NULL)
             *edit.commit_pressed = 1;
@@ -1569,7 +1518,7 @@ EditUIText(UITextEdit edit)
 }
 
 int
-UIRenderTextInputControl(UITextInput input)
+DrawUITextInputControl(UITextInput input)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1587,10 +1536,10 @@ UIRenderTextInputControl(UITextInput input)
     if(input.focus_id > 0 && RegisterUIFocus(input.focus_id, input.bounds)) {
         focused = 1;
         SetUIFocusTextInputActive(1);
-        UIRenderFocus(input.bounds);
+        DrawUIFocus(input.bounds);
     }
 
-    UIRenderTextInput(input.bounds, input.text, input.cursor_position,
+    DrawUITextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetUIFontSize(),
                              input.style);
@@ -1599,7 +1548,7 @@ UIRenderTextInputControl(UITextInput input)
 }
 
 int
-UIRenderHref(UIHref link)
+DrawUIHref(UIHref link)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1651,7 +1600,7 @@ UIRenderHref(UIHref link)
         MarkUIDisabled();
     }
 
-    UIRenderText(text, (int)bounds.x,
+    DrawUIText(text, (int)bounds.x,
                GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(hovered && text_w > 0) {
@@ -1661,7 +1610,7 @@ UIRenderHref(UIHref link)
     }
     if(focused) {
         SetUIFocusTextInputActive(0);
-        UIRenderFocus(bounds);
+        DrawUIFocus(bounds);
     }
     if(clicked)
         UIConsumeRelease();
@@ -2101,7 +2050,7 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                                       style);
         if(token[0] != ' ' && token[0] != '\t')
             first_token = 0;
-        UIRenderText(token, x, y, font, color);
+        DrawUIText(token, x, y, font, color);
         x += MeasureUIText(token, font);
         offset += token_len;
     }
@@ -2144,7 +2093,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                                             (Color){0, 96, 192, 72},
                                             selection_start, selection_end);
                 if(syntax == UI_SYNTAX_NONE)
-                    UIRenderText(line, text_x, draw_y, line_font, style.text);
+                    DrawUIText(line, text_x, draw_y, line_font, style.text);
                 else
                     ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                         line_font, syntax, style);
@@ -2165,7 +2114,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 }
 
 int
-UIRenderTextArea(UITextArea area)
+DrawUITextArea(UITextArea area)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2223,7 +2172,7 @@ UIRenderTextArea(UITextArea area)
     if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
-        UIRenderFocus(area.bounds);
+        DrawUIFocus(area.bounds);
     }
 
     mouse_world = ui_mouse_world();
@@ -2349,18 +2298,18 @@ UIRenderTextArea(UITextArea area)
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused);
-    if(focused && UIKeyPressed(KEY_ESCAPE)) {
+    if(focused && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(area.focused, area.focus_id);
         *area.focused = 0;
         SetUIFocusTextInputActive(0);
     }
-    copy_pressed = UIKeyPressed(KEY_C);
-    cut_pressed = UIKeyPressed(KEY_X);
-    paste_pressed = UIKeyPressed(KEY_V);
+    copy_pressed = IsKeyPressed(KEY_C);
+    cut_pressed = IsKeyPressed(KEY_X);
+    paste_pressed = IsKeyPressed(KEY_V);
     enter_requested = focused && UIKeyboardInputEnabled() &&
-                      (UIKeyPressed(KEY_ENTER) ||
-                       UIKeyPressed(KEY_KP_ENTER) ||
+                      (IsKeyPressed(KEY_ENTER) ||
+                       IsKeyPressed(KEY_KP_ENTER) ||
                        g_ui_text_input_enter_count > 0);
     has_selection = ui_text_selection_matches(g_ui_text_area_selection, drag_id,
                                               area.focused);
@@ -2383,7 +2332,7 @@ UIRenderTextArea(UITextArea area)
         selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
     }
     if(focused && UIKeyboardInputEnabled()) {
-        if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(area.text);
 
             ui_text_selection_set(&g_ui_text_area_selection, drag_id,
@@ -2446,7 +2395,7 @@ UIRenderTextArea(UITextArea area)
             }
             selection_key_handled = 1;
         }
-        if((UIKeyPressed(KEY_BACKSPACE) || UIKeyPressed(KEY_DELETE)) &&
+        if((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
            selection_end > selection_start) {
             if(ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
@@ -2555,13 +2504,13 @@ UIRenderTextArea(UITextArea area)
             }
             g_ui_text_input_enter_count = 0;
         }
-        if(UIKeyPressed(KEY_UP))
+        if(IsKeyPressed(KEY_UP))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
-        if(UIKeyPressed(KEY_DOWN))
+        if(IsKeyPressed(KEY_DOWN))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
-        if(changed || UIKeyPressed(KEY_LEFT) || UIKeyPressed(KEY_RIGHT) ||
-           UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END) ||
-           UIKeyPressed(KEY_UP) || UIKeyPressed(KEY_DOWN)) {
+        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN)) {
             if(!g_ui_text_area_selection.dragging) {
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, *area.cursor_position,
@@ -2598,7 +2547,7 @@ UIRenderTextArea(UITextArea area)
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        UIRenderText(area.placeholder, (int)area.bounds.x + padding_x,
+        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, *area.cursor_position, focused,
@@ -2649,7 +2598,7 @@ SetUITextAreaSelection(int focus_id, int anchor, int cursor)
 }
 
 int
-UIRenderTextField(UITextField field)
+DrawUITextField(UITextField field)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2689,7 +2638,7 @@ UIRenderTextField(UITextField field)
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
-        UIRenderFocus(field.bounds);
+        DrawUIFocus(field.bounds);
     }
 
     mouse_world = ui_mouse_world();
@@ -2767,7 +2716,7 @@ UIRenderTextField(UITextField field)
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused);
-    if(focused && UIKeyPressed(KEY_ESCAPE)) {
+    if(focused && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(field.focused, field.focus_id);
         *field.focused = 0;
@@ -2780,7 +2729,7 @@ UIRenderTextField(UITextField field)
                            &selection_start, &selection_end);
 
     if(focused && UIKeyboardInputEnabled()) {
-        if(ui_mod_key_down() && UIKeyPressed(KEY_A)) {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(field.text);
 
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
@@ -2790,14 +2739,14 @@ UIRenderTextField(UITextField field)
             selection_end = len;
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_C)) {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
             if(selection_end > selection_start)
                 ui_text_copy_range(field.text, selection_start, selection_end);
             else
                 SetUIClipboardTextValue(field.text);
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_X)) {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
             if(selection_end > selection_start) {
                 if(ui_text_copy_range(field.text, selection_start,
                                       selection_end) &&
@@ -2817,7 +2766,7 @@ UIRenderTextField(UITextField field)
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && UIKeyPressed(KEY_V)) {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
             if(selection_end > selection_start)
                 ui_text_delete_range(field.text, field.text_size,
                                      field.cursor_position, selection_start,
@@ -2837,7 +2786,7 @@ UIRenderTextField(UITextField field)
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
         }
-        if((UIKeyPressed(KEY_BACKSPACE) || UIKeyPressed(KEY_DELETE)) &&
+        if((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
            selection_end > selection_start) {
             if(ui_text_delete_range(field.text, field.text_size,
                                     field.cursor_position, selection_start,
@@ -2912,8 +2861,8 @@ UIRenderTextField(UITextField field)
                                       : &commit_pressed
             });
         }
-        if(changed || UIKeyPressed(KEY_LEFT) || UIKeyPressed(KEY_RIGHT) ||
-           UIKeyPressed(KEY_HOME) || UIKeyPressed(KEY_END)) {
+        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
             if(!g_ui_text_field_selection.dragging) {
                 ui_text_selection_set(&g_ui_text_field_selection,
                                       field.focus_id, field.focused,
@@ -2935,7 +2884,7 @@ UIRenderTextField(UITextField field)
                                     &g_ui_text_field_selection,
                                     selection_start, selection_end, 0, 1);
 
-    UIRenderTextInputEx(field.bounds, field.text, *field.cursor_position,
+    DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
                       focused,
                       focused && ui_caret_blink_visible(),
                       font, field.style, selection_start, selection_end);
@@ -2989,7 +2938,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
 }
 
 int
-UIRenderReadonlyTextBox(UIReadonlyTextBox box)
+DrawUIReadonlyTextBox(UIReadonlyTextBox box)
 {
     char editor_id[96];
     UIWidget widget;
@@ -3032,7 +2981,7 @@ UIRenderReadonlyTextBox(UIReadonlyTextBox box)
 
         if(MeasureUIText(text + offset, font) <= content_w) {
             snprintf(line, sizeof(line), "%s", text + offset);
-            UIRenderText(line, (int)box.bounds.x + padding_x, draw_y,
+            DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
                             font, box.style.text);
             break;
         }
@@ -3045,13 +2994,13 @@ UIRenderReadonlyTextBox(UIReadonlyTextBox box)
             chunk_len++;
         }
         snprintf(line, sizeof(line), "%.*s", chunk_len, text + offset);
-        UIRenderText(line, (int)box.bounds.x + padding_x, draw_y,
+        DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
                         font, box.style.text);
         draw_y += line_h + line_gap;
         offset += chunk_len;
     }
     if(len == 0)
-        UIRenderText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
+        DrawUIText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
     EndUIClip();
 
     if(active) {
@@ -3092,19 +3041,19 @@ ui_paragraph_height(UIParagraph paragraph)
 }
 
 void
-UIRenderParagraph(UIParagraph paragraph, int x, int *y)
+DrawUIParagraph(UIParagraph paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     UITextLayout layout = UIParagraphLayout(paragraph);
-    UIRenderTextLayout(&layout, x, y, font, color);
+    DrawUITextLayout(&layout, x, y, font, color);
     FreeUITextLayout(&layout);
 }
 
 void
-UIRenderBevel(int x, int y, int w, int h, Color light, Color dark)
+DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
 {
     DrawLine(x, y, x + w - 1, y, light);
     DrawLine(x, y, x, y + h - 1, light);
@@ -3113,10 +3062,10 @@ UIRenderBevel(int x, int y, int w, int h, Color light, Color dark)
 }
 
 void
-UIRenderTextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
+DrawUITextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
 {
     for(int i = 0; i < count; i++) {
-        UIRenderText(lines[i], x, *y, font, color);
+        DrawUIText(lines[i], x, *y, font, color);
         *y += line_h;
     }
 }
@@ -3267,7 +3216,7 @@ SetUIFrame(Camera2D camera)
 }
 
 void
-UIRenderFrameOverlays(void)
+DrawUIFrameOverlays(void)
 {
     if(g_ui_overlays_drawn_frame == g_ui_frame_serial)
         return;
@@ -3360,7 +3309,7 @@ GetUIIconButtonPadding(UIIconSize size)
 }
 
 void
-UIRenderIconTexture(int x, int y, int size, Texture2D icon, Color tint)
+DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 {
     Rectangle src;
     Rectangle dst;
@@ -3374,7 +3323,7 @@ UIRenderIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 }
 
 int
-UIRenderSubtabBar(UISubtabBar bar)
+DrawUISubtabBar(UISubtabBar bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -3479,7 +3428,7 @@ UIRenderSubtabBar(UISubtabBar bar)
 }
 
 void
-UIRenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
+DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 {
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
@@ -3499,13 +3448,13 @@ UIRenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 
     if(hover) {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button_hover);
-        UIRenderBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
+        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
     } else {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button);
-        UIRenderBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
+        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
-    UIRenderIconTexture(x, y, icon_size, icon, WHITE);
+    DrawUIIconTexture(x, y, icon_size, icon, WHITE);
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {

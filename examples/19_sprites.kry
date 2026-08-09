@@ -1,0 +1,27 @@
+#module "example_sprites"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Sprites" {
+    size 640 420
+    fps 60
+    font_examples
+    theme THEME_CHERRY 0
+}
+
+screen main {
+    WidgetBackground(GetThemeBackground())
+    WidgetText("Sprites are image nodes", ScaleUIPx(32), ScaleUIPx(30),
+               UI_TEXT_24, GetThemeText())
+    UIBeginNodeGroup(100, (Rectangle){ScaleUIPx(32), ScaleUIPx(82),
+                                      ScaleUIPx(260), ScaleUIPx(210)})
+    WidgetRect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
+               GetThemeSurface(), GetThemeButton())
+    WidgetSprite("tiles/tile.png", ScaleUIPx(52), ScaleUIPx(104),
+                 ScaleUIPx(96), ScaleUIPx(96))
+    WidgetSprite("pfp/lotus.png", ScaleUIPx(168), ScaleUIPx(104),
+                 ScaleUIPx(96), ScaleUIPx(96))
+    WidgetText("Images keep their node bounds for editing",
+               ScaleUIPx(52), ScaleUIPx(226), UI_TEXT_14, GetThemeIcon())
+    UIEndNodeGroup()
+}

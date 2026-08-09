@@ -748,7 +748,7 @@ ui_inspect_update_interaction(void)
 }
 
 void
-UIRenderInspectOverlay(void)
+DrawUIInspectOverlay(void)
 {
     Color outline = {40, 180, 255, 170};
     Color selected = {255, 204, 64, 230};

@@ -8,6 +8,7 @@
 #include "ui_overlay.h"
 #include "ui_profile.h"
 #include "ui_rows.h"
+#include "ui_sprite.h"
 #include "ui_tk.h"
 
 struct UITransition;
@@ -38,6 +39,8 @@ typedef enum UIWidgetKind {
     UI_WIDGET_THEME_PICKER_NODE,
     UI_WIDGET_PARAGRAPH_MODAL_NODE,
     UI_WIDGET_TITLE_BAR_NODE,
+    UI_WIDGET_GROUP_NODE,
+    UI_WIDGET_SPRITE_NODE,
     UI_WIDGET_CUSTOM_NODE
 } UIWidgetKind;
 
@@ -50,6 +53,7 @@ typedef union UIWidgetData {
     UIButtonRow button_row;
     UIThemeSettings theme_settings;
     UIParagraphModalMeasure paragraph_modal;
+    UISprite sprite;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {
@@ -67,15 +71,19 @@ typedef struct UIWidgetNode {
 
 void UIBeginTree(int screen_id);
 void UIEndTree(void);
+UINodeId UIBeginNodeGroup(int id, Rectangle bounds);
+void UIEndNodeGroup(void);
 void UIReconcileTree(void);
 void UILayoutTree(void);
 void UIRouteInput(void);
 void UIUpdateTree(void);
-void UIRenderTree(void);
-void UIRenderOverlays(void);
+void DrawUITree(void);
+void DrawUIOverlays(void);
 const UIWidgetNode *UIGetTreeNodes(int *count);
 int UIGetNodeHeight(UIWidgetNode node);
 int UIGetNodeHeightById(int id);
+const UIWidgetNode *UIGetNode(UINodeId id);
+UINodeId UIHitTestNode(Vector2 point);
 
 UIWidgetNode UINodeParagraph(UIParagraph paragraph, int x, int y);
 UIWidgetNode UINodeReadonlyTextBox(UIReadonlyTextBox box);
@@ -103,6 +111,7 @@ void UILineNode(int x1, int y1, int x2, int y2, Color color);
 void UIBevelNode(int x, int y, int w, int h, Color light, Color dark);
 void UIIconTextureNode(int id, int x, int y, int size, Texture2D icon,
                        Color tint);
+void UISpriteNode(UISprite sprite);
 int UIButtonNode(UIButton button);
 int UIIconButtonNode(UIIconButton button);
 int UIHrefNode(UIHref link);

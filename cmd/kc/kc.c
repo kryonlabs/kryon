@@ -1951,10 +1951,10 @@ parse_statement(KryFile *file, int line_no, char *line)
         die("%s:%d: 'swatch' widget keyword was removed; draw a rect + text with WidgetRect/WidgetText instead",
             file->path, line_no);
     } else if(starts_word(line, "on key_down")) {
-        die("%s:%d: 'on key_down' was removed; use 'if (UIKeyDown(KEY)) {'",
+        die("%s:%d: 'on key_down' was removed; use 'if (IsKeyDown(KEY)) {'",
             file->path, line_no);
     } else if(starts_word(line, "on key")) {
-        die("%s:%d: 'on key' was removed; use 'if (UIKeyPressed(KEY)) {'",
+        die("%s:%d: 'on key' was removed; use 'if (IsKeyPressed(KEY)) {'",
             file->path, line_no);
     } else if(starts_else_if(line)) {
         char *q = starts_word(line, "else if")

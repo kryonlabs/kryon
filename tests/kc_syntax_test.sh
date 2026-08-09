@@ -203,8 +203,8 @@ awk '
     /UILayoutTree\(\);/ { layout = NR }
     /UIRouteInput\(\);/ { input = NR }
     /UIUpdateTree\(\);/ { update = NR }
-    /UIRenderTree\(\);/ { render = NR }
-    /UIRenderOverlays\(\);/ { overlays = NR }
+    /DrawUITree\(\);/ { render = NR }
+    /DrawUIOverlays\(\);/ { overlays = NR }
     /EndUIFocus\(\);/ { focus = NR }
     /EndDrawing\(\);/ { drawing = NR }
     END {
@@ -1194,6 +1194,26 @@ grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
 grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
 # A non-call condition is emitted unchanged (no temp, no wrapping).
 grep -Fq 'if(value > 0) {' "$out/src/if_call.c"
+
+# --- tab bar is available as a Kryon widget API and updates selection pointer
+cat > "$work/src/tabbar_widget.kry" <<'EOF'
+#import "kryon.h"
+
+state {
+    selected: int = 0
+    tabs: [3] const UITab = {{"Files"},{"Search"},{"Output"}}
+}
+
+screen TabbarWidget {
+    if WidgetTabBar(0, 0, 360, 0, tabs, 3, &selected) >= 0 {
+        DoThing()
+    }
+}
+EOF
+
+"$kc" --no-main --root "$work" -o "$out" "$work/src/tabbar_widget.kry" >"$err" 2>&1
+grep -Fq 'if(WidgetTabBar(0, 0, 360, 0, tabs, 3, &selected) >= 0) {' "$out/src/tabbar_widget.c"
+grep -Fq '&selected' "$out/src/tabbar_widget.c"
 
 # --- compound assignment operators not previously covered (-=, *=, /=, --)
 cat > "$work/src/compound.kry" <<'EOF'

@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 int
-UIRenderSlider(int id, int x, int y, int w, const char *label,
+DrawUISlider(int id, int x, int y, int w, const char *label,
              int min, int max, int *value, const char *suffix)
 {
     char editor_id[96];
@@ -47,8 +47,8 @@ UIRenderSlider(int id, int x, int y, int w, const char *label,
         g_ui_slider_active_id = 0;
 
     snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
-    UIRenderText(label, x, y, label_font, c_text);
-    UIRenderText(value_text, x + w - MeasureUIText(value_text, value_font),
+    DrawUIText(label, x, y, label_font, c_text);
+    DrawUIText(value_text, x + w - MeasureUIText(value_text, value_font),
                y, value_font, c_text);
 
     t = (float)(*value - min) / (float)(max - min);
@@ -59,7 +59,7 @@ UIRenderSlider(int id, int x, int y, int w, const char *label,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else if(!ui_material_style()) {
         DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
-        UIRenderBevel(x, track_y, w, track_h,
+        DrawUIBevel(x, track_y, w, track_h,
                     DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
     }
 
@@ -126,7 +126,7 @@ UIRenderSlider(int id, int x, int y, int w, const char *label,
                         (float)(knob_h / 2), LightenUIColor(c_button, 24));
     } else {
         DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-        UIRenderBevel(knob_x, knob_y, knob_w, knob_h,
+        DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
                     LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
@@ -135,7 +135,7 @@ UIRenderSlider(int id, int x, int y, int w, const char *label,
 }
 
 int
-UIRenderVerticalSlider(int id, int x, int y, int h,
+DrawUIVerticalSlider(int id, int x, int y, int h,
                      int min, int max, int *value)
 {
     char editor_id[96];
@@ -182,7 +182,7 @@ UIRenderVerticalSlider(int id, int x, int y, int h,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
         DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        UIRenderBevel(track_x, y, track_w, h,
+        DrawUIBevel(track_x, y, track_w, h,
                     DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
     }
 
@@ -239,11 +239,11 @@ UIRenderVerticalSlider(int id, int x, int y, int h,
         } else {
             DrawRectangle(track_x, position_y, track_w, y + h - position_y,
                           c_button_hover);
-            UIRenderBevel(track_x, position_y, track_w, y + h - position_y,
+            DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
                         LightenUIColor(c_button_hover, 35),
                         DarkenUIColor(c_button_hover, 35));
             DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            UIRenderBevel(knob_x, knob_y, knob_w, knob_h,
+            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
                         LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
         }
     }
@@ -253,7 +253,7 @@ UIRenderVerticalSlider(int id, int x, int y, int h,
 }
 
 int
-UIRenderVerticalSliderWithMarks(int id, int x, int y, int h,
+DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
                               int min, int max, int *value,
                               UIVerticalSliderMarkCallback callback,
                               void *callback_user_data)
@@ -303,7 +303,7 @@ UIRenderVerticalSliderWithMarks(int id, int x, int y, int h,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
         DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        UIRenderBevel(track_x, y, track_w, h,
+        DrawUIBevel(track_x, y, track_w, h,
                     DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
     }
 
@@ -363,11 +363,11 @@ UIRenderVerticalSliderWithMarks(int id, int x, int y, int h,
         } else {
             DrawRectangle(track_x, position_y, track_w, y + h - position_y,
                           c_button_hover);
-            UIRenderBevel(track_x, position_y, track_w, y + h - position_y,
+            DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
                         LightenUIColor(c_button_hover, 35),
                         DarkenUIColor(c_button_hover, 35));
             DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            UIRenderBevel(knob_x, knob_y, knob_w, knob_h,
+            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
                         LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
         }
     }
@@ -377,7 +377,7 @@ UIRenderVerticalSliderWithMarks(int id, int x, int y, int h,
 }
 
 int
-UIRenderToggleSwitch(int x, int y, int w, int h, int *value,
+DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                    const char *off_label, const char *on_label)
 {
     char editor_id[96];
@@ -445,9 +445,9 @@ UIRenderToggleSwitch(int x, int y, int w, int h, int *value,
         Color off_color = *value ? DarkenUIColor(c_text, 38) : c_text;
         Color on_color = *value ? c_text : DarkenUIColor(c_text, 38);
 
-        UIRenderText(off_label, x, GetUIControlTextY(off_label, y, h, font),
+        DrawUIText(off_label, x, GetUIControlTextY(off_label, y, h, font),
                    font, off_color);
-        UIRenderText(on_label, x + w - on_w, GetUIControlTextY(on_label, y, h, font),
+        DrawUIText(on_label, x + w - on_w, GetUIControlTextY(on_label, y, h, font),
                    font, on_color);
         DrawRectangleRounded((Rectangle){track_x, track_y, track_w, track_h},
                              0.50f, 12, track);
@@ -484,9 +484,9 @@ UIRenderToggleSwitch(int x, int y, int w, int h, int *value,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
         DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h},
                              0.5f, 8, c_button);
-        UIRenderText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
+        DrawUIText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
                    font, label_color);
-        UIRenderText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
+        DrawUIText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
                    font, label_color);
     }
 
@@ -572,7 +572,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         DrawRectangleRoundedLines(box, ui_control_radius(0.06f), 8, border);
     } else {
         DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
-        UIRenderBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
+        DrawUIBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
                     DarkenUIColor(c_bg, 30), LightenUIColor(c_bg, 20));
     }
 
@@ -585,7 +585,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                  x + box_size - padding, box_y + padding, mark_color);
     }
 
-    UIRenderText(label, x + box_size + label_gap,
+    DrawUIText(label, x + box_size + label_gap,
                GetUIControlTextY(label, y, row_h, font),
                font, label_color);
 
@@ -594,7 +594,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 }
 
 int
-UIRenderCheckboxToggle(int x, int y, const char *label, int *value)
+DrawUICheckboxToggle(int x, int y, const char *label, int *value)
 {
     return DrawDisabledUICheckboxToggle(x, y, label, value, 0);
 }

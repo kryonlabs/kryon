@@ -11,12 +11,12 @@ state {
     tab: int = 0
     split: int = 260
     open: int = 1
-    tabs: [3] const char * = {"Files","Search","Output"}
+    tabs: [3] const UITab = {{"Files"},{"Search"},{"Output"}}
 }
 
 screen ContainersExample(viewport: Rectangle) {
     WidgetBackground(GetThemeBackground())
-    UINotebookNode((UINotebook){{40,50,680,400},tabs,3,&tab})
+    WidgetTabBar(40, 50, 680, 0, tabs, 3, &tab)
     UIPanedViewNode((UIPanedView){{40,100,680,280},501,1,&split,120,160})
     UICollapsibleNode((UICollapsible){{60,410,320,120},"Details",&open})
     if open {

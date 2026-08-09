@@ -9,6 +9,13 @@
 #define UI_TEXT_24 24
 #define UI_TEXT_BASE_SIZE 16
 
+typedef struct {
+    int font_size;
+    Color color;
+    int italic;
+    int selectable;
+} UITextStyle;
+
 Font GetUIFont(void);
 int EnsureUIDefaultFont(void);
 int RegisterUIFont(const char *name, Font font);
@@ -31,6 +38,9 @@ int MeasureUIText(const char *text, int font_size);
 int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);
 int MeasureScaledUIText(const char *text, int scale);
+void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
+void DrawUITextItalic(const char *text, int x, int y, int font_size, Color color);
 int PushUITextSelectable(int selectable);
 void PopUITextSelectable(int token);
 int GetUITextY(const char *text, int box_y, int box_h, int font_size);

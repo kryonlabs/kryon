@@ -170,7 +170,7 @@ ui_draw_pfp_fallback(int x, int y, int size, Color color)
 }
 
 UISidebarAccountHeaderResult
-UIRenderSidebarAccountHeader(UISidebarAccountHeader header)
+DrawUISidebarAccountHeader(UISidebarAccountHeader header)
 {
     UISidebarAccountHeaderResult result = {0};
     int height = header.height > 0 ? header.height : ScaleUIPx(138);
@@ -254,7 +254,7 @@ UIRenderSidebarAccountHeader(UISidebarAccountHeader header)
     DrawFittedUITextInRect(username, username_bounds, name_font,
                            UI_TEXT_8, c_text);
     if(subtitle[0] != '\0')
-        UIRenderText(subtitle, name_x, name_y + ScaleUIPx(22), small_font,
+        DrawUIText(subtitle, name_x, name_y + ScaleUIPx(22), small_font,
                    DarkenUIColor(c_text, 34));
 
     if(CheckCollisionPointRec(mouse, friends_bounds) &&
@@ -268,14 +268,14 @@ UIRenderSidebarAccountHeader(UISidebarAccountHeader header)
         }
     }
     if(friends_text[0] != '\0')
-        UIRenderText(friends_text, header.x + ScaleUIPx(12),
+        DrawUIText(friends_text, header.x + ScaleUIPx(12),
                    count_y + ScaleUIPx(8), small_font, c_text);
 
     return result;
 }
 
 UIProfilePicturePickerResult
-UIRenderProfilePicturePickerModal(UIProfilePicturePickerModal modal)
+DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
 {
     UIProfilePicturePickerResult result = {0};
     static int default_scroll_offset = 0;
@@ -327,7 +327,7 @@ UIRenderProfilePicturePickerModal(UIProfilePicturePickerModal modal)
     if(height > max_height)
         height = max_height;
 
-    frame = UIRenderModalFrame(width, height,
+    frame = DrawUIModalFrame(width, height,
                              modal.title != NULL ? modal.title : "Profile picture",
                              (Texture2D){0}, modal.close_icon);
     if(frame.right_clicked) {
@@ -364,7 +364,7 @@ UIRenderProfilePicturePickerModal(UIProfilePicturePickerModal modal)
         DrawRectangleRounded(bounds, 0.12f, 8,
                              hovered ? LightenUIColor(c_surface, 10)
                                      : c_surface);
-        UIRenderBevel(x, y, cell, cell,
+        DrawUIBevel(x, y, cell, cell,
                     LightenUIColor(c_surface, active ? 68 : 34),
                     DarkenUIColor(c_surface, active ? 68 : 34));
         if(active)

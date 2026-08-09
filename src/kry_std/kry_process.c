@@ -57,6 +57,7 @@ kry_process_spawn(KryProcess *p, const char *command, const char *cwd)
     }
     if(pid == 0) {
         /* Child: route stdout+stderr to the pipe write end, then exec sh. */
+        setpgid(0, 0);
         close(pipefd[KRY_READ_END]);
         dup2(pipefd[KRY_WRITE_END], STDOUT_FILENO);
         dup2(pipefd[KRY_WRITE_END], STDERR_FILENO);
@@ -124,6 +125,7 @@ kry_process_kill(KryProcess *p)
 {
     if(p == NULL || !p->running || p->pid <= 0)
         return;
+    kill(-p->pid, SIGTERM);
     kill(p->pid, SIGTERM);
 }
 
@@ -135,6 +137,7 @@ kry_process_close(KryProcess *p)
     if(p == NULL)
         return;
     if(p->running && p->pid > 0) {
+        kill(-p->pid, SIGTERM);
         kill(p->pid, SIGTERM);
         /* Best-effort blocking reap so we don't leak a zombie. */
         while(waitpid(p->pid, &status, 0) < 0 && errno == EINTR)

@@ -193,6 +193,17 @@ void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 
+int DrawUIIconButton(UIIconButton button);
+int DrawUITextField(UITextField field);
+int DrawUITextArea(UITextArea area);
+int DrawUIReadonlyTextBox(UIReadonlyTextBox box);
+int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
+                          UIButtonStyle style, int disabled, int *hover);
+int DrawUISlider(int id, int x, int y, int w, const char *label, int min,
+                   int max, int *value, const char *suffix);
+int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
+                         const char *off_label, const char *on_label);
+
 typedef struct {
     const char *label;
     const char *font_name;

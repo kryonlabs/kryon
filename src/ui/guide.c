@@ -92,7 +92,7 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
 }
 
 UIGuideResult
-UIRenderGuideOverlay(UIGuideOverlay guide)
+DrawUIGuideOverlay(UIGuideOverlay guide)
 {
     UIGuideResult result = {0};
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
@@ -168,7 +168,7 @@ UIRenderGuideOverlay(UIGuideOverlay guide)
                               DarkenUIColor(GetThemeButton(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    if(UIRenderIconButton((UIIconButton){
+    if(DrawUIIconButton((UIIconButton){
            .bounds = {
                tip.x + tip.width - pad - close_size,
                tip.y + pad,
@@ -184,17 +184,17 @@ UIRenderGuideOverlay(UIGuideOverlay guide)
     }
 
     y = (int)tip.y + pad;
-    UIRenderParagraph(paragraph, (int)tip.x + pad, &y);
+    DrawUIParagraph(paragraph, (int)tip.x + pad, &y);
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
-    UIRenderText(page_text, (int)tip.x + pad,
+    DrawUIText(page_text, (int)tip.x + pad,
                     (int)tip.y + (int)tip.height - pad - button_size +
                         (button_size - page_font) / 2,
                     page_font, GetThemeText());
 
     finish = step >= guide.count - 1;
     if(step > 0) {
-        if(UIRenderIconButton((UIIconButton){
+        if(DrawUIIconButton((UIIconButton){
                .bounds = {
                    tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8),
                    tip.y + tip.height - pad - button_size,
@@ -210,7 +210,7 @@ UIRenderGuideOverlay(UIGuideOverlay guide)
             result.step = *guide.step;
         }
     }
-    if(UIRenderIconButton((UIIconButton){
+    if(DrawUIIconButton((UIIconButton){
            .bounds = {
                tip.x + tip.width - pad - button_size,
                tip.y + tip.height - pad - button_size,

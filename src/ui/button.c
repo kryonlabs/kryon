@@ -12,7 +12,7 @@ typedef struct UIButtonAnimState {
 static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
 
 int
-UIRenderButton(UIButton button)
+DrawUIButton(UIButton button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -139,7 +139,7 @@ UIRenderButton(UIButton button)
 
     if(focused) {
         SetUIFocusTextInputActive(0);
-        UIRenderFocus(draw_bounds);
+        DrawUIFocus(draw_bounds);
     }
 
     DrawCenteredUIControlText(button.label ? button.label : "",
@@ -151,7 +151,7 @@ UIRenderButton(UIButton button)
 }
 
 int
-UIRenderIconButton(UIIconButton button)
+DrawUIIconButton(UIIconButton button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -245,7 +245,7 @@ UIRenderIconButton(UIIconButton button)
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
-            UIRenderFocus(button.bounds);
+            DrawUIFocus(button.bounds);
         }
     }
 
@@ -264,7 +264,7 @@ UIRenderIconButton(UIIconButton button)
 }
 
 int
-UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
+DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 {
     int btn_size = GetUIIconButtonSize(size);
     int padding = GetUIIconButtonPadding(size);
@@ -278,7 +278,7 @@ UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 
     if(hover != NULL)
         *hover = hovered;
-    return UIRenderIconButton((UIIconButton){
+    return DrawUIIconButton((UIIconButton){
         .bounds = bounds,
         .icon = icon,
         .icon_size = btn_size,
@@ -292,7 +292,7 @@ UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
 }
 
 int
-UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
+DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int w = size + padding * 2;
@@ -304,7 +304,7 @@ UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *
 
     if(hover != NULL)
         *hover = hovered;
-    return UIRenderIconButton((UIIconButton){
+    return DrawUIIconButton((UIIconButton){
         .bounds = bounds,
         .icon = icon,
         .icon_size = size,
@@ -318,7 +318,7 @@ UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *
 }
 
 int
-UIRenderTextButton(int x, int y, const char *label, int *hover)
+DrawUITextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int font = GetUISmallFontSize();
@@ -335,7 +335,7 @@ UIRenderTextButton(int x, int y, const char *label, int *hover)
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return UIRenderButton((UIButton){
+    return DrawUIButton((UIButton){
         .bounds = bounds,
         .label = text,
         .font = font,
@@ -382,7 +382,7 @@ ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
 }
 
 int
-UIRenderGenericButton(int x, int y, int w, int h, const char *label,
+DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                        UIButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
@@ -437,7 +437,7 @@ UIRenderGenericButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = UIRenderButton((UIButton){
+    clicked = DrawUIButton((UIButton){
         .bounds = bounds,
         .label = label,
         .font = font,
@@ -463,7 +463,7 @@ UIRenderGenericButton(int x, int y, int w, int h, const char *label,
 }
 
 int
-UIRenderInfoButton(int center_x, int center_y, int diameter)
+DrawUIInfoButton(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ScaleUIPx(32);

@@ -22,6 +22,11 @@ main(void)
     UIButtonRow row = {.width = 240, .height = 40};
     UIBottomNav nav = {0};
     UITabBar tabs = {0};
+    const UIWidgetNode *nodes;
+    const UIWidgetNode *node;
+    UINodeId group;
+    UINodeId nested;
+    int count = 0;
 
     SetThemeStyle(THEME_STYLE_RETRO);
 
@@ -45,12 +50,34 @@ main(void)
               UIGetNodeHeight(UINodeBottomNav(nav)),
               ScaleUIPx(64));
     SetThemeStyle(THEME_STYLE_RETRO);
-    check_int("tab bar",
+    check_int("retro tab bar",
               UIGetNodeHeight(UINodeTabBar(tabs)),
               ScaleUIPx(36));
+    SetThemeStyle(THEME_STYLE_MATERIAL);
+    check_int("material tab bar",
+              UIGetNodeHeight(UINodeTabBar(tabs)),
+              ScaleUIPx(48));
     check_int("title bar custom",
               UIGetNodeHeight(UINodeTitleBar(64)),
               64);
+
+    UIBeginTree(7);
+    group = UIBeginNodeGroup(11, (Rectangle){10, 10, 100, 80});
+    nested = UIBeginNodeGroup(12, (Rectangle){20, 20, 40, 30});
+    UIEndNodeGroup();
+    UIEndNodeGroup();
+    UIEndTree();
+
+    nodes = UIGetTreeNodes(&count);
+    check_int("tree count", count, 3);
+    check_int("root parent", nodes[0].parent, -1);
+    check_int("root first child", nodes[0].first_child, group);
+    check_int("group parent", nodes[group].parent, 0);
+    check_int("group first child", nodes[group].first_child, nested);
+    check_int("nested parent", nodes[nested].parent, group);
+    check_int("hit nested", UIHitTestNode((Vector2){25, 25}), nested);
+    node = UIGetNode(group);
+    check_int("get group", node != NULL ? node->id : -1, 11);
 
     return failures == 0 ? 0 : 1;
 }

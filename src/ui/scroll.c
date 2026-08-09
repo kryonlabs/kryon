@@ -255,7 +255,7 @@ EndUIScrollContainer(UIScrollArea area, UIScrollView view)
     scrollbar_x = area.scrollbar_x > 0
                       ? area.scrollbar_x
                       : (int)(area.bounds.x + area.bounds.width) - scrollbar_w;
-    UIRenderScrollbar(scrollbar_x,
+    DrawUIScrollbar(scrollbar_x,
                       (int)area.bounds.y,
                       (int)area.bounds.height,
                       view.content_h,
@@ -310,7 +310,7 @@ ui_scrollbar_ensure_visible(Color color, Color against,
 }
 
 int
-UIRenderScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll)
+DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll)
 {
     /* Don't show scrollbar if no scrolling needed */
     if(max_scroll <= 0)

@@ -36,14 +36,14 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
         font--;
         title_w = MeasureUIText(title, font);
     }
-    UIRenderText(title, (int)bounds.x + ((int)bounds.width - title_w) / 2,
+    DrawUIText(title, (int)bounds.x + ((int)bounds.width - title_w) / 2,
                  (int)bounds.y + GetUIControlTextY(title, 0,
                                                    (int)bounds.height, font),
                  font, c_text);
 }
 
 UITopNavResult
-UIRenderTopNav(UITopNav nav)
+DrawUITopNav(UITopNav nav)
 {
     UITopNavResult result = {-1, -1};
     int x = nav.x;
@@ -71,7 +71,7 @@ UIRenderTopNav(UITopNav nav)
 
     widget = BeginUIWidget("top_nav", "tmp:top-nav", bounds,
                            UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "UIRenderTopNav");
+    UIWidgetSetAction(&widget, "DrawUITopNav");
     ui_top_nav_background(bounds);
 
     if(nav.action_count > 0 && nav.actions != NULL)
@@ -88,7 +88,7 @@ UIRenderTopNav(UITopNav nav)
         if(dropdown_w < 1)
             dropdown_w = 1;
         if(!nav.disabled)
-            UIRenderDropdown(nav.id, dropdown_x, dropdown_y, dropdown_w,
+            DrawUIDropdown(nav.id, dropdown_x, dropdown_y, dropdown_w,
                              dropdown_h, nav.options, nav.option_count,
                              nav.selected_index);
         if(*nav.selected_index != previous)
@@ -107,7 +107,7 @@ UIRenderTopNav(UITopNav nav)
         if(ay < y)
             ay = y;
         if(!nav.disabled && !action->disabled &&
-           UIRenderPaddedIconBtn(ax, ay, action_icon, action_pad,
+           DrawUIPaddedIconBtn(ax, ay, action_icon, action_pad,
                                  action->icon, &hover))
             result.clicked_action = i;
     }

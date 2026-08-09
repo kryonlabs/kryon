@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 void
-UIRenderInfoRows(UIInfoRows rows)
+DrawUIInfoRows(UIInfoRows rows)
 {
     Color background = rows.background.a != 0
                            ? rows.background
@@ -47,7 +47,7 @@ ui_label_text_field_height(UILabelTextField row)
 }
 
 int
-UIRenderLabelTextField(UILabelTextField row, int x, int y, int w)
+DrawUILabelTextField(UILabelTextField row, int x, int y, int w)
 {
     int label_font = row.label_font > 0 ? row.label_font : GetUISmallFontSize();
     int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
@@ -56,9 +56,9 @@ UIRenderLabelTextField(UILabelTextField row, int x, int y, int w)
     Color label_color = row.label_color.a != 0 ? row.label_color : DarkenUIColor(c_text, 34);
     UITextField field = row.field;
 
-    UIRenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
+    DrawUIText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
     field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
-    return UIRenderTextField(field);
+    return DrawUITextField(field);
 }
 
 int
@@ -68,7 +68,7 @@ ui_section_label_height(UISectionLabel label)
 }
 
 int
-UIRenderSectionLabel(UISectionLabel label, int x, int y)
+DrawUISectionLabel(UISectionLabel label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetUISmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : ScaleUIPx(18);
@@ -76,11 +76,11 @@ UIRenderSectionLabel(UISectionLabel label, int x, int y)
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 
-    UIRenderText(text, x, y, font, color);
+    DrawUIText(text, x, y, font, color);
     if(!label.info_button)
         return 0;
     label_w = MeasureUIText(text, font);
-    return UIRenderInfoButton(x + label_w + ScaleUIPx(16),
+    return DrawUIInfoButton(x + label_w + ScaleUIPx(16),
                                y + font / 2 + ScaleUIPx(1), icon_d);
 }
 
@@ -91,15 +91,15 @@ ui_checkbox_row_height(UICheckboxRow row)
 }
 
 int
-UIRenderCheckboxRow(UICheckboxRow row, int x, int y)
+DrawUICheckboxRow(UICheckboxRow row, int x, int y)
 {
     if(row.disabled)
         return DrawDisabledUICheckboxToggle(x, y, row.label, row.value, 1);
-    return UIRenderCheckboxToggle(x, y, row.label, row.value);
+    return DrawUICheckboxToggle(x, y, row.label, row.value);
 }
 
 int
-UIRenderOverlayButton(UIOverlayButton button)
+DrawUIOverlayButton(UIOverlayButton button)
 {
     Vector2 mouse;
     int mouse_inside;
@@ -135,7 +135,7 @@ UIRenderOverlayButton(UIOverlayButton button)
         DrawRectangleLinesEx(button.bounds, ScaleUIPx(1), border);
     if(button.label != NULL) {
         text_w = MeasureUIText(button.label, font);
-        UIRenderText(button.label,
+        DrawUIText(button.label,
                         (int)(button.bounds.x + (button.bounds.width - text_w) / 2),
                         GetUIControlTextY(button.label, (int)button.bounds.y,
                                         (int)button.bounds.height, font),
@@ -189,7 +189,7 @@ ui_button_row_height(UIButtonRow row)
 }
 
 int
-UIRenderButtonRow(UIButtonRow row)
+DrawUIButtonRow(UIButtonRow row)
 {
     int clicked = -1;
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
@@ -235,7 +235,7 @@ UIRenderButtonRow(UIButtonRow row)
                 int hover = 0;
                 int item_index = row_start + j;
 
-                if(UIRenderGenericButton(x, y, button_w, row.height,
+                if(DrawUIGenericButton(x, y, button_w, row.height,
                                           row.items[item_index].label,
                                           row.items[item_index].style,
                                           row.items[item_index].disabled,

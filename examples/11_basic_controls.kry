@@ -29,12 +29,12 @@ screen BasicControlsExample(viewport: Rectangle) {
     UISpinboxNode((UISpinbox){{240,90,140,34},201,0,10,1,&spin,0})
     UIComboboxNode((UICombobox){{240,140,180,34},202,choices,3,&combo,0})
     UIProgressNode((UIProgressBar){{40,210,380,28},0,100,progress,"Progress"})
-    if (UIKeyPressed(KEY_RIGHT)) {
+    if (IsKeyPressed(KEY_RIGHT)) {
         if progress < 100 {
             progress += 5
         }
     }
-    if (UIKeyPressed(KEY_LEFT)) {
+    if (IsKeyPressed(KEY_LEFT)) {
         if progress > 0 {
             progress -= 5
         }

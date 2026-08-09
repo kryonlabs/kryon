@@ -193,7 +193,7 @@ UpdateUIReorderList(UIReorderList list)
 }
 
 void
-UIRenderReorderHandle(int x, int y, int w, int h, int active)
+DrawUIReorderHandle(int x, int y, int w, int h, int active)
 {
     int dot = ScaleUIPx(3);
     int gap = ScaleUIPx(4);
@@ -217,7 +217,7 @@ UIRenderReorderHandle(int x, int y, int w, int h, int active)
 }
 
 void
-UIRenderReorderPlaceholder(Rectangle bounds)
+DrawUIReorderPlaceholder(Rectangle bounds)
 {
     int x = (int)bounds.x;
     int y = (int)bounds.y;

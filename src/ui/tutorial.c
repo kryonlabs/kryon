@@ -1,20 +1,20 @@
 #include "ui_internal.h"
 
 void
-UIRenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
+DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
     DrawRectangle(x, y, w, h, DarkenUIColor(c_bg, 12));
-    UIRenderBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
+    DrawUIBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
     int font = GetUIFontSize();
     int tw = MeasureUIText(label, font);
-    UIRenderText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
+    DrawUIText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
 }
 
 void
-UIRenderTutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
+DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
 {
     if(texture.id == 0) {
-        UIRenderTutorialImagePlaceholder(fallback, x, y, w, h);
+        DrawUITutorialImagePlaceholder(fallback, x, y, w, h);
         return;
     }
 

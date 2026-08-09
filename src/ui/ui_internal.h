@@ -89,8 +89,8 @@ int ui_caret_blink_visible(void);
  * A no-op for a NULL/empty url. */
 void ui_open_url(const char *url);
 
-void UIRenderFrameOverlays(void);
-void UIRenderFocus(Rectangle bounds);
+void DrawUIFrameOverlays(void);
+void DrawUIFocus(Rectangle bounds);
 int ui_readonly_text_box_height(const char *text, int font, int width,
                                UITextInputStyle style, int line_gap);
 int ui_label_text_field_height(UILabelTextField row);
@@ -104,139 +104,140 @@ int ui_theme_picker_height(int w);
 int ui_paragraph_modal_height(UIParagraphModalMeasure measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(UIParagraph paragraph);
-void UIRenderText(const char *text, int x, int y, int font_size, Color color);
-void UIRenderTextEx(const char *text, int x, int y, int font_size, Color color,
+void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
-void UIRenderNonSelectableText(const char *text, int x, int y, int font_size,
+void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
+void DrawUINonSelectableText(const char *text, int x, int y, int font_size,
                              Color color);
 void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredUIText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
-void UIRenderTextInRect(const char *text, Rectangle rect, int font_size,
+void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
-void UIRenderTextLayout(UITextLayout *layout, int x, int *y, int font_size,
+void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size,
                       Color color);
-void UIRenderParagraph(UIParagraph paragraph, int x, int *y);
-void UIRenderBevel(int x, int y, int w, int h, Color light, Color dark);
-void UIRenderTextLines(const char **lines, int count, int x, int *y, int font,
+void DrawUIParagraph(UIParagraph paragraph, int x, int *y);
+void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
+void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
-void UIRenderTransitionFade(const UITransition *transition, int width,
+void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
-int UIRenderScrollbar(int x, int y, int viewport_h, int content_h,
+int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
-int UIRenderButton(UIButton button);
-int UIRenderIconButton(UIIconButton button);
-int UIRenderHref(UIHref link);
-int UIRenderTextInputControl(UITextInput input);
-void UIRenderTextInput(Rectangle bounds, const char *text, int cursor_position,
+int DrawUIButton(UIButton button);
+int DrawUIIconButton(UIIconButton button);
+int DrawUIHref(UIHref link);
+int DrawUITextInputControl(UITextInput input);
+void DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
                      UITextInputStyle style);
-int UIRenderTextField(UITextField field);
-int UIRenderTextArea(UITextArea area);
-int UIRenderReadonlyTextBox(UIReadonlyTextBox box);
-void UIRenderIconTexture(int x, int y, int size, Texture2D icon, Color tint);
-int UIRenderIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int UIRenderPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
+int DrawUITextField(UITextField field);
+int DrawUITextArea(UITextArea area);
+int DrawUIReadonlyTextBox(UIReadonlyTextBox box);
+void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
+int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
+int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
                         int *hover);
-int UIRenderInfoButton(int center_x, int center_y, int diameter);
-int UIRenderTextButton(int x, int y, const char *label, int *hover);
-int UIRenderGenericButton(int x, int y, int w, int h, const char *label,
+int DrawUIInfoButton(int center_x, int center_y, int diameter);
+int DrawUITextButton(int x, int y, const char *label, int *hover);
+int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
                         UIButtonStyle style, int disabled, int *hover);
-void UIRenderIconLink(int x, int y, int icon_size, Texture2D icon,
+void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);
-int UIRenderSlider(int id, int x, int y, int w, const char *label, int min,
+int DrawUISlider(int id, int x, int y, int w, const char *label, int min,
                  int max, int *value, const char *suffix);
-int UIRenderVerticalSlider(int id, int x, int y, int h, int min, int max,
+int DrawUIVerticalSlider(int id, int x, int y, int h, int min, int max,
                          int *value);
-int UIRenderVerticalSliderWithMarks(int id, int x, int y, int h, int min,
+int DrawUIVerticalSliderWithMarks(int id, int x, int y, int h, int min,
                                   int max, int *value,
                                   UIVerticalSliderMarkCallback callback,
                                   void *callback_user_data);
-int UIRenderToggleSwitch(int x, int y, int w, int h, int *value,
+int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                        const char *off_label, const char *on_label);
-int UIRenderCheckboxToggle(int x, int y, const char *label, int *value);
+int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
-int UIRenderDropdown(int id, int x, int y, int w, int h,
+int DrawUIDropdown(int id, int x, int y, int w, int h,
                    const char **options, int option_count,
                    int *selected_index);
-int UIRenderDropdownEx(int id, int x, int y, int w, int h,
+int DrawUIDropdownEx(int id, int x, int y, int w, int h,
                      const UIDropdownOption *options, int option_count,
                      int *selected_index);
-int UIRenderLocaleDropdown(int id, int x, int y, int w, int h,
+int DrawUILocaleDropdown(int id, int x, int y, int w, int h,
                          int *selected_index);
-void UIRenderInfoRows(UIInfoRows rows);
-int UIRenderLabelTextField(UILabelTextField row, int x, int y, int w);
-int UIRenderSectionLabel(UISectionLabel label, int x, int y);
-int UIRenderCheckboxRow(UICheckboxRow row, int x, int y);
-int UIRenderOverlayButton(UIOverlayButton button);
-int UIRenderButtonRow(UIButtonRow row);
-int UIRenderIconSliderPopup(UIIconSliderPopup popup);
-UIIconRowResult UIRenderBottomIconRow(UIBottomIconRow row);
-UIBottomNavResult UIRenderBottomNav(UIBottomNav nav);
-UIBottomNavConfigResult UIRenderBottomNavConfigModal(UIBottomNavConfigModal modal);
-UITopNavResult UIRenderTopNav(UITopNav nav);
-UIToolbarResult UIRenderToolbar(UIToolbar toolbar);
-UIToolbarHeaderResult UIRenderToolbarHeader(UIToolbarHeader header);
-int UIRenderSubtabBar(UISubtabBar bar);
-int UIRenderTabBar(UITabBar bar);
-void UIRenderSeparator(Rectangle bounds, int vertical);
-UIMenuBarResult UIRenderMenuBar(int id, Rectangle bounds, const UIMenu *menus,
+void DrawUIInfoRows(UIInfoRows rows);
+int DrawUILabelTextField(UILabelTextField row, int x, int y, int w);
+int DrawUISectionLabel(UISectionLabel label, int x, int y);
+int DrawUICheckboxRow(UICheckboxRow row, int x, int y);
+int DrawUIOverlayButton(UIOverlayButton button);
+int DrawUIButtonRow(UIButtonRow row);
+int DrawUIIconSliderPopup(UIIconSliderPopup popup);
+UIIconRowResult DrawUIBottomIconRow(UIBottomIconRow row);
+UIBottomNavResult DrawUIBottomNav(UIBottomNav nav);
+UIBottomNavConfigResult DrawUIBottomNavConfigModal(UIBottomNavConfigModal modal);
+UITopNavResult DrawUITopNav(UITopNav nav);
+UIToolbarResult DrawUIToolbar(UIToolbar toolbar);
+UIToolbarHeaderResult DrawUIToolbarHeader(UIToolbarHeader header);
+int DrawUISubtabBar(UISubtabBar bar);
+int DrawUITabBar(UITabBar bar);
+void DrawUISeparator(Rectangle bounds, int vertical);
+UIMenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus,
                               int menu_count, int *open_index);
-int UIRenderPopupMenu(int id, int x, int y, const UIMenuItem *items,
+int DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items,
                     int item_count);
-int UIRenderContextMenu(UIContextMenu menu);
-int UIRenderRadioButton(UIRadioButton radio);
-void UIRenderProgressBar(UIProgressBar progress);
-int UIRenderSpinbox(UISpinbox spinbox);
-int UIRenderCombobox(UICombobox combo);
-void UIRenderLabelFrame(UILabelFrame frame);
-void UIRenderImageBox(UIImageBox image);
-int UIRenderListBox(UIListBox list);
-int UIRenderTreeView(UITreeView tree);
-int UIRenderCascadingTreeView(UICascadingTreeView tree);
-int UIRenderSourceView(UISourceView source);
-int UIRenderTableView(UITableView table);
-void UIRenderCanvasGrid(Rectangle bounds, int step, Color color);
-int UIRenderNotebook(UINotebook notebook);
-int UIRenderPanedView(UIPanedView panes);
-int UIRenderCollapsible(UICollapsible section);
-int UIRenderMessageDialog(UIMessageDialog dialog);
-int UIRenderConfirmDialog(UIConfirmDialog dialog);
-int UIRenderPromptDialog(UIPromptDialog dialog);
-int UIRenderColorPicker(Rectangle bounds, Color *color);
-void UIRenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-UIGuideResult UIRenderGuideOverlay(UIGuideOverlay guide);
-int UIRenderThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
-UIThemeSettingsResult UIRenderThemeSettingsMenus(UIThemeSettings settings,
+int DrawUIContextMenu(UIContextMenu menu);
+int DrawUIRadioButton(UIRadioButton radio);
+void DrawUIProgressBar(UIProgressBar progress);
+int DrawUISpinbox(UISpinbox spinbox);
+int DrawUICombobox(UICombobox combo);
+void DrawUILabelFrame(UILabelFrame frame);
+void DrawUIImageBox(UIImageBox image);
+int DrawUIListBox(UIListBox list);
+int DrawUITreeView(UITreeView tree);
+int DrawUICascadingTreeView(UICascadingTreeView tree);
+int DrawUISourceView(UISourceView source);
+int DrawUITableView(UITableView table);
+void DrawUICanvasGrid(Rectangle bounds, int step, Color color);
+int DrawUINotebook(UINotebook notebook);
+int DrawUIPanedView(UIPanedView panes);
+int DrawUICollapsible(UICollapsible section);
+int DrawUIMessageDialog(UIMessageDialog dialog);
+int DrawUIConfirmDialog(UIConfirmDialog dialog);
+int DrawUIPromptDialog(UIPromptDialog dialog);
+int DrawUIColorPicker(Rectangle bounds, Color *color);
+void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
+UIGuideResult DrawUIGuideOverlay(UIGuideOverlay guide);
+int DrawUIThemeSettings(UIThemeSettings settings, UIThemeSettingsState *state);
+UIThemeSettingsResult DrawUIThemeSettingsMenus(UIThemeSettings settings,
                                                UIThemeSettingsState *state);
-int UIRenderThemeSwitcher(int x, int y, int w, const char *label,
+int DrawUIThemeSwitcher(int x, int y, int w, const char *label,
                         const char *light_label, const char *dark_label,
                         int *theme_id, int *dark_mode);
-int UIRenderThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
-void UIRenderTutorialImagePlaceholder(const char *label, int x, int y,
+int DrawUIThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
+void DrawUITutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
-void UIRenderTutorialImage(Texture2D texture, const char *fallback,
+void DrawUITutorialImage(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
-int UIRenderActionModal(UIModalSpec modal);
-int UIRenderModal(const char *title, const char *message,
+int DrawUIActionModal(UIModalSpec modal);
+int DrawUIModal(const char *title, const char *message,
                 const char *cancel_btn, const char *confirm_btn);
-int UIRenderModal3Button(const char *title, const char *message,
+int DrawUIModal3Button(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn,
                        const char *right_btn);
-void UIRenderTitleBar(const char *title, int height);
-int UIRenderReturnTitleBar(Texture2D return_icon, const char *title,
+void DrawUITitleBar(const char *title, int height);
+int DrawUIReturnTitleBar(Texture2D return_icon, const char *title,
                          int height);
-int UIRenderReturnDropdownTitleBar(Texture2D return_icon,
+int DrawUIReturnDropdownTitleBar(Texture2D return_icon,
                                  UITitleBarDropdown dropdown, int height);
-UIPanelFrame UIRenderModalFrame(int width, int height, const char *title,
+UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
-UISidebarAccountHeaderResult UIRenderSidebarAccountHeader(UISidebarAccountHeader header);
-UIProfilePicturePickerResult UIRenderProfilePicturePickerModal(UIProfilePicturePickerModal modal);
-void UIRenderReorderHandle(int x, int y, int w, int h, int active);
-void UIRenderReorderPlaceholder(Rectangle bounds);
-void UIRenderToast(void);
-void UIRenderInspectOverlay(void);
+UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeader header);
+UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
+void DrawUIReorderHandle(int x, int y, int w, int h, int active);
+void DrawUIReorderPlaceholder(Rectangle bounds);
+void DrawUIToast(void);
+void DrawUIInspectOverlay(void);
 
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);

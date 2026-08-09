@@ -228,7 +228,7 @@ UIPlace(Rectangle parent, int x, int y, int w, int h)
 }
 
 void
-UIRenderSeparator(Rectangle bounds, int vertical)
+DrawUISeparator(Rectangle bounds, int vertical)
 {
     if(vertical)
         DrawLine((int)(bounds.x + bounds.width / 2), (int)bounds.y,
@@ -277,7 +277,7 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
         int hot = row_hot && !item->disabled;
 
         if(item->kind == UI_MENU_SEPARATOR) {
-            UIRenderSeparator(row, 0);
+            DrawUISeparator(row, 0);
             continue;
         }
 
@@ -288,16 +288,16 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
         if(item->disabled && row_hot)
             MarkUIDisabled();
         if(item->checked)
-            UIRenderText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, GetThemeIcon());
-        UIRenderText(item->label != NULL ? item->label : "", (int)row.x + ScaleUIPx(28),
+            DrawUIText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, GetThemeIcon());
+        DrawUIText(item->label != NULL ? item->label : "", (int)row.x + ScaleUIPx(28),
                    ui_row_text_y(row, font),
                    font, item->disabled ? GetThemeButton() : GetThemeText());
         if(item->accelerator != NULL)
-            UIRenderText(item->accelerator, (int)(row.x + row.width - accel_w),
+            DrawUIText(item->accelerator, (int)(row.x + row.width - accel_w),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(item->kind == UI_MENU_SUBMENU)
-            UIRenderText(">", (int)(row.x + row.width - ScaleUIPx(18)),
+            DrawUIText(">", (int)(row.x + row.width - ScaleUIPx(18)),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(hot && item->kind == UI_MENU_SUBMENU)
@@ -320,7 +320,7 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
 }
 
 UIMenuBarResult
-UIRenderMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index)
+DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index)
 {
     UIMenuBarResult result = {0, -1};
     int font = GetUIFontSize();
@@ -344,7 +344,7 @@ UIRenderMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, i
             DrawRectangleRec(item, open ? c_button : c_button_hover);
         if(hot)
             MarkUIClickable();
-        UIRenderText(menus[i].label != NULL ? menus[i].label : "", x + ScaleUIPx(12),
+        DrawUIText(menus[i].label != NULL ? menus[i].label : "", x + ScaleUIPx(12),
                    ui_row_text_y(item, font), font, c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
@@ -377,13 +377,13 @@ UIRenderMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, i
 }
 
 int
-UIRenderPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count)
+DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count)
 {
     return draw_menu_items(id, x, y, items, item_count);
 }
 
 int
-UIRenderContextMenu(UIContextMenu menu)
+DrawUIContextMenu(UIContextMenu menu)
 {
     Vector2 mouse = ui_mouse_world();
     int open_local = 0;
@@ -422,7 +422,7 @@ UIRenderContextMenu(UIContextMenu menu)
 }
 
 int
-UIRenderRadioButton(UIRadioButton radio)
+DrawUIRadioButton(UIRadioButton radio)
 {
     int font = GetUIFontSize();
     int diameter = ScaleUIPx(20);
@@ -509,7 +509,7 @@ UIRenderRadioButton(UIRadioButton radio)
         dot_radius = (float)ScaleUIPx(5) * selected;
         if(dot_radius > 0.2f)
             DrawCircleV(center, dot_radius, ring);
-        UIRenderText(radio.label != NULL ? radio.label : "",
+        DrawUIText(radio.label != NULL ? radio.label : "",
                    (int)radio.bounds.x + touch + ScaleUIPx(4),
                    ui_row_text_y(radio.bounds, font), font, label);
     } else {
@@ -517,7 +517,7 @@ UIRenderRadioButton(UIRadioButton radio)
         DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
         if(radio.checked)
             DrawCircleV(center, (float)ScaleUIPx(5), radio.disabled ? c_button : c_icon);
-        UIRenderText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
+        DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
                    ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     }
     if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -528,7 +528,7 @@ UIRenderRadioButton(UIRadioButton radio)
 }
 
 void
-UIRenderProgressBar(UIProgressBar progress)
+DrawUIProgressBar(UIProgressBar progress)
 {
     float t;
     Rectangle fill = progress.bounds;
@@ -550,7 +550,7 @@ UIRenderProgressBar(UIProgressBar progress)
 }
 
 int
-UIRenderSpinbox(UISpinbox spinbox)
+DrawUISpinbox(UISpinbox spinbox)
 {
     int button_w = ScaleUIPx(28);
     int changed = 0;
@@ -574,7 +574,7 @@ UIRenderSpinbox(UISpinbox spinbox)
     snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
                        GetUIFontSize(), c_text);
-    if(UIRenderButton((UIButton){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
+    if(DrawUIButton((UIButton){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL && *spinbox.value > spinbox.min) {
         *spinbox.value -= spinbox.step;
@@ -582,7 +582,7 @@ UIRenderSpinbox(UISpinbox spinbox)
             *spinbox.value = spinbox.min;
         changed = 1;
     }
-    if(UIRenderButton((UIButton){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
+    if(DrawUIButton((UIButton){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL && *spinbox.value < spinbox.max) {
         *spinbox.value += spinbox.step;
@@ -594,18 +594,18 @@ UIRenderSpinbox(UISpinbox spinbox)
 }
 
 int
-UIRenderCombobox(UICombobox combo)
+DrawUICombobox(UICombobox combo)
 {
     if(combo.disabled)
         MarkUIDisabled();
-    return UIRenderDropdown(combo.id, (int)combo.bounds.x, (int)combo.bounds.y,
+    return DrawUIDropdown(combo.id, (int)combo.bounds.x, (int)combo.bounds.y,
                           (int)combo.bounds.width, (int)combo.bounds.height,
                           combo.options, combo.option_count,
                           combo.selected_index);
 }
 
 void
-UIRenderLabelFrame(UILabelFrame frame)
+DrawUILabelFrame(UILabelFrame frame)
 {
     int font = GetUISmallFontSize();
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
@@ -614,13 +614,13 @@ UIRenderLabelFrame(UILabelFrame frame)
         int w = MeasureUIText(frame.title, font) + pad * 2;
         DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - ScaleUIPx(8),
                       w, ScaleUIPx(18), c_bg);
-        UIRenderText(frame.title, (int)frame.bounds.x + pad * 2,
+        DrawUIText(frame.title, (int)frame.bounds.x + pad * 2,
                    (int)frame.bounds.y - ScaleUIPx(9), font, c_text);
     }
 }
 
 void
-UIRenderImageBox(UIImageBox image)
+DrawUIImageBox(UIImageBox image)
 {
     DrawRectangleRec(image.bounds, c_surface);
     if(image.texture.id != 0)
@@ -632,7 +632,7 @@ UIRenderImageBox(UIImageBox image)
 }
 
 int
-UIRenderListBox(UIListBox list)
+DrawUIListBox(UIListBox list)
 {
     int font = GetUIFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
@@ -662,7 +662,7 @@ UIRenderListBox(UIListBox list)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
             MarkUIClickable();
-        UIRenderText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
+        DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
                    (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             UIConsumeRelease();
@@ -672,14 +672,14 @@ UIRenderListBox(UIListBox list)
     }
     EndUIClip();
     if(list.scroll_offset != NULL && max_scroll > 0)
-        UIRenderScrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
+        DrawUIScrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
                         list.item_count * row_h, list.scroll_offset, max_scroll);
     return changed;
 }
 
 int
-UIRenderTreeView(UITreeView tree)
+DrawUITreeView(UITreeView tree)
 {
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
@@ -709,10 +709,10 @@ UIRenderTreeView(UITreeView tree)
         else if(hot)
             DrawRectangleRec(row, c_button_hover);
         if(item->expanded)
-            UIRenderText("v", x, ui_row_text_y(row, font), font, c_icon);
+            DrawUIText("v", x, ui_row_text_y(row, font), font, c_icon);
         else
-            UIRenderText(">", x, ui_row_text_y(row, font), font, c_icon);
-        UIRenderText(item->label != NULL ? item->label : "", x + ScaleUIPx(18),
+            DrawUIText(">", x, ui_row_text_y(row, font), font, c_icon);
+        DrawUIText(item->label != NULL ? item->label : "", x + ScaleUIPx(18),
                    ui_row_text_y(row, font), font, c_text);
         if(hot)
             MarkUIClickable();
@@ -724,7 +724,7 @@ UIRenderTreeView(UITreeView tree)
     }
     EndUIClip();
     if(tree.scroll_offset != NULL && max_scroll > 0)
-        UIRenderScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         tree.item_count * row_h, tree.scroll_offset, max_scroll);
     return changed;
@@ -842,7 +842,7 @@ ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
         return;
     y = GetUITextY(value, (int)rect.y, (int)rect.height, font);
     BeginUIClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
-    UIRenderText(value, (int)rect.x, y, font, color);
+    DrawUIText(value, (int)rect.x, y, font, color);
     EndUIClip();
 }
 
@@ -881,7 +881,7 @@ ui_draw_tree_file_mark(Rectangle box, int hot)
 }
 
 int
-UIRenderCascadingTreeView(UICascadingTreeView tree)
+DrawUICascadingTreeView(UICascadingTreeView tree)
 {
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
@@ -984,7 +984,7 @@ UIRenderCascadingTreeView(UICascadingTreeView tree)
     }
     EndUIClip();
     if(tree.scroll_offset != NULL && max_scroll > 0)
-        UIRenderScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         visible_count * row_h, tree.scroll_offset, max_scroll);
     return changed;
@@ -1091,11 +1091,11 @@ ui_draw_source_line(const char *text, int len, int x, int y, int font,
         return;
     n = ui_source_expand_line(line, sizeof(line), text, len, 4);
     line[n] = '\0';
-    UIRenderText(line, x, y, font, color);
+    DrawUIText(line, x, y, font, color);
 }
 
 int
-UIRenderSourceView(UISourceView source)
+DrawUISourceView(UISourceView source)
 {
     const char *text = source.text != NULL ? source.text : "";
     int font = source.font_size > 0 ? source.font_size : GetUISmallFontSize();
@@ -1168,7 +1168,7 @@ UIRenderSourceView(UISourceView source)
             end = line + strlen(line);
         len = (int)(end - line);
         if(source.show_line_numbers) {
-            UIRenderText(TextFormat("%d", line_no), (int)view.x, y, font,
+            DrawUIText(TextFormat("%d", line_no), (int)view.x, y, font,
                        GetThemeIcon());
         }
         BeginUIClip((int)view.x + gutter_w, y,
@@ -1186,7 +1186,7 @@ UIRenderSourceView(UISourceView source)
     EndUIClip();
 
     if(source.scroll_y != NULL && max_scroll_y > 0)
-        UIRenderScrollbar((int)(source.bounds.x + source.bounds.width -
+        DrawUIScrollbar((int)(source.bounds.x + source.bounds.width -
                               ScaleUIPx(8)),
                         (int)source.bounds.y, (int)source.bounds.height,
                         content_h, source.scroll_y, max_scroll_y);
@@ -1194,7 +1194,7 @@ UIRenderSourceView(UISourceView source)
 }
 
 int
-UIRenderTableView(UITableView table)
+DrawUITableView(UITableView table)
 {
     int font = GetUISmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
@@ -1227,7 +1227,7 @@ UIRenderTableView(UITableView table)
         Rectangle head = {(float)x, table.bounds.y, (float)col_w, (float)header_h};
         DrawRectangleRec(head, c_button);
         DrawRectangleLinesEx(head, 1.0f, c_button_hover);
-        UIRenderText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
+        DrawUIText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
                    (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, c_text);
         if(ui_clicked(head) && table.sort_column != NULL) {
             *table.sort_column = c;
@@ -1257,7 +1257,7 @@ UIRenderTableView(UITableView table)
             if(table.rows != NULL && table.rows[r].cells != NULL && c < table.rows[r].cell_count)
                 text = table.rows[r].cells[c] != NULL ? table.rows[r].cells[c] : "";
             BeginUIClip(x, (int)row.y, col_w, (int)row.height);
-            UIRenderText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, c_text);
+            DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, c_text);
             EndUIClip();
         }
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
@@ -1268,7 +1268,7 @@ UIRenderTableView(UITableView table)
     }
     EndUIClip();
     if(table.scroll_offset != NULL && max_scroll > 0)
-        UIRenderScrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
+        DrawUIScrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
                         (int)(table.bounds.y + header_h),
                         (int)(table.bounds.height - header_h),
                         table.row_count * row_h, table.scroll_offset, max_scroll);
@@ -1347,7 +1347,7 @@ EndUICanvas(UICanvas canvas)
 }
 
 void
-UIRenderCanvasGrid(Rectangle bounds, int step, Color color)
+DrawUICanvasGrid(Rectangle bounds, int step, Color color)
 {
     int scaled = ScaleUIPx(step);
     if(scaled < 4)
@@ -1371,7 +1371,7 @@ UICanvasHitTest(Vector2 point, Rectangle *items, int item_count)
 }
 
 int
-UIRenderNotebook(UINotebook notebook)
+DrawUINotebook(UINotebook notebook)
 {
     int font = GetUIFontSize();
     int changed = 0;
@@ -1387,7 +1387,7 @@ UIRenderNotebook(UINotebook notebook)
         if(hot)
             DrawRectangleRec(tab, c_button_hover);
         DrawRectangleLinesEx(tab, 1.0f, c_button);
-        UIRenderText(notebook.tabs[i], x + ScaleUIPx(14), ui_row_text_y(tab, font), font, c_text);
+        DrawUIText(notebook.tabs[i], x + ScaleUIPx(14), ui_row_text_y(tab, font), font, c_text);
         if(hot)
             MarkUIClickable();
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && notebook.selected_index != NULL) {
@@ -1404,7 +1404,7 @@ UIRenderNotebook(UINotebook notebook)
 }
 
 int
-UIRenderPanedView(UIPanedView panes)
+DrawUIPanedView(UIPanedView panes)
 {
     int changed = 0;
     int split = panes.split != NULL ? *panes.split : (panes.vertical ? (int)panes.bounds.width / 2 : (int)panes.bounds.height / 2);
@@ -1435,16 +1435,16 @@ UIRenderPanedView(UIPanedView panes)
 }
 
 int
-UIRenderCollapsible(UICollapsible section)
+DrawUICollapsible(UICollapsible section)
 {
     int font = GetUIFontSize();
     Rectangle header = section.bounds;
     header.height = ScaleUIPx(32);
     DrawRectangleRec(header, c_button);
     DrawRectangleLinesEx(header, 1.0f, c_button_hover);
-    UIRenderText(section.open != NULL && *section.open ? "v" : ">",
+    DrawUIText(section.open != NULL && *section.open ? "v" : ">",
                (int)header.x + ScaleUIPx(8), ui_row_text_y(header, font), font, c_icon);
-    UIRenderText(section.label != NULL ? section.label : "",
+    DrawUIText(section.label != NULL ? section.label : "",
                (int)header.x + ScaleUIPx(28), ui_row_text_y(header, font), font, c_text);
     if(ui_hot(header)) {
         MarkUIClickable();
@@ -1458,40 +1458,40 @@ UIRenderCollapsible(UICollapsible section)
 }
 
 int
-UIRenderMessageDialog(UIMessageDialog dialog)
+DrawUIMessageDialog(UIMessageDialog dialog)
 {
     const UIModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
                                   UI_BUTTON_STYLE_PRIMARY, 0};
-    return UIRenderActionModal((UIModalSpec){dialog.title, dialog.message, &action, 1,
+    return DrawUIActionModal((UIModalSpec){dialog.title, dialog.message, &action, 1,
                                            g_ui_x_icon, ScaleUIPx(420)});
 }
 
 int
-UIRenderConfirmDialog(UIConfirmDialog dialog)
+DrawUIConfirmDialog(UIConfirmDialog dialog)
 {
     UIModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
     };
-    return UIRenderActionModal((UIModalSpec){dialog.title, dialog.message, actions, 2,
+    return DrawUIActionModal((UIModalSpec){dialog.title, dialog.message, actions, 2,
                                            g_ui_x_icon, ScaleUIPx(460)});
 }
 
 int
-UIRenderPromptDialog(UIPromptDialog dialog)
+DrawUIPromptDialog(UIPromptDialog dialog)
 {
     int result;
     UIModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
     };
-    result = UIRenderActionModal((UIModalSpec){dialog.title, "", actions, 2,
+    result = DrawUIActionModal((UIModalSpec){dialog.title, "", actions, 2,
                                              g_ui_x_icon, ScaleUIPx(460)});
     if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
         Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
                            (float)(ui_view_height / 2 - ScaleUIPx(4)),
                            (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
-        UIRenderTextField((UITextField){field, dialog.text, (size_t)dialog.text_size,
+        DrawUITextField((UITextField){field, dialog.text, (size_t)dialog.text_size,
                                       dialog.cursor_position, dialog.focused, dialog.text_size - 1,
                                       GetUIFontSize(), 7301, {0}, NULL, NULL, NULL});
     }
@@ -1499,7 +1499,7 @@ UIRenderPromptDialog(UIPromptDialog dialog)
 }
 
 int
-UIRenderColorPicker(Rectangle bounds, Color *color)
+DrawUIColorPicker(Rectangle bounds, Color *color)
 {
     int changed = 0;
     int r, g, b;
@@ -1508,11 +1508,11 @@ UIRenderColorPicker(Rectangle bounds, Color *color)
     r = color->r;
     g = color->g;
     b = color->b;
-    changed |= UIRenderSlider(8101, (int)bounds.x, (int)bounds.y,
+    changed |= DrawUISlider(8101, (int)bounds.x, (int)bounds.y,
                             (int)bounds.width, "R", 0, 255, &r, "");
-    changed |= UIRenderSlider(8102, (int)bounds.x, (int)bounds.y + ScaleUIPx(36),
+    changed |= DrawUISlider(8102, (int)bounds.x, (int)bounds.y + ScaleUIPx(36),
                             (int)bounds.width, "G", 0, 255, &g, "");
-    changed |= UIRenderSlider(8103, (int)bounds.x, (int)bounds.y + ScaleUIPx(72),
+    changed |= DrawUISlider(8103, (int)bounds.x, (int)bounds.y + ScaleUIPx(72),
                             (int)bounds.width, "B", 0, 255, &b, "");
     if(changed)
         *color = (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color->a};
@@ -1527,15 +1527,15 @@ int
 UIAcceleratorPressed(UIAccelerator accelerator)
 {
     if(accelerator.ctrl &&
-       !(UIKeyDown(KEY_LEFT_CONTROL) || UIKeyDown(KEY_RIGHT_CONTROL)))
+       !(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)))
         return 0;
     if(accelerator.shift &&
-       !(UIKeyDown(KEY_LEFT_SHIFT) || UIKeyDown(KEY_RIGHT_SHIFT)))
+       !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
         return 0;
     if(accelerator.alt &&
-       !(UIKeyDown(KEY_LEFT_ALT) || UIKeyDown(KEY_RIGHT_ALT)))
+       !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))
         return 0;
-    return UIKeyPressed(accelerator.key) ? accelerator.id : 0;
+    return IsKeyPressed(accelerator.key) ? accelerator.id : 0;
 }
 
 int
@@ -1572,7 +1572,7 @@ GetUIClipboardTextValue(void)
 }
 
 void
-UIRenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
+DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
 {
     int font = GetUISmallFontSize();
     if(nodes == NULL)
@@ -1581,7 +1581,7 @@ UIRenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
         Color color = nodes[i].focused ? c_link : c_icon;
         DrawRectangleLinesEx(nodes[i].bounds, 1.0f, color);
         if(nodes[i].label != NULL)
-            UIRenderText(nodes[i].label, (int)nodes[i].bounds.x,
+            DrawUIText(nodes[i].label, (int)nodes[i].bounds.x,
                        (int)nodes[i].bounds.y - GetUITextLineHeight(font), font, color);
     }
 }

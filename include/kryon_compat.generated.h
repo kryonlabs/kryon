@@ -14,6 +14,22 @@
  * KRYON_BACKEND make variable. The raylib version tracked below is the
  * baseline; kryon may evolve this surface independently over time.
  */
+
+#ifndef KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
+#define KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
+
+typedef void (*KeyInputPlatformCallback)(void);
+typedef int (*KeyPlatformCallback)(int key);
+
+int SetKeyboardInputEnabled(int enabled);
+int KeyboardInputEnabled(void);
+void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,
+                             KeyPlatformCallback key_pressed,
+                             KeyPlatformCallback key_down);
+void UpdateKeyPlatformState(void);
+
+#endif
+
 /**********************************************************************************************
 *
 *   raylib v6.1-dev - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)

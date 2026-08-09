@@ -214,6 +214,7 @@ kryon-boundary-check:
 	sh $(KRYON_BOUNDARY_CHECK) .
 
 $(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
 KC_SRCS := $(sort $(wildcard cmd/kc/*.c))

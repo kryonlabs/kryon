@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon - Native Declarative UI and App Runtime</title>
-  <meta name="description" content="Native cross-platform app development with .kry, declarative widget trees, readable C99 output, and Krait, the first-party Kryon IDE.">
+  <meta name="description" content="Native cross-platform app development with .kry, declarative widget trees, readable C99 output, and a small runtime.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/">
   <meta property="og:title" content="Kryon - Native Declarative UI and App Runtime">
-  <meta property="og:description" content="Native cross-platform app development with .kry, declarative widget trees, readable C99 output, and Krait, the first-party Kryon IDE.">
+  <meta property="og:description" content="Native cross-platform app development with .kry, declarative widget trees, readable C99 output, and a small runtime.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/">
   <meta name="twitter:title" content="Kryon - Native Declarative UI and App Runtime">
@@ -26,7 +26,7 @@
       <img class="hero-icon" src="icons/kryon.png" width="128" height="128" alt="Kryon">
       <h1>KRYON</h1>
       <p class="tagline">Native declarative UI and app runtime</p>
-      <p class="tagline-detail">Write .kry &bull; Build widget trees &bull; Ship readable C99 &bull; Work visually in Krait</p>
+      <p class="tagline-detail">Write .kry &bull; Build widget trees &bull; Ship readable C99 &bull; Keep the runtime small</p>
     </header>
 
     <nav class="site-nav" aria-label="Primary">
@@ -34,7 +34,6 @@
       <a href="#goals">Goals</a>
       <a href="#status">Status</a>
       <a href="#features">Features</a>
-      <a href="#krait">Krait</a>
       <a href="#philosophy">Philosophy</a>
       <a href="#platforms">Platforms</a>
       <a href="#start">Start</a>
@@ -46,7 +45,6 @@
         <h2>What is Kryon?</h2>
         <p>Kryon is a native app development stack built around .kry source files, a small runtime, declarative widget nodes, and clean translation to human-readable C99.</p>
         <p>The runtime owns the UI lifecycle: build the widget tree, reconcile state, layout nodes, route input, update behavior, render base widgets, then render overlays. The source describes intent; the runtime handles ordering, focus, inspection, and overlay behavior.</p>
-        <p>Krait is the first-party Kryon IDE. It is developed as a separate Kryon app and used as the research path for live preview, source-aware inspection, diagnostics, project modules, and editor workflows.</p>
       </section>
 
       <section id="goals">
@@ -65,8 +63,8 @@
             <p>The widget tree should cover real product interfaces: layout, text, inputs, navigation, overlays, inspection, themes, and runtime assets.</p>
           </article>
           <article class="goal">
-            <h3>Krait IDE</h3>
-            <p>Krait should make visual app development direct: project modules, source editing, live preview, diagnostics, search, console, settings, and source-aware inspection in one loop.</p>
+            <h3>Live Development</h3>
+            <p>The runtime should support source-aware preview, diagnostics, inspection, and app reload workflows without changing the app API.</p>
           </article>
         </div>
       </section>
@@ -84,7 +82,7 @@
           </article>
           <article class="goal">
             <h3>Private Renderers</h3>
-            <p>Low-level widget drawing now lives behind internal <code>UIRender*</code> functions so application code uses the declarative surface.</p>
+            <p>Low-level widget drawing now lives behind internal <code>DrawUI*</code> functions so application code uses the declarative surface.</p>
           </article>
           <article class="goal">
             <h3>System Themes</h3>
@@ -119,38 +117,12 @@
         </div>
       </section>
 
-      <section id="krait">
-        <h2>Krait IDE</h2>
-        <p>Krait is the standalone first-party Kryon IDE. It is built as a Kryon app, vendors Kryon for normal builds, and can point at a local Kryon checkout for runtime research and migration work.</p>
-        <div class="grid">
-          <article class="feature">
-            <img src="icons/app.png" width="48" height="48" alt="">
-            <h3>Project Workspace</h3>
-            <p>Start page, recent projects, project templates, module support, file tree, split panes, and saved layout state.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/edit.png" width="48" height="48" alt="">
-            <h3>Source Editing</h3>
-            <p>.kry editing with syntax routing, tabs, undo/redo state, search, quick open, and project-aware file selection.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/play.png" width="48" height="48" alt="">
-            <h3>Live Preview</h3>
-            <p>Module-provided build commands load app hosts, keep preview state, and map active source files back into the preview host.</p>
-          </article>
-          <article class="feature">
-            <img src="icons/wrench.png" width="48" height="48" alt="">
-            <h3>Diagnostics Loop</h3>
-            <p>Problems, output, console, settings, theme controls, and preview reloads stay inside the same development loop.</p>
-          </article>
-        </div>
-      </section>
       <section id="philosophy">
         <h2>Philosophy</h2>
         <ul class="philosophy-list">
           <li><strong>Everything visible is a node</strong> - source, bounds, state, focus, and inspection all belong to the widget tree.</li>
           <li><strong>Source stays primary</strong> - .kry files own screens and reusable UI pieces; C is the generated interop target.</li>
-          <li><strong>Krait is source-aware</strong> - file browser, source editor, live preview, inspector, diagnostics, and search stay tied to .kry files.</li>
+          <li><strong>Tooling is source-aware</strong> - generated code, preview hosts, inspection, diagnostics, and search stay tied to .kry files.</li>
           <li><strong>Default private API</strong> - only exported functions enter generated headers, keeping build boundaries small.</li>
           <li><strong>Native first</strong> - direct C, raylib-style calls, and predictable runtime behavior across targets.</li>
         </ul>
@@ -209,10 +181,6 @@ AppHome :: (app: InbeApp*) {
     UITextNode("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24, GetThemeText())
     UIBottomNavNode(app->bottom_nav)
 }</code></pre>
-        <p>Open a project in Krait:</p>
-        <pre><code>git clone https://github.com/kryonlabs/krait.git
-cd krait
-gmake run ARGS=/path/to/project</code></pre>
       </section>
 
       <section id="docs">
@@ -220,7 +188,6 @@ gmake run ARGS=/path/to/project</code></pre>
         <ul class="link-list">
           <li><a href="api.html">API reference</a> - runtime, node, and widget surface</li>
           <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Source repository</a> - code, issues, and releases</li>
-          <li><a href="https://github.com/kryonlabs/krait" target="_blank" rel="noopener">Krait repository</a> - first-party IDE research and app workflow</li>
         </ul>
       </section>
     </main>
