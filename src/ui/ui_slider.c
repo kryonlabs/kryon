@@ -386,10 +386,11 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ui_touch_target_min();
     int font = GetUIFontSize();
-    int off_w = MeasureUIText(off_label, font);
-    int on_w = MeasureUIText(on_label, font);
+    int material_style = ui_material_style();
+    int off_w = material_style ? 0 : MeasureUIText(off_label, font);
+    int on_w = material_style ? 0 : MeasureUIText(on_label, font);
     int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
-    int min_w = min_half_w * 2 + ScaleUIPx(6);
+    int min_w = material_style ? ScaleUIPx(52) : min_half_w * 2 + ScaleUIPx(6);
     Rectangle bounds;
     int pressed;
     if(w < min_w)
@@ -430,7 +431,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         UIConsumeRelease();
     }
 
-    if(ui_material_style()) {
+    if(material_style) {
         int track_w = ScaleUIPx(52);
         int track_h = ScaleUIPx(32);
         int track_x = x + (w - track_w) / 2;
@@ -442,13 +443,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         Color track = *value ? c_circle : ui_material_surface_container();
         Color thumb = *value ? ui_material_on_color(c_circle) : ui_material_outline();
         Color outline = *value ? c_circle : ui_material_outline();
-        Color off_color = *value ? DarkenUIColor(c_text, 38) : c_text;
-        Color on_color = *value ? c_text : DarkenUIColor(c_text, 38);
 
-        DrawUIText(off_label, x, GetUIControlTextY(off_label, y, h, font),
-                   font, off_color);
-        DrawUIText(on_label, x + w - on_w, GetUIControlTextY(on_label, y, h, font),
-                   font, on_color);
         DrawRectangleRounded((Rectangle){track_x, track_y, track_w, track_h},
                              0.50f, 12, track);
         DrawRectangleRoundedLines((Rectangle){track_x, track_y, track_w, track_h},
