@@ -277,7 +277,7 @@ ui_iabs(int value)
 int
 SetUIKeyboardInputEnabled(int enabled)
 {
-    int old = SetKeyboardInputEnabled(enabled);
+    int old = g_ui_keyboard_input_enabled;
 
     g_ui_keyboard_input_enabled = enabled != 0;
     return old;
@@ -286,7 +286,7 @@ SetUIKeyboardInputEnabled(int enabled)
 int
 UIKeyboardInputEnabled(void)
 {
-    return KeyboardInputEnabled();
+    return g_ui_keyboard_input_enabled;
 }
 
 static int
