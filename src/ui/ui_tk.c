@@ -963,7 +963,7 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
         };
         ui_draw_tree_text(item->label != NULL ? item->label : "", text_rect,
                           font, item->is_dir ? GetThemeText()
-                                             : GetThemeIcon());
+                                             : Fade(GetThemeText(), 0.72f));
 
         if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if(item->is_dir) {
