@@ -797,11 +797,34 @@ GetCurrentThemeColor(const char *key)
     return color;
 }
 
+static int
+theme_luminance(Color color)
+{
+    return ((int)color.r * 299 + (int)color.g * 587 + (int)color.b * 114) / 1000;
+}
+
+static Color
+theme_readable_semantic_color(const char *key, const char *surface_key)
+{
+    Color color = GetCurrentThemeColor(key);
+    Color surface = GetCurrentThemeColor(surface_key);
+    int delta = theme_luminance(color) - theme_luminance(surface);
+
+    if(delta < 0)
+        delta = -delta;
+    if(delta < 72) {
+        Color text = GetCurrentThemeColor("text");
+        text.a = color.a != 0 ? color.a : 255;
+        return text;
+    }
+    return color;
+}
+
 Color GetThemeText(void) { return GetCurrentThemeColor("text"); }
 Color GetThemeBackground(void) { return GetCurrentThemeColor("background"); }
 Color GetThemeSurface(void) { return GetCurrentThemeColor("surface"); }
 Color GetThemeCircle(void) { return GetCurrentThemeColor("circle"); }
 Color GetThemeButton(void) { return GetCurrentThemeColor("button"); }
 Color GetThemeButtonHover(void) { return GetCurrentThemeColor("button_hover"); }
-Color GetThemeIcon(void) { return GetCurrentThemeColor("icon"); }
+Color GetThemeIcon(void) { return theme_readable_semantic_color("icon", "surface"); }
 Color GetThemeLink(void) { return GetCurrentThemeColor("link"); }

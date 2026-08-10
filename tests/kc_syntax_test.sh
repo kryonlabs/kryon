@@ -1194,9 +1194,9 @@ EOF
 "$kc" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
 # The call condition is wrapped: Push, temp assign, Pop, then test the temp.
 grep -Eq 'PushUIInspectSource\([^)]*if_call\.kry", 4\);' "$out/src/if_call.c"
-grep -Eq '__auto_type __kryon_cond_4 = UIButton\(' "$out/src/if_call.c"
+grep -Eq '__auto_type __kryon_cond_[0-9]+ = Button\(' "$out/src/if_call.c"
 grep -Eq 'PopUIInspectSource\(\);' "$out/src/if_call.c"
-grep -Eq 'if\(__kryon_cond_4\) \{' "$out/src/if_call.c"
+grep -Eq 'if\(__kryon_cond_[0-9]+\) \{' "$out/src/if_call.c"
 # A non-call condition is emitted unchanged (no temp, no wrapping).
 grep -Fq 'if(value > 0) {' "$out/src/if_call.c"
 

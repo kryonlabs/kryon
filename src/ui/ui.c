@@ -35,6 +35,7 @@ static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
 static int g_ui_mouse_world_override_enabled = 0;
 static Vector2 g_ui_mouse_world_override = {0};
+static int ui_default_font_auto_load = 1;
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 
@@ -3095,12 +3096,19 @@ GetUIIconBtnPadding(int size)
 }
 
 void
+SetUIDefaultFontAutoLoad(int enabled)
+{
+    ui_default_font_auto_load = enabled != 0;
+}
+
+void
 InitUI(int width, int height, float dpi)
 {
     ui_view_width = width;
     ui_view_height = height;
     SetUIScale(dpi);
-    EnsureUIDefaultFont();
+    if(ui_default_font_auto_load)
+        EnsureUIDefaultFont();
 }
 
 int
