@@ -389,6 +389,10 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
     int scroll = bar.scroll_offset != NULL ? *bar.scroll_offset : 0;
+    int total_gap_w;
+    int total_tabs_w;
+    int needs_scroll;
+    int equal_tabs;
     int tab_x;
     int drag_threshold = ScaleUIPx(6);
     static Vector2 press_pos = {0};
@@ -419,12 +423,25 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     if(icon_tab_w > max_tab_w)
         icon_tab_w = max_tab_w;
 
+    total_gap_w = tab_gap * (bar.count - 1);
+    total_tabs_w = total_gap_w;
+    for(int i = 0; i < bar.count; i++)
+        total_tabs_w += ui_pane_tab_bar_tab_width(bar, i, min_tab_w,
+                                                  icon_tab_w);
+    needs_scroll = total_tabs_w > (int)bar.bounds.width;
+    equal_tabs = ui_material_style() && !needs_scroll;
+
     if(bar.scroll_offset != NULL)
         scroll = *bar.scroll_offset;
+    if(!needs_scroll)
+        scroll = 0;
 
-    tab_x = bar_x + tab_gap - scroll;
+    tab_x = equal_tabs ? bar_x : bar_x + tab_gap - scroll;
     for(int i = 0; i < bar.count; i++) {
-        int tab_w = ui_pane_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        int tab_w = equal_tabs ? (int)bar.bounds.width / bar.count :
+                    ui_pane_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        if(equal_tabs && i == bar.count - 1)
+            tab_w = bar_x + (int)bar.bounds.width - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y,
                               (float)tab_w, (float)bar_h};
         if(CheckCollisionPointRec(mouse, tab_rect) &&
