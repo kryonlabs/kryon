@@ -2370,6 +2370,7 @@ parse_kry(KryFile *file)
                       (starts_word(line, "screen") ||
                        starts_word(line, "preview") ||
                        starts_word(line, "page") ||
+                       starts_word(line, "scene") ||
                        strstr(line, "::") != NULL) &&
                       (line_group_delta(line) > 0 ||
                        line_needs_continuation(line))) {
@@ -2509,6 +2510,13 @@ parse_kry(KryFile *file)
                         if(!parse_ident(&q, file->app_shutdown,
                                         sizeof(file->app_shutdown)))
                             die("%s:%d: expected shutdown function name",
+                                file->path, line_no);
+                    } else if(starts_word(line, "scene")) {
+                        char *q = trim(line + strlen("scene"));
+
+                        if(!parse_ident(&q, file->app_scene,
+                                        sizeof(file->app_scene)))
+                            die("%s:%d: expected scene name",
                                 file->path, line_no);
                     } else {
                         die("%s:%d: unknown app property: %s",
@@ -2838,10 +2846,12 @@ parse_kry(KryFile *file)
             } else if(!in_screen &&
                       (starts_word(line, "screen") ||
                        starts_word(line, "preview") ||
-                       starts_word(line, "page"))) {
+                       starts_word(line, "page") ||
+                       starts_word(line, "scene"))) {
                 KryFunction *fn;
                 char *decl = line;
                 char *q;
+                int matched_scene = 0;
 
                 q = starts_word(decl, "screen")
                         ? decl + strlen("screen")
@@ -2849,7 +2859,9 @@ parse_kry(KryFile *file)
                                ? decl + strlen("preview")
                         : (starts_word(decl, "page")
                                ? decl + strlen("page")
-                               : decl + strlen("fn")));
+                        : (starts_word(decl, "scene")
+                               ? (matched_scene = 1, decl + strlen("scene"))
+                               : decl + strlen("fn"))));
 
                 if(depth != 0)
                     die("%s:%d: nested functions are not supported",
@@ -2861,6 +2873,14 @@ parse_kry(KryFile *file)
                 if(!parse_ident(&q, fn->screen, sizeof(fn->screen)))
                     die("%s:%d: expected screen name", file->path, line_no);
                 fn->is_public = 1;
+                if(matched_scene) {
+                    /* scene builders are retained-tree constructors: their C
+                     * signature is always void Name_kry_scene(KryScene *scene),
+                     * and the body adds nodes to that scene. */
+                    fn->is_scene = 1;
+                    convert_arg_list_file(fn->args, sizeof(fn->args),
+                                          "scene: KryScene*", file);
+                }
                 q = trim(q);
                 if(q[0] == '(') {
                     char *end = strrchr(q, ')');

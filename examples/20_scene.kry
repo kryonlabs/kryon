@@ -1,0 +1,22 @@
+#module "example_scene"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Scene Tree" {
+    size 640 420
+    fps 60
+    font examples
+    theme THEME_SKY 0
+    scene main
+}
+
+sprite_id :: int #global #export
+
+scene main {
+    camera := KryNodeCreate(scene, 0, KRY_NODE_CAMERA2D, "camera")
+    KryNodeSetProps(scene, camera, KryCamera2DPropsAlloc(1.0, 1))
+
+    sprite_id = KryNodeCreate(scene, 0, KRY_NODE_SPRITE2D, "player")
+    KryNodeSetPosition(scene, sprite_id, 320.0, 210.0)
+    KryNodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 96.0, 96.0))
+}

@@ -37,6 +37,7 @@ typedef struct KryFunction {
     int exact_name;
     int is_public;
     int global_name;
+    int is_scene; /* scene Name { ... } builder: emits Name_kry_scene(KryScene *) */
     char calls[KC_CALL_MAX][512];
     /* Function bodies grow on demand (see grow_body()). body[i] holds one
      * pre-translated C statement line; body_line[i] is its .kry source line.
@@ -75,6 +76,7 @@ typedef struct KryFile {
     char app_init[KC_NAME_MAX];
     char app_frame[KC_NAME_MAX];
     char app_shutdown[KC_NAME_MAX];
+    char app_scene[KC_NAME_MAX]; /* scene builder to run at startup for the scene-tree main() */
     char app_theme[KC_NAME_MAX];
     int app_dark_mode;
     int no_main;

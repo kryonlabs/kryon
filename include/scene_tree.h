@@ -103,6 +103,13 @@ void KryNodeRemove(KryScene *scene, KryNodeId node);
 KryNodeId KryNodeFindChild(KryScene *scene, KryNodeId parent, const char *name);
 KryNode *KryNodeGet(KryScene *scene, KryNodeId node);
 
+/* --- property setters (builders mutate nodes via these, since KryNodeGet
+ * returns a pointer only into the arena; these are the canonical accessors) --- */
+void KryNodeSetPosition(KryScene *scene, KryNodeId node, float x, float y);
+void KryNodeSetRotation(KryScene *scene, KryNodeId node, float radians);
+void KryNodeSetScale(KryScene *scene, KryNodeId node, float sx, float sy);
+void KryNodeSetProps(KryScene *scene, KryNodeId node, void *props);
+
 /* --- per-frame driver --- */
 /*
  * Advance the simulation: fire _ready on newly-created nodes (one-shot), then

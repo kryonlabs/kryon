@@ -90,6 +90,8 @@ kc_function_base_name(char *dst, size_t dst_size, const KryFunction *fn)
 {
     if(fn->exact_name)
         snprintf(dst, dst_size, "%s", fn->screen);
+    else if(fn->is_scene)
+        snprintf(dst, dst_size, "%s_kry_scene", fn->screen);
     else
         snprintf(dst, dst_size, "%s_kry_draw", fn->screen);
 }

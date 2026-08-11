@@ -187,6 +187,44 @@ KryNodeGet(KryScene *scene, KryNodeId node)
 }
 
 void
+KryNodeSetPosition(KryScene *scene, KryNodeId node, float x, float y)
+{
+    KryNode *n = KryNodeGet(scene, node);
+    if(n != NULL) {
+        n->local.position = (Vector2){x, y};
+        n->flags |= KRY_NODE_FLAG_DIRTY;
+    }
+}
+
+void
+KryNodeSetRotation(KryScene *scene, KryNodeId node, float radians)
+{
+    KryNode *n = KryNodeGet(scene, node);
+    if(n != NULL) {
+        n->local.rotation = radians;
+        n->flags |= KRY_NODE_FLAG_DIRTY;
+    }
+}
+
+void
+KryNodeSetScale(KryScene *scene, KryNodeId node, float sx, float sy)
+{
+    KryNode *n = KryNodeGet(scene, node);
+    if(n != NULL) {
+        n->local.scale = (Vector2){sx, sy};
+        n->flags |= KRY_NODE_FLAG_DIRTY;
+    }
+}
+
+void
+KryNodeSetProps(KryScene *scene, KryNodeId node, void *props)
+{
+    KryNode *n = KryNodeGet(scene, node);
+    if(n != NULL)
+        n->props = props;
+}
+
+void
 KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops)
 {
     if(kind < 0 || kind > KRY_NODE_CUSTOM)

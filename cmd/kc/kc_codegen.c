@@ -55,9 +55,9 @@ function_takes_rectangle(const KryFunction *fn)
 }
 
 /* Resolve a lifecycle hook name (declared in the app{} block) to the C symbol
- * for the function it names in this file. Colon functions get their module/
- * export-correct C name; anything not found is emitted verbatim so the C
- * compiler reports the unresolved symbol with a real name. */
+ * for the function it names in this file. Matches colon functions (exact_name)
+ * and scene builders (is_scene); anything not found is emitted verbatim so the
+ * C compiler reports the unresolved symbol with a real name. */
 static void
 app_hook_c_name(char *dst, size_t dst_size, const KryFile *file,
                 const char *hook_name)
@@ -65,7 +65,8 @@ app_hook_c_name(char *dst, size_t dst_size, const KryFile *file,
     for(int i = 0; i < file->function_count; i++) {
         const KryFunction *fn = &file->functions[i];
 
-        if(fn->exact_name && strcmp(fn->screen, hook_name) == 0) {
+        if((fn->exact_name || fn->is_scene) &&
+           strcmp(fn->screen, hook_name) == 0) {
             kc_function_name(dst, dst_size, file, fn);
             return;
         }
@@ -127,6 +128,48 @@ write_app_main(FILE *out, const KryFile *file)
         return;
     }
 
+    /* Scene-tree main: the app{} block names a scene builder. kc emits a main()
+     * that registers built-in node kinds, creates a KryScene, runs the named
+     * builder to populate it, then ticks (process + physics) and draws it each
+     * frame. This is the host path for retained-mode games; the single-screen
+     * immediate-mode path below is for pure UI apps. */
+    if(file->app_scene[0] != '\0') {
+        char scene_name[KC_NAME_MAX + 16];
+        app_hook_c_name(scene_name, sizeof(scene_name), file, file->app_scene);
+        fprintf(out, "\nint\nmain(void)\n{\n");
+        fprintf(out, "    KryScene scene;\n");
+        fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
+        fprintf(out, "    SetTargetFPS(%d);\n", fps);
+        if(file->app_font_examples)
+            fprintf(out, "    LoadExampleUIFont();\n");
+        fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
+        if(file->app_theme[0] != '\0')
+            fprintf(out, "    SetCurrentTheme(%s, %d);\n",
+                    file->app_theme, file->app_dark_mode);
+        fprintf(out, "    KrySceneRegisterBuiltins();\n");
+        fprintf(out, "    KrySceneInit(&scene);\n");
+        fprintf(out, "    %s(&scene);\n", scene_name);
+        fprintf(out, "    while(!WindowShouldClose()) {\n");
+        fprintf(out, "        float dt = GetFrameTime();\n");
+        fprintf(out, "        KrySceneTick(&scene, dt);\n");
+        fprintf(out, "        KryScenePhysicsTick(&scene, dt);\n");
+        fprintf(out, "        BeginDrawing();\n");
+        fprintf(out, "        ClearBackground(BLACK);\n");
+        fprintf(out, "        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());\n");
+        fprintf(out, "        KrySceneDraw(&scene);\n");
+        fprintf(out, "        DrawUIOverlays();\n");
+        fprintf(out, "        EndUIFocus();\n");
+        fprintf(out, "        EndDrawing();\n");
+        fprintf(out, "    }\n");
+        fprintf(out, "    KrySceneDestroy(&scene);\n");
+        if(file->app_font_examples)
+            fprintf(out, "    UnloadExampleUIFont();\n");
+        fprintf(out, "    CloseWindow();\n");
+        fprintf(out, "    return 0;\n");
+        fprintf(out, "}\n");
+        return;
+    }
+
     /* Single-screen main (the examples' app{}/screen dialect): one public
      * non-exact screen function is called each frame inside a fixed
      * BeginDrawing/BeginUIFrame/EndDrawing block. */
@@ -136,7 +179,8 @@ write_app_main(FILE *out, const KryFile *file)
 
         for(int i = 0; i < file->function_count; i++) {
             if(file->functions[i].is_public &&
-               !file->functions[i].exact_name) {
+               !file->functions[i].exact_name &&
+               !file->functions[i].is_scene) {
                 screen = &file->functions[i];
                 break;
             }

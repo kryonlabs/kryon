@@ -134,6 +134,7 @@ PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
+SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
@@ -179,7 +180,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	sh tests/kt_cli_test.sh $(KT)
 	$(KSYNC_ACCOUNT_TEST)
@@ -359,6 +360,12 @@ $(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kr
 $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tree_api_test.c \
+		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_tree_test.c \
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
