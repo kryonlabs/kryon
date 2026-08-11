@@ -812,11 +812,13 @@ UILocaleDropdownNode(int id, int x, int y, int w, int h, int *selected_index)
 
 int
 UISliderNode(int id, int x, int y, int w, const char *label,
-             int min, int max, int *value, const char *suffix)
+             int min, int max, int *value, const char *suffix,
+             const char *value_text_override)
 {
     ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
                 (Rectangle){x, y, w, ScaleUIPx(56)}, value);
-    return DrawUISlider(id, x, y, w, label, min, max, value, suffix);
+    return DrawUISlider(id, x, y, w, label, min, max, value, suffix,
+                        value_text_override);
 }
 
 int
@@ -1354,7 +1356,7 @@ void IconLink(int id, int x, int y, int icon_size, Texture2D icon, const char *u
 int Dropdown(int id, int x, int y, int w, int h, const char **options, int option_count, int *selected_index) { return UIDropdownNode(id, x, y, w, h, options, option_count, selected_index); }
 int DropdownEx(int id, int x, int y, int w, int h, const UIDropdownOption *options, int option_count, int *selected_index) { return UIDropdownNodeEx(id, x, y, w, h, options, option_count, selected_index); }
 int LocaleDropdown(int id, int x, int y, int w, int h, int *selected_index) { return UILocaleDropdownNode(id, x, y, w, h, selected_index); }
-int Slider(int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix) { return UISliderNode(id, x, y, w, label, min, max, value, suffix); }
+int Slider(int id, int x, int y, int w, const char *label, int min, int max, int *value, const char *suffix, const char *value_text_override) { return UISliderNode(id, x, y, w, label, min, max, value, suffix, value_text_override); }
 int VerticalSlider(int id, int x, int y, int h, int min, int max, int *value) { return UIVerticalSliderNode(id, x, y, h, min, max, value); }
 int VerticalSliderWithMarks(int id, int x, int y, int h, int min, int max, int *value, UIVerticalSliderMarkCallback callback, void *callback_user_data) { return UIVerticalSliderWithMarksNode(id, x, y, h, min, max, value, callback, callback_user_data); }
 int Toggle(int id, int x, int y, int w, int h, int *value, const char *off_label, const char *on_label) { return UIToggleNode(id, x, y, w, h, value, off_label, on_label); }

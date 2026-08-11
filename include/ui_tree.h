@@ -147,7 +147,8 @@ int UIDropdownNodeEx(int id, int x, int y, int w, int h,
 int UILocaleDropdownNode(int id, int x, int y, int w, int h,
                          int *selected_index);
 int UISliderNode(int id, int x, int y, int w, const char *label,
-                 int min, int max, int *value, const char *suffix);
+                 int min, int max, int *value, const char *suffix,
+                 const char *value_text_override);
 int UIVerticalSliderNode(int id, int x, int y, int h, int min, int max,
                          int *value);
 int UIVerticalSliderWithMarksNode(int id, int x, int y, int h, int min,
@@ -269,7 +270,8 @@ int DropdownEx(int id, int x, int y, int w, int h,
 int LocaleDropdown(int id, int x, int y, int w, int h,
                      int *selected_index);
 int Slider(int id, int x, int y, int w, const char *label, int min,
-             int max, int *value, const char *suffix);
+             int max, int *value, const char *suffix,
+             const char *value_text_override);
 int VerticalSlider(int id, int x, int y, int h, int min, int max,
                      int *value);
 int VerticalSliderWithMarks(int id, int x, int y, int h, int min,

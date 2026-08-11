@@ -1509,11 +1509,11 @@ DrawUIColorPicker(Rectangle bounds, Color *color)
     g = color->g;
     b = color->b;
     changed |= DrawUISlider(8101, (int)bounds.x, (int)bounds.y,
-                            (int)bounds.width, "R", 0, 255, &r, "");
+                            (int)bounds.width, "R", 0, 255, &r, "", NULL);
     changed |= DrawUISlider(8102, (int)bounds.x, (int)bounds.y + ScaleUIPx(36),
-                            (int)bounds.width, "G", 0, 255, &g, "");
+                            (int)bounds.width, "G", 0, 255, &g, "", NULL);
     changed |= DrawUISlider(8103, (int)bounds.x, (int)bounds.y + ScaleUIPx(72),
-                            (int)bounds.width, "B", 0, 255, &b, "");
+                            (int)bounds.width, "B", 0, 255, &b, "", NULL);
     if(changed)
         *color = (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color->a};
     DrawRectangle((int)bounds.x, (int)bounds.y + ScaleUIPx(112),

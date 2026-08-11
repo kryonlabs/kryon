@@ -92,7 +92,7 @@ ControlDemo :: (x: int, y: int, w: int) {
     y += ScaleUIPx(70)
     Dropdown(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
     y += ScaleUIPx(72)
-    Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "")
+    Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "", nil)
     y += ScaleUIPx(72)
     Toggle(306, x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
     Checkbox(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)

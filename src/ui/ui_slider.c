@@ -2,7 +2,8 @@
 
 int
 DrawUISlider(int id, int x, int y, int w, const char *label,
-             int min, int max, int *value, const char *suffix)
+             int min, int max, int *value, const char *suffix,
+             const char *value_text_override)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
@@ -18,7 +19,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     int knob_y = track_y - (knob_h - track_h) / 2;
     int min_touch_h = ui_touch_target_min();
     int changed = 0;
-    char value_text[32];
+    char value_text[48];
     Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     float t;
     int knob_x;
@@ -46,7 +47,10 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
 
-    snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
+    if(value_text_override != NULL)
+        snprintf(value_text, sizeof(value_text), "%s", value_text_override);
+    else
+        snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     DrawUIText(label, x, y, label_font, c_text);
     DrawUIText(value_text, x + w - MeasureUIText(value_text, value_font),
                y, value_font, c_text);

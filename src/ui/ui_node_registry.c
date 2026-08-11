@@ -294,7 +294,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Slider") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    slider_%d: int = 50\n"
-                 "    Slider(%d, ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), \"Value\", 0, 100, &slider_%d, \"\")\n",
+                 "    Slider(%d, ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), \"Value\", 0, 100, &slider_%d, \"\", nil)\n",
                  id, 7200 + (id % 1000), x, y, id);
     } else if(strcmp(type->name, "Checkbox") == 0) {
         snprintf(dst, (size_t)cap,

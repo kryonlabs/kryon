@@ -146,7 +146,8 @@ int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
 void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);
 int DrawUISlider(int id, int x, int y, int w, const char *label, int min,
-                 int max, int *value, const char *suffix);
+                 int max, int *value, const char *suffix,
+                 const char *value_text_override);
 int DrawUIVerticalSlider(int id, int x, int y, int h, int min, int max,
                          int *value);
 int DrawUIVerticalSliderWithMarks(int id, int x, int y, int h, int min,

@@ -1260,7 +1260,8 @@ int UIGetNodeHeightById(int id);
 
 ```c
 int UISliderNode(int id, int x, int y, int w, const char *label,
-                   int min, int max, int *value, const char *suffix);
+                   int min, int max, int *value, const char *suffix,
+                   const char *value_text_override);
 int UIVerticalSliderNode(int id, int x, int y, int h,
                             int min, int max, int *value);
 ```
