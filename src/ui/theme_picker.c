@@ -106,7 +106,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     const char *mode_options[3];
     const char *theme_options[THEME_COUNT + 1];
     int y = settings.y;
-    int label_gap = ScaleUIPx(8);
+    int label_gap = ScaleUIPx(20);
     int row_h = ScaleUIPx(UI_THEME_SETTINGS_ROW_H);
     int row_gap = ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
     int font = GetUIFontSize();
@@ -292,7 +292,7 @@ ui_theme_grid_layout(int w)
 
     int row_gap = ScaleUIPx(14);
     layout.circle_size = ScaleUIPx(24);
-    layout.label_gap = ScaleUIPx(6);
+    layout.label_gap = ScaleUIPx(12);
     layout.col_gap = ScaleUIPx(10);
     layout.cell_w = layout.circle_size;
     for(int i = 0; i < THEME_COUNT; i++) {

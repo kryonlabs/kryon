@@ -523,13 +523,13 @@ draw_dropdown_menu(int id)
 
     /* Draw dropdown background */
     if(ui_material_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
         Color border = ui_material_outline();
 
         panel = ui_material_surface_container();
         option_text = ui_dropdown_text_on(panel);
+        /* Use subtle radius for dropdown panels to prevent distortion during resize */
         ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
-                                   panel, border, tokens.panel_radius);
+                                   panel, border, 0.06f);
     } else if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Color border = ui_dropdown_panel_color(36);

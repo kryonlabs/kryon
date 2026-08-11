@@ -22,6 +22,7 @@ extern UIDPIState ui_dpi_state;
 void InitUIDPI(void);
 void FixUIDPIFramebufferColor(void);
 void InvalidateUIDPI(void);
+void SetUIDeviceDensity(float density);
 void UpdateUIDPI(int view_width, int view_height);
 int IsUIDPIDirty(void);
 static inline float GetUIDPIScale(void) { return ui_dpi_state.ui_scale_clamped; }
