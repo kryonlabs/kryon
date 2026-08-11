@@ -1,0 +1,21 @@
+#module "example_signals"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Signals" {
+    size 640 420
+    fps 60
+    font examples
+    theme THEME_CHERRY 0
+    scene main
+}
+
+emitter :: int = 0 #global #export
+receiver :: int = 0 #global #export
+
+scene main {
+    emitter = KryNodeCreate(scene, 0, KRY_NODE_NODE2D, "emitter")
+    receiver = KryNodeCreate(scene, 0, KRY_NODE_NODE2D, "receiver")
+    connect emitter.hit to receiver.on_hit
+    emit emitter.hit
+}

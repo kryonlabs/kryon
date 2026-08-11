@@ -2182,6 +2182,66 @@ parse_statement(KryFile *file, int line_no, char *line)
     } else if(starts_word(line, "icon_button")) {
         die("%s:%d: 'icon_button' block keyword was removed; use 'if IconButton((IconButtonProps){...}) {'",
             file->path, line_no);
+    } else if(starts_word(line, "connect")) {
+        /* connect emitter.signal to target.handler
+         * lowers to KrySignalConnect(scene, emitter, "signal", target, "handler") */
+        char *q = trim(line + strlen("connect"));
+        char emitter_expr[256];
+        char signal_name[KC_NAME_MAX];
+        char target_expr[256];
+        char handler_name[KC_NAME_MAX];
+        char call[768];
+        char *dot;
+        char *to;
+
+        dot = strchr(q, '.');
+        if(dot == NULL)
+            die("%s:%d: expected 'connect emitter.signal to target.handler'",
+                file->path, line_no);
+        snprintf(emitter_expr, sizeof(emitter_expr), "%.*s", (int)(dot - q), q);
+        q = dot + 1;
+        if(!parse_ident(&q, signal_name, sizeof(signal_name)))
+            die("%s:%d: expected signal name after '.'", file->path, line_no);
+        q = trim(q);
+        to = starts_word(q, "to") ? q + strlen("to") : NULL;
+        if(to == NULL)
+            die("%s:%d: expected 'to' in connect", file->path, line_no);
+        to = trim(to);
+        dot = strchr(to, '.');
+        if(dot == NULL)
+            die("%s:%d: expected 'target.handler' after 'to'", file->path, line_no);
+        snprintf(target_expr, sizeof(target_expr), "%.*s", (int)(dot - to), to);
+        to = dot + 1;
+        if(!parse_ident(&to, handler_name, sizeof(handler_name)) || trim(to)[0] != '\0')
+            die("%s:%d: expected handler name after '.'", file->path, line_no);
+        snprintf(call, sizeof(call),
+                 "KrySignalConnect(scene, %s, \"%s\", %s, \"%s\")",
+                 emitter_expr, signal_name, target_expr, handler_name);
+        emit_source_push(file, line_no);
+        emit_call(file, "    ", call, ";");
+        emit_source_pop(file);
+    } else if(starts_word(line, "emit")) {
+        /* emit emitter.signal
+         * lowers to KrySignalEmit(scene, emitter, "signal", KryonPropertyInt(0)) */
+        char *q = trim(line + strlen("emit"));
+        char emitter_expr[256];
+        char signal_name[KC_NAME_MAX];
+        char call[512];
+        char *dot;
+
+        dot = strchr(q, '.');
+        if(dot == NULL)
+            die("%s:%d: expected 'emit emitter.signal'", file->path, line_no);
+        snprintf(emitter_expr, sizeof(emitter_expr), "%.*s", (int)(dot - q), q);
+        q = dot + 1;
+        if(!parse_ident(&q, signal_name, sizeof(signal_name)) || trim(q)[0] != '\0')
+            die("%s:%d: expected signal name after '.'", file->path, line_no);
+        snprintf(call, sizeof(call),
+                 "KrySignalEmit(scene, %s, \"%s\", KryonPropertyInt(0))",
+                 emitter_expr, signal_name);
+        emit_source_push(file, line_no);
+        emit_call(file, "    ", call, ";");
+        emit_source_pop(file);
     } else if(line[strlen(line) - 1] == ')' && strchr(line, '(') != NULL &&
               find_assignment_op(line) == NULL) {
         emit_source_push(file, line_no);
