@@ -25,4 +25,13 @@ typedef struct Sprite2DProps {
     UIPictureFit fit;         /* STRETCH/CONTAIN/COVER within `size` */
 } Sprite2DProps;
 
+/*
+ * Props allocation helpers for scene builders. Allocate zero-initialized
+ * kind-specific props to attach to a node via KryNodeGet()->props. Returns
+ * NULL on allocation failure. The caller transfers the pointer to the node;
+ * the kind's destroy hook frees it.
+ */
+Camera2DProps *KryCamera2DPropsAlloc(float zoom, int active);
+Sprite2DProps *KrySprite2DPropsAlloc(const char *asset_path, float w, float h);
+
 #endif

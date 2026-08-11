@@ -11,28 +11,60 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="content">
-    <header class="hero compact">
-      <img class="hero-icon" src="icons/kryon.png" width="96" height="96" alt="Kryon">
-      <h1>API</h1>
-      <p class="tagline">Runtime and widget reference</p>
-    </header>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <img src="icons/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <nav class="header-nav" id="header-nav" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#why">Why</a>
+        <a href="index.html#platforms">Platforms</a>
+        <a href="index.html#start">Docs</a>
+        <a href="api.html">API</a>
+        <a class="is-external" href="https://krait.kryonlabs.com">Krait ↗</a>
+        <a class="btn btn-primary" href="index.html#start">Get started</a>
+      </nav>
+    </div>
+  </header>
 
-    <nav class="site-nav" aria-label="Primary">
-      <a href="index.html">Home</a>
-      <a href="index.html#features">Features</a>
-      <a href="index.html#start">Start</a>
-      <a href="api.html">API</a>
-    </nav>
-
-    <main class="api-reference">
+  <main class="wrap api-reference" style="padding: 32px 20px 60px;">
+    <p class="section-eyebrow">Reference</p>
+    <h1 style="margin-top: 0; font-size: 28px; border-bottom: 1px solid var(--line); padding-bottom: 10px;">API</h1>
+    <p class="section-lead" style="margin-bottom: 28px;">Runtime and widget surface, rendered from the canonical <code>docs/API.md</code>.</p>
 {{ API_BODY }}
-    </main>
+  </main>
 
-    <footer>
-      <p>&copy; 2026 Kryon Labs | <a href="https://waozi.xyz" target="_blank" rel="noopener">Made by Waozi</a></p>
-    </footer>
-  </div>
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="icons/kryon.png" alt="Kryon" width="20" height="20">
+        <span>KRYON</span>
+      </div>
+      <div class="footer-cols">
+        <div class="footer-col">
+          <h4>Kryon</h4>
+          <ul>
+            <li><a href="index.html#features">Features</a></li>
+            <li><a href="index.html#platforms">Platforms</a></li>
+            <li><a href="api.html">API reference</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Ecosystem</h4>
+          <ul>
+            <li><a href="https://krait.kryonlabs.com">Krait IDE ↗</a></li>
+            <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub ↗</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Kryon Labs &middot; <a href="https://waozi.xyz" target="_blank" rel="noopener">Made by Waozi</a></p>
+    </div>
+  </footer>
+
   <script src="highlight.js"></script>
 </body>
 </html>
