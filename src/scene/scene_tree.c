@@ -8,6 +8,7 @@
  */
 
 #include "scene_tree.h"
+#include "kry_signal.h"
 #include "node2d_props.h"
 #include <string.h>
 
@@ -156,6 +157,7 @@ KryNodeRemove(KryScene *scene, KryNodeId node)
     KryNode *n;
     if(scene == NULL || !kry_node_is_valid(scene, node))
         return;
+    KrySignalDisconnectNode(scene, node);
     n = &scene->nodes[node];
     kry_node_detach(scene, n);
     kry_node_free_recursive(scene, node);

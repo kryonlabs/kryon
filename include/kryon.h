@@ -29,6 +29,8 @@
 #include "kry_math.h"
 #include "scene_tree.h"
 #include "node2d_props.h"
+#include "scene_property.h"
+#include "kry_signal.h"
 #include "kryon_node.h"
 #include "kryon_property.h"
 #include "kryon_edit_host.h"

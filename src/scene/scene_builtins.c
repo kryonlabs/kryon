@@ -4,6 +4,7 @@
  */
 
 #include "scene_tree.h"
+#include "scene_property.h"
 #include "node2d_props.h"
 #include <stdlib.h>
 
@@ -18,6 +19,7 @@ KrySceneRegisterBuiltins(void)
     kry_register_node2d();
     kry_register_camera2d();
     kry_register_sprite2d();
+    KrySceneRegisterBuiltinProperties();
 }
 
 /*
