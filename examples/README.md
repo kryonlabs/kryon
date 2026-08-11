@@ -59,13 +59,14 @@ make run
 
 ## IDE Preview
 
-Open this directory with Kryon:
+Open this directory in Krait (the standalone Kryon IDE, a separate
+`kryonlabs/krait` repo):
 
 ```bash
-kryon .
+krait .
 ```
 
-The IDE automatically discovers `.kry` screens, builds the generated app host under
+Krait automatically discovers `.kry` screens, builds the generated app host under
 `build/kryon`, and reloads when `.kry` sources change. A `project.kryon` file is
 only needed for full projects that want custom build or run targets.
 

@@ -19,7 +19,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
     {"IconTexture", "Icon Texture", "UI/Display", "Control", "Icon", EDITABLE},
-    {"Sprite", "Sprite", "UI/Display", "Control", "Image", INSERT_EDITABLE},
+    {"Image", "Image", "UI/Display", "Control", "Image", INSERT_EDITABLE},
 
     {"Button", "Button", "UI/Input", "Control", "Action", INSERT_EDITABLE},
     {"IconButton", "Icon Button", "UI/Input", "Control", "Icon action", EDITABLE},
@@ -109,7 +109,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Scene", "Scene", "Game2D/Core", "Node", "Scene root", 0},
     {"Node2D", "Node2D", "Game2D/Core", "Node", "Transform", 0},
     {"Camera2D", "Camera2D", "Game2D/Core", "Node2D", "Camera", 0},
-    {"Sprite2D", "Sprite2D", "Game2D/Rendering", "Node2D", "Sprite", 0},
+    {"Sprite2D", "Sprite2D", "Game2D/Rendering", "Node2D", "Image", 0},
     {"AnimatedSprite2D", "AnimatedSprite2D", "Game2D/Rendering", "Node2D", "Animation", 0},
     {"TileMap", "TileMap", "Game2D/Rendering", "Node2D", "Tiles", 0},
     {"TileLayer", "TileLayer", "Game2D/Rendering", "Node2D", "Tile layer", 0},
@@ -136,7 +136,7 @@ kryon_node_type_has_snippet(const char *name)
         "Text",
         "Rect",
         "Line",
-        "Sprite",
+        "Image",
         "Button",
         "TextField",
         "Toggle",
@@ -246,13 +246,13 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
         snprintf(dst, (size_t)cap,
                  "\n    Line(ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(%d), GetThemeLink())\n",
                  x, y, x + 160, y + 40);
-    } else if(strcmp(type->name, "Sprite") == 0) {
+    } else if(strcmp(type->name, "Image") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Sprite((SpriteProps){\n"
-                 "        .asset_path = \"assets/sprite.png\",\n"
+                 "\n    Image((PictureProps){\n"
+                 "        .asset_path = \"assets/image.png\",\n"
                  "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)},\n"
                  "        .tint = WHITE,\n"
-                 "        .fit = UI_SPRITE_FIT_CONTAIN,\n"
+                 "        .fit = UI_PICTURE_FIT_CONTAIN,\n"
                  "    })\n",
                  x, y);
     } else if(strcmp(type->name, "Button") == 0) {

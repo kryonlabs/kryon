@@ -92,14 +92,14 @@ variables through to the vendored curl CMake build.
 
 ## App Builds
 
-Kryon owns the app command surface through `kryon-app`. From an app repository:
+Kryon owns the app command surface through `kryon`. From an app repository:
 
 ```sh
-kryon-app build native
-kryon-app build web
-kryon-app build android-debug
-kryon-app package appimage
-kryon-app preview
+kryon build native
+kryon build web
+kryon build android-debug
+kryon package appimage
+kryon preview
 ```
 
 For local development against a sync backend, run a Ksync server in the
@@ -109,24 +109,26 @@ prints the sync URL to point your app at. Tokens are regenerated each start,
 so it is for local development only:
 
 ```sh
-kryon-app dev-backend          # serves http://127.0.0.1:8080
+kryon dev-backend          # serves http://127.0.0.1:8080
 ```
 
-App `project.kryon` files should use `target` entries that call `kryon-app`
+App `project.kryon` files should use `target` entries that call `kryon`
 rather than embedding platform-specific build commands directly. Existing app
 Makefiles can remain as backend glue while repeated native, web, Android, and
 packaging logic moves into Kryon `mk/` fragments.
 
 ## Preview Projects
 
-The standalone Kryon IDE previews `.kry` source by compiling it to an app host
-and loading it into the embedded viewport. On each source change the IDE rebuilds
-the project's app host (`make kryon-host`, producing
-`build/kryon/app_host.so`), `dlopen`s it, and resolves
-`CreateAppHost`/`DestroyAppHost`. The build runs in the background
-(`fork` + non-blocking pipe, drained each frame) so the window stays responsive
-during the compile; once it finishes the new app host is loaded and the preview
-updates. Source changes are polled a few times per second.
+Krait, the standalone Kryon IDE (a separate `kryonlabs/krait` repo that vendors
+Kryon), previews `.kry` source by compiling it to an app host and loading it
+into the embedded viewport. On each source change Krait rebuilds the project's
+app host (`make kryon-host`, producing `build/kryon/app_host.so`), `dlopen`s
+it, and resolves `CreateAppHost`/`DestroyAppHost`. The build runs in the
+background (`fork` + non-blocking pipe, drained each frame) so the window stays
+responsive during the compile; once it finishes the new app host is loaded and
+the preview updates. Source changes are polled a few times per second. Kryon
+itself owns the preview host tooling (`kryon-preview`); it must not depend on
+Krait.
 
 A project can add `project.kryon` metadata such as `preview_size`,
 `preview_asset_root`, and `preview_scene` to control the embedded viewport.

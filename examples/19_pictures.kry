@@ -1,8 +1,8 @@
-#module "example_sprites"
+#module "example_pictures"
 #import "kryon.h"
 #import "kryon_example_font.h"
 
-app "Kryon Sprites" {
+app "Kryon Pictures" {
     size 640 420
     fps 60
     font examples
@@ -11,21 +11,21 @@ app "Kryon Sprites" {
 
 screen main {
     Background(GetThemeBackground())
-    Text("Sprites are image nodes", ScaleUIPx(32), ScaleUIPx(30),
+    Text("Pictures are image nodes", ScaleUIPx(32), ScaleUIPx(30),
                UI_TEXT_24, GetThemeText())
     BeginNodeGroup(100, (Rectangle){ScaleUIPx(32), ScaleUIPx(82),
                                       ScaleUIPx(260), ScaleUIPx(210)})
     Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
                GetThemeSurface(), GetThemeButton())
-    Sprite((SpriteProps){"tiles/tile.png",
+    Picture((PictureProps){"tiles/tile.png",
              (Rectangle){ScaleUIPx(52),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
              (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-             UI_SPRITE_FIT_CONTAIN})
-    Sprite((SpriteProps){"pfp/lotus.png",
+             UI_PICTURE_FIT_CONTAIN})
+    Picture((PictureProps){"pfp/lotus.png",
              (Rectangle){ScaleUIPx(168),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
              (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-             UI_SPRITE_FIT_CONTAIN})
-    Text("Images keep their node bounds for editing",
+             UI_PICTURE_FIT_CONTAIN})
+    Text("Pictures keep their node bounds for editing",
                ScaleUIPx(52), ScaleUIPx(226), UI_TEXT_12, GetThemeIcon())
     EndNodeGroup()
 }

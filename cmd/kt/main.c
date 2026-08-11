@@ -254,7 +254,7 @@ kt_start_visual(KTRun *run)
     if(strcmp(run->target, "none") == 0)
         return 1;
     kt_tool_path(tool, sizeof(tool), run->argv0,
-                 strcmp(run->target, "ide") == 0 ? "kryon" : "kryon-app");
+                 strcmp(run->target, "ide") == 0 ? "krait" : "kryon");
     run->visual_pid = fork();
     if(run->visual_pid < 0)
         return 0;
@@ -262,12 +262,12 @@ kt_start_visual(KTRun *run)
         setenv("KRYON_PROJECT_ROOT", run->root, 1);
         if(strcmp(run->target, "ide") == 0) {
             execl(tool, tool, "--temp-session", run->root, (char *)NULL);
-            execlp("kryon", "kryon", "--temp-session", run->root,
+            execlp("krait", "krait", "--temp-session", run->root,
                    (char *)NULL);
         } else {
             execl(tool, tool, "--project", run->root, "run", "native",
                   (char *)NULL);
-            execlp("kryon-app", "kryon-app", "--project", run->root, "run",
+            execlp("kryon", "kryon", "--project", run->root, "run",
                    "native", (char *)NULL);
         }
         _exit(127);

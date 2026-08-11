@@ -24,7 +24,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Web Utilities](#web-utilities)
 - [UI Components](#ui-components)
   - [Buttons](#buttons)
-  - [Sprites](#sprites)
+  - [Pictures](#pictures)
   - [Text Input](#text-input)
   - [Navigation](#navigation)
   - [Modals](#modals)
@@ -126,7 +126,7 @@ then draw overlays:
 
 ```c
 UIBeginTree(screen_id);
-/* screen declares UIText, UIButton, UISprite, and other widgets */
+/* screen declares UIText, UIButton, UIPicture, and other widgets */
 UIEndTree();
 UIReconcileTree();
 UILayoutTree();
@@ -828,32 +828,35 @@ int SyncWebWindowSize(void);
 
 ## UI Components
 
-### Sprites
+### Pictures
 
 ```c
-typedef enum UISpriteFit {
-    UI_SPRITE_FIT_STRETCH,
-    UI_SPRITE_FIT_CONTAIN,
-    UI_SPRITE_FIT_COVER
-} UISpriteFit;
+typedef enum UIPictureFit {
+    UI_PICTURE_FIT_STRETCH,
+    UI_PICTURE_FIT_CONTAIN,
+    UI_PICTURE_FIT_COVER
+} UIPictureFit;
 
-typedef struct SpriteProps {
+typedef struct PictureProps {
     const char *asset_path;
     Rectangle bounds;
     Rectangle source;
     Vector2 origin;
     float rotation;
     Color tint;
-    UISpriteFit fit;
-} SpriteProps;
+    UIPictureFit fit;
+} PictureProps;
 
-void Sprite(SpriteProps sprite);
+void Picture(PictureProps picture);
 ```
 
-Sprites are image-backed widget nodes. `asset_path` is resolved first as a
-runtime file path and then as an embedded asset path. `Sprite` uses the
+Pictures are image-backed UI widget nodes. `asset_path` is resolved first as a
+runtime file path and then as an embedded asset path. `Picture` uses the
 full image with contain fitting and exposes source rect, origin,
-rotation, tint, and fit mode for editor-generated scenes.
+rotation, tint, and fit mode. The `Sprite2D` scene node shares the same
+texture cache (`KryLoadPictureTexture`) for world-space game sprites. Named
+`Picture` rather than `Image` because raylib already owns `Image` as a
+decoded-image-in-memory struct type.
 
 ### Buttons
 

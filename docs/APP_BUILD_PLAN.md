@@ -1,9 +1,9 @@
 # Kryon App Build Plan
 
-Goal: Kryon owns the repeatable build and packaging flow for every Kryon app.
-App repositories should provide app metadata, native sources, `.kry` sources, and
-assets. Kryon should provide the compiler, runtime, dependency builds, packaging
-helpers, IDE preview hooks, and diagnostics.
+Kryon owns the repeatable build and packaging flow for every Kryon app. App
+repositories provide app metadata, native sources, `.kry` sources, and assets.
+Kryon provides the compiler, runtime, dependency builds, packaging helpers,
+Krait preview hooks, and diagnostics through the `kryon` command.
 
 ## App Contract
 
@@ -23,7 +23,7 @@ should come from Kryon.
 
 ## Unified Commands
 
-Kryon should expose one command surface for all apps:
+Kryon exposes one command surface for all apps:
 
 - `kryon build native`
 - `kryon build web`
@@ -40,7 +40,7 @@ Kryon should expose one command surface for all apps:
 - `kryon preview`
 - `kryon test`
 
-Makefiles in app repos should become thin wrappers that call these commands.
+Makefiles in app repos are thin wrappers that call these commands.
 
 ## Build Ownership
 
@@ -79,7 +79,7 @@ Apps own:
    make fragments with normalized variables.
 5. Convert app Makefiles to compatibility shims, then remove duplicated app-side
    package/build rules.
-6. Make the IDE use the same build graph for preview/run so errors from manual
+6. Make Krait use the same build graph for preview/run so errors from manual
    build, auto preview, and package targets use one diagnostic format.
 7. Add template checks so new Kryon apps start with the unified layout.
 

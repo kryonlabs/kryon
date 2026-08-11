@@ -1,9 +1,13 @@
 # kc Parser Plan: resolving the AST ceiling
 
-**Status:** proposal. **Goal:** replace kc's line-matcher with a real parser
-that builds an AST, while keeping generated C byte-identical (validated against
-`tests/kc_syntax_test.sh`), then use the AST to add type checking, good errors,
-and clean `defer` lowering.
+**Status:** in progress. Phases 0 (oracle hardened), 1 (AST alongside the
+existing path — `kc_ast.c`), and 4 (error recovery — `kc_diag.c` longjmps to a
+per-statement boundary and collects multiple errors) are **done**. The
+remaining work is Phase 2 (emit from the AST instead of `fn->body[]` strings)
+and Phase 3 (type checking). **Goal:** replace kc's line-matcher with a real
+parser that builds an AST, while keeping generated C byte-identical (validated
+against `tests/kc_syntax_test.sh`), then use the AST to add type checking and
+clean `defer` lowering.
 
 This plan is grounded in a full audit of `cmd/kc/kc.c` (pipeline, state,
 emit) and `tests/kc_syntax_test.sh` (the sole string oracle). Every claim is
@@ -24,9 +28,12 @@ choice caps what the language can ever do:
   call site.
 - **`__auto_type` for every inferred local.** `x := f()` becomes
   `__auto_type x = f();` because kc can't track `f`'s return type. This makes
-  generated C depend on a GCC extension and blocks IDE type hover.
-- **`die()` on first error.** One typo aborts the whole compile; the IDE's
-  diagnostics pane gets one error at a time.
+  generated C depend on a GCC extension and blocks Krait type hover.
+- **`die()` on first error — *fixed*.** Parsing now installs a per-statement
+  recovery boundary (`kc_diag.c`): a located `die()` records a diagnostic and
+  `longjmp`s back to the next statement instead of aborting, so Krait's
+  problems pane sees every error in source order. (This landed in Phase 4,
+  ahead of the AST cutover.)
 - **`defer` is a text-reconstruction hack.** `apply_defers` (kc.c:4253) walks
   the flat body re-deriving scope from brace counting to splice deferred
   statements at exit points — the most algorithmically fragile code in kc.
@@ -261,19 +268,24 @@ against... what? kc has no function-signature database. Two options:
   `items` is `[4] const char*` and the call wants `const char**`. Doesn't need
   a type DB.
 - **Option B (full):** parse `#import`ed headers' signatures into a symbol
-  table. Bigger; enables hover-types in the IDE.
+  table. Bigger; enables hover-types in Krait.
 
 Recommend Option A first — it catches the common foot-guns with a week's work
 and no header parsing.
 
 Effort: ~1 week (Option A).
 
-### Phase 4 — Error recovery
+### Phase 4 — Error recovery  ✅ DONE
 
-Replace `die()` with a diagnostic collector that records errors and continues
-where possible. The IDE's diagnostics pane (which parses compiler output)
-becomes useful. Naturally enabled by the AST: a malformed node doesn't abort
-the whole parse.
+`die()` now records a diagnostic and `longjmp`s back to the per-statement
+recovery boundary `parse_kry` installs (`kc_diag.c`), instead of aborting on
+the first error. A malformed statement no longer ends the compile; parsing
+resumes at the next statement boundary, so Krait's problems pane sees every
+recoverable error in source order. Fatal conditions (out of memory, CLI misuse)
+still abort, but flush any already-recorded diagnostics first.
+
+This phase landed independently of the AST cutover (Phase 2): recovery is a
+parse-loop concern, not an AST-emit concern. It did not need typed nodes.
 
 Effort: ~3–5 days.
 
@@ -285,8 +297,8 @@ After Phase 2 (AST emit), even without type checking:
 
 - **`defer` becomes correct by construction** — scope is a property of the
   node tree, not reconstructed from text.
-- **Error recovery** — collect-many-errors is natural on a tree.
-- **IDE features** — goto-definition, find-references, hover all become
+- **Error recovery** — already shipped (Phase 4); the AST makes it cleaner.
+- **Krait features** — goto-definition, find-references, hover all become
   possible because the compiler has structured knowledge.
 - **Future language features** — closures, real generics, pattern matching
   become *possible* (currently impossible on a line-matcher).
@@ -302,44 +314,41 @@ After Phase 2 (AST emit), even without type checking:
 - The command line, file layout, error message format.
 - The scanner (`kc_scan.c`), text helpers (`convert_var_decl`,
   `convert_arg_list`, `find_assignment_op`), and module-symbol logic.
-- The IDE's use of kc (it shells out and checks exit status + `.so` existence
+- Krait's use of kc (it shells out and checks exit status + `.so` existence
   — unaffected).
 
 ---
 
 ## 9. Sizing and sequencing
 
-| Phase | Effort | Risk | Depends on |
-|-------|--------|------|------------|
-| 0. Harden oracle | 1–2 days | none | — |
-| 1. AST alongside | ~1 week | low | 0 |
-| 2. Emit from AST | ~1 week | **medium** (§5) | 1 |
-| 3. Type checking (opt A) | ~1 week | low | 2 |
-| 4. Error recovery | 3–5 days | low | 2 |
+| Phase | Effort | Risk | Depends on | Status |
+|-------|--------|------|------------|--------|
+| 0. Harden oracle | 1–2 days | none | — | ✅ done |
+| 1. AST alongside | ~1 week | low | 0 | ✅ done |
+| 2. Emit from AST | ~1 week | **medium** (§5) | 1 | — (the cutover) |
+| 3. Type checking (opt A) | ~1 week | low | 2 | — |
+| 4. Error recovery | 3–5 days | low | (none, parse-loop only) | ✅ done |
 
-**Total to a typed, error-recovering compiler: ~5 weeks.** Phases 0–2 alone
-(inside ~2.5 weeks) deliver a structurally-sound compiler with identical
-output — the foundation everything else builds on. Phases 3–4 are independent
-payoffs that can land in any order after 2.
-
-Phase 0 is shippable and valuable *today*, independent of whether the parser
-work proceeds — it just adds test coverage for untested paths.
+**Remaining: Phases 2–3 (~2 weeks).** Phase 2 (emit from the AST) is the
+cutover that retires `fn->body[]` strings and `apply_defers`; Phase 3
+(type checking) layers on top of it. Phase 4 landed ahead of the original
+sequence because error recovery is a parse-loop concern, not an AST-emit one.
 
 ---
 
 ## 10. Open questions
 
-1. **Replace `KryFile`/`KryFunction` or wrap them?** The structs in
-   kc_internal.h are large and cross-referenced. Wrapping (AST nodes point
-   into them, or they hold AST pointers) is less churn than replacing. Decide
-   at Phase 1.
+1. **Replace `KryFile`/`KryFunction` or wrap them?** *(Resolved at Phase 1.)*
+   Phase 1 wraps: `ast_function_from_body` reconstructs AST nodes from the
+   already-emitted `fn->body[]` strings rather than replacing the structs.
+   Phase 2's cutover revisits this when it retires `fn->body[]`.
 2. **Expression parsing.** This plan holds expressions as opaque C text (kc
    does today). A future phase could tokenize expressions for real type
    inference on `:=`. Out of scope for the initial restructure; noted as a
    later enhancement.
-3. **Should the AST be serialized for IDE tooling?** A `--dump-ast-json` mode
-   would let the IDE do structural queries without re-parsing. Cheap to add
-   once the AST exists; deferred unless the IDE needs it.
+3. **Should the AST be serialized for Krait tooling?** A `--dump-ast-json` mode
+   would let Krait do structural queries without re-parsing. Cheap to add
+   once the AST exists; deferred unless Krait needs it.
 4. **Per-file or whole-program?** kc is per-file today (one .kry → one .c/.h).
    Cross-file type checking (Phase 3 Option B) needs a multi-file mode. Decide
    when Phase 3 is scoped.

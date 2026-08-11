@@ -30,10 +30,10 @@ STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 KC = $(BUILD_DIR)/bin/kc
 KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
-KRYON_APP = $(BUILD_DIR)/bin/kryon-app
+KRYON_CMD = $(BUILD_DIR)/bin/kryon
 LEGACY_KC = $(BUILD_ROOT)/bin/kc
 LEGACY_KT = $(BUILD_ROOT)/bin/kt
-LEGACY_KRYON_APP = $(BUILD_ROOT)/bin/kryon-app
+LEGACY_KRYON_CMD = $(BUILD_ROOT)/bin/kryon
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
@@ -139,7 +139,7 @@ RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
 ifneq ($(BUILD_DIR),$(BUILD_ROOT))
-.PHONY: $(LEGACY_KC) $(LEGACY_KT) $(LEGACY_KRYON_APP)
+.PHONY: $(LEGACY_KC) $(LEGACY_KT) $(LEGACY_KRYON_CMD)
 
 $(LEGACY_KC): $(KC) | $(BUILD_ROOT)/bin
 	$(INSTALL) -m 755 $(KC) $@
@@ -147,21 +147,21 @@ $(LEGACY_KC): $(KC) | $(BUILD_ROOT)/bin
 $(LEGACY_KT): $(KT) | $(BUILD_ROOT)/bin
 	$(INSTALL) -m 755 $(KT) $@
 
-$(LEGACY_KRYON_APP): $(KRYON_APP) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(KRYON_APP) $@
+$(LEGACY_KRYON_CMD): $(KRYON_CMD) | $(BUILD_ROOT)/bin
+	$(INSTALL) -m 755 $(KRYON_CMD) $@
 
 $(BUILD_ROOT)/bin:
 	mkdir -p $@
 endif
 
-all: $(LIB) $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_APP)
+all: $(LIB) $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
-tools: $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_APP)
+tools: $(KC) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
-install: $(KT) $(KRYON_APP)
+install: $(KT) $(KRYON_CMD)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(KT) $(DESTDIR)$(BINDIR)/kt
-	$(INSTALL) -m 755 $(KRYON_APP) $(DESTDIR)$(BINDIR)/kryon-app
+	$(INSTALL) -m 755 $(KRYON_CMD) $(DESTDIR)$(BINDIR)/kryon
 
 examples-run:
 	@$(MAKE) -C examples run
@@ -236,8 +236,8 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
 		$(KRYON_OPENSSL_CRYPTO_LDLIB) $(CURL_CODEC_LDLIBS) \
 		$(LDLIBS) -lpthread -lm
 
-$(KRYON_APP): scripts/kryon-app.sh | $(BUILD_DIR)/bin
-	cp scripts/kryon-app.sh $@
+$(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
+	cp scripts/kryon.sh $@
 	chmod 755 $@
 
 version:

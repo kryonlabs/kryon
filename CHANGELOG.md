@@ -28,7 +28,7 @@
 - Collect multiple parse errors instead of aborting on the first. Parsing now
   installs a per-statement recovery boundary: a malformed statement records a
   diagnostic and parsing continues with the next, so a file with several errors
-  reports all of them (the IDE's problems pane becomes useful while editing).
+  reports all of them (Krait's problems pane becomes useful while editing).
   A file that previously reported one error and exited now reports every
   recoverable error in source order. Fatal conditions (out of memory, CLI
   misuse) still abort as before, and any diagnostics already recorded are
@@ -39,7 +39,7 @@
   each iteration, and `shutdown()` at exit — without bracketing drawing, so the
   program calls `BeginDrawing`/`BeginUIFrame`/`EndDrawing` itself and can host
   nested render-texture passes and inspection overlays like a hand-written C
-  app. This is the entry point a self-hosted IDE uses. Without hooks the
+  app. This is the entry point Krait uses. Without hooks the
   existing single-screen `app{}`/`screen` dialect is unchanged (byte-identical).
 - Add the Kry standard platform library: `kry_process` (spawn a shell command
   with non-blocking stdout/stderr polling, used for builds and consoles),
@@ -47,24 +47,24 @@
   text read/write), and `kry_dylib` (dlopen/dlsym/dlclose for loading a built
   app host). Declared in `kryon.h` and implemented under `src/kry_std/`, so they
   are linked into `libkryon.a` and callable directly from `.kry` via `#extern`.
-  These lift the IDE's inline POSIX surface into a reusable library so a
+  These lift Krait's inline POSIX surface into a reusable library so the
   `.kry`-written IDE can spawn `make kryon-host`, walk the project tree, and
   `dlopen` the resulting `app_host.so`. Windows has stub implementations.
-- Move the self-hosted IDE rewrite in Kry into the standalone IDE repository:
-  `app.kry` owns the window loop via the new `app{}` hooks; `state.kry`,
-  `start_page.kry`, `project.kry`, `tree.kry`, and `editor.kry` implement the
-  start page, project-open flow (file dialog + `kry_fs`), a file-tree sidebar
-  (`kry_fs_list_dir` + `UICascadingTreeViewNode`), and a read-only source viewer
-  (`kry_fs_read_file` + `UITextAreaNode`). The IDE repository transpiles those
-  modules in one `kc` invocation and links the generated C against `libkryon.a`
-  + raylib.
-- The `.kry` IDE gains an editable editor with multi-tab open files, Ctrl+S
-  save (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
+- Move the self-hosted IDE rewrite in Kry into the standalone IDE repository,
+  Krait (`kryonlabs/krait`): `app.kry` owns the window loop via the new
+  `app{}` hooks; `state.kry`, `start_page.kry`, `project.kry`, `tree.kry`, and
+  `editor.kry` implement the start page, project-open flow (file dialog +
+  `kry_fs`), a file-tree sidebar (`kry_fs_list_dir` +
+  `UICascadingTreeViewNode`), and a read-only source viewer (`kry_fs_read_file`
+  + `UITextAreaNode`). Krait transpiles those modules in one `kc` invocation
+  and links the generated C against `libkryon.a` + raylib.
+- Krait gains an editable editor with multi-tab open files, Ctrl+S save
+  (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
   (heap-snapshot ring), plus a live-preview pane (`preview.kry`) that runs
   `make kryon-host` via `kry_process`, `dlopen`s the resulting `app_host.so`
   via `kry_dylib`, and renders the host into a `RenderTexture` — the full
   non-blocking build + hot-reload loop, written in Kry.
-- Add the IDE console and problems panels in Kry (`console.kry`,
+- Add the Krait console and problems panels in Kry (`console.kry`,
   `problems.kry`): an interactive shell that runs typed commands via
   `kry_process` and drains output each frame, and a diagnostics parser that
   splits `path:line:col: message` lines from build output into a problems
@@ -74,13 +74,25 @@
 
 ### Changed
 
-- Remove the bundled C IDE. Kryon now builds only the library, compiler,
-  tooling, and `kryon-app`; the Kry-written standalone IDE lives outside this
-  repository.
-- Fix copy/cut/paste/select-all in the IDE source editor. `UITextAreaNode` had
-  its own generic clipboard handler that raced the IDE's
+- Remove the bundled C IDE. Kryon now builds only the library, compiler, and
+  tooling; the Kry-written IDE, Krait (`kryonlabs/krait`), lives in its own
+  repository and vendors Kryon as a submodule.
+- Rename the app command `kryon-app` to `kryon`. There is now a single
+  `kryon` command for building, packaging, running, previewing, and the local
+  Ksync backend. `scripts/kryon-app.sh` → `scripts/kryon.sh`; the Makefile
+  installs `$(BINDIR)/kryon`; `kt` execs `kryon` for app runs and `krait` for
+  the `ide` target (freeing the bare `kryon` name for the build tool). App
+  `project.kryon` target entries that call `sh vendor/kryon/scripts/kryon.sh`
+  are updated in downstream apps.
+- Add a `value_text_override` parameter to `DrawUISlider`, `UISliderNode`, and
+  `Slider`. When non-NULL it replaces the default numeric value label, letting
+  callers render custom value text (for example, named steps). This is a
+  breaking signature change: all callers must add the new argument (NULL keeps
+  the previous behavior).
+- Fix copy/cut/paste/select-all in the Krait source editor. `UITextAreaNode`
+  had its own generic clipboard handler that raced Krait's
   `editor_handle_source_clipboard` on the same one-shot keypress, so Ctrl+C/V
-  worked inconsistently. The generic handler is removed; the IDE now owns the
+  worked inconsistently. The generic handler is removed; Krait now owns the
   source-editor clipboard (it has the byte-cap, line-copy fallback, and status
   messages). The stale `!textarea_changed` guard that silently skipped paste is
   dropped too.
@@ -91,7 +103,7 @@
   same 1 MiB via a `-D` flag passed through `RAY_RAYLIB_CONFIG` — no vendored
   raylib source is edited. Both caps are now symmetric and above the editor's
   512 KiB source buffer, which becomes the real ceiling.
-- Make hot-reload (and run targets) non-blocking. The IDE ran the app-host build
+- Make hot-reload (and run targets) non-blocking. Krait ran the app-host build
   as a synchronous `popen`+`fread` on the UI thread, freezing the window for the
   whole compile. Builds now use the same `fork`+`pipe`+`waitpid(WNOHANG)` pattern
   as the console runner (`editor_build_start`/`editor_build_poll`), drained each
@@ -105,10 +117,10 @@
   `guide.c`, `modal.c`, and `theme_picker.c` now use the shared `ui_clampi`.
   Add shared `ui_draw_box_background`, `ui_caret_blink_visible`, and
   `ui_open_url` helpers, replacing inlined copies in the text widgets and links.
-- Correct the README preview-projects section: the IDE previews `.kry` by
+- Correct the README preview-projects section: Krait previews `.kry` by
   rebuilding and `dlopen`ing an app host, not by rendering source directly.
 - Remove the empty leftover `src/editor/` directory; the C editor lived under
-  the command tree before the standalone IDE migration.
+  the command tree before the Krait migration.
 - Add CI workflow (`.github/workflows/ci.yml`) that builds and runs `make test`
   on push and pull request for Linux and FreeBSD. Tests previously only ran at
   release time.

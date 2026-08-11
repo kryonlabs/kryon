@@ -4,7 +4,7 @@ set -eu
 usage()
 {
     cat <<'USAGE'
-usage: kryon-app [--project DIR] COMMAND [TARGET]
+usage: kryon [--project DIR] COMMAND [TARGET]
 
 Commands:
   host                    build the generated Kryon app host
@@ -40,7 +40,7 @@ target=${2:-}
 
 cd "$project"
 project_id=$(pwd | cksum | awk '{print $1}')
-lock_dir="${TMPDIR:-/tmp}/kryon-app-${project_id}.lock"
+lock_dir="${TMPDIR:-/tmp}/kryon-${project_id}.lock"
 while ! mkdir "$lock_dir" 2>/dev/null; do
     if [ ! -f "$lock_dir/pid" ]; then
         rm -rf "$lock_dir"

@@ -18,7 +18,7 @@ canonical names directly. Public app code should use names such as
 `DrawUIIconButton`, `DrawUITextField`, `DrawRectangle`, `GetMousePosition`,
 `IsKeyPressed`, and `KEY_*` through Kryon. Public widget construction uses
 Flutter-style widgets with raylib-style C names: `Background`, `Text`, `Rect`,
-`Button`, and `Sprite`. Lower-level immediate drawing keeps verb names such as
+`Button`, and `Picture`. Lower-level immediate drawing keeps verb names such as
 `DrawUIText` and `DrawRectangle`. Do not reintroduce duplicate public widget
 names such as `WidgetText`, `UIText`, or `UITextNode` for the same behavior.
 
