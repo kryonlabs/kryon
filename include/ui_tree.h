@@ -233,4 +233,22 @@ UIPanelFrame ModalFrame(int width, int height, const char *title,
 
 int Button(ButtonProps button);
 
+/* Layout nodes: auto-position children like flexbox. */
+typedef struct {
+    Rectangle bounds;
+    int gap;
+    int padding;
+} ColumnProps;
+
+typedef struct {
+    Rectangle bounds;
+    int gap;
+    int padding;
+} RowProps;
+
+UINodeId Column(ColumnProps props);
+UINodeId Row(RowProps props);
+void EndColumn(void);
+void EndRow(void);
+
 #endif

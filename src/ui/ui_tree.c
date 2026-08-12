@@ -1248,3 +1248,97 @@ ModalFrame(int width, int height, const char *title,
 }
 
 int Button(ButtonProps button) { return GenericButton(button.id, (int)button.bounds.x, (int)button.bounds.y, (int)button.bounds.width, (int)button.bounds.height, button.label, button.style, button.disabled, NULL); }
+
+/* Layout nodes — flexbox-style containers that auto-position children.
+ * Column stacks children vertically, Row stacks them horizontally.
+ * Use EndColumn/EndRow to close the container (like EndNodeGroup). */
+
+static struct {
+    Rectangle bounds;
+    int gap;
+    int padding;
+    int cursor;
+} g_layout_stack[UI_TREE_MAX_DEPTH];
+static int g_layout_depth = 0;
+
+UINodeId
+Column(ColumnProps props)
+{
+    UINodeId node = BeginNodeGroup(0, props.bounds);
+    if(g_layout_depth < UI_TREE_MAX_DEPTH) {
+        g_layout_stack[g_layout_depth].bounds = props.bounds;
+        g_layout_stack[g_layout_depth].gap = props.gap;
+        g_layout_stack[g_layout_depth].padding = props.padding;
+        g_layout_stack[g_layout_depth].cursor = (int)props.bounds.y + props.padding;
+        g_layout_depth++;
+    }
+    return node;
+}
+
+UINodeId
+Row(RowProps props)
+{
+    UINodeId node = BeginNodeGroup(0, props.bounds);
+    if(g_layout_depth < UI_TREE_MAX_DEPTH) {
+        g_layout_stack[g_layout_depth].bounds = props.bounds;
+        g_layout_stack[g_layout_depth].gap = props.gap;
+        g_layout_stack[g_layout_depth].padding = props.padding;
+        g_layout_stack[g_layout_depth].cursor = (int)props.bounds.x + props.padding;
+        g_layout_depth++;
+    }
+    return node;
+}
+
+void
+EndColumn(void)
+{
+    if(g_layout_depth > 0)
+        g_layout_depth--;
+    EndNodeGroup();
+}
+
+void
+EndRow(void)
+{
+    if(g_layout_depth > 0)
+        g_layout_depth--;
+    EndNodeGroup();
+}
+
+int
+UILayoutNextChildHeight(int child_h)
+{
+    int y = -1;
+    if(g_layout_depth > 0) {
+        y = g_layout_stack[g_layout_depth - 1].cursor;
+        g_layout_stack[g_layout_depth - 1].cursor += child_h +
+            g_layout_stack[g_layout_depth - 1].gap;
+    }
+    return y;
+}
+
+int
+UILayoutNextChildX(int child_w)
+{
+    int x = -1;
+    if(g_layout_depth > 0) {
+        x = g_layout_stack[g_layout_depth - 1].cursor;
+        g_layout_stack[g_layout_depth - 1].cursor += child_w +
+            g_layout_stack[g_layout_depth - 1].gap;
+    }
+    return x;
+}
+
+int
+UILayoutActive(void)
+{
+    return g_layout_depth > 0;
+}
+
+Rectangle
+UILayoutBounds(void)
+{
+    if(g_layout_depth > 0)
+        return g_layout_stack[g_layout_depth - 1].bounds;
+    return (Rectangle){0, 0, 0, 0};
+}
