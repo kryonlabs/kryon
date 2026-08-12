@@ -59,7 +59,12 @@ $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 		RAYLIB_MODULE_MODELS=$(KRYON_RAYLIB_MODULE_MODELS) \
 		SDL_INCLUDE_PATH="$(7)" \
 		SDL_LIBRARIES="$(8)" \
-		CUSTOM_CFLAGS="$(KRYON_RAYLIB_BACKEND_RENAME_CFLAG) -DUSING_SDL2_PROJECT $(9) $(APP_RAYLIB_CONFIG) $(KRYON_RAYLIB_BUILD_OPT_FLAGS)"
+		CUSTOM_CFLAGS="$(KRYON_RAYLIB_BACKEND_RENAME_CFLAG) -DUSING_SDL2_PROJECT $(9) $(APP_RAYLIB_CONFIG) $(KRYON_RAYLIB_BUILD_OPT_FLAGS)"; \
+	if nm $(3)/libraylib.a 2>/dev/null | grep -qE ' T (GetCodepoint|TextSplit|LoadUTF8)'; then \
+		echo "raylib rename check: recompiling rtext.o with backend rename header"; \
+		$(4) -c $(2)/rtext.c -D_GNU_SOURCE -DPLATFORM_DESKTOP_SDL -DGRAPHICS_API_OPENGL_ES2 -std=c99 -fPIC $(KRYON_RAYLIB_BACKEND_RENAME_CFLAG) -DUSING_SDL2_PROJECT $(KRYON_RAYLIB_BUILD_OPT_FLAGS) -I$(2) -o $(2)/rtext.o && \
+		$(5) rcs $(3)/libraylib.a $(2)/rtext.o; \
+	fi
 endef
 
 define KRYON_RAYLIB_WEB_RULE
