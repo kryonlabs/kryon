@@ -10,6 +10,7 @@
 
 #include "kryon_compat.generated.h"
 #include "ui_picture.h" /* PictureProps / UIPictureFit, shared with the UI widget */
+#include "kry_animation.h" /* KryAnimation, held by AnimationPlayerProps */
 
 typedef struct Camera2DProps {
     float zoom;        /* 1.0 = default; >1 zooms in */
@@ -72,5 +73,37 @@ typedef struct Area2DProps {
 Body2DProps *KryBody2DPropsAlloc(KryBody2DType type);
 CollisionShape2DProps *KryCollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h);
 Area2DProps *KryArea2DPropsAlloc(void);
+
+/* AnimationPlayer: holds up to N animations and the current play state. */
+#define KRY_PLAYER_ANIMS_MAX 4
+
+typedef struct AnimationPlayerProps {
+    KryAnimation anims[KRY_PLAYER_ANIMS_MAX];
+    int anim_count;
+    int current;       /* index of the playing animation, -1 if stopped */
+    float time;        /* seconds into the current animation */
+    int playing;       /* nonzero = advancing each tick */
+} AnimationPlayerProps;
+
+AnimationPlayerProps *KryAnimationPlayerPropsAlloc(void);
+
+/* AnimatedSprite2D: cycles through frames of a grid sprite sheet. */
+typedef struct AnimatedSprite2DProps {
+    const char *asset_path;  /* sprite sheet texture */
+    int frame_count;         /* total frames in the sheet */
+    int frames_per_row;      /* frames horizontally; rows derived from frame_count */
+    int frame_w;             /* source-frame pixel size */
+    int frame_h;
+    float fps;               /* frames per second */
+    Vector2 size;            /* world-space draw size */
+    Color tint;              /* .a == 0 -> WHITE */
+    float time;              /* accumulated playhead, in seconds */
+} AnimatedSprite2DProps;
+
+AnimatedSprite2DProps *KryAnimatedSprite2DPropsAlloc(const char *asset_path,
+                                                     int frame_count,
+                                                     int frames_per_row,
+                                                     int frame_w, int frame_h,
+                                                     float fps);
 
 #endif

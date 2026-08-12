@@ -31,6 +31,7 @@
 #include "node2d_props.h"
 #include "scene_property.h"
 #include "kry_signal.h"
+#include "kry_animation.h"
 #include "kryon_node.h"
 #include "kryon_property.h"
 #include "kryon_edit_host.h"

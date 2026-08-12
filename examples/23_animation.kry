@@ -1,0 +1,48 @@
+#module "example_animation"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Animation" {
+    size 640 420
+    fps 60
+    font examples
+    theme THEME_SKY 0
+    scene main
+}
+
+#enum {
+    CENTER_X = 320
+    CENTER_Y = 210
+}
+
+#global sprite_id :: int #export
+#global player_id :: int #export
+
+scene main {
+    sprite_id = KryNodeCreate(scene, 0, KRY_NODE_SPRITE2D, "mover")
+    KryNodeSetPosition(scene, sprite_id, CENTER_X, CENTER_Y)
+    KryNodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 64.0, 64.0))
+
+    player_id = KryNodeCreate(scene, 0, KRY_NODE_TIMER, "animator")
+    props := KryAnimationPlayerPropsAlloc()
+    KryNodeSetProps(scene, player_id, props)
+
+    anim := &props->anims[0]
+    snprintf(anim->name, sizeof(anim->name), "bob")
+    anim->duration = 2.0
+    anim->loop = 1
+    anim->track_count = 1
+    track := &anim->tracks[0]
+    track->target = sprite_id
+    snprintf(track->property, sizeof(track->property), "position")
+    track->component = 1
+    track->interp = KRY_ANIM_INTERP_LINEAR
+    track->keyframe_count = 2
+    track->keyframes[0].time = 0.0
+    track->keyframes[0].value = 160.0
+    track->keyframes[1].time = 2.0
+    track->keyframes[1].value = 260.0
+    props->anim_count = 1
+    props->current = 0
+    props->playing = 1
+}
