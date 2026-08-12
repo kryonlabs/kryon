@@ -13,9 +13,12 @@ GetUITabBarHeight(void)
 }
 
 static int
-ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int icon_tab_w)
+ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
+                     int icon_tab_w)
 {
     const UITab *tab;
+    int label_w;
+    int w;
 
     if(index < 0 || index >= bar.count || bar.tabs == NULL)
         return min_tab_w;
@@ -24,14 +27,25 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int icon_tab_w)
     if((tab->label == NULL || tab->label[0] == '\0') && tab->icon.id != 0)
         return icon_tab_w;
 
-    return min_tab_w;
+    if(tab->label == NULL || tab->label[0] == '\0')
+        return min_tab_w;
+
+    label_w = MeasureUIText(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    w = label_w + ScaleUIPx(16);
+    if(w < min_tab_w)
+        w = min_tab_w;
+    if(w > max_tab_w)
+        w = max_tab_w;
+    return w;
 }
 
 static int
 ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
-                          int icon_tab_w)
+                          int max_tab_w, int icon_tab_w)
 {
     const UITab *tab;
+    int label_w;
+    int w;
 
     if(index < 0 || index >= bar.count || bar.tabs == NULL)
         return min_tab_w;
@@ -40,7 +54,16 @@ ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
     if((tab->label == NULL || tab->label[0] == '\0') && tab->icon.id != 0)
         return icon_tab_w;
 
-    return min_tab_w;
+    if(tab->label == NULL || tab->label[0] == '\0')
+        return min_tab_w;
+
+    label_w = MeasureUIText(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    w = label_w + ScaleUIPx(16);
+    if(w < min_tab_w)
+        w = min_tab_w;
+    if(w > max_tab_w)
+        w = max_tab_w;
+    return w;
 }
 
 int
@@ -91,7 +114,7 @@ DrawUITabBar(TabBarProps bar)
     int total_gap_w = tab_gap * (bar.count - 1);
     int total_tabs_w = total_gap_w;
     for(int i = 0; i < bar.count; i++)
-        total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+        total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
     int needs_scroll = total_tabs_w > bar_w;
     int equal_tabs = ui_material_style() && !needs_scroll;
 
@@ -107,10 +130,10 @@ DrawUITabBar(TabBarProps bar)
     if(needs_scroll && bar.focus_selected &&
        bar.selected_index >= 0 && bar.selected_index < bar.count) {
         int selected_tab_w = ui_tab_bar_tab_width(bar, bar.selected_index,
-                                                  min_tab_w, icon_tab_w);
+                                                  min_tab_w, max_tab_w, icon_tab_w);
         int selected_tab_x = bar_x + tab_gap - *scroll_offset;
         for(int i = 0; i < bar.selected_index; i++)
-            selected_tab_x += ui_tab_bar_tab_width(bar, i, min_tab_w,
+            selected_tab_x += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
                                                    icon_tab_w) + tab_gap;
         int selected_tab_end = selected_tab_x + selected_tab_w;
 
@@ -131,7 +154,7 @@ DrawUITabBar(TabBarProps bar)
     for(int i = 0; i < bar.count; i++) {
         const UITab *tab = &bar.tabs[i];
         int tab_w = equal_tabs ? bar_w / bar.count :
-                    ui_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+                    ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
         if(equal_tabs && i == bar.count - 1)
             tab_w = bar_x + bar_w - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y, (float)tab_w, (float)bar_h};
@@ -427,7 +450,7 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     total_tabs_w = total_gap_w;
     for(int i = 0; i < bar.count; i++)
         total_tabs_w += ui_pane_tab_bar_tab_width(bar, i, min_tab_w,
-                                                  icon_tab_w);
+                                                  max_tab_w, icon_tab_w);
     needs_scroll = total_tabs_w > (int)bar.bounds.width;
     equal_tabs = ui_material_style() && !needs_scroll;
 
@@ -439,7 +462,7 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     tab_x = equal_tabs ? bar_x : bar_x + tab_gap - scroll;
     for(int i = 0; i < bar.count; i++) {
         int tab_w = equal_tabs ? (int)bar.bounds.width / bar.count :
-                    ui_pane_tab_bar_tab_width(bar, i, min_tab_w, icon_tab_w);
+                    ui_pane_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
         if(equal_tabs && i == bar.count - 1)
             tab_w = bar_x + (int)bar.bounds.width - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y,

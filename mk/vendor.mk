@@ -161,3 +161,21 @@ $(KRYON_CURL_PROTOCOL_CHECK): $(KRYON_CURL_SO)
 		sh $(KRYON_CURL_BUILD_DIR)/curl-config --protocols | grep -Eq '(^|[[:space:]])WSS([[:space:]]|$$)' || { echo "vendored libcurl was built without WSS protocol support"; exit 1; }; \
 	fi
 	@touch $@
+
+KRYON_BOX2D_DIR ?= $(KRYON_DIR)/vendor/box2d
+KRYON_BOX2D_BUILD_DIR ?= $(KRYON_VENDOR_BUILD_DIR)/box2d
+KRYON_BOX2D_A ?= $(KRYON_BOX2D_BUILD_DIR)/src/libbox2d.a
+KRYON_BOX2D_INCLUDE ?= -I$(KRYON_BOX2D_DIR)/include
+KRYON_BOX2D_BUILD_TYPE ?= Release
+
+$(KRYON_BOX2D_A): $(KRYON_BOX2D_DIR)/CMakeLists.txt | $(KRYON_VENDOR_ORDER_ONLY)
+	@if [ -f "$(KRYON_BOX2D_BUILD_DIR)/CMakeCache.txt" ] && ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$(abspath $(KRYON_BOX2D_DIR))" "$(KRYON_BOX2D_BUILD_DIR)/CMakeCache.txt"; then \
+		rm -rf "$(KRYON_BOX2D_BUILD_DIR)"; \
+	fi
+	$(CMAKE) -S $(KRYON_BOX2D_DIR) -B $(KRYON_BOX2D_BUILD_DIR) \
+		-DCMAKE_BUILD_TYPE=$(KRYON_BOX2D_BUILD_TYPE) \
+		-DBOX2D_SAMPLES=OFF \
+		-DBOX2D_UNIT_TESTS=OFF \
+		-DBOX2D_BENCHMARKS=OFF \
+		-DBUILD_SHARED_LIBS=OFF
+	$(CMAKE) --build $(KRYON_BOX2D_BUILD_DIR) --target box2d

@@ -37,7 +37,7 @@ LEGACY_KRYON_CMD = $(BUILD_ROOT)/bin/kryon
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay
+CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay $(KRYON_BOX2D_INCLUDE)
 ICON_DIR ?= icons language payments platforms tiles pfp
 ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
@@ -216,7 +216,7 @@ kryon-compat-check: | $(BUILD_DIR)
 kryon-boundary-check:
 	sh $(KRYON_BOUNDARY_CHECK) .
 
-$(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_BOX2D_A)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
@@ -234,7 +234,7 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
 		$(RAYLIB_A) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) \
-		$(KRYON_MARKDOWN_DEPS) $(KRYON_OPENSSL_SSL_LDLIB) \
+		$(KRYON_MARKDOWN_LDLIBS) $(KRYON_OPENSSL_SSL_LDLIB) \
 		$(KRYON_OPENSSL_CRYPTO_LDLIB) $(CURL_CODEC_LDLIBS) \
 		$(LDLIBS) -lpthread -lm
 

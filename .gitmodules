@@ -13,3 +13,6 @@
 [submodule "vendor/clay"]
 	path = vendor/clay
 	url = https://github.com/nicbarker/clay.git
+[submodule "vendor/box2d"]
+	path = vendor/box2d
+	url = https://github.com/erincatto/box2d.git

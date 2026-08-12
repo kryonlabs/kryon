@@ -77,6 +77,11 @@ typedef struct KryScene {
     KryNodeId root;
     float time_scale;
     KryNodeId active_camera; /* first Camera2D that wants to be active; -1 if none */
+    /* Box2D physics world id. Opaque layout (mirrors b2WorldId {uint16,uint16})
+     * so this header does not need to include box2d.h. {0,0} means no world. */
+    unsigned short physics_world_index;
+    unsigned short physics_world_gen;
+    int physics_enabled; /* when nonzero, KryScenePhysicsTick steps the world */
 } KryScene;
 
 /* --- scene lifecycle --- */
@@ -141,6 +146,16 @@ const KryNodeOps *KryNodeOpsFor(KryNodeKind kind);
 
 /* Register the built-in node kinds (Node2D, Camera2D, Sprite2D, ...). */
 void KrySceneRegisterBuiltins(void);
+
+/* --- physics --- */
+/*
+ * Create the Box2D world for this scene (gravity defaults to {0, 9.8}). Once
+ * created, KryScenePhysicsTick steps it at a fixed sub-step count and Body2D /
+ * Area2D / CollisionShape2D nodes sync their transforms from the world after
+ * each step. Returns 1 on success, 0 if Box2D is unavailable.
+ */
+int KryScenePhysicsCreate(KryScene *scene, float gravity_x, float gravity_y);
+void KryScenePhysicsDestroy(KryScene *scene);
 
 /* Optional per-kind teardown hook for freeing props/state allocations. */
 typedef void (*KryNodeDestroyFn)(KryScene *scene, KryNode *node);

@@ -34,4 +34,43 @@ typedef struct Sprite2DProps {
 Camera2DProps *KryCamera2DPropsAlloc(float zoom, int active);
 Sprite2DProps *KrySprite2DPropsAlloc(const char *asset_path, float w, float h);
 
+typedef enum KryBody2DType {
+    KRY_BODY2D_STATIC,
+    KRY_BODY2D_KINEMATIC,
+    KRY_BODY2D_DYNAMIC
+} KryBody2DType;
+
+typedef struct Body2DProps {
+    KryBody2DType body_type;
+    int fixed_rotation; /* nonzero prevents the body from rotating */
+    float gravity_scale; /* 1.0 = normal; 0.0 = weightless */
+    /* b2BodyId is {int32 index1, int16 world0, int16 generation}. Stored as
+     * raw ints so this header does not need box2d.h. 0 = uncreated body. */
+    int body_id_index;
+    short body_id_world;
+    short body_id_gen;
+} Body2DProps;
+
+typedef enum KryShape2DKind {
+    KRY_SHAPE2D_BOX,
+    KRY_SHAPE2D_CIRCLE
+} KryShape2DKind;
+
+typedef struct CollisionShape2DProps {
+    KryShape2DKind shape_kind;
+    Vector2 size;    /* full width/height (box) or diameter (circle) */
+    int is_sensor;   /* nonzero = trigger volume (Area2D), no solid collision */
+} CollisionShape2DProps;
+
+typedef struct Area2DProps {
+    int monitoring; /* nonzero collects body_enter/body_exit signals */
+    /* last body that entered/left, for signal dispatch */
+    int last_enter_body;
+    int last_exit_body;
+} Area2DProps;
+
+Body2DProps *KryBody2DPropsAlloc(KryBody2DType type);
+CollisionShape2DProps *KryCollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h);
+Area2DProps *KryArea2DPropsAlloc(void);
+
 #endif

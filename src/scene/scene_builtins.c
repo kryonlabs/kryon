@@ -12,6 +12,13 @@
 void kry_register_node2d(void);
 void kry_register_camera2d(void);
 void kry_register_sprite2d(void);
+void kry_register_body2d(void);
+void kry_register_collision_shape2d(void);
+void kry_register_area2d(void);
+
+/* installed by physics_world.c; declared in scene_tree.c */
+extern void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
+void kry_physics_step_install(void);
 
 void
 KrySceneRegisterBuiltins(void)
@@ -19,7 +26,11 @@ KrySceneRegisterBuiltins(void)
     kry_register_node2d();
     kry_register_camera2d();
     kry_register_sprite2d();
+    kry_register_body2d();
+    kry_register_collision_shape2d();
+    kry_register_area2d();
     KrySceneRegisterBuiltinProperties();
+    kry_physics_step_install();
 }
 
 /*

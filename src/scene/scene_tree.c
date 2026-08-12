@@ -15,6 +15,10 @@
 static KryNodeOps g_kry_node_ops[KRY_NODE_CUSTOM + 1];
 static KryNodeDestroyFn g_kry_node_destroy[KRY_NODE_CUSTOM + 1];
 
+/* Set by physics_world.c during KrySceneRegisterBuiltins. Keeps scene_tree.c
+ * free of a box2d.h dependency while letting KryScenePhysicsTick step the world. */
+void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
+
 static int
 kry_node_is_valid(KryScene *scene, KryNodeId node)
 {
@@ -61,6 +65,7 @@ KrySceneDestroy(KryScene *scene)
         if(destroy != NULL)
             destroy(scene, &scene->nodes[i]);
     }
+    KryScenePhysicsDestroy(scene);
     memset(scene, 0, sizeof(*scene));
     scene->root = -1;
     scene->active_camera = -1;
@@ -329,6 +334,11 @@ KryScenePhysicsTick(KryScene *scene, float dt)
     if(scene == NULL || scene->root < 0)
         return;
     scaled_dt = dt * scene->time_scale;
+    /* physics_process hooks run BEFORE the world step (so bodies see the
+     * pre-step state); the step happens centrally via kry_scene_physics_step
+     * declared in scene_physics_internal.h; scene_tree.c does not include
+     * box2d.h, so the step is dispatched through a function pointer set by
+     * physics_world.c at registration time. */
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
         if(!(n->flags & KRY_NODE_FLAG_ALIVE))
@@ -337,6 +347,8 @@ KryScenePhysicsTick(KryScene *scene, float dt)
         if(ops != NULL && ops->physics_process != NULL)
             ops->physics_process(scene, i, scaled_dt);
     }
+    if(scene->physics_enabled && kry_scene_physics_step_fn != NULL)
+        kry_scene_physics_step_fn(scene, scaled_dt);
 }
 
 void
