@@ -43,8 +43,13 @@ InvalidateUIDPI(void)
 void
 SetUIDeviceDensity(float density)
 {
-    if(density > 0.0f)
+    if(density > 0.0f) {
         g_device_density = density;
+        /* Force a recompute on the next UpdateUIDPI call so the new density
+         * actually takes effect, even when the viewport size hasn't changed. */
+        ui_dpi_state.view_width = -1;
+        ui_dpi_state.view_height = -1;
+    }
 }
 
 void
