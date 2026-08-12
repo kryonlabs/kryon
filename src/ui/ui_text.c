@@ -1249,7 +1249,7 @@ GetUITextY(const char *text, int box_y, int box_h, int font_size)
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || !UIFontReady(font))
-        return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
+        return box_y + (int)(((float)box_h - (float)GetUITextLineHeight(font_size)) * 0.5f + 0.5f);
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;

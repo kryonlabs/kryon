@@ -78,7 +78,7 @@ DrawUIToast(void)
     w = text_w + pad_x * 2;
     if(w > max_w)
         w = max_w;
-    h = font + pad_y * 2;
+    h = GetUITextLineHeight(font) + pad_y * 2;
     x = (ui_view_width - w) / 2;
     y = ui_view_height - h - margin;
     bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
