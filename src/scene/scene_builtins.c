@@ -17,6 +17,8 @@ void kry_register_collision_shape2d(void);
 void kry_register_area2d(void);
 void kry_register_animation_player(void);
 void kry_register_animated_sprite2d(void);
+void kry_register_tilemap(void);
+void kry_register_audio_source(void);
 
 /* installed by physics_world.c; declared in scene_tree.c */
 extern void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
@@ -33,6 +35,8 @@ KrySceneRegisterBuiltins(void)
     kry_register_area2d();
     kry_register_animation_player();
     kry_register_animated_sprite2d();
+    kry_register_tilemap();
+    kry_register_audio_source();
     KrySceneRegisterBuiltinProperties();
     kry_physics_step_install();
 }

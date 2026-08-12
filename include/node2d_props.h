@@ -106,4 +106,48 @@ AnimatedSprite2DProps *KryAnimatedSprite2DPropsAlloc(const char *asset_path,
                                                      int frame_w, int frame_h,
                                                      float fps);
 
+/* TileMap: a grid of tile IDs rendered from a single tileset texture. */
+#define KRY_TILEMAP_W_MAX 256
+#define KRY_TILEMAP_H_MAX 256
+
+typedef struct TileMapProps {
+    const char *asset_path;    /* tileset texture */
+    int tile_w;                /* source tile pixel size */
+    int tile_h;
+    int tiles_per_row;         /* tileset layout */
+    int map_w;                 /* grid dimensions in tiles */
+    int map_h;
+    int tile_px_w;             /* world-space tile draw size */
+    int tile_px_h;
+    const int *tiles;          /* map_w*map_h tile IDs; 0 = empty; owned by caller */
+    Color tint;                /* .a == 0 -> WHITE */
+} TileMapProps;
+
+TileMapProps *KryTileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
+                                   int tiles_per_row, int map_w, int map_h);
+
+/* AudioSource: plays a sound or music stream. */
+typedef enum KryAudioKind {
+    KRY_AUDIO_SOUND,  /* one-shot SFX via LoadSound/PlaySound */
+    KRY_AUDIO_MUSIC   /* streaming via LoadMusicStream/PlayMusicStream */
+} KryAudioKind;
+
+typedef struct AudioSourceProps {
+    const char *asset_path;
+    KryAudioKind kind;
+    float volume;       /* 0..1 */
+    float pitch;        /* 1.0 = normal */
+    int loop;           /* music only */
+    int playing;
+    /* raylib Sound/Music loaded lazily on first play. Stored as a void* alloc
+     * sized by the node impl (which knows the real raylib types); this header
+     * stays free of raylib audio struct dependencies. */
+    int loaded;
+    void *handle;       /* points to a Sound or Music depending on `kind` */
+} AudioSourceProps;
+
+AudioSourceProps *KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind);
+void KryAudioSourcePlay(KryScene *scene, KryNodeId node);
+void KryAudioSourceStop(KryScene *scene, KryNodeId node);
+
 #endif

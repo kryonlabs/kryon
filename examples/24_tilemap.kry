@@ -1,0 +1,31 @@
+#module "example_tilemap"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Tilemap" {
+    size 640 420
+    fps 60
+    font examples
+    theme THEME_SKY 0
+    scene main
+}
+
+#enum {
+    MAP_W = 10
+    MAP_H = 6
+}
+
+map_data :: [MAP_W * MAP_H] int #global #export
+
+scene main {
+    i := 0
+    while i < MAP_W * MAP_H {
+        map_data[i] = ((i + i / MAP_W) % 3) + 1
+        i = i + 1
+    }
+    tiles := KryNodeCreate(scene, 0, KRY_NODE_TILEMAP, "tiles")
+    KryNodeSetPosition(scene, tiles, 64.0, 64.0)
+    props := KryTileMapPropsAlloc("tiles/tile.png", 32, 32, 4, MAP_W, MAP_H)
+    props->tiles = map_data
+    KryNodeSetProps(scene, tiles, props)
+}
