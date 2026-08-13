@@ -12,6 +12,14 @@
 #include "node2d_props.h"
 #include <string.h>
 
+/* Default to physics enabled when the build does not override it. The Box2D
+ * world teardown is compiled out below when KRYON_WITH_PHYSICS=0, so builds
+ * that filter the physics sources (e.g. UI-only apps) link cleanly without
+ * box2d. */
+#ifndef KRYON_WITH_PHYSICS
+#define KRYON_WITH_PHYSICS 1
+#endif
+
 static KryNodeOps g_kry_node_ops[KRY_NODE_CUSTOM + 1];
 static KryNodeDestroyFn g_kry_node_destroy[KRY_NODE_CUSTOM + 1];
 
@@ -65,7 +73,9 @@ KrySceneDestroy(KryScene *scene)
         if(destroy != NULL)
             destroy(scene, &scene->nodes[i]);
     }
+#if KRYON_WITH_PHYSICS
     KryScenePhysicsDestroy(scene);
+#endif
     memset(scene, 0, sizeof(*scene));
     scene->root = -1;
     scene->active_camera = -1;
