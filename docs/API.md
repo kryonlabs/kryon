@@ -139,6 +139,36 @@ DrawUIOverlays();
 Migrate callers to the current Kryon API directly so the backend boundary stays
 simple.
 
+Cartridges (`.krb`) are a packed VFS node table plus a tiny program. C still
+owns behavior. Load the image, bind host functions by import name, and draw
+through `KryBackend`:
+
+```c
+KrbImage img;
+KrbLoadFile(&img, "02_buttons.krb");
+KrbBind(&img, "primary_button", on_primary, app);
+KrbDraw(&img, 0, 0, width, height);
+KrbFree(&img);
+```
+
+`kc --emit-krb` writes the image next to the generated C. `KryBackendDraw`
+implements the small table with the public Kryon draw/input API;
+`KryBackendNull` is the headless stand-in. Mount live C fields so the
+cartridge can read them as files:
+
+```c
+KrbField fields[] = {
+    { "score", offsetof(App, score), KRB_I32, 4 },
+    { NULL }
+};
+KrbMount(&img, "/app", app, fields);
+KrbReadI32(&img, "/app/score", &n);
+```
+
+`OP_CALL_HOST` and `OP_SET_I32` run from `KrbExec`. `kc --emit-krb` also
+writes `foo.krb.c` so a C program can call `Name_krb_draw` and
+`Name_krb_press` without rewriting the screen in C. See `docs/KRB_FORMAT.md`.
+
 ---
 
 ## Core Modules

@@ -67,7 +67,7 @@ EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 .PHONY: all clean run list font-assets web web-clean
 .SECONDARY: $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLES))) $(addprefix $(CODEGEN_DIR)/,$(addsuffix .h,$(EXAMPLES)))
 
-all: ../libkryon.a $(KC) $(EXAMPLE_BINS)
+all: ../libkryon.a $(KC) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
 
 ../libkryon.a:
 	@$(MAKE) -C ..
@@ -86,7 +86,16 @@ $(BIN_DIR):
 
 $(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(KC) | $(CODEGEN_DIR)
 	@echo "Generating $*..."
-	@$(KC) --root . -o $(CODEGEN_DIR) $<
+	@$(KC) --emit-krb --root . -o $(CODEGEN_DIR) $<
+
+$(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(KC) | $(CODEGEN_DIR)
+	@echo "Generating 02_buttons cartridge..."
+	@$(KC) --emit-krb --root . -o $(CODEGEN_DIR) $<
+
+$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c ../libkryon.a $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
+	@echo "Building $@..."
+	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/02_buttons.krb.c $(LDFLAGS)
+	@echo "Built: $@"
 
 $(BIN_DIR)/%: $(CODEGEN_DIR)/%.c ../libkryon.a $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."

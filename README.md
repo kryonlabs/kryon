@@ -160,4 +160,6 @@ feature family.
 `docs/KRY_LANGUAGE_PLAN.md` describes the migration path for making `.kry` a
 C-close, C-transpiled app language with direct C interoperability. The goal is
 for apps to move product UI and screen controllers into Kry while keeping native
-platform, storage, and performance-sensitive code in C.
+platform, storage, and performance-sensitive code in C. `kc --emit-krb` also
+writes a compact `.krb` cartridge (`docs/KRB_FORMAT.md`) that a `KryBackend`
+walker can draw without generating C for the UI tree.

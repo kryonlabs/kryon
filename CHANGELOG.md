@@ -3,6 +3,22 @@
 
 ### Added
 
+- PTY terminal (`KryTerm`) for IDE hosts: spawn `$SHELL`, write keys, poll
+  a screen grid, resize with `TIOCSWINSZ`. Basic CSI cursor and erase.
+- First krb cartridge slice: `kc --emit-krb` packs widget calls into a
+  mmapable `.krb` (VFS nodes, string table, `OP_DRAW_TREE`, host import
+  names). `KrbLoad` / `KrbBind` / `KrbDraw` walk the image through a small
+  `KryBackend` table. `kryon-preview cartridge` renders a `.kry` or `.krb`
+  without building an app host. C emit still walks the reconstructed AST;
+  existing C projects are unchanged.
+- `kc --emit-krb` also writes a C host (`*.krb.c` / `*.krb.h`): state
+  becomes `KrbBindMem` paths, button `if` bodies become bind functions,
+  and `Screen_krb_draw` / `Screen_krb_press` are the C ABI. `02_buttons`
+  clicks increment a mounted `click_count`.
+- Mount live C memory into a cartridge: `KrbMount` / `KrbBindMem` plus
+  `OP_CALL_HOST` and `OP_SET_I32`. A TEXT node whose name is a mounted path
+  draws the live value. Raylib builds now drop copied vendor `.o` files so
+  the backend rename header actually applies.
 - Add `defer` to the Kry language: `defer STMT` runs `STMT` at the enclosing
   block's exit (fall-through, `return`, `break`, `continue`), in reverse
   registration order across nested scopes. A compile-time transform that
