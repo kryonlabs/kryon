@@ -53,6 +53,39 @@ if ! strings "$krb" | grep -q last_action; then
     exit 1
 fi
 
+# A hook-driven app: 'frame main {}' is a top-level function definition that
+# the generated main() calls each loop. kc must parse it (not reject it as an
+# unknown top-level statement) and emit a cartridge from its body.
+cat > "$work/frame.kry" <<'EOF'
+#import "kryon.h"
+
+app "Frame" {
+    size 100 100
+    fps 60
+    frame main
+}
+
+frame main {
+    BeginDrawing()
+    ClearBackground(GetThemeBackground())
+    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
+    Background(GetThemeSurface())
+    Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
+    EndUIFocus()
+    EndDrawing()
+}
+EOF
+"$kc" --emit-krb --no-main --root "$work" -o "$work" "$work/frame.kry"
+if [ ! -f "$work/frame.krb" ]; then
+    echo "frame main {} did not emit a cartridge" >&2
+    exit 1
+fi
+fnodes=$(od -An -j12 -N4 -t u4 "$work/frame.krb" | tr -d ' ')
+if [ "$fnodes" -lt 2 ]; then
+    echo "frame cartridge has too few nodes: $fnodes (want >=2)" >&2
+    exit 1
+fi
+
 if [ -n "$walker" ] && [ -x "$walker" ]; then
     "$walker" "$krb"
 fi

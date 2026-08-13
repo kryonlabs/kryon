@@ -2907,21 +2907,28 @@ parse_kry(KryFile *file)
                       (starts_word(line, "screen") ||
                        starts_word(line, "preview") ||
                        starts_word(line, "page") ||
-                       starts_word(line, "scene"))) {
+                       starts_word(line, "scene") ||
+                       starts_word(line, "frame"))) {
                 KryFunction *fn;
                 char *decl = line;
                 char *q;
                 int matched_scene = 0;
+                int is_frame = 0;
 
-                q = starts_word(decl, "screen")
-                        ? decl + strlen("screen")
-                        : (starts_word(decl, "preview")
-                               ? decl + strlen("preview")
-                        : (starts_word(decl, "page")
-                               ? decl + strlen("page")
-                        : (starts_word(decl, "scene")
-                               ? (matched_scene = 1, decl + strlen("scene"))
-                               : decl + strlen("fn"))));
+                if(starts_word(decl, "screen"))
+                    q = decl + strlen("screen");
+                else if(starts_word(decl, "preview"))
+                    q = decl + strlen("preview");
+                else if(starts_word(decl, "page"))
+                    q = decl + strlen("page");
+                else if(starts_word(decl, "scene")) {
+                    matched_scene = 1;
+                    q = decl + strlen("scene");
+                } else if(starts_word(decl, "frame")) {
+                    is_frame = 1;
+                    q = decl + strlen("frame");
+                } else
+                    q = decl + strlen("fn");
 
                 if(depth != 0)
                     die("%s:%d: nested functions are not supported",
@@ -2933,6 +2940,8 @@ parse_kry(KryFile *file)
                 if(!parse_ident(&q, fn->screen, sizeof(fn->screen)))
                     die("%s:%d: expected screen name", file->path, line_no);
                 fn->is_public = 1;
+                if(is_frame)
+                    fn->exact_name = 1;
                 if(matched_scene) {
                     /* scene builders are retained-tree constructors: their C
                      * signature is always void Name_kry_scene(KryScene *scene),
