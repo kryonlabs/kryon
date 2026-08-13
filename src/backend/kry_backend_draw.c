@@ -1,5 +1,6 @@
 #include "kry_backend.h"
 #include "kryon.h"
+#include "ui_picture.h"
 
 static unsigned
 pack_color(Color c)
@@ -145,6 +146,29 @@ draw_theme_color(int slot)
     return pack_color(c);
 }
 
+static void
+draw_texture(const char *asset_path, int x, int y, int w, int h,
+             unsigned tint, int fit)
+{
+    Texture2D tex;
+    PictureProps pic;
+
+    if(asset_path == NULL || asset_path[0] == '\0' || w <= 0 || h <= 0)
+        return;
+    tex = KryLoadPictureTexture(asset_path);
+    if(tex.id == 0)
+        return;
+    pic = (PictureProps){
+        .asset_path = asset_path,
+        .bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h},
+        .tint = unpack_color(tint),
+        .fit = (UIPictureFit)fit,
+    };
+    DrawTexturePro(tex,
+                   (Rectangle){0, 0, (float)tex.width, (float)tex.height},
+                   KryPictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
+}
+
 const KryBackend KryBackendDraw = {
     draw_clear,
     draw_rect,
@@ -160,6 +184,7 @@ const KryBackend KryBackendDraw = {
     draw_time,
     draw_scale_px,
     draw_theme_color,
+    draw_texture,
 };
 
 static void

@@ -38,6 +38,8 @@ typedef struct KryBackend {
     float (*time)(void);
     int (*scale_px)(int px);
     unsigned (*theme_color)(int slot);
+    void (*texture)(const char *asset_path, int x, int y, int w, int h,
+                    unsigned tint, int fit);
 } KryBackend;
 
 extern const KryBackend KryBackendDraw;

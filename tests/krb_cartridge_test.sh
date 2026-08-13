@@ -71,6 +71,7 @@ frame main {
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
     Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
+    Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, UI_PICTURE_FIT_CONTAIN})
     EndUIFocus()
     EndDrawing()
 }
@@ -80,9 +81,8 @@ if [ ! -f "$work/frame.krb" ]; then
     echo "frame main {} did not emit a cartridge" >&2
     exit 1
 fi
-fnodes=$(od -An -j12 -N4 -t u4 "$work/frame.krb" | tr -d ' ')
-if [ "$fnodes" -lt 2 ]; then
-    echo "frame cartridge has too few nodes: $fnodes (want >=2)" >&2
+if ! strings "$work/frame.krb" | grep -q "tiles/tile.png"; then
+    echo "frame cartridge missing Picture asset path" >&2
     exit 1
 fi
 

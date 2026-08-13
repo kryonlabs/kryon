@@ -146,10 +146,45 @@ slug_name(char *dst, size_t dst_size, const char *src)
     dst[n] = '\0';
 }
 
+static int
+khex(int ch)
+{
+    if(ch >= '0' && ch <= '9')
+        return ch - '0';
+    if(ch >= 'a' && ch <= 'f')
+        return ch - 'a' + 10;
+    if(ch >= 'A' && ch <= 'F')
+        return ch - 'A' + 10;
+    return -1;
+}
+
 static unsigned
 parse_color(const char *expr)
 {
+    static const struct {
+        const char *name;
+        unsigned value;
+    } named[] = {
+        { "WHITE", 0xffffffffu }, { "RAYWHITE", 0xf5f5f5ffu },
+        { "BLACK", 0x000000ffu }, { "BLANK", 0x00000000u },
+        { "RED", 0xff0000ffu }, { "MAROON", 0x800000ffu },
+        { "GREEN", 0x00ff00ffu }, { "LIME", 0x32cd32ffu },
+        { "BLUE", 0x0000ffffu }, { "SKYBLUE", 0x87ceebffu },
+        { "YELLOW", 0xffff00ffu }, { "GOLD", 0xffd700ffu },
+        { "ORANGE", 0xff8c00ffu }, { "PINK", 0xffc0cbffu },
+        { "MAGENTA", 0xff00ffffu }, { "PURPLE", 0x7f00ffffu },
+        { "VIOLET", 0xee82eeffu }, { "BEIGE", 0xddbb99ffu },
+        { "BROWN", 0x8b4513ffu }, { "LIGHTGRAY", 0xc8c8c8ffu },
+        { "DARKGRAY", 0x505050ffu }, { "GRAY", 0x828282ffu },
+        { "GREY", 0x828282ffu },
+    };
+    const char *p;
+    size_t i;
+    size_t nlen;
+
     expr = skip_ws(expr);
+    /* Theme getters (matched as substrings, so they also resolve inside
+     * DarkenUIColor/LightenUIColor wrappers). */
     if(strstr(expr, "GetThemeBackground") != NULL)
         return 0x80000000u;
     if(strstr(expr, "GetThemeText") != NULL)
@@ -160,6 +195,34 @@ parse_color(const char *expr)
         return 0x80000003u;
     if(strstr(expr, "GetThemeButton") != NULL)
         return 0x80000004u;
+    /* Hex literal 0xRRGGBBAA or 0xRRGGBB (6 digits -> opaque). */
+    p = strstr(expr, "0x");
+    if(p == NULL)
+        p = strstr(expr, "0X");
+    if(p != NULL) {
+        unsigned v = 0;
+        int n = 0;
+
+        p += 2;
+        while(n < 8 && khex((unsigned char)p[n]) >= 0)
+            n++;
+        if(n == 8 || n == 6) {
+            for(i = 0; i < (size_t)n; i++)
+                v = (v << 4) | (unsigned)khex((unsigned char)p[i]);
+            if(n == 6)
+                v = (v << 8) | 0xffu;
+            return v;
+        }
+    }
+    /* Named raylib sentinels (whole-token match). */
+    for(i = 0; i < sizeof(named) / sizeof(named[0]); i++) {
+        nlen = strlen(named[i].name);
+        if(strncmp(expr, named[i].name, nlen) == 0) {
+            char c = expr[nlen];
+            if(c == '\0' || c == ')' || c == ',' || isspace((unsigned char)c))
+                return named[i].value;
+        }
+    }
     return 0x000000ffu;
 }
 
@@ -612,6 +675,215 @@ collect_state(KrbBuild *b, const KryFile *file)
     }
 }
 
+/* Fill n->x/y/w/h and the SCALE_* flag bits from the first {a,b,c,d}
+ * Rectangle compound literal found in expr. */
+static int
+node_rect(KrbBuildNode *n, const char *expr)
+{
+    char body[KC_BODY_LINE_MAX];
+    char parts[4][KC_BODY_LINE_MAX];
+    const char *open = strchr(expr, '{');
+    const char *close;
+    int scaled;
+    size_t len;
+
+    if(open == NULL)
+        return 0;
+    close = strchr(open, '}');
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    if(split_args(body, parts, 4) < 4)
+        return 0;
+    n->flags = 0;
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[3], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
+    return 1;
+}
+
+/* Separator((Rectangle){x,y,w,h}, vertical) -> a thin themed RECT rail. */
+static int
+parse_separator(KrbBuild *b, const char *call)
+{
+    KrbBuildNode *n;
+    char name[32];
+
+    snprintf(name, sizeof(name), "sep%d", b->node_count);
+    n = add_node(b, KRB_NODE_RECT, name);
+    if(n == NULL || !node_rect(n, call))
+        return 0;
+    n->color = KRB_COLOR_THEME | KRY_THEME_ICON;
+    return 1;
+}
+
+/* Line(x1,y1,x2,y2,color) -> the axis-aligned bounding RECT (thickness 1). */
+static int
+parse_line(KrbBuild *b, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char parts[8][KC_BODY_LINE_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    int count, x1, y1, x2, y2, junk;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 5)
+        return 0;
+    snprintf(name, sizeof(name), "line%d", b->node_count);
+    n = add_node(b, KRB_NODE_RECT, name);
+    if(n == NULL)
+        return 0;
+    parse_coord(parts[0], &x1, &junk);
+    parse_coord(parts[1], &y1, &junk);
+    parse_coord(parts[2], &x2, &junk);
+    parse_coord(parts[3], &y2, &junk);
+    n->x = x1 < x2 ? x1 : x2;
+    n->y = y1 < y2 ? y1 : y2;
+    n->w = (x1 == x2) ? 1 : (x1 < x2 ? x2 - x1 : x1 - x2);
+    n->h = (y1 == y2) ? 1 : (y1 < y2 ? y2 - y1 : y1 - y2);
+    if(n->w == 0) n->w = 1;
+    if(n->h == 0) n->h = 1;
+    n->color = parse_color(parts[4]);
+    return 1;
+}
+
+/* Bevel(x,y,w,h,light,dark) -> a RECT filled with the light face. */
+static int
+parse_bevel(KrbBuild *b, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char parts[8][KC_BODY_LINE_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    int count, scaled;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 5)
+        return 0;
+    snprintf(name, sizeof(name), "bevel%d", b->node_count);
+    n = add_node(b, KRB_NODE_RECT, name);
+    if(n == NULL)
+        return 0;
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[3], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
+    n->color = parse_color(parts[4]);
+    return 1;
+}
+
+/* TextInRect(text, Rectangle, font, color) -> a TEXT node at the rect origin. */
+static int
+parse_textinrect(KrbBuild *b, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char parts[8][KC_BODY_LINE_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    int count;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 2)
+        return 0;
+    snprintf(name, sizeof(name), "tir%d", b->node_count);
+    n = add_node(b, KRB_NODE_TEXT, name);
+    if(n == NULL)
+        return 0;
+    extract_string(parts[0], n->text, sizeof(n->text));
+    node_rect(n, parts[1]);
+    if(count > 2)
+        n->font_size = font_size_of(parts[2]);
+    if(count > 3)
+        n->color = parse_color(parts[3]);
+    else
+        n->color = KRB_COLOR_THEME | KRY_THEME_TEXT;
+    return 1;
+}
+
+static int
+fit_of(const char *expr)
+{
+    if(strstr(expr, "CONTAIN") != NULL)
+        return 1;
+    if(strstr(expr, "COVER") != NULL)
+        return 2;
+    return 0;
+}
+
+/* Given a pointer to '{', return the matching '}' (depth-aware). Compound
+ * literals nest braces (PictureProps holds Rectangle/Vector2), so strchr would
+ * stop at the first inner '}'. */
+static const char *
+find_match_brace(const char *open)
+{
+    int depth = 0;
+
+    for(; open != NULL && *open != '\0'; open++) {
+        if(*open == '{')
+            depth++;
+        else if(*open == '}') {
+            depth--;
+            if(depth == 0)
+                return open;
+        }
+    }
+    return NULL;
+}
+
+/* Picture((PictureProps){asset_path, bounds, source, origin, rot, tint, fit})
+ * -> a PICTURE node; text holds the asset path, style holds the UIPictureFit. */
+static int
+parse_picture(KrbBuild *b, const char *call)
+{
+    const char *p = strstr(call, "PictureProps");
+    const char *open;
+    const char *close;
+    char body[KC_BODY_LINE_MAX];
+    char parts[8][KC_BODY_LINE_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    size_t len;
+    int count;
+
+    if(p == NULL)
+        return 0;
+    open = strchr(p, '{');
+    if(open == NULL)
+        return 0;
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 2)
+        return 0;
+    snprintf(name, sizeof(name), "pic%d", b->node_count);
+    n = add_node(b, KRB_NODE_PICTURE, name);
+    if(n == NULL)
+        return 0;
+    extract_string(parts[0], n->text, sizeof(n->text));   /* asset_path */
+    node_rect(n, parts[1]);                                /* bounds */
+    n->color = count > 5 ? parse_color(parts[5]) : 0xffffffffu;
+    n->style = count > 6 ? fit_of(parts[6]) : 0;
+    return 1;
+}
+
 static int
 try_widget(KrbBuild *b, const char *raw)
 {
@@ -634,6 +906,16 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_rect(b, call);
     if(strstr(call, "Button((") != NULL || strstr(call, "ButtonProps") != NULL)
         return parse_button(b, call);
+    if(starts_ident(call, "Separator"))
+        return parse_separator(b, call);
+    if(starts_ident(call, "Line"))
+        return parse_line(b, call);
+    if(starts_ident(call, "Bevel"))
+        return parse_bevel(b, call);
+    if(starts_ident(call, "TextInRect"))
+        return parse_textinrect(b, call);
+    if(starts_ident(call, "Picture"))
+        return parse_picture(b, call);
     return 0;
 }
 

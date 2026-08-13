@@ -109,6 +109,19 @@ null_theme_color(int slot)
     return 0x808080ffu;
 }
 
+static void
+null_texture(const char *asset_path, int x, int y, int w, int h,
+             unsigned tint, int fit)
+{
+    (void)asset_path;
+    (void)x;
+    (void)y;
+    (void)w;
+    (void)h;
+    (void)tint;
+    (void)fit;
+}
+
 const KryBackend KryBackendNull = {
     null_clear,
     null_rect,
@@ -124,6 +137,7 @@ const KryBackend KryBackendNull = {
     null_time,
     null_scale_px,
     null_theme_color,
+    null_texture,
 };
 
 static const KryBackend *g_backend = &KryBackendNull;

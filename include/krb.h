@@ -23,7 +23,8 @@ enum {
     KRB_NODE_TEXT = 2,
     KRB_NODE_RECT = 3,
     KRB_NODE_BUTTON = 4,
-    KRB_NODE_DATA = 5
+    KRB_NODE_DATA = 5,
+    KRB_NODE_PICTURE = 6
 };
 
 enum {

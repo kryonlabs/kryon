@@ -35,7 +35,7 @@ imports[]       u32 string offset × import_count
 | id | u16 |
 | parent | i16 (`-1` = root) |
 | name_off | u16 (string table) |
-| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5; 0 reserved) |
+| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6; 0 reserved) |
 | flags | u8 (`SCALE_X/Y/W/H` in bits 2–5; bits 0–1 reserved) |
 | bind_slot | u16 (`0xffff` = none) |
 | x y w h | i16 each |
@@ -46,6 +46,12 @@ imports[]       u32 string offset × import_count
 | pad | u8 |
 
 Theme slots: 0 background, 1 text, 2 icon, 3 surface, 4 button.
+
+PICTURE nodes carry the asset path in `text_off`, the tint in `color`, and the
+`UIPictureFit` (0 stretch, 1 contain, 2 cover) in `style`. The walker draws
+them through `KryBackend.texture`, which loads the asset via
+`KryLoadPictureTexture` (runtime file or embedded asset) and fits it into the
+node bounds. `DATA` nodes are state-field metadata and are not drawn.
 
 ## Program
 

@@ -558,6 +558,12 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
             img->binds[n->bind_slot](img->bind_ud[n->bind_slot]);
         break;
     }
+    case KRB_NODE_PICTURE:
+        /* text_off holds the asset path; style holds the UIPictureFit; color
+         * the tint. */
+        if(b->texture != NULL && text[0] != '\0')
+            b->texture(text, x, y, w, h, color, n->style);
+        break;
     default:
         break;
     }
