@@ -3,8 +3,27 @@
 CC ?= cc
 CFLAGS_BASE ?= -Wall -Wextra -O2
 CFLAGS = $(CFLAGS_BASE) -I. -I../include
-LDFLAGS = -L.. -lkryon
+LDFLAGS = -L$(KRYON_BUILD_DIR) -lkryon
 UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_M),amd64)
+    KRYON_ARCH := x86_64
+else
+    KRYON_ARCH := $(UNAME_M)
+endif
+ifeq ($(UNAME_S),Linux)
+    KRYON_PLATFORM := linux
+else ifeq ($(UNAME_S),FreeBSD)
+    KRYON_PLATFORM := freebsd
+else ifeq ($(UNAME_S),Darwin)
+    KRYON_PLATFORM := macos
+else
+    KRYON_PLATFORM := $(UNAME_S)
+endif
+# kryon archives libkryon.a under its platform-tagged build dir (not the repo root),
+# so the host platform must be derived the same way as kryon's own Makefile.
+KRYON_BUILD_DIR := ../build/$(KRYON_PLATFORM)-$(KRYON_ARCH)
+KRYON_LIB := $(KRYON_BUILD_DIR)/libkryon.a
 GL_X11_PKG_LIBS := $(shell pkg-config --libs gl x11 2>/dev/null || printf '%s' '-L/usr/local/lib -lGL -lX11')
 GTK_PKG_CFLAGS := $(shell pkg-config --cflags gtk+-3.0 2>/dev/null)
 GTK_PKG_LIBS := $(shell pkg-config --libs gtk+-3.0 2>/dev/null)
@@ -67,9 +86,9 @@ EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 .PHONY: all clean run list font-assets web web-clean
 .SECONDARY: $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLES))) $(addprefix $(CODEGEN_DIR)/,$(addsuffix .h,$(EXAMPLES)))
 
-all: ../libkryon.a $(KC) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
+all: $(KRYON_LIB) $(KC) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
 
-../libkryon.a:
+$(KRYON_LIB):
 	@$(MAKE) -C ..
 
 $(KC):
@@ -92,12 +111,12 @@ $(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry 
 	@echo "Generating 02_buttons cartridge..."
 	@$(KC) --emit-krb --root . -o $(CODEGEN_DIR) $<
 
-$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c ../libkryon.a $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
+$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/02_buttons.krb.c $(LDFLAGS)
 	@echo "Built: $@"
 
-$(BIN_DIR)/%: $(CODEGEN_DIR)/%.c ../libkryon.a $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
+$(BIN_DIR)/%: $(CODEGEN_DIR)/%.c $(KRYON_LIB) $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"

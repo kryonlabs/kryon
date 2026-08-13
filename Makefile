@@ -139,7 +139,7 @@ endif
 
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
-LIB = libkryon.a
+LIB = $(BUILD_DIR)/libkryon.a
 KSYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/ksync_account_test
 KSYNC_SYNC_TEST = $(BUILD_DIR)/tests/ksync_sync_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
@@ -198,7 +198,7 @@ examples-run:
 	@$(MAKE) -C examples run
 
 clean:
-	rm -rf $(BUILD_DIR) $(LIB)
+	rm -rf $(BUILD_DIR)
 	$(MAKE) -C examples web-clean
 
 docs-site:
@@ -251,7 +251,7 @@ kryon-compat-check: | $(BUILD_DIR)
 kryon-boundary-check:
 	sh $(KRYON_BOUNDARY_CHECK) .
 
-$(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
+$(LIB): $(OBJS) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
