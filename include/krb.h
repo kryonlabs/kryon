@@ -132,6 +132,8 @@ int KrbBindMem(KrbImage *img, const char *path, void *ptr, unsigned kind,
                unsigned size);
 int KrbReadI32(const KrbImage *img, const char *path, int *out);
 int KrbWriteI32(KrbImage *img, const char *path, int value);
+int KrbReadF32(const KrbImage *img, const char *path, float *out);
+int KrbWriteF32(KrbImage *img, const char *path, float value);
 int KrbReadCStr(const KrbImage *img, const char *path, char *out, size_t out_size);
 int KrbWriteCStr(KrbImage *img, const char *path, const char *value);
 int KrbExec(KrbImage *img);

@@ -40,6 +40,18 @@ on_click(void *ud)
     return 1;
 }
 
+static char g_last_text[128];
+
+static void
+cap_text(const char *s, int x, int y, int size, unsigned color)
+{
+    (void)x;
+    (void)y;
+    (void)size;
+    (void)color;
+    snprintf(g_last_text, sizeof(g_last_text), "%s", s);
+}
+
 /* header + 1 text node + strings("\0score\0n=%d\0") + prog + no imports */
 static int
 build_text_image(unsigned char *buf, size_t cap, const unsigned char *prog,
@@ -95,11 +107,13 @@ main(void)
     int value = 0;
     typedef struct {
         int score;
+        float level;
         char label[16];
     } App;
     App app;
     KrbField fields[] = {
         { "score", (unsigned)offsetof(App, score), KRB_I32, 4 },
+        { "level", (unsigned)offsetof(App, level), KRB_F32, 4 },
         { "label", (unsigned)offsetof(App, label), KRB_CSTR, 16 },
         { NULL, 0, 0, 0 }
     };
@@ -113,6 +127,7 @@ main(void)
         return fail("load");
 
     app.score = 3;
+    app.level = 1.5f;
     snprintf(app.label, sizeof(app.label), "hi");
     if(KrbMount(&img, "/app", &app, fields) != 0)
         return fail("mount");
@@ -120,6 +135,16 @@ main(void)
         return fail("read mounted score");
     if(KrbWriteI32(&img, "/app/score", 9) != 0 || app.score != 9)
         return fail("write mounted score");
+    if(KrbWriteF32(&img, "/app/level", 2.5f) != 0 || app.level != 2.5f)
+        return fail("write mounted f32");
+    {
+        float fv = 0.0f;
+
+        if(KrbReadF32(&img, "/app/level", &fv) != 0 || fv != 2.5f)
+            return fail("read mounted f32");
+    }
+    if(KrbReadI32(&img, "/app/level", &value) == 0)
+        return fail("f32 field must not read as i32");
     if(KrbWriteCStr(&img, "/app/label", "ok") != 0 ||
        strcmp(app.label, "ok") != 0)
         return fail("write mounted cstr");
@@ -173,6 +198,60 @@ main(void)
         return fail("exec call");
     if(clicks != 1)
         return fail("call_host did not run");
+    KrbFree(&img);
+
+    /* A TEXT node bound to a float field formats through its printf format
+     * (here "%.1f"); default is "%g". Built from scratch so the string
+     * table carries a float format. */
+    {
+        static const char fstrings[] = "\0speed\0%.1f\0";
+        unsigned char *p = buf;
+        KryBackend cap;
+        float speed = 3.14159f;
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(fstrings));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, (unsigned)-1);
+        p = wr_u16(p, 1);            /* name_off "speed" */
+        *p++ = KRB_NODE_TEXT;
+        *p++ = 0;
+        p = wr_u16(p, 0xffff);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 40);
+        p = wr_u16(p, 16);
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 7);            /* text_off "%.1f" */
+        p = wr_u16(p, 16);
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, fstrings, sizeof(fstrings));
+        p += sizeof(fstrings);
+        *p++ = KRB_OP_DRAW_TREE;
+        len = (size_t)(p - buf);
+
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load float image");
+        if(KrbBindMem(&img, "speed", &speed, KRB_F32, 4) != 0)
+            return fail("bind float");
+        cap = KryBackendNull;
+        cap.text = cap_text;
+        KryBackendSelect(&cap);
+        g_last_text[0] = '\0';
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(strcmp(g_last_text, "3.1") != 0)
+            return fail("float text format");
+    }
+
     KrbFree(&img);
     printf("ok mount+opcodes\n");
     return 0;

@@ -374,6 +374,39 @@ KrbWriteI32(KrbImage *img, const char *path, int value)
 }
 
 int
+KrbReadF32(const KrbImage *img, const char *path, float *out)
+{
+    void *ptr;
+    unsigned kind;
+    unsigned size;
+    float value = 0.0f;
+
+    if(find_field(img, path, &ptr, &kind, &size) != 0 || ptr == NULL)
+        return -1;
+    if(kind != KRB_F32 || size < 4)
+        return -1;
+    memcpy(&value, ptr, 4);
+    if(out != NULL)
+        *out = value;
+    return 0;
+}
+
+int
+KrbWriteF32(KrbImage *img, const char *path, float value)
+{
+    void *ptr;
+    unsigned kind;
+    unsigned size;
+
+    if(find_field(img, path, &ptr, &kind, &size) != 0 || ptr == NULL)
+        return -1;
+    if(kind != KRB_F32 || size < 4)
+        return -1;
+    memcpy(ptr, &value, 4);
+    return 0;
+}
+
+int
 KrbReadCStr(const KrbImage *img, const char *path, char *out, size_t out_size)
 {
     void *ptr;
@@ -414,6 +447,7 @@ format_bound(const KrbImage *img, const char *path, const char *fmt,
              char *dst, size_t dst_size)
 {
     int i32;
+    float f32;
     char str[256];
 
     if(KrbReadI32(img, path, &i32) == 0) {
@@ -421,6 +455,13 @@ format_bound(const KrbImage *img, const char *path, const char *fmt,
             snprintf(dst, dst_size, fmt, i32);
         else
             snprintf(dst, dst_size, "%d", i32);
+        return 0;
+    }
+    if(KrbReadF32(img, path, &f32) == 0) {
+        if(fmt != NULL && strstr(fmt, "%") != NULL)
+            snprintf(dst, dst_size, fmt, f32);
+        else
+            snprintf(dst, dst_size, "%g", f32);
         return 0;
     }
     if(KrbReadCStr(img, path, str, sizeof(str)) == 0) {
