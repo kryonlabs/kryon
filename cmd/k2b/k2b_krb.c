@@ -1,6 +1,6 @@
-/* Emit a krb cartridge from reconstructed AST widget calls. */
-#include "kc_ast.h"
-#include "kc_internal.h"
+/* Emit a krb cartridge from parsed .kry widget calls. Standalone k2b codegen,
+ * independent of kc. */
+#include "k2b.h"
 #include "krb.h"
 
 #include <ctype.h>
@@ -9,6 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Shared size limits (the moved code uses the kc_ names). */
+#define KC_PATH_MAX K2B_PATH_MAX
+#define KC_NAME_MAX K2B_NAME_MAX
+#define KC_BODY_LINE_MAX K2B_LINE_MAX
 
 #define KRB_BUILD_NODE_MAX 256
 #define KRB_BUILD_STR_MAX 8192
@@ -379,11 +384,35 @@ add_node(KrbBuild *b, int type, const char *name)
 static const char *
 call_after_eq(const char *text)
 {
-    const char *eq = strstr(text, " = ");
+    const char *p = skip_ws(text);
 
-    if(eq != NULL)
-        return skip_ws(eq + 3);
-    return text;
+    /* Strip leading control keywords so 'if Button(...)' / 'else if ...' reach
+     * the call, and 'x := Widget(...)' / 'x = Widget(...)' skip past the lhs by
+     * locating the first identifier immediately followed by '('. (kc's body[]
+     * used ' = ' splitting; k2b parses raw .kry, so locate the call directly.) */
+    for(;;) {
+        if(strncmp(p, "if", 2) == 0 && (p[2] == ' ' || p[2] == '\t')) {
+            p = skip_ws(p + 2);
+            continue;
+        }
+        if(strncmp(p, "else", 4) == 0 && (p[4] == ' ' || p[4] == '\t')) {
+            p = skip_ws(p + 4);
+            continue;
+        }
+        break;
+    }
+    for(; *p != '\0'; p++) {
+        if(isalpha((unsigned char)*p) || *p == '_') {
+            const char *e = p;
+
+            while(isalnum((unsigned char)*e) || *e == '_')
+                e++;
+            if(*e == '(')
+                return p;
+            p = e - 1;
+        }
+    }
+    return p;
 }
 
 static int
@@ -569,7 +598,17 @@ add_handler_line(KrbHandler *h, const char *raw)
         return;
     if(h->body_count >= KRB_BUILD_HANDLER_LINES)
         return;
-    snprintf(h->body[h->body_count], sizeof(h->body[0]), "%s", t);
+    {
+        /* Raw .kry expression statements have no trailing ';' but the generated
+         * host is C, so terminate them. Control/header lines are left alone. */
+        size_t n = strlen(t);
+        const char *semi = "";
+
+        if(n > 0 && t[n - 1] != ';' && t[n - 1] != '{' &&
+           t[n - 1] != '}' && t[n - 1] != ':')
+            semi = ";";
+        snprintf(h->body[h->body_count], sizeof(h->body[0]), "%s%s", t, semi);
+    }
     h->body_count++;
 }
 
@@ -591,43 +630,43 @@ handler_for(KrbBuild *b, const char *name)
 }
 
 static void
-collect_widgets(KrbBuild *b, const AstFunction *af)
+collect_widgets(KrbBuild *b, const K2bFunction *fn)
 {
     int j;
-    int last_button = -1;
 
-    if(af == NULL)
+    if(fn == NULL)
         return;
-    for(j = 0; j < af->stmt_count; j++) {
-        const char *raw = af->stmts[j].text;
+    for(j = 0; j < fn->stmt_count; j++) {
+        const K2bStmt *st = &fn->stmts[j];
         int before = b->node_count;
 
-        if(try_widget(b, raw)) {
+        if(try_widget(b, st->text)) {
+            /* In raw .kry the button call and its 'if' are one statement
+             * ('if Button(...) {'); capture the handler body that follows. */
             if(b->node_count > before &&
-               b->nodes[b->node_count - 1].type == 4)
-                last_button = b->node_count - 1;
-            continue;
-        }
-        if(last_button >= 0 && af->stmts[j].kind == AST_STMT_IF) {
-            KrbHandler *h = handler_for(b, b->nodes[last_button].name);
-            int depth = af->stmts[j].depth;
-            int k;
+               b->nodes[b->node_count - 1].type == KRB_NODE_BUTTON &&
+               st->kind == K2B_STMT_IF) {
+                KrbHandler *h;
+                int depth = st->depth;
+                int k;
 
-            if(h != NULL) {
-                for(k = j + 1; k < af->stmt_count; k++) {
-                    if(af->stmts[k].kind == AST_STMT_BLOCK_CLOSE &&
-                       af->stmts[k].depth <= depth)
-                        break;
-                    add_handler_line(h, af->stmts[k].text);
+                h = handler_for(b, b->nodes[b->node_count - 1].name);
+                if(h != NULL) {
+                    for(k = j + 1; k < fn->stmt_count; k++) {
+                        if(fn->stmts[k].kind == K2B_STMT_BLOCK_CLOSE &&
+                           fn->stmts[k].depth <= depth)
+                            break;
+                        add_handler_line(h, fn->stmts[k].text);
+                    }
                 }
             }
-            last_button = -1;
+            continue;
         }
     }
 }
 
 static void
-collect_state(KrbBuild *b, const KryFile *file)
+collect_state(KrbBuild *b, const K2bFile *file)
 {
     int i;
 
@@ -1343,7 +1382,7 @@ c_ident(char *dst, size_t dst_size, const char *src)
 }
 
 static void
-write_krb_host(const KryFile *file, const char *gen_rel, const char *out_dir,
+write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
                const KrbBuild *b, const unsigned char *bytes, int len)
 {
     char hrel[KC_PATH_MAX];
@@ -1504,7 +1543,7 @@ write_krb_host(const KryFile *file, const char *gen_rel, const char *out_dir,
 }
 
 void
-write_krb(const KryFile *file, const char *root, const char *out_dir)
+write_krb(const K2bFile *file, const char *root, const char *out_dir)
 {
     const char *rel = relative_path(root, file->path);
     char gen_rel[KC_PATH_MAX];
@@ -1532,12 +1571,8 @@ write_krb(const KryFile *file, const char *root, const char *out_dir)
     build.strings[0] = '\0';
     build.string_used = 1;
     collect_state(&build, file);
-    for(i = 0; i < file->function_count; i++) {
-        AstFunction *af = ast_function_from_body(&file->functions[i]);
-
-        collect_widgets(&build, af);
-        ast_function_free(af);
-    }
+    for(i = 0; i < file->function_count; i++)
+        collect_widgets(&build, &file->functions[i]);
 
     len = emit_krb_mem(bytes, KRB_OUT_MAX, &build);
     if(len < 0)

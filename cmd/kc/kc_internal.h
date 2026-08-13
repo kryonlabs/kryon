@@ -158,7 +158,6 @@ void write_project_header(KryFile **files, int file_count, const char *root,
                           const char *out_dir);
 void write_generated(const KryFile *file, const char *root,
                      const char *out_dir);
-void write_krb(const KryFile *file, const char *root, const char *out_dir);
 void generated_header_rel(char *dst, size_t dst_size, const KryFile *file,
                           const char *root);
 

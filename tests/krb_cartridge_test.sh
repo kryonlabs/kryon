@@ -24,11 +24,11 @@ if [ ! -f "$src" ]; then
 fi
 
 mkdir -p "$work"
-"$kc" --emit-krb --root "$root/examples" -o "$work" "$src"
+"$kc" --root "$root/examples" -o "$work" "$src"
 
 krb=$work/02_buttons.krb
 if [ ! -f "$krb" ]; then
-    echo "kc --emit-krb did not write $krb" >&2
+    echo "k2b did not write $krb" >&2
     exit 1
 fi
 
@@ -81,7 +81,7 @@ frame main {
     EndDrawing()
 }
 EOF
-"$kc" --emit-krb --no-main --root "$work" -o "$work" "$work/frame.kry"
+"$kc" --no-main --root "$work" -o "$work" "$work/frame.kry"
 if [ ! -f "$work/frame.krb" ]; then
     echo "frame main {} did not emit a cartridge" >&2
     exit 1
@@ -100,7 +100,7 @@ if [ -n "$walker" ] && [ -x "$walker" ]; then
 fi
 
 if [ ! -f "$work/02_buttons.krb.c" ] || [ ! -f "$work/02_buttons.krb.h" ]; then
-    echo "kc --emit-krb did not write the C host" >&2
+    echo "k2b did not write the C host" >&2
     exit 1
 fi
 

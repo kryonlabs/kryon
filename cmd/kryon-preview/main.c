@@ -406,25 +406,25 @@ file_exists(const char *path)
 }
 
 static int
-find_kc(char *dst, size_t dst_size)
+find_k2b(char *dst, size_t dst_size)
 {
     const char *kryon_dir = getenv("KRYON_DIR");
     const char *path;
 
     if(kryon_dir != NULL && kryon_dir[0] != '\0') {
-        snprintf(dst, dst_size, "%s/build/bin/kc", kryon_dir);
+        snprintf(dst, dst_size, "%s/build/bin/k2b", kryon_dir);
         if(file_exists(dst))
             return 1;
-        snprintf(dst, dst_size, "%s/build/linux-x86_64/bin/kc", kryon_dir);
+        snprintf(dst, dst_size, "%s/build/linux-x86_64/bin/k2b", kryon_dir);
         if(file_exists(dst))
             return 1;
     }
-    if(file_exists("build/bin/kc")) {
-        snprintf(dst, dst_size, "build/bin/kc");
+    if(file_exists("build/bin/k2b")) {
+        snprintf(dst, dst_size, "build/bin/k2b");
         return 1;
     }
-    if(file_exists("build/linux-x86_64/bin/kc")) {
-        snprintf(dst, dst_size, "build/linux-x86_64/bin/kc");
+    if(file_exists("build/linux-x86_64/bin/k2b")) {
+        snprintf(dst, dst_size, "build/linux-x86_64/bin/k2b");
         return 1;
     }
     path = getenv("PATH");
@@ -439,7 +439,7 @@ find_kc(char *dst, size_t dst_size)
             if(n > 0 && n + 4 < sizeof(buf)) {
                 memcpy(buf, start, n);
                 buf[n] = '\0';
-                path_join(dst, dst_size, buf, "kc");
+                path_join(dst, dst_size, buf, "k2b");
                 if(file_exists(dst))
                     return 1;
             }
@@ -489,7 +489,7 @@ compile_krb(const char *kc, const char *project, const char *source,
     else
         path_join(src_abs, sizeof(src_abs), project, source);
     snprintf(command, sizeof(command),
-             "'%s' --emit-krb --no-main --root '%s' -o '%s' '%s'",
+             "'%s' --no-main --root '%s' -o '%s' '%s'",
              kc, project, out_dir, src_abs);
     rc = system(command);
     if(!(rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0))
@@ -547,12 +547,12 @@ run_cartridge(const PreviewOptions *opt)
         char kc[KP_PATH_MAX];
         const char *project = opt->project != NULL ? opt->project : ".";
 
-        if(!find_kc(kc, sizeof(kc))) {
-            fprintf(stderr, "kryon-preview: kc not found for cartridge compile\n");
+        if(!find_k2b(kc, sizeof(kc))) {
+            fprintf(stderr, "kryon-preview: k2b not found for cartridge compile\n");
             return 1;
         }
         if(!compile_krb(kc, project, source, krb_path, sizeof(krb_path))) {
-            fprintf(stderr, "kryon-preview: kc --emit-krb failed\n");
+            fprintf(stderr, "kryon-preview: k2b failed\n");
             return 1;
         }
         return capture_cartridge(krb_path, opt->out, opt->width, opt->height)

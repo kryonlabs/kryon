@@ -3242,7 +3242,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: kc [--no-main] [--emit-krb] [--dump-ast] --root DIR -o DIR file.kry ...\n");
+            "usage: kc [--no-main] [--dump-ast] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -3254,7 +3254,6 @@ main(int argc, char **argv)
     int file_count = 0;
     int no_main = 0;
     int dump_ast = 0;
-    int emit_krb = 0;
     int had_errors = 0;
     int first_file = 0;
 
@@ -3273,8 +3272,6 @@ main(int argc, char **argv)
             /* Debug: reconstruct and print the AST for each function without
              * writing files. Phase 1 of the parser migration. */
             dump_ast = 1;
-        } else if(strcmp(argv[i], "--emit-krb") == 0) {
-            emit_krb = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -3314,8 +3311,6 @@ main(int argc, char **argv)
                 ast_function_free(af);
             }
         } else {
-            if(emit_krb)
-                write_krb(file, root, out_dir);
             write_generated(file, root, out_dir);
         }
         files[index] = file;
