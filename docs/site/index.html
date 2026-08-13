@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon — a UI runtime that's alive</title>
-  <meta name="description" content="Kryon is a native declarative UI and app runtime. Write .kry, ship readable C99 to desktop, mobile, browser, and embedded. A full replacement for Flutter, Godot, and Electron.">
+  <meta name="description" content="Kryon is a native declarative UI and app runtime. Write .kry, lower to debuggable KIR, and ship readable C99 or portable KRB cartridges.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/">
   <meta property="og:title" content="Kryon — a UI runtime that's alive">
-  <meta property="og:description" content="Native declarative UI and app runtime. Write .kry, ship readable C99 to every platform. Live preview in Krait.">
+  <meta property="og:description" content="Native declarative UI and app runtime. Write .kry, inspect KIR, ship C99 or portable KRB cartridges.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/">
   <meta name="twitter:title" content="Kryon — a UI runtime that's alive">
-  <meta name="twitter:description" content="Native declarative UI and app runtime. Write .kry, ship readable C99 to every platform.">
+  <meta name="twitter:description" content="Native declarative UI and app runtime. Write .kry, inspect KIR, ship C99 or KRB.">
   <meta name="twitter:site" content="@kryonlabs">
   <meta name="twitter:creator" content="@kryonlabs">
   <meta name="theme-color" content="#f3f1ea">
@@ -25,7 +25,7 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Kryon",
-    "description": "Native declarative UI and app runtime. Write .kry, ship readable C99 to desktop, mobile, browser, and embedded.",
+    "description": "Native declarative UI and app runtime. Write .kry, inspect KIR, ship readable C99 or portable KRB cartridges.",
     "url": "https://kryonlabs.com",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Linux, Windows, macOS, Android, Browser, FreeBSD",
@@ -58,10 +58,10 @@
   <main id="top">
     <section class="hero">
       <div class="hero-inner">
-        <span class="hero-eyebrow"><span class="dot"></span>Native declarative UI &middot; readable C99</span>
+        <span class="hero-eyebrow"><span class="dot"></span>Native declarative UI &middot; KIR &middot; C99 &middot; KRB</span>
         <img class="hero-icon" src="icons/kryon.png" width="84" height="84" alt="Kryon">
         <h1>A UI runtime that's <span class="accent">alive</span>.</h1>
-        <p class="hero-sub">One source model for desktop, mobile, browser, and embedded. Write <code>.kry</code>, ship readable C99, and work visually with live preview in Krait. A full replacement for Flutter, Godot, and Electron.</p>
+        <p class="hero-sub">One source model for desktop, mobile, browser, and embedded. Write <code>.kry</code>, lower to debuggable KIR, then ship readable C99 or portable KRB cartridges for Kryon renderers.</p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#start">Get started</a>
           <a class="btn" href="https://krait.kryonlabs.com">Try in Krait →</a>
@@ -71,7 +71,7 @@
       <div class="hero-panel" aria-hidden="true">
         <div class="hero-panel-bar">
           <span class="tl"></span><span class="tl"></span><span class="tl"></span>
-          <span class="title">app.kry — live preview</span>
+          <span class="title">app.kry — KIR — C/KRB</span>
         </div>
         <div class="hero-panel-body">
           <div class="pane">
@@ -85,15 +85,11 @@ AppHome :: (app: InbeApp*) {
 }</code></pre>
           </div>
           <div class="pane">
-            <div class="pane-label">live preview</div>
-<pre><code>// generated C99 — human readable
-void AppHome(InbeApp *app) {
-    int y = ScaleUIPx(24);
-    Text("Inner Breeze",
-         ScaleUIPx(20), y,
-         UI_TEXT_24);
-    BottomNav(app->bottom_nav);
-}</code></pre>
+            <div class="pane-label">portable pipeline</div>
+<pre><code>k2ir app.kry
+k2c  app.kir    # native C
+k2b  app.kir    # portable cartridge
+krait app.krb   # inspect and render</code></pre>
           </div>
         </div>
       </div>
@@ -118,7 +114,7 @@ void AppHome(InbeApp *app) {
       <div class="tabs" data-tabs>
         <div class="tablist" role="tablist" aria-label="Kryon feature showcase">
           <button type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="tp-1">Declarative .kry</button>
-          <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="tp-2" tabindex="-1">Readable C99</button>
+          <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="tp-2" tabindex="-1">KIR pipeline</button>
           <button type="button" role="tab" id="tab-3" aria-selected="false" aria-controls="tp-3" tabindex="-1">Live preview</button>
           <button type="button" role="tab" id="tab-4" aria-selected="false" aria-controls="tp-4" tabindex="-1">Source-aware</button>
         </div>
@@ -139,15 +135,11 @@ Counter :: (state: *CounterState) {
         </div>
 
         <div class="tabpanel" id="tp-2" role="tabpanel" aria-labelledby="tab-2" hidden>
-          <h3>Clean, readable C99 output</h3>
-          <p>The compiler emits normal C and generated headers you can read, step through, and ship with any C toolchain. Kryon-to-Kryon calls use compile-time modules; C interop stays explicit.</p>
-<pre><code>void Counter(CounterState *state) {
-    UIPushColumn();
-    Text(StringConcat("Count: ",
-                      ToString(state->n)));
-    UIButton("Increment");
-    UIPop();
-}</code></pre>
+          <h3>One KIR, two outputs</h3>
+          <p>The frontend resolves <code>.kry</code> into KIR once. <code>k2c</code> emits readable C for native apps; <code>k2b</code> emits portable KRB cartridges for renderers.</p>
+<pre><code>k2ir counter.kry
+k2c  counter.kir
+k2b  counter.kir</code></pre>
         </div>
 
         <div class="tabpanel" id="tp-3" role="tabpanel" aria-labelledby="tab-3" hidden>
@@ -171,7 +163,7 @@ AppHome: app.kry:7
     <section id="why">
       <p class="section-eyebrow">Why Kryon</p>
       <h2>Native first, alive by default</h2>
-      <p class="section-lead">Everything visible is a node. Source stays primary. The runtime is small, predictable, and direct — raylib-style C with no hidden translation layers.</p>
+      <p class="section-lead">Everything visible is a node. Source stays primary. KIR keeps the compiler debuggable, C keeps native integration direct, and KRB opens a portable renderer path.</p>
       <div class="why-grid">
         <article class="why-card">
           <h3>Alive by default</h3>
@@ -183,7 +175,7 @@ AppHome: app.kry:7
         </article>
         <article class="why-card">
           <h3>Source stays primary</h3>
-          <p><code>.kry</code> files own screens and reusable UI pieces. C is the generated interop target, not the authoring language.</p>
+          <p><code>.kry</code> files own screens and reusable UI pieces. KIR is the source-mapped compiler truth; C and KRB are outputs.</p>
         </article>
         <article class="why-card">
           <h3>Small native surface</h3>
@@ -191,7 +183,7 @@ AppHome: app.kry:7
         </article>
         <article class="why-card">
           <h3>Predictable runtime</h3>
-          <p>Direct C, raylib-style calls, and a clear frame pipeline: build, reconcile, layout, input, update, render, overlays.</p>
+          <p>Direct C where native integration matters, portable KRB where renderer portability matters, and explicit imports between them.</p>
         </article>
         <article class="why-card">
           <h3>Real product UI</h3>
@@ -201,9 +193,9 @@ AppHome: app.kry:7
     </section>
 
     <section id="showcase">
-      <p class="section-eyebrow">Readable C99</p>
-      <h2>What you write is what you ship</h2>
-      <p class="section-lead">No opaque IR, no bundled VM. Kryon compiles <code>.kry</code> into plain C you can read and debug — the generated output looks like code you would have written by hand.</p>
+      <p class="section-eyebrow">Compiler Pipeline</p>
+      <h2>One frontend, native and portable backends</h2>
+      <p class="section-lead">Kryon lowers <code>.kry</code> into debuggable KIR, then emits readable C for native applications or compact KRB cartridges for portable renderers.</p>
       <div class="showcase">
         <div class="col">
           <div class="col-head"><span>app.kry</span><span class="badge">source</span></div>
@@ -217,15 +209,15 @@ Greeting :: (name: string) {
 }</code></pre>
         </div>
         <div class="col">
-          <div class="col-head"><span>app.c</span><span class="badge">generated</span></div>
-<pre><code>#include "app.h"
+          <div class="col-head"><span>outputs</span><span class="badge">C / KRB</span></div>
+<pre><code>Greeting.kir
+  source spans
+  widget tree
+  event logic
+  imports
 
-void Greeting(string name) {
-    UIPushRow();
-    UIIcon(ICON_ROCKET);
-    UI(Text(StringConcat("Hello, ", name)));
-    UIPop();
-}</code></pre>
+Greeting.c    # native backend
+Greeting.krb  # portable cartridge</code></pre>
         </div>
       </div>
     </section>
@@ -238,32 +230,32 @@ void Greeting(string name) {
         <article class="platform">
           <img src="platforms/tux.png" width="32" height="32" alt="">
           <h3>Linux</h3>
-          <p>Native desktop builds.</p>
+          <p>Native C builds and KRB renderers.</p>
         </article>
         <article class="platform">
           <img src="platforms/win.png" width="32" height="32" alt="">
           <h3>Windows</h3>
-          <p>Native desktop, WinINet assets.</p>
+          <p>Native C builds and KRB renderers.</p>
         </article>
         <article class="platform">
           <img src="platforms/macos.png" width="32" height="32" alt="">
           <h3>macOS</h3>
-          <p>Native desktop builds.</p>
+          <p>Native C builds and KRB renderers.</p>
         </article>
         <article class="platform">
           <img src="platforms/droid.png" width="32" height="32" alt="">
           <h3>Android</h3>
-          <p>Mobile runtime support.</p>
+          <p>Mobile runtime and KRB host capabilities.</p>
         </article>
         <article class="platform">
           <img src="language/wasm.png" width="32" height="32" alt="">
           <h3>Browser</h3>
-          <p>WebAssembly runtime and previews.</p>
+          <p>Browser renderer, WASM logic, and KRB preview.</p>
         </article>
         <article class="platform">
           <img src="platforms/freebsd.png" width="32" height="32" alt="">
           <h3>FreeBSD</h3>
-          <p>Native desktop and embedded.</p>
+          <p>Native desktop, servers, and embedded targets.</p>
         </article>
       </div>
     </section>
@@ -272,7 +264,7 @@ void Greeting(string name) {
       <div class="callout-inner">
         <p class="section-eyebrow">Krait</p>
         <h2>Build it in Krait</h2>
-        <p>Krait is the standalone first-party Kryon IDE — source editing, live preview, source-aware inspection, and diagnostics in one loop. It's written in <code>.kry</code>, so the IDE is its own research path.</p>
+        <p>Krait is the standalone first-party Kryon IDE — source editing, KIR inspection, KRB cartridge preview, live native preview, and diagnostics in one loop. It's written in <code>.kry</code>, so the IDE is its own research path.</p>
         <a class="btn btn-primary" href="https://krait.kryonlabs.com">Visit krait.kryonlabs.com →</a>
       </div>
     </section>
@@ -286,6 +278,10 @@ void Greeting(string name) {
 cd kryon
 make
 make install</code></pre>
+      <p>The clean compiler tool direction:</p>
+<pre><code>k2ir app.kry
+k2c  app.kry    # or app.kir
+k2b  app.kry    # or app.kir</code></pre>
       <p>A simple <code>.kry</code> shape:</p>
 <pre><code>#import "kryon.h"
 
@@ -314,11 +310,11 @@ gmake run ARGS=/path/to/project</code></pre>
       <div class="faq">
         <details class="faq-item">
           <summary>What is Kryon? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Kryon is a native app development stack built around <code>.kry</code> source files, a small runtime, declarative widget nodes, and clean translation to human-readable C99. You write intent; the runtime handles the UI lifecycle.</p></div>
+          <div class="faq-a"><p>Kryon is a native app development stack built around <code>.kry</code> source files, debuggable KIR, readable C output, portable KRB cartridges, and a small runtime. You write intent; the runtime handles the UI lifecycle.</p></div>
         </details>
         <details class="faq-item">
           <summary>How is Kryon different from Flutter? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Flutter ships a Dart VM and its own rendering layer. Kryon compiles to plain C99 you can read and step through, with no bundled runtime VM and a raylib-style native surface. The same source targets desktop, mobile, browser, and embedded.</p></div>
+          <div class="faq-a"><p>Flutter ships a Dart VM and its own rendering layer. Kryon keeps native C as a first-class backend and adds KRB as a portable cartridge path with explicit host capabilities. The same source can target desktop, mobile, browser, and embedded renderers.</p></div>
         </details>
         <details class="faq-item">
           <summary>How is it different from Godot's UI? <span class="chev">›</span></summary>
@@ -326,7 +322,7 @@ gmake run ARGS=/path/to/project</code></pre>
         </details>
         <details class="faq-item">
           <summary>What is a .kry file? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>A concise declarative source file describing pages and reusable widgets with explicit typed variables and node declarations. The compiler reports direct errors for unknown syntax, and translates each file into readable C99.</p></div>
+          <div class="faq-a"><p>A concise declarative source file describing pages and reusable widgets with explicit typed variables and node declarations. The frontend lowers each file into KIR, then backends emit readable C or portable KRB.</p></div>
         </details>
         <details class="faq-item">
           <summary>Is Kryon free? <span class="chev">›</span></summary>

@@ -143,6 +143,7 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 ## Documentation
 
 - `docs/API.md` documents the public API.
+- `docs/plans/` contains the KIR, C backend, and KRB cartridge roadmap.
 - `docs/site/` contains the static documentation website.
 - `docs/AGENTS.md` documents how downstream apps should use Kryon, including
   modal/input capture and submodule update rules.
@@ -157,9 +158,20 @@ feature family.
 
 ## Kry Language Direction
 
-`docs/KRY_LANGUAGE_PLAN.md` describes the migration path for making `.kry` a
-C-close, C-transpiled app language with direct C interoperability. The goal is
-for apps to move product UI and screen controllers into Kry while keeping native
-platform, storage, and performance-sensitive code in C. `kc --emit-krb` also
-writes a compact `.krb` cartridge (`docs/KRB_FORMAT.md`) that a `KryBackend`
-walker can draw without generating C for the UI tree.
+`docs/KRY_LANGUAGE_PLAN.md` describes the path for making `.kry` a C-close app
+language with two clean compiler outputs. Kry source lowers into KIR, a
+debuggable intermediate representation with source spans. From there `k2c`
+emits readable C for native apps, while `k2b` emits a portable `.krb`
+cartridge (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime
+contract. The intended tool set is Unix-shaped:
+
+```text
+k2ir app.kry        # .kry -> .kir
+k2c  app.kry|app.kir
+k2b  app.kry|app.kir
+```
+
+`k2c` and `k2b` accept either `.kry` or `.kir`; when given source, they run the
+KIR frontend internally. Native platform, storage, and performance-sensitive C
+code remains first-class through the C backend and through explicit KRB
+capabilities or host imports.

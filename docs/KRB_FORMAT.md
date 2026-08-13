@@ -1,9 +1,14 @@
 # Kryon Cartridge Format (krb)
 
-A `.krb` file is a little-endian, mmapable image: a synthetic VFS node table,
-a string table, a tiny program, and a host-import name list. Behavior stays
-in C. `prog[]` starts as “draw this tree”; later opcodes and
-`kry_bind("/app", ptr, layout)` extend the same file.
+A `.krb` file is Kryon's portable cartridge format. It is a little-endian,
+mmapable image produced from KIR: a synthetic VFS node table, a string table, a
+small program, host imports, controls, and room for state, source maps, assets,
+and portable logic sections as the format grows.
+
+The current v1 image is render-first: it can draw encoded UI nodes through a
+`KryBackend`, mount host state, and call bound host imports. The target design is
+a full cartridge: KIR-owned logic executes through the portable runtime, while
+native C libraries enter through explicit capabilities or host imports.
 
 ## Layout
 
@@ -87,8 +92,10 @@ state-array option parser) and by-value widgets (Radio/TabBar) are deferred.
 
 ## Program
 
-A byte stream of opcodes. `kc --emit-krb` writes `OP_DRAW_TREE` only. Hosts
-may append more.
+A byte stream of opcodes. The current cartridge compiler writes `OP_DRAW_TREE`
+for render-only cartridges. Future KRB versions should either reference KIR
+logic functions directly or carry a lowered bytecode/WASM section derived from
+KIR. Hosts may still bind native imports for platform services.
 
 | Op | Byte | Args | Meaning |
 |---|---|---|---|
@@ -119,7 +126,7 @@ KrbReadI32(&img, "/app/score", &n);
 A TEXT node whose name matches a mounted path draws the live value (the stored
 string is a `printf` format when it contains `%`).
 
-`kc --emit-krb` also writes `foo.krb.c` / `foo.krb.h`. That host embeds the
-image, mounts `state { }` fields, and turns each `if Button { ... }` body into
-a C bind. Existing C calls `Name_krb_draw` / `Name_krb_press`. Compile with
-`KRYON_KRB_NO_MAIN` to skip the generated `main`.
+`k2b` is the intended `.kry`/`.kir` to `.krb` compiler. It should read `.kir`
+directly or run the `.kry -> KIR` frontend internally, then write the cartridge
+sections. Native apps that want readable generated C use `k2c`; portable
+renderers load `.krb` and provide the standard capability/import table.

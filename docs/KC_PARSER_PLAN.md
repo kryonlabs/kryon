@@ -1,4 +1,9 @@
-# kc Parser Plan: resolving the AST ceiling
+# KIR Frontend Plan: resolving the parser ceiling
+
+This document predates the `k2ir`/`k2c`/`k2b` split and should be read as the
+frontend extraction plan. The destination is no longer a larger monolithic `kc`.
+The destination is a shared `.kry -> KIR` frontend used by both the readable C
+backend and the portable KRB backend.
 
 **Status:** in progress. Phases 0 (oracle hardened), 1 (AST alongside the
 existing path — `kc_ast.c`), and 4 (error recovery — `kc_diag.c` longjmps to a
@@ -17,7 +22,7 @@ cited to source.
 
 ## 1. The problem (the "AST ceiling")
 
-`kc` is a line-translator, not a parser. `parse_kry` (kc.c:3022) reads a line,
+The old compiler path is a line-translator, not a parser. `parse_kry` (kc.c:3022) reads a line,
 dispatches it, and emits translated C fragments into `fn->body[]`
 (kc_internal.h:31) — then forgets the line and moves on. This single design
 choice caps what the language can ever do:

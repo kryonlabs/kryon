@@ -139,9 +139,11 @@ DrawUIOverlays();
 Migrate callers to the current Kryon API directly so the backend boundary stays
 simple.
 
-Cartridges (`.krb`) are a packed VFS node table plus a tiny program. C still
-owns behavior. Load the image, bind host functions by import name, and draw
-through `KryBackend`:
+Cartridges (`.krb`) are portable Kryon render artifacts produced from KIR. The
+current runtime loads a packed node table plus a small program; the roadmap adds
+state schema, source maps, portable logic, capabilities, and explicit host
+imports. Load the image, bind host functions by import name when the cartridge
+declares them, and draw through `KryBackend`:
 
 ```c
 KrbImage img;
@@ -151,10 +153,11 @@ KrbDraw(&img, 0, 0, width, height);
 KrbFree(&img);
 ```
 
-`kc --emit-krb` writes the image next to the generated C. `KryBackendDraw`
-implements the small table with the public Kryon draw/input API;
-`KryBackendNull` is the headless stand-in. Mount live C fields so the
-cartridge can read them as files:
+`k2b` is the cartridge compiler. It accepts `.kry` or `.kir`; `.kry` input is
+lowered through KIR before the KRB sections are written. `KryBackendDraw`
+implements the rendering table with the public Kryon draw/input API;
+`KryBackendNull` is the headless stand-in. Mount live C fields so a cartridge
+can read them as files:
 
 ```c
 KrbField fields[] = {
@@ -165,9 +168,10 @@ KrbMount(&img, "/app", app, fields);
 KrbReadI32(&img, "/app/score", &n);
 ```
 
-`OP_CALL_HOST` and `OP_SET_I32` run from `KrbExec`. `kc --emit-krb` also
-writes `foo.krb.c` so a C program can call `Name_krb_draw` and
-`Name_krb_press` without rewriting the screen in C. See `docs/KRB_FORMAT.md`.
+`OP_CALL_HOST` and `OP_SET_I32` run from `KrbExec`. The portable path is
+designed around KIR-owned logic plus a capability/import table; native C apps
+should continue to use the C backend when direct library integration is the
+right target. See `docs/KRB_FORMAT.md`.
 
 ---
 

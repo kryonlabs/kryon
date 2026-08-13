@@ -1,8 +1,23 @@
 # Kry Language
 
-Kry is C-close app code for Kryon. `kc` emits readable `.c` and `.h` files
-that are compiled by the normal C toolchain; there is no VM, runtime package
-system, or hidden ownership model.
+Kry is C-close app code for Kryon. Source always lowers into KIR, a debuggable
+intermediate representation with source spans, resolved modules, state fields,
+functions, expressions, widget calls, and host/capability imports. Backends then
+consume KIR:
+
+```text
+.kry -> KIR -> C
+.kry -> KIR -> KRB
+.kir -> C
+.kir -> KRB
+```
+
+`k2c` emits readable `.c` and `.h` files for the normal C toolchain. `k2b`
+emits a portable `.krb` cartridge for renderers that implement the Kryon runtime
+contract. `k2ir` exists for tooling, debugging, tests, and Krait inspection.
+Native C remains the direct path for platform, storage, and performance-sensitive
+code; portable cartridges call those services through explicit capabilities or
+host imports.
 
 ## Style
 
