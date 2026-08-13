@@ -21,7 +21,9 @@
   /* accent */
   --accent: #2f6f86;        /* teal links/headings pop */
   --accent-deep: #1f5366;   /* teal hover */
+  --accent-ink: #ffffff;
   --accent-soft: rgba(47, 111, 134, 0.10);
+  --hero-bg: #fffdf6;
 
   /* cards */
   --card-bg: #f7f4ec;
@@ -267,14 +269,19 @@ p:last-child {
 }
 
 .btn-primary {
-  background-color: var(--accent);
-  border-color: var(--accent-deep);
-  color: #fdfcf8;
+  background-color: #17495a;
+  border-color: #0e303c;
+  color: var(--accent-ink);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+    0 3px 0 #0e303c,
+    0 10px 22px rgba(23, 73, 90, 0.18);
 }
 
 .btn-primary:hover {
-  background-color: var(--accent-deep);
-  color: #fdfcf8;
+  background-color: #0e303c;
+  color: var(--accent-ink);
 }
 
 /* star count pill */
@@ -367,11 +374,15 @@ h3 {
   padding: var(--space-xl) 20px var(--space-lg);
   position: relative;
   z-index: 1;
+  background-color: var(--hero-bg);
+  border-bottom: 1px solid rgba(42, 59, 64, 0.10);
 }
 
 .hero-inner {
   max-width: 880px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-icon {
