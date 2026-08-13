@@ -19,11 +19,11 @@
   --line-strong: rgba(42, 59, 64, 0.30);
 
   /* accent */
-  --accent: #2f6f86;        /* teal links/headings pop */
-  --accent-deep: #1f5366;   /* teal hover */
+  --accent: #23657d;        /* teal links/headings pop */
+  --accent-deep: #123d4f;   /* teal hover */
   --accent-ink: #ffffff;
   --accent-soft: rgba(47, 111, 134, 0.10);
-  --hero-bg: #fffdf6;
+  --hero-bg: #fffef9;
 
   /* cards */
   --card-bg: #f7f4ec;
@@ -90,14 +90,14 @@ body::before {
   inset: 0;
   z-index: 0;
   background-image:
-    linear-gradient(45deg, rgba(42, 59, 64, 0.10) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(42, 59, 64, 0.10) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(42, 59, 64, 0.10) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(42, 59, 64, 0.10) 75%);
+    linear-gradient(45deg, rgba(42, 59, 64, 0.055) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(42, 59, 64, 0.055) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(42, 59, 64, 0.055) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(42, 59, 64, 0.055) 75%);
   background-position: 0 0, 0 16px, 16px -16px, -16px 0;
   background-size: 32px 32px;
   image-rendering: pixelated;
-  opacity: 0.55;
+  opacity: 0.36;
   pointer-events: none;
 }
 
@@ -269,19 +269,24 @@ p:last-child {
 }
 
 .btn-primary {
-  background-color: #17495a;
-  border-color: #0e303c;
-  color: var(--accent-ink);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  background-color: #0d3f55;
+  border-color: #062536;
+  color: #ffffff;
+  text-shadow: none;
   box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.22),
-    0 3px 0 #0e303c,
-    0 10px 22px rgba(23, 73, 90, 0.18);
+    inset 1px 1px 0 rgba(255, 255, 255, 0.18),
+    0 3px 0 #062536,
+    0 10px 22px rgba(13, 63, 85, 0.24);
 }
 
 .btn-primary:hover {
-  background-color: #0e303c;
-  color: var(--accent-ink);
+  background-color: #062f42;
+  color: #ffffff;
+}
+
+.header-nav a.btn-primary,
+.header-nav a.btn-primary:hover {
+  color: #ffffff;
 }
 
 /* star count pill */
@@ -374,7 +379,9 @@ h3 {
   padding: var(--space-xl) 20px var(--space-lg);
   position: relative;
   z-index: 1;
-  background-color: var(--hero-bg);
+  background:
+    linear-gradient(180deg, rgba(255, 254, 249, 0.98), rgba(249, 246, 235, 0.96)),
+    var(--hero-bg);
   border-bottom: 1px solid rgba(42, 59, 64, 0.10);
 }
 
