@@ -10,6 +10,7 @@
 
 #include "kry_term.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -274,13 +275,15 @@ KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
     }
     if(pid == 0) {
         const char *slave_name = ptsname(master);
+        char slave_path[256];
         int slave;
 
-        setsid();
-        close(master);
         if(slave_name == NULL)
             _exit(127);
-        slave = open(slave_name, O_RDWR);
+        snprintf(slave_path, sizeof(slave_path), "%s", slave_name);
+        setsid();
+        close(master);
+        slave = open(slave_path, O_RDWR);
         if(slave < 0)
             _exit(127);
 #ifdef TIOCSCTTY

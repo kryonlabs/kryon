@@ -92,13 +92,18 @@ const char *ui_icon_names[] = {
     "pfp_tree2.png",  /* UI_ICON_TYPE_PFP_TREE2 */
     "pfp_tree3.png",  /* UI_ICON_TYPE_PFP_TREE3 */
     "pfp_tree4.png",  /* UI_ICON_TYPE_PFP_TREE4 */
+    "platforms_browser.png",  /* UI_ICON_TYPE_PLATFORMS_BROWSER */
     "platforms_discord.png",  /* UI_ICON_TYPE_PLATFORMS_DISCORD */
     "platforms_droid.png",  /* UI_ICON_TYPE_PLATFORMS_DROID */
+    "platforms_esp32.png",  /* UI_ICON_TYPE_PLATFORMS_ESP32 */
     "platforms_fdroid.png",  /* UI_ICON_TYPE_PLATFORMS_FDROID */
     "platforms_freebsd.png",  /* UI_ICON_TYPE_PLATFORMS_FREEBSD */
     "platforms_github.png",  /* UI_ICON_TYPE_PLATFORMS_GITHUB */
+    "platforms_ios.png",  /* UI_ICON_TYPE_PLATFORMS_IOS */
     "platforms_itch.png",  /* UI_ICON_TYPE_PLATFORMS_ITCH */
     "platforms_macos.png",  /* UI_ICON_TYPE_PLATFORMS_MACOS */
+    "platforms_microcontroller.png",  /* UI_ICON_TYPE_PLATFORMS_MICROCONTROLLER */
+    "platforms_plan9.png",  /* UI_ICON_TYPE_PLATFORMS_PLAN9 */
     "platforms_playstore.png",  /* UI_ICON_TYPE_PLATFORMS_PLAYSTORE */
     "platforms_srht.png",  /* UI_ICON_TYPE_PLATFORMS_SRHT */
     "platforms_telegram.png",  /* UI_ICON_TYPE_PLATFORMS_TELEGRAM */

@@ -58,7 +58,7 @@ jobs:
           prepare: |
             set -eu
             pkg install -y gmake cmake pkgconf \
-              sdl2 libdrm gbm egl glesv2 \
+              sdl2 libdrm mesa-libs \
               curl openssl zstd brotli \
               git
           run: |
