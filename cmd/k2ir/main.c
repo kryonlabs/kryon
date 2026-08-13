@@ -56,6 +56,29 @@ starts_word(const char *s, const char *word)
             s[n] == '(' || s[n] == '"' || s[n] == '{');
 }
 
+static int
+parse_symbol_before_colons(const char *s, char *out, size_t out_size)
+{
+    const char *p;
+    const char *q;
+    size_t n = 0;
+
+    out[0] = '\0';
+    p = strstr(s, "::");
+    if(p == NULL)
+        return 0;
+    q = s;
+    while(q < p && (*q == ' ' || *q == '\t'))
+        q++;
+    while(q < p && (isalnum((unsigned char)*q) || *q == '_') &&
+          n + 1 < out_size)
+        out[n++] = *q++;
+    out[n] = '\0';
+    while(q < p && (*q == ' ' || *q == '\t'))
+        q++;
+    return out[0] != '\0' && q == p;
+}
+
 static void
 path_join(char *dst, size_t dst_size, const char *a, const char *b)
 {
@@ -253,6 +276,74 @@ parse_function_header(char *name, size_t name_size, char *args,
     }
 }
 
+static int
+parse_import_line(KirModule *module, const char *path, int line_no,
+                  const char *line)
+{
+    const char *directive;
+    char target[K2IR_PATH_MAX];
+    char name[KIR_NAME_MAX];
+    KirImportKind kind;
+
+    directive = strstr(line, "#import");
+    if(directive == NULL)
+        return 0;
+    target[0] = '\0';
+    name[0] = '\0';
+    if(!parse_quoted(directive, target, sizeof(target)) &&
+       !parse_angled(directive, target, sizeof(target)))
+        return 0;
+    if(parse_symbol_before_colons(line, name, sizeof(name)))
+        kind = KIR_IMPORT_MODULE;
+    else {
+        snprintf(name, sizeof(name), "%s", target);
+        kind = KIR_IMPORT_HEADER;
+    }
+    KirModuleAddImport(module, kind, name, target, "", 1,
+                       KirSpan(path, line_no, 1));
+    return 1;
+}
+
+static int
+parse_extern_line(KirModule *module, const char *path, int line_no,
+                  const char *line)
+{
+    char name[KIR_NAME_MAX];
+
+    if(strstr(line, "#extern") == NULL)
+        return 0;
+    if(!parse_symbol_before_colons(line, name, sizeof(name)))
+        return 0;
+    KirModuleAddImport(module, KIR_IMPORT_EXTERN, name, name, line, 1,
+                       KirSpan(path, line_no, 1));
+    return 1;
+}
+
+static int
+looks_like_function_header(const char *line)
+{
+    char tmp[K2IR_LINE_MAX];
+    char *p;
+    char *body;
+
+    if(starts_word(line, "screen") || starts_word(line, "preview") ||
+       starts_word(line, "page") || starts_word(line, "scene") ||
+       starts_word(line, "frame") || starts_word(line, "fn"))
+        return 1;
+    p = strstr(line, "::");
+    if(p == NULL)
+        return 0;
+    snprintf(tmp, sizeof(tmp), "%s", p + 2);
+    body = trim(tmp);
+    if(starts_word(body, "#import") || starts_word(body, "#defined") ||
+       starts_word(body, "#define") || starts_word(body, "struct") ||
+       starts_word(body, "enum"))
+        return 0;
+    if(strstr(body, "#type") != NULL)
+        return 0;
+    return strchr(body, '(') != NULL;
+}
+
 static void
 emit_kir_file(const char *root, const char *out_dir, const char *path)
 {
@@ -295,20 +386,10 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
         if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
-        } else if(mode == TOP && strncmp(t, "#import", 7) == 0) {
-            char target[K2IR_PATH_MAX];
-            char name[KIR_NAME_MAX];
-            KirImportKind kind = KIR_IMPORT_HEADER;
-
-            target[0] = '\0';
-            name[0] = '\0';
-            if(parse_quoted(t, target, sizeof(target)) ||
-               parse_angled(t, target, sizeof(target))) {
-                snprintf(name, sizeof(name), "%s", target);
-                kind = strstr(t, "::") != NULL ? KIR_IMPORT_MODULE : KIR_IMPORT_HEADER;
-            }
-            KirModuleAddImport(module, kind, name, target, "", 1,
-                               KirSpan(rel, line_no, 1));
+        } else if(mode == TOP &&
+                  (parse_import_line(module, rel, line_no, t) ||
+                   parse_extern_line(module, rel, line_no, t))) {
+            continue;
         } else if(mode == TOP && starts_word(t, "state") && strchr(t, '{') != NULL) {
             mode = STATE;
         } else if(mode == STATE) {
@@ -317,11 +398,7 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
             } else {
                 parse_state_field(module, rel, line_no, t);
             }
-        } else if(mode == TOP &&
-                  (strstr(t, "::") != NULL || starts_word(t, "screen") ||
-                   starts_word(t, "preview") || starts_word(t, "page") ||
-                   starts_word(t, "scene") || starts_word(t, "frame") ||
-                   starts_word(t, "fn"))) {
+        } else if(mode == TOP && looks_like_function_header(t)) {
             char name[KIR_NAME_MAX];
             char args[KIR_TEXT_MAX];
 
