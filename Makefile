@@ -41,7 +41,11 @@ CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay $(KRYON_BOX2D_INCLUDE)
 ICON_DIR ?= icons language payments platforms tiles pfp
 ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
-EMBED_ASSETS ?= themes fonts/noto
+# Default embedded assets: themes + the regular UI font. The CJK Noto faces
+# (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
+# the default UI loads them. Apps that need CJK can override:
+#   make EMBED_ASSETS="themes fonts/noto"
+EMBED_ASSETS ?= themes fonts/noto/NotoSans-Regular.ttf
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FONT_SUBSET_OUT_DIR ?= $(BUILD_DIR)/fonts/subset
@@ -137,6 +141,9 @@ UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
+KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
+KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
+KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
@@ -182,9 +189,12 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	sh tests/kt_cli_test.sh $(KT)
+	sh tests/krb_cartridge_test.sh $(KC) $(KRB_WALK_TEST) .
+	$(KRB_MOUNT_TEST)
+	$(KRY_TERM_TEST)
 	$(KSYNC_ACCOUNT_TEST)
 	$(KSYNC_SYNC_TEST)
 	$(TRANSITION_TEST)
@@ -225,7 +235,7 @@ KC_SRCS := $(sort $(wildcard cmd/kc/*.c))
 KC_HDRS := cmd/kc/kc_internal.h cmd/kc/kc_ast.h
 
 $(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -o $@ $(KC_SRCS)
+	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ $(KC_SRCS)
 
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
@@ -234,10 +244,10 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(RAYLIB_A) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) \
-		$(KRYON_MARKDOWN_LDLIBS) $(KRYON_OPENSSL_SSL_LDLIB) \
-		$(KRYON_OPENSSL_CRYPTO_LDLIB) $(CURL_CODEC_LDLIBS) \
-		$(LDLIBS) -lpthread -lm
+		$(RAYLIB_A) $(KRYON_BOX2D_A) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) \
+		$(KRYON_CURL_A) $(KRYON_MARKDOWN_LDLIBS) \
+		$(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) \
+		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
 
 $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon.sh $@
@@ -365,23 +375,37 @@ $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_tree_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_property_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/animation_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(KRB_WALK_TEST): tests/krb_walk_test.c src/krb/krb.c src/backend/kry_backend.c include/krb.h include/kry_backend.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_walk_test.c src/krb/krb.c \
+		src/backend/kry_backend.c -o $@
+
+$(KRB_MOUNT_TEST): tests/krb_mount_test.c src/krb/krb.c src/backend/kry_backend.c include/krb.h include/kry_backend.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_mount_test.c src/krb/krb.c \
+		src/backend/kry_backend.c -o $@
+
+$(KRY_TERM_TEST): tests/kry_term_test.c src/kry_std/kry_term.c include/kry_term.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_term_test.c src/kry_std/kry_term.c -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@

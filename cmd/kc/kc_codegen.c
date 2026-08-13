@@ -3,6 +3,7 @@
  * program entry. write_project_header/generate the umbrella kryon_project.h
  * that includes every file's header. Expression rewriting (rewrite_kry_expr)
  * and defer splicing (apply_defers) happen here, at output time. */
+#include "kc_ast.h"
 #include "kc_internal.h"
 
 #include <errno.h>
@@ -380,8 +381,18 @@ write_generated(const KryFile *file, const char *root, const char *out_dir)
         else
             fprintf(out, "\nstatic KRYON_PRIVATE_UNUSED %s\n%s(%s)\n{\n",
                     return_type, name, args);
-        for(int j = 0; j < fn->body_count; j++)
-            write_body_line(out, file, fn, fn->body[j], &indent);
+        {
+            AstFunction *af = ast_function_from_body(fn);
+
+            if(af != NULL) {
+                for(int j = 0; j < af->stmt_count; j++)
+                    write_body_line(out, file, fn, af->stmts[j].text, &indent);
+                ast_function_free(af);
+            } else {
+                for(int j = 0; j < fn->body_count; j++)
+                    write_body_line(out, file, fn, fn->body[j], &indent);
+            }
+        }
         for(int j = 0; j < fn->call_count; j++) {
             const char *call = fn->calls[j];
             size_t len = strlen(call);
