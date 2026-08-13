@@ -46,6 +46,7 @@ $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 	rm -rf $(2); \
 	mkdir -p $(2) $(3); \
 	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	find $(2) -type f \( -name '*.o' -o -name '*.a' \) -delete; \
 	sh $(KRYON_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		CC="$(4)" \
@@ -76,6 +77,7 @@ $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 	rm -rf $(2); \
 	mkdir -p $(2) $(3); \
 	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	find $(2) -type f \( -name '*.o' -o -name '*.a' \) -delete; \
 	sh $(KRYON_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		PLATFORM=PLATFORM_WEB \
@@ -97,6 +99,7 @@ $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 	rm -rf $(2); \
 	mkdir -p $(2) $(3); \
 	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	find $(2) -type f \( -name '*.o' -o -name '*.a' \) -delete; \
 	sh $(KRYON_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
@@ -121,6 +124,7 @@ $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 	rm -rf $(2); \
 	mkdir -p $(2) $(3); \
 	cp -R $(RAYLIB_DIR)/. $(2)/; \
+	find $(2) -type f \( -name '*.o' -o -name '*.a' \) -delete; \
 	sh $(KRYON_RAYLIB_PREPARE_SCRIPT) $(2); \
 	$(MAKE) -j1 -C $(2) \
 		OS=Windows_NT \
