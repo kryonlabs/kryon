@@ -3269,6 +3269,7 @@ SaveUIFrameState(void)
     state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
     state.mouse_world_override = g_ui_mouse_world_override;
     state.frame_serial = g_ui_frame_serial;
+    state.ui_scale = GetUIScale();
     return state;
 }
 
@@ -3305,6 +3306,7 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
     g_ui_mouse_world_override = state.mouse_world_override;
     g_ui_frame_serial = state.frame_serial;
+    SetUIScale(state.ui_scale);
     ResetUIClip();
 }
 

@@ -35,6 +35,7 @@ typedef struct UIFrameState {
     int mouse_world_override_enabled;
     Vector2 mouse_world_override;
     unsigned long frame_serial;
+    float ui_scale;
 } UIFrameState;
 
 void InitUI(int width, int height, float dpi);
