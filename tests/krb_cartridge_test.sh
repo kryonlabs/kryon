@@ -1,0 +1,75 @@
+#!/bin/sh
+set -eu
+
+kc=${1:-build/bin/kc}
+walker=${2:-}
+root=${3:-.}
+work=${TMPDIR:-/tmp}/kryon-krb-cartridge-test.$$
+src=$root/examples/02_buttons.kry
+budget=1024
+
+cleanup()
+{
+    rm -rf "$work"
+}
+trap cleanup EXIT INT TERM
+
+if [ ! -f "$kc" ]; then
+    echo "kc not found: $kc" >&2
+    exit 1
+fi
+if [ ! -f "$src" ]; then
+    echo "example not found: $src" >&2
+    exit 1
+fi
+
+mkdir -p "$work"
+"$kc" --emit-krb --root "$root/examples" -o "$work" "$src"
+
+krb=$work/02_buttons.krb
+if [ ! -f "$krb" ]; then
+    echo "kc --emit-krb did not write $krb" >&2
+    exit 1
+fi
+
+size=$(wc -c < "$krb")
+if [ "$size" -gt "$budget" ]; then
+    echo "cartridge too large: $size bytes (budget $budget)" >&2
+    exit 1
+fi
+
+magic=$(od -An -N4 -t x1 "$krb" | tr -d ' \n')
+if [ "$magic" != "4b524200" ]; then
+    echo "bad magic: $magic (want 4b524200 KRB\\0)" >&2
+    exit 1
+fi
+
+if ! strings "$krb" | grep -q click_count; then
+    echo "cartridge missing click_count path" >&2
+    exit 1
+fi
+if ! strings "$krb" | grep -q last_action; then
+    echo "cartridge missing last_action path" >&2
+    exit 1
+fi
+
+if [ -n "$walker" ] && [ -x "$walker" ]; then
+    "$walker" "$krb"
+fi
+
+if [ ! -f "$work/02_buttons.krb.c" ] || [ ! -f "$work/02_buttons.krb.h" ]; then
+    echo "kc --emit-krb did not write the C host" >&2
+    exit 1
+fi
+
+host=$work/krb_host_click_test
+cc -Wall -Wextra -Werror -DKRYON_KRB_NO_MAIN \
+    -I"$work" -I"$root/include" \
+    -o "$host" \
+    "$root/tests/krb_host_click_test.c" \
+    "$work/02_buttons.krb.c" \
+    "$root/src/krb/krb.c" \
+    "$root/src/backend/kry_backend.c"
+"$host"
+
+echo "krb ok size=$size"
