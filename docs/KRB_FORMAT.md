@@ -25,7 +25,7 @@ imports[]       u32 string offset × import_count
 | node_count | u32 | |
 | string_bytes | u32 | |
 | prog_bytes | u32 | |
-| import_count | u32 | host bind names (`#extern` / `#export` later) |
+| import_count | u32 | host bind names (button handlers) |
 | reserved | u32 | 0 |
 
 ## Node (28 bytes)
@@ -35,8 +35,8 @@ imports[]       u32 string offset × import_count
 | id | u16 |
 | parent | i16 (`-1` = root) |
 | name_off | u16 (string table) |
-| type | u8 (`GROUP` 0, `BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4) |
-| flags | u8 (export in bits 0–1; `SCALE_X/Y/W/H` in bits 2–5) |
+| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5; 0 reserved) |
+| flags | u8 (`SCALE_X/Y/W/H` in bits 2–5; bits 0–1 reserved) |
 | bind_slot | u16 (`0xffff` = none) |
 | x y w h | i16 each |
 | color | u32 (RGBA, or `0x80000000 \| theme_slot`) |

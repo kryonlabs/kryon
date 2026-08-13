@@ -19,7 +19,6 @@
 #define KRB_FIELD_MAX 64
 
 enum {
-    KRB_NODE_GROUP = 0,
     KRB_NODE_BACKGROUND = 1,
     KRB_NODE_TEXT = 2,
     KRB_NODE_RECT = 3,
@@ -28,13 +27,6 @@ enum {
 };
 
 enum {
-    KRB_EXPORT_LOCAL = 0,
-    KRB_EXPORT_R = 1,
-    KRB_EXPORT_RW = 2
-};
-
-enum {
-    KRB_FLAG_EXPORT_MASK = 0x03,
     KRB_FLAG_SCALE_X = 1 << 2,
     KRB_FLAG_SCALE_Y = 1 << 3,
     KRB_FLAG_SCALE_W = 1 << 4,
