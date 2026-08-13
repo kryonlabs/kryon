@@ -24,7 +24,9 @@ enum {
     KRB_NODE_RECT = 3,
     KRB_NODE_BUTTON = 4,
     KRB_NODE_DATA = 5,
-    KRB_NODE_PICTURE = 6
+    KRB_NODE_PICTURE = 6,
+    KRB_NODE_CHECKBOX = 7,
+    KRB_NODE_TOGGLE = 8
 };
 
 enum {

@@ -564,6 +564,53 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         if(b->texture != NULL && text[0] != '\0')
             b->texture(text, x, y, w, h, color, n->style);
         break;
+    case KRB_NODE_CHECKBOX: {
+        /* name_off is the bound state-field path; text_off the label. The
+         * cartridge owns the toggle: read the value, render, and on click flip
+         * it back through the mount. */
+        const char *path = KrbString(img, n->name_off);
+        int val = 0;
+        int got = (KrbReadI32(img, path, &val) == 0);
+        unsigned border = b->theme_color(KRY_THEME_ICON);
+        unsigned fill = b->theme_color(KRY_THEME_TEXT);
+        int mx = 0, my = 0;
+
+        b->rect(x, y, w, 1, border);
+        b->rect(x, y + h - 1, w, 1, border);
+        b->rect(x, y, 1, h, border);
+        b->rect(x + w - 1, y, 1, h, border);
+        if(got && val && w > 6 && h > 6)
+            b->rect(x + 3, y + 3, w - 6, h - 6, fill);
+        if(text[0] != '\0')
+            b->text(text, x + w + b->scale_px(4), y,
+                    n->font_size > 0 ? n->font_size : 16, color);
+        b->mouse(&mx, &my);
+        if(got && b->mouse_pressed(KRY_MOUSE_LEFT) &&
+           mx >= x && my >= y && mx < x + w && my < y + h)
+            KrbWriteI32(img, path, val ? 0 : 1);
+        break;
+    }
+    case KRB_NODE_TOGGLE: {
+        const char *path = KrbString(img, n->name_off);
+        int val = 0;
+        int got = (KrbReadI32(img, path, &val) == 0);
+        unsigned track = b->theme_color(KRY_THEME_SURFACE);
+        unsigned thumb = b->theme_color(KRY_THEME_BUTTON);
+        int th = (h < w) ? h : w;
+        int tx = (got && val) ? x + w - th : x;
+        int mx = 0, my = 0;
+
+        b->rect(x, y, w, h, track);
+        b->rect(tx, y, th, h, (got && val) ? b->theme_color(KRY_THEME_TEXT) : thumb);
+        if(text[0] != '\0')
+            b->text(text, x + w + b->scale_px(4), y,
+                    n->font_size > 0 ? n->font_size : 16, color);
+        b->mouse(&mx, &my);
+        if(got && b->mouse_pressed(KRY_MOUSE_LEFT) &&
+           mx >= x && my >= y && mx < x + w && my < y + h)
+            KrbWriteI32(img, path, val ? 0 : 1);
+        break;
+    }
     default:
         break;
     }

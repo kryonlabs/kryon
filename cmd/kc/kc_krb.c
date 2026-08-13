@@ -884,6 +884,91 @@ parse_picture(KrbBuild *b, const char *call)
     return 1;
 }
 
+/* "&flag" (or "& flag", with trailing junk) -> "flag". Empty if not an lvalue
+ * reference, so callers can skip binding. */
+static void
+strip_amp(const char *expr, char *dst, size_t dst_size)
+{
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return;
+    expr = skip_ws(expr);
+    if(*expr == '&')
+        expr++;
+    expr = skip_ws(expr);
+    while(n + 1 < dst_size && ((*expr >= 'a' && *expr <= 'z') ||
+           (*expr >= 'A' && *expr <= 'Z') || (*expr >= '0' && *expr <= '9') ||
+           *expr == '_'))
+        dst[n++] = *expr++;
+    dst[n] = '\0';
+}
+
+/* Checkbox(id,x,y,label,&val) -> a CHECKBOX node bound to the state field in
+ * &val (name = path), label in text, id in bind_slot. */
+static int
+parse_checkbox(KrbBuild *b, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char parts[8][KC_BODY_LINE_MAX];
+    char path[KC_NAME_MAX];
+    KrbBuildNode *n;
+    int count, scaled;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 5)
+        return 0;
+    strip_amp(parts[4], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    n = add_node(b, KRB_NODE_CHECKBOX, path);
+    if(n == NULL)
+        return 0;
+    if(parse_coord(parts[1], &n->x, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[2], &n->y, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_Y;
+    n->w = 16;
+    n->h = 16;
+    n->flags |= KRB_FLAG_SCALE_W | KRB_FLAG_SCALE_H;
+    extract_string(parts[3], n->text, sizeof(n->text));
+    n->bind_slot = atoi(skip_ws(parts[0]));
+    n->color = KRB_COLOR_THEME | KRY_THEME_TEXT;
+    return 1;
+}
+
+/* Toggle(id,x,y,w,h,&val,off,on) -> a TOGGLE node bound to &val. */
+static int
+parse_toggle(KrbBuild *b, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char parts[8][KC_BODY_LINE_MAX];
+    char path[KC_NAME_MAX];
+    KrbBuildNode *n;
+    int count, scaled;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 6)
+        return 0;
+    strip_amp(parts[5], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    n = add_node(b, KRB_NODE_TOGGLE, path);
+    if(n == NULL)
+        return 0;
+    if(parse_coord(parts[1], &n->x, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[2], &n->y, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[3], &n->w, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[4], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
+    if(count > 6)
+        extract_string(parts[6], n->text, sizeof(n->text));
+    n->bind_slot = atoi(skip_ws(parts[0]));
+    n->color = KRB_COLOR_THEME | KRY_THEME_SURFACE;
+    return 1;
+}
+
 static int
 try_widget(KrbBuild *b, const char *raw)
 {
@@ -916,6 +1001,10 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_textinrect(b, call);
     if(starts_ident(call, "Picture"))
         return parse_picture(b, call);
+    if(starts_ident(call, "Checkbox"))
+        return parse_checkbox(b, call);
+    if(starts_ident(call, "Toggle"))
+        return parse_toggle(b, call);
     return 0;
 }
 

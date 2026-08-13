@@ -52,6 +52,25 @@ cap_text(const char *s, int x, int y, int size, unsigned color)
     snprintf(g_last_text, sizeof(g_last_text), "%s", s);
 }
 
+/* Mouse capture for the checkbox click-toggle test. */
+static int g_cap_pressed;
+static int g_cap_mx = 4;
+static int g_cap_my = 4;
+static void
+cap_mouse(int *x, int *y)
+{
+    if(x != NULL)
+        *x = g_cap_mx;
+    if(y != NULL)
+        *y = g_cap_my;
+}
+static int
+cap_pressed(int button)
+{
+    (void)button;
+    return g_cap_pressed;
+}
+
 /* header + 1 text node + strings("\0score\0n=%d\0") + prog + no imports */
 static int
 build_text_image(unsigned char *buf, size_t cap, const unsigned char *prog,
@@ -250,6 +269,64 @@ main(void)
         KrbDraw(&img, 0, 0, 200, 80);
         if(strcmp(g_last_text, "3.1") != 0)
             return fail("float text format");
+    }
+
+    /* CHECKBOX read/render/click-toggle through a mount. The cartridge owns the
+     * toggle: on an in-bounds press it flips the bound value. */
+    {
+        static const char cstr[] = "\0cb\0Flag\0";  /* 0="" 1="cb" 4="Flag" */
+        unsigned char *p = buf;
+        KryBackend cap;
+        int cbval;
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(cstr));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u16(p, 0);                       /* id */
+        p = wr_u16(p, (unsigned)-1);            /* parent */
+        p = wr_u16(p, 1);                       /* name_off "cb" */
+        *p++ = KRB_NODE_CHECKBOX;
+        *p++ = KRB_FLAG_SCALE_W | KRB_FLAG_SCALE_H;
+        p = wr_u16(p, 1);                       /* bind_slot = id */
+        p = wr_u16(p, 0);                       /* x */
+        p = wr_u16(p, 0);                       /* y */
+        p = wr_u16(p, 16);                      /* w */
+        p = wr_u16(p, 16);                      /* h */
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 4);                       /* text_off "Flag" */
+        p = wr_u16(p, 16);                      /* font_size */
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, cstr, sizeof(cstr));
+        p += sizeof(cstr);
+        *p++ = KRB_OP_DRAW_TREE;
+        len = (size_t)(p - buf);
+
+        KrbFree(&img);
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load checkbox image");
+        cbval = 0;
+        if(KrbBindMem(&img, "cb", &cbval, KRB_I32, 4) != 0)
+            return fail("bind checkbox");
+        cap = KryBackendNull;
+        cap.mouse = cap_mouse;
+        cap.mouse_pressed = cap_pressed;
+        KryBackendSelect(&cap);
+        g_cap_pressed = 1;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(cbval != 1)
+            return fail("checkbox did not flip on press");
+        g_cap_pressed = 0;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(cbval != 1)
+            return fail("checkbox flipped without press");
     }
 
     KrbFree(&img);

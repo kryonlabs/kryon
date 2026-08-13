@@ -35,7 +35,7 @@ imports[]       u32 string offset × import_count
 | id | u16 |
 | parent | i16 (`-1` = root) |
 | name_off | u16 (string table) |
-| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6; 0 reserved) |
+| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6, `CHECKBOX` 7, `TOGGLE` 8; 0 reserved) |
 | flags | u8 (`SCALE_X/Y/W/H` in bits 2–5; bits 0–1 reserved) |
 | bind_slot | u16 (`0xffff` = none) |
 | x y w h | i16 each |
@@ -52,6 +52,14 @@ PICTURE nodes carry the asset path in `text_off`, the tint in `color`, and the
 them through `KryBackend.texture`, which loads the asset via
 `KryLoadPictureTexture` (runtime file or embedded asset) and fits it into the
 node bounds. `DATA` nodes are state-field metadata and are not drawn.
+
+CHECKBOX and TOGGLE are interactive: `name_off` is the bound state-field path
+(mounted by the host), `text_off` the label, `bind_slot` the widget id. The
+cartridge owns the toggle — each frame it reads the value via the mount, draws
+the box/switch with `KryBackend` primitives, and on an in-bounds mouse press
+writes the flipped value back through the mount. Only `state {}` fields can
+bind (they are what the host mounts); a widget whose value isn't a state field
+renders its default state.
 
 ## Program
 

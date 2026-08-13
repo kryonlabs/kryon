@@ -59,6 +59,10 @@ fi
 cat > "$work/frame.kry" <<'EOF'
 #import "kryon.h"
 
+state {
+    cb_flag: int = 0
+}
+
 app "Frame" {
     size 100 100
     fps 60
@@ -72,6 +76,7 @@ frame main {
     Background(GetThemeSurface())
     Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
     Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, UI_PICTURE_FIT_CONTAIN})
+    Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
     EndUIFocus()
     EndDrawing()
 }
@@ -83,6 +88,10 @@ if [ ! -f "$work/frame.krb" ]; then
 fi
 if ! strings "$work/frame.krb" | grep -q "tiles/tile.png"; then
     echo "frame cartridge missing Picture asset path" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "cb_flag"; then
+    echo "frame cartridge missing Checkbox value path" >&2
     exit 1
 fi
 
