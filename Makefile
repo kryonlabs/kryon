@@ -37,7 +37,7 @@ LEGACY_KRYON_CMD = $(BUILD_ROOT)/bin/kryon
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay $(KRYON_BOX2D_INCLUDE)
+CPPFLAGS_BASE = -Iinclude -I$(KRYON_DIR)/vendor/clay $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons language payments platforms tiles pfp
 ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
@@ -117,6 +117,14 @@ CPPFLAGS += -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
+
+# Drop the Box2D physics sources when physics is disabled (UI-only builds).
+# Keep in sync with KRYON_PHYSICS_SRCS in mk/vendor.mk.
+KRYON_PHYSICS_SRCS_REL := src/scene/physics_world.c src/scene/node_body2d.c \
+	src/scene/node_area2d.c src/scene/node_collision_shape2d.c
+ifeq ($(KRYON_WITH_PHYSICS),0)
+SRCS := $(filter-out $(KRYON_PHYSICS_SRCS_REL),$(SRCS))
+endif
 
 SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
 ifneq ($(strip $(SYSTEM_THEME_PKG)),)
@@ -227,7 +235,7 @@ kryon-compat-check: | $(BUILD_DIR)
 kryon-boundary-check:
 	sh $(KRYON_BOUNDARY_CHECK) .
 
-$(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_BOX2D_A)
+$(LIB): $(OBJS) | $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
@@ -244,7 +252,7 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(RAYLIB_A) $(KRYON_BOX2D_A) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) \
+		$(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) \
 		$(KRYON_CURL_A) $(KRYON_MARKDOWN_LDLIBS) \
 		$(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) \
 		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
@@ -375,22 +383,22 @@ $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
 		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
+$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_tree_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
+$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_property_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) | $(BUILD_DIR)
+$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/animation_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_BOX2D_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(KRB_WALK_TEST): tests/krb_walk_test.c src/krb/krb.c src/backend/kry_backend.c include/krb.h include/kry_backend.h | $(BUILD_DIR)

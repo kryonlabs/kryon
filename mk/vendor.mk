@@ -179,3 +179,16 @@ $(KRYON_BOX2D_A): $(KRYON_BOX2D_DIR)/CMakeLists.txt | $(KRYON_VENDOR_ORDER_ONLY)
 		-DBOX2D_BENCHMARKS=OFF \
 		-DBUILD_SHARED_LIBS=OFF
 	$(CMAKE) --build $(KRYON_BOX2D_BUILD_DIR) --target box2d
+
+# 2D physics (Box2D) is optional. Apps that use only UI nodes can set
+# KRYON_WITH_PHYSICS=0, filter $(KRYON_PHYSICS_SRCS) out of their kryon
+# source list, add $(KRYON_PHYSICS_CPPFLAGS) to CPPFLAGS, and link
+# $(KRYON_PHYSICS_DEPS) (empty when physics is off) to drop box2d entirely.
+KRYON_WITH_PHYSICS ?= 1
+KRYON_PHYSICS_SRCS := \
+	$(KRYON_DIR)/src/scene/physics_world.c \
+	$(KRYON_DIR)/src/scene/node_body2d.c \
+	$(KRYON_DIR)/src/scene/node_area2d.c \
+	$(KRYON_DIR)/src/scene/node_collision_shape2d.c
+KRYON_PHYSICS_CPPFLAGS := $(if $(filter 0,$(KRYON_WITH_PHYSICS)),-DKRYON_WITH_PHYSICS=0,-DKRYON_WITH_PHYSICS=1 $(KRYON_BOX2D_INCLUDE))
+KRYON_PHYSICS_DEPS := $(if $(filter 0,$(KRYON_WITH_PHYSICS)),,$(KRYON_BOX2D_A))
