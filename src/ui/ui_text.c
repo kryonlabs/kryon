@@ -205,6 +205,15 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
         entry->file_type != NULL && entry->file_type[0] != '\0' ? entry->file_type : ".ttf",
         entry->font_data, (int)entry->font_data_size, physical_size,
         entry->codepoints, entry->codepoint_count);
+
+    /* raylib returns the global default font (a 95-glyph ASCII bitmap) when a
+     * source cannot be loaded -- unsupported format such as .ttc, no matching
+     * glyphs, or corrupt data. Treat that as failure instead of letting the
+     * default font masquerade as a valid entry and pollute the per-codepoint
+     * fallback chain. A freshly loaded font always owns its own texture. */
+    if(font.texture.id == GetFontDefault().texture.id)
+        return (Font){0};
+
     if(font_valid(font))
         SetTextureFilter(UIFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
     return font;
@@ -456,6 +465,8 @@ RegisterUISmallFont(const char *name, Font font)
     return 1;
 }
 
+static int *ui_font_codepoints(int *out_count);
+
 int
 RegisterUIFontSource(const char *name, const char *file_type,
                      const unsigned char *font_data, unsigned int font_size,
@@ -474,12 +485,29 @@ RegisterUIFontSource(const char *name, const char *file_type,
 
     if(codepoints != NULL && codepoint_count > 0) {
         g_ui_fonts[index].codepoints = calloc((size_t)codepoint_count, sizeof(*codepoints));
-        if(g_ui_fonts[index].codepoints == NULL)
+        if(g_ui_fonts[index].codepoints == NULL) {
+            clear_font_entry(&g_ui_fonts[index]);
             return 0;
+        }
         memcpy(g_ui_fonts[index].codepoints, codepoints,
                (size_t)codepoint_count * sizeof(*codepoints));
         g_ui_fonts[index].codepoint_count = codepoint_count;
         g_ui_fonts[index].codepoint_cap = codepoint_count;
+    } else {
+        /* No codepoint set given: seed the standard range (ASCII, Latin and
+         * Latin Extended, general punctuation, currency, Greek, Cyrillic) so
+         * the common scripts render with no first-frame atlas rebuilds. The
+         * font stays dynamic and grows for anything beyond this seed. */
+        int seed_count = 0;
+        int *seed = ui_font_codepoints(&seed_count);
+        if(seed == NULL || seed_count == 0) {
+            free(seed);
+            clear_font_entry(&g_ui_fonts[index]);
+            return 0;
+        }
+        g_ui_fonts[index].codepoints = seed;
+        g_ui_fonts[index].codepoint_count = seed_count;
+        g_ui_fonts[index].codepoint_cap = seed_count;
     }
 
     g_ui_fonts[index].file_type = file_type;
@@ -487,13 +515,21 @@ RegisterUIFontSource(const char *name, const char *file_type,
     g_ui_fonts[index].font_data_size = font_size;
     g_ui_fonts[index].font = (Font){0};
     g_ui_fonts[index].small_font = (Font){0};
-    return font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE));
+    /* Source fonts keep the raw font bytes, so they can be re-rasterized on
+     * demand: any glyph the file contains renders in this font's own typeface
+     * instead of falling through to a different registered font. */
+    g_ui_fonts[index].dynamic_codepoints = 1;
+
+    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE))) {
+        clear_font_entry(&g_ui_fonts[index]);
+        return 0;
+    }
+    return 1;
 }
 
 int
 RegisterUIFontFileSource(const char *name, const char *path,
-                         const int *codepoints, int codepoint_count,
-                         int dynamic_codepoints)
+                         const int *codepoints, int codepoint_count)
 {
     const EmbeddedAsset *asset;
     const char *dot;
@@ -542,7 +578,6 @@ RegisterUIFontFileSource(const char *name, const char *path,
              "%s", dot);
     g_ui_fonts[index].file_type = g_ui_fonts[index].file_type_buf;
     g_ui_fonts[index].owns_font_data = owns_data;
-    g_ui_fonts[index].dynamic_codepoints = dynamic_codepoints != 0;
     return 1;
 }
 
