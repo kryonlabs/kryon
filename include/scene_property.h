@@ -8,7 +8,7 @@
  * Each runtime node kind registers a property spec table: an ordered list of
  * named, typed properties with min/max/step metadata. The getters/setters read
  * and write the runtime KryNode fields (local transform, props structs) through
- * this abstraction, so Krait's Inspector can edit every field generically
+ * this abstraction, so an IDE inspector can edit every field generically
  * instead of special-casing x/y/w/h bounds.
  */
 
