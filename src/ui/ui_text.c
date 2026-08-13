@@ -495,17 +495,30 @@ RegisterUIFontFileSource(const char *name, const char *path,
                          const int *codepoints, int codepoint_count,
                          int dynamic_codepoints)
 {
+    const EmbeddedAsset *asset;
     const char *dot;
     unsigned char *data;
     int data_size = 0;
+    int owns_data;
     int ok;
 
     if(path == NULL || path[0] == '\0')
         return 0;
 
-    data = LoadFileData(path, &data_size);
-    if(data == NULL || data_size <= 0)
-        return 0;
+    /* Prefer an embedded asset so font sources resolve with no filesystem
+     * (e.g. on Android, where the .ttf is baked into libkryon.a). The embedded
+     * blob is static storage and must not be freed. */
+    asset = GetEmbeddedAsset(path);
+    if(asset != NULL) {
+        data = (unsigned char *)asset->data;
+        data_size = (int)asset->size;
+        owns_data = 0;
+    } else {
+        data = LoadFileData(path, &data_size);
+        if(data == NULL || data_size <= 0)
+            return 0;
+        owns_data = 1;
+    }
 
     dot = strrchr(path, '.');
     if(dot == NULL || dot[0] == '\0')
@@ -514,19 +527,21 @@ RegisterUIFontFileSource(const char *name, const char *path,
     ok = RegisterUIFontSource(name, dot, data, (unsigned int)data_size,
                               codepoints, codepoint_count);
     if(!ok) {
-        UnloadFileData(data);
+        if(owns_data)
+            UnloadFileData(data);
         return 0;
     }
 
     int index = font_entry_index(name);
     if(index < 0) {
-        UnloadFileData(data);
+        if(owns_data)
+            UnloadFileData(data);
         return 0;
     }
     snprintf(g_ui_fonts[index].file_type_buf, sizeof(g_ui_fonts[index].file_type_buf),
              "%s", dot);
     g_ui_fonts[index].file_type = g_ui_fonts[index].file_type_buf;
-    g_ui_fonts[index].owns_font_data = 1;
+    g_ui_fonts[index].owns_font_data = owns_data;
     g_ui_fonts[index].dynamic_codepoints = dynamic_codepoints != 0;
     return 1;
 }
