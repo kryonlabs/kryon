@@ -36,7 +36,8 @@ usage(void)
             "usage:\n"
             "  kryon-preview capture --project ROOT --source REL --output PNG [--width W --height H]\n"
             "  kryon-preview reload --project ROOT --source REL [--count N --width W --height H]\n"
-            "  kryon-preview capture-all --project ROOT --source-dir DIR --out-dir DIR [--width W --height H]\n");
+            "  kryon-preview capture-all --project ROOT --source-dir DIR --out-dir DIR [--width W --height H]\n"
+            "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n");
 }
 
 static const char *
@@ -113,6 +114,8 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
         return opt->project != NULL && opt->source != NULL;
     if(strcmp(opt->command, "capture-all") == 0)
         return opt->project != NULL && opt->source_dir != NULL && opt->out != NULL;
+    if(strcmp(opt->command, "cartridge") == 0)
+        return opt->source != NULL && opt->out != NULL;
     return 0;
 }
 
@@ -394,6 +397,172 @@ run_capture_all(const PreviewOptions *opt)
     return ok ? 0 : 1;
 }
 
+static int
+file_exists(const char *path)
+{
+    struct stat st;
+
+    return path != NULL && stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+static int
+find_kc(char *dst, size_t dst_size)
+{
+    const char *kryon_dir = getenv("KRYON_DIR");
+    const char *path;
+
+    if(kryon_dir != NULL && kryon_dir[0] != '\0') {
+        snprintf(dst, dst_size, "%s/build/bin/kc", kryon_dir);
+        if(file_exists(dst))
+            return 1;
+        snprintf(dst, dst_size, "%s/build/linux-x86_64/bin/kc", kryon_dir);
+        if(file_exists(dst))
+            return 1;
+    }
+    if(file_exists("build/bin/kc")) {
+        snprintf(dst, dst_size, "build/bin/kc");
+        return 1;
+    }
+    if(file_exists("build/linux-x86_64/bin/kc")) {
+        snprintf(dst, dst_size, "build/linux-x86_64/bin/kc");
+        return 1;
+    }
+    path = getenv("PATH");
+    if(path != NULL) {
+        char buf[KP_PATH_MAX];
+        const char *start = path;
+
+        while(*start != '\0') {
+            const char *colon = strchr(start, ':');
+            size_t n = colon != NULL ? (size_t)(colon - start) : strlen(start);
+
+            if(n > 0 && n + 4 < sizeof(buf)) {
+                memcpy(buf, start, n);
+                buf[n] = '\0';
+                path_join(dst, dst_size, buf, "kc");
+                if(file_exists(dst))
+                    return 1;
+            }
+            if(colon == NULL)
+                break;
+            start = colon + 1;
+        }
+    }
+    return 0;
+}
+
+static int
+compile_krb(const char *kc, const char *project, const char *source,
+            char *out_krb, size_t out_size)
+{
+    char command[KP_PATH_MAX * 4];
+    char out_dir[KP_PATH_MAX];
+    char rel[KP_PATH_MAX];
+    char src_abs[KP_PATH_MAX];
+    int rc;
+
+    snprintf(out_dir, sizeof(out_dir), "%s/kryon-preview-krb",
+             getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp");
+    snprintf(rel, sizeof(rel), "%s", source);
+    if(has_suffix(rel, ".kry"))
+        rel[strlen(rel) - 4] = '\0';
+    path_join(out_krb, out_size, out_dir, rel);
+    {
+        size_t n = strlen(out_krb);
+        if(n + 5 < out_size)
+            memcpy(out_krb + n, ".krb", 5);
+    }
+    {
+        char parent[KP_PATH_MAX];
+        char *slash;
+
+        snprintf(parent, sizeof(parent), "%s", out_krb);
+        slash = strrchr(parent, '/');
+        if(slash != NULL) {
+            *slash = '\0';
+            if(!mkdir_p(parent))
+                return 0;
+        }
+    }
+    if(source[0] == '/')
+        snprintf(src_abs, sizeof(src_abs), "%s", source);
+    else
+        path_join(src_abs, sizeof(src_abs), project, source);
+    snprintf(command, sizeof(command),
+             "'%s' --emit-krb --no-main --root '%s' -o '%s' '%s'",
+             kc, project, out_dir, src_abs);
+    rc = system(command);
+    if(!(rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0))
+        return 0;
+    return file_exists(out_krb);
+}
+
+static int
+capture_cartridge(const char *krb_path, const char *out, int width, int height)
+{
+    KrbImage img;
+    RenderTexture2D target;
+    Image image;
+    int saved;
+
+    memset(&img, 0, sizeof(img));
+    if(KrbLoadFile(&img, krb_path) != 0) {
+        fprintf(stderr, "kryon-preview: could not load %s\n", krb_path);
+        return 0;
+    }
+    target = LoadRenderTexture(width, height);
+    BeginTextureMode(target);
+    ClearBackground(GetThemeBackground());
+    BeginUIFrame(width, height, 1.0f);
+    KrbDraw(&img, 0, 0, width, height);
+    EndUIFocus();
+    EndTextureMode();
+    KrbFree(&img);
+    image = LoadImageFromTexture(target.texture);
+    UnloadRenderTexture(target);
+    if(image.data == NULL)
+        return 0;
+    ImageFlipVertical(&image);
+    saved = ExportImage(image, out);
+    UnloadImage(image);
+    return saved;
+}
+
+static int
+run_cartridge(const PreviewOptions *opt)
+{
+    char krb_path[KP_PATH_MAX];
+    const char *source = opt->source;
+
+    if(has_suffix(source, ".krb")) {
+        if(source[0] == '/' || opt->project == NULL)
+            snprintf(krb_path, sizeof(krb_path), "%s", source);
+        else
+            path_join(krb_path, sizeof(krb_path), opt->project, source);
+        return capture_cartridge(krb_path, opt->out, opt->width, opt->height)
+                   ? 0
+                   : 1;
+    }
+    if(has_suffix(source, ".kry")) {
+        char kc[KP_PATH_MAX];
+        const char *project = opt->project != NULL ? opt->project : ".";
+
+        if(!find_kc(kc, sizeof(kc))) {
+            fprintf(stderr, "kryon-preview: kc not found for cartridge compile\n");
+            return 1;
+        }
+        if(!compile_krb(kc, project, source, krb_path, sizeof(krb_path))) {
+            fprintf(stderr, "kryon-preview: kc --emit-krb failed\n");
+            return 1;
+        }
+        return capture_cartridge(krb_path, opt->out, opt->width, opt->height)
+                   ? 0
+                   : 1;
+    }
+    fprintf(stderr, "kryon-preview: cartridge source must be .kry or .krb\n");
+    return 1;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -415,6 +584,8 @@ main(int argc, char **argv)
         rc = run_capture(&opt);
     else if(strcmp(opt.command, "reload") == 0)
         rc = run_reload(&opt);
+    else if(strcmp(opt.command, "cartridge") == 0)
+        rc = run_cartridge(&opt);
     else
         rc = run_capture_all(&opt);
     CloseWindow();
