@@ -23,6 +23,12 @@ rd_u32(const unsigned char *p)
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
+static int32_t
+rd_i32(const unsigned char *p)
+{
+    return (int32_t)rd_u32(p);
+}
+
 static int
 in_range(const KrbImage *img, const void *ptr, size_t n)
 {
@@ -45,6 +51,7 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     uint32_t string_bytes;
     uint32_t prog_bytes;
     uint32_t import_count;
+    uint32_t control_count;
     size_t need;
 
     if(img == NULL || bytes == NULL)
@@ -58,8 +65,10 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     string_bytes = rd_u32(bytes + 12);
     prog_bytes = rd_u32(bytes + 16);
     import_count = rd_u32(bytes + 20);
+    control_count = rd_u32(bytes + 24);
     need = 32 + (size_t)node_count * KRB_NODE_SIZE + string_bytes +
-           prog_bytes + (size_t)import_count * 4;
+           prog_bytes + (size_t)import_count * 4 +
+           (size_t)control_count * KRB_CONTROL_SIZE;
     if(len < need)
         return -1;
     p = bytes + 32;
@@ -72,6 +81,8 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     img->prog = p;
     p += prog_bytes;
     img->imports = (const uint32_t *)p;
+    p += (size_t)import_count * 4;
+    img->controls = p;
     img->header = (const KrbHeader *)bytes;
     if(string_bytes == 0 || img->strings[0] != '\0')
         return -1;
@@ -197,6 +208,36 @@ KrbReadNode(const KrbImage *img, unsigned index, KrbNode *out)
     out->font_size = rd_u16(p + 24);
     out->style = p[26];
     out->pad = p[27];
+    return 0;
+}
+
+unsigned
+KrbControlCount(const KrbImage *img)
+{
+    if(img == NULL || img->bytes == NULL)
+        return 0;
+    return rd_u32(img->bytes + 24);
+}
+
+int
+KrbReadControl(const KrbImage *img, unsigned index, KrbControl *out)
+{
+    const unsigned char *p;
+
+    if(img == NULL || out == NULL || img->controls == NULL ||
+       index >= KrbControlCount(img))
+        return -1;
+    p = img->controls + (size_t)index * KRB_CONTROL_SIZE;
+    out->kind = p[0];
+    out->option_count = p[1];
+    out->id = rd_u16(p + 2);
+    out->min = rd_i32(p + 4);
+    out->max = rd_i32(p + 8);
+    out->step = rd_i32(p + 12);
+    out->value_off = rd_u16(p + 16);
+    out->label_off = rd_u16(p + 18);
+    out->options_off = rd_u16(p + 20);
+    out->reserved = rd_u16(p + 22);
     return 0;
 }
 
@@ -490,6 +531,86 @@ coord(const KryBackend *b, int16_t value, int scaled)
     return (int)value;
 }
 
+static int
+clampi(int v, int lo, int hi)
+{
+    if(v < lo)
+        return lo;
+    if(v > hi)
+        return hi;
+    return v;
+}
+
+/* Horizontal slider: drag the thumb to set the value within [min,max]. */
+static void
+ctrl_slider(KrbImage *img, const KryBackend *b, const KrbControl *c,
+            const char *path, int x, int y, int w, int h, int val)
+{
+    int tw = b->scale_px(8);
+    int bar = b->scale_px(4);
+    int range = c->max - c->min;
+    int tx = (range > 0) ? x + (int)((long)(val - c->min) * (w - tw) / range) : x;
+    int mx = 0, my = 0;
+
+    b->rect(x, y + h / 2 - bar / 2, w, bar, b->theme_color(KRY_THEME_SURFACE));
+    b->rect(tx, y, tw, h, b->theme_color(KRY_THEME_BUTTON));
+    b->mouse(&mx, &my);
+    if(range > 0 && w > tw && b->mouse_down(KRY_MOUSE_LEFT) &&
+       mx >= x && my >= y && mx < x + w && my < y + h) {
+        int nv = c->min + (int)((long)(mx - x) * range / w);
+        nv = clampi(nv, c->min, c->max);
+        if(nv != val)
+            KrbWriteI32(img, path, nv);
+    }
+}
+
+/* Vertical slider: thumb moves along the Y axis. */
+static void
+ctrl_vslider(KrbImage *img, const KryBackend *b, const KrbControl *c,
+             const char *path, int x, int y, int w, int h, int val)
+{
+    int th = b->scale_px(8);
+    int bar = b->scale_px(4);
+    int range = c->max - c->min;
+    int ty = (range > 0) ? y + h - th - (int)((long)(val - c->min) * (h - th) / range) : y;
+    int mx = 0, my = 0;
+
+    b->rect(x + w / 2 - bar / 2, y, bar, h, b->theme_color(KRY_THEME_SURFACE));
+    b->rect(x, ty, w, th, b->theme_color(KRY_THEME_BUTTON));
+    b->mouse(&mx, &my);
+    if(range > 0 && h > th && b->mouse_down(KRY_MOUSE_LEFT) &&
+       mx >= x && my >= y && mx < x + w && my < y + h) {
+        int nv = c->max - (int)((long)(my - y) * range / h);
+        nv = clampi(nv, c->min, c->max);
+        if(nv != val)
+            KrbWriteI32(img, path, nv);
+    }
+}
+
+/* Spinbox: click the left half to step down, right half to step up. */
+static void
+ctrl_spinbox(KrbImage *img, const KryBackend *b, const KrbControl *c,
+             const char *path, int x, int y, int w, int h, int val,
+             int font, unsigned color)
+{
+    char buf[32];
+    int mx = 0, my = 0;
+
+    b->rect(x, y, w, h, b->theme_color(KRY_THEME_SURFACE));
+    snprintf(buf, sizeof(buf), "%d", val);
+    b->text(buf, x + b->scale_px(6), y + (h - font) / 2, font, color);
+    b->text("-", x + w / 2 - b->scale_px(10), y + (h - font) / 2, font, color);
+    b->text("+", x + w - b->scale_px(14), y + (h - font) / 2, font, color);
+    b->mouse(&mx, &my);
+    if(b->mouse_pressed(KRY_MOUSE_LEFT) && my >= y && my < y + h &&
+       mx >= x && mx < x + w) {
+        int nv = val + ((mx < x + w / 2) ? -c->step : c->step);
+        nv = clampi(nv, c->min, c->max);
+        if(nv != val)
+            KrbWriteI32(img, path, nv);
+    }
+}
+
 static void
 draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
           int origin_x, int origin_y)
@@ -609,6 +730,35 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         if(got && b->mouse_pressed(KRY_MOUSE_LEFT) &&
            mx >= x && my >= y && mx < x + w && my < y + h)
             KrbWriteI32(img, path, val ? 0 : 1);
+        break;
+    }
+    case KRB_NODE_CONTROL: {
+        /* bind_slot indexes the controls[] table; value_off is the bound path. */
+        KrbControl c;
+        const char *path;
+        int val;
+        int have;
+
+        if(KrbReadControl(img, n->bind_slot, &c) != 0)
+            break;
+        path = KrbString(img, c.value_off);
+        have = (KrbReadI32(img, path, &val) == 0);
+        if(!have)
+            val = c.min;
+        switch(c.kind) {
+        case KRB_CTRL_SLIDER:
+            ctrl_slider(img, b, &c, path, x, y, w, h, val);
+            break;
+        case KRB_CTRL_VSLIDER:
+            ctrl_vslider(img, b, &c, path, x, y, w, h, val);
+            break;
+        case KRB_CTRL_SPINBOX:
+            ctrl_spinbox(img, b, &c, path, x, y, w, h, val,
+                         n->font_size > 0 ? n->font_size : 16, color);
+            break;
+        default:
+            break;
+        }
         break;
     }
     default:

@@ -13,6 +13,7 @@
 #define KRB_BUILD_NODE_MAX 256
 #define KRB_BUILD_STR_MAX 8192
 #define KRB_BUILD_IMPORT_MAX 32
+#define KRB_BUILD_CTRL_MAX 128
 #define KRB_BUILD_HANDLER_LINES 16
 #define KRB_OUT_MAX 65536
 
@@ -45,6 +46,16 @@ typedef struct KrbStateField {
     unsigned size;
 } KrbStateField;
 
+typedef struct KrbBuildControl {
+    unsigned char kind;
+    unsigned short id;
+    int min;
+    int max;
+    int step;
+    char value[KC_NAME_MAX];
+    char label[KC_BODY_LINE_MAX];
+} KrbBuildControl;
+
 typedef struct KrbBuild {
     KrbBuildNode nodes[KRB_BUILD_NODE_MAX];
     int node_count;
@@ -56,6 +67,8 @@ typedef struct KrbBuild {
     int handler_count;
     KrbStateField fields[32];
     int field_count;
+    KrbBuildControl controls[KRB_BUILD_CTRL_MAX];
+    int control_count;
 } KrbBuild;
 
 static void
@@ -970,6 +983,190 @@ parse_toggle(KrbBuild *b, const char *call)
 }
 
 static int
+coord_flag(const char *expr, int *val, unsigned *flags, unsigned flagbit)
+{
+    int scaled;
+
+    if(parse_coord(expr, val, &scaled)) {
+        if(scaled)
+            *flags |= flagbit;
+        return 1;
+    }
+    return 0;
+}
+
+/* Parse a (Rectangle){x,y,w,h} compound into out coords + SCALE flag bits. */
+static int
+parse_rect_fields(const char *expr, int *x, int *y, int *w, int *h,
+                  unsigned *flags)
+{
+    char body[KC_BODY_LINE_MAX];
+    char parts[4][KC_BODY_LINE_MAX];
+    const char *open = strchr(expr, '{');
+    const char *close;
+    int scaled;
+    size_t len;
+
+    if(open == NULL)
+        return 0;
+    close = strchr(open, '}');
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    if(split_args(body, parts, 4) < 4)
+        return 0;
+    *flags = 0;
+    if(parse_coord(parts[0], x, &scaled) && scaled) *flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], y, &scaled) && scaled) *flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], w, &scaled) && scaled) *flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[3], h, &scaled) && scaled) *flags |= KRB_FLAG_SCALE_H;
+    return 1;
+}
+
+static KrbBuildControl *
+add_control(KrbBuild *b, int kind)
+{
+    KrbBuildControl *c;
+
+    if(b->control_count >= KRB_BUILD_CTRL_MAX)
+        return NULL;
+    c = &b->controls[b->control_count++];
+    memset(c, 0, sizeof(*c));
+    c->kind = (unsigned char)kind;
+    return c;
+}
+
+/* Emit a CONTROL node bound to a freshly-added control record. The node's
+ * bind_slot is the control index; draw_node reads the record for kind/args. */
+static int
+add_control_node(KrbBuild *b, int kind, const char *path, int x, int y,
+                 int w, int h, unsigned flags, int id, int min, int max,
+                 int step, const char *label)
+{
+    KrbBuildControl *c;
+    KrbBuildNode *n;
+    char name[32];
+
+    c = add_control(b, kind);
+    if(c == NULL)
+        return 0;
+    snprintf(c->value, sizeof(c->value), "%s", path);
+    snprintf(c->label, sizeof(c->label), "%s", label == NULL ? "" : label);
+    c->id = (unsigned short)id;
+    c->min = min;
+    c->max = max;
+    c->step = step;
+    snprintf(name, sizeof(name), "ctl%d", b->node_count);
+    n = add_node(b, KRB_NODE_CONTROL, path);
+    if(n == NULL)
+        return 0;
+    n->x = x;
+    n->y = y;
+    n->w = w;
+    n->h = h;
+    n->flags = flags;
+    n->bind_slot = b->control_count - 1;
+    return 1;
+}
+
+/* Slider(id,x,y,w,label,min,max,&val,...) -> horizontal range control. */
+static int
+parse_slider(KrbBuild *b, const char *call)
+{
+    char parts[12][KC_BODY_LINE_MAX];
+    char path[KC_NAME_MAX];
+    char label[KC_BODY_LINE_MAX];
+    const char *args = strchr(call, '(');
+    int count, x = 0, y = 0, w = 0;
+    unsigned flags = 0;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 12);
+    if(count < 8)
+        return 0;
+    strip_amp(parts[7], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    extract_string(parts[4], label, sizeof(label));
+    coord_flag(parts[1], &x, &flags, KRB_FLAG_SCALE_X);
+    coord_flag(parts[2], &y, &flags, KRB_FLAG_SCALE_Y);
+    coord_flag(parts[3], &w, &flags, KRB_FLAG_SCALE_W);
+    return add_control_node(b, KRB_CTRL_SLIDER, path, x, y, w, 16, flags,
+                            atoi(skip_ws(parts[0])), atoi(skip_ws(parts[5])),
+                            atoi(skip_ws(parts[6])), 1, label);
+}
+
+/* VerticalSlider(id,x,y,h,min,max,&val) -> vertical range control. */
+static int
+parse_vslider(KrbBuild *b, const char *call)
+{
+    char parts[12][KC_BODY_LINE_MAX];
+    char path[KC_NAME_MAX];
+    const char *args = strchr(call, '(');
+    int count, x = 0, y = 0, h = 0;
+    unsigned flags = 0;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 12);
+    if(count < 7)
+        return 0;
+    strip_amp(parts[6], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    coord_flag(parts[1], &x, &flags, KRB_FLAG_SCALE_X);
+    coord_flag(parts[2], &y, &flags, KRB_FLAG_SCALE_Y);
+    coord_flag(parts[3], &h, &flags, KRB_FLAG_SCALE_H);
+    return add_control_node(b, KRB_CTRL_VSLIDER, path, x, y, 16, h, flags,
+                            atoi(skip_ws(parts[0])), atoi(skip_ws(parts[4])),
+                            atoi(skip_ws(parts[5])), 1, "");
+}
+
+/* Spinbox((SpinboxProps){bounds,id,min,max,step,&val,disabled}) -> step control. */
+static int
+parse_spinbox(KrbBuild *b, const char *call)
+{
+    const char *p = strstr(call, "SpinboxProps");
+    const char *open;
+    const char *close;
+    char body[KC_BODY_LINE_MAX];
+    char parts[8][KC_BODY_LINE_MAX];
+    char path[KC_NAME_MAX];
+    int x = 0, y = 0, w = 0, h = 0, count;
+    unsigned flags = 0;
+    size_t len;
+
+    if(p == NULL)
+        return 0;
+    open = strchr(p, '{');
+    if(open == NULL)
+        return 0;
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 6)
+        return 0;
+    strip_amp(parts[5], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    parse_rect_fields(parts[0], &x, &y, &w, &h, &flags);
+    return add_control_node(b, KRB_CTRL_SPINBOX, path, x, y, w, h, flags,
+                            atoi(skip_ws(parts[1])), atoi(skip_ws(parts[2])),
+                            atoi(skip_ws(parts[3])), atoi(skip_ws(parts[4])), "");
+}
+
+static int
 try_widget(KrbBuild *b, const char *raw)
 {
     const char *text = skip_ws(raw);
@@ -1005,6 +1202,12 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_checkbox(b, call);
     if(starts_ident(call, "Toggle"))
         return parse_toggle(b, call);
+    if(starts_ident(call, "VerticalSlider"))
+        return parse_vslider(b, call);
+    if(starts_ident(call, "Slider"))
+        return parse_slider(b, call);
+    if(starts_ident(call, "Spinbox"))
+        return parse_spinbox(b, call);
     return 0;
 }
 
@@ -1040,6 +1243,8 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     int name_off[KRB_BUILD_NODE_MAX];
     int text_off[KRB_BUILD_NODE_MAX];
     int import_off[KRB_BUILD_IMPORT_MAX];
+    int cvalue_off[KRB_BUILD_CTRL_MAX];
+    int clabel_off[KRB_BUILD_CTRL_MAX];
     int need;
 
     memset(header, 0, sizeof(header));
@@ -1051,8 +1256,13 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     }
     for(i = 0; i < b->import_count; i++)
         import_off[i] = intern_string(b, b->imports[i]);
+    for(i = 0; i < b->control_count; i++) {
+        cvalue_off[i] = intern_string(b, b->controls[i].value);
+        clabel_off[i] = intern_string(b, b->controls[i].label);
+    }
 
-    need = 32 + b->node_count * 28 + b->string_used + 1 + b->import_count * 4;
+    need = 32 + b->node_count * 28 + b->string_used + 1 + b->import_count * 4 +
+           b->control_count * KRB_CONTROL_SIZE;
     if(need > cap)
         return -1;
     wr_u32(&hp, KRB_MAGIC);
@@ -1062,7 +1272,7 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     wr_u32(&hp, (unsigned)b->string_used);
     wr_u32(&hp, 1);
     wr_u32(&hp, (unsigned)b->import_count);
-    wr_u32(&hp, 0);
+    wr_u32(&hp, (unsigned)b->control_count);
     memcpy(out, header, 32);
     out += 32;
     for(i = 0; i < b->node_count; i++) {
@@ -1098,6 +1308,24 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         wr_u32(&sp, (unsigned)import_off[i]);
         memcpy(out, slot, 4);
         out += 4;
+    }
+    for(i = 0; i < b->control_count; i++) {
+        unsigned char c[KRB_CONTROL_SIZE];
+        unsigned char *cp = c;
+        const KrbBuildControl *ctl = &b->controls[i];
+
+        *cp++ = (unsigned char)ctl->kind;
+        *cp++ = 0;                         /* option_count (range widgets: 0) */
+        wr_u16(&cp, ctl->id);
+        wr_u32(&cp, (unsigned)ctl->min);
+        wr_u32(&cp, (unsigned)ctl->max);
+        wr_u32(&cp, (unsigned)ctl->step);
+        wr_u16(&cp, (unsigned)cvalue_off[i]);
+        wr_u16(&cp, (unsigned)clabel_off[i]);
+        wr_u16(&cp, 0);                    /* options_off */
+        wr_u16(&cp, 0);                    /* reserved */
+        memcpy(out, c, KRB_CONTROL_SIZE);
+        out += KRB_CONTROL_SIZE;
     }
     return (int)(out - dst);
 }

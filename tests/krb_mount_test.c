@@ -54,6 +54,7 @@ cap_text(const char *s, int x, int y, int size, unsigned color)
 
 /* Mouse capture for the checkbox click-toggle test. */
 static int g_cap_pressed;
+static int g_cap_down;
 static int g_cap_mx = 4;
 static int g_cap_my = 4;
 static void
@@ -69,6 +70,12 @@ cap_pressed(int button)
 {
     (void)button;
     return g_cap_pressed;
+}
+static int
+cap_down(int button)
+{
+    (void)button;
+    return g_cap_down;
 }
 
 /* header + 1 text node + strings("\0score\0n=%d\0") + prog + no imports */
@@ -327,6 +334,77 @@ main(void)
         KrbDraw(&img, 0, 0, 200, 80);
         if(cbval != 1)
             return fail("checkbox flipped without press");
+    }
+
+    /* SLIDER drag: an in-bounds held press sets the value from the mouse
+     * position across [min,max]. Exercises the controls[] table + CONTROL node
+     * + the new control_count header field. */
+    {
+        static const char sstr[] = "\0sv\0";  /* 0="" 1="sv" */
+        unsigned char *p = buf;
+        KryBackend cap;
+        int sv;
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(sstr));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 1);                       /* control_count */
+        p = wr_u32(p, 0);                       /* pad to 32 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, (unsigned)-1);
+        p = wr_u16(p, 1);                       /* name_off "sv" */
+        *p++ = KRB_NODE_CONTROL;
+        *p++ = 0;
+        p = wr_u16(p, 0);                       /* bind_slot = control 0 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 100);                     /* w */
+        p = wr_u16(p, 16);                      /* h */
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 16);
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, sstr, sizeof(sstr));
+        p += sizeof(sstr);
+        *p++ = KRB_OP_DRAW_TREE;
+        *p++ = KRB_CTRL_SLIDER;
+        *p++ = 0;
+        p = wr_u16(p, 1);
+        p = wr_u32(p, 0);                       /* min */
+        p = wr_u32(p, 100);                     /* max */
+        p = wr_u32(p, 1);                       /* step */
+        p = wr_u16(p, 1);                       /* value_off "sv" */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        len = (size_t)(p - buf);
+
+        KrbFree(&img);
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load slider image");
+        sv = 0;
+        if(KrbBindMem(&img, "sv", &sv, KRB_I32, 4) != 0)
+            return fail("bind slider");
+        cap = KryBackendNull;
+        cap.mouse = cap_mouse;
+        cap.mouse_down = cap_down;
+        KryBackendSelect(&cap);
+        g_cap_mx = 80;
+        g_cap_my = 8;
+        g_cap_down = 1;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(sv != 80)
+            return fail("slider drag did not set value");
+        g_cap_down = 0;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(sv != 80)
+            return fail("slider moved without drag");
     }
 
     KrbFree(&img);

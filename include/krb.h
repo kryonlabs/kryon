@@ -14,6 +14,7 @@
 #define KRB_MAGIC 0x0042524Bu /* "KRB\0" little-endian; version in version field */
 #define KRB_VERSION 1
 #define KRB_NODE_SIZE 28
+#define KRB_CONTROL_SIZE 24
 #define KRB_BIND_MAX 32
 #define KRB_MOUNT_MAX 16
 #define KRB_FIELD_MAX 64
@@ -26,7 +27,20 @@ enum {
     KRB_NODE_DATA = 5,
     KRB_NODE_PICTURE = 6,
     KRB_NODE_CHECKBOX = 7,
-    KRB_NODE_TOGGLE = 8
+    KRB_NODE_TOGGLE = 8,
+    KRB_NODE_CONTROL = 9
+};
+
+/* Interactive control kinds, carried in a KrbControl record (controls[] table)
+ * referenced by a CONTROL node's bind_slot. Range widgets (slider/spinbox) use
+ * min/max/step; dropdown/combobox carry an option list. The bound value is a
+ * state-field path (value_off) read/written through the mount. */
+enum {
+    KRB_CTRL_SLIDER = 1,
+    KRB_CTRL_VSLIDER = 2,
+    KRB_CTRL_SPINBOX = 3,
+    KRB_CTRL_DROPDOWN = 4,
+    KRB_CTRL_COMBOBOX = 5
 };
 
 enum {
@@ -75,7 +89,7 @@ typedef struct KrbHeader {
     uint32_t string_bytes;
     uint32_t prog_bytes;
     uint32_t import_count;
-    uint32_t reserved;
+    uint32_t control_count;
 } KrbHeader;
 
 typedef struct KrbNode {
@@ -96,6 +110,19 @@ typedef struct KrbNode {
     uint8_t pad;
 } KrbNode;
 
+typedef struct KrbControl {
+    uint8_t kind;
+    uint8_t option_count;
+    uint16_t id;
+    int32_t min;
+    int32_t max;
+    int32_t step;
+    uint16_t value_off;
+    uint16_t label_off;
+    uint16_t options_off;
+    uint16_t reserved;
+} KrbControl;
+
 typedef struct KrbImage {
     const unsigned char *bytes;
     size_t len;
@@ -105,6 +132,7 @@ typedef struct KrbImage {
     const char *strings;
     const unsigned char *prog;
     const uint32_t *imports;
+    const unsigned char *controls;
     KrbFn binds[KRB_BIND_MAX];
     void *bind_ud[KRB_BIND_MAX];
     KrbMountEntry mounts[KRB_MOUNT_MAX];
@@ -121,6 +149,8 @@ const char *KrbImportName(const KrbImage *img, unsigned slot);
 unsigned KrbNodeCount(const KrbImage *img);
 unsigned KrbImportCount(const KrbImage *img);
 int KrbReadNode(const KrbImage *img, unsigned index, KrbNode *out);
+unsigned KrbControlCount(const KrbImage *img);
+int KrbReadControl(const KrbImage *img, unsigned index, KrbControl *out);
 int KrbMount(KrbImage *img, const char *root, void *base,
              const KrbField *fields);
 int KrbBindMem(KrbImage *img, const char *path, void *ptr, unsigned kind,

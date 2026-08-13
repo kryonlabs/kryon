@@ -13,6 +13,7 @@ nodes[]         28 bytes × node_count
 strings[]       string_bytes, UTF-8, NUL-terminated, offset 0 is ""
 prog[]          prog_bytes
 imports[]       u32 string offset × import_count
+controls[]      24 bytes × control_count
 ```
 
 ## Header
@@ -26,7 +27,7 @@ imports[]       u32 string offset × import_count
 | string_bytes | u32 | |
 | prog_bytes | u32 | |
 | import_count | u32 | host bind names (button handlers) |
-| reserved | u32 | 0 |
+| control_count | u32 | interactive controls (was `reserved`, always 0) |
 
 ## Node (28 bytes)
 
@@ -35,7 +36,7 @@ imports[]       u32 string offset × import_count
 | id | u16 |
 | parent | i16 (`-1` = root) |
 | name_off | u16 (string table) |
-| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6, `CHECKBOX` 7, `TOGGLE` 8; 0 reserved) |
+| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6, `CHECKBOX` 7, `TOGGLE` 8, `CONTROL` 9; 0 reserved) |
 | flags | u8 (`SCALE_X/Y/W/H` in bits 2–5; bits 0–1 reserved) |
 | bind_slot | u16 (`0xffff` = none) |
 | x y w h | i16 each |
@@ -60,6 +61,29 @@ the box/switch with `KryBackend` primitives, and on an in-bounds mouse press
 writes the flipped value back through the mount. Only `state {}` fields can
 bind (they are what the host mounts); a widget whose value isn't a state field
 renders its default state.
+
+## Control (24 bytes)
+
+A `CONTROL` node's `bind_slot` indexes the `controls[]` table. Each record
+carries the args that don't fit in a node:
+
+| Field | Type | Notes |
+|---|---|---|
+| kind | u8 | `SLIDER` 1, `VSLIDER` 2, `SPINBOX` 3, `DROPDOWN` 4, `COMBOBOX` 5 |
+| option_count | u8 | dropdown/combobox options (unused by range widgets) |
+| id | u16 | widget id |
+| min / max / step | i32 each | range |
+| value_off | u16 | bound state-field path (string table) |
+| label_off | u16 | label |
+| options_off | u16 | first option string (unused by range widgets) |
+| reserved | u16 | 0 |
+
+The node's bounds are the widget bounds; `value_off` is the mount path. The
+walker reads the value, renders with primitives (slider track+thumb, spinbox
+field+`-`/`+`), and updates the value on interaction: a held drag sets a
+slider across `[min,max]`; a click steps a spinbox by `step` (clamped). Slider,
+VerticalSlider, and Spinbox are emitted today; Dropdown/Combobox (need a
+state-array option parser) and by-value widgets (Radio/TabBar) are deferred.
 
 ## Program
 
