@@ -90,14 +90,14 @@ body::before {
   inset: 0;
   z-index: 0;
   background-image:
-    linear-gradient(45deg, rgba(42, 59, 64, 0.055) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(42, 59, 64, 0.055) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(42, 59, 64, 0.055) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(42, 59, 64, 0.055) 75%);
+    linear-gradient(45deg, rgba(42, 59, 64, 0.028) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(42, 59, 64, 0.028) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(42, 59, 64, 0.028) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(42, 59, 64, 0.028) 75%);
   background-position: 0 0, 0 16px, 16px -16px, -16px 0;
   background-size: 32px 32px;
   image-rendering: pixelated;
-  opacity: 0.36;
+  opacity: 0.18;
   pointer-events: none;
 }
 
@@ -330,12 +330,14 @@ p:last-child {
 main {
   position: relative;
   z-index: 1;
+  background-color: rgba(253, 252, 248, 0.96);
 }
 
 section {
   max-width: var(--maxw);
   margin: 0 auto;
   padding: var(--space-xl) 20px;
+  background-color: rgba(253, 252, 248, 0.98);
 }
 
 section + section {
