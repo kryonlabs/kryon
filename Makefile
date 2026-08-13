@@ -151,6 +151,7 @@ UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
+KIR_TEST = $(BUILD_DIR)/tests/kir_test
 KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
@@ -202,7 +203,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST)
+test: kryon-compat-check kryon-boundary-check $(KC) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST)
 	sh tests/kc_syntax_test.sh $(KC)
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
@@ -219,6 +220,7 @@ test: kryon-compat-check kryon-boundary-check $(KC) $(K2B) $(KT) $(KSYNC_ACCOUNT
 	$(PLATFORM_THREAD_TEST)
 	$(UI_TEXT_EDIT_TEST)
 	$(UI_TREE_API_TEST)
+	$(KIR_TEST)
 
 bsd-check:
 	$(MAKE) clean
@@ -409,6 +411,10 @@ $(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEP
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/animation_test.c \
 		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -Icmd/kir tests/kir_test.c cmd/kir/kir.c -o $@
 
 $(KRB_WALK_TEST): tests/krb_walk_test.c src/krb/krb.c src/backend/kry_backend.c include/krb.h include/kry_backend.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

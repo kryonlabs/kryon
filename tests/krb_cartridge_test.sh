@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-kc=${1:-build/bin/kc}
+k2b=${1:-build/bin/k2b}
 walker=${2:-}
 root=${3:-.}
 work=${TMPDIR:-/tmp}/kryon-krb-cartridge-test.$$
@@ -14,8 +14,8 @@ cleanup()
 }
 trap cleanup EXIT INT TERM
 
-if [ ! -f "$kc" ]; then
-    echo "kc not found: $kc" >&2
+if [ ! -f "$k2b" ]; then
+    echo "k2b not found: $k2b" >&2
     exit 1
 fi
 if [ ! -f "$src" ]; then
@@ -24,7 +24,7 @@ if [ ! -f "$src" ]; then
 fi
 
 mkdir -p "$work"
-"$kc" --root "$root/examples" -o "$work" "$src"
+"$k2b" --root "$root/examples" -o "$work" "$src"
 
 krb=$work/02_buttons.krb
 if [ ! -f "$krb" ]; then
@@ -54,7 +54,7 @@ if ! strings "$krb" | grep -q last_action; then
 fi
 
 # A hook-driven app: 'frame main {}' is a top-level function definition that
-# the generated main() calls each loop. kc must parse it (not reject it as an
+# the generated main() calls each loop. k2b must parse it (not reject it as an
 # unknown top-level statement) and emit a cartridge from its body.
 cat > "$work/frame.kry" <<'EOF'
 #import "kryon.h"
@@ -81,7 +81,7 @@ frame main {
     EndDrawing()
 }
 EOF
-"$kc" --no-main --root "$work" -o "$work" "$work/frame.kry"
+"$k2b" --no-main --root "$work" -o "$work" "$work/frame.kry"
 if [ ! -f "$work/frame.krb" ]; then
     echo "frame main {} did not emit a cartridge" >&2
     exit 1

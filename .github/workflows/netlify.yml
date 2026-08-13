@@ -43,7 +43,7 @@ jobs:
       - name: Build Site
         run: |
           set -euo pipefail
-          make docs-site CMAKE=/usr/bin/cmake
+          make docs-site CMAKE=/usr/bin/cmake SITE_BUILD_DIR=build/site
           test -f build/site/index.html
           test -f build/site/api.html
           test -f build/site/icons/kryon.png
