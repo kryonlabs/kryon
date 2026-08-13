@@ -46,6 +46,12 @@ jobs:
           make docs-site CMAKE=/usr/bin/cmake SITE_BUILD_DIR=build/site
           test -f build/site/index.html
           test -f build/site/api.html
+          test -f build/site/ide.html
+          test -f build/site/ide.js
+          test -f build/site/ide-tools/k2ir.js
+          test -f build/site/ide-tools/k2ir.wasm
+          test -f build/site/ide-tools/k2b.js
+          test -f build/site/ide-tools/k2b.wasm
           test -f build/site/icons/kryon.png
           test -f build/site/icons/c.png
           test ! -f build/site/API.md
@@ -81,6 +87,7 @@ jobs:
           test -n "$auth_token" || { echo "::error::NETLIFY_AUTH_TOKEN is empty or missing"; exit 1; }
           test -n "$site_id" || { echo "::error::NETLIFY_SITE_ID is empty or missing; use the Netlify Site ID, not the site URL"; exit 1; }
           netlify deploy \
+            --no-build \
             --dir build/site \
             --alias "pr-${{ github.event.pull_request.number }}" \
             --message "Preview ${{ github.event.pull_request.number }}" \
@@ -114,6 +121,7 @@ jobs:
           test -n "$auth_token" || { echo "::error::NETLIFY_AUTH_TOKEN is empty or missing"; exit 1; }
           test -n "$site_id" || { echo "::error::NETLIFY_SITE_ID is empty or missing; use the Netlify Site ID, not the site URL"; exit 1; }
           netlify deploy \
+            --no-build \
             --dir build/site \
             --prod \
             --message "Production ${{ github.sha }}" \

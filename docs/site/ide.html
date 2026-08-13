@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Web IDE</title>
+  <meta name="description" content="Edit simple .kry files in the browser, compile with Kryon WASM tools, and preview the generated KRB cartridge.">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/kryon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="ide-page">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html">
+        <img src="icons/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <nav class="header-nav" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#platforms">Platforms</a>
+        <a href="api.html">API</a>
+        <a class="btn btn-primary" href="ide.html">Web IDE</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="web-ide" data-kryon-web-ide>
+    <section class="ide-shell">
+      <div class="ide-toolbar">
+        <div>
+          <p class="section-eyebrow">Kryon Web IDE</p>
+          <h1>Compile .kry in the browser</h1>
+        </div>
+        <div class="ide-actions">
+          <button class="btn" type="button" data-action="load-sample">Sample</button>
+          <button class="btn btn-primary" type="button" data-action="compile">Run</button>
+        </div>
+      </div>
+
+      <div class="ide-grid">
+        <div class="ide-pane source-pane">
+          <div class="pane-title">
+            <span>app.kry</span>
+            <span data-status>Loading compiler...</span>
+          </div>
+          <textarea spellcheck="false" data-source>#import "kryon.h"
+
+app {
+    title: "Kryon Web IDE"
+    width: 800
+    height: 520
+    frame: App
+}
+
+App :: () {
+    Background((Color){249, 246, 235, 255})
+    Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})
+    Text("Hello from .kry", 76, 86, UI_TEXT_24, (Color){31, 83, 102, 255})
+    Text("This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.", 76, 134, UI_TEXT_16, (Color){42, 59, 64, 255})
+    Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})
+    Text("Portable preview", 104, 219, UI_TEXT_20, WHITE)
+    Button((ButtonProps){.bounds = (Rectangle){76, 308, 184, 44}, .label = "Get started"})
+}</textarea>
+        </div>
+
+        <div class="ide-pane preview-pane">
+          <div class="pane-title">
+            <span>Live KRB Preview</span>
+            <span data-preview-status>waiting</span>
+          </div>
+          <canvas width="800" height="520" data-preview></canvas>
+        </div>
+
+        <div class="ide-pane artifact-pane">
+          <div class="artifact-tabs" role="tablist" aria-label="Generated artifacts">
+            <button type="button" class="is-active" data-tab="kir">kir</button>
+            <button type="button" data-tab="krb">krb</button>
+            <button type="button" data-tab="c">c</button>
+          </div>
+          <pre class="artifact-output"><code data-artifact></code></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="ide-tools/k2ir.js"></script>
+  <script src="ide-tools/k2b.js"></script>
+  <script src="ide.js"></script>
+</body>
+</html>
