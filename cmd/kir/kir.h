@@ -94,6 +94,7 @@ typedef struct KirGlobal {
     char name[KIR_NAME_MAX];
     char type[KIR_TEXT_MAX];
     char init[KIR_TEXT_MAX];
+    int is_static;   /* 'static name: T = init' — internal linkage */
     KirSourceSpan span;
 } KirGlobal;
 
@@ -165,6 +166,8 @@ KirFunction *KirModuleAddFunction(KirModule *module, const char *name,
                                   const char *args, const char *return_type,
                                   int exported, KirSourceSpan span);
 void KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
+                        const char *init, KirSourceSpan span);
+void KirModuleAddStatic(KirModule *module, const char *name, const char *type,
                         const char *init, KirSourceSpan span);
 KirType *KirModuleAddType(KirModule *module, const char *name,
                           KirSourceSpan span);

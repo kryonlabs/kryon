@@ -414,6 +414,8 @@ kir_parse_file(const char *path, const char *root)
     int bracket_depth = 0;
     int in_string = 0;
     int expr_brace = 0;
+    int cond_depth = 0;
+    int cond_brace = 0;
 
     in = fopen(path, "rb");
     if(in == NULL)
@@ -653,6 +655,63 @@ kir_parse_file(const char *path, const char *root)
                     fn = NULL;
                 }
             }
+        } else if(mode == TOP && cond_depth == 0 &&
+                  strncmp(t, "#if ", 4) == 0 &&
+                  t[strlen(t) - 1] == '{') {
+            /* '#if MACRO {' — an unevaluated conditional block. We can't
+             * resolve build macros here; skip its import/global captures
+             * (matching the legacy undefined-macro-false case) by tracking
+             * the region. */
+            cond_brace = 1;
+            cond_depth = 1;
+        } else if(mode == TOP && cond_depth > 0) {
+            /* inside the conditional: track braces, capture nothing */
+            for(const char *p = t; *p != '\0'; p++) {
+                if(*p == '{')
+                    cond_brace++;
+                else if(*p == '}') {
+                    cond_brace--;
+                    if(cond_brace == 0) {
+                        cond_depth = 0;
+                        break;
+                    }
+                }
+            }
+        } else if(mode == TOP && strncmp(t, "static ", 7) == 0 &&
+                  strchr(t, ':') != NULL) {
+            /* 'static name: T = init' — an internal-linkage global
+             * (multi-line initializers arrive joined). */
+            const char *rest = t + 7;
+            const char *colon = strchr(rest, ':');
+            const char *eq = strstr(rest, " = ");
+            char gname[KIR_NAME_MAX];
+            char gtype[KIR_TEXT_MAX];
+            size_t nn = 0;
+
+            while(rest < colon && (isalnum((unsigned char)*rest) ||
+                   *rest == '_') && nn + 1 < sizeof(gname))
+                gname[nn++] = *rest++;
+            gname[nn] = '\0';
+            nn = 0;
+            {
+                const char *ty = colon + 1;
+                const char *end = eq != NULL ? eq : ty + strlen(ty);
+
+                while(*ty == ' ' || *ty == '\t')
+                    ty++;
+                while(end > ty && (end[-1] == ' ' || end[-1] == '\t'))
+                    end--;
+                if((size_t)(end - ty) >= sizeof(gtype))
+                    end = ty + sizeof(gtype) - 1;
+                memcpy(gtype, ty, (size_t)(end - ty));
+                gtype[end - ty] = '\0';
+            }
+            if(eq != NULL)
+                KirModuleAddStatic(module, gname, gtype, eq + 3,
+                                   KirSpan(rel, line_no, 1));
+            else
+                KirModuleAddStatic(module, gname, gtype, "",
+                                   KirSpan(rel, line_no, 1));
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strstr(t, "#global") != NULL) {
             /* name :: Type #global — a module-level global variable. */

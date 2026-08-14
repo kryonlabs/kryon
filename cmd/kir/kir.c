@@ -189,6 +189,15 @@ KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
     module->global_count++;
 }
 
+void
+KirModuleAddStatic(KirModule *module, const char *name, const char *type,
+                   const char *init, KirSourceSpan span)
+{
+    KirModuleAddGlobal(module, name, type, init, span);
+    if(module != NULL && module->global_count > 0)
+        module->globals[module->global_count - 1].is_static = 1;
+}
+
 KirType *
 KirModuleAddType(KirModule *module, const char *name, KirSourceSpan span)
 {
