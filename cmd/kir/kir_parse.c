@@ -340,8 +340,10 @@ parse_import_line(KirModule *module, const char *path, int line_no,
         kind = KIR_IMPORT_HEADER;
     }
     /* Signature records the bracket style so backends can keep angled
-     * includes angled ("<") instead of turning them into quoted ones. */
-    KirModuleAddImport(module, kind, name, target, quoted ? "" : "<", 1,
+     * includes angled ("<") instead of quoted. required=0 marks '#private'
+     * (include in the .c only, not the header). */
+    KirModuleAddImport(module, kind, name, target, quoted ? "" : "<",
+                       strstr(line, "#private") == NULL,
                        KirSpan(path, line_no, 1));
     return 1;
 }

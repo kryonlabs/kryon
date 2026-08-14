@@ -828,6 +828,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
 
+        if(!imp->required)
+            continue;   /* '#private' imports go to the .c only */
         if(imp->kind == KIR_IMPORT_HEADER) {
             const char *dot = strrchr(imp->target, '.');
             const char *slash = strrchr(imp->target, '/');
@@ -1009,6 +1011,17 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     fprintf(c, "#include \"%s.h\"\n", stem);
     fprintf(c, "#include <stdio.h>\n");
     fprintf(c, "#include \"ui_inspect.h\"\n");
+    /* '#private' imports include here (implementation-only). */
+    for(i = 0; i < m->import_count; i++) {
+        const KirImport *imp = &m->imports[i];
+
+        if(imp->required || imp->kind != KIR_IMPORT_HEADER)
+            continue;
+        if(strchr(imp->signature, '<') != NULL)
+            fprintf(c, "#include <%s>\n", imp->target);
+        else
+            fprintf(c, "#include \"%s\"\n", imp->target);
+    }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     /* #extern imports: emit C prototypes parsed from the raw signature
      * ('name :: (args) -> Ret #extern'). */
