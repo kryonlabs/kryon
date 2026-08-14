@@ -112,14 +112,18 @@ split_array_type(const char *type, char *base, size_t base_size,
     snprintf(base, base_size, "%s", p);
 }
 
-/* Copy text replacing bare `nil` tokens with `NULL` (rewrite_kry_expr's
- * essential rule; alias/module rewriting lands with module support). */
+static int is_module_alias(const KirModule *m, const char *alias,
+                           size_t alias_len);
+
+/* Rewrite a statement body: `nil` -> `NULL`, and `alias.X` -> `X` when
+ * `alias` is a module import of this module (the enum/type qualifiers used
+ * throughout krait, e.g. state.IDE_PANE_LEFT). */
 static void
-rewrite_nil(const char *src, char *dst, size_t dst_size)
+rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
 {
     size_t n = 0;
 
-    for(const char *p = src; *p != '\0' && n + 5 < dst_size; p++) {
+    for(const char *p = src; *p != '\0' && n + 6 < dst_size; p++) {
         if(strncmp(p, "nil", 3) == 0 &&
            (p == src || !isalnum((unsigned char)p[-1])) &&
            !isalnum((unsigned char)p[3]) && p[3] != '_') {
@@ -128,6 +132,24 @@ rewrite_nil(const char *src, char *dst, size_t dst_size)
             dst[n++] = 'L';
             dst[n++] = 'L';
             p += 2;
+        } else if(isalpha((unsigned char)*p) || *p == '_') {
+            /* read the identifier */
+            const char *e = p;
+
+            while(isalnum((unsigned char)*e) || *e == '_')
+                e++;
+            if(*e == '.' && e[1] != '\0') {
+                size_t alen = (size_t)(e - p);
+
+                if(is_module_alias(m, p, alen)) {
+                    /* strip 'alias.' — the member follows */
+                    p = e;   /* skip ident; loop's p++ skips the '.' */
+                    continue;
+                }
+            }
+            while(p < e && n + 1 < dst_size)
+                dst[n++] = *p++;
+            p--;   /* compensate for the loop's p++ */
         } else {
             dst[n++] = *p;
         }
@@ -360,7 +382,7 @@ emit_call_wrap(FILE *c, const KirModule *m, int line, const char *text)
 {
     char rw[LOWER_TEXT_MAX];
 
-    rewrite_nil(text, rw, sizeof(rw));
+    rewrite_body(m, text, rw, sizeof(rw));
     fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
     fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopUIInspectSource();\n");
@@ -382,7 +404,7 @@ lower_body(FILE *c, const KirModule *m, const KirFunction *fn)
         const KirStmt *st = &fn->stmts[j];
         char rw[LOWER_TEXT_MAX];
 
-        rewrite_nil(st->text, rw, sizeof(rw));
+        rewrite_body(m, st->text, rw, sizeof(rw));
         switch(st->kind) {
         case KIR_STMT_BLOCK_CLOSE: {
             int target = scope_top > 0 ? scope_stack[--scope_top] : 0;

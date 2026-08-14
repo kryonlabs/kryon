@@ -593,11 +593,41 @@ kir_parse_file(const char *path, const char *root)
             } else {
                 KirStmtKind kind = classify_stmt(t);
                 const char *widget = kind == KIR_STMT_EXPR ? t : "";
+                int brace_delta = 0;
 
+                /* Count NET block braces: only '{'/'}' at paren/bracket depth 0
+                 * open/close blocks. Braces inside parens (compound literals
+                 * like (Props){...}) are expression braces, not blocks. */
+                {
+                    int pd = 0;
+                    int in_s = 0;
+
+                    for(const char *p = t; *p != '\0'; p++) {
+                        if(in_s) {
+                            if(*p == '\\' && p[1] != '\0')
+                                p++;
+                            else if(*p == '"')
+                                in_s = 0;
+                        } else if(*p == '"') {
+                            in_s = 1;
+                        } else if(*p == '(' || *p == '[') {
+                            pd++;
+                        } else if(*p == ')' || *p == ']') {
+                            if(pd > 0)
+                                pd--;
+                        } else if(pd == 0) {
+                            if(*p == '{')
+                                brace_delta++;
+                            else if(*p == '}')
+                                brace_delta--;
+                        }
+                    }
+                }
                 KirFunctionAddStmt(fn, kind, t, widget,
                                    KirSpan(rel, line_no, 1));
-                if(strchr(t, '{') != NULL)
-                    depth++;
+                depth += brace_delta;
+                if(depth < 0)
+                    depth = 0;
             }
         }
     }
