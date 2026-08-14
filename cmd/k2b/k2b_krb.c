@@ -401,8 +401,7 @@ call_after_eq(const char *text)
 
     /* Strip leading control keywords so 'if Button(...)' / 'else if ...' reach
      * the call, and 'x := Widget(...)' / 'x = Widget(...)' skip past the lhs by
-     * locating the first identifier immediately followed by '('. (kc's body[]
-     * used ' = ' splitting; k2b parses raw .kry, so locate the call directly.) */
+     * locating the first identifier immediately followed by '('. */
     for(;;) {
         if(strncmp(p, "if", 2) == 0 && (p[2] == ' ' || p[2] == '\t')) {
             p = skip_ws(p + 2);

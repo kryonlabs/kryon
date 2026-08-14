@@ -8,7 +8,7 @@
  * its current animation each process tick and applies interpolated values to
  * the target nodes via the Phase 2 property model.
  *
- * Compile-time authored in .kry (kc lowers animation tables to KryAnimation
+ * Compile-time authored in .kry (k2c lowers animation tables to KryAnimation
  * structs) and at runtime by app code. No runtime scripting VM.
  */
 

@@ -125,7 +125,7 @@ void KrySceneTick(KryScene *scene, float dt);
 
 /*
  * Advance physics: fire _physics_process on all alive nodes. Fixed timestep
- * stepping is the caller's responsibility (kc-generated main() does it).
+ * stepping is the caller's responsibility (k2c-generated main() does it).
  */
 void KryScenePhysicsTick(KryScene *scene, float dt);
 

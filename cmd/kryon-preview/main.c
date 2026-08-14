@@ -452,7 +452,7 @@ find_k2b(char *dst, size_t dst_size)
 }
 
 static int
-compile_krb(const char *kc, const char *project, const char *source,
+compile_krb(const char *k2b, const char *project, const char *source,
             char *out_krb, size_t out_size)
 {
     char command[KP_PATH_MAX * 4];
@@ -490,7 +490,7 @@ compile_krb(const char *kc, const char *project, const char *source,
         path_join(src_abs, sizeof(src_abs), project, source);
     snprintf(command, sizeof(command),
              "'%s' --no-main --root '%s' -o '%s' '%s'",
-             kc, project, out_dir, src_abs);
+             k2b, project, out_dir, src_abs);
     rc = system(command);
     if(!(rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0))
         return 0;
@@ -544,14 +544,14 @@ run_cartridge(const PreviewOptions *opt)
                    : 1;
     }
     if(has_suffix(source, ".kry")) {
-        char kc[KP_PATH_MAX];
+        char k2b[KP_PATH_MAX];
         const char *project = opt->project != NULL ? opt->project : ".";
 
-        if(!find_k2b(kc, sizeof(kc))) {
+        if(!find_k2b(k2b, sizeof(k2b))) {
             fprintf(stderr, "kryon-preview: k2b not found for cartridge compile\n");
             return 1;
         }
-        if(!compile_krb(kc, project, source, krb_path, sizeof(krb_path))) {
+        if(!compile_krb(k2b, project, source, krb_path, sizeof(krb_path))) {
             fprintf(stderr, "kryon-preview: k2b failed\n");
             return 1;
         }
