@@ -780,6 +780,7 @@ kir_parse_file(const char *path, const char *root)
             }
             strncat(pending, trimmed, sizeof(pending) - pending_len - 1);
             pending_len = (int)strlen(pending);
+            pending_len = (int)strlen(pending);
             /* Decide whether braces at paren-depth 0 on this logical line are
              * block braces (control/headers open scopes) or expression braces
              * (compound literals / initializers continue the statement). */
@@ -802,6 +803,7 @@ kir_parse_file(const char *path, const char *root)
 
                     header_line =
                         pending[0] == '#' ||
+                        strcmp(pending, "{") == 0 ||   /* bare scope-open */
                         strstr(pending, " :: ") != NULL ||
                         (nc != '\0' && nc != '-' && nc != '.' &&
                          strchr(" ({", nc) != NULL &&
@@ -880,9 +882,11 @@ kir_parse_file(const char *path, const char *root)
                 /* Continuation operators: ',','=','%','/' always; '+','-','*',
                  * '<','>' only in binary position (prev is space — excludes
                  * 'char*','x++' handled below,'<stdlib.h>'); '&','|' when
-                 * doubled ('&&','||') or space-preceded. */
+                 * doubled ('&&','||') or space-preceded; ':' closes an open
+                 * ternary ('? x' / 'cond ? y' continuation lines). */
                 if(last == ',' || last == '=' || last == '%' ||
                    last == '?' ||
+                   (last == ':' && prev != ':') ||
                    (last == '/' && prev != '>'))
                     continue;
                 if((last == '+' || last == '-' || last == '*' ||

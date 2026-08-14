@@ -242,6 +242,12 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
              * parens where a local of the same name may shadow it. */
             if(!(p > src && p[-1] == '.') &&
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
+               (*e == '-' && e[1] == '>') || (*e == '.')) {
+                /* 'name->' / 'name.' — a variable access, not a function
+                 * reference ('habits->count' must never resolve against a
+                 * screen named 'habits'). Skip resolution; fall through. */
+            } else if(!(p > src && p[-1] == '.') &&
+               !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
                *e != '(' && n >= 2 && dst[n - 1] == ' ' && dst[n - 2] == '=' &&
                (n < 3 || (dst[n - 3] != '=' && dst[n - 3] != '!'))) {
                 char cname[LOWER_NAME_MAX * 2];
@@ -277,6 +283,12 @@ function_c_name(const KirModule *m, const KirFunction *fn,
     size_t n = 0;
     const char *suffix = fn->is_colon ? "" : "_kry_draw";
 
+    /* '#export' keeps the plain Kry name: the symbol is project-global,
+     * not module-prefixed (legacy global_name rule). */
+    if(fn->exported) {
+        snprintf(dst, dst_size, "%s%s", fn->name, suffix);
+        return;
+    }
     if(m->name[0] != '\0' && strcmp(m->name, "main") != 0) {
         for(const char *p = m->name; *p && n + 1 < sizeof(mod); p++)
             mod[n++] = (*p == '.') ? '_' : *p;
@@ -837,6 +849,95 @@ emit_guard_close(FILE *out, const char *guard)
         fprintf(out, "#endif\n");
 }
 
+/* '#intrinsic "web"' wrappers: static EM_ASM shims, built only when
+ * PLATFORM_WEB is defined (matching the legacy compiler). */
+static const char *const web_download_body[] = {
+    "    return EM_ASM_INT({",
+    "        try {",
+    "            const path = UTF8ToString($0);",
+    "            const filename = UTF8ToString($1);",
+    "            const mime = UTF8ToString($2);",
+    "            const bytes = FS.readFile(path);",
+    "            const blob = new Blob([bytes], "
+    "{type: mime || \"application/octet-stream\"});",
+    "            const url = URL.createObjectURL(blob);",
+    "            const a = document.createElement(\"a\");",
+    "            a.href = url;",
+    "            a.download = filename || \"download\";",
+    "            a.style.display = \"none\";",
+    "            document.body.appendChild(a);",
+    "            a.click();",
+    "            a.remove();",
+    "            setTimeout(() => URL.revokeObjectURL(url), 1000);",
+    "            return 1;",
+    "        } catch(e) {",
+    "            console.error(\"Kry web download failed:\", e);",
+    "            return 0;",
+    "        }",
+    "    }, path, filename, mime);",
+    NULL
+};
+
+static const char *const web_context_click_body[] = {
+    "    return EM_ASM_INT({",
+    "        const click = Module.__kryonContextClick;",
+    "        if(!click)",
+    "            return 0;",
+    "        if(Date.now() - click.time > 750) {",
+    "            Module.__kryonContextClick = null;",
+    "            return 0;",
+    "        }",
+    "        if(click.x >= $0 && click.x <= $2 && "
+    "click.y >= $1 && click.y <= $3) {",
+    "            Module.__kryonContextClick = null;",
+    "            return 1;",
+    "        }",
+    "        return 0;",
+    "    }, x0, y0, x1, y1);",
+    NULL
+};
+
+static void
+emit_web_intrinsic_wrapper(FILE *c, const KirModule *m, const KirImport *imp)
+{
+    const char *sig = imp->signature;
+    const char *op = strchr(sig, '(');
+    const char *cl = op != NULL ? strrchr(sig, ')') : NULL;
+    const char *const *body = NULL;
+    char guard[LOWER_TEXT_MAX];
+    char cargs[LOWER_TEXT_MAX];
+    char conv[LOWER_TEXT_MAX];
+
+    if(op != NULL && cl != NULL && cl > op)
+        snprintf(cargs, sizeof(cargs), "%.*s", (int)(cl - op - 1), op + 1);
+    else
+        snprintf(cargs, sizeof(cargs), "void");
+    convert_args(m, cargs, conv, sizeof(conv));
+    if(strcmp(imp->name, "web_download_file") == 0)
+        body = web_download_body;
+    else if(strcmp(imp->name, "web_context_click_in_bounds") == 0)
+        body = web_context_click_body;
+    else
+        body = NULL;
+    if(imp->guard[0] != '\0')
+        snprintf(guard, sizeof(guard), "(%s) && (defined(PLATFORM_WEB))",
+                 imp->guard);
+    else
+        snprintf(guard, sizeof(guard), "defined(PLATFORM_WEB)");
+    fprintf(c, "\n#if %s\n", guard);
+    fprintf(c, "static int\n%s(%s)\n{\n", imp->name,
+            conv[0] ? conv : "void");
+    if(body != NULL) {
+        int i;
+
+        for(i = 0; body[i] != NULL; i++)
+            fprintf(c, "%s\n", body[i]);
+    } else {
+        fprintf(c, "    return 0;\n");
+    }
+    fprintf(c, "}\n#endif\n");
+}
+
 static void
 lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, const char *out_dir)
 {
@@ -1076,6 +1177,22 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         emit_guard_close(c, imp->guard);
     }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
+    /* 'Name :: #define value' module constants. */
+    for(i = 0; i < m->define_count; i++) {
+        const KirDefine *d = &m->defines[i];
+
+        emit_guard_open(c, d->guard);
+        fprintf(c, "#define %s %s\n", d->name, d->value);
+        emit_guard_close(c, d->guard);
+    }
+    /* '#intrinsic "web"' wrappers: static EM_ASM shims for web builds. */
+    for(i = 0; i < m->import_count; i++) {
+        const KirImport *imp = &m->imports[i];
+
+        if(imp->kind != KIR_IMPORT_INTRINSIC)
+            continue;
+        emit_web_intrinsic_wrapper(c, m, imp);
+    }
     /* #extern imports: emit C prototypes parsed from the raw signature
      * ('name :: (args) -> Ret #extern'). */
     for(i = 0; i < m->import_count; i++) {
