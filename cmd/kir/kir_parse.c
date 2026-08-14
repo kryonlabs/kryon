@@ -433,6 +433,7 @@ kir_parse_file(const char *path, const char *root)
                     w0[wl++] = *w;
                 w0[wl] = '\0';
                 header_line =
+                    pending[0] == '#' ||
                     strcmp(w0, "if") == 0 || strcmp(w0, "else") == 0 ||
                     strcmp(w0, "while") == 0 || strcmp(w0, "for") == 0 ||
                     strcmp(w0, "switch") == 0 || strcmp(w0, "do") == 0 ||
