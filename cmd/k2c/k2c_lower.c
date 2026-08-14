@@ -695,6 +695,11 @@ lower_module(const KirModule *m, const char *out_dir)
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
+        if(strcmp(ty->name, "#enum") == 0) {
+            /* #enum { A, B, } — emit as a plain C enum. */
+            fprintf(h, "\nenum {\n%s};\n", ty->body);
+            continue;
+        }
         fprintf(h, "\ntypedef struct {\n");
         /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
         {
@@ -728,7 +733,12 @@ lower_module(const KirModule *m, const char *out_dir)
                     snprintf(type, sizeof(type), "%s", ty2);
                     split_array_type(type, base, sizeof(base),
                                      suffix, sizeof(suffix));
-                    strip_alias_type(m, base, base, sizeof(base));
+                    {
+                        char tmpb[LOWER_TEXT_MAX];
+
+                        strip_alias_type(m, base, tmpb, sizeof(tmpb));
+                        snprintf(base, sizeof(base), "%s", tmpb);
+                    }
                     fprintf(h, "    %s %s%s;\n", base, name, suffix);
                 }
                 line = nl ? nl + 1 : NULL;
@@ -766,7 +776,12 @@ lower_module(const KirModule *m, const char *out_dir)
         char suffix[LOWER_NAME_MAX];
 
         split_array_type(g->type, base, sizeof(base), suffix, sizeof(suffix));
-        strip_alias_type(m, base, base, sizeof(base));
+        {
+            char tmpb[LOWER_TEXT_MAX];
+
+            strip_alias_type(m, base, tmpb, sizeof(tmpb));
+            snprintf(base, sizeof(base), "%s", tmpb);
+        }
         fprintf(c, "static %s %s%s = %s;\n", base, g->name, suffix,
                 g->init[0] ? g->init : "{0}");
     }

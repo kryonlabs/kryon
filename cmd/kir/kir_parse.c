@@ -377,7 +377,7 @@ kir_parse_file(const char *path, const char *root)
     char out_rel[K2IR_PATH_MAX];
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
-    enum { TOP, APP, STATE, TYPE, FUNCTION } mode = TOP;
+    enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } mode = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
@@ -569,6 +569,23 @@ kir_parse_file(const char *path, const char *root)
                 if(ty != NULL)
                     mode = TYPE;
                 fn = NULL;
+            }
+        } else if(mode == TOP && strncmp(t, "#enum", 5) == 0) {
+            /* #enum { ... } — capture the constants as a type body. */
+            KirType *ety = KirModuleAddType(module, "#enum",
+                                            KirSpan(rel, line_no, 1));
+
+            if(ety != NULL && strchr(t, '}') == NULL)
+                mode = ENUM;
+        } else if(mode == ENUM) {
+            if(t[0] == '}') {
+                mode = TOP;
+            } else {
+                KirType *ety = &module->types[module->type_count - 1];
+                size_t used = strlen(ety->body);
+
+                snprintf(ety->body + used, sizeof(ety->body) - used,
+                         "%s\n", t);
             }
         } else if(mode == TYPE) {
             if(t[0] == '}') {
