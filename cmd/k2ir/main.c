@@ -363,6 +363,12 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
     int line_no = 0;
     enum { TOP, STATE, FUNCTION } mode = TOP;
     int depth = 0;
+    char pending[K2IR_LINE_MAX * 4];
+    pending[0] = '\0';
+    int pending_len = 0;
+    int paren_depth = 0;
+    int bracket_depth = 0;
+    int in_string = 0;
 
     in = fopen(path, "rb");
     if(in == NULL)
@@ -378,13 +384,54 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
 
     while(fgets(line, sizeof(line), in) != NULL) {
         char raw[K2IR_LINE_MAX];
-        char *t;
+        const char *t;
 
         line_no++;
         snprintf(raw, sizeof(raw), "%s", line);
-        t = trim(raw);
-        if(t[0] == '\0' || strncmp(t, "//", 2) == 0)
-            continue;
+        {
+            char *trimmed = trim(raw);
+
+            if(trimmed[0] == '\0' || strncmp(trimmed, "//", 2) == 0) {
+                if(pending_len == 0)
+                    continue;
+                continue;
+            }
+            if(pending_len > 0 && pending_len + 2 < (int)sizeof(pending)) {
+                pending[pending_len++] = ' ';
+                pending[pending_len] = '\0';
+            }
+            strncat(pending, trimmed, sizeof(pending) - pending_len - 1);
+            pending_len = (int)strlen(pending);
+            for(const char *p = trimmed; *p != '\0'; p++) {
+                if(in_string) {
+                    if(*p == '\\' && p[1] != '\0')
+                        p++;
+                    else if(*p == '"')
+                        in_string = 0;
+                } else if(*p == '"') {
+                    in_string = 1;
+                } else if(*p == '(') {
+                    paren_depth++;
+                } else if(*p == ')') {
+                    paren_depth--;
+                } else if(*p == '[') {
+                    bracket_depth++;
+                } else if(*p == ']') {
+                    bracket_depth--;
+                }
+            }
+            if(paren_depth > 0 || bracket_depth > 0 || in_string)
+                continue;
+        }
+        t = pending;
+        {
+            static char logical[K2IR_LINE_MAX * 4];
+
+            snprintf(logical, sizeof(logical), "%s", pending);
+            t = logical;
+        }
+        pending[0] = '\0';
+        pending_len = 0;
         if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
