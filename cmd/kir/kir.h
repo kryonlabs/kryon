@@ -102,6 +102,7 @@ typedef struct KirGlobal {
 typedef struct KirType {
     char name[KIR_NAME_MAX];
     char body[KIR_TEXT_MAX * 2];
+    int is_enum;   /* 'Name :: enum' — emit typedef enum, not struct */
     KirSourceSpan span;
 } KirType;
 

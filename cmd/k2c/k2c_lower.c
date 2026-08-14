@@ -829,19 +829,20 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         const KirImport *imp = &m->imports[i];
 
         if(imp->kind == KIR_IMPORT_HEADER) {
-            /* Angled includes stay angled; extension-less targets get .h. */
             const char *dot = strrchr(imp->target, '.');
-            int has_ext = dot != NULL && dot > strrchr(imp->target, '/');
+            const char *slash = strrchr(imp->target, '/');
+            int has_ext = dot != NULL && (slash == NULL || dot > slash);
 
+            /* Angled includes stay angled; extension-less targets get
+             * the .h of their generated header. */
             if(strchr(imp->signature, '<') != NULL)
                 fprintf(h, "#include <%s>\n", imp->target);
             else if(has_ext)
                 fprintf(h, "#include \"%s\"\n", imp->target);
             else
                 fprintf(h, "#include \"%s.h\"\n", imp->target);
-        } else if(imp->kind == KIR_IMPORT_MODULE) {
+        } else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
-        }
     }
     /* Typedefs and enums first (structs + globals reference them). */
     for(i = 0; i < m->type_count; i++) {
@@ -910,6 +911,35 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(strcmp(ty->name, "#enum") == 0 ||
            strcmp(ty->name, "#typedef") == 0)
             continue;
+        if(ty->is_enum) {
+            /* 'Name :: enum { A, B }' — emit a named C enum. */
+            fprintf(h, "\ntypedef enum {\n");
+            {
+                const char *line = ty->body;
+
+                while(line != NULL && *line != '\0') {
+                    const char *nl = strchr(line, '\n');
+                    size_t len = nl ? (size_t)(nl - line) : strlen(line);
+
+                    if(len > 0) {
+                        char raw[LOWER_TEXT_MAX];
+
+                        if(len >= sizeof(raw))
+                            len = sizeof(raw) - 1;
+                        memcpy(raw, line, len);
+                        raw[len] = '\0';
+                        while(len > 0 && (raw[len - 1] == ' ' ||
+                                          raw[len - 1] == ','))
+                            raw[--len] = '\0';
+                        if(raw[0] != '\0')
+                            fprintf(h, "    %s,\n", raw);
+                    }
+                    line = nl ? nl + 1 : NULL;
+                }
+            }
+            fprintf(h, "} %s;\n", ty->name);
+            continue;
+        }
         fprintf(h, "\ntypedef struct {\n");
         /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
         {

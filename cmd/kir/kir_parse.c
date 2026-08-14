@@ -322,14 +322,15 @@ parse_import_line(KirModule *module, const char *path, int line_no,
     char target[K2IR_PATH_MAX];
     char name[KIR_NAME_MAX];
     KirImportKind kind;
+    int quoted;
 
     directive = strstr(line, "#import");
     if(directive == NULL)
         return 0;
     target[0] = '\0';
     name[0] = '\0';
-    if(!parse_quoted(directive, target, sizeof(target)) &&
-       !parse_angled(directive, target, sizeof(target)))
+    quoted = parse_quoted(directive, target, sizeof(target));
+    if(!quoted && !parse_angled(directive, target, sizeof(target)))
         return 0;
     if(parse_symbol_before_colons(line, name, sizeof(name)))
         kind = KIR_IMPORT_MODULE;
@@ -337,7 +338,9 @@ parse_import_line(KirModule *module, const char *path, int line_no,
         snprintf(name, sizeof(name), "%s", target);
         kind = KIR_IMPORT_HEADER;
     }
-    KirModuleAddImport(module, kind, name, target, "", 1,
+    /* Signature records the bracket style so backends can keep angled
+     * includes angled ("<") instead of turning them into quoted ones. */
+    KirModuleAddImport(module, kind, name, target, quoted ? "" : "<", 1,
                        KirSpan(path, line_no, 1));
     return 1;
 }
@@ -721,7 +724,8 @@ kir_parse_file(const char *path, const char *root)
                 }
             }
         } else if(mode == TOP && strstr(t, "::") != NULL) {
-            /* Name :: struct { ... } — capture the type body verbatim. */
+            /* Name :: struct { ... } | Name :: enum { ... } — capture the
+             * type body verbatim (enums emit as typedef enum). */
             const char *colons = strstr(t, "::");
             const char *after = colons + 2;
             char tname[KIR_NAME_MAX];
@@ -730,8 +734,10 @@ kir_parse_file(const char *path, const char *root)
             while(after < after + strlen(after) &&
                   (*after == ' ' || *after == '\t'))
                 after++;
-            if(strncmp(after, "struct", 6) == 0 &&
-               (after[6] == '\0' || after[6] == ' ' || after[6] == '{')) {
+            if((strncmp(after, "struct", 6) == 0 &&
+                (after[6] == '\0' || after[6] == ' ' || after[6] == '{')) ||
+               (strncmp(after, "enum", 4) == 0 &&
+                (after[4] == '\0' || after[4] == ' ' || after[4] == '{'))) {
                 const char *q = t;
                 KirType *ty;
 
@@ -741,8 +747,10 @@ kir_parse_file(const char *path, const char *root)
                 tname[tn] = '\0';
                 ty = KirModuleAddType(module, tname,
                                       KirSpan(rel, line_no, 1));
-                if(ty != NULL)
+                if(ty != NULL) {
+                    ty->is_enum = strncmp(after, "enum", 4) == 0;
                     mode = TYPE;
+                }
                 fn = NULL;
             }
         } else if((mode == TOP || mode == TYPE) &&
