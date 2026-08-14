@@ -219,8 +219,10 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                 p = e;   /* strip the alias; loop's p++ skips the '.' */
                 continue;
             }
-            if(*e == '(') {
-                /* a call: resolve module-local functions to C names */
+            if(*e == '(' && !(p > src && p[-1] == '.') &&
+               !(p > src + 1 && p[-1] == '>' && p[-2] == '-')) {
+                /* a call (not a member access 'x.fn' / 'p->fn'): resolve
+                 * module-local functions to C names */
                 char cname[LOWER_NAME_MAX * 2];
                 size_t clen = resolve_module_fn(m, p, (size_t)(e - p),
                                                 cname, sizeof(cname));
