@@ -493,7 +493,7 @@ kir_parse_file(const char *path, const char *root)
                     last == ',' || last == '<' || last == '>') &&
                    !(prev == last && (last == '+' || last == '-')) &&
                    !(prev == last && (last == '&' || last == '|')) &&
-                   !(strchr("+-*&", last) != NULL && prev != ' ' &&
+                   !(strchr("+-*&<>", last) != NULL && prev != ' ' &&
                      prev != '\t'))
                     continue;
             }
@@ -658,6 +658,21 @@ kir_parse_file(const char *path, const char *root)
 
                 snprintf(ety->body + used, sizeof(ety->body) - used,
                          "%s\n", t);
+            }
+        } else if(mode == TOP && strstr(t, "::") != NULL &&
+                  strstr(t, "#type") != NULL) {
+            /* 'Name :: C-type #type' — a typedef. Capture raw for emission. */
+            KirType *tty = KirModuleAddType(module, "#typedef",
+                                            KirSpan(rel, line_no, 1));
+            const char *colons = strstr(t, "::");
+            const char *tybegin = colons + 2;
+            const char *hash = strstr(t, "#type");
+
+            if(tty != NULL) {
+                while(tybegin < hash && (*tybegin == ' ' || *tybegin == '\t'))
+                    tybegin++;
+                snprintf(tty->body, sizeof(tty->body), "%.*s",
+                         (int)(hash - tybegin), tybegin);
             }
         } else if(mode == TYPE) {
             if(t[0] == '}') {

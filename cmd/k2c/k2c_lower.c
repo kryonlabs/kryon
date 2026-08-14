@@ -788,6 +788,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             fprintf(h, "\nenum {\n%s};\n", ty->body);
             continue;
         }
+        if(strcmp(ty->name, "#typedef") == 0) {
+            /* Name :: C-type #type — emit a typedef. */
+            fprintf(h, "\ntypedef %s;\n", ty->body);
+            continue;
+        }
         fprintf(h, "\ntypedef struct {\n");
         /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
         {
