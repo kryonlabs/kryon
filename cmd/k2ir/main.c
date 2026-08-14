@@ -204,7 +204,9 @@ classify_stmt(const char *s)
         return KIR_STMT_DECL;
     if(strstr(s, "=") != NULL)
         return KIR_STMT_ASSIGN;
-    if(strchr(s, '(') != NULL)
+    if(strchr(s, '(') != NULL || strchr(s, '+') != NULL ||
+       strchr(s, '-') != NULL)
+        return KIR_STMT_EXPR;
         return KIR_STMT_EXPR;
     return KIR_STMT_UNKNOWN;
 }
