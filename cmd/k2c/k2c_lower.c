@@ -826,7 +826,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
-    /* Typedefs and enums first (structs reference them), then structs. */
+    /* Typedefs and enums first (structs + globals reference them). */
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
@@ -864,6 +864,28 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             }
         }
         fprintf(h, "};\n");
+    }
+    /* #global variables have external linkage: declare extern in the header
+     * (after the enums their array sizes reference). */
+    for(i = 0; i < m->global_count; i++) {
+        const KirGlobal *g = &m->globals[i];
+        char base[LOWER_TEXT_MAX];
+        char suffix[LOWER_NAME_MAX];
+
+        split_array_type(g->type, base, sizeof(base), suffix, sizeof(suffix));
+        {
+            char tmpb[LOWER_TEXT_MAX];
+
+            strip_alias_type(m, base, tmpb, sizeof(tmpb));
+            snprintf(base, sizeof(base), "%s", tmpb);
+            if(suffix[0] != '\0') {
+                char tmps[LOWER_NAME_MAX];
+
+                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
+                snprintf(suffix, sizeof(suffix), "%s", tmps);
+            }
+        }
+        fprintf(h, "extern %s %s%s;\n", base, g->name, suffix);
     }
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
@@ -1005,7 +1027,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
-        fprintf(c, "static %s %s%s = %s;\n", base, g->name, suffix,
+        fprintf(c, "%s %s%s = %s;\n", base, g->name, suffix,
                 g->init[0] ? g->init : "{0}");
     }
     for(i = 0; i < m->state_count; i++) {
