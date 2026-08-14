@@ -286,7 +286,7 @@ parse_function_header(char *name, size_t name_size, char *args,
             while(*q == ' ' || *q == '\t')
                 q++;
             n = 0;
-            while(*q != '\0' && *q != '#' && n + 1 < ret_size)
+            while(*q != '\0' && *q != '#' && *q != '{' && n + 1 < ret_size)
                 ret[n++] = *q++;
             while(n > 0 && (ret[n - 1] == ' ' || ret[n - 1] == '\t'))
                 n--;
@@ -377,7 +377,7 @@ kir_parse_file(const char *path, const char *root)
     char out_rel[K2IR_PATH_MAX];
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
-    enum { TOP, APP, STATE, FUNCTION } mode = TOP;
+    enum { TOP, APP, STATE, TYPE, FUNCTION } mode = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
@@ -545,6 +545,40 @@ kir_parse_file(const char *path, const char *root)
             else
                 KirModuleAddGlobal(module, gname, gtype, "",
                                    KirSpan(rel, line_no, 1));
+        } else if(mode == TOP && strstr(t, "::") != NULL) {
+            /* Name :: struct { ... } — capture the type body verbatim. */
+            const char *colons = strstr(t, "::");
+            const char *after = colons + 2;
+            char tname[KIR_NAME_MAX];
+            size_t tn = 0;
+
+            while(after < after + strlen(after) &&
+                  (*after == ' ' || *after == '\t'))
+                after++;
+            if(strncmp(after, "struct", 6) == 0 &&
+               (after[6] == '\0' || after[6] == ' ' || after[6] == '{')) {
+                const char *q = t;
+                KirType *ty;
+
+                while(q < colons && (isalnum((unsigned char)*q) || *q == '_') &&
+                      tn + 1 < sizeof(tname))
+                    tname[tn++] = *q++;
+                tname[tn] = '\0';
+                ty = KirModuleAddType(module, tname,
+                                      KirSpan(rel, line_no, 1));
+                if(ty != NULL)
+                    mode = TYPE;
+                fn = NULL;
+            }
+        } else if(mode == TYPE) {
+            if(t[0] == '}') {
+                mode = TOP;
+            } else {
+                KirType *ty = &module->types[module->type_count - 1];
+                size_t used = strlen(ty->body);
+
+                snprintf(ty->body + used, sizeof(ty->body) - used, "%s\n", t);
+            }
         } else if(mode == FUNCTION) {
             if(t[0] == '}') {
                 if(depth > 0)

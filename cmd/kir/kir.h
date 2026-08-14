@@ -95,6 +95,14 @@ typedef struct KirGlobal {
     KirSourceSpan span;
 } KirGlobal;
 
+/* A `Name :: struct { fields }` type declaration. body holds the raw field
+ * lines (one per line, no braces). */
+typedef struct KirType {
+    char name[KIR_NAME_MAX];
+    char body[KIR_TEXT_MAX * 2];
+    KirSourceSpan span;
+} KirType;
+
 typedef struct KirAppMeta {
     int has_app;
     char title[KIR_NAME_MAX];
@@ -118,6 +126,9 @@ typedef struct KirModule {
     KirGlobal *globals;
     int global_count;
     int global_cap;
+    KirType *types;
+    int type_count;
+    int type_cap;
     KirStateField *state_fields;
     int state_count;
     int state_cap;
@@ -152,6 +163,8 @@ KirFunction *KirModuleAddFunction(KirModule *module, const char *name,
                                   int exported, KirSourceSpan span);
 void KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
                         const char *init, KirSourceSpan span);
+KirType *KirModuleAddType(KirModule *module, const char *name,
+                          KirSourceSpan span);
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
                             const char *text, const char *widget,
                             KirSourceSpan span);

@@ -670,6 +670,11 @@ lower_module(const KirModule *m, const char *out_dir)
         else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
+    for(i = 0; i < m->type_count; i++) {
+        const KirType *ty = &m->types[i];
+
+        fprintf(h, "\ntypedef struct {\n%s} %s;\n", ty->body, ty->name);
+    }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
         char cname[LOWER_NAME_MAX];
