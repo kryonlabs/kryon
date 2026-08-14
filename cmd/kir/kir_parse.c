@@ -793,17 +793,35 @@ kir_parse_file(const char *path, const char *root)
                     wl + 1 < sizeof(w0); w++)
                     w0[wl++] = *w;
                 w0[wl] = '\0';
-                header_line =
-                    pending[0] == '#' ||
-                    strcmp(w0, "if") == 0 || strcmp(w0, "else") == 0 ||
-                    strcmp(w0, "while") == 0 || strcmp(w0, "for") == 0 ||
-                    strcmp(w0, "switch") == 0 || strcmp(w0, "do") == 0 ||
-                    strcmp(w0, "screen") == 0 || strcmp(w0, "preview") == 0 ||
-                    strcmp(w0, "page") == 0 || strcmp(w0, "scene") == 0 ||
-                    strcmp(w0, "frame") == 0 || strcmp(w0, "fn") == 0 ||
-                    strcmp(w0, "struct") == 0 || strcmp(w0, "enum") == 0 ||
-                    strcmp(w0, "state") == 0 || strcmp(w0, "app") == 0 ||
-                    strstr(pending, " :: ") != NULL;
+                /* Keyword headers must be followed by ' ', '(' or '{':
+                 * 'app->x = ...' / 'state.x' are member statements, not
+                 * block headers (their compound-literal braces are
+                 * expression braces). */
+                {
+                    char nc = pending[wl];
+
+                    header_line =
+                        pending[0] == '#' ||
+                        strstr(pending, " :: ") != NULL ||
+                        (nc != '\0' && nc != '-' && nc != '.' &&
+                         strchr(" ({", nc) != NULL &&
+                         (strcmp(w0, "if") == 0 ||
+                          strcmp(w0, "else") == 0 ||
+                          strcmp(w0, "while") == 0 ||
+                          strcmp(w0, "for") == 0 ||
+                          strcmp(w0, "switch") == 0 ||
+                          strcmp(w0, "do") == 0 ||
+                          strcmp(w0, "screen") == 0 ||
+                          strcmp(w0, "preview") == 0 ||
+                          strcmp(w0, "page") == 0 ||
+                          strcmp(w0, "scene") == 0 ||
+                          strcmp(w0, "frame") == 0 ||
+                          strcmp(w0, "fn") == 0 ||
+                          strcmp(w0, "struct") == 0 ||
+                          strcmp(w0, "enum") == 0 ||
+                          strcmp(w0, "state") == 0 ||
+                          strcmp(w0, "app") == 0));
+                }
                 /* K&R "} else {" / "} else if (...) {": the leading '}' closes
                  * the if-body and the trailing '{' re-opens the else-body, so
                  * both braces are block braces even though the leading word
@@ -875,31 +893,54 @@ kir_parse_file(const char *path, const char *root)
                 if((last == '&' || last == '|') &&
                    (prev == last || prev == ' ' || prev == '\t'))
                     continue;
-                /* Look ahead: a next line starting with ':' (ternary
-                 * else-branch) continues this statement. */
+                /* Look ahead: a next line starting with a continuation
+                 * token ('?' / ':' ternary branches, '.', ',', leading
+                 * binary operators) continues this statement (legacy
+                 * line_starts_continuation). */
                 {
                     char la[K2IR_LINE_MAX];
-                    const char *lt;
 
-                    if(fgets(la, sizeof(la), in) != NULL) {
-                        lt = la;
-                        while(*lt == ' ' || *lt == '\t')
-                            lt++;
-                        if(*lt == ':' && lt[1] != ':') {
-                            if(pending_len > 0 &&
-                               pending_len + 2 < (int)sizeof(pending)) {
-                                pending[pending_len++] = ' ';
-                                pending[pending_len] = '\0';
-                            }
-                            strncat(pending, lt,
-                                    sizeof(pending) - pending_len - 1);
-                            pending_len = (int)strlen(pending);
-                            line_no++;
-                            continue;   /* keep accumulating */
+                    /* Keep consuming lookahead lines while they continue this
+                     * statement; the first non-continuation line is stashed
+                     * for the next iteration (appending it blindly here is
+                     * how block-closing '}'s used to get swallowed). */
+                    while(fgets(la, sizeof(la), in) != NULL) {
+                        const char *lt;
+                        int cont;
+
+                        /* trim in place: the lookahead is appended verbatim,
+                         * and a raw fgets line would carry its '\n' into the
+                         * joined statement text. */
+                        lt = trim(la);
+                        if(lt[0] == '\0') {
+                            line_no++;   /* blank lookaheads still count */
+                            continue;
                         }
-                        /* not a continuation: stash for the next iteration */
-                        snprintf(lookahead, sizeof(lookahead), "%s", la);
-                        have_look = 1;
+                        cont =
+                            *lt == '?' || (*lt == ':' && lt[1] != ':') ||
+                            *lt == '.' || *lt == ',' || *lt == '+' ||
+                            *lt == '/' || *lt == '%' ||
+                            (*lt == '-' && lt[1] != '>') ||
+                            ((*lt == '&' && lt[1] == '&') ||
+                             (*lt == '|' && lt[1] == '|') ||
+                             (*lt == '=' && lt[1] == '=') ||
+                             (*lt == '!' && lt[1] == '=') ||
+                             (*lt == '<' && lt[1] == '=') ||
+                             (*lt == '>' && lt[1] == '='));
+                        if(!cont) {
+                            snprintf(lookahead, sizeof(lookahead), "%s", la);
+                            have_look = 1;
+                            break;
+                        }
+                        if(pending_len > 0 &&
+                           pending_len + 2 < (int)sizeof(pending)) {
+                            pending[pending_len++] = ' ';
+                            pending[pending_len] = '\0';
+                        }
+                        strncat(pending, lt,
+                                sizeof(pending) - pending_len - 1);
+                        pending_len = (int)strlen(pending);
+                        line_no++;
                     }
                 }
             }
@@ -988,6 +1029,10 @@ kir_parse_file(const char *path, const char *root)
                 snprintf(fn->guard, sizeof(fn->guard), "%s", cur_guard);
                 fn->is_extern = is_extern;
                 fn->is_colon = strstr(t, "::") != NULL;
+                /* '#export' on a colon function keeps the plain Kry name as
+                 * the C symbol (legacy global_name) so handwritten C and
+                 * JNI entry points can call it directly. */
+                fn->exported = fn->is_colon && strstr(t, "#export") != NULL;
                 /* Legacy rule: screen-keyword and colon functions are public
                  * (project routes); '#private' opts out. */
                 fn->is_public = !is_extern &&
