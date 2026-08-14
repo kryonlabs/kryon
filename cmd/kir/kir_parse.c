@@ -640,7 +640,17 @@ kir_parse_file(const char *path, const char *root)
             if(strchr(t, '}') == NULL)
                 mode = ENUM;
         } else if(mode == ENUM) {
+            size_t tl = strlen(t);
+
             if(t[0] == '}') {
+                mode = enum_return;
+            } else if(tl > 0 && t[tl - 1] == '}') {
+                /* joined constants + closing brace on one line */
+                KirType *ety = &module->types[module->type_count - 1];
+                size_t used = strlen(ety->body);
+
+                snprintf(ety->body + used, sizeof(ety->body) - used,
+                         "%.*s\n", (int)(tl - 1), t);
                 mode = enum_return;
             } else {
                 KirType *ety = &module->types[module->type_count - 1];
