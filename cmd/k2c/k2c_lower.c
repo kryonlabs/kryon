@@ -173,9 +173,37 @@ resolve_aliased_fn(const KirModule *m, const K2cModuleSyms *restab,
 /* Rewrite a statement body: `nil` -> `NULL`, `alias.X` -> `X` for module
  * aliases (enum/type members), bare calls to module functions -> C names,
  * and alias.fn( cross-module calls -> the target's C name. */
+
+/* Is ident (len chars) in the space-separated shadow list? Parameters and
+ * locals shadow module functions of the same name. */
+static int
+name_is_shadowed(const char *shadow, const char *ident, size_t len)
+{
+    const char *p;
+
+    if(shadow == NULL || shadow[0] == '\0')
+        return 0;
+    p = shadow;
+    while(*p != '\0') {
+        const char *e = p;
+        size_t l;
+
+        while(*e != '\0' && *e != ' ')
+            e++;
+        l = (size_t)(e - p);
+        if(l == len && strncmp(p, ident, len) == 0)
+            return 1;
+        p = e;
+        while(*p == ' ')
+            p++;
+    }
+    return 0;
+}
+
 static void
 rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
-              int restab_count, const char *src, char *dst, size_t dst_size)
+              int restab_count, const char *src, char *dst, size_t dst_size,
+              const char *shadow)
 {
     size_t n = 0;
 
@@ -247,7 +275,8 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                 /* 'name->' / 'name.' — a variable access, not a function
                  * reference ('habits->count' must never resolve against a
                  * screen named 'habits'). Skip resolution; fall through. */
-            } else if(!(p > src && p[-1] == '.') &&
+            } else if(!name_is_shadowed(shadow, p, (size_t)(e - p)) &&
+               !(p > src && p[-1] == '.') &&
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
                *e != '(' && n >= 2 && dst[n - 1] == ' ' && dst[n - 2] == '=' &&
                (n < 3 || (dst[n - 3] != '=' && dst[n - 3] != '!'))) {
@@ -266,7 +295,8 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
             }
             /* standalone call argument ('set_cb(name)' / 'f(a, name)'):
              * a bare identifier passing a function by reference. */
-            if(!(p > src && p[-1] == '.') &&
+            if(!name_is_shadowed(shadow, p, (size_t)(e - p)) &&
+               !(p > src && p[-1] == '.') &&
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
                *e != '(' && (*e == ')' || *e == ',') &&
                n >= 1 && (dst[n - 1] == '(' ||
@@ -550,11 +580,12 @@ split_multi(const char *t, char names[][LOWER_NAME_MAX], int name_cap,
 
 static void
 emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
-               int restab_count, int line, const char *text)
+               int restab_count, int line, const char *text,
+               const char *shadow)
 {
     char rw[LOWER_TEXT_MAX];
 
-    rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw));
+    rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
     fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
     fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopUIInspectSource();\n");
@@ -571,12 +602,55 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
     int scope_top = 0;
     int indent = 1;
     int j;
+    char shadow[LOWER_TEXT_MAX];   /* param + local names shadow functions */
 
+    shadow[0] = '\0';
+    {
+        /* parameter names from 'a: T, b: T' (colon-less C-style parts
+         * end at the last space before ',' / end). */
+        const char *p = fn->args;
+
+        while(p != NULL && *p != '\0') {
+            const char *e = p;
+
+            while(*e != '\0' && *e != ',')
+                e++;
+            {
+                const char *colon = NULL;
+                const char *q;
+
+                for(q = p; q < e; q++)
+                    if(*q == ':')
+                        colon = q;
+                if(colon == NULL) {
+                    /* C-style 'InbeApp *app': name = trailing ident */
+                    q = e;
+                    while(q > p && *(q - 1) == ' ')
+                        q--;
+                    while(q > p && (isalnum((unsigned char)*(q - 1)) ||
+                                    *(q - 1) == '_'))
+                        q--;
+                    colon = q;
+                }
+                if(colon > p) {
+                    size_t nl = (size_t)(colon - p);
+
+                    if(strlen(shadow) + nl + 2 < sizeof(shadow)) {
+                        if(shadow[0] != '\0')
+                            strcat(shadow, " ");
+                        strncat(shadow, p, nl);
+                    }
+                }
+            }
+            p = *e == ',' ? e + 1 : NULL;
+        }
+    }
     for(j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
         char rw[LOWER_TEXT_MAX];
 
-        rewrite_body2(m, restab, restab_count, st->text, rw, sizeof(rw));
+        rewrite_body2(m, restab, restab_count, st->text, rw, sizeof(rw),
+                      shadow);
         switch(st->kind) {
         case KIR_STMT_BLOCK_CLOSE: {
             int target = scope_top > 0 ? scope_stack[--scope_top] : 0;
@@ -728,6 +802,39 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
             char exprs[8][LOWER_TEXT_MAX];
             int n = split_multi(rw, names, 8, exprs, 8);
 
+            /* declared names shadow functions from here on */
+            {
+                int k;
+
+                for(k = 0; k < (n >= 2 ? n : 1); k++) {
+                    const char *nm = n >= 2 ? names[k] : rw;
+
+                    if(n < 2) {
+                        /* single decl: name is rw up to ':=' / ':' */
+                        const char *c2 = strstr(rw, ":=");
+
+                        if(c2 == NULL)
+                            c2 = strchr(rw, ':');
+                        if(c2 != NULL) {
+                            size_t nl = (size_t)(c2 - rw);
+
+                            if(nl > 0 &&
+                               strlen(shadow) + nl + 2 < sizeof(shadow)) {
+                                if(shadow[0] != '\0')
+                                    strcat(shadow, " ");
+                                strncat(shadow, rw, nl);
+                            }
+                        }
+                    } else if(nm[0] != '\0' &&
+                              strlen(shadow) + strlen(nm) + 2 <
+                              sizeof(shadow)) {
+                        if(shadow[0] != '\0')
+                            strcat(shadow, " ");
+                        strcat(shadow, nm);
+                    }
+                }
+            }
+
             if(n >= 2) {
                 /* multi: temps first, then assignments */
                 for(int k = 0; k < n; k++) {
@@ -848,7 +955,8 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
         }
         case KIR_STMT_EXPR:
             if(strchr(rw, '(') != NULL)
-                emit_call_wrap(c, m, restab, restab_count, st->span.line, rw);
+                emit_call_wrap(c, m, restab, restab_count, st->span.line,
+                               st->text, shadow);
             else {
                 emit_indent(c, indent);
                 fprintf(c, "%s;\n", rw);
@@ -1167,7 +1275,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             if(suffix[0] != '\0') {
                 char tmps[LOWER_NAME_MAX];
 
-                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
+                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL);
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
@@ -1181,6 +1289,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         char cargs[LOWER_TEXT_MAX];
         char cret[LOWER_NAME_MAX];
 
+        if(!fn->is_public)
+            continue;   /* private functions are file-static */
         function_c_name(m, fn, cname, sizeof(cname));
         convert_args(m, fn->args, cargs, sizeof(cargs));
         strip_alias_type(m, fn->return_type, cret, sizeof(cret));
@@ -1273,6 +1383,24 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             }
         }
     }
+    /* Forward prototypes for private functions: initializers and earlier
+     * definitions may reference them before their definition. */
+    for(i = 0; i < m->function_count; i++) {
+        const KirFunction *fn = &m->functions[i];
+        char cname[LOWER_NAME_MAX];
+        char cargs[LOWER_TEXT_MAX];
+        char cret[LOWER_NAME_MAX];
+
+        if(fn->is_public || fn->is_extern)
+            continue;
+        function_c_name(m, fn, cname, sizeof(cname));
+        convert_args(m, fn->args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        emit_guard_open(c, fn->guard);
+        fprintf(c, "static KRYON_PRIVATE_UNUSED %s %s(%s);\n",
+                cret[0] ? cret : "void", cname, cargs);
+        emit_guard_close(c, fn->guard);
+    }
     for(i = 0; i < m->global_count; i++) {
         const KirGlobal *g = &m->globals[i];
         char base[LOWER_TEXT_MAX];
@@ -1290,7 +1418,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                 /* the alias sits inside brackets ('[state.MAX]'), so use the
                  * body rewriter (strips alias.member anywhere), not the
                  * leading-alias-only type strip */
-                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
+                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL);
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
@@ -1298,7 +1426,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             char initw[LOWER_TEXT_MAX];
 
             /* initializers carry 'nil' and module-local function refs */
-            rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw));
+            rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw), NULL);
             emit_guard_open(c, g->guard);
             fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
                     base, g->name, suffix,
@@ -1337,8 +1465,12 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         }
         fprintf(c, "\n");
         emit_guard_open(c, fn->guard);
-        fprintf(c, "%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
-                cname, cargs);
+        if(fn->is_public)
+            fprintf(c, "%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
+                    cname, cargs);
+        else
+            fprintf(c, "static KRYON_PRIVATE_UNUSED %s\n%s(%s)\n{\n",
+                    cret[0] ? cret : "void", cname, cargs);
         lower_body(c, m, restab, restab_count, fn);
         fprintf(c, "}\n");
         emit_guard_close(c, fn->guard);
