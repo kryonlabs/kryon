@@ -57,6 +57,7 @@ typedef struct KirStateField {
     char name[KIR_NAME_MAX];
     char type[KIR_NAME_MAX];
     char init[KIR_TEXT_MAX];
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirStateField;
 
@@ -66,6 +67,7 @@ typedef struct KirImport {
     char target[KIR_PATH_MAX];
     char signature[KIR_TEXT_MAX];
     int required;
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirImport;
 
@@ -84,6 +86,7 @@ typedef struct KirFunction {
     int is_extern;
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
     int is_public;  /* screen/preview/page keyword: a project route */
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
     KirStmt *stmts;
     int stmt_count;
@@ -95,6 +98,7 @@ typedef struct KirGlobal {
     char type[KIR_TEXT_MAX];
     char init[KIR_TEXT_MAX];
     int is_static;   /* 'static name: T = init' — internal linkage */
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirGlobal;
 
@@ -104,6 +108,7 @@ typedef struct KirType {
     char name[KIR_NAME_MAX];
     char body[KIR_TEXT_MAX * 2];
     int is_enum;   /* 'Name :: enum' — emit typedef enum, not struct */
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirType;
 

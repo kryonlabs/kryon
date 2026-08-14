@@ -821,6 +821,22 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
     }
 }
 
+/* '#if' regions stamp their captures with the expanded C preprocessor
+ * condition; emit each guarded item wrapped in '#if cond / #endif'. */
+static void
+emit_guard_open(FILE *out, const char *guard)
+{
+    if(guard[0] != '\0')
+        fprintf(out, "#if %s\n", guard);
+}
+
+static void
+emit_guard_close(FILE *out, const char *guard)
+{
+    if(guard[0] != '\0')
+        fprintf(out, "#endif\n");
+}
+
 static void
 lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, const char *out_dir)
 {
@@ -856,12 +872,14 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
             /* Angled includes stay angled; extension-less targets get
              * the .h of their generated header. */
+            emit_guard_open(h, imp->guard);
             if(strchr(imp->signature, '<') != NULL)
                 fprintf(h, "#include <%s>\n", imp->target);
             else if(has_ext)
                 fprintf(h, "#include \"%s\"\n", imp->target);
             else
                 fprintf(h, "#include \"%s.h\"\n", imp->target);
+            emit_guard_close(h, imp->guard);
         } else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
@@ -869,8 +887,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
-        if(strcmp(ty->name, "#typedef") == 0)
+        if(strcmp(ty->name, "#typedef") == 0) {
+            emit_guard_open(h, ty->guard);
             fprintf(h, "\ntypedef %s;\n", ty->body);
+            emit_guard_close(h, ty->guard);
+        }
     }
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
@@ -878,6 +899,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(strcmp(ty->name, "#enum") != 0)
             continue;
         /* #enum { A, B } — newline-separated members need commas in C. */
+        emit_guard_open(h, ty->guard);
         fprintf(h, "\nenum {\n");
         {
             const char *line = ty->body;
@@ -903,28 +925,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             }
         }
         fprintf(h, "};\n");
-    }
-    /* #global variables have external linkage: declare extern in the header
-     * (after the enums their array sizes reference). */
-    for(i = 0; i < m->global_count; i++) {
-        const KirGlobal *g = &m->globals[i];
-        char base[LOWER_TEXT_MAX];
-        char suffix[LOWER_NAME_MAX];
-
-        split_array_type(g->type, base, sizeof(base), suffix, sizeof(suffix));
-        {
-            char tmpb[LOWER_TEXT_MAX];
-
-            strip_alias_type(m, base, tmpb, sizeof(tmpb));
-            snprintf(base, sizeof(base), "%s", tmpb);
-            if(suffix[0] != '\0') {
-                char tmps[LOWER_NAME_MAX];
-
-                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
-                snprintf(suffix, sizeof(suffix), "%s", tmps);
-            }
-        }
-        fprintf(h, "extern %s %s%s;\n", base, g->name, suffix);
+        emit_guard_close(h, ty->guard);
     }
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
@@ -932,6 +933,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(strcmp(ty->name, "#enum") == 0 ||
            strcmp(ty->name, "#typedef") == 0)
             continue;
+        emit_guard_open(h, ty->guard);
         if(ty->is_enum) {
             /* 'Name :: enum { A, B }' — emit a named C enum. */
             fprintf(h, "\ntypedef enum {\n");
@@ -1006,6 +1008,34 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             }
         }
         fprintf(h, "} %s;\n", ty->name);
+        emit_guard_close(h, ty->guard);
+    }
+    /* #global variables have external linkage: declare extern in the header,
+     * after every named type they reference. 'static'/#private globals stay
+     * in the .c. */
+    for(i = 0; i < m->global_count; i++) {
+        const KirGlobal *g = &m->globals[i];
+        char base[LOWER_TEXT_MAX];
+        char suffix[LOWER_NAME_MAX];
+
+        if(g->is_static)
+            continue;
+        split_array_type(g->type, base, sizeof(base), suffix, sizeof(suffix));
+        {
+            char tmpb[LOWER_TEXT_MAX];
+
+            strip_alias_type(m, base, tmpb, sizeof(tmpb));
+            snprintf(base, sizeof(base), "%s", tmpb);
+            if(suffix[0] != '\0') {
+                char tmps[LOWER_NAME_MAX];
+
+                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
+                snprintf(suffix, sizeof(suffix), "%s", tmps);
+            }
+        }
+        emit_guard_open(h, g->guard);
+        fprintf(h, "extern %s %s%s;\n", base, g->name, suffix);
+        emit_guard_close(h, g->guard);
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
@@ -1016,8 +1046,10 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         function_c_name(m, fn, cname, sizeof(cname));
         convert_args(m, fn->args, cargs, sizeof(cargs));
         strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        emit_guard_open(h, fn->guard);
         fprintf(h, "%s %s(%s);\n",
                 cret[0] ? cret : "void", cname, cargs);
+        emit_guard_close(h, fn->guard);
     }
     fprintf(h, "\n#endif /* %s */\n", guard);
     fclose(h);
@@ -1036,10 +1068,12 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
         if(imp->required || imp->kind != KIR_IMPORT_HEADER)
             continue;
+        emit_guard_open(c, imp->guard);
         if(strchr(imp->signature, '<') != NULL)
             fprintf(c, "#include <%s>\n", imp->target);
         else
             fprintf(c, "#include \"%s\"\n", imp->target);
+        emit_guard_close(c, imp->guard);
     }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     /* #extern imports: emit C prototypes parsed from the raw signature
@@ -1106,8 +1140,10 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
-        fprintf(c, "%s %s%s = %s;\n", base, g->name, suffix,
-                g->init[0] ? g->init : "{0}");
+        emit_guard_open(c, g->guard);
+        fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
+                base, g->name, suffix, g->init[0] ? g->init : "{0}");
+        emit_guard_close(c, g->guard);
     }
     for(i = 0; i < m->state_count; i++) {
         const KirStateField *f = &m->state_fields[i];
@@ -1115,8 +1151,10 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         char suffix[LOWER_NAME_MAX];
 
         split_array_type(f->type, base, sizeof(base), suffix, sizeof(suffix));
+        emit_guard_open(c, f->guard);
         fprintf(c, "static %s %s%s = %s;\n", base, f->name, suffix,
                 f->init[0] ? f->init : "{0}");
+        emit_guard_close(c, f->guard);
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
@@ -1129,14 +1167,20 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         strip_alias_type(m, fn->return_type, cret, sizeof(cret));
         if(fn->is_extern) {
             /* extern: prototype only, no body */
-            fprintf(c, "\n%s %s(%s);\n",
+            fprintf(c, "\n");
+            emit_guard_open(c, fn->guard);
+            fprintf(c, "%s %s(%s);\n",
                     cret[0] ? cret : "void", cname, cargs);
+            emit_guard_close(c, fn->guard);
             continue;
         }
-        fprintf(c, "\n%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
+        fprintf(c, "\n");
+        emit_guard_open(c, fn->guard);
+        fprintf(c, "%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
                 cname, cargs);
         lower_body(c, m, restab, restab_count, fn);
         fprintf(c, "}\n");
+        emit_guard_close(c, fn->guard);
     }
     fclose(c);
 }

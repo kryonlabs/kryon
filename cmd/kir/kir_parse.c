@@ -168,6 +168,39 @@ parse_angled(const char *s, char *out, size_t out_size)
     return *q == '>';
 }
 
+/* Net block braces: only '{'/'}' at paren/bracket depth 0 open/close
+ * blocks. Braces inside parens (compound literals like (Props){...}) are
+ * expression braces, not blocks. */
+static int
+net_block_braces(const char *s)
+{
+    int pd = 0;
+    int in_s = 0;
+    int delta = 0;
+
+    for(const char *p = s; *p != '\0'; p++) {
+        if(in_s) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '"')
+                in_s = 0;
+        } else if(*p == '"') {
+            in_s = 1;
+        } else if(*p == '(' || *p == '[') {
+            pd++;
+        } else if(*p == ')' || *p == ']') {
+            if(pd > 0)
+                pd--;
+        } else if(pd == 0) {
+            if(*p == '{')
+                delta++;
+            else if(*p == '}')
+                delta--;
+        }
+    }
+    return delta;
+}
+
 static KirStmtKind
 classify_stmt(const char *s)
 {
@@ -388,6 +421,248 @@ looks_like_function_header(const char *line)
     return strchr(body, '(') != NULL;
 }
 
+
+/* ---- compile-time conditionals ------------------------------------------
+ * '#if COND { ... } #else { ... }' regions keep the legacy model: top-level
+ * captures inside a region are stamped with the expanded C preprocessor
+ * condition and the emitter wraps each item in '#if cond / #endif'; the
+ * condition's 'Name' constants ('WEB :: #defined(PLATFORM_WEB)') expand to
+ * their expressions. Body-level regions lower to raw #if/#elif/#else/#endif
+ * statements whose braces are consumed here. */
+
+typedef struct {
+    char names[16][KIR_NAME_MAX];
+    char exprs[16][KIR_TEXT_MAX];
+    int count;
+} KirConsts;
+
+typedef struct {
+    char cond[KIR_TEXT_MAX];      /* active branch condition (C form) */
+    char excluded[KIR_TEXT_MAX];  /* conditions handled by earlier branches */
+    int braces;                   /* net '{' until the region's closing '}' */
+} KirCondFrame;
+
+static int
+line_is_hash_else(const char *line)
+{
+    return strcmp(line, "} #else {") == 0 || strcmp(line, "#else {") == 0;
+}
+
+/* '#if COND {' / '#else_if COND {' (with optional leading '}'): strips the
+ * trailing '{' — region braces are consumed, never emitted. Returns 1 for
+ * '#if', 2 for '#else_if', 0 otherwise; *condition points into line. */
+static int
+parse_cond_start(char *line, char **condition)
+{
+    char *q = NULL;
+    int kind = 0;
+    size_t n;
+
+    if(strncmp(line, "#if", 3) == 0 &&
+       (line[3] == '\0' || isspace((unsigned char)line[3]))) {
+        q = line + 3;
+        kind = 1;
+    } else if(strncmp(line, "#else_if", 8) == 0 &&
+              (line[8] == '\0' || isspace((unsigned char)line[8]))) {
+        q = line + 8;
+        kind = 2;
+    } else if(strncmp(line, "} #else_if", 10) == 0 &&
+              (line[10] == '\0' || isspace((unsigned char)line[10]))) {
+        q = line + 10;
+        kind = 2;
+    } else {
+        return 0;
+    }
+    q = trim(q);
+    n = strlen(q);
+    if(n == 0 || q[n - 1] != '{')
+        return 0;
+    q[n - 1] = '\0';
+    q = trim(q);
+    if(q[0] == '\0')
+        return 0;
+    *condition = q;
+    return kind;
+}
+
+static void
+expand_compile_expr_depth(char *dst, size_t dst_size, const KirConsts *consts,
+                          const char *src, int depth)
+{
+    size_t n = 0;
+    int in_string = 0;
+    int escaped = 0;
+    int i;
+
+    if(dst_size == 0)
+        return;
+    if(depth > 16) {
+        dst[0] = '\0';
+        return;
+    }
+    for(const char *p = src; p != NULL && *p != '\0' && n + 1 < dst_size;) {
+        if(in_string) {
+            dst[n++] = *p;
+            if(escaped)
+                escaped = 0;
+            else if(*p == '\\')
+                escaped = 1;
+            else if(*p == '"')
+                in_string = 0;
+            p++;
+            continue;
+        }
+        if(*p == '"') {
+            in_string = 1;
+            dst[n++] = *p++;
+            continue;
+        }
+        if(*p == '#' && strncmp(p, "#defined", 8) == 0) {
+            const char *word_end = p + 8;
+
+            if(*word_end == '\0' || *word_end == '(' ||
+               isspace((unsigned char)*word_end)) {
+                if(n + 7 >= dst_size)
+                    break;
+                memcpy(dst + n, "defined", 7);
+                n += 7;
+                p += 8;
+                continue;
+            }
+        }
+        if(isalpha((unsigned char)*p) || *p == '_') {
+            char ident[KIR_NAME_MAX];
+            size_t il = 0;
+            int found = 0;
+
+            while(isalnum((unsigned char)*p) || *p == '_') {
+                if(il + 1 < sizeof(ident))
+                    ident[il++] = *p;
+                p++;
+            }
+            ident[il] = '\0';
+            for(i = 0; i < consts->count; i++) {
+                if(strcmp(consts->names[i], ident) == 0) {
+                    char expanded[KIR_TEXT_MAX];
+                    int written;
+
+                    expand_compile_expr_depth(expanded, sizeof(expanded),
+                                              consts, consts->exprs[i],
+                                              depth + 1);
+                    written = snprintf(dst + n, dst_size - n, "(%s)", expanded);
+                    if(written < 0)
+                        written = 0;
+                    if((size_t)written >= dst_size - n)
+                        n = dst_size - 1;
+                    else
+                        n += (size_t)written;
+                    found = 1;
+                    break;
+                }
+            }
+            if(!found) {
+                if(n + il >= dst_size)
+                    break;
+                memcpy(dst + n, ident, il);
+                n += il;
+            }
+            continue;
+        }
+        dst[n++] = *p++;
+    }
+    dst[n] = '\0';
+}
+
+static void
+expand_compile_expr(char *dst, size_t dst_size, const KirConsts *consts,
+                    const char *src)
+{
+    expand_compile_expr_depth(dst, dst_size, consts, src, 0);
+}
+
+static void
+combine_active_guard(char *dst, size_t dst_size, const KirCondFrame *frames,
+                     int count)
+{
+    int i;
+
+    dst[0] = '\0';
+    for(i = 0; i < count; i++) {
+        if(dst[0] == '\0')
+            snprintf(dst, dst_size, "%s", frames[i].cond);
+        else
+            snprintf(dst + strlen(dst), dst_size - strlen(dst), " && %s",
+                     frames[i].cond);
+    }
+}
+
+/* Returns 1 when the line is consumed by top-level conditional handling
+ * ('#if'/'#else'/'#else_if' open or retarget a frame; the matching '}'
+ * pops one). A plain line inside a region only settles the frame's brace
+ * count and returns 0, so normal captures proceed — stamped with the
+ * active guard by the caller. */
+static int
+cond_top_step(char *line, KirCondFrame *frames, int *count, char *guard,
+              size_t guard_size, const KirConsts *consts, const char *path,
+              int line_no)
+{
+    char *cnd = NULL;
+    int ck = parse_cond_start(line, &cnd);
+    KirCondFrame *fr;
+
+    if(ck == 1) {
+        char expanded[KIR_TEXT_MAX];
+
+        if(*count >= 8)
+            die("%s:%d: too many nested #if blocks", path, line_no);
+        expand_compile_expr(expanded, sizeof(expanded), consts, cnd);
+        fr = &frames[(*count)++];
+        snprintf(fr->cond, sizeof(fr->cond), "%s", expanded);
+        snprintf(fr->excluded, sizeof(fr->excluded), "%s", expanded);
+        fr->braces = 1;
+        combine_active_guard(guard, guard_size, frames, *count);
+        return 1;
+    }
+    if(*count <= 0)
+        return 0;
+    fr = &frames[*count - 1];
+    if(ck == 2) {
+        char expanded[KIR_TEXT_MAX];
+        char next[KIR_TEXT_MAX * 2];
+
+        expand_compile_expr(expanded, sizeof(expanded), consts, cnd);
+        snprintf(fr->cond, sizeof(fr->cond), "!(%s) && (%s)",
+                 fr->excluded, expanded);
+        snprintf(next, sizeof(next), "(%s) || (%s)", fr->excluded, expanded);
+        snprintf(fr->excluded, sizeof(fr->excluded), "%s", next);
+        fr->braces = 1;
+        combine_active_guard(guard, guard_size, frames, *count);
+        return 1;
+    }
+    if(line_is_hash_else(line)) {
+        snprintf(fr->cond, sizeof(fr->cond), "!(%s)", fr->excluded);
+        fr->braces = 1;
+        combine_active_guard(guard, guard_size, frames, *count);
+        return 1;
+    }
+    fr->braces += net_block_braces(line);
+    if(fr->braces <= 0) {
+        (*count)--;
+        combine_active_guard(guard, guard_size, frames, *count);
+        return 1;
+    }
+    return 0;
+}
+
+/* A sub-mode (state/app/type/enum/function) consumed exactly one net '{'
+ * from the enclosing region — settle the frame count. */
+static void
+cond_frame_settle(KirCondFrame *frames, int count)
+{
+    if(count > 0)
+        frames[count - 1].braces--;
+}
+
 KirProgram *
 kir_parse_file(const char *path, const char *root)
 {
@@ -414,9 +689,15 @@ kir_parse_file(const char *path, const char *root)
     int bracket_depth = 0;
     int in_string = 0;
     int expr_brace = 0;
-    int cond_depth = 0;
-    int cond_brace = 0;
+    KirCondFrame tframes[8];
+    int tframe_count = 0;
+    KirConsts consts;
+    char cur_guard[KIR_TEXT_MAX];
+    int body_mdepth[8];
+    int body_mcount = 0;
 
+    memset(&consts, 0, sizeof(consts));
+    cur_guard[0] = '\0';
     in = fopen(path, "rb");
     if(in == NULL)
         die("%s: open failed: %s", path, strerror(errno));
@@ -431,7 +712,7 @@ kir_parse_file(const char *path, const char *root)
 
     while(have_look || fgets(line, sizeof(line), in) != NULL) {
         char raw[K2IR_LINE_MAX];
-        const char *t;
+        char *t;
 
         if(have_look) {
             snprintf(line, sizeof(line), "%s", lookahead);
@@ -587,35 +868,32 @@ kir_parse_file(const char *path, const char *root)
         }
         pending[0] = '\0';
         pending_len = 0;
-        if(mode == TOP && cond_depth > 0) {
-            /* inside an unevaluated '#if MACRO {' block: track braces,
-             * capture nothing (imports land here too — before the import
-             * branch below). */
-            for(const char *p = t; *p != '\0'; p++) {
-                if(*p == '{')
-                    cond_brace++;
-                else if(*p == '}') {
-                    cond_brace--;
-                    if(cond_brace == 0) {
-                        cond_depth = 0;
-                        break;
-                    }
-                }
-            }
+        if(mode == TOP &&
+           cond_top_step(t, tframes, &tframe_count, cur_guard,
+                         sizeof(cur_guard), &consts, rel, line_no)) {
+            continue;
         } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
-        } else if(mode == TOP && cond_depth == 0 &&
+        } else if(mode == TOP &&
                   (parse_import_line(module, rel, line_no, t) ||
                    parse_extern_line(module, rel, line_no, t))) {
+            if(module->import_count > 0)
+                snprintf(module->imports[module->import_count - 1].guard,
+                         sizeof(module->imports[0].guard), "%s", cur_guard);
             continue;
         } else if(mode == TOP && starts_word(t, "state") && strchr(t, '{') != NULL) {
             mode = STATE;
         } else if(mode == STATE) {
             if(t[0] == '}') {
                 mode = TOP;
+                cond_frame_settle(tframes, tframe_count);
             } else {
                 parse_state_field(module, rel, line_no, t);
+                if(module->state_count > 0)
+                    snprintf(module->state_fields[module->state_count - 1].guard,
+                             sizeof(module->state_fields[0].guard), "%s",
+                             cur_guard);
             }
         } else if(mode == TOP && starts_word(t, "app") &&
                   strchr(t, '{') != NULL) {
@@ -628,6 +906,7 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == APP) {
             if(t[0] == '}') {
                 mode = TOP;
+                cond_frame_settle(tframes, tframe_count);
             } else if(starts_word(t, "size")) {
                 sscanf(t, "size %d %d",
                        &module->app.width, &module->app.height);
@@ -661,6 +940,7 @@ kir_parse_file(const char *path, const char *root)
             if(name[0] != '\0') {
                 fn = KirModuleAddFunction(module, name, args, ret, 0,
                                           KirSpan(rel, line_no, 1));
+                snprintf(fn->guard, sizeof(fn->guard), "%s", cur_guard);
                 fn->is_extern = is_extern;
                 fn->is_colon = strstr(t, "::") != NULL;
                 /* Legacy rule: screen-keyword and colon functions are public
@@ -680,28 +960,6 @@ kir_parse_file(const char *path, const char *root)
                 } else {
                     /* extern / body-less prototype: no body follows */
                     fn = NULL;
-                }
-            }
-        } else if(mode == TOP && cond_depth == 0 &&
-                  strncmp(t, "#if ", 4) == 0 &&
-                  t[strlen(t) - 1] == '{') {
-            /* '#if MACRO {' — an unevaluated conditional block. We can't
-             * resolve build macros here; skip its import/global captures
-             * (matching the legacy undefined-macro-false case) by tracking
-             * the region. */
-            cond_brace = 1;
-            cond_depth = 1;
-        } else if(mode == TOP && cond_depth > 0) {
-            /* inside the conditional: track braces, capture nothing */
-            for(const char *p = t; *p != '\0'; p++) {
-                if(*p == '{')
-                    cond_brace++;
-                else if(*p == '}') {
-                    cond_brace--;
-                    if(cond_brace == 0) {
-                        cond_depth = 0;
-                        break;
-                    }
                 }
             }
         } else if(mode == TOP && strncmp(t, "static ", 7) == 0 &&
@@ -739,6 +997,9 @@ kir_parse_file(const char *path, const char *root)
             else
                 KirModuleAddStatic(module, gname, gtype, "",
                                    KirSpan(rel, line_no, 1));
+            if(module->global_count > 0)
+                snprintf(module->globals[module->global_count - 1].guard,
+                         sizeof(module->globals[0].guard), "%s", cur_guard);
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strstr(t, "#global") != NULL) {
             /* name :: Type #global — a module-level global variable.
@@ -785,6 +1046,9 @@ kir_parse_file(const char *path, const char *root)
             else
                 KirModuleAddGlobal(module, gname, gtype, ginit,
                                    KirSpan(rel, line_no, 1));
+            if(module->global_count > 0)
+                snprintf(module->globals[module->global_count - 1].guard,
+                         sizeof(module->globals[0].guard), "%s", cur_guard);
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strstr(t, "#type") != NULL) {
             /* 'Name :: C-type #type' — a typedef. Build the C declarator:
@@ -804,6 +1068,8 @@ kir_parse_file(const char *path, const char *root)
             tname[tn] = '\0';
             tty = KirModuleAddType(module, "#typedef",
                                    KirSpan(rel, line_no, 1));
+            if(tty != NULL)
+                snprintf(tty->guard, sizeof(tty->guard), "%s", cur_guard);
             if(tty != NULL && tname[0] != '\0') {
                 char tytext[KIR_TEXT_MAX];
                 size_t tl;
@@ -828,6 +1094,32 @@ kir_parse_file(const char *path, const char *root)
                     snprintf(tty->body, sizeof(tty->body), "%s %s",
                              tytext, tname);
                 }
+            }
+        } else if(mode == TOP && strstr(t, "::") != NULL &&
+                  strchr(t, '{') == NULL &&
+                  !looks_like_function_header(t)) {
+            /* 'Name :: expr' — a compile-time constant ('WEB :: #defined(X)'),
+             * expanded inside '#if' conditions; never emitted as C. */
+            const char *colons = strstr(t, "::");
+            const char *expr = colons + 2;
+            char cname[KIR_NAME_MAX];
+            size_t cn = 0;
+            const char *q = t;
+
+            while(q < colons && (isalnum((unsigned char)*q) || *q == '_') &&
+                  cn + 1 < sizeof(cname))
+                cname[cn++] = *q++;
+            cname[cn] = '\0';
+            while(*expr == ' ' || *expr == '\t')
+                expr++;
+            if(cname[0] != '\0' && *expr != '\0') {
+                if(consts.count >= 16)
+                    die("%s:%d: too many compile-time constants", rel, line_no);
+                snprintf(consts.names[consts.count],
+                         sizeof(consts.names[0]), "%s", cname);
+                snprintf(consts.exprs[consts.count],
+                         sizeof(consts.exprs[0]), "%s", expr);
+                consts.count++;
             }
         } else if(mode == TOP && strstr(t, "::") != NULL) {
             /* Name :: struct { ... } | Name :: enum { ... } — capture the
@@ -855,6 +1147,7 @@ kir_parse_file(const char *path, const char *root)
                                       KirSpan(rel, line_no, 1));
                 if(ty != NULL) {
                     ty->is_enum = strncmp(after, "enum", 4) == 0;
+                    snprintf(ty->guard, sizeof(ty->guard), "%s", cur_guard);
                     mode = TYPE;
                 }
                 fn = NULL;
@@ -865,6 +1158,8 @@ kir_parse_file(const char *path, const char *root)
             KirType *ety = KirModuleAddType(module, "#enum",
                                             KirSpan(rel, line_no, 1));
 
+            if(ety != NULL)
+                snprintf(ety->guard, sizeof(ety->guard), "%s", cur_guard);
             (void)ety;
             enum_return = mode;
             if(strchr(t, '}') == NULL)
@@ -874,6 +1169,7 @@ kir_parse_file(const char *path, const char *root)
 
             if(t[0] == '}') {
                 mode = enum_return;
+                cond_frame_settle(tframes, tframe_count);
             } else if(tl > 0 && t[tl - 1] == '}') {
                 /* joined constants + closing brace on one line */
                 KirType *ety = &module->types[module->type_count - 1];
@@ -882,6 +1178,7 @@ kir_parse_file(const char *path, const char *root)
                 snprintf(ety->body + used, sizeof(ety->body) - used,
                          "%.*s\n", (int)(tl - 1), t);
                 mode = enum_return;
+                cond_frame_settle(tframes, tframe_count);
             } else {
                 KirType *ety = &module->types[module->type_count - 1];
                 size_t used = strlen(ety->body);
@@ -892,6 +1189,7 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == TYPE) {
             if(t[0] == '}') {
                 mode = TOP;
+                cond_frame_settle(tframes, tframe_count);
             } else if(t[0] == '#') {
                 /* comment inside a struct body — skip */
             } else {
@@ -901,6 +1199,8 @@ kir_parse_file(const char *path, const char *root)
                 snprintf(ty->body + used, sizeof(ty->body) - used, "%s\n", t);
             }
         } else if(mode == FUNCTION) {
+            char *bcnd = NULL;
+
             if(strncmp(t, "args ", 5) == 0 && depth <= 1 &&
                fn != NULL && !fn->is_colon) {
                 /* 'args <decl>' header directive: append parameters to the
@@ -915,6 +1215,35 @@ kir_parse_file(const char *path, const char *root)
                 } else {
                     snprintf(fn->args, sizeof(fn->args), "%s", extra);
                 }
+            } else if(parse_cond_start(t, &bcnd) != 0 ||
+                      line_is_hash_else(t)) {
+                /* body-level '#if COND {' — the braces are consumed here;
+                 * the region lowers to raw #if/#elif/#else/#endif lines. */
+                char raw[KIR_TEXT_MAX];
+                char expanded[KIR_TEXT_MAX];
+
+                if(line_is_hash_else(t)) {
+                    snprintf(raw, sizeof(raw), "#else");
+                } else if(parse_cond_start(t, &bcnd) == 1) {
+                    if(body_mcount >= 8)
+                        die("%s:%d: too many nested #if blocks", rel, line_no);
+                    body_mdepth[body_mcount++] = depth;
+                    expand_compile_expr(expanded, sizeof(expanded), &consts,
+                                        bcnd);
+                    snprintf(raw, sizeof(raw), "#if %s", expanded);
+                } else {
+                    expand_compile_expr(expanded, sizeof(expanded), &consts,
+                                        bcnd);
+                    snprintf(raw, sizeof(raw), "#elif %s", expanded);
+                }
+                KirFunctionAddStmt(fn, KIR_STMT_RAW, raw, "",
+                                   KirSpan(rel, line_no, 1));
+            } else if(t[0] == '}' && body_mcount > 0 &&
+                      depth == body_mdepth[body_mcount - 1]) {
+                /* this '}' closes a body-level '#if' region, not a block */
+                body_mcount--;
+                KirFunctionAddStmt(fn, KIR_STMT_RAW, "#endif", "",
+                                   KirSpan(rel, line_no, 1));
             } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
             } else if(t[0] == '}') {
@@ -937,6 +1266,7 @@ kir_parse_file(const char *path, const char *root)
                         depth--;
                     if(depth == 0) {
                         mode = TOP;
+                        cond_frame_settle(tframes, tframe_count);
                         fn = NULL;
                     } else {
                         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, t, "",
@@ -946,36 +1276,8 @@ kir_parse_file(const char *path, const char *root)
             } else {
                 KirStmtKind kind = classify_stmt(t);
                 const char *widget = kind == KIR_STMT_EXPR ? t : "";
-                int brace_delta = 0;
+                int brace_delta = net_block_braces(t);
 
-                /* Count NET block braces: only '{'/'}' at paren/bracket depth 0
-                 * open/close blocks. Braces inside parens (compound literals
-                 * like (Props){...}) are expression braces, not blocks. */
-                {
-                    int pd = 0;
-                    int in_s = 0;
-
-                    for(const char *p = t; *p != '\0'; p++) {
-                        if(in_s) {
-                            if(*p == '\\' && p[1] != '\0')
-                                p++;
-                            else if(*p == '"')
-                                in_s = 0;
-                        } else if(*p == '"') {
-                            in_s = 1;
-                        } else if(*p == '(' || *p == '[') {
-                            pd++;
-                        } else if(*p == ')' || *p == ']') {
-                            if(pd > 0)
-                                pd--;
-                        } else if(pd == 0) {
-                            if(*p == '{')
-                                brace_delta++;
-                            else if(*p == '}')
-                                brace_delta--;
-                        }
-                    }
-                }
                 KirFunctionAddStmt(fn, kind, t, widget,
                                    KirSpan(rel, line_no, 1));
                 depth += brace_delta;
