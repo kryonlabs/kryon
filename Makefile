@@ -261,8 +261,8 @@ K2C_HDRS := cmd/k2c/kc_internal.h cmd/k2c/kc_ast.h
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -o $@ $(K2C_SRCS)
 
-K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c
-$(K2IR): $(K2IR_SRCS) cmd/kir/kir.h | $(BUILD_DIR)/bin
+K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
+$(K2IR): $(K2IR_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2IR_SRCS)
 
 K2B_SRCS := $(sort $(wildcard cmd/k2b/*.c))
