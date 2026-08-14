@@ -8,6 +8,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "kir.h"
+#include "kir_parse.h"
+#include "k2c_lower.h"
+
 #include "kc_internal.h"
 #include "kc_ast.h"
 
@@ -3242,7 +3246,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: kc [--no-main] [--dump-ast] --root DIR -o DIR file.kry ...\n");
+            "usage: k2c [--no-main] [--dump-ast] [--kir] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -3254,6 +3258,7 @@ main(int argc, char **argv)
     int file_count = 0;
     int no_main = 0;
     int dump_ast = 0;
+    int kir_mode = 0;
     int had_errors = 0;
     int first_file = 0;
 
@@ -3272,6 +3277,8 @@ main(int argc, char **argv)
             /* Debug: reconstruct and print the AST for each function without
              * writing files. Phase 1 of the parser migration. */
             dump_ast = 1;
+        } else if(strcmp(argv[i], "--kir") == 0) {
+            kir_mode = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -3289,6 +3296,14 @@ main(int argc, char **argv)
     if(files == NULL)
         die("out of memory");
     for(int i = first_file; i < argc; i++) {
+        if(kir_mode) {
+            KirProgram *prog = kir_parse_file(argv[i], root);
+            if(prog != NULL) {
+                k2c_lower(prog, root, out_dir);
+                KirProgramFree(prog);
+            }
+            continue;
+        }
         KryFile *file;
         int index = i - first_file;
 
@@ -3315,9 +3330,13 @@ main(int argc, char **argv)
         }
         files[index] = file;
     }
-    if(!had_errors) {
+    if(!had_errors && !kir_mode) {
         write_project_header(files, file_count, root, out_dir);
         write_project_source(files, file_count, root, out_dir);
+    }
+    if(kir_mode) {
+        free(files);
+        return had_errors ? 1 : 0;
     }
     for(int i = 0; i < file_count; i++) {
         KryFile *file = files[i];

@@ -255,11 +255,11 @@ $(LIB): $(OBJS) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
-K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c))
-K2C_HDRS := cmd/k2c/kc_internal.h cmd/k2c/kc_ast.h
+K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
+K2C_HDRS := cmd/k2c/kc_internal.h cmd/k2c/kc_ast.h cmd/k2c/k2c_lower.h cmd/kir/kir_parse.h
 
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -o $@ $(K2C_SRCS)
+	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
 
 K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
 $(K2IR): $(K2IR_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
