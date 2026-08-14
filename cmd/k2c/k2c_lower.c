@@ -114,10 +114,30 @@ split_array_type(const char *type, char *base, size_t base_size,
 
 static int is_module_alias(const KirModule *m, const char *alias,
                            size_t alias_len);
+static void function_c_name(const KirModule *m, const KirFunction *fn,
+                            char *dst, size_t dst_size);
 
-/* Rewrite a statement body: `nil` -> `NULL`, and `alias.X` -> `X` when
- * `alias` is a module import of this module (the enum/type qualifiers used
- * throughout krait, e.g. state.IDE_PANE_LEFT). */
+/* If ident (len chars, followed by '(') names a function in this module,
+ * write its full C name into dst and return its length; else return 0. */
+static size_t
+resolve_module_fn(const KirModule *m, const char *ident, size_t len,
+                  char *dst, size_t dst_size)
+{
+    int i;
+
+    for(i = 0; i < m->function_count; i++) {
+        const KirFunction *fn = &m->functions[i];
+
+        if(strlen(fn->name) == len && strncmp(fn->name, ident, len) == 0) {
+            function_c_name(m, fn, dst, dst_size);
+            return strlen(dst);
+        }
+    }
+    return 0;
+}
+
+/* Rewrite a statement body: `nil` -> `NULL`, `alias.X` -> `X` for module
+ * aliases, and bare calls to module functions -> their full C names. */
 static void
 rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
 {
@@ -133,7 +153,6 @@ rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
             dst[n++] = 'L';
             p += 2;
         } else if(isalpha((unsigned char)*p) || *p == '_') {
-            /* read the identifier */
             const char *e = p;
 
             while(isalnum((unsigned char)*e) || *e == '_')
@@ -142,8 +161,22 @@ rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 size_t alen = (size_t)(e - p);
 
                 if(is_module_alias(m, p, alen)) {
-                    /* strip 'alias.' — the member follows */
                     p = e;   /* skip ident; loop's p++ skips the '.' */
+                    continue;
+                }
+            }
+            if(*e == '(') {
+                /* a call: resolve module-local functions to C names */
+                char cname[LOWER_NAME_MAX * 2];
+                size_t clen = resolve_module_fn(m, p, (size_t)(e - p),
+                                                cname, sizeof(cname));
+
+                if(clen > 0) {
+                    if(n + clen < dst_size) {
+                        memcpy(dst + n, cname, clen);
+                        n += clen;
+                    }
+                    p = e - 1;   /* loop's p++ lands on '(' */
                     continue;
                 }
             }
