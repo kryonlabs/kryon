@@ -382,12 +382,22 @@ convert_args(const KirModule *m, const char *args, char *dst, size_t dst_size)
                     memcpy(name, part, nl);
                     name[nl] = '\0';
                     strip_alias_type(m, ty, type, sizeof(type));
-                    if(!first && n + 2 < dst_size)
-                        dst[n++] = ',';
-                    if(!first && n + 1 < dst_size)
-                        dst[n++] = ' ';
-                    n += (size_t)snprintf(dst + n, dst_size - n,
-                                          "%s %s", type, name);
+                    {
+                        /* 'name: [N] Type' parameters must emit C array
+                         * syntax 'Type name[N]', not '[N] Type name'. */
+                        char pbase[LOWER_NAME_MAX];
+                        char psuffix[LOWER_NAME_MAX];
+
+                        split_array_type(type, pbase, sizeof(pbase),
+                                         psuffix, sizeof(psuffix));
+                        if(!first && n + 2 < dst_size)
+                            dst[n++] = ',';
+                        if(!first && n + 1 < dst_size)
+                            dst[n++] = ' ';
+                        n += (size_t)snprintf(dst + n, dst_size - n,
+                                              "%s %s%s", pbase, name,
+                                              psuffix);
+                    }
                     first = 0;
                 } else if(part[0] != '\0') {
                     /* C-style parameter text (no 'name: Type' colon):
