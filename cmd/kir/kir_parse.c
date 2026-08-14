@@ -831,13 +831,19 @@ kir_parse_file(const char *path, const char *root)
                 /* K&R "} else {" / "} else if (...) {": the leading '}' closes
                  * the if-body and the trailing '{' re-opens the else-body, so
                  * both braces are block braces even though the leading word
-                 * extraction above saw only '}'. */
+                 * extraction above saw only '}'. The same holds for chained
+                 * regions: "} #else_if COND {" / "} #else {" / "} #if COND {"
+                 * (parse_cond_start accepts the optional leading '}'), whose
+                 * braces belong to the region, not the statement. */
                 if(!header_line && pending[0] == '}') {
                     const char *eq = pending + 1;
 
                     while(*eq == ' ' || *eq == '\t')
                         eq++;
-                    if(starts_word(eq, "else"))
+                    if(starts_word(eq, "else") ||
+                       strncmp(eq, "#else", 5) == 0 ||
+                       starts_word(eq, "#if ") ||
+                       starts_word(eq, "#elif "))
                         header_line = 1;
                 }
                 for(const char *p = trimmed; *p != '\0'; p++) {

@@ -53,6 +53,22 @@ knr_branches :: (n: int) -> int {
         return 300
     }
 }
+
+WEB :: #defined(PLATFORM_WEB)
+ANDROID :: ANDROID_BUILD
+
+chain_root :: () -> const char* {
+    cached: const char* = nil
+
+    #if WEB {
+        cached = "web"
+    } #else_if ANDROID {
+        cached = "android"
+    } #else {
+        cached = "desktop"
+    }
+    return cached
+}
 EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry"
@@ -102,6 +118,17 @@ grep -Fq 'return 100;' "$c"
 grep -Fq '} else if(n < 0) {' "$c"
 grep -Fq 'return 200;' "$c"
 grep -Fq 'return 300;' "$c"
+
+# '#if/#else_if/#else' chains with K&R '} #else_if {' closers: every branch
+# must lower and compile (regression: chains past the first region vanished,
+# leaving e.g. an empty data root on desktop builds)
+grep -Fq '#if (defined(PLATFORM_WEB))' "$c"
+grep -Fq '"web"' "$c"
+grep -Fq '#elif' "$c"
+grep -Fq '"android"' "$c"
+grep -Fq '#else' "$c"
+grep -Fq '"desktop"' "$c"
+grep -Fq '#endif' "$c"
 
 # while with parens
 grep -Fq 'while(count < 3) {' "$c"
