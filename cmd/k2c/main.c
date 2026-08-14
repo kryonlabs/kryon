@@ -1,6 +1,7 @@
 /*
  * k2c - .kry -> C compiler. Kir is the only pipeline: every .kry parses
- * into a KirProgram (kir_parse.c) and lowers to C (k2c_lower.c).
+ * into a KirProgram (kir_parse.c) and lowers to C (k2c_lower.c). All inputs
+ * are parsed first so cross-module calls resolve through one symbol table.
  */
 #include "kir.h"
 #include "kir_parse.h"
@@ -22,7 +23,11 @@ main(int argc, char **argv)
 {
     const char *root = NULL;
     const char *out_dir = NULL;
+    KirProgram **progs;
+    K2cModuleSyms *syms;
+    int file_count;
     int i;
+    int first_file = 0;
 
     for(i = 1; i < argc; i++) {
         if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
@@ -31,28 +36,43 @@ main(int argc, char **argv)
             out_dir = argv[++i];
         } else if(argv[i][0] == '-') {
             /* accept and ignore --no-main (main() generation is app-driven
-             * via Kir app metadata; a standalone main flavor lands with it) */
+             * via Kir app metadata) */
             if(strcmp(argv[i], "--no-main") != 0) {
                 usage();
                 return 1;
             }
         } else {
+            first_file = i;
             break;
         }
     }
-    if(root == NULL || out_dir == NULL || i >= argc) {
+    if(root == NULL || out_dir == NULL || first_file == 0) {
         usage();
         return 1;
     }
-    for(; i < argc; i++) {
-        KirProgram *prog = kir_parse_file(argv[i], root);
-
-        if(prog == NULL) {
-            fprintf(stderr, "k2c: failed to parse %s\n", argv[i]);
+    file_count = argc - first_file;
+    progs = calloc((size_t)file_count, sizeof(*progs));
+    syms = calloc((size_t)file_count, sizeof(*syms));
+    if(progs == NULL || syms == NULL) {
+        fprintf(stderr, "k2c: out of memory\n");
+        return 1;
+    }
+    /* Pass 1: parse every file, build the cross-module symbol table. */
+    for(i = 0; i < file_count; i++) {
+        progs[i] = kir_parse_file(argv[first_file + i], root);
+        if(progs[i] == NULL) {
+            fprintf(stderr, "k2c: failed to parse %s\n",
+                    argv[first_file + i]);
             return 1;
         }
-        k2c_lower(prog, root, out_dir);
-        KirProgramFree(prog);
+        k2c_build_syms(progs[i], &syms[i]);
     }
+    /* Pass 2: lower with full cross-module resolution. */
+    for(i = 0; i < file_count; i++)
+        k2c_lower(progs[i], root, out_dir, syms, file_count);
+    for(i = 0; i < file_count; i++)
+        KirProgramFree(progs[i]);
+    free(progs);
+    free(syms);
     return 0;
 }

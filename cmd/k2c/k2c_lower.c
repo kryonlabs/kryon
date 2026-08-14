@@ -136,10 +136,45 @@ resolve_module_fn(const KirModule *m, const char *ident, size_t len,
     return 0;
 }
 
+/* Resolve alias.fn( via the cross-module symbol table: find the import
+ * named alias, get its target module, look up fn there. */
+static size_t
+resolve_aliased_fn(const KirModule *m, const K2cModuleSyms *restab,
+                   int restab_count, const char *alias, size_t alen,
+                   const char *fn, size_t flen, char *dst, size_t dst_size)
+{
+    int i, j;
+
+    if(restab == NULL)
+        return 0;
+    for(i = 0; i < m->import_count; i++) {
+        const KirImport *imp = &m->imports[i];
+
+        if(imp->kind != KIR_IMPORT_MODULE)
+            continue;
+        if(strlen(imp->name) != alen || strncmp(imp->name, alias, alen) != 0)
+            continue;
+        for(j = 0; j < restab_count; j++) {
+            if(strcmp(restab[j].module_slash, imp->target) != 0)
+                continue;
+            for(int k = 0; k < restab[j].fn_count; k++) {
+                if(strlen(restab[j].fns[k].kry) == flen &&
+                   strncmp(restab[j].fns[k].kry, fn, flen) == 0) {
+                    snprintf(dst, dst_size, "%s", restab[j].fns[k].c);
+                    return strlen(dst);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 /* Rewrite a statement body: `nil` -> `NULL`, `alias.X` -> `X` for module
- * aliases, and bare calls to module functions -> their full C names. */
+ * aliases (enum/type members), bare calls to module functions -> C names,
+ * and alias.fn( cross-module calls -> the target's C name. */
 static void
-rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
+rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
+              int restab_count, const char *src, char *dst, size_t dst_size)
 {
     size_t n = 0;
 
@@ -157,13 +192,32 @@ rewrite_body(const KirModule *m, const char *src, char *dst, size_t dst_size)
 
             while(isalnum((unsigned char)*e) || *e == '_')
                 e++;
-            if(*e == '.' && e[1] != '\0') {
-                size_t alen = (size_t)(e - p);
+            if(*e == '.' && e[1] != '\0' &&
+               is_module_alias(m, p, (size_t)(e - p))) {
+                /* alias.member — cross-module call or enum/type member */
+                const char *m0 = e + 1;
+                const char *me = m0;
 
-                if(is_module_alias(m, p, alen)) {
-                    p = e;   /* skip ident; loop's p++ skips the '.' */
-                    continue;
+                while(isalnum((unsigned char)*me) || *me == '_')
+                    me++;
+                if(*me == '(' && restab != NULL) {
+                    char cname[LOWER_NAME_MAX * 3];
+                    size_t clen = resolve_aliased_fn(m, restab, restab_count,
+                                                     p, (size_t)(e - p),
+                                                     m0, (size_t)(me - m0),
+                                                     cname, sizeof(cname));
+
+                    if(clen > 0) {
+                        if(n + clen < dst_size) {
+                            memcpy(dst + n, cname, clen);
+                            n += clen;
+                        }
+                        p = me - 1;   /* loop's p++ lands on '(' */
+                        continue;
+                    }
                 }
+                p = e;   /* strip the alias; loop's p++ skips the '.' */
+                continue;
             }
             if(*e == '(') {
                 /* a call: resolve module-local functions to C names */
@@ -411,11 +465,12 @@ split_multi(const char *t, char names[][LOWER_NAME_MAX], int name_cap,
 }
 
 static void
-emit_call_wrap(FILE *c, const KirModule *m, int line, const char *text)
+emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
+               int restab_count, int line, const char *text)
 {
     char rw[LOWER_TEXT_MAX];
 
-    rewrite_body(m, text, rw, sizeof(rw));
+    rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw));
     fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
     fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopUIInspectSource();\n");
@@ -424,7 +479,7 @@ emit_call_wrap(FILE *c, const KirModule *m, int line, const char *text)
 /* Lower one function body. Defer entries are tracked by scope and spliced
  * LIFO at block close / return. */
 static void
-lower_body(FILE *c, const KirModule *m, const KirFunction *fn)
+lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_count, const KirFunction *fn)
 {
     DeferEntry defers[64];
     int defer_count = 0;
@@ -437,7 +492,7 @@ lower_body(FILE *c, const KirModule *m, const KirFunction *fn)
         const KirStmt *st = &fn->stmts[j];
         char rw[LOWER_TEXT_MAX];
 
-        rewrite_body(m, st->text, rw, sizeof(rw));
+        rewrite_body2(m, restab, restab_count, st->text, rw, sizeof(rw));
         switch(st->kind) {
         case KIR_STMT_BLOCK_CLOSE: {
             int target = scope_top > 0 ? scope_stack[--scope_top] : 0;
@@ -672,7 +727,7 @@ lower_body(FILE *c, const KirModule *m, const KirFunction *fn)
         }
         case KIR_STMT_EXPR:
             if(strchr(rw, '(') != NULL)
-                emit_call_wrap(c, m, st->span.line, rw);
+                emit_call_wrap(c, m, restab, restab_count, st->span.line, rw);
             else {
                 emit_indent(c, indent);
                 fprintf(c, "%s;\n", rw);
@@ -695,7 +750,7 @@ lower_body(FILE *c, const KirModule *m, const KirFunction *fn)
 }
 
 static void
-lower_module(const KirModule *m, const char *out_dir)
+lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, const char *out_dir)
 {
     char stem[512];
     char guard[600];
@@ -844,19 +899,52 @@ lower_module(const KirModule *m, const char *out_dir)
         }
         fprintf(c, "\n%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
                 cname, cargs);
-        lower_body(c, m, fn);
+        lower_body(c, m, restab, restab_count, fn);
         fprintf(c, "}\n");
     }
     fclose(c);
 }
 
 void
-k2c_lower(const KirProgram *program, const char *root, const char *out_dir)
+k2c_lower(const KirProgram *program, const char *root, const char *out_dir, const K2cModuleSyms *restab, int restab_count)
 {
     int i;
 
     if(program == NULL)
         return;
     for(i = 0; i < program->module_count; i++)
-        lower_module(&program->modules[i], out_dir);
+        lower_module(&program->modules[i], restab, restab_count, out_dir);
+}
+
+void
+k2c_build_syms(const KirProgram *program, K2cModuleSyms *out)
+{
+    int i, j;
+
+    memset(out, 0, sizeof(*out));
+    if(program == NULL || program->module_count == 0)
+        return;
+    /* module slash path: the module name with dots -> slashes ("ide.state"
+     * -> "ide/state"), matching how #import targets name modules. */
+    {
+        size_t n = 0;
+        const char *p = program->modules[0].name;
+
+        for(; *p != '\0' && n + 1 < sizeof(out->module_slash); p++)
+            out->module_slash[n++] = (*p == '.') ? '/' : *p;
+        out->module_slash[n] = '\0';
+    }
+    for(i = 0; i < program->module_count && out->fn_count < 256; i++) {
+        const KirModule *m = &program->modules[i];
+
+        for(j = 0; j < m->function_count && out->fn_count < 256; j++) {
+            const KirFunction *fn = &m->functions[j];
+
+            snprintf(out->fns[out->fn_count].kry,
+                     sizeof(out->fns[0].kry), "%s", fn->name);
+            function_c_name(m, fn, out->fns[out->fn_count].c,
+                            sizeof(out->fns[0].c));
+            out->fn_count++;
+        }
+    }
 }
