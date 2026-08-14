@@ -75,6 +75,14 @@
     }
   }
 
+  function readFirst(mod, paths, binary) {
+    for (var i = 0; i < paths.length; i++) {
+      var value = readMaybe(mod, paths[i], binary);
+      if (binary ? value.length > 0 : value !== "") return value;
+    }
+    return binary ? new Uint8Array(0) : "";
+  }
+
   function hex(bytes) {
     var out = [];
     for (var i = 0; i < bytes.length; i += 16) {
@@ -221,14 +229,14 @@
       resetFs(k2irMod);
       k2irMod.FS.writeFile("/work/src/app.kry", source.value);
       k2irMod.callMain(["--root", "/work", "-o", "/work/out", "/work/src/app.kry"]);
-      last.kir = readMaybe(k2irMod, "/work/out/src/app.kir", false);
+      last.kir = readFirst(k2irMod, ["/work/out/app.kir", "/work/out/src/app.kir"], false);
 
       resetFs(k2bMod);
       k2bMod.FS.writeFile("/work/src/app.kry", source.value);
       k2bMod.callMain(["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"]);
-      last.bytes = readMaybe(k2bMod, "/work/out/src/app.krb", true);
+      last.bytes = readFirst(k2bMod, ["/work/out/app.krb", "/work/out/src/app.krb"], true);
       last.krb = "KRB bytes: " + last.bytes.length + "\n\n" + hex(last.bytes);
-      last.c = readMaybe(k2bMod, "/work/out/src/app.krb.c", false);
+      last.c = readFirst(k2bMod, ["/work/out/app.krb.c", "/work/out/src/app.krb.c"], false);
       showArtifact();
       render(last.bytes);
       setStatus("compiled");

@@ -27,13 +27,13 @@ VERSION ?= $(if $(strip $(KRYON_VERSION_STRING)),$(KRYON_VERSION_STRING),$(shell
 DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
-KC = $(BUILD_DIR)/bin/kc
+K2C = $(BUILD_DIR)/bin/k2c
 K2IR = $(BUILD_DIR)/bin/k2ir
 K2B = $(BUILD_DIR)/bin/k2b
 KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
-LEGACY_KC = $(BUILD_ROOT)/bin/kc
+LEGACY_K2C = $(BUILD_ROOT)/bin/k2c
 LEGACY_K2IR = $(BUILD_ROOT)/bin/k2ir
 LEGACY_K2B = $(BUILD_ROOT)/bin/k2b
 LEGACY_KT = $(BUILD_ROOT)/bin/kt
@@ -164,10 +164,10 @@ RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
 
 ifneq ($(BUILD_DIR),$(BUILD_ROOT))
-.PHONY: $(LEGACY_KC) $(LEGACY_K2IR) $(LEGACY_K2B) $(LEGACY_KT) $(LEGACY_KRYON_CMD)
+.PHONY: $(LEGACY_K2C) $(LEGACY_K2IR) $(LEGACY_K2B) $(LEGACY_KT) $(LEGACY_KRYON_CMD)
 
-$(LEGACY_KC): $(KC) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(KC) $@
+$(LEGACY_K2C): $(K2C) | $(BUILD_ROOT)/bin
+	$(INSTALL) -m 755 $(K2C) $@
 
 $(LEGACY_K2IR): $(K2IR) | $(BUILD_ROOT)/bin
 	$(INSTALL) -m 755 $(K2IR) $@
@@ -185,9 +185,9 @@ $(BUILD_ROOT)/bin:
 	mkdir -p $@
 endif
 
-all: $(LIB) $(KC) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
+all: $(LIB) $(K2C) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
-tools: $(KC) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
+tools: $(K2C) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
 install: $(KT) $(KRYON_CMD)
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -211,8 +211,8 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(KC) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST)
-	sh tests/kc_syntax_test.sh $(KC)
+test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST)
+	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
 	$(KRB_MOUNT_TEST)
@@ -255,11 +255,11 @@ $(LIB): $(OBJS) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
-KC_SRCS := $(sort $(wildcard cmd/kc/*.c))
-KC_HDRS := cmd/kc/kc_internal.h cmd/kc/kc_ast.h
+K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c))
+K2C_HDRS := cmd/k2c/kc_internal.h cmd/k2c/kc_ast.h
 
-$(KC): $(KC_SRCS) $(KC_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -o $@ $(KC_SRCS)
+$(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) -o $@ $(K2C_SRCS)
 
 K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c
 $(K2IR): $(K2IR_SRCS) cmd/kir/kir.h | $(BUILD_DIR)/bin

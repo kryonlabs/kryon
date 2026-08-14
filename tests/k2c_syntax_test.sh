@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-kc=${1:-build/bin/kc}
-work=${TMPDIR:-/tmp}/kryon-kc-syntax-test.$$
+k2c=${1:-build/bin/k2c}
+work=${TMPDIR:-/tmp}/kryon-k2c-syntax-test.$$
 out=$work/out
 err=$work/err
 
@@ -123,7 +123,7 @@ done:
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/valid.kry" >"$err" 2>&1
 grep -q '#include "thing.h"' "$out/src/valid.h"
 grep -Fq 'extern int shared_count;' "$out/src/valid.h"
 grep -Fq 'int shared_count;' "$out/src/valid.c"
@@ -195,7 +195,7 @@ screen AppLoop() {
 }
 EOF
 
-"$kc" --root "$work" -o "$out" "$work/src/app_loop.kry" >"$err" 2>&1
+"$k2c" --root "$work" -o "$out" "$work/src/app_loop.kry" >"$err" 2>&1
 awk '
     /UIBeginTree\(1\);/ { begin_tree = NR }
     /UIEndTree\(\);/ { end_tree = NR }
@@ -240,7 +240,7 @@ c_entry :: (value: int) -> int #export {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/colon_decl.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/colon_decl.kry" >"$err" 2>&1
 grep -Fq 'extern int shared_count;' "$out/src/colon_decl.h"
 grep -Fq 'int shared_count;' "$out/src/colon_decl.c"
 grep -Fq 'int local_counter = 7;' "$out/src/colon_decl.c"
@@ -272,7 +272,7 @@ draw :: (app: void*) {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" \
+"$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/ui/panel.kry" "$work/src/colon_import_host.kry" >"$err" 2>&1
 grep -q '#include "thing.h"' "$out/src/colon_import_host.h"
 grep -q '#include "src/ui/panel.h"' "$out/src/colon_import_host.h"
@@ -299,7 +299,7 @@ Mode :: enum {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/colon_types.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/colon_types.kry" >"$err" 2>&1
 grep -q 'typedef struct Pair {' "$out/src/colon_types.h"
 grep -q '#include <stddef.h>' "$out/src/colon_types.c"
 grep -q '#include "private_dep.h"' "$out/src/colon_types.c"
@@ -323,7 +323,7 @@ panel_value :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/module_default.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/module_default.kry" >"$err" 2>&1
 grep -q 'int ui_panel_panel_value(void);' "$out/src/module_default.h"
 grep -q '#include "src/module_default.h"' "$out/src/module_default.c"
 
@@ -341,7 +341,7 @@ externs_touch :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/externs.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/externs.kry" >"$err" 2>&1
 grep -Fq 'struct external_app* GetExternalApp(void);' "$out/src/externs.c"
 grep -q 'static int' "$out/src/externs.c"
 grep -Fq 'web_download_file(const char* path, const char* filename, const char* mime)' "$out/src/externs.c"
@@ -366,7 +366,7 @@ interop_touch :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/interop_directives.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/interop_directives.kry" >"$err" 2>&1
 grep -q '#pragma GCC diagnostic push' "$out/src/interop_directives.c"
 grep -q '#error "missing platform bridge"' "$out/src/interop_directives.c"
 grep -Fq '__declspec(dllimport) int __stdcall MessageBoxA(void* hwnd, const char* text, const char* caption, unsigned int kind);' "$out/src/interop_directives.c"
@@ -383,7 +383,7 @@ source_open :: () -> int #export {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/source_api.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/source_api.kry" >"$err" 2>&1
 grep -q '#include "source_api.h"' "$out/src/source_impl.h"
 grep -q '#include "src/source_impl.h"' "$out/src/source_impl.c"
 if test -e "$out/src/source_api.h"; then
@@ -398,7 +398,7 @@ fi
     done
 } > "$work/src/many_functions.kry"
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/many_functions.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/many_functions.kry" >"$err" 2>&1
 grep -q 'int many_40(void);' "$out/src/many_functions.h"
 
 # --- a single function with a body well past the old 512-line cap must compile.
@@ -413,7 +413,7 @@ grep -q 'int many_40(void);' "$out/src/many_functions.h"
     printf '    return total\n}\n'
 } > "$work/src/big_body.kry"
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/big_body.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/big_body.kry" >"$err" 2>&1
 [ "$(grep -c 'total += ' "$out/src/big_body.c")" -ge 700 ] || {
     echo "large function body was truncated" >&2; exit 1; }
 grep -q 'return total;' "$out/src/big_body.c"
@@ -431,7 +431,7 @@ toggle_row_height :: (label: const char*, w: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_ui.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/settings_ui.kry" >"$err" 2>&1
 grep -Eq '^static KRYON_PRIVATE_UNUSED int settings_ui_helper\(int value\)' "$out/src/settings_ui.c"
 grep -q 'int settings_ui_toggle_row_height(const char\* label, int w);' "$out/src/settings_ui.h"
 grep -q 'return settings_ui_helper(w);' "$out/src/settings_ui.c"
@@ -466,7 +466,7 @@ check_shadow :: (start: int*) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/function_pointer.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/function_pointer.kry" >"$err" 2>&1
 grep -Eq 'static KRYON_PRIVATE_UNUSED int fp_callback\(int value\);' "$out/src/function_pointer.c"
 grep -q '\.callback = fp_callback,' "$out/src/function_pointer.c"
 grep -q 'if(start != NULL)' "$out/src/function_pointer.c"
@@ -480,7 +480,7 @@ draw_session :: (label: const char*, w: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_session.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/settings_session.kry" >"$err" 2>&1
 grep -q '#include "settings_ui.h"' "$out/src/settings_session.h"
 grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_session.c"
 
@@ -511,7 +511,7 @@ allocate_args :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/args_local.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/args_local.kry" >"$err" 2>&1
 grep -Eq 'static KRYON_PRIVATE_UNUSED void\* worker\(void\* userdata\);' "$out/src/args_local.c"
 grep -Fq 'args = (WorkerArgs*)userdata;' "$out/src/args_local.c"
 grep -Fq 'WorkerArgs* args = {0};' "$out/src/args_local.c"
@@ -526,7 +526,7 @@ draw_direct :: (label: const char*, w: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/settings_direct.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/settings_direct.kry" >"$err" 2>&1
 grep -q 'return settings_ui_toggle_row_height(label, w);' "$out/src/settings_direct.c"
 
 mkdir -p "$work/src/ui"
@@ -552,7 +552,7 @@ draw_panel_host :: (app: void*) {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" \
+"$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/ui/panel.kry" "$work/src/panel_host.kry" >"$err" 2>&1
 grep -q '#include "src/ui/panel.h"' "$out/kryon_project.h"
 grep -q '#include "src/panel_host.h"' "$out/kryon_project.h"
@@ -575,12 +575,12 @@ SettingsThemeState :: struct {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/settings/types.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/settings/types.kry" >"$err" 2>&1
 grep -q '#include "thing.h"' "$out/src/settings/types.h"
 grep -q 'typedef struct SettingsThemeState {' "$out/src/settings/types.h"
 grep -q 'int value;' "$out/src/settings/types.h"
 
-"$kc" --no-main --root "$work" -o "$out" \
+"$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/settings/types.kry" "$work/src/panel_host.kry" >"$err" 2>&1
 grep -q '#include "src/settings/types.h"' "$out/kryon_project.h"
 
@@ -593,7 +593,7 @@ draw_panel_direct_host :: (app: void*) {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" \
+"$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/ui/panel.kry" "$work/src/panel_direct_host.kry" >"$err" 2>&1
 grep -q '#include "src/ui/panel.h"' "$out/src/panel_direct_host.h"
 grep -q 'ui_panel_draw(app);' "$out/src/panel_direct_host.c"
@@ -607,7 +607,7 @@ old_import_host :: (app: void*) {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" \
+if "$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/bad_import.kry" >"$err" 2>&1; then
     echo "removed import unexpectedly succeeded" >&2
     exit 1
@@ -620,7 +620,7 @@ preview stage_preview(viewport: Rectangle) {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/preview.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/preview.kry" >"$err" 2>&1
 
 cat > "$work/src/state_multiline.kry" <<'EOF'
 #import "stddef.h"
@@ -637,7 +637,7 @@ state_label :: (index: int) -> const char* {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/state_multiline.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/state_multiline.kry" >"$err" 2>&1
 grep -q 'static const char\* labels\[2\] = {' "$out/src/state_multiline.c"
 grep -q '"one",' "$out/src/state_multiline.c"
 grep -q '"two",' "$out/src/state_multiline.c"
@@ -670,7 +670,7 @@ native_feature_value :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/native_c_features.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/native_c_features.kry" >"$err" 2>&1
 grep -q '#include "stddef.h"' "$out/src/native_c_features.c"
 grep -q '#define FEATURE_VALUE 7' "$out/src/native_c_features.c"
 grep -q '#if ((defined(ANDROID_BUILD)))' "$out/src/native_c_features.c"
@@ -735,7 +735,7 @@ DESKTOP :: !WEB
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/top_level_macros.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/top_level_macros.kry" >"$err" 2>&1
 grep -q '#if (defined(PLATFORM_WEB))' "$out/src/top_level_macros.h"
 grep -q 'typedef int (\*WebCallback)(int);' "$out/src/top_level_macros.h"
 grep -q 'typedef struct WebState {' "$out/src/top_level_macros.h"
@@ -804,7 +804,7 @@ native_struct_count :: (pair: PublicPair*) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/native_structs.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/native_structs.kry" >"$err" 2>&1
 grep -q 'enum {' "$out/src/native_structs.h"
 grep -q 'PUBLIC_FIRST = 1,' "$out/src/native_structs.h"
 grep -q 'PUBLIC_SECOND,' "$out/src/native_structs.h"
@@ -838,7 +838,7 @@ multiline_sum :: (first: int,
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/multiline_fn_decl.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/multiline_fn_decl.kry" >"$err" 2>&1
 grep -q 'int multiline_sum(int first, int second, int third);' "$out/src/multiline_fn_decl.h"
 grep -q 'multiline_sum(int first, int second, int third)' "$out/src/multiline_fn_decl.c"
 
@@ -851,7 +851,7 @@ screen calls {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/implicit_call.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/implicit_call.kry" >"$err" 2>&1
 grep -q 'InitializeThing();' "$out/src/implicit_call.c"
 grep -q 'DrawThing( 1, 2);' "$out/src/implicit_call.c"
 
@@ -866,7 +866,7 @@ expression_statement :: (env: void*, object: void*, method: void*) {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/expression_statement.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/expression_statement.kry" >"$err" 2>&1
 grep -q '(\*env)->CallVoidMethod(env, object, method);' "$out/src/expression_statement.c"
 grep -q '(\*env)->DeleteLocalRef( env, object);' "$out/src/expression_statement.c"
 
@@ -876,7 +876,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_multi_decl.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_multi_decl.kry" >"$err" 2>&1; then
     echo "bad multi-value declaration was accepted" >&2
     exit 1
 fi
@@ -889,7 +889,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_multi_assignment.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_multi_assignment.kry" >"$err" 2>&1; then
     echo "bad multi-value assignment was accepted" >&2
     exit 1
 fi
@@ -903,7 +903,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_include.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_include.kry" >"$err" 2>&1; then
     echo "removed include was accepted" >&2
     exit 1
 fi
@@ -916,7 +916,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_var.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_var.kry" >"$err" 2>&1; then
     echo "removed var declaration was accepted" >&2
     exit 1
 fi
@@ -929,7 +929,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_do.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_do.kry" >"$err" 2>&1; then
     echo "removed do statement was accepted" >&2
     exit 1
 fi
@@ -944,7 +944,7 @@ screen bad {
     ${verb} InitializeThing()
 }
 EOF
-    if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_${verb}.kry" >"$err" 2>&1; then
+    if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_${verb}.kry" >"$err" 2>&1; then
         echo "removed ${verb} statement was accepted" >&2
         exit 1
     fi
@@ -961,7 +961,7 @@ screen bad {
 $2
 }
 EOF
-    if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_$1.kry" >"$err" 2>&1; then
+    if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_$1.kry" >"$err" 2>&1; then
         echo "removed $1 statement was accepted" >&2
         exit 1
     fi
@@ -986,7 +986,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_goto.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_goto.kry" >"$err" 2>&1; then
     echo "bad goto statement was accepted" >&2
     exit 1
 fi
@@ -1006,7 +1006,7 @@ screen multi {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/multi_error.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/multi_error.kry" >"$err" 2>&1; then
     echo "multi-error file was accepted" >&2
     exit 1
 fi
@@ -1027,7 +1027,7 @@ screen bad {
     InitializeThing()
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/unbalanced.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/unbalanced.kry" >"$err" 2>&1; then
     echo "unbalanced braces were accepted" >&2
     exit 1
 fi
@@ -1057,7 +1057,7 @@ work :: (x: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer.kry" >"$err" 2>&1
 # Function-body defer fires before each return and before the final return.
 # The defer and return land on consecutive lines; use grep -A1 (no -q, since
 # -q suppresses the context lines the second grep needs to see).
@@ -1087,7 +1087,7 @@ multi :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_order.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer_order.kry" >"$err" 2>&1
 # Defers run in reverse (LIFO) order: Third (registered last) runs first,
 # First (registered first) runs last. Compare line numbers in the output.
 l_third=$(grep -n 'Third();' "$out/src/defer_order.c" | cut -d: -f1)
@@ -1113,7 +1113,7 @@ loop_fn :: (n: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_break.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer_break.kry" >"$err" 2>&1
 # Cleanup fires before the break (defer declared before the break in source).
 grep -E -A1 'Cleanup\(i\);$' "$out/src/defer_break.c" | grep -Eq 'break;'
 # Cleanup also fires at the end of each iteration that reaches the loop close.
@@ -1126,7 +1126,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_defer.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_defer.kry" >"$err" 2>&1; then
     echo "empty defer was accepted" >&2
     exit 1
 fi
@@ -1153,7 +1153,7 @@ sw :: (s: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_switch.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer_switch.kry" >"$err" 2>&1
 # Cleanup fires before break (case 1 path).
 grep -E -A1 'Cleanup\(s\);$' "$out/src/defer_switch.c" | grep -Eq 'break;'
 # Other fires before return (case 2 path).
@@ -1191,7 +1191,7 @@ screen IfCall {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/if_call.kry" >"$err" 2>&1
 # The call condition is wrapped: Push, temp assign, Pop, then test the temp.
 grep -Eq 'PushUIInspectSource\([^)]*if_call\.kry", 4\);' "$out/src/if_call.c"
 grep -Eq '__auto_type __kryon_cond_[0-9]+ = Button\(' "$out/src/if_call.c"
@@ -1216,7 +1216,7 @@ screen TabbarWidget {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/tabbar_widget.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/tabbar_widget.kry" >"$err" 2>&1
 grep -Fq 'if(TabBar((TabBarProps){{0,0,360,0},tabs,3,selected,0,0,0,NULL,1,NULL}) >= 0) {' "$out/src/tabbar_widget.c"
 
 # --- compound assignment operators not previously covered (-=, *=, /=, --)
@@ -1231,7 +1231,7 @@ screen Compound {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/compound.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/compound.kry" >"$err" 2>&1
 grep -Fq 'v -= 2;' "$out/src/compound.c"
 grep -Fq 'v *= 3;' "$out/src/compound.c"
 grep -Fq 'v /= 4;' "$out/src/compound.c"
@@ -1253,7 +1253,7 @@ loop :: (n: int) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_while.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer_while.kry" >"$err" 2>&1
 # defer declared before the continue fires before the continue.
 grep -E -A1 'Tick\(i\);$' "$out/src/defer_while.c" | grep -Eq 'continue;'
 # defer also fires at the end of each iteration that reaches the loop close.
@@ -1272,7 +1272,7 @@ block_fn :: () -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" "$work/src/defer_block.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/defer_block.kry" >"$err" 2>&1
 # Scoped fires at the anonymous block's closing brace (after s = 2).
 grep -E -B1 'Scoped\(\);$' "$out/src/defer_block.c" | grep -Eq 's = 2;'
 
@@ -1288,7 +1288,7 @@ screen Main {
 }
 EOF
 
-"$kc" --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+"$k2c" --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
 grep -Eq '^int$' "$out/src/withmain.c"
 grep -Eq '^main\(void\)$' "$out/src/withmain.c"
 grep -q 'InitWindow(800, 600, "Test App");' "$out/src/withmain.c"
@@ -1296,14 +1296,14 @@ grep -q 'SetTargetFPS(60);' "$out/src/withmain.c"
 grep -q 'while(!WindowShouldClose())' "$out/src/withmain.c"
 grep -q 'Main_kry_draw();' "$out/src/withmain.c"
 # --no-main must NOT emit main.
-"$kc" --no-main --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
+"$k2c" --no-main --root "$work" -o "$out" "$work/src/withmain.kry" >"$err" 2>&1
 if grep -q 'int main' "$out/src/withmain.c"; then
     echo "--no-main still emitted main" >&2
     exit 1
 fi
 
 # --- hook-driven main: when the app{} block names init/frame/shutdown hooks,
-# kc emits a main() that calls init() once, frame() each iteration, and
+# k2c emits a main() that calls init() once, frame() each iteration, and
 # shutdown() at exit, WITHOUT bracketing drawing — the program owns its loop.
 # This is how a standalone .kry app (like the IDE) takes full control of the
 # frame, including nested render-texture passes and inspection overlays.
@@ -1331,13 +1331,13 @@ on_shutdown :: () {
 }
 EOF
 
-"$kc" --root "$work" -o "$out" "$work/src/hookmain.kry" >"$err" 2>&1
+"$k2c" --root "$work" -o "$out" "$work/src/hookmain.kry" >"$err" 2>&1
 # init runs once before the loop; frame inside it; shutdown after.
 grep -q 'on_init();' "$out/src/hookmain.c"
 grep -q 'while(!WindowShouldClose())' "$out/src/hookmain.c"
 grep -q 'on_frame();' "$out/src/hookmain.c"
 grep -q 'on_shutdown();' "$out/src/hookmain.c"
-# The program owns drawing: kc must NOT emit BeginDrawing/EndDrawing itself.
+# The program owns drawing: k2c must NOT emit BeginDrawing/EndDrawing itself.
 if grep -q 'BeginDrawing' "$out/src/hookmain.c"; then
     echo "hook-driven main emitted BeginDrawing (should be program-owned)" >&2
     exit 1
@@ -1357,7 +1357,7 @@ step :: () {
 }
 EOF
 
-"$kc" --root "$work" -o "$out" "$work/src/hookmod.kry" >"$err" 2>&1
+"$k2c" --root "$work" -o "$out" "$work/src/hookmod.kry" >"$err" 2>&1
 grep -q 'hookmod_step();' "$out/src/hookmod.c"
 if grep -q 'BeginDrawing' "$out/src/hookmod.c"; then
     echo "module hook-driven main emitted BeginDrawing" >&2
@@ -1371,7 +1371,7 @@ screen bad {
 }
 EOF
 
-if "$kc" --no-main --root "$work" -o "$out" "$work/src/bad_let.kry" >"$err" 2>&1; then
+if "$k2c" --no-main --root "$work" -o "$out" "$work/src/bad_let.kry" >"$err" 2>&1; then
     echo "let was accepted" >&2
     exit 1
 fi
@@ -1409,7 +1409,7 @@ ast_fn :: (n: int) -> int {
 }
 EOF
 
-"$kc" --dump-ast --no-main --root "$work" -o "$out" "$work/src/ast.kry" >"$err" 2>&1
+"$k2c" --dump-ast --no-main --root "$work" -o "$out" "$work/src/ast.kry" >"$err" 2>&1
 # The dump header names the function.
 grep -q 'function ast_fn' "$err"
 # Every statement kind is classified — no UNKNOWN nodes (full capture).
@@ -1477,7 +1477,7 @@ take :: (c: state.Counter*) -> int {
 }
 EOF
 
-"$kc" --no-main --root "$work" -o "$out" \
+"$k2c" --no-main --root "$work" -o "$out" \
     "$work/src/mod_types/state.kry" "$work/src/mod_types/host.kry" >"$err" 2>&1
 # Qualified call rewrites to the module-prefixed C function name.
 grep -q 'mod_types_state_counter_tick(c);' "$out/src/mod_types/host.c"

@@ -42,7 +42,8 @@ endif
 KRYON_DIR := ..
 FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
-KC ?= ../build/bin/kc
+K2C ?= ../build/bin/k2c
+K2B ?= ../build/bin/k2b
 CODEGEN_DIR := $(BUILD_DIR)/codegen
 BIN_DIR := $(BUILD_DIR)/bin
 RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-native
@@ -86,13 +87,13 @@ EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 .PHONY: all clean run list font-assets web web-clean
 .SECONDARY: $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLES))) $(addprefix $(CODEGEN_DIR)/,$(addsuffix .h,$(EXAMPLES)))
 
-all: $(KRYON_LIB) $(KC) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
+all: $(KRYON_LIB) $(K2C) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
 
 $(KRYON_LIB):
 	@$(MAKE) -C ..
 
-$(KC):
-	@$(MAKE) -C .. build/bin/kc
+$(K2C):
+	@$(MAKE) -C .. build/bin/k2c
 
 font-assets:
 	@printf '%s\n' 'font assets are checked in'
@@ -103,13 +104,13 @@ $(CODEGEN_DIR):
 $(BIN_DIR):
 	@mkdir -p $@
 
-$(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(KC) | $(CODEGEN_DIR)
+$(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating $*..."
-	@$(KC) --emit-krb --root . -o $(CODEGEN_DIR) $<
+	@$(K2B) --root . -o $(CODEGEN_DIR) $<
 
-$(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(KC) | $(CODEGEN_DIR)
+$(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating 02_buttons cartridge..."
-	@$(KC) --emit-krb --root . -o $(CODEGEN_DIR) $<
+	@$(K2B) --root . -o $(CODEGEN_DIR) $<
 
 $(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
