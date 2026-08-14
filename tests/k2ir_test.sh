@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-k2ir=${1:-build/bin/k2ir}
+k2ir=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2ir build/*/bin/k2ir 2>/dev/null | head -1)}
 root=${2:-.}
 work=${TMPDIR:-build}/kryon-k2ir-test.$$
 

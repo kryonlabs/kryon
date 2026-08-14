@@ -2,7 +2,7 @@
 # k2c syntax test — verifies the Kir-based .kry->C pipeline output.
 set -eu
 
-k2c=${1:-build/bin/k2c}
+k2c=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2c build/*/bin/k2c 2>/dev/null | head -1)}
 work=${TMPDIR:-/tmp}/kryon-k2c-syntax-test.$$
 root=$(pwd)
 

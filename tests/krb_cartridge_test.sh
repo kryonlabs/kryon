@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-k2b=${1:-build/bin/k2b}
+k2b=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2b build/*/bin/k2b 2>/dev/null | head -1)}
 walker=${2:-}
 root=${3:-.}
 work=${TMPDIR:-/tmp}/kryon-krb-cartridge-test.$$
