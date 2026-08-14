@@ -87,10 +87,26 @@ typedef struct KirFunction {
     int stmt_cap;
 } KirFunction;
 
+typedef struct KirAppMeta {
+    int has_app;
+    char title[KIR_NAME_MAX];
+    int width;
+    int height;
+    int fps;
+    char theme[KIR_NAME_MAX];
+    int dark_mode;
+    int font_examples;
+    char frame[KIR_NAME_MAX];
+    char init[KIR_NAME_MAX];
+    char scene[KIR_NAME_MAX];
+    char shutdown[KIR_NAME_MAX];
+} KirAppMeta;
+
 typedef struct KirModule {
     char name[KIR_NAME_MAX];
     char source_path[KIR_PATH_MAX];
     KirSourceSpan span;
+    KirAppMeta app;
     KirStateField *state_fields;
     int state_count;
     int state_cap;

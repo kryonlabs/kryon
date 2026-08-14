@@ -251,6 +251,19 @@ KirProgramDump(const KirProgram *program, FILE *out)
         fprintf(out, "module %s source %s span ", m->name, m->source_path);
         kir_dump_span(out, m->span);
         fprintf(out, "\n");
+        if(m->app.has_app) {
+            fprintf(out, "  app title %s size %dx%d fps %d theme %s "
+                    "dark %d font_examples %d frame %s init %s scene %s "
+                    "shutdown %s\n",
+                    m->app.title[0] ? m->app.title : "\"\"",
+                    m->app.width, m->app.height, m->app.fps,
+                    m->app.theme[0] ? m->app.theme : "",
+                    m->app.dark_mode, m->app.font_examples,
+                    m->app.frame[0] ? m->app.frame : "",
+                    m->app.init[0] ? m->app.init : "",
+                    m->app.scene[0] ? m->app.scene : "",
+                    m->app.shutdown[0] ? m->app.shutdown : "");
+        }
         for(j = 0; j < m->import_count; j++) {
             const KirImport *imp = &m->imports[j];
 

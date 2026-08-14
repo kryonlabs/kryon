@@ -361,7 +361,7 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
     char out_rel[K2IR_PATH_MAX];
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
-    enum { TOP, STATE, FUNCTION } mode = TOP;
+    enum { TOP, APP, STATE, FUNCTION } mode = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
@@ -446,6 +446,38 @@ emit_kir_file(const char *root, const char *out_dir, const char *path)
                 mode = TOP;
             } else {
                 parse_state_field(module, rel, line_no, t);
+            }
+        } else if(mode == TOP && starts_word(t, "app") &&
+                  strchr(t, '{') != NULL) {
+            parse_quoted(t, module->app.title, sizeof(module->app.title));
+            module->app.has_app = 1;
+            module->app.width = 800;
+            module->app.height = 600;
+            module->app.fps = 60;
+            mode = APP;
+        } else if(mode == APP) {
+            if(t[0] == '}') {
+                mode = TOP;
+            } else if(starts_word(t, "size")) {
+                sscanf(t, "size %d %d",
+                       &module->app.width, &module->app.height);
+            } else if(starts_word(t, "fps")) {
+                module->app.fps = atoi(t + 3);
+            } else if(starts_word(t, "theme")) {
+                char m2[32] = "";
+
+                sscanf(t, "theme %127s %31s", module->app.theme, m2);
+                module->app.dark_mode = strcmp(m2, "dark") == 0;
+            } else if(starts_word(t, "font") && strstr(t, "examples")) {
+                module->app.font_examples = 1;
+            } else if(starts_word(t, "frame")) {
+                sscanf(t, "frame %127s", module->app.frame);
+            } else if(starts_word(t, "init")) {
+                sscanf(t, "init %127s", module->app.init);
+            } else if(starts_word(t, "scene")) {
+                sscanf(t, "scene %127s", module->app.scene);
+            } else if(starts_word(t, "shutdown")) {
+                sscanf(t, "shutdown %127s", module->app.shutdown);
             }
         } else if(mode == TOP && looks_like_function_header(t)) {
             char name[KIR_NAME_MAX];
