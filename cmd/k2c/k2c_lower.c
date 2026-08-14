@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 
 #define LOWER_NAME_MAX 128
-#define LOWER_TEXT_MAX 1024
+#define LOWER_TEXT_MAX 4096
 
 static void
 mkdir_parent(const char *path)
@@ -251,6 +251,27 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
                *e != '(' && n >= 2 && dst[n - 1] == ' ' && dst[n - 2] == '=' &&
                (n < 3 || (dst[n - 3] != '=' && dst[n - 3] != '!'))) {
+                char cname[LOWER_NAME_MAX * 2];
+                size_t clen = resolve_module_fn(m, p, (size_t)(e - p),
+                                                cname, sizeof(cname));
+
+                if(clen > 0) {
+                    if(n + clen < dst_size) {
+                        memcpy(dst + n, cname, clen);
+                        n += clen;
+                    }
+                    p = e - 1;
+                    continue;
+                }
+            }
+            /* standalone call argument ('set_cb(name)' / 'f(a, name)'):
+             * a bare identifier passing a function by reference. */
+            if(!(p > src && p[-1] == '.') &&
+               !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
+               *e != '(' && (*e == ')' || *e == ',') &&
+               n >= 1 && (dst[n - 1] == '(' ||
+                          (n >= 2 && dst[n - 1] == ' ' &&
+                           dst[n - 2] == ','))) {
                 char cname[LOWER_NAME_MAX * 2];
                 size_t clen = resolve_module_fn(m, p, (size_t)(e - p),
                                                 cname, sizeof(cname));
