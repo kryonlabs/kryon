@@ -575,10 +575,25 @@ kir_parse_file(const char *path, const char *root)
         }
         pending[0] = '\0';
         pending_len = 0;
-        if(mode == TOP && strncmp(t, "#module", 7) == 0) {
+        if(mode == TOP && cond_depth > 0) {
+            /* inside an unevaluated '#if MACRO {' block: track braces,
+             * capture nothing (imports land here too — before the import
+             * branch below). */
+            for(const char *p = t; *p != '\0'; p++) {
+                if(*p == '{')
+                    cond_brace++;
+                else if(*p == '}') {
+                    cond_brace--;
+                    if(cond_brace == 0) {
+                        cond_depth = 0;
+                        break;
+                    }
+                }
+            }
+        } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
-        } else if(mode == TOP &&
+        } else if(mode == TOP && cond_depth == 0 &&
                   (parse_import_line(module, rel, line_no, t) ||
                    parse_extern_line(module, rel, line_no, t))) {
             continue;
