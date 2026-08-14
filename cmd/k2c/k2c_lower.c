@@ -667,6 +667,8 @@ lower_module(const KirModule *m, const char *out_dir)
 
         if(imp->kind == KIR_IMPORT_HEADER)
             fprintf(h, "#include \"%s\"\n", imp->target);
+        else if(imp->kind == KIR_IMPORT_MODULE)
+            fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
