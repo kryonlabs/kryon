@@ -197,10 +197,11 @@ classify_stmt(const char *s)
         return KIR_STMT_DEFER;
     if(starts_word(s, "unused"))
         return KIR_STMT_UNUSED;
+    if(strstr(s, ":=") != NULL)
+        return KIR_STMT_DECL;   /* ':=' wins over the raw 'c' prefix (a
+                                   variable may be named 'c') */
     if(starts_word(s, "c"))
         return KIR_STMT_RAW;
-    if(strstr(s, ":=") != NULL)
-        return KIR_STMT_DECL;
     if(strstr(s, "::") != NULL)
         return KIR_STMT_RAW;   /* nested '::' definitions stay raw */
     if(strstr(s, ": ") != NULL || strstr(s, ": [") != NULL) {
