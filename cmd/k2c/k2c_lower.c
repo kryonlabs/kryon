@@ -219,8 +219,9 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                 p = e;   /* strip the alias; loop's p++ skips the '.' */
                 continue;
             }
-            if(*e == '(' && !(p > src && p[-1] == '.') &&
-               !(p > src + 1 && p[-1] == '>' && p[-2] == '-')) {
+            if(!(p > src && p[-1] == '.') &&
+               !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
+               *e == '(' && e[-1] != ' ') {
                 /* a call (not a member access 'x.fn' / 'p->fn'): resolve
                  * module-local functions to C names */
                 char cname[LOWER_NAME_MAX * 2];
@@ -232,7 +233,27 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
                         memcpy(dst + n, cname, clen);
                         n += clen;
                     }
-                    p = e - 1;   /* loop's p++ lands on '(' */
+                    p = e - 1;   /* loop's p++ lands past the ident */
+                    continue;
+                }
+            }
+            /* bare function reference in assignment-RHS position
+             * ('= name' / '= name;'): resolve, but never inside call
+             * parens where a local of the same name may shadow it. */
+            if(!(p > src && p[-1] == '.') &&
+               !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
+               *e != '(' && n >= 2 && dst[n - 1] == ' ' && dst[n - 2] == '=' &&
+               (n < 3 || (dst[n - 3] != '=' && dst[n - 3] != '!'))) {
+                char cname[LOWER_NAME_MAX * 2];
+                size_t clen = resolve_module_fn(m, p, (size_t)(e - p),
+                                                cname, sizeof(cname));
+
+                if(clen > 0) {
+                    if(n + clen < dst_size) {
+                        memcpy(dst + n, cname, clen);
+                        n += clen;
+                    }
+                    p = e - 1;
                     continue;
                 }
             }
@@ -254,14 +275,15 @@ function_c_name(const KirModule *m, const KirFunction *fn,
 {
     char mod[LOWER_NAME_MAX];
     size_t n = 0;
+    const char *suffix = fn->is_colon ? "" : "_kry_draw";
 
     if(m->name[0] != '\0' && strcmp(m->name, "main") != 0) {
         for(const char *p = m->name; *p && n + 1 < sizeof(mod); p++)
             mod[n++] = (*p == '.') ? '_' : *p;
         mod[n] = '\0';
-        snprintf(dst, dst_size, "%s_%s_kry_draw", mod, fn->name);
+        snprintf(dst, dst_size, "%s_%s%s", mod, fn->name, suffix);
     } else {
-        snprintf(dst, dst_size, "%s_kry_draw", fn->name);
+        snprintf(dst, dst_size, "%s%s", fn->name, suffix);
     }
 }
 

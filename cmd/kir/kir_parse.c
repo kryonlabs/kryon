@@ -627,6 +627,7 @@ kir_parse_file(const char *path, const char *root)
                 fn = KirModuleAddFunction(module, name, args, ret, 0,
                                           KirSpan(rel, line_no, 1));
                 fn->is_extern = is_extern;
+                fn->is_colon = strstr(t, "::") != NULL;
                 if(has_body && !is_extern) {
                     mode = FUNCTION;
                     depth = 1;
