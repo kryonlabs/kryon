@@ -780,19 +780,51 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
+    /* Typedefs and enums first (structs reference them), then structs. */
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
-        if(strcmp(ty->name, "#enum") == 0) {
-            /* #enum { A, B, } — emit as a plain C enum. */
-            fprintf(h, "\nenum {\n%s};\n", ty->body);
-            continue;
-        }
-        if(strcmp(ty->name, "#typedef") == 0) {
-            /* Name :: C-type #type — emit a typedef. */
+        if(strcmp(ty->name, "#typedef") == 0)
             fprintf(h, "\ntypedef %s;\n", ty->body);
+    }
+    for(i = 0; i < m->type_count; i++) {
+        const KirType *ty = &m->types[i];
+
+        if(strcmp(ty->name, "#enum") != 0)
             continue;
+        /* #enum { A, B } — newline-separated members need commas in C. */
+        fprintf(h, "\nenum {\n");
+        {
+            const char *line = ty->body;
+
+            while(line != NULL && *line != '\0') {
+                const char *nl = strchr(line, '\n');
+                size_t len = nl ? (size_t)(nl - line) : strlen(line);
+
+                if(len > 0) {
+                    char raw[LOWER_TEXT_MAX];
+
+                    if(len >= sizeof(raw))
+                        len = sizeof(raw) - 1;
+                    memcpy(raw, line, len);
+                    raw[len] = '\0';
+                    /* strip trailing comma if present, then add one */
+                    while(len > 0 && (raw[len - 1] == ' ' || raw[len - 1] == ','))
+                        raw[--len] = '\0';
+                    if(raw[0] != '\0')
+                        fprintf(h, "    %s,\n", raw);
+                }
+                line = nl ? nl + 1 : NULL;
+            }
         }
+        fprintf(h, "};\n");
+    }
+    for(i = 0; i < m->type_count; i++) {
+        const KirType *ty = &m->types[i];
+
+        if(strcmp(ty->name, "#enum") == 0 ||
+           strcmp(ty->name, "#typedef") == 0)
+            continue;
         fprintf(h, "\ntypedef struct {\n");
         /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
         {
@@ -877,7 +909,10 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             if(suffix[0] != '\0') {
                 char tmps[LOWER_NAME_MAX];
 
-                strip_alias_type(m, suffix, tmps, sizeof(tmps));
+                /* the alias sits inside brackets ('[state.MAX]'), so use the
+                 * body rewriter (strips alias.member anywhere), not the
+                 * leading-alias-only type strip */
+                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps));
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }

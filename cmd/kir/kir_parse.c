@@ -487,14 +487,21 @@ kir_parse_file(const char *path, const char *root)
                     pl--;
                 last = pl > 0 ? pending[pl - 1] : '\0';
                 prev = pl > 1 ? pending[pl - 2] : '\0';
-                if(last != '\0' &&
-                   (last == '&' || last == '|' || last == '+' || last == '-' ||
-                    last == '*' || last == '/' || last == '%' || last == '=' ||
-                    last == ',' || last == '<' || last == '>') &&
-                   !(prev == last && (last == '+' || last == '-')) &&
-                   !(prev == last && (last == '&' || last == '|')) &&
-                   !(strchr("+-*&<>", last) != NULL && prev != ' ' &&
-                     prev != '\t'))
+                /* Continuation operators: ',','=','%','/' always; '+','-','*',
+                 * '<','>' only in binary position (prev is space — excludes
+                 * 'char*','x++' handled below,'<stdlib.h>'); '&','|' when
+                 * doubled ('&&','||') or space-preceded. */
+                if(last == ',' || last == '=' || last == '%' ||
+                   last == '?' ||
+                   (last == '/' && prev != '>'))
+                    continue;
+                if((last == '+' || last == '-' || last == '*' ||
+                    last == '<' || last == '>') &&
+                   (prev == ' ' || prev == '\t') &&
+                   !(prev == last))
+                    continue;
+                if((last == '&' || last == '|') &&
+                   (prev == last || prev == ' ' || prev == '\t'))
                     continue;
             }
         }
@@ -604,6 +611,50 @@ kir_parse_file(const char *path, const char *root)
             else
                 KirModuleAddGlobal(module, gname, gtype, "",
                                    KirSpan(rel, line_no, 1));
+        } else if(mode == TOP && strstr(t, "::") != NULL &&
+                  strstr(t, "#type") != NULL) {
+            /* 'Name :: C-type #type' — a typedef. Build the C declarator:
+             * function-pointer types insert the name after '(*'; others
+             * append ' NAME'. Must precede the struct catch-all below. */
+            KirType *tty;
+            const char *colons0 = strstr(t, "::");
+            const char *tybegin = colons0 + 2;
+            const char *hash = strstr(t, "#type");
+            char tname[KIR_NAME_MAX];
+            size_t tn = 0;
+            const char *q = t;
+
+            while(q < colons0 && (isalnum((unsigned char)*q) || *q == '_') &&
+                  tn + 1 < sizeof(tname))
+                tname[tn++] = *q++;
+            tname[tn] = '\0';
+            tty = KirModuleAddType(module, "#typedef",
+                                   KirSpan(rel, line_no, 1));
+            if(tty != NULL && tname[0] != '\0') {
+                char tytext[KIR_TEXT_MAX];
+                size_t tl;
+                const char *lp;
+
+                while(tybegin < hash && (*tybegin == ' ' || *tybegin == '\t'))
+                    tybegin++;
+                tl = (size_t)(hash - tybegin);
+                while(tl > 0 && (tybegin[tl - 1] == ' ' || tybegin[tl - 1] == '\t'))
+                    tl--;
+                if(tl >= sizeof(tytext))
+                    tl = sizeof(tytext) - 1;
+                memcpy(tytext, tybegin, tl);
+                tytext[tl] = '\0';
+                lp = strstr(tytext, "(*");
+                if(lp != NULL) {
+                    size_t off = (size_t)(lp - tytext) + 2;
+
+                    snprintf(tty->body, sizeof(tty->body), "%.*s%s%s",
+                             (int)off, tytext, tname, tytext + off);
+                } else {
+                    snprintf(tty->body, sizeof(tty->body), "%s %s",
+                             tytext, tname);
+                }
+            }
         } else if(mode == TOP && strstr(t, "::") != NULL) {
             /* Name :: struct { ... } — capture the type body verbatim. */
             const char *colons = strstr(t, "::");
@@ -658,21 +709,6 @@ kir_parse_file(const char *path, const char *root)
 
                 snprintf(ety->body + used, sizeof(ety->body) - used,
                          "%s\n", t);
-            }
-        } else if(mode == TOP && strstr(t, "::") != NULL &&
-                  strstr(t, "#type") != NULL) {
-            /* 'Name :: C-type #type' — a typedef. Capture raw for emission. */
-            KirType *tty = KirModuleAddType(module, "#typedef",
-                                            KirSpan(rel, line_no, 1));
-            const char *colons = strstr(t, "::");
-            const char *tybegin = colons + 2;
-            const char *hash = strstr(t, "#type");
-
-            if(tty != NULL) {
-                while(tybegin < hash && (*tybegin == ' ' || *tybegin == '\t'))
-                    tybegin++;
-                snprintf(tty->body, sizeof(tty->body), "%.*s",
-                         (int)(hash - tybegin), tybegin);
             }
         } else if(mode == TYPE) {
             if(t[0] == '}') {
