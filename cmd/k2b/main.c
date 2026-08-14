@@ -1,16 +1,17 @@
 /*
- * k2b — standalone .kry -> .krb cartridge compiler. Independent of kc.
- *
- *   k2b [--no-main] --root DIR -o DIR file.kry [file.kry ...]
- *
- * For each input .kry, parses it (k2b_parse.c) and emits a .krb cartridge plus
- * a C host pair (*.krb.c / *.krb.h) next to the output directory.
+ * k2b - .kry -> .krb cartridge compiler. Shares the Kir frontend with k2c:
+ * every .kry parses into a KirProgram (kir_parse.c), then lowers to a .krb
+ * cartridge + C host (k2b_krb.c). One frontend, two backends.
  */
-#include "k2b.h"
+#include "kir.h"
+#include "kir_parse.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+void write_krb(const KirModule *m, const char *root, const char *out_dir,
+               int no_main);
 
 static void
 usage(void)
@@ -27,12 +28,12 @@ main(int argc, char **argv)
     int i;
 
     for(i = 1; i < argc; i++) {
-        if(strcmp(argv[i], "--no-main") == 0) {
-            no_main = 1;
-        } else if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
+        if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
             root = argv[++i];
         } else if(strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out_dir = argv[++i];
+        } else if(strcmp(argv[i], "--no-main") == 0) {
+            no_main = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -40,20 +41,20 @@ main(int argc, char **argv)
             break;
         }
     }
-
     if(root == NULL || out_dir == NULL || i >= argc) {
         usage();
         return 1;
     }
-
     for(; i < argc; i++) {
-        static K2bFile file;
+        KirProgram *prog = kir_parse_file(argv[i], root);
 
-        memset(&file, 0, sizeof(file));
-        file.no_main = no_main;
-        if(k2b_parse_file(&file, argv[i], root) != 0)
+        if(prog == NULL) {
+            fprintf(stderr, "k2b: failed to parse %s\n", argv[i]);
             return 1;
-        write_krb(&file, root, out_dir);
+        }
+        for(int m = 0; m < prog->module_count; m++)
+            write_krb(&prog->modules[m], root, out_dir, no_main);
+        KirProgramFree(prog);
     }
     return 0;
 }

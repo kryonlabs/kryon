@@ -1,8 +1,8 @@
 /*
- * k2b util — small path/string helpers used by the codegen. Self-contained,
- * no kc dependency. Names match what the moved codegen already calls.
+ * k2b util — small path/string helpers used by the codegen.
  */
-#include "k2b.h"
+#include "krb.h"
+#include "kir.h"
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -39,7 +39,7 @@ path_join(char *dst, size_t dst_size, const char *a, const char *b)
 void
 mkdir_parent(const char *path)
 {
-    char tmp[K2B_PATH_MAX];
+    char tmp[KIR_PATH_MAX];
     size_t i;
 
     snprintf(tmp, sizeof(tmp), "%s", path);
@@ -125,7 +125,7 @@ replace_path_basename(char *dst, size_t dst_size, const char *path,
 const char *
 relative_path(const char *root, const char *path)
 {
-    static char rel[K2B_PATH_MAX];
+    static char rel[KIR_PATH_MAX];
     size_t n;
 
     if(root == NULL || root[0] == '\0')

@@ -1,6 +1,6 @@
-/* Emit a krb cartridge from parsed .kry widget calls. Standalone k2b codegen,
- * independent of kc. */
-#include "k2b.h"
+/* Emit a krb cartridge from Kir widget calls. Lowers a KirModule (shared
+ * kir_parse.c frontend) to a .krb binary + C host. */
+#include "kir.h"
 #include "krb.h"
 
 #include <ctype.h>
@@ -10,10 +10,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Shared size limits (the moved code uses the kc_ names). */
-#define KC_PATH_MAX K2B_PATH_MAX
-#define KC_NAME_MAX K2B_NAME_MAX
-#define KC_BODY_LINE_MAX K2B_LINE_MAX
+#define KC_PATH_MAX KIR_PATH_MAX
+#define KC_NAME_MAX KIR_NAME_MAX
+#define KC_BODY_LINE_MAX KIR_TEXT_MAX
+
+/* k2b_util.c */
+void die(const char *fmt, ...);
+void path_join(char *dst, size_t dst_size, const char *a, const char *b);
+void mkdir_parent(const char *path);
+void header_guard(char *dst, size_t dst_size, const char *rel);
+void strip_kry_ext(char *dst, size_t dst_size, const char *path);
+void replace_path_basename(char *dst, size_t dst_size, const char *path,
+                           const char *base);
+const char *relative_path(const char *root, const char *path);
+int is_ident_text(const char *text);
+void c_string_literal(char *dst, size_t dst_size, const char *src);
+void write_krb(const KirModule *m, const char *root, const char *out_dir,
+               int no_main);
 
 #define KRB_BUILD_NODE_MAX 256
 #define KRB_BUILD_STR_MAX 8192
@@ -630,96 +643,114 @@ handler_for(KrbBuild *b, const char *name)
 }
 
 static void
-collect_widgets(KrbBuild *b, const K2bFunction *fn)
+collect_widgets(KrbBuild *b, const KirFunction *fn)
 {
     int j;
+    int depth = 0;
 
     if(fn == NULL)
         return;
     for(j = 0; j < fn->stmt_count; j++) {
-        const K2bStmt *st = &fn->stmts[j];
+        const KirStmt *st = &fn->stmts[j];
         int before = b->node_count;
+        int opens = st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
+                    st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH;
 
+        if(st->kind == KIR_STMT_BLOCK_CLOSE)
+            depth--;
         if(try_widget(b, st->text)) {
             /* In raw .kry the button call and its 'if' are one statement
              * ('if Button(...) {'); capture the handler body that follows. */
             if(b->node_count > before &&
                b->nodes[b->node_count - 1].type == KRB_NODE_BUTTON &&
-               st->kind == K2B_STMT_IF) {
+               st->kind == KIR_STMT_IF) {
                 KrbHandler *h;
-                int depth = st->depth;
+                int capdepth = depth;
+                int d = capdepth;
                 int k;
 
                 h = handler_for(b, b->nodes[b->node_count - 1].name);
                 if(h != NULL) {
                     for(k = j + 1; k < fn->stmt_count; k++) {
-                        if(fn->stmts[k].kind == K2B_STMT_BLOCK_CLOSE &&
-                           fn->stmts[k].depth <= depth)
-                            break;
+                        if(fn->stmts[k].kind == KIR_STMT_BLOCK_CLOSE) {
+                            if(d <= capdepth)
+                                break;
+                            d--;
+                        } else if(fn->stmts[k].kind == KIR_STMT_IF ||
+                                  fn->stmts[k].kind == KIR_STMT_WHILE ||
+                                  fn->stmts[k].kind == KIR_STMT_FOR ||
+                                  fn->stmts[k].kind == KIR_STMT_SWITCH) {
+                            d++;
+                        }
                         add_handler_line(h, fn->stmts[k].text);
                     }
                 }
             }
+            if(opens)
+                depth++;
             continue;
         }
+        if(opens)
+            depth++;
     }
 }
 
 static void
-collect_state(KrbBuild *b, const K2bFile *file)
+collect_state(KrbBuild *b, const KirModule *m)
 {
     int i;
 
-    for(i = 0; i < file->state_count; i++) {
-        const char *s = skip_ws(file->state[i]);
+    for(i = 0; i < m->state_count; i++) {
+        const KirStateField *sf = &m->state_fields[i];
         KrbStateField *f;
         KrbBuildNode *n;
-        char name[KC_NAME_MAX];
-        const char *p;
         unsigned kind = 1; /* KRB_I32 */
         unsigned size = 4;
 
-        if(strncmp(s, "static ", 7) == 0)
-            s = skip_ws(s + 7);
-        if(strncmp(s, "char ", 5) == 0) {
-            const char *br;
+        if(strstr(sf->type, "char") != NULL) {
+            const char *br = strchr(sf->type, '[');
 
-            s = skip_ws(s + 5);
             kind = 5; /* KRB_CSTR */
-            p = s;
-            while((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-                  (*p >= '0' && *p <= '9') || *p == '_')
-                p++;
-            snprintf(name, sizeof(name), "%.*s", (int)(p - s), s);
-            br = strchr(s, '[');
             size = br != NULL ? (unsigned)atoi(br + 1) : 64;
-        } else {
-            /* skip type words */
-            p = s;
-            while(*p != '\0' && *p != '=' && *p != ';')
-                p++;
-            while(p > s && (p[-1] == ' ' || p[-1] == '\t' || p[-1] == '*'))
-                p--;
-            {
-                const char *start = p;
-                while(start > s && ((start[-1] >= 'a' && start[-1] <= 'z') ||
-                                    (start[-1] >= 'A' && start[-1] <= 'Z') ||
-                                    (start[-1] >= '0' && start[-1] <= '9') ||
-                                    start[-1] == '_'))
-                    start--;
-                snprintf(name, sizeof(name), "%.*s", (int)(p - start), start);
-            }
-            kind = 1;
-            size = 4;
         }
-        if(name[0] == '\0' || b->field_count >= 32)
+        if(sf->name[0] == '\0' || b->field_count >= 32)
             continue;
         f = &b->fields[b->field_count++];
-        snprintf(f->name, sizeof(f->name), "%s", name);
-        snprintf(f->decl, sizeof(f->decl), "%s", file->state[i]);
+        snprintf(f->name, sizeof(f->name), "%s", sf->name);
+        /* Convert .kry type order ('[N] char') to C ('char name[N]'). */
+        {
+            const char *t = sf->type;
+            char base[KC_NAME_MAX];
+            char suffix[KC_NAME_MAX];
+            size_t sn = 0;
+            const char *bp = t;
+
+            suffix[0] = '\0';
+            while(*bp == '[') {
+                const char *cl = strchr(bp, ']');
+
+                if(cl == NULL)
+                    break;
+                {
+                    size_t l = (size_t)(cl - bp + 1);
+
+                    if(sn + l + 1 < sizeof(suffix)) {
+                        memcpy(suffix + sn, bp, l);
+                        sn += l;
+                        suffix[sn] = '\0';
+                    }
+                }
+                bp = cl + 1;
+                while(*bp == ' ' || *bp == '\t')
+                    bp++;
+            }
+            snprintf(base, sizeof(base), "%s", bp);
+            snprintf(f->decl, sizeof(f->decl), "static %s %s%s = %s;",
+                     base, sf->name, suffix, sf->init[0] ? sf->init : "{0}");
+        }
         f->kind = kind;
         f->size = size;
-        n = add_node(b, 5, name);
+        n = add_node(b, 5, sf->name);
         if(n != NULL) {
             n->style = (int)kind;
             n->w = (int)size;
@@ -1382,8 +1413,9 @@ c_ident(char *dst, size_t dst_size, const char *src)
 }
 
 static void
-write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
-               const KrbBuild *b, const unsigned char *bytes, int len)
+write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
+               const char *out_dir, const KrbBuild *b,
+               const unsigned char *bytes, int len, int no_main)
 {
     char hrel[KC_PATH_MAX];
     char crel[KC_PATH_MAX];
@@ -1396,9 +1428,9 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
     int j;
 
     snprintf(screen, sizeof(screen), "App");
-    for(i = 0; i < file->function_count; i++) {
-        if(file->functions[i].screen[0] != '\0') {
-            snprintf(screen, sizeof(screen), "%s", file->functions[i].screen);
+    for(i = 0; i < m->function_count; i++) {
+        if(m->functions[i].name[0] != '\0') {
+            snprintf(screen, sizeof(screen), "%s", m->functions[i].name);
             break;
         }
     }
@@ -1413,7 +1445,7 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
     if(out == NULL)
         die("%s: open failed: %s", hpath, strerror(errno));
     fprintf(out, "/* Generated by k2b from %s. */\n",
-            relative_path(file->root, file->path));
+            relative_path(root, m->source_path));
     fprintf(out, "#ifndef %s\n#define %s\n\n", guard, guard);
     fprintf(out, "void %s_krb_draw(int x, int y, int w, int h);\n", screen);
     fprintf(out, "int %s_krb_press(const char *name);\n", screen);
@@ -1427,14 +1459,14 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
     if(out == NULL)
         die("%s: open failed: %s", cpath, strerror(errno));
     fprintf(out, "/* Generated by k2b from %s. */\n",
-            relative_path(file->root, file->path));
+            relative_path(root, m->source_path));
     fprintf(out, "#include \"%s\"\n", hrel);
     fprintf(out, "#include <stdio.h>\n");
     fprintf(out, "#include <string.h>\n");
     fprintf(out, "#include \"krb.h\"\n");
     fprintf(out, "#if !defined(KRYON_KRB_NO_MAIN)\n");
     fprintf(out, "#include \"kryon.h\"\n");
-    if(file->app_font_examples)
+    if(m->app.font_examples)
         fprintf(out, "#include \"example_ui_font.h\"\n");
     fprintf(out, "#endif\n\n");
     for(i = 0; i < b->field_count; i++)
@@ -1507,23 +1539,23 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
     fprintf(out, "    krb_ensure();\n");
     fprintf(out, "    return krb_ready ? KrbReadCStr(&krb_img, path, out, n) : -1;\n");
     fprintf(out, "}\n");
-    if(!file->no_main && file->app_title[0] != '\0') {
-        int width = file->app_width > 0 ? file->app_width : 800;
-        int height = file->app_height > 0 ? file->app_height : 600;
-        int fps = file->app_fps > 0 ? file->app_fps : 60;
+    if(!no_main && m->app.title[0] != '\0') {
+        int width = m->app.width > 0 ? m->app.width : 800;
+        int height = m->app.height > 0 ? m->app.height : 600;
+        int fps = m->app.fps > 0 ? m->app.fps : 60;
         char title[512];
 
-        c_string_literal(title, sizeof(title), file->app_title);
+        c_string_literal(title, sizeof(title), m->app.title);
         fprintf(out, "\n#if !defined(KRYON_KRB_NO_MAIN)\n");
         fprintf(out, "int\nmain(void)\n{\n");
         fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
         fprintf(out, "    SetTargetFPS(%d);\n", fps);
-        if(file->app_font_examples)
+        if(m->app.font_examples)
             fprintf(out, "    LoadExampleUIFont();\n");
         fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
-        if(file->app_theme[0] != '\0')
+        if(m->app.theme[0] != '\0')
             fprintf(out, "    SetCurrentTheme(%s, %d);\n",
-                    file->app_theme, file->app_dark_mode);
+                    m->app.theme, m->app.dark_mode);
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         fprintf(out, "        BeginDrawing();\n");
         fprintf(out, "        BeginUIFrame(%d, %d, GetUIScale());\n",
@@ -1533,7 +1565,7 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
         fprintf(out, "        EndUIFocus();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");
-        if(file->app_font_examples)
+        if(m->app.font_examples)
             fprintf(out, "    UnloadExampleUIFont();\n");
         fprintf(out, "    CloseWindow();\n");
         fprintf(out, "    return 0;\n");
@@ -1543,9 +1575,10 @@ write_krb_host(const K2bFile *file, const char *gen_rel, const char *out_dir,
 }
 
 void
-write_krb(const K2bFile *file, const char *root, const char *out_dir)
+write_krb(const KirModule *m, const char *root, const char *out_dir,
+          int no_main)
 {
-    const char *rel = relative_path(root, file->path);
+    const char *rel = relative_path(root, m->source_path);
     char gen_rel[KC_PATH_MAX];
     char krel[KC_PATH_MAX];
     char kpath[KC_PATH_MAX];
@@ -1556,13 +1589,6 @@ write_krb(const K2bFile *file, const char *root, const char *out_dir)
     int len;
 
     strip_kry_ext(gen_rel, sizeof(gen_rel), rel);
-    if(file->module_file[0] != '\0') {
-        char module_rel[KC_PATH_MAX];
-
-        replace_path_basename(module_rel, sizeof(module_rel), gen_rel,
-                              file->module_file);
-        snprintf(gen_rel, sizeof(gen_rel), "%s", module_rel);
-    }
     snprintf(krel, sizeof(krel), "%s.krb", gen_rel);
     path_join(kpath, sizeof(kpath), out_dir, krel);
     mkdir_parent(kpath);
@@ -1570,18 +1596,18 @@ write_krb(const K2bFile *file, const char *root, const char *out_dir)
     memset(&build, 0, sizeof(build));
     build.strings[0] = '\0';
     build.string_used = 1;
-    collect_state(&build, file);
-    for(i = 0; i < file->function_count; i++)
-        collect_widgets(&build, &file->functions[i]);
+    collect_state(&build, m);
+    for(i = 0; i < m->function_count; i++)
+        collect_widgets(&build, &m->functions[i]);
 
     len = emit_krb_mem(bytes, KRB_OUT_MAX, &build);
     if(len < 0)
-        die("%s: cartridge is too large", file->path);
+        die("%s: cartridge is too large", m->source_path);
     out = fopen(kpath, "wb");
     if(out == NULL)
         die("%s: open failed: %s", kpath, strerror(errno));
     if(fwrite(bytes, 1, (size_t)len, out) != (size_t)len)
         die("%s: write failed", kpath);
     fclose(out);
-    write_krb_host(file, gen_rel, out_dir, &build, bytes, len);
+    write_krb_host(m, root, gen_rel, out_dir, &build, bytes, len, no_main);
 }
