@@ -389,6 +389,15 @@ convert_args(const KirModule *m, const char *args, char *dst, size_t dst_size)
                     n += (size_t)snprintf(dst + n, dst_size - n,
                                           "%s %s", type, name);
                     first = 0;
+                } else if(part[0] != '\0') {
+                    /* C-style parameter text (no 'name: Type' colon):
+                     * emit as-is ('InbeApp *app'). */
+                    if(!first && n + 2 < dst_size)
+                        dst[n++] = ',';
+                    if(!first && n + 1 < dst_size)
+                        dst[n++] = ' ';
+                    n += (size_t)snprintf(dst + n, dst_size - n, "%s", part);
+                    first = 0;
                 }
                 if(*p == '\0')
                     break;

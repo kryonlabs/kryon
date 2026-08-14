@@ -798,7 +798,21 @@ kir_parse_file(const char *path, const char *root)
                 snprintf(ty->body + used, sizeof(ty->body) - used, "%s\n", t);
             }
         } else if(mode == FUNCTION) {
-            if(t[0] == '#') {
+            if(strncmp(t, "args ", 5) == 0 && depth <= 1 &&
+               fn != NULL && !fn->is_colon) {
+                /* 'args <decl>' header directive: append parameters to the
+                 * screen's signature ('args InbeApp *app'). */
+                const char *extra = t + 5;
+
+                if(fn->args[0] != '\0') {
+                    size_t used = strlen(fn->args);
+
+                    snprintf(fn->args + used, sizeof(fn->args) - used,
+                             ", %s", extra);
+                } else {
+                    snprintf(fn->args, sizeof(fn->args), "%s", extra);
+                }
+            } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
             } else if(t[0] == '}') {
                 if(depth > 0)
