@@ -386,13 +386,58 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
                   const char *line)
 {
     char name[KIR_NAME_MAX];
+    const char *intrinsic = strstr(line, "#intrinsic");
 
-    if(strstr(line, "#extern") == NULL)
+    if(intrinsic == NULL && strstr(line, "#extern") == NULL)
         return 0;
     if(!parse_symbol_before_colons(line, name, sizeof(name)))
         return 0;
-    KirModuleAddImport(module, KIR_IMPORT_EXTERN, name, name, line, 1,
-                       KirSpan(path, line_no, 1));
+    if(intrinsic != NULL) {
+        /* 'name :: (args) -> int #intrinsic "web"' — lowered by k2c to a
+         * static EM_ASM wrapper on web builds. Only the two known web
+         * intrinsics exist, mirroring the legacy compiler. */
+        const char *b = intrinsic + strlen("#intrinsic");
+        char backend[KIR_NAME_MAX];
+        char ret[KIR_NAME_MAX] = "";
+        const char *arrow = strstr(line, "->");
+
+        while(*b == ' ' || *b == '\t')
+            b++;
+        if(*b == '"') {
+            size_t n = 0;
+
+            b++;
+            while(*b != '\0' && *b != '"' && n + 1 < sizeof(backend))
+                backend[n++] = *b++;
+            backend[n] = '\0';
+        } else {
+            snprintf(backend, sizeof(backend), "%s", b);
+        }
+        if(strcmp(backend, "web") != 0)
+            die("%s:%d: unknown intrinsic backend '%s'", path, line_no,
+                backend);
+        if(arrow != NULL && arrow < intrinsic) {
+            size_t n = 0;
+            const char *r = arrow + 2;
+
+            while(r < intrinsic && n + 1 < sizeof(ret)) {
+                if(*r != ' ' && *r != '\t')
+                    ret[n++] = *r;
+                r++;
+            }
+            ret[n] = '\0';
+        }
+        if(strcmp(ret, "int") != 0)
+            die("%s:%d: web intrinsic '%s' must return int", path, line_no,
+                name);
+        if(strcmp(name, "web_download_file") != 0 &&
+           strcmp(name, "web_context_click_in_bounds") != 0)
+            die("%s:%d: unknown web intrinsic '%s'", path, line_no, name);
+    }
+    KirModuleAddImport(module,
+                       intrinsic != NULL ? KIR_IMPORT_INTRINSIC
+                                         : KIR_IMPORT_EXTERN,
+                       name, name, line, 1, KirSpan(path, line_no, 1));
     return 1;
 }
 
@@ -1099,7 +1144,9 @@ kir_parse_file(const char *path, const char *root)
                   strchr(t, '{') == NULL &&
                   !looks_like_function_header(t)) {
             /* 'Name :: expr' — a compile-time constant ('WEB :: #defined(X)'),
-             * expanded inside '#if' conditions; never emitted as C. */
+             * expanded inside '#if' conditions; never emitted as C. The
+             * '#define' form ('TAG :: #define "X"') becomes a real C
+             * #define instead. */
             const char *colons = strstr(t, "::");
             const char *expr = colons + 2;
             char cname[KIR_NAME_MAX];
@@ -1113,13 +1160,26 @@ kir_parse_file(const char *path, const char *root)
             while(*expr == ' ' || *expr == '\t')
                 expr++;
             if(cname[0] != '\0' && *expr != '\0') {
-                if(consts.count >= 16)
-                    die("%s:%d: too many compile-time constants", rel, line_no);
-                snprintf(consts.names[consts.count],
-                         sizeof(consts.names[0]), "%s", cname);
-                snprintf(consts.exprs[consts.count],
-                         sizeof(consts.exprs[0]), "%s", expr);
-                consts.count++;
+                if(starts_word(expr, "#define")) {
+                    char value[KIR_TEXT_MAX];
+                    KirDefine *def;
+
+                    snprintf(value, sizeof(value), "%s", expr + 7);
+                    def = KirModuleAddDefine(module, cname, trim(value),
+                                             KirSpan(rel, line_no, 1));
+                    if(def != NULL)
+                        snprintf(def->guard, sizeof(def->guard), "%s",
+                                 cur_guard);
+                } else {
+                    if(consts.count >= 16)
+                        die("%s:%d: too many compile-time constants",
+                            rel, line_no);
+                    snprintf(consts.names[consts.count],
+                             sizeof(consts.names[0]), "%s", cname);
+                    snprintf(consts.exprs[consts.count],
+                             sizeof(consts.exprs[0]), "%s", expr);
+                    consts.count++;
+                }
             }
         } else if(mode == TOP && strstr(t, "::") != NULL) {
             /* Name :: struct { ... } | Name :: enum { ... } — capture the
@@ -1200,6 +1260,7 @@ kir_parse_file(const char *path, const char *root)
             }
         } else if(mode == FUNCTION) {
             char *bcnd = NULL;
+            int bck = parse_cond_start(t, &bcnd);
 
             if(strncmp(t, "args ", 5) == 0 && depth <= 1 &&
                fn != NULL && !fn->is_colon) {
@@ -1215,16 +1276,17 @@ kir_parse_file(const char *path, const char *root)
                 } else {
                     snprintf(fn->args, sizeof(fn->args), "%s", extra);
                 }
-            } else if(parse_cond_start(t, &bcnd) != 0 ||
-                      line_is_hash_else(t)) {
+            } else if(bck != 0 || line_is_hash_else(t)) {
                 /* body-level '#if COND {' — the braces are consumed here;
-                 * the region lowers to raw #if/#elif/#else/#endif lines. */
+                 * the region lowers to raw #if/#elif/#else/#endif lines.
+                 * (bck was computed once above: parse_cond_start strips the
+                 * trailing '{' in place, so re-parsing would misfire.) */
                 char raw[KIR_TEXT_MAX];
                 char expanded[KIR_TEXT_MAX];
 
                 if(line_is_hash_else(t)) {
                     snprintf(raw, sizeof(raw), "#else");
-                } else if(parse_cond_start(t, &bcnd) == 1) {
+                } else if(bck == 1) {
                     if(body_mcount >= 8)
                         die("%s:%d: too many nested #if blocks", rel, line_no);
                     body_mdepth[body_mcount++] = depth;
