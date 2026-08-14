@@ -237,7 +237,8 @@ parse_state_field(KirModule *module, const char *path, int line_no, char *line)
 
 static void
 parse_function_header(char *name, size_t name_size, char *args,
-                      size_t args_size, const char *line)
+                      size_t args_size, char *ret, size_t ret_size,
+                      const char *line)
 {
     const char *p;
     const char *q;
@@ -245,6 +246,7 @@ parse_function_header(char *name, size_t name_size, char *args,
 
     name[0] = '\0';
     args[0] = '\0';
+    snprintf(ret, ret_size, "void");
     p = strstr(line, "::");
     if(p != NULL) {
         q = line;
@@ -274,6 +276,22 @@ parse_function_header(char *name, size_t name_size, char *args,
             n = args_size - 1;
         memcpy(args, p + 1, n);
         args[n] = '\0';
+        /* Return type: after the closing ')', an optional '-> T' before any
+         * trailing directive (#extern / #global / ...). */
+        q++;
+        while(*q == ' ' || *q == '\t')
+            q++;
+        if(q[0] == '-' && q[1] == '>') {
+            q += 2;
+            while(*q == ' ' || *q == '\t')
+                q++;
+            n = 0;
+            while(*q != '\0' && *q != '#' && n + 1 < ret_size)
+                ret[n++] = *q++;
+            while(n > 0 && (ret[n - 1] == ' ' || ret[n - 1] == '\t'))
+                n--;
+            ret[n] = '\0';
+        }
     }
 }
 
@@ -480,14 +498,53 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == TOP && looks_like_function_header(t)) {
             char name[KIR_NAME_MAX];
             char args[KIR_TEXT_MAX];
+            char ret[KIR_NAME_MAX];
+            int is_extern = strstr(t, "#extern") != NULL;
+            int has_body = strchr(t, '{') != NULL;
 
-            parse_function_header(name, sizeof(name), args, sizeof(args), t);
+            parse_function_header(name, sizeof(name), args, sizeof(args),
+                                  ret, sizeof(ret), t);
             if(name[0] != '\0') {
-                fn = KirModuleAddFunction(module, name, args, "void", 0,
+                fn = KirModuleAddFunction(module, name, args, ret, 0,
                                           KirSpan(rel, line_no, 1));
-                mode = FUNCTION;
-                depth = strchr(t, '{') != NULL ? 1 : 0;
+                fn->is_extern = is_extern;
+                if(has_body && !is_extern) {
+                    mode = FUNCTION;
+                    depth = 1;
+                } else {
+                    /* extern / body-less prototype: no body follows */
+                    fn = NULL;
+                }
             }
+        } else if(mode == TOP && strstr(t, "::") != NULL &&
+                  strstr(t, "#global") != NULL) {
+            /* name :: Type #global — a module-level global variable. */
+            char gname[KIR_NAME_MAX];
+            char gtype[KIR_TEXT_MAX];
+            const char *colon = strstr(t, "::");
+            const char *ty = colon + 2;
+            const char *hash = strstr(t, "#global");
+            const char *eq = strstr(t, " = ");
+            size_t nn = 0;
+
+            while(t < colon && (isalnum((unsigned char)*t) || *t == '_') &&
+                  nn + 1 < sizeof(gname))
+                gname[nn++] = *t++;
+            gname[nn] = '\0';
+            while(*ty == ' ' || *ty == '\t')
+                ty++;
+            nn = 0;
+            while(ty < hash && nn + 1 < sizeof(gtype))
+                gtype[nn++] = *ty++;
+            while(nn > 0 && (gtype[nn - 1] == ' ' || gtype[nn - 1] == '\t'))
+                nn--;
+            gtype[nn] = '\0';
+            if(eq != NULL && eq < hash)
+                KirModuleAddGlobal(module, gname, gtype, eq + 3,
+                                   KirSpan(rel, line_no, 1));
+            else
+                KirModuleAddGlobal(module, gname, gtype, "",
+                                   KirSpan(rel, line_no, 1));
         } else if(mode == FUNCTION) {
             if(t[0] == '}') {
                 if(depth > 0)

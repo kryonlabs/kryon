@@ -135,18 +135,64 @@ rewrite_nil(const char *src, char *dst, size_t dst_size)
     dst[n] = '\0';
 }
 
-/* C function name for a Kir function: screens get a _kry_draw suffix;
- * module prefixing lands with module support. */
+/* C function name: <module>_<name> (module dots -> underscores), with a
+ * _kry_draw suffix for screen/body functions. */
 static void
-function_c_name(const KirFunction *fn, char *dst, size_t dst_size)
+function_c_name(const KirModule *m, const KirFunction *fn,
+                char *dst, size_t dst_size)
 {
-    snprintf(dst, dst_size, "%s_kry_draw", fn->name);
+    char mod[LOWER_NAME_MAX];
+    size_t n = 0;
+
+    if(m->name[0] != '\0' && strcmp(m->name, "main") != 0) {
+        for(const char *p = m->name; *p && n + 1 < sizeof(mod); p++)
+            mod[n++] = (*p == '.') ? '_' : *p;
+        mod[n] = '\0';
+        snprintf(dst, dst_size, "%s_%s_kry_draw", mod, fn->name);
+    } else {
+        snprintf(dst, dst_size, "%s_kry_draw", fn->name);
+    }
 }
 
-/* Convert .kry args "viewport: Rectangle, app: App*" to C
- * "Rectangle viewport, App* app". */
+/* Is `alias` a module-import alias in this module (alias :: #import "path")?
+ * If so, `alias.Type` qualifiers strip to the bare type. */
+static int
+is_module_alias(const KirModule *m, const char *alias, size_t alias_len)
+{
+    int i;
+
+    for(i = 0; i < m->import_count; i++) {
+        if(m->imports[i].kind == KIR_IMPORT_MODULE &&
+           strlen(m->imports[i].name) == alias_len &&
+           strncmp(m->imports[i].name, alias, alias_len) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+/* Strip leading `alias.` module qualifiers from a type when the alias is an
+ * import in this module (legacy strip_module_alias behavior). */
 static void
-convert_args(const char *args, char *dst, size_t dst_size)
+strip_alias_type(const KirModule *m, const char *type,
+                 char *dst, size_t dst_size)
+{
+    const char *dot = strchr(type, '.');
+
+    if(dot != NULL) {
+        size_t alen = (size_t)(dot - type);
+
+        if(is_module_alias(m, type, alen)) {
+            snprintf(dst, dst_size, "%s", dot + 1);
+            return;
+        }
+    }
+    snprintf(dst, dst_size, "%s", type);
+}
+
+/* Convert .kry args "viewport: Rectangle, st: state.IdeState*" to C
+ * "Rectangle viewport, IdeState* st" (alias-qualified types stripped). */
+static void
+convert_args(const KirModule *m, const char *args, char *dst, size_t dst_size)
 {
     size_t n = 0;
 
@@ -195,7 +241,7 @@ convert_args(const char *args, char *dst, size_t dst_size)
                         nl = sizeof(name) - 1;
                     memcpy(name, part, nl);
                     name[nl] = '\0';
-                    snprintf(type, sizeof(type), "%s", ty);
+                    strip_alias_type(m, ty, type, sizeof(type));
                     if(!first && n + 2 < dst_size)
                         dst[n++] = ',';
                     if(!first && n + 1 < dst_size)
@@ -626,10 +672,13 @@ lower_module(const KirModule *m, const char *out_dir)
         const KirFunction *fn = &m->functions[i];
         char cname[LOWER_NAME_MAX];
         char cargs[LOWER_TEXT_MAX];
+        char cret[LOWER_NAME_MAX];
 
-        function_c_name(fn, cname, sizeof(cname));
-        convert_args(fn->args, cargs, sizeof(cargs));
-        fprintf(h, "void %s(%s);\n", cname, cargs);
+        function_c_name(m, fn, cname, sizeof(cname));
+        convert_args(m, fn->args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        fprintf(h, "%s %s(%s);\n",
+                cret[0] ? cret : "void", cname, cargs);
     }
     fprintf(h, "\n#endif /* %s */\n", guard);
     fclose(h);
@@ -643,6 +692,16 @@ lower_module(const KirModule *m, const char *out_dir)
     fprintf(c, "#include <stdio.h>\n");
     fprintf(c, "#include \"ui_inspect.h\"\n");
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
+    for(i = 0; i < m->global_count; i++) {
+        const KirGlobal *g = &m->globals[i];
+        char base[LOWER_TEXT_MAX];
+        char suffix[LOWER_NAME_MAX];
+
+        split_array_type(g->type, base, sizeof(base), suffix, sizeof(suffix));
+        strip_alias_type(m, base, base, sizeof(base));
+        fprintf(c, "static %s %s%s = %s;\n", base, g->name, suffix,
+                g->init[0] ? g->init : "{0}");
+    }
     for(i = 0; i < m->state_count; i++) {
         const KirStateField *f = &m->state_fields[i];
         char base[LOWER_NAME_MAX];
@@ -656,10 +715,19 @@ lower_module(const KirModule *m, const char *out_dir)
         const KirFunction *fn = &m->functions[i];
         char cname[LOWER_NAME_MAX];
         char cargs[LOWER_TEXT_MAX];
+        char cret[LOWER_NAME_MAX];
 
-        function_c_name(fn, cname, sizeof(cname));
-        convert_args(fn->args, cargs, sizeof(cargs));
-        fprintf(c, "\nvoid\n%s(%s)\n{\n", cname, cargs);
+        function_c_name(m, fn, cname, sizeof(cname));
+        convert_args(m, fn->args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        if(fn->is_extern) {
+            /* extern: prototype only, no body */
+            fprintf(c, "\n%s %s(%s);\n",
+                    cret[0] ? cret : "void", cname, cargs);
+            continue;
+        }
+        fprintf(c, "\n%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
+                cname, cargs);
         lower_body(c, m, fn);
         fprintf(c, "}\n");
     }

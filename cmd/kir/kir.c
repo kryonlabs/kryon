@@ -165,6 +165,30 @@ KirModuleAddFunction(KirModule *module, const char *name, const char *args,
     return fn;
 }
 
+void
+KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
+                   const char *init, KirSourceSpan span)
+{
+    KirGlobal *globals;
+
+    if(module == NULL)
+        return;
+    globals = kir_realloc_array(module->globals, &module->global_cap,
+                                module->global_count, sizeof(KirGlobal));
+    if(globals == NULL)
+        return;
+    module->globals = globals;
+    memset(&module->globals[module->global_count], 0, sizeof(KirGlobal));
+    kir_copy(module->globals[module->global_count].name,
+             sizeof(module->globals[0].name), name);
+    kir_copy(module->globals[module->global_count].type,
+             sizeof(module->globals[0].type), type);
+    kir_copy(module->globals[module->global_count].init,
+             sizeof(module->globals[0].init), init);
+    module->globals[module->global_count].span = span;
+    module->global_count++;
+}
+
 KirStmt *
 KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind, const char *text,
                    const char *widget, KirSourceSpan span)

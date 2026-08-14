@@ -81,11 +81,19 @@ typedef struct KirFunction {
     char args[KIR_TEXT_MAX];
     char return_type[KIR_NAME_MAX];
     int exported;
+    int is_extern;
     KirSourceSpan span;
     KirStmt *stmts;
     int stmt_count;
     int stmt_cap;
 } KirFunction;
+
+typedef struct KirGlobal {
+    char name[KIR_NAME_MAX];
+    char type[KIR_TEXT_MAX];
+    char init[KIR_TEXT_MAX];
+    KirSourceSpan span;
+} KirGlobal;
 
 typedef struct KirAppMeta {
     int has_app;
@@ -107,6 +115,9 @@ typedef struct KirModule {
     char source_path[KIR_PATH_MAX];
     KirSourceSpan span;
     KirAppMeta app;
+    KirGlobal *globals;
+    int global_count;
+    int global_cap;
     KirStateField *state_fields;
     int state_count;
     int state_cap;
@@ -139,6 +150,8 @@ KirImport *KirModuleAddImport(KirModule *module, KirImportKind kind,
 KirFunction *KirModuleAddFunction(KirModule *module, const char *name,
                                   const char *args, const char *return_type,
                                   int exported, KirSourceSpan span);
+void KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
+                        const char *init, KirSourceSpan span);
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
                             const char *text, const char *widget,
                             KirSourceSpan span);
