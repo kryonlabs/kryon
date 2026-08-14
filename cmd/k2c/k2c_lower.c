@@ -828,10 +828,20 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
 
-        if(imp->kind == KIR_IMPORT_HEADER)
-            fprintf(h, "#include \"%s\"\n", imp->target);
-        else if(imp->kind == KIR_IMPORT_MODULE)
+        if(imp->kind == KIR_IMPORT_HEADER) {
+            /* Angled includes stay angled; extension-less targets get .h. */
+            const char *dot = strrchr(imp->target, '.');
+            int has_ext = dot != NULL && dot > strrchr(imp->target, '/');
+
+            if(strchr(imp->signature, '<') != NULL)
+                fprintf(h, "#include <%s>\n", imp->target);
+            else if(has_ext)
+                fprintf(h, "#include \"%s\"\n", imp->target);
+            else
+                fprintf(h, "#include \"%s.h\"\n", imp->target);
+        } else if(imp->kind == KIR_IMPORT_MODULE) {
             fprintf(h, "#include \"%s.h\"\n", imp->target);
+        }
     }
     /* Typedefs and enums first (structs + globals reference them). */
     for(i = 0; i < m->type_count; i++) {
