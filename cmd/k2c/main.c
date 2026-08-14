@@ -23,6 +23,7 @@ main(int argc, char **argv)
 {
     const char *root = NULL;
     const char *out_dir = NULL;
+    int no_main = 0;
     KirProgram **progs;
     K2cModuleSyms *syms;
     int file_count;
@@ -34,13 +35,11 @@ main(int argc, char **argv)
             root = argv[++i];
         } else if(strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out_dir = argv[++i];
+        } else if(strcmp(argv[i], "--no-main") == 0) {
+            no_main = 1;
         } else if(argv[i][0] == '-') {
-            /* accept and ignore --no-main (main() generation is app-driven
-             * via Kir app metadata) */
-            if(strcmp(argv[i], "--no-main") != 0) {
-                usage();
-                return 1;
-            }
+            usage();
+            return 1;
         } else {
             first_file = i;
             break;
@@ -70,6 +69,7 @@ main(int argc, char **argv)
     /* Pass 2: lower with full cross-module resolution. */
     for(i = 0; i < file_count; i++)
         k2c_lower(progs[i], root, out_dir, syms, file_count);
+    k2c_write_project(progs, file_count, root, out_dir, no_main);
     for(i = 0; i < file_count; i++)
         KirProgramFree(progs[i]);
     free(progs);

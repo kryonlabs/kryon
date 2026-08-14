@@ -25,4 +25,12 @@ void k2c_lower(const KirProgram *program, const char *root,
 /* Build the symbol table entry for one program into out. */
 void k2c_build_syms(const KirProgram *program, K2cModuleSyms *out);
 
+/* Full C name for a function (module prefix, colon naming, _kry_draw). */
+void k2c_function_c_name(const KirModule *m, const KirFunction *fn,
+                         char *dst, size_t dst_size);
+
+/* k2c_project.c — kryon_project.h/.c (app-host ABI) after all files lower. */
+void k2c_write_project(KirProgram *const *progs, int prog_count,
+                       const char *root, const char *out_dir, int no_main);
+
 #endif

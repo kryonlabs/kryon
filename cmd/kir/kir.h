@@ -83,6 +83,7 @@ typedef struct KirFunction {
     int exported;
     int is_extern;
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
+    int is_public;  /* screen/preview/page keyword: a project route */
     KirSourceSpan span;
     KirStmt *stmts;
     int stmt_count;

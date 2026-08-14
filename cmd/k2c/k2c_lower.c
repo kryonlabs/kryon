@@ -287,6 +287,13 @@ function_c_name(const KirModule *m, const KirFunction *fn,
     }
 }
 
+void
+k2c_function_c_name(const KirModule *m, const KirFunction *fn,
+                    char *dst, size_t dst_size)
+{
+    function_c_name(m, fn, dst, dst_size);
+}
+
 /* Is `alias` a module-import alias in this module (alias :: #import "path")?
  * If so, `alias.Type` qualifiers strip to the bare type. */
 static int

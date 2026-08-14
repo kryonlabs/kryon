@@ -628,6 +628,17 @@ kir_parse_file(const char *path, const char *root)
                                           KirSpan(rel, line_no, 1));
                 fn->is_extern = is_extern;
                 fn->is_colon = strstr(t, "::") != NULL;
+                /* Legacy rule: screen-keyword and colon functions are public
+                 * (project routes); '#private' opts out. */
+                fn->is_public = !is_extern &&
+                                strstr(t, "#private") == NULL &&
+                                (fn->is_colon ||
+                                 starts_word(t, "screen") ||
+                                 starts_word(t, "preview") ||
+                                 starts_word(t, "page") ||
+                                 starts_word(t, "frame") ||
+                                 starts_word(t, "scene") ||
+                                 starts_word(t, "fn"));
                 if(has_body && !is_extern) {
                     mode = FUNCTION;
                     depth = 1;
