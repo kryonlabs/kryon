@@ -473,6 +473,27 @@ kir_parse_file(const char *path, const char *root)
             if(paren_depth > 0 || bracket_depth > 0 || in_string ||
                expr_brace > 0)
                 continue;
+            /* Continuation: a line ending in a binary operator or comma
+             * continues onto the next (legacy line_needs_continuation).
+             * Exclude ++/-- (they end statements). */
+            {
+                size_t pl = (size_t)pending_len;
+                char last;
+                char prev;
+
+                while(pl > 0 && (pending[pl - 1] == ' ' ||
+                                 pending[pl - 1] == '\t'))
+                    pl--;
+                last = pl > 0 ? pending[pl - 1] : '\0';
+                prev = pl > 1 ? pending[pl - 2] : '\0';
+                if(last != '\0' &&
+                   (last == '&' || last == '|' || last == '+' || last == '-' ||
+                    last == '*' || last == '/' || last == '%' || last == '=' ||
+                    last == ',' || last == '<' || last == '>') &&
+                   !(prev == last && (last == '+' || last == '-')) &&
+                   !(prev == last && (last == '&' || last == '|')))
+                    continue;
+            }
         }
         t = pending;
         {

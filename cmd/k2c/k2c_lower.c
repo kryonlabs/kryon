@@ -869,6 +869,12 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
             strip_alias_type(m, base, tmpb, sizeof(tmpb));
             snprintf(base, sizeof(base), "%s", tmpb);
+            if(suffix[0] != '\0') {
+                char tmps[LOWER_NAME_MAX];
+
+                strip_alias_type(m, suffix, tmps, sizeof(tmps));
+                snprintf(suffix, sizeof(suffix), "%s", tmps);
+            }
         }
         fprintf(c, "static %s %s%s = %s;\n", base, g->name, suffix,
                 g->init[0] ? g->init : "{0}");
