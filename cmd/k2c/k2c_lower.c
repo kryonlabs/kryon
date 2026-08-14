@@ -678,14 +678,28 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                     if(eq2 != NULL) {
                         size_t tl = (size_t)(eq2 - ty);
                         const char *init = eq2 + 3;
+                        char base[LOWER_NAME_MAX];
+                        char suffix[LOWER_NAME_MAX];
 
                         if(tl >= sizeof(type))
                             tl = sizeof(type) - 1;
                         memcpy(type, ty, tl);
                         type[tl] = '\0';
+                        split_array_type(type, base, sizeof(base),
+                                         suffix, sizeof(suffix));
+                        {
+                            char tmpb[LOWER_NAME_MAX];
+
+                            strip_alias_type(m, base, tmpb, sizeof(tmpb));
+                            snprintf(base, sizeof(base), "%s", tmpb);
+                        }
                         emit_indent(c, indent);
-                        fprintf(c, "%s %s = %s;\n", type, name, init);
+                        fprintf(c, "%s %s%s = %s;\n", base, name, suffix,
+                                init);
                     } else {
+                        char base[LOWER_NAME_MAX];
+                        char suffix[LOWER_NAME_MAX];
+
                         snprintf(type, sizeof(type), "%s", ty);
                         /* strip trailing brace if typed on block opener */
                         {
@@ -693,8 +707,16 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                             if(br != NULL)
                                 *br = '\0';
                         }
+                        split_array_type(type, base, sizeof(base),
+                                         suffix, sizeof(suffix));
+                        {
+                            char tmpb[LOWER_NAME_MAX];
+
+                            strip_alias_type(m, base, tmpb, sizeof(tmpb));
+                            snprintf(base, sizeof(base), "%s", tmpb);
+                        }
                         emit_indent(c, indent);
-                        fprintf(c, "%s %s = {0};\n", type, name);
+                        fprintf(c, "%s %s%s = {0};\n", base, name, suffix);
                     }
                 } else {
                     emit_indent(c, indent);

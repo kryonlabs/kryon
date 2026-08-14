@@ -201,6 +201,25 @@ classify_stmt(const char *s)
         return KIR_STMT_RAW;
     if(strstr(s, ":=") != NULL)
         return KIR_STMT_DECL;
+    if(strstr(s, "::") != NULL)
+        return KIR_STMT_RAW;   /* nested '::' definitions stay raw */
+    if(strstr(s, ": ") != NULL || strstr(s, ": [") != NULL) {
+        /* typed decl only when an identifier precedes the colon */
+        const char *c2 = strstr(s, ": ");
+
+        if(c2 == NULL)
+            c2 = strstr(s, ": [");
+        if(c2 != NULL && c2 > s &&
+           (isalpha((unsigned char)s[0]) || s[0] == '_')) {
+            int ident_only = 1;
+
+            for(const char *q = s; q < c2; q++)
+                if(!(isalnum((unsigned char)*q) || *q == '_'))
+                    ident_only = 0;
+            if(ident_only)
+                return KIR_STMT_DECL;  /* 'x: T' / 'x: [N] T' */
+        }
+    }
     if(strstr(s, "=") != NULL)
         return KIR_STMT_ASSIGN;
     if(strchr(s, '(') != NULL || strchr(s, '+') != NULL ||
@@ -382,6 +401,8 @@ kir_parse_file(const char *path, const char *root)
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
+    char lookahead[K2IR_LINE_MAX];
+    int have_look = 0;
     int pending_len = 0;
     int paren_depth = 0;
     int bracket_depth = 0;
@@ -400,9 +421,14 @@ kir_parse_file(const char *path, const char *root)
     if(module == NULL)
         die("out of memory");
 
-    while(fgets(line, sizeof(line), in) != NULL) {
+    while(have_look || fgets(line, sizeof(line), in) != NULL) {
         char raw[K2IR_LINE_MAX];
         const char *t;
+
+        if(have_look) {
+            snprintf(line, sizeof(line), "%s", lookahead);
+            have_look = 0;
+        }
 
         line_no++;
         snprintf(raw, sizeof(raw), "%s", line);
@@ -503,6 +529,33 @@ kir_parse_file(const char *path, const char *root)
                 if((last == '&' || last == '|') &&
                    (prev == last || prev == ' ' || prev == '\t'))
                     continue;
+                /* Look ahead: a next line starting with ':' (ternary
+                 * else-branch) continues this statement. */
+                {
+                    char la[K2IR_LINE_MAX];
+                    const char *lt;
+
+                    if(fgets(la, sizeof(la), in) != NULL) {
+                        lt = la;
+                        while(*lt == ' ' || *lt == '\t')
+                            lt++;
+                        if(*lt == ':' && lt[1] != ':') {
+                            if(pending_len > 0 &&
+                               pending_len + 2 < (int)sizeof(pending)) {
+                                pending[pending_len++] = ' ';
+                                pending[pending_len] = '\0';
+                            }
+                            strncat(pending, lt,
+                                    sizeof(pending) - pending_len - 1);
+                            pending_len = (int)strlen(pending);
+                            line_no++;
+                            continue;   /* keep accumulating */
+                        }
+                        /* not a continuation: stash for the next iteration */
+                        snprintf(lookahead, sizeof(lookahead), "%s", la);
+                        have_look = 1;
+                    }
+                }
             }
         }
         t = pending;
