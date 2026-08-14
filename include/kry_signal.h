@@ -5,7 +5,7 @@
  * Signals: a declarative event bus for the scene tree. A node declares a
  * signal by name; another node connects that (emitter, signal) pair to one of
  * its handler functions; emit fires all matching connections. Compile-time
- * only at the .kry level (kc lowers signal/emit/connect to these calls); no
+ * only at the .kry level (k2c lowers signal/emit/connect to these calls); no
  * runtime scripting VM.
  */
 
