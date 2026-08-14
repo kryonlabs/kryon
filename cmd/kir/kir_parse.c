@@ -378,6 +378,7 @@ kir_parse_file(const char *path, const char *root)
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
     enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } mode = TOP;
+    enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } enum_return = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
@@ -491,7 +492,9 @@ kir_parse_file(const char *path, const char *root)
                     last == '*' || last == '/' || last == '%' || last == '=' ||
                     last == ',' || last == '<' || last == '>') &&
                    !(prev == last && (last == '+' || last == '-')) &&
-                   !(prev == last && (last == '&' || last == '|')))
+                   !(prev == last && (last == '&' || last == '|')) &&
+                   !(strchr("+-*&", last) != NULL && prev != ' ' &&
+                     prev != '\t'))
                     continue;
             }
         }
@@ -626,16 +629,19 @@ kir_parse_file(const char *path, const char *root)
                     mode = TYPE;
                 fn = NULL;
             }
-        } else if(mode == TOP && strncmp(t, "#enum", 5) == 0) {
+        } else if((mode == TOP || mode == TYPE) &&
+                  strncmp(t, "#enum", 5) == 0) {
             /* #enum { ... } — capture the constants as a type body. */
             KirType *ety = KirModuleAddType(module, "#enum",
                                             KirSpan(rel, line_no, 1));
 
-            if(ety != NULL && strchr(t, '}') == NULL)
+            (void)ety;
+            enum_return = mode;
+            if(strchr(t, '}') == NULL)
                 mode = ENUM;
         } else if(mode == ENUM) {
             if(t[0] == '}') {
-                mode = TOP;
+                mode = enum_return;
             } else {
                 KirType *ety = &module->types[module->type_count - 1];
                 size_t used = strlen(ety->body);
