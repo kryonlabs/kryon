@@ -895,6 +895,49 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     fprintf(c, "#include <stdio.h>\n");
     fprintf(c, "#include \"ui_inspect.h\"\n");
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
+    /* #extern imports: emit C prototypes parsed from the raw signature
+     * ('name :: (args) -> Ret #extern'). */
+    for(i = 0; i < m->import_count; i++) {
+        const KirImport *imp = &m->imports[i];
+
+        if(imp->kind != KIR_IMPORT_EXTERN || imp->signature[0] == '\0')
+            continue;
+        {
+            const char *sig = imp->signature;
+            const char *op = strchr(sig, '(');
+            const char *cl = op != NULL ? strchr(op, ')') : NULL;
+            const char *arrow = cl != NULL ? strstr(cl, "->") : NULL;
+            char ret[LOWER_NAME_MAX];
+            char cargs[LOWER_TEXT_MAX];
+
+            if(arrow != NULL) {
+                const char *r = arrow + 2;
+                size_t rn = 0;
+
+                while(*r == ' ' || *r == '\t')
+                    r++;
+                while(*r != '\0' && *r != '#' && rn + 1 < sizeof(ret))
+                    ret[rn++] = *r++;
+                while(rn > 0 && (ret[rn - 1] == ' ' || ret[rn - 1] == '\t'))
+                    rn--;
+                ret[rn] = '\0';
+            } else {
+                snprintf(ret, sizeof(ret), "void");
+            }
+            if(op != NULL && cl != NULL && cl > op)
+                snprintf(cargs, sizeof(cargs), "%.*s",
+                         (int)(cl - op - 1), op + 1);
+            else
+                snprintf(cargs, sizeof(cargs), "void");
+            {
+                char conv[LOWER_TEXT_MAX];
+
+                convert_args(m, cargs, conv, sizeof(conv));
+                fprintf(c, "%s %s(%s);\n",
+                        ret[0] ? ret : "void", imp->name, conv);
+            }
+        }
+    }
     for(i = 0; i < m->global_count; i++) {
         const KirGlobal *g = &m->globals[i];
         char base[LOWER_TEXT_MAX];
