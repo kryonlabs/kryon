@@ -210,6 +210,8 @@ classify_stmt(const char *s)
         return KIR_STMT_BLOCK_OPEN;
     if(starts_word(s, "if") || starts_word(s, "else"))
         return KIR_STMT_IF;
+    if(starts_word(s, "guard"))
+        return KIR_STMT_IF;   /* 'guard cond' lowers to if(cond) return */
     if(starts_word(s, "while"))
         return KIR_STMT_WHILE;
     if(starts_word(s, "for"))
@@ -217,6 +219,8 @@ classify_stmt(const char *s)
     if(starts_word(s, "switch"))
         return KIR_STMT_SWITCH;
     if(starts_word(s, "case") || starts_word(s, "default"))
+        return KIR_STMT_CASE;
+    if(strcmp(s, "default:") == 0)
         return KIR_STMT_CASE;
     if(starts_word(s, "return"))
         return KIR_STMT_RETURN;
@@ -882,11 +886,13 @@ kir_parse_file(const char *path, const char *root)
                 /* Continuation operators: ',','=','%','/' always; '+','-','*',
                  * '<','>' only in binary position (prev is space — excludes
                  * 'char*','x++' handled below,'<stdlib.h>'); '&','|' when
-                 * doubled ('&&','||') or space-preceded; ':' closes an open
-                 * ternary ('? x' / 'cond ? y' continuation lines). */
+                 * doubled ('&&','||') or space-preceded; ':' only with an
+                 * open ternary ('?' pending) — 'case 1:' and goto labels
+                 * ('fail:') end their statement. */
                 if(last == ',' || last == '=' || last == '%' ||
                    last == '?' ||
-                   (last == ':' && prev != ':') ||
+                   (last == ':' && prev != ':' &&
+                    strchr(pending, '?') != NULL) ||
                    (last == '/' && prev != '>'))
                     continue;
                 if((last == '+' || last == '-' || last == '*' ||

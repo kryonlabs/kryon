@@ -155,7 +155,8 @@ resolve_aliased_fn(const KirModule *m, const K2cModuleSyms *restab,
         if(strlen(imp->name) != alen || strncmp(imp->name, alias, alen) != 0)
             continue;
         for(j = 0; j < restab_count; j++) {
-            if(strcmp(restab[j].module_slash, imp->target) != 0)
+            if(strcmp(restab[j].module_slash, imp->target) != 0 &&
+               strcmp(restab[j].module_stem, imp->target) != 0)
                 continue;
             for(int k = 0; k < restab[j].fn_count; k++) {
                 if(strlen(restab[j].fns[k].kry) == flen &&
@@ -586,6 +587,21 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
 
             snprintf(cond, sizeof(cond), "%s", rw);
             strip_block_brace(cond);
+            if(strncmp(cond, "guard ", 6) == 0) {
+                /* 'guard cond' -> if(cond) { fire defers; return; } */
+                memmove(cond, cond + 6, strlen(cond + 6) + 1);
+                emit_indent(c, indent);
+                fprintf(c, "if(%s) {\n", cond);
+                for(int d = defer_count - 1; d >= 0; d--) {
+                    emit_indent(c, indent + 1);
+                    fprintf(c, "%s;\n", defers[d].stmt);
+                }
+                emit_indent(c, indent + 1);
+                fprintf(c, "return;\n");
+                emit_indent(c, indent);
+                fprintf(c, "}\n");
+                break;
+            }
             if(strncmp(cond, "else if ", 8) == 0) {
                 memmove(cond, cond + 8, strlen(cond + 8) + 1);
                 emit_indent(c, indent);
@@ -1257,10 +1273,17 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
-        emit_guard_open(c, g->guard);
-        fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
-                base, g->name, suffix, g->init[0] ? g->init : "{0}");
-        emit_guard_close(c, g->guard);
+        {
+            char initw[LOWER_TEXT_MAX];
+
+            /* initializers carry 'nil' and module-local function refs */
+            rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw));
+            emit_guard_open(c, g->guard);
+            fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
+                    base, g->name, suffix,
+                    initw[0] ? initw : "{0}");
+            emit_guard_close(c, g->guard);
+        }
     }
     for(i = 0; i < m->state_count; i++) {
         const KirStateField *f = &m->state_fields[i];
@@ -1330,6 +1353,20 @@ k2c_build_syms(const KirProgram *program, K2cModuleSyms *out)
         for(; *p != '\0' && n + 1 < sizeof(out->module_slash); p++)
             out->module_slash[n++] = (*p == '.') ? '/' : *p;
         out->module_slash[n] = '\0';
+    }
+    /* module stem: the source path minus '.kry' — imports may name the
+     * file path ('src/screens/settings/settings_theme') instead of the
+     * dotted module name. */
+    {
+        const char *sp = program->modules[0].source_path;
+        size_t n = strlen(sp);
+
+        if(n > 4 && strcmp(sp + n - 4, ".kry") == 0)
+            n -= 4;
+        if(n >= sizeof(out->module_stem))
+            n = sizeof(out->module_stem) - 1;
+        memcpy(out->module_stem, sp, n);
+        out->module_stem[n] = '\0';
     }
     for(i = 0; i < program->module_count && out->fn_count < 256; i++) {
         const KirModule *m = &program->modules[i];

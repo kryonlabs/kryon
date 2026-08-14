@@ -8,7 +8,8 @@
  * inputs; used to resolve alias-qualified calls (start.draw_start_page(...)
  * -> ide_start_page_draw_start_page_kry_draw(...)). */
 typedef struct K2cModuleSyms {
-    char module_slash[KIR_PATH_MAX];
+    char module_stem[KIR_PATH_MAX];  /* source path minus .kry */
+        char module_slash[KIR_PATH_MAX];
     struct {
         char kry[KIR_NAME_MAX];
         char c[KIR_NAME_MAX * 3];

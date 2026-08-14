@@ -53,6 +53,7 @@ KirProgramFree(KirProgram *program)
         free(m->state_fields);
         free(m->imports);
         free(m->functions);
+        free(m->defines);
     }
     free(program->modules);
     free(program);
@@ -198,6 +199,28 @@ KirModuleAddStatic(KirModule *module, const char *name, const char *type,
         module->globals[module->global_count - 1].is_static = 1;
 }
 
+KirDefine *
+KirModuleAddDefine(KirModule *module, const char *name, const char *value,
+                   KirSourceSpan span)
+{
+    KirDefine *defines;
+    KirDefine *d;
+
+    if(module == NULL)
+        return NULL;
+    defines = kir_realloc_array(module->defines, &module->define_cap,
+                                module->define_count, sizeof(KirDefine));
+    if(defines == NULL)
+        return NULL;
+    module->defines = defines;
+    d = &module->defines[module->define_count++];
+    memset(d, 0, sizeof(*d));
+    kir_copy(d->name, sizeof(d->name), name);
+    kir_copy(d->value, sizeof(d->value), value);
+    d->span = span;
+    return d;
+}
+
 KirType *
 KirModuleAddType(KirModule *module, const char *name, KirSourceSpan span)
 {
@@ -247,6 +270,7 @@ KirImportKindName(KirImportKind kind)
     case KIR_IMPORT_HEADER: return "header";
     case KIR_IMPORT_MODULE: return "module";
     case KIR_IMPORT_EXTERN: return "extern";
+    case KIR_IMPORT_INTRINSIC: return "intrinsic";
     case KIR_IMPORT_CAPABILITY: return "capability";
     case KIR_IMPORT_HOST: return "host";
     default: return "unknown";

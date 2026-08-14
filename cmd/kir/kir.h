@@ -13,13 +13,14 @@
 enum {
     KIR_PATH_MAX = 1024,
     KIR_NAME_MAX = 128,
-    KIR_TEXT_MAX = 1024
+    KIR_TEXT_MAX = 4096
 };
 
 typedef enum KirImportKind {
     KIR_IMPORT_HEADER = 1,
     KIR_IMPORT_MODULE,
     KIR_IMPORT_EXTERN,
+    KIR_IMPORT_INTRINSIC,
     KIR_IMPORT_CAPABILITY,
     KIR_IMPORT_HOST
 } KirImportKind;
@@ -102,6 +103,14 @@ typedef struct KirGlobal {
     KirSourceSpan span;
 } KirGlobal;
 
+/* A `Name :: #define value` module constant — emitted as a real C #define. */
+typedef struct KirDefine {
+    char name[KIR_NAME_MAX];
+    char value[KIR_TEXT_MAX];
+    char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
+    KirSourceSpan span;
+} KirDefine;
+
 /* A `Name :: struct { fields }` type declaration. body holds the raw field
  * lines (one per line, no braces). */
 typedef struct KirType {
@@ -135,6 +144,9 @@ typedef struct KirModule {
     KirGlobal *globals;
     int global_count;
     int global_cap;
+    KirDefine *defines;
+    int define_count;
+    int define_cap;
     KirType *types;
     int type_count;
     int type_cap;
@@ -174,6 +186,8 @@ void KirModuleAddGlobal(KirModule *module, const char *name, const char *type,
                         const char *init, KirSourceSpan span);
 void KirModuleAddStatic(KirModule *module, const char *name, const char *type,
                         const char *init, KirSourceSpan span);
+KirDefine *KirModuleAddDefine(KirModule *module, const char *name,
+                              const char *value, KirSourceSpan span);
 KirType *KirModuleAddType(KirModule *module, const char *name,
                           KirSourceSpan span);
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
