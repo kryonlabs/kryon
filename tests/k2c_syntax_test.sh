@@ -43,6 +43,16 @@ screen Valid(viewport: Rectangle) {
     }
     defer count = 0
 }
+
+knr_branches :: (n: int) -> int {
+    if n > 0 {
+        return 100
+    } else if n < 0 {
+        return 200
+    } else {
+        return 300
+    }
+}
 EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry"
@@ -84,6 +94,14 @@ grep -Fq '(void)value;' "$c"
 grep -Fq 'if(count == NULL) {' "$c"
 grep -Fq '} else if(count > 10) {' "$c"
 grep -Fq '} else {' "$c"
+
+# K&R '} else {' lines: close + re-open recorded on the else statement,
+# bodies must survive (regression: the else branch used to be dropped)
+grep -Fq 'if(n > 0) {' "$c"
+grep -Fq 'return 100;' "$c"
+grep -Fq '} else if(n < 0) {' "$c"
+grep -Fq 'return 200;' "$c"
+grep -Fq 'return 300;' "$c"
 
 # while with parens
 grep -Fq 'while(count < 3) {' "$c"

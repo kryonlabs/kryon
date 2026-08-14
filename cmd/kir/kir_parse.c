@@ -478,6 +478,18 @@ kir_parse_file(const char *path, const char *root)
                     strcmp(w0, "struct") == 0 || strcmp(w0, "enum") == 0 ||
                     strcmp(w0, "state") == 0 || strcmp(w0, "app") == 0 ||
                     strstr(pending, " :: ") != NULL;
+                /* K&R "} else {" / "} else if (...) {": the leading '}' closes
+                 * the if-body and the trailing '{' re-opens the else-body, so
+                 * both braces are block braces even though the leading word
+                 * extraction above saw only '}'. */
+                if(!header_line && pending[0] == '}') {
+                    const char *eq = pending + 1;
+
+                    while(*eq == ' ' || *eq == '\t')
+                        eq++;
+                    if(starts_word(eq, "else"))
+                        header_line = 1;
+                }
                 for(const char *p = trimmed; *p != '\0'; p++) {
                     if(in_string) {
                         if(*p == '\\' && p[1] != '\0')
@@ -729,32 +741,49 @@ kir_parse_file(const char *path, const char *root)
                                    KirSpan(rel, line_no, 1));
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strstr(t, "#global") != NULL) {
-            /* name :: Type #global — a module-level global variable. */
+            /* name :: Type #global — a module-level global variable.
+             * 'name :: Type = init #global' carries the initializer between
+             * ' = ' and the trailing directives; both type and init end
+             * there, not at '#global'. */
             char gname[KIR_NAME_MAX];
             char gtype[KIR_TEXT_MAX];
+            char ginit[KIR_TEXT_MAX];
             const char *colon = strstr(t, "::");
             const char *ty = colon + 2;
             const char *hash = strstr(t, "#global");
             const char *eq = strstr(t, " = ");
+            const char *tyend = (eq != NULL && eq < hash) ? eq : hash;
             size_t nn = 0;
 
             while(t < colon && (isalnum((unsigned char)*t) || *t == '_') &&
-                  nn + 1 < sizeof(gname))
+                   nn + 1 < sizeof(gname))
                 gname[nn++] = *t++;
             gname[nn] = '\0';
             while(*ty == ' ' || *ty == '\t')
                 ty++;
             nn = 0;
-            while(ty < hash && nn + 1 < sizeof(gtype))
+            while(ty < tyend && nn + 1 < sizeof(gtype))
                 gtype[nn++] = *ty++;
             while(nn > 0 && (gtype[nn - 1] == ' ' || gtype[nn - 1] == '\t'))
                 nn--;
             gtype[nn] = '\0';
-            if(eq != NULL && eq < hash)
-                KirModuleAddGlobal(module, gname, gtype, eq + 3,
+            nn = 0;
+            if(eq != NULL && eq < hash) {
+                const char *ib = eq + 3;
+                const char *ie = hash;
+
+                while(ib < ie && nn + 1 < sizeof(ginit))
+                    ginit[nn++] = *ib++;
+                while(nn > 0 && (ginit[nn - 1] == ' ' ||
+                                 ginit[nn - 1] == '\t'))
+                    nn--;
+            }
+            ginit[nn] = '\0';
+            if(strstr(t, "#private") != NULL)
+                KirModuleAddStatic(module, gname, gtype, ginit,
                                    KirSpan(rel, line_no, 1));
             else
-                KirModuleAddGlobal(module, gname, gtype, "",
+                KirModuleAddGlobal(module, gname, gtype, ginit,
                                    KirSpan(rel, line_no, 1));
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strstr(t, "#type") != NULL) {
@@ -889,14 +918,30 @@ kir_parse_file(const char *path, const char *root)
             } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
             } else if(t[0] == '}') {
-                if(depth > 0)
-                    depth--;
-                if(depth == 0) {
-                    mode = TOP;
-                    fn = NULL;
-                } else {
-                    KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, t, "",
+                /* K&R "} else {" / "} else if (...) {": the brace closes the
+                 * if-body and the else re-opens a new one, so depth is net
+                 * unchanged. Recorded as BLOCK_CLOSE plus an IF whose text
+                 * starts with "else" — the k2c lowering emits the "} else"
+                 * itself and suppresses the duplicate close. */
+                const char *eq = t + 1;
+
+                while(*eq == ' ' || *eq == '\t')
+                    eq++;
+                if(depth > 1 && starts_word(eq, "else")) {
+                    KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));
+                    KirFunctionAddStmt(fn, KIR_STMT_IF, eq, "",
+                                       KirSpan(rel, line_no, 1));
+                } else {
+                    if(depth > 0)
+                        depth--;
+                    if(depth == 0) {
+                        mode = TOP;
+                        fn = NULL;
+                    } else {
+                        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, t, "",
+                                           KirSpan(rel, line_no, 1));
+                    }
                 }
             } else {
                 KirStmtKind kind = classify_stmt(t);
