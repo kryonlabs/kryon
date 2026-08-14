@@ -33,11 +33,6 @@ K2B = $(BUILD_DIR)/bin/k2b
 KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
-LEGACY_K2C = $(BUILD_ROOT)/bin/k2c
-LEGACY_K2IR = $(BUILD_ROOT)/bin/k2ir
-LEGACY_K2B = $(BUILD_ROOT)/bin/k2b
-LEGACY_KT = $(BUILD_ROOT)/bin/kt
-LEGACY_KRYON_CMD = $(BUILD_ROOT)/bin/kryon
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
@@ -161,29 +156,9 @@ KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c
 
-ifneq ($(BUILD_DIR),$(BUILD_ROOT))
-.PHONY: $(LEGACY_K2C) $(LEGACY_K2IR) $(LEGACY_K2B) $(LEGACY_KT) $(LEGACY_KRYON_CMD)
-
-$(LEGACY_K2C): $(K2C) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(K2C) $@
-
-$(LEGACY_K2IR): $(K2IR) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(K2IR) $@
-
-$(LEGACY_K2B): $(K2B) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(K2B) $@
-
-$(LEGACY_KT): $(KT) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(KT) $@
-
-$(LEGACY_KRYON_CMD): $(KRYON_CMD) | $(BUILD_ROOT)/bin
-	$(INSTALL) -m 755 $(KRYON_CMD) $@
-
-$(BUILD_ROOT)/bin:
-	mkdir -p $@
-endif
+k2c: $(K2C)
 
 all: $(LIB) $(K2C) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 

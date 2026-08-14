@@ -1,4 +1,13 @@
 KRYON_DIR ?= vendor/kryon
+
+# Canonical kryon tool paths for consumer builds (same layout kryon itself
+# uses: build/<platform>-<arch>/bin). Consumers drive the compiler through
+# K2C and build it with 'make -C $(KRYON_DIR) k2c' -- there are no legacy
+# top-level build/bin aliases.
+KRYON_BUILD_PLATFORM ?= $(shell uname -s 2>/dev/null | sed -e 's/^Linux$/linux/' -e 's/^FreeBSD$/freebsd/' -e 's/^Darwin$/macos/')
+KRYON_BUILD_ARCH ?= $(if $(filter amd64,$(shell uname -m 2>/dev/null)),x86_64,$(shell uname -m 2>/dev/null))
+KRYON_TOOLS_BIN ?= $(KRYON_DIR)/build/$(KRYON_BUILD_PLATFORM)-$(KRYON_BUILD_ARCH)/bin
+K2C ?= $(KRYON_TOOLS_BIN)/k2c
 CMAKE ?= cmake
 KRYON_VENDOR_BUILD_DIR ?= build/vendor
 KRYON_VENDOR_ORDER_ONLY ?=
