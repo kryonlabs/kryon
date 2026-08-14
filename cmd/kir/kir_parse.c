@@ -378,7 +378,7 @@ kir_parse_file(const char *path, const char *root)
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
     enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } mode = TOP;
-    enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } enum_return = TOP;
+    int enum_return = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
     pending[0] = '\0';
