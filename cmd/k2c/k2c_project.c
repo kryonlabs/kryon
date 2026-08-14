@@ -1,9 +1,9 @@
 /*
  * k2c_project.c — emit kryon_project.h/.c after all files lower. The
- * app-host ABI (CreateAppHost/DestroyAppHost + route table) that
- * kryon-preview capture and Krait's live-preview host builds consume.
- * Routes auto-collect from public screens (screen/preview/page keywords);
- * explicit route{} blocks are not captured by Kir yet.
+ * app-host ABI (CreateAppHost/DestroyAppHost + route table) consumed by
+ * the preview tool and IDE host builds. Routes auto-collect from public
+ * screens (screen/preview/page/frame/scene/fn keywords); explicit route{}
+ * blocks are not captured by Kir yet.
  */
 #include "k2c_lower.h"
 #include "kir.h"
