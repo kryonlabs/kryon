@@ -385,6 +385,7 @@ kir_parse_file(const char *path, const char *root)
     int paren_depth = 0;
     int bracket_depth = 0;
     int in_string = 0;
+    int expr_brace = 0;
 
     in = fopen(path, "rb");
     if(in == NULL)
@@ -418,25 +419,58 @@ kir_parse_file(const char *path, const char *root)
             }
             strncat(pending, trimmed, sizeof(pending) - pending_len - 1);
             pending_len = (int)strlen(pending);
-            for(const char *p = trimmed; *p != '\0'; p++) {
-                if(in_string) {
-                    if(*p == '\\' && p[1] != '\0')
-                        p++;
-                    else if(*p == '"')
-                        in_string = 0;
-                } else if(*p == '"') {
-                    in_string = 1;
-                } else if(*p == '(') {
-                    paren_depth++;
-                } else if(*p == ')') {
-                    paren_depth--;
-                } else if(*p == '[') {
-                    bracket_depth++;
-                } else if(*p == ']') {
-                    bracket_depth--;
+            /* Decide whether braces at paren-depth 0 on this logical line are
+             * block braces (control/headers open scopes) or expression braces
+             * (compound literals / initializers continue the statement). */
+            {
+                int header_line = 0;
+                char w0[16];
+                size_t wl = 0;
+
+                for(const char *w = pending;
+                    *w != '\0' && (isalnum((unsigned char)*w) || *w == '_') &&
+                    wl + 1 < sizeof(w0); w++)
+                    w0[wl++] = *w;
+                w0[wl] = '\0';
+                header_line =
+                    strcmp(w0, "if") == 0 || strcmp(w0, "else") == 0 ||
+                    strcmp(w0, "while") == 0 || strcmp(w0, "for") == 0 ||
+                    strcmp(w0, "switch") == 0 || strcmp(w0, "do") == 0 ||
+                    strcmp(w0, "screen") == 0 || strcmp(w0, "preview") == 0 ||
+                    strcmp(w0, "page") == 0 || strcmp(w0, "scene") == 0 ||
+                    strcmp(w0, "frame") == 0 || strcmp(w0, "fn") == 0 ||
+                    strcmp(w0, "struct") == 0 || strcmp(w0, "enum") == 0 ||
+                    strcmp(w0, "state") == 0 || strcmp(w0, "app") == 0 ||
+                    strstr(pending, " :: ") != NULL;
+                for(const char *p = trimmed; *p != '\0'; p++) {
+                    if(in_string) {
+                        if(*p == '\\' && p[1] != '\0')
+                            p++;
+                        else if(*p == '"')
+                            in_string = 0;
+                    } else if(*p == '"') {
+                        in_string = 1;
+                    } else if(*p == '(') {
+                        paren_depth++;
+                    } else if(*p == ')') {
+                        paren_depth--;
+                    } else if(*p == '[') {
+                        bracket_depth++;
+                    } else if(*p == ']') {
+                        bracket_depth--;
+                    } else if(paren_depth == 0 && bracket_depth == 0) {
+                        if(*p == '{') {
+                            if(!header_line)
+                                expr_brace++;
+                        } else if(*p == '}') {
+                            if(!header_line && expr_brace > 0)
+                                expr_brace--;
+                        }
+                    }
                 }
             }
-            if(paren_depth > 0 || bracket_depth > 0 || in_string)
+            if(paren_depth > 0 || bracket_depth > 0 || in_string ||
+               expr_brace > 0)
                 continue;
         }
         t = pending;
