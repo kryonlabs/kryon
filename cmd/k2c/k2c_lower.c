@@ -695,7 +695,46 @@ lower_module(const KirModule *m, const char *out_dir)
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
-        fprintf(h, "\ntypedef struct {\n%s} %s;\n", ty->body, ty->name);
+        fprintf(h, "\ntypedef struct {\n");
+        /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
+        {
+            const char *line = ty->body;
+
+            while(line != NULL && *line != '\0') {
+                const char *nl = strchr(line, '\n');
+                size_t len = nl ? (size_t)(nl - line) : strlen(line);
+                char raw[LOWER_TEXT_MAX];
+                char name[LOWER_NAME_MAX];
+                char type[LOWER_TEXT_MAX];
+                char base[LOWER_TEXT_MAX];
+                char suffix[LOWER_NAME_MAX];
+                const char *colon;
+
+                if(len >= sizeof(raw))
+                    len = sizeof(raw) - 1;
+                memcpy(raw, line, len);
+                raw[len] = '\0';
+                colon = strchr(raw, ':');
+                if(colon != NULL) {
+                    const char *ty2 = colon + 1;
+                    size_t nl2 = (size_t)(colon - raw);
+
+                    while(*ty2 == ' ' || *ty2 == '\t')
+                        ty2++;
+                    if(nl2 >= sizeof(name))
+                        nl2 = sizeof(name) - 1;
+                    memcpy(name, raw, nl2);
+                    name[nl2] = '\0';
+                    snprintf(type, sizeof(type), "%s", ty2);
+                    split_array_type(type, base, sizeof(base),
+                                     suffix, sizeof(suffix));
+                    strip_alias_type(m, base, base, sizeof(base));
+                    fprintf(h, "    %s %s%s;\n", base, name, suffix);
+                }
+                line = nl ? nl + 1 : NULL;
+            }
+        }
+        fprintf(h, "} %s;\n", ty->name);
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];

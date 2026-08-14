@@ -573,6 +573,8 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == TYPE) {
             if(t[0] == '}') {
                 mode = TOP;
+            } else if(t[0] == '#') {
+                /* comment inside a struct body — skip */
             } else {
                 KirType *ty = &module->types[module->type_count - 1];
                 size_t used = strlen(ty->body);
@@ -580,7 +582,9 @@ kir_parse_file(const char *path, const char *root)
                 snprintf(ty->body + used, sizeof(ty->body) - used, "%s\n", t);
             }
         } else if(mode == FUNCTION) {
-            if(t[0] == '}') {
+            if(t[0] == '#') {
+                /* comment inside a body — skip (directives are top-level) */
+            } else if(t[0] == '}') {
                 if(depth > 0)
                     depth--;
                 if(depth == 0) {
