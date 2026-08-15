@@ -240,7 +240,7 @@ KryHttpRequest *kry_http_get(const char *url, int timeout_s)
 
 KryHttpStatus kry_http_poll(KryHttpRequest *r) { (void)r; return KRY_HTTP_FAILED; }
 int kry_http_status_code(KryHttpRequest *r) { (void)r; return 0; }
-const char *kry_http_response(const KryHttpRequest *r) { (void)r; return NULL; }
+const char *kry_http_response(KryHttpRequest *r) { (void)r; return NULL; }
 void kry_http_free(KryHttpRequest *r) { (void)r; }
 
 #endif
