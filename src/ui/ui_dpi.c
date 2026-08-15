@@ -74,10 +74,19 @@ UpdateUIDPI(int view_width, int view_height)
         if(g_device_density > 0.0f && g_device_density > real_dpi)
             real_dpi = g_device_density;
 
+#if !defined(PLATFORM_WEB)
+        /* Native windows are sized in physical pixels, so the monitor scale
+         * factor is a legitimate additional scaling input. The web is
+         * different: the viewport IS CSS pixels (density-independent by
+         * definition) and the canvas backing store already absorbs
+         * devicePixelRatio — raylib's web GetWindowScaleDPI() returns exactly
+         * that ratio, and taking it here scaled phone UIs by dpr (~3x) on
+         * top of an already-correct viewport ratio. */
         Vector2 dpi_scale = GetWindowScaleDPI();
         float window_dpi = (dpi_scale.x > 1.0f) ? dpi_scale.x : dpi_scale.y;
         if(window_dpi > real_dpi)
             real_dpi = window_dpi;
+#endif
 
         ui_dpi_state.ui_scale = real_dpi;
         if(!(ui_dpi_state.ui_scale > 0.0f) || ui_dpi_state.ui_scale > 8.0f)
