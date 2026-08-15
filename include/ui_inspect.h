@@ -32,6 +32,7 @@ typedef struct UIInspectNode {
 void BeginUIInspectFrame(const char *project_root);
 void EndUIInspectFrame(void);
 void SetUIInspectEnabled(int enabled);
+void SetUIInspectVisible(int visible);
 int UIInspectEnabled(void);
 int UIInspectWidgetCount(void);
 int UIInspectNodeCount(void);

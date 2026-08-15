@@ -1,4 +1,6 @@
 #include "kryon_test.h"
+#include "kry_inject.h"
+#include "kry_sfs.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,21 +30,40 @@ KryTTap(const char *selector)
 {
     UIInspectNode node;
 
-    return KryTFind(selector, &node);
+    if(!KryTFind(selector, &node))
+        return 0;
+    KryonInjectTap(node.bounds.x + node.bounds.width / 2.0f,
+                   node.bounds.y + node.bounds.height / 2.0f);
+    return 1;
 }
 
 int
 KryTType(const char *text)
 {
     kryt_copy(g_kryt_last_text, sizeof(g_kryt_last_text), text);
-    return text != NULL;
+    if(text == NULL || text[0] == '\0')
+        return 0;
+    KryonInjectText(text);
+    return 1;
 }
 
 int
 KryTKey(const char *key)
 {
+    char name[96];
+    char path[160];
+
     kryt_copy(g_kryt_last_key, sizeof(g_kryt_last_key), key);
-    return key != NULL && key[0] != '\0';
+    if(key == NULL || key[0] == '\0')
+        return 0;
+    /* accept "KEY_ENTER" and "ENTER" alike; resolved through the SFS so
+     * key names live in one place */
+    if(strncmp(key, "KEY_", 4) == 0)
+        snprintf(name, sizeof(name), "%s", key);
+    else
+        snprintf(name, sizeof(name), "KEY_%s", key);
+    snprintf(path, sizeof(path), "/input/keys/%s", name);
+    return KrySfsWrite(path, "tap") == 1;
 }
 
 int

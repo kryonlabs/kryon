@@ -124,8 +124,10 @@ function call_args(args, parts, count, i, name, out) {
 function emit_regular_wrapper(return_type, name, args, backend_args, returns_void) {
     print "extern " return_type " " prefix name "(" args ");"
     print return_type " " name "(" args ")"
-    print "{"
+    print "    {"
     if(name == "IsKeyPressed") {
+        print "    if(KryonInjectKeyPressed(key))"
+        print "        return true;"
         print "    if(!g_kryon_keyboard_input_enabled)"
         print "        return false;"
         print "    if(g_kryon_key_pressed_callback != NULL && k_key_prefers_platform(key))"
@@ -138,6 +140,8 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
         print ""
         return
     } else if(name == "IsKeyDown") {
+        print "    if(KryonInjectKeyDown(key))"
+        print "        return true;"
         print "    if(!g_kryon_keyboard_input_enabled)"
         print "        return false;"
         print "    if(g_kryon_key_down_callback != NULL && k_key_prefers_platform(key))"
@@ -149,29 +153,58 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
         print "}"
         print ""
         return
+    } else if(name == "IsKeyReleased") {
+        print "    if(KryonInjectKeyReleased(key))"
+        print "        return true;"
     } else if(name == "IsMouseButtonPressed" || name == "IsMouseButtonDown" || name == "IsMouseButtonReleased") {
+        if(name == "IsMouseButtonPressed") {
+            print "    if(KryonInjectMousePressed(button))"
+            print "        return true;"
+        } else if(name == "IsMouseButtonReleased") {
+            print "    if(KryonInjectMouseReleased(button))"
+            print "        return true;"
+        } else {
+            print "    if(KryonInjectMouseButtonDown(button))"
+            print "        return true;"
+        }
         print "    if(g_kryon_input_override.enabled &&"
         print "       (!g_kryon_input_override.mouse_inside ||"
         print "        !g_kryon_input_override.pass_buttons))"
         print "        return false;"
     } else if(name == "IsMouseButtonUp") {
+        print "    if(KryonInjectMouseButtonUp(button))"
+        print "        return true;"
         print "    if(g_kryon_input_override.enabled &&"
         print "       (!g_kryon_input_override.mouse_inside ||"
         print "        !g_kryon_input_override.pass_buttons))"
         print "        return true;"
     } else if(name == "GetMouseX") {
+        print "    if(KryonInjectMouseActive())"
+        print "        return (int)KryonInjectMouseX();"
         print "    if(g_kryon_input_override.enabled)"
         print "        return (int)g_kryon_input_override.mouse_position.x;"
     } else if(name == "GetMouseY") {
+        print "    if(KryonInjectMouseActive())"
+        print "        return (int)KryonInjectMouseY();"
         print "    if(g_kryon_input_override.enabled)"
         print "        return (int)g_kryon_input_override.mouse_position.y;"
     } else if(name == "GetMousePosition") {
+        print "    if(KryonInjectMouseActive()) {"
+        print "        Vector2 injected = {KryonInjectMouseX(), KryonInjectMouseY()};"
+        print "        return injected;"
+        print "    }"
         print "    if(g_kryon_input_override.enabled)"
         print "        return g_kryon_input_override.mouse_position;"
     } else if(name == "GetMouseDelta") {
+        print "    if(KryonInjectMouseActive()) {"
+        print "        Vector2 injected = {KryonInjectMouseDeltaX(), KryonInjectMouseDeltaY()};"
+        print "        return injected;"
+        print "    }"
         print "    if(g_kryon_input_override.enabled)"
         print "        return g_kryon_input_override.mouse_delta;"
     } else if(name == "GetMouseWheelMove") {
+        print "    if(KryonInjectWheelValue() != 0.0f)"
+        print "        return KryonInjectWheelValue();"
         print "    if(g_kryon_input_override.enabled &&"
         print "       (!g_kryon_input_override.mouse_inside ||"
         print "        !g_kryon_input_override.pass_buttons))"
@@ -181,6 +214,18 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
         print "       (!g_kryon_input_override.mouse_inside ||"
         print "        !g_kryon_input_override.pass_buttons))"
         print "        return (Vector2){0.0f, 0.0f};"
+    } else if(name == "GetCharPressed") {
+        print "    {" 
+        print "        int injected = KryonInjectCharPressed();"
+        print "        if(injected != 0)"
+        print "            return injected;"
+        print "    }"
+    } else if(name == "GetKeyPressed") {
+        print "{"
+        print "        int injected = KryonInjectKeyPressedCode();"
+        print "        if(injected != 0)"
+        print "            return injected;"
+        print "    }"
     }
     if(returns_void) {
         print "    " prefix name "(" backend_args ");"
@@ -194,7 +239,7 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
 function emit_variadic_wrapper(return_type, name, args, fixed_args, backend_args) {
     print "extern " return_type " " prefix name "(" args ");"
     print return_type " " name "(" args ")"
-    print "{"
+    print "    {"
     if(name == "TextFormat")
         print "    static char text_buffer[4096];"
     else
@@ -216,6 +261,7 @@ function emit_variadic_wrapper(return_type, name, args, fixed_args, backend_args
 BEGIN {
     print "/* Generated by tools/generate-kryon-compat.sh; do not edit. */"
     print "#include \"kryon.h\""
+    print "#include \"kry_inject.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
     print ""
@@ -229,12 +275,12 @@ BEGIN {
     print "static KeyPlatformCallback g_kryon_key_down_callback = NULL;"
     print ""
     print "static int k_key_prefers_platform(int key)"
-    print "{"
+    print "    {"
     print "    return key >= 32 && key <= 126;"
     print "}"
     print ""
     print "void BeginKryonInputOverride(KryonInputOverride input)"
-    print "{"
+    print "    {"
     print "    if(g_kryon_input_override_depth < KRYON_INPUT_OVERRIDE_STACK_CAP)"
     print "        g_kryon_input_override_stack[g_kryon_input_override_depth++] ="
     print "            g_kryon_input_override;"
@@ -243,7 +289,7 @@ BEGIN {
     print "}"
     print ""
     print "void EndKryonInputOverride(void)"
-    print "{"
+    print "    {"
     print "    if(g_kryon_input_override_depth > 0) {"
     print "        g_kryon_input_override ="
     print "            g_kryon_input_override_stack[--g_kryon_input_override_depth];"
@@ -253,7 +299,7 @@ BEGIN {
     print "}"
     print ""
     print "int SetKeyboardInputEnabled(int enabled)"
-    print "{"
+    print "    {"
     print "    int old = g_kryon_keyboard_input_enabled;"
     print ""
     print "    g_kryon_keyboard_input_enabled = enabled != 0;"
@@ -261,21 +307,22 @@ BEGIN {
     print "}"
     print ""
     print "int KeyboardInputEnabled(void)"
-    print "{"
+    print "    {"
     print "    return g_kryon_keyboard_input_enabled;"
     print "}"
     print ""
     print "void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,"
     print "                             KeyPlatformCallback key_pressed,"
     print "                             KeyPlatformCallback key_down)"
-    print "{"
+    print "    {"
     print "    g_kryon_key_input_update_callback = update;"
     print "    g_kryon_key_pressed_callback = key_pressed;"
     print "    g_kryon_key_down_callback = key_down;"
     print "}"
     print ""
     print "void UpdateKeyPlatformState(void)"
-    print "{"
+    print "    {"
+    print "    KryonInjectPump();"
     print "    if(g_kryon_key_input_update_callback != NULL)"
     print "        g_kryon_key_input_update_callback();"
     print "}"
@@ -374,7 +421,7 @@ BEGIN {
     }
 
     print return_type " " name "(" args ")"
-    print "{"
+    print "    {"
     # Cast every named parameter to void to suppress -Wunused-parameter.
     n_args = split(args, arg_parts, /,[[:space:]]*/)
     for(ai = 1; ai <= n_args; ai++) {

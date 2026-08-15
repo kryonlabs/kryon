@@ -194,6 +194,13 @@ UIInspectEnabled(void)
     return g_ui_inspect.enabled;
 }
 
+void
+SetUIInspectVisible(int visible)
+{
+    ui_inspect_init_from_env();
+    g_ui_inspect.visible = visible ? 1 : 0;
+}
+
 int
 UIInspectWidgetCount(void)
 {
