@@ -155,6 +155,9 @@ K2IR_TEST = $(BUILD_DIR)/tests/k2ir.ok
 KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
+KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
+KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
+KRY_ZAI_TEST = $(BUILD_DIR)/tests/kry_zai_test
 RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c
@@ -193,6 +196,9 @@ test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYN
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
 	$(KRB_MOUNT_TEST)
 	$(KRY_TERM_TEST)
+	$(KRY_JSON_TEST)
+	$(KRY_HTTP_TEST)
+	$(KRY_ZAI_TEST)
 	$(KSYNC_ACCOUNT_TEST)
 	$(KSYNC_SYNC_TEST)
 	$(TRANSITION_TEST)
@@ -421,6 +427,18 @@ $(KRB_MOUNT_TEST): tests/krb_mount_test.c src/krb/krb.c src/backend/kry_backend.
 $(KRY_TERM_TEST): tests/kry_term_test.c src/kry_std/kry_term.c include/kry_term.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_term_test.c src/kry_std/kry_term.c -o $@
+
+$(KRY_JSON_TEST): tests/kry_json_test.c src/kry_std/kry_json.c include/kry_json.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_json_test.c src/kry_std/kry_json.c -o $@
+
+$(KRY_HTTP_TEST): tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c include/kry_http.h include/platform.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(KRYON_CURL_CFLAGS) tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c $(KRYON_CURL_LDLIBS) $(KRYON_CURL_TRANSITIVE_LDLIBS) -o $@
+
+$(KRY_ZAI_TEST): tests/kry_zai_test.c src/kry_std/kry_zai.c src/kry_std/kry_http.c src/kry_std/kry_json.c src/platform/platform_thread.c include/kry_zai.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(KRYON_CURL_CFLAGS) tests/kry_zai_test.c src/kry_std/kry_zai.c src/kry_std/kry_http.c src/kry_std/kry_json.c src/platform/platform_thread.c $(KRYON_CURL_LDLIBS) $(KRYON_CURL_TRANSITIVE_LDLIBS) -o $@
 
 $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 	sh scripts/embed-icons.sh "$(ICON_DIR)" $@

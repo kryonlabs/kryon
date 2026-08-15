@@ -1,0 +1,55 @@
+/*
+ * kry_http.h - Kry standard library: asynchronous HTTP client.
+ *
+ * A thin libcurl-easy wrapper (built when HAS_LIBCURL is defined; otherwise
+ * every entry point is an unavailable stub returning NULL/KRY_HTTP_FAILED).
+ * Requests run on a worker thread so a UI frame loop can poll without
+ * blocking — the pattern LLM and other network calls need, where a round
+ * trip can take tens of seconds.
+ */
+#ifndef KRYON_KRY_HTTP_H
+#define KRYON_KRY_HTTP_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct KryHttpRequest KryHttpRequest;
+
+typedef enum {
+    KRY_HTTP_PENDING,   /* not started yet */
+    KRY_HTTP_RUNNING,   /* worker thread inside libcurl */
+    KRY_HTTP_DONE,      /* 2xx response; body ready */
+    KRY_HTTP_FAILED,    /* transport error or non-2xx status */
+} KryHttpStatus;
+
+/* POST a JSON body (`Content-Type: application/json`). `authorization` is
+ * sent as a Bearer token when non-NULL and non-empty. `timeout_s` bounds
+ * the whole transfer. Returns NULL when the platform has no client. */
+KryHttpRequest *kry_http_post_json(const char *url, const char *authorization,
+                                   const char *json_body, int timeout_s);
+
+/* GET a URL (also serves the file:// scheme, which tests use to stay
+ * offline-safe). Returns NULL when unavailable. */
+KryHttpRequest *kry_http_get(const char *url, int timeout_s);
+
+/* Current state. Cheap; call every frame. Terminal states never change. */
+KryHttpStatus kry_http_poll(KryHttpRequest *request);
+
+/* HTTP status code once DONE/FAILED (0 while PENDING/RUNNING). */
+int kry_http_status_code(KryHttpRequest *request);
+
+/* Response body when DONE, a diagnostic ("curl error 7: ...") when FAILED,
+ * NULL otherwise. Owned by the request; valid until kry_http_free. */
+const char *kry_http_response(KryHttpRequest *request);
+
+/* Release the request. Joins the worker thread, so freeing a request that
+ * is still RUNNING blocks up to the remaining timeout — poll to a terminal
+ * state first. NULL is allowed. */
+void kry_http_free(KryHttpRequest *request);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

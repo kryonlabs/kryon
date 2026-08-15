@@ -115,6 +115,9 @@ KRYON_OPENSSL_CRYPTO_LDLIB ?= $(if $(strip $(KRYON_OPENSSL_CRYPTO_LIBRARY)),$(KR
 KRYON_ZLIB_LDLIB ?= -lz
 KRYON_CURL_CFLAGS ?= -DCURL_STATICLIB -I$(KRYON_CURL_INCLUDE_DIR)
 KRYON_CURL_LDLIBS ?= $(KRYON_CURL_A) $(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) $(KRYON_ZLIB_LDLIB) -lpthread
+# The vendored static curl is built with brotli/zstd support; final links
+# must satisfy those symbols too.
+KRYON_CURL_TRANSITIVE_LDLIBS ?= -lbrotlidec -lbrotlicommon -lzstd
 
 $(KRYON_LIBOQS_A): $(KRYON_LIBOQS_DIR)/CMakeLists.txt | $(KRYON_VENDOR_ORDER_ONLY)
 	@if [ -f "$(KRYON_LIBOQS_BUILD_DIR)/CMakeCache.txt" ] && ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$(abspath $(KRYON_LIBOQS_DIR))" "$(KRYON_LIBOQS_BUILD_DIR)/CMakeCache.txt"; then \
