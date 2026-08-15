@@ -37,14 +37,20 @@ write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     KryHttpRequest *r = userdata;
     size_t n = size * nmemb;
-    size_t have = r->response != NULL ? strlen(r->response) : 0;
-    char *next = realloc(r->response, have + n + 1);
+    size_t have;
+    char *next;
 
-    if(next == NULL)
+    KryMutexLock(&r->mutex);
+    have = r->response != NULL ? strlen(r->response) : 0;
+    next = realloc(r->response, have + n + 1);
+    if(next == NULL) {
+        KryMutexUnlock(&r->mutex);
         return 0;   /* out of memory: curl aborts the transfer */
+    }
     r->response = next;
     memcpy(r->response + have, ptr, n);
     r->response[have + n] = '\0';
+    KryMutexUnlock(&r->mutex);
     return n;
 }
 
@@ -207,6 +213,30 @@ kry_http_response(KryHttpRequest *r)
         body = r->response != NULL ? r->response : "";
     KryMutexUnlock(&r->mutex);
     return body;
+}
+
+/* Streaming peek: copies whatever of the body has arrived so far (up to
+ * size-1 bytes) and returns the total available. Callers poll this while
+ * kry_http_poll reports RUNNING to consume a transfer incrementally. */
+size_t
+kry_http_partial(KryHttpRequest *r, char *buf, size_t size)
+{
+    size_t avail = 0;
+
+    if(r == NULL)
+        return 0;
+    KryMutexLock(&r->mutex);
+    if(r->response != NULL) {
+        avail = strlen(r->response);
+        if(buf != NULL && size > 0) {
+            size_t take = avail < size ? avail : size - 1;
+
+            memcpy(buf, r->response, take);
+            buf[take] = '\0';
+        }
+    }
+    KryMutexUnlock(&r->mutex);
+    return avail;
 }
 
 void

@@ -10,6 +10,8 @@
 #ifndef KRYON_KRY_HTTP_H
 #define KRYON_KRY_HTTP_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +44,7 @@ int kry_http_status_code(KryHttpRequest *request);
 /* Response body when DONE, a diagnostic ("curl error 7: ...") when FAILED,
  * NULL otherwise. Owned by the request; valid until kry_http_free. */
 const char *kry_http_response(KryHttpRequest *request);
+size_t kry_http_partial(KryHttpRequest *request, char *buf, size_t size);
 
 /* Release the request. Joins the worker thread, so freeing a request that
  * is still RUNNING blocks up to the remaining timeout — poll to a terminal
