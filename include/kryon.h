@@ -26,6 +26,7 @@
 #include "ui_text.h"
 #include "ui_toast.h"
 #include "ui.h"
+#include "ui_window.h"
 #include "kry_math.h"
 #include "scene_tree.h"
 #include "node2d_props.h"
