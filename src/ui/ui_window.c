@@ -1,5 +1,7 @@
 #include "ui_window.h"
 
+#include <stddef.h>
+
 /*
  * Desktop implementation notes.
  *
