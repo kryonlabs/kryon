@@ -329,8 +329,8 @@ KryTermWrite(KryTerm *t, const void *data, int n)
 }
 
 /* Print text into the terminal as if the child process emitted it:
- * same escape processing as polled output. Lets harnesses (the krait
- * agent) mirror their command output into the user's console pane. */
+ * same escape processing as polled output, so a harness can mirror its
+ * own command output into a live terminal pane. */
 void
 KryTermFeedOutput(KryTerm *t, const void *data, int n)
 {
