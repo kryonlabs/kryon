@@ -1132,6 +1132,16 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         } else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
+    /* 'Name :: #define value' constants first: headers reference them in
+     * array bounds and extern declarations, and other modules use them
+     * through the generated header -- a .c-only emission starves those. */
+    for(i = 0; i < m->define_count; i++) {
+        const KirDefine *d = &m->defines[i];
+
+        emit_guard_open(h, d->guard);
+        fprintf(h, "#define %s %s\n", d->name, d->value);
+        emit_guard_close(h, d->guard);
+    }
     /* Typedefs and enums first (structs + globals reference them). */
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
