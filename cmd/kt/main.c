@@ -41,7 +41,8 @@ kt_usage(FILE *out)
             "usage: kt [-headless] [-snap] [-bless] [tests/file.kt ...]\n");
     fprintf(out,
             "commands: target open tap type key see shot wait mkdir write append copy paste mv exists notexists contains\n");
-    fprintf(out, "without -headless, kt opens target app by default; use 'target ide' to test the IDE\n");
+    fprintf(out, "without -headless, kt opens the target app by default; "
+            "'target none' runs headless\n");
 }
 
 static char *
@@ -253,23 +254,16 @@ kt_start_visual(KTRun *run)
         return 1;
     if(strcmp(run->target, "none") == 0)
         return 1;
-    kt_tool_path(tool, sizeof(tool), run->argv0,
-                 strcmp(run->target, "ide") == 0 ? "krait" : "kryon");
+    kt_tool_path(tool, sizeof(tool), run->argv0, "kryon");
     run->visual_pid = fork();
     if(run->visual_pid < 0)
         return 0;
     if(run->visual_pid == 0) {
         setenv("KRYON_PROJECT_ROOT", run->root, 1);
-        if(strcmp(run->target, "ide") == 0) {
-            execl(tool, tool, "--temp-session", run->root, (char *)NULL);
-            execlp("krait", "krait", "--temp-session", run->root,
-                   (char *)NULL);
-        } else {
-            execl(tool, tool, "--project", run->root, "run", "native",
-                  (char *)NULL);
-            execlp("kryon", "kryon", "--project", run->root, "run",
-                   "native", (char *)NULL);
-        }
+        execl(tool, tool, "--project", run->root, "run", "native",
+              (char *)NULL);
+        execlp("kryon", "kryon", "--project", run->root, "run", "native",
+              (char *)NULL);
         _exit(127);
     }
     usleep(800000);
@@ -348,8 +342,7 @@ kt_run_command(KTRun *run, const char *file, int line_no, char *line)
             return 0;
         }
         if(strcmp(cmd, "target") == 0) {
-            if(strcmp(arg, "app") != 0 && strcmp(arg, "ide") != 0 &&
-               strcmp(arg, "none") != 0) {
+            if(strcmp(arg, "app") != 0 && strcmp(arg, "none") != 0) {
                 fprintf(stderr, "%s:%d: unknown target: %s\n", file, line_no,
                         arg);
                 return 0;
