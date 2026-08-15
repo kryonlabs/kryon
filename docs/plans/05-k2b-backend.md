@@ -29,7 +29,7 @@ metadata for portable logic.
 1. Remove the private k2b parser after KIR input is available.
 2. Port node, string, import, control, and state-field collection to KIR.
 3. Add source-map section planning without breaking current v1 readers.
-4. Update tests to call `k2b` directly, not old `kc` flags.
+4. Update tests to call `k2b` directly, not old `k2c` flags.
 5. Keep raw `.krb` output deterministic for fixtures.
 
 ## Tests And Acceptance

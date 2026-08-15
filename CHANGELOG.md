@@ -5,13 +5,13 @@
 
 - PTY terminal (`KryTerm`) for IDE hosts: spawn `$SHELL`, write keys, poll
   a screen grid, resize with `TIOCSWINSZ`. Basic CSI cursor and erase.
-- First krb cartridge slice: `kc --emit-krb` packs widget calls into a
+- First krb cartridge slice: `k2c --emit-krb` packs widget calls into a
   mmapable `.krb` (VFS nodes, string table, `OP_DRAW_TREE`, host import
   names). `KrbLoad` / `KrbBind` / `KrbDraw` walk the image through a small
   `KryBackend` table. `kryon-preview cartridge` renders a `.kry` or `.krb`
   without building an app host. C emit still walks the reconstructed AST;
   existing C projects are unchanged.
-- `kc --emit-krb` also writes a C host (`*.krb.c` / `*.krb.h`): state
+- `k2c --emit-krb` also writes a C host (`*.krb.c` / `*.krb.h`): state
   becomes `KrbBindMem` paths, button `if` bodies become bind functions,
   and `Screen_krb_draw` / `Screen_krb_press` are the C ABI. `02_buttons`
   clicks increment a mounted `click_count`.
@@ -33,8 +33,8 @@
   dropped. Qualified *calls* (`alias.fn(...)`) still rewrite to `module_fn(...)`
   as before. The first multi-module `.kry` program (state + draw + host) now
   compiles, links, and runs end to end.
-- Remove the fixed per-function body cap. `kc` previously rejected any function
-  whose generated body exceeded `KC_BODY_MAX = 512` statements with
+- Remove the fixed per-function body cap. `k2c` previously rejected any function
+  whose generated body exceeded a fixed 512-statement cap with
   "generated body is too large", which blocks large UI draw functions.
   `KryFunction.body`/`body_line` are now heap arrays that grow geometrically
   (via `grow_body`), and the `apply_defers` splice pass allocates its working
@@ -51,7 +51,7 @@
   flushed first. Examples and valid code are unaffected (byte-identical).
 - Standalone `.kry` apps can own their frame loop. The `app{}` block now
   accepts `init`, `frame`, and `shutdown` hooks naming `.kry` functions; when
-  `frame` is set, `kc` emits a `main()` that calls `init()` once, `frame()`
+  `frame` is set, `k2c` emits a `main()` that calls `init()` once, `frame()`
   each iteration, and `shutdown()` at exit — without bracketing drawing, so the
   program calls `BeginDrawing`/`BeginUIFrame`/`EndDrawing` itself and can host
   nested render-texture passes and inspection overlays like a hand-written C
@@ -72,7 +72,7 @@
   `editor.kry` implement the start page, project-open flow (file dialog +
   `kry_fs`), a file-tree sidebar (`kry_fs_list_dir` +
   `UICascadingTreeViewNode`), and a read-only source viewer (`kry_fs_read_file`
-  + `UITextAreaNode`). Krait transpiles those modules in one `kc` invocation
+  + `UITextAreaNode`). Krait transpiles those modules in one `k2c` invocation
   and links the generated C against `libkryon.a` + raylib.
 - Krait gains an editable editor with multi-tab open files, Ctrl+S save
   (`kry_fs_write_file`), dirty markers, and Ctrl+Z/Ctrl+Y undo/redo
@@ -166,11 +166,11 @@
 - Restyle docs site with refined modern-retro theme
 - Add Kryon IDE start page and fix preview inspection
 - Improve Kry language and generic APIs
-- Support uninitialized C locals in kc
-- Allow args locals in kc functions
+- Support uninitialized C locals in k2c
+- Allow args locals in k2c functions
 - Add Kryon platform thread primitives
-- Support local enum blocks in kc
-- Support bitwise compound assignments in kc
+- Support local enum blocks in k2c
+- Support bitwise compound assignments in k2c
 - Guard Kry compile-time expansion recursion
 - Add runtime asset sync API
 - Support Kry multidimensional arrays

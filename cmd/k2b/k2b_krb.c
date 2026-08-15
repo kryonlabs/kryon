@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define KC_PATH_MAX KIR_PATH_MAX
-#define KC_NAME_MAX KIR_NAME_MAX
-#define KC_BODY_LINE_MAX KIR_TEXT_MAX
 
 /* k2b_util.c */
 void die(const char *fmt, ...);
@@ -36,7 +33,7 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 #define KRB_OUT_MAX 65536
 
 typedef struct KrbBuildNode {
-    char name[KC_NAME_MAX];
+    char name[KIR_NAME_MAX];
     int type;
     int parent;
     unsigned flags;
@@ -46,20 +43,20 @@ typedef struct KrbBuildNode {
     int w;
     int h;
     unsigned color;
-    char text[KC_BODY_LINE_MAX];
+    char text[KIR_TEXT_MAX];
     int font_size;
     int style;
 } KrbBuildNode;
 
 typedef struct KrbHandler {
-    char name[KC_NAME_MAX];
-    char body[KRB_BUILD_HANDLER_LINES][KC_BODY_LINE_MAX];
+    char name[KIR_NAME_MAX];
+    char body[KRB_BUILD_HANDLER_LINES][KIR_TEXT_MAX];
     int body_count;
 } KrbHandler;
 
 typedef struct KrbStateField {
-    char name[KC_NAME_MAX];
-    char decl[KC_BODY_LINE_MAX];
+    char name[KIR_NAME_MAX];
+    char decl[KIR_TEXT_MAX];
     unsigned kind;
     unsigned size;
 } KrbStateField;
@@ -70,8 +67,8 @@ typedef struct KrbBuildControl {
     int min;
     int max;
     int step;
-    char value[KC_NAME_MAX];
-    char label[KC_BODY_LINE_MAX];
+    char value[KIR_NAME_MAX];
+    char label[KIR_TEXT_MAX];
 } KrbBuildControl;
 
 typedef struct KrbBuild {
@@ -79,7 +76,7 @@ typedef struct KrbBuild {
     int node_count;
     char strings[KRB_BUILD_STR_MAX];
     int string_used;
-    char imports[KRB_BUILD_IMPORT_MAX][KC_NAME_MAX];
+    char imports[KRB_BUILD_IMPORT_MAX][KIR_NAME_MAX];
     int import_count;
     KrbHandler handlers[KRB_BUILD_IMPORT_MAX];
     int handler_count;
@@ -304,7 +301,7 @@ button_style_of(const char *expr)
 }
 
 static int
-split_args(const char *src, char parts[][KC_BODY_LINE_MAX], int max)
+split_args(const char *src, char parts[][KIR_TEXT_MAX], int max)
 {
     int count = 0;
     int depth = 0;
@@ -339,8 +336,8 @@ split_args(const char *src, char parts[][KC_BODY_LINE_MAX], int max)
 
             while(n > 0 && isspace((unsigned char)start[n - 1]))
                 n--;
-            if(n >= KC_BODY_LINE_MAX)
-                n = KC_BODY_LINE_MAX - 1;
+            if(n >= KIR_TEXT_MAX)
+                n = KIR_TEXT_MAX - 1;
             memcpy(parts[count], start, n);
             parts[count][n] = '\0';
             count++;
@@ -448,7 +445,7 @@ static int
 parse_text(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
+    char parts[8][KIR_TEXT_MAX];
     int count;
     KrbBuildNode *n;
     char name[32];
@@ -462,7 +459,7 @@ parse_text(KrbBuild *b, const char *call)
     snprintf(name, sizeof(name), "text%d", b->node_count);
     if(strstr(parts[0], "TextFormat") != NULL) {
         const char *comma = strrchr(parts[0], ',');
-        char ident[KC_NAME_MAX];
+        char ident[KIR_NAME_MAX];
         const char *q;
         size_t nident = 0;
 
@@ -485,7 +482,7 @@ parse_text(KrbBuild *b, const char *call)
             return 0;
         extract_string(parts[0], n->text, sizeof(n->text));
     } else if(parts[0][0] != '"' && is_ident_text(skip_ws(parts[0]))) {
-        char ident[KC_NAME_MAX];
+        char ident[KIR_NAME_MAX];
 
         snprintf(ident, sizeof(ident), "%s", skip_ws(parts[0]));
         {
@@ -522,7 +519,7 @@ static int
 parse_rect(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
+    char parts[8][KIR_TEXT_MAX];
     int count;
     KrbBuildNode *n;
     char name[32];
@@ -553,7 +550,7 @@ parse_button(KrbBuild *b, const char *call)
 {
     const char *props = strstr(call, "ButtonProps");
     KrbBuildNode *n;
-    char slug[KC_NAME_MAX];
+    char slug[KIR_NAME_MAX];
     const char *p;
     int scaled;
 
@@ -571,7 +568,7 @@ parse_button(KrbBuild *b, const char *call)
     p = strstr(props, ".bounds");
     if(p != NULL) {
         const char *brace = strchr(p, '{');
-        char parts[4][KC_BODY_LINE_MAX];
+        char parts[4][KIR_TEXT_MAX];
         int count;
 
         if(brace != NULL) {
@@ -719,8 +716,8 @@ collect_state(KrbBuild *b, const KirModule *m)
         /* Convert .kry type order ('[N] char') to C ('char name[N]'). */
         {
             const char *t = sf->type;
-            char base[KC_NAME_MAX];
-            char suffix[KC_NAME_MAX];
+            char base[KIR_NAME_MAX];
+            char suffix[KIR_NAME_MAX];
             size_t sn = 0;
             const char *bp = t;
 
@@ -762,8 +759,8 @@ collect_state(KrbBuild *b, const KirModule *m)
 static int
 node_rect(KrbBuildNode *n, const char *expr)
 {
-    char body[KC_BODY_LINE_MAX];
-    char parts[4][KC_BODY_LINE_MAX];
+    char body[KIR_TEXT_MAX];
+    char parts[4][KIR_TEXT_MAX];
     const char *open = strchr(expr, '{');
     const char *close;
     int scaled;
@@ -809,7 +806,7 @@ static int
 parse_line(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
+    char parts[8][KIR_TEXT_MAX];
     char name[32];
     KrbBuildNode *n;
     int count, x1, y1, x2, y2, junk;
@@ -842,7 +839,7 @@ static int
 parse_bevel(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
+    char parts[8][KIR_TEXT_MAX];
     char name[32];
     KrbBuildNode *n;
     int count, scaled;
@@ -869,7 +866,7 @@ static int
 parse_textinrect(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
+    char parts[8][KIR_TEXT_MAX];
     char name[32];
     KrbBuildNode *n;
     int count;
@@ -932,8 +929,8 @@ parse_picture(KrbBuild *b, const char *call)
     const char *p = strstr(call, "PictureProps");
     const char *open;
     const char *close;
-    char body[KC_BODY_LINE_MAX];
-    char parts[8][KC_BODY_LINE_MAX];
+    char body[KIR_TEXT_MAX];
+    char parts[8][KIR_TEXT_MAX];
     char name[32];
     KrbBuildNode *n;
     size_t len;
@@ -992,8 +989,8 @@ static int
 parse_checkbox(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
-    char path[KC_NAME_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
     KrbBuildNode *n;
     int count, scaled;
 
@@ -1024,8 +1021,8 @@ static int
 parse_toggle(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
-    char parts[8][KC_BODY_LINE_MAX];
-    char path[KC_NAME_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
     KrbBuildNode *n;
     int count, scaled;
 
@@ -1069,8 +1066,8 @@ static int
 parse_rect_fields(const char *expr, int *x, int *y, int *w, int *h,
                   unsigned *flags)
 {
-    char body[KC_BODY_LINE_MAX];
-    char parts[4][KC_BODY_LINE_MAX];
+    char body[KIR_TEXT_MAX];
+    char parts[4][KIR_TEXT_MAX];
     const char *open = strchr(expr, '{');
     const char *close;
     int scaled;
@@ -1146,9 +1143,9 @@ add_control_node(KrbBuild *b, int kind, const char *path, int x, int y,
 static int
 parse_slider(KrbBuild *b, const char *call)
 {
-    char parts[12][KC_BODY_LINE_MAX];
-    char path[KC_NAME_MAX];
-    char label[KC_BODY_LINE_MAX];
+    char parts[12][KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
+    char label[KIR_TEXT_MAX];
     const char *args = strchr(call, '(');
     int count, x = 0, y = 0, w = 0;
     unsigned flags = 0;
@@ -1174,8 +1171,8 @@ parse_slider(KrbBuild *b, const char *call)
 static int
 parse_vslider(KrbBuild *b, const char *call)
 {
-    char parts[12][KC_BODY_LINE_MAX];
-    char path[KC_NAME_MAX];
+    char parts[12][KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
     const char *args = strchr(call, '(');
     int count, x = 0, y = 0, h = 0;
     unsigned flags = 0;
@@ -1203,9 +1200,9 @@ parse_spinbox(KrbBuild *b, const char *call)
     const char *p = strstr(call, "SpinboxProps");
     const char *open;
     const char *close;
-    char body[KC_BODY_LINE_MAX];
-    char parts[8][KC_BODY_LINE_MAX];
-    char path[KC_NAME_MAX];
+    char body[KIR_TEXT_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
     int x = 0, y = 0, w = 0, h = 0, count;
     unsigned flags = 0;
     size_t len;
@@ -1404,7 +1401,7 @@ c_ident(char *dst, size_t dst_size, const char *src)
 {
     slug_name(dst, dst_size, src);
     if(dst[0] >= '0' && dst[0] <= '9') {
-        char tmp[KC_NAME_MAX];
+        char tmp[KIR_NAME_MAX];
 
         snprintf(tmp, sizeof(tmp), "h_%s", dst);
         snprintf(dst, dst_size, "%s", tmp);
@@ -1416,12 +1413,12 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
                const char *out_dir, const KrbBuild *b,
                const unsigned char *bytes, int len, int no_main)
 {
-    char hrel[KC_PATH_MAX];
-    char crel[KC_PATH_MAX];
-    char hpath[KC_PATH_MAX];
-    char cpath[KC_PATH_MAX];
-    char screen[KC_NAME_MAX];
-    char guard[KC_NAME_MAX * 2];
+    char hrel[KIR_PATH_MAX];
+    char crel[KIR_PATH_MAX];
+    char hpath[KIR_PATH_MAX];
+    char cpath[KIR_PATH_MAX];
+    char screen[KIR_NAME_MAX];
+    char guard[KIR_NAME_MAX * 2];
     FILE *out;
     int i;
     int j;
@@ -1482,7 +1479,7 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
     fprintf(out, "static KrbImage krb_img;\n");
     fprintf(out, "static int krb_ready;\n\n");
     for(i = 0; i < b->handler_count; i++) {
-        char fn[KC_NAME_MAX + 8];
+        char fn[KIR_NAME_MAX + 8];
 
         c_ident(fn, sizeof(fn), b->handlers[i].name);
         fprintf(out, "static int\non_%s(void *ud)\n{\n", fn);
@@ -1503,7 +1500,7 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
                 f->name, f->kind == 5 ? "" : "&", f->name, f->kind, f->size);
     }
     for(i = 0; i < b->handler_count; i++) {
-        char fn[KC_NAME_MAX + 8];
+        char fn[KIR_NAME_MAX + 8];
 
         c_ident(fn, sizeof(fn), b->handlers[i].name);
         fprintf(out, "    KrbBind(&krb_img, \"%s\", on_%s, NULL);\n",
@@ -1578,9 +1575,9 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
           int no_main)
 {
     const char *rel = relative_path(root, m->source_path);
-    char gen_rel[KC_PATH_MAX];
-    char krel[KC_PATH_MAX];
-    char kpath[KC_PATH_MAX];
+    char gen_rel[KIR_PATH_MAX];
+    char krel[KIR_PATH_MAX];
+    char kpath[KIR_PATH_MAX];
     unsigned char bytes[KRB_OUT_MAX];
     KrbBuild build;
     FILE *out;

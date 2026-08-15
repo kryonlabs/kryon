@@ -4,7 +4,7 @@
  * in raylib BeginMode2D using this node's world transform and zoom.
  *
  * The node owns a Camera2DProps (zoom/rotation/active) allocated in the node's
- * props slot by whoever creates it (the kc-generated builder or app code).
+ * props slot by whoever creates it (the k2c-generated builder or app code).
  */
 
 #include "scene_tree.h"

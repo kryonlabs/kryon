@@ -43,7 +43,7 @@ make ../build/examples/bin/01_file_dialog
 make clean
 ```
 
-Each build transpiles `NN_name.kry` with `kc`, writes generated C/H under
+Each build transpiles `NN_name.kry` with `k2c`, writes generated C/H under
 `../build/examples/codegen`, then compiles the standalone example binary under
 `../build/examples/bin`.
 

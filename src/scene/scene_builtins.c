@@ -59,7 +59,7 @@ KrySceneRegisterBuiltins(void)
 }
 
 /*
- * Props allocation helpers for scene builders. The kc-generated scene builder
+ * Props allocation helpers for scene builders. The k2c-generated scene builder
  * and app code call these to attach kind-specific props to a freshly created
  * node. They allocate zero-initialized memory so optional fields (tint, fit)
  * get sane defaults handled by the draw ops.

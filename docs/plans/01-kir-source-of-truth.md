@@ -7,7 +7,7 @@ backend. No backend should parse `.kry` directly once this phase is complete.
 
 ## Current State
 
-The native compiler path and the cartridge path are split. `kc` owns the main
+The native compiler path and the cartridge path are split. `k2c` owns the main
 `.kry -> C` behavior, while the new `k2b` path has its own parser and KRB
 emitter. This duplicates language understanding and lets the two outputs drift.
 

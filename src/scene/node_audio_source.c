@@ -94,7 +94,7 @@ KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
     return p;
 }
 
-/* Public play/stop controls called by app code or kc-generated builders. */
+/* Public play/stop controls called by app code or k2c-generated builders. */
 void
 KryAudioSourcePlay(KryScene *scene, KryNodeId node)
 {

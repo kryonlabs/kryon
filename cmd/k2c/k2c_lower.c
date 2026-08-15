@@ -271,7 +271,7 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
              * parens where a local of the same name may shadow it. */
             if(!(p > src && p[-1] == '.') &&
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
-               (*e == '-' && e[1] == '>') || (*e == '.')) {
+               ((*e == '-' && e[1] == '>') || *e == '.')) {
                 /* 'name->' / 'name.' — a variable access, not a function
                  * reference ('habits->count' must never resolve against a
                  * screen named 'habits'). Skip resolution; fall through. */
@@ -712,7 +712,8 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                 emit_indent(c, indent);
                 fprintf(c, "if(%s) {\n", cond);
             }
-            scope_stack[scope_top++] = scope_top;
+            scope_stack[scope_top] = scope_top;
+                scope_top++;
             indent++;
             break;
         }
@@ -725,7 +726,8 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
             emit_indent(c, indent);
             fprintf(c, "while(%s) {\n", cond);
-            scope_stack[scope_top++] = scope_top;
+            scope_stack[scope_top] = scope_top;
+                scope_top++;
             indent++;
             break;
         }
@@ -741,7 +743,8 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                         strlen(head + strlen(kw) + 1) + 1);
             emit_indent(c, indent);
             fprintf(c, "%s(%s) {\n", kw, head);
-            scope_stack[scope_top++] = scope_top;
+            scope_stack[scope_top] = scope_top;
+                scope_top++;
             indent++;
             break;
         }
