@@ -328,6 +328,21 @@ KryTermWrite(KryTerm *t, const void *data, int n)
     return wrote > 0 ? wrote : 0;
 }
 
+/* Print text into the terminal as if the child process emitted it:
+ * same escape processing as polled output. Lets harnesses (the krait
+ * agent) mirror their command output into the user's console pane. */
+void
+KryTermFeedOutput(KryTerm *t, const void *data, int n)
+{
+    const unsigned char *p = data;
+    int i;
+
+    if(t == NULL || p == NULL || n <= 0)
+        return;
+    for(i = 0; i < n; i++)
+        feed(t, p[i]);
+}
+
 int
 KryTermPoll(KryTerm *t)
 {
@@ -442,6 +457,14 @@ KryTermPoll(KryTerm *t)
 {
     (void)t;
     return 0;
+}
+
+void
+KryTermFeedOutput(KryTerm *t, const void *data, int n)
+{
+    (void)t;
+    (void)data;
+    (void)n;
 }
 
 void

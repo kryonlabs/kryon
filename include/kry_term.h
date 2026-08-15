@@ -30,6 +30,7 @@ typedef struct KryTerm {
 int KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows);
 int KryTermWrite(KryTerm *t, const void *data, int n);
 int KryTermPoll(KryTerm *t);
+void KryTermFeedOutput(KryTerm *t, const void *data, int n);
 void KryTermResize(KryTerm *t, int cols, int rows);
 void KryTermClose(KryTerm *t);
 void KryTermLine(const KryTerm *t, int row, char *dst, int dst_size);

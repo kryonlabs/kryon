@@ -62,6 +62,27 @@ main(void)
         return 1;
     }
     KryTermClose(&t);
+
+    /* harness-printed text lands in the grid like process output */
+    if(!KryTermSpawn(&t, "/", 80, 24)) {
+        fprintf(stderr, "respawn failed\n");
+        return 1;
+    }
+    for(i = 0; i < 20; i++)
+        KryTermPoll(&t);
+    KryTermFeedOutput(&t, "FEED_OK 42\n", 12);
+    saw = 0;
+    for(row = 0; row < t.rows; row++) {
+        KryTermLine(&t, row, line, sizeof(line));
+        if(strstr(line, "FEED_OK 42") != NULL)
+            saw = 1;
+    }
+    if(!saw) {
+        fprintf(stderr, "feed output not visible\n");
+        KryTermClose(&t);
+        return 1;
+    }
+    KryTermClose(&t);
     printf("ok term\n");
     return 0;
 }
