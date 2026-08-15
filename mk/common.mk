@@ -23,6 +23,8 @@ KRYON_USE_SYSTEM_CURL ?= 1
 ifeq ($(KRYON_USE_SYSTEM_CURL),1)
 KRYON_CURL_CFLAGS ?= $(shell pkg-config --cflags libcurl 2>/dev/null)
 KRYON_CURL_LDLIBS ?= $(shell pkg-config --libs libcurl 2>/dev/null)
+# Static libcurl drags these in on Debian-class systems; harmless when shared.
+KRYON_CURL_EXTRA_LDLIBS ?= -lbrotlidec -lbrotlicommon -lzstd -lz -lpthread
 endif
 KRYON_NATIVE_DEPS ?=
 KRYON_NATIVE_CFLAGS ?=
