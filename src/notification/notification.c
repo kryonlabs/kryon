@@ -23,6 +23,10 @@
 #define KRYON_CHANNEL_LOW     "kryon.low"
 #define KRYON_CHANNEL_HIGH    "kryon.high"
 
+/* raylib's PLATFORM_ANDROID entry point (see raylib.h); declared here to
+ * keep this file free of the full kryon umbrella. */
+struct android_app *GetAndroidApp(void);
+
 static struct android_app *notify_app(void)
 {
     return GetAndroidApp();
