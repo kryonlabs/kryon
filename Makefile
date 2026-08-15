@@ -113,6 +113,7 @@ include mk/raylib.mk
 CPPFLAGS += -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
 	-DHAS_LIBCURL=1 $(KRYON_CURL_CFLAGS) \
 	$(KRYON_MARKDOWN_CFLAGS)
+CPPFLAGS += $(KRYON_NOTIFICATION_CPPFLAGS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 

@@ -63,5 +63,6 @@
 #include "kry_dylib.h"
 #include "kry_backend.h"
 #include "krb.h"
+#include "notification.h"
 
 #endif /* KRYON_H */
