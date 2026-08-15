@@ -541,10 +541,9 @@ IsUIWindowClicked(UIWindow *window)
     return 1;
 }
 
-#elif (defined(_WIN32) || defined(__APPLE__)) && !defined(PLATFORM_WEB) && !defined(__EMSCRIPTEN__)
-
-/* Windows/macOS: plain SDL windows; the Mesa llvmpipe issue is not known
- * there and SDL gives us the same surface-blit path without X types. */
+#elif defined(UI_WINDOW_HAVE_SDL) /* Windows/macOS plain-SDL path: define
+                                   * UI_WINDOW_HAVE_SDL in the build once
+                                   * those environments ship SDL headers. */
 
 #include <SDL2/SDL.h>
 #include <stdlib.h>
