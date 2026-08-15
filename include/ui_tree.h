@@ -186,6 +186,7 @@ int ActionModal(ModalProps modal);
 int MessageDialog(MessageDialogProps dialog);
 int ConfirmDialog(ConfirmDialogProps dialog);
 int PromptDialog(PromptDialogProps dialog);
+int PickerDialog(PickerDialogProps picker);
 void Focus(Rectangle bounds);
 void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
 UIGuideResult GuideOverlay(GuideOverlayProps guide);

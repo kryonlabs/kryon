@@ -157,7 +157,7 @@ DrawUIOverlayButton(OverlayButtonProps button)
 }
 
 int
-ui_button_row_height(ButtonRowProps row)
+GetUIButtonRowHeight(ButtonRowProps row)
 {
     int height = row.height > 0 ? row.height : ScaleUIPx(30);
     int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);

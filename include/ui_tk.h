@@ -94,6 +94,8 @@ typedef struct {
     int step;
     int *value;
     int disabled;
+    const char *value_text;
+    int wrap;
 } SpinboxProps;
 
 typedef struct {
@@ -240,6 +242,15 @@ typedef struct {
     const char *message;
     const char *ok_label;
 } MessageDialogProps;
+
+typedef struct {
+    const char *title;
+    const char **labels;
+    Texture2D *icons;
+    int option_count;
+    const char *cancel_label;
+    int max_width;
+} PickerDialogProps;
 
 typedef struct {
     const char *title;

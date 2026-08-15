@@ -147,8 +147,8 @@ static int
 ui_measure_button_row(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_button_row_height(*(const ButtonRowProps *)node.props);
-    return ui_button_row_height(node.data.button_row);
+        return GetUIButtonRowHeight(*(const ButtonRowProps *)node.props);
+    return GetUIButtonRowHeight(node.data.button_row);
 }
 
 static int
@@ -964,6 +964,13 @@ PromptDialog(PromptDialogProps dialog)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
     return DrawUIPromptDialog(dialog);
+}
+
+int
+PickerDialog(PickerDialogProps picker)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &picker);
+    return DrawUIPickerDialog(picker);
 }
 
 void

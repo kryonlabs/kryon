@@ -571,24 +571,37 @@ DrawUISpinbox(SpinboxProps spinbox)
         MarkUIDisabled();
     DrawRectangleRec(text, c_surface);
     DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
-    snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
+    if(spinbox.value_text != NULL)
+        snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
+    else
+        snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
                        GetUIFontSize(), c_text);
     if(DrawUIButton((UIButtonSpec){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
-       spinbox.value != NULL && *spinbox.value > spinbox.min) {
-        *spinbox.value -= spinbox.step;
+       spinbox.value != NULL) {
+        if(*spinbox.value > spinbox.min) {
+            *spinbox.value -= spinbox.step;
+            changed = 1;
+        } else if(spinbox.wrap && *spinbox.value <= spinbox.min) {
+            *spinbox.value = spinbox.max;
+            changed = 1;
+        }
         if(*spinbox.value < spinbox.min)
             *spinbox.value = spinbox.min;
-        changed = 1;
     }
     if(DrawUIButton((UIButtonSpec){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
-       spinbox.value != NULL && *spinbox.value < spinbox.max) {
-        *spinbox.value += spinbox.step;
+       spinbox.value != NULL) {
+        if(*spinbox.value < spinbox.max) {
+            *spinbox.value += spinbox.step;
+            changed = 1;
+        } else if(spinbox.wrap && *spinbox.value >= spinbox.max) {
+            *spinbox.value = spinbox.min;
+            changed = 1;
+        }
         if(*spinbox.value > spinbox.max)
             *spinbox.value = spinbox.max;
-        changed = 1;
     }
     return changed;
 }
@@ -1496,6 +1509,95 @@ DrawUIPromptDialog(PromptDialogProps dialog)
                                       GetUIFontSize(), 7301, {0}, NULL, NULL, NULL});
     }
     return result;
+}
+
+int
+DrawUIPickerDialog(PickerDialogProps picker)
+{
+    int pad = ScaleUIPx(14);
+    int title_h = ScaleUIPx(34);
+    int row_h = ScaleUIPx(40);
+    int button_h = ScaleUIPx(36);
+    int icon_size = row_h - ScaleUIPx(8);
+    int max_w = picker.max_width > 0 ? ScaleUIPx(picker.max_width) : ScaleUIPx(300);
+    int w;
+    int panel_h;
+    int x;
+    int y;
+    int i;
+    Rectangle panel;
+    Color scrim = BLACK;
+
+    if(picker.labels == NULL || picker.option_count <= 0)
+        return 0;
+
+    w = max_w;
+    if(w > ui_view_width - ScaleUIPx(32))
+        w = ui_view_width - ScaleUIPx(32);
+    panel_h = title_h + picker.option_count * row_h + button_h + pad * 2;
+    x = (ui_view_width - w) / 2;
+    y = (ui_view_height - panel_h) / 2;
+    panel = (Rectangle){(float)x, (float)y, (float)w, (float)panel_h};
+
+    scrim.a = 130;
+    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
+    SetUIModalCapture(panel);
+    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACK) ||
+       UIPointerReleaseOutside(panel)) {
+        UIConsumeRelease();
+        return -1;
+    }
+
+    DrawRectangleRounded(panel, 0.06f, 8, c_surface);
+    DrawRectangleRoundedLines(panel, 0.06f, 8, DarkenUIColor(c_surface, 30));
+    DrawUIText(picker.title != NULL ? picker.title : "",
+               x + pad, y + pad, GetUIFontSize(), c_text);
+
+    y += title_h;
+    for(i = 0; i < picker.option_count; i++) {
+        int has_icon = picker.icons != NULL && picker.icons[i].id != 0;
+        int text_x = x + pad + ScaleUIPx(12);
+
+        if(DrawUIButton((UIButtonSpec){
+            .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)row_h},
+            .label = "",
+            .font = GetUIFontSize(),
+            .background = c_surface,
+            .hover_background = c_button_hover,
+            .text = c_text,
+            .border = c_button,
+            .radius = 0.08f
+        })) {
+            return i + 1;
+        }
+        if(has_icon) {
+            DrawTexturePro(picker.icons[i],
+                           (Rectangle){0, 0, (float)picker.icons[i].width,
+                                       (float)picker.icons[i].height},
+                           (Rectangle){(float)text_x, (float)(y + ScaleUIPx(4)),
+                                       (float)icon_size, (float)icon_size},
+                           (Vector2){0}, 0.0f, WHITE);
+            text_x += icon_size + ScaleUIPx(12);
+        }
+        DrawCenteredUIText(picker.labels[i] != NULL ? picker.labels[i] : "",
+                           (text_x + x + w - pad) / 2, y + row_h / 2,
+                           GetUIFontSize(), c_text);
+        y += row_h;
+    }
+
+    y += pad;
+    if(DrawUIButton((UIButtonSpec){
+        .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)button_h},
+        .label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel",
+        .font = GetUIFontSize(),
+        .background = c_surface,
+        .hover_background = c_button_hover,
+        .text = c_text,
+        .border = c_button,
+        .radius = 0.08f
+    }))
+        return -1;
+    return 0;
 }
 
 int
