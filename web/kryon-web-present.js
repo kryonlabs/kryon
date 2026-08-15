@@ -37,6 +37,17 @@
   var state = { active: false, reason: "" };
   window.__kryonWebPresent = state;
 
+  /* ?kryonpresent=debug — force activation regardless of browser/renderer
+   * and report state through document.title so headless/WebKit verification
+   * can read it without devtools. */
+  var debugMode = /kryonpresent=debug/.test(location.search || "");
+
+  function report() {
+    if (!debugMode)
+      return;
+    document.title = "[kryon:" + (state.active ? "ACTIVE" : state.reason) + "]";
+  }
+
   function webkitFamily() {
     var ua = navigator.userAgent || "";
     if (/Epiphany\//.test(ua) || /WebKitGTK/.test(ua))
@@ -180,17 +191,25 @@
 
   function boot() {
     try {
-      if (!webkitFamily()) {
-        state.reason = "not webkit";
-        return;
+      if (!debugMode) {
+        if (!webkitFamily()) {
+          state.reason = "not webkit";
+          report();
+          return;
+        }
+        if (!softwareRenderer()) {
+          state.reason = "hardware gl";
+          report();
+          return;
+        }
       }
-      if (!softwareRenderer()) {
-        state.reason = "hardware gl";
-        return;
-      }
-      activate(320);
+      if (!activate(320))
+        report();
+      else
+        report();
     } catch (e) {
       state.reason = "error: " + (e && e.message ? e.message : e);
+      report();
     }
   }
 
