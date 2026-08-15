@@ -136,7 +136,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
         result.step = *guide.step;
         return result;
     }
-    if(IsKeyPressed(KEY_ESCAPE)) {
+    if(IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE)) {
         result.closed = 1;
         return result;
     }
