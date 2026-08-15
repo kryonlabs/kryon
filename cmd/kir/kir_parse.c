@@ -915,6 +915,20 @@ kir_parse_file(const char *path, const char *root)
                  * line_starts_continuation). */
                 {
                     char la[K2IR_LINE_MAX];
+                    int pend_str;
+
+                    /* C adjacent-literal concatenation: a statement whose
+                     * last token closes a string ("...") continues when the
+                     * next line opens a new literal ("...") — otherwise each
+                     * fragment becomes its own orphan expression statement. */
+                    {
+                        int pl2 = (int)strlen(pending);
+
+                        while(pl2 > 0 && (pending[pl2 - 1] == ' ' ||
+                                          pending[pl2 - 1] == '\t'))
+                            pl2--;
+                        pend_str = pl2 > 0 && pending[pl2 - 1] == '"';
+                    }
 
                     /* Keep consuming lookahead lines while they continue this
                      * statement; the first non-continuation line is stashed
@@ -942,7 +956,8 @@ kir_parse_file(const char *path, const char *root)
                              (*lt == '=' && lt[1] == '=') ||
                              (*lt == '!' && lt[1] == '=') ||
                              (*lt == '<' && lt[1] == '=') ||
-                             (*lt == '>' && lt[1] == '='));
+                             (*lt == '>' && lt[1] == '=')) ||
+                            (*lt == '"' && pend_str);
                         if(!cont) {
                             snprintf(lookahead, sizeof(lookahead), "%s", la);
                             have_look = 1;
@@ -957,6 +972,16 @@ kir_parse_file(const char *path, const char *root)
                                 sizeof(pending) - pending_len - 1);
                         pending_len = (int)strlen(pending);
                         line_no++;
+                        /* the joined statement now ends with whatever this
+                         * fragment ended with */
+                        {
+                            int pl2 = pending_len;
+
+                            while(pl2 > 0 && (pending[pl2 - 1] == ' ' ||
+                                              pending[pl2 - 1] == '\t'))
+                                pl2--;
+                            pend_str = pl2 > 0 && pending[pl2 - 1] == '"';
+                        }
                     }
                 }
             }

@@ -69,6 +69,13 @@ chain_root :: () -> const char* {
     }
     return cached
 }
+
+concat_sql :: () -> const char* {
+    sql: const char* = "INSERT INTO t("
+        "a, b, c) "
+        "VALUES(1,2,3)"
+    return sql
+}
 EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry"
@@ -129,6 +136,15 @@ grep -Fq '"android"' "$c"
 grep -Fq '#else' "$c"
 grep -Fq '"desktop"' "$c"
 grep -Fq '#endif' "$c"
+
+# adjacent string literals on continuation lines join into ONE statement
+# (regression: each fragment became an orphan expression statement and the
+# initializer kept only its first fragment — SQL prepared from it failed)
+grep -Fq 'const char* sql = "INSERT INTO t(" "a, b, c) " "VALUES(1,2,3)";' "$c"
+if grep -Fq '"a, b, c) ";' "$c"; then
+    echo "string fragment leaked as an orphan statement" >&2
+    exit 1
+fi
 
 # while with parens
 grep -Fq 'while(count < 3) {' "$c"
