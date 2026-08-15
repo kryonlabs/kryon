@@ -91,9 +91,13 @@
       return false;
     }
 
+    /* Contexts cannot be created on a display:none canvas in some engines —
+     * create the canvas invisibly small and transparent, take the context,
+     * then hide it completely. A canvas that is never composited cannot
+     * leak through the compositor. */
     var hidden = document.createElement("canvas");
     hidden.id = "kryon-gl-canvas";
-    hidden.style.display = "none";
+    hidden.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;";
     hidden.width = visible.width > 0 ? visible.width : glCanvasSizeFrom;
     hidden.height = visible.height > 0 ? visible.height : 560;
     document.body.appendChild(hidden);
@@ -114,6 +118,7 @@
       state.reason = "no webgl on hidden canvas";
       return false;
     }
+    hidden.style.display = "none";
 
     var ctx2d;
     try {
