@@ -808,7 +808,13 @@ kir_parse_file(const char *path, const char *root)
                     header_line =
                         pending[0] == '#' ||
                         strcmp(pending, "{") == 0 ||   /* bare scope-open */
-                        strstr(pending, " :: ") != NULL ||
+                        /* 'name :: Type = {' carries an initializer, not a
+                         * body: its braces are expression braces so the
+                         * logical line continues until they balance. Header
+                         * forms ('name :: struct {', 'f :: (args) {', typedefs,
+                         * externs) never contain ' = '. */
+                        (strstr(pending, " :: ") != NULL &&
+                         strstr(pending, " = ") == NULL) ||
                         (nc != '\0' && nc != '-' && nc != '.' &&
                          strchr(" ({", nc) != NULL &&
                          (strcmp(w0, "if") == 0 ||
