@@ -1,4 +1,8 @@
 #include "theme.h"
+#if defined(PLATFORM_WEB)
+#include <emscripten.h>
+#include <string.h>
+#endif
 #include "ui_color.h"
 
 #include <stdio.h>
@@ -728,6 +732,20 @@ GetSystemDesktopBackground(char *out, int out_size)
 bool
 RefreshSystemTheme(void)
 {
+#if defined(PLATFORM_WEB)
+    /* Browsers expose no desktop palette, but they do expose the user's
+       light/dark preference; map it onto the material palettes. */
+    {
+        int prefers_dark = EM_ASM_INT_V(
+            return (typeof matchMedia === 'function' &&
+                    matchMedia('(prefers-color-scheme: dark)').matches) ? 1 : 0;
+        );
+        apply_material_palette(prefers_dark != 0);
+        copy_text(system_palette.name, sizeof(system_palette.name), "System",
+                  strlen("System"));
+        return true;
+    }
+#endif
 #if defined(SYSTEM_THEME_GTK)
     if(gtk_system_theme_refresh())
         return true;

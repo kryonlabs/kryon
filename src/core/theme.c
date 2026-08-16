@@ -723,10 +723,11 @@ GetDefaultPlatformThemeStyle(void)
 ThemeSource
 GetDefaultPlatformThemeSource(void)
 {
-#if defined(PLATFORM_WEB) || defined(PLATFORM_ANDROID) || defined(__ANDROID__) || (defined(ANDROID_BUILD) && ANDROID_BUILD)
-    /* No system theme detection off the desktop; apps fall back to their own palette. */
+#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || (defined(ANDROID_BUILD) && ANDROID_BUILD)
+    /* No system theme detection on Android; apps fall back to their own palette. */
     return THEME_SOURCE_APP;
 #else
+    /* Desktop reads the toolkit palette; web reads prefers-color-scheme. */
     return THEME_SOURCE_SYSTEM;
 #endif
 }
