@@ -178,7 +178,7 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c krb-web
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c krb-web krb-sdl
 
 k2c: $(K2C)
 
@@ -197,6 +197,19 @@ examples-run:
 clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C examples web-clean
+
+# SDL2 desktop host: kry_sw renders, SDL2 owns window/input/presentation.
+# Uses pkg-config sdl2 (on omega: PKG_CONFIG_PATH=~/.local/sdl2/lib/pkgconfig).
+KRB_SDL = $(BUILD_DIR)/bin/krb-sdl
+KRB_SDL_CFLAGS = $(shell PKG_CONFIG_PATH=$(HOME)/.local/sdl2/lib/pkgconfig:$(PKG_CONFIG_PATH) pkg-config --cflags sdl2 2>/dev/null)
+KRB_SDL_LDLIBS = $(shell PKG_CONFIG_PATH=$(HOME)/.local/sdl2/lib/pkgconfig:$(PKG_CONFIG_PATH) pkg-config --libs sdl2 2>/dev/null)
+
+krb-sdl: $(KRB_SDL)
+
+$(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $(KRY_SW_SRCS) $(KRY_SW_HDRS) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) -Iinclude -Icmd/krb-run $(KRB_SDL_CFLAGS) -o $@ \
+		cmd/krb-sdl/main.c cmd/krb-run/png_write.c $(KRY_SW_SRCS) \
+		$(KRB_SDL_LDLIBS)
 
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
 # blitted to ImageData (pixel-identical to the native headless renderer).
