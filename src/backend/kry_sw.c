@@ -1,5 +1,6 @@
 #include "kry_sw.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -396,6 +397,51 @@ b_theme_color(int slot)
 }
 
 static void
+b_circle(int cx, int cy, int r, unsigned color)
+{
+    KrySw *sw = g_sw;
+    int dy;
+
+    if(sw == NULL || r <= 0)
+        return;
+    for(dy = -r; dy <= r; dy++) {
+        int dx = (int)(r * 1.0f);
+        int row = cy + dy;
+        int half = (int)sqrtf((float)(r * r - dy * dy));
+
+        (void)dx;
+        fill_rect(sw, cx - half, row, half * 2 + 1, 1, color);
+    }
+}
+
+static void
+b_ring(int cx, int cy, int inner, int outer, unsigned color)
+{
+    KrySw *sw = g_sw;
+    int dy;
+
+    if(sw == NULL || outer <= 0)
+        return;
+    if(inner <= 0) {
+        b_circle(cx, cy, outer, color);
+        return;
+    }
+    for(dy = -outer; dy <= outer; dy++) {
+        int row = cy + dy;
+        int dy2 = dy < 0 ? -dy : dy;
+        int o = (int)sqrtf((float)(outer * outer - dy2 * dy2));
+        int i = dy2 < inner ? (int)sqrtf((float)(inner * inner - dy2 * dy2)) : -1;
+
+        if(i < 0)
+            fill_rect(sw, cx - o, row, o * 2 + 1, 1, color);
+        else {
+            fill_rect(sw, cx - o, row, o - i + 1, 1, color);
+            fill_rect(sw, cx + i, row, o - i + 1, 1, color);
+        }
+    }
+}
+
+static void
 b_texture(const char *asset_path, int x, int y, int w, int h,
           unsigned tint, int fit)
 {
@@ -429,5 +475,7 @@ KrySwBackend(KrySw *sw)
     sw->backend.scale_px = b_scale_px;
     sw->backend.theme_color = b_theme_color;
     sw->backend.texture = b_texture;
+    sw->backend.circle = b_circle;
+    sw->backend.ring = b_ring;
     return &sw->backend;
 }

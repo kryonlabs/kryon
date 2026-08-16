@@ -35,6 +35,7 @@ KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
 KRB_RUN = $(BUILD_DIR)/bin/krb-run
 KRY_SW_TEST = $(BUILD_DIR)/tests/kry_sw_test
+KRB_LOGIC_TEST = $(BUILD_DIR)/tests/krb_logic_test
 EMCC ?= emcc
 KRB_WEB_DIR = $(BUILD_DIR)/web/krb-web
 KRB_WEB = $(KRB_WEB_DIR)/index.html
@@ -209,7 +210,7 @@ krb-sdl: $(KRB_SDL)
 $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $(KRY_SW_SRCS) $(KRY_SW_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Iinclude -Icmd/krb-run $(KRB_SDL_CFLAGS) -o $@ \
 		cmd/krb-sdl/main.c cmd/krb-run/png_write.c $(KRY_SW_SRCS) \
-		$(KRB_SDL_LDLIBS)
+		$(KRB_SDL_LDLIBS) -lm
 
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
 # blitted to ImageData (pixel-identical to the native headless renderer).
@@ -241,7 +242,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(SFS_TEST)
+test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(SFS_TEST)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
@@ -490,12 +491,17 @@ KRY_SW_HDRS = include/krb.h include/kry_backend.h include/kry_sw.h \
 
 $(KRB_RUN): cmd/krb-run/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $(KRY_SW_SRCS) $(KRY_SW_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Iinclude -Icmd/krb-run -o $@ cmd/krb-run/main.c \
-		cmd/krb-run/png_write.c $(KRY_SW_SRCS)
+		cmd/krb-run/png_write.c $(KRY_SW_SRCS) -lm
 
 $(KRY_SW_TEST): tests/kry_sw_test.c src/backend/kry_sw.c src/backend/kry_backend_rec.c src/backend/kry_backend.c include/kry_sw.h include/kry_backend_rec.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_sw_test.c src/backend/kry_sw.c \
-		src/backend/kry_backend_rec.c src/backend/kry_backend.c -o $@
+		src/backend/kry_backend_rec.c src/backend/kry_backend.c -o $@ -lm
+
+$(KRB_LOGIC_TEST): tests/krb_logic_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_logic_test.c src/krb/krb.c \
+		src/backend/kry_sw.c src/backend/kry_backend.c -o $@ -lm
 
 $(KRY_TERM_TEST): tests/kry_term_test.c src/kry_std/kry_term.c include/kry_term.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

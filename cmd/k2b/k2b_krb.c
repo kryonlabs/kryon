@@ -520,6 +520,139 @@ parse_text(KrbBuild *b, const char *call)
     return 1;
 }
 
+/* "(Color){r, g, b, a}" literal -> packed RGBA; 0 if not that form. */
+static int
+parse_color_ctor(const char *expr, unsigned *out)
+{
+    const char *p = skip_ws(expr);
+    unsigned comps[4];
+    int i;
+
+    if(strncmp(p, "(Color){", 8) != 0)
+        return 0;
+    p += 8;
+    for(i = 0; i < 4; i++) {
+        comps[i] = (unsigned)strtol(skip_ws(p), NULL, 0);
+        p = strchr(p, ',');
+        if(p != NULL)
+            p++;
+        else if(i != 3)
+            return 0;
+    }
+    if(out != NULL)
+        *out = (comps[0] << 24) | (comps[1] << 16) | (comps[2] << 8) |
+               (comps[3] & 0xff);
+    return 1;
+}
+
+/* DrawCircleV((Vector2){X, Y}, R, COLOR) -> CIRCLE node (center + radius). */
+static int
+parse_circle(KrbBuild *b, const char *call)
+{
+    char parts[10][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    const char *inner;
+    char *comma;
+    char center[KIR_TEXT_MAX];
+    size_t ilen;
+    int scaled;
+    KrbBuildNode *n;
+    char name[32];
+    unsigned color;
+
+    if(args == NULL)
+        return 0;
+    if(split_args(args + 1, parts, 10) < 3)
+        return 0;
+    inner = skip_ws(parts[0]);
+    if(strncmp(inner, "(Vector2){", 10) != 0)
+        return 0;
+    inner += 10;
+    ilen = strlen(inner);
+    while(ilen > 0 && (inner[ilen - 1] == '}' || inner[ilen - 1] == ' '))
+        ilen--;
+    if(ilen >= sizeof(center))
+        ilen = sizeof(center) - 1;
+    memcpy(center, inner, ilen);
+    center[ilen] = '\0';
+    comma = strchr(center, ',');
+    if(comma == NULL)
+        return 0;
+    *comma = '\0';
+    snprintf(name, sizeof(name), "circle%d", b->node_count);
+    n = add_node(b, KRB_NODE_CIRCLE, name);
+    if(n == NULL)
+        return 0;
+    if(parse_coord(center, &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(comma + 1, &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[1], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_color_ctor(parts[2], &color))
+        n->color = color;
+    else
+        n->color = parse_color(parts[2]);
+    return 1;
+}
+
+/* DrawRing((Vector2){X, Y}, INNER, OUTER, start, end, seg, COLOR) -> RING
+ * node: w = outer radius, h = inner. Angles/segments are ignored; the
+ * cartridge ring is a full annulus. */
+static int
+parse_ring(KrbBuild *b, const char *call)
+{
+    char parts[10][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    KrbBuildNode *n;
+    int scaled;
+    unsigned color;
+    char name[32];
+
+    if(args == NULL)
+        return 0;
+    if(split_args(args + 1, parts, 10) < 7)
+        return 0;
+    snprintf(name, sizeof(name), "ring%d", b->node_count);
+    n = add_node(b, KRB_NODE_RING, name);
+    if(n == NULL)
+        return 0;
+    {
+        const char *inner = skip_ws(parts[0]);
+        char center[KIR_TEXT_MAX];
+        char *comma;
+        size_t ilen;
+
+        if(strncmp(inner, "(Vector2){", 10) != 0)
+            return 0;
+        inner += 10;
+        ilen = strlen(inner);
+        while(ilen > 0 && (inner[ilen - 1] == '}' || inner[ilen - 1] == ' '))
+            ilen--;
+        if(ilen >= sizeof(center))
+            ilen = sizeof(center) - 1;
+        memcpy(center, inner, ilen);
+        center[ilen] = '\0';
+        comma = strchr(center, ',');
+        if(comma == NULL)
+            return 0;
+        *comma = '\0';
+        if(parse_coord(center, &n->x, &scaled) && scaled)
+            n->flags |= KRB_FLAG_SCALE_X;
+        if(parse_coord(comma + 1, &n->y, &scaled) && scaled)
+            n->flags |= KRB_FLAG_SCALE_Y;
+    }
+    if(parse_coord(parts[1], &n->h, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_H; /* inner */
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W; /* outer */
+    if(parse_color_ctor(parts[6], &color))
+        n->color = color;
+    else
+        n->color = parse_color(parts[6]);
+    return 1;
+}
+
 static int
 parse_rect(KrbBuild *b, const char *call)
 {
@@ -1257,6 +1390,10 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_text(b, call);
     if(starts_ident(call, "Rect"))
         return parse_rect(b, call);
+    if(starts_ident(call, "DrawCircleV"))
+        return parse_circle(b, call);
+    if(starts_ident(call, "DrawRing"))
+        return parse_ring(b, call);
     if(strstr(call, "Button((") != NULL || strstr(call, "ButtonProps") != NULL)
         return parse_button(b, call);
     if(starts_ident(call, "Separator"))
@@ -1358,7 +1495,7 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     if(need > cap)
         return -1;
     wr_u32(&hp, KRB_MAGIC);
-    wr_u16(&hp, 1);
+    wr_u16(&hp, 2);
     wr_u16(&hp, 0);
     wr_u32(&hp, (unsigned)b->node_count);
     wr_u32(&hp, (unsigned)b->string_used);

@@ -169,6 +169,19 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
                    KryPictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
 }
 
+static void
+draw_circle(int cx, int cy, int r, unsigned color)
+{
+    DrawCircle(cx, cy, (float)r, unpack_color(color));
+}
+
+static void
+draw_ring(int cx, int cy, int inner, int outer, unsigned color)
+{
+    DrawRing((Vector2){(float)cx, (float)cy}, (float)inner, (float)outer,
+             0.0f, 360.0f, 0, unpack_color(color));
+}
+
 const KryBackend KryBackendDraw = {
     draw_clear,
     draw_rect,
@@ -185,6 +198,8 @@ const KryBackend KryBackendDraw = {
     draw_scale_px,
     draw_theme_color,
     draw_texture,
+    draw_circle,
+    draw_ring,
 };
 
 static void

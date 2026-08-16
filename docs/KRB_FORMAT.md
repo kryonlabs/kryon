@@ -106,6 +106,41 @@ KIR. Hosts may still bind native imports for platform services.
 `KrbExec` runs the program. `KrbDraw` runs `OP_DRAW_TREE` (or the whole
 program if it is more than that one opcode).
 
+### Version 2: logic opcodes and geometry nodes
+
+v2 (header `version == 2`; loaders accept v1 and v2) adds a small stack
+machine so a cartridge can run per-frame logic over mounted `int` state —
+counters, timers, conditionals — without host C. The machine shares one
+16-deep `int` stack across the whole `KrbExec` pass. `OP_DRAW_NODE` draws a
+single node, so `JZ`/`JMP` make UI conditional on state. `k2b` currently
+emits v2 headers and the geometry nodes below; VM-program emission from
+`.kry` logic is the next step (docs/plans/07-logic-execution.md).
+
+| Op | Byte | Args | Meaning |
+|---|---|---|---|
+| `OP_PUSH_CONST` | `0x10` | i32 | push immediate |
+| `OP_PUSH_PATH` | `0x11` | u16 path_off | push mounted `int` at `path` |
+| `OP_POP_STORE` | `0x12` | u16 path_off | pop into mounted `int` at `path` |
+| `OP_ADD`/`SUB`/`MUL`/`DIV` | `0x13`–`0x16` | — | pop b, a; push `a OP b` (DIV by 0 → 0) |
+| `OP_EQ`/`NE`/`LT`/`LE`/`GT`/`GE` | `0x17`–`0x1c` | — | pop b, a; push 0/1 |
+| `OP_JMP` | `0x1d` | u32 prog offset | absolute jump |
+| `OP_JZ` | `0x1e` | u32 prog offset | pop; jump if 0 |
+| `OP_TIME` | `0x1f` | — | push `(int)(backend time * 1000)` ms |
+| `OP_DRAW_NODE` | `0x20` | u16 node index | draw one node (BACKGROUND gets screen w/h) |
+
+New node types: `CIRCLE` (10; x,y = center, w = radius) and `RING`
+(11; x,y = center, w = outer radius, h = inner radius). `k2b` maps
+`DrawCircleV((Vector2){x, y}, r, color)` and
+`DrawRing((Vector2){x, y}, inner, outer, a0, a1, seg, color)` to these;
+ring angles are ignored (full annulus). Backends implement them through
+the new optional `circle`/`ring` entries in `KryBackend`.
+
+Color caveat (v1, still true in v2): the theme-slot encoding is
+`0x80000000 | slot`, tested as *any* nonzero top bit — so a literal color
+with a red channel ≥ `0x80` reads as a theme slot and resolves to the
+default gray. Literal cartridge colors must keep R < `0x80`; engines that
+need bright reds should use a theme slot.
+
 ## C memory as files
 
 `KrbMount(img, "/app", ptr, fields)` maps live C fields onto paths.

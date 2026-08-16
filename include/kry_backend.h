@@ -40,6 +40,10 @@ typedef struct KryBackend {
     unsigned (*theme_color)(int slot);
     void (*texture)(const char *asset_path, int x, int y, int w, int h,
                     unsigned tint, int fit);
+    /* Added in the v2 cartridge format. Older engines may leave these NULL;
+     * drawers must check before calling. */
+    void (*circle)(int cx, int cy, int radius, unsigned color);
+    void (*ring)(int cx, int cy, int inner, int outer, unsigned color);
 } KryBackend;
 
 extern const KryBackend KryBackendDraw;

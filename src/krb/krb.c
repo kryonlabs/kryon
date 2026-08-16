@@ -59,8 +59,12 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     reset_image(img);
     if(len < 32 || rd_u32(bytes) != KRB_MAGIC)
         return -1;
-    if(rd_u16(bytes + 4) != KRB_VERSION)
-        return -1;
+    {
+        unsigned ver = rd_u16(bytes + 4);
+
+        if(ver != 1 && ver != KRB_VERSION)
+            return -1;
+    }
     node_count = rd_u32(bytes + 8);
     string_bytes = rd_u32(bytes + 12);
     prog_bytes = rd_u32(bytes + 16);
@@ -685,6 +689,14 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         if(b->texture != NULL && text[0] != '\0')
             b->texture(text, x, y, w, h, color, n->style);
         break;
+    case KRB_NODE_CIRCLE:
+        if(b->circle != NULL && w > 0)
+            b->circle(x, y, w, color);
+        break;
+    case KRB_NODE_RING:
+        if(b->ring != NULL && w > 0)
+            b->ring(x, y, h > 0 && h < w ? h : 0, w, color);
+        break;
     case KRB_NODE_CHECKBOX: {
         /* name_off is the bound state-field path; text_off the label. The
          * cartridge owns the toggle: read the value, render, and on click flip
@@ -790,6 +802,15 @@ draw_tree(KrbImage *img, int x, int y, int w, int h)
     }
 }
 
+static int exec_logic(KrbImage *img, unsigned char op,
+                      const unsigned char **pp, const unsigned char *end);
+
+static uint32_t
+prog_len(KrbImage *img)
+{
+    return rd_u32(img->bytes + 16);
+}
+
 int
 KrbExec(KrbImage *img)
 {
@@ -836,11 +857,138 @@ KrbExec(KrbImage *img)
             value = (int)rd_u32(p);
             p += 4;
             KrbWriteI32(img, KrbString(img, off), value);
+        } else if(op >= KRB_OP_PUSH_CONST && op <= KRB_OP_TIME) {
+            if(exec_logic(img, op, &p, end) != 0)
+                return -1;
+        } else if(op == KRB_OP_DRAW_NODE) {
+            uint16_t idx;
+
+            if(p + 2 > end)
+                return -1;
+            idx = rd_u16(p);
+            p += 2;
+            {
+                const KryBackend *b = KryBackendCurrent();
+                KrbNode node;
+                int w = b != NULL ? b->width() : 0;
+                int h = b != NULL ? b->height() : 0;
+
+                if(KrbReadNode(img, idx, &node) == 0) {
+                    if(node.type == KRB_NODE_BACKGROUND) {
+                        node.w = (int16_t)w;
+                        node.h = (int16_t)h;
+                        node.flags &=
+                            (unsigned char)~(KRB_FLAG_SCALE_W | KRB_FLAG_SCALE_H);
+                    }
+                    draw_node(img, b, &node, 0, 0);
+                }
+            }
         } else {
             return -1;
         }
     }
     (void)drew;
+    return 0;
+}
+
+/* v2 logic VM: one shared 16-deep int stack lives across ops inside a
+ * single KrbExec pass. exec_logic handles exactly one opcode at *pp and
+ * advances it. */
+static int
+exec_logic(KrbImage *img, unsigned char op, const unsigned char **pp,
+           const unsigned char *end)
+{
+    static int st[16];
+    static int sp;
+    const unsigned char *p = *pp;
+    int a;
+    int b;
+
+    (void)img;
+#define PUSH(v) do { if(sp >= 16) return -1; st[sp++] = (v); } while(0)
+#define POP(v) do { if(sp <= 0) return -1; (v) = st[--sp]; } while(0)
+    switch(op) {
+    case KRB_OP_PUSH_CONST:
+        if(p + 4 > end)
+            return -1;
+        PUSH((int)rd_u32(p));
+        p += 4;
+        break;
+    case KRB_OP_PUSH_PATH: {
+        uint16_t off;
+        int v = 0;
+
+        if(p + 2 > end)
+            return -1;
+        off = rd_u16(p);
+        p += 2;
+        KrbReadI32(img, KrbString(img, off), &v);
+        PUSH(v);
+        break;
+    }
+    case KRB_OP_POP_STORE: {
+        uint16_t off;
+
+        if(p + 2 > end)
+            return -1;
+        off = rd_u16(p);
+        p += 2;
+        POP(a);
+        KrbWriteI32(img, KrbString(img, off), a);
+        break;
+    }
+    case KRB_OP_ADD:
+    case KRB_OP_SUB:
+    case KRB_OP_MUL:
+    case KRB_OP_DIV:
+    case KRB_OP_EQ:
+    case KRB_OP_NE:
+    case KRB_OP_LT:
+    case KRB_OP_LE:
+    case KRB_OP_GT:
+    case KRB_OP_GE:
+        POP(b);
+        POP(a);
+        switch(op) {
+        case KRB_OP_ADD: PUSH(a + b); break;
+        case KRB_OP_SUB: PUSH(a - b); break;
+        case KRB_OP_MUL: PUSH(a * b); break;
+        case KRB_OP_DIV: PUSH(b == 0 ? 0 : a / b); break;
+        case KRB_OP_EQ: PUSH(a == b); break;
+        case KRB_OP_NE: PUSH(a != b); break;
+        case KRB_OP_LT: PUSH(a < b); break;
+        case KRB_OP_LE: PUSH(a <= b); break;
+        case KRB_OP_GT: PUSH(a > b); break;
+        default: PUSH(a >= b); break;
+        }
+        break;
+    case KRB_OP_JMP:
+    case KRB_OP_JZ:
+        if(p + 4 > end)
+            return -1;
+        a = (int)rd_u32(p);
+        if(op == KRB_OP_JZ)
+            POP(b);
+        else
+            b = 1;
+        if(b != 0 && a >= 0 && (uint32_t)a <= prog_len(img)) {
+            *pp = img->prog + a;
+            return 0;
+        }
+        p += 4;
+        break;
+    case KRB_OP_TIME: {
+        const KryBackend *bk = KryBackendCurrent();
+
+        PUSH((int)(bk != NULL ? bk->time() * 1000.0f : 0.0f));
+        break;
+    }
+    default:
+        return -1;
+    }
+#undef PUSH
+#undef POP
+    *pp = p;
     return 0;
 }
 

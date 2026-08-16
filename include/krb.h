@@ -12,7 +12,7 @@
  */
 
 #define KRB_MAGIC 0x0042524Bu /* "KRB\0" little-endian; version in version field */
-#define KRB_VERSION 1
+#define KRB_VERSION 2 /* v1: render-first; v2: logic opcodes + circle/ring */
 #define KRB_NODE_SIZE 28
 #define KRB_CONTROL_SIZE 24
 #define KRB_BIND_MAX 32
@@ -28,7 +28,9 @@ enum {
     KRB_NODE_PICTURE = 6,
     KRB_NODE_CHECKBOX = 7,
     KRB_NODE_TOGGLE = 8,
-    KRB_NODE_CONTROL = 9
+    KRB_NODE_CONTROL = 9,
+    KRB_NODE_CIRCLE = 10, /* x,y = center; w = radius */
+    KRB_NODE_RING = 11    /* x,y = center; w = outer radius; h = inner */
 };
 
 /* Interactive control kinds, carried in a KrbControl record (controls[] table)
@@ -54,7 +56,29 @@ enum {
 enum {
     KRB_OP_DRAW_TREE = 0x01,
     KRB_OP_CALL_HOST = 0x02, /* u8 slot */
-    KRB_OP_SET_I32 = 0x03    /* u16 path_off, i32 value */
+    KRB_OP_SET_I32 = 0x03,   /* u16 path_off, i32 value */
+
+    /* v2 logic opcodes: a small stack machine over mounted i32 state so a
+     * cartridge can run per-frame logic (counters, timers, conditionals)
+     * without host C. Stack ops pop/push a 16-deep int stack; DRAW_NODE
+     * draws one node so JZ/JMP can make UI conditional. */
+    KRB_OP_PUSH_CONST = 0x10, /* i32 */
+    KRB_OP_PUSH_PATH = 0x11,  /* u16 path_off */
+    KRB_OP_POP_STORE = 0x12,  /* u16 path_off */
+    KRB_OP_ADD = 0x13,
+    KRB_OP_SUB = 0x14,
+    KRB_OP_MUL = 0x15,
+    KRB_OP_DIV = 0x16,
+    KRB_OP_EQ = 0x17,
+    KRB_OP_NE = 0x18,
+    KRB_OP_LT = 0x19,
+    KRB_OP_LE = 0x1a,
+    KRB_OP_GT = 0x1b,
+    KRB_OP_GE = 0x1c,
+    KRB_OP_JMP = 0x1d,        /* u32 absolute prog offset */
+    KRB_OP_JZ = 0x1e,         /* u32 absolute prog offset; pops */
+    KRB_OP_TIME = 0x1f,       /* push (int)(backend->time() * 1000) */
+    KRB_OP_DRAW_NODE = 0x20   /* u16 node index */
 };
 
 enum {

@@ -75,6 +75,31 @@ r_texture(const char *asset_path, int x, int y, int w, int h,
 }
 
 static void
+r_circle(int cx, int cy, int r, unsigned color)
+{
+    if(g_rec == NULL)
+        return;
+    g_rec->calls++;
+    if(g_rec->log != NULL)
+        fprintf(g_rec->log, "circle %d %d %d %08x\n", cx, cy, r, color);
+    if(g_rec->inner->circle != NULL)
+        g_rec->inner->circle(cx, cy, r, color);
+}
+
+static void
+r_ring(int cx, int cy, int inner, int outer, unsigned color)
+{
+    if(g_rec == NULL)
+        return;
+    g_rec->calls++;
+    if(g_rec->log != NULL)
+        fprintf(g_rec->log, "ring %d %d %d %d %08x\n", cx, cy, inner, outer,
+                color);
+    if(g_rec->inner->ring != NULL)
+        g_rec->inner->ring(cx, cy, inner, outer, color);
+}
+
+static void
 r_mouse(int *x, int *y)
 {
     g_rec->inner->mouse(x, y);
@@ -151,6 +176,8 @@ KryBackendRecBackend(KryBackendRec *rec, FILE *log, const KryBackend *inner)
     rec->backend.scale_px = r_scale_px;
     rec->backend.theme_color = r_theme_color;
     rec->backend.texture = r_texture;
+    rec->backend.circle = r_circle;
+    rec->backend.ring = r_ring;
     g_rec = rec;
     return &rec->backend;
 }

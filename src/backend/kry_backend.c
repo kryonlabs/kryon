@@ -122,6 +122,25 @@ null_texture(const char *asset_path, int x, int y, int w, int h,
     (void)fit;
 }
 
+static void
+null_circle(int cx, int cy, int r, unsigned color)
+{
+    (void)cx;
+    (void)cy;
+    (void)r;
+    (void)color;
+}
+
+static void
+null_ring(int cx, int cy, int inner, int outer, unsigned color)
+{
+    (void)cx;
+    (void)cy;
+    (void)inner;
+    (void)outer;
+    (void)color;
+}
+
 const KryBackend KryBackendNull = {
     null_clear,
     null_rect,
@@ -138,6 +157,8 @@ const KryBackend KryBackendNull = {
     null_scale_px,
     null_theme_color,
     null_texture,
+    null_circle,
+    null_ring,
 };
 
 static const KryBackend *g_backend = &KryBackendNull;
