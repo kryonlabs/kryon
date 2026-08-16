@@ -35,7 +35,17 @@ RAY_GL_LDLIBS ?= $(shell pkg-config --libs libdrm gbm egl glesv2 2>/dev/null)
 RAY_CFLAGS ?= $(strip $(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS))
 RAY_LDLIBS ?= $(strip $(RAY_SDL_LDLIBS) $(RAY_GL_LDLIBS))
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
-EXAMPLE_SYSTEM_LDLIBS := $(RAY_LDLIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
+# Backend selection mirroring the root Makefile; examples link libkryon.a
+# (built with the same KRYON_BACKEND below) plus the backend's own libs.
+KRYON_BACKEND ?= raylib
+ifeq ($(KRYON_BACKEND),raylib)
+  EXAMPLE_BACKEND_LIBS = $(RAYLIB_A)
+  EXAMPLE_BACKEND_LDLIBS = $(RAY_LDLIBS)
+else
+  EXAMPLE_BACKEND_LIBS =
+  EXAMPLE_BACKEND_LDLIBS =
+endif
+EXAMPLE_SYSTEM_LDLIBS := $(EXAMPLE_BACKEND_LDLIBS) $(GL_X11_PKG_LIBS) $(GTK_PKG_LIBS) -lm -lpthread
 ifeq ($(UNAME_S),Linux)
     EXAMPLE_SYSTEM_LDLIBS += -ldl -lrt
 endif
@@ -63,8 +73,20 @@ WEB_SHELL := web_shell.html
 EXAMPLES_WEB_SITE_DIR ?= ../build/site/examples
 include ../mk/raylib.mk
 KRYON_LIBRARY_SRCS := $(shell find ../src -type f -name '*.c' | LC_ALL=C sort)
-KRYON_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(KRYON_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
-KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
+ifeq ($(KRYON_BACKEND),raylib)
+  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_RAYLIB_WRAPPERS_C)
+  KRYON_EXAMPLES_WEB_BACKEND_LIBS := $(WEB_RAYLIB_A)
+else ifeq ($(KRYON_BACKEND),canvas)
+  KRYON_EXAMPLES_WEB_BACKEND_C := ../src/backend/canvas_backend.c
+  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
+else ifeq ($(KRYON_BACKEND),null)
+  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)
+  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
+else
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+endif
+KRYON_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(KRYON_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
+KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
 WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(KRYON_WEB_LIBOQS_BUILD_DIR)/include
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_PRELOAD_FLAGS ?= $(if $(wildcard $(EMSCRIPTEN_FILE_PACKAGER)),--preload-file ../fonts/noto@fonts/noto,)
@@ -76,7 +98,7 @@ ifneq ($(NIX_CFLAGS_COMPILE),)
     CFLAGS += $(NIX_CFLAGS_COMPILE)
 endif
 
-LDFLAGS += $(RAYLIB_A) $(EXAMPLE_SYSTEM_LDLIBS)
+LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
 
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
 	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
@@ -90,7 +112,7 @@ EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 all: $(KRYON_LIB) $(K2C) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
 
 $(KRYON_LIB):
-	@$(MAKE) -C ..
+	@$(MAKE) -C .. KRYON_BACKEND=$(KRYON_BACKEND)
 
 $(K2C):
 	@$(MAKE) -C .. build/bin/k2c
@@ -112,12 +134,12 @@ $(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry 
 	@echo "Generating 02_buttons cartridge..."
 	@$(K2B) --root . -o $(CODEGEN_DIR) $<
 
-$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
+$(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/02_buttons.krb.c $(LDFLAGS)
 	@echo "Built: $@"
 
-$(BIN_DIR)/%: $(CODEGEN_DIR)/%.c $(KRYON_LIB) $(RAYLIB_A) $(FONT_OUTPUTS) | $(BIN_DIR)
+$(BIN_DIR)/%: $(CODEGEN_DIR)/%.c $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
 	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 	@echo "Built: $@"
@@ -132,7 +154,7 @@ $(BUILD_DIR):
 $(WEB_EMBED_ASSETS_C): $(WEB_EMBED_ASSET_FILES) ../scripts/embed-assets.sh ../include/embedded_assets.h | $(BUILD_DIR)
 	sh ../scripts/embed-assets.sh $@ ../themes
 
-$(EXAMPLES_WEB_SITE_DIR)/%/index.html: $(CODEGEN_DIR)/%.c $(FONT_OUTPUTS) $(WEB_RAYLIB_A) $(KRYON_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
+$(EXAMPLES_WEB_SITE_DIR)/%/index.html: $(CODEGEN_DIR)/%.c $(FONT_OUTPUTS) $(KRYON_EXAMPLES_WEB_BACKEND_LIBS) $(KRYON_WEB_LIBOQS_A) $(WEB_EMBED_ASSETS_C) $(WEB_SHELL)
 	@echo "Building web example $*..."
 	@mkdir -p $(dir $@)
 	$(WEB_CC) $(WEB_CFLAGS) \
@@ -140,7 +162,7 @@ $(EXAMPLES_WEB_SITE_DIR)/%/index.html: $(CODEGEN_DIR)/%.c $(FONT_OUTPUTS) $(WEB_
 		-o $(dir $@)/index.js \
 		$< \
 		$(if $(filter 01_file_dialog,$*),$(KRYON_ALL_WEB_SRCS),$(KRYON_WEB_SRCS)) \
-		$(WEB_RAYLIB_A) \
+		$(KRYON_EXAMPLES_WEB_BACKEND_LIBS) \
 		$(KRYON_WEB_LIBOQS_A) \
 		$(WEB_LDFLAGS) \
 		$(WEB_PRELOAD_FLAGS)

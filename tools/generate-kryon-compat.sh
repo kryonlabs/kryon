@@ -8,6 +8,19 @@ wrapper_source=${4:-build/generated/kryon_raylib_wrappers.c}
 null_backend_source=${5:-build/generated/kryon_null_backend.c}
 backend_prefix=${KRYON_RAYLIB_BACKEND_PREFIX:-KryonRaylibBackend_}
 
+# Input symbols owned by the shared front-end (src/backend/kry_input.c,
+# include/kry_input.h): the public names are defined there once for every
+# backend, merging injection, the modal input override, and the keyboard
+# platform callbacks. Backends only provide KryonBackendRaw_<name> hooks -
+# the raylib wrapper file emits forwarders, the null backend emits zero
+# stubs - so a new backend inherits the full input behavior for free.
+input_symbols="IsKeyPressed IsKeyDown IsKeyReleased GetKeyPressed GetCharPressed IsMouseButtonPressed IsMouseButtonDown IsMouseButtonReleased IsMouseButtonUp GetMouseX GetMouseY GetMousePosition GetMouseDelta GetMouseWheelMove GetMouseWheelMoveV"
+
+# Pure-math surface symbols defined once for every backend in
+# src/backend/kry_surface_math.c (color/collision/camera-transform/UTF-8
+# arithmetic with no backend state); neither generated file defines them.
+shared_symbols="Fade ColorLerp CheckCollisionPointRec CheckCollisionRecs GetWorldToScreen2D GetScreenToWorld2D GetCodepointNext"
+
 if [ ! -f "$raylib_header" ]; then
     echo "raylib header not found: $raylib_header" >&2
     exit 1
@@ -76,7 +89,7 @@ EOF
     echo "#endif"
 } > "$rename_header"
 
-awk -v prefix="$backend_prefix" '
+awk -v prefix="$backend_prefix" -v input_symbols="$input_symbols" -v shared_symbols="$shared_symbols" '
 function trim(s) {
     sub(/^[[:space:]]+/, "", s)
     sub(/[[:space:]]+$/, "", s)
@@ -125,108 +138,21 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
     print "extern " return_type " " prefix name "(" args ");"
     print return_type " " name "(" args ")"
     print "    {"
-    if(name == "IsKeyPressed") {
-        print "    if(KryonInjectKeyPressed(key))"
-        print "        return true;"
-        print "    if(!g_kryon_keyboard_input_enabled)"
-        print "        return false;"
-        print "    if(g_kryon_key_pressed_callback != NULL && k_key_prefers_platform(key))"
-        print "        return g_kryon_key_pressed_callback(key);"
-        print "    if(" prefix name "(" backend_args "))"
-        print "        return true;"
-        print "    return g_kryon_key_pressed_callback != NULL &&"
-        print "           g_kryon_key_pressed_callback(key);"
-        print "}"
-        print ""
-        return
-    } else if(name == "IsKeyDown") {
-        print "    if(KryonInjectKeyDown(key))"
-        print "        return true;"
-        print "    if(!g_kryon_keyboard_input_enabled)"
-        print "        return false;"
-        print "    if(g_kryon_key_down_callback != NULL && k_key_prefers_platform(key))"
-        print "        return g_kryon_key_down_callback(key);"
-        print "    if(" prefix name "(" backend_args "))"
-        print "        return true;"
-        print "    return g_kryon_key_down_callback != NULL &&"
-        print "           g_kryon_key_down_callback(key);"
-        print "}"
-        print ""
-        return
-    } else if(name == "IsKeyReleased") {
-        print "    if(KryonInjectKeyReleased(key))"
-        print "        return true;"
-    } else if(name == "IsMouseButtonPressed" || name == "IsMouseButtonDown" || name == "IsMouseButtonReleased") {
-        if(name == "IsMouseButtonPressed") {
-            print "    if(KryonInjectMousePressed(button))"
-            print "        return true;"
-        } else if(name == "IsMouseButtonReleased") {
-            print "    if(KryonInjectMouseReleased(button))"
-            print "        return true;"
-        } else {
-            print "    if(KryonInjectMouseButtonDown(button))"
-            print "        return true;"
-        }
-        print "    if(g_kryon_input_override.enabled &&"
-        print "       (!g_kryon_input_override.mouse_inside ||"
-        print "        !g_kryon_input_override.pass_buttons))"
-        print "        return false;"
-    } else if(name == "IsMouseButtonUp") {
-        print "    if(KryonInjectMouseButtonUp(button))"
-        print "        return true;"
-        print "    if(g_kryon_input_override.enabled &&"
-        print "       (!g_kryon_input_override.mouse_inside ||"
-        print "        !g_kryon_input_override.pass_buttons))"
-        print "        return true;"
-    } else if(name == "GetMouseX") {
-        print "    if(KryonInjectMouseActive())"
-        print "        return (int)KryonInjectMouseX();"
-        print "    if(g_kryon_input_override.enabled)"
-        print "        return (int)g_kryon_input_override.mouse_position.x;"
-    } else if(name == "GetMouseY") {
-        print "    if(KryonInjectMouseActive())"
-        print "        return (int)KryonInjectMouseY();"
-        print "    if(g_kryon_input_override.enabled)"
-        print "        return (int)g_kryon_input_override.mouse_position.y;"
-    } else if(name == "GetMousePosition") {
-        print "    if(KryonInjectMouseActive()) {"
-        print "        Vector2 injected = {KryonInjectMouseX(), KryonInjectMouseY()};"
-        print "        return injected;"
-        print "    }"
-        print "    if(g_kryon_input_override.enabled)"
-        print "        return g_kryon_input_override.mouse_position;"
-    } else if(name == "GetMouseDelta") {
-        print "    if(KryonInjectMouseActive()) {"
-        print "        Vector2 injected = {KryonInjectMouseDeltaX(), KryonInjectMouseDeltaY()};"
-        print "        return injected;"
-        print "    }"
-        print "    if(g_kryon_input_override.enabled)"
-        print "        return g_kryon_input_override.mouse_delta;"
-    } else if(name == "GetMouseWheelMove") {
-        print "    if(KryonInjectWheelValue() != 0.0f)"
-        print "        return KryonInjectWheelValue();"
-        print "    if(g_kryon_input_override.enabled &&"
-        print "       (!g_kryon_input_override.mouse_inside ||"
-        print "        !g_kryon_input_override.pass_buttons))"
-        print "        return 0.0f;"
-    } else if(name == "GetMouseWheelMoveV") {
-        print "    if(g_kryon_input_override.enabled &&"
-        print "       (!g_kryon_input_override.mouse_inside ||"
-        print "        !g_kryon_input_override.pass_buttons))"
-        print "        return (Vector2){0.0f, 0.0f};"
-    } else if(name == "GetCharPressed") {
-        print "    {" 
-        print "        int injected = KryonInjectCharPressed();"
-        print "        if(injected != 0)"
-        print "            return injected;"
-        print "    }"
-    } else if(name == "GetKeyPressed") {
-        print "{"
-        print "        int injected = KryonInjectKeyPressedCode();"
-        print "        if(injected != 0)"
-        print "            return injected;"
-        print "    }"
+    if(returns_void) {
+        print "    " prefix name "(" backend_args ");"
+    } else {
+        print "    return " prefix name "(" backend_args ");"
     }
+    print "}"
+    print ""
+}
+
+# Input symbols defined publicly by src/backend/kry_input.c; the wrapper
+# file provides only the raw hook the front-end calls into.
+function emit_input_raw_wrapper(return_type, name, args, backend_args, returns_void) {
+    print "extern " return_type " " prefix name "(" args ");"
+    print return_type " KryonBackendRaw_" name "(" args ")"
+    print "    {"
     if(returns_void) {
         print "    " prefix name "(" backend_args ");"
     } else {
@@ -259,73 +185,19 @@ function emit_variadic_wrapper(return_type, name, args, fixed_args, backend_args
 }
 
 BEGIN {
+    split(input_symbols, isym, " ")
+    for(i in isym)
+        input_owned[isym[i]] = 1
+    split(shared_symbols, ssym, " ")
+    for(i in ssym)
+        shared_owned[ssym[i]] = 1
     print "/* Generated by tools/generate-kryon-compat.sh; do not edit. */"
+    print "/* Input queries are defined by src/backend/kry_input.c; this file"
+    print " * only provides their KryonBackendRaw_* hooks. Pure-math symbols"
+    print " * live in src/backend/kry_surface_math.c. */"
     print "#include \"kryon.h\""
-    print "#include \"kry_inject.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
-    print ""
-    print "#define KRYON_INPUT_OVERRIDE_STACK_CAP 8"
-    print "static KryonInputOverride g_kryon_input_override = {0};"
-    print "static KryonInputOverride g_kryon_input_override_stack[KRYON_INPUT_OVERRIDE_STACK_CAP];"
-    print "static int g_kryon_input_override_depth = 0;"
-    print "static int g_kryon_keyboard_input_enabled = 1;"
-    print "static KeyInputPlatformCallback g_kryon_key_input_update_callback = NULL;"
-    print "static KeyPlatformCallback g_kryon_key_pressed_callback = NULL;"
-    print "static KeyPlatformCallback g_kryon_key_down_callback = NULL;"
-    print ""
-    print "static int k_key_prefers_platform(int key)"
-    print "    {"
-    print "    return key >= 32 && key <= 126;"
-    print "}"
-    print ""
-    print "void BeginKryonInputOverride(KryonInputOverride input)"
-    print "    {"
-    print "    if(g_kryon_input_override_depth < KRYON_INPUT_OVERRIDE_STACK_CAP)"
-    print "        g_kryon_input_override_stack[g_kryon_input_override_depth++] ="
-    print "            g_kryon_input_override;"
-    print "    input.enabled = 1;"
-    print "    g_kryon_input_override = input;"
-    print "}"
-    print ""
-    print "void EndKryonInputOverride(void)"
-    print "    {"
-    print "    if(g_kryon_input_override_depth > 0) {"
-    print "        g_kryon_input_override ="
-    print "            g_kryon_input_override_stack[--g_kryon_input_override_depth];"
-    print "        return;"
-    print "    }"
-    print "    g_kryon_input_override = (KryonInputOverride){0};"
-    print "}"
-    print ""
-    print "int SetKeyboardInputEnabled(int enabled)"
-    print "    {"
-    print "    int old = g_kryon_keyboard_input_enabled;"
-    print ""
-    print "    g_kryon_keyboard_input_enabled = enabled != 0;"
-    print "    return old;"
-    print "}"
-    print ""
-    print "int KeyboardInputEnabled(void)"
-    print "    {"
-    print "    return g_kryon_keyboard_input_enabled;"
-    print "}"
-    print ""
-    print "void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,"
-    print "                             KeyPlatformCallback key_pressed,"
-    print "                             KeyPlatformCallback key_down)"
-    print "    {"
-    print "    g_kryon_key_input_update_callback = update;"
-    print "    g_kryon_key_pressed_callback = key_pressed;"
-    print "    g_kryon_key_down_callback = key_down;"
-    print "}"
-    print ""
-    print "void UpdateKeyPlatformState(void)"
-    print "    {"
-    print "    KryonInjectPump();"
-    print "    if(g_kryon_key_input_update_callback != NULL)"
-    print "        g_kryon_key_input_update_callback();"
-    print "}"
     print ""
 }
 
@@ -341,8 +213,12 @@ BEGIN {
     args = line
     sub(/^[^(]*\(/, "", args)
     sub(/\)$/, "", args)
+    if(name in shared_owned)
+        next
     if(args ~ /\.\.\./) {
         emit_variadic_wrapper(return_type, name, args)
+    } else if(name in input_owned) {
+        emit_input_raw_wrapper(return_type, name, args, call_args(args), return_type == "void")
     } else {
         emit_regular_wrapper(return_type, name, args, call_args(args), return_type == "void")
     }
@@ -353,7 +229,7 @@ BEGIN {
 # zero-return no-op stub for every public-surface symbol so libkryon.a links
 # and runs headless with no GPU/window. Generated from the same raylib.h so it
 # stays in sync with the surface automatically. Used for widget unit tests.
-awk -v prefix="$backend_prefix" '
+awk -v prefix="$backend_prefix" -v input_symbols="$input_symbols" -v shared_symbols="$shared_symbols" '
 function trim(s) {
     sub(/^[[:space:]]+/, "", s)
     sub(/[[:space:]]+$/, "", s)
@@ -386,9 +262,19 @@ function arg_name(arg, parts, n, name) {
 }
 
 BEGIN {
+    split(input_symbols, isym, " ")
+    for(i in isym)
+        input_owned[isym[i]] = 1
+    split(shared_symbols, ssym, " ")
+    for(i in ssym)
+        shared_owned[ssym[i]] = 1
     print "/* Generated by tools/generate-kryon-compat.sh; do not edit. */"
     print "/* Null backend: zero-return no-op stubs for the kryon surface."
-    print " * Selected via KRYON_BACKEND=null for headless links (tests). */"
+    print " * Selected via KRYON_BACKEND=null for headless links (tests)."
+    print " * Input queries are defined by src/backend/kry_input.c; this file"
+    print " * only provides their KryonBackendRaw_* hooks, so injected input"
+    print " * works on the null backend too. Pure-math symbols live in"
+    print " * src/backend/kry_surface_math.c. */"
     print "#include \"kryon.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
@@ -407,6 +293,14 @@ BEGIN {
     args = line
     sub(/^[^(]*\(/, "", args)
     sub(/\)$/, "", args)
+
+    if(name in shared_owned)
+        next
+
+    # Input queries are public only via src/backend/kry_input.c; emit the
+    # raw hook the front-end calls instead of the public name.
+    if(name in input_owned)
+        name = "KryonBackendRaw_" name
 
     # Variadic stubs: TextFormat returns "", TraceLog is a no-op.
     if(name == "TextFormat") {

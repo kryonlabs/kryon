@@ -76,6 +76,17 @@ else ifeq ($(KRYON_BACKEND),null)
 else
   $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
 endif
+
+# Link inputs for the selected backend: only raylib needs libraylib.a and the
+# window/GL system libraries it was built with; null and canvas carry their
+# own (or none), so KRYON_BACKEND=null links headless with no raylib at all.
+ifeq ($(KRYON_BACKEND),raylib)
+  KRYON_BACKEND_LIBS = $(RAYLIB_A)
+  KRYON_BACKEND_LDLIBS ?= $(RAY_LDLIBS)
+else
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_LDLIBS ?=
+endif
 RAYLIB_DIR ?= $(KRYON_DIR)/vendor/raylib/src
 RAYLIB_BUILD_DIR ?= $(BUILD_DIR)/raylib
 RAYLIB_A ?= $(RAYLIB_BUILD_DIR)/libraylib.a
@@ -158,7 +169,7 @@ KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
-RAYLIB_COMPAT_LDLIBS ?= $(RAY_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
+RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
 .PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c
 
@@ -254,11 +265,11 @@ $(K2B): $(K2B_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
 
-$(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)/bin
+$(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAY_LDLIBS) $(KRYON_LIBOQS_A) \
+		$(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_LIBOQS_A) \
 		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) \
 		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
 
@@ -355,22 +366,22 @@ $(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/fi
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c $(LDLIBS) -o $@
 
-$(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/raylib_compat_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) \
 		-o $@
 
-$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(PREVIEW_TEST): tests/preview_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(PREVIEW_TEST): tests/preview_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/preview_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(PLATFORM_THREAD_TEST): tests/platform_thread_test.c src/platform/platform_thread.c include/platform.h | $(BUILD_DIR)
@@ -382,28 +393,28 @@ $(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kr
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_text_edit_test.c src/ui/ui_text_edit.c -o $@
 
-$(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tree_api_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
+$(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_tree_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
+$(SCENE_PROPERTY_TEST): tests/scene_property_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/scene_property_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
+$(ANIMATION_TEST): tests/animation_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/animation_test.c \
-		$(LIB) $(RAYLIB_A) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir.h | $(BUILD_DIR)
@@ -428,10 +439,10 @@ $(KRY_TERM_TEST): tests/kry_term_test.c src/kry_std/kry_term.c include/kry_term.
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_term_test.c src/kry_std/kry_term.c -o $@
 
-$(SFS_TEST): tests/sfs_test.c $(LIB) $(RAYLIB_A) | $(BUILD_DIR)
+$(SFS_TEST): tests/sfs_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sfs_test.c \
-		$(LIB) $(RAYLIB_A) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(KRY_JSON_TEST): tests/kry_json_test.c src/kry_std/kry_json.c include/kry_json.h | $(BUILD_DIR)

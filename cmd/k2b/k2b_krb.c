@@ -84,6 +84,11 @@ typedef struct KrbBuild {
     int field_count;
     KrbBuildControl controls[KRB_BUILD_CTRL_MAX];
     int control_count;
+    /* what the widget vocabulary could not express; reported per file so
+     * a thin cartridge is explained instead of silently surprising */
+    char dropped[16][64];
+    int dropped_count[16];
+    int dropped_kinds;
 } KrbBuild;
 
 static void
@@ -1274,6 +1279,27 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_slider(b, call);
     if(starts_ident(call, "Spinbox"))
         return parse_spinbox(b, call);
+    {
+        char name[64];
+        const char *p = call;
+        int i = 0;
+
+        while(p[i] != '\0' && p[i] != '(' && i < (int)sizeof(name) - 1) {
+            name[i] = p[i];
+            i++;
+        }
+        name[i] = '\0';
+        for(i = 0; i < b->dropped_kinds; i++)
+            if(strcmp(b->dropped[i], name) == 0) {
+                b->dropped_count[i]++;
+                return 0;
+            }
+        if(b->dropped_kinds < 16 && name[0] != '\0') {
+            snprintf(b->dropped[b->dropped_kinds], 64, "%s", name);
+            b->dropped_count[b->dropped_kinds] = 1;
+            b->dropped_kinds++;
+        }
+    }
     return 0;
 }
 
@@ -1605,5 +1631,14 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     if(fwrite(bytes, 1, (size_t)len, out) != (size_t)len)
         die("%s: write failed", kpath);
     fclose(out);
+    if(build.dropped_kinds > 0) {
+        /* explain thin cartridges instead of surprising with them */
+        fprintf(stderr, "k2b: %s: %d call kinds not in KRB:", rel,
+                build.dropped_kinds);
+        for(int d = 0; d < build.dropped_kinds; d++)
+            fprintf(stderr, " %s x%d", build.dropped[d],
+                    build.dropped_count[d]);
+        fprintf(stderr, "\n");
+    }
     write_krb_host(m, root, gen_rel, out_dir, &build, bytes, len, no_main);
 }

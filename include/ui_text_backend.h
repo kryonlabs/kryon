@@ -5,13 +5,14 @@
  * Text-backend seam.
  *
  * src/ui/ never reads Font/GlyphInfo struct fields directly. Instead it goes
- * through these accessors, which the active graphics backend implements. On the
- * raylib backend (src/backend/raylib_text_backend.c) they forward to raylib's
- * own glyph accessors; other backends answer them over their own font layout.
+ * through these accessors. The default implementation (src/ui/
+ * ui_text_backend.c) is backend-neutral and forwards to the glyph accessors of
+ * the kryon surface (GetGlyphInfo, GetGlyphAtlasRec); a backend that answers
+ * those over its own font layout needs nothing extra here.
  *
- * Font stays a real struct (raylib-layout on the raylib backend); only the
- * atlas internals are hidden behind this seam. Functions take Font by value to
- * match raylib's own accessor signatures (GetGlyphInfo, GetGlyphAtlasRec).
+ * Font stays a real struct (raylib-layout); only the atlas internals are
+ * hidden behind this seam. Functions take Font by value to match the
+ * surface's own accessor signatures.
  */
 #include "kryon.h"
 

@@ -17,7 +17,31 @@ KRYON_DIR ?= vendor/kryon
 RAYLIB_BUILD_DIR = $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib
 RAYLIB_A = $(RAYLIB_BUILD_DIR)/libraylib.a
 KRYON_ICON_ASSETS_C = $(KRYON_DIR)/src/ui/ui_icon_assets.c
-KRYON_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort)) $(KRYON_ICON_ASSETS_C) $(KRYON_RAYLIB_WRAPPERS_C)
+
+# Graphics/input backend, same meaning as Kryon's own Makefile: selects the
+# backend TU compiled with kryon's sources and its link inputs. Only the
+# raylib backend needs libraylib.a, its window/GL flags, and the SDL
+# pkg-config checks below; null links headless with no raylib at all.
+KRYON_BACKEND ?= raylib
+ifeq ($(KRYON_BACKEND),raylib)
+  KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
+  KRYON_BACKEND_LIBS = $(RAYLIB_A)
+  KRYON_BACKEND_CFLAGS = $(RAY_CFLAGS)
+  KRYON_BACKEND_LDLIBS = $(RAY_LDLIBS)
+else ifeq ($(KRYON_BACKEND),canvas)
+  KRYON_BACKEND_SRCS = $(KRYON_DIR)/src/backend/canvas_backend.c
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_CFLAGS =
+  KRYON_BACKEND_LDLIBS =
+else ifeq ($(KRYON_BACKEND),null)
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_CFLAGS =
+  KRYON_BACKEND_LDLIBS =
+else
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+endif
+KRYON_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort)) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_INCLUDE = -I$(KRYON_DIR)/include
 KRYON_USE_SYSTEM_CURL ?= 1
 ifeq ($(KRYON_USE_SYSTEM_CURL),1)
@@ -143,6 +167,7 @@ LDFLAGS = -Wl,--gc-sections -s
 
 .NOTPARALLEL:
 
+ifeq ($(KRYON_BACKEND),raylib)
 ifeq ($(strip $(RAY_CFLAGS)),)
 $(error RAY_CFLAGS is not set. Install pkg-config metadata for $(RAY_PKGS), or set RAY_CFLAGS explicitly)
 endif
@@ -157,6 +182,7 @@ $(error RAY_SDL_INCLUDE_DIR is not set. Install SDL2 development files or set RA
 endif
 ifeq ($(strip $(RAY_RAYLIB_CONFIG)),)
 $(error RAY_RAYLIB_CONFIG is not set. Set RAY_RAYLIB_CONFIG explicitly)
+endif
 endif
 
 build:
