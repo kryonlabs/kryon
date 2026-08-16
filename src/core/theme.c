@@ -715,8 +715,27 @@ GetDefaultPlatformThemeStyle(void)
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     return THEME_STYLE_MATERIAL;
 #else
-    return THEME_STYLE_RETRO;
+        return THEME_STYLE_RETRO;
 #endif
+}
+
+ThemeSource
+GetDefaultPlatformThemeSource(void)
+{
+#if defined(PLATFORM_WEB) || defined(PLATFORM_ANDROID) || defined(__ANDROID__) || (defined(ANDROID_BUILD) && ANDROID_BUILD)
+    /* No system theme detection off the desktop; apps fall back to their own palette. */
+    return THEME_SOURCE_APP;
+#else
+    return THEME_SOURCE_SYSTEM;
+#endif
+}
+
+ThemeMode
+GetDefaultPlatformThemeMode(void)
+{
+    if(GetDefaultPlatformThemeSource() == THEME_SOURCE_SYSTEM)
+        return THEME_MODE_SYSTEM;
+    return THEME_MODE_LIGHT;
 }
 
 int
