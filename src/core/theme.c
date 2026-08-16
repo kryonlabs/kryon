@@ -715,7 +715,8 @@ GetDefaultPlatformThemeStyle(void)
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     return THEME_STYLE_MATERIAL;
 #else
-        return THEME_STYLE_RETRO;
+    /* Material everywhere for now; revisit once retro is polished. */
+    return THEME_STYLE_MATERIAL;
 #endif
 }
 
