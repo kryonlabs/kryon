@@ -52,7 +52,8 @@ starts_word(const char *s, const char *word)
 
     return strncmp(s, word, n) == 0 &&
            (s[n] == '\0' || s[n] == ' ' || s[n] == '\t' ||
-            s[n] == '(' || s[n] == '"' || s[n] == '{');
+            s[n] == '(' || s[n] == '"' || s[n] == '{' ||
+            s[n] == ':');   /* 'default:' — label-style case keyword */
 }
 
 static int
@@ -816,13 +817,15 @@ kir_parse_file(const char *path, const char *root)
                         (strstr(pending, " :: ") != NULL &&
                          strstr(pending, " = ") == NULL) ||
                         (nc != '\0' && nc != '-' && nc != '.' &&
-                         strchr(" ({", nc) != NULL &&
+                         (strchr(" ({", nc) != NULL || nc == ':') &&
                          (strcmp(w0, "if") == 0 ||
                           strcmp(w0, "else") == 0 ||
                           strcmp(w0, "while") == 0 ||
                           strcmp(w0, "for") == 0 ||
                           strcmp(w0, "switch") == 0 ||
                           strcmp(w0, "do") == 0 ||
+                          strcmp(w0, "case") == 0 ||
+                          strcmp(w0, "default") == 0 ||
                           strcmp(w0, "screen") == 0 ||
                           strcmp(w0, "preview") == 0 ||
                           strcmp(w0, "page") == 0 ||
