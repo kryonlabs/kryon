@@ -24,7 +24,6 @@
 /* Text whose physical size is at least this multiple of the base raster gets
  * a dedicated large rasterization so headings stay crisp. One large slot per
  * font holds the largest size seen; smaller large-tier sizes scale down. */
-#define UI_FONT_LARGE_SCALE_MIN 2
 
 typedef struct UIFontEntry {
     char name[32];
@@ -39,17 +38,17 @@ typedef struct UIFontEntry {
     int *codepoints;
     int codepoint_count;
     int codepoint_cap;
-    /* Source fonts are rasterized once at the DPI-scaled base text size;
-     * every other size draw-scales from that raster (font_size_scale already
-     * applies at all measure/draw sites), plus one optional large-tier slot
-     * above. This replaces the former per-size cache of up to eight full
-     * rasterizations per font. */
-    Font raster_font;
-    int raster_size;
-    int raster_dirty;          /* codepoint set grew, raster is stale */
-    unsigned long raster_serial; /* frame of the last dirty rebuild (throttle) */
-    Font large_raster_font;
-    int large_raster_size;
+    /* Source fonts are rasterized per requested physical size into a small
+     * tier cache: single-tier scaling made every non-base size (12, 14,
+     * 17px...) bilinear-resampled from one 16px atlas, which reads as blurry
+     * on dense UI text. The cap keeps memory bounded versus the former
+     * unbounded per-size cache; font_size_scale still applies at all
+     * measure/draw sites for tier-miss fallbacks. */
+#define UI_FONT_MAX_RASTER_TIERS 4
+    Font tier_font[UI_FONT_MAX_RASTER_TIERS];
+    int tier_size[UI_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
+    int tier_dirty;          /* codepoint set grew, rasters are stale */
+    unsigned long tier_serial; /* frame of the last dirty rebuild (throttle) */
 } UIFontEntry;
 
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
@@ -153,16 +152,14 @@ clear_font_cache(UIFontEntry *entry)
 {
     if(entry == NULL)
         return;
-    if(font_valid(entry->raster_font))
-        UnloadFont(entry->raster_font);
-    entry->raster_font = (Font){0};
-    entry->raster_size = 0;
-    entry->raster_dirty = 0;
-    entry->raster_serial = 0;
-    if(font_valid(entry->large_raster_font))
-        UnloadFont(entry->large_raster_font);
-    entry->large_raster_font = (Font){0};
-    entry->large_raster_size = 0;
+    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        if(font_valid(entry->tier_font[i]))
+            UnloadFont(entry->tier_font[i]);
+        entry->tier_font[i] = (Font){0};
+        entry->tier_size[i] = 0;
+    }
+    entry->tier_dirty = 0;
+    entry->tier_serial = 0;
 }
 
 static void
@@ -251,31 +248,22 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
     return font;
 }
 
-/* Physical size the base tier is rasterized at: the DPI-scaled standard UI
- * text size. */
-static int
-entry_base_physical_size(void)
-{
-    return font_physical_size(UI_TEXT_BASE_SIZE);
-}
-
+/* Re-rasterize every cached tier at its own size (codepoint set grew). */
 static void
-entry_rebuild_base_raster(UIFontEntry *entry)
+entry_rebuild_tiers(UIFontEntry *entry)
 {
-    int size = entry_base_physical_size();
+    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        int size = entry->tier_size[i];
 
-    if(font_valid(entry->raster_font))
-        UnloadFont(entry->raster_font);
-    /* A grown codepoint set invalidates the large tier too; it re-rasterizes
-     * lazily the next time large text is drawn. */
-    if(font_valid(entry->large_raster_font))
-        UnloadFont(entry->large_raster_font);
-    entry->large_raster_font = (Font){0};
-    entry->large_raster_size = 0;
-
-    entry->raster_font = load_font_source_size(entry, size);
-    entry->raster_size = font_valid(entry->raster_font) ? size : 0;
-    entry->raster_dirty = 0;
+        if(size <= 0)
+            continue;
+        if(font_valid(entry->tier_font[i]))
+            UnloadFont(entry->tier_font[i]);
+        entry->tier_font[i] = load_font_source_size(entry, size);
+        if(!font_valid(entry->tier_font[i]))
+            entry->tier_size[i] = 0;
+    }
+    entry->tier_dirty = 0;
     ui_font_trim_heap();
 }
 
@@ -283,42 +271,63 @@ static Font
 entry_source_font_for_size(UIFontEntry *entry, int font_size)
 {
     int physical_size = font_physical_size(font_size);
-    int base_size = entry_base_physical_size();
 
     if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
         return (Font){0};
 
-    /* Base tier. Rebuild when the codepoint set grew, throttled to at most
-     * one rebuild per frame so a burst of new glyphs (a locale list drawn in
-     * native scripts, for example) re-rasterizes once instead of per glyph;
-     * glyphs missed in the same frame flush on the next frame. Also rebuild
-     * when the DPI scale changed or the tier was never built. */
-    if(entry->raster_dirty) {
-        if(entry->raster_serial != g_ui_frame_serial) {
-            entry->raster_serial = g_ui_frame_serial;
-            entry_rebuild_base_raster(entry);
-        }
-    } else if(!font_valid(entry->raster_font) || entry->raster_size != base_size) {
-        entry_rebuild_base_raster(entry);
+    /* Stale tiers (codepoint set grew) re-rasterize at most once per frame so
+     * a burst of new glyphs batches into a single rebuild. */
+    if(entry->tier_dirty && entry->tier_serial != g_ui_frame_serial) {
+        entry->tier_serial = g_ui_frame_serial;
+        entry_rebuild_tiers(entry);
     }
 
-    /* Large tier: lazily rasterized for big text, one slot at the largest
-     * physical size requested since the last rebuild. */
-    if(physical_size >= base_size * UI_FONT_LARGE_SCALE_MIN) {
-        if(physical_size > entry->large_raster_size ||
-           !font_valid(entry->large_raster_font)) {
-            if(font_valid(entry->large_raster_font))
-                UnloadFont(entry->large_raster_font);
-            entry->large_raster_font = load_font_source_size(entry, physical_size);
-            entry->large_raster_size = font_valid(entry->large_raster_font)
-                ? physical_size : 0;
+    /* Exact tier hit: rasterized at this exact physical size, no resampling. */
+    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        if(entry->tier_size[i] == physical_size && font_valid(entry->tier_font[i]))
+            return entry->tier_font[i];
+    }
+
+    /* Free slot: rasterize this size. */
+    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        if(entry->tier_size[i] == 0) {
+            entry->tier_font[i] = load_font_source_size(entry, physical_size);
+            if(font_valid(entry->tier_font[i])) {
+                entry->tier_size[i] = physical_size;
+                ui_font_trim_heap();
+                return entry->tier_font[i];
+            }
+            return (Font){0};
+        }
+    }
+
+    /* Cache full: evict the slot furthest from the requested size and
+     * rasterize it here. */
+    {
+        int victim = 0;
+        int worst = -1;
+
+        for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+            int dist = entry->tier_size[i] > physical_size
+                       ? entry->tier_size[i] - physical_size
+                       : physical_size - entry->tier_size[i];
+
+            if(dist > worst) {
+                worst = dist;
+                victim = i;
+            }
+        }
+        if(font_valid(entry->tier_font[victim]))
+            UnloadFont(entry->tier_font[victim]);
+        entry->tier_font[victim] = load_font_source_size(entry, physical_size);
+        if(font_valid(entry->tier_font[victim])) {
+            entry->tier_size[victim] = physical_size;
             ui_font_trim_heap();
+            return entry->tier_font[victim];
         }
-        if(font_valid(entry->large_raster_font))
-            return entry->large_raster_font;
+        entry->tier_size[victim] = 0;
+        return (Font){0};
     }
-
-    return entry->raster_font;
 }
 
 static Font
@@ -353,7 +362,7 @@ entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
          * entry_source_font_for_size, batching the whole burst of new
          * glyphs into a single re-rasterization. */
         if(font_entry_add_codepoint(entry, codepoint))
-            entry->raster_dirty = 1;
+            entry->tier_dirty = 1;
     }
 
     font = entry_font_for_size(entry, font_size);
@@ -822,14 +831,15 @@ UIFontMemoryReport(const char *tag)
         UIFontEntry *entry = &g_ui_fonts[i];
 
         fprintf(stderr,
-                "[kryon-mem] font '%s' active=%d dynamic=%d codepoints=%d "
-                "base_raster=%dpx/%dglyphs large_raster=%dpx/%dglyphs\n",
+                "[kryon-mem] font '%s' active=%d dynamic=%d codepoints=%d tiers=",
                 entry->name, i == g_ui_active_font ? 1 : 0,
-                entry->dynamic_codepoints, entry->codepoint_count,
-                entry->raster_size,
-                UIFontGlyphCount(entry->raster_font),
-                entry->large_raster_size,
-                UIFontGlyphCount(entry->large_raster_font));
+                entry->dynamic_codepoints, entry->codepoint_count);
+        for(int t = 0; t < UI_FONT_MAX_RASTER_TIERS; t++) {
+            if(entry->tier_size[t] > 0)
+                fprintf(stderr, "%s%dpx/%dglyphs", t ? "," : "",
+                        entry->tier_size[t], UIFontGlyphCount(entry->tier_font[t]));
+        }
+        fprintf(stderr, "\n");
     }
     fflush(stderr);
 }
