@@ -741,8 +741,7 @@ RefreshSystemTheme(void)
                     matchMedia('(prefers-color-scheme: dark)').matches) ? 1 : 0;
         );
         apply_material_palette(prefers_dark != 0);
-        copy_text(system_palette.name, sizeof(system_palette.name), "System",
-                  strlen("System"));
+        snprintf(system_palette.name, sizeof(system_palette.name), "System");
         return true;
     }
 #endif
