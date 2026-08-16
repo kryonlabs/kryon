@@ -367,6 +367,333 @@ find_xml_value(const char *tag, char *out, int out_size)
     return out != NULL && out[0] != '\0';
 }
 
+/*
+ * --- GTK theme palette straight from the theme's CSS ---
+ *
+ * The in-process GTK sampler only exists where GTK is linked in
+ * (SYSTEM_THEME_GTK). Apps that keep GTK out of the binary (inbe's
+ * no-in-process-GTK policy) still deserve the desktop's real colors, so the
+ * theme is read the same way the wallpaper is: the XFCE xsettings channel
+ * (or GTK_THEME, or gtk-3.0 settings.ini) names the GTK theme, and the
+ * theme's gtk-3.0/gtk.css @define-color lines carry the palette. Plain
+ * hex / numeric / named colors are used; expressions (shade(), mix(),
+ * @references) are skipped and fall back to the next candidate.
+ */
+static int
+css_hex_value(char c)
+{
+    if(c >= '0' && c <= '9')
+        return c - '0';
+    if(c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if(c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
+static int
+css_parse_hex(const char *s, const char *end, Color *out)
+{
+    int nib[8];
+    int n = 0;
+
+    s++; /* skip '#' */
+    while(s < end && n < 8) {
+        int v = css_hex_value(*s);
+
+        if(v < 0)
+            break;
+        nib[n++] = v;
+        s++;
+    }
+    if(n == 3) {
+        out->r = (unsigned char)(nib[0] * 17);
+        out->g = (unsigned char)(nib[1] * 17);
+        out->b = (unsigned char)(nib[2] * 17);
+    } else if(n == 6) {
+        out->r = (unsigned char)(nib[0] * 16 + nib[1]);
+        out->g = (unsigned char)(nib[2] * 16 + nib[3]);
+        out->b = (unsigned char)(nib[4] * 16 + nib[5]);
+    } else {
+        return 0;
+    }
+    out->a = 255;
+    return 1;
+}
+
+static int
+css_parse_named(const char *s, const char *end, Color *out)
+{
+    static const struct {
+        const char *name;
+        Color color;
+    } named[] = {
+        {"black", {0x00, 0x00, 0x00, 0xFF}},
+        {"white", {0xFF, 0xFF, 0xFF, 0xFF}},
+        {"gray", {0x80, 0x80, 0x80, 0xFF}},
+        {"grey", {0x80, 0x80, 0x80, 0xFF}},
+        {"silver", {0xC0, 0xC0, 0xC0, 0xFF}},
+        {"navy", {0x00, 0x00, 0x80, 0xFF}},
+        {"red", {0xFF, 0x00, 0x00, 0xFF}},
+        {"green", {0x00, 0x80, 0x00, 0xFF}},
+        {"blue", {0x00, 0x00, 0xFF, 0xFF}},
+        {"yellow", {0xFF, 0xFF, 0x00, 0xFF}},
+        {"orange", {0xFF, 0xA5, 0x00, 0xFF}},
+        {"purple", {0x80, 0x00, 0x80, 0xFF}},
+        {"magenta", {0xFF, 0x00, 0xFF, 0xFF}},
+        {"cyan", {0x00, 0xFF, 0xFF, 0xFF}},
+    };
+    size_t len = (size_t)(end - s);
+    size_t i;
+
+    for(i = 0; i < sizeof(named) / sizeof(named[0]); i++) {
+        if(strlen(named[i].name) == len &&
+           strncmp(s, named[i].name, len) == 0) {
+            *out = named[i].color;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int
+css_parse_value(const char *s, const char *end, Color *out)
+{
+    double d[4];
+    int nd = 0;
+
+    if(s == NULL || end == NULL || out == NULL || end <= s)
+        return 0;
+    while(s < end && (*s == ' ' || *s == '\t'))
+        s++;
+    if(s >= end)
+        return 0;
+    if(*s == '#')
+        return css_parse_hex(s, end, out);
+
+    /* Numeric form: "r g b [a]" with 0..1 doubles (GTK CSS style). */
+    while(s < end && nd < 4) {
+        char *num_end;
+        double v = strtod(s, &num_end);
+
+        if(num_end == s)
+            break;
+        d[nd++] = v;
+        s = num_end;
+        while(s < end && (*s == ' ' || *s == '\t'))
+            s++;
+    }
+    if(nd >= 3) {
+        double rgb[3];
+        int i;
+
+        for(i = 0; i < 3; i++)
+            rgb[i] = d[i] <= 0.0 ? 0.0 : d[i] >= 1.0 ? 1.0 : d[i];
+        out->r = (unsigned char)(rgb[0] * 255.0 + 0.5);
+        out->g = (unsigned char)(rgb[1] * 255.0 + 0.5);
+        out->b = (unsigned char)(rgb[2] * 255.0 + 0.5);
+        out->a = 255;
+        return 1;
+    }
+    return css_parse_named(s, end, out);
+}
+
+static int
+css_define_color(const char *text, const char *name, Color *out)
+{
+    char pattern[96];
+    const char *p;
+    size_t plen;
+
+    if(text == NULL || name == NULL)
+        return 0;
+    snprintf(pattern, sizeof(pattern), "@define-color %s", name);
+    plen = strlen(pattern);
+    p = text;
+    while((p = strstr(p, pattern)) != NULL) {
+        const char *v = p + plen;
+        const char *semi;
+        char c = *v;
+
+        /* Reject longer names sharing this prefix (bg_color vs
+         * bg_color_light). */
+        if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_' || c == '-') {
+            p += plen;
+            continue;
+        }
+        while(*v == ' ' || *v == '\t')
+            v++;
+        semi = strchr(v, ';');
+        if(semi == NULL)
+            return 0;
+        return css_parse_value(v, semi, out);
+    }
+    return 0;
+}
+
+static int
+gtk_css_theme_name(char *out, int out_size)
+{
+    const char *env = getenv("GTK_THEME");
+    char path[512];
+    char text[65536];
+    const char *cursor;
+    const char *config = getenv("XDG_CONFIG_HOME");
+    const char *home = getenv("HOME");
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+
+    /* GTK_THEME="Theme[:variant]" overrides every desktop setting. */
+    if(env != NULL && env[0] != '\0') {
+        const char *colon = strchr(env, ':');
+
+        copy_path(out, out_size, env,
+                  colon != NULL ? (int)(colon - env) : (int)strlen(env));
+        if(out[0] != '\0')
+            return 1;
+    }
+
+    /* XFCE names the GTK theme in the xsettings channel. */
+    if(config != NULL && config[0] != '\0')
+        snprintf(path, sizeof(path),
+                 "%s/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml", config);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(path, sizeof(path),
+                 "%s/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml",
+                 home);
+    else
+        path[0] = '\0';
+    if(path[0] != '\0' && read_text_file(path, text, sizeof(text))) {
+        cursor = strstr(text, "name=\"ThemeName\"");
+        if(cursor != NULL && find_xml_value(cursor, out, out_size))
+            return 1;
+    }
+
+    /* Generic GTK fallback: gtk-3.0/settings.ini gtk-theme-name=... */
+    if(config != NULL && config[0] != '\0')
+        snprintf(path, sizeof(path), "%s/gtk-3.0/settings.ini", config);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(path, sizeof(path), "%s/.config/gtk-3.0/settings.ini", home);
+    else
+        path[0] = '\0';
+    if(path[0] != '\0' && read_text_file(path, text, sizeof(text))) {
+        cursor = strstr(text, "gtk-theme-name");
+        if(cursor != NULL) {
+            cursor = strchr(cursor, '=');
+            if(cursor != NULL) {
+                const char *end;
+
+                cursor++;
+                while(*cursor == ' ' || *cursor == '\t')
+                    cursor++;
+                end = cursor;
+                while(*end != '\0' && *end != '\n' && *end != '"' &&
+                      *end != ' ' && *end != '\t' && *end != '\r')
+                    end++;
+                copy_path(out, out_size, cursor, (int)(end - cursor));
+                if(out[0] != '\0')
+                    return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+gtk_css_theme_file(const char *theme, char *out, int out_size)
+{
+    const char *home = getenv("HOME");
+    const char *xdg = getenv("XDG_DATA_HOME");
+    char prefix[512];
+    int i;
+    static const char *const roots[] = {
+        "home-themes",
+        "xdg-themes",
+        "/usr/local/share/themes",
+        "/usr/share/themes",
+        NULL
+    };
+
+    if(theme == NULL || theme[0] == '\0' || out == NULL || out_size <= 0)
+        return 0;
+    for(i = 0; roots[i] != NULL; i++) {
+        if(strcmp(roots[i], "home-themes") == 0) {
+            if(home == NULL || home[0] == '\0')
+                continue;
+            snprintf(prefix, sizeof(prefix), "%s/.themes", home);
+        } else if(strcmp(roots[i], "xdg-themes") == 0) {
+            if(xdg == NULL || xdg[0] == '\0')
+                continue;
+            snprintf(prefix, sizeof(prefix), "%s/themes", xdg);
+        } else {
+            snprintf(prefix, sizeof(prefix), "%s", roots[i]);
+        }
+        snprintf(out, (size_t)out_size, "%s/%s/gtk-3.0/gtk.css", prefix, theme);
+        if(path_exists(out))
+            return 1;
+    }
+    return 0;
+}
+
+static int
+palette_luminance(Color color)
+{
+    return ((int)color.r * 299 + (int)color.g * 587 + (int)color.b * 114) / 1000;
+}
+
+static int
+gtk_css_palette_refresh(void)
+{
+    char theme[96];
+    char path[512];
+    char text[65536];
+    SystemThemePalette palette;
+    Color bg, base, fg, selected;
+    int have_bg, have_base, have_fg, have_selected;
+
+    if(!gtk_css_theme_name(theme, sizeof(theme)))
+        return 0;
+    if(!gtk_css_theme_file(theme, path, sizeof(path)))
+        return 0;
+    if(!read_text_file(path, text, sizeof(text)))
+        return 0;
+
+    have_base = css_define_color(text, "theme_base_color", &base) ||
+                css_define_color(text, "base_color", &base);
+    have_bg = css_define_color(text, "theme_bg_color", &bg) ||
+              css_define_color(text, "bg_color", &bg);
+    have_fg = css_define_color(text, "theme_fg_color", &fg) ||
+              css_define_color(text, "fg_color", &fg);
+    have_selected = css_define_color(text, "theme_selected_bg_color", &selected) ||
+                    css_define_color(text, "selected_bg_color", &selected);
+    if(!have_bg && !have_base)
+        return 0;
+
+    palette = system_palette;
+    palette.background = have_base ? base : bg;
+    palette.surface = have_bg ? bg : palette.background;
+    palette.text = have_fg ? fg : (Color){0x10, 0x10, 0x10, 0xFF};
+    palette.button = palette.surface;
+    palette.button_hover = LightenUIColor(palette.button, 18);
+    palette.circle = have_selected ? selected : palette.button_hover;
+    palette.link = palette.circle;
+    palette.icon = palette.text;
+    palette.available = 1;
+    palette.supports_mode = 0;
+    palette.prefers_dark =
+        palette_luminance(palette.text) > palette_luminance(palette.background);
+    snprintf(palette.name, sizeof(palette.name), "%s", theme);
+
+    system_palette = palette;
+    system_light_palette = palette;
+    system_dark_palette = palette;
+    system_prefers_dark = palette.prefers_dark;
+    return 1;
+}
+
 bool
 GetSystemDesktopBackground(char *out, int out_size)
 {
@@ -405,6 +732,9 @@ RefreshSystemTheme(void)
     if(gtk_system_theme_refresh())
         return true;
 #endif
+    /* No in-process GTK (or it failed): read the desktop theme's own CSS. */
+    if(gtk_css_palette_refresh())
+        return true;
     return system_palette.available != 0;
 }
 
