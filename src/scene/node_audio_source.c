@@ -34,9 +34,9 @@ kry_audio_source_ensure_loaded(AudioSourceProps *props)
 }
 
 static void
-kry_audio_source_process(KryScene *scene, KryNodeId node, float dt)
+kry_audio_source_process(Scene *scene, NodeId node, float dt)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AudioSourceProps *props;
     (void)dt;
     if(n == NULL)
@@ -49,7 +49,7 @@ kry_audio_source_process(KryScene *scene, KryNodeId node, float dt)
 }
 
 static void
-kry_audio_source_destroy(KryScene *scene, KryNode *node)
+kry_audio_source_destroy(Scene *scene, Node *node)
 {
     AudioSourceProps *props;
     (void)scene;
@@ -67,7 +67,7 @@ kry_audio_source_destroy(KryScene *scene, KryNode *node)
     node->props = NULL;
 }
 
-static const KryNodeOps kry_audio_source_ops = {
+static const NodeOps kry_audio_source_ops = {
     NULL,
     kry_audio_source_process,
     NULL,
@@ -77,8 +77,8 @@ static const KryNodeOps kry_audio_source_ops = {
 void
 kry_register_audio_source(void)
 {
-    KryNodeRegisterOps(KRY_NODE_AUDIO_SOURCE, &kry_audio_source_ops);
-    KryNodeRegisterDestroy(KRY_NODE_AUDIO_SOURCE, kry_audio_source_destroy);
+    NodeRegisterOps(NODE_AUDIO_SOURCE, &kry_audio_source_ops);
+    NodeRegisterDestroy(NODE_AUDIO_SOURCE, kry_audio_source_destroy);
 }
 
 AudioSourceProps *
@@ -96,9 +96,9 @@ KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
 
 /* Public play/stop controls called by app code or k2c-generated builders. */
 void
-KryAudioSourcePlay(KryScene *scene, KryNodeId node)
+KryAudioSourcePlay(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AudioSourceProps *props;
     if(n == NULL)
         return;
@@ -123,9 +123,9 @@ KryAudioSourcePlay(KryScene *scene, KryNodeId node)
 }
 
 void
-KryAudioSourceStop(KryScene *scene, KryNodeId node)
+KryAudioSourceStop(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AudioSourceProps *props;
     if(n == NULL)
         return;

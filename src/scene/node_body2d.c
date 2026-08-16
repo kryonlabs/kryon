@@ -2,7 +2,7 @@
  * Body2D: a physics-driven 2D body. On ready it creates a Box2D body in the
  * scene's world (Body2DProps carries the body type: static/kinematic/dynamic).
  * On physics_process it copies the body's transform back into the node so the
- * rest of the scene tree (and KrySceneDraw) sees the simulated position.
+ * rest of the scene tree (and SceneDraw) sees the simulated position.
  */
 
 #include "scene_tree.h"
@@ -11,9 +11,9 @@
 #include <stdlib.h>
 
 static void
-kry_body2d_ready(KryScene *scene, KryNodeId node)
+kry_body2d_ready(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Body2DProps *props;
     if(n == NULL)
         return;
@@ -24,9 +24,9 @@ kry_body2d_ready(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_body2d_physics_process(KryScene *scene, KryNodeId node, float dt)
+kry_body2d_physics_process(Scene *scene, NodeId node, float dt)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Body2DProps *props;
     (void)dt;
     if(n == NULL)
@@ -38,9 +38,9 @@ kry_body2d_physics_process(KryScene *scene, KryNodeId node, float dt)
 }
 
 static void
-kry_body2d_draw(KryScene *scene, KryNodeId node)
+kry_body2d_draw(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Body2DProps *props;
     if(n == NULL)
         return;
@@ -53,7 +53,7 @@ kry_body2d_draw(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_body2d_destroy(KryScene *scene, KryNode *node)
+kry_body2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -62,7 +62,7 @@ kry_body2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_body2d_ops = {
+static const NodeOps kry_body2d_ops = {
     kry_body2d_ready,
     NULL,
     kry_body2d_physics_process,
@@ -72,6 +72,6 @@ static const KryNodeOps kry_body2d_ops = {
 void
 kry_register_body2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_BODY2D, &kry_body2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_BODY2D, kry_body2d_destroy);
+    NodeRegisterOps(NODE_BODY2D, &kry_body2d_ops);
+    NodeRegisterDestroy(NODE_BODY2D, kry_body2d_destroy);
 }

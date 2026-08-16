@@ -3,9 +3,9 @@
  * the scene tree; the public scene_tree.h stores the b2WorldId as two opaque
  * unsigned shorts so consumers don't pull in Box2D.
  *
- * KryScenePhysicsCreate builds a world; KryScenePhysicsTick steps it; Body2D
+ * ScenePhysicsCreate builds a world; ScenePhysicsTick steps it; Body2D
  * and CollisionShape2D nodes (in node_body2d.c / node_collision_shape2d.c)
- * create Box2D bodies/shapes via the helpers here and sync their KryNode
+ * create Box2D bodies/shapes via the helpers here and sync their Node
  * transforms from the world after each step.
  */
 
@@ -15,9 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Convert between the opaque KryScene fields and a real b2WorldId. */
+/* Convert between the opaque Scene fields and a real b2WorldId. */
 static b2WorldId
-scene_world_id(KryScene *scene)
+scene_world_id(Scene *scene)
 {
     b2WorldId id;
     id.index1 = (uint16_t)scene->physics_world_index;
@@ -26,14 +26,14 @@ scene_world_id(KryScene *scene)
 }
 
 static void
-set_scene_world_id(KryScene *scene, b2WorldId id)
+set_scene_world_id(Scene *scene, b2WorldId id)
 {
     scene->physics_world_index = id.index1;
     scene->physics_world_gen = id.generation;
 }
 
 int
-KryScenePhysicsCreate(KryScene *scene, float gravity_x, float gravity_y)
+ScenePhysicsCreate(Scene *scene, float gravity_x, float gravity_y)
 {
     b2WorldDef def;
     b2WorldId id;
@@ -50,7 +50,7 @@ KryScenePhysicsCreate(KryScene *scene, float gravity_x, float gravity_y)
 }
 
 void
-KryScenePhysicsDestroy(KryScene *scene)
+ScenePhysicsDestroy(Scene *scene)
 {
     if(scene == NULL || !scene->physics_enabled)
         return;
@@ -63,19 +63,19 @@ KryScenePhysicsDestroy(KryScene *scene)
 /* --- helpers used by Body2D / CollisionShape2D nodes --- */
 
 b2WorldId
-kry_scene_b2_world(KryScene *scene)
+kry_scene_b2_world(Scene *scene)
 {
     return scene_world_id(scene);
 }
 
 b2BodyId
-kry_body2d_create(KryScene *scene, KryNodeId node, Body2DProps *props)
+kry_body2d_create(Scene *scene, NodeId node, Body2DProps *props)
 {
-    KryNode *n;
+    Node *n;
     b2BodyDef bd;
     b2BodyId bid;
 
-    n = KryNodeGet(scene, node);
+    n = NodeGet(scene, node);
     if(n == NULL || props == NULL || !scene->physics_enabled)
         return (b2BodyId){0};
     bd = b2DefaultBodyDef();
@@ -107,13 +107,13 @@ body2d_id(Body2DProps *props)
 }
 
 void
-kry_body2d_sync(KryScene *scene, KryNodeId node, Body2DProps *props)
+kry_body2d_sync(Scene *scene, NodeId node, Body2DProps *props)
 {
-    KryNode *n;
+    Node *n;
     b2BodyId bid;
     b2Transform xf;
 
-    n = KryNodeGet(scene, node);
+    n = NodeGet(scene, node);
     if(n == NULL || props == NULL || props->body_id_index == 0)
         return;
     bid = body2d_id(props);
@@ -122,18 +122,18 @@ kry_body2d_sync(KryScene *scene, KryNodeId node, Body2DProps *props)
     xf = b2Body_GetTransform(bid);
     n->local.position = (Vector2){xf.p.x, xf.p.y};
     n->local.rotation = b2Rot_GetAngle(xf.q);
-    n->flags |= KRY_NODE_FLAG_DIRTY;
+    n->flags |= NODE_FLAG_DIRTY;
 }
 
 void
-kry_collision_shape2d_attach(KryScene *scene, KryNodeId node,
+kry_collision_shape2d_attach(Scene *scene, NodeId node,
                              CollisionShape2DProps *props, Body2DProps *parent_body)
 {
-    KryNode *n;
+    Node *n;
     b2BodyId bid;
     b2ShapeDef sd;
 
-    n = KryNodeGet(scene, node);
+    n = NodeGet(scene, node);
     if(n == NULL || props == NULL || parent_body == NULL ||
        parent_body->body_id_index == 0)
         return;
@@ -186,10 +186,10 @@ KryArea2DPropsAlloc(void)
 
 /* --- world stepping --- */
 
-extern void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
+extern void (*kry_scene_physics_step_fn)(Scene *scene, float dt);
 
 static void
-kry_scene_physics_step(KryScene *scene, float dt)
+kry_scene_physics_step(Scene *scene, float dt)
 {
     if(scene == NULL || !scene->physics_enabled)
         return;

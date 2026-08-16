@@ -29,7 +29,7 @@ typedef struct KryKeyframe {
 } KryKeyframe;
 
 typedef struct KryAnimTrack {
-    KryNodeId target;                 /* node whose property is animated */
+    NodeId target;                 /* node whose property is animated */
     char property[32];                /* property id (position/rotation/scale) */
     int component;                    /* 0=x, 1=y for vector2; -1 for scalar */
     KryAnimInterp interp;
@@ -53,6 +53,6 @@ int KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value);
 /* Apply one animation's sampled values at time t to its target nodes via the
  * scene property model. Walks each track, samples it, and writes the component
  * into the target node's property. */
-void KryAnimationApply(KryScene *scene, const KryAnimation *anim, float t);
+void KryAnimationApply(Scene *scene, const KryAnimation *anim, float t);
 
 #endif

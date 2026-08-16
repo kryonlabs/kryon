@@ -14,9 +14,9 @@
 #include <string.h>
 
 static void
-kry_animation_player_process(KryScene *scene, KryNodeId node, float dt)
+kry_animation_player_process(Scene *scene, NodeId node, float dt)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AnimationPlayerProps *props;
     KryAnimation *anim;
 
@@ -39,8 +39,8 @@ kry_animation_player_process(KryScene *scene, KryNodeId node, float dt)
             props->time = anim->duration;
             props->playing = 0;
             KryAnimationApply(scene, anim, props->time);
-            KrySignalEmit(scene, node, "animation_finished",
-                          KryonPropertyInt(props->current));
+            SignalEmit(scene, node, "animation_finished",
+                          PropertyInt(props->current));
             return;
         }
     }
@@ -48,7 +48,7 @@ kry_animation_player_process(KryScene *scene, KryNodeId node, float dt)
 }
 
 static void
-kry_animation_player_destroy(KryScene *scene, KryNode *node)
+kry_animation_player_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -57,7 +57,7 @@ kry_animation_player_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_animation_player_ops = {
+static const NodeOps kry_animation_player_ops = {
     NULL, /* ready */
     kry_animation_player_process,
     NULL, /* physics_process */
@@ -67,8 +67,8 @@ static const KryNodeOps kry_animation_player_ops = {
 void
 kry_register_animation_player(void)
 {
-    KryNodeRegisterOps(KRY_NODE_TIMER, &kry_animation_player_ops);
-    KryNodeRegisterDestroy(KRY_NODE_TIMER, kry_animation_player_destroy);
+    NodeRegisterOps(NODE_TIMER, &kry_animation_player_ops);
+    NodeRegisterDestroy(NODE_TIMER, kry_animation_player_destroy);
 }
 
 AnimationPlayerProps *

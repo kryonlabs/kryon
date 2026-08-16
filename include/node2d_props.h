@@ -3,7 +3,7 @@
 
 /*
  * Kind-specific props for built-in scene nodes. These are attached to a
- * KryNode via its `props` pointer and read by the node's lifecycle hooks.
+ * Node via its `props` pointer and read by the node's lifecycle hooks.
  * Each concrete kind owns its props struct; the scene tree treats props as
  * opaque (void *) and only the kind's registered ops/destroy touch it.
  */
@@ -15,7 +15,7 @@
 typedef struct Camera2DProps {
     float zoom;        /* 1.0 = default; >1 zooms in */
     float rotation;    /* extra camera rotation in radians, added to the node transform */
-    int active;        /* nonzero = this camera drives BeginMode2D during KrySceneDraw */
+    int active;        /* nonzero = this camera drives BeginMode2D during SceneDraw */
 } Camera2DProps;
 
 typedef struct Sprite2DProps {
@@ -28,7 +28,7 @@ typedef struct Sprite2DProps {
 
 /*
  * Props allocation helpers for scene builders. Allocate zero-initialized
- * kind-specific props to attach to a node via KryNodeGet()->props. Returns
+ * kind-specific props to attach to a node via NodeGet()->props. Returns
  * NULL on allocation failure. The caller transfers the pointer to the node;
  * the kind's destroy hook frees it.
  */
@@ -147,7 +147,7 @@ typedef struct AudioSourceProps {
 } AudioSourceProps;
 
 AudioSourceProps *KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind);
-void KryAudioSourcePlay(KryScene *scene, KryNodeId node);
-void KryAudioSourceStop(KryScene *scene, KryNodeId node);
+void KryAudioSourcePlay(Scene *scene, NodeId node);
+void KryAudioSourceStop(Scene *scene, NodeId node);
 
 #endif

@@ -13,10 +13,10 @@ app "Kryon Scene Tree" {
 sprite_id :: int #global #export
 
 scene main {
-    camera := KryNodeCreate(scene, 0, KRY_NODE_CAMERA2D, "camera")
-    KryNodeSetProps(scene, camera, KryCamera2DPropsAlloc(1.0, 1))
+    camera := NodeCreate(scene, 0, NODE_CAMERA2D, "camera")
+    NodeSetProps(scene, camera, KryCamera2DPropsAlloc(1.0, 1))
 
-    sprite_id = KryNodeCreate(scene, 0, KRY_NODE_SPRITE2D, "player")
-    KryNodeSetPosition(scene, sprite_id, 320.0, 210.0)
-    KryNodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 96.0, 96.0))
+    sprite_id = NodeCreate(scene, 0, NODE_SPRITE2D, "player")
+    NodeSetPosition(scene, sprite_id, 320.0, 210.0)
+    NodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 96.0, 96.0))
 }

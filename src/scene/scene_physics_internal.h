@@ -13,10 +13,10 @@
 #include "node2d_props.h"
 #include <box2d/box2d.h>
 
-b2WorldId kry_scene_b2_world(KryScene *scene);
-b2BodyId kry_body2d_create(KryScene *scene, KryNodeId node, Body2DProps *props);
-void kry_body2d_sync(KryScene *scene, KryNodeId node, Body2DProps *props);
-void kry_collision_shape2d_attach(KryScene *scene, KryNodeId node,
+b2WorldId kry_scene_b2_world(Scene *scene);
+b2BodyId kry_body2d_create(Scene *scene, NodeId node, Body2DProps *props);
+void kry_body2d_sync(Scene *scene, NodeId node, Body2DProps *props);
+void kry_collision_shape2d_attach(Scene *scene, NodeId node,
                                   CollisionShape2DProps *props,
                                   Body2DProps *parent_body);
 

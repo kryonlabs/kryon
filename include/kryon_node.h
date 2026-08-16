@@ -51,7 +51,7 @@ typedef struct KryonNode {
 typedef struct KryonNodeEdit {
     const char *node_id;
     const char *property_id;
-    KryonPropertyValue value;
+    PropertyValue value;
 } KryonNodeEdit;
 
 const char *KryonNodeKindName(KryonNodeKind kind);

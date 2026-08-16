@@ -2,7 +2,7 @@
  * Area2D: a trigger volume. Like a CollisionShape2D with is_sensor=1, it
  * detects Body2D entry/exit without solid collision. On ready it creates a
  * sensor shape on the nearest Body2D ancestor. After each physics step,
- * KryScenePhysicsTick drains Box2D sensor events and Area2D emits body_enter
+ * ScenePhysicsTick drains Box2D sensor events and Area2D emits body_enter
  * / body_exit signals (built on the Phase 2 signal bus).
  */
 
@@ -13,9 +13,9 @@
 #include <stdlib.h>
 
 static void
-kry_area2d_ready(KryScene *scene, KryNodeId node)
+kry_area2d_ready(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Area2DProps *props;
     if(n == NULL)
         return;
@@ -28,7 +28,7 @@ kry_area2d_ready(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_area2d_destroy(KryScene *scene, KryNode *node)
+kry_area2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -37,7 +37,7 @@ kry_area2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_area2d_ops = {
+static const NodeOps kry_area2d_ops = {
     kry_area2d_ready,
     NULL,
     NULL,
@@ -47,6 +47,6 @@ static const KryNodeOps kry_area2d_ops = {
 void
 kry_register_area2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_AREA2D, &kry_area2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_AREA2D, kry_area2d_destroy);
+    NodeRegisterOps(NODE_AREA2D, &kry_area2d_ops);
+    NodeRegisterDestroy(NODE_AREA2D, kry_area2d_destroy);
 }

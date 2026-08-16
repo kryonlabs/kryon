@@ -4,91 +4,91 @@
 #include <string.h>
 
 const char *
-KryonPropertyKindName(KryonPropertyKind kind)
+PropertyKindName(PropertyKind kind)
 {
     switch(kind) {
-    case KRYON_PROPERTY_BOOL: return "bool";
-    case KRYON_PROPERTY_INT: return "int";
-    case KRYON_PROPERTY_FLOAT: return "float";
-    case KRYON_PROPERTY_STRING: return "string";
-    case KRYON_PROPERTY_COLOR: return "color";
-    case KRYON_PROPERTY_ENUM: return "enum";
-    case KRYON_PROPERTY_VECTOR2: return "vector2";
-    case KRYON_PROPERTY_RECTANGLE: return "rectangle";
-    case KRYON_PROPERTY_ASSET_PATH: return "asset_path";
+    case PROPERTY_BOOL: return "bool";
+    case PROPERTY_INT: return "int";
+    case PROPERTY_FLOAT: return "float";
+    case PROPERTY_STRING: return "string";
+    case PROPERTY_COLOR: return "color";
+    case PROPERTY_ENUM: return "enum";
+    case PROPERTY_VECTOR2: return "vector2";
+    case PROPERTY_RECTANGLE: return "rectangle";
+    case PROPERTY_ASSET_PATH: return "asset_path";
     }
     return "unknown";
 }
 
-KryonPropertyValue
-KryonPropertyBool(int value)
+PropertyValue
+PropertyBool(int value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_BOOL;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_BOOL;
     prop.as.bool_value = value != 0;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyInt(int value)
+PropertyValue
+PropertyInt(int value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_INT;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_INT;
     prop.as.int_value = value;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyFloat(float value)
+PropertyValue
+PropertyFloat(float value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_FLOAT;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_FLOAT;
     prop.as.float_value = value;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyString(const char *value)
+PropertyValue
+PropertyString(const char *value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_STRING;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_STRING;
     snprintf(prop.as.string_value, sizeof(prop.as.string_value), "%s",
              value != NULL ? value : "");
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyColor(Color value)
+PropertyValue
+PropertyColor(Color value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_COLOR;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_COLOR;
     prop.as.color_value = value;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyEnum(int index)
+PropertyValue
+PropertyEnum(int index)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_ENUM;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_ENUM;
     prop.as.enum_index = index;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyVector2(Vector2 value)
+PropertyValue
+PropertyVector2(Vector2 value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_VECTOR2;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_VECTOR2;
     prop.as.vector2_value = value;
     return prop;
 }
 
-KryonPropertyValue
-KryonPropertyRectangle(Rectangle value)
+PropertyValue
+PropertyRectangle(Rectangle value)
 {
-    KryonPropertyValue prop = {0};
-    prop.kind = KRYON_PROPERTY_RECTANGLE;
+    PropertyValue prop = {0};
+    prop.kind = PROPERTY_RECTANGLE;
     prop.as.rectangle_value = value;
     return prop;
 }

@@ -19,13 +19,13 @@ app "Kryon Animation" {
 #global player_id :: int #export
 
 scene main {
-    sprite_id = KryNodeCreate(scene, 0, KRY_NODE_SPRITE2D, "mover")
-    KryNodeSetPosition(scene, sprite_id, CENTER_X, CENTER_Y)
-    KryNodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 64.0, 64.0))
+    sprite_id = NodeCreate(scene, 0, NODE_SPRITE2D, "mover")
+    NodeSetPosition(scene, sprite_id, CENTER_X, CENTER_Y)
+    NodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 64.0, 64.0))
 
-    player_id = KryNodeCreate(scene, 0, KRY_NODE_TIMER, "animator")
+    player_id = NodeCreate(scene, 0, NODE_TIMER, "animator")
     props := KryAnimationPlayerPropsAlloc()
-    KryNodeSetProps(scene, player_id, props)
+    NodeSetProps(scene, player_id, props)
 
     anim := &props->anims[0]
     snprintf(anim->name, sizeof(anim->name), "bob")

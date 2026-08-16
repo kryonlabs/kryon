@@ -10,11 +10,11 @@
 #include "kryon_compat.generated.h"
 #include <math.h>
 
-typedef struct KryTransform2D {
+typedef struct Transform2D {
     Vector2 position;
     float rotation; /* radians */
     Vector2 scale;
-} KryTransform2D;
+} Transform2D;
 
 static inline Vector2
 KryVector2Add(Vector2 a, Vector2 b)
@@ -86,10 +86,10 @@ KryClamp(float v, float lo, float hi)
 }
 
 /* The identity transform: no offset, no rotation, unit scale. */
-static inline KryTransform2D
-KryTransform2DIdentity(void)
+static inline Transform2D
+Transform2DIdentity(void)
 {
-    KryTransform2D t;
+    Transform2D t;
     t.position = (Vector2){0, 0};
     t.rotation = 0.0f;
     t.scale = (Vector2){1, 1};
@@ -102,10 +102,10 @@ KryTransform2DIdentity(void)
  * parent's position. This matches Godot 2D and raylib Camera2D conventions:
  * rotation is clockwise in screen space because +Y points down.
  */
-static inline KryTransform2D
-KryTransform2DCompose(KryTransform2D parent, KryTransform2D child)
+static inline Transform2D
+Transform2DCompose(Transform2D parent, Transform2D child)
 {
-    KryTransform2D out;
+    Transform2D out;
     Vector2 scaled;
     scaled.x = child.position.x * parent.scale.x;
     scaled.y = child.position.y * parent.scale.y;
@@ -118,7 +118,7 @@ KryTransform2DCompose(KryTransform2D parent, KryTransform2D child)
 
 /* Transform a point from the local space described by `t` into world space. */
 static inline Vector2
-KryTransform2DPoint(KryTransform2D t, Vector2 p)
+Transform2DPoint(Transform2D t, Vector2 p)
 {
     Vector2 scaled = (Vector2){p.x * t.scale.x, p.y * t.scale.y};
     return KryVector2Add(t.position, KryVector2Rotate(scaled, t.rotation));
@@ -130,7 +130,7 @@ KryTransform2DPoint(KryTransform2D t, Vector2 p)
  * offset is the screen center; zoom is the camera's uniform scale.
  */
 static inline Camera2D
-KryCamera2DFromTransform(KryTransform2D view, Vector2 screen_size, float zoom)
+Camera2DFromTransform(Transform2D view, Vector2 screen_size, float zoom)
 {
     Camera2D cam;
     cam.target = view.position;

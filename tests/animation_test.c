@@ -23,16 +23,16 @@ check_float(const char *name, float got, float want, float epsilon)
 int
 main(void)
 {
-    KryScene scene;
-    KryNodeId target;
-    KryNode *n;
+    Scene scene;
+    NodeId target;
+    Node *n;
     KryAnimTrack track = {0};
     float v;
     KryAnimation anim = {0};
 
-    KrySceneRegisterBuiltins();
-    KrySceneInit(&scene);
-    target = KryNodeCreate(&scene, scene.root, KRY_NODE_NODE2D, "t");
+    SceneRegisterBuiltins();
+    SceneInit(&scene);
+    target = NodeCreate(&scene, scene.root, NODE_NODE2D, "t");
 
     /* linear track: 0->100 over t=0..1 */
     track.target = target;
@@ -71,7 +71,7 @@ main(void)
     anim.track_count = 1;
     anim.tracks[0] = track;
     KryAnimationApply(&scene, &anim, 0.5f);
-    n = KryNodeGet(&scene, target);
+    n = NodeGet(&scene, target);
     check_float("apply writes position.x at 0.5", n->local.position.x, 50.0f, 0.001f);
 
     /* rotation track */
@@ -80,9 +80,9 @@ main(void)
     anim.tracks[0].keyframes[0].value = 0.0f;
     anim.tracks[0].keyframes[1].value = 3.14f;
     KryAnimationApply(&scene, &anim, 0.5f);
-    n = KryNodeGet(&scene, target);
+    n = NodeGet(&scene, target);
     check_float("apply writes rotation at 0.5", n->local.rotation, 1.57f, 0.01f);
 
-    KrySceneDestroy(&scene);
+    SceneDestroy(&scene);
     return failures == 0 ? 0 : 1;
 }

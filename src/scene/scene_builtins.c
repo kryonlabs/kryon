@@ -1,6 +1,6 @@
 /*
  * Registration of the built-in scene node kinds. Called once at startup so the
- * per-kind ops/destroy tables are populated before any KryScene ticks.
+ * per-kind ops/destroy tables are populated before any Scene ticks.
  */
 
 #include "scene_tree.h"
@@ -32,13 +32,13 @@ void kry_register_audio_source(void);
 
 /* installed by physics_world.c; declared in scene_tree.c. The pointer itself
  * lives in scene_tree.c (always linked) and stays NULL when physics is off. */
-extern void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
+extern void (*kry_scene_physics_step_fn)(Scene *scene, float dt);
 #if KRYON_WITH_PHYSICS
 void kry_physics_step_install(void);
 #endif
 
 void
-KrySceneRegisterBuiltins(void)
+SceneRegisterBuiltins(void)
 {
     kry_register_node2d();
     kry_register_camera2d();
@@ -52,7 +52,7 @@ KrySceneRegisterBuiltins(void)
     kry_register_animated_sprite2d();
     kry_register_tilemap();
     kry_register_audio_source();
-    KrySceneRegisterBuiltinProperties();
+    SceneRegisterBuiltinProperties();
 #if KRYON_WITH_PHYSICS
     kry_physics_step_install();
 #endif

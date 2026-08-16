@@ -23,19 +23,19 @@
 
 #define KRY_KIND_MAX 64
 
-static KryNodeOps g_kry_node_ops[KRY_KIND_MAX];
-static KryNodeDestroyFn g_kry_node_destroy[KRY_KIND_MAX];
-static char g_kry_kind_names[KRY_KIND_MAX][KRY_SCENE_NAME_MAX];
-static int g_kry_kind_count = KRY_NODE_CUSTOM + 1;
+static NodeOps g_kry_node_ops[KRY_KIND_MAX];
+static NodeDestroyFn g_kry_node_destroy[KRY_KIND_MAX];
+static char g_kry_kind_names[KRY_KIND_MAX][SCENE_NAME_MAX];
+static int g_kry_kind_count = NODE_CUSTOM + 1;
 
 int
-KryNodeKindCount(void)
+NodeKindCount(void)
 {
     return g_kry_kind_count;
 }
 
 const char *
-KryNodeKindName(KryNodeKind kind)
+NodeKindName(NodeKind kind)
 {
     if(kind < 0 || kind >= g_kry_kind_count)
         return NULL;
@@ -44,12 +44,12 @@ KryNodeKindName(KryNodeKind kind)
 
 /*
  * Register a new application-defined kind beyond the built-ins. The id is
- * valid with KryNodeCreate/KryNodeRegisterOps/KrySceneRegisterProperties
+ * valid with NodeCreate/NodeRegisterOps/SceneRegisterProperties
  * exactly like a builtin kind. Returns the kind id, or -1 when the table is
  * full or the name is missing.
  */
-KryNodeKind
-KryNodeRegisterCustomKind(const char *name)
+NodeKind
+NodeRegisterCustomKind(const char *name)
 {
     if(name == NULL || name[0] == '\0')
         return -1;
@@ -57,24 +57,24 @@ KryNodeRegisterCustomKind(const char *name)
         return -1;
     snprintf(g_kry_kind_names[g_kry_kind_count],
              sizeof(g_kry_kind_names[0]), "%s", name);
-    return (KryNodeKind)g_kry_kind_count++;
+    return (NodeKind)g_kry_kind_count++;
 }
 
-/* Set by physics_world.c during KrySceneRegisterBuiltins. Keeps scene_tree.c
- * free of a box2d.h dependency while letting KryScenePhysicsTick step the world. */
-void (*kry_scene_physics_step_fn)(KryScene *scene, float dt);
+/* Set by physics_world.c during SceneRegisterBuiltins. Keeps scene_tree.c
+ * free of a box2d.h dependency while letting ScenePhysicsTick step the world. */
+void (*kry_scene_physics_step_fn)(Scene *scene, float dt);
 
 static int
-kry_node_is_valid(KryScene *scene, KryNodeId node)
+kry_node_is_valid(Scene *scene, NodeId node)
 {
     return scene != NULL && node >= 0 && node < scene->count &&
-           (scene->nodes[node].flags & KRY_NODE_FLAG_ALIVE);
+           (scene->nodes[node].flags & NODE_FLAG_ALIVE);
 }
 
 void
-KrySceneInit(KryScene *scene)
+SceneInit(Scene *scene)
 {
-    KryNode *root;
+    Node *root;
     if(scene == NULL)
         return;
     memset(scene, 0, sizeof(*scene));
@@ -88,31 +88,31 @@ KrySceneInit(KryScene *scene)
     root->parent = -1;
     root->first_child = -1;
     root->next_sibling = -1;
-    root->kind = KRY_NODE_ROOT;
-    root->flags = KRY_NODE_FLAG_ALIVE;
+    root->kind = NODE_ROOT;
+    root->flags = NODE_FLAG_ALIVE;
     strncpy(root->name, "root", sizeof(root->name) - 1);
-    root->local = KryTransform2DIdentity();
-    root->world = KryTransform2DIdentity();
+    root->local = Transform2DIdentity();
+    root->world = Transform2DIdentity();
     scene->count = 1;
     scene->root = 0;
 }
 
 void
-KrySceneDestroy(KryScene *scene)
+SceneDestroy(Scene *scene)
 {
     int i;
-    KryNodeDestroyFn destroy;
+    NodeDestroyFn destroy;
     if(scene == NULL)
         return;
     for(i = 0; i < scene->count; i++) {
-        if(!(scene->nodes[i].flags & KRY_NODE_FLAG_ALIVE))
+        if(!(scene->nodes[i].flags & NODE_FLAG_ALIVE))
             continue;
         destroy = g_kry_node_destroy[scene->nodes[i].kind];
         if(destroy != NULL)
             destroy(scene, &scene->nodes[i]);
     }
 #if KRYON_WITH_PHYSICS
-    KryScenePhysicsDestroy(scene);
+    ScenePhysicsDestroy(scene);
 #endif
     memset(scene, 0, sizeof(*scene));
     scene->root = -1;
@@ -121,10 +121,10 @@ KrySceneDestroy(KryScene *scene)
 }
 
 static void
-kry_node_detach(KryScene *scene, KryNode *node)
+kry_node_detach(Scene *scene, Node *node)
 {
-    KryNode *parent;
-    KryNodeId *slot;
+    Node *parent;
+    NodeId *slot;
     if(node->parent < 0)
         return;
     parent = &scene->nodes[node->parent];
@@ -139,19 +139,19 @@ kry_node_detach(KryScene *scene, KryNode *node)
     node->next_sibling = -1;
 }
 
-KryNodeId
-KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
+NodeId
+NodeCreate(Scene *scene, NodeId parent, NodeKind kind,
               const char *name)
 {
     int index;
-    KryNode *node;
-    KryNode *parent_node;
-    KryNodeId *slot;
+    Node *node;
+    Node *parent_node;
+    NodeId *slot;
 
-    if(scene == NULL || scene->count >= KRY_SCENE_MAX_NODES)
+    if(scene == NULL || scene->count >= SCENE_MAX_NODES)
         return -1;
     if(parent < 0 || parent >= scene->count ||
-       !(scene->nodes[parent].flags & KRY_NODE_FLAG_ALIVE))
+       !(scene->nodes[parent].flags & NODE_FLAG_ALIVE))
         return -1;
     if(scene->free_head >= 0) {
         index = scene->free_head;
@@ -166,11 +166,11 @@ KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
     node->first_child = -1;
     node->next_sibling = -1;
     node->kind = kind;
-    node->flags = KRY_NODE_FLAG_ALIVE | KRY_NODE_FLAG_DIRTY;
+    node->flags = NODE_FLAG_ALIVE | NODE_FLAG_DIRTY;
     if(name != NULL)
         strncpy(node->name, name, sizeof(node->name) - 1);
-    node->local = KryTransform2DIdentity();
-    node->world = KryTransform2DIdentity();
+    node->local = Transform2DIdentity();
+    node->world = Transform2DIdentity();
 
     parent_node = &scene->nodes[parent];
     parent_node->child_count++;
@@ -183,17 +183,17 @@ KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
 }
 
 static void
-kry_node_free_recursive(KryScene *scene, KryNodeId node)
+kry_node_free_recursive(Scene *scene, NodeId node)
 {
-    KryNode *n;
-    KryNodeId child;
-    KryNodeId next;
-    KryNodeDestroyFn destroy;
+    Node *n;
+    NodeId child;
+    NodeId next;
+    NodeDestroyFn destroy;
 
     if(node < 0 || node >= scene->count)
         return;
     n = &scene->nodes[node];
-    if(!(n->flags & KRY_NODE_FLAG_ALIVE))
+    if(!(n->flags & NODE_FLAG_ALIVE))
         return;
     child = n->first_child;
     while(child >= 0) {
@@ -204,7 +204,7 @@ kry_node_free_recursive(KryScene *scene, KryNodeId node)
     destroy = g_kry_node_destroy[n->kind];
     if(destroy != NULL)
         destroy(scene, n);
-    n->flags &= ~KRY_NODE_FLAG_ALIVE;
+    n->flags &= ~NODE_FLAG_ALIVE;
     n->first_child = -1;
     n->parent = -1;
     /* recycle: chain the dead slot onto the freelist (next_sibling is free
@@ -214,22 +214,22 @@ kry_node_free_recursive(KryScene *scene, KryNodeId node)
 }
 
 void
-KryNodeRemove(KryScene *scene, KryNodeId node)
+NodeRemove(Scene *scene, NodeId node)
 {
-    KryNode *n;
+    Node *n;
     if(scene == NULL || !kry_node_is_valid(scene, node))
         return;
-    KrySignalDisconnectNode(scene, node);
+    SignalDisconnectNode(scene, node);
     n = &scene->nodes[node];
     kry_node_detach(scene, n);
     kry_node_free_recursive(scene, node);
 }
 
-KryNodeId
-KryNodeFindChild(KryScene *scene, KryNodeId parent, const char *name)
+NodeId
+NodeFindChild(Scene *scene, NodeId parent, const char *name)
 {
-    KryNode *p;
-    KryNodeId child;
+    Node *p;
+    NodeId child;
     if(scene == NULL || name == NULL || !kry_node_is_valid(scene, parent))
         return -1;
     p = &scene->nodes[parent];
@@ -242,8 +242,8 @@ KryNodeFindChild(KryScene *scene, KryNodeId parent, const char *name)
     return -1;
 }
 
-KryNode *
-KryNodeGet(KryScene *scene, KryNodeId node)
+Node *
+NodeGet(Scene *scene, NodeId node)
 {
     if(scene == NULL || node < 0 || node >= scene->count)
         return NULL;
@@ -251,45 +251,45 @@ KryNodeGet(KryScene *scene, KryNodeId node)
 }
 
 void
-KryNodeSetPosition(KryScene *scene, KryNodeId node, float x, float y)
+NodeSetPosition(Scene *scene, NodeId node, float x, float y)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.position = (Vector2){x, y};
-        n->flags |= KRY_NODE_FLAG_DIRTY;
+        n->flags |= NODE_FLAG_DIRTY;
     }
 }
 
 void
-KryNodeSetRotation(KryScene *scene, KryNodeId node, float radians)
+NodeSetRotation(Scene *scene, NodeId node, float radians)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.rotation = radians;
-        n->flags |= KRY_NODE_FLAG_DIRTY;
+        n->flags |= NODE_FLAG_DIRTY;
     }
 }
 
 void
-KryNodeSetScale(KryScene *scene, KryNodeId node, float sx, float sy)
+NodeSetScale(Scene *scene, NodeId node, float sx, float sy)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.scale = (Vector2){sx, sy};
-        n->flags |= KRY_NODE_FLAG_DIRTY;
+        n->flags |= NODE_FLAG_DIRTY;
     }
 }
 
 void
-KryNodeSetProps(KryScene *scene, KryNodeId node, void *props)
+NodeSetProps(Scene *scene, NodeId node, void *props)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     if(n != NULL)
         n->props = props;
 }
 
 void
-KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops)
+NodeRegisterOps(NodeKind kind, const NodeOps *ops)
 {
     if(kind < 0 || kind >= g_kry_kind_count)
         return;
@@ -299,8 +299,8 @@ KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops)
         memset(&g_kry_node_ops[kind], 0, sizeof(g_kry_node_ops[kind]));
 }
 
-const KryNodeOps *
-KryNodeOpsFor(KryNodeKind kind)
+const NodeOps *
+NodeOpsFor(NodeKind kind)
 {
     if(kind < 0 || kind >= g_kry_kind_count)
         return NULL;
@@ -308,7 +308,7 @@ KryNodeOpsFor(KryNodeKind kind)
 }
 
 void
-KryNodeRegisterDestroy(KryNodeKind kind, KryNodeDestroyFn destroy)
+NodeRegisterDestroy(NodeKind kind, NodeDestroyFn destroy)
 {
     if(kind < 0 || kind >= g_kry_kind_count)
         return;
@@ -316,16 +316,16 @@ KryNodeRegisterDestroy(KryNodeKind kind, KryNodeDestroyFn destroy)
 }
 
 static void
-kry_node_update_world(KryScene *scene, KryNodeId node)
+kry_node_update_world(Scene *scene, NodeId node)
 {
-    KryNode *n = &scene->nodes[node];
-    KryNodeId child;
+    Node *n = &scene->nodes[node];
+    NodeId child;
 
     if(n->parent < 0)
         n->world = n->local;
     else
-        n->world = KryTransform2DCompose(scene->nodes[n->parent].world, n->local);
-    n->flags &= ~KRY_NODE_FLAG_DIRTY;
+        n->world = Transform2DCompose(scene->nodes[n->parent].world, n->local);
+    n->flags &= ~NODE_FLAG_DIRTY;
 
     child = n->first_child;
     while(child >= 0) {
@@ -335,19 +335,19 @@ kry_node_update_world(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_node_fire_ready(KryScene *scene, KryNodeId node)
+kry_node_fire_ready(Scene *scene, NodeId node)
 {
-    KryNode *n = &scene->nodes[node];
-    const KryNodeOps *ops;
-    KryNodeId child;
+    Node *n = &scene->nodes[node];
+    const NodeOps *ops;
+    NodeId child;
 
-    if(!(n->flags & KRY_NODE_FLAG_ALIVE))
+    if(!(n->flags & NODE_FLAG_ALIVE))
         return;
-    if(!(n->flags & KRY_NODE_FLAG_READY)) {
-        ops = KryNodeOpsFor(n->kind);
+    if(!(n->flags & NODE_FLAG_READY)) {
+        ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->ready != NULL)
             ops->ready(scene, node);
-        n->flags |= KRY_NODE_FLAG_READY;
+        n->flags |= NODE_FLAG_READY;
     }
     child = n->first_child;
     while(child >= 0) {
@@ -357,11 +357,11 @@ kry_node_fire_ready(KryScene *scene, KryNodeId node)
 }
 
 void
-KrySceneTick(KryScene *scene, float dt)
+SceneTick(Scene *scene, float dt)
 {
     int i;
-    KryNode *n;
-    const KryNodeOps *ops;
+    Node *n;
+    const NodeOps *ops;
     float scaled_dt;
 
     if(scene == NULL || scene->root < 0)
@@ -372,20 +372,20 @@ KrySceneTick(KryScene *scene, float dt)
     scaled_dt = dt * scene->time_scale;
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & KRY_NODE_FLAG_ALIVE))
+        if(!(n->flags & NODE_FLAG_ALIVE))
             continue;
-        ops = KryNodeOpsFor(n->kind);
+        ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->process != NULL)
             ops->process(scene, i, scaled_dt);
     }
 }
 
 void
-KryScenePhysicsTick(KryScene *scene, float dt)
+ScenePhysicsTick(Scene *scene, float dt)
 {
     int i;
-    KryNode *n;
-    const KryNodeOps *ops;
+    Node *n;
+    const NodeOps *ops;
     float scaled_dt;
 
     if(scene == NULL || scene->root < 0)
@@ -398,9 +398,9 @@ KryScenePhysicsTick(KryScene *scene, float dt)
      * physics_world.c at registration time. */
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & KRY_NODE_FLAG_ALIVE))
+        if(!(n->flags & NODE_FLAG_ALIVE))
             continue;
-        ops = KryNodeOpsFor(n->kind);
+        ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->physics_process != NULL)
             ops->physics_process(scene, i, scaled_dt);
     }
@@ -409,11 +409,11 @@ KryScenePhysicsTick(KryScene *scene, float dt)
 }
 
 void
-KrySceneDraw(KryScene *scene)
+SceneDraw(Scene *scene)
 {
     int i;
-    KryNode *n;
-    const KryNodeOps *ops;
+    Node *n;
+    const NodeOps *ops;
     Camera2D camera;
     int used_camera = 0;
     Vector2 screen_size;
@@ -424,12 +424,12 @@ KrySceneDraw(KryScene *scene)
 
     if(scene->active_camera >= 0 && scene->active_camera < scene->count) {
         n = &scene->nodes[scene->active_camera];
-        if((n->flags & KRY_NODE_FLAG_ALIVE) && n->kind == KRY_NODE_CAMERA2D) {
+        if((n->flags & NODE_FLAG_ALIVE) && n->kind == NODE_CAMERA2D) {
             float zoom = 1.0f;
             Camera2DProps *cp = (Camera2DProps *)n->props;
             if(cp != NULL)
                 zoom = cp->zoom;
-            camera = KryCamera2DFromTransform(n->world, screen_size, zoom);
+            camera = Camera2DFromTransform(n->world, screen_size, zoom);
             BeginMode2D(camera);
             used_camera = 1;
         }
@@ -437,9 +437,9 @@ KrySceneDraw(KryScene *scene)
 
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & KRY_NODE_FLAG_ALIVE))
+        if(!(n->flags & NODE_FLAG_ALIVE))
             continue;
-        ops = KryNodeOpsFor(n->kind);
+        ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->draw != NULL)
             ops->draw(scene, i);
     }

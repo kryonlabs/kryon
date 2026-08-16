@@ -15,82 +15,82 @@
 #include "kryon_compat.generated.h"
 #include "kry_math.h"
 
-#define KRY_SCENE_MAX_NODES 4096
-#define KRY_SCENE_NAME_MAX 64
+#define SCENE_MAX_NODES 4096
+#define SCENE_NAME_MAX 64
 
-typedef int KryNodeId;
+typedef int NodeId;
 
-/* Forward declarations so the KryNodeOps vtable can reference KryScene. */
-typedef struct KryScene KryScene;
-typedef struct KryNode KryNode;
+/* Forward declarations so the NodeOps vtable can reference Scene. */
+typedef struct Scene Scene;
+typedef struct Node Node;
 
-typedef enum KryNodeKind {
-    KRY_NODE_ROOT,
-    KRY_NODE_NODE2D,
-    KRY_NODE_CAMERA2D,
-    KRY_NODE_SPRITE2D,
-    KRY_NODE_ANIMATED_SPRITE2D,
-    KRY_NODE_TILEMAP,
-    KRY_NODE_COLLISION_SHAPE2D,
-    KRY_NODE_AREA2D,
-    KRY_NODE_BODY2D,
-    KRY_NODE_TIMER,
-    KRY_NODE_AUDIO_SOURCE,
-    KRY_NODE_CUSTOM
-} KryNodeKind;
+typedef enum NodeKind {
+    NODE_ROOT,
+    NODE_NODE2D,
+    NODE_CAMERA2D,
+    NODE_SPRITE2D,
+    NODE_ANIMATED_SPRITE2D,
+    NODE_TILEMAP,
+    NODE_COLLISION_SHAPE2D,
+    NODE_AREA2D,
+    NODE_BODY2D,
+    NODE_TIMER,
+    NODE_AUDIO_SOURCE,
+    NODE_CUSTOM
+} NodeKind;
 
-typedef enum KryNodeFlags {
-    KRY_NODE_FLAG_ALIVE = 1 << 0,
-    KRY_NODE_FLAG_READY = 1 << 1,   /* _ready has been called */
-    KRY_NODE_FLAG_DIRTY = 1 << 2    /* world transform needs recomputation */
-} KryNodeFlags;
+typedef enum NodeFlags {
+    NODE_FLAG_ALIVE = 1 << 0,
+    NODE_FLAG_READY = 1 << 1,   /* _ready has been called */
+    NODE_FLAG_DIRTY = 1 << 2    /* world transform needs recomputation */
+} NodeFlags;
 
 /*
  * Per-kind lifecycle vtable. Any slot may be NULL. The runtime calls these
  * while walking the tree each frame; `node` is the node index.
  */
-typedef struct KryNodeOps {
-    void (*ready)(struct KryScene *scene, KryNodeId node);
-    void (*process)(struct KryScene *scene, KryNodeId node, float dt);
-    void (*physics_process)(struct KryScene *scene, KryNodeId node, float dt);
-    void (*draw)(struct KryScene *scene, KryNodeId node);
-} KryNodeOps;
+typedef struct NodeOps {
+    void (*ready)(struct Scene *scene, NodeId node);
+    void (*process)(struct Scene *scene, NodeId node, float dt);
+    void (*physics_process)(struct Scene *scene, NodeId node, float dt);
+    void (*draw)(struct Scene *scene, NodeId node);
+} NodeOps;
 
-typedef struct KryNode {
-    KryNodeId id;
+typedef struct Node {
+    NodeId id;
     int parent;
     int first_child;
     int next_sibling;
     int child_count;
-    KryNodeKind kind;
+    NodeKind kind;
     unsigned flags;
-    char name[KRY_SCENE_NAME_MAX];
-    KryTransform2D local;
-    KryTransform2D world;
+    char name[SCENE_NAME_MAX];
+    Transform2D local;
+    Transform2D world;
     void *props; /* kind-specific data (Sprite2DProps, Camera2DProps, ...) */
     void *state; /* per-instance runtime state (allocations owned by the kind) */
-} KryNode;
+} Node;
 
-typedef struct KryScene {
-    KryNode nodes[KRY_SCENE_MAX_NODES];
+typedef struct Scene {
+    Node nodes[SCENE_MAX_NODES];
     int count;
     /* Freelist of removed slots (chained through next_sibling); create pops
      * from here before growing count, so churn (respawning enemies, ...) does
      * not exhaust the arena. -1 when empty. */
     int free_head;
-    KryNodeId root;
+    NodeId root;
     float time_scale;
-    KryNodeId active_camera; /* first Camera2D that wants to be active; -1 if none */
+    NodeId active_camera; /* first Camera2D that wants to be active; -1 if none */
     /* Box2D physics world id. Opaque layout (mirrors b2WorldId {uint16,uint16})
      * so this header does not need to include box2d.h. {0,0} means no world. */
     unsigned short physics_world_index;
     unsigned short physics_world_gen;
-    int physics_enabled; /* when nonzero, KryScenePhysicsTick steps the world */
-} KryScene;
+    int physics_enabled; /* when nonzero, ScenePhysicsTick steps the world */
+} Scene;
 
 /* --- scene lifecycle --- */
-void KrySceneInit(KryScene *scene);
-void KrySceneDestroy(KryScene *scene);
+void SceneInit(Scene *scene);
+void SceneDestroy(Scene *scene);
 
 /* --- tree mutation --- */
 /*
@@ -99,7 +99,7 @@ void KrySceneDestroy(KryScene *scene);
  * hook is responsible for initializing kind-specific data. Returns the new
  * node id, or -1 if the arena is full or parent is invalid.
  */
-KryNodeId KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
+NodeId NodeCreate(Scene *scene, NodeId parent, NodeKind kind,
                         const char *name);
 
 /*
@@ -107,17 +107,17 @@ KryNodeId KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
  * parent and its `state`/`props` are released via the kind's registered
  * destroyer if any. The node slot stays in the array but is no longer ALIVE.
  */
-void KryNodeRemove(KryScene *scene, KryNodeId node);
+void NodeRemove(Scene *scene, NodeId node);
 
-KryNodeId KryNodeFindChild(KryScene *scene, KryNodeId parent, const char *name);
-KryNode *KryNodeGet(KryScene *scene, KryNodeId node);
+NodeId NodeFindChild(Scene *scene, NodeId parent, const char *name);
+Node *NodeGet(Scene *scene, NodeId node);
 
-/* --- property setters (builders mutate nodes via these, since KryNodeGet
+/* --- property setters (builders mutate nodes via these, since NodeGet
  * returns a pointer only into the arena; these are the canonical accessors) --- */
-void KryNodeSetPosition(KryScene *scene, KryNodeId node, float x, float y);
-void KryNodeSetRotation(KryScene *scene, KryNodeId node, float radians);
-void KryNodeSetScale(KryScene *scene, KryNodeId node, float sx, float sy);
-void KryNodeSetProps(KryScene *scene, KryNodeId node, void *props);
+void NodeSetPosition(Scene *scene, NodeId node, float x, float y);
+void NodeSetRotation(Scene *scene, NodeId node, float radians);
+void NodeSetScale(Scene *scene, NodeId node, float sx, float sy);
+void NodeSetProps(Scene *scene, NodeId node, void *props);
 
 /* --- per-frame driver --- */
 /*
@@ -125,53 +125,53 @@ void KryNodeSetProps(KryScene *scene, KryNodeId node, void *props);
  * _process on all alive nodes with `dt` scaled by scene->time_scale. World
  * transforms are recomputed top-down before process so reads see fresh data.
  */
-void KrySceneTick(KryScene *scene, float dt);
+void SceneTick(Scene *scene, float dt);
 
 /*
  * Advance physics: fire _physics_process on all alive nodes. Fixed timestep
  * stepping is the caller's responsibility (k2c-generated main() does it).
  */
-void KryScenePhysicsTick(KryScene *scene, float dt);
+void ScenePhysicsTick(Scene *scene, float dt);
 
 /*
  * Render the tree. If a Camera2D is active, wraps the world draw in raylib
  * BeginMode2D/EndMode2D. Nodes without a draw op are skipped.
  */
-void KrySceneDraw(KryScene *scene);
+void SceneDraw(Scene *scene);
 
 /* --- kind registration --- */
 /*
  * Register the ops vtable for a kind. Each kind has at most one vtable,
  * installed once at startup (node_2d.c, node_sprite2d.c, etc. register their
- * own kinds during KrySceneRegisterBuiltins). NULL slots are treated as no-ops.
+ * own kinds during SceneRegisterBuiltins). NULL slots are treated as no-ops.
  */
-void KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops);
-const KryNodeOps *KryNodeOpsFor(KryNodeKind kind);
+void NodeRegisterOps(NodeKind kind, const NodeOps *ops);
+const NodeOps *NodeOpsFor(NodeKind kind);
 
 /* Register the built-in node kinds (Node2D, Camera2D, Sprite2D, ...). */
-void KrySceneRegisterBuiltins(void);
+void SceneRegisterBuiltins(void);
 
 /* --- application-defined kinds ---
  * Kinds beyond the built-in enum are allocated at runtime so games can put
  * their own entity types into the tree (and the editor property model)
- * without forking KryNodeKind. Ops/destroyers/properties register against
+ * without forking NodeKind. Ops/destroyers/properties register against
  * the returned id exactly like a builtin kind. */
-int KryNodeKindCount(void);
-const char *KryNodeKindName(KryNodeKind kind);
-KryNodeKind KryNodeRegisterCustomKind(const char *name);
+int NodeKindCount(void);
+const char *NodeKindName(NodeKind kind);
+NodeKind NodeRegisterCustomKind(const char *name);
 
 /* --- physics --- */
 /*
  * Create the Box2D world for this scene (gravity defaults to {0, 9.8}). Once
- * created, KryScenePhysicsTick steps it at a fixed sub-step count and Body2D /
+ * created, ScenePhysicsTick steps it at a fixed sub-step count and Body2D /
  * Area2D / CollisionShape2D nodes sync their transforms from the world after
  * each step. Returns 1 on success, 0 if Box2D is unavailable.
  */
-int KryScenePhysicsCreate(KryScene *scene, float gravity_x, float gravity_y);
-void KryScenePhysicsDestroy(KryScene *scene);
+int ScenePhysicsCreate(Scene *scene, float gravity_x, float gravity_y);
+void ScenePhysicsDestroy(Scene *scene);
 
 /* Optional per-kind teardown hook for freeing props/state allocations. */
-typedef void (*KryNodeDestroyFn)(KryScene *scene, KryNode *node);
-void KryNodeRegisterDestroy(KryNodeKind kind, KryNodeDestroyFn destroy);
+typedef void (*NodeDestroyFn)(Scene *scene, Node *node);
+void NodeRegisterDestroy(NodeKind kind, NodeDestroyFn destroy);
 
 #endif

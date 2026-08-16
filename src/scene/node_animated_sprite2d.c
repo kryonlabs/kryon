@@ -11,9 +11,9 @@
 #include <stdlib.h>
 
 static void
-kry_animated_sprite2d_process(KryScene *scene, KryNodeId node, float dt)
+kry_animated_sprite2d_process(Scene *scene, NodeId node, float dt)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AnimatedSprite2DProps *props;
     if(n == NULL)
         return;
@@ -24,9 +24,9 @@ kry_animated_sprite2d_process(KryScene *scene, KryNodeId node, float dt)
 }
 
 static void
-kry_animated_sprite2d_draw(KryScene *scene, KryNodeId node)
+kry_animated_sprite2d_draw(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     AnimatedSprite2DProps *props;
     Texture2D texture;
     int frame;
@@ -64,7 +64,7 @@ kry_animated_sprite2d_draw(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_animated_sprite2d_destroy(KryScene *scene, KryNode *node)
+kry_animated_sprite2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -73,7 +73,7 @@ kry_animated_sprite2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_animated_sprite2d_ops = {
+static const NodeOps kry_animated_sprite2d_ops = {
     NULL,
     kry_animated_sprite2d_process,
     NULL,
@@ -83,8 +83,8 @@ static const KryNodeOps kry_animated_sprite2d_ops = {
 void
 kry_register_animated_sprite2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_ANIMATED_SPRITE2D, &kry_animated_sprite2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_ANIMATED_SPRITE2D,
+    NodeRegisterOps(NODE_ANIMATED_SPRITE2D, &kry_animated_sprite2d_ops);
+    NodeRegisterDestroy(NODE_ANIMATED_SPRITE2D,
                            kry_animated_sprite2d_destroy);
 }
 

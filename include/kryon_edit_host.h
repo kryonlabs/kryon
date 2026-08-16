@@ -14,7 +14,7 @@ typedef struct KryonEditHost {
     int (*node_at)(void *userdata, Vector2 point, KryonNode *out);
     int (*property_count)(void *userdata, const char *node_id);
     int (*property)(void *userdata, const char *node_id, int index,
-                    KryonPropertySpec *spec, KryonPropertyValue *value);
+                    PropertySpec *spec, PropertyValue *value);
     int (*set_property)(void *userdata, const KryonNodeEdit *edit);
     int (*move_node)(void *userdata, const char *node_id, float dx, float dy);
     int (*resize_node)(void *userdata, const char *node_id, float dw, float dh);

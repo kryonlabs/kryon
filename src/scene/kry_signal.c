@@ -1,6 +1,6 @@
 /*
  * Signal bus implementation. Connections are stored in a file-scope pool keyed
- * by scene pointer so KryScene stays a fixed struct. Emits walk the pool,
+ * by scene pointer so Scene stays a fixed struct. Emits walk the pool,
  * match (emitter, signal), and dispatch via the target node kind's registered
  * signal handler.
  */
@@ -9,26 +9,26 @@
 #include <stdio.h>
 #include <string.h>
 
-#define KRY_SIGNAL_POOLS_MAX 8
+#define SIGNAL_POOLS_MAX 8
 
-typedef struct KrySignalPool {
-    KryScene *scene;
-    KrySignalConnection connections[KRY_SIGNAL_CONNECTIONS_MAX];
+typedef struct SignalPool {
+    Scene *scene;
+    SignalConnection connections[SIGNAL_CONNECTIONS_MAX];
     int count;
-} KrySignalPool;
+} SignalPool;
 
-static KrySignalPool g_signal_pools[KRY_SIGNAL_POOLS_MAX];
-static KrySignalHandlerFn g_signal_handlers[KRY_NODE_CUSTOM + 1];
+static SignalPool g_signal_pools[SIGNAL_POOLS_MAX];
+static SignalHandlerFn g_signal_handlers[NODE_CUSTOM + 1];
 
-static KrySignalPool *
-kry_signal_pool(KryScene *scene)
+static SignalPool *
+kry_signal_pool(Scene *scene)
 {
     int i;
-    for(i = 0; i < KRY_SIGNAL_POOLS_MAX; i++) {
+    for(i = 0; i < SIGNAL_POOLS_MAX; i++) {
         if(g_signal_pools[i].scene == scene)
             return &g_signal_pools[i];
     }
-    for(i = 0; i < KRY_SIGNAL_POOLS_MAX; i++) {
+    for(i = 0; i < SIGNAL_POOLS_MAX; i++) {
         if(g_signal_pools[i].scene == NULL) {
             g_signal_pools[i].scene = scene;
             g_signal_pools[i].count = 0;
@@ -39,18 +39,18 @@ kry_signal_pool(KryScene *scene)
 }
 
 void
-KryNodeKindRegisterSignalHandler(KryNodeKind kind, KrySignalHandlerFn fn)
+NodeKindRegisterSignalHandler(NodeKind kind, SignalHandlerFn fn)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind > NODE_CUSTOM)
         return;
     g_signal_handlers[kind] = fn;
 }
 
 int
-KrySignalConnect(KryScene *scene, KryNodeId emitter, const char *signal,
-                 KryNodeId target, const char *handler)
+SignalConnect(Scene *scene, NodeId emitter, const char *signal,
+                 NodeId target, const char *handler)
 {
-    KrySignalPool *pool;
+    SignalPool *pool;
     int i;
 
     if(scene == NULL || signal == NULL || handler == NULL)
@@ -66,22 +66,22 @@ KrySignalConnect(KryScene *scene, KryNodeId emitter, const char *signal,
            strcmp(pool->connections[i].handler, handler) == 0)
             return 1; /* already connected */
     }
-    if(pool->count >= KRY_SIGNAL_CONNECTIONS_MAX)
+    if(pool->count >= SIGNAL_CONNECTIONS_MAX)
         return 0;
     pool->connections[pool->count].emitter = emitter;
     pool->connections[pool->count].target = target;
-    snprintf(pool->connections[pool->count].signal, KRY_SIGNAL_NAME_MAX, "%s", signal);
-    snprintf(pool->connections[pool->count].handler, KRY_SIGNAL_NAME_MAX, "%s", handler);
+    snprintf(pool->connections[pool->count].signal, SIGNAL_NAME_MAX, "%s", signal);
+    snprintf(pool->connections[pool->count].handler, SIGNAL_NAME_MAX, "%s", handler);
     pool->connections[pool->count].alive = 1;
     pool->count++;
     return 1;
 }
 
 int
-KrySignalEmit(KryScene *scene, KryNodeId emitter, const char *signal,
-              KryonPropertyValue arg)
+SignalEmit(Scene *scene, NodeId emitter, const char *signal,
+              PropertyValue arg)
 {
-    KrySignalPool *pool;
+    SignalPool *pool;
     int i;
     int fired = 0;
 
@@ -91,15 +91,15 @@ KrySignalEmit(KryScene *scene, KryNodeId emitter, const char *signal,
     if(pool == NULL)
         return 0;
     for(i = 0; i < pool->count; i++) {
-        KrySignalConnection *c = &pool->connections[i];
-        KryNode *target;
-        KrySignalHandlerFn handler_fn;
+        SignalConnection *c = &pool->connections[i];
+        Node *target;
+        SignalHandlerFn handler_fn;
 
         if(!c->alive || c->emitter != emitter ||
            strcmp(c->signal, signal) != 0)
             continue;
-        target = KryNodeGet(scene, c->target);
-        if(target == NULL || !(target->flags & KRY_NODE_FLAG_ALIVE))
+        target = NodeGet(scene, c->target);
+        if(target == NULL || !(target->flags & NODE_FLAG_ALIVE))
             continue;
         handler_fn = g_signal_handlers[target->kind];
         if(handler_fn != NULL) {
@@ -111,9 +111,9 @@ KrySignalEmit(KryScene *scene, KryNodeId emitter, const char *signal,
 }
 
 void
-KrySignalDisconnectNode(KryScene *scene, KryNodeId node)
+SignalDisconnectNode(Scene *scene, NodeId node)
 {
-    KrySignalPool *pool;
+    SignalPool *pool;
     int i;
     if(scene == NULL)
         return;

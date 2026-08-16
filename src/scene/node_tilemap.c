@@ -12,9 +12,9 @@
 #include <stdlib.h>
 
 static void
-kry_tilemap_draw(KryScene *scene, KryNodeId node)
+kry_tilemap_draw(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     TileMapProps *props;
     Texture2D texture;
     int x, y;
@@ -56,7 +56,7 @@ kry_tilemap_draw(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_tilemap_destroy(KryScene *scene, KryNode *node)
+kry_tilemap_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -65,18 +65,18 @@ kry_tilemap_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_tilemap_ops = {
+static const NodeOps kry_tilemap_ops = {
     NULL, NULL, NULL, kry_tilemap_draw
 };
 
 void
 kry_register_tilemap(void)
 {
-    KryNodeRegisterOps(KRY_NODE_TILEMAP, &kry_tilemap_ops);
-    KryNodeRegisterDestroy(KRY_NODE_TILEMAP, kry_tilemap_destroy);
+    NodeRegisterOps(NODE_TILEMAP, &kry_tilemap_ops);
+    NodeRegisterDestroy(NODE_TILEMAP, kry_tilemap_destroy);
     /* TileLayer is a usage convention over TileMap (layered rendering at
      * different z-depths), not a separate runtime kind. Callers create
-     * KRY_NODE_TILEMAP nodes for both. */
+     * NODE_TILEMAP nodes for both. */
 }
 
 TileMapProps *

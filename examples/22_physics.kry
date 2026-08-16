@@ -18,17 +18,17 @@ app "Kryon Physics" {
 }
 
 scene main {
-    KryScenePhysicsCreate(scene, 0.0, 980.0)
+    ScenePhysicsCreate(scene, 0.0, 980.0)
 
-    ground := KryNodeCreate(scene, 0, KRY_NODE_BODY2D, "ground")
-    KryNodeSetProps(scene, ground, KryBody2DPropsAlloc(KRY_BODY2D_STATIC))
-    KryNodeSetPosition(scene, ground, GROUND_X, GROUND_Y)
-    ground_shape := KryNodeCreate(scene, ground, KRY_NODE_COLLISION_SHAPE2D, "ground_shape")
-    KryNodeSetProps(scene, ground_shape, KryCollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 400.0, 32.0))
+    ground := NodeCreate(scene, 0, NODE_BODY2D, "ground")
+    NodeSetProps(scene, ground, KryBody2DPropsAlloc(KRY_BODY2D_STATIC))
+    NodeSetPosition(scene, ground, GROUND_X, GROUND_Y)
+    ground_shape := NodeCreate(scene, ground, NODE_COLLISION_SHAPE2D, "ground_shape")
+    NodeSetProps(scene, ground_shape, KryCollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 400.0, 32.0))
 
-    box := KryNodeCreate(scene, 0, KRY_NODE_BODY2D, "box")
-    KryNodeSetProps(scene, box, KryBody2DPropsAlloc(KRY_BODY2D_DYNAMIC))
-    KryNodeSetPosition(scene, box, BOX_X, BOX_Y)
-    box_shape := KryNodeCreate(scene, box, KRY_NODE_COLLISION_SHAPE2D, "box_shape")
-    KryNodeSetProps(scene, box_shape, KryCollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 48.0, 48.0))
+    box := NodeCreate(scene, 0, NODE_BODY2D, "box")
+    NodeSetProps(scene, box, KryBody2DPropsAlloc(KRY_BODY2D_DYNAMIC))
+    NodeSetPosition(scene, box, BOX_X, BOX_Y)
+    box_shape := NodeCreate(scene, box, NODE_COLLISION_SHAPE2D, "box_shape")
+    NodeSetProps(scene, box_shape, KryCollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 48.0, 48.0))
 }

@@ -14,8 +14,8 @@ emitter :: int = 0 #global #export
 receiver :: int = 0 #global #export
 
 scene main {
-    emitter = KryNodeCreate(scene, 0, KRY_NODE_NODE2D, "emitter")
-    receiver = KryNodeCreate(scene, 0, KRY_NODE_NODE2D, "receiver")
+    emitter = NodeCreate(scene, 0, NODE_NODE2D, "emitter")
+    receiver = NodeCreate(scene, 0, NODE_NODE2D, "receiver")
     connect emitter.hit to receiver.on_hit
     emit emitter.hit
 }

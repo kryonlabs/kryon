@@ -11,9 +11,9 @@
 #include <stdlib.h>
 
 static void
-kry_sprite2d_draw(KryScene *scene, KryNodeId node)
+kry_sprite2d_draw(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Sprite2DProps *props;
     Texture2D texture;
     Rectangle dst;
@@ -46,7 +46,7 @@ kry_sprite2d_draw(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_sprite2d_destroy(KryScene *scene, KryNode *node)
+kry_sprite2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -55,7 +55,7 @@ kry_sprite2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_sprite2d_ops = {
+static const NodeOps kry_sprite2d_ops = {
     NULL, /* ready */
     NULL, /* process */
     NULL, /* physics_process */
@@ -65,6 +65,6 @@ static const KryNodeOps kry_sprite2d_ops = {
 void
 kry_register_sprite2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_SPRITE2D, &kry_sprite2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_SPRITE2D, kry_sprite2d_destroy);
+    NodeRegisterOps(NODE_SPRITE2D, &kry_sprite2d_ops);
+    NodeRegisterDestroy(NODE_SPRITE2D, kry_sprite2d_destroy);
 }

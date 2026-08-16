@@ -1,6 +1,6 @@
 /*
  * Camera2D: defines the view into the scene. On ready, if it is marked active
- * it becomes the scene's active camera; KrySceneDraw then wraps the world draw
+ * it becomes the scene's active camera; SceneDraw then wraps the world draw
  * in raylib BeginMode2D using this node's world transform and zoom.
  *
  * The node owns a Camera2DProps (zoom/rotation/active) allocated in the node's
@@ -12,9 +12,9 @@
 #include <stdlib.h>
 
 static void
-kry_camera2d_ready(KryScene *scene, KryNodeId node)
+kry_camera2d_ready(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     Camera2DProps *props;
     if(n == NULL)
         return;
@@ -24,7 +24,7 @@ kry_camera2d_ready(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_camera2d_destroy(KryScene *scene, KryNode *node)
+kry_camera2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -33,16 +33,16 @@ kry_camera2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_camera2d_ops = {
+static const NodeOps kry_camera2d_ops = {
     kry_camera2d_ready,
     NULL, /* process */
     NULL, /* physics_process */
-    NULL  /* draw: handled centrally by KrySceneDraw */
+    NULL  /* draw: handled centrally by SceneDraw */
 };
 
 void
 kry_register_camera2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_CAMERA2D, &kry_camera2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_CAMERA2D, kry_camera2d_destroy);
+    NodeRegisterOps(NODE_CAMERA2D, &kry_camera2d_ops);
+    NodeRegisterDestroy(NODE_CAMERA2D, kry_camera2d_destroy);
 }

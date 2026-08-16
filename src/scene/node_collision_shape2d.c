@@ -9,20 +9,20 @@
 #include "scene_physics_internal.h"
 #include <stdlib.h>
 
-static KryNodeId
-kry_find_body_ancestor(KryScene *scene, KryNodeId node)
+static NodeId
+kry_find_body_ancestor(Scene *scene, NodeId node)
 {
-    KryNode *n;
+    Node *n;
     int parent;
-    n = KryNodeGet(scene, node);
+    n = NodeGet(scene, node);
     if(n == NULL)
         return -1;
     parent = n->parent;
     while(parent >= 0) {
-        n = KryNodeGet(scene, parent);
+        n = NodeGet(scene, parent);
         if(n == NULL)
             return -1;
-        if(n->kind == KRY_NODE_BODY2D && n->props != NULL)
+        if(n->kind == NODE_BODY2D && n->props != NULL)
             return parent;
         parent = n->parent;
     }
@@ -30,12 +30,12 @@ kry_find_body_ancestor(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_collision_shape2d_ready(KryScene *scene, KryNodeId node)
+kry_collision_shape2d_ready(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     CollisionShape2DProps *props;
-    KryNodeId body_id;
-    KryNode *body;
+    NodeId body_id;
+    Node *body;
 
     if(n == NULL)
         return;
@@ -45,15 +45,15 @@ kry_collision_shape2d_ready(KryScene *scene, KryNodeId node)
     body_id = kry_find_body_ancestor(scene, node);
     if(body_id < 0)
         return;
-    body = KryNodeGet(scene, body_id);
+    body = NodeGet(scene, body_id);
     kry_collision_shape2d_attach(scene, node, props,
                                  (Body2DProps *)body->props);
 }
 
 static void
-kry_collision_shape2d_draw(KryScene *scene, KryNodeId node)
+kry_collision_shape2d_draw(Scene *scene, NodeId node)
 {
-    KryNode *n = KryNodeGet(scene, node);
+    Node *n = NodeGet(scene, node);
     CollisionShape2DProps *props;
     if(n == NULL)
         return;
@@ -73,7 +73,7 @@ kry_collision_shape2d_draw(KryScene *scene, KryNodeId node)
 }
 
 static void
-kry_collision_shape2d_destroy(KryScene *scene, KryNode *node)
+kry_collision_shape2d_destroy(Scene *scene, Node *node)
 {
     (void)scene;
     if(node->props != NULL) {
@@ -82,7 +82,7 @@ kry_collision_shape2d_destroy(KryScene *scene, KryNode *node)
     }
 }
 
-static const KryNodeOps kry_collision_shape2d_ops = {
+static const NodeOps kry_collision_shape2d_ops = {
     kry_collision_shape2d_ready,
     NULL,
     NULL,
@@ -92,7 +92,7 @@ static const KryNodeOps kry_collision_shape2d_ops = {
 void
 kry_register_collision_shape2d(void)
 {
-    KryNodeRegisterOps(KRY_NODE_COLLISION_SHAPE2D, &kry_collision_shape2d_ops);
-    KryNodeRegisterDestroy(KRY_NODE_COLLISION_SHAPE2D,
+    NodeRegisterOps(NODE_COLLISION_SHAPE2D, &kry_collision_shape2d_ops);
+    NodeRegisterDestroy(NODE_COLLISION_SHAPE2D,
                            kry_collision_shape2d_destroy);
 }

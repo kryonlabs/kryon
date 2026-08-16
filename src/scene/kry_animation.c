@@ -43,20 +43,20 @@ KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value)
 }
 
 void
-KryAnimationApply(KryScene *scene, const KryAnimation *anim, float t)
+KryAnimationApply(Scene *scene, const KryAnimation *anim, float t)
 {
     int i;
     if(scene == NULL || anim == NULL)
         return;
     for(i = 0; i < anim->track_count; i++) {
         const KryAnimTrack *track = &anim->tracks[i];
-        KryNode *n;
+        Node *n;
         float v;
         if(track->keyframe_count <= 0)
             continue;
         if(!KryAnimTrackSample(track, t, &v))
             continue;
-        n = KryNodeGet(scene, track->target);
+        n = NodeGet(scene, track->target);
         if(n == NULL)
             continue;
         if(strcmp(track->property, "position") == 0) {
@@ -64,16 +64,16 @@ KryAnimationApply(KryScene *scene, const KryAnimation *anim, float t)
                 n->local.position.x = v;
             else if(track->component == 1)
                 n->local.position.y = v;
-            n->flags |= KRY_NODE_FLAG_DIRTY;
+            n->flags |= NODE_FLAG_DIRTY;
         } else if(strcmp(track->property, "rotation") == 0) {
             n->local.rotation = v;
-            n->flags |= KRY_NODE_FLAG_DIRTY;
+            n->flags |= NODE_FLAG_DIRTY;
         } else if(strcmp(track->property, "scale") == 0) {
             if(track->component == 0)
                 n->local.scale.x = v;
             else if(track->component == 1)
                 n->local.scale.y = v;
-            n->flags |= KRY_NODE_FLAG_DIRTY;
+            n->flags |= NODE_FLAG_DIRTY;
         }
     }
 }
