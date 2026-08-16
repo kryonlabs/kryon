@@ -257,11 +257,68 @@ test_login_uses_configured_wire_names(void)
     check(strcmp(ctx.token, "new-token") == 0, "login saves auth token");
 }
 
+static void
+test_json_hardening(void)
+{
+    KsyncSyncBuffer buffer = {0};
+    char value[64];
+
+    /* control characters must be escaped, never emitted raw */
+    check(AppendKsyncSyncBufferJSONString(&buffer, "a\x01\x08" "b") &&
+              strcmp(buffer.data, "\"a\\u0001\\bb\"") == 0,
+          "json escapes control chars");
+    FreeKsyncSyncBuffer(&buffer);
+    /* escapes in values must survive the round trip */
+    check(FindKsyncSyncJSONString("{\"nonce\":\"a\\\\b\\n\u00e9\"}", "nonce",
+                                  value, sizeof(value)) &&
+              strcmp(value, "a\\b\n\xc3\xa9") == 0,
+          "json find decodes escapes");
+    /* a substring key must not satisfy a lookup for the short key */
+    check(!FindKsyncSyncJSONString("{\"sync_nonce\":\"x\"}", "nonce",
+                                   value, sizeof(value)),
+          "json find rejects substring keys");
+    /* key embedded inside a string value must not match */
+    check(!FindKsyncSyncJSONString("{\"noise\":\"\\\"nonce\\\":1\",\"x\":\"y\"}",
+                                   "nonce", value, sizeof(value)),
+          "json find rejects keys inside strings");
+}
+
+static void
+test_payload_encryption(void)
+{
+    KsyncAccount account;
+    char *wrapped = NULL;
+    char *unwrapped = NULL;
+
+    /* payload encryption derives its key from the real private key, so a
+     * genuine keypair is required */
+    if(!CreateKsyncAccount(&account)) {
+        check(0, "payload wrap ok (account creation failed)");
+        return;
+    }
+    check(WrapKsyncSyncPayload(&account, "{\"sessions\":[1,2,3]}", &wrapped),
+          "payload wrap ok");
+    check(wrapped != NULL && strncmp(wrapped, "{\"v\":1", 6) == 0,
+          "payload wrap envelope shape");
+    check(strstr(wrapped, "sessions") == NULL,
+          "payload wrap hides plaintext");
+    check(UnwrapKsyncSyncPayload(&account, wrapped, &unwrapped) &&
+              unwrapped != NULL &&
+              strcmp(unwrapped, "{\"sessions\":[1,2,3]}") == 0,
+          "payload unwrap roundtrip");
+    free(wrapped);
+    free(unwrapped);
+    check(!UnwrapKsyncSyncPayload(&account, "{\"v\":1,\"oops\":1}", &unwrapped),
+          "payload unwrap rejects malformed envelope");
+}
+
 int
 main(void)
 {
     test_url_helpers();
     test_json_helpers();
+    test_json_hardening();
+    test_payload_encryption();
     test_sync_run_with_valid_token();
     test_login_uses_configured_wire_names();
     return failures == 0 ? 0 : 1;

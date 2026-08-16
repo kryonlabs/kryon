@@ -53,6 +53,17 @@ typedef struct KsyncSyncConfig {
     KsyncSyncApplyResponseFn apply_response;
     KsyncSyncVoidFn purge_synced_deleted;
     KsyncSyncLogFn log_http_failure;
+    /* Retry policy for transient failures (transport errors, 429, 5xx).
+     * Retries only happen when sleep_ms is provided; without it the single
+     * attempt behaviour is unchanged. Delay grows exponentially:
+     * retry_delay_ms << attempt, capped at 30s. */
+    int retry_max;
+    int retry_delay_ms;
+    void (*sleep_ms)(int ms, void *user);
+    /* When set, RunKsyncSync encrypts the outgoing payload with a key
+     * derived from the account and decrypts envelope responses before
+     * apply_response (server sees opaque ciphertext). */
+    int encrypt_payload;
     void *user;
 } KsyncSyncConfig;
 
@@ -82,6 +93,12 @@ KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
                                                    char *out,
                                                    size_t out_size);
 KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg);
+/* Opt-in end-to-end payload encryption: envelope JSON
+ * {"v":1,"nonce":"hex","ciphertext":"hex"} sealed with ChaCha20-Poly1305
+ * under a key derived from the account private key. Unwrap returns 0 for
+ * input that is not an envelope. Caller frees *out. */
+int WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **out);
+int UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, char **out);
 int KsyncDefaultHttpRequest(const char *method, const char *url,
                             const char *body,
                             const char *const *headers,

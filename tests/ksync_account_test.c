@@ -109,12 +109,33 @@ test_reject_mismatch(void)
     check_true("reject mismatched public id", !ParseKsyncAccountText(text, &account));
 }
 
+static void
+test_encrypted_roundtrip(void)
+{
+    KsyncAccount account;
+    KsyncAccount parsed;
+    char text[KSYNC_ACCOUNT_EXPORT_ENCRYPTED_TEXT_SIZE];
+
+    make_account(&account);
+    check_true("encrypted export", ExportKsyncAccountTextEncrypted(&account, "hunter2", text, sizeof(text)));
+    check_true("encrypted export marks v2 header", strncmp(text, "ksync-account-key-v2", 20) == 0);
+    check_true("encrypted export hides private key", strstr(text, account.private_key_hex) == NULL);
+    check_true("encrypted import", ParseKsyncAccountTextEncrypted(text, "hunter2", &parsed));
+    check_true("encrypted roundtrip id", strcmp(parsed.public_id, account.public_id) == 0);
+    check_true("encrypted roundtrip public key", strcmp(parsed.public_key_hex, account.public_key_hex) == 0);
+    check_true("encrypted roundtrip private key", strcmp(parsed.private_key_hex, account.private_key_hex) == 0);
+    check_true("wrong passphrase rejected", !ParseKsyncAccountTextEncrypted(text, "wrong", &parsed));
+    check_true("tampered ciphertext rejected", !ParseKsyncAccountTextEncrypted(text, "hunter2", &parsed) ||
+          (text[strlen(text) - 1] ^= 1, !ParseKsyncAccountTextEncrypted(text, "hunter2", &parsed)));
+}
+
 int
 main(void)
 {
     test_export_parse_roundtrip();
     test_old_imports();
     test_reject_mismatch();
+    test_encrypted_roundtrip();
     if(failures != 0)
         return 1;
     printf("ksync account tests passed\n");

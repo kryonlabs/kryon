@@ -149,6 +149,7 @@ OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 LIB = $(BUILD_DIR)/libkryon.a
 KSYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/ksync_account_test
 KSYNC_SYNC_TEST = $(BUILD_DIR)/tests/ksync_sync_test
+KSYNC_CRYPTO_TEST = $(BUILD_DIR)/tests/ksync_crypto_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
@@ -201,7 +202,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST) $(SFS_TEST)
+test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_TERM_TEST) $(SFS_TEST)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
@@ -212,6 +213,7 @@ test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYN
 	$(SFS_TEST)
 	$(KSYNC_ACCOUNT_TEST)
 	$(KSYNC_SYNC_TEST)
+	$(KSYNC_CRYPTO_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
 	$(MARKDOWN_TEST)
@@ -340,17 +342,22 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(K
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(KSYNC_ACCOUNT_TEST): tests/ksync_account_test.c src/ksync/ksync_account.c include/ksync_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(KSYNC_ACCOUNT_TEST): tests/ksync_account_test.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c include/ksync_account.h include/ksync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
-		tests/ksync_account_test.c src/ksync/ksync_account.c \
+		tests/ksync_account_test.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
 
-$(KSYNC_SYNC_TEST): tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c include/ksync_sync.h include/ksync_account.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(KSYNC_SYNC_TEST): tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c include/ksync_sync.h include/ksync_account.h include/ksync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
 		tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c \
+		src/ksync/ksync_crypto.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
+
+$(KSYNC_CRYPTO_TEST): tests/ksync_crypto_test.c src/ksync/ksync_crypto.c include/ksync_crypto.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ksync_crypto_test.c src/ksync/ksync_crypto.c -o $@
 
 $(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
