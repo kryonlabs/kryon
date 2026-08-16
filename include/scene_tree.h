@@ -74,6 +74,10 @@ typedef struct KryNode {
 typedef struct KryScene {
     KryNode nodes[KRY_SCENE_MAX_NODES];
     int count;
+    /* Freelist of removed slots (chained through next_sibling); create pops
+     * from here before growing count, so churn (respawning enemies, ...) does
+     * not exhaust the arena. -1 when empty. */
+    int free_head;
     KryNodeId root;
     float time_scale;
     KryNodeId active_camera; /* first Camera2D that wants to be active; -1 if none */

@@ -79,6 +79,7 @@ KrySceneInit(KryScene *scene)
         return;
     memset(scene, 0, sizeof(*scene));
     scene->root = -1;
+    scene->free_head = -1;
     scene->active_camera = -1;
     scene->time_scale = 1.0f;
     root = &scene->nodes[0];
@@ -115,6 +116,7 @@ KrySceneDestroy(KryScene *scene)
 #endif
     memset(scene, 0, sizeof(*scene));
     scene->root = -1;
+    scene->free_head = -1;
     scene->active_camera = -1;
 }
 
@@ -151,7 +153,12 @@ KryNodeCreate(KryScene *scene, KryNodeId parent, KryNodeKind kind,
     if(parent < 0 || parent >= scene->count ||
        !(scene->nodes[parent].flags & KRY_NODE_FLAG_ALIVE))
         return -1;
-    index = scene->count++;
+    if(scene->free_head >= 0) {
+        index = scene->free_head;
+        scene->free_head = scene->nodes[index].next_sibling;
+    } else {
+        index = scene->count++;
+    }
     node = &scene->nodes[index];
     memset(node, 0, sizeof(*node));
     node->id = index;
@@ -199,8 +206,11 @@ kry_node_free_recursive(KryScene *scene, KryNodeId node)
         destroy(scene, n);
     n->flags &= ~KRY_NODE_FLAG_ALIVE;
     n->first_child = -1;
-    n->next_sibling = -1;
     n->parent = -1;
+    /* recycle: chain the dead slot onto the freelist (next_sibling is free
+     * once the node is detached and children reset) */
+    n->next_sibling = scene->free_head;
+    scene->free_head = node;
 }
 
 void
