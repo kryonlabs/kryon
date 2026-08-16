@@ -45,4 +45,8 @@ int UIFontAdvance(Font font, int codepoint);
  * the loaded codepoint range). */
 int UIFontHasGlyphValue(Font font, int codepoint);
 
+/* Number of rasterized glyphs in the font's atlas (font.glyphCount), >= 0.
+ * Used by diagnostics; regular UI code should not need it. */
+int UIFontGlyphCount(Font font);
+
 #endif /* UI_TEXT_BACKEND_H */

@@ -33,6 +33,9 @@ Font LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
 Font LoadUIFontAsset(const char *path, int base_size);
 void UnloadUIFont(Font *font);
 void ClearUIFonts(void);
+/* Print per-font rasterization stats to stderr. No-op without
+ * KRYON_MEM_DEBUG (see kryon_mem.h). */
+void UIFontMemoryReport(const char *tag);
 int MeasureUIText(const char *text, int font_size);
 int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);

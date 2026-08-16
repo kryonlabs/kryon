@@ -3,7 +3,11 @@
 #if defined(KRYON_DESKTOP_TRAY_ENABLED)
 
 #include <SDL.h>
+#if defined(KRYON_TRAY_GTK_DL)
+#include "gtk_dl.h" /* lazy GTK: no link-time GTK dependency for the tray */
+#else
 #include <gtk/gtk.h>
+#endif
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -456,6 +460,14 @@ DesktopTrayThreadMain(void *arg)
     GtkWidget *menu;
     (void)arg;
 
+#if defined(KRYON_TRAY_GTK_DL)
+    /* Pull GTK in on demand; with the tray disabled (or GTK absent) the
+     * process never maps libgtk-3 or its dependency chain. */
+    if(!KryonGtkEnsure()) {
+        SetDesktopTrayState(DESKTOP_TRAY_STATE_FAILED);
+        return NULL;
+    }
+#endif
     if(!gtk_init_check(NULL, NULL)) {
         SetDesktopTrayState(DESKTOP_TRAY_STATE_FAILED);
         return NULL;

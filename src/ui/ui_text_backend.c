@@ -65,3 +65,9 @@ UIFontHasGlyphValue(Font font, int codepoint)
     glyph = GetGlyphInfo(font, codepoint);
     return glyph.value == codepoint;
 }
+
+int
+UIFontGlyphCount(Font font)
+{
+    return font.glyphCount;
+}

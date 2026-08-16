@@ -374,7 +374,17 @@ Font LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
 Font LoadUIFontAsset(const char *path, int base_size);
 void UnloadUIFont(Font *font);
 void ClearUIFonts(void);
+void UIFontMemoryReport(const char *tag);
 ```
+
+`UIFontMemoryReport` prints per-font rasterization stats (codepoint counts,
+rasterized sizes, glyph counts) to stderr. It is a no-op unless
+`KRYON_MEM_DEBUG` is set in the environment.
+
+Source fonts registered through `RegisterUIFontSource` rasterize once at the
+DPI-scaled base text size; other sizes draw-scale from that raster, with one
+additional large tier (built lazily) for text at twice the base size or more.
+A burst of new codepoints re-rasterizes at most once per frame.
 
 #### Text Measurement
 
@@ -1472,6 +1482,19 @@ void UIFocusNode(Rectangle bounds);
 ```
 
 ---
+
+## Memory Diagnostics
+
+```c
+int KryonMemDebugEnabled(void);
+void KryonMemReport(const char *tag);
+```
+
+Both are no-ops unless `KRYON_MEM_DEBUG` is set in the environment, so apps
+can call them at interesting points unconditionally. `KryonMemReport` prints
+the process RSS/high-water marks (Linux) and the glibc allocator arena
+breakdown to stderr. `UIFontMemoryReport` (Text section) reports per-font
+rasterization stats under the same switch.
 
 ## Utility Functions
 

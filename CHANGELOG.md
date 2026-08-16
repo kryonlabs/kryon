@@ -3,6 +3,25 @@
 
 ### Added
 
+- Memory diagnostics: `KryonMemReport(tag)` / `KryonMemDebugEnabled()` print
+  RSS/high-water marks and the glibc arena breakdown to stderr when
+  `KRYON_MEM_DEBUG` is set; `UIFontMemoryReport(tag)` prints per-font
+  rasterization stats under the same switch.
+
+### Changed
+
+- UI source fonts rasterize once per font at the DPI-scaled base size instead
+  of caching up to eight per-size rasterizations, and one lazily built large
+  tier keeps big text crisp. New codepoints re-rasterize at most once per
+  frame per font, so a locale list in native scripts no longer triggers a
+  rebuild storm. Freed atlas build buffers are returned to the OS
+  (`malloc_trim` on glibc). Idle heap use of font-heavy apps drops
+  accordingly.
+- Optional GTK dependency for the GTK_STATUS_ICON tray backend: apps can
+  define `KRYON_TRAY_GTK_DL` to resolve GTK through the new `gtk_dl` shim
+  (`dlopen("libgtk-3.so.0")` in the tray thread) instead of linking GTK.
+  Applications that skip the tray then never map libgtk-3 or its
+  gdk/pango/cairo dependency chain.
 - PTY terminal (`KryTerm`) for IDE hosts: spawn `$SHELL`, write keys, poll
   a screen grid, resize with `TIOCSWINSZ`. Basic CSI cursor and erase.
 - First krb cartridge slice: `k2c --emit-krb` packs widget calls into a
