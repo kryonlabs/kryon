@@ -238,8 +238,8 @@ classify_stmt(const char *s)
     if(strstr(s, ":=") != NULL)
         return KIR_STMT_DECL;   /* ':=' wins over the raw 'c' prefix (a
                                    variable may be named 'c') */
-    if(starts_word(s, "c"))
-        return KIR_STMT_RAW;
+    if(starts_word(s, "c") && s[1] != ':')
+        return KIR_STMT_RAW;   /* 'c:' is a typed decl of a variable named c */
     if(strstr(s, "::") != NULL)
         return KIR_STMT_RAW;   /* nested '::' definitions stay raw */
     if(strstr(s, ": ") != NULL || strstr(s, ": [") != NULL) {
