@@ -20,6 +20,23 @@
 void KrySceneRegisterProperties(KryNodeKind kind,
                                 const KryonPropertySpec *specs, int count);
 
+/* Property access callbacks for application-defined kinds (ids from
+ * KryNodeRegisterCustomKind). The spec index selects the field; read/write
+ * the kind's props struct through the node's props pointer. */
+typedef KryonPropertyValue (*KryScenePropertyGetFn)(KryScene *scene,
+                                                   KryNodeId node, int index);
+typedef int (*KryScenePropertySetFn)(KryScene *scene, KryNodeId node,
+                                     int index, KryonPropertyValue value);
+
+/* Register an application-defined kind's spec table plus getter/setter.
+ * Indices 0..2 are reserved for the shared transform fields (position,
+ * rotation, scale) and are handled generically; callbacks see index >= 3.
+ * Either callback may be NULL (that direction becomes read-only zeroes). */
+int KrySceneRegisterCustomKind(KryNodeKind kind,
+                               const KryonPropertySpec *specs, int count,
+                               KryScenePropertyGetFn get,
+                               KryScenePropertySetFn set);
+
 /* Look up the spec table for a kind. Returns the count via *out_count; returns
  * NULL if the kind has no registered properties. */
 const KryonPropertySpec *KryScenePropertySpecs(KryNodeKind kind, int *out_count);

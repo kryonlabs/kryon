@@ -11,6 +11,7 @@
 #include "kry_signal.h"
 #include "node2d_props.h"
 #include <string.h>
+#include <stdio.h>
 
 /* Default to physics enabled when the build does not override it. The Box2D
  * world teardown is compiled out below when KRYON_WITH_PHYSICS=0, so builds
@@ -20,8 +21,44 @@
 #define KRYON_WITH_PHYSICS 1
 #endif
 
-static KryNodeOps g_kry_node_ops[KRY_NODE_CUSTOM + 1];
-static KryNodeDestroyFn g_kry_node_destroy[KRY_NODE_CUSTOM + 1];
+#define KRY_KIND_MAX 64
+
+static KryNodeOps g_kry_node_ops[KRY_KIND_MAX];
+static KryNodeDestroyFn g_kry_node_destroy[KRY_KIND_MAX];
+static char g_kry_kind_names[KRY_KIND_MAX][KRY_SCENE_NAME_MAX];
+static int g_kry_kind_count = KRY_NODE_CUSTOM + 1;
+
+int
+KryNodeKindCount(void)
+{
+    return g_kry_kind_count;
+}
+
+const char *
+KryNodeKindName(KryNodeKind kind)
+{
+    if(kind < 0 || kind >= g_kry_kind_count)
+        return NULL;
+    return g_kry_kind_names[kind];
+}
+
+/*
+ * Register a new application-defined kind beyond the built-ins. The id is
+ * valid with KryNodeCreate/KryNodeRegisterOps/KrySceneRegisterProperties
+ * exactly like a builtin kind. Returns the kind id, or -1 when the table is
+ * full or the name is missing.
+ */
+KryNodeKind
+KryNodeRegisterCustomKind(const char *name)
+{
+    if(name == NULL || name[0] == '\0')
+        return -1;
+    if(g_kry_kind_count >= KRY_KIND_MAX)
+        return -1;
+    snprintf(g_kry_kind_names[g_kry_kind_count],
+             sizeof(g_kry_kind_names[0]), "%s", name);
+    return (KryNodeKind)g_kry_kind_count++;
+}
 
 /* Set by physics_world.c during KrySceneRegisterBuiltins. Keeps scene_tree.c
  * free of a box2d.h dependency while letting KryScenePhysicsTick step the world. */
@@ -244,7 +281,7 @@ KryNodeSetProps(KryScene *scene, KryNodeId node, void *props)
 void
 KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind >= g_kry_kind_count)
         return;
     if(ops != NULL)
         g_kry_node_ops[kind] = *ops;
@@ -255,7 +292,7 @@ KryNodeRegisterOps(KryNodeKind kind, const KryNodeOps *ops)
 const KryNodeOps *
 KryNodeOpsFor(KryNodeKind kind)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind >= g_kry_kind_count)
         return NULL;
     return &g_kry_node_ops[kind];
 }
@@ -263,7 +300,7 @@ KryNodeOpsFor(KryNodeKind kind)
 void
 KryNodeRegisterDestroy(KryNodeKind kind, KryNodeDestroyFn destroy)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind >= g_kry_kind_count)
         return;
     g_kry_node_destroy[kind] = destroy;
 }

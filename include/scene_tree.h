@@ -147,6 +147,15 @@ const KryNodeOps *KryNodeOpsFor(KryNodeKind kind);
 /* Register the built-in node kinds (Node2D, Camera2D, Sprite2D, ...). */
 void KrySceneRegisterBuiltins(void);
 
+/* --- application-defined kinds ---
+ * Kinds beyond the built-in enum are allocated at runtime so games can put
+ * their own entity types into the tree (and the editor property model)
+ * without forking KryNodeKind. Ops/destroyers/properties register against
+ * the returned id exactly like a builtin kind. */
+int KryNodeKindCount(void);
+const char *KryNodeKindName(KryNodeKind kind);
+KryNodeKind KryNodeRegisterCustomKind(const char *name);
+
 /* --- physics --- */
 /*
  * Create the Box2D world for this scene (gravity defaults to {0, 9.8}). Once

@@ -13,19 +13,44 @@
 #include <string.h>
 
 #define KRY_PROPERTY_TABLE_MAX 16
+#define KRY_PROPERTY_KIND_MAX 64
 
 typedef struct KryPropertyTable {
     const KryonPropertySpec *specs;
     int count;
+    KryScenePropertyGetFn get;
+    KryScenePropertySetFn set;
 } KryPropertyTable;
 
-static KryPropertyTable g_property_tables[KRY_NODE_CUSTOM + 1];
+static KryPropertyTable g_property_tables[KRY_PROPERTY_KIND_MAX];
+
+/*
+ * Register an application-defined node kind (id beyond the builtins, from
+ * KryNodeRegisterCustomKind) together with its property spec table and
+ * getter/setter callbacks. The callbacks receive the node id and the spec
+ * index; they read/write the kind's props struct, whose pointer is stored on
+ * the node via KryNodeSetProps. Returns 1 on success.
+ */
+int
+KrySceneRegisterCustomKind(KryNodeKind kind, const KryonPropertySpec *specs,
+                           int count, KryScenePropertyGetFn get,
+                           KryScenePropertySetFn set)
+{
+    if(kind <= KRY_NODE_CUSTOM || kind >= KRY_PROPERTY_KIND_MAX)
+        return 0;
+    g_property_tables[kind].specs = specs;
+    g_property_tables[kind].count = count;
+    g_property_tables[kind].get = get;
+    g_property_tables[kind].set = set;
+    return 1;
+}
 
 void
 KrySceneRegisterProperties(KryNodeKind kind, const KryonPropertySpec *specs,
                            int count)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind >= KryNodeKindCount() ||
+       kind >= KRY_PROPERTY_KIND_MAX)
         return;
     g_property_tables[kind].specs = specs;
     g_property_tables[kind].count = count;
@@ -34,7 +59,8 @@ KrySceneRegisterProperties(KryNodeKind kind, const KryonPropertySpec *specs,
 const KryonPropertySpec *
 KryScenePropertySpecs(KryNodeKind kind, int *out_count)
 {
-    if(kind < 0 || kind > KRY_NODE_CUSTOM)
+    if(kind < 0 || kind >= KryNodeKindCount() ||
+       kind >= KRY_PROPERTY_KIND_MAX)
         return NULL;
     if(out_count != NULL)
         *out_count = g_property_tables[kind].count;
@@ -70,6 +96,21 @@ KrySceneNodeGetProperty(KryScene *scene, KryNodeId node, int index)
     specs = KryScenePropertySpecs(n->kind, &count);
     if(specs == NULL || index < 0 || index >= count)
         return out;
+
+    if(n->kind > KRY_NODE_CUSTOM) {
+        KryPropertyTable *t = &g_property_tables[n->kind];
+
+        /* indices 0..2 are shared transform fields on every kind */
+        if(index == 0)
+            return KryonPropertyVector2(n->local.position);
+        if(index == 1)
+            return KryonPropertyFloat(n->local.rotation);
+        if(index == 2)
+            return KryonPropertyVector2(n->local.scale);
+        if(t->get != NULL)
+            return t->get(scene, node, index);
+        return out;
+    }
 
     switch(n->kind) {
     case KRY_NODE_NODE2D:
@@ -124,6 +165,33 @@ KrySceneNodeSetProperty(KryScene *scene, KryNodeId node, int index,
         return 0;
     if(specs[index].kind != value.kind)
         return 0;
+
+    if(n->kind > KRY_NODE_CUSTOM) {
+        KryPropertyTable *t = &g_property_tables[n->kind];
+
+        if(index == 0) {
+            n->local.position = value.as.vector2_value;
+            n->flags |= KRY_NODE_FLAG_DIRTY;
+            return 1;
+        }
+        if(index == 1) {
+            n->local.rotation = value.as.float_value;
+            n->flags |= KRY_NODE_FLAG_DIRTY;
+            return 1;
+        }
+        if(index == 2) {
+            n->local.scale = value.as.vector2_value;
+            n->flags |= KRY_NODE_FLAG_DIRTY;
+            return 1;
+        }
+        if(t->set != NULL) {
+            if(t->set(scene, node, index, value)) {
+                n->flags |= KRY_NODE_FLAG_DIRTY;
+                return 1;
+            }
+        }
+        return 0;
+    }
 
     switch(n->kind) {
     case KRY_NODE_NODE2D:
