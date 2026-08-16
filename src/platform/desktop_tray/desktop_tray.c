@@ -166,7 +166,8 @@ CreateDesktopTrayGtkMenu(const DesktopTrayMenuItem *items, int count)
         GtkWidget *item;
 
         if(items[i].kind == DESKTOP_TRAY_MENU_ITEM_SEPARATOR) {
-            gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+            gtk_menu_shell_append((GtkMenuShell *)(void *)menu,
+                                 gtk_separator_menu_item_new());
             continue;
         }
 
@@ -175,12 +176,12 @@ CreateDesktopTrayGtkMenu(const DesktopTrayMenuItem *items, int count)
         if(items[i].kind == DESKTOP_TRAY_MENU_ITEM_SUBMENU) {
             GtkWidget *submenu = CreateDesktopTrayGtkMenu(items[i].children,
                                                           items[i].child_count);
-            gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
+            gtk_menu_item_set_submenu((GtkMenuItem *)(void *)item, submenu);
         } else {
             g_signal_connect(item, "activate", G_CALLBACK(DesktopTrayMenuAction),
                              (gpointer)(intptr_t)items[i].action);
         }
-        gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+        gtk_menu_shell_append((GtkMenuShell *)(void *)menu, item);
     }
 
     gtk_widget_show_all(menu);
@@ -440,7 +441,7 @@ DesktopTrayStatusIconPopup(GtkStatusIcon *status_icon, guint button,
     (void)user_data;
     if(menu == NULL)
         return;
-    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, gtk_status_icon_position_menu,
+    gtk_menu_popup((GtkMenu *)(void *)menu, NULL, NULL, gtk_status_icon_position_menu,
                    status_icon, button, activate_time);
 }
 #endif
