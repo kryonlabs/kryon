@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>krb-web</title>
+<style>
+html, body { margin: 0; height: 100%; background: #101014;
+             display: flex; align-items: center; justify-content: center; }
+canvas { image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<canvas id="krb" width="800" height="600"></canvas>
+<script>
+var Module = {
+    canvas: document.getElementById('krb')
+};
+(function() {
+    const canvas = Module.canvas;
+    function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        return [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
+    }
+    canvas.addEventListener('mousemove', function(e) {
+        if (Module._krb_web_mouse) {
+            const p = pos(e);
+            Module._krb_web_mouse(p[0], p[1]);
+        }
+    });
+    canvas.addEventListener('mousedown', function(e) {
+        if (Module._krb_web_button) {
+            const p = pos(e);
+            Module._krb_web_mouse(p[0], p[1]);
+            Module._krb_web_button(0, 1);
+        }
+    });
+    canvas.addEventListener('mouseup', function(e) {
+        if (Module._krb_web_button) {
+            const p = pos(e);
+            Module._krb_web_mouse(p[0], p[1]);
+            Module._krb_web_button(0, 0);
+        }
+    });
+})();
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

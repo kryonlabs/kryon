@@ -35,6 +35,10 @@ KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
 KRB_RUN = $(BUILD_DIR)/bin/krb-run
 KRY_SW_TEST = $(BUILD_DIR)/tests/kry_sw_test
+EMCC ?= emcc
+KRB_WEB_DIR = $(BUILD_DIR)/web/krb-web
+KRB_WEB = $(KRB_WEB_DIR)/index.html
+KRB_WEB_KRY ?= examples/02_buttons.kry
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
@@ -174,7 +178,7 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c krb-web
 
 k2c: $(K2C)
 
@@ -193,6 +197,26 @@ examples-run:
 clean:
 	rm -rf $(BUILD_DIR)
 	$(MAKE) -C examples web-clean
+
+# Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
+# blitted to ImageData (pixel-identical to the native headless renderer).
+# Needs emcc on PATH (e.g. `source ~/emsdk/emsdk_env.sh`).
+krb-web: $(K2B) $(KRY_SW_SRCS) $(KRY_SW_HDRS) cmd/krb-web/main.c cmd/krb-web/shell.html | $(KRB_WEB_DIR)
+	$(K2B) --root examples -o $(KRB_WEB_DIR) $(KRB_WEB_KRY)
+	cp $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb $(KRB_WEB_DIR)/app.krb
+	rm -f $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb.c \
+	      $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb.h
+	$(EMCC) -Wall -Wextra -Os -Iinclude \
+		-sEXPORTED_FUNCTIONS=_krb_web_mouse,_krb_web_button,_main \
+		-sALLOW_MEMORY_GROWTH=1 \
+		--shell-file cmd/krb-web/shell.html \
+		--preload-file $(KRB_WEB_DIR)/app.krb@/app.krb \
+		-o $(KRB_WEB) \
+		cmd/krb-web/main.c $(KRY_SW_SRCS)
+	@echo "krb-web: serve $(KRB_WEB_DIR) (e.g. python3 -m http.server -d $(KRB_WEB_DIR))"
+
+$(KRB_WEB_DIR):
+	mkdir -p $@
 
 docs-site:
 	rm -rf $(SITE_BUILD_DIR)
