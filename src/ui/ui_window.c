@@ -44,7 +44,9 @@ enum {
     InbeXA_CARDINAL = 6,
     InbePropModeReplace = 0,
     InbeExposureMask = 1 << 15,
-    InbeButtonPressMask = 1 << 2
+    InbeButtonPressMask = 1 << 2,
+    InbeButtonReleaseMask = 1 << 3,
+    InbePointerMotionMask = 1 << 6
 };
 
 /* Prefix of XImage up to the fields the blit needs; the real object comes
@@ -77,7 +79,7 @@ typedef struct {
     Window window;
     Window root;
     Window subwindow;
-    int time_dummy;
+    unsigned long time;  /* X11 Time is unsigned long: 8 bytes on LP64 */
     int x, y;
     int x_root, y_root;
     unsigned int state;
@@ -130,6 +132,7 @@ typedef Window (*InbeXCreateSimpleWindow)(Display *, Window, int, int,
                                           unsigned int, unsigned long,
                                           unsigned long);
 typedef int (*InbeXDestroyWindow)(Display *, Window);
+typedef int (*InbeXMoveWindow)(Display *, Window, int, int);
 typedef int (*InbeXMapWindow)(Display *, Window);
 typedef int (*InbeXStoreName)(Display *, Window, const char *);
 typedef int (*InbeXSelectInput)(Display *, Window, long);
@@ -162,14 +165,21 @@ struct UIWindow {
     Color background;
     RenderTexture2D target;
     int clicked;
-};
+    int click_button;           /* 1 = left, 3 = right; valid while clicked */
+    int click_x, click_y;       /* window-relative press position */
+    int x, y;                   /* current window position */
+    int drag_active;
+    int drag_last_root_x;
+    int drag_last_root_y;
+    int dragged;                /* the last press-drag actually moved */
+    XImage *ximage;             /* per-window XImage + pixel buffer: the */
+    unsigned char *pixels;      /* global single-buffer scheme corrupted */
+};                              /* the heap once two windows alternate */
 
 static Display *ui_display;
 static void *ui_x11;
 static int ui_x11_tried;
 static void *ui_gc;
-static XImage *ui_ximage;
-static unsigned char *ui_pixels;
 static UIWindow *ui_windows[UI_WINDOW_MAX];
 static int ui_window_count;
 static UIWindow *ui_window_active;
@@ -184,6 +194,7 @@ static InbeXDisplayHeight ui_display_height;
 static InbeXInternAtom ui_intern_atom;
 static InbeXCreateSimpleWindow ui_create_simple_window;
 static InbeXDestroyWindow ui_destroy_window;
+static InbeXMoveWindow ui_move_window;
 static InbeXMapWindow ui_map_window;
 static InbeXStoreName ui_store_name;
 static InbeXSelectInput ui_select_input;
@@ -229,6 +240,7 @@ ui_x11_init(void)
     ui_intern_atom = (InbeXInternAtom)ui_resolve(ui_x11, "XInternAtom");
     ui_create_simple_window = (InbeXCreateSimpleWindow)ui_resolve(ui_x11, "XCreateSimpleWindow");
     ui_destroy_window = (InbeXDestroyWindow)ui_resolve(ui_x11, "XDestroyWindow");
+    ui_move_window = (InbeXMoveWindow)ui_resolve(ui_x11, "XMoveWindow");
     ui_map_window = (InbeXMapWindow)ui_resolve(ui_x11, "XMapWindow");
     ui_store_name = (InbeXStoreName)ui_resolve(ui_x11, "XStoreName");
     ui_select_input = (InbeXSelectInput)ui_resolve(ui_x11, "XSelectInput");
@@ -327,6 +339,11 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
         ui_primary_workarea(&wx, &wy, &ww, &wh);
         x = wx + ww - width - x;
         y = wy + y;
+    } else if((flags & UI_WINDOW_CENTER) != 0) {
+        int wx, wy, ww, wh;
+        ui_primary_workarea(&wx, &wy, &ww, &wh);
+        x = wx + (ww - width) / 2;
+        y = wy + (wh - height) / 2;
     }
 
     win = (UIWindow *)calloc(1, sizeof(UIWindow));
@@ -343,6 +360,8 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     win->height = height;
     win->scale = ui_scale > 0.0f ? ui_scale : 1.0f;
     win->background = background;
+    win->x = x;
+    win->y = y;
 
     if(ui_store_name != NULL)
         ui_store_name(ui_display, win->window, title != NULL ? title : "kryon");
@@ -358,7 +377,8 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     }
     if(ui_select_input != NULL)
         ui_select_input(ui_display, win->window,
-                        InbeExposureMask | InbeButtonPressMask);
+                        InbeExposureMask | InbeButtonPressMask |
+                        InbeButtonReleaseMask | InbePointerMotionMask);
 
     win->target = LoadRenderTexture(width, height);
     if(win->target.id == 0 || !ui_window_register(win)) {
@@ -384,6 +404,11 @@ CloseUIWindow(UIWindow *window)
     ui_window_unregister(window);
     if(ui_window_active == window)
         ui_window_active = NULL;
+    if(window->ximage != NULL) {
+        ((InbeXImageInfo *)window->ximage)->data = NULL;
+        ui_destroy_image(window->ximage);
+    }
+    free(window->pixels);
     UnloadRenderTexture(window->target);
     ui_destroy_window(ui_display, window->window);
     ui_x11_flush(ui_display);
@@ -427,16 +452,17 @@ ui_window_dump(const unsigned char *flipped, int width, int height)
 /* Convert the GL readback (RGBA byte order, bottom-up rows) into the XImage
  * buffer (server byte order, top-down rows). */
 static void
-ui_window_convert(const unsigned char *rgba, int width, int height)
+ui_window_convert(UIWindow *window, const unsigned char *rgba)
 {
-    InbeXImageInfo *info = (InbeXImageInfo *)ui_ximage;
+    InbeXImageInfo *info = (InbeXImageInfo *)window->ximage;
+    int width = window->width, height = window->height;
     int lsb = info->byte_order == InbeLSBFirst;
     int y, x, bpl = info->bytes_per_line;
     int bpp = info->bits_per_pixel / 8;
 
     for(y = 0; y < height; y++) {
         const unsigned char *src = rgba + (size_t)(height - 1 - y) * width * 4;
-        unsigned char *dst = ui_pixels + (size_t)y * bpl;
+        unsigned char *dst = window->pixels + (size_t)y * bpl;
         for(x = 0; x < width; x++) {
             unsigned char r = src[x * 4], g = src[x * 4 + 1], b = src[x * 4 + 2];
             if(lsb) {
@@ -457,9 +483,9 @@ ui_window_convert(const unsigned char *rgba, int width, int height)
 static void
 ui_window_blit(UIWindow *window)
 {
-    if(ui_gc == NULL || ui_put_image == NULL)
+    if(ui_gc == NULL || ui_put_image == NULL || window->ximage == NULL)
         return;
-    ui_put_image(ui_display, window->window, ui_gc, ui_ximage,
+    ui_put_image(ui_display, window->window, ui_gc, window->ximage,
                  0, 0, 0, 0, (unsigned int)window->width, (unsigned int)window->height);
 }
 
@@ -477,8 +503,54 @@ ui_window_poll_events(UIWindow *window)
            ((InbeXExposeEvent *)&event)->window == window->window)
             dirty = 1;
         else if(event.type == 4 /* ButtonPress */ &&
-                ((InbeXButtonEvent *)&event)->window == window->window)
+                ((InbeXButtonEvent *)&event)->window == window->window) {
+            InbeXButtonEvent *button = (InbeXButtonEvent *)&event;
             window->clicked = 1;
+            window->click_button = (int)button->button;
+            window->click_x = button->x;
+            window->click_y = button->y;
+            if(button->button == 1) {
+                window->drag_active = 1;
+                window->drag_last_root_x = button->x_root;
+                window->drag_last_root_y = button->y_root;
+                window->dragged = 0;
+            }
+        } else if(event.type == 5 /* ButtonRelease */ &&
+                  ((InbeXButtonEvent *)&event)->window == window->window) {
+            window->drag_active = 0;
+        } else if(event.type == 6 /* MotionNotify */ &&
+                  ((InbeXButtonEvent *)&event)->window == window->window) {
+            InbeXButtonEvent *motion = (InbeXButtonEvent *)&event;
+            int dx, dy;
+            if(!window->drag_active || ui_move_window == NULL)
+                continue;
+            dx = motion->x_root - window->drag_last_root_x;
+            dy = motion->y_root - window->drag_last_root_y;
+            if(dx == 0 && dy == 0)
+                continue;
+            window->drag_last_root_x = motion->x_root;
+            window->drag_last_root_y = motion->y_root;
+            window->x += dx;
+            window->y += dy;
+            /* Keep a grabbable strip inside the primary work area so the
+             * window can never be dragged out of reach. */
+            {
+                int wx, wy, ww, wh;
+                ui_primary_workarea(&wx, &wy, &ww, &wh);
+                if(window->x < wx)
+                    window->x = wx;
+                if(window->y < wy)
+                    window->y = wy;
+                if(window->x > wx + ww - 24)
+                    window->x = wx + ww - 24;
+                if(window->y > wy + wh - 24)
+                    window->y = wy + wh - 24;
+            }
+            ui_move_window(ui_display, window->window, window->x, window->y);
+            if(dx * dx + dy * dy > 9)
+                window->dragged = 1;
+            dirty = 1;
+        }
     }
     if(dirty)
         ui_window_blit(window);
@@ -489,7 +561,6 @@ EndUIWindow(void)
 {
     UIWindow *window = ui_window_active;
     Image image;
-    int size;
 
     if(window == NULL)
         return;
@@ -503,31 +574,34 @@ EndUIWindow(void)
     if(image.data == NULL || ui_create_image == NULL)
         return;
 
-    size = window->width * window->height * 4;
-    if(ui_ximage != NULL &&
-       (((InbeXImageInfo *)ui_ximage)->width != window->width ||
-        ((InbeXImageInfo *)ui_ximage)->height != window->height)) {
-        ui_destroy_image(ui_ximage);
-        ui_ximage = NULL;
+    if(window->ximage != NULL &&
+       (((InbeXImageInfo *)window->ximage)->width != window->width ||
+        ((InbeXImageInfo *)window->ximage)->height != window->height)) {
+        /* XDestroyImage frees the data pointer it was created with; null it
+         * first because the buffer belongs to the window, not the image. */
+        ((InbeXImageInfo *)window->ximage)->data = NULL;
+        ui_destroy_image(window->ximage);
+        window->ximage = NULL;
     }
-    if(ui_ximage == NULL) {
-        if(ui_create_image == NULL)
+    if(window->ximage == NULL) {
+        int size = window->width * window->height * 4;
+        window->pixels = (unsigned char *)realloc(window->pixels, (size_t)size);
+        if(window->pixels == NULL)
             return;
-        ui_pixels = (unsigned char *)realloc(ui_pixels, size);
-        ui_ximage = ui_create_image(ui_display,
+        window->ximage = ui_create_image(ui_display,
                                     (void *)ui_default_visual(ui_display, ui_default_screen(ui_display)),
                                     (unsigned int)ui_default_depth(ui_display, ui_default_screen(ui_display)),
-                                    InbeZPixmap, 0, (char *)ui_pixels,
+                                    InbeZPixmap, 0, (char *)window->pixels,
                                     (unsigned int)window->width, (unsigned int)window->height,
                                     32, 0);
-        if(ui_ximage == NULL)
+        if(window->ximage == NULL)
             return;
     }
-    ui_window_convert((const unsigned char *)image.data, window->width, window->height);
+    ui_window_convert(window, (const unsigned char *)image.data);
     UnloadImage(image);
 
     ui_window_blit(window);
-    ui_window_dump(ui_pixels, window->width, window->height);
+    ui_window_dump(window->pixels, window->width, window->height);
     ui_window_poll_events(window);
     ui_x11_flush(ui_display);
 }
@@ -539,6 +613,45 @@ IsUIWindowClicked(UIWindow *window)
         return 0;
     window->clicked = 0;
     return 1;
+}
+
+int
+IsUIWindowRightClicked(UIWindow *window)
+{
+    if(window == NULL || !window->clicked || window->click_button != 3)
+        return 0;
+    window->clicked = 0;
+    return 1;
+}
+
+int
+IsUIWindowDragged(UIWindow *window)
+{
+    if(window == NULL || !window->dragged)
+        return 0;
+    window->dragged = 0;
+    /* Swallow the click that started the drag so it is not also reported
+     * as a plain click. */
+    window->clicked = 0;
+    return 1;
+}
+
+void
+GetUIWindowPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = window != NULL ? window->x : 0;
+    if(y != NULL)
+        *y = window != NULL ? window->y : 0;
+}
+
+void
+GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = window != NULL ? window->click_x : -1;
+    if(y != NULL)
+        *y = window != NULL ? window->click_y : -1;
 }
 
 #elif defined(UI_WINDOW_HAVE_SDL) /* Windows/macOS plain-SDL path: define
@@ -703,6 +816,40 @@ IsUIWindowClicked(UIWindow *window)
     return 1;
 }
 
+int
+IsUIWindowRightClicked(UIWindow *window)
+{
+    (void)window;
+    return 0;
+}
+
+int
+IsUIWindowDragged(UIWindow *window)
+{
+    (void)window;
+    return 0;
+}
+
+void
+GetUIWindowPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = 0;
+    if(y != NULL)
+        *y = 0;
+    (void)window;
+}
+
+void
+GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = -1;
+    if(y != NULL)
+        *y = -1;
+    (void)window;
+}
+
 #else /* web/android: no extra windows */
 
 UIWindow *
@@ -736,6 +883,40 @@ IsUIWindowClicked(UIWindow *window)
 {
     (void)window;
     return 0;
+}
+
+int
+IsUIWindowRightClicked(UIWindow *window)
+{
+    (void)window;
+    return 0;
+}
+
+int
+IsUIWindowDragged(UIWindow *window)
+{
+    (void)window;
+    return 0;
+}
+
+void
+GetUIWindowPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = 0;
+    if(y != NULL)
+        *y = 0;
+    (void)window;
+}
+
+void
+GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+{
+    if(x != NULL)
+        *x = -1;
+    if(y != NULL)
+        *y = -1;
+    (void)window;
 }
 
 #endif
