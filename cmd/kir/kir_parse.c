@@ -177,6 +177,7 @@ net_block_braces(const char *s)
 {
     int pd = 0;
     int in_s = 0;
+    int in_c = 0;
     int delta = 0;
 
     for(const char *p = s; *p != '\0'; p++) {
@@ -185,8 +186,15 @@ net_block_braces(const char *s)
                 p++;
             else if(*p == '"')
                 in_s = 0;
+        } else if(in_c) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '\'')
+                in_c = 0;
         } else if(*p == '"') {
             in_s = 1;
+        } else if(*p == '\'') {
+            in_c = 1;
         } else if(*p == '(' || *p == '[') {
             pd++;
         } else if(*p == ')' || *p == ']') {
@@ -238,8 +246,23 @@ classify_stmt(const char *s)
     if(strstr(s, ":=") != NULL)
         return KIR_STMT_DECL;   /* ':=' wins over the raw 'c' prefix (a
                                    variable may be named 'c') */
-    if(starts_word(s, "c") && s[1] != ':')
-        return KIR_STMT_RAW;   /* 'c:' is a typed decl of a variable named c */
+    if(starts_word(s, "c") && s[1] != ':') {
+        /* 'c <raw C line>' glue — but 'c = ...' / 'c += ...' is an
+         * assignment to a local named c, which needs the normal statement
+         * path (raw lines emit without a trailing semicolon). 'c:' is a
+         * typed decl of a variable named c. */
+        const char *rest = s + 1;
+
+        while(*rest == ' ' || *rest == '\t')
+            rest++;
+        if(*rest != '=' && strncmp(rest, "+=", 2) != 0 &&
+           strncmp(rest, "-=", 2) != 0 && strncmp(rest, "*=", 2) != 0 &&
+           strncmp(rest, "/=", 2) != 0 && strncmp(rest, "%=", 2) != 0 &&
+           strncmp(rest, "&=", 2) != 0 && strncmp(rest, "|=", 2) != 0 &&
+           strncmp(rest, "^=", 2) != 0 && strncmp(rest, "<<=", 3) != 0 &&
+           strncmp(rest, ">>=", 3) != 0)
+            return KIR_STMT_RAW;
+    }
     if(strstr(s, "::") != NULL)
         return KIR_STMT_RAW;   /* nested '::' definitions stay raw */
     if(strstr(s, ": ") != NULL || strstr(s, ": [") != NULL) {
@@ -266,6 +289,107 @@ classify_stmt(const char *s)
         return KIR_STMT_EXPR;
         return KIR_STMT_EXPR;
     return KIR_STMT_UNKNOWN;
+}
+
+/* 'if cond { body }' (also else/while/for/switch/case/default/guard) written
+ * on one logical line: locate the block-open brace at paren/bracket depth 0
+ * outside string/char literals, and report the header (up to and including
+ * the '{') plus the body (between '{ ' and the trailing '}'). Returns 0 when
+ * the line is not a one-line control block. */
+static int
+split_oneline_block(const char *t, char *head, size_t hsz,
+                    char *body, size_t bsz)
+{
+    static const char *kws[] = { "if", "else", "while", "for", "switch",
+                                 "case", "default", "guard", "do" };
+    size_t n = strlen(t);
+    size_t brace_pos = 0;
+    int depth = 0;
+    int in_str = 0;
+    int in_chr = 0;
+    char w0[16];
+    size_t wl = 0;
+    size_t i;
+
+    if(n < 8 || t[n - 1] != '}')
+        return 0;
+    for(i = 0; t[i] != '\0' && (isalnum((unsigned char)t[i]) || t[i] == '_') &&
+        wl + 1 < sizeof(w0); i++)
+        w0[wl++] = t[i];
+    w0[wl] = '\0';
+    {
+        int is_kw = 0;
+
+        for(size_t k = 0; k < sizeof(kws) / sizeof(kws[0]); k++)
+            if(strcmp(w0, kws[k]) == 0)
+                is_kw = 1;
+        if(!is_kw)
+            return 0;
+    }
+    for(i = 0; i < n; i++) {
+        char ch = t[i];
+
+        if(in_str) {
+            if(ch == '\\' && i + 1 < n)
+                i++;
+            else if(ch == '"')
+                in_str = 0;
+        } else if(in_chr) {
+            if(ch == '\\' && i + 1 < n)
+                i++;
+            else if(ch == '\'')
+                in_chr = 0;
+        } else if(ch == '"') {
+            in_str = 1;
+        } else if(ch == '\'') {
+            in_chr = 1;
+        } else if(ch == '(' || ch == '[') {
+            depth++;
+        } else if(ch == ')' || ch == ']') {
+            depth--;
+        } else if(ch == '{' && depth == 0) {
+            /* first top-level '{' preceded by a space opens the block */
+            if(i > 0 && t[i - 1] == ' ' && i + 2 < n && t[i + 1] == ' ' &&
+                t[i + 2] != '}') {
+                brace_pos = i;
+                break;
+            }
+            return 0;   /* '{' used as expression on a control line */
+        }
+    }
+    if(brace_pos == 0)
+        return 0;
+    /* no other top-level brace may appear before the trailing closer */
+    depth = 0;
+    in_str = in_chr = 0;
+    for(i = brace_pos + 1; i + 1 < n; i++) {
+        char ch = t[i];
+
+        if(in_str) {
+            if(ch == '\\' && i + 1 < n)
+                i++;
+            else if(ch == '"')
+                in_str = 0;
+        } else if(in_chr) {
+            if(ch == '\\' && i + 1 < n)
+                i++;
+            else if(ch == '\'')
+                in_chr = 0;
+        } else if(ch == '"') {
+            in_str = 1;
+        } else if(ch == '\'') {
+            in_chr = 1;
+        } else if(ch == '(' || ch == '[') {
+            depth++;
+        } else if(ch == ')' || ch == ']') {
+            depth--;
+        } else if((ch == '{' || ch == '}') && depth == 0) {
+            return 0;
+        }
+    }
+    snprintf(head, hsz, "%.*s", (int)(brace_pos + 1), t);
+    snprintf(body, bsz, "%.*s", (int)(n - brace_pos - 3), t + brace_pos + 2);
+    return 1;
 }
 
 static void
@@ -734,6 +858,12 @@ kir_parse_file(const char *path, const char *root)
     pending[0] = '\0';
     char lookahead[K2IR_LINE_MAX];
     int have_look = 0;
+    /* One-line control blocks ('if cond { body }') are split into header /
+     * body / '}' logical lines; the body and closer re-enter the main loop
+     * through this FIFO so they flow through the normal join machinery. */
+    char onelineq[16][K2IR_LINE_MAX * 2];
+    int onelineq_count = 0;
+    int from_queue = 0;
     int pending_len = 0;
     int paren_depth = 0;
     int bracket_depth = 0;
@@ -760,11 +890,20 @@ kir_parse_file(const char *path, const char *root)
     if(module == NULL)
         die("out of memory");
 
-    while(have_look || fgets(line, sizeof(line), in) != NULL) {
+    while(have_look || onelineq_count > 0 || fgets(line, sizeof(line), in) != NULL) {
         char raw[K2IR_LINE_MAX];
         char *t;
 
-        if(have_look) {
+        /* Queued one-liner parts outrank the stashed lookahead: they belong
+         * before the next source line, and have_look persists until the
+         * queue drains. */
+        from_queue = onelineq_count > 0;
+        if(onelineq_count > 0) {
+            snprintf(line, sizeof(line), "%s", onelineq[0]);
+            memmove(onelineq[0], onelineq[1],
+                    sizeof(onelineq[0]) * (size_t)(onelineq_count - 1));
+            onelineq_count--;
+        } else if(have_look) {
             snprintf(line, sizeof(line), "%s", lookahead);
             have_look = 0;
         }
@@ -855,14 +994,24 @@ kir_parse_file(const char *path, const char *root)
                        starts_word(eq, "#elif "))
                         header_line = 1;
                 }
+                {
+                int in_chr = 0;
+
                 for(const char *p = trimmed; *p != '\0'; p++) {
                     if(in_string) {
                         if(*p == '\\' && p[1] != '\0')
                             p++;
                         else if(*p == '"')
                             in_string = 0;
+                    } else if(in_chr) {
+                        if(*p == '\\' && p[1] != '\0')
+                            p++;
+                        else if(*p == '\'')
+                            in_chr = 0;
                     } else if(*p == '"') {
                         in_string = 1;
+                    } else if(*p == '\'') {
+                        in_chr = 1;
                     } else if(*p == '(') {
                         paren_depth++;
                     } else if(*p == ')') {
@@ -880,6 +1029,7 @@ kir_parse_file(const char *path, const char *root)
                                 expr_brace--;
                         }
                     }
+                }
                 }
             }
             if(paren_depth > 0 || bracket_depth > 0 || in_string ||
@@ -921,8 +1071,11 @@ kir_parse_file(const char *path, const char *root)
                 /* Look ahead: a next line starting with a continuation
                  * token ('?' / ':' ternary branches, '.', ',', leading
                  * binary operators) continues this statement (legacy
-                 * line_starts_continuation). */
-                {
+                 * line_starts_continuation). Skipped for queued one-liner
+                 * parts and while a stash is pending: their "next line" is
+                 * not the next physical source line, and reading ahead here
+                 * would overwrite/lose the stashed one. */
+                if(!from_queue && !have_look) {
                     char la[K2IR_LINE_MAX];
                     int pend_str;
 
@@ -1001,6 +1154,26 @@ kir_parse_file(const char *path, const char *root)
 
             snprintf(logical, sizeof(logical), "%s", pending);
             t = logical;
+            /* One-line control block: keep the header as this logical line
+             * and queue the body + closer for the next iterations (nested
+             * one-liners split again when their body is finalized). */
+            if(mode != TOP) {
+                char head[K2IR_LINE_MAX * 2];
+                char body[K2IR_LINE_MAX * 2];
+
+                if(split_oneline_block(t, head, sizeof(head),
+                                       body, sizeof(body))) {
+                    if(onelineq_count + 2 <=
+                       (int)(sizeof(onelineq) / sizeof(onelineq[0]))) {
+                        snprintf(onelineq[onelineq_count++],
+                                 sizeof(onelineq[0]), "%s", body);
+                        snprintf(onelineq[onelineq_count++],
+                                 sizeof(onelineq[0]), "}");
+                        snprintf(logical, sizeof(logical), "%s", head);
+                        t = logical;
+                    }
+                }
+            }
         }
         pending[0] = '\0';
         pending_len = 0;
