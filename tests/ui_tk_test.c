@@ -49,7 +49,7 @@ main(void)
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
 #else
-    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_RETRO);
+    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
 #endif
 
     frame = BeginUIFrameBox(parent, 10, 10, 4);
