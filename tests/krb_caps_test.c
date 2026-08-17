@@ -18,15 +18,21 @@ audio_hook(const char *path, int stop)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
     KrbImage img;
+    const char *cartridge;
     char val[128];
     int n;
 
+    if(argc != 2) {
+        fprintf(stderr, "usage: %s CARTRIDGE.krb\n", argv[0]);
+        return 2;
+    }
+    cartridge = argv[1];
     memset(&img, 0, sizeof(img));
-    if(KrbLoadFile(&img, "/tmp/krb-statA/27_inbe_statistics.krb") != 0) {
-        fprintf(stderr, "krb_caps_test: no cartridge\n");
+    if(KrbLoadFile(&img, cartridge) != 0) {
+        fprintf(stderr, "krb_caps_test: cannot load %s\n", cartridge);
         return 2;
     }
     n = KrbCapInstallDefaults(&img);

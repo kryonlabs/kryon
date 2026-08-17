@@ -253,7 +253,9 @@ test: kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT)
 	sh tests/krb_engine_test.sh $(K2B) $(KRB_RUN) .
 	$(KRY_SW_TEST)
 	mkdir -p $(BUILD_DIR)/capstore
-	KRB_CAP_STORE_DIR=$(BUILD_DIR)/capstore $(KRB_CAPS_TEST)
+	mkdir -p $(BUILD_DIR)/tests/caps-fixture
+	$(K2B) --root examples -o $(BUILD_DIR)/tests/caps-fixture examples/02_buttons.kry
+	KRB_CAP_STORE_DIR=$(BUILD_DIR)/capstore $(KRB_CAPS_TEST) $(BUILD_DIR)/tests/caps-fixture/02_buttons.krb
 	$(KRB_MOUNT_TEST)
 	$(KRY_TERM_TEST)
 	$(KRY_JSON_TEST)
