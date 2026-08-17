@@ -613,7 +613,12 @@ RegisterUIFontSource(const char *name, const char *file_type,
         g_ui_fonts[index].codepoint_cap = seed_count;
     }
 
-    g_ui_fonts[index].file_type = file_type;
+    /* Copy the type string: callers may free it once this call returns (the
+     * Go binding does), and later tier re-rasterizations re-read it. */
+    snprintf(g_ui_fonts[index].file_type_buf,
+             sizeof(g_ui_fonts[index].file_type_buf), "%s",
+             file_type != NULL && file_type[0] != '\0' ? file_type : ".ttf");
+    g_ui_fonts[index].file_type = g_ui_fonts[index].file_type_buf;
     g_ui_fonts[index].font_data = font_data;
     g_ui_fonts[index].font_data_size = font_size;
     g_ui_fonts[index].font = (Font){0};
