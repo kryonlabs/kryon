@@ -332,6 +332,12 @@ SceneInspectServe(Scene *scene, int port)
     st->listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(st->listen_fd < 0)
         return 0;
+    {
+        int reuse = 1;
+
+        setsockopt(st->listen_fd, SOL_SOCKET, SO_REUSEADDR,
+                   (const char *)&reuse, sizeof(reuse));
+    }
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
