@@ -1318,6 +1318,7 @@ kir_parse_file(const char *path, const char *root)
                   strncmp(t, "#if", 3) != 0 && strncmp(t, "#else", 5) != 0 &&
                   strncmp(t, "#endif", 6) != 0 &&
                   strncmp(t, "#defined", 8) != 0 &&
+                  strncmp(t, "#enum", 5) != 0 &&
                   strncmp(t, "#module", 7) != 0 &&
                   strncmp(t, "#import", 7) != 0) {
             /* plain # comment at top level — never a header; real

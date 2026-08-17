@@ -19,8 +19,14 @@ mkdir -p "$work/src" "$work/out"
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 
+# Anonymous enums are declarations, not top-level `#` comments.
+#enum {
+    FixtureCount = 4
+    FixtureLimit = 12
+}
+
 state {
-    count: int = 7
+    count: int = FixtureCount
     label: [64] char = "hello"
 }
 
@@ -90,6 +96,8 @@ test -f "$h"
 grep -Fq '#ifndef K_SRC_VALID_H' "$h"
 grep -Fq '#include "kryon.h"' "$h"
 grep -Fq 'void Valid_kry_draw(Rectangle viewport);' "$h"
+grep -Fq 'FixtureCount = 4,' "$h"
+grep -Fq 'FixtureLimit = 12,' "$h"
 
 # source: preamble
 grep -Fq '#include "src/valid.h"' "$c"
