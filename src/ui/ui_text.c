@@ -70,6 +70,10 @@ typedef struct UITextSelectionState {
 
 static UITextSelectionState g_ui_text_selection = {0};
 static UITextSelectionState g_ui_text_block_selection = {0};
+static int g_ui_text_block_last_click_id = 0;
+static int g_ui_text_block_last_click_line = -1;
+static Vector2 g_ui_text_block_last_click_position = {0};
+static double g_ui_text_block_last_click_time = -1.0;
 
 typedef struct UITextBlockLine {
     int start;
@@ -1407,9 +1411,35 @@ DrawUISelectableTextBlock(UISelectableTextBlock block)
         if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             int local = ui_text_byte_offset_at_x(line, block.font_size,
                                                  (int)(mouse.x - block.bounds.x));
-            g_ui_text_block_selection = (UITextSelectionState){
-                block.id, lines[i].start + local, lines[i].start + local, 1
-            };
+            double now = GetTime();
+            float dx = mouse.x - g_ui_text_block_last_click_position.x;
+            float dy = mouse.y - g_ui_text_block_last_click_position.y;
+            int slop = ScaleUIPx(6);
+            int double_click = g_ui_text_block_last_click_id == block.id &&
+                g_ui_text_block_last_click_line == i &&
+                g_ui_text_block_last_click_time >= 0.0 &&
+                now - g_ui_text_block_last_click_time <= 0.40 &&
+                dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
+
+            if(double_click) {
+                /* A wrapped visual line is the useful unit here. Keep the
+                 * completed range stable after the second button release. */
+                g_ui_text_block_selection = (UITextSelectionState){
+                    block.id, lines[i].start, lines[i].end, 0
+                };
+                g_ui_text_block_last_click_id = 0;
+                g_ui_text_block_last_click_line = -1;
+                g_ui_text_block_last_click_time = -1.0;
+            } else {
+                g_ui_text_block_selection = (UITextSelectionState){
+                    block.id, lines[i].start + local,
+                    lines[i].start + local, 1
+                };
+                g_ui_text_block_last_click_id = block.id;
+                g_ui_text_block_last_click_line = i;
+                g_ui_text_block_last_click_position = mouse;
+                g_ui_text_block_last_click_time = now;
+            }
             g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
         }
         free(line);

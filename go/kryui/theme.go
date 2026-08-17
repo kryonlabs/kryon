@@ -12,10 +12,32 @@ package kryui
 #include <ui_dpi.h>
 #include <ui_text.h>
 #include <ui_tree.h>
+#include <ui_picture.h>
 */
 import "C"
 
 import "unsafe"
+
+type PictureFit int32
+
+const (
+	PictureFitStretch PictureFit = C.UI_PICTURE_FIT_STRETCH
+	PictureFitContain PictureFit = C.UI_PICTURE_FIT_CONTAIN
+	PictureFitCover   PictureFit = C.UI_PICTURE_FIT_COVER
+)
+
+// DrawPicture renders a runtime file or embedded image through Kryon's shared
+// texture cache. Repeated calls with the same path do not reload the texture.
+func DrawPicture(path string, bounds Rectangle, fit PictureFit, tint Color) {
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	C.Picture(C.PictureProps{
+		asset_path: cpath,
+		bounds:     bounds.toC(),
+		tint:       tint.toC(),
+		fit:        C.UIPictureFit(fit),
+	})
+}
 
 // ---------------------------------------------------------------------------
 // UI Text Sizes (from ui_core.h)
