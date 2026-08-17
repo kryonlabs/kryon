@@ -2615,12 +2615,27 @@ DrawUITextField(TextFieldProps field)
     int mouse_inside;
     int captured;
     int context_active = 0;
+    const char *display_text;
+    char *masked_text = NULL;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
     if(field.text == NULL || field.text_size == 0 ||
        field.cursor_position == NULL || field.focused == NULL)
         return 0;
+
+    display_text = field.text;
+    if(field.secure) {
+        size_t len = strlen(field.text);
+
+        display_text = "";
+        masked_text = malloc(len + 1);
+        if(masked_text != NULL) {
+            memset(masked_text, '*', len);
+            masked_text[len] = '\0';
+            display_text = masked_text;
+        }
+    }
 
     widget = BeginUIWidget("text_field",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -2656,7 +2671,8 @@ DrawUITextField(TextFieldProps field)
         ClaimUITextFieldFocus(field.focused);
     }
 
-    if(ui_text_context_open_for(UI_TEXT_CONTEXT_FIELD, field.focus_id,
+    if(!field.secure &&
+       ui_text_context_open_for(UI_TEXT_CONTEXT_FIELD, field.focus_id,
                                 field.focused, field.bounds, mouse_world,
                                 captured)) {
         int clicked_cursor;
@@ -2666,7 +2682,7 @@ DrawUITextField(TextFieldProps field)
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
         clicked_cursor = ui_text_cursor_from_x(
-            field.text, font, (int)field.bounds.x + padding_x,
+            display_text, font, (int)field.bounds.x + padding_x,
             (int)mouse_world.x);
         if(ui_text_selection_matches(g_ui_text_field_selection,
                                      field.focus_id, field.focused))
@@ -2686,7 +2702,7 @@ DrawUITextField(TextFieldProps field)
             focused = 1;
             ClaimUITextFieldFocus(field.focused);
             *field.cursor_position = ui_text_cursor_from_x(
-                field.text, font, (int)field.bounds.x + padding_x,
+                display_text, font, (int)field.bounds.x + padding_x,
                 (int)mouse_world.x);
             g_ui_text_field_drag_id = field.focus_id;
             g_ui_text_field_drag_owner = field.focused;
@@ -2740,14 +2756,14 @@ DrawUITextField(TextFieldProps field)
             selection_end = len;
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+        if(!field.secure && ui_mod_key_down() && IsKeyPressed(KEY_C)) {
             if(selection_end > selection_start)
                 ui_text_copy_range(field.text, selection_start, selection_end);
             else
                 SetUIClipboardTextValue(field.text);
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+        if(!field.secure && ui_mod_key_down() && IsKeyPressed(KEY_X)) {
             if(selection_end > selection_start) {
                 if(ui_text_copy_range(field.text, selection_start,
                                       selection_end) &&
@@ -2877,18 +2893,20 @@ DrawUITextField(TextFieldProps field)
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
     }
 
-    ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
-                                    field.focused, field.text,
-                                    field.text_size, field.cursor_position,
-                                    field.max_codepoints, field.filter,
-                                    field.filter_user_data,
-                                    &g_ui_text_field_selection,
-                                    selection_start, selection_end, 0, 1);
+    if(!field.secure)
+        ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
+                                        field.focused, field.text,
+                                        field.text_size, field.cursor_position,
+                                        field.max_codepoints, field.filter,
+                                        field.filter_user_data,
+                                        &g_ui_text_field_selection,
+                                        selection_start, selection_end, 0, 1);
 
-    DrawUITextInputEx(field.bounds, field.text, *field.cursor_position,
+    DrawUITextInputEx(field.bounds, display_text, *field.cursor_position,
                       focused,
                       focused && ui_caret_blink_visible(),
                       font, field.style, selection_start, selection_end);
+    free(masked_text);
     EndUIWidget(&widget);
     return changed;
 }

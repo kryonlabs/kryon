@@ -114,6 +114,7 @@ typedef struct {
     UITextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
+    int secure;
 } TextFieldProps;
 
 typedef struct {

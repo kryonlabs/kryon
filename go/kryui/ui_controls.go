@@ -210,6 +210,7 @@ type TextFieldProps struct {
 	FocusID        int32
 	Style          UITextInputStyle
 	CommitPressed  *bool
+	Secure         bool // mask display and disable copying/cutting the value
 }
 
 type TextAreaProps struct {
@@ -444,6 +445,10 @@ func DrawUITextField(props TextFieldProps) bool {
 	if props.CommitPressed != nil && *props.CommitPressed {
 		commit = 1
 	}
+	secure := C.int(0)
+	if props.Secure {
+		secure = 1
+	}
 	var pins goruntime.Pinner
 	pins.Pin(&props.Text[0])
 	if props.CursorPosition != nil {
@@ -466,6 +471,7 @@ func DrawUITextField(props TextFieldProps) bool {
 		filter:           nil,
 		filter_user_data: nil,
 		commit_pressed:   &commit,
+		secure:           secure,
 	}
 	changed := C.DrawUITextField(cprops) != 0
 	if props.Focused != nil {

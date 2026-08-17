@@ -13,6 +13,7 @@ type TextField struct {
 	commitPressed bool
 	focusID       int32
 	maxCodepoints int32
+	secure        bool
 }
 
 func NewTextField(focusID, capacity int) *TextField {
@@ -24,6 +25,14 @@ func NewTextField(focusID, capacity int) *TextField {
 		focusID:       int32(focusID),
 		maxCodepoints: int32(capacity - 1),
 	}
+}
+
+// NewPasswordField creates a text field that masks its contents and prevents
+// clipboard copy and cut operations. Pasting remains available.
+func NewPasswordField(focusID, capacity int) *TextField {
+	f := NewTextField(focusID, capacity)
+	f.secure = true
+	return f
 }
 
 func (f *TextField) Text() string {
@@ -56,6 +65,16 @@ func (f *TextField) SetFocused(focused bool) {
 	}
 }
 
+// SetSecure controls whether the field masks its value and blocks copy/cut.
+// It can be toggled temporarily to implement a reveal-password affordance.
+func (f *TextField) SetSecure(secure bool) {
+	if f != nil {
+		f.secure = secure
+	}
+}
+
+func (f *TextField) Secure() bool { return f != nil && f.secure }
+
 // Draw renders and edits the field. committed is true for the frame in which
 // Enter was pressed. Mouse selection, Ctrl+A/C/X/V and keyboard navigation
 // are handled by Kryon.
@@ -74,6 +93,7 @@ func (f *TextField) Draw(bounds Rectangle, font int32, style UITextInputStyle) (
 		FocusID:        f.focusID,
 		Style:          style,
 		CommitPressed:  &f.commitPressed,
+		Secure:         f.secure,
 	})
 	return changed, f.commitPressed
 }

@@ -21,3 +21,18 @@ func TestTextAreaOwnsBuffer(t *testing.T) {
 		t.Fatalf("Text() = %q", got)
 	}
 }
+
+func TestPasswordFieldIsSecureByDefault(t *testing.T) {
+	f := NewPasswordField(7, 32)
+	if !f.Secure() {
+		t.Fatal("password field must start secure")
+	}
+	f.SetText("secret")
+	if got := f.Text(); got != "secret" {
+		t.Fatalf("Text() = %q, want secret", got)
+	}
+	f.SetSecure(false)
+	if f.Secure() {
+		t.Fatal("SetSecure(false) did not reveal field")
+	}
+}
