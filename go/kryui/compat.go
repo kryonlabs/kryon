@@ -218,6 +218,15 @@ func DrawRectangleGradientH(x, y, w, h int32, left, right Color) {
 	C.DrawRectangleGradientH(C.int(x), C.int(y), C.int(w), C.int(h), left.toC(), right.toC())
 }
 
+func DrawCircleV(center Vector2, radius float32, color Color) {
+	C.DrawCircleV(center.toC(), C.float(radius), color.toC())
+}
+
+func DrawRing(center Vector2, innerRadius, outerRadius, startAngle, endAngle float32, segments int32, color Color) {
+	C.DrawRing(center.toC(), C.float(innerRadius), C.float(outerRadius),
+		C.float(startAngle), C.float(endAngle), C.int(segments), color.toC())
+}
+
 func GetTime() float64 { return float64(C.GetTime()) }
 
 // ---------------------------------------------------------------------------

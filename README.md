@@ -178,6 +178,9 @@ Go applications import the maintained cgo runtime from
 generated `k2g` code and handwritten Go hosts share one Kryon-owned surface;
 downstream applications must not carry private copies of it.
 
+`k2g` output is compiled against that real runtime by the test suite. This is
+an executable compatibility gate, not only a textual generated-source check.
+
 `k2c` and `k2b` accept either `.kry` or `.kir`; when given source, they run the
 KIR frontend internally. Native platform, storage, and performance-sensitive C
 code remains first-class through the C backend and through explicit KRB

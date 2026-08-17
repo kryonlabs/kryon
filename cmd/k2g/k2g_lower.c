@@ -82,8 +82,8 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"float", "float32"}, {"double", "float64"},
         {"bool", "bool"},   {"char*", "string"}, {"const char*", "string"},
         {"void", ""},
-        {"Vector2", "rt.Vector2"}, {"Rectangle", "rt.Rectangle"},
-        {"Color", "rt.Color"},     {"Texture2D", "rt.Texture2D"},
+        {"Vector2", "kryruntime.Vector2"}, {"Rectangle", "kryruntime.Rectangle"},
+        {"Color", "kryruntime.Color"},     {"Texture2D", "kryruntime.Texture2D"},
         {NULL, NULL}
     };
     char t[K2G_NAME_MAX];
@@ -259,12 +259,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 n = split_top(raw, parts, 4);
             }
             if(strcmp(type, "Vector2") == 0 && n == 2)
-                snprintf(out + on, sizeof(out) - on, "rt.NewVector2");
+                snprintf(out + on, sizeof(out) - on, "kryruntime.NewVector2");
             else if(strcmp(type, "Rectangle") == 0 && n == 4)
-                snprintf(out + on, sizeof(out) - on, "rt.NewRectangle");
+                snprintf(out + on, sizeof(out) - on, "kryruntime.NewRectangle");
             else {
                 /* odd arity: emit a TODO-safe zero value */
-                snprintf(dst + *dn, 8, "%s", "rt.NewVector2(0, 0)");
+                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "kryruntime.NewVector2(0, 0)");
                 *dn += strlen(dst + *dn);
                 return p;
             }
@@ -278,11 +278,17 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     out[on++] = ',';
                     out[on++] = ' ';
                 }
+                if(on + 8 < sizeof(out)) {
+                    memcpy(out + on, "float32(", 8);
+                    on += 8;
+                }
                 size_t al = strlen(arg);
                 if(on + al + 1 < sizeof(out)) {
                     memcpy(out + on, arg, al);
                     on += al;
                 }
+                if(on + 1 < sizeof(out))
+                    out[on++] = ')';
             }
             out[on++] = ')';
             out[on] = '\0';
@@ -325,7 +331,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
                 if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                        "rt.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
+                        "kryruntime.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
                         fields[0], args[0], fields[1], args[1],
                         fields[2], args[2], fields[3], args[3]);
                 }
@@ -336,7 +342,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         {
             char ctor[K2G_NAME_MAX + 8];
 
-            snprintf(ctor, sizeof(ctor), "rt.%s{", type);
+            snprintf(ctor, sizeof(ctor), "kryruntime.%s{", type);
             if(*dn + strlen(ctor) + 1 < K2G_TEXT_MAX) {
                 memcpy(dst + *dn, ctor, strlen(ctor));
                 *dn += strlen(ctor);
@@ -570,6 +576,37 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     dn += 8;
                 }
                 continue;
+            }
+            /* Public Kryon constants become package constants. */
+            {
+                struct { const char *c; const char *go; } constants[] = {
+                    {"UI_TEXT_8", "kryruntime.UIText8"},
+                    {"UI_TEXT_12", "kryruntime.UIText12"},
+                    {"UI_TEXT_16", "kryruntime.UIText16"},
+                    {"UI_TEXT_24", "kryruntime.UIText24"},
+                    {"UI_BUTTON_STYLE_PRIMARY", "kryruntime.UIButtonStylePrimary"},
+                    {"UI_BUTTON_STYLE_SECONDARY", "kryruntime.UIButtonStyleSecondary"},
+                    {"UI_BUTTON_STYLE_DANGER", "kryruntime.UIButtonStyleDanger"},
+                    {NULL, NULL}
+                };
+                int matched = 0;
+
+                for(int ci = 0; constants[ci].c != NULL; ci++) {
+                    if(strlen(constants[ci].c) == il &&
+                       strncmp(constants[ci].c, ident, il) == 0) {
+                        size_t gl = strlen(constants[ci].go);
+                        if(dn + gl + 1 < dst_size) {
+                            memcpy(dst + dn, constants[ci].go, gl);
+                            dn += gl;
+                        }
+                        matched = 1;
+                        break;
+                    }
+                }
+                if(matched) {
+                    p = q;
+                    continue;
+                }
             }
             /* runtime call? Capitalized identifiers route to rt. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
@@ -915,7 +952,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     fprintf(f, "\t%s %s\n", fname, gt);
                 }
                 fprintf(f, "}\n\n");
-                fprintf(f, "var %sState = &%sState{\n", guard, guard);
+                fprintf(f, "var %sStateValue = &%sState{\n", guard, guard);
                 for(int i = 0; i < m->state_count; i++) {
                     const KirStateField *sf = &m->state_fields[i];
                     char fname[K2G_NAME_MAX], finit[K2G_TEXT_MAX];
@@ -944,8 +981,10 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 fprintf(f, "\t})\n");
                 fprintf(f, "\tdefer rt.Close()\n");
                 fprintf(f, "\tfor !rt.WindowShouldClose() {\n");
-                fprintf(f, "\t\t%s_%s(rt, %sState)\n", guard, frame,
-                        m->state_count > 0 ? guard : "nil");
+                if(m->state_count > 0)
+                    fprintf(f, "\t\t%s_%s(rt, %sStateValue)\n", guard, frame, guard);
+                else
+                    fprintf(f, "\t\t%s_%s(rt)\n", guard, frame);
                 fprintf(f, "\t}\n}\n");
             }
             fclose(f);

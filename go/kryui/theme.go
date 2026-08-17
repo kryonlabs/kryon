@@ -10,6 +10,7 @@ package kryui
 #include <theme.h>
 #include <ui_core.h>
 #include <ui_dpi.h>
+#include <ui_text.h>
 #include <ui_tree.h>
 */
 import "C"
@@ -143,6 +144,81 @@ func MeasureText(text string, fontSize int32) int32 {
 	ctext := C.CString(text)
 	defer C.free(unsafe.Pointer(ctext))
 	return int32(C.MeasureText(ctext, C.int(fontSize)))
+}
+
+// RegisterUIFont adds a loaded font to Kryon's fallback-aware text system.
+func RegisterUIFont(name string, font Font) bool {
+	cn := C.CString(name)
+	defer C.free(unsafe.Pointer(cn))
+	return C.RegisterUIFont(cn, font.toC()) != 0
+}
+
+// RegisterUIFontData registers embedded font bytes directly. Applications do
+// not need to create temporary files or manage a raylib Font lifetime.
+func RegisterUIFontData(name, fileType string, data []byte, codepoints []rune) bool {
+	if len(data) == 0 {
+		return false
+	}
+	cn := C.CString(name)
+	ct := C.CString(fileType)
+	defer C.free(unsafe.Pointer(cn))
+	defer C.free(unsafe.Pointer(ct))
+	cps := make([]C.int, len(codepoints))
+	for i, cp := range codepoints {
+		cps[i] = C.int(cp)
+	}
+	var cpPtr *C.int
+	if len(cps) > 0 {
+		cpPtr = &cps[0]
+	}
+	return C.RegisterUIFontSource(cn, ct,
+		(*C.uchar)(unsafe.Pointer(&data[0])), C.uint(len(data)), cpPtr,
+		C.int(len(cps))) != 0
+}
+
+// UseUIFont selects the named font as the primary UI font.
+func UseUIFont(name string) bool {
+	cn := C.CString(name)
+	defer C.free(unsafe.Pointer(cn))
+	return C.UseUIFont(cn) != 0
+}
+
+// PushUIFont temporarily selects a registered font; pass the returned token
+// to PopUIFont after drawing.
+func PushUIFont(name string) int32 {
+	cn := C.CString(name)
+	defer C.free(unsafe.Pointer(cn))
+	return int32(C.PushUIFont(cn))
+}
+
+func PopUIFont(token int32) { C.PopUIFont(C.int(token)) }
+
+// DrawUIText uses Kryon's fallback fonts, input capture, I-beam cursor and
+// character-level mouse selection/Ctrl+C behavior.
+func DrawUIText(text string, x, y, fontSize int32, color Color) {
+	ct := C.CString(text)
+	defer C.free(unsafe.Pointer(ct))
+	C.DrawUIText(ct, C.int(x), C.int(y), C.int(fontSize), color.toC())
+}
+
+func MeasureUIText(text string, fontSize int32) int32 {
+	ct := C.CString(text)
+	defer C.free(unsafe.Pointer(ct))
+	return int32(C.MeasureUIText(ct, C.int(fontSize)))
+}
+
+func PushUITextSelectable(selectable bool) int32 {
+	v := 0
+	if selectable {
+		v = 1
+	}
+	return int32(C.PushUITextSelectable(C.int(v)))
+}
+
+func PopUITextSelectable(token int32) { C.PopUITextSelectable(C.int(token)) }
+
+func UIInputCapturesClick(point Vector2) bool {
+	return C.UIInputCapturesClick(point.toC()) != 0
 }
 
 // Slider draws a slider control

@@ -52,12 +52,24 @@ grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'rt.BeginDrawing()' "$out"
 grep -q '&st.ScrollOff' "$out"
-grep -q 'rt.NewVector2(rt.ScaleUIPx(120), rt.ScaleUIPx(120))' "$out"
-grep -q 'rt.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
+grep -q 'kryruntime.NewVector2(float32(rt.ScaleUIPx(120)), float32(rt.ScaleUIPx(120)))' "$out"
+grep -q 'kryruntime.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
     echo "k2g left a C float suffix in Go output" >&2
     exit 1
 fi
+
+# The generated source must compile against Kryon's real Go runtime. Textual
+# greps alone previously allowed syntactically invalid Go to pass unnoticed.
+cat > "$work/out/go.mod" <<EOF
+module kryon-generated-smoke
+
+go 1.25.0
+
+require github.com/waozixyz/kryon/go/kryui v0.0.0
+replace github.com/waozixyz/kryon/go/kryui => $root/go/kryui
+EOF
+(cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
 
 echo "k2g syntax ok"

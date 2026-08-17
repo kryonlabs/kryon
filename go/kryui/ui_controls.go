@@ -433,22 +433,37 @@ func DrawUITextField(props TextFieldProps) bool {
 	if len(props.Text) == 0 {
 		return false
 	}
+	focused := C.int(0)
+	if props.Focused != nil && *props.Focused {
+		focused = 1
+	}
+	commit := C.int(0)
+	if props.CommitPressed != nil && *props.CommitPressed {
+		commit = 1
+	}
 
 	cprops := C.TextFieldProps{
 		bounds:           props.Bounds.toC(),
 		text:             (*C.char)(unsafe.Pointer(&props.Text[0])),
 		text_size:        C.size_t(len(props.Text)),
 		cursor_position:  (*C.int)(unsafe.Pointer(props.CursorPosition)),
-		focused:          (*C.int)(unsafe.Pointer(props.Focused)),
+		focused:          &focused,
 		max_codepoints:   C.int(props.MaxCodepoints),
 		font:             C.int(props.Font),
 		focus_id:         C.int(props.FocusID),
 		style:            props.Style.toC(),
 		filter:           nil,
 		filter_user_data: nil,
-		commit_pressed:   (*C.int)(unsafe.Pointer(props.CommitPressed)),
+		commit_pressed:   &commit,
 	}
-	return C.DrawUITextField(cprops) != 0
+	changed := C.DrawUITextField(cprops) != 0
+	if props.Focused != nil {
+		*props.Focused = focused != 0
+	}
+	if props.CommitPressed != nil {
+		*props.CommitPressed = commit != 0
+	}
+	return changed
 }
 
 func DrawUITextArea(props TextAreaProps) bool {
@@ -462,12 +477,16 @@ func DrawUITextArea(props TextAreaProps) bool {
 		defer C.free(unsafe.Pointer(cplaceholder))
 	}
 
+	focused := C.int(0)
+	if props.Focused != nil && *props.Focused {
+		focused = 1
+	}
 	cprops := C.TextAreaProps{
 		bounds:           props.Bounds.toC(),
 		text:             (*C.char)(unsafe.Pointer(&props.Text[0])),
 		text_size:        C.size_t(len(props.Text)),
 		cursor_position:  (*C.int)(unsafe.Pointer(props.CursorPosition)),
-		focused:          (*C.int)(unsafe.Pointer(props.Focused)),
+		focused:          &focused,
 		scroll_y:         (*C.int)(unsafe.Pointer(props.ScrollY)),
 		max_codepoints:   C.int(props.MaxCodepoints),
 		font:             C.int(props.Font),
@@ -479,7 +498,11 @@ func DrawUITextArea(props TextAreaProps) bool {
 		filter:           nil,
 		filter_user_data: nil,
 	}
-	return C.DrawUITextArea(cprops) != 0
+	changed := C.DrawUITextArea(cprops) != 0
+	if props.Focused != nil {
+		*props.Focused = focused != 0
+	}
+	return changed
 }
 
 func DrawUIReadonlyTextBox(props ReadonlyTextBoxProps) bool {

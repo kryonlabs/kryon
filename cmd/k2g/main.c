@@ -28,7 +28,7 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     const char *pkg = "krygen";
-    const char *runtime = "kryruntime";
+    const char *runtime = "github.com/waozixyz/kryon/go/kryui";
     int no_main = 0;
     KirProgram **progs;
     int file_count;
