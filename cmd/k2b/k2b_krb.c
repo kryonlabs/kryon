@@ -32,6 +32,14 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 #define KRB_BUILD_HANDLER_LINES 16
 #define KRB_OUT_MAX 65536
 
+typedef struct KrbAsset {
+    char path[256];  /* cartridge path (also the PICTURE text) */
+    char file[1024]; /* host file read at emit time */
+    unsigned kind;   /* 0 raw RGBA (.kraw), 2 opaque file blob */
+    unsigned w;
+    unsigned h;
+} KrbAsset;
+
 typedef struct KrbUpdate {
     char path[KIR_NAME_MAX];
     int kind; /* 0 = set, 1 = add, 2 = sub */
@@ -109,7 +117,11 @@ typedef struct KrbBuild {
     int update_count;
     KrbGuard guards[16];
     int guard_count;
+    KrbAsset assets[24];
+    int asset_count;
+    char asset_root[1024];
 } KrbBuild;
+
 
 static void
 wr_u16(unsigned char **p, unsigned v)
@@ -803,6 +815,49 @@ handler_for(KrbBuild *b, const char *name)
 }
 
 /* "<path> = N;" / "+=" / "-=" / "++" / "--" -> update record */
+static void
+embed_asset(KrbBuild *b, const char *path)
+{
+    FILE *f;
+    char file[1200];
+    unsigned char hdr[8];
+    int i;
+
+    if(path == NULL || path[0] == '\0')
+        return;
+    for(i = 0; i < b->asset_count; i++)
+        if(strcmp(b->assets[i].path, path) == 0)
+            return;
+    if(b->asset_count >= 24)
+        return;
+    snprintf(file, sizeof(file), "%s/%s", b->asset_root, path);
+    f = fopen(file, "rb");
+    if(f == NULL)
+        return; /* not packable; host loads it at runtime as before */
+    if(fread(hdr, 1, 8, f) == 8 && hdr[0] == 'K' && hdr[1] == 'R' &&
+       hdr[2] == 'A' && hdr[3] == 'W') {
+        fclose(f);
+        snprintf(b->assets[b->asset_count].path,
+                 sizeof(b->assets[0].path), "%s", path);
+        snprintf(b->assets[b->asset_count].file,
+                 sizeof(b->assets[0].file), "%s", file);
+        b->assets[b->asset_count].kind = 0;
+        b->assets[b->asset_count].w = hdr[4] | (hdr[5] << 8);
+        b->assets[b->asset_count].h = hdr[6] | (hdr[7] << 8);
+        b->asset_count++;
+        return;
+    }
+    fclose(f);
+    snprintf(b->assets[b->asset_count].path,
+             sizeof(b->assets[0].path), "%s", path);
+    snprintf(b->assets[b->asset_count].file,
+             sizeof(b->assets[0].file), "%s", file);
+    b->assets[b->asset_count].kind = 2; /* opaque blob: png/wav/ogg/... */
+    b->assets[b->asset_count].w = 0;
+    b->assets[b->asset_count].h = 0;
+    b->asset_count++;
+}
+
 static int
 parse_update(const char *text, char *path, int *kind, int *val)
 {
@@ -938,6 +993,9 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
             }
         }
         if(try_widget(b, st->text)) {
+            if(b->node_count > before &&
+               b->nodes[b->node_count - 1].type == KRB_NODE_PICTURE)
+                embed_asset(b, b->nodes[b->node_count - 1].text);
             /* In raw .kry the button call and its 'if' are one statement
              * ('if Button(...) {'); capture the handler body that follows. */
             if(b->node_count > before &&
@@ -1705,6 +1763,7 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     int clabel_off[KRB_BUILD_CTRL_MAX];
     unsigned char prog_buf[4096];
     int prog_bytes = 1;
+    static int apath_off[24];
     int need;
 
     memset(header, 0, sizeof(header));
@@ -1720,6 +1779,8 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         cvalue_off[i] = intern_string(b, b->controls[i].value);
         clabel_off[i] = intern_string(b, b->controls[i].label);
     }
+    for(i = 0; i < b->asset_count; i++)
+        apath_off[i] = intern_string(b, b->assets[i].path);
     {
         static int upath_off[32];
         static int gpath_off[16];
@@ -1736,6 +1797,8 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
 
     need = 32 + b->node_count * 28 + b->string_used + prog_bytes +
            b->import_count * 4 + b->control_count * KRB_CONTROL_SIZE;
+    if(b->asset_count > 0)
+        need += 4 + b->asset_count * 20; /* blobs checked again at copy */
     if(need > cap)
         return -1;
     wr_u32(&hp, KRB_MAGIC);
@@ -1800,6 +1863,75 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         wr_u16(&cp, 0);                    /* reserved */
         memcpy(out, c, KRB_CONTROL_SIZE);
         out += KRB_CONTROL_SIZE;
+    }
+    /* v2 asset section: u32 count, 20-byte entries, then blobs */
+    if(b->asset_count > 0) {
+        unsigned long blob_base;
+        unsigned long need_assets_mark = (unsigned long)(out - dst);
+        FILE *af[24];
+        unsigned long asize[24];
+        int k;
+        unsigned long total;
+
+        total = 0;
+        for(k = 0; k < b->asset_count; k++) {
+            af[k] = fopen(b->assets[k].file, "rb");
+            asize[k] = 0;
+            if(af[k] != NULL) {
+                fseek(af[k], 0, SEEK_END);
+                asize[k] = (unsigned long)ftell(af[k]);
+                fseek(af[k], 0, SEEK_SET);
+                if(b->assets[k].kind == 0 && asize[k] >= 8)
+                    asize[k] -= 8; /* strip the KRAW header */
+                total += asize[k];
+            }
+        }
+        blob_base = (unsigned long)(out - dst) + 4 +
+                    (unsigned long)b->asset_count * 20;
+        wr_u32(&out, (unsigned)b->asset_count);
+        for(k = 0; k < b->asset_count; k++) {
+            wr_u32(&out, (unsigned)apath_off[k]);
+            wr_u32(&out, (unsigned)(blob_base));
+            blob_base += asize[k];
+            wr_u32(&out, (unsigned)asize[k]);
+            wr_u16(&out, (unsigned)b->assets[k].kind);
+            wr_u16(&out, b->assets[k].w);
+            wr_u16(&out, b->assets[k].h);
+            wr_u16(&out, 0);
+        }
+        for(k = 0; k < b->asset_count; k++) {
+            unsigned long left = asize[k];
+
+            if(af[k] == NULL)
+                continue;
+            if(b->assets[k].kind == 0)
+                fseek(af[k], 8, SEEK_SET); /* skip KRAW header */
+            while(left > 0) {
+                unsigned char chunk[4096];
+                size_t got = fread(chunk, 1, left < sizeof(chunk) ? left
+                                                    : sizeof(chunk), af[k]);
+
+                if(got == 0)
+                    break;
+                if(out - dst + (long)got > cap) {
+                    fclose(af[k]);
+                    return -1;
+                }
+                memcpy(out, chunk, got);
+                out += got;
+                left -= got;
+            }
+            fclose(af[k]);
+        }
+        {
+            unsigned long asset_bytes = (unsigned long)(out - dst) -
+                (unsigned long)need_assets_mark;
+
+            dst[28] = (unsigned char)asset_bytes;
+            dst[29] = (unsigned char)(asset_bytes >> 8);
+            dst[30] = (unsigned char)(asset_bytes >> 16);
+            dst[31] = (unsigned char)(asset_bytes >> 24);
+        }
     }
     return (int)(out - dst);
 }
@@ -2000,6 +2132,8 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     memset(&build, 0, sizeof(build));
     build.strings[0] = '\0';
     build.string_used = 1;
+    snprintf(build.asset_root, sizeof(build.asset_root), "%s",
+             root != NULL ? root : ".");
     collect_state(&build, m);
     for(i = 0; i < m->function_count; i++)
         collect_widgets(&build, &m->functions[i]);

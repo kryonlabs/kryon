@@ -100,6 +100,19 @@ r_ring(int cx, int cy, int inner, int outer, unsigned color)
 }
 
 static void
+r_texture_rgba(const unsigned char *rgba, int sw, int sh, int x, int y,
+               int dw, int dh, unsigned tint)
+{
+    if(g_rec == NULL || g_rec->inner->texture_rgba == NULL)
+        return;
+    g_rec->calls++;
+    if(g_rec->log != NULL)
+        fprintf(g_rec->log, "texture_rgba %dx%d %d %d %d %d %08x\n", sw, sh,
+                x, y, dw, dh, tint);
+    g_rec->inner->texture_rgba(rgba, sw, sh, x, y, dw, dh, tint);
+}
+
+static void
 r_mouse(int *x, int *y)
 {
     g_rec->inner->mouse(x, y);
@@ -178,6 +191,7 @@ KryBackendRecBackend(KryBackendRec *rec, FILE *log, const KryBackend *inner)
     rec->backend.texture = r_texture;
     rec->backend.circle = r_circle;
     rec->backend.ring = r_ring;
+    rec->backend.texture_rgba = r_texture_rgba;
     g_rec = rec;
     return &rec->backend;
 }
