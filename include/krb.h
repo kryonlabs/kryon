@@ -100,6 +100,30 @@ enum {
 
 typedef int (*KrbFn)(void *userdata);
 
+/* Plan-08 capabilities: well-known import names a cartridge may call via
+ * OP_CALL_HOST. Hosts bind what they offer; unbound capabilities are
+ * refused at KrbCapBind time (never a silent no-op). */
+enum {
+    KRB_CAP_STORAGE_GET = 1,  /* (key, out, out_size) -> len */
+    KRB_CAP_STORAGE_SET = 2,  /* (key, value) -> 0 */
+    KRB_CAP_HTTP_GET    = 3,  /* (url, out, out_size) -> len */
+    KRB_CAP_AUDIO_PLAY  = 4,  /* (asset_path) -> 0 */
+    KRB_CAP_AUDIO_STOP  = 5,
+    KRB_CAP_NOTIFY      = 6   /* (title, body) -> 0 */
+};
+
+typedef struct KrbCapDef {
+    int cap;
+    const char *import_name;
+} KrbCapDef;
+
+extern const KrbCapDef KrbCapDefs[6];
+const char *KrbCapName(int cap);
+
+/* Bind a capability implementation; returns the import slot or -1 when
+ * the capability id is unknown. The cartridge calls it through a
+ * BUTTON bind or OP_CALL_HOST on the returned slot. */
+
 typedef struct KrbField {
     const char *path;
     unsigned offset;
@@ -178,6 +202,7 @@ typedef struct KrbImage {
     int dropdown_open;  /* open control table index, -1 none */
 } KrbImage;
 
+int KrbCapBind(KrbImage *img, int cap, KrbFn fn, void *userdata);
 int KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len);
 int KrbLoadFile(KrbImage *img, const char *path);
 void KrbFree(KrbImage *img);

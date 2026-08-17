@@ -1133,6 +1133,50 @@ prog_len(KrbImage *img)
     return rd_u32(img->bytes + 16);
 }
 
+const KrbCapDef KrbCapDefs[6] = {
+    {KRB_CAP_STORAGE_GET, "cap.storage.get"},
+    {KRB_CAP_STORAGE_SET, "cap.storage.set"},
+    {KRB_CAP_HTTP_GET, "cap.http.get"},
+    {KRB_CAP_AUDIO_PLAY, "cap.audio.play"},
+    {KRB_CAP_AUDIO_STOP, "cap.audio.stop"},
+    {KRB_CAP_NOTIFY, "cap.notify"}
+};
+
+const char *
+KrbCapName(int cap)
+{
+    int i;
+
+    for(i = 0; i < 6; i++)
+        if(KrbCapDefs[i].cap == cap)
+            return KrbCapDefs[i].import_name;
+    return NULL;
+}
+
+int
+KrbCapBind(KrbImage *img, int cap, KrbFn fn, void *userdata)
+{
+    const char *name = KrbCapName(cap);
+    int slot;
+
+    if(name == NULL || fn == NULL)
+        return -1;
+    slot = KrbBind(img, name, fn, userdata);
+    if(slot >= 0)
+        return slot;
+    /* capabilities need no cartridge-side import entry: bind into the
+     * first free slot (hosts call them directly or via OP_CALL_HOST) */
+    {
+        unsigned i;
+
+        for(i = 0; i < KRB_BIND_MAX; i++) {
+            if(img->binds[i] == NULL)
+                return KrbBindSlot(img, i, fn, userdata);
+        }
+    }
+    return -1;
+}
+
 int
 KrbAutoMount(KrbImage *img)
 {
