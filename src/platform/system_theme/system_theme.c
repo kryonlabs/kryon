@@ -242,10 +242,10 @@ gtk_system_theme_refresh(void)
     char *theme_name = NULL;
     gboolean prefer_dark = FALSE;
 
-    if(!initialized) {
-        init_ok = gtk_init_check(NULL, NULL) ? 1 : 0;
-        initialized = 1;
-    }
+    if(initialized)
+        return init_ok && system_palette.available != 0;
+    initialized = 1;
+    init_ok = gtk_init_check(NULL, NULL) ? 1 : 0;
     if(!init_ok)
         return 0;
 
@@ -745,13 +745,19 @@ RefreshSystemTheme(void)
         return true;
     }
 #endif
+    /* Prefer reading the theme CSS files directly: initializing GTK
+       in-process while the app's SDL window and GL context are already live
+       can corrupt the render context (GTK performs late global X
+       initialization, realizes real X windows, and pumps the GLib main
+       loop from the render thread). The CSS reader needs no X connection,
+       so it is safe to call at any point after startup. Only fall back to
+       the in-process sampler when the theme files cannot be parsed. */
+    if(gtk_css_palette_refresh())
+        return true;
 #if defined(SYSTEM_THEME_GTK)
     if(gtk_system_theme_refresh())
         return true;
 #endif
-    /* No in-process GTK (or it failed): read the desktop theme's own CSS. */
-    if(gtk_css_palette_refresh())
-        return true;
     return system_palette.available != 0;
 }
 
