@@ -15,6 +15,10 @@ if [ -f "$sdl_core" ] && ! grep -q 'Kryon: avoid X11 Font typedef collision' "$s
     perl -0pi -e 's@(#elif defined\(USING_SDL2_PROJECT\)\n\s*#include "SDL2/SDL\.h"\n)(\s*#include "SDL2/SDL_syswm\.h"\s*// Required to get window handlers)@$1    // Kryon: avoid X11 Font typedef collision when SDL_syswm.h pulls X11 headers.\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #define Font X11Font\n    #endif\n$2\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #undef Font\n    #endif@' "$sdl_core"
 fi
 
+if [ -f "$sdl_core" ] && ! grep -q 'Kryon: log the missing SDL2 scale query once' "$sdl_core"; then
+    perl -0pi -e 's@(// TODO: Implement the window scale factor calculation manually\n\s*)TRACELOG\(LOG_WARNING, "GetWindowScaleDPI\(\) not implemented on target platform"\);@$1\{   // Kryon: log the missing SDL2 scale query once, not every frame\n        static bool scale_warned = false;\n        if (!scale_warned)\n        \{\n            TRACELOG(LOG_WARNING, "GetWindowScaleDPI() not implemented on target platform");\n            scale_warned = true;\n        \}\n    \}@' "$sdl_core"
+fi
+
 if [ -f "$audio" ] && ! grep -q 'AUDIO_DEVICE_PERIODS' "$audio"; then
     perl -0pi -e 's@(#ifndef AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES\n\s*#define AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES 0[^\n]*\n#endif\n)@$1#ifndef AUDIO_DEVICE_PERIODS\n    #define AUDIO_DEVICE_PERIODS 0    // Device buffer period count. 0 uses miniaudio default\n#endif\n@' "$audio"
     perl -0pi -e 's@(config\.periodSizeInFrames = AUDIO_DEVICE_PERIOD_SIZE_IN_FRAMES;\n)@$1    config.periods = AUDIO_DEVICE_PERIODS;\n@' "$audio"
