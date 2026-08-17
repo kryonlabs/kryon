@@ -1428,6 +1428,21 @@ ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
 }
 
 int
+ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x)
+{
+    return ui_text_cursor_from_x(text, font, text_x, mouse_x);
+}
+
+void
+ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
+                             int focused, int font, UITextInputStyle style,
+                             int selection_start, int selection_end)
+{
+    DrawUITextInputEx(bounds, text, cursor, focused, 1, font, style,
+                      selection_start, selection_end);
+}
+
+int
 EditUIText(UITextEdit edit)
 {
     int changed = 0;

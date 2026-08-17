@@ -10,6 +10,7 @@ typedef struct UITextFieldState {
     int cursor;
     int anchor;
     int focused;
+    int dragging;
 } UITextFieldState;
 
 static UIWidgetNode *ui_tree_nodes = NULL;
@@ -642,6 +643,7 @@ void
 UIRouteInput(void)
 {
     Vector2 mouse;
+    int hit;
     int target;
     int i;
     int pressed;
@@ -649,6 +651,7 @@ UIRouteInput(void)
     if(ui_committed_node_count <= 0)
         return;
     mouse = GetMousePosition();
+    hit = UIHitTestNode(mouse);
     pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
@@ -667,8 +670,7 @@ UIRouteInput(void)
         if(before != node->flags)
             ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
-        ? UIHitTestNode(mouse) : -1;
+    target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ? hit : -1;
     if(target >= 0 && ui_committed_nodes[target].kind == UI_WIDGET_BUTTON_NODE &&
        !ui_committed_nodes[target].data.button.spec.disabled) {
         UIEvent event;
@@ -702,11 +704,41 @@ UIRouteInput(void)
                 ui_text_field_event(node, focused ? UI_EVENT_FOCUS
                                                   : UI_EVENT_BLUR, GetTime());
             }
+            if(focused) {
+                int font = field->font > 0 ? field->font : GetUIFontSize();
+                int padding = field->style.padding_x > 0
+                    ? field->style.padding_x : ScaleUIPx(10);
+
+                state->cursor = ui_text_cursor_at_x(
+                    field->text, font, (int)node->bounds.x + padding,
+                    (int)mouse.x);
+                state->anchor = state->cursor;
+                state->dragging = 1;
+                ui_text_field_event(node, UI_EVENT_SELECTION_CHANGED,
+                                    GetTime());
+            } else {
+                state->dragging = 0;
+            }
         }
         if(field->focused != NULL)
             *field->focused = state->focused;
         if(!state->focused || field->text == NULL || field->text_size == 0)
             continue;
+        if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            int font = field->font > 0 ? field->font : GetUIFontSize();
+            int padding = field->style.padding_x > 0
+                ? field->style.padding_x : ScaleUIPx(10);
+            int cursor = ui_text_cursor_at_x(
+                field->text, font, (int)node->bounds.x + padding,
+                (int)mouse.x);
+
+            if(cursor != state->cursor) {
+                state->cursor = cursor;
+                selection_changed = 1;
+            }
+        }
+        if(state->dragging && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+            state->dragging = 0;
         start = state->anchor < state->cursor ? state->anchor : state->cursor;
         end = state->anchor > state->cursor ? state->anchor : state->cursor;
         if((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) &&
@@ -716,6 +748,28 @@ UIRouteInput(void)
             selection_changed = 1;
             start = 0;
             end = state->cursor;
+        }
+        if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+            int cursor = state->cursor;
+
+            if(IsKeyPressed(KEY_HOME))
+                cursor = 0;
+            else if(IsKeyPressed(KEY_END))
+                cursor = (int)strlen(field->text);
+            else if(IsKeyPressed(KEY_LEFT))
+                cursor = ui_utf8_prev_offset(field->text, cursor);
+            else
+                cursor = ui_utf8_next_offset(field->text, cursor);
+            state->cursor = cursor;
+            if(!shift)
+                state->anchor = cursor;
+            selection_changed = 1;
+            start = state->anchor < state->cursor
+                ? state->anchor : state->cursor;
+            end = state->anchor > state->cursor
+                ? state->anchor : state->cursor;
         }
         codepoint = GetCharPressed();
         while(codepoint > 0) {
@@ -864,10 +918,13 @@ DrawUITree(void)
                     display = masked;
                 }
             }
-            DrawUITextInput(node->bounds, display,
-                            state != NULL ? state->cursor : 0,
-                            state != NULL ? state->focused : 0, 1,
-                            field.font, field.style);
+            ui_draw_text_input_selection(
+                node->bounds, display, state != NULL ? state->cursor : 0,
+                state != NULL ? state->focused : 0, field.font, field.style,
+                state != NULL && state->anchor < state->cursor
+                    ? state->anchor : (state != NULL ? state->cursor : 0),
+                state != NULL && state->anchor > state->cursor
+                    ? state->anchor : (state != NULL ? state->cursor : 0));
             free(masked);
             break;
         }

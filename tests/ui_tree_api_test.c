@@ -201,5 +201,37 @@ main(void)
         check_int("replacement selection event", saw_selection, 1);
     }
 
+    {
+        char value[32] = "abcdef";
+        int cursor = 6;
+        int focused = 0;
+
+        BeginUI(46);
+        TextField((TextFieldProps){
+            .bounds = {10, 10, 220, 40}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .focused = &focused, .focus_id = 78, .font = 16
+        });
+        UIReconcileTree();
+        UILayoutTree();
+        KryonInjectReset();
+        KryonInjectMousePosition(20, 25);
+        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+        KryonInjectPump();
+        UIRouteInput();
+        KryonInjectMousePosition(220, 25);
+        KryonInjectPump();
+        UIRouteInput();
+        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+        KryonInjectPump();
+        UIRouteInput();
+        KryonInjectText("z");
+        KryonInjectPump();
+        UIRouteInput();
+        check_int("mouse selection typing replaces text", strcmp(value, "z"), 0);
+        check_int("mouse replacement cursor", cursor, 1);
+        while(NextUIEvent(&event)) { }
+    }
+
     return failures == 0 ? 0 : 1;
 }
