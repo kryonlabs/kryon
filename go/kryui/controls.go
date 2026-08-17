@@ -121,6 +121,14 @@ func (a *TextArea) SetText(text string) {
 
 func (a *TextArea) Clear() { a.SetText("") }
 
+func (a *TextArea) Focused() bool { return a != nil && a.focused }
+
+func (a *TextArea) SetFocused(focused bool) {
+	if a != nil {
+		a.focused = focused
+	}
+}
+
 func (a *TextArea) Draw(bounds Rectangle, font, lineGap int32, placeholder string,
 	syntax UISyntaxMode, style UITextInputStyle) bool {
 	if a == nil {
