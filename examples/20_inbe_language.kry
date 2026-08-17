@@ -22,7 +22,7 @@ frame main {
     Background(GetThemeBackground())
     Text("Choose Language", ScaleUIPx(141), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
     Text("Language", ScaleUIPx(40), ScaleUIPx(243), UI_TEXT_16, GetThemeText())
-    Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), ScaleUIPx(345), ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
+    Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
     Text("Next", ScaleUIPx(204), ScaleUIPx(335), UI_TEXT_12, GetThemeText())
     EndUIFocus()
     EndDrawing()

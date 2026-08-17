@@ -622,10 +622,14 @@ ctrl_dropdown(KrbImage *img, const KryBackend *b, const KrbControl *c,
             op += strlen(op) + 1;
         cur = op;
     }
-    b->rect(x, y, w, h, fill);
-    /* clear the square fill corners the rounded border leaves outside */
-    b->rect(x, y, 3, 3, 0xffffffffu);
-    b->rect(x, y + h - 3, 3, 3, 0xffffffffu);
+    /* rounded fill, radius 3 */
+    b->rect(x + 3, y, w - 6, 1, fill);
+    b->rect(x + 2, y + 1, w - 4, 1, fill);
+    b->rect(x + 1, y + 2, w - 2, 1, fill);
+    b->rect(x, y + 3, w, h - 6, fill);
+    b->rect(x + 1, y + h - 3, w - 2, 1, fill);
+    b->rect(x + 2, y + h - 2, w - 4, 1, fill);
+    b->rect(x + 3, y + h - 1, w - 6, 1, fill);
     /* rounded border, radius 3 (kryon's dropdown widget corners) */
     b->rect(x + 3, y, w - 6, 1, border);
     b->rect(x + 3, y + h - 1, w - 6, 1, border);
@@ -635,15 +639,34 @@ ctrl_dropdown(KrbImage *img, const KryBackend *b, const KrbControl *c,
     b->rect(x + 2, y + 1, 1, 1, border);
     b->rect(x + 1, y + 2, 1, 1, border);
     b->rect(x, y + 3, 1, 1, border);
-    b->rect(x + w - 3, y, 3, 4, border);
+    b->rect(x + w - 4, y, 1, 1, border);
+    b->rect(x + w - 3, y + 1, 1, 1, border);
+    b->rect(x + w - 2, y + 2, 1, 1, border);
     b->rect(x + w - 1, y + 3, 1, h - 6, border);
     b->rect(x + 3, y + h - 1, 1, 1, border);
     b->rect(x + 2, y + h - 2, 1, 1, border);
     b->rect(x + 1, y + h - 3, 1, 1, border);
     b->rect(x, y + h - 4, 1, 1, border);
-    b->rect(x + w - 3, y + h - 4, 3, 4, border);
+    b->rect(x + w - 4, y + h - 1, 1, 1, border);
+    b->rect(x + w - 3, y + h - 2, 1, 1, border);
+    b->rect(x + w - 2, y + h - 3, 1, 1, border);
+    b->rect(x + w - 1, y + h - 4, 1, 1, border);
     b->text(cur, x + b->scale_px(6), y + (h - font) / 2, font, tcol);
-    b->text("v", x + w - b->scale_px(25), y + (h - font) / 2, font, tcol);
+    {
+        /* diamond indicator, pixel-measured from the native widget:
+         * two converging columns per row, 6 rows, centered right */
+        static const signed char rows[6][2] = {
+            {0, 5}, {1, 4}, {2, 3}, {2, 3}, {1, 4}, {0, 5}
+        };
+        int cx = x + w - b->scale_px(28);
+        int cy = y + (h - 6) / 2;
+        int k;
+
+        for(k = 0; k < 6; k++) {
+            b->rect(cx + rows[k][0], cy + k, 1, 1, border);
+            b->rect(cx + rows[k][1], cy + k, 1, 1, border);
+        }
+    }
 
     b->mouse(&mx, &my);
     if(b->mouse_pressed(KRY_MOUSE_LEFT)) {
@@ -782,7 +805,14 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
             fill = b->theme_color(KRY_THEME_BUTTON);
         else
             fill = b->theme_color(KRY_THEME_SURFACE);
-        b->rect(x, y, w, h, fill);
+        /* rounded fill, radius 3 */
+    b->rect(x + 3, y, w - 6, 1, fill);
+    b->rect(x + 2, y + 1, w - 4, 1, fill);
+    b->rect(x + 1, y + 2, w - 2, 1, fill);
+    b->rect(x, y + 3, w, h - 6, fill);
+    b->rect(x + 1, y + h - 3, w - 2, 1, fill);
+    b->rect(x + 2, y + h - 2, w - 4, 1, fill);
+    b->rect(x + 3, y + h - 1, w - 6, 1, fill);
         {
             unsigned border = b->theme_color(KRY_THEME_ICON);
 
@@ -873,7 +903,14 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
 
         val[0] = '\0';
         KrbReadCStr(img, path, val, sizeof(val));
-        b->rect(x, y, w, h, fill);
+        /* rounded fill, radius 3 */
+    b->rect(x + 3, y, w - 6, 1, fill);
+    b->rect(x + 2, y + 1, w - 4, 1, fill);
+    b->rect(x + 1, y + 2, w - 2, 1, fill);
+    b->rect(x, y + 3, w, h - 6, fill);
+    b->rect(x + 1, y + h - 3, w - 2, 1, fill);
+    b->rect(x + 2, y + h - 2, w - 4, 1, fill);
+    b->rect(x + 3, y + h - 1, w - 6, 1, fill);
         b->rect(x, y, w, 1, border);
         b->rect(x, y + h - 1, w, 1, border);
         b->rect(x, y, 1, h, border);
