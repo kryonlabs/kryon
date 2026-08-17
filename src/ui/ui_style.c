@@ -38,8 +38,10 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
         };
     case THEME_STYLE_MATERIAL:
         return (UIStyleTokens){
-            .control_radius = 0.50f,
-            .panel_radius = 0.30f,
+            /* Subtle rounding, not full pills: 0.50/0.30 read as bloated on
+             * dense desktop UIs (krait). Material-ish, not balloon-ish. */
+            .control_radius = 0.15f,
+            .panel_radius = 0.08f,
             .control_alpha = 255,
             .panel_alpha = 255,
             .border_alpha = 255,
