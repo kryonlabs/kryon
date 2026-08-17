@@ -1181,6 +1181,11 @@ kir_parse_file(const char *path, const char *root)
            cond_top_step(t, tframes, &tframe_count, cur_guard,
                          sizeof(cur_guard), &consts, rel, line_no)) {
             continue;
+        } else if(mode == TOP && t[0] == '#' &&
+                  strncmp(t, "#if", 3) != 0 && strncmp(t, "#else", 5) != 0 &&
+                  strncmp(t, "#endif", 6) != 0 &&
+                  strncmp(t, "#defined", 8) != 0) {
+            /* plain # comment at top level — never a header */
         } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
