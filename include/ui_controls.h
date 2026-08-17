@@ -145,6 +145,9 @@ typedef struct {
 /* Public control style ABI. Apps can select a named ThemeStyle or override
  * these tokens directly when they need full control. */
 typedef struct UIStyleTokens {
+    /* Corner radii in unscaled UI pixels (DPI-scaled at draw time), NOT the
+     * 0..0.5 normalized fraction DrawRectangleRounded takes. A fixed radius
+     * keeps tall controls from rounding into pills. */
     float control_radius;
     float panel_radius;
     unsigned char control_alpha;

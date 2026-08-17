@@ -58,7 +58,7 @@ void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
 int ui_retro_style(void);
 int ui_modern_style(void);
-float ui_control_radius(float classic_radius);
+float ui_radius_px(Rectangle bounds, float radius_px);
 int ui_control_bevel_enabled(void);
 int ui_touch_target_min(void);
 Color ui_alpha(Color color, unsigned char alpha);

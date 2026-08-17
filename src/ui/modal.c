@@ -183,7 +183,8 @@ DrawUIActionModal(ModalProps modal)
         Color border = LightenUIColor(c_surface, 24);
         if(tokens.panel_alpha < surface.a)
             surface.a = tokens.panel_alpha;
-        ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
+        ui_draw_control_background(bounds, surface, border,
+                                   ui_radius_px(bounds, tokens.panel_radius));
     } else {
         DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
         DrawUIBevel(modal_x, modal_y, modal_w, modal_h,
@@ -356,7 +357,8 @@ DrawUIModalFrame(int width, int height, const char *title,
         Color border = LightenUIColor(c_surface, 24);
         if(tokens.panel_alpha < surface.a)
             surface.a = tokens.panel_alpha;
-        ui_draw_control_background(bounds, surface, border, tokens.panel_radius);
+        ui_draw_control_background(bounds, surface, border,
+                                   ui_radius_px(bounds, tokens.panel_radius));
     } else {
         DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
         DrawUIBevel(frame.x, frame.y, frame.w, frame.h,

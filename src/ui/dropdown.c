@@ -537,7 +537,9 @@ draw_dropdown_menu(int id)
             panel.a = tokens.panel_alpha;
         option_text = ui_dropdown_text_on(panel);
         ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
-                                   panel, border, tokens.panel_radius);
+                                   panel, border,
+                                   ui_radius_px((Rectangle){x, dropdown_y, w, dropdown_h},
+                                                tokens.panel_radius));
     } else {
         DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
         DrawUIBevel(x, dropdown_y, w, dropdown_h,
@@ -599,7 +601,9 @@ draw_dropdown_menu(int id)
                         (float)(visible_h - ScaleUIPx(4))
                     };
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
-                        DrawRectangleRounded(hover_bounds, tokens.control_radius,
+                        DrawRectangleRounded(hover_bounds,
+                                             ui_radius_px(hover_bounds,
+                                                          tokens.control_radius),
                                              12, c_button_hover);
                 } else {
                     DrawRectangle(x, visible_y, w, visible_h, c_button_hover);

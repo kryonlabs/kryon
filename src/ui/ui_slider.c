@@ -567,8 +567,9 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         Color border = LightenUIColor(box_color, 22);
         border.a = border.a > 150 ? 150 : border.a;
-        DrawRectangleRounded(box, ui_control_radius(0.06f), 8, box_color);
-        DrawRectangleRoundedLines(box, ui_control_radius(0.06f), 8, border);
+        float radius = ui_radius_px(box, GetUIStyleTokens().control_radius);
+        DrawRectangleRounded(box, radius, 8, box_color);
+        DrawRectangleRoundedLines(box, radius, 8, border);
     } else {
         DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
         DrawUIBevel(x, y + (row_h - box_size) / 2, box_size, box_size,

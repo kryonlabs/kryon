@@ -25,7 +25,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     switch(style) {
     case THEME_STYLE_RETRO:
         return (UIStyleTokens){
-            .control_radius = 0.06f,
+            .control_radius = 2.0f,
             .panel_radius = 0.0f,
             .control_alpha = 255,
             .panel_alpha = 255,
@@ -38,10 +38,10 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
         };
     case THEME_STYLE_MATERIAL:
         return (UIStyleTokens){
-            /* Subtle rounding, not full pills: 0.50/0.30 read as bloated on
-             * dense desktop UIs (krait). Material-ish, not balloon-ish. */
-            .control_radius = 0.15f,
-            .panel_radius = 0.08f,
+            /* Fixed pixels: 4px control / 6px panel corners. Fractional
+             * radii read as pills on tall controls. */
+            .control_radius = 4.0f,
+            .panel_radius = 6.0f,
             .control_alpha = 255,
             .panel_alpha = 255,
             .border_alpha = 255,
@@ -54,7 +54,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     case THEME_STYLE_SYSTEM:
     default:
         return (UIStyleTokens){
-            .control_radius = 0.06f,
+            .control_radius = 2.0f,
             .panel_radius = 0.0f,
             .control_alpha = 255,
             .panel_alpha = 255,
@@ -103,10 +103,18 @@ ui_modern_style(void)
 }
 
 float
-ui_control_radius(float classic_radius)
+ui_radius_px(Rectangle bounds, float radius_px)
 {
-    UIStyleTokens tokens = GetUIStyleTokens();
-    return tokens.bevel_enabled ? classic_radius : tokens.control_radius;
+    float min_side;
+    float radius;
+
+    if(radius_px <= 0.0f)
+        return 0.0f;
+    min_side = bounds.height < bounds.width ? bounds.height : bounds.width;
+    if(min_side <= 0.0f)
+        return 0.0f;
+    radius = (float)ScaleUIPx(radius_px) / min_side;
+    return radius > 0.5f ? 0.5f : radius;
 }
 
 int
@@ -315,7 +323,8 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
                            float classic_radius)
 {
     UIStyleTokens tokens = GetUIStyleTokens();
-    float radius = tokens.bevel_enabled ? classic_radius : tokens.control_radius;
+    float radius = tokens.bevel_enabled ? classic_radius
+                                        : ui_radius_px(bounds, tokens.control_radius);
 
     if(tokens.bevel_enabled) {
         if(classic_radius <= 0.0f) {
