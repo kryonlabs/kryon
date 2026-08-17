@@ -520,25 +520,22 @@ parse_text(KrbBuild *b, const char *call)
         return 0;
     snprintf(name, sizeof(name), "text%d", b->node_count);
     if(strstr(parts[0], "TextFormat") != NULL) {
-        const char *comma = strrchr(parts[0], ',');
+        /* TextFormat("fmt", value, x, y, font, color): split_args puts the
+         * format string in parts[0] and the bound value in parts[1] —
+         * everything shifts one slot relative to plain Text. */
         char ident[KIR_NAME_MAX];
-        const char *q;
+        const char *q = skip_ws(parts[1]);
         size_t nident = 0;
 
-        extract_string(parts[0], name, sizeof(name));
-        snprintf(ident, sizeof(ident), "%s", name);
-        if(comma != NULL) {
-            q = skip_ws(comma + 1);
-            while((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
-                  (*q >= '0' && *q <= '9') || *q == '_') {
-                if(nident + 1 < sizeof(ident))
-                    ident[nident++] = *q;
-                q++;
-            }
-            ident[nident] = '\0';
-            if(ident[0] != '\0')
-                snprintf(name, sizeof(name), "%s", ident);
+        while((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
+              (*q >= '0' && *q <= '9') || *q == '_') {
+            if(nident + 1 < sizeof(ident))
+                ident[nident++] = *q;
+            q++;
         }
+        ident[nident] = '\0';
+        snprintf(name, sizeof(name),
+                 ident[0] != '\0' ? "%s" : "text%d", ident[0] != '\0' ? ident : "");
         n = add_node(b, 2, name);
         if(n == NULL)
             return 0;
@@ -564,16 +561,24 @@ parse_text(KrbBuild *b, const char *call)
             return 0;
         extract_string(parts[0], n->text, sizeof(n->text));
     }
-    if(count > 1 && parse_coord(parts[1], &n->x, &scaled) && scaled)
-        n->flags |= 1 << 2;
-    if(count > 2 && parse_coord(parts[2], &n->y, &scaled) && scaled)
-        n->flags |= 1 << 3;
-    if(count > 3)
-        n->font_size = font_size_of(parts[3]);
-    if(count > 4)
-        n->color = parse_color(parts[4]);
-    else
-        n->color = 0x80000001u;
+    {
+        int is_tf = strstr(call, "TextFormat") != NULL;
+        int xi = is_tf ? 2 : 1;
+        int yi = is_tf ? 3 : 2;
+        int fi = is_tf ? 4 : 3;
+        int ci = is_tf ? 5 : 4;
+
+        if(count > xi && parse_coord(parts[xi], &n->x, &scaled) && scaled)
+            n->flags |= 1 << 2;
+        if(count > yi && parse_coord(parts[yi], &n->y, &scaled) && scaled)
+            n->flags |= 1 << 3;
+        if(count > fi)
+            n->font_size = font_size_of(parts[fi]);
+        if(count > ci)
+            n->color = parse_color(parts[ci]);
+        else
+            n->color = 0x80000001u;
+    }
     return 1;
 }
 
@@ -1919,6 +1924,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_dropdown(b, call);
     if(starts_ident(call, "NavButton"))
         return parse_navbutton(b, call);
+    if(starts_ident(call, "TextFormat"))
+        return parse_text(b, call);
     if(starts_ident(call, "EndScroll")) {
         b->scroll_open = 0;
         return 1;

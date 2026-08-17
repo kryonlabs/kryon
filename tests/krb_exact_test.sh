@@ -25,7 +25,7 @@ trap cleanup EXIT INT TERM
 mkdir -p "$work"
 
 fails=0
-for kry in "$root"/examples/20_inbe_language.kry "$root"/examples/21_inbe_settings.kry "$root"/examples/22_inbe_manual.kry "$root"/examples/23_inbe_app.kry "$root"/examples/02_buttons.kry; do
+for kry in "$root"/examples/20_inbe_language.kry "$root"/examples/21_inbe_settings.kry "$root"/examples/22_inbe_manual.kry "$root"/examples/23_inbe_app.kry "$root"/examples/24_inbe_habits.kry "$root"/examples/02_buttons.kry; do
     name=$(basename "$kry" .kry)
 
     "$k2b" --no-main --root "$root/examples" -o "$work" "$kry" >/dev/null 2>&1
