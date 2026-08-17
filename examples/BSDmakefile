@@ -1,4 +1,4 @@
-# Native make shim. The canonical build is the GNU Makefile.
+# Native BSD make shim. The canonical build is the GNU Makefile.
 GMAKE ?= gmake
 
 .MAIN: all
