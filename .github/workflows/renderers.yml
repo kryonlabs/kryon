@@ -56,6 +56,26 @@ jobs:
           name: krb-player-web
           path: krb-player-web/
 
+  exactness:
+    # Cross-engine byte-exactness needs no GL (SDL dummy + software).
+    # The native pixel-compare vs the inbe C build additionally needs a
+    # working screenshot pipeline: xvfb-run, as inbe's own CI does.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tools
+        run: |
+          make build/linux-x86_64/bin/k2b build/linux-x86_64/bin/krb-run                build/linux-x86_64/bin/krb-sdl                build/linux-x86_64/tests/krb_logic_test                build/linux-x86_64/tests/krb_asset_test                KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+      - name: Cross-engine exactness
+        run: sh tests/krb_exact_test.sh .
+      - name: Unit tests
+        run: |
+          build/linux-x86_64/tests/krb_logic_test
+          build/linux-x86_64/tests/krb_asset_test
+      # Native gate: once inbe CI checks out kryon master as its vendor,
+      # run tests/krb_exact_native_test.sh per ported screen under xvfb:
+      #   xvfb-run -a ./inbe --screenshot native.png --screenshot-scene language ...
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [native, web]
