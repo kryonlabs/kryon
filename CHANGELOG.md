@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.11 - 2026-08-17
+
+### Changed
+
+- Release: bump version to v0.1.11
+- Ui: make text rendering event efficient
+
 ## v0.1.10 - 2026-08-17
 
 ### Changed
