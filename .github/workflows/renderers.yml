@@ -35,11 +35,14 @@ jobs:
         run: brew install make
       - name: Build krb-run
         run: |
-          maker=make
-          [ "${{ runner.os }}" = macOS ] && maker=gmake
           target="${{ matrix.build_dir }}/bin/krb-run"
-          "$maker" "$target" CC=${{ matrix.cc }} \
-            KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+          if [ "${{ runner.os }}" = macOS ]; then
+            env -u MAKE gmake "$target" CC=${{ matrix.cc }} \
+              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+          else
+            make "$target" CC=${{ matrix.cc }} \
+              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+          fi
           [ "${{ matrix.suffix }}" = windows-x86_64 ] && target="$target.exe"
           cp "$target" build/krb-run
       - name: Rename
