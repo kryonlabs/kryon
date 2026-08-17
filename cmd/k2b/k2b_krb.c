@@ -1655,6 +1655,43 @@ parse_spinbox(KrbBuild *b, const char *call)
 
 /* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
  * range; EndScroll() closes it. Widgets between get parent = the scroll. */
+/* TextField(x, y, w, h, &state.field) -> TEXTINPUT node. */
+static int
+parse_textfield(KrbBuild *b, const char *call)
+{
+    char parts[8][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    char path[KIR_NAME_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    int scaled;
+    int count;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 5)
+        return 0;
+    strip_amp(parts[4], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    snprintf(name, sizeof(name), "field%d", b->node_count);
+    n = add_node(b, KRB_NODE_TEXTINPUT, name);
+    if(n == NULL)
+        return 0;
+    snprintf(n->name, sizeof(n->name), "%s", path);
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[3], &n->h, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_H;
+    n->font_size = 16;
+    return 1;
+}
+
 static int
 parse_scroll(KrbBuild *b, const char *call)
 {
@@ -1712,6 +1749,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_rect(b, call);
     if(starts_ident(call, "Scroll"))
         return parse_scroll(b, call);
+    if(starts_ident(call, "TextField"))
+        return parse_textfield(b, call);
     if(starts_ident(call, "EndScroll")) {
         b->scroll_open = 0;
         return 1;

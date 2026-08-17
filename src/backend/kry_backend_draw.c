@@ -169,6 +169,14 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
                    KryPictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
 }
 
+static unsigned
+draw_text_key(void)
+{
+    int c = GetCharPressed();
+
+    return c > 0 && c < 0x110000u ? (unsigned)c : 0;
+}
+
 static int
 draw_wheel(void)
 {
@@ -208,6 +216,7 @@ const KryBackend KryBackendDraw = {
     draw_ring,
     NULL, /* texture_rgba: host textures load through draw_texture */
     draw_wheel,
+    draw_text_key,
 };
 
 static void

@@ -131,6 +131,13 @@ KrySwButtonDown(KrySw *sw, int button)
 }
 
 void
+KrySwText(KrySw *sw, unsigned codepoint)
+{
+    if(sw->keys_n < 16)
+        sw->keys[sw->keys_n++] = codepoint;
+}
+
+void
 KrySwWheel(KrySw *sw, int dy)
 {
     sw->wheel += dy;
@@ -148,6 +155,8 @@ void
 KrySwAdvance(KrySw *sw, float dt)
 {
     sw->buttons_pressed = 0;
+    sw->keys_n = 0;
+    sw->wheel = 0;
     sw->now += dt;
 }
 
@@ -581,6 +590,22 @@ b_mouse_pressed(int button)
     return (g_sw->buttons_pressed >> button) & 1;
 }
 
+static unsigned
+b_text_key(void)
+{
+    if(g_sw == NULL || g_sw->keys_n == 0)
+        return 0;
+    {
+        unsigned cp = g_sw->keys[0];
+        int i;
+
+        for(i = 1; i < g_sw->keys_n; i++)
+            g_sw->keys[i - 1] = g_sw->keys[i];
+        g_sw->keys_n--;
+        return cp;
+    }
+}
+
 static int
 b_wheel(void)
 {
@@ -741,5 +766,6 @@ KrySwBackend(KrySw *sw)
     sw->backend.ring = b_ring;
     sw->backend.texture_rgba = b_texture_rgba;
     sw->backend.wheel = b_wheel;
+    sw->backend.text_key = b_text_key;
     return &sw->backend;
 }

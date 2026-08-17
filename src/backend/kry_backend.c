@@ -128,6 +128,12 @@ null_wheel(void)
     return 0;
 }
 
+static unsigned
+null_text_key(void)
+{
+    return 0;
+}
+
 static void
 null_circle(int cx, int cy, int r, unsigned color)
 {
@@ -167,6 +173,7 @@ const KryBackend KryBackendNull = {
     null_ring,
     NULL, /* texture_rgba: not expressible on a stub backend */
     null_wheel,
+    null_text_key,
 };
 
 static const KryBackend *g_backend = &KryBackendNull;

@@ -31,6 +31,7 @@ enum {
     KRB_NODE_CONTROL = 9,
     KRB_NODE_CIRCLE = 10, /* x,y = center; w = radius */
     KRB_NODE_RING = 11,   /* x,y = center; w = outer radius; h = inner */
+    KRB_NODE_TEXTINPUT = 13, /* bounds = field; name_off = CSTR mount */
     KRB_NODE_SCROLL = 12  /* bounds = viewport; font_size = content height;
                            * name_off = mount path of the pixel offset */
 };
@@ -165,6 +166,7 @@ typedef struct KrbImage {
     int mount_count;
     const unsigned char *assets; /* v2 asset directory (20-byte entries) */
     unsigned asset_count;
+    char focus_path[96]; /* mounted path of the focused TEXTINPUT, "" none */
 } KrbImage;
 
 int KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len);

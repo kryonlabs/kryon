@@ -62,6 +62,16 @@ var Module = {
         return [Math.round((e.clientX - r.left) * canvas.width / r.width),
                 Math.round((e.clientY - r.top) * canvas.height / r.height)];
     }
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && Module._krb_web_text) {
+            e.preventDefault();
+            Module._krb_web_text(8);
+        }
+    });
+    window.addEventListener('keypress', function(e) {
+        if (Module._krb_web_text && e.charCode > 31)
+            Module._krb_web_text(e.charCode);
+    });
     canvas.addEventListener('wheel', function(e) {
         e.preventDefault();
         if (Module._krb_web_wheel)

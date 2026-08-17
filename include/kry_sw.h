@@ -39,6 +39,8 @@ typedef struct KrySw {
     int buttons_down;
     int buttons_pressed;
     int wheel; /* pending wheel delta, consumed by the backend poll */
+    unsigned keys[16]; /* typed codepoints (0x08 = backspace) */
+    int keys_n;
     float now;
     int scale; /* UI scale in percent, 100 = 1:1 */
     unsigned theme[KRY_THEME_COUNT];
@@ -61,6 +63,7 @@ void KrySwMouse(KrySw *sw, int x, int y);
 void KrySwButtonDown(KrySw *sw, int button);
 void KrySwButtonUp(KrySw *sw, int button);
 void KrySwWheel(KrySw *sw, int dy);
+void KrySwText(KrySw *sw, unsigned codepoint);
 void KrySwAdvance(KrySw *sw, float dt); /* clears pressed edges, ticks time */
 
 void KrySwSetTheme(KrySw *sw, int slot, unsigned rgba);

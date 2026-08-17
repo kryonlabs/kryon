@@ -769,6 +769,77 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         }
         break;
     }
+    case KRB_NODE_TEXTINPUT: {
+        char val[256];
+        const char *path = KrbString(img, n->name_off);
+        int fnt = n->font_size > 0 ? n->font_size : 16;
+        int focused = strcmp(img->focus_path, path) == 0;
+        unsigned fill = b->theme_color(KRY_THEME_SURFACE);
+        unsigned border = b->theme_color(KRY_THEME_ICON);
+        int mx = 0;
+        int my = 0;
+
+        val[0] = '\0';
+        KrbReadCStr(img, path, val, sizeof(val));
+        b->rect(x, y, w, h, fill);
+        b->rect(x, y, w, 1, border);
+        b->rect(x, y + h - 1, w, 1, border);
+        b->rect(x, y, 1, h, border);
+        b->rect(x + w - 1, y, 1, h, border);
+        if(val[0] != '\0')
+            b->text(val, x + b->scale_px(6), y + (h - fnt) / 2, fnt,
+                    b->theme_color(KRY_THEME_TEXT));
+        b->mouse(&mx, &my);
+        if(b->mouse_pressed(KRY_MOUSE_LEFT) && mx >= x && mx < x + w &&
+           my >= y && my < y + h && path[0] != '\0') {
+            snprintf(img->focus_path, sizeof(img->focus_path), "%s", path);
+            focused = 1;
+        }
+        if(focused) {
+            /* caret: blink at ~2 Hz */
+            if(((int)(b->time() * 2.0f)) % 2 == 0)
+                b->rect(x + b->scale_px(6) + b->measure_text(val, fnt),
+                        y + b->scale_px(4), 1, h - b->scale_px(8),
+                        b->theme_color(KRY_THEME_TEXT));
+            while(b->text_key != NULL) {
+                unsigned cp = b->text_key();
+
+                if(cp == 0)
+                    break;
+                if(cp == 0x08) {
+                    size_t ln = strlen(val);
+
+                    if(ln > 0) {
+                        /* strip one UTF-8 rune */
+                        while(ln > 1 && (val[ln - 1] & 0xc0) == 0x80)
+                            ln--;
+                        val[ln - 1] = '\0';
+                    }
+                    KrbWriteCStr(img, path, val);
+                } else if(cp >= 32 && cp < 0x110000) {
+                    char tmp[8];
+                    int tl = 0;
+
+                    if(cp < 0x80) {
+                        tmp[tl++] = (char)cp;
+                    } else if(cp < 0x800) {
+                        tmp[tl++] = (char)(0xc0 | (cp >> 6));
+                        tmp[tl++] = (char)(0x80 | (cp & 0x3f));
+                    } else {
+                        tmp[tl++] = (char)(0xe0 | (cp >> 12));
+                        tmp[tl++] = (char)(0x80 | ((cp >> 6) & 0x3f));
+                        tmp[tl++] = (char)(0x80 | (cp & 0x3f));
+                    }
+                    tmp[tl] = '\0';
+                    if(strlen(val) + (size_t)tl < sizeof(val)) {
+                        strcat(val, tmp);
+                        KrbWriteCStr(img, path, val);
+                    }
+                }
+            }
+        }
+        break;
+    }
     case KRB_NODE_CIRCLE:
         if(b->circle != NULL && w > 0)
             b->circle(x, y, w, color);

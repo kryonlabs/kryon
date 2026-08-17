@@ -83,6 +83,7 @@ main(int argc, char **argv)
         return 1;
     }
     SDL_SetWindowTitle(window, "krb-sdl");
+    SDL_StartTextInput();
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
                                 SDL_TEXTUREACCESS_STREAMING, w, h);
@@ -106,6 +107,11 @@ main(int argc, char **argv)
                 KrySwButtonUp(&sw, 0);
             else if(ev.type == SDL_MOUSEWHEEL)
                 KrySwWheel(&sw, ev.wheel.y * 50);
+            else if(ev.type == SDL_TEXTINPUT)
+                KrySwText(&sw, (unsigned)(unsigned char)ev.text.text[0]);
+            else if(ev.type == SDL_KEYDOWN &&
+                    ev.key.keysym.sym == SDLK_BACKSPACE)
+                KrySwText(&sw, 0x08);
         }
         if(!running)
             break;

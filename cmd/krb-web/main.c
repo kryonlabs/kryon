@@ -95,6 +95,12 @@ krb_web_mouse(int x, int y)
 }
 
 void
+krb_web_text(int cp)
+{
+    KrySwText(&g_sw, (unsigned)cp);
+}
+
+void
 krb_web_wheel(int dy)
 {
     KrySwWheel(&g_sw, dy);

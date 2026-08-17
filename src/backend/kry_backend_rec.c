@@ -136,6 +136,12 @@ r_wheel(void)
     return g_rec->inner->wheel != NULL ? g_rec->inner->wheel() : 0;
 }
 
+static unsigned
+r_text_key(void)
+{
+    return g_rec->inner->text_key != NULL ? g_rec->inner->text_key() : 0;
+}
+
 static int
 r_width(void)
 {
@@ -199,6 +205,7 @@ KryBackendRecBackend(KryBackendRec *rec, FILE *log, const KryBackend *inner)
     rec->backend.ring = r_ring;
     rec->backend.texture_rgba = r_texture_rgba;
     rec->backend.wheel = r_wheel;
+    rec->backend.text_key = r_text_key;
     g_rec = rec;
     return &rec->backend;
 }

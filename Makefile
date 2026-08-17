@@ -218,7 +218,7 @@ $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 # Needs emcc on PATH (e.g. `source ~/emsdk/emsdk_env.sh`).
 krb-web: $(KRY_SW_SRCS) $(KRY_SW_HDRS) cmd/krb-web/main.c cmd/krb-web/shell.html | $(KRB_WEB_DIR)
 	$(EMCC) -Wall -Wextra -Os -Iinclude \
-		-sEXPORTED_FUNCTIONS=_krb_web_mouse,_krb_web_button,_krb_web_start,_main \
+		-sEXPORTED_FUNCTIONS=_krb_web_mouse,_krb_web_button,_krb_web_wheel,_krb_web_text,_krb_web_start,_main \
 		-sEXPORTED_RUNTIME_METHODS=FS \
 		-sALLOW_MEMORY_GROWTH=1 \
 		--shell-file cmd/krb-web/shell.html \
