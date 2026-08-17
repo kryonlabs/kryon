@@ -138,12 +138,28 @@ const (
 	KeyEscape       int32 = 256
 	KeyEnter        int32 = 257
 	KeyBackspace    int32 = 259
+	KeyInsert       int32 = 260
+	KeyDelete       int32 = 261
 	KeyRight        int32 = 262
 	KeyLeft         int32 = 263
 	KeyDown         int32 = 264
 	KeyUp           int32 = 265
+	KeyHome         int32 = 268
+	KeyEnd          int32 = 269
+	KeyF2           int32 = 291
+	KeyF5           int32 = 294
 	KeyLeftControl  int32 = 341
 	KeyRightControl int32 = 345
+	KeyKpEnter      int32 = 335
+	KeyLeftBracket  int32 = 91
+	KeyRightBracket int32 = 93
+	KeyR            int32 = 82
+	KeyS            int32 = 83
+)
+
+var (
+	White = Color{R: 255, G: 255, B: 255, A: 255}
+	Black = Color{R: 0, G: 0, B: 0, A: 255}
 )
 
 // ---------------------------------------------------------------------------
@@ -215,8 +231,29 @@ func DrawRectangle(x, y, w, h int32, c Color) {
 
 func DrawRectangleRec(r Rectangle, c Color) { C.DrawRectangleRec(r.toC(), c.toC()) }
 
+func DrawRectangleLinesEx(r Rectangle, lineThickness float32, c Color) {
+	C.DrawRectangleLinesEx(r.toC(), C.float(lineThickness), c.toC())
+}
+
+func DrawRectangleRounded(r Rectangle, roundness float32, segments int32, c Color) {
+	C.DrawRectangleRounded(r.toC(), C.float(roundness), C.int(segments), c.toC())
+}
+
 func DrawRectangleGradientH(x, y, w, h int32, left, right Color) {
 	C.DrawRectangleGradientH(C.int(x), C.int(y), C.int(w), C.int(h), left.toC(), right.toC())
+}
+
+func DrawRectangleGradientV(x, y, w, h int32, top, bottom Color) {
+	C.DrawRectangleGradientV(C.int(x), C.int(y), C.int(w), C.int(h), top.toC(), bottom.toC())
+}
+
+func DrawLine(startX, startY, endX, endY int32, c Color) {
+	C.DrawLine(C.int(startX), C.int(startY), C.int(endX), C.int(endY), c.toC())
+}
+
+func Fade(c Color, alpha float32) Color {
+	cc := C.Fade(c.toC(), C.float(alpha))
+	return Color{R: uint8(cc.r), G: uint8(cc.g), B: uint8(cc.b), A: uint8(cc.a)}
 }
 
 func DrawCircleV(center Vector2, radius float32, color Color) {
@@ -239,6 +276,7 @@ func IsKeyDown(key int32) bool    { return bool(C.IsKeyDown(C.int(key))) }
 func GetCharPressed() int32       { return int32(C.GetCharPressed()) }
 
 func IsMouseButtonDown(b int32) bool     { return bool(C.IsMouseButtonDown(C.int(b))) }
+func IsMouseButtonPressed(b int32) bool  { return bool(C.IsMouseButtonPressed(C.int(b))) }
 func IsMouseButtonReleased(b int32) bool { return bool(C.IsMouseButtonReleased(C.int(b))) }
 func GetMousePosition() Vector2          { return vecFromC(C.GetMousePosition()) }
 func GetMouseWheelMove() float32         { return float32(C.GetMouseWheelMove()) }
