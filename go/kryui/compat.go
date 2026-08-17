@@ -125,6 +125,7 @@ const (
 	FilterTrilinear int32 = 2
 
 	KeyNull         int32 = 0
+	KeyTab          int32 = 258
 	KeyZero         int32 = 48
 	KeyOne          int32 = 49
 	KeyTwo          int32 = 50
