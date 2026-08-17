@@ -77,7 +77,7 @@ frame main {
     Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
     Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, UI_PICTURE_FIT_CONTAIN})
     Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
-    EndUIFocus()
+    EndUIFrame()
     EndDrawing()
 }
 EOF

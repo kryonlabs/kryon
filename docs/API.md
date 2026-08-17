@@ -92,6 +92,16 @@ state, updates the layout view size, and begins a frame with
 void BeginUIFrame(int width, int height, float dpi);
 ```
 
+### `EndUIFrame`
+
+Finish the current UI frame after all widgets have been drawn and before the
+backend drawing pass ends. This draws deferred overlays, including dropdowns and
+text-input context menus, and finalizes focus and inspection state.
+
+```c
+void EndUIFrame(void);
+```
+
 ---
 
 ## Canonical App API
@@ -1655,6 +1665,7 @@ int main(void) {
             // Button clicked
         }
 
+        EndUIFrame();
         EndDrawing();
     }
 

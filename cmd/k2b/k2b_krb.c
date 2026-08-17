@@ -2684,7 +2684,7 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
                 width, height);
         fprintf(out, "        %s_krb_draw(0, 0, GetScreenWidth(), GetScreenHeight());\n",
                 screen);
-        fprintf(out, "        EndUIFocus();\n");
+        fprintf(out, "        EndUIFrame();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");
         if(m->app.font_examples)

@@ -194,6 +194,7 @@ func main() {
         kryui.Text(fmt.Sprintf("Clicks: %d", clickCount), 
             20, 150, kryui.UIText16, kryui.GetThemeText())
         
+        kryui.EndUIFrame()
         kryui.EndDrawing()
     }
 }

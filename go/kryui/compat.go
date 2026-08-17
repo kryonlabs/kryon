@@ -222,6 +222,10 @@ func EndDrawing()             { C.EndDrawing() }
 func BeginUIFrame(w, h int32, dpi float32) {
 	C.BeginUIFrame(C.int(w), C.int(h), C.float(dpi))
 }
+
+// EndUIFrame draws deferred overlays and finalizes per-frame UI state.
+// Call it after all widgets and before EndDrawing.
+func EndUIFrame() { C.EndUIFrame() }
 func BeginScissorMode(x, y, w, h int32) {
 	C.BeginScissorMode(C.int(x), C.int(y), C.int(w), C.int(h))
 }

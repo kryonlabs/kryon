@@ -565,7 +565,7 @@ EndUIWindow(void)
     if(window == NULL)
         return;
     ui_window_active = NULL;
-    EndUIFocus();
+    EndUIFrame();
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
     EndTextureMode();
@@ -785,7 +785,7 @@ EndUIWindow(void)
     if(window == NULL)
         return;
     ui_window_active = NULL;
-    EndUIFocus();
+    EndUIFrame();
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
     EndTextureMode();

@@ -45,6 +45,7 @@ void ApplyCurrentUITheme(void);
 int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);
+void EndUIFrame(void);
 void SetUIFrame(Camera2D camera);
 UIFrameState SaveUIFrameState(void);
 void RestoreUIFrameState(UIFrameState state);

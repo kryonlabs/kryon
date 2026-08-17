@@ -38,6 +38,11 @@ screen-space UI frame. If the application uses a transformed UI camera, call
 invalid cameras before using them; a zero-initialized `Camera2D` is treated as
 `GetUIDefaultCamera()` so pointer input does not silently break.
 
+After drawing all widgets, call `EndUIFrame()` before the backend's
+`EndDrawing()`. The closing call draws deferred overlays such as dropdowns and
+text-field context menus, then finalizes focus and inspection state. Applications
+must not reproduce those overlay or finalization steps themselves.
+
 Beginning a frame resets per-frame interaction state:
 
 - input blocking

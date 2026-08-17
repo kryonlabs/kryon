@@ -279,7 +279,7 @@ capture_source(PreviewSession *session, const char *source, const char *out,
     ClearBackground(GetThemeBackground());
     BeginUIFrame(width, height, 1.0f);
     DrawAppScreen(session->host, (Rectangle){0, 0, (float)width, (float)height});
-    EndUIFocus();
+    EndUIFrame();
     EndTextureMode();
     image = LoadImageFromTexture(target.texture);
     UnloadRenderTexture(target);
@@ -515,7 +515,7 @@ capture_cartridge(const char *krb_path, const char *out, int width, int height)
     ClearBackground(GetThemeBackground());
     BeginUIFrame(width, height, 1.0f);
     KrbDraw(&img, 0, 0, width, height);
-    EndUIFocus();
+    EndUIFrame();
     EndTextureMode();
     KrbFree(&img);
     image = LoadImageFromTexture(target.texture);

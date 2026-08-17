@@ -60,7 +60,10 @@ func (r *runtime) BeginDrawing() {
 	}
 	BeginUIFrame(w, h, dpi)
 }
-func (r *runtime) EndDrawing()                                  { EndDrawing() }
+func (r *runtime) EndDrawing() {
+	EndUIFrame()
+	EndDrawing()
+}
 func (r *runtime) ClearBackground(c Color)                      { ClearBackground(c) }
 func (r *runtime) Background(c Color)                           { Background(c) }
 func (r *runtime) Text(s string, x, y, size int32, c Color)     { Text(s, x, y, size, c) }

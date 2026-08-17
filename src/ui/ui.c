@@ -3252,6 +3252,14 @@ DrawUIFrameOverlays(void)
     ui_text_draw_context_overlay();
 }
 
+void
+EndUIFrame(void)
+{
+    DrawUIFrameOverlays();
+    EndUIFocus();
+    EndUIInspectFrame();
+}
+
 UIFrameState
 SaveUIFrameState(void)
 {
