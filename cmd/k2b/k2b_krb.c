@@ -55,6 +55,10 @@ typedef struct KrbGuard {
     char path[KIR_NAME_MAX];
     int op; /* KRB_OP_EQ..GE */
     int val;
+    char rpath[KIR_NAME_MAX]; /* right side: state path when is_path */
+    int is_path;
+    int else_start; /* [else_start, end) draws when the guard is false */
+    int has_else;
 } KrbGuard;
 
 typedef struct KrbBuildNode {
@@ -926,7 +930,8 @@ parse_update(const char *text, char *path, int *kind, int *val)
 /* "if (<path> <cmp> <int>)" -> guard fields. Only simple state-vs-literal
  * conditions compile to cartridge logic; anything else is ignored here. */
 static int
-parse_cond(const char *text, char *path, int *op, int *val)
+parse_cond(const char *text, char *path, int *op, int *val, char *rpath,
+           int *is_path)
 {
     const char *p = strstr(text, "if");
     const char *q;
@@ -958,7 +963,34 @@ parse_cond(const char *text, char *path, int *op, int *val)
     *op = cmp[0] == '=' ? KRB_OP_EQ : cmp[0] == '!' ? KRB_OP_NE :
           cmp[0] == '<' ? (oplen == 2 ? KRB_OP_LE : KRB_OP_LT) :
                           (oplen == 2 ? KRB_OP_GE : KRB_OP_GT);
-    *val = atoi(skip_ws(cmp + oplen));
+    /* right side: another path or an integer literal. is_path picks the
+     * guard encoding: PUSH_PATH vs PUSH_CONST. */
+    {
+        const char *r = skip_ws(cmp + oplen);
+        const char *rq = r;
+
+        while(*rq == '_' || (*rq >= 'a' && *rq <= 'z') ||
+              (*rq >= 'A' && *rq <= 'Z') || (*rq >= '0' && *rq <= '9') ||
+              *rq == '.')
+            rq++;
+        if(rq > r && (*rq == '\0' || *rq == ' ' || *rq == ')') &&
+           !(*r >= '0' && *r <= '9')) {
+            size_t rl = (size_t)(rq - r);
+
+            if(rl < KIR_NAME_MAX) {
+                memcpy(rpath, r, rl);
+                rpath[rl] = '\0';
+                *val = 0;
+                *is_path = 1;
+                memcpy(path, p, plen);
+                path[plen] = '\0';
+                return 1;
+            }
+        }
+        *val = atoi(r);
+        *is_path = 0;
+        rpath[0] = '\0';
+    }
     memcpy(path, p, plen);
     path[plen] = '\0';
     return 1;
@@ -983,15 +1015,28 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
         if(st->kind == KIR_STMT_BLOCK_CLOSE) {
             depth--;
             if(open_guard >= 0 && depth < guard_depth) {
-                b->guards[open_guard].end = b->node_count;
-                open_guard = -1;
+                KrbGuard *g = &b->guards[open_guard];
+
+                if(!g->has_else && j + 1 < fn->stmt_count &&
+                   fn->stmts[j + 1].kind == KIR_STMT_IF &&
+                   strncmp(skip_ws(fn->stmts[j + 1].text), "else", 4) == 0) {
+                    /* '} else {' keeps the guard open through the else
+                     * block; its nodes are the false branch. */
+                    g->else_start = b->node_count;
+                    g->has_else = 1;
+                    guard_depth = depth + 1; /* the else's own depth++ */
+                } else {
+                    g->end = b->node_count;
+                    open_guard = -1;
+                }
             }
         }
         if(opens && st->kind == KIR_STMT_IF && open_guard < 0 &&
            b->guard_count < 16) {
             KrbGuard *g = &b->guards[b->guard_count];
 
-            if(parse_cond(st->text, g->path, &g->op, &g->val)) {
+            if(parse_cond(st->text, g->path, &g->op, &g->val, g->rpath,
+                              &g->is_path)) {
                 g->start = b->node_count;
                 g->end = b->node_count;
                 /* the loop's own depth++ for this 'if' lands after this
@@ -1674,12 +1719,15 @@ try_widget(KrbBuild *b, const char *raw)
  * compare + JZ so the condition hides them. */
 static int
 emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
-          const int *upath_off, const int *gpath_off)
+          const int *upath_off, const int *gpath_off,
+          const int *grpath_off)
 {
     unsigned char *q = (unsigned char *)dst;
     int i;
     int open_guard = -1;
+    int open_branch = 0;
     int jz_patch = -1;
+    int jmp_patch = -1;
 
 #define EMIT1(v) do { if(q - dst >= cap) return -1; *q++ = (unsigned char)(v); } while(0)
 #define EMIT2(v) do { if(q - dst + 2 > cap) return -1; wr_u16(&q, (unsigned)v); } while(0)
@@ -1707,6 +1755,7 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
     }
     for(i = 0; i < b->node_count; i++) {
         int g = -1;
+        int branch = 0; /* 0 true, 1 false (else) */
         int k;
 
         if(b->nodes[i].type == KRB_NODE_DATA)
@@ -1714,22 +1763,45 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
         for(k = 0; k < b->guard_count; k++) {
             if(i >= b->guards[k].start && i < b->guards[k].end) {
                 g = k;
+                branch = b->guards[k].has_else &&
+                         i >= b->guards[k].else_start;
                 break;
             }
         }
-        if(g != open_guard) {
-            if(open_guard >= 0 && jz_patch >= 0) {
-                unsigned char *pp = dst + jz_patch;
+        if(g != open_guard || branch != open_branch) {
+            if(open_guard >= 0) {
+                /* leave the current branch */
+                if(jz_patch >= 0) {
+                    /* true branch done: emit the JMP over the else, then
+                     * point JZ at what follows it (the false branch) */
+                    unsigned char *pp;
 
-                wr_u32(&pp, (unsigned long)(q - dst));
-                jz_patch = -1;
+                    EMIT1(KRB_OP_JMP);
+                    jmp_patch = (int)(q - dst);
+                    EMIT4(0);
+                    pp = dst + jz_patch;
+                    wr_u32(&pp, (unsigned long)(q - dst));
+                    jz_patch = -1;
+                } else if(jmp_patch >= 0) {
+                    /* false branch done: patch the JMP target here */
+                    unsigned char *pp = dst + jmp_patch;
+
+                    wr_u32(&pp, (unsigned long)(q - dst));
+                    jmp_patch = -1;
+                }
             }
             open_guard = g;
-            if(g >= 0) {
+            open_branch = branch;
+            if(g >= 0 && branch == 0) {
                 EMIT1(KRB_OP_PUSH_PATH);
                 EMIT2(gpath_off[g]);
-                EMIT1(KRB_OP_PUSH_CONST);
-                EMIT4(b->guards[g].val);
+                if(b->guards[g].is_path) {
+                    EMIT1(KRB_OP_PUSH_PATH);
+                    EMIT2(grpath_off[g]);
+                } else {
+                    EMIT1(KRB_OP_PUSH_CONST);
+                    EMIT4(b->guards[g].val);
+                }
                 EMIT1(b->guards[g].op);
                 EMIT1(KRB_OP_JZ);
                 jz_patch = (int)(q - dst);
@@ -1743,6 +1815,13 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
         unsigned char *pp = dst + jz_patch;
 
         wr_u32(&pp, (unsigned long)(q - dst));
+        jz_patch = -1;
+    }
+    if(jmp_patch >= 0) {
+        unsigned char *pp = dst + jmp_patch;
+
+        wr_u32(&pp, (unsigned long)(q - dst));
+        jmp_patch = -1;
     }
 #undef EMIT1
 #undef EMIT2
@@ -1808,13 +1887,17 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     {
         static int upath_off[32];
         static int gpath_off[16];
+        static int grpath_off[16];
 
         for(i = 0; i < b->update_count; i++)
             upath_off[i] = intern_string(b, b->updates[i].path);
-        for(i = 0; i < b->guard_count; i++)
+        for(i = 0; i < b->guard_count; i++) {
             gpath_off[i] = intern_string(b, b->guards[i].path);
+            grpath_off[i] = b->guards[i].is_path
+                ? intern_string(b, b->guards[i].rpath) : 0;
+        }
         prog_bytes = emit_prog(b, prog_buf, sizeof(prog_buf), upath_off,
-                               gpath_off);
+                               gpath_off, grpath_off);
         if(prog_bytes < 0)
             return -1;
     }
