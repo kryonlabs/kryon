@@ -103,11 +103,12 @@ main(void)
 
     /* program:
      *   counter = counter + 1
-     *   DRAW_TREE                      (background)
-     *   if (counter >= 3) goto end     (skip conditional rect)
+     *   DRAW_NODE 0                   (background)
+     *   if (counter < 3)              (jump-if-false over the rect)
      *   DRAW_NODE 1
      * end:
-     *   DRAW_NODE 2                    (circle, always) */
+     *   DRAW_NODE 2                    (circle, always)
+     *   DRAW_NODE 3                    (ring, always) */
     {
         unsigned char *q = prog;
 
@@ -120,7 +121,7 @@ main(void)
 
         *q++ = KRB_OP_PUSH_PATH;  wr_u16(q, counter_off); q += 2;
         *q++ = KRB_OP_PUSH_CONST; wr_u32(q, 3); q += 4;
-        *q++ = KRB_OP_GE;
+        *q++ = KRB_OP_LT;
         *q++ = KRB_OP_JZ;
         jump_over_end = 0; /* patched below */
         {

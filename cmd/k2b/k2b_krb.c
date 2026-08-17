@@ -32,6 +32,20 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 #define KRB_BUILD_HANDLER_LINES 16
 #define KRB_OUT_MAX 65536
 
+typedef struct KrbUpdate {
+    char path[KIR_NAME_MAX];
+    int kind; /* 0 = set, 1 = add, 2 = sub */
+    int val;
+} KrbUpdate;
+
+typedef struct KrbGuard {
+    int start; /* node index range [start, end) the guard covers */
+    int end;
+    char path[KIR_NAME_MAX];
+    int op; /* KRB_OP_EQ..GE */
+    int val;
+} KrbGuard;
+
 typedef struct KrbBuildNode {
     char name[KIR_NAME_MAX];
     int type;
@@ -89,6 +103,12 @@ typedef struct KrbBuild {
     char dropped[16][64];
     int dropped_count[16];
     int dropped_kinds;
+    /* v2 logic: simple state updates (path op= literal) collected from the
+     * frame body, and if-guards over widget node ranges. */
+    KrbUpdate updates[32];
+    int update_count;
+    KrbGuard guards[16];
+    int guard_count;
 } KrbBuild;
 
 static void
@@ -191,9 +211,15 @@ khex(int ch)
     return -1;
 }
 
+static int parse_color_ctor(const char *expr, unsigned *out);
+
 static unsigned
 parse_color(const char *expr)
 {
+    unsigned ctor;
+
+    if(parse_color_ctor(expr, &ctor))
+        return ctor;
     static const struct {
         const char *name;
         unsigned value;
@@ -776,11 +802,96 @@ handler_for(KrbBuild *b, const char *name)
     return &b->handlers[b->handler_count++];
 }
 
+/* "<path> = N;" / "+=" / "-=" / "++" / "--" -> update record */
+static int
+parse_update(const char *text, char *path, int *kind, int *val)
+{
+    const char *p = skip_ws(text);
+    const char *q;
+    size_t plen;
+
+    q = p;
+    while(*q == '_' || (*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
+          (*q >= '0' && *q <= '9') || *q == '.')
+        q++;
+    plen = (size_t)(q - p);
+    if(plen == 0 || plen >= KIR_NAME_MAX)
+        return 0;
+    memcpy(path, p, plen);
+    path[plen] = '\0';
+    q = skip_ws(q);
+    if(strncmp(q, "++;", 3) == 0 ||
+       (strncmp(q, "++", 2) == 0 && q[2] == '\0')) {
+        *kind = 1;
+        *val = 1;
+        return 1;
+    }
+    if(strncmp(q, "--;", 3) == 0) {
+        *kind = 2;
+        *val = 1;
+        return 1;
+    }
+    if(strncmp(q, "+=", 2) == 0 || strncmp(q, "-=", 2) == 0) {
+        *kind = q[0] == '+' ? 1 : 2;
+        *val = atoi(skip_ws(q + 2));
+        return 1;
+    }
+    if(*q == '=' && q[1] != '=') {
+        *kind = 0;
+        *val = atoi(skip_ws(q + 1));
+        return 1;
+    }
+    return 0;
+}
+
+/* "if (<path> <cmp> <int>)" -> guard fields. Only simple state-vs-literal
+ * conditions compile to cartridge logic; anything else is ignored here. */
+static int
+parse_cond(const char *text, char *path, int *op, int *val)
+{
+    const char *p = strstr(text, "if");
+    const char *q;
+    const char *cmp;
+    size_t plen;
+    int oplen = 0;
+
+    if(p == NULL || p != skip_ws(text))
+        return 0;
+    p = skip_ws(p + 2);
+    if(*p != '(')
+        return 0;
+    p = skip_ws(p + 1);
+    q = p;
+    while(*q == '_' || (*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
+          (*q >= '0' && *q <= '9') || *q == '.')
+        q++;
+    plen = (size_t)(q - p);
+    if(plen == 0 || plen >= KIR_NAME_MAX)
+        return 0;
+    cmp = skip_ws(q);
+    if(strncmp(cmp, "==", 2) == 0) oplen = 2;
+    else if(strncmp(cmp, "!=", 2) == 0) oplen = 2;
+    else if(strncmp(cmp, "<=", 2) == 0) oplen = 2;
+    else if(strncmp(cmp, ">=", 2) == 0) oplen = 2;
+    else if(*cmp == '<') oplen = 1;
+    else if(*cmp == '>') oplen = 1;
+    else return 0;
+    *op = cmp[0] == '=' ? KRB_OP_EQ : cmp[0] == '!' ? KRB_OP_NE :
+          cmp[0] == '<' ? (oplen == 2 ? KRB_OP_LE : KRB_OP_LT) :
+                          (oplen == 2 ? KRB_OP_GE : KRB_OP_GT);
+    *val = atoi(skip_ws(cmp + oplen));
+    memcpy(path, p, plen);
+    path[plen] = '\0';
+    return 1;
+}
+
 static void
 collect_widgets(KrbBuild *b, const KirFunction *fn)
 {
     int j;
     int depth = 0;
+    int open_guard = -1;
+    int guard_depth = 0;
 
     if(fn == NULL)
         return;
@@ -790,8 +901,42 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
         int opens = st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
                     st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH;
 
-        if(st->kind == KIR_STMT_BLOCK_CLOSE)
+        if(st->kind == KIR_STMT_BLOCK_CLOSE) {
             depth--;
+            if(open_guard >= 0 && depth < guard_depth) {
+                b->guards[open_guard].end = b->node_count;
+                open_guard = -1;
+            }
+        }
+        if(opens && st->kind == KIR_STMT_IF && open_guard < 0 &&
+           b->guard_count < 16) {
+            KrbGuard *g = &b->guards[b->guard_count];
+
+            if(parse_cond(st->text, g->path, &g->op, &g->val)) {
+                g->start = b->node_count;
+                g->end = b->node_count;
+                /* the loop's own depth++ for this 'if' lands after this
+                 * statement; the close brace must bring depth below it */
+                guard_depth = depth + 1;
+                open_guard = b->guard_count++;
+            }
+        }
+        if(st->kind != KIR_STMT_IF && st->kind != KIR_STMT_WHILE &&
+           st->kind != KIR_STMT_FOR && st->kind != KIR_STMT_BLOCK_CLOSE &&
+           b->update_count < 32) {
+            char upath[KIR_NAME_MAX];
+            int ukind;
+            int uval;
+
+            if(parse_update(st->text, upath, &ukind, &uval)) {
+                KrbUpdate *u = &b->updates[b->update_count++];
+
+                snprintf(u->path, sizeof(u->path), "%s", upath);
+                u->kind = ukind;
+                u->val = uval;
+                continue;
+            }
+        }
         if(try_widget(b, st->text)) {
             /* In raw .kry the button call and its 'if' are one statement
              * ('if Button(...) {'); capture the handler body that follows. */
@@ -1440,6 +1585,90 @@ try_widget(KrbBuild *b, const char *raw)
     return 0;
 }
 
+
+/* Build the program section. Render-only cartridges stay one OP_DRAW_TREE;
+ * updates/guards emit a v2 VM program: state updates first, then one
+ * OP_DRAW_NODE per drawable node, with guarded ranges wrapped in
+ * compare + JZ so the condition hides them. */
+static int
+emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
+          const int *upath_off, const int *gpath_off)
+{
+    unsigned char *q = (unsigned char *)dst;
+    int i;
+    int open_guard = -1;
+    int jz_patch = -1;
+
+#define EMIT1(v) do { if(q - dst >= cap) return -1; *q++ = (unsigned char)(v); } while(0)
+#define EMIT2(v) do { if(q - dst + 2 > cap) return -1; wr_u16(&q, (unsigned)v); } while(0)
+#define EMIT4(v) do { if(q - dst + 4 > cap) return -1; wr_u32(&q, (unsigned long)(v)); } while(0)
+
+    if(b->update_count == 0 && b->guard_count == 0) {
+        EMIT1(KRB_OP_DRAW_TREE);
+        return (int)(q - dst);
+    }
+    for(i = 0; i < b->update_count; i++) {
+        const KrbUpdate *u = &b->updates[i];
+
+        if(u->kind == 0) {
+            EMIT1(KRB_OP_PUSH_CONST);
+            EMIT4(u->val);
+        } else {
+            EMIT1(KRB_OP_PUSH_PATH);
+            EMIT2(upath_off[i]);
+            EMIT1(KRB_OP_PUSH_CONST);
+            EMIT4(u->val);
+            EMIT1(u->kind == 1 ? KRB_OP_ADD : KRB_OP_SUB);
+        }
+        EMIT1(KRB_OP_POP_STORE);
+        EMIT2(upath_off[i]);
+    }
+    for(i = 0; i < b->node_count; i++) {
+        int g = -1;
+        int k;
+
+        if(b->nodes[i].type == KRB_NODE_DATA)
+            continue;
+        for(k = 0; k < b->guard_count; k++) {
+            if(i >= b->guards[k].start && i < b->guards[k].end) {
+                g = k;
+                break;
+            }
+        }
+        if(g != open_guard) {
+            if(open_guard >= 0 && jz_patch >= 0) {
+                unsigned char *pp = dst + jz_patch;
+
+                wr_u32(&pp, (unsigned long)(q - dst));
+                jz_patch = -1;
+            }
+            open_guard = g;
+            if(g >= 0) {
+                EMIT1(KRB_OP_PUSH_PATH);
+                EMIT2(gpath_off[g]);
+                EMIT1(KRB_OP_PUSH_CONST);
+                EMIT4(b->guards[g].val);
+                EMIT1(b->guards[g].op);
+                EMIT1(KRB_OP_JZ);
+                jz_patch = (int)(q - dst);
+                EMIT4(0);
+            }
+        }
+        EMIT1(KRB_OP_DRAW_NODE);
+        EMIT2(i);
+    }
+    if(jz_patch >= 0) {
+        unsigned char *pp = dst + jz_patch;
+
+        wr_u32(&pp, (unsigned long)(q - dst));
+    }
+#undef EMIT1
+#undef EMIT2
+#undef EMIT4
+    return (int)(q - dst);
+}
+
+
 static int
 intern_string(KrbBuild *b, const char *s)
 {
@@ -1474,6 +1703,8 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     int import_off[KRB_BUILD_IMPORT_MAX];
     int cvalue_off[KRB_BUILD_CTRL_MAX];
     int clabel_off[KRB_BUILD_CTRL_MAX];
+    unsigned char prog_buf[4096];
+    int prog_bytes = 1;
     int need;
 
     memset(header, 0, sizeof(header));
@@ -1489,9 +1720,22 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         cvalue_off[i] = intern_string(b, b->controls[i].value);
         clabel_off[i] = intern_string(b, b->controls[i].label);
     }
+    {
+        static int upath_off[32];
+        static int gpath_off[16];
 
-    need = 32 + b->node_count * 28 + b->string_used + 1 + b->import_count * 4 +
-           b->control_count * KRB_CONTROL_SIZE;
+        for(i = 0; i < b->update_count; i++)
+            upath_off[i] = intern_string(b, b->updates[i].path);
+        for(i = 0; i < b->guard_count; i++)
+            gpath_off[i] = intern_string(b, b->guards[i].path);
+        prog_bytes = emit_prog(b, prog_buf, sizeof(prog_buf), upath_off,
+                               gpath_off);
+        if(prog_bytes < 0)
+            return -1;
+    }
+
+    need = 32 + b->node_count * 28 + b->string_used + prog_bytes +
+           b->import_count * 4 + b->control_count * KRB_CONTROL_SIZE;
     if(need > cap)
         return -1;
     wr_u32(&hp, KRB_MAGIC);
@@ -1499,7 +1743,7 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     wr_u16(&hp, 0);
     wr_u32(&hp, (unsigned)b->node_count);
     wr_u32(&hp, (unsigned)b->string_used);
-    wr_u32(&hp, 1);
+    wr_u32(&hp, (unsigned)prog_bytes);
     wr_u32(&hp, (unsigned)b->import_count);
     wr_u32(&hp, (unsigned)b->control_count);
     memcpy(out, header, 32);
@@ -1529,7 +1773,8 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     }
     memcpy(out, b->strings, (size_t)b->string_used);
     out += b->string_used;
-    *out++ = 0x01;
+    memcpy(out, prog_buf, (size_t)prog_bytes);
+    out += prog_bytes;
     for(i = 0; i < b->import_count; i++) {
         unsigned char slot[4];
         unsigned char *sp = slot;

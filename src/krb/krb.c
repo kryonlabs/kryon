@@ -967,15 +967,16 @@ exec_logic(KrbImage *img, unsigned char op, const unsigned char **pp,
         if(p + 4 > end)
             return -1;
         a = (int)rd_u32(p);
-        if(op == KRB_OP_JZ)
-            POP(b);
-        else
-            b = 1;
-        if(b != 0 && a >= 0 && (uint32_t)a <= prog_len(img)) {
-            *pp = img->prog + a;
-            return 0;
-        }
         p += 4;
+        if(op == KRB_OP_JZ) {
+            POP(b);
+            if(b != 0)
+                break; /* fall through: epilogue sets *pp = p */
+        }
+        if(a >= 0 && (uint32_t)a <= prog_len(img)) {
+            *pp = img->prog + a;
+            return 0; /* jump: must not run the epilogue's *pp = p */
+        }
         break;
     case KRB_OP_TIME: {
         const KryBackend *bk = KryBackendCurrent();

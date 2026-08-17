@@ -27,6 +27,7 @@ main(int argc, char **argv)
     const char *krb_path = NULL;
     int w = 800;
     int h = 600;
+    int frames = 1;
     int i;
     KrbImage img;
     KrySw sw;
@@ -43,6 +44,8 @@ main(int argc, char **argv)
             w = atoi(argv[++i]);
         else if(strcmp(argv[i], "--h") == 0 && i + 1 < argc)
             h = atoi(argv[++i]);
+        else if(strcmp(argv[i], "--frames") == 0 && i + 1 < argc)
+            frames = atoi(argv[++i]);
         else if(argv[i][0] != '-' && krb_path == NULL)
             krb_path = argv[i];
         else {
@@ -75,7 +78,14 @@ main(int argc, char **argv)
     } else {
         KryBackendSelect(KrySwBackend(&sw));
     }
-    KrbDraw(&img, 0, 0, w, h);
+    {
+        int f;
+
+        for(f = 0; f < frames; f++) {
+            KrySwAdvance(&sw, 1.0f / 60.0f);
+            KrbDraw(&img, 0, 0, w, h);
+        }
+    }
     if(recf != NULL) {
         fclose(recf);
         calls = KryBackendRecCalls(&rec);
