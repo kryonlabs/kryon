@@ -4,7 +4,9 @@ set -eu
 raylib_header=${1:-vendor/raylib/src/raylib.h}
 rename_header=${2:-build/generated/raylib_backend_rename.h}
 wrapper_source=${3:-build/generated/kryon_raylib_wrappers.c}
-surface_math_source=${4:-src/backend/kry_surface_math.c}
+# Front-end sources that define surface symbols once for every backend
+# (kept in sync with shared_symbols in generate-kryon-compat.sh).
+frontend_sources="${4:-src/backend/kry_surface_math.c} src/backend/kry_screenshot.c"
 
 if [ ! -f "$raylib_header" ]; then
     echo "raylib header not found: $raylib_header" >&2
@@ -39,8 +41,16 @@ for symbol in $symbols; do
         echo "missing backend rename for raylib symbol: $symbol" >&2
         status=1
     fi
-    if ! grep -Eq "[[:space:]\*]($symbol|KryonBackendRaw_$symbol)\\(" "$wrapper_source" &&
-       ! grep -Eq "[[:space:]\*]$symbol\\(" "$surface_math_source" 2>/dev/null; then
+    defined=0
+    if grep -Eq "[[:space:]\*]($symbol|KryonBackendRaw_$symbol)\\(" "$wrapper_source"; then
+        defined=1
+    fi
+    for frontend in $frontend_sources; do
+        if [ -f "$frontend" ] && grep -Eq "[[:space:]\*]$symbol\\(" "$frontend"; then
+            defined=1
+        fi
+    done
+    if [ "$defined" -ne 1 ]; then
         echo "missing public wrapper for raylib symbol: $symbol" >&2
         status=1
     fi

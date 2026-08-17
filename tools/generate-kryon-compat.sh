@@ -16,10 +16,13 @@ backend_prefix=${KRYON_RAYLIB_BACKEND_PREFIX:-KryonRaylibBackend_}
 # stubs - so a new backend inherits the full input behavior for free.
 input_symbols="IsKeyPressed IsKeyDown IsKeyReleased GetKeyPressed GetCharPressed IsMouseButtonPressed IsMouseButtonDown IsMouseButtonReleased IsMouseButtonUp GetMouseX GetMouseY GetMousePosition GetMouseDelta GetMouseWheelMove GetMouseWheelMoveV"
 
-# Pure-math surface symbols defined once for every backend in
+# Surface symbols defined once for every backend in kryon front-end sources;
+# neither generated file defines them. The pure-math ones live in
 # src/backend/kry_surface_math.c (color/collision/camera-transform/UTF-8
-# arithmetic with no backend state); neither generated file defines them.
-shared_symbols="Fade ColorLerp CheckCollisionPointRec CheckCollisionRecs GetWorldToScreen2D GetScreenToWorld2D GetCodepointNext"
+# arithmetic with no backend state); TakeScreenshot lives in
+# src/backend/kry_screenshot.c (absolute paths must bypass the backend's
+# basePath prefixing).
+shared_symbols="Fade ColorLerp CheckCollisionPointRec CheckCollisionRecs GetWorldToScreen2D GetScreenToWorld2D GetCodepointNext TakeScreenshot"
 
 if [ ! -f "$raylib_header" ]; then
     echo "raylib header not found: $raylib_header" >&2
