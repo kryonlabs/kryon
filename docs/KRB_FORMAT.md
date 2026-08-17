@@ -1,152 +1,219 @@
-# Kryon Cartridge Format (krb)
+# Kryon Cartridge Format (krb) — exact specification
 
-A `.krb` file is Kryon's portable cartridge format. It is a little-endian,
-mmapable image produced from KIR: a synthetic VFS node table, a string table, a
-small program, host imports, controls, and room for state, source maps, assets,
-and portable logic sections as the format grows.
+A `.krb` file is Kryon's compact portable cartridge: everything a renderer
+needs to draw and run a UI, in one little-endian, mmapable binary. This
+document is normative. An implementation that follows it can parse and
+render any cartridge without kryon source code.
 
-The current v1 image is render-first: it can draw encoded UI nodes through a
-`KryBackend`, mount host state, and call bound host imports. The target design is
-a full cartridge: KIR-owned logic executes through the portable runtime, while
-native C libraries enter through explicit capabilities or host imports.
+Reference implementation: `src/krb/krb.c` (runtime), `cmd/k2b` (compiler),
+`include/krb.h` (constants). Reference renderers: `src/backend/kry_sw.c`
+(software), `cmd/krb-run` (headless), `cmd/krb-web` (wasm), `cmd/krb-sdl`.
 
-## Layout
+## 1. Encoding rules
+
+- All multi-byte integers are **little-endian**, packed, no alignment
+  padding inside records.
+- Strings are UTF-8, NUL-terminated, stored once in the string table;
+  every string reference elsewhere is a `u16` **byte offset** into it.
+- Offsets into `prog[]` are `u32` **absolute** byte offsets from the start
+  of the program section.
+- Colors are `u32` packed `0xRRGGBBAA`. Theme references: see §4.
+
+## 2. File layout
+
+One linear image, sections in this exact order, no gaps:
 
 ```
-header          32 bytes (28 used, 4 pad)
-nodes[]         28 bytes × node_count
-strings[]       string_bytes, UTF-8, NUL-terminated, offset 0 is ""
-prog[]          prog_bytes
-imports[]       u32 string offset × import_count
-controls[]      24 bytes × control_count
+offset  size                    section
+0       32                      header (28 used + 4 reserved)
+H       28 × node_count         nodes[]
+N       string_bytes            strings[]
+S       prog_bytes              prog[]
+P       4 × import_count        imports[] (u32 string offsets each)
+I       24 × control_count      controls[]
 ```
 
-## Header
+with `H = 32`, `N = H + 28 × node_count`, `S = N + string_bytes`,
+`P = S + prog_bytes`, `I = P + 4 × import_count`. A loader MUST reject the
+file when `file_size < I + 24 × control_count`.
 
-| Field | Type | Notes |
-|---|---|---|
-| magic | u32 | `0x0042524B` (`KRB\0`) |
-| version | u16 | `1` |
-| flags | u16 | reserved, 0 |
-| node_count | u32 | |
-| string_bytes | u32 | |
-| prog_bytes | u32 | |
-| import_count | u32 | host bind names (button handlers) |
-| control_count | u32 | interactive controls (was `reserved`, always 0) |
+## 3. Header (32 bytes)
 
-## Node (28 bytes)
-
-| Field | Type |
-|---|---|
-| id | u16 |
-| parent | i16 (`-1` = root) |
-| name_off | u16 (string table) |
-| type | u8 (`BACKGROUND` 1, `TEXT` 2, `RECT` 3, `BUTTON` 4, `DATA` 5, `PICTURE` 6, `CHECKBOX` 7, `TOGGLE` 8, `CONTROL` 9; 0 reserved) |
-| flags | u8 (`SCALE_X/Y/W/H` in bits 2–5; bits 0–1 reserved) |
-| bind_slot | u16 (`0xffff` = none) |
-| x y w h | i16 each |
-| color | u32 (RGBA, or `0x80000000 \| theme_slot`) |
-| text_off | u16 |
-| font_size | u16 |
-| style | u8 |
-| pad | u8 |
-
-Theme slots: 0 background, 1 text, 2 icon, 3 surface, 4 button.
-
-PICTURE nodes carry the asset path in `text_off`, the tint in `color`, and the
-`UIPictureFit` (0 stretch, 1 contain, 2 cover) in `style`. The walker draws
-them through `KryBackend.texture`, which loads the asset via
-`KryLoadPictureTexture` (runtime file or embedded asset) and fits it into the
-node bounds. `DATA` nodes are state-field metadata and are not drawn.
-
-CHECKBOX and TOGGLE are interactive: `name_off` is the bound state-field path
-(mounted by the host), `text_off` the label, `bind_slot` the widget id. The
-cartridge owns the toggle — each frame it reads the value via the mount, draws
-the box/switch with `KryBackend` primitives, and on an in-bounds mouse press
-writes the flipped value back through the mount. Only `state {}` fields can
-bind (they are what the host mounts); a widget whose value isn't a state field
-renders its default state.
-
-## Control (24 bytes)
-
-A `CONTROL` node's `bind_slot` indexes the `controls[]` table. Each record
-carries the args that don't fit in a node:
-
-| Field | Type | Notes |
-|---|---|---|
-| kind | u8 | `SLIDER` 1, `VSLIDER` 2, `SPINBOX` 3, `DROPDOWN` 4, `COMBOBOX` 5 |
-| option_count | u8 | dropdown/combobox options (unused by range widgets) |
-| id | u16 | widget id |
-| min / max / step | i32 each | range |
-| value_off | u16 | bound state-field path (string table) |
-| label_off | u16 | label |
-| options_off | u16 | first option string (unused by range widgets) |
-| reserved | u16 | 0 |
-
-The node's bounds are the widget bounds; `value_off` is the mount path. The
-walker reads the value, renders with primitives (slider track+thumb, spinbox
-field+`-`/`+`), and updates the value on interaction: a held drag sets a
-slider across `[min,max]`; a click steps a spinbox by `step` (clamped). Slider,
-VerticalSlider, and Spinbox are emitted today; Dropdown/Combobox (need a
-state-array option parser) and by-value widgets (Radio/TabBar) are deferred.
-
-## Program
-
-A byte stream of opcodes. The current cartridge compiler writes `OP_DRAW_TREE`
-for render-only cartridges. Future KRB versions should either reference KIR
-logic functions directly or carry a lowered bytecode/WASM section derived from
-KIR. Hosts may still bind native imports for platform services.
-
-| Op | Byte | Args | Meaning |
+| Offset | Size | Field | Value |
 |---|---|---|---|
-| `OP_DRAW_TREE` | `0x01` | — | Draw every node through `KryBackend` |
-| `OP_CALL_HOST` | `0x02` | u8 slot | Call the function bound to import slot |
-| `OP_SET_I32` | `0x03` | u16 path_off, i32 value | Write a mounted C `int` at `path` |
+| 0 | 4 | magic | `0x0042524B` — bytes `4B 52 42 00` (`"KRB\0"`) |
+| 4 | 2 | version | `1` or `2` (see §7); a loader MUST reject other values |
+| 6 | 2 | flags | reserved, MUST be 0 |
+| 8 | 4 | node_count | number of node records |
+| 12 | 4 | string_bytes | size of string table in bytes |
+| 16 | 4 | prog_bytes | size of program section |
+| 20 | 4 | import_count | number of host-import name offsets |
+| 24 | 4 | control_count | number of control records |
+| 28 | 4 | reserved | MUST be 0 |
 
-`KrbExec` runs the program. `KrbDraw` runs `OP_DRAW_TREE` (or the whole
-program if it is more than that one opcode).
+Additional loader requirements: `string_bytes > 0` and the byte at string
+offset `0` MUST be `0x00` (the empty string lives at offset 0).
 
-### Version 2: logic opcodes and geometry nodes
+## 4. Node record (28 bytes)
 
-v2 (header `version == 2`; loaders accept v1 and v2) adds a small stack
-machine so a cartridge can run per-frame logic over mounted `int` state —
-counters, timers, conditionals — without host C. The machine shares one
-16-deep `int` stack across the whole `KrbExec` pass. `OP_DRAW_NODE` draws a
-single node, so `JZ`/`JMP` make UI conditional on state. `k2b` currently
-emits v2 headers and the geometry nodes below; VM-program emission from
-`.kry` logic is the next step (docs/plans/07-logic-execution.md).
+| Offset | Size | Field | Type | Meaning |
+|---|---|---|---|---|
+| 0 | 2 | id | u16 | node id (serial number; equals record index today) |
+| 2 | 2 | parent | i16 | parent node index, `-1` = root |
+| 4 | 2 | name_off | u16 | string offset (name / bound state path) |
+| 6 | 1 | type | u8 | node type, §4.1 |
+| 7 | 1 | flags | u8 | bit flags, §4.2 |
+| 8 | 2 | bind_slot | u16 | import slot or control index; `0xFFFF` = none |
+| 10 | 2 | x | i16 | x coordinate (meaning per type) |
+| 12 | 2 | y | i16 | y coordinate |
+| 14 | 2 | w | i16 | width / radius per type |
+| 16 | 2 | h | i16 | height / inner radius per type |
+| 18 | 4 | color | u32 | `0xRRGGBBAA` or theme reference |
+| 22 | 2 | text_off | u16 | string offset (label / asset path / format) |
+| 24 | 2 | font_size | u16 | pixels; `0` renders as 16 |
+| 26 | 1 | style | u8 | per-type substyle |
+| 27 | 1 | pad | u8 | reserved, MUST be 0 |
 
-| Op | Byte | Args | Meaning |
+### 4.1 Node types
+
+| Value | Name | x,y / w,h meaning | Drawn as |
 |---|---|---|---|
+| 0 | — | reserved | — |
+| 1 | BACKGROUND | w,h = size (see §8) | filled rect, the screen backdrop |
+| 2 | TEXT | x,y = top-left | text, `text_off` string, `font_size` |
+| 3 | RECT | x,y,w,h = bounds | filled rect |
+| 4 | BUTTON | bounds | filled rect + 1px border + centered label (`text_off`); import `bind_slot` fires on press-in-bounds. `style`: 0 primary (theme button color), 1 plain (theme surface), 2 danger (`0xB83B3BFF`) |
+| 5 | DATA | — | not drawn; state-field metadata |
+| 6 | PICTURE | bounds | texture; `text_off` = asset path, `color` = tint, `style` = fit (0 stretch, 1 contain, 2 cover) |
+| 7 | CHECKBOX | box at bounds; label at `x+w+4` | cartridge-owned toggle on mount path `name_off`; flips value on press-in-bounds |
+| 8 | TOGGLE | switch at bounds; label beside | same mount behavior as CHECKBOX |
+| 9 | CONTROL | bounds = widget bounds | range widget; `bind_slot` indexes controls[] |
+| 10 | CIRCLE | x,y = center; w = radius | filled circle |
+| 11 | RING | x,y = center; w = outer, h = inner radius | annulus |
+
+### 4.2 Flags
+
+| Bit | Mask | Name | Meaning |
+|---|---|---|---|
+| 0–1 | `0x03` | reserved | MUST be 0 |
+| 2 | `0x04` | SCALE_X | x is in UI-scale units (multiply by backend scale) |
+| 3 | `0x08` | SCALE_Y | same for y |
+| 4 | `0x10` | SCALE_W | same for w |
+| 5 | `0x20` | SCALE_H | same for h |
+
+### 4.3 Colors and theme slots
+
+A node `color` whose **top bit is set** (`color & 0x80000000 != 0`) is a
+theme reference: `slot = color & 0x7FFFFFFF`; the renderer asks the host
+backend for the slot color. Slots: `0` background, `1` text, `2` icon,
+`3` surface, `4` button; other slot values resolve to the backend default.
+
+**Consequence (deliberate v1 constraint):** any *literal* color with a red
+channel ≥ `0x80` also has the top bit set and reads as a theme reference.
+Literal cartridge colors MUST keep R < `0x80`; use a theme slot for bright
+reds. (A future version may move the sentinel; until then this rule is
+normative.)
+
+## 5. String table
+
+`string_bytes` bytes of concatenated NUL-terminated UTF-8 strings. Offset 0
+is the empty string (the table starts with a `0x00` byte). A string
+reference is valid iff `offset < string_bytes - 1` and the byte at
+`offset` begins a complete string. Paths used as mount references (e.g.
+`"counter"`, `"app/score"`) are plain strings compared exactly.
+
+## 6. Imports
+
+`import_count` × `u32` string offsets naming host functions (today: button
+handlers). A node's `bind_slot` (when `< 0xFFFF`) selects the slot; the
+host binds each slot with `KrbBind`/`KrbBindSlot`. A slot with no bound
+function is skipped silently.
+
+## 7. Control record (24 bytes)
+
+Referenced by a CONTROL node's `bind_slot`.
+
+| Offset | Size | Field | Type | Meaning |
+|---|---|---|---|---|
+| 0 | 1 | kind | u8 | 1 slider, 2 vslider, 3 spinbox (4/5 reserved) |
+| 1 | 1 | option_count | u8 | reserved for dropdown options, 0 |
+| 2 | 2 | id | u16 | widget id |
+| 4 | 4 | min | i32 | range minimum |
+| 8 | 4 | max | i32 | range maximum |
+| 12 | 4 | step | i32 | increment |
+| 16 | 2 | value_off | u16 | string offset: mount path of the value |
+| 18 | 2 | label_off | u16 | string offset: label |
+| 20 | 2 | options_off | u16 | reserved, 0 |
+| 22 | 2 | reserved | u16 | MUST be 0 |
+
+Slider: held-drag maps the pointer position across the track to
+`[min, max]`. Spinbox: click left/right half decrements/increments by
+`step`, clamped to `[min, max]`.
+
+## 8. Program and execution semantics
+
+`prog[]` is a byte stream executed in order by `KrbExec` once per frame.
+Opcodes:
+
+| Op | Byte | Operands (in order) | Semantics |
+|---|---|---|---|
+| `OP_DRAW_TREE` | `0x01` | — | draw every node, in record order |
+| `OP_CALL_HOST` | `0x02` | u8 slot | call host function bound to slot |
+| `OP_SET_I32` | `0x03` | u16 path_off, i32 value | write mounted int |
 | `OP_PUSH_CONST` | `0x10` | i32 | push immediate |
-| `OP_PUSH_PATH` | `0x11` | u16 path_off | push mounted `int` at `path` |
-| `OP_POP_STORE` | `0x12` | u16 path_off | pop into mounted `int` at `path` |
-| `OP_ADD`/`SUB`/`MUL`/`DIV` | `0x13`–`0x16` | — | pop b, a; push `a OP b` (DIV by 0 → 0) |
-| `OP_EQ`/`NE`/`LT`/`LE`/`GT`/`GE` | `0x17`–`0x1c` | — | pop b, a; push 0/1 |
-| `OP_JMP` | `0x1d` | u32 prog offset | absolute jump |
-| `OP_JZ` | `0x1e` | u32 prog offset | pop; jump if 0 |
-| `OP_TIME` | `0x1f` | — | push `(int)(backend time * 1000)` ms |
-| `OP_DRAW_NODE` | `0x20` | u16 node index | draw one node (BACKGROUND gets screen w/h) |
+| `OP_PUSH_PATH` | `0x11` | u16 path_off | push mounted int at path (unmounted → 0) |
+| `OP_POP_STORE` | `0x12` | u16 path_off | pop → write mounted int at path |
+| `OP_ADD` | `0x13` | — | pop b, pop a, push `a + b` |
+| `OP_SUB` | `0x14` | — | push `a - b` |
+| `OP_MUL` | `0x15` | — | push `a * b` |
+| `OP_DIV` | `0x16` | — | push `b == 0 ? 0 : a / b` (C division) |
+| `OP_EQ`/`NE`/`LT`/`LE`/`GT`/`GE` | `0x17`–`0x1C` | — | pop b, pop a, push 1 or 0 |
+| `OP_JMP` | `0x1D` | u32 addr | set program counter to `addr` |
+| `OP_JZ` | `0x1E` | u32 addr | pop; if 0, set program counter to `addr` |
+| `OP_TIME` | `0x1F` | — | push `(int)(host time in seconds × 1000)` |
+| `OP_DRAW_NODE` | `0x20` | u16 node index | draw one node |
 
-New node types: `CIRCLE` (10; x,y = center, w = radius) and `RING`
-(11; x,y = center, w = outer radius, h = inner radius). `k2b` maps
-`DrawCircleV((Vector2){x, y}, r, color)` and
-`DrawRing((Vector2){x, y}, inner, outer, a0, a1, seg, color)` to these;
-ring angles are ignored (full annulus). Backends implement them through
-the new optional `circle`/`ring` entries in `KryBackend`.
+Rules:
 
-Color caveat (v1, still true in v2): the theme-slot encoding is
-`0x80000000 | slot`, tested as *any* nonzero top bit — so a literal color
-with a red channel ≥ `0x80` reads as a theme slot and resolves to the
-default gray. Literal cartridge colors must keep R < `0x80`; engines that
-need bright reds should use a theme slot.
+- The VM stack is 16-deep int32 and persists across opcodes within one
+  `KrbExec` pass. Push on overflow or pop on underflow is an error
+  (execution fails).
+- Jump targets are absolute offsets into `prog[]`; a target outside
+  `[0, prog_bytes]` makes the jump a no-op.
+- Any other opcode byte is an error; execution stops.
+- Drawing: node coordinates are relative to the current draw origin
+  (0,0 for a full-frame pass). A SCALE_* flag replaces the raw i16 with
+  `backend.scale_px(value)`. When `OP_DRAW_TREE` (or `OP_DRAW_NODE` on a
+  BACKGROUND node) executes, a BACKGROUND node's w/h are overridden with the
+  host screen size and its SCALE_W/H flags cleared.
+- Interaction (BUTTON, CHECKBOX, TOGGLE, CONTROL) is evaluated at draw
+  time: "pointer pressed this frame" AND "pointer inside the node bounds"
+  (post-transform). Bounds are exclusive on the right/bottom edges.
 
-## C memory as files
+### Versions
 
-`KrbMount(img, "/app", ptr, fields)` maps live C fields onto paths.
-`KrbBindMem(img, "score", &score, KRB_I32, 4)` is a one-field mount.
+- **v1** — opcodes `0x01`–`0x03`, node types 1–9. Render-first.
+- **v2** — adds opcodes `0x10`–`0x20` and node types 10–11. Loaders accept
+  both; compilers should emit 2.
 
-Read/write is a typed memcpy at a compile-time offset:
+## 9. Limits (current implementation)
+
+256 nodes, 8 KiB strings, 32 imports, 128 controls, 32 host binds,
+16 mount roots, 64 fields per mount, 64 KiB cartridge.
+
+## 10. Host surface (what a renderer must provide)
+
+A renderer implements the `KryBackend` table (see `include/kry_backend.h`):
+`clear`, `rect`, `text`, `measure_text`, `clip_push/pop`, `mouse`,
+`mouse_down`, `mouse_pressed`, `width`, `height`, `time`, `scale_px`,
+`theme_color`, `texture`, and optional `circle`/`ring` (v2 geometry; a
+renderer may leave them NULL, in which case CIRCLE/RING nodes are no-ops).
+Colors passed to the backend are already resolved literals. Assets are
+referenced by path; loading and caching are host-owned.
+
+## 11. C memory as files (mounts)
+
+Hosts map live memory onto string paths:
 
 ```c
 KrbField fields[] = {
@@ -156,12 +223,19 @@ KrbField fields[] = {
 };
 KrbMount(&img, "/app", app, fields);
 KrbReadI32(&img, "/app/score", &n);
+/* or a single field: */
+KrbBindMem(&img, "counter", &counter, KRB_I32, 4);
 ```
 
-A TEXT node whose name matches a mounted path draws the live value (the stored
-string is a `printf` format when it contains `%`).
+Field kinds: `KRB_I32 1`, `KRB_U32 2`, `KRB_F32 3`, `KRB_BOOL 4`,
+`KRB_CSTR 5`. Read/write is a typed memcpy. A TEXT node whose `name_off`
+string equals a mounted path renders the live value; its `text_off` string
+acts as a `printf` format when it contains `%`.
 
-`k2b` is the intended `.kry`/`.kir` to `.krb` compiler. It should read `.kir`
-directly or run the `.kry -> KIR` frontend internally, then write the cartridge
-sections. Native apps that want readable generated C use `k2c`; portable
-renderers load `.krb` and provide the standard capability/import table.
+## 12. Tooling
+
+- `k2b` compiles `.kry` → `.krb` (+ optional generated C host; `--no-main`
+  omits the host `main`). Unsupported `.kry` calls are dropped and reported.
+- `krb-run` renders headless to PNG / a recorded call stream.
+- `krb-web` / `krb-sdl` are full hosts; `tests/golden` + `tests/krb_engine_test.sh`
+  pin cross-engine byte-identical output.
