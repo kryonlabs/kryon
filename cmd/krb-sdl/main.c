@@ -92,6 +92,40 @@ main(int argc, char **argv)
         return 1;
     }
 
+    if(png_path != NULL) {
+        /* single deterministic frame for the exactness comparator */
+        KrySwAdvance(&sw, 1.0f / 60.0f);
+        KrbDraw(&img, 0, 0, w, h);
+        SDL_UpdateTexture(texture, NULL, sw.pixels, sw.stride);
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        {
+            unsigned char *buf = malloc((size_t)w * h * 4);
+            SDL_Rect r = {0, 0, w, h};
+            int ok;
+
+            if(buf == NULL)
+                return 1;
+            ok = SDL_RenderReadPixels(renderer, &r,
+                                      SDL_PIXELFORMAT_RGBA32, buf,
+                                      w * 4) == 0;
+            if(ok)
+                ok = krb_png_write(png_path, buf, w, h) == 0;
+            free(buf);
+            if(!ok) {
+                fprintf(stderr, "krb-sdl: frame dump failed\n");
+                return 1;
+            }
+        }
+        printf("krb-sdl ok %s %dx%d\n", krb_path, w, h);
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        KrbFree(&img);
+        KrySwFree(&sw);
+        return 0;
+    }
     for(;;) {
         SDL_Event ev;
         int running = 1;

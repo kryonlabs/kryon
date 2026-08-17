@@ -480,9 +480,11 @@ b_text(const char *s, int x, int y, int size, unsigned color)
             const unsigned char *g = atlas_glyph(sw, as, cp);
 
             if(g != NULL) {
+                float scale = (float)size / (as->px > 0 ? as->px : 1);
+
                 atlas_blit(sw, as, g, size, pen, y, color);
-                pen += (int)atlas_rd_u16(g + 4 + 12) * size /
-                       (as->px > 0 ? as->px : 1);
+                /* ui_text.c: cursor_x += (int)(advanceX*scale + 0.5f) */
+                pen += (int)((float)(short)atlas_rd_u16(g + 16) * scale + 0.5f);
             }
         }
         return;
@@ -532,9 +534,11 @@ b_measure_text(const char *s, int size)
             unsigned cp = utf8_next(&c);
             const unsigned char *g = atlas_glyph(sw, as, cp);
 
-            if(g != NULL)
-                width += (int)atlas_rd_u16(g + 4 + 12) * size /
-                         (as->px > 0 ? as->px : 1);
+            if(g != NULL) {
+                float scale = (float)size / (as->px > 0 ? as->px : 1);
+
+                width += (int)((float)(short)atlas_rd_u16(g + 16) * scale + 0.5f);
+            }
         }
         return width;
     }
