@@ -203,6 +203,11 @@ typedef struct KrbImage {
 } KrbImage;
 
 int KrbCapBind(KrbImage *img, int cap, KrbFn fn, void *userdata);
+int KrbCapStorageGet(const char *key, char *out, unsigned out_size);
+int KrbCapStorageSet(const char *key, const char *value);
+extern int (*KrbCapAudioHook)(const char *asset_path, int stop);
+int KrbCapInstallDefaults(KrbImage *img);
+
 int KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len);
 int KrbLoadFile(KrbImage *img, const char *path);
 void KrbFree(KrbImage *img);

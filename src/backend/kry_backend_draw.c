@@ -1,4 +1,5 @@
 #include "kry_backend.h"
+#include "krb.h"
 #include "kryon.h"
 #include "ui_picture.h"
 
@@ -225,11 +226,37 @@ select_draw(void)
     KryBackendSelect(&KryBackendDraw);
 }
 
+/* Plan-08 audio capability: the raylib surface owns a real audio
+ * device, so cartridges get working cap.audio.play/stop here. */
+static int
+cap_audio_raylib(const char *asset_path, int stop)
+{
+    static Sound current = {0};
+
+    if(stop) {
+        if(current.frameCount > 0)
+            StopSound(current);
+        return 0;
+    }
+    if(asset_path == NULL || asset_path[0] == '\0')
+        return -1;
+    if(current.frameCount > 0)
+        StopSound(current);
+    current = LoadSound(asset_path);
+    if(current.frameCount == 0)
+        return -1;
+    PlaySound(current);
+    return 0;
+}
+
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((constructor))
 #endif
 static void
-kry_backend_draw_init(void)
+krb_caps_raylib_init(void)
 {
+    KrbCapAudioHook = cap_audio_raylib;
     select_draw();
 }
+
+
