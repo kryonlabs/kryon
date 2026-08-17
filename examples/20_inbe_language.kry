@@ -1,8 +1,10 @@
 #import "kryon.h"
 
+# Inner Breeze language screen, matched to the native C render
+# (light theme, measured geometry from the captured reference frame).
+
 state {
     language_index: int = 0
-    next_hover: int = 0
 }
 
 app "Inner Breeze — Language" {
@@ -15,16 +17,11 @@ frame main {
     BeginDrawing()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    Text("Language", ScaleUIPx(70), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
-    Text("Choose your language", ScaleUIPx(40), ScaleUIPx(250), UI_TEXT_16, GetThemeIcon())
-    Dropdown(260, ScaleUIPx(40), ScaleUIPx(290), ScaleUIPx(340), ScaleUIPx(36), "English;Portugues;Español;Deutsch;Français", &language_index)
-    if (language_index == 0) {
-        Text("Perfect for a calm start", ScaleUIPx(40), ScaleUIPx(380), UI_TEXT_16, GetThemeIcon())
-    } else {
-        Text("Otimo para um comeco calmo", ScaleUIPx(40), ScaleUIPx(380), UI_TEXT_16, GetThemeIcon())
-    }
-    Button((ButtonProps){"Next", (Rectangle){ScaleUIPx(190), ScaleUIPx(430), ScaleUIPx(100), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 0}, "next")
+    Background(GetThemeBackground())
+    Text("Language", ScaleUIPx(160), ScaleUIPx(50), UI_TEXT_24, GetThemeText())
+    Text("Choose your language", ScaleUIPx(46), ScaleUIPx(284), UI_TEXT_16, GetThemeText())
+    Dropdown(260, ScaleUIPx(44), ScaleUIPx(299), ScaleUIPx(391), ScaleUIPx(48), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
+    Text("Next", ScaleUIPx(221), ScaleUIPx(379), UI_TEXT_16, GetThemeText())
     EndUIFocus()
     EndDrawing()
 }

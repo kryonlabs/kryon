@@ -68,6 +68,17 @@ main(int argc, char **argv)
         fprintf(stderr, "krb-run: rasterizer init failed\n");
         return 1;
     }
+    if(getenv("KRB_RUN_THEME_LIGHT") != NULL) {
+        KrySwSetTheme(&sw, KRY_THEME_BACKGROUND, 0xffffffffu);
+        KrySwSetTheme(&sw, KRY_THEME_SURFACE, 0xfbfbfbffu);
+        KrySwSetTheme(&sw, KRY_THEME_ICON, 0xd3d3d3ffu);
+        KrySwSetTheme(&sw, KRY_THEME_TEXT, 0x00000000u | 0xffu);
+        KrySwSetTheme(&sw, KRY_THEME_BUTTON, 0xffffffffu);
+    }
+    if(0) {
+        fprintf(stderr, "krb-run: rasterizer init failed\n");
+        return 1;
+    }
     if(rec_path != NULL) {
         recf = fopen(rec_path, "w");
         if(recf == NULL) {
