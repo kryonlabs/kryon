@@ -691,6 +691,7 @@ UIRouteInput(void)
         int changed = 0;
         int selection_changed = 0;
         int codepoint;
+        int modifier;
 
         if(node->kind != UI_WIDGET_TEXT_FIELD_NODE || node->state == NULL)
             continue;
@@ -741,13 +742,52 @@ UIRouteInput(void)
             state->dragging = 0;
         start = state->anchor < state->cursor ? state->anchor : state->cursor;
         end = state->anchor > state->cursor ? state->anchor : state->cursor;
-        if((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) &&
-           IsKeyPressed(KEY_A)) {
+        modifier = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+                   IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+        if(modifier && IsKeyPressed(KEY_A)) {
             state->anchor = 0;
             state->cursor = (int)strlen(field->text);
             selection_changed = 1;
             start = 0;
             end = state->cursor;
+        }
+        if(modifier && IsKeyPressed(KEY_C) && !field->secure) {
+            if(end > start)
+                (void)ui_text_copy_range(field->text, start, end);
+            else
+                (void)SetUIClipboardTextValue(field->text);
+        }
+        if(modifier && IsKeyPressed(KEY_X) && !field->secure) {
+            if(end > start) {
+                if(ui_text_copy_range(field->text, start, end))
+                    changed |= ui_text_delete_range(
+                        field->text, field->text_size, &state->cursor,
+                        start, end);
+            } else if(field->text[0] != '\0') {
+                (void)SetUIClipboardTextValue(field->text);
+                field->text[0] = '\0';
+                state->cursor = 0;
+                changed = 1;
+            }
+            state->anchor = state->cursor;
+            selection_changed = 1;
+            start = end = state->cursor;
+        }
+        if(modifier && IsKeyPressed(KEY_V)) {
+            if(end > start)
+                changed |= ui_text_delete_range(
+                    field->text, field->text_size, &state->cursor, start, end);
+            changed |= ui_text_paste_clipboard((UITextEdit){
+                .text = field->text,
+                .text_size = field->text_size,
+                .cursor_position = &state->cursor,
+                .max_codepoints = field->max_codepoints,
+                .filter = field->filter,
+                .filter_user_data = field->filter_user_data
+            }, 0);
+            state->anchor = state->cursor;
+            selection_changed = 1;
+            start = end = state->cursor;
         }
         if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
@@ -812,6 +852,18 @@ UIRouteInput(void)
                     ui_utf8_next_offset(field->text, state->cursor));
             state->anchor = state->cursor;
             selection_changed = changed;
+        }
+        if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+            if(field->commit_pressed != NULL)
+                *field->commit_pressed = 1;
+            ui_text_field_event(node, UI_EVENT_TEXT_COMMIT, GetTime());
+        }
+        if(IsKeyPressed(KEY_ESCAPE)) {
+            state->focused = 0;
+            state->dragging = 0;
+            if(field->focused != NULL)
+                *field->focused = 0;
+            ui_text_field_event(node, UI_EVENT_BLUR, GetTime());
         }
         if(field->cursor_position != NULL)
             *field->cursor_position = state->cursor;
@@ -1327,6 +1379,8 @@ TextField(TextFieldProps field)
     UINodeId node = ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
                                 field.bounds, NULL);
 
+    if(field.commit_pressed != NULL)
+        *field.commit_pressed = 0;
     if(node >= 0) {
         ui_tree_nodes[node].key = (UIKey)(unsigned)field.focus_id;
         ui_tree_nodes[node].data.text_field = field;

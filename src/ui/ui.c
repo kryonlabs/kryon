@@ -573,7 +573,7 @@ ui_open_url(const char *url)
 #endif
 }
 
-static int
+int
 ui_text_copy_range(const char *text, int start, int end)
 {
     char *copy;
@@ -598,7 +598,7 @@ ui_text_copy_range(const char *text, int start, int end)
     return 1;
 }
 
-static int
+int
 ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
 {
     const char *clip;

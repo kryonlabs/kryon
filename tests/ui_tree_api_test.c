@@ -205,12 +205,15 @@ main(void)
         char value[32] = "abcdef";
         int cursor = 6;
         int focused = 0;
+        int committed = 0;
+        int saw_commit = 0;
 
         BeginUI(46);
         TextField((TextFieldProps){
             .bounds = {10, 10, 220, 40}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .focused = &focused, .focus_id = 78, .font = 16
+            .focused = &focused, .focus_id = 78, .font = 16,
+            .commit_pressed = &committed
         });
         UIReconcileTree();
         UILayoutTree();
@@ -231,6 +234,15 @@ main(void)
         check_int("mouse selection typing replaces text", strcmp(value, "z"), 0);
         check_int("mouse replacement cursor", cursor, 1);
         while(NextUIEvent(&event)) { }
+        KryonInjectKeyTap(KEY_ENTER);
+        KryonInjectPump();
+        UIRouteInput();
+        while(NextUIEvent(&event)) {
+            if(event.kind == UI_EVENT_TEXT_COMMIT && event.key == 78)
+                saw_commit = 1;
+        }
+        check_int("textfield enter commits", committed, 1);
+        check_int("textfield commit event", saw_commit, 1);
     }
 
     return failures == 0 ? 0 : 1;
