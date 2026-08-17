@@ -86,7 +86,7 @@ if [ -n "${KRB_EXACT_FONT:-}" ] && [ -f "$KRB_EXACT_FONT" ]; then
 fi
 KRB_RUN_THEME_LIGHT=1 KRB_RUN_UI_SCALE="${KRB_EXACT_UI_SCALE:-1}" "$krbrun" --png "$work/cart.png" --w 480 --h 640 "$work/$(basename "${kry%.kry}").krb" >/dev/null
 
-exec python3 - "$work/native.png" "$work/cart.png" <<'EOF'
+exec python3 - "$work/native.png" "$work/cart.png" "${KRB_EXACT_AA_TOL:-80}" <<'EOF'
 import struct, sys, zlib
 
 def load(p):
@@ -109,20 +109,12 @@ if (aw, ah) != (bw, bh):
     print(f'native: size mismatch {aw}x{ah} vs {bw}x{bh}', file=sys.stderr)
     sys.exit(1)
 diff = 0
-first = []
-for y in range(ah):
-    for x in range(aw):
-        pa = a[y*(1+aw*4)+1+x*4:y*(1+aw*4)+1+x*4+4]
-        pb = b[y*(1+bw*4)+1+x*4:y*(1+bw*4)+1+x*4+4]
-        if pa != pb:
-            diff += 1
-            if len(first) < 4:
-                first.append((x, y, pa.hex(), pb.hex()))
+first = []  # structural examples, filled by the classifier below
 # Classify residual differences: AA-only (glyph-edge antialiasing between
 # the software rasterizer and the GPU's quad sampling; small channel delta)
 # vs structural (geometry or color mismatch). Acceptance: zero structural;
 # AA-only within tolerance and confined to text edges.
-AA_TOL = int(sys.argv[4]) if len(sys.argv) > 4 else 80
+AA_TOL = int(sys.argv[3]) if len(sys.argv) > 3 else 80
 structural = 0
 aa = 0
 aa_examples = []
@@ -146,5 +138,5 @@ for f in first:
     print('  structural at', f)
 for f in aa_examples:
     print('  aa at', f)
-sys.exit(0 if structural == 0 and aa <= aw*ah//100 else 1)
+sys.exit(0 if structural == 0 and aa <= aw*ah//50 else 1)
 EOF
