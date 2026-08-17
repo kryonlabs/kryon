@@ -99,6 +99,8 @@ typedef struct KrbBuildControl {
     int step;
     char value[KIR_NAME_MAX];
     char label[KIR_TEXT_MAX];
+    char options[512]; /* semicolon-separated; empty = none */
+    int option_count;
 } KrbBuildControl;
 
 typedef struct KrbBuild {
@@ -1656,6 +1658,70 @@ parse_spinbox(KrbBuild *b, const char *call)
 /* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
  * range; EndScroll() closes it. Widgets between get parent = the scroll. */
 /* TextField(x, y, w, h, &state.field) -> TEXTINPUT node. */
+/* Dropdown(id, x, y, w, "opt;opt;opt", &val) -> DROPDOWN control. */
+static int
+parse_dropdown(KrbBuild *b, const char *call)
+{
+    char parts[8][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    char path[KIR_NAME_MAX];
+    char opts[KIR_TEXT_MAX];
+    KrbBuildNode *n;
+    char name[32];
+    int scaled;
+    int count;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 6)
+        return 0;
+    strip_amp(parts[5], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    extract_string(parts[4], opts, sizeof(opts));
+    if(opts[0] == '\0')
+        return 0;
+    snprintf(name, sizeof(name), "dd%d", b->node_count);
+    n = add_node(b, KRB_NODE_CONTROL, name);
+    if(n == NULL)
+        return 0;
+    n->bind_slot = b->control_count;
+    if(parse_coord(parts[1], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[2], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[3], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    n->h = 24;
+    n->font_size = 16;
+    {
+        KrbBuildControl *c = &b->controls[b->control_count];
+
+        if(b->control_count >= KRB_BUILD_CTRL_MAX)
+            return 1;
+        memset(c, 0, sizeof(*c));
+        c->kind = KRB_CTRL_DROPDOWN;
+        c->id = (unsigned short)b->control_count;
+        c->min = 0;
+        c->max = 0;
+        c->step = 1;
+        snprintf(c->value, sizeof(c->value), "%s", path);
+        snprintf(c->options, sizeof(c->options), "%s", opts);
+        {
+            const char *p = c->options;
+
+            c->option_count = 1;
+            while((p = strchr(p, ';')) != NULL) {
+                c->option_count++;
+                p++;
+            }
+        }
+        b->control_count++;
+    }
+    return 1;
+}
+
 static int
 parse_textfield(KrbBuild *b, const char *call)
 {
@@ -1751,6 +1817,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_scroll(b, call);
     if(starts_ident(call, "TextField"))
         return parse_textfield(b, call);
+    if(starts_ident(call, "Dropdown"))
+        return parse_dropdown(b, call);
     if(starts_ident(call, "EndScroll")) {
         b->scroll_open = 0;
         return 1;
@@ -1923,6 +1991,22 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
 }
 
 
+/* append without dedup — dropdown options must be contiguous */
+static int
+append_string(KrbBuild *b, const char *s)
+{
+    size_t n;
+
+    if(s == NULL || s[0] == '\0')
+        return 0;
+    n = strlen(s) + 1;
+    if(b->string_used + (int)n > KRB_BUILD_STR_MAX)
+        return 0;
+    memcpy(b->strings + b->string_used, s, n);
+    b->string_used += (int)n;
+    return b->string_used - (int)n;
+}
+
 static int
 intern_string(KrbBuild *b, const char *s)
 {
@@ -1957,6 +2041,7 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     int import_off[KRB_BUILD_IMPORT_MAX];
     int cvalue_off[KRB_BUILD_CTRL_MAX];
     int clabel_off[KRB_BUILD_CTRL_MAX];
+    int copt_off[KRB_BUILD_CTRL_MAX];
     unsigned char prog_buf[4096];
     int prog_bytes = 1;
     static int apath_off[24];
@@ -1974,6 +2059,28 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     for(i = 0; i < b->control_count; i++) {
         cvalue_off[i] = intern_string(b, b->controls[i].value);
         clabel_off[i] = intern_string(b, b->controls[i].label);
+        copt_off[i] = 0;
+        if(b->controls[i].option_count > 0) {
+            char opt[KIR_TEXT_MAX];
+            const char *p = b->controls[i].options;
+            int k;
+
+            copt_off[i] = intern_string(b, ""); /* reset marker */
+            for(k = 0; k < b->controls[i].option_count; k++) {
+                const char *semi = strchr(p, ';');
+                size_t len = semi != NULL ? (size_t)(semi - p) : strlen(p);
+
+                if(len >= sizeof(opt))
+                    len = sizeof(opt) - 1;
+                memcpy(opt, p, len);
+                opt[len] = '\0';
+                if(k == 0)
+                    copt_off[i] = intern_string(b, opt);
+                else
+                    intern_string(b, opt); /* must land contiguously */
+                p = semi != NULL ? semi + 1 : p + len;
+            }
+        }
     }
     for(i = 0; i < b->asset_count; i++)
         apath_off[i] = intern_string(b, b->assets[i].path);
@@ -2052,14 +2159,15 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         const KrbBuildControl *ctl = &b->controls[i];
 
         *cp++ = (unsigned char)ctl->kind;
-        *cp++ = 0;                         /* option_count (range widgets: 0) */
+        *cp++ = (unsigned char)(ctl->option_count > 0 ? ctl->option_count
+                                                      : 0);
         wr_u16(&cp, ctl->id);
         wr_u32(&cp, (unsigned)ctl->min);
         wr_u32(&cp, (unsigned)ctl->max);
         wr_u32(&cp, (unsigned)ctl->step);
         wr_u16(&cp, (unsigned)cvalue_off[i]);
         wr_u16(&cp, (unsigned)clabel_off[i]);
-        wr_u16(&cp, 0);                    /* options_off */
+        wr_u16(&cp, (unsigned)copt_off[i]); /* options_off */
         wr_u16(&cp, 0);                    /* reserved */
         memcpy(out, c, KRB_CONTROL_SIZE);
         out += KRB_CONTROL_SIZE;

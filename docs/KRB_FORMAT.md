@@ -149,7 +149,10 @@ Referenced by a CONTROL node's `bind_slot`.
 
 Slider: held-drag maps the pointer position across the track to
 `[min, max]`. Spinbox: click left/right half decrements/increments by
-`step`, clamped to `[min, max]`.
+`step`, clamped to `[min, max]`. Dropdown (`kind 4`): `options_off`
+points at `option_count` consecutive NUL-terminated option strings;
+the bound `int` holds the selected index. Click toggles the popup;
+clicking a row writes the index and closes.
 
 ## 8. Program and execution semantics
 

@@ -167,6 +167,7 @@ typedef struct KrbImage {
     const unsigned char *assets; /* v2 asset directory (20-byte entries) */
     unsigned asset_count;
     char focus_path[96]; /* mounted path of the focused TEXTINPUT, "" none */
+    int dropdown_open;  /* open control table index, -1 none */
 } KrbImage;
 
 int KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len);

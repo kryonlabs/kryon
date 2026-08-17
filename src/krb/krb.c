@@ -87,6 +87,7 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     img->imports = (const uint32_t *)p;
     p += (size_t)import_count * 4;
     img->controls = p;
+    img->dropdown_open = -1;
     img->asset_count = rd_u32(bytes + 28) > 0
         ? rd_u32(p + (size_t)control_count * KRB_CONTROL_SIZE) : 0;
     img->assets = img->asset_count > 0
@@ -597,6 +598,68 @@ ctrl_vslider(KrbImage *img, const KryBackend *b, const KrbControl *c,
 
 /* Spinbox: click the left half to step down, right half to step up. */
 static void
+ctrl_dropdown(KrbImage *img, const KryBackend *b, const KrbControl *c,
+              int cidx, const char *path, int x, int y, int w, int h,
+              int val, int font, unsigned color)
+{
+    unsigned fill = b->theme_color(KRY_THEME_SURFACE);
+    unsigned border = b->theme_color(KRY_THEME_ICON);
+    unsigned tcol = b->theme_color(KRY_THEME_TEXT);
+    const char *cur = KrbString(img, c->options_off);
+    int mx = 0;
+    int my = 0;
+    int i;
+
+    (void)color;
+    if(val >= 0 && (unsigned)val < c->option_count) {
+        /* options are consecutive NUL-terminated strings */
+        const char *op = KrbString(img, c->options_off);
+
+        for(i = 0; i < val; i++)
+            op += strlen(op) + 1;
+        cur = op;
+    }
+    b->rect(x, y, w, h, fill);
+    b->rect(x, y, w, 1, border);
+    b->rect(x, y + h - 1, w, 1, border);
+    b->rect(x, y, 1, h, border);
+    b->rect(x + w - 1, y, 1, h, border);
+    b->text(cur, x + b->scale_px(6), y + (h - font) / 2, font, tcol);
+    b->text("v", x + w - b->scale_px(14), y + (h - font) / 2, font, tcol);
+
+    b->mouse(&mx, &my);
+    if(b->mouse_pressed(KRY_MOUSE_LEFT)) {
+        if(img->dropdown_open == cidx) {
+            /* selecting a row (or clicking away) closes */
+            if(mx >= x && mx < x + w && my >= y + h &&
+               my < y + h + c->option_count * h) {
+                int row = (my - (y + h)) / (h > 0 ? h : 1);
+
+                if(row >= 0 && row < c->option_count)
+                    KrbWriteI32(img, path, row);
+            }
+            img->dropdown_open = -1;
+        } else if(mx >= x && mx < x + w && my >= y && my < y + h) {
+            img->dropdown_open = cidx;
+        }
+    }
+    if(img->dropdown_open == cidx) {
+        const char *op = KrbString(img, c->options_off);
+
+        for(i = 0; i < c->option_count; i++) {
+            int ry = y + h + i * h;
+
+            if(i == val)
+                b->rect(x, ry, w, h, b->theme_color(KRY_THEME_BUTTON));
+            else
+                b->rect(x, ry, w, h, fill);
+            b->text(op, x + b->scale_px(6), ry + (h - font) / 2, font, tcol);
+            op += strlen(op) + 1;
+        }
+    }
+}
+
+static void
 ctrl_spinbox(KrbImage *img, const KryBackend *b, const KrbControl *c,
              const char *path, int x, int y, int w, int h, int val,
              int font, unsigned color)
@@ -918,6 +981,10 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         case KRB_CTRL_SPINBOX:
             ctrl_spinbox(img, b, &c, path, x, y, w, h, val,
                          n->font_size > 0 ? n->font_size : 16, color);
+            break;
+        case KRB_CTRL_DROPDOWN:
+            ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
+                          val, n->font_size > 0 ? n->font_size : 16, color);
             break;
         default:
             break;
