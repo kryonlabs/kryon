@@ -94,7 +94,7 @@ KrySwInit(KrySw *sw, unsigned char *pixels, int w, int h)
     sw->w = w;
     sw->h = h;
     sw->stride = w * 4;
-    sw->scale = 100;
+    sw->scale = 1000;
     sw->theme[KRY_THEME_BACKGROUND] = 0x101014ffu;
     sw->theme[KRY_THEME_TEXT] = 0xf0f0f2ffu;
     sw->theme[KRY_THEME_ICON] = 0x8a8a93ffu;
@@ -646,7 +646,7 @@ b_scale_px(int px)
 {
     if(g_sw == NULL)
         return px;
-    return px * g_sw->scale / 100;
+    return (int)((float)px * (float)g_sw->scale / 1000.0f + 0.5f);
 }
 
 static unsigned

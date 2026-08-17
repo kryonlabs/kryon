@@ -85,6 +85,13 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
     for(s = 0; s < size_count; s++) {
         int px = sizes[s];
         float scale = stbtt_ScaleForPixelHeight(&font, (float)px);
+        int ascent = 0;
+        int descent = 0;
+        int line_gap = 0;
+
+        /* rtext.c line 730: offsetY += (int)(ascent*scale) — raylib's
+         * glyph offset is line-top-relative, not baseline-relative */
+        stbtt_GetFontVMetrics(&font, &ascent, &descent, &line_gap);
         unsigned char *raw_px;
         unsigned rec_bytes = (unsigned)cp_count * 18;
         unsigned table_off;
@@ -181,7 +188,9 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
                 put_u16(g + 8, (unsigned short)(w > 0 ? w : 0));
                 put_u16(g + 10, (unsigned short)(h > 0 ? h : 0));
                 put_u16(g + 12, (unsigned short)(short)xoff);
-                put_u16(g + 14, (unsigned short)(short)yoff);
+                put_u16(g + 14,
+                        (unsigned short)(short)(yoff +
+                                                (int)((float)ascent * scale)));
                 put_u16(g + 16, (unsigned short)(int)(advance * scale));
                 cur_x += w + 1;
                 if(h > row_h)

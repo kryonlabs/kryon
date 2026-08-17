@@ -42,7 +42,7 @@ typedef struct KrySw {
     unsigned keys[16]; /* typed codepoints (0x08 = backspace) */
     int keys_n;
     float now;
-    int scale; /* UI scale in percent, 100 = 1:1 */
+    int scale; /* UI scale per mille, 1000 = 1:1 */
     unsigned theme[KRY_THEME_COUNT];
     /* KFA1 atlas */
     const unsigned char *atlas;

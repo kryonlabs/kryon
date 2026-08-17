@@ -72,10 +72,10 @@ main(int argc, char **argv)
         const char *uis = getenv("KRB_RUN_UI_SCALE");
 
         if(uis != NULL) {
-            int pct = (int)(atof(uis) * 100.0f + 0.5f);
+            int pm = (int)(atof(uis) * 1000.0f + 0.5f);
 
-            if(pct > 0 && pct <= 800)
-                sw.scale = pct;
+            if(pm > 0 && pm <= 8000)
+                sw.scale = pm;
         }
     }
     if(getenv("KRB_RUN_THEME_LIGHT") != NULL) {
