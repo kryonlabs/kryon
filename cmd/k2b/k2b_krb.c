@@ -755,12 +755,16 @@ parse_button(KrbBuild *b, const char *call)
     if(n == NULL)
         return 0;
     p = strstr(props, ".label");
+    if(p == NULL && strstr(props, "ButtonProps") != NULL)
+        extract_string(strstr(props, "{") + 1, n->text, sizeof(n->text));
     if(p != NULL)
         extract_string(p, n->text, sizeof(n->text));
     p = strstr(props, ".style");
     if(p != NULL)
         n->style = button_style_of(p);
     p = strstr(props, ".bounds");
+    if(p == NULL)
+        p = strstr(props, "Rectangle){"); /* positional form */
     if(p != NULL) {
         const char *brace = strchr(p, '{');
         char parts[4][KIR_TEXT_MAX];
@@ -952,17 +956,12 @@ parse_term(const char *p, KrbTerm *t)
     len = (size_t)(q - p);
     if(len == 0)
         return 0;
-    if(len == 1 && p[0] >= '0' && p[0] <= '9') {
+    if((p[0] >= '0' && p[0] <= '9') || (p[0] == '-' && p[1] >= '0' &&
+                                         p[1] <= '9')) {
         t->is_path = 0;
         t->val = atoi(p);
         t->path[0] = '\0';
-        return 1;
-    }
-    if(p[0] >= '0' && p[0] <= '9' || p[0] == '-') {
-        t->is_path = 0;
-        t->val = atoi(p);
-        t->path[0] = '\0';
-        return 1;
+        return (int)len;
     }
     if(len >= KIR_NAME_MAX)
         return 0;
@@ -970,7 +969,7 @@ parse_term(const char *p, KrbTerm *t)
     memcpy(t->path, p, len);
     t->path[len] = '\0';
     t->val = 0;
-    return 1;
+    return (int)len;
 }
 
 /* Parse one side: term, or term arith term. */
@@ -998,7 +997,7 @@ parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
                kind == '*' ? KRB_OP_MUL : KRB_OP_DIV;
         q = skip_ws(q + u2);
     }
-    return (int)(q - p) + 1; /* caller compensates the +1 */
+    return (int)(q - p);
 }
 
 /* "if (<expr> <cmp> <expr>)" where each expr is term or term arith term. */
@@ -1019,7 +1018,7 @@ parse_cond(const char *text, KrbGuard *g)
     used = parse_side(p, g->l, &g->ln, &g->lop);
     if(used == 0)
         return 0;
-    cmp = skip_ws(p + used - 1);
+    cmp = skip_ws(p + used);
     if(strncmp(cmp, "==", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "!=", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "<=", 2) == 0) oplen = 2;
@@ -1706,16 +1705,32 @@ parse_dropdown(KrbBuild *b, const char *call)
     char name[32];
     int scaled;
     int count;
+    int dd_h = 0;
 
     if(args == NULL)
         return 0;
     count = split_args(args + 1, parts, 8);
     if(count < 6)
         return 0;
-    strip_amp(parts[5], path, sizeof(path));
-    if(path[0] == '\0')
-        return 0;
-    extract_string(parts[4], opts, sizeof(opts));
+    if(count >= 7) {
+        /* Dropdown(id, x, y, w, h, "opts", &val) */
+        strip_amp(parts[6], path, sizeof(path));
+        if(path[0] == '\0')
+            return 0;
+        extract_string(parts[5], opts, sizeof(opts));
+        {
+            KrbBuildNode dummy;
+            int sc2;
+
+            (void)parse_coord(parts[4], &dummy.x, &sc2);
+            dd_h = dummy.x;
+        }
+    } else {
+        strip_amp(parts[5], path, sizeof(path));
+        if(path[0] == '\0')
+            return 0;
+        extract_string(parts[4], opts, sizeof(opts));
+    }
     if(opts[0] == '\0')
         return 0;
     snprintf(name, sizeof(name), "dd%d", b->node_count);
@@ -1729,7 +1744,7 @@ parse_dropdown(KrbBuild *b, const char *call)
         n->flags |= KRB_FLAG_SCALE_Y;
     if(parse_coord(parts[3], &n->w, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_W;
-    n->h = 24;
+    n->h = dd_h > 0 ? dd_h : 24;
     n->font_size = 16;
     {
         KrbBuildControl *c = &b->controls[b->control_count];

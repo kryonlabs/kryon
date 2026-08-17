@@ -1,0 +1,30 @@
+#import "kryon.h"
+
+state {
+    language_index: int = 0
+    next_hover: int = 0
+}
+
+app "Inner Breeze — Language" {
+    size 480 640
+    fps 60
+    frame main
+}
+
+frame main {
+    BeginDrawing()
+    ClearBackground(GetThemeBackground())
+    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
+    Background(GetThemeSurface())
+    Text("Language", ScaleUIPx(70), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
+    Text("Choose your language", ScaleUIPx(40), ScaleUIPx(250), UI_TEXT_16, GetThemeIcon())
+    Dropdown(260, ScaleUIPx(40), ScaleUIPx(290), ScaleUIPx(340), ScaleUIPx(36), "English;Portugues;Español;Deutsch;Français", &language_index)
+    if (language_index == 0) {
+        Text("Perfect for a calm start", ScaleUIPx(40), ScaleUIPx(380), UI_TEXT_16, GetThemeIcon())
+    } else {
+        Text("Otimo para um comeco calmo", ScaleUIPx(40), ScaleUIPx(380), UI_TEXT_16, GetThemeIcon())
+    }
+    Button((ButtonProps){"Next", (Rectangle){ScaleUIPx(190), ScaleUIPx(430), ScaleUIPx(100), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 0}, "next")
+    EndUIFocus()
+    EndDrawing()
+}
