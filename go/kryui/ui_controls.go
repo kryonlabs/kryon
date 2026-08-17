@@ -13,7 +13,10 @@ package kryui
 */
 import "C"
 
-import "unsafe"
+import (
+	goruntime "runtime"
+	"unsafe"
+)
 
 // ---------------------------------------------------------------------------
 // Enums and Constants
@@ -441,6 +444,14 @@ func DrawUITextField(props TextFieldProps) bool {
 	if props.CommitPressed != nil && *props.CommitPressed {
 		commit = 1
 	}
+	var pins goruntime.Pinner
+	pins.Pin(&props.Text[0])
+	if props.CursorPosition != nil {
+		pins.Pin(props.CursorPosition)
+	}
+	pins.Pin(&focused)
+	pins.Pin(&commit)
+	defer pins.Unpin()
 
 	cprops := C.TextFieldProps{
 		bounds:           props.Bounds.toC(),
@@ -481,6 +492,16 @@ func DrawUITextArea(props TextAreaProps) bool {
 	if props.Focused != nil && *props.Focused {
 		focused = 1
 	}
+	var pins goruntime.Pinner
+	pins.Pin(&props.Text[0])
+	if props.CursorPosition != nil {
+		pins.Pin(props.CursorPosition)
+	}
+	if props.ScrollY != nil {
+		pins.Pin(props.ScrollY)
+	}
+	pins.Pin(&focused)
+	defer pins.Unpin()
 	cprops := C.TextAreaProps{
 		bounds:           props.Bounds.toC(),
 		text:             (*C.char)(unsafe.Pointer(&props.Text[0])),
