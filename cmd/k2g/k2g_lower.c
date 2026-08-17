@@ -61,6 +61,11 @@ camel(const char *s, char *dst, size_t dst_size)
     }
     if(n == 0 && dst_size > 1)
         dst[n++] = 'X';
+    if(isdigit((unsigned char)dst[0]) && dst_size > 2) {
+        memmove(dst + 1, dst, n + 1);
+        dst[0] = 'M';
+        n++;
+    }
     dst[n] = '\0';
 }
 
@@ -268,9 +273,11 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             for(i = 0; i < n; i++) {
                 char arg[K2G_TEXT_MAX];
 
-                tx_expr(m, parts[i], arg, sizeof(arg));
-                if(i > 0)
+                tx_expr(m, skip_ws(parts[i]), arg, sizeof(arg));
+                if(i > 0) {
                     out[on++] = ',';
+                    out[on++] = ' ';
+                }
                 size_t al = strlen(arg);
                 if(on + al + 1 < sizeof(out)) {
                     memcpy(out + on, arg, al);
@@ -315,8 +322,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 static const char *fields[4] = {"R", "G", "B", "A"};
 
                 for(int i = 0; i < 4; i++)
-                    tx_expr(m, parts[i], args[i], sizeof(args[i]));
-                if(*dn + 64 + 4 * K2G_TEXT_MAX < K2G_TEXT_MAX) {
+                    tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
+                if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
                         "rt.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
                         fields[0], args[0], fields[1], args[1],
@@ -387,8 +394,11 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             const char *q = p + 1;
             size_t tl = 0;
 
-            while(is_ident_char((unsigned char)*q) || *q == ' ' || *q == '*')
-                q++;
+            if(!isalpha((unsigned char)*q) && *q != '_')
+                q = p; /* numeric or expression: not a cast */
+            else
+                while(is_ident_char((unsigned char)*q) || *q == ' ' || *q == '*')
+                    q++;
             tl = (size_t)(q - (p + 1));
             if(*q == ')' && tl > 0 && tl < sizeof(char) * K2G_NAME_MAX) {
                 char maybe[K2G_NAME_MAX];
@@ -470,15 +480,29 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         /* 1.0f -> 1.0 */
         if(isdigit((unsigned char)*p)) {
             const char *q = p;
+            const char *num_end;
 
-            while(isdigit((unsigned char)*q) || *q == '.' ||
-                  (*q == 'x' && q == p + 1) ||
-                  ((*q >= 'a' && *q <= 'f') && strchr(p, 'x') != NULL))
-                q++;
+            if(*q == '0' && (q[1] == 'x' || q[1] == 'X')) {
+                q += 2;
+                while(isxdigit((unsigned char)*q))
+                    q++;
+            } else {
+                while(isdigit((unsigned char)*q) || *q == '.')
+                    q++;
+                if(*q == 'e' || *q == 'E') {  /* exponent */
+                    q++;
+                    if(*q == '+' || *q == '-')
+                        q++;
+                    while(isdigit((unsigned char)*q))
+                        q++;
+                }
+            }
+            num_end = q;
             if(*q == 'f' || *q == 'F')
-                q++;
-            while(p < q && dn + 1 < dst_size)
+                q++;   /* C float suffix: drop it */
+            while(p < num_end && dn + 1 < dst_size)
                 dst[dn++] = *p++;
+            p = q;
             continue;
         }
         if(is_ident_char((unsigned char)*p) || *p == '&') {

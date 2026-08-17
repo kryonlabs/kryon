@@ -8,13 +8,19 @@ consume KIR:
 ```text
 .kry -> KIR -> C
 .kry -> KIR -> KRB
+.kry -> KIR -> Go
 .kir -> C
 .kir -> KRB
 ```
 
 `k2c` emits readable `.c` and `.h` files for the normal C toolchain. `k2b`
 emits a portable `.krb` cartridge for renderers that implement the Kryon runtime
-contract. `k2ir` exists for tooling, debugging, tests, and Krait inspection.
+contract. `k2g` emits Go source that drives a Go kryon runtime (the cgo
+surface binding — the same layer app uses), so Go-native apps can be written
+in .kry; v1 fully translates the declarative subset (state, app metadata,
+frames, widget calls) and marks unsupported imperative constructs with TODO
+comments instead of guessing. `k2ir` exists for tooling, debugging, tests,
+and Krait inspection.
 Native C remains the direct path for platform, storage, and performance-sensitive
 code; portable cartridges call those services through explicit capabilities or
 host imports.

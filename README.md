@@ -161,13 +161,15 @@ feature family.
 `docs/KRY_LANGUAGE_PLAN.md` describes the path for making `.kry` a C-close app
 language with two clean compiler outputs. Kry source lowers into KIR, a
 debuggable intermediate representation with source spans. From there `k2c`
-emits readable C for native apps, while `k2b` emits a portable `.krb`
+emits readable C for native apps, `k2g` emits Go source driving the cgo
+runtime binding, while `k2b` emits a portable `.krb`
 cartridge (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime
 contract. The intended tool set is Unix-shaped:
 
 ```text
 k2ir app.kry        # .kry -> .kir
 k2c  app.kry|app.kir
+k2g  app.kry        # .kry -> Go (cgo runtime)
 k2b  app.kry|app.kir
 ```
 

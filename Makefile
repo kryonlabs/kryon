@@ -28,6 +28,7 @@ DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
 K2C = $(BUILD_DIR)/bin/k2c
+K2G = $(BUILD_DIR)/bin/k2g
 K2IR = $(BUILD_DIR)/bin/k2ir
 K2B = $(BUILD_DIR)/bin/k2b
 KT = $(BUILD_DIR)/bin/kt
@@ -180,13 +181,14 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c k2g krb-web krb-sdl
 
 k2c: $(K2C)
+k2g: $(K2G)
 
-all: $(LIB) $(K2C) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
+all: $(LIB) $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
-tools: $(K2C) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN)
+tools: $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN)
 
 install: $(KT) $(KRYON_CMD)
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -239,8 +241,9 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: kryon-compat-check kryon-boundary-check $(K2C) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(SFS_TEST)
+test: kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(SFS_TEST)
 	sh tests/k2c_syntax_test.sh $(K2C)
+	sh tests/k2g_syntax_test.sh $(K2G)
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
 	sh tests/krb_engine_test.sh $(K2B) $(KRB_RUN) .
@@ -294,6 +297,10 @@ K2C_HDRS := cmd/k2c/k2c_lower.h cmd/kir/kir.h cmd/kir/kir_parse.h
 
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
+
+K2G_SRCS := $(sort $(wildcard cmd/k2g/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
+$(K2G): $(K2G_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2G_SRCS)
 
 K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
 $(K2IR): $(K2IR_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
