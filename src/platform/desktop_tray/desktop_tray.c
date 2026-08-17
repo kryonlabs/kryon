@@ -432,18 +432,24 @@ static const char *
 GetDesktopTrayIconThemePath(const char *icon_path)
 {
     static char directory[512];
+    char resolved[sizeof(directory)];
     const char *slash;
     size_t len;
 
     if(icon_path == NULL)
         return NULL;
-    slash = strrchr(icon_path, '/');
+    /* GNOME's StatusNotifier/AppIndicator host runs out-of-process and does
+     * not inherit our working directory.  A relative theme path therefore
+     * resolves to the host's CWD and produces its missing-icon ellipsis. */
+    if(realpath(icon_path, resolved) == NULL)
+        return NULL;
+    slash = strrchr(resolved, '/');
     if(slash == NULL)
         return NULL;
-    len = (size_t)(slash - icon_path);
+    len = (size_t)(slash - resolved);
     if(len == 0 || len >= sizeof(directory))
         return NULL;
-    memcpy(directory, icon_path, len);
+    memcpy(directory, resolved, len);
     directory[len] = '\0';
     return directory;
 }
