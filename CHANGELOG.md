@@ -1,4 +1,14 @@
 # Changelog
+## v0.1.9 - 2026-08-17
+
+### Changed
+
+- Ui: copy font type string in RegisterUIFontSource
+- Ui: raise font raster tier cache from 4 to 8 slots
+- Ui: sample system theme from CSS before initializing GTK in-process
+- Release: bump version to v0.1.9
+- Build: log missing SDL2 DPI query once instead of every frame
+
 ## v0.1.8 - 2026-08-17
 
 ### Changed
