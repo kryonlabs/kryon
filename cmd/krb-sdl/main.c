@@ -62,6 +62,15 @@ main(int argc, char **argv)
         fprintf(stderr, "krb-sdl: rasterizer init failed\n");
         return 1;
     }
+    {
+        const unsigned char *ad = NULL;
+        unsigned al = 0;
+        unsigned ak = 0;
+
+        if(KrbAssetFind(&img, "@atlas", &ad, &al, &ak, NULL, NULL) == 0 &&
+           ak == 1)
+            KrySwSetAtlas(&sw, ad, al);
+    }
     KryBackendSelect(KrySwBackend(&sw));
 
     if(SDL_Init(SDL_INIT_VIDEO) != 0) {

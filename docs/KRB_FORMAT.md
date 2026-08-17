@@ -206,12 +206,20 @@ When header offset 28 (`asset_bytes`) is nonzero, an asset section follows
 `reserved u16@18`. `asset_bytes` counts the whole section. A PICTURE node
 whose path matches an embedded raw-RGBA asset is rendered from cartridge
 pixels through the backend's optional `texture_rgba` (scaled, tinted);
-non-embedded paths fall back to host texture loading.
+non-embedded paths fall back to host texture loading. The conventional
+name "@atlas" carries a KFA1 glyph atlas: `u32 "KFA1" | u16 size_count`,
+then per size a 16-byte record (`px u16 | glyphs u16 | w u16 | h u16 |
+table_off u32 | pixels_off u32`), then per-glyph 18-byte records
+(`cp u32 | x,y,w,h u16 | xoff,yoff i16 | advance u16`, offsets into the
+size's RGBA8 white-on-alpha bitmap). Engines with atlas support render
+antialiased text with true advances; without it they fall back to their
+built-in font.
 
 ## 9. Limits (current implementation)
 
 256 nodes, 8 KiB strings, 32 imports, 128 controls, 32 host binds,
-16 mount roots, 64 fields per mount, 64 KiB cartridge.
+16 mount roots, 64 fields per mount, 16 MiB cartridge (raised from
+64 KiB to fit embedded atlases and images).
 
 ## 10. Host surface (what a renderer must provide)
 

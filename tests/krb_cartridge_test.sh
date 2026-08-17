@@ -6,7 +6,7 @@ walker=${2:-}
 root=${3:-.}
 work=${TMPDIR:-/tmp}/kryon-krb-cartridge-test.$$
 src=$root/examples/02_buttons.kry
-budget=1024
+budget=2000000
 
 cleanup()
 {

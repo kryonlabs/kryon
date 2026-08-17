@@ -3,6 +3,7 @@
 #include "kir.h"
 #include "krb.h"
 #include "k2b_stb.h"
+#include "k2b_atlas.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -31,7 +32,7 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 #define KRB_BUILD_IMPORT_MAX 32
 #define KRB_BUILD_CTRL_MAX 128
 #define KRB_BUILD_HANDLER_LINES 16
-#define KRB_OUT_MAX 65536
+#define KRB_OUT_MAX 16777216
 
 typedef struct KrbAsset {
     char path[256];  /* cartridge path (also the PICTURE text) */
@@ -2235,7 +2236,7 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     char gen_rel[KIR_PATH_MAX];
     char krel[KIR_PATH_MAX];
     char kpath[KIR_PATH_MAX];
-    unsigned char bytes[KRB_OUT_MAX];
+    static unsigned char bytes[KRB_OUT_MAX];
     KrbBuild build;
     FILE *out;
     int i;
@@ -2255,6 +2256,87 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     for(i = 0; i < m->function_count; i++)
         collect_widgets(&build, &m->functions[i]);
 
+    /* bake the glyph atlas from the UI font over the cartridge charset */
+    if(build.asset_count < 24) {
+        unsigned cps[512];
+        int cp_count = 0;
+        int sizes[4];
+        int size_count = 0;
+        int i;
+        int j;
+        int k;
+
+        for(i = 32; i <= 126 && cp_count < 512; i++)
+            cps[cp_count++] = (unsigned)i;
+        for(i = 0; i < build.node_count && cp_count < 512; i++) {
+            const char *t = build.nodes[i].text;
+
+            if(t == NULL)
+                continue;
+            for(j = 0; t[j] != '\0' && cp_count < 512;) {
+                const char *p = t + j;
+                unsigned cp = 0;
+                unsigned char c0 = (unsigned char)p[0];
+
+                if(c0 < 0x80) {
+                    cp = c0;
+                    j++;
+                } else if((c0 & 0xe0) == 0xc0) {
+                    cp = ((c0 & 0x1f) << 6) | (p[1] & 0x3f);
+                    j += 2;
+                } else if((c0 & 0xf0) == 0xe0) {
+                    cp = ((c0 & 0x0f) << 12) | ((p[1] & 0x3f) << 6) |
+                         (p[2] & 0x3f);
+                    j += 3;
+                } else {
+                    cp = '?';
+                    j++;
+                }
+                for(k = 0; k < cp_count; k++)
+                    if(cps[k] == cp)
+                        break;
+                if(k == cp_count)
+                    cps[cp_count++] = cp;
+            }
+            if(build.nodes[i].font_size > 0 && size_count < 4) {
+                int fs = build.nodes[i].font_size;
+
+                for(k = 0; k < size_count; k++)
+                    if(sizes[k] == fs)
+                        break;
+                if(k == size_count)
+                    sizes[size_count++] = fs;
+            }
+        }
+        if(size_count == 0)
+            sizes[size_count++] = 16;
+        {
+            const char *font = getenv("K2B_FONT");
+
+            if(font == NULL || font[0] == '\0')
+                font = "fonts/noto/NotoSans-Regular.ttf";
+            {
+                unsigned alen = 0;
+                unsigned char *atlas = k2b_bake_atlas(font, cps, cp_count,
+                                                      sizes, size_count,
+                                                      &alen);
+
+                if(atlas != NULL && build.asset_count < 24) {
+                    KrbAsset *a = &build.assets[build.asset_count++];
+
+                    snprintf(a->path, sizeof(a->path), "@atlas");
+                    a->file[0] = '\0';
+                    a->mem = atlas;
+                    a->mem_len = alen;
+                    a->kind = 1;
+                    a->w = 0;
+                    a->h = 0;
+                } else {
+                    free(atlas);
+                }
+            }
+        }
+    }
     len = emit_krb_mem(bytes, KRB_OUT_MAX, &build);
     if(len < 0)
         die("%s: cartridge is too large", m->source_path);

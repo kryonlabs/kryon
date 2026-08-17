@@ -270,31 +270,228 @@ b_rect(int x, int y, int w, int h, unsigned color)
 }
 
 /* Glyph cell: size-tall, size/2-wide per character, nearest-neighbor. */
+
+static unsigned
+atlas_rd_u16(const unsigned char *p)
+{
+    return (unsigned)p[0] | ((unsigned)p[1] << 8);
+}
+
+static unsigned
+atlas_rd_u32(const unsigned char *p)
+{
+    return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) |
+           ((unsigned)p[3] << 24);
+}
+
+int
+KrySwSetAtlas(KrySw *sw, const unsigned char *data, unsigned len)
+{
+    int i;
+
+    if(sw == NULL || data == NULL || len < 6)
+        return -1;
+    if(memcmp(data, "KFA1", 4) != 0)
+        return -1;
+    sw->atlas = data;
+    sw->atlas_len = len;
+    sw->atlas_sizes = 0;
+    {
+        unsigned n = atlas_rd_u16(data + 4);
+
+        if(n > 8)
+            n = 8;
+        for(i = 0; (unsigned)i < n; i++) {
+            const unsigned char *rec = data + 6 + (unsigned)i * 16;
+            KrySwAtlasSize *as = &sw->size_tab[sw->atlas_sizes++];
+            unsigned toff = atlas_rd_u32(rec + 8);
+            unsigned poff = atlas_rd_u32(rec + 12);
+
+            as->px = (int)atlas_rd_u16(rec);
+            as->glyphs = (int)atlas_rd_u16(rec + 2);
+            as->w = (int)atlas_rd_u16(rec + 4);
+            as->h = (int)atlas_rd_u16(rec + 6);
+            as->table_off = toff;
+            as->pixels_off = poff;
+            if(toff >= len || poff >= len || as->glyphs == 0) {
+                sw->atlas_sizes--;
+                continue;
+            }
+        }
+    }
+    return sw->atlas_sizes > 0 ? 0 : -1;
+}
+
+/* decode one UTF-8 rune; advances *pp */
+static unsigned
+utf8_next(const char **pp)
+{
+    const unsigned char *p = (const unsigned char *)*pp;
+    unsigned c = *p;
+
+    if(c < 0x80) {
+        *pp = (const char *)(p + 1);
+        return c;
+    }
+    if((c & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) {
+        *pp = (const char *)(p + 2);
+        return ((c & 0x1f) << 6) | (p[1] & 0x3f);
+    }
+    if((c & 0xf0) == 0xe0 && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80) {
+        *pp = (const char *)(p + 3);
+        return ((c & 0x0f) << 12) | ((p[1] & 0x3f) << 6) | (p[2] & 0x3f);
+    }
+    if((c & 0xf8) == 0xf0 && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80 &&
+       (p[3] & 0xc0) == 0x80) {
+        *pp = (const char *)(p + 4);
+        return ((c & 0x07) << 18) | ((p[1] & 0x3f) << 12) |
+               ((p[2] & 0x3f) << 6) | (p[3] & 0x3f);
+    }
+    *pp = (const char *)(p + 1);
+    return c;
+}
+
+static const KrySwAtlasSize *
+atlas_size_for(const KrySw *sw, int px)
+{
+    int i;
+    const KrySwAtlasSize *best = NULL;
+    int bestd = 1 << 30;
+
+    for(i = 0; i < sw->atlas_sizes; i++) {
+        int d = sw->size_tab[i].px - px;
+
+        if(d < 0)
+            d = -d;
+        if(d < bestd) {
+            bestd = d;
+            best = &sw->size_tab[i];
+        }
+    }
+    return best;
+}
+
+/* glyph record lookup; returns 16-byte record or NULL */
+static const unsigned char *
+atlas_glyph(const KrySw *sw, const KrySwAtlasSize *as, unsigned cp)
+{
+    int i;
+
+    for(i = 0; i < as->glyphs; i++) {
+        const unsigned char *g = sw->atlas + as->table_off + (unsigned)i * 18;
+
+        if(atlas_rd_u32(g) == cp)
+            return g;
+    }
+    return NULL;
+}
+
+static void
+atlas_blit(KrySw *sw, const KrySwAtlasSize *as, const unsigned char *g,
+           int px, int pen_x, int pen_y, unsigned color)
+{
+    unsigned gx = atlas_rd_u16(g + 4);
+    unsigned gy = atlas_rd_u16(g + 6);
+    unsigned gw = atlas_rd_u16(g + 8);
+    unsigned gh = atlas_rd_u16(g + 10);
+    int xoff = (short)(atlas_rd_u16(g + 12) | (g[13] << 8));
+    int yoff = (short)(atlas_rd_u16(g + 14) | (g[15] << 8));
+    int scale_num = px;
+    int scale_den = as->px > 0 ? as->px : 1;
+    int dy;
+
+    for(dy = 0; dy < (int)gh * scale_num / scale_den; dy++) {
+        int sy = dy * scale_den / scale_num;
+        int dx;
+        int rowlen = (int)gw * scale_num / scale_den;
+
+        for(dx = 0; dx < rowlen; dx++) {
+            int sx = dx * scale_den / scale_num;
+            const unsigned char *sp = sw->atlas + as->pixels_off +
+                ((size_t)(gy + sy) * as->w + gx + sx) * 4;
+
+            unsigned cov = sp[3];
+            unsigned dr = (color >> 24) & 0xff;
+            unsigned dg = (color >> 16) & 0xff;
+            unsigned db = (color >> 8) & 0xff;
+            unsigned da = color & 0xff;
+            int px_ = pen_x + xoff * scale_num / scale_den + dx;
+            int py_ = pen_y + yoff * scale_num / scale_den + dy;
+            int w1 = 1;
+            int h1 = 1;
+            unsigned char *dstp;
+
+            if(cov == 0)
+                continue;
+            if(!clip_active(sw, &px_, &py_, &w1, &h1))
+                continue;
+            dstp = sw->pixels + (size_t)py_ * sw->stride + px_ * 4;
+            if(cov == 255) {
+                dstp[0] = (unsigned char)dr;
+                dstp[1] = (unsigned char)dg;
+                dstp[2] = (unsigned char)db;
+                dstp[3] = (unsigned char)da;
+            } else {
+                /* source-over with glyph coverage as source alpha */
+                unsigned inv = 255 - cov * da / 255;
+
+                dstp[0] = (unsigned char)(dr * cov * da / 65025 +
+                                         dstp[0] * inv / 255);
+                dstp[1] = (unsigned char)(dg * cov * da / 65025 +
+                                         dstp[1] * inv / 255);
+                dstp[2] = (unsigned char)(db * cov * da / 65025 +
+                                         dstp[2] * inv / 255);
+                dstp[3] = (unsigned char)(da + dstp[3] * (255 - da) / 255);
+            }
+        }
+    }
+}
+
 static void
 b_text(const char *s, int x, int y, int size, unsigned color)
 {
     KrySw *sw = g_sw;
-    int advance;
-    int gw;
-    int gh;
     const char *c;
 
     if(sw == NULL || s == NULL || size <= 0)
         return;
-    gw = size / 2;
-    gh = size;
-    advance = gw;
-    for(c = s; *c != '\0'; c++) {
-        if((unsigned char)*c <= FONT_LAST) {
-            const unsigned char *glyph = k_font8x8[(unsigned char)*c];
-            int gx;
-            int gy;
-            for(gy = 0; gy < gh; gy++) {
-                unsigned char bits = glyph[gy * 8 / gh];
-                for(gx = 0; gx < gw; gx++) {
-                    if((bits >> (gx * 8 / gw)) & 1)
-                        fill_rect(sw, x + (int)(c - s) * advance + gx,
-                                  y + gy, 1, 1, color);
+    if(sw->atlas != NULL && sw->atlas_sizes > 0) {
+        const KrySwAtlasSize *as = atlas_size_for(sw, size);
+        int pen = x;
+
+        c = s;
+        while(*c != '\0') {
+            unsigned cp = utf8_next(&c);
+            const unsigned char *g = atlas_glyph(sw, as, cp);
+
+            if(g != NULL) {
+                atlas_blit(sw, as, g, size, pen, y, color);
+                pen += (int)atlas_rd_u16(g + 4 + 12) * size /
+                       (as->px > 0 ? as->px : 1);
+            }
+        }
+        return;
+    }
+    {
+        int advance;
+        int gw;
+        int gh;
+
+        gw = size / 2;
+        gh = size;
+        advance = gw;
+        for(c = s; *c != '\0'; c++) {
+            if((unsigned char)*c <= FONT_LAST) {
+                const unsigned char *glyph = k_font8x8[(unsigned char)*c];
+                int gx;
+                int gy;
+                for(gy = 0; gy < gh; gy++) {
+                    unsigned char bits = glyph[gy * 8 / gh];
+                    for(gx = 0; gx < gw; gx++) {
+                        if((bits >> (gx * 8 / gw)) & 1)
+                            fill_rect(sw, x + (int)(c - s) * advance + gx,
+                                      y + gy, 1, 1, color);
+                    }
                 }
             }
         }
@@ -304,11 +501,27 @@ b_text(const char *s, int x, int y, int size, unsigned color)
 static int
 b_measure_text(const char *s, int size)
 {
+    KrySw *sw = g_sw;
     size_t n = 0;
 
     if(s != NULL) {
         while(s[n] != '\0')
             n++;
+    }
+    if(sw != NULL && sw->atlas != NULL && sw->atlas_sizes > 0 && s != NULL) {
+        const KrySwAtlasSize *as = atlas_size_for(sw, size);
+        const char *c = s;
+        int width = 0;
+
+        while(*c != '\0') {
+            unsigned cp = utf8_next(&c);
+            const unsigned char *g = atlas_glyph(sw, as, cp);
+
+            if(g != NULL)
+                width += (int)atlas_rd_u16(g + 4 + 12) * size /
+                         (as->px > 0 ? as->px : 1);
+        }
+        return width;
     }
     return (int)n * (size > 0 ? size / 2 : 4);
 }

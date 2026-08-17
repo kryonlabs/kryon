@@ -76,7 +76,16 @@ main(int argc, char **argv)
         }
         KryBackendSelect(KryBackendRecBackend(&rec, recf, KrySwBackend(&sw)));
     } else {
-        KryBackendSelect(KrySwBackend(&sw));
+        {
+        const unsigned char *ad = NULL;
+        unsigned al = 0;
+        unsigned ak = 0;
+
+        if(KrbAssetFind(&img, "@atlas", &ad, &al, &ak, NULL, NULL) == 0 &&
+           ak == 1)
+            KrySwSetAtlas(&sw, ad, al);
+    }
+    KryBackendSelect(KrySwBackend(&sw));
     }
     {
         int f;

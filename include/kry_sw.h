@@ -14,6 +14,15 @@
 
 #include "kry_backend.h"
 
+typedef struct KrySwAtlasSize {
+    int px;
+    int glyphs;
+    int w;
+    int h;
+    unsigned table_off;
+    unsigned pixels_off;
+} KrySwAtlasSize;
+
 typedef struct KrySw {
     unsigned char *pixels; /* RGBA8, stride * h bytes */
     int w;
@@ -32,6 +41,11 @@ typedef struct KrySw {
     float now;
     int scale; /* UI scale in percent, 100 = 1:1 */
     unsigned theme[KRY_THEME_COUNT];
+    /* KFA1 atlas */
+    const unsigned char *atlas;
+    unsigned atlas_len;
+    int atlas_sizes;
+    KrySwAtlasSize size_tab[8];
     KryBackend backend;
 } KrySw;
 
@@ -52,6 +66,11 @@ void KrySwSetTheme(KrySw *sw, int slot, unsigned rgba);
 /* Dirty rectangle. Currently reports the full frame; per-call tracking
  * lands with the framebuffer host (plan 11, phase 2). */
 void KrySwDirty(KrySw *sw, int *x, int *y, int *w, int *h);
+
+/* Install a KFA1 glyph atlas (cartridge asset kind 1). Text draws from
+ * atlas glyphs with proper advances; without one the built-in 8x8 font
+ * is used. */
+int KrySwSetAtlas(KrySw *sw, const unsigned char *data, unsigned len);
 
 /* Convert the RGBA8 target to dst (w*h uint16, RGB565). */
 void KrySwToRGB565(const KrySw *sw, unsigned short *dst);

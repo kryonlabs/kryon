@@ -72,6 +72,15 @@ krb_web_start(void)
     }
     if(KrySwInit(&g_sw, NULL, 800, 600) != 0)
         return 1;
+    {
+        const unsigned char *ad = NULL;
+        unsigned al = 0;
+        unsigned ak = 0;
+
+        if(KrbAssetFind(&g_img, "@atlas", &ad, &al, &ak, NULL, NULL) == 0 &&
+           ak == 1)
+            KrySwSetAtlas(&g_sw, ad, al);
+    }
     KryBackendSelect(KrySwBackend(&g_sw));
     if(!g_running)
         emscripten_set_main_loop(frame, 0, 1);
