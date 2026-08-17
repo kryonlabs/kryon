@@ -1,0 +1,41 @@
+# Inner Breeze profile screen cartridge
+#import "kryon.h"
+
+# The native's profile screen: avatar circle, name, handle, stats row
+# (streak / sessions / best), and action rows. Values bound to state.
+
+state {
+    streak: int = 12
+    sessions: int = 24
+    best: int = 41
+}
+
+app "Inner Breeze Profile" {
+    size 480 640
+    fps 60
+    frame main
+}
+
+frame main {
+    BeginDrawing()
+    ClearBackground(GetThemeBackground())
+    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
+    Background(GetThemeBackground())
+    DrawCircleV((Vector2){ScaleUIPx(200), ScaleUIPx(70)}, ScaleUIPx(36), GetThemeButton())
+    DrawRing((Vector2){ScaleUIPx(200), ScaleUIPx(70)}, ScaleUIPx(40), ScaleUIPx(44), 0.0f, 360.0f, 0, GetThemeIcon())
+    Text("Wao", ScaleUIPx(196), ScaleUIPx(128), UI_TEXT_24, GetThemeText())
+    Text("local profile", ScaleUIPx(184), ScaleUIPx(158), UI_TEXT_12, GetThemeIcon())
+    Text("Streak", ScaleUIPx(60), ScaleUIPx(210), UI_TEXT_12, GetThemeIcon())
+    TextFormat("%d days", streak, ScaleUIPx(60), ScaleUIPx(224), UI_TEXT_16, GetThemeText())
+    Text("Sessions", ScaleUIPx(200), ScaleUIPx(210), UI_TEXT_12, GetThemeIcon())
+    TextFormat("%d", sessions, ScaleUIPx(200), ScaleUIPx(224), UI_TEXT_16, GetThemeText())
+    Text("Best", ScaleUIPx(340), ScaleUIPx(210), UI_TEXT_12, GetThemeIcon())
+    TextFormat("%d", best, ScaleUIPx(340), ScaleUIPx(224), UI_TEXT_16, GetThemeText())
+    Text("Sync", ScaleUIPx(40), ScaleUIPx(300), UI_TEXT_16, GetThemeText())
+    Text("Not configured", ScaleUIPx(200), ScaleUIPx(300), UI_TEXT_12, GetThemeIcon())
+    Text("Export data", ScaleUIPx(40), ScaleUIPx(350), UI_TEXT_16, GetThemeText())
+    Text("Import data", ScaleUIPx(40), ScaleUIPx(400), UI_TEXT_16, GetThemeText())
+    Button((ButtonProps){"Sign out", (Rectangle){ScaleUIPx(150), ScaleUIPx(460), ScaleUIPx(180), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 1}, "signout")
+    EndUIFocus()
+    EndDrawing()
+}
