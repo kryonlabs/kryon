@@ -63,9 +63,15 @@ if [ -n "${KRB_EXACT_XWD:-}" ]; then
     kill -9 "$app_pid" 2>/dev/null
     wait "$app_pid" 2>/dev/null
 else
-    (cd "$workdir" && INBE_SHOT_ARM=1 "$inbe" --screenshot "$work/native.png" \
+    # The armed pre-swap capture writes /tmp/kryon-native.png itself
+    # (raylib's exporter does not honor the image on this stack).
+    rm -f /tmp/kryon-native.png
+    (cd "$workdir" && INBE_SHOT_ARM=1 "$inbe" --screenshot /dev/null \
         --screenshot-scene "$scene" --screenshot-width 480 \
         --screenshot-height 640 --screenshot-dark 1 >/dev/null 2>&1) || true
+    if [ -s /tmp/kryon-native.png ]; then
+        cp /tmp/kryon-native.png "$work/native.png"
+    fi
 fi
 
 if [ ! -s "$work/native.png" ]; then

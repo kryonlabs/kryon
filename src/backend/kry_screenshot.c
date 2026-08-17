@@ -66,9 +66,10 @@ void EndDrawing(void)
                 g_shot_w = w;
                 g_shot_h = h;
             }
-            if(g_shot_buf != NULL)
+            if(g_shot_buf != NULL) {
                 glReadPixels(0, 0, w, h, KR_GL_RGBA, KR_GL_UNSIGNED_BYTE,
                              g_shot_buf);
+            }
         }
     }
     KryonRaylibBackend_EndDrawing();
@@ -78,6 +79,146 @@ void EndDrawing(void)
 /* Returns the frame captured by the armed EndDrawing wrapper, flipped
  * vertically (glReadPixels origin is bottom-left) with alpha flattened
  * (the ARGB window visual renders transparent without a compositor). */
+
+/* Minimal PNG writer (stored deflate): deterministic, no dependencies,
+ * and deliberately not raylib's ExportImage — on this stack the raylib
+ * exporter does not honor the passed image. */
+static unsigned kr_png_crc(const unsigned char *p, size_t n)
+{
+    static unsigned t[256];
+    static int built = 0;
+    unsigned c = 0xffffffffu;
+    size_t i;
+
+    if(!built) {
+        int k;
+        unsigned j;
+
+        for(k = 0; k < 256; k++) {
+            c = (unsigned)k;
+            for(j = 0; j < 8; j++)
+                c = (c & 1) ? 0xedb88320u ^ (c >> 1) : c >> 1;
+            t[k] = c;
+        }
+        built = 1;
+    }
+    for(i = 0; i < n; i++)
+        c = t[(c ^ p[i]) & 0xff] ^ (c >> 8);
+    return c ^ 0xffffffffu;
+}
+
+static void kr_png_be32(unsigned char *p, unsigned long v)
+{
+    p[0] = (unsigned char)(v >> 24);
+    p[1] = (unsigned char)(v >> 16);
+    p[2] = (unsigned char)(v >> 8);
+    p[3] = (unsigned char)v;
+}
+
+static int kr_write_png(const char *path, const unsigned char *rgba, int w,
+                        int h)
+{
+    static const unsigned char sig[8] =
+        {137, 80, 78, 71, 13, 10, 26, 10};
+    unsigned char ihdr[13];
+    unsigned char *raw;
+    unsigned char *z;
+    unsigned zn = 0;
+    unsigned long left;
+    const unsigned char *src;
+    FILE *f;
+    int y;
+    size_t rowlen = (size_t)w * 4;
+    size_t rawlen = (h + 1) * rowlen;
+
+    f = fopen(path, "wb");
+    if(f == NULL)
+        return -1;
+    raw = malloc(rawlen);
+    z = malloc(rawlen + (rawlen / 65535 + 1) * 5 + 64);
+    if(raw == NULL || z == NULL) {
+        free(raw);
+        free(z);
+        fclose(f);
+        return -1;
+    }
+    for(y = 0; y < h; y++) {
+        raw[(size_t)y * (rowlen + 1)] = 0;
+        memcpy(raw + (size_t)y * (rowlen + 1) + 1, rgba + (size_t)y * rowlen,
+               rowlen);
+    }
+    z[zn++] = 0x78;
+    z[zn++] = 0x01;
+    src = raw;
+    left = rawlen;
+    while(left > 0) {
+        unsigned chunk = left > 65535 ? 65535 : left;
+        unsigned char bh[5];
+
+        bh[0] = (left - chunk) == 0 ? 1 : 0;
+        bh[1] = (unsigned char)(chunk & 0xff);
+        bh[2] = (unsigned char)(chunk >> 8);
+        bh[3] = (unsigned char)(~chunk & 0xff);
+        bh[4] = (unsigned char)((~chunk >> 8) & 0xff);
+        memcpy(z + zn, bh, 5);
+        zn += 5;
+        memcpy(z + zn, src, chunk);
+        zn += chunk;
+        src += chunk;
+        left -= chunk;
+    }
+    {
+        unsigned adler = 1;
+        unsigned a = 1;
+        unsigned b = 0;
+        size_t i;
+
+        for(i = 0; i < rawlen; i++) {
+            a = (a + raw[i]) % 65521u;
+            b = (b + a) % 65521u;
+        }
+        adler = (b << 16) | a;
+        kr_png_be32(z + zn, adler);
+        zn += 4;
+    }
+    fwrite(sig, 1, 8, f);
+    kr_png_be32(ihdr, (unsigned long)w);
+    kr_png_be32(ihdr + 4, (unsigned long)h);
+    ihdr[8] = 8;
+    ihdr[9] = 6;
+    ihdr[10] = 0;
+    ihdr[11] = 0;
+    ihdr[12] = 0;
+    {
+        unsigned char hdr[8];
+        unsigned crc;
+
+        kr_png_be32(hdr, 13);
+        memcpy(hdr + 4, "IHDR", 4);
+        fwrite(hdr, 1, 8, f);
+        fwrite(ihdr, 1, 13, f);
+        crc = kr_png_crc(ihdr, 13);
+        kr_png_be32(hdr, crc);
+        fwrite(hdr, 1, 4, f);
+        kr_png_be32(hdr, zn);
+        memcpy(hdr + 4, "IDAT", 4);
+        fwrite(hdr, 1, 8, f);
+        fwrite(z, 1, zn, f);
+        crc = kr_png_crc(z, zn);
+        kr_png_be32(hdr, crc);
+        fwrite(hdr, 1, 4, f);
+        kr_png_be32(hdr, 0);
+        memcpy(hdr + 4, "IEND", 4);
+        fwrite(hdr, 1, 8, f);
+        kr_png_be32(hdr, kr_png_crc((const unsigned char *)"IEND", 4));
+        fwrite(hdr, 1, 4, f);
+    }
+    free(raw);
+    free(z);
+    fclose(f);
+    return 0;
+}
+
 Image LoadImageFromScreen(void)
 {
     Image image = { 0 };
@@ -101,6 +242,17 @@ Image LoadImageFromScreen(void)
     image.height = g_shot_h;
     image.mipmaps = 1;
     image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    {
+        {
+            FILE *df = fopen("/tmp/shot-flip.raw", "wb");
+
+            if(df != NULL) {
+                fwrite(flip, 1, (size_t)row * g_shot_h, df);
+                fclose(df);
+            }
+            kr_write_png("/tmp/kryon-native.png", flip, g_shot_w, g_shot_h);
+        }
+    }
     return image;
 }
 
