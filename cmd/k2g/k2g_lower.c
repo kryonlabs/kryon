@@ -794,10 +794,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         }
         case KIR_STMT_WIDGET: {
             char wname[K2G_NAME_MAX];
+            char wargs[K2G_TEXT_MAX];
 
             camel(st->widget, wname, sizeof(wname));
+            tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
-            fprintf(f, "rt.%s(%s)\n", wname, rw);
+            fprintf(f, "rt.%s(%s)\n", wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:

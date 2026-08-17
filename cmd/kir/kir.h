@@ -76,6 +76,7 @@ typedef struct KirStmt {
     KirStmtKind kind;
     char text[KIR_TEXT_MAX];
     char widget[KIR_NAME_MAX];
+    char args[KIR_TEXT_MAX];
     KirSourceSpan span;
 } KirStmt;
 
@@ -193,6 +194,9 @@ KirType *KirModuleAddType(KirModule *module, const char *name,
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
                             const char *text, const char *widget,
                             KirSourceSpan span);
+KirStmt *KirFunctionAddWidget(KirFunction *fn, const char *widget,
+                              const char *args, const char *text,
+                              KirSourceSpan span);
 const char *KirImportKindName(KirImportKind kind);
 const char *KirStmtKindName(KirStmtKind kind);
 void KirProgramDump(const KirProgram *program, FILE *out);

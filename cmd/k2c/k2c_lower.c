@@ -987,6 +987,10 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                 fprintf(c, "%s;\n", rw);
             }
             break;
+        case KIR_STMT_WIDGET:
+            emit_call_wrap(c, m, restab, restab_count, st->span.line,
+                           st->text, shadow);
+            break;
         default:
             if(rw[0] != '\0') {
                 emit_indent(c, indent);

@@ -287,8 +287,80 @@ classify_stmt(const char *s)
     if(strchr(s, '(') != NULL || strchr(s, '+') != NULL ||
        strchr(s, '-') != NULL)
         return KIR_STMT_EXPR;
-        return KIR_STMT_EXPR;
     return KIR_STMT_UNKNOWN;
+}
+
+static int
+parse_widget_statement(const char *text, char *name, size_t name_size,
+                       char *args, size_t args_size)
+{
+    static const char *const widgets[] = {
+        "Background", "Text", "TextInRect", "Paragraph", "TextLines",
+        "Rect", "Line", "Bevel", "IconTexture", "Picture", "Button",
+        "IconButton", "Href", "TextField", "Dropdown", "Slider",
+        "Toggle", "Checkbox", "Progress", "Column", "Row", "Stack",
+        "End", "Scroll", "Canvas", "Modal", "TitleBar", "TabBar",
+        "BottomNav", "TopNav", "Toolbar"
+    };
+    const char *p = text;
+    const char *open;
+    const char *close;
+    size_t length;
+    size_t i;
+    int known = 0;
+    int depth = 0;
+    int in_string = 0;
+
+    while(*p == ' ' || *p == '\t')
+        p++;
+    open = p;
+    while(isalnum((unsigned char)*p) || *p == '_')
+        p++;
+    length = (size_t)(p - open);
+    if(length == 0 || length >= name_size)
+        return 0;
+    memcpy(name, open, length);
+    name[length] = '\0';
+    for(i = 0; i < sizeof(widgets) / sizeof(widgets[0]); i++)
+        if(strcmp(name, widgets[i]) == 0) {
+            known = 1;
+            break;
+        }
+    if(!known)
+        return 0;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(*p != '(')
+        return 0;
+    open = p++;
+    close = NULL;
+    depth = 1;
+    while(*p != '\0') {
+        if(in_string) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '"')
+                in_string = 0;
+        } else if(*p == '"') {
+            in_string = 1;
+        } else if(*p == '(') {
+            depth++;
+        } else if(*p == ')' && --depth == 0) {
+            close = p;
+            break;
+        }
+        p++;
+    }
+    if(close == NULL || (size_t)(close - open) >= args_size)
+        return 0;
+    p = close + 1;
+    while(*p == ' ' || *p == '\t' || *p == ';')
+        p++;
+    if(*p != '\0')
+        return 0;
+    memcpy(args, open + 1, (size_t)(close - open - 1));
+    args[close - open - 1] = '\0';
+    return 1;
 }
 
 /* 'if cond { body }' (also else/while/for/switch/case/default/guard) written
@@ -1674,11 +1746,23 @@ kir_parse_file(const char *path, const char *root)
                 }
             } else {
                 KirStmtKind kind = classify_stmt(t);
-                const char *widget = kind == KIR_STMT_EXPR ? t : "";
+                char widget[KIR_NAME_MAX] = "";
+                char widget_args[KIR_TEXT_MAX] = "";
+                KirStmt *added;
                 int brace_delta = net_block_braces(t);
 
-                KirFunctionAddStmt(fn, kind, t, widget,
-                                   KirSpan(rel, line_no, 1));
+                if(kind == KIR_STMT_EXPR &&
+                   parse_widget_statement(t, widget, sizeof(widget),
+                                          widget_args,
+                                          sizeof(widget_args)))
+                    kind = KIR_STMT_WIDGET;
+                if(kind == KIR_STMT_WIDGET)
+                    added = KirFunctionAddWidget(fn, widget, widget_args, t,
+                                                 KirSpan(rel, line_no, 1));
+                else
+                    added = KirFunctionAddStmt(fn, kind, t, widget,
+                                               KirSpan(rel, line_no, 1));
+                (void)added;
                 depth += brace_delta;
                 if(depth < 0)
                     depth = 0;

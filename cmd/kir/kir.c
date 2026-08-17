@@ -263,6 +263,17 @@ KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind, const char *text,
     return st;
 }
 
+KirStmt *
+KirFunctionAddWidget(KirFunction *fn, const char *widget, const char *args,
+                     const char *text, KirSourceSpan span)
+{
+    KirStmt *st = KirFunctionAddStmt(fn, KIR_STMT_WIDGET, text, widget, span);
+
+    if(st != NULL)
+        kir_copy(st->args, sizeof(st->args), args);
+    return st;
+}
+
 const char *
 KirImportKindName(KirImportKind kind)
 {
@@ -368,8 +379,9 @@ KirProgramDump(const KirProgram *program, FILE *out)
             for(k = 0; k < fn->stmt_count; k++) {
                 const KirStmt *st = &fn->stmts[k];
 
-                fprintf(out, "    stmt %s widget %s text %s span ",
-                        KirStmtKindName(st->kind), st->widget, st->text);
+                fprintf(out, "    stmt %s widget %s args %s text %s span ",
+                        KirStmtKindName(st->kind), st->widget, st->args,
+                        st->text);
                 kir_dump_span(out, st->span);
                 fprintf(out, "\n");
             }

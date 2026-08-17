@@ -309,10 +309,10 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  id, id, 9200 + (id % 1000), x, y, id, id);
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    BeginNodeGroup(%d, (Rectangle){ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)})\n"
+                 "\n    Stack((ColumnProps){.bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)}, .key = Key(\"group-%d\")})\n"
                  "    Rect(ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110), Fade(GetThemeButton(), 0.45), GetThemeButtonHover())\n"
-                 "    EndNodeGroup()\n",
-                 10200 + (id % 1000), x, y, x, y);
+                 "    End()\n",
+                 x, y, 10200 + (id % 1000), x, y);
     } else {
         return 0;
     }

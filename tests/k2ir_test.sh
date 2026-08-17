@@ -48,9 +48,9 @@ grep -Fq 'import extern platform_ping target platform_ping' "$kir"
 grep -Fq 'signature platform_ping :: (value: int, tag: const char*) -> int #extern' "$kir"
 grep -Fq 'state click_count type int init 0' "$kir"
 grep -Fq 'function Counter args app: App* return void' "$kir"
-grep -Fq 'stmt expr widget Text("Count") text Text("Count")' "$kir"
-grep -Fq 'stmt if widget  text if Button("Increment") {' "$kir"
-grep -Fq 'stmt assign widget  text app->click_count += 1' "$kir"
+grep -Fq 'stmt widget widget Text args "Count" text Text("Count")' "$kir"
+grep -Fq 'stmt if widget  args  text if Button("Increment") {' "$kir"
+grep -Fq 'stmt assign widget  args  text app->click_count += 1' "$kir"
 if grep -Fq 'function WEB' "$kir"; then
     echo "top-level #defined binding was emitted as a function" >&2
     exit 1

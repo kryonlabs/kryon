@@ -14,6 +14,36 @@
 struct UITransition;
 
 typedef int UINodeId;
+typedef unsigned long long UIKey;
+
+typedef enum UIEventKind {
+    UI_EVENT_NONE = 0,
+    UI_EVENT_CLICK,
+    UI_EVENT_VALUE_CHANGED,
+    UI_EVENT_TEXT_CHANGED,
+    UI_EVENT_TEXT_COMMIT,
+    UI_EVENT_SELECTION_CHANGED,
+    UI_EVENT_FOCUS,
+    UI_EVENT_BLUR
+} UIEventKind;
+
+typedef struct UIEvent {
+    UIKey key;
+    UIEventKind kind;
+    double timestamp;
+    union {
+        int value;
+        struct { int start, end; } selection;
+        struct { int bytes; } text;
+    } data;
+} UIEvent;
+
+typedef enum UIInvalidation {
+    UI_INVALIDATE_NONE = 0,
+    UI_INVALIDATE_PAINT = 1 << 0,
+    UI_INVALIDATE_LAYOUT = 1 << 1,
+    UI_INVALIDATE_TREE = 1 << 2
+} UIInvalidation;
 
 typedef enum UIWidgetKind {
     UI_WIDGET_SCREEN_NODE,
@@ -40,11 +70,18 @@ typedef enum UIWidgetKind {
     UI_WIDGET_PARAGRAPH_MODAL_NODE,
     UI_WIDGET_TITLE_BAR_NODE,
     UI_WIDGET_GROUP_NODE,
+    UI_WIDGET_COLUMN_NODE,
+    UI_WIDGET_ROW_NODE,
+    UI_WIDGET_STACK_NODE,
     UI_WIDGET_PICTURE_NODE,
     UI_WIDGET_CUSTOM_NODE
 } UIWidgetKind;
 
 typedef union UIWidgetData {
+    struct {
+        int gap;
+        int padding;
+    } layout;
     UIParagraphSpec paragraph;
     ReadonlyTextBoxProps readonly_text_box;
     LabelTextFieldProps label_text_field;
@@ -54,10 +91,23 @@ typedef union UIWidgetData {
     ThemeSettingsProps theme_settings;
     ParagraphModalMeasureProps paragraph_modal;
     PictureProps picture;
+    struct {
+        int x2;
+        int y2;
+        int font;
+        Color color;
+        Color border;
+    } primitive;
+    struct {
+        UIButtonSpec spec;
+        UIButtonStyle style;
+    } button;
+    TextFieldProps text_field;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {
     int id;
+    UIKey key;
     UIWidgetKind kind;
     Rectangle bounds;
     int parent;
@@ -67,12 +117,19 @@ typedef struct UIWidgetNode {
     void *state;
     UIWidgetData data;
     unsigned flags;
+    unsigned generation;
+    char *owned_text;
 } UIWidgetNode;
 
-void UIBeginTree(int screen_id);
-void UIEndTree(void);
-UINodeId BeginNodeGroup(int id, Rectangle bounds);
-void EndNodeGroup(void);
+/* BeginUI starts a declaration pass. EndUI atomically reconciles, lays out,
+ * routes, updates, and paints it. Every container closes with End(). */
+void BeginUI(UIKey screen_key);
+void EndUI(void);
+void End(void);
+UIKey Key(const char *text);
+void InvalidateUI(UIInvalidation invalidation);
+int NextUIEvent(UIEvent *event);
+int SetSelection(UIKey key, int anchor, int cursor);
 void UIReconcileTree(void);
 void UILayoutTree(void);
 void UIRouteInput(void);
@@ -239,17 +296,18 @@ typedef struct {
     Rectangle bounds;
     int gap;
     int padding;
+    UIKey key;
 } ColumnProps;
 
 typedef struct {
     Rectangle bounds;
     int gap;
     int padding;
+    UIKey key;
 } RowProps;
 
 UINodeId Column(ColumnProps props);
 UINodeId Row(RowProps props);
-void EndColumn(void);
-void EndRow(void);
+UINodeId Stack(ColumnProps props);
 
 #endif

@@ -1,21 +1,169 @@
 #include "ui_internal.h"
 #include "embedded_assets.h"
 
-#define UI_TREE_MAX_NODES 4096
 #define UI_TREE_MAX_DEPTH 128
+#define UI_NODE_HOVERED (1U << 28)
+#define UI_NODE_PRESSED (1U << 29)
+#define UI_NODE_OWNS_STATE (1U << 30)
 
-static UIWidgetNode ui_tree_nodes[UI_TREE_MAX_NODES];
+typedef struct UITextFieldState {
+    int cursor;
+    int anchor;
+    int focused;
+} UITextFieldState;
+
+static UIWidgetNode *ui_tree_nodes = NULL;
 static int ui_tree_node_count = 0;
+static int ui_tree_node_capacity = 0;
+static UIWidgetNode *ui_committed_nodes = NULL;
+static int ui_committed_node_count = 0;
+static int ui_committed_node_capacity = 0;
 static int ui_tree_screen_id = 0;
+static UIKey ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
 static UINodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
+static unsigned ui_tree_generation = 0;
+static unsigned ui_tree_invalid = UI_INVALIDATE_TREE |
+                                  UI_INVALIDATE_LAYOUT |
+                                  UI_INVALIDATE_PAINT;
+static UIEvent *ui_event_queue = NULL;
+static int ui_event_capacity = 0;
+static int ui_event_head = 0;
+static int ui_event_count = 0;
 
 typedef struct UIWidgetOps {
     int (*measure_height)(UIWidgetNode node);
 } UIWidgetOps;
 
 static UIWidgetNode *ui_tree_node(UINodeId id);
+
+static char *
+ui_tree_strdup(const char *text)
+{
+    size_t size;
+    char *copy;
+
+    if(text == NULL)
+        text = "";
+    size = strlen(text) + 1;
+    copy = malloc(size);
+    if(copy != NULL)
+        memcpy(copy, text, size);
+    return copy;
+}
+
+static void
+ui_tree_clear_pending(void)
+{
+    int i;
+
+    for(i = 0; i < ui_tree_node_count; i++) {
+        free(ui_tree_nodes[i].owned_text);
+        ui_tree_nodes[i].owned_text = NULL;
+    }
+}
+
+static void
+ui_event_push(UIEvent event)
+{
+    int tail;
+
+    if(ui_event_count >= ui_event_capacity) {
+        int next = ui_event_capacity > 0 ? ui_event_capacity * 2 : 64;
+        UIEvent *grown = malloc((size_t)next * sizeof(*grown));
+        int i;
+
+        if(grown == NULL)
+            return;
+        for(i = 0; i < ui_event_count; i++)
+            grown[i] = ui_event_queue[(ui_event_head + i) %
+                                      ui_event_capacity];
+        free(ui_event_queue);
+        ui_event_queue = grown;
+        ui_event_capacity = next;
+        ui_event_head = 0;
+    }
+    tail = (ui_event_head + ui_event_count) % ui_event_capacity;
+    ui_event_queue[tail] = event;
+    ui_event_count++;
+}
+
+static void
+ui_text_field_event(UIWidgetNode *node, UIEventKind kind, double timestamp)
+{
+    UIEvent event;
+    UITextFieldState *state = node != NULL ? node->state : NULL;
+
+    if(node == NULL)
+        return;
+    memset(&event, 0, sizeof(event));
+    event.key = node->key;
+    event.kind = kind;
+    event.timestamp = timestamp;
+    if(kind == UI_EVENT_SELECTION_CHANGED && state != NULL) {
+        event.data.selection.start = state->anchor < state->cursor
+            ? state->anchor : state->cursor;
+        event.data.selection.end = state->anchor > state->cursor
+            ? state->anchor : state->cursor;
+    } else if(kind == UI_EVENT_TEXT_CHANGED &&
+              node->data.text_field.text != NULL) {
+        event.data.text.bytes = (int)strlen(node->data.text_field.text);
+    }
+    ui_event_push(event);
+}
+
+static int
+ui_tree_reserve(UIWidgetNode **nodes, int *capacity, int needed)
+{
+    UIWidgetNode *grown;
+    int next;
+
+    if(needed <= *capacity)
+        return 1;
+    next = *capacity > 0 ? *capacity : 64;
+    while(next < needed) {
+        if(next > 0x3fffffff)
+            return 0;
+        next *= 2;
+    }
+    grown = realloc(*nodes, (size_t)next * sizeof(*grown));
+    if(grown == NULL)
+        return 0;
+    *nodes = grown;
+    *capacity = next;
+    return 1;
+}
+
+static unsigned long long
+ui_reconcile_hash(UIKey parent, UIKey key, UIWidgetKind kind)
+{
+    unsigned long long hash = key ^ (parent + 0x9e3779b97f4a7c15ULL +
+                                     (key << 6) + (key >> 2));
+
+    hash ^= (unsigned long long)(unsigned)kind * 0x9e3779b185ebca87ULL;
+    hash ^= hash >> 30;
+    hash *= 0xbf58476d1ce4e5b9ULL;
+    hash ^= hash >> 27;
+    hash *= 0x94d049bb133111ebULL;
+    return hash ^ (hash >> 31);
+}
+
+static int
+ui_reconcile_same_identity(const UIWidgetNode *old_nodes, int old_index,
+                           const UIWidgetNode *new_nodes, int new_index)
+{
+    const UIWidgetNode *old_node = &old_nodes[old_index];
+    const UIWidgetNode *new_node = &new_nodes[new_index];
+    UIKey old_parent = old_node->parent >= 0
+        ? old_nodes[old_node->parent].key : 0;
+    UIKey new_parent = new_node->parent >= 0
+        ? new_nodes[new_node->parent].key : 0;
+
+    return old_node->key == new_node->key &&
+           old_node->kind == new_node->kind &&
+           old_parent == new_parent;
+}
 
 static UINodeId
 ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
@@ -25,12 +173,16 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     UINodeId parent_id;
     int index;
 
-    if(ui_tree_node_count >= UI_TREE_MAX_NODES)
+    if(!ui_tree_building)
+        return -1;
+    if(!ui_tree_reserve(&ui_tree_nodes, &ui_tree_node_capacity,
+                        ui_tree_node_count + 1))
         return -1;
     index = ui_tree_node_count++;
     node = &ui_tree_nodes[index];
     memset(node, 0, sizeof(*node));
     node->id = id;
+    node->key = (UIKey)(unsigned)id;
     node->kind = kind;
     node->bounds = bounds;
     node->props = props;
@@ -222,73 +374,507 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_PARAGRAPH_MODAL_NODE] = {ui_measure_paragraph_modal},
     [UI_WIDGET_TITLE_BAR_NODE] = {ui_measure_title_bar},
     [UI_WIDGET_GROUP_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_COLUMN_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_ROW_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_STACK_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_PICTURE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_CUSTOM_NODE] = {ui_measure_bounds_height},
 };
 
+UIKey
+Key(const char *text)
+{
+    UIKey hash = 1469598103934665603ULL;
+
+    if(text == NULL)
+        return 0;
+    while(*text != '\0') {
+        hash ^= (unsigned char)*text++;
+        hash *= 1099511628211ULL;
+    }
+    return hash != 0 ? hash : 1;
+}
+
 void
-UIBeginTree(int screen_id)
+BeginUI(UIKey screen_key)
 {
     UINodeId root;
 
-    ui_tree_screen_id = screen_id;
+    ui_tree_clear_pending();
+    ui_tree_screen_key = screen_key != 0 ? screen_key : 1;
+    ui_tree_screen_id = (int)(ui_tree_screen_key & 0x7fffffffU);
     ui_tree_node_count = 0;
     ui_tree_building = 1;
     ui_tree_stack_depth = 0;
-    root = ui_tree_add(screen_id, UI_WIDGET_SCREEN_NODE,
+    root = ui_tree_add(ui_tree_screen_id, UI_WIDGET_SCREEN_NODE,
                        (Rectangle){0, 0, ui_view_width, ui_view_height}, NULL);
-    if(root >= 0)
+    if(root >= 0) {
+        ui_tree_nodes[root].key = ui_tree_screen_key;
         ui_tree_stack[ui_tree_stack_depth++] = root;
+    }
 }
 
 void
-UIEndTree(void)
+EndUI(void)
 {
     ui_tree_building = 0;
     ui_tree_stack_depth = 0;
-}
-
-UINodeId
-BeginNodeGroup(int id, Rectangle bounds)
-{
-    UINodeId node;
-
-    node = ui_tree_add(id, UI_WIDGET_GROUP_NODE, bounds, NULL);
-    if(node >= 0 && ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
-        ui_tree_stack[ui_tree_stack_depth++] = node;
-    return node;
+    UIReconcileTree();
+    UILayoutTree();
+    UIRouteInput();
+    UIUpdateTree();
+    DrawUITree();
+    DrawUIOverlays();
 }
 
 void
-EndNodeGroup(void)
+End(void)
 {
     if(ui_tree_stack_depth > 1)
         ui_tree_stack_depth--;
 }
 
 void
+InvalidateUI(UIInvalidation invalidation)
+{
+    ui_tree_invalid |= (unsigned)invalidation;
+}
+
+int
+NextUIEvent(UIEvent *event)
+{
+    if(event == NULL || ui_event_count <= 0)
+        return 0;
+    *event = ui_event_queue[ui_event_head];
+    ui_event_head = (ui_event_head + 1) % ui_event_capacity;
+    ui_event_count--;
+    return 1;
+}
+
+int
+SetSelection(UIKey key, int anchor, int cursor)
+{
+    int i;
+
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+        UITextFieldState *state;
+        int length;
+
+        if(node->key != key || node->kind != UI_WIDGET_TEXT_FIELD_NODE)
+            continue;
+        state = node->state;
+        if(state == NULL || node->data.text_field.text == NULL)
+            return 0;
+        length = (int)strlen(node->data.text_field.text);
+        state->anchor = ui_clampi(anchor, 0, length);
+        state->cursor = ui_clampi(cursor, 0, length);
+        if(node->data.text_field.cursor_position != NULL)
+            *node->data.text_field.cursor_position = state->cursor;
+        ui_text_field_event(node, UI_EVENT_SELECTION_CHANGED, GetTime());
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+        return 1;
+    }
+    return 0;
+}
+
+void
 UIReconcileTree(void)
 {
+    int *slots = NULL;
+    UIWidgetNode *old_nodes = NULL;
+    int old_count = ui_committed_node_count;
+    int slot_count = 1;
+    int i;
+
+    if(!ui_tree_reserve(&ui_committed_nodes, &ui_committed_node_capacity,
+                        ui_tree_node_count))
+        return;
+    if(old_count > 0) {
+        old_nodes = malloc((size_t)old_count * sizeof(*old_nodes));
+        if(old_nodes == NULL)
+            return;
+        memcpy(old_nodes, ui_committed_nodes,
+               (size_t)old_count * sizeof(*old_nodes));
+    }
+    while(slot_count < old_count * 2 + 1)
+        slot_count *= 2;
+    slots = malloc((size_t)slot_count * sizeof(*slots));
+    if(slots == NULL) {
+        free(old_nodes);
+        return;
+    }
+    for(i = 0; i < slot_count; i++)
+        slots[i] = -1;
+    for(i = 0; i < old_count; i++) {
+        UIWidgetNode *node = &old_nodes[i];
+        UIKey parent = node->parent >= 0
+            ? old_nodes[node->parent].key : 0;
+        unsigned slot = (unsigned)(ui_reconcile_hash(parent, node->key,
+                                                      node->kind) &
+                                    (unsigned long long)(slot_count - 1));
+
+        while(slots[slot] >= 0)
+            slot = (slot + 1U) & (unsigned)(slot_count - 1);
+        slots[slot] = i;
+    }
+    ui_tree_generation++;
+    for(i = 0; i < ui_tree_node_count; i++) {
+        UIWidgetNode next = ui_tree_nodes[i];
+        UIKey parent = next.parent >= 0 ? ui_tree_nodes[next.parent].key : 0;
+        unsigned slot = (unsigned)(ui_reconcile_hash(parent, next.key,
+                                                      next.kind) &
+                                    (unsigned long long)(slot_count - 1));
+
+        next.generation = ui_tree_generation;
+        next.state = NULL;
+        while(slots[slot] >= 0) {
+            int old = slots[slot];
+
+            if(ui_reconcile_same_identity(old_nodes, old,
+                                          ui_tree_nodes, i)) {
+                next.state = old_nodes[old].state;
+                next.flags |= old_nodes[old].flags & UI_NODE_OWNS_STATE;
+                old_nodes[old].flags &= ~UI_NODE_OWNS_STATE;
+                break;
+            }
+            slot = (slot + 1U) & (unsigned)(slot_count - 1);
+        }
+        ui_committed_nodes[i] = next;
+        ui_tree_nodes[i].owned_text = NULL;
+    }
+    for(i = 0; i < old_count; i++) {
+        free(old_nodes[i].owned_text);
+        if((old_nodes[i].flags & UI_NODE_OWNS_STATE) != 0)
+            free(old_nodes[i].state);
+    }
+    for(i = 0; i < ui_tree_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+
+        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE && node->state == NULL) {
+            UITextFieldState *state = calloc(1, sizeof(*state));
+
+            if(state != NULL) {
+                TextFieldProps *field = &node->data.text_field;
+                int length = field->text != NULL ? (int)strlen(field->text) : 0;
+
+                state->cursor = field->cursor_position != NULL
+                    ? *field->cursor_position : length;
+                state->anchor = state->cursor;
+                state->focused = field->focused != NULL
+                    ? *field->focused != 0 : 0;
+                node->state = state;
+                node->flags |= UI_NODE_OWNS_STATE;
+            }
+        }
+    }
+    free(slots);
+    free(old_nodes);
+    ui_committed_node_count = ui_tree_node_count;
+    ui_tree_invalid |= UI_INVALIDATE_LAYOUT | UI_INVALIDATE_PAINT;
 }
 
 void
 UILayoutTree(void)
 {
+    int i;
+
+    if((ui_tree_invalid & UI_INVALIDATE_LAYOUT) == 0)
+        return;
+    for(i = ui_committed_node_count - 1; i >= 0; i--) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+
+        if(node->bounds.height <= 0)
+            node->bounds.height = (float)UIGetNodeHeight(*node);
+    }
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *parent = &ui_committed_nodes[i];
+        int child;
+        float cursor;
+        float content_x;
+        float content_y;
+        float content_w;
+        float content_h;
+
+        if(parent->kind != UI_WIDGET_COLUMN_NODE &&
+           parent->kind != UI_WIDGET_ROW_NODE &&
+           parent->kind != UI_WIDGET_STACK_NODE)
+            continue;
+        content_x = parent->bounds.x + parent->data.layout.padding;
+        content_y = parent->bounds.y + parent->data.layout.padding;
+        content_w = parent->bounds.width - parent->data.layout.padding * 2;
+        content_h = parent->bounds.height - parent->data.layout.padding * 2;
+        if(content_w < 0)
+            content_w = 0;
+        if(content_h < 0)
+            content_h = 0;
+        cursor = parent->kind == UI_WIDGET_ROW_NODE ? content_x : content_y;
+        for(child = parent->first_child; child >= 0;
+            child = ui_committed_nodes[child].next_sibling) {
+            UIWidgetNode *node = &ui_committed_nodes[child];
+
+            if(parent->kind == UI_WIDGET_COLUMN_NODE) {
+                node->bounds.x = content_x;
+                node->bounds.y = cursor;
+                if(node->bounds.width <= 0)
+                    node->bounds.width = content_w;
+                cursor += node->bounds.height + parent->data.layout.gap;
+            } else if(parent->kind == UI_WIDGET_ROW_NODE) {
+                node->bounds.x = cursor;
+                node->bounds.y = content_y;
+                if(node->bounds.height <= 0)
+                    node->bounds.height = content_h;
+                cursor += node->bounds.width + parent->data.layout.gap;
+            } else {
+                node->bounds.x = content_x;
+                node->bounds.y = content_y;
+                if(node->bounds.width <= 0)
+                    node->bounds.width = content_w;
+                if(node->bounds.height <= 0)
+                    node->bounds.height = content_h;
+            }
+        }
+    }
+    ui_tree_invalid &= ~UI_INVALIDATE_LAYOUT;
 }
 
 void
 UIRouteInput(void)
 {
+    Vector2 mouse;
+    int target;
+    int i;
+    int pressed;
+
+    if(ui_committed_node_count <= 0)
+        return;
+    mouse = GetMousePosition();
+    pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+        unsigned before;
+
+        if(node->kind != UI_WIDGET_BUTTON_NODE)
+            continue;
+        before = node->flags;
+        node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
+        if(!node->data.button.spec.disabled &&
+           CheckCollisionPointRec(mouse, node->bounds)) {
+            node->flags |= UI_NODE_HOVERED;
+            if(pressed)
+                node->flags |= UI_NODE_PRESSED;
+        }
+        if(before != node->flags)
+            ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
+        ? UIHitTestNode(mouse) : -1;
+    if(target >= 0 && ui_committed_nodes[target].kind == UI_WIDGET_BUTTON_NODE &&
+       !ui_committed_nodes[target].data.button.spec.disabled) {
+        UIEvent event;
+
+        memset(&event, 0, sizeof(event));
+        event.key = ui_committed_nodes[target].key;
+        event.kind = UI_EVENT_CLICK;
+        event.timestamp = GetTime();
+        ui_event_push(event);
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+        TextFieldProps *field;
+        UITextFieldState *state;
+        int start;
+        int end;
+        int changed = 0;
+        int selection_changed = 0;
+        int codepoint;
+
+        if(node->kind != UI_WIDGET_TEXT_FIELD_NODE || node->state == NULL)
+            continue;
+        field = &node->data.text_field;
+        state = node->state;
+        if(target >= 0) {
+            int focused = target == i;
+
+            if(state->focused != focused) {
+                state->focused = focused;
+                ui_text_field_event(node, focused ? UI_EVENT_FOCUS
+                                                  : UI_EVENT_BLUR, GetTime());
+            }
+        }
+        if(field->focused != NULL)
+            *field->focused = state->focused;
+        if(!state->focused || field->text == NULL || field->text_size == 0)
+            continue;
+        start = state->anchor < state->cursor ? state->anchor : state->cursor;
+        end = state->anchor > state->cursor ? state->anchor : state->cursor;
+        if((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) &&
+           IsKeyPressed(KEY_A)) {
+            state->anchor = 0;
+            state->cursor = (int)strlen(field->text);
+            selection_changed = 1;
+            start = 0;
+            end = state->cursor;
+        }
+        codepoint = GetCharPressed();
+        while(codepoint > 0) {
+            if(end > start) {
+                changed |= ui_text_delete_range(field->text, field->text_size,
+                                                 &state->cursor, start, end);
+                state->anchor = state->cursor;
+                start = end = state->cursor;
+            }
+            if((field->filter == NULL ||
+                field->filter(codepoint, field->filter_user_data)) &&
+               ui_text_insert_codepoint(field->text, field->text_size,
+                                        &state->cursor, codepoint,
+                                        field->max_codepoints)) {
+                state->anchor = state->cursor;
+                changed = 1;
+                selection_changed = 1;
+            }
+            codepoint = GetCharPressed();
+        }
+        if(IsKeyPressed(KEY_BACKSPACE)) {
+            if(end > start)
+                changed |= ui_text_delete_range(field->text, field->text_size,
+                                                 &state->cursor, start, end);
+            else if(state->cursor > 0)
+                changed |= ui_text_delete_range(
+                    field->text, field->text_size, &state->cursor,
+                    ui_utf8_prev_offset(field->text, state->cursor),
+                    state->cursor);
+            state->anchor = state->cursor;
+            selection_changed = changed;
+        } else if(IsKeyPressed(KEY_DELETE)) {
+            if(end > start)
+                changed |= ui_text_delete_range(field->text, field->text_size,
+                                                 &state->cursor, start, end);
+            else
+                changed |= ui_text_delete_range(
+                    field->text, field->text_size, &state->cursor,
+                    state->cursor,
+                    ui_utf8_next_offset(field->text, state->cursor));
+            state->anchor = state->cursor;
+            selection_changed = changed;
+        }
+        if(field->cursor_position != NULL)
+            *field->cursor_position = state->cursor;
+        if(changed)
+            ui_text_field_event(node, UI_EVENT_TEXT_CHANGED, GetTime());
+        if(selection_changed)
+            ui_text_field_event(node, UI_EVENT_SELECTION_CHANGED, GetTime());
+        if(changed || selection_changed)
+            ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
 }
 
 void
 UIUpdateTree(void)
 {
+    UIWidgetNode *root;
+
+    if(ui_committed_node_count <= 0)
+        return;
+    root = &ui_committed_nodes[0];
+    if(root->bounds.width != ui_view_width ||
+       root->bounds.height != ui_view_height) {
+        root->bounds.width = (float)ui_view_width;
+        root->bounds.height = (float)ui_view_height;
+        ui_tree_invalid |= UI_INVALIDATE_LAYOUT | UI_INVALIDATE_PAINT;
+    }
 }
 
 void
 DrawUITree(void)
 {
+    int i;
+
+    if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
+        return;
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+
+        switch(node->kind) {
+        case UI_WIDGET_BACKGROUND_NODE:
+            DrawRectangleRec(node->bounds, node->data.primitive.color);
+            break;
+        case UI_WIDGET_TEXT_NODE:
+            DrawUIText(node->owned_text != NULL ? node->owned_text : "",
+                       (int)node->bounds.x, (int)node->bounds.y,
+                       node->data.primitive.font,
+                       node->data.primitive.color);
+            break;
+        case UI_WIDGET_RECT_NODE:
+            DrawRectangleRec(node->bounds, node->data.primitive.color);
+            if(node->data.primitive.border.a != 0)
+                DrawRectangleLinesEx(node->bounds, 1.0f,
+                                     node->data.primitive.border);
+            break;
+        case UI_WIDGET_LINE_NODE:
+            DrawLine((int)node->bounds.x, (int)node->bounds.y,
+                     node->data.primitive.x2, node->data.primitive.y2,
+                     node->data.primitive.color);
+            break;
+        case UI_WIDGET_BUTTON_NODE: {
+            UIButtonSpec spec = node->data.button.spec;
+            Color background;
+            Color border;
+            Color text;
+            int font;
+            int hovered;
+
+            spec.bounds = node->bounds;
+            spec.label = node->owned_text != NULL ? node->owned_text : "";
+            font = spec.font > 0 ? spec.font : GetUIFontSize();
+            background = spec.background.a != 0 ? spec.background : c_button;
+            hovered = (node->flags & UI_NODE_HOVERED) != 0;
+            if(hovered)
+                background = spec.hover_background.a != 0
+                    ? spec.hover_background : c_button_hover;
+            if(spec.disabled && background.a > 120)
+                background.a = 120;
+            border = spec.border.a != 0 ? spec.border
+                                         : LightenUIColor(background, 32);
+            text = spec.text.a != 0 ? spec.text : c_text;
+            if(spec.disabled && text.a > 150)
+                text.a = 150;
+            ui_draw_control_background(spec.bounds, background, border,
+                                       spec.radius > 0.0f ? spec.radius : 0.06f);
+            DrawCenteredUIControlText(spec.label,
+                (int)(spec.bounds.x + spec.bounds.width * 0.5f),
+                (int)(spec.bounds.y + spec.bounds.height * 0.5f), font, text);
+            break;
+        }
+        case UI_WIDGET_TEXT_FIELD_NODE: {
+            TextFieldProps field = node->data.text_field;
+            UITextFieldState *state = node->state;
+            const char *display = field.text != NULL ? field.text : "";
+            char *masked = NULL;
+
+            if(field.secure) {
+                size_t length = strlen(display);
+
+                masked = malloc(length + 1);
+                if(masked != NULL) {
+                    memset(masked, '*', length);
+                    masked[length] = '\0';
+                    display = masked;
+                }
+            }
+            DrawUITextInput(node->bounds, display,
+                            state != NULL ? state->cursor : 0,
+                            state != NULL ? state->focused : 0, 1,
+                            field.font, field.style);
+            free(masked);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    ui_tree_invalid &= ~UI_INVALIDATE_PAINT;
 }
 
 void
@@ -301,13 +887,19 @@ const UIWidgetNode *
 UIGetTreeNodes(int *count)
 {
     if(count != NULL)
-        *count = ui_tree_node_count;
-    return ui_tree_nodes;
+        *count = ui_committed_node_count > 0 ? ui_committed_node_count
+                                             : ui_tree_node_count;
+    return ui_committed_node_count > 0 ? ui_committed_nodes : ui_tree_nodes;
 }
 
 const UIWidgetNode *
 UIGetNode(UINodeId id)
 {
+    if(ui_committed_node_count > 0) {
+        if(id < 0 || id >= ui_committed_node_count)
+            return NULL;
+        return &ui_committed_nodes[id];
+    }
     return ui_tree_node(id);
 }
 
@@ -315,12 +907,15 @@ UINodeId
 UIHitTestNode(Vector2 point)
 {
     int i;
+    UIWidgetNode *nodes = ui_committed_node_count > 0
+        ? ui_committed_nodes : ui_tree_nodes;
+    int count = ui_committed_node_count > 0
+        ? ui_committed_node_count : ui_tree_node_count;
 
-    for(i = ui_tree_node_count - 1; i >= 0; i--) {
-        if(ui_tree_nodes[i].bounds.width <= 0 ||
-           ui_tree_nodes[i].bounds.height <= 0)
+    for(i = count - 1; i >= 0; i--) {
+        if(nodes[i].bounds.width <= 0 || nodes[i].bounds.height <= 0)
             continue;
-        if(CheckCollisionPointRec(point, ui_tree_nodes[i].bounds))
+        if(CheckCollisionPointRec(point, nodes[i].bounds))
             return i;
     }
     return -1;
@@ -504,8 +1099,14 @@ Picture(PictureProps picture)
 void
 Background(Color color)
 {
-    ui_tree_add(0, UI_WIDGET_BACKGROUND_NODE,
-                (Rectangle){0, 0, ui_view_width, ui_view_height}, NULL);
+    UINodeId node = ui_tree_add(0, UI_WIDGET_BACKGROUND_NODE,
+                                (Rectangle){0, 0, ui_view_width,
+                                            ui_view_height}, NULL);
+
+    if(node >= 0)
+        ui_tree_nodes[node].data.primitive.color = color;
+    if(ui_tree_building)
+        return;
     DrawRectangleRec((Rectangle){0, 0, GetUIViewWidth(), GetUIViewHeight()},
                      color);
 }
@@ -513,7 +1114,17 @@ Background(Color color)
 void
 Text(const char *text, int x, int y, int font_size, Color color)
 {
-    ui_tree_add(0, UI_WIDGET_TEXT_NODE, (Rectangle){x, y, 0, 0}, text);
+    UINodeId node = ui_tree_add(0, UI_WIDGET_TEXT_NODE,
+                                (Rectangle){x, y, 0,
+                                    GetUITextHeight(text, font_size)}, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(text);
+        ui_tree_nodes[node].data.primitive.font = font_size;
+        ui_tree_nodes[node].data.primitive.color = color;
+    }
+    if(ui_tree_building)
+        return;
     DrawUIText(text, x, y, font_size, color);
 }
 
@@ -552,7 +1163,15 @@ TextLines(const char **lines, int count, int x, int *y, int font,
 void
 Rect(int x, int y, int w, int h, Color fill, Color border)
 {
-    ui_tree_add(0, UI_WIDGET_RECT_NODE, (Rectangle){x, y, w, h}, NULL);
+    UINodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
+                                (Rectangle){x, y, w, h}, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].data.primitive.color = fill;
+        ui_tree_nodes[node].data.primitive.border = border;
+    }
+    if(ui_tree_building)
+        return;
     DrawRectangleRec((Rectangle){x, y, w, h}, fill);
     if(border.a != 0)
         DrawRectangleLinesEx((Rectangle){x, y, w, h}, 1, border);
@@ -566,7 +1185,16 @@ Line(int x1, int y1, int x2, int y2, Color color)
     int w = abs(x2 - x1);
     int h = abs(y2 - y1);
 
-    ui_tree_add(0, UI_WIDGET_LINE_NODE, (Rectangle){x, y, w, h}, NULL);
+    UINodeId node = ui_tree_add(0, UI_WIDGET_LINE_NODE,
+                                (Rectangle){x, y, w, h}, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].data.primitive.x2 = x2;
+        ui_tree_nodes[node].data.primitive.y2 = y2;
+        ui_tree_nodes[node].data.primitive.color = color;
+    }
+    if(ui_tree_building)
+        return;
     DrawLine(x1, y1, x2, y2, color);
 }
 
@@ -615,16 +1243,36 @@ GenericButton(int id, int x, int y, int w, int h,
                     const char *label, UIButtonStyle style,
                     int disabled, int *hover)
 {
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, w, h}, hover);
+    UINodeId node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
+                                (Rectangle){x, y, w, h}, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(label);
+        ui_tree_nodes[node].data.button.spec.bounds =
+            (Rectangle){x, y, w, h};
+        ui_tree_nodes[node].data.button.spec.label =
+            ui_tree_nodes[node].owned_text;
+        ui_tree_nodes[node].data.button.spec.font = GetUIFontSize();
+        ui_tree_nodes[node].data.button.spec.focus_id = id;
+        ui_tree_nodes[node].data.button.spec.disabled = disabled;
+        ui_tree_nodes[node].data.button.style = style;
+    }
+    if(ui_tree_building)
+        return 0;
     return DrawUIGenericButton(x, y, w, h, label, style, disabled, hover);
 }
 
 int
 TextField(TextFieldProps field)
 {
-    ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE, field.bounds,
-                &field);
-    return DrawUITextField(field);
+    UINodeId node = ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
+                                field.bounds, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].key = (UIKey)(unsigned)field.focus_id;
+        ui_tree_nodes[node].data.text_field = field;
+    }
+    return 0;
 }
 
 int
@@ -1256,96 +1904,45 @@ ModalFrame(int width, int height, const char *title,
 
 int Button(ButtonProps button) { return GenericButton(button.id, (int)button.bounds.x, (int)button.bounds.y, (int)button.bounds.width, (int)button.bounds.height, button.label, button.style, button.disabled, NULL); }
 
-/* Layout nodes — flexbox-style containers that auto-position children.
- * Column stacks children vertically, Row stacks them horizontally.
- * Use EndColumn/EndRow to close the container (like EndNodeGroup). */
+/* Retained layout containers. Every container closes with End(). */
 
-static struct {
-    Rectangle bounds;
-    int gap;
-    int padding;
-    int cursor;
-} g_layout_stack[UI_TREE_MAX_DEPTH];
-static int g_layout_depth = 0;
+static UINodeId
+ui_begin_layout_node(UIWidgetKind kind, UIKey key, Rectangle bounds,
+                     int gap, int padding)
+{
+    UINodeId node;
+
+    if(key == 0)
+        key = (UIKey)(unsigned)(ui_tree_node_count + 1);
+    node = ui_tree_add((int)(key & 0x7fffffffU), kind, bounds, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].key = key;
+        ui_tree_nodes[node].data.layout.gap = gap;
+        ui_tree_nodes[node].data.layout.padding = padding;
+        if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
+            ui_tree_stack[ui_tree_stack_depth++] = node;
+    }
+    return node;
+}
 
 UINodeId
 Column(ColumnProps props)
 {
-    UINodeId node = BeginNodeGroup(0, props.bounds);
-    if(g_layout_depth < UI_TREE_MAX_DEPTH) {
-        g_layout_stack[g_layout_depth].bounds = props.bounds;
-        g_layout_stack[g_layout_depth].gap = props.gap;
-        g_layout_stack[g_layout_depth].padding = props.padding;
-        g_layout_stack[g_layout_depth].cursor = (int)props.bounds.y + props.padding;
-        g_layout_depth++;
-    }
-    return node;
+    return ui_begin_layout_node(UI_WIDGET_COLUMN_NODE, props.key, props.bounds,
+                                props.gap, props.padding);
 }
 
 UINodeId
 Row(RowProps props)
 {
-    UINodeId node = BeginNodeGroup(0, props.bounds);
-    if(g_layout_depth < UI_TREE_MAX_DEPTH) {
-        g_layout_stack[g_layout_depth].bounds = props.bounds;
-        g_layout_stack[g_layout_depth].gap = props.gap;
-        g_layout_stack[g_layout_depth].padding = props.padding;
-        g_layout_stack[g_layout_depth].cursor = (int)props.bounds.x + props.padding;
-        g_layout_depth++;
-    }
-    return node;
+    return ui_begin_layout_node(UI_WIDGET_ROW_NODE, props.key, props.bounds,
+                                props.gap, props.padding);
 }
 
-void
-EndColumn(void)
+UINodeId
+Stack(ColumnProps props)
 {
-    if(g_layout_depth > 0)
-        g_layout_depth--;
-    EndNodeGroup();
-}
-
-void
-EndRow(void)
-{
-    if(g_layout_depth > 0)
-        g_layout_depth--;
-    EndNodeGroup();
-}
-
-int
-UILayoutNextChildHeight(int child_h)
-{
-    int y = -1;
-    if(g_layout_depth > 0) {
-        y = g_layout_stack[g_layout_depth - 1].cursor;
-        g_layout_stack[g_layout_depth - 1].cursor += child_h +
-            g_layout_stack[g_layout_depth - 1].gap;
-    }
-    return y;
-}
-
-int
-UILayoutNextChildX(int child_w)
-{
-    int x = -1;
-    if(g_layout_depth > 0) {
-        x = g_layout_stack[g_layout_depth - 1].cursor;
-        g_layout_stack[g_layout_depth - 1].cursor += child_w +
-            g_layout_stack[g_layout_depth - 1].gap;
-    }
-    return x;
-}
-
-int
-UILayoutActive(void)
-{
-    return g_layout_depth > 0;
-}
-
-Rectangle
-UILayoutBounds(void)
-{
-    if(g_layout_depth > 0)
-        return g_layout_stack[g_layout_depth - 1].bounds;
-    return (Rectangle){0, 0, 0, 0};
+    return ui_begin_layout_node(UI_WIDGET_STACK_NODE, props.key, props.bounds,
+                                props.gap, props.padding);
 }

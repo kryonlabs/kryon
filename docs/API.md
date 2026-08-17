@@ -130,20 +130,30 @@ DrawUISlider(id, x, y, w, "Volume", 0, 100, &volume, "%");
 DrawUIOverlays();
 ```
 
-Use widget-tree node declarations for normal `.kry` screens and reusable UI.
-Generated app loops build, reconcile, layout, route input, update, draw the tree,
-then draw overlays:
+Normal application UI is declared between `BeginUI` and `EndUI`. Containers
+use one matching `End`, independent of their kind. Reconciliation, layout,
+input routing, updates, painting, and overlays are runtime-owned and are not
+application lifecycle calls:
 
 ```c
-UIBeginTree(screen_id);
-/* screen declares UIText, UIButton, UIPicture, and other widgets */
-UIEndTree();
-UIReconcileTree();
-UILayoutTree();
-UIRouteInput();
-UIUpdateTree();
-DrawUITree();
-DrawUIOverlays();
+BeginUI(Key("settings"));
+Column((ColumnProps){
+    .bounds = {20, 20, 360, 420},
+    .gap = 12,
+    .padding = 16,
+    .key = Key("settings/body"),
+});
+Text("Account", 0, 0, UI_TEXT_24, GetThemeText());
+TextField(account_field);
+Button(save_button);
+End();
+EndUI();
+
+while(NextUIEvent(&event)) {
+    if(event.key == Key("settings/save") &&
+       event.kind == UI_EVENT_CLICK)
+        SaveSettings();
+}
 ```
 
 Migrate callers to the current Kryon API directly so the backend boundary stays

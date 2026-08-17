@@ -13,8 +13,10 @@ screen main {
     Background(GetThemeBackground())
     Text("Pictures are image nodes", ScaleUIPx(32), ScaleUIPx(30),
                UI_TEXT_24, GetThemeText())
-    BeginNodeGroup(100, (Rectangle){ScaleUIPx(32), ScaleUIPx(82),
-                                      ScaleUIPx(260), ScaleUIPx(210)})
+    Stack((ColumnProps){
+        .bounds = {ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210)},
+        .key = Key("picture-card"),
+    })
     Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
                GetThemeSurface(), GetThemeButton())
     Picture((PictureProps){"tiles/tile.png",
@@ -27,5 +29,5 @@ screen main {
              UI_PICTURE_FIT_CONTAIN})
     Text("Pictures keep their node bounds for editing",
                ScaleUIPx(52), ScaleUIPx(226), UI_TEXT_12, GetThemeIcon())
-    EndNodeGroup()
+    End()
 }
