@@ -1,4 +1,312 @@
 # Changelog
+## v0.1.8 - 2026-08-17
+
+### Changed
+
+- Release: bump version to v0.1.8
+- Ci: install Go on FreeBSD
+- Build: link FreeBSD curl codec dependencies
+- Go: add reusable grid cell editor
+- Build: search FreeBSD ports libraries
+- Test: build capability cartridge fixture
+- Ci: install GTK for Go binding smoke tests
+- Build: apply GIO notification include flags
+- Ui: finalize deferred overlays at frame end
+- Ci: install and link GIO notifications
+- Release: automate versions and publish all tools
+- Go: support arm64 native linking
+- Ui: persist line selection and expose pictures
+- Go: expose theme style selection
+- Ui: add scroll-safe multiline text selection
+- Ui: use neutral colors for tables
+- Go: add secure password fields
+- Go: expose text area focus state
+- Go: expose tab key compatibility constant
+- Go: complete raylib drawing compatibility helpers
+- Go: expose toolkit collection and dialog widgets
+- Go: expose window focus activation
+- Go: pin text editor state across cgo calls
+- Go: add native runtime and stateful controls
+- Go: own the kryui runtime bindings
+- K2ir: strip block comments while reading lines
+- Krb caps: reference host backends — storage, audio
+- Krb: plan-08 capability registry
+- KrbAutoMount: state initializers render without a host
+- Examples: profile and habit-edit screens — 11 cartridge screens
+- Kir_parse: skip plain # comments in TOP mode
+- Examples: statistics screen cartridge
+- Native exactness gate: PASSES for the language screen
+- Dropdown: measured native shape — rounded fill+border r3, diamond indicator
+- Language screen: truncating advances + native dropdown shape — structural 1530 -> 241
+- Native exactness comparator: AA-only vs structural classification
+- Atlas: sub-pixel advances; language cartridge from traced values
+- Atlas: raylib's ascent-shifted glyph offsets + per-mille UI scale
+- K2b atlas: fix GetCodepointBitmapBox extents; tier collection and UI-scale plumbing
+- Kry_sw: ui_text.c advance rounding; krb-sdl: deterministic single-frame dump
+- K2b atlas: raylib-identical glyph rasterization
+- Language cartridge: matched to the native reference frame
+- Screenshots: working native capture — pre-swap read + self-written PNG
+- Tests: arm the pre-swap capture in the native harness
+- Screenshots: ES2-safe capture — armed EndDrawing reads pre-swap
+- Tests: harden the xwd-path kill (TERM, then KILL)
+- LoadImageFromScreen: front-end override reading the front buffer
+- Tests: xwd-based native capture for software GL
+- K2c: initializer items take no inspect wrapper
+- K2c: multi-line array initializers
+- Tests: native exactness runs the app from the repo root
+- K2g: .kry -> Go backend on the shared Kir frontend
+- Krb v2: animated geometry — WHM session screen runs live in-cartridge
+- Examples: practice config screen cartridge (sliders, spinboxes)
+- Examples: habits screen cartridge (bound streak counters)
+- Krb v2: screen navigation — the whole app in one cartridge
+- Examples: manual screen cartridge (scrolling guide + breath circle)
+- Ci: exactness job — cross-engine byte-identity + krb unit tests
+- Examples: settings screen cartridge (scroll + dropdowns + checkboxes)
+- TakeScreenshot: use absolute paths as-is
+- Tests: native-comparison exactness harness (stage 2)
+- Tests: cross-engine screenshot-exactness harness
+- K2b: fix guard single-term parsing, positional ButtonProps, dropdown height
+- K2b: arithmetic expressions in guard conditions
+- Krb v2: dropdown controls
+- Krb v2: text input — TEXTINPUT node + typed-codepoint vtable path
+- Krb v2: scroll containers
+- K2b+engines: KFA1 glyph atlas — antialiased Noto text in cartridges
+- K2b: else branches and state-vs-state guard comparisons
+- K2b: decode png/jpg/bmp/webp and embed as cartridge pixels
+- Style tokens: fixed-pixel corner radii, not size fractions
+- Renderers: web player opens any .krb + CI builds per-platform downloads
+- K2b: embed referenced assets into the cartridge
+- Krb v2: embedded asset section + texture_rgba blit
+- Material style: subtle control rounding instead of full pills
+- K2b: compile .kry state updates and if-guards into v2 VM programs
+- Scene_inspect: set SO_REUSEADDR so quick restarts rebind
+- Kry_json: expose kry_json_type
+- Docs: KRB_FORMAT.md rewritten as an exact byte-level specification
+- Scene: live JSON inspection server
+- Krb v2: in-cartridge logic VM + circle/ring geometry nodes
+- Scene/property/signal/transform: drop the Kry/Kryon prefix from the public API
+- Scene: recycle removed node slots through a freelist
+- Test: host default style follows the MATERIAL default
+- Scene: application-defined node kinds with property callbacks
+- Krb-sdl: SDL2 desktop host for KRB cartridges
+- K2c: fix one-line control blocks, char literals, and locals named c
+- Krb-web: native web engine — kry_sw compiled to wasm, blitted to ImageData
+- System_theme web: snprintf not app copy_text
+- System_theme: web prefers-color-scheme detection; default source SYSTEM on web
+- Krb: kry_sw software rasterizer engine + headless conformance harness
+- Kir: 'c:' is a typed decl, not the raw-C 'c' keyword
+- Desktop_tray: drop GTK type-cast macros - they expand to gtk_*_get_type() calls the dlopen shim does not forward
+- Ksync: harden crypto, exports, JSON, delete, and sync transport
+- K2c: fix braced and bare-default switch cases
+- Kryon-app.sh: project.kryon target runner with default_target support
+- Ui_text: per-size raster tier cache (4 tiers) instead of single base raster
+- Docs: plan 11 — renderer engines for KRB cartridges
+- K2c: join multi-line initializers on '::' global declarations
+- Theme: default to MATERIAL on all platforms for now
+- System_theme: read the GTK palette straight from the theme's gtk.css when the process has no GTK
+- Theme: platform default source/mode helpers (system theme on desktop)
+- Ui_window: WIP center flag, drag/right-click/click-position queries, X11 move hook
+- Mem: diagnostics; ui_text: single-tier font rasters; tray: lazy GTK
+- K2b: report call kinds the KRB vocabulary cannot express
+- Site: add Discord and Telegram community links
+- Widgets: PickerDialog; Spinbox value text + wrap; public ButtonRow height
+- Ui_window: Windows/macOS compile the no-op stubs
+- Guide overlay: Android back key closes the guide
+- Kry_term: drop downstream tool name from the feed comment (boundary check)
+- Kry_term: KryTermFeedOutput - harness text printed into the terminal
+- Kry_http: streaming partial reads (kry_http_partial) + locked write callback
+- Ui_window: include stddef.h so the android/web stubs see NULL
+- Kry_sfs: the live engine as a synthetic file system + real input injection
+- Ui_window: extra OS windows rendered with the regular UI widgets
+- Kt: drop the 'target ide' fork of krait
+- Kryon owns the transport, not the vendor: drop kry_zai
+- Notification/android: declare GetAndroidApp
+- K2c: emit '#define' constants in the generated header
+- Kry_http: no-curl stub signature must match the header (const mismatch broke PLATFORM_WEB)
+- Web present shim: take the GL context before hiding the canvas (display:none canvases cannot create contexts in some engines)
+- Kry std: kry_json, kry_http, kry_zai — the AI-harness foundation
+- Web present shim: ?kryonpresent=debug forces activation and reports state via document.title
+- Web: kryon-web-present.js — 2D-canvas present mode for WebKitGTK+software GL
+- Add cross-platform notification helpers
+- Kc is fully gone: CHANGELOG/docs/comments now say k2c
+- Theme_picker: switch width matches the retro toggle's content minimum
+- Ui_dpi: web viewport is already CSS pixels — don't reapply devicePixelRatio
+- Kir joiner: adjacent string literals on continuation lines join
+- Kir joiner: '} #else_if COND {' region chains complete as statements
+- Kry_signal.h: last kc comment says k2c
+- Remove the last kc remnants
+- K2c: #private functions are file-static with forward prototypes
+- K2c: resolve bare function references passed as call arguments ('set_cb(name)' / 'f(a, name)'), and grow LOWER_TEXT_MAX with KIR_TEXT_MAX so long initializers stop truncating mid-identifier.
+- K2c: guard statements, array params, alias-call stem matching, init rewrites
+- Kir joiner + k2c name-resolution fixes
+- Kir joiner: three continuation bugs
+- Kir: compute the body '#if' kind once — parse_cond_start strips the trailing '{' in place, so the second parse in the emission branch saw no brace and every body '#if' lowered to '#elif'.
+- Kir+k2c: '#if' regions lower to C preprocessor conditionals
+- Tests: default tool paths to the canonical per-platform bin dir
+- K2c: array-typed parameters emit C syntax ('T name[N]')
+- Kir: parse K&R '} else {' as close + else re-open
+- Vendor.mk: fix K2C path export (make ate the sed $ anchors)
+- Remove legacy build/bin tool aliases; export canonical K2C for consumers
+- Kir: the '#if' region skip runs before import capture
+- Kir+k2c: top-level 'static name: T = init' globals; skip captures in unevaluated '#if MACRO {' blocks
+- Kir+k2c: capture the 'args' header directive; C-style params pass through
+- Kir+k2c: '#private' imports include in the .c only
+- Kir: ':=' classifies as DECL before the raw-'c' escape hatch
+- Kir+k2c: named enums ('Name :: enum { ... }' -> typedef enum)
+- K2c: angled includes stay angled; extension-less header imports append .h
+- K2c_project: drop IDE name from comment (boundary rule)
+- K2c: emit kryon_project.h/.c (app-host ABI) + main() from Kir
+- K2b: migrate to the shared Kir frontend — one frontend, two backends
+- K2c: #global variables have external linkage; header order typedefs->enums->globals->structs
+- K2c: colon functions keep their bare C names; bare-ref resolution only in assignment-RHS
+- K2c: don't rewrite member-access calls (x->fn(...) / x.fn(...))
+- K2c: krait's full IDE corpus compiles — all 8 generated files, zero errors
+- K2c: emit #extern prototypes with alias-stripped args
+- Kir+k2c: typedefs with names, enum commas, type emission order, ternary/&& joins
+- Kir+k2c: '#type' typedefs; angle-bracket includes don't join
+- Kir: enum constants joined by comma-continuation close their enum
+- Kir: fix duplicate anonymous enum (use int for enum_return)
+- Kir: pointer types don't continue lines; #enum nests inside structs
+- Kir+k2c: join operator continuations; alias-strip array sizes
+- K2c: cross-module call resolution via a whole-program symbol table
+- Kir: '#'-directive lines are header lines (never join their braces)
+- Kir: join multi-line compound literals (expression braces)
+- K2c: resolve module-local function calls to their full C names
+- Kir+k2c: fix UB alias-strip (src==dst snprintf), emit #enum blocks
+- Kir+k2c: struct fields converted to C declarators; '#' comments skipped in bodies
+- Kir+k2c: fix block-brace depth tracking + alias rewrite in body statements
+- Kir+k2c: struct types (Name :: struct), return types stop at '{'
+- K2c: emit #include for module imports (alias :: #import "path" -> #include "path.h")
+- Kir+k2c: return types, #extern prototypes, #global vars, module prefixes, alias stripping
+- K2c: Kir is the only pipeline — delete the entire legacy compiler
+- K2c --kir: PushUIInspectSource wrapping for call statements + ui_inspect.h include
+- K2c: Kir→C lowering skeleton (--kir flag, structurally valid output)
+- Extract Kir parser into shared kir_parse.c (prerequisite for k2c/k2b backends)
+- K2ir: parse app{} metadata (title/size/fps/theme/frame/init/scene/shutdown)
+- K2ir: multi-line statement joining (paren/bracket/string depth tracking)
+- K2ir: classify mutations (count++) as EXPR not UNKNOWN
+- Rename kc to k2c (kry-to-C compiler)
+- Archive libkryon.a under the platform-tagged build dir
+- Improve site text readability
+- Add Kryon browser IDE
+- Improve Kryon site button contrast
+- Fix CI links and platform icons
+- Guard KryScenePhysicsDestroy call so physics-off builds link
+- Teach k2ir about imports and externs
+- Add k2ir tool scaffold
+- Add initial KIR core
+- Document KIR compiler roadmap
+- Fix per-codepoint font fallback switching typefaces for covered glyphs
+- K2b: standalone .kry->.krb compiler, fully independent of kc
+- Krb: controls[] section + range widgets (Slider, VerticalSlider, Spinbox)
+- Krb: interactive Checkbox + Toggle widgets (value-bound, self-contained toggle)
+- Krb compiler: widen widget coverage (color literals, Line/Separator/Bevel/TextInRect, Picture)
+- Kc: parse top-level 'frame NAME {}' as a hook function definition
+- Scene_property.h: refer to "an IDE inspector" instead of naming Krait
+- Build: make 2D physics (Box2D) optional via KRYON_WITH_PHYSICS
+- Kryon.h: expose embedded_assets.h through the umbrella
+- Krb: drop unused GROUP node and export enums for a clean v1
+- Krb: implement F32 field read/write and float text formatting
+- Expose kry_term and krb in kryon.h; document the cartridge API
+- Add krb cartridge tests
+- Kryon-preview: render .kry/.krb to PNG via a cartridge subcommand
+- Kc: emit a krb cartridge from .kry (--emit-krb); route codegen via the AST
+- Add krb: a packed, mmapable Kryon cartridge format
+- Add kry_term: a PTY terminal for IDE hosts
+- Add kry_backend: a draw/input vtable for non-raylib cartridge hosts
+- UI text: resolve font sources from embedded assets before the filesystem
+- UI: preserve ui_scale across SaveUIFrameState/RestoreUIFrameState
+- Raylib build: purge stale .o/.a from vendored sources before recompiling
+- Add Column/Row layout nodes with flexbox-style auto-positioning
+- Add raylib rename-check post-build step to fix symbol collision
+- Phase 6: TileMap + AudioSource nodes (all 12 Game2D kinds now implemented)
+- Phase 5: animation system (keyframe tracks, AnimationPlayer, AnimatedSprite2D)
+- Phase 4: Box2D v3 physics integration
+- Fix scale-domain mixing in title bar, toast, and text centering
+- Use best available DPI estimate, not just device density
+- Invalidate DPI cache when device density changes
+- Add device density hook, fix dropdown resize, widen theme spacing
+- Add kc signal language support, example, and property/signal tests
+- Add property model and signal bus for the scene tree
+- Add kc scene-tree language support, example, and tests
+- Implement built-in scene nodes: Node2D, Camera2D, Sprite2D
+- Add retained scene tree foundation and rename UI Sprite to Picture
+- Allow custom value text on Slider widget
+- Fix pane tab hit testing
+- Add UI font init control
+- Tune tree view file label color
+- Keep UI keyboard input state backend-independent
+- Canonicalize widget API
+- Clean material toggle rendering
+- Document and enforce canonical app api
+- Fix sprite example syntax
+- Clean kryon app api
+- Add Material theme style widgets
+- Restore stable tool targets
+- Preserve icon texture colors
+- Use host-specific root build directories
+- Add GTK file dialog backend
+- Document default Ksync transport APIs
+- Avoid native Ksync transport warnings
+- Add default Ksync transport helpers
+- Kc: extract C emission into kc_codegen.c, heal project split
+- Kc: extract defer lowering into kc_defer.c
+- Kc: extract symbol resolution + expression rewrite into kc_resolve.c
+- Kc: extract KryFile/KryFunction mutators into kc_ir.c
+- Kc: extract diagnostics + error recovery into kc_diag.c
+- Kc: extract pure leaf helpers into kc_util.c
+- Kc: delete _funcs.txt and dedupe function-name helper
+- Own theme picker labels and expose text drawing helpers
+- Force retro UI style
+- Retain dropdown overlay clip bounds
+- Fix UI transition declaration
+- Add clean node measurement constructors
+- Route node measurement through widget ops
+- Store measurement data on widget nodes
+- Measure widget nodes generically
+- Move UI runtime to declarative nodes
+- Fix classic system focus and material buttons
+- Simplify theme style selection
+- Centralize native theme defaults
+- Add selectable native UI styles
+- Fix text context menu overlay handling
+- Add text input context menus
+- Stabilize UI cursor ownership
+- Route cursor shape requests through UI intent
+- Fix layout-aware shortcuts and bulk paste
+- Adapt syntax colors to dark themes
+- Fix cascading tree input capture
+- Remove bundled C IDE
+- Keep standalone IDE changelog name-neutral
+- Support standalone KITE IDE
+- Add nonblocking IDE console
+- Run kt scenarios visually by target
+- Expand kt project scenario tests
+- Add kt test runner
+- Fix IDE source clipboard fallback
+- Polish IDE chrome and clipboard fallback
+- Add IDE console panel
+- Add IDE problems panel tabs
+- Normalize kc source paths in generated output
+- Add shared font subsetting target
+- Add dynamic font fallback loading
+- Avoid Windows API name collisions
+- Define NULL for platform thread helpers
+- Add compiler diagnostics and UI text backend fixes
+- Fix Kryon IDE preview input and source selection
+- Isolate text input selection ownership
+- Rename Lyra sync APIs to Ksync
+- Rename Lyra sync APIs to Ksync
+- Phase 3 (foundation): type-aware AST classification of declarations
+- Phase 2 (partial): fix defer leaking across switch cases
+- Phase 1: build the AST alongside the existing path
+- Phase 0: harden the kc syntax oracle + add parser plan
+- Add kryon-app dev-backend for local sync development
+- Fix click-to-source for widgets used in if conditions
+- Add `defer` to the Kry language
+- Make text input focus persistent and single-owner across frames
+- Update website code sample to verb-free Kry syntax
+
 ## Unreleased
 
 ### Added
