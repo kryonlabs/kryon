@@ -173,6 +173,11 @@ k2g  app.kry        # .kry -> Go (cgo runtime)
 k2b  app.kry|app.kir
 ```
 
+Go applications import the maintained cgo runtime from
+`github.com/waozixyz/kryon/go/kryui`. The binding lives in this repository so
+generated `k2g` code and handwritten Go hosts share one Kryon-owned surface;
+downstream applications must not carry private copies of it.
+
 `k2c` and `k2b` accept either `.kry` or `.kir`; when given source, they run the
 KIR frontend internally. Native platform, storage, and performance-sensitive C
 code remains first-class through the C backend and through explicit KRB

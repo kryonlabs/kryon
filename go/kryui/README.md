@@ -1,0 +1,235 @@
+# Kryui - Complete Kryon Go Bindings
+
+Complete Go (cgo) bindings for the Kryon UI library. This package exposes the full Kryon API including:
+
+- **Raylib-compatible layer** (`compat.go`) - Window, input, drawing, fonts
+- **UI Controls** (`ui_controls.go`) - Buttons, text inputs, sliders, dropdowns with theme fonts
+- **UI Toolkit** (`ui_tk.go`) - Layout helpers, menus, complex controls
+- **Widgets** (`widgets.go`) - Scroll containers, toasts
+- **Theme System** (`theme.go`) - Kryon's built-in themes and fonts
+- **KRB Runtime** (`krb.go`) - Kryon cartridge format support
+- **Desktop Tray** (`tray.go`) - System tray integration
+
+## Using Kryon Fonts
+
+Kryon comes with its own font system. Use the theme functions to get consistent, themed text:
+
+```go
+import "github.com/waozixyz/kryon/go/kryui"
+
+// In your draw loop
+kryui.Text("Hello World", 20, 20, kryui.UIText24, kryui.GetThemeText())
+```
+
+Font sizes are predefined constants:
+- `UIText12`, `UIText14`, `UIText16`, `UIText18`
+- `UIText20`, `UIText24`, `UIText32`, `UIText48`
+
+## Using Kryon Widgets
+
+All Kryon widgets use the built-in theme system:
+
+```go
+// Button with theme styling
+if kryui.Button(kryui.ButtonProps{
+    Bounds: kryui.NewRectangle(20, 100, 200, 40),
+    Label:  "Click Me",
+    Style:  kryui.UIButtonStylePrimary,
+    ID:     101,
+}) {
+    // Button was clicked
+}
+
+// Radio button
+picked := kryui.Radio(kryui.RadioButtonProps{
+    Bounds:  kryui.NewRectangle(40, 90, 160, 28),
+    Label:   "Option A",
+    ID:      1,
+    Checked: selectedOption == 1,
+})
+if picked != 0 {
+    selectedOption = picked
+}
+
+// Spinbox
+kryui.Spinbox(kryui.SpinboxProps{
+    Bounds: kryui.NewRectangle(240, 90, 140, 34),
+    ID:     201,
+    Min:    0,
+    Max:    10,
+    Step:   1,
+    Value:  &spinValue,
+})
+
+// Combobox
+kryui.Combobox(kryui.ComboboxProps{
+    Bounds:        kryui.NewRectangle(240, 140, 180, 34),
+    ID:            202,
+    Options:       []string{"Alpha", "Beta", "Gamma"},
+    SelectedIndex: &comboIndex,
+})
+```
+
+## Theme System
+
+Load and use themes:
+
+```go
+// Load a theme
+kryui.LoadTheme(kryui.ThemeSky, false) // light mode
+kryui.LoadTheme(kryui.ThemeDracula, true) // dark mode
+
+// Get theme colors
+bg := kryui.GetThemeBackground()
+text := kryui.GetThemeText()
+primary := kryui.GetThemePrimary()
+
+// Draw themed background
+kryui.Background(kryui.GetThemeBackground())
+
+// DPI scaling
+scaledSize := kryui.ScaleUIPx(20) // scales 20px by DPI
+```
+
+## KRB Cartridge Support
+
+Load and execute Kryon cartridges (.krb files):
+
+```go
+// Load a cartridge
+img, err := kryui.KRBLoadFile("app.krb")
+if err != nil {
+    panic(err)
+}
+defer img.Free()
+
+// Bind Go callbacks
+img.Bind("onButtonClick", func() int {
+    fmt.Println("Button clicked!")
+    return 0
+})
+
+// Mount state
+type AppState struct {
+    Counter int32
+    Name    [64]byte
+}
+state := &AppState{}
+img.Mount("/state", unsafe.Pointer(state), []kryui.KRBField{
+    {Path: "counter", Offset: 0, Kind: kryui.KRBI32, Size: 4},
+    {Path: "name", Offset: 4, Kind: kryui.KRBCStr, Size: 64},
+})
+
+// Execute and draw
+img.Exec()
+img.Draw(0, 0, 800, 600)
+```
+
+## Kry → Kir → Go/C Pipeline
+
+This package is part of Kryon's multi-target compiler:
+
+```
+.kry source → KIR (intermediate) → Go (via k2g) or C (via k2c) or KRB (via k2b)
+```
+
+The `k2g` compiler generates Go code that calls these bindings:
+
+```bash
+# Compile .kry to Go
+k2g --root examples --pkg myapp --runtime core/kryui -o gen/ myapp.kry
+
+# The generated Go code uses kryui.* calls
+```
+
+## Complete Example
+
+```go
+package main
+
+import "core/kryui"
+
+func main() {
+    kryui.InitWindow(800, 600, "My App")
+    defer kryui.CloseWindow()
+    
+    // Load theme
+    kryui.LoadTheme(kryui.ThemeSky, false)
+    
+    clickCount := int32(0)
+    
+    for !kryui.WindowShouldClose() {
+        kryui.BeginDrawing()
+        kryui.Background(kryui.GetThemeBackground())
+        
+        // Draw text with Kryon fonts
+        kryui.Text("Hello Kryon!", 20, 20, kryui.UIText24, kryui.GetThemeText())
+        
+        // Draw button with theme styling
+        if kryui.Button(kryui.ButtonProps{
+            Bounds: kryui.NewRectangle(20, 100, 200, 40),
+            Label:  "Click Me",
+            Style:  kryui.UIButtonStylePrimary,
+            ID:     1,
+        }) {
+            clickCount++
+        }
+        
+        // Show click count
+        kryui.Text(fmt.Sprintf("Clicks: %d", clickCount), 
+            20, 150, kryui.UIText16, kryui.GetThemeText())
+        
+        kryui.EndDrawing()
+    }
+}
+```
+
+## Building
+
+The package requires Kryon to be built first:
+
+```bash
+cd vendor/kryon
+make  # or gmake on BSD systems
+
+cd ../..
+go build
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│  .kry Source Files                      │
+│  (Kryon language)                       │
+└─────────────┬───────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  KIR (Kryon Intermediate Representation)│
+│  Shared compiler frontend               │
+└─────────────┬───────────────────────────┘
+              │
+       ┌──────┴──────┬──────────────┐
+       ▼             ▼              ▼
+  ┌────────┐   ┌─────────┐   ┌──────────┐
+  │  k2g   │   │   k2c   │   │   k2b    │
+  │  (Go)  │   │   (C)   │   │  (KRB)   │
+  └────┬───┘   └────┬────┘   └────┬─────┘
+       │            │              │
+       ▼            ▼              ▼
+  ┌────────┐   ┌─────────┐   ┌──────────┐
+  │kryui.* │   │kryon.h  │   │ .krb     │
+  │Go pkg  │   │C runtime│   │cartridge │
+  └────┬───┘   └────┬────┘   └────┬─────┘
+       │            │              │
+       └────────────┴──────────────┘
+                    │
+                    ▼
+       ┌──────────────────────────┐
+       │  libkryon.a + libraylib.a│
+       │  (Native C library)       │
+       └──────────────────────────┘
+```
+
+All three backends (Go, C, KRB) ultimately link against the same native Kryon library, ensuring consistent rendering, fonts, and widget behavior.
