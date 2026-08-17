@@ -1839,7 +1839,12 @@ parse_scroll(KrbBuild *b, const char *call)
         n->flags |= KRB_FLAG_SCALE_W;
     if(parse_coord(parts[3], &n->h, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_H;
-    n->font_size = atoi(skip_ws(parts[4])); /* content height */
+    {
+        int sc3;
+
+        if(parse_coord(parts[4], &n->font_size, &sc3) && sc3)
+            n->flags |= KRB_FLAG_SCALE_H; /* approximate: scale with UI */
+    }
     snprintf(n->name, sizeof(n->name), "%s", path); /* mount path */
     return 1;
 }

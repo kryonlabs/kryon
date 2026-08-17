@@ -1,0 +1,49 @@
+#import "kryon.h"
+
+# Declarative port of inbe's settings screen (device tab), in the same
+# spirit as the language picker: scrollable setting rows with toggles,
+# a language dropdown, orientation dropdown, and a fullscreen checkbox.
+# Everything the cartridge cannot own yet (persisting, system calls)
+# stays host-side; the layout, widgets, and conditional rows are
+# cartridge-owned.
+
+state {
+    scroll_off: int = 0
+    language_index: int = 0
+    orientation_index: int = 0
+    fullscreen: int = 0
+    keep_screen_on: int = 1
+}
+
+app "Inner Breeze — Settings" {
+    size 480 640
+    fps 60
+    frame main
+}
+
+frame main {
+    BeginDrawing()
+    ClearBackground(GetThemeBackground())
+    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
+    Background(GetThemeSurface())
+    Text("Settings", ScaleUIPx(70), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
+    Text("Device", ScaleUIPx(40), ScaleUIPx(80), UI_TEXT_16, GetThemeIcon())
+    Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(480), ScaleUIPx(820), &scroll_off)
+    Text("Language", ScaleUIPx(40), ScaleUIPx(120), UI_TEXT_16, GetThemeText())
+    Dropdown(101, ScaleUIPx(40), ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), "System;English;Portugues;Espanol;Deutsch", &language_index)
+    Text("Orientation", ScaleUIPx(40), ScaleUIPx(230), UI_TEXT_16, GetThemeText())
+    Dropdown(103, ScaleUIPx(40), ScaleUIPx(256), ScaleUIPx(340), ScaleUIPx(36), "System;Portrait;Landscape;Sensor", &orientation_index)
+    Checkbox(0, ScaleUIPx(40), ScaleUIPx(340), "Fullscreen", &fullscreen)
+    Checkbox(0, ScaleUIPx(40), ScaleUIPx(380), "Keep screen on", &keep_screen_on)
+    if (fullscreen == 1) {
+        Text("Restarts the app to apply", ScaleUIPx(40), ScaleUIPx(420), UI_TEXT_16, GetThemeIcon())
+    } else {
+        Text("Uses the display the app started on", ScaleUIPx(40), ScaleUIPx(420), UI_TEXT_16, GetThemeIcon())
+    }
+    if (keep_screen_on == 1) {
+        Text("The screen stays awake during sessions", ScaleUIPx(40), ScaleUIPx(460), UI_TEXT_16, GetThemeIcon())
+    }
+    EndScroll()
+    EndUIFocus()
+    EndDrawing()
+}
