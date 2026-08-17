@@ -206,6 +206,10 @@ int KrbWriteCStr(KrbImage *img, const char *path, const char *value);
 int KrbAssetFind(const KrbImage *img, const char *path,
                  const unsigned char **data, unsigned *len, unsigned *kind,
                  unsigned *w, unsigned *h);
+/* Mount every DATA node's initializer so hosts without generated binds
+ * still render bound text and widget defaults. Returns binds added. */
+int KrbAutoMount(KrbImage *img);
+
 int KrbExec(KrbImage *img);
 void KrbDraw(KrbImage *img, int x, int y, int w, int h);
 

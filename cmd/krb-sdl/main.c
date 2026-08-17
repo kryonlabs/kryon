@@ -71,6 +71,7 @@ main(int argc, char **argv)
            ak == 1)
             KrySwSetAtlas(&sw, ad, al);
     }
+    KrbAutoMount(&img);
     KryBackendSelect(KrySwBackend(&sw));
 
     if(SDL_Init(SDL_INIT_VIDEO) != 0) {

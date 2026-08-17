@@ -1134,6 +1134,43 @@ prog_len(KrbImage *img)
 }
 
 int
+KrbAutoMount(KrbImage *img)
+{
+    unsigned ni;
+    int added = 0;
+
+    if(img == NULL)
+        return 0;
+    for(ni = 0; ni < KrbNodeCount(img); ni++) {
+        KrbNode n;
+
+        if(KrbReadNode(img, ni, &n) != 0 || n.type != KRB_NODE_DATA)
+            continue;
+        if(n.style == 1) {
+            int *slot = malloc(sizeof(int));
+
+            if(slot != NULL) {
+                *slot = n.x;
+                if(KrbBindMem(img, KrbString(img, n.name_off), slot,
+                              KRB_I32, 4) == 0)
+                    added++;
+            }
+        } else if(n.style == 5) {
+            size_t cap = n.w > 0 ? (size_t)n.w : 64;
+            char *slot = malloc(cap);
+
+            if(slot != NULL) {
+                snprintf(slot, cap, "%s", KrbString(img, n.text_off));
+                if(KrbBindMem(img, KrbString(img, n.name_off), slot,
+                              KRB_CSTR, (unsigned)cap) == 0)
+                    added++;
+            }
+        }
+    }
+    return added;
+}
+
+int
 KrbExec(KrbImage *img)
 {
     const unsigned char *p;

@@ -1338,6 +1338,12 @@ collect_state(KrbBuild *b, const KirModule *m)
         if(n != NULL) {
             n->style = (int)kind;
             n->w = (int)size;
+            /* carry the initializer so hosts without generated binds can
+             * auto-mount: ints in x, CSTRs via the text field */
+            if(kind == 1)
+                n->x = atoi(sf->init);
+            else if(kind == 5)
+                extract_string(sf->init, n->text, sizeof(n->text));
         }
     }
 }

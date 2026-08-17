@@ -89,6 +89,7 @@ main(int argc, char **argv)
         fprintf(stderr, "krb-run: rasterizer init failed\n");
         return 1;
     }
+    KrbAutoMount(&img);
     if(rec_path != NULL) {
         recf = fopen(rec_path, "w");
         if(recf == NULL) {
