@@ -590,11 +590,13 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
     char rw[LOWER_TEXT_MAX];
 
     rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
-    fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
-    if(k2c_in_array_init)
+    if(k2c_in_array_init) {
+        /* initializer items: bare expressions, no inspect wrapper */
         fprintf(c, "    %s\n", rw);
-    else
-        fprintf(c, "    %s;\n", rw);
+        return;
+    }
+    fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
+    fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopUIInspectSource();\n");
 }
 
