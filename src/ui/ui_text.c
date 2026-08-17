@@ -43,8 +43,13 @@ typedef struct UIFontEntry {
      * 17px...) bilinear-resampled from one 16px atlas, which reads as blurry
      * on dense UI text. The cap keeps memory bounded versus the former
      * unbounded per-size cache; font_size_scale still applies at all
-     * measure/draw sites for tier-miss fallbacks. */
-#define UI_FONT_MAX_RASTER_TIERS 4
+     * measure/draw sites for tier-miss fallbacks. Apps that draw more
+     * distinct physical sizes than slots thrash: every frame evicts a tier
+     * and re-rasterizes the full codepoint set (~100ms/frame for a ~1000
+     * glyph seed on a low-end phone), so keep headroom over the realistic
+     * per-screen type scale (a phone UI in one dynamic font easily reaches
+     * six sizes once widget-internal label sizes are counted). */
+#define UI_FONT_MAX_RASTER_TIERS 8
     Font tier_font[UI_FONT_MAX_RASTER_TIERS];
     int tier_size[UI_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
     int tier_dirty;          /* codepoint set grew, rasters are stale */
