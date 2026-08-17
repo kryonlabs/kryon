@@ -61,7 +61,7 @@ jobs:
             pkg install -y gmake cmake pkgconf \
               sdl2 libdrm mesa-libs gtk3 \
               curl openssl zstd brotli \
-              git
+              git go
           run: |
             set -eu
             gmake clean
