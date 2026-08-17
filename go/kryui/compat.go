@@ -164,6 +164,7 @@ func SetConfigFlags(flags uint)   { C.SetConfigFlags(C.uint(flags)) }
 func SetTargetFPS(fps int32)      { C.SetTargetFPS(C.int(fps)) }
 func SetExitKey(key int32)        { C.SetExitKey(C.int(key)) }
 func SetWindowMinSize(w, h int32) { C.SetWindowMinSize(C.int(w), C.int(h)) }
+func SetWindowFocused()           { C.SetWindowFocused() }
 func GetScreenWidth() int32       { return int32(C.GetScreenWidth()) }
 func GetScreenHeight() int32      { return int32(C.GetScreenHeight()) }
 func GetWindowScaleDPI() Vector2  { return vecFromC(C.GetWindowScaleDPI()) }
