@@ -30,7 +30,8 @@ enum {
     UI_POINTER_OWNER_SCROLL,
     UI_POINTER_OWNER_HORIZONTAL_SLIDER,
     UI_POINTER_OWNER_VERTICAL_SLIDER,
-    UI_POINTER_OWNER_REORDER
+    UI_POINTER_OWNER_REORDER,
+    UI_POINTER_OWNER_TEXT_SELECTION
 };
 
 Vector2 ui_mouse_world(void);
@@ -115,6 +116,9 @@ void DrawCenteredUIText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
 void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
+int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
+                                 int line_gap);
+int DrawUISelectableTextBlock(UISelectableTextBlock block);
 void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size,
                       Color color);
 void DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y);

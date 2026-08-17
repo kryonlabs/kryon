@@ -201,6 +201,26 @@ func DrawUIText(text string, x, y, fontSize int32, color Color) {
 	C.DrawUIText(ct, C.int(x), C.int(y), C.int(fontSize), color.toC())
 }
 
+// MeasureSelectableTextBlock returns the wrapped height for DrawSelectableTextBlock.
+func MeasureSelectableTextBlock(text string, width, fontSize, lineGap int32) int32 {
+	ct := C.CString(text)
+	defer C.free(unsafe.Pointer(ct))
+	return int32(C.MeasureUISelectableTextBlock(ct, C.int(width), C.int(fontSize), C.int(lineGap)))
+}
+
+// DrawSelectableTextBlock draws wrapped, multi-line text with a stable
+// selection identity. Drag selection owns the pointer over parent scrollers;
+// Ctrl/Cmd+C copies the exact selected UTF-8 range.
+func DrawSelectableTextBlock(id int32, text string, bounds Rectangle, fontSize, lineGap int32, color Color) int32 {
+	ct := C.CString(text)
+	defer C.free(unsafe.Pointer(ct))
+	block := C.UISelectableTextBlock{
+		id: C.int(id), text: ct, bounds: bounds.toC(), font_size: C.int(fontSize),
+		line_gap: C.int(lineGap), color: color.toC(),
+	}
+	return int32(C.DrawUISelectableTextBlock(block))
+}
+
 func MeasureUIText(text string, fontSize int32) int32 {
 	ct := C.CString(text)
 	defer C.free(unsafe.Pointer(ct))

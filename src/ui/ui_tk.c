@@ -1504,9 +1504,16 @@ DrawUIPromptDialog(PromptDialogProps dialog)
         Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
                            (float)(ui_view_height / 2 - ScaleUIPx(4)),
                            (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
-        DrawUITextField((TextFieldProps){field, dialog.text, (size_t)dialog.text_size,
-                                      dialog.cursor_position, dialog.focused, dialog.text_size - 1,
-                                      GetUIFontSize(), 7301, {0}, NULL, NULL, NULL});
+        DrawUITextField((TextFieldProps){
+            .bounds = field,
+            .text = dialog.text,
+            .text_size = (size_t)dialog.text_size,
+            .cursor_position = dialog.cursor_position,
+            .focused = dialog.focused,
+            .max_codepoints = dialog.text_size - 1,
+            .font = GetUIFontSize(),
+            .focus_id = 7301
+        });
     }
     return result;
 }

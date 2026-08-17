@@ -16,6 +16,15 @@ typedef struct {
     int selectable;
 } UITextStyle;
 
+typedef struct {
+    int id;                 /* stable positive identity across frames */
+    const char *text;
+    Rectangle bounds;
+    int font_size;
+    int line_gap;
+    Color color;
+} UISelectableTextBlock;
+
 Font GetUIFont(void);
 int EnsureUIDefaultFont(void);
 int RegisterUIFont(const char *name, Font font);
@@ -45,6 +54,9 @@ void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
 void DrawUITextItalic(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
+int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
+                                 int line_gap);
+int DrawUISelectableTextBlock(UISelectableTextBlock block);
 int PushUITextSelectable(int selectable);
 void PopUITextSelectable(int token);
 int GetUITextY(const char *text, int box_y, int box_h, int font_size);

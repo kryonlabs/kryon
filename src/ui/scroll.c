@@ -196,8 +196,8 @@ BeginUIScrollContainer(UIScrollArea area)
             content_drag_start_scroll = *area.scroll_offset;
         }
         if(content_drag_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-           g_ui_pointer_owner != UI_POINTER_OWNER_HORIZONTAL_SLIDER &&
-           g_ui_pointer_owner != UI_POINTER_OWNER_VERTICAL_SLIDER) {
+           (g_ui_pointer_owner == UI_POINTER_OWNER_NONE ||
+            g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)) {
             int dy = (int)mouse_world.y - content_drag_start_y;
             if(content_dragging || dy > drag_threshold || dy < -drag_threshold) {
                 g_ui_pointer_owner = UI_POINTER_OWNER_SCROLL;

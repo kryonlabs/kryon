@@ -69,6 +69,12 @@ typedef struct UITextSelectionState {
 } UITextSelectionState;
 
 static UITextSelectionState g_ui_text_selection = {0};
+static UITextSelectionState g_ui_text_block_selection = {0};
+
+typedef struct UITextBlockLine {
+    int start;
+    int end;
+} UITextBlockLine;
 
 static Rectangle
 text_world_rect_to_screen(Rectangle rect)
@@ -1175,6 +1181,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
             g_ui_text_selection.anchor = offset;
             g_ui_text_selection.cursor = offset;
             g_ui_text_selection.dragging = 1;
+            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
         }
         if(g_ui_text_selection.id == id && g_ui_text_selection.dragging) {
             if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -1255,6 +1262,212 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         cursor_x += (int)((float)glyph.advanceX * scale + 0.5f);
         i += codepoint_byte_count;
     }
+}
+
+static char *
+ui_text_slice(const char *text, int start, int end)
+{
+    char *slice;
+    int len = end - start;
+
+    if(text == NULL || len < 0)
+        return NULL;
+    slice = (char *)malloc((size_t)len + 1);
+    if(slice == NULL)
+        return NULL;
+    memcpy(slice, text + start, (size_t)len);
+    slice[len] = '\0';
+    return slice;
+}
+
+static int
+ui_text_block_lines(const char *text, int width, int font_size,
+                    UITextBlockLine **out_lines)
+{
+    UITextBlockLine *lines;
+    int count = 0;
+    int cap = 8;
+    int len;
+    int start = 0;
+
+    if(out_lines == NULL)
+        return 0;
+    *out_lines = NULL;
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    lines = (UITextBlockLine *)malloc((size_t)cap * sizeof(*lines));
+    if(lines == NULL)
+        return 0;
+
+    while(start < len || (len == 0 && count == 0)) {
+        int end = start;
+        int last_space = -1;
+        int chosen = start;
+
+        if(text[start] == '\n') {
+            chosen = start;
+            end = start + 1;
+        } else {
+            while(end < len && text[end] != '\n') {
+                int cp_bytes = 0;
+                int next;
+                char *slice;
+                int measured;
+
+                (void)GetCodepointNext(text + end, &cp_bytes);
+                if(cp_bytes <= 0)
+                    cp_bytes = 1;
+                next = end + cp_bytes;
+                if(text[end] == ' ' || text[end] == '\t')
+                    last_space = end;
+                slice = ui_text_slice(text, start, next);
+                measured = slice != NULL ? MeasureUIText(slice, font_size) : 0;
+                free(slice);
+                if(width > 0 && measured > width) {
+                    if(last_space >= start)
+                        chosen = last_space;
+                    else if(end > start)
+                        chosen = end;
+                    else
+                        chosen = next;
+                    break;
+                }
+                end = next;
+                chosen = end;
+            }
+            if(end < len && text[end] == '\n' && chosen == end)
+                end++;
+        }
+        if(count == cap) {
+            UITextBlockLine *grown;
+            cap *= 2;
+            grown = (UITextBlockLine *)realloc(lines, (size_t)cap * sizeof(*lines));
+            if(grown == NULL) {
+                free(lines);
+                return 0;
+            }
+            lines = grown;
+        }
+        lines[count++] = (UITextBlockLine){start, chosen};
+        start = chosen;
+        while(start < len && (text[start] == ' ' || text[start] == '\t'))
+            start++;
+        if(start < len && text[start] == '\n')
+            start++;
+        if(len == 0)
+            break;
+    }
+    *out_lines = lines;
+    return count;
+}
+
+int
+MeasureUISelectableTextBlock(const char *text, int width, int font_size,
+                             int line_gap)
+{
+    UITextBlockLine *lines = NULL;
+    int count = ui_text_block_lines(text, width, font_size, &lines);
+    int line_h = GetUITextLineHeight(font_size);
+    int height = count > 0 ? count * line_h + (count - 1) * line_gap : 0;
+
+    free(lines);
+    return height;
+}
+
+int
+DrawUISelectableTextBlock(UISelectableTextBlock block)
+{
+    UITextBlockLine *lines = NULL;
+    Vector2 mouse = ui_mouse_world();
+    int count;
+    int line_h;
+    int height;
+    int captured;
+    int selected_start = 0;
+    int selected_end = 0;
+
+    if(block.text == NULL || block.id <= 0 || block.font_size <= 0)
+        return 0;
+    count = ui_text_block_lines(block.text, (int)block.bounds.width,
+                                block.font_size, &lines);
+    line_h = GetUITextLineHeight(block.font_size);
+    height = count > 0 ? count * line_h + (count - 1) * block.line_gap : 0;
+    captured = UIInputCapturesClick(mouse);
+
+    for(int i = 0; i < count; i++) {
+        int y = (int)block.bounds.y + i * (line_h + block.line_gap);
+        char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
+        int line_w = line != NULL ? MeasureUIText(line, block.font_size) : 0;
+        Rectangle hit = {block.bounds.x, (float)y, (float)line_w, (float)line_h};
+        int inside = CheckCollisionPointRec(mouse, hit);
+
+        if(inside && !captured)
+            MarkUICursor(MOUSE_CURSOR_IBEAM);
+        if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            int local = ui_text_byte_offset_at_x(line, block.font_size,
+                                                 (int)(mouse.x - block.bounds.x));
+            g_ui_text_block_selection = (UITextSelectionState){
+                block.id, lines[i].start + local, lines[i].start + local, 1
+            };
+            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
+        }
+        free(line);
+    }
+
+    if(g_ui_text_block_selection.id == block.id &&
+       g_ui_text_block_selection.dragging) {
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            int line_index = (int)(mouse.y - block.bounds.y) /
+                             (line_h + block.line_gap);
+            char *line;
+            int local;
+
+            line_index = ui_clampi(line_index, 0, count - 1);
+            line = ui_text_slice(block.text, lines[line_index].start,
+                                 lines[line_index].end);
+            local = mouse.y < block.bounds.y ? 0 :
+                    mouse.y > block.bounds.y + height ?
+                        lines[line_index].end - lines[line_index].start :
+                        ui_text_byte_offset_at_x(line, block.font_size,
+                                                 (int)(mouse.x - block.bounds.x));
+            free(line);
+            g_ui_text_block_selection.cursor = lines[line_index].start + local;
+            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
+        } else {
+            g_ui_text_block_selection.dragging = 0;
+        }
+    }
+
+    if(g_ui_text_block_selection.id == block.id) {
+        selected_start = g_ui_text_block_selection.anchor;
+        selected_end = g_ui_text_block_selection.cursor;
+        if(selected_start > selected_end) {
+            int tmp = selected_start;
+            selected_start = selected_end;
+            selected_end = tmp;
+        }
+        if(ui_text_mod_key_down() && IsKeyPressed(KEY_C))
+            ui_text_copy_selection(block.text, selected_start, selected_end);
+    }
+
+    for(int i = 0; i < count; i++) {
+        int y = (int)block.bounds.y + i * (line_h + block.line_gap);
+        int start = selected_start > lines[i].start ? selected_start : lines[i].start;
+        int end = selected_end < lines[i].end ? selected_end : lines[i].end;
+        char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
+
+        if(end > start && line != NULL)
+            ui_text_draw_selection(line, (int)block.bounds.x, y, block.font_size,
+                                   ui_text_default_selection_color(block.color),
+                                   start - lines[i].start, end - lines[i].start);
+        if(line != NULL)
+            DrawUITextEx(line, (int)block.bounds.x, y, block.font_size,
+                         block.color, 0);
+        free(line);
+    }
+    free(lines);
+    return height;
 }
 
 void
