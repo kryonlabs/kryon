@@ -481,10 +481,12 @@ b_text(const char *s, int x, int y, int size, unsigned color)
 
             if(g != NULL) {
                 float scale = (float)size / (as->px > 0 ? as->px : 1);
+                /* advances are 1/256 px fixed point; round once like
+                 * ui_text.c: cursor_x += (int)(advanceX*scale + 0.5f) */
+                float adv = (float)(short)atlas_rd_u16(g + 16) / 256.0f;
 
                 atlas_blit(sw, as, g, size, pen, y, color);
-                /* ui_text.c: cursor_x += (int)(advanceX*scale + 0.5f) */
-                pen += (int)((float)(short)atlas_rd_u16(g + 16) * scale + 0.5f);
+                pen += (int)(adv * scale + 0.5f);
             }
         }
         return;
@@ -536,8 +538,9 @@ b_measure_text(const char *s, int size)
 
             if(g != NULL) {
                 float scale = (float)size / (as->px > 0 ? as->px : 1);
+                float adv = (float)(short)atlas_rd_u16(g + 16) / 256.0f;
 
-                width += (int)((float)(short)atlas_rd_u16(g + 16) * scale + 0.5f);
+                width += (int)(adv * scale + 0.5f);
             }
         }
         return width;

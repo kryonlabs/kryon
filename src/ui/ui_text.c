@@ -1212,6 +1212,12 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         glyph = UIFontGlyph(glyph_font, codepoint);
         src = UIFontAtlasRec(glyph_font, codepoint);
 
+        if(getenv("INBE_TEXT_TRACE") != NULL && i == 0) {
+            TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
+                     text, font_size, glyph_font.baseSize, scale, cursor_x, y,
+                     glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,
+                     (double)src.width);
+        }
         if(src.width > 0.0f && src.height > 0.0f) {
             Rectangle dst = {
                 .x = (float)cursor_x + (float)glyph.offsetX * scale,
@@ -1264,6 +1270,12 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
         glyph = UIFontGlyph(glyph_font, codepoint);
         src = UIFontAtlasRec(glyph_font, codepoint);
 
+        if(getenv("INBE_TEXT_TRACE") != NULL && i == 0) {
+            TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
+                     text, font_size, glyph_font.baseSize, scale, cursor_x, y,
+                     glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,
+                     (double)src.width);
+        }
         if(src.width > 0.0f && src.height > 0.0f) {
             Rectangle dst = {
                 .x = (float)cursor_x + (float)glyph.offsetX * scale,

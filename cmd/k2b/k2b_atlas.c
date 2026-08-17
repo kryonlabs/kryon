@@ -28,7 +28,8 @@ put_u32(unsigned char *p, unsigned long v)
 /* Layout: "KFA1" u32 | size_count u16 | per-size 16-byte records
  * (px u16 | glyphs u16 | w u16 | h u16 | table_off u32 | pixels_off u32),
  * per-glyph 18-byte records (cp u32 | x,y,w,h u16 | xoff,yoff i16 |
- * adv u16), then per-size RGBA8 white-on-alpha bitmaps.
+ * adv u16 in 1/256 px fixed point), then per-size RGBA8 white-on-alpha
+ * bitmaps.
  *
  * Rasterization is raylib-identical: per-glyph
  * stbtt_GetCodepointBitmap at stbtt_ScaleForPixelHeight(size) with
@@ -191,7 +192,8 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
                 put_u16(g + 14,
                         (unsigned short)(short)(yoff +
                                                 (int)((float)ascent * scale)));
-                put_u16(g + 16, (unsigned short)(int)(advance * scale));
+                put_u16(g + 16, (unsigned short)(int)((float)advance *
+                                                     scale * 256.0f + 0.5f));
                 cur_x += w + 1;
                 if(h > row_h)
                     row_h = h;

@@ -214,7 +214,8 @@ non-embedded paths fall back to host texture loading. The conventional
 name "@atlas" carries a KFA1 glyph atlas: `u32 "KFA1" | u16 size_count`,
 then per size a 16-byte record (`px u16 | glyphs u16 | w u16 | h u16 |
 table_off u32 | pixels_off u32`), then per-glyph 18-byte records
-(`cp u32 | x,y,w,h u16 | xoff,yoff i16 | advance u16`, offsets into the
+(`cp u32 | x,y,w,h u16 | xoff,yoff i16 | advance u16` in 1/256-px fixed point,
+offsets into the
 size's RGBA8 white-on-alpha bitmap). Engines with atlas support render
 antialiased text with true advances; without it they fall back to their
 built-in font.

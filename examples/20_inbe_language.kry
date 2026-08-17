@@ -1,10 +1,9 @@
 #import "kryon.h"
 
-# Inner Breeze language screen, in LOGICAL UI units (the engine applies
-# the physical UI scale, 1.125 on the reference machine). Values derive
-# from the native screen source: title centered, y=ScaleUIPx(28), label
-# y=ScaleUIPx(252), dropdown at ScaleUIPx(39/266/348/43), Next at
-# ScaleUIPx(197/337).
+# Inner Breeze language screen — values traced from the native app
+# (INBE_TEXT_TRACE, UI scale 1.125): title "Choose Language" fs24 at
+# phys (159,32); label "Language" fs16 at (45,273); dropdown; "Next"
+# fs12 at (230,377). Authored in logical units (phys/1.125).
 
 state {
     language_index: int = 0
@@ -21,10 +20,10 @@ frame main {
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeBackground())
-    Text("Language", ScaleUIPx(142), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
-    Text("Choose your language", ScaleUIPx(41), ScaleUIPx(252), UI_TEXT_16, GetThemeText())
+    Text("Choose Language", ScaleUIPx(141), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
+    Text("Language", ScaleUIPx(40), ScaleUIPx(243), UI_TEXT_16, GetThemeText())
     Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), ScaleUIPx(348), ScaleUIPx(43), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
-    Text("Next", ScaleUIPx(197), ScaleUIPx(337), UI_TEXT_16, GetThemeText())
+    Text("Next", ScaleUIPx(204), ScaleUIPx(335), UI_TEXT_12, GetThemeText())
     EndUIFocus()
     EndDrawing()
 }
