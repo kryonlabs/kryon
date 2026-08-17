@@ -1,4 +1,14 @@
 # Changelog
+## v0.1.12 - 2026-08-17
+
+### Changed
+
+- Fix AppIndicator icon lookup on Wayland
+- Ui: retain selected font for deferred text
+- Release: bump version to v0.1.12
+- Go: expose retained declarative UI
+- Ui: add retained declarative tree and typed events
+
 ## v0.1.11 - 2026-08-17
 
 ### Changed
