@@ -254,6 +254,7 @@ int ui_utf8_prev_offset(const char *text, int offset);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);
+void ui_text_begin_frame(void);
 int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,

@@ -49,7 +49,7 @@ typedef struct UIFontEntry {
      * glyph seed on a low-end phone), so keep headroom over the realistic
      * per-screen type scale (a phone UI in one dynamic font easily reaches
      * six sizes once widget-internal label sizes are counted). */
-#define UI_FONT_MAX_RASTER_TIERS 8
+#define UI_FONT_MAX_RASTER_TIERS 16
     Font tier_font[UI_FONT_MAX_RASTER_TIERS];
     int tier_size[UI_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
     int tier_dirty;          /* codepoint set grew, rasters are stale */
@@ -290,13 +290,6 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
     if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
         return (Font){0};
 
-    /* Stale tiers (codepoint set grew) re-rasterize at most once per frame so
-     * a burst of new glyphs batches into a single rebuild. */
-    if(entry->tier_dirty && entry->tier_serial != g_ui_frame_serial) {
-        entry->tier_serial = g_ui_frame_serial;
-        entry_rebuild_tiers(entry);
-    }
-
     /* Exact tier hit: rasterized at this exact physical size, no resampling. */
     for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
         if(entry->tier_size[i] == physical_size && font_valid(entry->tier_font[i]))
@@ -316,33 +309,46 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
         }
     }
 
-    /* Cache full: evict the slot furthest from the requested size and
-     * rasterize it here. */
+    /* A draw must never unload an atlas that earlier glyphs in the same
+     * render batch still reference. When all exact-size slots are occupied,
+     * reuse the nearest raster and scale it. New tiers are created only in
+     * free slots; dirty atlases rebuild at the next frame boundary. */
     {
         int victim = 0;
-        int worst = -1;
+        int nearest = 0x7fffffff;
 
         for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
             int dist = entry->tier_size[i] > physical_size
                        ? entry->tier_size[i] - physical_size
                        : physical_size - entry->tier_size[i];
 
-            if(dist > worst) {
-                worst = dist;
+            if(dist < nearest && font_valid(entry->tier_font[i])) {
+                nearest = dist;
                 victim = i;
             }
         }
-        if(font_valid(entry->tier_font[victim]))
-            UnloadFont(entry->tier_font[victim]);
-        entry->tier_font[victim] = load_font_source_size(entry, physical_size);
-        if(font_valid(entry->tier_font[victim])) {
-            entry->tier_size[victim] = physical_size;
-            ui_font_trim_heap();
+        if(nearest != 0x7fffffff)
             return entry->tier_font[victim];
-        }
-        entry->tier_size[victim] = 0;
         return (Font){0};
     }
+}
+
+void
+ui_text_begin_frame(void)
+{
+    int rebuilt = 0;
+
+    for(int i = 0; i < g_ui_font_count; i++) {
+        UIFontEntry *entry = &g_ui_fonts[i];
+
+        if(!entry->tier_dirty)
+            continue;
+        entry->tier_serial = g_ui_frame_serial;
+        entry_rebuild_tiers(entry);
+        rebuilt = 1;
+    }
+    if(rebuilt)
+        ui_font_trim_heap();
 }
 
 static Font

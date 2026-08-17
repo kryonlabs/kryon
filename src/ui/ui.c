@@ -3214,6 +3214,7 @@ SetUIFrame(Camera2D camera)
     EndUIFocus();
     BeginUIFocus();
     g_ui_frame_serial++;
+    ui_text_begin_frame();
 
     if(g_ui_platform_text_input_active != text_input_active) {
         g_ui_platform_text_input_active = text_input_active;
