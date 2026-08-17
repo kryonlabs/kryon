@@ -486,7 +486,9 @@ b_text(const char *s, int x, int y, int size, unsigned color)
                 float adv = (float)(short)atlas_rd_u16(g + 16) / 256.0f;
 
                 atlas_blit(sw, as, g, size, pen, y, color);
-                pen += (int)(adv * scale + 0.5f);
+                /* raylib rtext.c:739 truncates the advance at bake and
+                 * ui_text.c truncates again — no rounding anywhere */
+                pen += (int)(adv * scale);
             }
         }
         return;
@@ -540,7 +542,7 @@ b_measure_text(const char *s, int size)
                 float scale = (float)size / (as->px > 0 ? as->px : 1);
                 float adv = (float)(short)atlas_rd_u16(g + 16) / 256.0f;
 
-                width += (int)(adv * scale + 0.5f);
+                width += (int)(adv * scale);
             }
         }
         return width;

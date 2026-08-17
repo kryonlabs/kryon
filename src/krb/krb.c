@@ -623,12 +623,27 @@ ctrl_dropdown(KrbImage *img, const KryBackend *b, const KrbControl *c,
         cur = op;
     }
     b->rect(x, y, w, h, fill);
-    b->rect(x, y, w, 1, border);
-    b->rect(x, y + h - 1, w, 1, border);
-    b->rect(x, y, 1, h, border);
-    b->rect(x + w - 1, y, 1, h, border);
+    /* clear the square fill corners the rounded border leaves outside */
+    b->rect(x, y, 3, 3, 0xffffffffu);
+    b->rect(x, y + h - 3, 3, 3, 0xffffffffu);
+    /* rounded border, radius 3 (kryon's dropdown widget corners) */
+    b->rect(x + 3, y, w - 6, 1, border);
+    b->rect(x + 3, y + h - 1, w - 6, 1, border);
+    b->rect(x, y + 3, 1, h - 6, border);
+    b->rect(x + w - 1, y + 3, 1, h - 6, border);
+    b->rect(x + 3, y, 1, 1, border);
+    b->rect(x + 2, y + 1, 1, 1, border);
+    b->rect(x + 1, y + 2, 1, 1, border);
+    b->rect(x, y + 3, 1, 1, border);
+    b->rect(x + w - 3, y, 3, 4, border);
+    b->rect(x + w - 1, y + 3, 1, h - 6, border);
+    b->rect(x + 3, y + h - 1, 1, 1, border);
+    b->rect(x + 2, y + h - 2, 1, 1, border);
+    b->rect(x + 1, y + h - 3, 1, 1, border);
+    b->rect(x, y + h - 4, 1, 1, border);
+    b->rect(x + w - 3, y + h - 4, 3, 4, border);
     b->text(cur, x + b->scale_px(6), y + (h - font) / 2, font, tcol);
-    b->text("v", x + w - b->scale_px(14), y + (h - font) / 2, font, tcol);
+    b->text("v", x + w - b->scale_px(25), y + (h - font) / 2, font, tcol);
 
     b->mouse(&mx, &my);
     if(b->mouse_pressed(KRY_MOUSE_LEFT)) {

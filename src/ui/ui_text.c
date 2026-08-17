@@ -861,6 +861,12 @@ MeasureUIText(const char *text, int font_size)
         if(codepoint == '\n')
             break;
         glyph_font = font_for_codepoint(codepoint, font_size);
+        if(getenv("INBE_TEXT_TRACE") != NULL) {
+            /* which font entry actually serves this glyph + its advance */
+            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+                     codepoint, font_size, glyph_font.baseSize,
+                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+        }
         width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
                        font_size_scale(glyph_font, font_size) + 0.5f);
         i += codepoint_byte_count;
@@ -928,6 +934,12 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
         if(i + codepoint_byte_count > byte_len)
             break;
         glyph_font = font_for_codepoint(codepoint, font_size);
+        if(getenv("INBE_TEXT_TRACE") != NULL) {
+            /* which font entry actually serves this glyph + its advance */
+            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+                     codepoint, font_size, glyph_font.baseSize,
+                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+        }
         width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
                        font_size_scale(glyph_font, font_size) + 0.5f);
         i += codepoint_byte_count;
@@ -956,6 +968,12 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
         if(i + codepoint_byte_count > byte_len)
             return i;
         glyph_font = font_for_codepoint(codepoint, font_size);
+        if(getenv("INBE_TEXT_TRACE") != NULL) {
+            /* which font entry actually serves this glyph + its advance */
+            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+                     codepoint, font_size, glyph_font.baseSize,
+                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+        }
         advance = (int)((float)UIFontAdvance(glyph_font, codepoint) *
                         font_size_scale(glyph_font, font_size) + 0.5f);
         if(target_x < cursor_x + advance / 2)
@@ -1208,6 +1226,12 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
             break;
 
         glyph_font = font_for_codepoint(codepoint, font_size);
+        if(getenv("INBE_TEXT_TRACE") != NULL) {
+            /* which font entry actually serves this glyph + its advance */
+            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+                     codepoint, font_size, glyph_font.baseSize,
+                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+        }
         scale = font_size_scale(glyph_font, font_size);
         glyph = UIFontGlyph(glyph_font, codepoint);
         src = UIFontAtlasRec(glyph_font, codepoint);
