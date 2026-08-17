@@ -16,7 +16,7 @@
  * Windows/macOS keep the plain SDL window path.
  */
 
-#if (defined(__linux__) || defined(__FreeBSD__)) && !defined(__ANDROID__) && !defined(ANDROID_BUILD)
+#if (defined(__linux__) || defined(__FreeBSD__)) && !defined(__ANDROID__) && !defined(ANDROID_BUILD) && !defined(UI_WINDOW_HAVE_SDL)
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -654,9 +654,8 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
         *y = window != NULL ? window->click_y : -1;
 }
 
-#elif defined(UI_WINDOW_HAVE_SDL) /* Windows/macOS plain-SDL path: define
-                                   * UI_WINDOW_HAVE_SDL in the build once
-                                   * those environments ship SDL headers. */
+#elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
+                                   * on Wayland, Windows, and macOS. */
 
 #include <SDL2/SDL.h>
 #include <stdlib.h>
@@ -674,17 +673,48 @@ struct UIWindow {
     Color background;
     RenderTexture2D target;
     int clicked;
+    int right_clicked;
+    int click_x;
+    int click_y;
 };
 
 static UIWindow *ui_windows[UI_WINDOW_MAX];
 static int ui_window_count;
 static UIWindow *ui_window_active;
+static int ui_window_event_watch_installed;
+
+/* raylib owns SDL's normal event pump.  An event watch sees secondary-window
+ * pointer events without consuming the core window's events. */
+static int
+ui_window_event_watch(void *userdata, SDL_Event *event)
+{
+    (void)userdata;
+    if(event == NULL || event->type != SDL_MOUSEBUTTONUP)
+        return 1;
+    for(int i = 0; i < ui_window_count; i++) {
+        UIWindow *window = ui_windows[i];
+        if(window == NULL || window->window_id != event->button.windowID)
+            continue;
+        window->click_x = event->button.x;
+        window->click_y = event->button.y;
+        if(event->button.button == SDL_BUTTON_RIGHT)
+            window->right_clicked = 1;
+        else if(event->button.button == SDL_BUTTON_LEFT)
+            window->clicked = 1;
+        break;
+    }
+    return 1;
+}
 
 static int
 ui_window_register(UIWindow *win)
 {
     if(ui_window_count >= UI_WINDOW_MAX)
         return 0;
+    if(!ui_window_event_watch_installed) {
+        SDL_AddEventWatch(ui_window_event_watch, NULL);
+        ui_window_event_watch_installed = 1;
+    }
     ui_windows[ui_window_count++] = win;
     return 1;
 }
@@ -701,6 +731,10 @@ ui_window_unregister(UIWindow *win)
             ui_window_count--;
             return;
         }
+    }
+    if(ui_window_count == 0 && ui_window_event_watch_installed) {
+        SDL_DelEventWatch(ui_window_event_watch, NULL);
+        ui_window_event_watch_installed = 0;
     }
 }
 
@@ -719,11 +753,16 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
         sdl_flags |= SDL_WINDOW_ALWAYS_ON_TOP;
     if((flags & UI_WINDOW_SKIP_TASKBAR) != 0)
         sdl_flags |= SDL_WINDOW_SKIP_TASKBAR;
-    if((flags & UI_WINDOW_TOP_RIGHT) != 0) {
+    if((flags & (UI_WINDOW_TOP_RIGHT | UI_WINDOW_CENTER)) != 0) {
         SDL_Rect usable;
         if(SDL_GetDisplayUsableBounds(0, &usable) == 0) {
-            x = usable.x + usable.w - width - x;
-            y = usable.y + y;
+            if((flags & UI_WINDOW_TOP_RIGHT) != 0) {
+                x = usable.x + usable.w - width - x;
+                y = usable.y + y;
+            } else {
+                x = usable.x + (usable.w - width) / 2;
+                y = usable.y + (usable.h - height) / 2;
+            }
         }
     }
 
@@ -819,8 +858,10 @@ IsUIWindowClicked(UIWindow *window)
 int
 IsUIWindowRightClicked(UIWindow *window)
 {
-    (void)window;
-    return 0;
+    if(window == NULL || !window->right_clicked)
+        return 0;
+    window->right_clicked = 0;
+    return 1;
 }
 
 int
@@ -844,10 +885,9 @@ void
 GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 {
     if(x != NULL)
-        *x = -1;
+        *x = window != NULL ? window->click_x : -1;
     if(y != NULL)
-        *y = -1;
-    (void)window;
+        *y = window != NULL ? window->click_y : -1;
 }
 
 #else /* web/android: no extra windows */
