@@ -68,6 +68,16 @@ main(int argc, char **argv)
         fprintf(stderr, "krb-run: rasterizer init failed\n");
         return 1;
     }
+    {
+        const char *uis = getenv("KRB_RUN_UI_SCALE");
+
+        if(uis != NULL) {
+            int pct = (int)(atof(uis) * 100.0f + 0.5f);
+
+            if(pct > 0 && pct <= 800)
+                sw.scale = pct;
+        }
+    }
     if(getenv("KRB_RUN_THEME_LIGHT") != NULL) {
         KrySwSetTheme(&sw, KRY_THEME_BACKGROUND, 0xffffffffu);
         KrySwSetTheme(&sw, KRY_THEME_SURFACE, 0xfbfbfbffu);

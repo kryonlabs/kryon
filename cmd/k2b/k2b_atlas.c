@@ -101,11 +101,19 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
             for(i = 0; i < cp_count; i++) {
                 int x0 = 0;
                 int y0 = 0;
-                int w = 0;
-                int h = 0;
+                int x1 = 0;
+                int y1 = 0;
+                int w;
+                int h;
 
                 stbtt_GetCodepointBitmapBox(&font, (int)codepoints[i], scale,
-                                            scale, &x0, &y0, &w, &h);
+                                            scale, &x0, &y0, &x1, &y1);
+                w = x1 - x0;
+                h = y1 - y0;
+                if(w < 0)
+                    w = 0;
+                if(h < 0)
+                    h = 0;
                 if(cur_x + w > ATLAS_W) {
                     total_h += row_h > 0 ? row_h : 1;
                     row_h = 0;

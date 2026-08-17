@@ -2761,7 +2761,11 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
                 if(k == cp_count)
                     cps[cp_count++] = cp;
             }
-            if(build.nodes[i].font_size > 0 && size_count < 4) {
+            if(build.nodes[i].font_size > 0 && size_count < 4 &&
+               (build.nodes[i].type == KRB_NODE_TEXT ||
+                build.nodes[i].type == KRB_NODE_TEXTINPUT ||
+                build.nodes[i].type == KRB_NODE_CONTROL ||
+                build.nodes[i].type == KRB_NODE_BUTTON)) {
                 int fs = build.nodes[i].font_size;
 
                 for(k = 0; k < size_count; k++)
@@ -2773,6 +2777,18 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
         }
         if(size_count == 0)
             sizes[size_count++] = 16;
+        {
+            /* physical tiers: the engine renders font_size through
+             * scale_px, so bake at the physical pixel sizes */
+            const char *us = getenv("K2B_UI_SCALE");
+            float uis = us != NULL ? (float)atof(us) : 1.0f;
+            int fi2;
+
+            if(uis <= 0.0f || uis > 8.0f)
+                uis = 1.0f;
+            for(fi2 = 0; fi2 < size_count; fi2++)
+                sizes[fi2] = (int)((float)sizes[fi2] * uis + 0.5f);
+        }
         {
             const char *font = getenv("K2B_FONT");
 

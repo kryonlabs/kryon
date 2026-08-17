@@ -750,7 +750,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         else if(text[0] == '/' &&
                 format_bound(img, text, NULL, bound, sizeof(bound)) == 0)
             draw = bound;
-        b->text(draw, x, y, n->font_size > 0 ? n->font_size : 16, color);
+        b->text(draw, x, y, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
         break;
     }
     case KRB_NODE_BUTTON: {
@@ -759,7 +759,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         int tw;
         int tx;
         int ty;
-        int font = n->font_size > 0 ? n->font_size : 16;
+        int font = b->scale_px(n->font_size > 0 ? n->font_size : 16);
 
         if(n->style == 2) /* danger */
             fill = 0xb83b3bffu;
@@ -849,7 +849,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
     case KRB_NODE_TEXTINPUT: {
         char val[256];
         const char *path = KrbString(img, n->name_off);
-        int fnt = n->font_size > 0 ? n->font_size : 16;
+        int fnt = b->scale_px(n->font_size > 0 ? n->font_size : 16);
         int focused = strcmp(img->focus_path, path) == 0;
         unsigned fill = b->theme_color(KRY_THEME_SURFACE);
         unsigned border = b->theme_color(KRY_THEME_ICON);
@@ -944,7 +944,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
             b->rect(x + 3, y + 3, w - 6, h - 6, fill);
         if(text[0] != '\0')
             b->text(text, x + w + b->scale_px(4), y,
-                    n->font_size > 0 ? n->font_size : 16, color);
+                    b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
         b->mouse(&mx, &my);
         if(got && b->mouse_pressed(KRY_MOUSE_LEFT) &&
            mx >= x && my >= y && mx < x + w && my < y + h)
@@ -965,7 +965,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         b->rect(tx, y, th, h, (got && val) ? b->theme_color(KRY_THEME_TEXT) : thumb);
         if(text[0] != '\0')
             b->text(text, x + w + b->scale_px(4), y,
-                    n->font_size > 0 ? n->font_size : 16, color);
+                    b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
         b->mouse(&mx, &my);
         if(got && b->mouse_pressed(KRY_MOUSE_LEFT) &&
            mx >= x && my >= y && mx < x + w && my < y + h)
@@ -994,11 +994,11 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
             break;
         case KRB_CTRL_SPINBOX:
             ctrl_spinbox(img, b, &c, path, x, y, w, h, val,
-                         n->font_size > 0 ? n->font_size : 16, color);
+                         b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
             break;
         case KRB_CTRL_DROPDOWN:
             ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
-                          val, n->font_size > 0 ? n->font_size : 16, color);
+                          val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
             break;
         default:
             break;
