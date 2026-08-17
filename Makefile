@@ -114,6 +114,11 @@ CURL_CODEC_LDLIBS ?= $(strip \
   $(shell pkg-config --libs libbrotlidec 2>/dev/null) \
   $(shell pkg-config --libs libbrotlicommon 2>/dev/null) \
   $(shell pkg-config --libs libzstd 2>/dev/null))
+ifeq ($(KRYON_PLATFORM),freebsd)
+  # pkg-config omits its default library directory, but the FreeBSD linker
+  # does not search the ports prefix automatically.
+  CURL_CODEC_LDLIBS := -L/usr/local/lib $(CURL_CODEC_LDLIBS)
+endif
 KRYON_ZLIB_LDLIB ?= -lz
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
 RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1 -DMAX_CLIPBOARD_BUFFER_LENGTH=1048576
