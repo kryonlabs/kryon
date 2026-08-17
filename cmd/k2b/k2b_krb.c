@@ -50,14 +50,22 @@ typedef struct KrbUpdate {
     int val;
 } KrbUpdate;
 
+typedef struct KrbTerm {
+    int is_path;
+    char path[KIR_NAME_MAX];
+    int val;
+} KrbTerm;
+
 typedef struct KrbGuard {
     int start; /* node index range [start, end) the guard covers */
     int end;
-    char path[KIR_NAME_MAX];
-    int op; /* KRB_OP_EQ..GE */
-    int val;
-    char rpath[KIR_NAME_MAX]; /* right side: state path when is_path */
-    int is_path;
+    KrbTerm l[2]; /* left: term, optionally term op term */
+    int ln; /* 1 or 2 terms */
+    int lop; /* KRB_OP_ADD/SUB/MUL/DIV when ln == 2 */
+    int op; /* comparison KRB_OP_EQ..GE */
+    KrbTerm r[2];
+    int rn;
+    int rop;
     int else_start; /* [else_start, end) draws when the guard is false */
     int has_else;
 } KrbGuard;
@@ -931,16 +939,75 @@ parse_update(const char *text, char *path, int *kind, int *val)
     return 0;
 }
 
-/* "if (<path> <cmp> <int>)" -> guard fields. Only simple state-vs-literal
- * conditions compile to cartridge logic; anything else is ignored here. */
+/* Parse one term: identifier path or integer. Returns consumed length. */
 static int
-parse_cond(const char *text, char *path, int *op, int *val, char *rpath,
-           int *is_path)
+parse_term(const char *p, KrbTerm *t)
+{
+    const char *q = p;
+    size_t len;
+
+    while(*q == '_' || (*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
+          (*q >= '0' && *q <= '9') || *q == '.')
+        q++;
+    len = (size_t)(q - p);
+    if(len == 0)
+        return 0;
+    if(len == 1 && p[0] >= '0' && p[0] <= '9') {
+        t->is_path = 0;
+        t->val = atoi(p);
+        t->path[0] = '\0';
+        return 1;
+    }
+    if(p[0] >= '0' && p[0] <= '9' || p[0] == '-') {
+        t->is_path = 0;
+        t->val = atoi(p);
+        t->path[0] = '\0';
+        return 1;
+    }
+    if(len >= KIR_NAME_MAX)
+        return 0;
+    t->is_path = 1;
+    memcpy(t->path, p, len);
+    t->path[len] = '\0';
+    t->val = 0;
+    return 1;
+}
+
+/* Parse one side: term, or term arith term. */
+static int
+parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
+{
+    const char *q;
+    int used = parse_term(p, &t[0]);
+
+    if(used == 0)
+        return 0;
+    q = skip_ws(p + used);
+    *n = 1;
+    *aop = 0;
+    if(*q == '+' || *q == '-' || *q == '*' || *q == '/') {
+        int u2;
+        int kind = *q;
+
+        q = skip_ws(q + 1);
+        u2 = parse_term(q, &t[1]);
+        if(u2 == 0)
+            return 0;
+        *n = 2;
+        *aop = kind == '+' ? KRB_OP_ADD : kind == '-' ? KRB_OP_SUB :
+               kind == '*' ? KRB_OP_MUL : KRB_OP_DIV;
+        q = skip_ws(q + u2);
+    }
+    return (int)(q - p) + 1; /* caller compensates the +1 */
+}
+
+/* "if (<expr> <cmp> <expr>)" where each expr is term or term arith term. */
+static int
+parse_cond(const char *text, KrbGuard *g)
 {
     const char *p = strstr(text, "if");
-    const char *q;
     const char *cmp;
-    size_t plen;
+    int used;
     int oplen = 0;
 
     if(p == NULL || p != skip_ws(text))
@@ -949,14 +1016,10 @@ parse_cond(const char *text, char *path, int *op, int *val, char *rpath,
     if(*p != '(')
         return 0;
     p = skip_ws(p + 1);
-    q = p;
-    while(*q == '_' || (*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
-          (*q >= '0' && *q <= '9') || *q == '.')
-        q++;
-    plen = (size_t)(q - p);
-    if(plen == 0 || plen >= KIR_NAME_MAX)
+    used = parse_side(p, g->l, &g->ln, &g->lop);
+    if(used == 0)
         return 0;
-    cmp = skip_ws(q);
+    cmp = skip_ws(p + used - 1);
     if(strncmp(cmp, "==", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "!=", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "<=", 2) == 0) oplen = 2;
@@ -964,39 +1027,13 @@ parse_cond(const char *text, char *path, int *op, int *val, char *rpath,
     else if(*cmp == '<') oplen = 1;
     else if(*cmp == '>') oplen = 1;
     else return 0;
-    *op = cmp[0] == '=' ? KRB_OP_EQ : cmp[0] == '!' ? KRB_OP_NE :
-          cmp[0] == '<' ? (oplen == 2 ? KRB_OP_LE : KRB_OP_LT) :
-                          (oplen == 2 ? KRB_OP_GE : KRB_OP_GT);
-    /* right side: another path or an integer literal. is_path picks the
-     * guard encoding: PUSH_PATH vs PUSH_CONST. */
-    {
-        const char *r = skip_ws(cmp + oplen);
-        const char *rq = r;
-
-        while(*rq == '_' || (*rq >= 'a' && *rq <= 'z') ||
-              (*rq >= 'A' && *rq <= 'Z') || (*rq >= '0' && *rq <= '9') ||
-              *rq == '.')
-            rq++;
-        if(rq > r && (*rq == '\0' || *rq == ' ' || *rq == ')') &&
-           !(*r >= '0' && *r <= '9')) {
-            size_t rl = (size_t)(rq - r);
-
-            if(rl < KIR_NAME_MAX) {
-                memcpy(rpath, r, rl);
-                rpath[rl] = '\0';
-                *val = 0;
-                *is_path = 1;
-                memcpy(path, p, plen);
-                path[plen] = '\0';
-                return 1;
-            }
-        }
-        *val = atoi(r);
-        *is_path = 0;
-        rpath[0] = '\0';
-    }
-    memcpy(path, p, plen);
-    path[plen] = '\0';
+    g->op = cmp[0] == '=' ? KRB_OP_EQ : cmp[0] == '!' ? KRB_OP_NE :
+            cmp[0] == '<' ? (oplen == 2 ? KRB_OP_LE : KRB_OP_LT) :
+                            (oplen == 2 ? KRB_OP_GE : KRB_OP_GT);
+    p = skip_ws(cmp + oplen);
+    used = parse_side(p, g->r, &g->rn, &g->rop);
+    if(used == 0)
+        return 0;
     return 1;
 }
 
@@ -1039,8 +1076,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
            b->guard_count < 16) {
             KrbGuard *g = &b->guards[b->guard_count];
 
-            if(parse_cond(st->text, g->path, &g->op, &g->val, g->rpath,
-                              &g->is_path)) {
+            if(parse_cond(st->text, g)) {
                 g->start = b->node_count;
                 g->end = b->node_count;
                 /* the loop's own depth++ for this 'if' lands after this
@@ -1881,7 +1917,7 @@ try_widget(KrbBuild *b, const char *raw)
 static int
 emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
           const int *upath_off, const int *gpath_off,
-          const int *grpath_off)
+          const int grpath_off[16][4])
 {
     unsigned char *q = (unsigned char *)dst;
     int i;
@@ -1954,16 +1990,30 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
             open_guard = g;
             open_branch = branch;
             if(g >= 0 && branch == 0) {
-                EMIT1(KRB_OP_PUSH_PATH);
-                EMIT2(gpath_off[g]);
-                if(b->guards[g].is_path) {
-                    EMIT1(KRB_OP_PUSH_PATH);
-                    EMIT2(grpath_off[g]);
-                } else {
-                    EMIT1(KRB_OP_PUSH_CONST);
-                    EMIT4(b->guards[g].val);
+                const KrbGuard *gd = &b->guards[g];
+                const int *offs[2][2];
+                int side;
+                int ti;
+
+                (void)offs;
+                for(side = 0; side < 2; side++) {
+                    const KrbTerm *ts = side == 0 ? gd->l : gd->r;
+                    int tn = side == 0 ? gd->ln : gd->rn;
+                    int aop = side == 0 ? gd->lop : gd->rop;
+
+                    for(ti = 0; ti < tn; ti++) {
+                        if(ts[ti].is_path) {
+                            EMIT1(KRB_OP_PUSH_PATH);
+                            EMIT2(grpath_off[g][side * 2 + ti]);
+                        } else {
+                            EMIT1(KRB_OP_PUSH_CONST);
+                            EMIT4(ts[ti].val);
+                        }
+                    }
+                    if(tn == 2)
+                        EMIT1(aop);
                 }
-                EMIT1(b->guards[g].op);
+                EMIT1(gd->op);
                 EMIT1(KRB_OP_JZ);
                 jz_patch = (int)(q - dst);
                 EMIT4(0);
@@ -2087,14 +2137,29 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
     {
         static int upath_off[32];
         static int gpath_off[16];
-        static int grpath_off[16];
+        static int grpath_off[16][4];
 
         for(i = 0; i < b->update_count; i++)
             upath_off[i] = intern_string(b, b->updates[i].path);
         for(i = 0; i < b->guard_count; i++) {
-            gpath_off[i] = intern_string(b, b->guards[i].path);
-            grpath_off[i] = b->guards[i].is_path
-                ? intern_string(b, b->guards[i].rpath) : 0;
+            const KrbGuard *gd = &b->guards[i];
+            const KrbTerm *ts[2] = { gd->l, gd->r };
+            int tn[2] = { gd->ln, gd->rn };
+            int side;
+            int ti;
+
+            gpath_off[i] = 0;
+            for(side = 0; side < 2; side++) {
+                for(ti = 0; ti < tn[side]; ti++) {
+                    int off = 0;
+
+                    if(ts[side][ti].is_path)
+                        off = intern_string(b, ts[side][ti].path);
+                    grpath_off[i][side * 2 + ti] = off;
+                    if(side == 0 && ti == 0)
+                        gpath_off[i] = off;
+                }
+            }
         }
         prog_bytes = emit_prog(b, prog_buf, sizeof(prog_buf), upath_off,
                                gpath_off, grpath_off);
