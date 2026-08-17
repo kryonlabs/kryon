@@ -742,6 +742,24 @@ PopUIFont(int token)
         g_ui_active_font = token;
 }
 
+int
+ui_active_font_token(void)
+{
+    return g_ui_active_font;
+}
+
+void
+ui_draw_text_with_font_token(const char *text, int x, int y, int font_size,
+                             Color color, int token)
+{
+    int previous = g_ui_active_font;
+
+    if(token >= 0 && token < g_ui_font_count)
+        g_ui_active_font = token;
+    DrawUIText(text, x, y, font_size, color);
+    g_ui_active_font = previous;
+}
+
 static int
 append_codepoint_range(int *codepoints, int index, int first, int last)
 {

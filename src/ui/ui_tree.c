@@ -801,10 +801,11 @@ DrawUITree(void)
             DrawRectangleRec(node->bounds, node->data.primitive.color);
             break;
         case UI_WIDGET_TEXT_NODE:
-            DrawUIText(node->owned_text != NULL ? node->owned_text : "",
-                       (int)node->bounds.x, (int)node->bounds.y,
-                       node->data.primitive.font,
-                       node->data.primitive.color);
+            ui_draw_text_with_font_token(
+                node->owned_text != NULL ? node->owned_text : "",
+                (int)node->bounds.x, (int)node->bounds.y,
+                node->data.primitive.font, node->data.primitive.color,
+                node->data.primitive.font_token);
             break;
         case UI_WIDGET_RECT_NODE:
             DrawRectangleRec(node->bounds, node->data.primitive.color);
@@ -1121,6 +1122,7 @@ Text(const char *text, int x, int y, int font_size, Color color)
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(text);
         ui_tree_nodes[node].data.primitive.font = font_size;
+        ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
         ui_tree_nodes[node].data.primitive.color = color;
     }
     if(ui_tree_building)
