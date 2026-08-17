@@ -442,6 +442,36 @@ b_ring(int cx, int cy, int inner, int outer, unsigned color)
 }
 
 static void
+b_texture_rgba(const unsigned char *rgba, int sw, int sh, int x, int y,
+               int dw, int dh, unsigned tint)
+{
+    KrySw *s = g_sw;
+    int tr = (int)(tint >> 24);
+    int tg = (int)((tint >> 16) & 0xff);
+    int tb = (int)((tint >> 8) & 0xff);
+    int ta = (int)(tint & 0xff);
+    int dx;
+    int dy;
+
+    if(s == NULL || rgba == NULL || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
+        return;
+    for(dy = 0; dy < dh; dy++) {
+        int sy = dy * sh / dh;
+
+        for(dx = 0; dx < dw; dx++) {
+            int sx = dx * sw / dw;
+            const unsigned char *src = rgba + ((size_t)sy * sw + sx) * 4;
+            unsigned out = ((unsigned)((src[0] * tr) / 255) << 24) |
+                           ((unsigned)((src[1] * tg) / 255) << 16) |
+                           ((unsigned)((src[2] * tb) / 255) << 8) |
+                           (unsigned)((src[3] * ta) / 255);
+
+            fill_rect(s, x + dx, y + dy, 1, 1, out);
+        }
+    }
+}
+
+static void
 b_texture(const char *asset_path, int x, int y, int w, int h,
           unsigned tint, int fit)
 {
@@ -477,5 +507,6 @@ KrySwBackend(KrySw *sw)
     sw->backend.texture = b_texture;
     sw->backend.circle = b_circle;
     sw->backend.ring = b_ring;
+    sw->backend.texture_rgba = b_texture_rgba;
     return &sw->backend;
 }

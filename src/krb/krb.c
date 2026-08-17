@@ -87,6 +87,10 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     img->imports = (const uint32_t *)p;
     p += (size_t)import_count * 4;
     img->controls = p;
+    img->asset_count = rd_u32(bytes + 28) > 0
+        ? rd_u32(p + (size_t)control_count * KRB_CONTROL_SIZE) : 0;
+    img->assets = img->asset_count > 0
+        ? p + (size_t)control_count * KRB_CONTROL_SIZE + 4 : NULL;
     img->header = (const KrbHeader *)bytes;
     if(string_bytes == 0 || img->strings[0] != '\0')
         return -1;
@@ -685,9 +689,22 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
     }
     case KRB_NODE_PICTURE:
         /* text_off holds the asset path; style holds the UIPictureFit; color
-         * the tint. */
-        if(b->texture != NULL && text[0] != '\0')
-            b->texture(text, x, y, w, h, color, n->style);
+         * the tint. Embedded assets render from cartridge pixels; paths the
+         * cartridge does not embed fall back to host texture loading. */
+        if(text[0] != '\0') {
+            const unsigned char *adata = NULL;
+            unsigned alen = 0;
+            unsigned akind = 0;
+            unsigned aw = 0;
+            unsigned ah = 0;
+
+            if(b->texture_rgba != NULL &&
+               KrbAssetFind(img, text, &adata, &alen, &akind, &aw, &ah) == 0 &&
+               akind == 0)
+                b->texture_rgba(adata, (int)aw, (int)ah, x, y, w, h, color);
+            else if(b->texture != NULL)
+                b->texture(text, x, y, w, h, color, n->style);
+        }
         break;
     case KRB_NODE_CIRCLE:
         if(b->circle != NULL && w > 0)
@@ -800,6 +817,37 @@ draw_tree(KrbImage *img, int x, int y, int w, int h)
         }
         draw_node(img, b, &node, x, y);
     }
+}
+
+int
+KrbAssetFind(const KrbImage *img, const char *path,
+             const unsigned char **data, unsigned *len, unsigned *kind,
+             unsigned *w, unsigned *h)
+{
+    unsigned i;
+
+    if(img == NULL || img->assets == NULL || path == NULL)
+        return -1;
+    for(i = 0; i < img->asset_count; i++) {
+        const unsigned char *e = img->assets + (size_t)i * 20;
+
+        if(strcmp(KrbString(img, rd_u32(e)), path) == 0) {
+            unsigned off = rd_u32(e + 4);
+
+            if(data != NULL)
+                *data = img->bytes + off;
+            if(len != NULL)
+                *len = rd_u32(e + 8);
+            if(kind != NULL)
+                *kind = rd_u16(e + 12);
+            if(w != NULL)
+                *w = rd_u16(e + 14);
+            if(h != NULL)
+                *h = rd_u16(e + 16);
+            return 0;
+        }
+    }
+    return -1;
 }
 
 static int exec_logic(KrbImage *img, unsigned char op,

@@ -161,6 +161,8 @@ typedef struct KrbImage {
     void *bind_ud[KRB_BIND_MAX];
     KrbMountEntry mounts[KRB_MOUNT_MAX];
     int mount_count;
+    const unsigned char *assets; /* v2 asset directory (20-byte entries) */
+    unsigned asset_count;
 } KrbImage;
 
 int KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len);
@@ -185,6 +187,12 @@ int KrbReadF32(const KrbImage *img, const char *path, float *out);
 int KrbWriteF32(KrbImage *img, const char *path, float value);
 int KrbReadCStr(const KrbImage *img, const char *path, char *out, size_t out_size);
 int KrbWriteCStr(KrbImage *img, const char *path, const char *value);
+/* v2 asset section (header offset 28 = asset_bytes; directory after
+ * controls, blobs after that). kind: 0 = raw RGBA8 pixels, 1 = glyph
+ * atlas (RGBA8). Returns 0 and sets outputs when found. */
+int KrbAssetFind(const KrbImage *img, const char *path,
+                 const unsigned char **data, unsigned *len, unsigned *kind,
+                 unsigned *w, unsigned *h);
 int KrbExec(KrbImage *img);
 void KrbDraw(KrbImage *img, int x, int y, int w, int h);
 

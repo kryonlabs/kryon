@@ -196,6 +196,18 @@ Rules:
 - **v2** — adds opcodes `0x10`–`0x20` and node types 10–11. Loaders accept
   both; compilers should emit 2.
 
+### Asset section (v2)
+
+When header offset 28 (`asset_bytes`) is nonzero, an asset section follows
+`controls[]`: a `u32 asset_count`, then `asset_count` directory entries of
+20 bytes, then the blobs. Entry: `path_off u32@0` (string table),
+`data_off u32@4` (absolute file offset), `size u32@8`, `kind u16@12`
+(0 = raw RGBA8 pixels, 1 = glyph atlas), `w u16@14`, `h u16@16`,
+`reserved u16@18`. `asset_bytes` counts the whole section. A PICTURE node
+whose path matches an embedded raw-RGBA asset is rendered from cartridge
+pixels through the backend's optional `texture_rgba` (scaled, tinted);
+non-embedded paths fall back to host texture loading.
+
 ## 9. Limits (current implementation)
 
 256 nodes, 8 KiB strings, 32 imports, 128 controls, 32 host binds,

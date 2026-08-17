@@ -159,6 +159,7 @@ const KryBackend KryBackendNull = {
     null_texture,
     null_circle,
     null_ring,
+    NULL, /* texture_rgba: not expressible on a stub backend */
 };
 
 static const KryBackend *g_backend = &KryBackendNull;

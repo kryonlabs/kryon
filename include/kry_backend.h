@@ -44,6 +44,10 @@ typedef struct KryBackend {
      * drawers must check before calling. */
     void (*circle)(int cx, int cy, int radius, unsigned color);
     void (*ring)(int cx, int cy, int inner, int outer, unsigned color);
+    /* Draw in-memory RGBA8 pixels (cartridge-embedded assets) scaled into
+     * the given destination rect. Optional like circle/ring. */
+    void (*texture_rgba)(const unsigned char *rgba, int sw, int sh,
+                         int x, int y, int dw, int dh, unsigned tint);
 } KryBackend;
 
 extern const KryBackend KryBackendDraw;
