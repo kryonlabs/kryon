@@ -301,7 +301,7 @@ $(K2IR): $(K2IR_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
 
 K2B_SRCS := $(sort $(wildcard cmd/k2b/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
 $(K2B): $(K2B_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2B_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2B_SRCS) -lm
 
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c

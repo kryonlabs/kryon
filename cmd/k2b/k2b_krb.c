@@ -2,6 +2,7 @@
  * kir_parse.c frontend) to a .krb binary + C host. */
 #include "kir.h"
 #include "krb.h"
+#include "k2b_stb.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -35,6 +36,8 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 typedef struct KrbAsset {
     char path[256];  /* cartridge path (also the PICTURE text) */
     char file[1024]; /* host file read at emit time */
+    unsigned char *mem; /* decoded RGBA8 pixels (kind 0), malloc'd */
+    unsigned mem_len;
     unsigned kind;   /* 0 raw RGBA (.kraw), 2 opaque file blob */
     unsigned w;
     unsigned h;
@@ -834,28 +837,49 @@ embed_asset(KrbBuild *b, const char *path)
     f = fopen(file, "rb");
     if(f == NULL)
         return; /* not packable; host loads it at runtime as before */
-    if(fread(hdr, 1, 8, f) == 8 && hdr[0] == 'K' && hdr[1] == 'R' &&
-       hdr[2] == 'A' && hdr[3] == 'W') {
-        fclose(f);
-        snprintf(b->assets[b->asset_count].path,
-                 sizeof(b->assets[0].path), "%s", path);
-        snprintf(b->assets[b->asset_count].file,
-                 sizeof(b->assets[0].file), "%s", file);
-        b->assets[b->asset_count].kind = 0;
-        b->assets[b->asset_count].w = hdr[4] | (hdr[5] << 8);
-        b->assets[b->asset_count].h = hdr[6] | (hdr[7] << 8);
-        b->asset_count++;
-        return;
-    }
     fclose(f);
-    snprintf(b->assets[b->asset_count].path,
-             sizeof(b->assets[0].path), "%s", path);
-    snprintf(b->assets[b->asset_count].file,
-             sizeof(b->assets[0].file), "%s", file);
-    b->assets[b->asset_count].kind = 2; /* opaque blob: png/wav/ogg/... */
-    b->assets[b->asset_count].w = 0;
-    b->assets[b->asset_count].h = 0;
-    b->asset_count++;
+    {
+        KrbAsset *a = &b->assets[b->asset_count];
+        unsigned char *rgba = NULL;
+        int iw = 0;
+        int ih = 0;
+
+        snprintf(a->path, sizeof(a->path), "%s", path);
+        snprintf(a->file, sizeof(a->file), "%s", file);
+        /* .kraw: KRAW magic + u16 w,h + RGBA8 */
+        {
+            FILE *g = fopen(file, "rb");
+
+            if(g != NULL && fread(hdr, 1, 8, g) == 8 && hdr[0] == 'K' &&
+               hdr[1] == 'R' && hdr[2] == 'A' && hdr[3] == 'W') {
+                fclose(g);
+                a->kind = 0;
+                a->w = hdr[4] | (hdr[5] << 8);
+                a->h = hdr[6] | (hdr[7] << 8);
+                b->asset_count++;
+                return;
+            }
+            if(g != NULL)
+                fclose(g);
+        }
+        /* png/jpg/bmp/webp: decode to RGBA8 and embed as pixels */
+        if(k2b_decode_image(file, &rgba, &iw, &ih) == 0 && rgba != NULL &&
+           iw > 0 && ih > 0) {
+            a->kind = 0;
+            a->mem = rgba;
+            a->mem_len = (unsigned)(iw * ih * 4);
+            a->w = (unsigned)iw;
+            a->h = (unsigned)ih;
+            b->asset_count++;
+            return;
+        }
+        free(rgba);
+        /* audio and anything else: opaque blob for host-side decode */
+        a->kind = 2;
+        a->w = 0;
+        a->h = 0;
+        b->asset_count++;
+    }
 }
 
 static int
@@ -1875,16 +1899,18 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
 
         total = 0;
         for(k = 0; k < b->asset_count; k++) {
-            af[k] = fopen(b->assets[k].file, "rb");
+            af[k] = NULL;
             asize[k] = 0;
-            if(af[k] != NULL) {
+            if(b->assets[k].mem != NULL) {
+                asize[k] = b->assets[k].mem_len;
+            } else if((af[k] = fopen(b->assets[k].file, "rb")) != NULL) {
                 fseek(af[k], 0, SEEK_END);
                 asize[k] = (unsigned long)ftell(af[k]);
                 fseek(af[k], 0, SEEK_SET);
                 if(b->assets[k].kind == 0 && asize[k] >= 8)
                     asize[k] -= 8; /* strip the KRAW header */
-                total += asize[k];
             }
+            total += asize[k];
         }
         blob_base = (unsigned long)(out - dst) + 4 +
                     (unsigned long)b->asset_count * 20;
@@ -1901,7 +1927,15 @@ emit_krb_mem(unsigned char *dst, int cap, KrbBuild *b)
         }
         for(k = 0; k < b->asset_count; k++) {
             unsigned long left = asize[k];
+            const unsigned char *src = b->assets[k].mem;
 
+            if(src != NULL) {
+                if(out - dst + (long)left > cap)
+                    return -1;
+                memcpy(out, src, (size_t)left);
+                out += left;
+                continue;
+            }
             if(af[k] == NULL)
                 continue;
             if(b->assets[k].kind == 0)
