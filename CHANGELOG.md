@@ -7,6 +7,8 @@
   version resolution and explicit minor/major bump tooling.
 - Checksummed native tools archives containing every Kryon command-line binary
   alongside the existing static SDK and cross-platform renderer downloads.
+- CI and standalone Kryon builds now install/link the GIO notification
+  dependency explicitly instead of discovering its compile flags only.
 - Memory diagnostics: `KryonMemReport(tag)` / `KryonMemDebugEnabled()` print
   RSS/high-water marks and the glibc arena breakdown to stderr when
   `KRYON_MEM_DEBUG` is set; `UIFontMemoryReport(tag)` prints per-font
