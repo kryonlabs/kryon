@@ -37,7 +37,7 @@ jobs:
         run: |
           target="${{ matrix.build_dir }}/bin/krb-run"
           if [ "${{ runner.os }}" = macOS ]; then
-            env -u MAKE gmake "$target" CC=${{ matrix.cc }} \
+            env -u MAKE -u MAKEFLAGS -u MFLAGS gmake "$target" CC=${{ matrix.cc }} \
               KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
           else
             make "$target" CC=${{ matrix.cc }} \
