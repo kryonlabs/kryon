@@ -31,6 +31,7 @@ state {
 }
 
 screen Valid(viewport: Rectangle) {
+    int legacy_count
     Background(GetThemeBackground())
     Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText())
     value := count + 1
@@ -104,14 +105,15 @@ grep -Fq '#include "src/valid.h"' "$c"
 grep -Fq '#include "ui_inspect.h"' "$c"
 
 # state fields (array type converts to C declarator order)
-grep -Fq 'static int count = 7;' "$c"
+grep -Fq 'static int count = FixtureCount;' "$c"
 grep -Fq 'static char label[64] = "hello";' "$c"
 
 # function definition
 grep -Fq 'Valid_kry_draw(Rectangle viewport)' "$c"
+grep -Fq 'int legacy_count;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry", 9);' "$c"
+grep -Fq 'PushUIInspectSource("src/valid.kry", 16);' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
