@@ -391,6 +391,12 @@ kry_json_key(const KryJson *v, int index)
     return v->keys[index];
 }
 
+KryJsonType
+kry_json_type(const KryJson *v)
+{
+    return v != NULL ? v->type : KRY_JSON_NULL;
+}
+
 const char *
 kry_json_string(const KryJson *v)
 {

@@ -53,6 +53,7 @@ const char *kry_json_key(const KryJson *v, int index);
 
 /* Leaf accessors: return the value, or the zero fallback when the type
  * does not match. */
+KryJsonType kry_json_type(const KryJson *v);
 const char *kry_json_string(const KryJson *v);   /* NULL unless STRING */
 double kry_json_number(const KryJson *v);        /* 0.0 unless NUMBER */
 int kry_json_bool(const KryJson *v);             /* 0 unless BOOL */
