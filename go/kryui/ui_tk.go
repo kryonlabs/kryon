@@ -205,6 +205,32 @@ type TreeViewProps struct {
 	RowHeight    int32
 }
 
+type SourceViewProps struct {
+	Bounds          Rectangle
+	Text            string
+	ScrollX         *int32
+	ScrollY         *int32
+	FontSize        int32
+	LineHeight      int32
+	ShowLineNumbers bool
+}
+
+type UITableRow struct {
+	Cells []string
+}
+
+type TableViewProps struct {
+	Bounds       Rectangle
+	ID           int32
+	Columns      []string
+	Rows         []UITableRow
+	ColumnWidths []int32
+	SelectedRow  *int32
+	SortColumn   *int32
+	ScrollOffset *int32
+	RowHeight    int32
+}
+
 type NotebookProps struct {
 	Bounds        Rectangle
 	Tabs          []string
@@ -224,6 +250,28 @@ type CollapsibleProps struct {
 	Bounds Rectangle
 	Label  string
 	Open   *bool
+}
+
+type MessageDialogProps struct {
+	Title   string
+	Message string
+	OKLabel string
+}
+
+type ConfirmDialogProps struct {
+	Title        string
+	Message      string
+	CancelLabel  string
+	ConfirmLabel string
+}
+
+type PromptDialogProps struct {
+	Title        string
+	Text         []byte
+	Cursor       *int32
+	Focused      *bool
+	CancelLabel  string
+	ConfirmLabel string
 }
 
 // ---------------------------------------------------------------------------
@@ -400,4 +448,170 @@ func DispatchUIAccelerators(accelerators []UIAccelerator) int32 {
 	}
 
 	return int32(C.DispatchUIAccelerators(&caccels[0], C.int(len(accelerators))))
+}
+
+func LabelFrame(props LabelFrameProps) {
+	title := C.CString(props.Title)
+	defer C.free(unsafe.Pointer(title))
+	C.LabelFrame(C.LabelFrameProps{bounds: props.Bounds.toC(), title: title})
+}
+
+func ListBox(props ListBoxProps) int32 {
+	if len(props.Items) == 0 {
+		return 0
+	}
+	items, free := cStringArray(props.Items)
+	defer free()
+	return int32(C.ListBox(C.ListBoxProps{
+		bounds: props.Bounds.toC(), id: C.int(props.ID),
+		items: (**C.char)(unsafe.Pointer(&items[0])), item_count: C.int(len(items)),
+		selected_index: (*C.int)(unsafe.Pointer(props.SelectedIndex)),
+		scroll_offset:  (*C.int)(unsafe.Pointer(props.ScrollOffset)), row_height: C.int(props.RowHeight),
+	}))
+}
+
+func SourceView(props SourceViewProps) int32 {
+	value := C.CString(props.Text)
+	defer C.free(unsafe.Pointer(value))
+	lines := C.int(0)
+	if props.ShowLineNumbers {
+		lines = 1
+	}
+	return int32(C.SourceView(C.SourceViewProps{
+		bounds: props.Bounds.toC(), text: value,
+		scroll_x: (*C.int)(unsafe.Pointer(props.ScrollX)), scroll_y: (*C.int)(unsafe.Pointer(props.ScrollY)),
+		font_size: C.int(props.FontSize), line_height: C.int(props.LineHeight), show_line_numbers: lines,
+	}))
+}
+
+func TableView(props TableViewProps) int32 {
+	if len(props.Columns) == 0 {
+		return 0
+	}
+	columns, freeColumns := cStringArray(props.Columns)
+	defer freeColumns()
+	crows := make([]C.UITableRow, len(props.Rows))
+	rowStrings := make([][]*C.char, len(props.Rows))
+	for i, row := range props.Rows {
+		var free func()
+		rowStrings[i], free = cStringArray(row.Cells)
+		defer free()
+		if len(rowStrings[i]) != 0 {
+			crows[i].cells = (**C.char)(unsafe.Pointer(&rowStrings[i][0]))
+		}
+		crows[i].cell_count = C.int(len(rowStrings[i]))
+	}
+	widths := make([]C.int, len(props.ColumnWidths))
+	for i, width := range props.ColumnWidths {
+		widths[i] = C.int(width)
+	}
+	var rows *C.UITableRow
+	if len(crows) != 0 {
+		rows = &crows[0]
+	}
+	var columnWidths *C.int
+	if len(widths) != 0 {
+		columnWidths = &widths[0]
+	}
+	return int32(C.TableView(C.TableViewProps{
+		bounds: props.Bounds.toC(), id: C.int(props.ID),
+		columns: (**C.char)(unsafe.Pointer(&columns[0])), column_count: C.int(len(columns)),
+		rows: rows, row_count: C.int(len(crows)), column_widths: columnWidths,
+		selected_row: (*C.int)(unsafe.Pointer(props.SelectedRow)), sort_column: (*C.int)(unsafe.Pointer(props.SortColumn)),
+		scroll_offset: (*C.int)(unsafe.Pointer(props.ScrollOffset)), row_height: C.int(props.RowHeight),
+	}))
+}
+
+func Notebook(props NotebookProps) int32 {
+	if len(props.Tabs) == 0 {
+		return 0
+	}
+	tabs, free := cStringArray(props.Tabs)
+	defer free()
+	return int32(C.Notebook(C.NotebookProps{
+		bounds: props.Bounds.toC(), tabs: (**C.char)(unsafe.Pointer(&tabs[0])),
+		tab_count: C.int(len(tabs)), selected_index: (*C.int)(unsafe.Pointer(props.SelectedIndex)),
+	}))
+}
+
+func PanedView(props PanedViewProps) int32 {
+	vertical := C.int(0)
+	if props.Vertical {
+		vertical = 1
+	}
+	return int32(C.PanedView(C.PanedViewProps{
+		bounds: props.Bounds.toC(), id: C.int(props.ID), vertical: vertical,
+		split: (*C.int)(unsafe.Pointer(props.Split)), min_first: C.int(props.MinFirst), min_second: C.int(props.MinSecond),
+	}))
+}
+
+func Collapsible(props CollapsibleProps) int32 {
+	label := C.CString(props.Label)
+	defer C.free(unsafe.Pointer(label))
+	open := C.int(0)
+	if props.Open != nil && *props.Open {
+		open = 1
+	}
+	result := int32(C.Collapsible(C.CollapsibleProps{bounds: props.Bounds.toC(), label: label, open: &open}))
+	if props.Open != nil {
+		*props.Open = open != 0
+	}
+	return result
+}
+
+func CanvasGrid(bounds Rectangle, step int32, color Color) {
+	C.CanvasGrid(bounds.toC(), C.int(step), color.toC())
+}
+
+func MessageDialog(props MessageDialogProps) int32 {
+	title, message, ok := C.CString(props.Title), C.CString(props.Message), C.CString(props.OKLabel)
+	defer C.free(unsafe.Pointer(title))
+	defer C.free(unsafe.Pointer(message))
+	defer C.free(unsafe.Pointer(ok))
+	return int32(C.MessageDialog(C.MessageDialogProps{title: title, message: message, ok_label: ok}))
+}
+
+func ConfirmDialog(props ConfirmDialogProps) int32 {
+	title, message := C.CString(props.Title), C.CString(props.Message)
+	cancel, confirm := C.CString(props.CancelLabel), C.CString(props.ConfirmLabel)
+	defer C.free(unsafe.Pointer(title))
+	defer C.free(unsafe.Pointer(message))
+	defer C.free(unsafe.Pointer(cancel))
+	defer C.free(unsafe.Pointer(confirm))
+	return int32(C.ConfirmDialog(C.ConfirmDialogProps{title: title, message: message, cancel_label: cancel, confirm_label: confirm}))
+}
+
+func PromptDialog(props PromptDialogProps) int32 {
+	if len(props.Text) == 0 {
+		return 0
+	}
+	title, cancel, confirm := C.CString(props.Title), C.CString(props.CancelLabel), C.CString(props.ConfirmLabel)
+	defer C.free(unsafe.Pointer(title))
+	defer C.free(unsafe.Pointer(cancel))
+	defer C.free(unsafe.Pointer(confirm))
+	focused := C.int(0)
+	if props.Focused != nil && *props.Focused {
+		focused = 1
+	}
+	result := int32(C.PromptDialog(C.PromptDialogProps{
+		title: title, text: (*C.char)(unsafe.Pointer(&props.Text[0])), text_size: C.int(len(props.Text)),
+		cursor_position: (*C.int)(unsafe.Pointer(props.Cursor)), focused: &focused,
+		cancel_label: cancel, confirm_label: confirm,
+	}))
+	if props.Focused != nil {
+		*props.Focused = focused != 0
+	}
+	return result
+}
+
+func cStringArray(values []string) ([]*C.char, func()) {
+	result := make([]*C.char, len(values))
+	for i, value := range values {
+		result[i] = C.CString(value)
+	}
+	return result, func() {
+		for _, value := range result {
+			C.free(unsafe.Pointer(value))
+		}
+	}
 }
