@@ -578,6 +578,10 @@ split_multi(const char *t, char names[][LOWER_NAME_MAX], int name_cap,
     return nn;
 }
 
+/* >0 while a multi-line array initializer is open: item statements join
+ * with ',' and the brace closes with '};' */
+static int k2c_in_array_init;
+
 static void
 emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
                int restab_count, int line, const char *text,
@@ -587,7 +591,10 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
 
     rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
     fprintf(c, "    PushUIInspectSource(\"%s\", %d);\n", m->source_path, line);
-    fprintf(c, "    %s;\n", rw);
+    if(k2c_in_array_init)
+        fprintf(c, "    %s\n", rw);
+    else
+        fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopUIInspectSource();\n");
 }
 
@@ -655,6 +662,14 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
         case KIR_STMT_BLOCK_CLOSE: {
             int target = scope_top > 0 ? scope_stack[--scope_top] : 0;
             int skip_close = 0;
+
+            if(k2c_in_array_init) {
+                /* close the initializer, not a block */
+                emit_indent(c, indent);
+                fprintf(c, "};\n");
+                k2c_in_array_init = 0;
+                break;
+            }
 
             /* An else / else-if statement emits its own leading '}', so the
              * block close right before it is suppressed. */
@@ -903,8 +918,13 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                             snprintf(base, sizeof(base), "%s", tmpb);
                         }
                         emit_indent(c, indent);
-                        fprintf(c, "%s %s%s = %s;\n", base, name, suffix,
-                                init);
+                        if(init[0] == '{' && init[1] == '\0') {
+                            fprintf(c, "%s %s%s = {\n", base, name, suffix);
+                            k2c_in_array_init = 1;
+                        } else {
+                            fprintf(c, "%s %s%s = %s;\n", base, name, suffix,
+                                    init);
+                        }
                     } else {
                         char base[LOWER_NAME_MAX];
                         char suffix[LOWER_NAME_MAX];
