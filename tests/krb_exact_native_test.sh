@@ -13,6 +13,7 @@ set -eu
 inbe=${1:?inbe binary}
 scene=${2:?scene name}
 kry=${3:?screen .kry}
+workdir=${4:-$PWD} # app cwd: repo root (fonts/locales live there)
 root=$(dirname "$0")/..
 k2b=$root/build/linux-x86_64/bin/k2b
 krbrun=$root/build/linux-x86_64/bin/krb-run
@@ -26,7 +27,7 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$work"
 
-(cd "$(dirname "$inbe")" && "$inbe" --screenshot "$work/native.png" \
+(cd "$workdir" && "$inbe" --screenshot "$work/native.png" \
     --screenshot-scene "$scene" --screenshot-width 480 \
     --screenshot-height 640 --screenshot-dark 1 >/dev/null 2>&1) || true
 
