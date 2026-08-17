@@ -582,29 +582,6 @@ split_multi(const char *t, char names[][LOWER_NAME_MAX], int name_cap,
  * with ',' and the brace closes with '};' */
 static int k2c_in_array_init;
 
-/* Existing .kry code also permits C-style locals such as `int count`.
- * They are parsed as raw statements, so append the C terminator here rather
- * than producing invalid generated source. */
-static int
-is_c_style_local_declaration(const char *text)
-{
-    static const char *const prefixes[] = {
-        "int ", "float ", "double ", "char ", "Color ", "Rectangle ",
-        "Vector2 ", "Vector3 ", "Vector4 ", "time_t ", "size_t ",
-        "const char ", "unsigned ", "long ", NULL
-    };
-
-    if(text == NULL || strchr(text, '=') != NULL || strchr(text, ';') != NULL)
-        return 0;
-    for(int i = 0; prefixes[i] != NULL; i++) {
-        size_t n = strlen(prefixes[i]);
-
-        if(strncmp(text, prefixes[i], n) == 0)
-            return 1;
-    }
-    return 0;
-}
-
 static void
 emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
                int restab_count, int line, const char *text,
@@ -1017,8 +994,7 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
         default:
             if(rw[0] != '\0') {
                 emit_indent(c, indent);
-                fprintf(c, "%s%s\n", rw,
-                        is_c_style_local_declaration(rw) ? ";" : "");
+                fprintf(c, "%s\n", rw);
             }
             break;
         }
