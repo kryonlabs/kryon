@@ -44,20 +44,38 @@ typedef struct KrbAsset {
     unsigned h;
 } KrbAsset;
 
-typedef struct KrbUpdate {
-    char path[KIR_NAME_MAX];
-    int kind; /* 0 = set, 1 = add, 2 = sub */
-    int val;
-} KrbUpdate;
-
 typedef struct KrbTerm {
-    int is_path;
+    int is_path; /* 0 literal, 1 path, 2 TIME */
     char path[KIR_NAME_MAX];
     int val;
 } KrbTerm;
 
+typedef struct KrbUpdate {
+    char path[KIR_NAME_MAX];
+    int kind; /* 0 = set, 1 = add, 2 = sub */
+    int val;
+    /* v2: expression rhs: path = rhs0 [op rhs1] */
+    KrbTerm rhs[2];
+    int rhs_n;
+    int rhs_op; /* arith opcode when rhs_n == 2 */
+} KrbUpdate;
+
+/* ordered program items: updates, node draws, and guard brackets in
+ * source order so conditional assignments compile correctly */
+typedef struct KrbItem {
+    int kind; /* 0 update, 1 node draw, 2 guard open, 3 else, 4 guard close */
+    int idx;  /* update index, node index, or guard index */
+} KrbItem;
+
+typedef struct KrbAnim {
+    int node; /* node index, resolved at emit */
+    char node_name[KIR_NAME_MAX];
+    int field; /* 0=x 1=y 2=w 3=h */
+    char path[KIR_NAME_MAX];
+} KrbAnim;
+
 typedef struct KrbGuard {
-    int start; /* node index range [start, end) the guard covers */
+    int start; /* item index range [start, end) the guard covers */
     int end;
     KrbTerm l[2]; /* left: term, optionally term op term */
     int ln; /* 1 or 2 terms */
@@ -139,6 +157,10 @@ typedef struct KrbBuild {
     int asset_count;
     char asset_root[1024];
     int scroll_open; /* open SCROLL node index, -1 none */
+    KrbAnim anims[32];
+    int anim_count;
+    KrbItem items[512];
+    int item_count;
 } KrbBuild;
 
 
@@ -907,6 +929,35 @@ embed_asset(KrbBuild *b, const char *path)
     }
 }
 
+static int parse_term(const char *p, KrbTerm *t);
+static int parse_side(const char *p, KrbTerm t[2], int *n, int *aop);
+static int intern_string(KrbBuild *b, const char *s);
+
+static int
+intern_string(KrbBuild *b, const char *s)
+{
+    int i;
+    size_t n;
+
+    if(s == NULL || s[0] == '\0')
+        return 0;
+    for(i = 1; i < b->string_used;) {
+        if(strcmp(b->strings + i, s) == 0)
+            return i;
+        i += (int)strlen(b->strings + i) + 1;
+    }
+    n = strlen(s) + 1;
+    if(b->string_used + (int)n > KRB_BUILD_STR_MAX)
+        return 0;
+    i = b->string_used;
+    memcpy(b->strings + i, s, n);
+    b->string_used += (int)n;
+    return i;
+}
+int emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
+              const int *upath_off, const int *gpath_off,
+              const int grpath_off[16][4]);
+
 static int
 parse_update(const char *text, char *path, int *kind, int *val)
 {
@@ -924,8 +975,7 @@ parse_update(const char *text, char *path, int *kind, int *val)
     memcpy(path, p, plen);
     path[plen] = '\0';
     q = skip_ws(q);
-    if(strncmp(q, "++;", 3) == 0 ||
-       (strncmp(q, "++", 2) == 0 && q[2] == '\0')) {
+    if(strncmp(q, "++;", 3) == 0) {
         *kind = 1;
         *val = 1;
         return 1;
@@ -941,8 +991,17 @@ parse_update(const char *text, char *path, int *kind, int *val)
         return 1;
     }
     if(*q == '=' && q[1] != '=') {
+        const char *r = skip_ws(q + 1);
+        KrbUpdate dummy;
+        int used;
+
         *kind = 0;
-        *val = atoi(skip_ws(q + 1));
+        *val = atoi(r);
+        /* rhs: term or term arith term; parse_term knows TIME */
+        dummy.rhs_n = 1;
+        used = parse_side(r, dummy.rhs, &dummy.rhs_n, &dummy.rhs_op);
+        if(used > 0)
+            return 3; /* caller copies expression */
         return 1;
     }
     return 0;
@@ -970,6 +1029,12 @@ parse_term(const char *p, KrbTerm *t)
     }
     if(len >= KIR_NAME_MAX)
         return 0;
+    if(len == 4 && memcmp(p, "TIME", 4) == 0) {
+        t->is_path = 2;
+        t->path[0] = '\0';
+        t->val = 0;
+        return (int)len;
+    }
     t->is_path = 1;
     memcpy(t->path, p, len);
     t->path[len] = '\0';
@@ -989,7 +1054,7 @@ parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
     q = skip_ws(p + used);
     *n = 1;
     *aop = 0;
-    if(*q == '+' || *q == '-' || *q == '*' || *q == '/') {
+    if(*q == '+' || *q == '-' || *q == '*' || *q == '/' || *q == '%') {
         int u2;
         int kind = *q;
 
@@ -999,7 +1064,8 @@ parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
             return 0;
         *n = 2;
         *aop = kind == '+' ? KRB_OP_ADD : kind == '-' ? KRB_OP_SUB :
-               kind == '*' ? KRB_OP_MUL : KRB_OP_DIV;
+               kind == '*' ? KRB_OP_MUL : kind == '%' ? KRB_OP_MOD :
+               KRB_OP_DIV;
         q = skip_ws(q + u2);
     }
     return (int)(q - p);
@@ -1065,13 +1131,16 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                 if(!g->has_else && j + 1 < fn->stmt_count &&
                    fn->stmts[j + 1].kind == KIR_STMT_IF &&
                    strncmp(skip_ws(fn->stmts[j + 1].text), "else", 4) == 0) {
-                    /* '} else {' keeps the guard open through the else
-                     * block; its nodes are the false branch. */
-                    g->else_start = b->node_count;
+                    /* '} else {': marker item; guard stays open */
+                    g->else_start = b->item_count;
                     g->has_else = 1;
+                    if(b->item_count < 512)
+                        b->items[b->item_count++] = (KrbItem){3, open_guard};
                     guard_depth = depth + 1; /* the else's own depth++ */
                 } else {
-                    g->end = b->node_count;
+                    g->end = b->item_count;
+                    if(b->item_count < 512)
+                        b->items[b->item_count++] = (KrbItem){4, open_guard};
                     open_guard = -1;
                 }
             }
@@ -1081,8 +1150,10 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
             KrbGuard *g = &b->guards[b->guard_count];
 
             if(parse_cond(st->text, g)) {
-                g->start = b->node_count;
-                g->end = b->node_count;
+                g->start = b->item_count;
+                g->end = b->item_count;
+                if(b->item_count < 512)
+                    b->items[b->item_count++] = (KrbItem){2, b->guard_count};
                 /* the loop's own depth++ for this 'if' lands after this
                  * statement; the close brace must bring depth below it */
                 guard_depth = depth + 1;
@@ -1096,12 +1167,59 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
             int ukind;
             int uval;
 
+            {
+                char upath2[KIR_NAME_MAX];
+                KrbUpdate probe;
+                int rc2 = parse_update(st->text, upath2, &ukind, &uval);
+
+                if(rc2 == 2 || rc2 == 3) {
+                    KrbUpdate *u = &b->updates[b->update_count++];
+
+                    snprintf(u->path, sizeof(u->path), "%s", upath2);
+                    u->kind = 0;
+                    u->val = 0;
+                    u->rhs_n = 0;
+                    u->rhs_op = 0;
+                    if(rc2 == 2) {
+                        u->rhs[0].is_path = 2; /* TIME marker */
+                        u->rhs_n = 1;
+                    } else {
+                        int un;
+                        int uop;
+
+                        parse_side(skip_ws(strchr(st->text, '=') + 1),
+                                   u->rhs, &un, &uop);
+                        u->rhs_n = un;
+                        u->rhs_op = uop;
+                    }
+                    if(b->item_count < 512)
+                        b->items[b->item_count++] = (KrbItem){0,
+                                                    b->update_count - 1};
+                    continue;
+                }
+                if(rc2 == 1) {
+                    KrbUpdate *u = &b->updates[b->update_count++];
+
+                    snprintf(u->path, sizeof(u->path), "%s", upath2);
+                    u->kind = ukind;
+                    u->val = uval;
+                    u->rhs_n = 0;
+                    u->rhs_op = 0;
+                    if(b->item_count < 512)
+                        b->items[b->item_count++] = (KrbItem){0,
+                                                    b->update_count - 1};
+                    continue;
+                }
+            }
             if(parse_update(st->text, upath, &ukind, &uval)) {
                 KrbUpdate *u = &b->updates[b->update_count++];
 
                 snprintf(u->path, sizeof(u->path), "%s", upath);
                 u->kind = ukind;
                 u->val = uval;
+                if(b->item_count < 512)
+                    b->items[b->item_count++] = (KrbItem){0,
+                                                b->update_count - 1};
                 continue;
             }
         }
@@ -1114,6 +1232,13 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
 
                 for(k = before; k < b->node_count; k++)
                     b->nodes[k].parent = b->scroll_open;
+            }
+            {
+                int k2;
+
+                for(k2 = before; k2 < b->node_count; k2++)
+                    if(b->item_count < 512)
+                        b->items[b->item_count++] = (KrbItem){1, k2};
             }
             if(b->node_count > before &&
                b->nodes[b->node_count - 1].type == KRB_NODE_PICTURE)
@@ -1780,6 +1905,36 @@ parse_dropdown(KrbBuild *b, const char *call)
 
 /* NavButton(label, x, y, w, h, &state.screen, id) -> BUTTON with the
  * NAV flag: on press the runtime writes id to the screen state path. */
+/* AnimNode("nodename", "w", &state.path) -> NODE_SET emission: the
+ * node's geometry field tracks the state value every frame. */
+static int
+parse_animnode(KrbBuild *b, const char *call)
+{
+    char parts[6][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    char path[KIR_NAME_MAX];
+    char field_name[8];
+    KrbAnim *a;
+
+    if(args == NULL)
+        return 0;
+    if(split_args(args + 1, parts, 6) < 3)
+        return 0;
+    strip_amp(parts[2], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    extract_string(parts[1], field_name, sizeof(field_name));
+    if(b->anim_count >= 32)
+        return 1;
+    a = &b->anims[b->anim_count++];
+    extract_string(parts[0], a->node_name, sizeof(a->node_name));
+    a->field = field_name[0] == 'x' ? 0 : field_name[0] == 'y' ? 1 :
+               field_name[0] == 'w' ? 2 : field_name[0] == 'h' ? 3 : 2;
+    snprintf(a->path, sizeof(a->path), "%s", path);
+    a->node = -1;
+    return 1;
+}
+
 static int
 parse_navbutton(KrbBuild *b, const char *call)
 {
@@ -1926,6 +2081,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_navbutton(b, call);
     if(starts_ident(call, "TextFormat"))
         return parse_text(b, call);
+    if(starts_ident(call, "AnimNode"))
+        return parse_animnode(b, call);
     if(starts_ident(call, "EndScroll")) {
         b->scroll_open = 0;
         return 1;
@@ -1981,173 +2138,142 @@ try_widget(KrbBuild *b, const char *raw)
 }
 
 
-/* Build the program section. Render-only cartridges stay one OP_DRAW_TREE;
- * updates/guards emit a v2 VM program: state updates first, then one
- * OP_DRAW_NODE per drawable node, with guarded ranges wrapped in
- * compare + JZ so the condition hides them. */
-static int
+int
 emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
           const int *upath_off, const int *gpath_off,
           const int grpath_off[16][4])
 {
     unsigned char *q = (unsigned char *)dst;
     int i;
-    int open_guard = -1;
-    int open_branch = 0;
     int jz_patch = -1;
     int jmp_patch = -1;
+    int in_true = 0;
 
 #define EMIT1(v) do { if(q - dst >= cap) return -1; *q++ = (unsigned char)(v); } while(0)
 #define EMIT2(v) do { if(q - dst + 2 > cap) return -1; wr_u16(&q, (unsigned)v); } while(0)
 #define EMIT4(v) do { if(q - dst + 4 > cap) return -1; wr_u32(&q, (unsigned long)(v)); } while(0)
+#define PATCH(off) do { unsigned char *pp = dst + (off); wr_u32(&pp, \
+                          (unsigned long)(q - dst)); } while(0)
 
-    if(b->update_count == 0 && b->guard_count == 0) {
+    if(b->update_count == 0 && b->guard_count == 0 && b->anim_count == 0) {
         EMIT1(KRB_OP_DRAW_TREE);
         return (int)(q - dst);
     }
-    for(i = 0; i < b->update_count; i++) {
-        const KrbUpdate *u = &b->updates[i];
-
-        if(u->kind == 0) {
-            EMIT1(KRB_OP_PUSH_CONST);
-            EMIT4(u->val);
-        } else {
-            EMIT1(KRB_OP_PUSH_PATH);
-            EMIT2(upath_off[i]);
-            EMIT1(KRB_OP_PUSH_CONST);
-            EMIT4(u->val);
-            EMIT1(u->kind == 1 ? KRB_OP_ADD : KRB_OP_SUB);
-        }
-        EMIT1(KRB_OP_POP_STORE);
-        EMIT2(upath_off[i]);
-    }
-    for(i = 0; i < b->node_count; i++) {
-        int g = -1;
-        int branch = 0; /* 0 true, 1 false (else) */
+    for(i = 0; i < b->anim_count; i++) {
         int k;
 
-        if(b->nodes[i].type == KRB_NODE_DATA)
-            continue;
-        for(k = 0; k < b->guard_count; k++) {
-            if(i >= b->guards[k].start && i < b->guards[k].end) {
-                g = k;
-                branch = b->guards[k].has_else &&
-                         i >= b->guards[k].else_start;
+        for(k = 0; k < b->node_count; k++) {
+            if(strcmp(b->nodes[k].name, b->anims[i].node_name) == 0)
                 break;
-            }
         }
-        if(g != open_guard || branch != open_branch) {
-            if(open_guard >= 0) {
-                /* leave the current branch */
-                if(jz_patch >= 0) {
-                    /* true branch done: emit the JMP over the else, then
-                     * point JZ at what follows it (the false branch) */
-                    unsigned char *pp;
+        if(k >= b->node_count)
+            continue;
+        EMIT1(KRB_OP_PUSH_PATH);
+        EMIT2(intern_string(b, b->anims[i].path));
+        EMIT1(KRB_OP_NODE_SET);
+        EMIT2((unsigned)k);
+        EMIT1(b->anims[i].field);
+    }
+    for(i = 0; i < b->item_count; i++) {
+        const KrbItem *it = &b->items[i];
 
-                    EMIT1(KRB_OP_JMP);
-                    jmp_patch = (int)(q - dst);
-                    EMIT4(0);
-                    pp = dst + jz_patch;
-                    wr_u32(&pp, (unsigned long)(q - dst));
-                    jz_patch = -1;
-                } else if(jmp_patch >= 0) {
-                    /* false branch done: patch the JMP target here */
-                    unsigned char *pp = dst + jmp_patch;
+        if(it->kind == 2) {
+            /* guard open: compare + JZ over the true branch */
+            const KrbGuard *gd = &b->guards[it->idx];
+            int side;
+            int ti;
 
-                    wr_u32(&pp, (unsigned long)(q - dst));
-                    jmp_patch = -1;
-                }
-            }
-            open_guard = g;
-            open_branch = branch;
-            if(g >= 0 && branch == 0) {
-                const KrbGuard *gd = &b->guards[g];
-                const int *offs[2][2];
-                int side;
-                int ti;
+            for(side = 0; side < 2; side++) {
+                const KrbTerm *ts = side == 0 ? gd->l : gd->r;
+                int tn = side == 0 ? gd->ln : gd->rn;
 
-                (void)offs;
-                for(side = 0; side < 2; side++) {
-                    const KrbTerm *ts = side == 0 ? gd->l : gd->r;
-                    int tn = side == 0 ? gd->ln : gd->rn;
-                    int aop = side == 0 ? gd->lop : gd->rop;
-
-                    for(ti = 0; ti < tn; ti++) {
-                        if(ts[ti].is_path) {
-                            EMIT1(KRB_OP_PUSH_PATH);
-                            EMIT2(grpath_off[g][side * 2 + ti]);
-                        } else {
-                            EMIT1(KRB_OP_PUSH_CONST);
-                            EMIT4(ts[ti].val);
-                        }
+                for(ti = 0; ti < tn; ti++) {
+                    if(ts[ti].is_path == 2)
+                        EMIT1(KRB_OP_TIME);
+                    else if(ts[ti].is_path == 1) {
+                        EMIT1(KRB_OP_PUSH_PATH);
+                        EMIT2(grpath_off[it->idx][side * 2 + ti]);
+                    } else {
+                        EMIT1(KRB_OP_PUSH_CONST);
+                        EMIT4(ts[ti].val);
                     }
-                    if(tn == 2)
-                        EMIT1(aop);
                 }
-                EMIT1(gd->op);
-                EMIT1(KRB_OP_JZ);
-                jz_patch = (int)(q - dst);
-                EMIT4(0);
+                if(tn == 2)
+                    EMIT1(side == 0 ? gd->lop : gd->rop);
             }
+            EMIT1(gd->op);
+            EMIT1(KRB_OP_JZ);
+            jz_patch = (int)(q - dst);
+            EMIT4(0);
+            in_true = 1;
+        } else if(it->kind == 3) {
+            /* else: end of true branch; jump over the false branch */
+            EMIT1(KRB_OP_JMP);
+            jmp_patch = (int)(q - dst);
+            EMIT4(0);
+            if(jz_patch >= 0) {
+                PATCH(jz_patch);
+                jz_patch = -1;
+            }
+            in_true = 0;
+        } else if(it->kind == 4) {
+            /* guard close: land here after either branch */
+            if(jz_patch >= 0) {
+                PATCH(jz_patch);
+                jz_patch = -1;
+            }
+            if(jmp_patch >= 0) {
+                PATCH(jmp_patch);
+                jmp_patch = -1;
+            }
+            in_true = 0;
+        } else if(it->kind == 0) {
+            const KrbUpdate *u = &b->updates[it->idx];
+
+            if(u->rhs_n > 0) {
+                int t;
+
+                for(t = 0; t < u->rhs_n; t++) {
+                    if(u->rhs[t].is_path == 2)
+                        EMIT1(KRB_OP_TIME);
+                    else if(u->rhs[t].is_path == 1) {
+                        EMIT1(KRB_OP_PUSH_PATH);
+                        EMIT2(intern_string(b, u->rhs[t].path));
+                    } else {
+                        EMIT1(KRB_OP_PUSH_CONST);
+                        EMIT4(u->rhs[t].val);
+                    }
+                }
+                if(u->rhs_n == 2)
+                    EMIT1(u->rhs_op);
+            } else if(u->kind == 0) {
+                EMIT1(KRB_OP_PUSH_CONST);
+                EMIT4(u->val);
+            } else {
+                EMIT1(KRB_OP_PUSH_PATH);
+                EMIT2(upath_off[it->idx]);
+                EMIT1(KRB_OP_PUSH_CONST);
+                EMIT4(u->val);
+                EMIT1(u->kind == 1 ? KRB_OP_ADD : KRB_OP_SUB);
+            }
+            EMIT1(KRB_OP_POP_STORE);
+            EMIT2(upath_off[it->idx]);
+        } else if(it->kind == 1) {
+            if(b->nodes[it->idx].type == KRB_NODE_DATA)
+                continue;
+            EMIT1(KRB_OP_DRAW_NODE);
+            EMIT2((unsigned)it->idx);
         }
-        EMIT1(KRB_OP_DRAW_NODE);
-        EMIT2(i);
     }
-    if(jz_patch >= 0) {
-        unsigned char *pp = dst + jz_patch;
-
-        wr_u32(&pp, (unsigned long)(q - dst));
-        jz_patch = -1;
-    }
-    if(jmp_patch >= 0) {
-        unsigned char *pp = dst + jmp_patch;
-
-        wr_u32(&pp, (unsigned long)(q - dst));
-        jmp_patch = -1;
-    }
+    if(jz_patch >= 0)
+        PATCH(jz_patch);
+    if(jmp_patch >= 0)
+        PATCH(jmp_patch);
 #undef EMIT1
 #undef EMIT2
 #undef EMIT4
+#undef PATCH
     return (int)(q - dst);
-}
-
-
-/* append without dedup — dropdown options must be contiguous */
-static int
-append_string(KrbBuild *b, const char *s)
-{
-    size_t n;
-
-    if(s == NULL || s[0] == '\0')
-        return 0;
-    n = strlen(s) + 1;
-    if(b->string_used + (int)n > KRB_BUILD_STR_MAX)
-        return 0;
-    memcpy(b->strings + b->string_used, s, n);
-    b->string_used += (int)n;
-    return b->string_used - (int)n;
-}
-
-static int
-intern_string(KrbBuild *b, const char *s)
-{
-    int i;
-    size_t n;
-
-    if(s == NULL || s[0] == '\0')
-        return 0;
-    for(i = 1; i < b->string_used;) {
-        if(strcmp(b->strings + i, s) == 0)
-            return i;
-        i += (int)strlen(b->strings + i) + 1;
-    }
-    n = strlen(s) + 1;
-    if(b->string_used + (int)n > KRB_BUILD_STR_MAX)
-        return 0;
-    i = b->string_used;
-    memcpy(b->strings + i, s, n);
-    b->string_used += (int)n;
-    return i;
 }
 
 static int

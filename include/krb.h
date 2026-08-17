@@ -83,7 +83,11 @@ enum {
     KRB_OP_JMP = 0x1d,        /* u32 absolute prog offset */
     KRB_OP_JZ = 0x1e,         /* u32 absolute prog offset; pops */
     KRB_OP_TIME = 0x1f,       /* push (int)(backend->time() * 1000) */
-    KRB_OP_DRAW_NODE = 0x20   /* u16 node index */
+    KRB_OP_DRAW_NODE = 0x20,  /* u16 node index */
+    KRB_OP_MOD = 0x21,        /* pop b, a; push a % b */
+    KRB_OP_NODE_SET = 0x22    /* u16 node index, u8 field (0=x 1=y 2=w 3=h);
+                               * pops i16 value, patches the node before
+                               * drawing (mutable node overlay) */
 };
 
 enum {
@@ -168,6 +172,8 @@ typedef struct KrbImage {
     int mount_count;
     const unsigned char *assets; /* v2 asset directory (20-byte entries) */
     unsigned asset_count;
+    unsigned char *nodes_mut; /* mutable node overlay (OP_NODE_SET) */
+    unsigned nodes_mut_len;
     char focus_path[96]; /* mounted path of the focused TEXTINPUT, "" none */
     int dropdown_open;  /* open control table index, -1 none */
 } KrbImage;

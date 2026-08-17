@@ -143,6 +143,8 @@ KrbLoadFile(KrbImage *img, const char *path)
 void
 KrbFree(KrbImage *img)
 {
+    if(img != NULL)
+        free(img->nodes_mut);
     if(img == NULL)
         return;
     if(img->owned)
@@ -201,7 +203,8 @@ KrbReadNode(const KrbImage *img, unsigned index, KrbNode *out)
 
     if(img == NULL || out == NULL || index >= KrbNodeCount(img))
         return -1;
-    p = img->nodes + (size_t)index * KRB_NODE_SIZE;
+    p = (img->nodes_mut != NULL ? img->nodes_mut : img->nodes) +
+        (size_t)index * KRB_NODE_SIZE;
     out->id = rd_u16(p);
     out->parent = rd_i16(p + 2);
     out->name_off = rd_u16(p + 4);
@@ -1124,7 +1127,8 @@ KrbExec(KrbImage *img)
             value = (int)rd_u32(p);
             p += 4;
             KrbWriteI32(img, KrbString(img, off), value);
-        } else if(op >= KRB_OP_PUSH_CONST && op <= KRB_OP_TIME) {
+        } else if((op >= KRB_OP_PUSH_CONST && op <= KRB_OP_TIME) ||
+                  op == KRB_OP_MOD || op == KRB_OP_NODE_SET) {
             if(exec_logic(img, op, &p, end) != 0)
                 return -1;
         } else if(op == KRB_OP_DRAW_NODE) {
@@ -1161,6 +1165,13 @@ KrbExec(KrbImage *img)
 /* v2 logic VM: one shared 16-deep int stack lives across ops inside a
  * single KrbExec pass. exec_logic handles exactly one opcode at *pp and
  * advances it. */
+static void
+wr_u16_raw(unsigned char *p, unsigned v)
+{
+    p[0] = (unsigned char)v;
+    p[1] = (unsigned char)(v >> 8);
+}
+
 static int
 exec_logic(KrbImage *img, unsigned char op, const unsigned char **pp,
            const unsigned char *end)
@@ -1245,6 +1256,36 @@ exec_logic(KrbImage *img, unsigned char op, const unsigned char **pp,
             return 0; /* jump: must not run the epilogue's *pp = p */
         }
         break;
+    case KRB_OP_MOD:
+        POP(b);
+        POP(a);
+        PUSH(b == 0 ? 0 : a % b);
+        break;
+    case KRB_OP_NODE_SET: {
+        uint16_t nidx;
+        uint8_t field;
+        int16_t val;
+
+        if(p + 3 > end)
+            return -1;
+        nidx = rd_u16(p);
+        field = p[2];
+        p += 3;
+        POP(val);
+        if(nidx >= KrbNodeCount(img) || field > 3)
+            return -1;
+        if(img->nodes_mut == NULL) {
+            unsigned nb = KrbNodeCount(img) * KRB_NODE_SIZE;
+
+            img->nodes_mut = malloc(nb);
+            if(img->nodes_mut == NULL)
+                return -1;
+            memcpy(img->nodes_mut, img->nodes, nb);
+        }
+        wr_u16_raw(img->nodes_mut + (size_t)nidx * KRB_NODE_SIZE + 10 +
+                   field * 2, (unsigned)(unsigned short)val);
+        break;
+    }
     case KRB_OP_TIME: {
         const KryBackend *bk = KryBackendCurrent();
 
