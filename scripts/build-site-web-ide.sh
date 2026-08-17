@@ -27,7 +27,7 @@ emcc -O0 \
     -sENVIRONMENT=web,worker \
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/kir \
-    cmd/k2ir/main.c cmd/kir/kir.c \
+    cmd/k2ir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c \
     -o "$tool_dir/k2ir.js" || build_failed
 
 emcc -O0 \
@@ -38,6 +38,7 @@ emcc -O0 \
     -sALLOW_MEMORY_GROWTH=1 \
     -sENVIRONMENT=web,worker \
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
-    -Iinclude -Icmd/k2b \
+    -Iinclude -Icmd/k2b -Icmd/kir \
     cmd/k2b/main.c cmd/k2b/k2b_parse.c cmd/k2b/k2b_util.c cmd/k2b/k2b_krb.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c \
     -o "$tool_dir/k2b.js" || build_failed
