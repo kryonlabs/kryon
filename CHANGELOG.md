@@ -9,6 +9,8 @@
   alongside the existing static SDK and cross-platform renderer downloads.
 - CI and standalone Kryon builds now install/link the GIO notification
   dependency explicitly instead of discovering its compile flags only.
+- Linux and FreeBSD CI install GTK development metadata required by the Go
+  desktop-tray bindings exercised by generated-code smoke tests.
 - Memory diagnostics: `KryonMemReport(tag)` / `KryonMemDebugEnabled()` print
   RSS/high-water marks and the glibc arena breakdown to stderr when
   `KRYON_MEM_DEBUG` is set; `UIFontMemoryReport(tag)` prints per-font
