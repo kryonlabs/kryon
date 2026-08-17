@@ -27,9 +27,44 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$work"
 
-(cd "$workdir" && "$inbe" --screenshot "$work/native.png" \
-    --screenshot-scene "$scene" --screenshot-width 480 \
-    --screenshot-height 640 --screenshot-dark 1 >/dev/null 2>&1) || true
+# raylib's post-swap glReadPixels reads blank/transparent on software GL
+# (llvmpipe, both local headless X and CI xvfb). Xvfb DOES composite GL
+# windows into its root framebuffer, so when INBE_SHOT_WINDOW is set the
+# app holds the warmed-up scene on screen and we capture with xwd instead.
+if [ -n "${KRB_EXACT_XWD:-}" ]; then
+    # Xvfb composites GL windows; capture with xwd/imagemagick instead of
+    # raylib's post-swap glReadPixels (blank on software GL).
+    (cd "$workdir" && INBE_SHOT_WINDOW=1 "$inbe" --screenshot /dev/null \
+        --screenshot-scene "$scene" --screenshot-width 480 \
+        --screenshot-height 640 --screenshot-dark 1 \
+        >/dev/null 2>&1) &
+    app_pid=$!
+    sleep 8
+    win_id=""
+    for id in $(xdotool search --onlyvisible --name "" 2>/dev/null); do
+        geom=$(xdotool getwindowgeometry --shell "$id" 2>/dev/null)
+        w=$(printf '%s\n' "$geom" | awk -F= '/^WIDTH/{print $2}')
+        h=$(printf '%s\n' "$geom" | awk -F= '/^HEIGHT/{print $2}')
+        if [ "$w" = "480" ] && [ "$h" = "640" ]; then
+            win_id=$id
+            break
+        fi
+    done
+    if [ -n "$win_id" ] && command -v import >/dev/null; then
+        pos=$(xdotool getwindowgeometry --shell "$win_id" | awk -F= '/^POSITION/{gsub(/,/," ",$2); print $2}')
+        wx=$(printf '%s\n' "$pos" | awk '{print $1}')
+        wy=$(printf '%s\n' "$pos" | awk '{print $2}')
+        import -window root -crop 480x640+"$wx"+"$wy" +repage "$work/native.png"
+    else
+        echo "native: xwd capture unavailable (need xdotool+imagemagick)" >&2
+    fi
+    kill "$app_pid" 2>/dev/null
+    wait "$app_pid" 2>/dev/null
+else
+    (cd "$workdir" && "$inbe" --screenshot "$work/native.png" \
+        --screenshot-scene "$scene" --screenshot-width 480 \
+        --screenshot-height 640 --screenshot-dark 1 >/dev/null 2>&1) || true
+fi
 
 if [ ! -s "$work/native.png" ]; then
     echo "native: no screenshot produced (GL readback broken here?)" >&2
