@@ -25,15 +25,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install mingw (windows cross)
         if: matrix.suffix == 'windows-x86_64'
         run: sudo apt-get update && sudo apt-get install -y mingw-w64
       - name: Build krb-run
         run: |
-          make build/bin/krb-run CC=${{ matrix.cc }} \
+          target="build/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)/bin/krb-run"
+          make "$target" CC=${{ matrix.cc }} \
             KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+          cp "$target" build/krb-run
       - name: Rename
-        run: cp build/bin/krb-run krb-run-${{ matrix.suffix }}${{ matrix.suffix == 'windows-x86_64' && '.exe' || '' }}
+        run: cp build/krb-run krb-run-${{ matrix.suffix }}${{ matrix.suffix == 'windows-x86_64' && '.exe' || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: krb-run-${{ matrix.suffix }}
@@ -43,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
@@ -64,6 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Build tools
         run: |
           make build/linux-x86_64/bin/k2b build/linux-x86_64/bin/krb-run                build/linux-x86_64/bin/krb-sdl                build/linux-x86_64/tests/krb_logic_test                build/linux-x86_64/tests/krb_asset_test                KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
