@@ -51,6 +51,11 @@ jobs:
             v[0-9]*.[0-9]*.[0-9]*) ;;
             *) echo "Version must look like v0.1.0" >&2; exit 1 ;;
           esac
+          header_tag="$(sed -n 's/^#define KRYON_VERSION_STRING "\([^"]*\)".*/\1/p' include/kryon_version.h)"
+          if [ "$tag" != "$header_tag" ]; then
+            echo "Requested $tag but include/kryon_version.h contains $header_tag" >&2
+            exit 1
+          fi
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
             echo "Tag $tag already exists; nothing to release."
             echo "tag=" >> "$GITHUB_OUTPUT"
@@ -158,11 +163,31 @@ jobs:
           test -n "$archive"
           echo "KRYON_STATIC_ARCHIVE=$archive" >> "$GITHUB_ENV"
 
+      - name: Package Every Kryon Tool
+        run: |
+          set -euo pipefail
+          make dist-tools CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
+          make check-tools-package CMAKE=/usr/bin/cmake VERSION="${{ steps.ref.outputs.tag }}"
+          archive="$(find dist -maxdepth 1 -type f -name 'kryon-*-tools-*.tar.gz' | head -n 1)"
+          test -n "$archive"
+          echo "KRYON_TOOLS_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Write Checksums
+        run: |
+          sha256sum "$KRYON_STATIC_ARCHIVE" "$KRYON_TOOLS_ARCHIVE" > SHA256SUMS
+
       - name: Upload Static Library Artifact
         uses: actions/upload-artifact@v4
         with:
           name: kryon-static-library-${{ steps.ref.outputs.tag }}
           path: ${{ env.KRYON_STATIC_ARCHIVE }}
+          if-no-files-found: error
+
+      - name: Upload Tools Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kryon-tools-${{ steps.ref.outputs.tag }}
+          path: ${{ env.KRYON_TOOLS_ARCHIVE }}
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -171,4 +196,7 @@ jobs:
           tag_name: ${{ steps.ref.outputs.tag }}
           name: Kryon ${{ steps.ref.outputs.tag }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          files: ${{ env.KRYON_STATIC_ARCHIVE }}
+          files: |
+            ${{ env.KRYON_STATIC_ARCHIVE }}
+            ${{ env.KRYON_TOOLS_ARCHIVE }}
+            SHA256SUMS

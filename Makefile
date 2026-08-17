@@ -27,6 +27,8 @@ VERSION ?= $(if $(strip $(KRYON_VERSION_STRING)),$(KRYON_VERSION_STRING),$(shell
 DIST_DIR ?= dist
 STATIC_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-static
 STATIC_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-static.tar.gz
+TOOLS_DIST_ROOT := $(BUILD_DIR)/dist/kryon-$(VERSION)-tools-$(KRYON_PLATFORM)-$(KRYON_ARCH)
+TOOLS_DIST_ARCHIVE := $(DIST_DIR)/kryon-$(VERSION)-tools-$(KRYON_PLATFORM)-$(KRYON_ARCH).tar.gz
 K2C = $(BUILD_DIR)/bin/k2c
 K2G = $(BUILD_DIR)/bin/k2g
 K2IR = $(BUILD_DIR)/bin/k2ir
@@ -35,6 +37,7 @@ KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
 KRB_RUN = $(BUILD_DIR)/bin/krb-run
+KRB_SDL = $(BUILD_DIR)/bin/krb-sdl
 KRY_SW_TEST = $(BUILD_DIR)/tests/kry_sw_test
 KRB_LOGIC_TEST = $(BUILD_DIR)/tests/krb_logic_test
 KRB_ASSET_TEST = $(BUILD_DIR)/tests/krb_asset_test
@@ -182,14 +185,14 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package install install-static k2c k2g krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g krb-web krb-sdl
 
 k2c: $(K2C)
 k2g: $(K2G)
 
 all: $(LIB) $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
 
-tools: $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN)
+tools: $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN) $(KRB_SDL)
 
 install: $(KT) $(KRYON_CMD)
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -205,7 +208,6 @@ clean:
 
 # SDL2 desktop host: kry_sw renders, SDL2 owns window/input/presentation.
 # Uses pkg-config sdl2 (on omega: PKG_CONFIG_PATH=~/.local/sdl2/lib/pkgconfig).
-KRB_SDL = $(BUILD_DIR)/bin/krb-sdl
 KRB_SDL_CFLAGS = $(shell PKG_CONFIG_PATH=$(HOME)/.local/sdl2/lib/pkgconfig:$(PKG_CONFIG_PATH) pkg-config --cflags sdl2 2>/dev/null)
 KRB_SDL_LDLIBS = $(shell PKG_CONFIG_PATH=$(HOME)/.local/sdl2/lib/pkgconfig:$(PKG_CONFIG_PATH) pkg-config --libs sdl2 2>/dev/null)
 
@@ -340,6 +342,11 @@ dist-static: release-check $(STATIC_DIST_ARCHIVE)
 check-static-package: $(STATIC_DIST_ARCHIVE)
 	sh scripts/check-static-package.sh $(STATIC_DIST_ARCHIVE)
 
+dist-tools: release-check $(TOOLS_DIST_ARCHIVE)
+
+check-tools-package: $(TOOLS_DIST_ARCHIVE)
+	sh scripts/check-tools-package.sh $(TOOLS_DIST_ARCHIVE)
+
 install-static: $(STATIC_DIST_ARCHIVE)
 	mkdir -p $(DESTDIR)$(PREFIX)
 	tar -xzf $(STATIC_DIST_ARCHIVE) -C $(DESTDIR)$(PREFIX) --strip-components=1
@@ -390,6 +397,22 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(K
 		'set(Kryon_LIBRARIES Kryon::kryon Kryon::raylib $${Kryon_PACKAGE_LIBS})' \
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
+
+$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh
+	rm -rf $(TOOLS_DIST_ROOT)
+	mkdir -p $(TOOLS_DIST_ROOT)/bin $(DIST_DIR)
+	cp $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
+	chmod 755 $(TOOLS_DIST_ROOT)/bin/*
+	printf '%s\n' '$(VERSION)' > $(TOOLS_DIST_ROOT)/VERSION
+	cp README.md LICENSE THIRD_PARTY_NOTICES.md $(TOOLS_DIST_ROOT)/
+	printf '%s\n' \
+		'{' \
+		'  "name": "kryon-tools",' \
+		'  "version": "$(VERSION)",' \
+		'  "target": "$(KRYON_PLATFORM)-$(KRYON_ARCH)",' \
+		'  "binaries": ["k2c", "k2g", "k2ir", "k2b", "kt", "kryon", "kryon-preview", "krb-run", "krb-sdl"]' \
+		'}' > $(TOOLS_DIST_ROOT)/manifest.json
+	tar -C $(BUILD_DIR)/dist -czf $@ $(notdir $(TOOLS_DIST_ROOT))
 
 $(KSYNC_ACCOUNT_TEST): tests/ksync_account_test.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c include/ksync_account.h include/ksync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

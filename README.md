@@ -66,11 +66,19 @@ paths are supplied at build time.
 
 ## Releases
 
-Kryon releases are tag-driven. Run the `Release` GitHub Actions workflow with a
-version such as `v0.1.0`; the workflow validates the version, creates and pushes
-the annotated tag, checks out that tag, builds and tests Kryon, packages the
-static-library archive, uploads it as an artifact, and attaches it to the GitHub
-release. Pushing a `v*` tag manually uses the same build-and-publish path.
+Every successful CI run on `master` automatically advances the patch version,
+commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
+The workflow validates the version, creates an annotated tag, builds and tests
+Kryon, and publishes both the static SDK and a checksummed native tools bundle.
+The tools bundle contains `k2c`, `k2g`, `k2ir`, `k2b`, `kt`, `kryon`,
+`kryon-preview`, `krb-run`, and `krb-sdl`. The renderer workflow also attaches
+the Linux, Windows, and macOS `krb-run` builds plus the web player to the same
+release.
+
+Maintainers can still run `Release` manually for the checked-in version. Use
+`scripts/bump-version.sh minor` / `major` before pushing when a non-patch bump is
+required. Pushing a matching `v*` tag manually uses the same build-and-publish
+path; releases reject tags that disagree with the public version header.
 
 ## Integration
 

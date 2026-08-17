@@ -3,6 +3,10 @@
 
 ### Added
 
+- Automatic patch releases after successful `master` CI, with retry-safe
+  version resolution and explicit minor/major bump tooling.
+- Checksummed native tools archives containing every Kryon command-line binary
+  alongside the existing static SDK and cross-platform renderer downloads.
 - Memory diagnostics: `KryonMemReport(tag)` / `KryonMemDebugEnabled()` print
   RSS/high-water marks and the glibc arena breakdown to stderr when
   `KRYON_MEM_DEBUG` is set; `UIFontMemoryReport(tag)` prints per-font

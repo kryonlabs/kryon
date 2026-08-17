@@ -1,0 +1,68 @@
+name: Automatic Release Version
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: kryon-auto-release
+  cancel-in-progress: false
+
+jobs:
+  bump-and-release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Skip an already released commit
+        id: guard
+        run: |
+          if git tag --points-at HEAD --list 'v*' | grep -q .; then
+            echo 'release=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'release=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve next version
+        if: steps.guard.outputs.release == 'true'
+        id: version
+        run: |
+          current=$(make -s version)
+          if git rev-parse -q --verify "refs/tags/$current" >/dev/null; then
+            version=$(scripts/bump-version.sh patch)
+          else
+            version=$current
+          fi
+          echo "tag=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Commit version
+        if: steps.guard.outputs.release == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add include/kryon_version.h
+          if ! git diff --cached --quiet; then
+            git commit -m "release: bump version to ${{ steps.version.outputs.tag }}"
+            git push origin HEAD:master
+          fi
+
+      - name: Start release workflow
+        if: steps.guard.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh workflow run release.yml --ref master
+          -f version=${{ steps.version.outputs.tag }}
+          -f prerelease=false
