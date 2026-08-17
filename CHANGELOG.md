@@ -9,6 +9,10 @@
 - Release: bump version to v0.1.9
 - Build: log missing SDL2 DPI query once instead of every frame
 
+### Fixed
+
+- Text entry stays responsive when an app mixes its regular UI font with emoji or icon fonts, even when the fallback is registered first.
+
 ## v0.1.8 - 2026-08-17
 
 ### Changed

@@ -370,6 +370,9 @@ entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
 
     if(entry == NULL)
         return (Font){0};
+    if(!entry->dynamic_codepoints && codepoint > 0 && codepoint != ' ' &&
+       codepoint != '\t' && !font_entry_has_codepoint(entry, codepoint))
+        return (Font){0};
     if(entry->dynamic_codepoints && codepoint > 0 &&
        !font_entry_has_codepoint(entry, codepoint)) {
         /* Mark the raster stale instead of dropping it right away; the base
@@ -570,10 +573,11 @@ RegisterUISmallFont(const char *name, Font font)
 
 static int *ui_font_codepoints(int *out_count);
 
-int
-RegisterUIFontSource(const char *name, const char *file_type,
-                     const unsigned char *font_data, unsigned int font_size,
-                     const int *codepoints, int codepoint_count)
+static int
+register_ui_font_source(const char *name, const char *file_type,
+                        const unsigned char *font_data, unsigned int font_size,
+                        const int *codepoints, int codepoint_count,
+                        int dynamic_codepoints)
 {
     int index;
 
@@ -623,16 +627,38 @@ RegisterUIFontSource(const char *name, const char *file_type,
     g_ui_fonts[index].font_data_size = font_size;
     g_ui_fonts[index].font = (Font){0};
     g_ui_fonts[index].small_font = (Font){0};
-    /* Source fonts keep the raw font bytes, so they can be re-rasterized on
-     * demand: any glyph the file contains renders in this font's own typeface
-     * instead of falling through to a different registered font. */
-    g_ui_fonts[index].dynamic_codepoints = 1;
+    /* Dynamic sources grow beyond their seed as new glyphs are encountered.
+     * Fixed sources are deliberately limited to their supplied subset, which
+     * keeps a fallback font from rebuilding its atlases for characters it can
+     * never serve. */
+    g_ui_fonts[index].dynamic_codepoints = dynamic_codepoints;
 
     if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE))) {
         clear_font_entry(&g_ui_fonts[index]);
         return 0;
     }
     return 1;
+}
+
+int
+RegisterUIFontSource(const char *name, const char *file_type,
+                     const unsigned char *font_data, unsigned int font_size,
+                     const int *codepoints, int codepoint_count)
+{
+    return register_ui_font_source(name, file_type, font_data, font_size,
+                                   codepoints, codepoint_count, 1);
+}
+
+int
+RegisterUIFixedFontSource(const char *name, const char *file_type,
+                          const unsigned char *font_data,
+                          unsigned int font_size,
+                          const int *codepoints, int codepoint_count)
+{
+    if(codepoints == NULL || codepoint_count <= 0)
+        return 0;
+    return register_ui_font_source(name, file_type, font_data, font_size,
+                                   codepoints, codepoint_count, 0);
 }
 
 int

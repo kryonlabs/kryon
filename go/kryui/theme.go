@@ -186,9 +186,24 @@ func RegisterUIFont(name string, font Font) bool {
 	return C.RegisterUIFont(cn, font.toC()) != 0
 }
 
+// EnsureUIDefaultFont loads and selects Kryon's bundled UI font if no primary
+// font has been initialized yet.
+func EnsureUIDefaultFont() bool { return C.EnsureUIDefaultFont() != 0 }
+
 // RegisterUIFontData registers embedded font bytes directly. Applications do
 // not need to create temporary files or manage a raylib Font lifetime.
 func RegisterUIFontData(name, fileType string, data []byte, codepoints []rune) bool {
+	return registerUIFontData(name, fileType, data, codepoints, false)
+}
+
+// RegisterUIFixedFontData registers an embedded font whose fallback coverage
+// is exactly codepoints. Unlike a dynamic source, unrelated text never grows
+// or re-rasterizes its atlases.
+func RegisterUIFixedFontData(name, fileType string, data []byte, codepoints []rune) bool {
+	return registerUIFontData(name, fileType, data, codepoints, true)
+}
+
+func registerUIFontData(name, fileType string, data []byte, codepoints []rune, fixed bool) bool {
 	if len(data) == 0 {
 		return false
 	}
@@ -204,9 +219,13 @@ func RegisterUIFontData(name, fileType string, data []byte, codepoints []rune) b
 	if len(cps) > 0 {
 		cpPtr = &cps[0]
 	}
-	return C.RegisterUIFontSource(cn, ct,
-		(*C.uchar)(unsafe.Pointer(&data[0])), C.uint(len(data)), cpPtr,
-		C.int(len(cps))) != 0
+	if fixed {
+		return C.RegisterUIFixedFontSource(cn, ct,
+			(*C.uchar)(unsafe.Pointer(&data[0])), C.uint(len(data)), cpPtr,
+			C.int(len(cps))) != 0
+	}
+	return C.RegisterUIFontSource(cn, ct, (*C.uchar)(unsafe.Pointer(&data[0])),
+		C.uint(len(data)), cpPtr, C.int(len(cps))) != 0
 }
 
 // UseUIFont selects the named font as the primary UI font.

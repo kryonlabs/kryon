@@ -391,10 +391,12 @@ void UIFontMemoryReport(const char *tag);
 rasterized sizes, glyph counts) to stderr. It is a no-op unless
 `KRYON_MEM_DEBUG` is set in the environment.
 
-Source fonts registered through `RegisterUIFontSource` rasterize once at the
-DPI-scaled base text size; other sizes draw-scale from that raster, with one
-additional large tier (built lazily) for text at twice the base size or more.
-A burst of new codepoints re-rasterizes at most once per frame.
+Source fonts registered through `RegisterUIFontSource` rasterize at each
+requested physical size and retain up to eight size tiers. A burst of new
+codepoints re-rasterizes at most once per frame. Use
+`RegisterUIFixedFontSource` when the supplied codepoints are the complete
+coverage of a fallback font; unrelated text then cannot grow or rebuild that
+font's atlases.
 
 #### Text Measurement
 
