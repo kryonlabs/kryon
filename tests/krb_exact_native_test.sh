@@ -59,6 +59,8 @@ if [ -n "${KRB_EXACT_XWD:-}" ]; then
         echo "native: xwd capture unavailable (need xdotool+imagemagick)" >&2
     fi
     kill "$app_pid" 2>/dev/null
+    sleep 2
+    kill -9 "$app_pid" 2>/dev/null
     wait "$app_pid" 2>/dev/null
 else
     (cd "$workdir" && "$inbe" --screenshot "$work/native.png" \
