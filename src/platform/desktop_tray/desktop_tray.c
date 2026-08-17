@@ -338,6 +338,7 @@ static const char *
 GetDesktopTrayIconPath(void)
 {
     static char path[512];
+    static char *candidate_path;
     static char exe_dir[384];
     static const char *const exe_links[] = {
 #if defined(__FreeBSD__)
@@ -381,8 +382,12 @@ GetDesktopTrayIconPath(void)
             if(g_file_test(TrayIconPaths[i], G_FILE_TEST_IS_REGULAR)) {
                 /* The indicator host is a different process.  It cannot
                  * resolve a path relative to this application's CWD. */
-                if(realpath(TrayIconPaths[i], path) != NULL)
-                    return path;
+                char *absolute_path = g_canonicalize_filename(TrayIconPaths[i], NULL);
+                if(absolute_path != NULL) {
+                    g_free(candidate_path);
+                    candidate_path = absolute_path;
+                    return candidate_path;
+                }
                 return TrayIconPaths[i];
             }
         }
