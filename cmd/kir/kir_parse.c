@@ -837,6 +837,64 @@ cond_frame_settle(KirCondFrame *frames, int count)
         frames[count - 1].braces--;
 }
 
+/* Strip C-style block comments in place, preserving newlines so line
+ * numbers stay honest. *in_comment carries the state across lines (a
+ * comment opened on one line keeps stripping on the next). String and
+ * char literals are respected, and reset at each newline since Kry
+ * literals never span lines. Without this, a comment close at end of
+ * line trips the trailing-slash continuation rule and glues the comment
+ * onto the next function header, silently dropping the function. */
+static void
+strip_block_comments(char *s, int *in_comment)
+{
+    char *w = s;
+    char *r = s;
+    int in_str = 0;
+    int in_chr = 0;
+
+    while(*r != '\0') {
+        if(*in_comment) {
+            while(*r != '\0' && !(*r == '*' && r[1] == '/')) {
+                if(*r == '\n')
+                    *w++ = '\n';
+                r++;
+            }
+            if(*r != '\0') {
+                r += 2;
+                *in_comment = 0;
+                *w++ = ' ';   /* keep tokens on either side apart */
+            }
+            continue;
+        }
+        if(in_str || in_chr) {
+            if(*r == '\\' && r[1] != '\0') {
+                *w++ = *r++;
+                *w++ = *r++;
+                continue;
+            }
+            if((in_str && *r == '"') || (in_chr && *r == '\''))
+                in_str = in_chr = 0;
+            else if(*r == '\n')
+                in_str = in_chr = 0;
+            *w++ = *r++;
+        } else if(*r == '"') {
+            in_str = 1;
+            *w++ = *r++;
+        } else if(*r == '\'') {
+            in_chr = 1;
+            *w++ = *r++;
+        } else if(*r == '/' && r[1] == '*') {
+            *in_comment = 1;
+            r += 2;
+        } else if(*r == '\n') {
+            *w++ = *r++;
+        } else {
+            *w++ = *r++;
+        }
+    }
+    *w = '\0';
+}
+
 KirProgram *
 kir_parse_file(const char *path, const char *root)
 {
@@ -875,6 +933,7 @@ kir_parse_file(const char *path, const char *root)
     char cur_guard[KIR_TEXT_MAX];
     int body_mdepth[8];
     int body_mcount = 0;
+    int in_block_comment = 0;
 
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
@@ -909,6 +968,7 @@ kir_parse_file(const char *path, const char *root)
         }
 
         line_no++;
+        strip_block_comments(line, &in_block_comment);
         snprintf(raw, sizeof(raw), "%s", line);
         {
             char *trimmed = trim(raw);
@@ -1100,6 +1160,7 @@ kir_parse_file(const char *path, const char *root)
                         const char *lt;
                         int cont;
 
+                        strip_block_comments(la, &in_block_comment);
                         /* trim in place: the lookahead is appended verbatim,
                          * and a raw fgets line would carry its '\n' into the
                          * joined statement text. */
@@ -1184,8 +1245,11 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == TOP && t[0] == '#' &&
                   strncmp(t, "#if", 3) != 0 && strncmp(t, "#else", 5) != 0 &&
                   strncmp(t, "#endif", 6) != 0 &&
-                  strncmp(t, "#defined", 8) != 0) {
-            /* plain # comment at top level — never a header */
+                  strncmp(t, "#defined", 8) != 0 &&
+                  strncmp(t, "#module", 7) != 0 &&
+                  strncmp(t, "#import", 7) != 0) {
+            /* plain # comment at top level — never a header; real
+             * directives (#module/#import/#if...) fall through below */
         } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
