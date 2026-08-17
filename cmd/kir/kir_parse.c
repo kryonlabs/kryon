@@ -282,8 +282,46 @@ classify_stmt(const char *s)
                 return KIR_STMT_DECL;  /* 'x: T' / 'x: [N] T' */
         }
     }
-    if(strstr(s, "=") != NULL)
-        return KIR_STMT_ASSIGN;
+    /* C-style locals remain accepted at the language boundary. Lowerers
+     * already treat declaration statements without ':' as an opaque typed
+     * declaration and add the target terminator. */
+    {
+        static const char *const types[] = {
+            "int ", "unsigned ", "long ", "float ", "double ",
+            "char ", "bool ", "const ", "struct ", NULL
+        };
+        int i;
+
+        for(i = 0; types[i] != NULL; i++)
+            if(strncmp(s, types[i], strlen(types[i])) == 0)
+                return KIR_STMT_DECL;
+    }
+    /* An '=' inside a call's compound literal is a designated initializer,
+     * not an assignment statement (TextField((Props){.text = value})). */
+    {
+        int depth = 0;
+        int quote = 0;
+        const char *p;
+
+        for(p = s; *p != '\0'; p++) {
+            if(quote) {
+                if(*p == '\\' && p[1] != '\0')
+                    p++;
+                else if(*p == quote)
+                    quote = 0;
+                continue;
+            }
+            if(*p == '"' || *p == '\'')
+                quote = *p;
+            else if(*p == '(' || *p == '[' || *p == '{')
+                depth++;
+            else if(*p == ')' || *p == ']' || *p == '}') {
+                if(depth > 0)
+                    depth--;
+            } else if(*p == '=' && depth == 0)
+                return KIR_STMT_ASSIGN;
+        }
+    }
     if(strchr(s, '(') != NULL || strchr(s, '+') != NULL ||
        strchr(s, '-') != NULL)
         return KIR_STMT_EXPR;

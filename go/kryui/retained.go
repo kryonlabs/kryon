@@ -110,6 +110,29 @@ func TextField(state *TextFieldState, props FieldProps) {
 	})
 }
 
+func declareTextField(props TextFieldProps) {
+	if len(props.Text) == 0 || props.CursorPosition == nil {
+		return
+	}
+	var focused C.int
+	if props.Focused != nil && *props.Focused {
+		focused = 1
+	}
+	secure := C.int(0)
+	if props.Secure {
+		secure = 1
+	}
+	C.TextField(C.TextFieldProps{
+		bounds: props.Bounds.toC(), text: (*C.char)(unsafe.Pointer(&props.Text[0])),
+		text_size: C.size_t(len(props.Text)), cursor_position: (*C.int)(unsafe.Pointer(props.CursorPosition)),
+		focused: &focused, max_codepoints: C.int(props.MaxCodepoints), font: C.int(props.Font),
+		focus_id: C.int(props.FocusID), style: props.Style.toC(), secure: secure,
+	})
+	if props.Focused != nil {
+		*props.Focused = focused != 0
+	}
+}
+
 func SetSelection(key UIKey, anchor, cursor int32) bool {
 	return C.SetSelection(C.UIKey(key), C.int(anchor), C.int(cursor)) != 0
 }

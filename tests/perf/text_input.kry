@@ -1,0 +1,20 @@
+#import "kryon.h"
+
+app "Text input performance contract" {
+    size 640 480
+    fps 60
+    frame main
+}
+
+state {
+    value: [512] char = ""
+    cursor: int = 0
+}
+
+frame main {
+    BeginUI(1)
+    Column((ColumnProps){.bounds = {20,20,600,440},.gap = 8,.padding = 8,.key = 2})
+    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = value,.text_size = sizeof(value),.cursor_position = &cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 3,.secure = false})
+    End()
+    EndUI()
+}

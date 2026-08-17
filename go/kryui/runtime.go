@@ -30,6 +30,11 @@ type Runtime interface {
 	Scroll(int32, int32, int32, int32, int32, *int32)
 	EndScroll()
 	Button(ButtonProps) bool
+	BeginUI(UIKey)
+	EndUI()
+	Column(ColumnProps)
+	End()
+	TextField(TextFieldProps)
 }
 
 type runtime struct {
@@ -113,4 +118,9 @@ func (r *runtime) EndScroll() {
 	r.scrolls = r.scrolls[:i]
 	EndScrollContainer(s.bounds, s.view)
 }
-func (r *runtime) Button(props ButtonProps) bool { return Button(props) }
+func (r *runtime) Button(props ButtonProps) bool  { return Button(props) }
+func (r *runtime) BeginUI(key UIKey)              { BeginUI(key) }
+func (r *runtime) EndUI()                         { EndUI() }
+func (r *runtime) Column(props ColumnProps)       { Column(props) }
+func (r *runtime) End()                           { End() }
+func (r *runtime) TextField(props TextFieldProps) { declareTextField(props) }

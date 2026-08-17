@@ -41,6 +41,19 @@ jobs:
       - name: Test
         run: make test CMAKE=/usr/bin/cmake
 
+      - name: Text input latency gate
+        run: |
+          set -euo pipefail
+          make perf-text-input CMAKE=/usr/bin/cmake | grep '^{' | tee text-input-perf.jsonl
+          cat text-input-perf.jsonl >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload text input measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-input-perf-linux
+          path: text-input-perf.jsonl
+          if-no-files-found: error
+
   test-freebsd:
     name: Build and test (FreeBSD)
     runs-on: ubuntu-latest
@@ -67,3 +80,6 @@ jobs:
             gmake clean
             gmake all
             gmake test
+            if ! gmake perf-text-input; then
+              echo "FreeBSD text-input measurements are non-gating during calibration" >&2
+            fi

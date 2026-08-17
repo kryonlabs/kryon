@@ -1991,13 +1991,37 @@ parse_textfield(KrbBuild *b, const char *call)
     KrbBuildNode *n;
     int scaled;
     int count;
+    int aggregate = 0;
+    int ax = 0, ay = 0, aw = 0, ah = 0;
 
     if(args == NULL)
         return 0;
     count = split_args(args + 1, parts, 8);
-    if(count < 5)
-        return 0;
-    strip_amp(parts[4], path, sizeof(path));
+    if(count < 5) {
+        const char *bounds = strstr(args, ".bounds");
+        const char *text = strstr(args, ".text =");
+        const char *p;
+
+        if(bounds == NULL || text == NULL)
+            return 0;
+        bounds = strchr(bounds, '{');
+        if(bounds == NULL ||
+           sscanf(bounds + 1, "%d,%d,%d,%d", &ax, &ay, &aw, &ah) != 4)
+            return 0;
+        p = text + strlen(".text =");
+        p = skip_ws(p);
+        {
+            size_t len = 0;
+            while((isalnum((unsigned char)p[len]) || p[len] == '_' ||
+                   p[len] == '.') && len + 1 < sizeof(path))
+                len++;
+            memcpy(path, p, len);
+            path[len] = '\0';
+        }
+        aggregate = 1;
+    } else {
+        strip_amp(parts[4], path, sizeof(path));
+    }
     if(path[0] == '\0')
         return 0;
     snprintf(name, sizeof(name), "field%d", b->node_count);
@@ -2005,6 +2029,14 @@ parse_textfield(KrbBuild *b, const char *call)
     if(n == NULL)
         return 0;
     snprintf(n->name, sizeof(n->name), "%s", path);
+    if(aggregate) {
+        n->x = ax;
+        n->y = ay;
+        n->w = aw;
+        n->h = ah;
+        n->font_size = 16;
+        return 1;
+    }
     if(parse_coord(parts[0], &n->x, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_X;
     if(parse_coord(parts[1], &n->y, &scaled) && scaled)
@@ -2068,6 +2100,12 @@ try_widget(KrbBuild *b, const char *raw)
         return 0;
     call = call_after_eq(text);
     call = skip_ws(call);
+    /* Retained declaration scopes are represented by the cartridge node
+     * table itself; they are semantic no-ops for the KRB renderer. */
+    if(starts_ident(call, "BeginUI") || starts_ident(call, "Column") ||
+       starts_ident(call, "Row") || starts_ident(call, "Stack") ||
+       starts_ident(call, "EndUI") || starts_ident(call, "End"))
+        return 1;
     if(starts_ident(call, "Background"))
         return parse_background(b, call);
     if(starts_ident(call, "Text") && !starts_ident(call, "TextFormat") &&

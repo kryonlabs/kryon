@@ -178,6 +178,7 @@ PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
+TEXT_INPUT_PERF_TEST = $(BUILD_DIR)/tests/text_input_perf_test
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
@@ -191,7 +192,7 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test perf-text-input bsd-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g krb-web krb-sdl
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -485,6 +486,15 @@ $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(B
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tree_api_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(TEXT_INPUT_PERF_TEST): tests/text_input_perf_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/text_input_perf_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+perf-text-input: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST)
+	sh tests/text_input_perf.sh . $(BUILD_DIR)
 
 $(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

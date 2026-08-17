@@ -92,6 +92,21 @@ go_type(const char *type, char *dst, size_t dst_size)
     snprintf(t, sizeof(t), "%s", type);
     while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
         t[--n] = '\0';
+    if(t[0] == '[') {
+        char *close = strchr(t, ']');
+        const char *base;
+
+        if(close != NULL) {
+            base = close + 1;
+            while(*base == ' ' || *base == '\t')
+                base++;
+            if(strcmp(base, "char") == 0) {
+                *close = '\0';
+                snprintf(dst, dst_size, "[%s]byte", t + 1);
+                return 1;
+            }
+        }
+    }
     for(int i = 0; map[i].c != NULL; i++) {
         if(strcmp(t, map[i].c) == 0) {
             snprintf(dst, dst_size, "%s", map[i].go);
@@ -336,6 +351,66 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                         fields[2], args[2], fields[3], args[3]);
                 }
             }
+            return p;
+        }
+        /* Props use C designated initializers. Translate them to named Go
+         * fields and give the untyped bounds literal its Rectangle type. */
+        if(strstr(type, "Props") != NULL) {
+            char raw[K2G_TEXT_MAX], parts[32][K2G_TEXT_MAX];
+            size_t rn = 0;
+            int depth = 1;
+            const char *q = p;
+            int count;
+
+            while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
+                if(*q == '{')
+                    depth++;
+                else if(*q == '}') {
+                    depth--;
+                    if(depth == 0)
+                        break;
+                }
+                raw[rn++] = *q++;
+            }
+            raw[rn] = '\0';
+            p = *q == '}' ? q + 1 : q;
+            count = split_top(raw, parts, 32);
+            *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
+                                    "kryruntime.%s{", type);
+            for(int i = 0, emitted = 0; i < count; i++) {
+                char *part = (char *)skip_ws(parts[i]);
+                char *eq;
+                char field[K2G_NAME_MAX];
+                char value[K2G_TEXT_MAX];
+
+                if(*part != '.')
+                    continue;
+                eq = strchr(part, '=');
+                if(eq == NULL)
+                    continue;
+                *eq = '\0';
+                camel(part + 1, field, sizeof(field));
+                if(strcmp(field, "FocusId") == 0)
+                    snprintf(field, sizeof(field), "FocusID");
+                if(strcmp(field, "TextSize") == 0)
+                    continue;
+                if(strcmp(field, "Bounds") == 0 && *skip_ws(eq + 1) == '{') {
+                    char rect[K2G_TEXT_MAX];
+                    snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(eq + 1));
+                    tx_expr(m, rect, value, sizeof(value));
+                } else {
+                    tx_expr(m, skip_ws(eq + 1), value, sizeof(value));
+                }
+                if(strcmp(type, "TextFieldProps") == 0 &&
+                   strcmp(field, "Text") == 0 && strncmp(value, "st.", 3) == 0)
+                    strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
+                if(emitted++)
+                    *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn, ", ");
+                *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
+                                        "%s: %s", field, value);
+            }
+            if(*dn + 2 < K2G_TEXT_MAX)
+                dst[(*dn)++] = '}';
             return p;
         }
         /* other struct literals: Type{...} — recurse and keep braces */
@@ -958,11 +1033,21 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 for(int i = 0; i < m->state_count; i++) {
                     const KirStateField *sf = &m->state_fields[i];
                     char fname[K2G_NAME_MAX], finit[K2G_TEXT_MAX];
+                    char gt[K2G_NAME_MAX];
 
                     camel(sf->name, fname, sizeof(fname));
+                    if(!go_type(sf->type, gt, sizeof(gt)))
+                        snprintf(gt, sizeof(gt), "any");
                     tx_expr(m, sf->init, finit, sizeof(finit));
-                    if(finit[0] != '\0')
-                        fprintf(f, "\t%s: %s,\n", fname, finit);
+                    if(finit[0] != '\0' &&
+                       !(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
+                         strcmp(finit, "\"\"") == 0)) {
+                        if(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
+                           finit[0] == '"')
+                            fprintf(f, "\t%s: %s(%s),\n", fname, gt, finit);
+                        else
+                            fprintf(f, "\t%s: %s,\n", fname, finit);
+                    }
                 }
                 fprintf(f, "}\n\n");
             }

@@ -126,8 +126,38 @@ KryonInjectText(const char *text)
 
     if(text == NULL)
         return;
-    while(*p != '\0' && g_inject_char_count < KRY_INJECT_CHAR_QUEUE)
-        g_inject_chars[g_inject_char_count++] = *p++;
+    while(*p != '\0' && g_inject_char_count < KRY_INJECT_CHAR_QUEUE) {
+        unsigned codepoint;
+        int bytes;
+
+        if(*p < 0x80) {
+            codepoint = *p;
+            bytes = 1;
+        } else if((*p & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) {
+            codepoint = ((unsigned)(p[0] & 0x1f) << 6) |
+                        (unsigned)(p[1] & 0x3f);
+            bytes = 2;
+        } else if((*p & 0xf0) == 0xe0 && p[1] != '\0' &&
+                  (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80) {
+            codepoint = ((unsigned)(p[0] & 0x0f) << 12) |
+                        ((unsigned)(p[1] & 0x3f) << 6) |
+                        (unsigned)(p[2] & 0x3f);
+            bytes = 3;
+        } else if((*p & 0xf8) == 0xf0 && p[1] != '\0' && p[2] != '\0' &&
+                  (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80 &&
+                  (p[3] & 0xc0) == 0x80) {
+            codepoint = ((unsigned)(p[0] & 0x07) << 18) |
+                        ((unsigned)(p[1] & 0x3f) << 12) |
+                        ((unsigned)(p[2] & 0x3f) << 6) |
+                        (unsigned)(p[3] & 0x3f);
+            bytes = 4;
+        } else {
+            codepoint = 0xfffd;
+            bytes = 1;
+        }
+        g_inject_chars[g_inject_char_count++] = (int)codepoint;
+        p += bytes;
+    }
 }
 
 void
