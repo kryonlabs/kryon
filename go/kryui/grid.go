@@ -6,7 +6,7 @@ package kryui
 // every other Kryon text input. The grid remains responsible for choosing the
 // active cell and deciding where Enter or Tab moves afterward.
 type GridCellEditor struct {
-	field  *TextField
+	field  *TextFieldState
 	active bool
 }
 

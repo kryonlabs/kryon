@@ -314,7 +314,7 @@ type ButtonProps struct {
 	Disabled bool
 }
 
-// Button draws a button with the given properties and returns true if clicked
+// Button declares a retained button. Clicks are delivered by NextUIEvent.
 func Button(props ButtonProps) bool {
 	clabel := C.CString(props.Label)
 	defer C.free(unsafe.Pointer(clabel))
@@ -324,19 +324,10 @@ func Button(props ButtonProps) bool {
 		disabled = 1
 	}
 
-	// Use the generic button function
-	var hover C.int
-	result := C.DrawUIGenericButton(
-		C.int(props.Bounds.X),
-		C.int(props.Bounds.Y),
-		C.int(props.Bounds.Width),
-		C.int(props.Bounds.Height),
-		clabel,
-		C.UIButtonStyle(props.Style),
-		C.int(disabled),
-		&hover,
-	)
-	return result != 0
+	C.Button(C.ButtonProps{bounds: props.Bounds.toC(), label: clabel,
+		style: C.UIButtonStyle(props.Style), id: C.int(props.ID),
+		disabled: C.int(disabled)})
+	return false
 }
 
 // ---------------------------------------------------------------------------

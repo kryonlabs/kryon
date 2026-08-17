@@ -1,101 +1,137 @@
 package kryui
 
+/*
+#include <stdlib.h>
+#include <string.h>
+*/
+import "C"
+
+import (
+	gort "runtime"
+	"unsafe"
+)
+
 // This file is the Go-native stateful control layer. The lower-level Props
 // functions remain available for generated code and unusual integrations,
 // while applications normally use these owned-state types.
 
 // TextField owns the fixed storage, cursor, focus and selection identity
 // needed by Kryon's native single-line editor.
-type TextField struct {
-	buffer        []byte
-	cursor        int32
-	focused       bool
-	commitPressed bool
+type TextFieldState struct {
+	buffer        *C.char
+	capacity      int
+	cursor        *C.int
+	focused       *C.int
+	commitPressed *C.int
 	focusID       int32
 	maxCodepoints int32
 	secure        bool
 }
 
-func NewTextField(focusID, capacity int) *TextField {
+func NewTextField(focusID, capacity int) *TextFieldState {
 	if capacity < 2 {
 		capacity = 2
 	}
-	return &TextField{
-		buffer:        make([]byte, capacity),
+	f := &TextFieldState{
+		buffer:        (*C.char)(C.calloc(C.size_t(capacity), 1)),
+		capacity:      capacity,
+		cursor:        (*C.int)(C.calloc(1, C.size_t(unsafe.Sizeof(C.int(0))))),
+		focused:       (*C.int)(C.calloc(1, C.size_t(unsafe.Sizeof(C.int(0))))),
+		commitPressed: (*C.int)(C.calloc(1, C.size_t(unsafe.Sizeof(C.int(0))))),
 		focusID:       int32(focusID),
 		maxCodepoints: int32(capacity - 1),
 	}
+	gort.SetFinalizer(f, (*TextFieldState).close)
+	return f
 }
 
 // NewPasswordField creates a text field that masks its contents and prevents
 // clipboard copy and cut operations. Pasting remains available.
-func NewPasswordField(focusID, capacity int) *TextField {
+func NewPasswordField(focusID, capacity int) *TextFieldState {
 	f := NewTextField(focusID, capacity)
 	f.secure = true
 	return f
 }
 
-func (f *TextField) Text() string {
-	if f == nil {
-		return ""
-	}
-	n := 0
-	for n < len(f.buffer) && f.buffer[n] != 0 {
-		n++
-	}
-	return string(f.buffer[:n])
-}
-
-func (f *TextField) SetText(text string) {
-	if f == nil || len(f.buffer) == 0 {
+func (f *TextFieldState) close() {
+	if f == nil || f.buffer == nil {
 		return
 	}
-	clear(f.buffer)
-	n := copy(f.buffer[:len(f.buffer)-1], text)
-	f.cursor = int32(n)
+	C.free(unsafe.Pointer(f.buffer))
+	C.free(unsafe.Pointer(f.cursor))
+	C.free(unsafe.Pointer(f.focused))
+	C.free(unsafe.Pointer(f.commitPressed))
+	f.buffer, f.cursor, f.focused, f.commitPressed = nil, nil, nil, nil
 }
 
-func (f *TextField) Clear() { f.SetText("") }
+func (f *TextFieldState) Text() string {
+	if f == nil || f.buffer == nil {
+		return ""
+	}
+	return C.GoString(f.buffer)
+}
 
-func (f *TextField) Focused() bool { return f != nil && f.focused }
+func (f *TextFieldState) SetText(text string) {
+	if f == nil || f.buffer == nil || f.capacity < 2 {
+		return
+	}
+	bytes := []byte(text)
+	if len(bytes) >= f.capacity {
+		bytes = bytes[:f.capacity-1]
+	}
+	C.memset(unsafe.Pointer(f.buffer), 0, C.size_t(f.capacity))
+	if len(bytes) > 0 {
+		C.memcpy(unsafe.Pointer(f.buffer), unsafe.Pointer(&bytes[0]), C.size_t(len(bytes)))
+	}
+	*f.cursor = C.int(len(bytes))
+}
 
-func (f *TextField) SetFocused(focused bool) {
-	if f != nil {
-		f.focused = focused
+func (f *TextFieldState) Clear() { f.SetText("") }
+
+func (f *TextFieldState) Focused() bool {
+	return f != nil && f.focused != nil && *f.focused != 0
+}
+
+func (f *TextFieldState) SetFocused(focused bool) {
+	if f != nil && f.focused != nil {
+		*f.focused = C.int(0)
+		if focused {
+			*f.focused = 1
+		}
 	}
 }
 
 // SetSecure controls whether the field masks its value and blocks copy/cut.
 // It can be toggled temporarily to implement a reveal-password affordance.
-func (f *TextField) SetSecure(secure bool) {
+func (f *TextFieldState) SetSecure(secure bool) {
 	if f != nil {
 		f.secure = secure
 	}
 }
 
-func (f *TextField) Secure() bool { return f != nil && f.secure }
+func (f *TextFieldState) Secure() bool { return f != nil && f.secure }
 
 // Draw renders and edits the field. committed is true for the frame in which
 // Enter was pressed. Mouse selection, Ctrl+A/C/X/V and keyboard navigation
 // are handled by Kryon.
-func (f *TextField) Draw(bounds Rectangle, font int32, style UITextInputStyle) (changed, committed bool) {
+func (f *TextFieldState) Draw(bounds Rectangle, font int32, style UITextInputStyle) (changed, committed bool) {
 	if f == nil {
 		return false, false
 	}
-	f.commitPressed = false
+	*f.commitPressed = 0
 	changed = DrawUITextField(TextFieldProps{
 		Bounds:         bounds,
-		Text:           f.buffer,
-		CursorPosition: &f.cursor,
-		Focused:        &f.focused,
+		Text:           unsafe.Slice((*byte)(unsafe.Pointer(f.buffer)), f.capacity),
+		CursorPosition: (*int32)(unsafe.Pointer(f.cursor)),
+		Focused:        nil,
 		MaxCodepoints:  f.maxCodepoints,
 		Font:           font,
 		FocusID:        f.focusID,
 		Style:          style,
-		CommitPressed:  &f.commitPressed,
+		CommitPressed:  nil,
 		Secure:         f.secure,
 	})
-	return changed, f.commitPressed
+	return changed, *f.commitPressed != 0
 }
 
 // TextArea owns a multiline editor and its scroll state.
