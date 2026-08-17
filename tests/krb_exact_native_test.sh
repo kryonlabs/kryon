@@ -80,6 +80,9 @@ if [ ! -s "$work/native.png" ]; then
 fi
 
 "$k2b" --no-main --root "$(dirname "$kry")" -o "$work" "$kry" >/dev/null 2>&1
+if [ -n "${KRB_EXACT_FONT:-}" ] && [ -f "$KRB_EXACT_FONT" ]; then
+    K2B_FONT="$KRB_EXACT_FONT" "$k2b" --no-main --root "$(dirname "$kry")" -o "$work" "$kry" >/dev/null 2>&1
+fi
 KRB_RUN_THEME_LIGHT=1 "$krbrun" --png "$work/cart.png" --w 480 --h 640 "$work/$(basename "${kry%.kry}").krb" >/dev/null
 
 exec python3 - "$work/native.png" "$work/cart.png" <<'EOF'

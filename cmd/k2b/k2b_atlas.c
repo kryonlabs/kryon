@@ -9,9 +9,6 @@
 
 #define ATLAS_W 512
 
-/* serialized glyph record (18 bytes, field order fixed):
- * cp u32 | x u16 | y u16 | w u16 | h u16 | xoff i16 | yoff i16 | adv u16 */
-
 static void
 put_u16(unsigned char *p, unsigned v)
 {
@@ -28,6 +25,16 @@ put_u32(unsigned char *p, unsigned long v)
     p[3] = (unsigned char)(v >> 24);
 }
 
+/* Layout: "KFA1" u32 | size_count u16 | per-size 16-byte records
+ * (px u16 | glyphs u16 | w u16 | h u16 | table_off u32 | pixels_off u32),
+ * per-glyph 18-byte records (cp u32 | x,y,w,h u16 | xoff,yoff i16 |
+ * adv u16), then per-size RGBA8 white-on-alpha bitmaps.
+ *
+ * Rasterization is raylib-identical: per-glyph
+ * stbtt_GetCodepointBitmap at stbtt_ScaleForPixelHeight(size) with
+ * advances from stbtt_GetCodepointHMetrics * scale — the same calls
+ * rtext.c LoadFontData(FONT_DEFAULT) makes, so glyph coverage matches
+ * the native renderer bit-for-bit. Glyphs row-pack first-fit. */
 unsigned char *
 k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
                int cp_count, const int *sizes, int size_count,
@@ -65,8 +72,6 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
         return NULL;
     }
 
-    /* header: magic u32, size_count u16, then size_count 16-byte records:
-     * px u16 | glyphs u16 | w u16 | h u16 | table_off u32 | pixels_off u32 */
     buf_len = 6 + (unsigned)size_count * 16;
     buf_cap = buf_len + 4096;
     buf = malloc(buf_cap);
@@ -76,35 +81,43 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
     }
     put_u32(buf, 0x3141464Bu); /* "KFA1" */
     put_u16(buf + 4, (unsigned)size_count);
+
     for(s = 0; s < size_count; s++) {
-        unsigned char *rec;
         int px = sizes[s];
-        stbtt_pack_context pc;
-        stbtt_packedchar *chars;
+        float scale = stbtt_ScaleForPixelHeight(&font, (float)px);
+        unsigned char *raw_px;
         unsigned rec_bytes = (unsigned)cp_count * 18;
-        unsigned table_off = 0;
-        unsigned pixels_off = 0;
-        int height = 128 + px * 4;
-        unsigned char *pixbuf = malloc((size_t)ATLAS_W * height);
+        unsigned table_off;
+        unsigned pixels_off;
+        int height;
         int i;
 
-        if(pixbuf == NULL)
-            continue;
-        memset(pixbuf, 0, (size_t)ATLAS_W * height);
+        /* rec is recomputed after every realloc of buf */
+        {
+            int total_h = 1;
+            int row_h = 0;
+            int cur_x = 0;
 
-        if(stbtt_PackBegin(&pc, pixbuf, ATLAS_W, height, 0, 1, NULL) == 0) {
-            free(pixbuf);
-            continue;
+            for(i = 0; i < cp_count; i++) {
+                int x0 = 0;
+                int y0 = 0;
+                int w = 0;
+                int h = 0;
+
+                stbtt_GetCodepointBitmapBox(&font, (int)codepoints[i], scale,
+                                            scale, &x0, &y0, &w, &h);
+                if(cur_x + w > ATLAS_W) {
+                    total_h += row_h > 0 ? row_h : 1;
+                    row_h = 0;
+                    cur_x = 0;
+                }
+                cur_x += w + 1;
+                if(h > row_h)
+                    row_h = h;
+            }
+            height = total_h + row_h + 1;
         }
-        stbtt_PackSetSkipMissingCodepoints(&pc, 1);
-        chars = calloc((size_t)cp_count, sizeof(*chars));
-        if(chars != NULL) {
-            for(i = 0; i < cp_count; i++)
-                stbtt_PackFontRange(&pc, ttf, 0, (float)px,
-                                    (int)codepoints[i], 1, &chars[i]);
-        }
-        /* grow the output buffer for this size's table + pixels */
-        while(buf_len + rec_bytes + (unsigned)ATLAS_W * pc.height * 4 >
+        while(buf_len + rec_bytes + (unsigned)ATLAS_W * height * 4 >
               buf_cap) {
             unsigned char *nb = realloc(buf, buf_cap * 2);
 
@@ -113,53 +126,89 @@ k2b_bake_atlas(const char *ttf_path, const unsigned int *codepoints,
             buf = nb;
             buf_cap *= 2;
         }
-        if(chars != NULL &&
-           buf_len + rec_bytes + (unsigned)ATLAS_W * pc.height * 4 <=
-           buf_cap) {
-            unsigned char *tab;
+        if(buf_len + rec_bytes + (unsigned)ATLAS_W * height * 4 > buf_cap)
+            continue;
+        raw_px = calloc((size_t)ATLAS_W * height, 1);
+        if(raw_px == NULL)
+            continue;
+        table_off = buf_len;
+        {
+            int row_y = 0;
+            int row_h = 0;
+            int cur_x = 0;
+            unsigned char *tab = buf + table_off;
 
-            table_off = buf_len;
-            tab = buf + table_off;
             for(i = 0; i < cp_count; i++) {
-                stbtt_packedchar *c = &chars[i];
+                int w = 0;
+                int h = 0;
+                int xoff = 0;
+                int yoff = 0;
+                int advance = 0;
+                int lsb = 0;
+                unsigned char *bm;
                 unsigned char *g = tab + (unsigned)i * 18;
 
+                bm = stbtt_GetCodepointBitmap(&font, scale, scale,
+                                              (int)codepoints[i], &w, &h,
+                                              &xoff, &yoff);
+                if(cur_x + w > ATLAS_W) {
+                    row_y += row_h > 0 ? row_h : 1;
+                    row_h = 0;
+                    cur_x = 0;
+                }
+                if(w > 0 && h > 0 && bm != NULL && w <= ATLAS_W &&
+                   row_y + h <= height && cur_x + w <= ATLAS_W) {
+                    int gy;
+
+                    for(gy = 0; gy < h; gy++)
+                        memcpy(raw_px + (size_t)(row_y + gy) * ATLAS_W +
+                               cur_x, bm + (size_t)gy * w, (size_t)w);
+                }
+                stbtt_FreeBitmap(bm, NULL);
+                stbtt_GetCodepointHMetrics(&font, (int)codepoints[i],
+                                           &advance, &lsb);
                 put_u32(g, codepoints[i]);
-                put_u16(g + 4, (unsigned short)c->x0);
-                put_u16(g + 6, (unsigned short)c->y0);
-                put_u16(g + 8, (unsigned short)(c->x1 - c->x0));
-                put_u16(g + 10, (unsigned short)(c->y1 - c->y0));
-                put_u16(g + 12, (unsigned short)(short)c->xoff);
-                put_u16(g + 14, (unsigned short)(short)c->yoff);
-                put_u16(g + 16, (unsigned short)
-                       (c->xadvance > 0 ? c->xadvance : px / 2));
+                put_u16(g + 4, (unsigned short)cur_x);
+                put_u16(g + 6, (unsigned short)row_y);
+                put_u16(g + 8, (unsigned short)(w > 0 ? w : 0));
+                put_u16(g + 10, (unsigned short)(h > 0 ? h : 0));
+                put_u16(g + 12, (unsigned short)(short)xoff);
+                put_u16(g + 14, (unsigned short)(short)yoff);
+                put_u16(g + 16, (unsigned short)(int)(advance * scale));
+                cur_x += w + 1;
+                if(h > row_h)
+                    row_h = h;
             }
             buf_len += rec_bytes;
-            pixels_off = buf_len;
-            {
-                unsigned char *rgba = buf + pixels_off;
-                long n = (long)ATLAS_W * pc.height;
-                long k;
+        }
+        pixels_off = buf_len;
+        {
+            unsigned char *rgba = buf + pixels_off;
+            long n = (long)ATLAS_W * height;
+            long k;
 
-                for(k = 0; k < n; k++) {
-                    rgba[k * 4 + 0] = 0xff;
-                    rgba[k * 4 + 1] = 0xff;
-                    rgba[k * 4 + 2] = 0xff;
-                    rgba[k * 4 + 3] = pc.pixels[k];
-                }
-                buf_len += (unsigned)n * 4;
+            for(k = 0; k < n; k++) {
+                rgba[k * 4 + 0] = 0xff;
+                rgba[k * 4 + 1] = 0xff;
+                rgba[k * 4 + 2] = 0xff;
+                rgba[k * 4 + 3] = raw_px[k];
             }
-            rec = buf + 6 + (unsigned)s * 16; /* buf may have been realloc'd */
+            buf_len += (unsigned)n * 4;
+        }
+        free(raw_px);
+        {
+            unsigned char *rec = buf + 6 + (unsigned)s * 16;
+
             put_u16(rec, (unsigned)px);
+        put_u16(rec + 2, (unsigned)cp_count);
+        put_u16(rec + 4, ATLAS_W);
+        put_u16(rec + 6, (unsigned)height);
             put_u16(rec + 2, (unsigned)cp_count);
             put_u16(rec + 4, ATLAS_W);
-            put_u16(rec + 6, (unsigned)pc.height);
+            put_u16(rec + 6, (unsigned)height);
             put_u32(rec + 8, table_off);
             put_u32(rec + 12, pixels_off);
         }
-        free(chars);
-        stbtt_PackEnd(&pc);
-        free(pixbuf);
     }
     free(ttf);
     if(buf_len <= 6 + (unsigned)size_count * 16) {
