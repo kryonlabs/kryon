@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.10 - 2026-08-17
+
+### Changed
+
+- Release: bump version to v0.1.10
+- Ui: add fixed-subset font sources
+
 ## v0.1.9 - 2026-08-17
 
 ### Changed
