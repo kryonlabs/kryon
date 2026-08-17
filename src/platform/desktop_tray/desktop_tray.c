@@ -378,8 +378,13 @@ GetDesktopTrayIconPath(void)
     /* 2. Caller-supplied candidate paths (often CWD-relative). */
     if(TrayIconPaths != NULL) {
         for(int i = 0; TrayIconPaths[i] != NULL; i++) {
-            if(g_file_test(TrayIconPaths[i], G_FILE_TEST_IS_REGULAR))
+            if(g_file_test(TrayIconPaths[i], G_FILE_TEST_IS_REGULAR)) {
+                /* The indicator host is a different process.  It cannot
+                 * resolve a path relative to this application's CWD. */
+                if(realpath(TrayIconPaths[i], path) != NULL)
+                    return path;
                 return TrayIconPaths[i];
+            }
         }
     }
 
@@ -421,39 +426,6 @@ GetDesktopTrayIconPath(void)
 
     return NULL;
 }
-
-#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
-/* AppIndicator/SNI consumes an icon *name*, not a PNG pathname.  Giving it a
- * pathname happens to work in some X11 indicator implementations, but on
- * Wayland it commonly falls back to the three-dot missing-icon glyph.  Make
- * the directory containing our resolved inbe.png an icon-theme search path,
- * then pass the stable icon name below. */
-static const char *
-GetDesktopTrayIconThemePath(const char *icon_path)
-{
-    static char directory[512];
-    char resolved[sizeof(directory)];
-    const char *slash;
-    size_t len;
-
-    if(icon_path == NULL)
-        return NULL;
-    /* GNOME's StatusNotifier/AppIndicator host runs out-of-process and does
-     * not inherit our working directory.  A relative theme path therefore
-     * resolves to the host's CWD and produces its missing-icon ellipsis. */
-    if(realpath(icon_path, resolved) == NULL)
-        return NULL;
-    slash = strrchr(resolved, '/');
-    if(slash == NULL)
-        return NULL;
-    len = (size_t)(slash - resolved);
-    if(len == 0 || len >= sizeof(directory))
-        return NULL;
-    memcpy(directory, resolved, len);
-    directory[len] = '\0';
-    return directory;
-}
-#endif
 
 #if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
 static void
@@ -518,11 +490,9 @@ DesktopTrayThreadMain(void *arg)
     app_indicator_set_status(TrayIndicator, APP_INDICATOR_STATUS_ACTIVE);
     {
         const char *icon_path = GetDesktopTrayIconPath();
-        const char *theme_path = GetDesktopTrayIconThemePath(icon_path);
-
-        if(theme_path != NULL)
-            app_indicator_set_icon_theme_path(TrayIndicator, theme_path);
-        app_indicator_set_icon_full(TrayIndicator, TrayIconName, TrayTitle);
+        app_indicator_set_icon_full(TrayIndicator,
+                                    icon_path != NULL ? icon_path : TrayIconName,
+                                    TrayTitle);
     }
 
     menu = CreateDesktopTrayMenu();
