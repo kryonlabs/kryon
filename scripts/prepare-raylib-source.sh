@@ -15,8 +15,12 @@ if [ -f "$sdl_core" ] && ! grep -q 'Kryon: avoid X11 Font typedef collision' "$s
     perl -0pi -e 's@(#elif defined\(USING_SDL2_PROJECT\)\n\s*#include "SDL2/SDL\.h"\n)(\s*#include "SDL2/SDL_syswm\.h"\s*// Required to get window handlers)@$1    // Kryon: avoid X11 Font typedef collision when SDL_syswm.h pulls X11 headers.\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #define Font X11Font\n    #endif\n$2\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #undef Font\n    #endif@' "$sdl_core"
 fi
 
-if [ -f "$sdl_core" ] && ! grep -q 'Kryon: log the missing SDL2 scale query once' "$sdl_core"; then
-    perl -0pi -e 's@(// TODO: Implement the window scale factor calculation manually\n\s*)TRACELOG\(LOG_WARNING, "GetWindowScaleDPI\(\) not implemented on target platform"\);@$1\{   // Kryon: log the missing SDL2 scale query once, not every frame\n        static bool scale_warned = false;\n        if (!scale_warned)\n        \{\n            TRACELOG(LOG_WARNING, "GetWindowScaleDPI() not implemented on target platform");\n            scale_warned = true;\n        \}\n    \}@' "$sdl_core"
+if [ -f "$sdl_core" ] && ! grep -q 'Kryon: derive SDL2 scale from drawable pixels' "$sdl_core"; then
+    perl -0pi -e 's@    // NOTE: SDL_GetWindowDisplayScale not available on SDL2\n    // TODO: Implement the window scale factor calculation manually\n    TRACELOG\(LOG_WARNING, "GetWindowScaleDPI\(\) not implemented on target platform"\);@    // Kryon: derive SDL2 scale from drawable pixels instead of guessing from monitor DPI.\n    int window_width = 0, window_height = 0;\n    int drawable_width = 0, drawable_height = 0;\n    SDL_GetWindowSize(platform.window, \&window_width, \&window_height);\n    SDL_GL_GetDrawableSize(platform.window, \&drawable_width, \&drawable_height);\n    if (window_width > 0 \&\& window_height > 0 \&\&\n        drawable_width > 0 \&\& drawable_height > 0)\n    \{\n        scale.x = (float)drawable_width/(float)window_width;\n        scale.y = (float)drawable_height/(float)window_height;\n    \}@' "$sdl_core"
+fi
+
+if [ -f "$sdl_core" ] && ! grep -q 'Kryon: preserve the event consumed while waiting' "$sdl_core"; then
+    perl -0pi -e 's@        SDL_WaitEvent\(NULL\);\n        CORE\.Time\.previous = GetTime\(\);@        // Kryon: SDL_WaitEvent consumes an event. Push it back so the poll loop\n        // below delivers the key, text, mouse, or window event instead of losing it.\n        SDL_Event waited = \{ 0 \};\n        if (SDL_WaitEvent(\&waited) > 0) SDL_PushEvent(\&waited);\n        CORE.Time.previous = GetTime();@' "$sdl_core"
 fi
 
 if [ -f "$audio" ] && ! grep -q 'AUDIO_DEVICE_PERIODS' "$audio"; then

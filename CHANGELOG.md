@@ -19,6 +19,8 @@
 ### Fixed
 
 - Text entry stays responsive when an app mixes its regular UI font with emoji or icon fonts, even when the fallback is registered first.
+- Typing and redrawing text no longer repeatedly scans the full font atlas for every glyph.
+- UI text uses exact-size font rasters, and idle windows can sleep until the next input event.
 
 ## v0.1.8 - 2026-08-17
 

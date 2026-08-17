@@ -180,6 +180,8 @@ func WindowShouldClose() bool { return bool(C.WindowShouldClose()) }
 
 func SetConfigFlags(flags uint)   { C.SetConfigFlags(C.uint(flags)) }
 func SetTargetFPS(fps int32)      { C.SetTargetFPS(C.int(fps)) }
+func EnableEventWaiting()         { C.EnableEventWaiting() }
+func DisableEventWaiting()        { C.DisableEventWaiting() }
 func SetExitKey(key int32)        { C.SetExitKey(C.int(key)) }
 func SetWindowMinSize(w, h int32) { C.SetWindowMinSize(C.int(w), C.int(h)) }
 func SetWindowFocused()           { C.SetWindowFocused() }

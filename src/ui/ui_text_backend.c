@@ -1,5 +1,48 @@
 #include "ui_text_backend.h"
 
+#define UI_GLYPH_INDEX_CACHE_SIZE 256
+
+typedef struct UIGlyphIndexCacheEntry {
+    const GlyphInfo *glyphs;
+    unsigned int texture_id;
+    int glyph_count;
+    int codepoint;
+    int index;
+} UIGlyphIndexCacheEntry;
+
+static UIGlyphIndexCacheEntry g_glyph_index_cache[UI_GLYPH_INDEX_CACHE_SIZE];
+
+static int
+ui_font_glyph_index(Font font, int codepoint)
+{
+    unsigned int slot;
+    UIGlyphIndexCacheEntry *cached;
+    int fallback = 0;
+
+    if(!UIFontReady(font))
+        return 0;
+
+    slot = ((unsigned int)codepoint * 2654435761u ^ font.texture.id) %
+           UI_GLYPH_INDEX_CACHE_SIZE;
+    cached = &g_glyph_index_cache[slot];
+    if(cached->glyphs == font.glyphs && cached->texture_id == font.texture.id &&
+       cached->glyph_count == font.glyphCount && cached->codepoint == codepoint)
+        return cached->index;
+
+    for(int i = 0; i < font.glyphCount; i++) {
+        if(font.glyphs[i].value == '?')
+            fallback = i;
+        if(font.glyphs[i].value == codepoint) {
+            fallback = i;
+            break;
+        }
+    }
+
+    *cached = (UIGlyphIndexCacheEntry){font.glyphs, font.texture.id,
+                                      font.glyphCount, codepoint, fallback};
+    return fallback;
+}
+
 /*
  * Backend-neutral implementation of the text-backend seam (declared in
  * ui_text_backend.h). Every function forwards to a public-surface accessor
@@ -33,13 +76,17 @@ UIFontGlyphPadding(Font font)
 GlyphInfo
 UIFontGlyph(Font font, int codepoint)
 {
-    return GetGlyphInfo(font, codepoint);
+    if(!UIFontReady(font))
+        return (GlyphInfo){0};
+    return font.glyphs[ui_font_glyph_index(font, codepoint)];
 }
 
 Rectangle
 UIFontAtlasRec(Font font, int codepoint)
 {
-    return GetGlyphAtlasRec(font, codepoint);
+    if(!UIFontReady(font))
+        return (Rectangle){0};
+    return font.recs[ui_font_glyph_index(font, codepoint)];
 }
 
 Texture2D
@@ -51,7 +98,9 @@ UIFontAtlasTexture(Font font)
 int
 UIFontAdvance(Font font, int codepoint)
 {
-    return GetGlyphInfo(font, codepoint).advanceX;
+    if(!UIFontReady(font))
+        return 0;
+    return font.glyphs[ui_font_glyph_index(font, codepoint)].advanceX;
 }
 
 int
@@ -62,7 +111,7 @@ UIFontHasGlyphValue(Font font, int codepoint)
     if(!UIFontReady(font))
         return 0;
 
-    glyph = GetGlyphInfo(font, codepoint);
+    glyph = font.glyphs[ui_font_glyph_index(font, codepoint)];
     return glyph.value == codepoint;
 }
 

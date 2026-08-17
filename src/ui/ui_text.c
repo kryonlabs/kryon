@@ -486,14 +486,9 @@ EnsureUIDefaultFont(void)
 
     g_ui_default_font_attempted = 1;
     for(int i = 0; paths[i] != NULL; i++) {
-        Font font = LoadUIFontAsset(paths[i], UI_TEXT_BASE_SIZE);
-
-        if(!font_valid(font))
-            continue;
-        if(RegisterUIFont(UI_FONT_DEFAULT_NAME, font) &&
+        if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
            UseUIFont(UI_FONT_DEFAULT_NAME))
             return 1;
-        UnloadFont(font);
     }
 
     return 0;
