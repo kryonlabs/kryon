@@ -21,7 +21,7 @@ jobs:
         include:
           - { os: ubuntu-latest, cc: cc, suffix: linux-x86_64, build_dir: build/linux-x86_64 }
           - { os: ubuntu-latest, cc: x86_64-w64-mingw32-gcc, suffix: windows-x86_64, build_dir: build/linux-x86_64 }
-          - { os: macos-latest, cc: cc, suffix: macos-arm64, build_dir: build/macos-arm64 }
+          - { os: macos-latest, cc: /usr/bin/clang, suffix: macos-arm64, build_dir: build/macos-arm64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
           target="${{ matrix.build_dir }}/bin/krb-run"
           if [ "${{ runner.os }}" = macOS ]; then
             env -u MAKE -u MAKEFLAGS -u MFLAGS -u MAKEFILES \
-              gmake -f ./Makefile "$target" CC=${{ matrix.cc }} \
+              CC=${{ matrix.cc }} gmake -e -f ./Makefile "$target" \
               KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
           else
             make "$target" CC=${{ matrix.cc }} \
