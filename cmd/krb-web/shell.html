@@ -3,14 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>krb-web</title>
+<title>krb player</title>
 <style>
-html, body { margin: 0; height: 100%; background: #101014;
-             display: flex; align-items: center; justify-content: center; }
-canvas { image-rendering: pixelated; }
+html, body { margin: 0; height: 100%; background: #101014; color: #f0f0f2;
+             font: 14px system-ui, sans-serif; display: flex;
+             flex-direction: column; align-items: center;
+             justify-content: center; gap: 12px; }
+canvas { image-rendering: pixelated; max-width: 96vw; max-height: 80vh; }
+#drop { border: 1px dashed #8a8a93; border-radius: 8px; padding: 14px 22px;
+        cursor: pointer; }
+#drop.hot { border-color: #f0f0f2; background: #1c1c22; }
 </style>
 </head>
 <body>
+<div id="drop">drop a .krb cartridge here, or click to pick one</div>
+<input id="file" type="file" accept=".krb" hidden>
 <canvas id="krb" width="800" height="600"></canvas>
 <script>
 var Module = {
@@ -18,9 +25,42 @@ var Module = {
 };
 (function() {
     const canvas = Module.canvas;
+    const drop = document.getElementById('drop');
+    const input = document.getElementById('file');
+
+    function start(file) {
+        file.arrayBuffer().then(function(buf) {
+            Module.FS.writeFile('/app.krb', new Uint8Array(buf));
+            drop.textContent = file.name + ' — drop another .krb to switch';
+            Module._krb_web_start();
+        });
+    }
+    drop.addEventListener('click', function() { input.click(); });
+    input.addEventListener('change', function() {
+        if (input.files.length > 0)
+            start(input.files[0]);
+    });
+    ['dragover', 'dragenter'].forEach(function(ev) {
+        drop.addEventListener(ev, function(e) {
+            e.preventDefault();
+            drop.classList.add('hot');
+        });
+    });
+    ['dragleave', 'drop'].forEach(function(ev) {
+        drop.addEventListener(ev, function(e) {
+            e.preventDefault();
+            drop.classList.remove('hot');
+        });
+    });
+    drop.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (e.dataTransfer.files.length > 0)
+            start(e.dataTransfer.files[0]);
+    });
     function pos(e) {
         const r = canvas.getBoundingClientRect();
-        return [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
+        return [Math.round((e.clientX - r.left) * canvas.width / r.width),
+                Math.round((e.clientY - r.top) * canvas.height / r.height)];
     }
     canvas.addEventListener('mousemove', function(e) {
         if (Module._krb_web_mouse) {

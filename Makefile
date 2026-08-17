@@ -216,19 +216,15 @@ $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
 # blitted to ImageData (pixel-identical to the native headless renderer).
 # Needs emcc on PATH (e.g. `source ~/emsdk/emsdk_env.sh`).
-krb-web: $(K2B) $(KRY_SW_SRCS) $(KRY_SW_HDRS) cmd/krb-web/main.c cmd/krb-web/shell.html | $(KRB_WEB_DIR)
-	$(K2B) --root examples -o $(KRB_WEB_DIR) $(KRB_WEB_KRY)
-	cp $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb $(KRB_WEB_DIR)/app.krb
-	rm -f $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb.c \
-	      $(KRB_WEB_DIR)/$(notdir $(basename $(KRB_WEB_KRY))).krb.h
+krb-web: $(KRY_SW_SRCS) $(KRY_SW_HDRS) cmd/krb-web/main.c cmd/krb-web/shell.html | $(KRB_WEB_DIR)
 	$(EMCC) -Wall -Wextra -Os -Iinclude \
-		-sEXPORTED_FUNCTIONS=_krb_web_mouse,_krb_web_button,_main \
+		-sEXPORTED_FUNCTIONS=_krb_web_mouse,_krb_web_button,_krb_web_start,_main \
+		-sEXPORTED_RUNTIME_METHODS=FS \
 		-sALLOW_MEMORY_GROWTH=1 \
 		--shell-file cmd/krb-web/shell.html \
-		--preload-file $(KRB_WEB_DIR)/app.krb@/app.krb \
 		-o $(KRB_WEB) \
 		cmd/krb-web/main.c $(KRY_SW_SRCS)
-	@echo "krb-web: serve $(KRB_WEB_DIR) (e.g. python3 -m http.server -d $(KRB_WEB_DIR))"
+	@echo "krb-web player: serve $(KRB_WEB_DIR) (e.g. python3 -m http.server -d $(KRB_WEB_DIR))"
 
 $(KRB_WEB_DIR):
 	mkdir -p $@

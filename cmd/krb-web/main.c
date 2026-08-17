@@ -23,6 +23,7 @@
 
 static KrbImage g_img;
 static KrySw g_sw;
+static int g_running;
 
 #ifdef KRB_WEB_ONESHOT
 static int g_frames;
@@ -54,15 +55,27 @@ frame(void)
 int
 main(void)
 {
+    /* The player waits for a cartridge: the shell writes the picked or
+     * dropped file to KRB_WEB_CARTRIDGE in MEMFS and calls krb_web_start. */
+    return 0;
+}
+
+int
+krb_web_start(void)
+{
     memset(&g_img, 0, sizeof(g_img));
+    if(g_sw.pixels != NULL)
+        KrySwFree(&g_sw);
     if(KrbLoadFile(&g_img, KRB_WEB_CARTRIDGE) != 0) {
-        fprintf(stderr, "krb-web: load failed: %s\n", KRB_WEB_CARTRIDGE);
+        fprintf(stderr, "krb-player: load failed: %s\n", KRB_WEB_CARTRIDGE);
         return 1;
     }
     if(KrySwInit(&g_sw, NULL, 800, 600) != 0)
         return 1;
     KryBackendSelect(KrySwBackend(&g_sw));
-    emscripten_set_main_loop(frame, 0, 1);
+    if(!g_running)
+        emscripten_set_main_loop(frame, 0, 1);
+    g_running = 1;
     return 0;
 }
 
