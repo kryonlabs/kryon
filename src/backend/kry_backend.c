@@ -122,6 +122,12 @@ null_texture(const char *asset_path, int x, int y, int w, int h,
     (void)fit;
 }
 
+static int
+null_wheel(void)
+{
+    return 0;
+}
+
 static void
 null_circle(int cx, int cy, int r, unsigned color)
 {
@@ -160,6 +166,7 @@ const KryBackend KryBackendNull = {
     null_circle,
     null_ring,
     NULL, /* texture_rgba: not expressible on a stub backend */
+    null_wheel,
 };
 
 static const KryBackend *g_backend = &KryBackendNull;

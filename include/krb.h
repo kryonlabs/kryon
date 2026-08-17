@@ -30,7 +30,9 @@ enum {
     KRB_NODE_TOGGLE = 8,
     KRB_NODE_CONTROL = 9,
     KRB_NODE_CIRCLE = 10, /* x,y = center; w = radius */
-    KRB_NODE_RING = 11    /* x,y = center; w = outer radius; h = inner */
+    KRB_NODE_RING = 11,   /* x,y = center; w = outer radius; h = inner */
+    KRB_NODE_SCROLL = 12  /* bounds = viewport; font_size = content height;
+                           * name_off = mount path of the pixel offset */
 };
 
 /* Interactive control kinds, carried in a KrbControl record (controls[] table)

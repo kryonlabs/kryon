@@ -131,6 +131,12 @@ r_mouse_pressed(int button)
 }
 
 static int
+r_wheel(void)
+{
+    return g_rec->inner->wheel != NULL ? g_rec->inner->wheel() : 0;
+}
+
+static int
 r_width(void)
 {
     return g_rec->inner->width();
@@ -192,6 +198,7 @@ KryBackendRecBackend(KryBackendRec *rec, FILE *log, const KryBackend *inner)
     rec->backend.circle = r_circle;
     rec->backend.ring = r_ring;
     rec->backend.texture_rgba = r_texture_rgba;
+    rec->backend.wheel = r_wheel;
     g_rec = rec;
     return &rec->backend;
 }

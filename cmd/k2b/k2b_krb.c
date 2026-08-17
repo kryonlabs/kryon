@@ -128,6 +128,7 @@ typedef struct KrbBuild {
     KrbAsset assets[24];
     int asset_count;
     char asset_root[1024];
+    int scroll_open; /* open SCROLL node index, -1 none */
 } KrbBuild;
 
 
@@ -1064,6 +1065,15 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
         }
         if(try_widget(b, st->text)) {
             if(b->node_count > before &&
+               b->nodes[b->node_count - 1].type == KRB_NODE_SCROLL) {
+                b->scroll_open = b->node_count - 1;
+            } else if(b->node_count > before && b->scroll_open >= 0) {
+                int k;
+
+                for(k = before; k < b->node_count; k++)
+                    b->nodes[k].parent = b->scroll_open;
+            }
+            if(b->node_count > before &&
                b->nodes[b->node_count - 1].type == KRB_NODE_PICTURE)
                 embed_asset(b, b->nodes[b->node_count - 1].text);
             /* In raw .kry the button call and its 'if' are one statement
@@ -1643,6 +1653,43 @@ parse_spinbox(KrbBuild *b, const char *call)
                             atoi(skip_ws(parts[3])), atoi(skip_ws(parts[4])), "");
 }
 
+/* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
+ * range; EndScroll() closes it. Widgets between get parent = the scroll. */
+static int
+parse_scroll(KrbBuild *b, const char *call)
+{
+    char parts[8][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    char name[32];
+    char path[KIR_NAME_MAX];
+    KrbBuildNode *n;
+    int scaled;
+    int count;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 6)
+        return 0;
+    strip_amp(parts[5], path, sizeof(path));
+    snprintf(name, sizeof(name), "scroll%d", b->node_count);
+    n = add_node(b, KRB_NODE_SCROLL, name);
+    if(n == NULL)
+        return 0;
+    snprintf(n->text, sizeof(n->text), "%s", path); /* name_off comes from node name interning; we need the mount path as name_off instead */
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[3], &n->h, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_H;
+    n->font_size = atoi(skip_ws(parts[4])); /* content height */
+    snprintf(n->name, sizeof(n->name), "%s", path); /* mount path */
+    return 1;
+}
+
 static int
 try_widget(KrbBuild *b, const char *raw)
 {
@@ -1663,6 +1710,12 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_text(b, call);
     if(starts_ident(call, "Rect"))
         return parse_rect(b, call);
+    if(starts_ident(call, "Scroll"))
+        return parse_scroll(b, call);
+    if(starts_ident(call, "EndScroll")) {
+        b->scroll_open = 0;
+        return 1;
+    }
     if(starts_ident(call, "DrawCircleV"))
         return parse_circle(b, call);
     if(starts_ident(call, "DrawRing"))
@@ -2248,6 +2301,7 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     mkdir_parent(kpath);
 
     memset(&build, 0, sizeof(build));
+    build.scroll_open = -1;
     build.strings[0] = '\0';
     build.string_used = 1;
     snprintf(build.asset_root, sizeof(build.asset_root), "%s",

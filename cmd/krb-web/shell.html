@@ -62,6 +62,11 @@ var Module = {
         return [Math.round((e.clientX - r.left) * canvas.width / r.width),
                 Math.round((e.clientY - r.top) * canvas.height / r.height)];
     }
+    canvas.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        if (Module._krb_web_wheel)
+            Module._krb_web_wheel(Math.round(-e.deltaY / 2));
+    }, { passive: false });
     canvas.addEventListener('mousemove', function(e) {
         if (Module._krb_web_mouse) {
             const p = pos(e);

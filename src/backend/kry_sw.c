@@ -131,6 +131,12 @@ KrySwButtonDown(KrySw *sw, int button)
 }
 
 void
+KrySwWheel(KrySw *sw, int dy)
+{
+    sw->wheel += dy;
+}
+
+void
 KrySwButtonUp(KrySw *sw, int button)
 {
     if(button < 0 || button >= 8)
@@ -576,6 +582,19 @@ b_mouse_pressed(int button)
 }
 
 static int
+b_wheel(void)
+{
+    if(g_sw == NULL)
+        return 0;
+    {
+        int d = g_sw->wheel;
+
+        g_sw->wheel = 0;
+        return d;
+    }
+}
+
+static int
 b_width(void)
 {
     return g_sw != NULL ? g_sw->w : 0;
@@ -721,5 +740,6 @@ KrySwBackend(KrySw *sw)
     sw->backend.circle = b_circle;
     sw->backend.ring = b_ring;
     sw->backend.texture_rgba = b_texture_rgba;
+    sw->backend.wheel = b_wheel;
     return &sw->backend;
 }

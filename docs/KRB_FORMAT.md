@@ -90,6 +90,7 @@ offset `0` MUST be `0x00` (the empty string lives at offset 0).
 | 9 | CONTROL | bounds = widget bounds | range widget; `bind_slot` indexes controls[] |
 | 10 | CIRCLE | x,y = center; w = radius | filled circle |
 | 11 | RING | x,y = center; w = outer, h = inner radius | annulus |
+| 12 | SCROLL | bounds = viewport; `font_size` = content height; `name_off` = mount path of pixel offset | container: children (nodes with `parent` = this index) draw translated by `-offset` and clipped to the viewport; wheel over the viewport adjusts the mounted offset (clamped to `[0, content_h - h]`) |
 
 ### 4.2 Flags
 

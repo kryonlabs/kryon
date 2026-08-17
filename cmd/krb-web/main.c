@@ -95,6 +95,12 @@ krb_web_mouse(int x, int y)
 }
 
 void
+krb_web_wheel(int dy)
+{
+    KrySwWheel(&g_sw, dy);
+}
+
+void
 krb_web_button(int button, int down)
 {
     if(down)

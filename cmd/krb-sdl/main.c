@@ -104,6 +104,8 @@ main(int argc, char **argv)
                 KrySwButtonDown(&sw, 0);
             else if(ev.type == SDL_MOUSEBUTTONUP)
                 KrySwButtonUp(&sw, 0);
+            else if(ev.type == SDL_MOUSEWHEEL)
+                KrySwWheel(&sw, ev.wheel.y * 50);
         }
         if(!running)
             break;

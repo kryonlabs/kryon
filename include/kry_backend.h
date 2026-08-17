@@ -48,6 +48,9 @@ typedef struct KryBackend {
      * the given destination rect. Optional like circle/ring. */
     void (*texture_rgba)(const unsigned char *rgba, int sw, int sh,
                          int x, int y, int dw, int dh, unsigned tint);
+    /* Mouse-wheel delta (pixels) accumulated since the last poll; positive
+     * scrolls up. Optional. */
+    int (*wheel)(void);
 } KryBackend;
 
 extern const KryBackend KryBackendDraw;

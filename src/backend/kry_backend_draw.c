@@ -169,6 +169,12 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
                    KryPictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
 }
 
+static int
+draw_wheel(void)
+{
+    return (int)(GetMouseWheelMove() * 50.0f);
+}
+
 static void
 draw_circle(int cx, int cy, int r, unsigned color)
 {
@@ -200,6 +206,8 @@ const KryBackend KryBackendDraw = {
     draw_texture,
     draw_circle,
     draw_ring,
+    NULL, /* texture_rgba: host textures load through draw_texture */
+    draw_wheel,
 };
 
 static void

@@ -619,6 +619,41 @@ ctrl_spinbox(KrbImage *img, const KryBackend *b, const KrbControl *c,
     }
 }
 
+/* Apply ancestor SCROLL containers: translate the origin by each
+ * container's mounted offset and clip to its viewport. Returns the number
+ * of clips pushed (pop that many after drawing). */
+static int
+apply_scroll(KrbImage *img, const KryBackend *b, const KrbNode *n,
+             int origin_x, int *y)
+{
+    int depth = 0;
+    int guard = 0;
+
+    while(n->parent >= 0 && guard++ < 32) {
+        KrbNode sc;
+
+        if(KrbReadNode(img, (unsigned)n->parent, &sc) != 0)
+            break;
+        if(sc.type == KRB_NODE_SCROLL) {
+            int off = 0;
+            int maxoff = sc.font_size - sc.h;
+
+            (void)origin_x;
+            KrbReadI32(img, KrbString(img, sc.name_off), &off);
+            if(off < 0)
+                off = 0;
+            if(maxoff > 0 && off > maxoff)
+                off = maxoff;
+            if(b->clip_push != NULL)
+                b->clip_push(sc.x, sc.y, sc.w, sc.h);
+            depth++;
+            *y -= off;
+        }
+        n = &sc;
+    }
+    return depth;
+}
+
 static void
 draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
           int origin_x, int origin_y)
@@ -706,6 +741,34 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
                 b->texture(text, x, y, w, h, color, n->style);
         }
         break;
+    case KRB_NODE_SCROLL: {
+        /* The container itself: border + wheel-driven offset. Children are
+         * transformed in draw_tree / OP_DRAW_NODE via apply_scroll. */
+        int off = 0;
+        int mx = 0;
+        int my = 0;
+        int maxoff = n->font_size - n->h;
+        unsigned border = b->theme_color(KRY_THEME_ICON);
+
+        b->rect(x, y, w, h > 0 ? h : 1, border);
+        b->mouse(&mx, &my);
+        if(b->wheel != NULL && my >= y && my < y + h && mx >= x &&
+           mx < x + w) {
+            int dy = b->wheel();
+            int nov;
+
+            if(KrbReadI32(img, KrbString(img, n->name_off), &off) != 0)
+                off = 0;
+            nov = off - dy;
+            if(nov < 0)
+                nov = 0;
+            if(maxoff > 0 && nov > maxoff)
+                nov = maxoff;
+            if(nov != off)
+                KrbWriteI32(img, KrbString(img, n->name_off), nov);
+        }
+        break;
+    }
     case KRB_NODE_CIRCLE:
         if(b->circle != NULL && w > 0)
             b->circle(x, y, w, color);
@@ -815,7 +878,14 @@ draw_tree(KrbImage *img, int x, int y, int w, int h)
             node.h = (int16_t)h;
             node.flags &= (unsigned char)~(KRB_FLAG_SCALE_W | KRB_FLAG_SCALE_H);
         }
-        draw_node(img, b, &node, x, y);
+        {
+            int oy = y;
+            int clips = apply_scroll(img, b, &node, x, &oy);
+
+            draw_node(img, b, &node, x, oy);
+            while(clips-- > 0)
+                b->clip_pop();
+        }
     }
 }
 
