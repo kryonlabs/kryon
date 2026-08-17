@@ -32,9 +32,19 @@ const (
 	UIText48 = 48
 )
 
+type ThemeStyle int32
+
+const (
+	ThemeStyleSystem   ThemeStyle = C.THEME_STYLE_SYSTEM
+	ThemeStyleRetro    ThemeStyle = C.THEME_STYLE_RETRO
+	ThemeStyleMaterial ThemeStyle = C.THEME_STYLE_MATERIAL
+)
+
 // ---------------------------------------------------------------------------
 // Theme Functions
 // ---------------------------------------------------------------------------
+
+func SetThemeStyle(style ThemeStyle) { C.SetThemeStyle(C.ThemeStyle(style)) }
 
 // SetCurrentTheme sets the theme by ID and dark mode
 func SetCurrentTheme(themeID int32, darkMode bool) {
