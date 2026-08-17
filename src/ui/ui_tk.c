@@ -1238,8 +1238,8 @@ DrawUITableView(TableViewProps table)
         for(int prev = 0; prev < c; prev++)
             x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
         Rectangle head = {(float)x, table.bounds.y, (float)col_w, (float)header_h};
-        DrawRectangleRec(head, c_button);
-        DrawRectangleLinesEx(head, 1.0f, c_button_hover);
+        DrawRectangleRec(head, DarkenUIColor(c_bg, 10));
+        DrawRectangleLinesEx(head, 1.0f, DarkenUIColor(c_bg, 28));
         DrawUIText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
                    (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, c_text);
         if(ui_clicked(head) && table.sort_column != NULL) {
@@ -1256,7 +1256,7 @@ DrawUITableView(TableViewProps table)
                          table.bounds.width, (float)row_h};
         int hot = ui_hot(row);
         if(table.selected_row != NULL && *table.selected_row == r)
-            DrawRectangleRec(row, c_button);
+            DrawRectangleRec(row, DarkenUIColor(c_bg, 18));
         else if(hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
