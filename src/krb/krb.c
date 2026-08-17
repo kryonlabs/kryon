@@ -778,11 +778,17 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         ty = y + (h - font) / 2;
         b->text(text, tx, ty, font, label_color);
         b->mouse(&mx, &my);
-        if(n->bind_slot != 0xffff && n->bind_slot < KRB_BIND_MAX &&
-           img->binds[n->bind_slot] != NULL &&
-           b->mouse_pressed(KRY_MOUSE_LEFT) &&
-           mx >= x && my >= y && mx < x + w && my < y + h)
-            img->binds[n->bind_slot](img->bind_ud[n->bind_slot]);
+        if(b->mouse_pressed(KRY_MOUSE_LEFT) &&
+           mx >= x && my >= y && mx < x + w && my < y + h) {
+            if(n->flags & KRB_FLAG_NAV) {
+                /* cartridge-owned navigation: write the screen id */
+                KrbWriteI32(img, KrbString(img, n->name_off),
+                            (int)n->font_size);
+            } else if(n->bind_slot != 0xffff && n->bind_slot < KRB_BIND_MAX &&
+                      img->binds[n->bind_slot] != NULL) {
+                img->binds[n->bind_slot](img->bind_ud[n->bind_slot]);
+            }
+        }
         break;
     }
     case KRB_NODE_PICTURE:
@@ -813,7 +819,12 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         int maxoff = n->font_size - n->h;
         unsigned border = b->theme_color(KRY_THEME_ICON);
 
-        b->rect(x, y, w, h > 0 ? h : 1, border);
+        if(w > 0 && h > 0) {
+            b->rect(x, y, w, 1, border);
+            b->rect(x, y + h - 1, w, 1, border);
+            b->rect(x, y, 1, h, border);
+            b->rect(x + w - 1, y, 1, h, border);
+        }
         b->mouse(&mx, &my);
         if(b->wheel != NULL && my >= y && my < y + h && mx >= x &&
            mx < x + w) {

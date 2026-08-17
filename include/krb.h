@@ -49,6 +49,8 @@ enum {
 };
 
 enum {
+    KRB_FLAG_NAV = 1 << 6, /* BUTTON: on press write `style` to the state
+                            * path in name_off instead of calling an import */
     KRB_FLAG_SCALE_X = 1 << 2,
     KRB_FLAG_SCALE_Y = 1 << 3,
     KRB_FLAG_SCALE_W = 1 << 4,

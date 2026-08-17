@@ -1773,6 +1773,48 @@ parse_dropdown(KrbBuild *b, const char *call)
     return 1;
 }
 
+/* NavButton(label, x, y, w, h, &state.screen, id) -> BUTTON with the
+ * NAV flag: on press the runtime writes id to the screen state path. */
+static int
+parse_navbutton(KrbBuild *b, const char *call)
+{
+    char parts[8][KIR_TEXT_MAX];
+    const char *args = strchr(call, '(');
+    char path[KIR_NAME_MAX];
+    char name[32];
+    KrbBuildNode *n;
+    int scaled;
+    int count;
+
+    if(args == NULL)
+        return 0;
+    count = split_args(args + 1, parts, 8);
+    if(count < 7)
+        return 0;
+    strip_amp(parts[5], path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    snprintf(name, sizeof(name), "nav%d", b->node_count);
+    n = add_node(b, KRB_NODE_BUTTON, name);
+    if(n == NULL)
+        return 0;
+    extract_string(parts[0], n->text, sizeof(n->text));
+    snprintf(n->name, sizeof(n->name), "%s", path);
+    n->flags |= KRB_FLAG_NAV;
+    if(parse_coord(parts[1], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[2], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[3], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(parts[4], &n->h, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_H;
+    n->font_size = (unsigned short)atoi(skip_ws(parts[6]));
+    n->bind_slot = -1;
+    n->color = 0x80000004u;
+    return 1;
+}
+
 static int
 parse_textfield(KrbBuild *b, const char *call)
 {
@@ -1875,6 +1917,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_textfield(b, call);
     if(starts_ident(call, "Dropdown"))
         return parse_dropdown(b, call);
+    if(starts_ident(call, "NavButton"))
+        return parse_navbutton(b, call);
     if(starts_ident(call, "EndScroll")) {
         b->scroll_open = 0;
         return 1;
