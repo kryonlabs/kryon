@@ -42,7 +42,7 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
         keysDown: {}, keysPressed: [], keysReleased: [], chars: [],
         mouseX: 0, mouseY: 0, mouseDeltaX: 0, mouseDeltaY: 0,
         buttonsDown: {}, buttonsPressed: [], buttonsReleased: [],
-        wheel: 0
+        wheel: 0, frames: 0, lastOp: 'boot'
     };
     var doc = (typeof document !== 'undefined') ? document : null;
     if (doc) {
@@ -139,6 +139,7 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
 {
     var K = globalThis.__kryCanvas;
     var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    K.lastOp = 'ctx' + op;
     if (!ctx) return;
     var col = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
     switch (op) {
@@ -833,6 +834,8 @@ void BeginDrawing(void)
 void KryonRaylibBackend_EndDrawing(void)
 {
     double now = emscripten_get_now() / 1000.0;
+
+    EM_ASM({ if (globalThis.__kryCanvas) globalThis.__kryCanvas.frames++; });
 
     g_frame_time = (float)(now - g_last_frame);
     if(g_frame_time <= 0.0f)
