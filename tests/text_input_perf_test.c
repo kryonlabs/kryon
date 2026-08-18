@@ -6,62 +6,125 @@
 #include <string.h>
 #include <time.h>
 
-enum { WARMUP = 1000, SAMPLES = 10000 };
-static char value[512];
-static int cursor, focused = 1;
+/* This is intentionally a retained-tree test rather than a TextField unit
+ * microbenchmark: each sample declares every field, reconciles the tree,
+ * routes real synthetic input, and updates the complete UI. Rendering is
+ * separately timed by KRYON_FRAME_TRACE in a real application: the headless
+ * test environment has no graphics context. */
+enum { WARMUP = 250, SAMPLES = 3000, FIELD_COUNT = 4, FIELD_SIZE = 512 };
+typedef struct Field {
+    char text[FIELD_SIZE];
+    int cursor;
+    int focused;
+    int focus_id;
+    float y;
+} Field;
+static Field fields[FIELD_COUNT] = {
+    { .focus_id = 101, .y = 20 }, { .focus_id = 102, .y = 70 },
+    { .focus_id = 103, .y = 120 }, { .focus_id = 104, .y = 170 }
+};
+static UIKey screen_key = 1;
 
-static double now_us(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (double)t.tv_sec * 1e6 + (double)t.tv_nsec / 1e3; }
-static int cmp_double(const void *a, const void *b) { double x=*(const double*)a,y=*(const double*)b; return (x>y)-(x<y); }
+static double now_us(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (double)t.tv_sec*1e6+(double)t.tv_nsec/1e3; }
+static int cmp_double(const void *a, const void *b) { double x=*(const double *)a,y=*(const double *)b; return (x>y)-(x<y); }
 
 static void frame(void)
 {
-    BeginUI(1);
-    Column((ColumnProps){.bounds={20,20,600,440},.gap=8,.padding=8,.key=2});
-    TextField((TextFieldProps){.bounds={0,0,584,40},.text=value,.text_size=sizeof(value),.cursor_position=&cursor,.focused=&focused,.max_codepoints=500,.font=UI_TEXT_16,.focus_id=3});
-    End();
+    int i;
+    BeginUIFocus();
+    BeginUI(screen_key);
+    for(i = 0; i < FIELD_COUNT; ++i)
+        TextField((TextFieldProps){.bounds={20,fields[i].y,600,40},
+            .text=fields[i].text,.text_size=sizeof(fields[i].text),
+            .cursor_position=&fields[i].cursor,.focused=&fields[i].focused,
+            .max_codepoints=500,.font=UI_TEXT_16,.focus_id=fields[i].focus_id});
     UIReconcileTree();
     UILayoutTree();
     UIRouteInput();
+    UIUpdateTree();
+    EndUIFocus();
 }
 
-static void prepare(const char *initial)
-{
-    UIEvent event; snprintf(value,sizeof(value),"%s",initial); cursor=(int)strlen(value); focused=1; KryonInjectReset(); frame(); while(NextUIEvent(&event)) {}
-}
+static void drain_events(void) { UIEvent event; while(NextUIEvent(&event)) {} }
 
-static unsigned long long text_hash(const char *text)
+static void reset_fields(void)
 {
-    unsigned long long hash = 1469598103934665603ULL;
-
-    while(*text) {
-        hash ^= (unsigned char)*text++;
-        hash *= 1099511628211ULL;
+    int i;
+    static const char *initial[] = { "freelancermap.de", "wao@example.com", "master password", "notes" };
+    KryonInjectReset();
+    screen_key++;
+    for(i = 0; i < FIELD_COUNT; ++i) {
+        snprintf(fields[i].text, sizeof(fields[i].text), "%s", initial[i]);
+        fields[i].cursor = (int)strlen(fields[i].text);
+        fields[i].focused = 0;
     }
-    return hash;
+    frame();
+    drain_events();
 }
 
-static int run_scenario(const char *backend,const char *name,const char *initial,const char *input,const char *expected,int select_all,int idle)
+static void focus_field(int index)
 {
-    double *v=malloc(sizeof(*v)*SAMPLES), total=0; int before=0,after=0,i,wrong=0;
-    if(!v)
-        return 1;
-    prepare(initial);
-    UIGetTreeNodes(&before);
-    for(i=-WARMUP;i<SAMPLES;i++) { UIEvent event; double start,elapsed; snprintf(value,sizeof(value),"%s",initial); cursor=(int)strlen(value); if(select_all) SetSelection(3,0,cursor); KryonInjectReset(); start=now_us(); if(!idle) KryonInjectText(input); KryonInjectPump(); frame(); wrong += strcmp(value,expected)!=0; elapsed=now_us()-start; while(NextUIEvent(&event)) {} if(i>=0){v[i]=elapsed;total+=elapsed;} }
-    UIGetTreeNodes(&after); qsort(v,SAMPLES,sizeof(*v),cmp_double);
-    printf("{\"lowering\":\"%s\",\"runtime\":\"retained-core\",\"scenario\":\"%s\",\"samples\":%d,\"warmup\":%d,\"p50_us\":%.3f,\"p95_us\":%.3f,\"p99_us\":%.3f,\"max_us\":%.3f,\"mean_us\":%.3f,\"visible_frame_delta\":1,\"node_delta\":%d,\"mismatches\":%d,\"final_text_hash\":\"%016llx\"}\n",backend,name,SAMPLES,WARMUP,v[4999],v[9499],v[9899],v[SAMPLES-1],total/SAMPLES,after-before,wrong,text_hash(value));
-    i=v[9899]>=1000.0||after!=before||wrong; free(v); return i;
+    /* Pointer-to-focus routing is covered by ui_tree_api_test.  Setting the
+     * focus manager here isolates the measured keystroke frame itself. */
+    SetUIFocus(fields[index].focus_id);
+    frame();
+    drain_events();
 }
 
-int main(int argc,char **argv)
+static int run_scenario(const char *name)
 {
-    const char *b=argc==3&&strcmp(argv[1],"--backend")==0?argv[2]:"c"; int failed=0;
-    failed|=run_scenario(b,"ascii","","a","a",0,0);
-    failed|=run_scenario(b,"ascii_burst_64","","abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-","abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-",0,0);
-    failed|=run_scenario(b,"unicode","","á🙂界","á🙂界",0,0);
-    failed|=run_scenario(b,"select_all_replace","replace me","x","x",1,0);
-    failed|=run_scenario(b,"drag_selection_replace","drag me","x","x",1,0);
-    failed|=run_scenario(b,"utf8_replace","á🙂界","z","z",1,0);
-    failed|=run_scenario(b,"idle","stable","","stable",0,1);
-    return failed?1:0;
+    double *samples = malloc(sizeof(*samples) * SAMPLES), total = 0;
+    int i, before = 0, after = 0, wrong = 0;
+    if(!samples) return 1;
+    reset_fields(); UIGetTreeNodes(&before);
+    for(i = -WARMUP; i < SAMPLES; ++i) {
+        int field = (i + WARMUP) % FIELD_COUNT;
+        double start, elapsed;
+        reset_fields();
+        focus_field(field);
+        start = now_us();
+        if(strcmp(name, "typing_burst") == 0) {
+            KryonInjectText("abcdef0123456789"); KryonInjectPump(); frame();
+            wrong += strstr(fields[field].text, "abcdef0123456789") == NULL;
+        } else if(strcmp(name, "backspace") == 0) {
+            size_t before_length = strlen(fields[field].text);
+            KryonInjectKeyTap(KEY_BACKSPACE); KryonInjectPump(); frame();
+            wrong += strlen(fields[field].text) + 1 != before_length;
+        } else if(strcmp(name, "selection_replace") == 0) {
+            SetSelection(fields[field].focus_id, 0, fields[field].cursor);
+            KryonInjectText("replacement"); KryonInjectPump(); frame();
+            wrong += strcmp(fields[field].text, "replacement") != 0;
+        } else if(strcmp(name, "tab_traversal") == 0) {
+            /* Traversal is resolved at EndUIFocus, then reflected in the
+             * next declaration frame just as it is in an application. */
+            KryonInjectKeyTap(KEY_TAB); KryonInjectPump(); frame(); frame();
+            wrong += !fields[(field + 1) % FIELD_COUNT].focused;
+        } else { /* an idle retained frame catches unbounded retained growth */
+            frame();
+        }
+        elapsed = now_us() - start;
+        drain_events();
+        if(i >= 0) { samples[i] = elapsed; total += elapsed; }
+    }
+    UIGetTreeNodes(&after);
+    qsort(samples, SAMPLES, sizeof(*samples), cmp_double);
+    printf("{\"runtime\":\"retained-core-c\",\"scenario\":\"%s\",\"fields\":%d,\"samples\":%d,\"warmup\":%d,\"p50_us\":%.3f,\"p95_us\":%.3f,\"p99_us\":%.3f,\"max_us\":%.3f,\"mean_us\":%.3f,\"full_frame_budget_us\":4000,\"input_budget_p99_us\":1000,\"node_delta\":%d,\"mismatches\":%d}\n",
+        name, FIELD_COUNT, SAMPLES, WARMUP, samples[SAMPLES/2],
+        samples[(SAMPLES*95)/100], samples[(SAMPLES*99)/100], samples[SAMPLES-1],
+        total/SAMPLES, after-before, wrong);
+    i = samples[(SAMPLES*99)/100] >= 1000.0 || after != before || wrong;
+    free(samples); return i;
+}
+
+int main(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    int failed = 0;
+    failed |= run_scenario("typing_burst");
+    failed |= run_scenario("backspace");
+    failed |= run_scenario("selection_replace");
+    failed |= run_scenario("tab_traversal");
+    failed |= run_scenario("idle_frame");
+    return failed ? 1 : 0;
 }

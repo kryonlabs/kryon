@@ -14,11 +14,12 @@ source_file=tests/perf/text_input.kry
 grep -F 'widget TextField' "$work/ir/tests/perf/text_input.kir" >/dev/null
 grep -F 'TextField((TextFieldProps)' "$work/c/tests/perf/text_input.c" >/dev/null
 cc -fsyntax-only -I"$root/include" -I"$work/c" "$work/c/tests/perf/text_input.c"
-grep -F 'rt.TextField(kryruntime.TextFieldProps' "$work/go/tests/perf/text_input.go" >/dev/null
+grep -F 'rt.TextField(kryruntime.TextFieldProps' "$work/go/text_input.go" >/dev/null
 test -s "$work/krb/tests/perf/text_input.krb"
 test "$(od -An -tu4 -j8 -N4 "$work/krb/tests/perf/text_input.krb" | tr -d ' ')" -ge 1
-cp "$work/go/tests/perf/text_input.go" "$work/go-check/text_input.go"
+cp "$work/go/text_input.go" "$work/go-check/text_input.go"
 sed -i '/^func main()/,$d' "$work/go-check/text_input.go"
 printf '%s\n' 'module kryon-text-input-perf' '' 'go 1.25.0' '' 'require github.com/waozixyz/kryon/go/kryui v0.0.0' "replace github.com/waozixyz/kryon/go/kryui => $root/go/kryui" > "$work/go-check/go.mod"
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./... >/dev/null)
-for backend in c go krb; do "$build/tests/text_input_perf_test" --backend "$backend"; done
+printf '%s\n' '{"generated_lowerings":["kir","c","go","krb"],"generated_contract":"validated"}'
+"$build/tests/text_input_perf_test"

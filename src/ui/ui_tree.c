@@ -1,5 +1,7 @@
 #include "ui_internal.h"
 #include "embedded_assets.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #define UI_TREE_MAX_DEPTH 128
 #define UI_NODE_HOVERED (1U << 28)
@@ -418,14 +420,37 @@ BeginUI(UIKey screen_key)
 void
 EndUI(void)
 {
+    static int trace_enabled = -1;
+    static unsigned long trace_frame;
+    double start = GetTime(), reconcile, layout, input, update, draw;
+
+    if(trace_enabled < 0)
+        trace_enabled = getenv("KRYON_FRAME_TRACE") != NULL;
     ui_tree_building = 0;
     ui_tree_stack_depth = 0;
     UIReconcileTree();
+    reconcile = GetTime();
     UILayoutTree();
+    layout = GetTime();
     UIRouteInput();
+    input = GetTime();
     UIUpdateTree();
+    update = GetTime();
     DrawUITree();
     DrawUIOverlays();
+    draw = GetTime();
+    trace_frame++;
+    /* Trace is deliberately sampled, plus every budget violation.  Writing a
+     * line per frame would itself perturb the latency measurement. */
+    if(trace_enabled && (trace_frame % 120 == 0 ||
+        (input - layout) * 1e6 >= 1000.0 || (draw - start) * 1e6 >= 4000.0)) {
+        fprintf(stderr,
+                "{\"kryon_frame\":true,\"frame\":%lu,\"nodes\":%d,\"reconcile_us\":%.1f,\"layout_us\":%.1f,\"input_us\":%.1f,\"update_us\":%.1f,\"draw_us\":%.1f,\"total_us\":%.1f}\n",
+                trace_frame, ui_committed_node_count, (reconcile-start)*1e6,
+                (layout-reconcile)*1e6, (input-layout)*1e6,
+                (update-input)*1e6, (draw-update)*1e6,
+                (draw-start)*1e6);
+    }
 }
 
 void

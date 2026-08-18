@@ -7,14 +7,23 @@ app "Text input performance contract" {
 }
 
 state {
-    value: [512] char = ""
-    cursor: int = 0
+    site: [512] char = ""
+    login: [512] char = ""
+    password: [512] char = ""
+    notes: [512] char = ""
+    site_cursor: int = 0
+    login_cursor: int = 0
+    password_cursor: int = 0
+    notes_cursor: int = 0
 }
 
 frame main {
     BeginUI(1)
     Column((ColumnProps){.bounds = {20,20,600,440},.gap = 8,.padding = 8,.key = 2})
-    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = value,.text_size = sizeof(value),.cursor_position = &cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 3,.secure = false})
+    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = site,.text_size = sizeof(site),.cursor_position = &site_cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 3,.secure = false})
+    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = login,.text_size = sizeof(login),.cursor_position = &login_cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 4,.secure = false})
+    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = password,.text_size = sizeof(password),.cursor_position = &password_cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 5,.secure = true})
+    TextField((TextFieldProps){.bounds = {0,0,584,40},.text = notes,.text_size = sizeof(notes),.cursor_position = &notes_cursor,.focused = NULL,.max_codepoints = 500,.font = UI_TEXT_16,.focus_id = 6,.secure = false})
     End()
     EndUI()
 }
