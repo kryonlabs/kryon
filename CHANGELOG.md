@@ -1,4 +1,16 @@
 # Changelog
+## v0.1.16 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.16
+- Ci: include kry_sw_png in the renderer KRY_SW_SRCS overrides
+- Build: link kry_sw_png into the KRB logic and asset tests
+- Build: link kry_sw_png into the KRB logic and asset tests
+- Tray+notify: SetDesktopTrayIcon emblem swap, action-capable notifications
+- Kry_sw: decode PNG assets for texture draws
+- Ui: build and test the secondary window paths
+
 ## v0.1.15 - 2026-08-18
 
 ### Changed
