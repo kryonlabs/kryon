@@ -502,3 +502,25 @@ func (r *runtime) TitleBar(title string, height int32) { TitleBar(title, height)
 func (r *runtime) BottomNav(props BottomNavProps) { BottomNav(props) }
 func (r *runtime) TopNav(props TopNavProps)       { TopNav(props) }
 func (r *runtime) Toolbar(props ToolbarProps)     { Toolbar(props) }
+
+// ---------------------------------------------------------------------------
+// Bare widget names. The DrawUI*-prefixed immediate-mode spellings mirror
+// the C API; these aliases give every widget its plain name so generated
+// code and new hand-written code never need the prefix. Existing callers
+// keep compiling — the prefixed names remain as the definitions.
+// ---------------------------------------------------------------------------
+
+var (
+	TextInputControl = DrawUITextInputControl
+	GenericButton    = DrawUIGenericButton
+	TextButton       = DrawUITextButton
+	ReadonlyTextBox  = DrawUIReadonlyTextBox
+	Dropdown         = DrawUIDropdown
+	DropdownEx       = DrawUIDropdownEx
+	LocaleDropdown   = DrawUILocaleDropdown
+	VerticalSlider   = DrawUIVerticalSlider
+	Checkbox         = DrawUICheckboxToggle
+	ToggleSwitch     = DrawUIToggleSwitch
+	Hyperlink        = DrawUIHref
+	IconBtn          = DrawUIIconButton
+)

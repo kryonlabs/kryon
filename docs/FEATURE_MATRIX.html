@@ -1,0 +1,239 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Kryon Feature Matrix</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#1a1a1a;background:#fafafa}
+h1{border-bottom:3px solid #333;padding-bottom:.4rem} h2{margin-top:2.2rem;border-bottom:1px solid #ccc;padding-bottom:.25rem}
+h3{margin-top:1.6rem;color:#333}
+table{border-collapse:collapse;margin:1rem 0;font-size:.92rem;width:100%}
+th,td{border:1px solid #bbb;padding:.42rem .6rem;text-align:left;vertical-align:top}
+th{background:#2b2b2b;color:#fff;position:sticky;top:0}
+tr:nth-child(even) td{background:#f2f2f2}
+td.ok{background:#d9f2dd !important} td.part{background:#fdeebc !important}
+td.no{background:#fbd5d2 !important} td.na{background:#e8e8e8 !important;color:#888}
+code{background:#eee;padding:.08rem .3rem;border-radius:3px;font-size:.85em}
+pre{background:#222;color:#ddd;padding:1rem;border-radius:6px;overflow-x:auto}
+li{margin:.25rem 0}
+</style></head><body>
+<h1>Kryon Feature Matrix</h1>
+<p>What every widget and feature supports, per compile target and per renderer backend. For how backends are selected and implemented see <code>docs/BACKENDS.md</code>; for the cartridge binary format see <code>docs/KRB_FORMAT.md</code>; for the language see <code>docs/KRY_LANGUAGE_PLAN.md</code>. Keep this file current with the code, and regenerate the browsable view after every change: <code>python3 scripts/feature-matrix-html.py</code> writes <code>docs/FEATURE_MATRIX.html</code>.</p>
+<p>Legend: ✅ available · ◐ partial (reason given) · ✗ not available · — not applicable. <b>C</b> is the <code>libkryon.a</code> C API; <b>k2c</b> is what <code>.kry</code> reaches through the C compiler — always equal to C, because the language is C-close and every library call is a legal statement (the widget-statement whitelist below only adds sugar). The other compilers lower subsets, which is where the columns diverge.</p>
+<h2>The pipeline</h2>
+<pre>.kry source
+   │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
+   ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
+   ├── k2g  -&gt; .go (rt.* calls)            -&gt; go build + go/kryui -&gt; Go app
+   ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
+   └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
+<table>
+<tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
+<tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null surface backend)</td><td class="">Most complete path; production use (inbe)</td></tr>
+<tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryui</code> cgo package, links the same <code>libkryon.a</code></td><td class="">Declarative subset; executable CI gate</td></tr>
+<tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
+<tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
+</table>
+<p>Two backend tiers exist (see <code>docs/BACKENDS.md</code>):</p>
+<ul>
+<li><b>Tier A — surface backends</b>: implement the ~700-symbol raylib-compatible</li>
+</ul>
+<p>surface (<code>include/kryon_compat.generated.h</code>), selected at <b>link</b> time via <code>KRYON_BACKEND=raylib|null|canvas</code>. The whole widget catalog runs on these.</p>
+<ul>
+<li><b>Tier B — cartridge hosts</b>: implement the ~20-function <code>KryBackend</code> vtable</li>
+</ul>
+<p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
+<h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
+<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below), and <code>k2b</code> lowers a subset of it:</p>
+<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
+<p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginUICanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
+<h2>Widget matrix</h2>
+<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (<code>go/kryui</code> <code>Runtime</code> interface) · <b>Go</b> = hand-written Go via the <code>go/kryui</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
+<p>Retained-tree caveat that applies to the whole C column: <code>BeginUI/EndUI</code> records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, and routes retained input for BUTTON and TEXT_FIELD; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
+<h3>UI/Display</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">TextInRect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInRect</code></td><td class="ok">✅</td></tr>
+<tr><td class="">Paragraph (rich text + inline icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Paragraph</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextLines</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextLines</code></td><td class="no">✗</td></tr>
+<tr><td class="">Rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
+<tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
+<tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
+<tr><td class="">IconTexture (114 embedded icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>IconTexture</code></td><td class="no">✗</td></tr>
+<tr><td class="">Image/Picture</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Picture(PictureProps)</code></td><td class="ok">✅ <code>Picture</code>/<code>DrawPicture</code></td><td class="ok">✅ node (embedded asset or PNG)</td></tr>
+</table>
+<h3>UI/Input</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Button</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">GenericButton (5 styles)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>GenericButton</code></td><td class="part">◐ BUTTON style byte</td></tr>
+<tr><td class="">IconButton / IconBtn / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">TextButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>TextButton</code></td><td class="no">✗</td></tr>
+<tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">TextInputControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>TextInputControl</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextField</code>/<code>NewTextField</code>/<code>NewPasswordField</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
+<tr><td class="">ReadonlyTextBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>ReadonlyTextBox</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
+<tr><td class="">Dropdown / DropdownEx / LocaleDropdown</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Dropdown(Ex)</code>/<code>LocaleDropdown</code></td><td class="ok">✅ DROPDOWN control</td></tr>
+<tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider</code>/<code>Slider</code></td><td class="ok">✅ SLIDER control</td></tr>
+<tr><td class="">VerticalSlider / WithMarks</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="part">◐ <code>VerticalSlider</code> only</td><td class="ok">✅ VSLIDER control</td></tr>
+<tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Radio</code></td><td class="no">✗</td></tr>
+<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="no">✗</td></tr>
+<tr><td class="">Spinbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Spinbox</code></td><td class="ok">✅ SPINBOX control</td></tr>
+<tr><td class="">Combobox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Combobox</code></td><td class="ok">✅ COMBOBOX control (renders like the dropdown, mirroring the C widget)</td></tr>
+<tr><td class="">ColorPicker (RGB sliders)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+</table>
+<h3>UI/Layout</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
+<tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
+<tr><td class="">Scroll container</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Scroll</code>/<code>EndScroll</code></td><td class="ok">✅ <code>Begin/EndScrollContainer</code></td><td class="ok">✅ SCROLL node</td></tr>
+<tr><td class="">Separator</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✅</td></tr>
+<tr><td class="">LabelFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>LabelFrame</code></td><td class="no">✗</td></tr>
+<tr><td class="">Notebook (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Notebook</code></td><td class="no">✗</td></tr>
+<tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
+<tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
+<tr><td class="">Tk pack/grid helpers (<code>UIFramePack</code>, <code>UIGridCell</code>, <code>UIPlace</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅</td><td class="no">✗</td></tr>
+<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>Begin/EndUICanvas</code>+hit-test</td><td class="no">✗</td></tr>
+</table>
+<h3>UI/Collections</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">ListBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
+<tr><td class="">TreeView / CascadingTreeView</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">SourceView (code + line numbers)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>SourceView</code></td><td class="no">✗</td></tr>
+<tr><td class="">TableView (sortable)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>TableView</code></td><td class="no">✗</td></tr>
+<tr><td class="">CanvasGrid</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>CanvasGrid</code></td><td class="no">✗</td></tr>
+<tr><td class="">SelectableText</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>SelectableText</code></td><td class="no">✗</td></tr>
+</table>
+<h3>UI/Navigation</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">MenuBar / PopupMenu / ContextMenu</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">TabBar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
+<tr><td class="">SubtabBar / PaneTabBar (dock zones)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">BottomNav (+ config modal)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BottomNav</code></td><td class="part">◐ <code>NavButton</code> lowers to a BUTTON</td></tr>
+<tr><td class="">TopNav / Toolbar / ToolbarHeader</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TopNav</code>/<code>Toolbar</code> only</td><td class="ok">✅ <code>TopNav</code>/<code>Toolbar</code></td><td class="no">✗</td></tr>
+<tr><td class="">TitleBar family</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TitleBar</code> only</td><td class="ok">✅ <code>TitleBar</code></td><td class="no">✗</td></tr>
+</table>
+<h3>UI/Overlays</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">ActionModal / Modal / Modal3Button / ModalFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Modal</code> only</td><td class="part">◐ <code>Modal</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">MessageDialog / ConfirmDialog / PromptDialog</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅</td><td class="no">✗</td></tr>
+<tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="no">✗</td></tr>
+<tr><td class="">GuideOverlay / TutorialImage(Placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">TransitionFade / Focus ring</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode drive animation</td></tr>
+<tr><td class="">ThemeSettings / ThemeSwitcher / ThemePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="part">◐ <code>SetCurrentTheme</code>/<code>SetThemeStyle</code> (control only)</td><td class="no">✗</td></tr>
+<tr><td class="">FocusDebugOverlay</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">InfoRows / OverlayButton / IconSliderPopup</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+</table>
+<h3>UI/Composite (app-level, Inbe-flavored)</h3>
+<table>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">LabelTextField / SectionLabel</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">CheckboxRow / ButtonRow / BottomIconRow</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">BottomNavConfig</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">SidebarAccountHeader / ProfilePicturePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Reorder (drag handle + placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">ImageBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+</table>
+<h3>Game2D (scene tree, <code>src/scene/</code>)</h3>
+<table>
+<tr><th>Node</th><th>C</th><th>✅</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Scene / Node2D / Camera2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Sprite2D / AnimatedSprite2D / TileMap / TileLayer</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">CollisionShape2D / Area2D / Body2D (box2d)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Timer / AudioSource / AnimationPlayer</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Signals (<code>KrySignal</code>) / keyframe animation</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+</table>
+<h3>KRB cartridge vocabulary (no C widget equivalent)</h3>
+<table>
+<tr><th>Item</th><th>Notes</th></tr>
+<tr><td class="">DATA node</td><td class="">state-field mount read/written by bytecode</td></tr>
+<tr><td class="">CIRCLE / RING nodes</td><td class="">lowered from <code>DrawCircleV</code> / <code>DrawRing</code> calls</td></tr>
+<tr><td class=""><code>NavButton</code></td><td class=""><code>k2b</code>-only lowering; becomes a BUTTON with <code>KRB_FLAG_NAV</code></td></tr>
+<tr><td class=""><code>AnimNode</code></td><td class=""><code>k2b</code>-only; animated node driven by <code>TIME</code></td></tr>
+<tr><td class="">v2 logic bytecode</td><td class="">stack machine, node mutation, if-guards over node ranges</td></tr>
+<tr><td class="">Host capabilities</td><td class="">imported storage/http/audio/notify calls (<code>krb_caps.c</code>)</td></tr>
+</table>
+<h2>Cross-cutting features</h2>
+<table>
+<tr><th>Feature</th><th>C</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Theming</td><td class="ok">✅ 6 palettes × light/dark INI, scopes, vars, runtime loader</td><td class="ok">✅ <code>SetCurrentTheme</code>/<code>SetThemeDarkMode</code>/<code>GetTheme*</code></td><td class="part">◐ theme color slots (<code>KrySwSetTheme</code>); light/dark env knobs on hosts</td></tr>
+<tr><td class="">Style tokens</td><td class="ok">✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles</td><td class="ok">✅ <code>Get/SetUIStyleTokens</code></td><td class="no">✗</td></tr>
+<tr><td class="">Animation</td><td class="ok">✅ transitions (smoothstep), ripple, keyframe scene anims</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode</td></tr>
+<tr><td class="">Text/fonts</td><td class="ok">✅ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text; no shaping/bidi/IME</td><td class="ok">✅ <code>RegisterUIFont(Data)</code>, <code>Push/Pop/UseUIFont</code>, input queue</td><td class="part">◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization</td></tr>
+<tr><td class="">DPI/scaling</td><td class="ok">✅ viewport-derived scale, <code>ScaleUIPx</code></td><td class="ok">✅ <code>ScaleUIPx</code>, <code>GetWindowScaleDPI</code></td><td class="part">◐ per-mille UI scale (<code>KRB_RUN_UI_SCALE</code>)</td></tr>
+<tr><td class="">Clipping</td><td class="ok">✅ 16-deep scissor stack + input clip stack</td><td class="ok">✅ <code>Begin/EndScissorMode</code></td><td class="ok">✅ 16-deep <code>clip_push/pop</code> in <code>kry_sw</code></td></tr>
+<tr><td class="">Z-order/popups</td><td class="ok">✅ overlay paint pass, modal capture, input-capture stack</td><td class="part">◐ dropdown popups internal to <code>Dropdown</code></td><td class="part">◐ dropdown menus handled by the engine</td></tr>
+<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav</td><td class="ok">✅ key/mouse/char APIs, <code>QueueUITextInput*</code></td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
+<tr><td class="">Accessibility</td><td class="part">◐ debug focus overlay + a11y node structs; no screen-reader bridge</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
+<tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>Begin/EndUI</code> + <code>NextUIEvent</code></td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
+<tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/gtk/zenity/kdialog/yad), tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
+<tr><td class="">Debug tooling</td><td class="ok">✅ widget inspector, node registry + snippets</td><td class="no">✗</td><td class="part">◐ <code>KryBackendRec</code> call-stream recording</td></tr>
+</table>
+<h2>Renderer backends</h2>
+<h3>Tier A — surface backends (link-time, <code>KRYON_BACKEND</code>)</h3>
+<table>
+<tr><th>Backend</th><th>Graphics API</th><th>Platforms</th><th>CI</th><th>Notes</th></tr>
+<tr><td class=""><code>raylib</code> (default)</td><td class="">OpenGL ES 2.0 over SDL2</td><td class="">Linux, FreeBSD</td><td class="ok">✅ <code>ci.yml</code> (Linux + FreeBSD)</td><td class="">Default everywhere; dist/static SDK targets</td></tr>
+<tr><td class=""><code>raylib</code> web</td><td class="">WebGL (ES2) over GLFW3</td><td class="">Emscripten</td><td class="ok">✅ netlify/app builds</td><td class=""><code>mk/web.mk</code>; present shim for WebKitGTK</td></tr>
+<tr><td class=""><code>raylib</code> windows <code>opengl</code></td><td class="">OpenGL 2.1</td><td class="">Windows (mingw)</td><td class="ok">✅ release builds</td><td class="">Default Windows flavor</td></tr>
+<tr><td class=""><code>raylib</code> windows <code>rlsw</code></td><td class="">raylib software renderer (no GPU)</td><td class="">Windows</td><td class="ok">✅ release builds</td><td class=""><code>WINDOWS_RENDERERS</code> second flavor</td></tr>
+<tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
+<tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
+<tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
+<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D</td><td class="">Web</td><td class="no">✗</td><td class=""><b>Documented but not implemented</b> — <code>src/backend/canvas_backend.c</code> does not exist; build fails if selected</td></tr>
+</table>
+<h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
+<table>
+<tr><th>Host</th><th>Rendering</th><th>Input</th><th>Textures</th><th>Text</th><th>CI</th><th>Notes</th></tr>
+<tr><td class=""><code>KryBackendDraw</code></td><td class="">raylib surface</td><td class="">raylib</td><td class="ok">✅</td><td class="">full font stack</td><td class="ok">✅</td><td class="">Auto-installed via constructor; hooks cartridge audio; runs inside raylib apps and <code>kryon-preview</code></td></tr>
+<tr><td class=""><code>kry_sw</code></td><td class="">software RGBA8 rasterizer</td><td class="">injected (<code>KrySwMouse</code> etc.)</td><td class="ok">✅ + PNG decode</td><td class="">font8x8 or KFA1 atlas</td><td class="ok">✅</td><td class="">No GPU/libc deps; <code>KrySwToRGB565</code> for embedded panels; one-shot dirty-rect tracking</td></tr>
+<tr><td class=""><code>krb-run</code></td><td class=""><code>kry_sw</code> headless</td><td class="">injected</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ linux/windows/macos</td><td class="">PNG dump + <code>KryBackendRec</code> call log; conformance host; <code>--backend fb</code> presents on <code>/dev/fb0</code> (or a raw file target) with dirty-rect conversion</td></tr>
+<tr><td class=""><code>krb-sdl</code></td><td class=""><code>kry_sw</code> → SDL2 streaming texture</td><td class="">SDL2</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅</td><td class="">Template for the planned Android EGL host</td></tr>
+<tr><td class=""><code>krb-web</code></td><td class=""><code>kry_sw</code> → wasm, Canvas2D <code>putImageData</code></td><td class="">JS bridge exports</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ renderers.yml</td><td class="">Byte-identical to native; node-capture for tests</td></tr>
+<tr><td class=""><code>KryBackendRec</code></td><td class="">wraps any backend</td><td class="">passthrough</td><td class="">passthrough</td><td class="">passthrough</td><td class="ok">✅ exactness job</td><td class="">Records the vtable call stream for cross-engine comparison</td></tr>
+<tr><td class=""><code>KryBackendNull</code></td><td class="">stub vtable</td><td class="">none</td><td class="no">✗ (<code>texture_rgba</code> NULL)</td><td class="no">✗</td><td class="ok">✅ logic tests</td><td class="">Default until <code>KryBackendSelect</code></td></tr>
+</table>
+<h2>Known gaps</h2>
+<ul>
+<li><code>canvas</code> Tier A backend is selectable and documented but has no</li>
+</ul>
+<p>implementation; the working web path is <code>krb-web</code> (<code>kry_sw</code> → wasm).</p>
+<ul>
+<li><code>k2g</code>&#x27;s <code>Runtime</code> interface covers the full widget whitelist and lowers</li>
+</ul>
+<p>typed declarations, arrays, and goto/labels. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error (not silently miscompiled), and values of C pointer/<code>Texture2D</code> type cannot be expressed from <code>.kry</code> (icons pass by <code>UIIconType</code>, option lists as <code>;</code>-joined strings or <code>[N]string</code> arrays).</p>
+<ul>
+<li><code>k2b</code> drops unsupported widget calls and reports them per file; the</li>
+</ul>
+<p>cartridge widget set remains smaller than the C catalog (see matrix). <code>Combobox</code> lowers to a <code>KRB_CTRL_COMBOBOX</code> control that renders like the dropdown, matching the C widget.</p>
+<ul>
+<li>Retained tree paints only 5 node kinds and routes input for 2 (see caveat</li>
+</ul>
+<p>above the widget matrix).</p>
+<ul>
+<li>No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;</li>
+</ul>
+<p>no IME/preedit; no gamepad UI navigation.</p>
+<ul>
+<li>Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass/aero</li>
+</ul>
+<p>labels in <code>ThemeSettingsProps</code>) fall back to SYSTEM tokens.</p>
+<ul>
+<li><code>kry_sw</code> tracks the dirty rectangle per call (<code>KrySwDirty</code> is one-shot);</li>
+</ul>
+<p>hosts that present full frames (<code>krb-sdl</code>, <code>krb-web</code>) do not use it yet.</p>
+<ul>
+<li>Plan 11 engines still to come: native Canvas2D fast path, Android EGL</li>
+</ul>
+<p>host, ESP32 RGB565 host. The phase-2 Linux framebuffer host is done: <code>krb-run --backend fb</code> presents on <code>/dev/fb0</code> (or a raw file target for headless testing) with per-frame dirty-rect conversion.</p>
+<p>Plan 11 (<code>docs/plans/11-render-engines.md</code>) drafts further engines — Linux framebuffer, Android EGL, ESP32 RGB565, native Canvas2D fast path — none implemented yet.</p>
+</body></html>
