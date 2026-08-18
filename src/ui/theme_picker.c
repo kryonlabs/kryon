@@ -5,7 +5,6 @@
 #define UI_THEME_SETTINGS_ROW_GAP 10
 
 static const ThemeId theme_picker_order[THEME_COUNT] = {
-    THEME_AERO,
     THEME_COBALT,
     THEME_CHERRY,
     THEME_DAWN,

@@ -10,10 +10,9 @@ Design decisions:
   borders, hover glow, layered soft shadows, all with existing drawing
   primitives. No shaders, so it renders identically on raylib, Android, web,
   software and null backends.
-- **Signature palette + all existing palettes** — new `THEME_AERO`
-  (13th palette, `aero_light`/`aero_dark` scopes, `themes/aero*.ini`) is the
-  style's default; the style still derives its glass tints from whichever
-  palette is active, so all 12 older palettes work.
+- **Style only, all existing palettes** — no dedicated Aero palette
+  (dropped per review); the style derives its glass tints from whichever
+  palette is active and defaults to Sky.
 - **Opt-in** — SYSTEM resolution and platform defaults are unchanged; apps
   that pin RETRO/MATERIAL keep their look until they select Aero.
 

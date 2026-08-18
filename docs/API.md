@@ -602,7 +602,7 @@ Aero renders the Windows Vista/7 glass look — translucent control and panel
 fills, gloss highlights, accent hover glow, soft layered shadows, inset text
 fields and gradient tracks — using only plain drawing primitives, so it renders
 identically on every backend including Android, web and the software renderer.
-It defaults to the `THEME_AERO` palette but derives its glass tints from
+It defaults to the Sky palette but derives its glass tints from
 whichever palette is active, so all built-in palettes work with it.
 
 ```c
@@ -1601,8 +1601,7 @@ typedef enum {
     THEME_INK,
     THEME_MONO,
     THEME_MINT,
-    THEME_COBALT,
-    THEME_AERO
+    THEME_COBALT
 } ThemeId;
 ```
 

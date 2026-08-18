@@ -752,7 +752,7 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
     case THEME_STYLE_MATERIAL:
         return THEME_MINT;
     case THEME_STYLE_AERO:
-        return THEME_AERO;
+        return THEME_SKY;
     case THEME_STYLE_SYSTEM:
     default:
         return THEME_MONO;

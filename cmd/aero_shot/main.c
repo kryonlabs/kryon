@@ -3,7 +3,7 @@
  * the GL context and closes after the capture).
  *
  * usage: aero_shot OUT.png [theme_id] [dark] [style_id]
- *   theme_id  palette id (default THEME_AERO; see theme_meta.h)
+ *   theme_id  palette id (default THEME_SKY; see theme_meta.h)
  *   dark      0 light, 1 dark (default 0)
  *   style_id  widget style (default THEME_STYLE_AERO; SYSTEM/RETRO/MATERIAL
  *             work too, for side-by-side comparisons)
@@ -140,12 +140,12 @@ main(int argc, char **argv)
                 "  theme_id palette (default %d, count %d)\n"
                 "  dark      0/1 (default 0)\n"
                 "  style_id  %d System, %d Retro, %d Material, %d Aero\n",
-                THEME_AERO, THEME_COUNT, THEME_STYLE_SYSTEM, THEME_STYLE_RETRO,
+                THEME_SKY, THEME_COUNT, THEME_STYLE_SYSTEM, THEME_STYLE_RETRO,
                 THEME_STYLE_MATERIAL, THEME_STYLE_AERO);
         return 1;
     }
     out = argv[1];
-    theme_id = argc > 2 ? atoi(argv[2]) : THEME_AERO;
+    theme_id = argc > 2 ? atoi(argv[2]) : THEME_SKY;
     dark = argc > 3 ? atoi(argv[3]) != 0 : 0;
     style = argc > 4 ? (ThemeStyle)atoi(argv[4]) : THEME_STYLE_AERO;
 

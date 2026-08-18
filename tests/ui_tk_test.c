@@ -49,12 +49,12 @@ main(void)
     check_int("aero shine", GetUIStyleTokens().shine_alpha > 0, 1);
     check_int("aero translucent panels", GetUIStyleTokens().panel_alpha < 255, 1);
     check_int("aero default theme", GetDefaultThemeForThemeStyle(THEME_STYLE_AERO),
-              THEME_AERO);
+              THEME_SKY);
     check_int("aero style label", strcmp(GetThemeStyleLabel(THEME_STYLE_AERO),
                                          "Aero") == 0, 1);
-    check_int("aero theme count", THEME_COUNT, 13);
-    check_int("aero theme id", NormalizeTheme(THEME_AERO), THEME_AERO);
-    check_int("aero theme label", strcmp(GetThemeLabel(THEME_AERO), "Aero") == 0, 1);
+    check_int("theme count", THEME_COUNT, 12);
+    check_int("out-of-range theme normalizes", NormalizeTheme(THEME_COUNT),
+              THEME_MONO);
     {
         UIAeroScheme scheme = GetUIAeroScheme();
 

@@ -4,12 +4,12 @@ app "Kryon Aero Theme" {
     size 900 680
     fps 60
     font examples
-    theme THEME_AERO light
+    theme THEME_SKY light
 }
 
 state {
     theme_mode: int = THEME_MODE_SYSTEM
-    theme_id: int = THEME_AERO
+    theme_id: int = THEME_SKY
     mode_index: int = 0
     slider_value: int = 64
     toggle_value: int = 1

@@ -370,9 +370,8 @@ aero-shot: $(AERO_SHOT)
 
 aero-shots: $(AERO_SHOT)
 	@mkdir -p $(AERO_SHOT_DIR)
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_light.png 12 0
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_dark.png 12 1
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/sky_light.png 0 0
+	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_light.png 0 0
+	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_dark.png 0 1
 	$(AERO_SHOT) $(AERO_SHOT_DIR)/cobalt_dark.png 11 1
 	$(AERO_SHOT) $(AERO_SHOT_DIR)/mono_light.png 9 0
 	$(AERO_SHOT) $(AERO_SHOT_DIR)/material_light.png 10 0 2
