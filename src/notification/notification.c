@@ -682,19 +682,24 @@ static int notification_notify(const char *icon, const char *title,
             "'urgency': <%u>, "
             "'desktop-entry': <%s>"
             "}", urgency, g_notification_app_name);
+    /* The Notify message must be assembled from child variants:
+     * g_variant_new's "(...as...)" format would demand GVariantBuilders for
+     * the array slots (passing NULL or a floating GVariant there is the
+     * g_variant_new "expected array GVariantBuilder" abort). */
+    GVariant *children[8];
+    children[0] = g_variant_new_string(g_notification_app_name);
+    children[1] = g_variant_new_uint32(replaces_id);
+    children[2] = g_variant_new_string(icon != NULL ? icon : "");
+    children[3] = g_variant_new_string(title != NULL ? title : "");
+    children[4] = g_variant_new_string(body != NULL ? body : "");
+    children[5] = actions != NULL ? g_variant_new_strv(actions, -1)
+                                  : g_variant_new_strv(NULL, 0);
+    children[6] = hints;
+    children[7] = g_variant_new_int32(expire_ms > 0 ? expire_ms : -1);
     result = g_dbus_connection_call_sync(bus,
             KRYON_NOTIFICATIONS_BUS, KRYON_NOTIFICATIONS_PATH,
             KRYON_NOTIFICATIONS_IFACE, "Notify",
-            g_variant_new("(susssasa{sv}i)",
-                    g_notification_app_name,
-                    replaces_id,
-                    icon != NULL ? icon : "",
-                    title,
-                    body,
-                    actions != NULL ? g_variant_new_strv(actions, -1) : NULL,
-                    NULL,
-                    hints,
-                    expire_ms > 0 ? expire_ms : -1),
+            g_variant_new_tuple(children, 8),
             G_VARIANT_TYPE("(u)"),
             G_DBUS_CALL_FLAGS_NONE,
             -1, NULL, &error);
