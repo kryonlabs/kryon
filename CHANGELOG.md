@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.15 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.15
+- Ci: run workflow actions on Node 24 runtimes
+
 ## v0.1.14 - 2026-08-18
 
 ### Changed
