@@ -34,6 +34,12 @@ typedef struct KrySw {
     int clip_y[16];
     int clip_w[16];
     int clip_h[16];
+    /* accumulated dirty rect since the last KrySwDirty read */
+    int dirty_x0;
+    int dirty_y0;
+    int dirty_x1;
+    int dirty_y1;
+    int dirty_any;
     int mouse_x;
     int mouse_y;
     int buttons_down;
@@ -68,8 +74,10 @@ void KrySwAdvance(KrySw *sw, float dt); /* clears pressed edges, ticks time */
 
 void KrySwSetTheme(KrySw *sw, int slot, unsigned rgba);
 
-/* Dirty rectangle. Currently reports the full frame; per-call tracking
- * lands with the framebuffer host (plan 11, phase 2). */
+/* Dirty rectangle: union of everything drawn since the previous call,
+ * clipped to the active scissor stack and the target. One-shot — reading
+ * resets the accumulator; hosts present the rect once per frame. Nothing
+ * drawn reports x = y = w = h = 0. */
 void KrySwDirty(KrySw *sw, int *x, int *y, int *w, int *h);
 
 /* Install a KFA1 glyph atlas (cartridge asset kind 1). Text draws from

@@ -172,14 +172,26 @@ KrySwSetTheme(KrySw *sw, int slot, unsigned rgba)
 void
 KrySwDirty(KrySw *sw, int *x, int *y, int *w, int *h)
 {
+    if(sw != NULL && sw->dirty_any) {
+        if(x != NULL)
+            *x = sw->dirty_x0;
+        if(y != NULL)
+            *y = sw->dirty_y0;
+        if(w != NULL)
+            *w = sw->dirty_x1 - sw->dirty_x0;
+        if(h != NULL)
+            *h = sw->dirty_y1 - sw->dirty_y0;
+        sw->dirty_any = 0;
+        return;
+    }
     if(x != NULL)
         *x = 0;
     if(y != NULL)
         *y = 0;
     if(w != NULL)
-        *w = sw->w;
+        *w = 0;
     if(h != NULL)
-        *h = sw->h;
+        *h = 0;
 }
 
 void
@@ -247,6 +259,61 @@ clip_active(KrySw *sw, int *x, int *y, int *w, int *h)
     return 1;
 }
 
+/* Union one clip-stack-intersected rect into the dirty accumulator. */
+static void
+sw_mark_dirty(KrySw *sw, int x, int y, int w, int h)
+{
+    int x1;
+    int y1;
+    int i;
+
+    if(sw == NULL || w <= 0 || h <= 0)
+        return;
+    x1 = x + w;
+    y1 = y + h;
+    for(i = 0; i < sw->clip_n; i++) {
+        int nx = x > sw->clip_x[i] ? x : sw->clip_x[i];
+        int ny = y > sw->clip_y[i] ? y : sw->clip_y[i];
+        int nx2 = (x + w) < (sw->clip_x[i] + sw->clip_w[i])
+                    ? (x + w) : (sw->clip_x[i] + sw->clip_w[i]);
+        int ny2 = (y + h) < (sw->clip_y[i] + sw->clip_h[i])
+                    ? (y + h) : (sw->clip_y[i] + sw->clip_h[i]);
+
+        if(nx2 <= nx || ny2 <= ny)
+            return;
+        x = nx;
+        y = ny;
+        x1 = nx2;
+        y1 = ny2;
+    }
+    if(x < 0)
+        x = 0;
+    if(y < 0)
+        y = 0;
+    if(x1 > sw->w)
+        x1 = sw->w;
+    if(y1 > sw->h)
+        y1 = sw->h;
+    if(x1 <= x || y1 <= y)
+        return;
+    if(!sw->dirty_any) {
+        sw->dirty_x0 = x;
+        sw->dirty_y0 = y;
+        sw->dirty_x1 = x1;
+        sw->dirty_y1 = y1;
+        sw->dirty_any = 1;
+    } else {
+        if(x < sw->dirty_x0)
+            sw->dirty_x0 = x;
+        if(y < sw->dirty_y0)
+            sw->dirty_y0 = y;
+        if(x1 > sw->dirty_x1)
+            sw->dirty_x1 = x1;
+        if(y1 > sw->dirty_y1)
+            sw->dirty_y1 = y1;
+    }
+}
+
 static void
 fill_rect(KrySw *sw, int x, int y, int w, int h, unsigned color)
 {
@@ -258,6 +325,7 @@ fill_rect(KrySw *sw, int x, int y, int w, int h, unsigned color)
 
     if(!clip_active(sw, &x, &y, &w, &h))
         return;
+    sw_mark_dirty(sw, x, y, w, h);
     for(row = y; row < y + h; row++) {
         unsigned char *p = sw->pixels + (size_t)row * sw->stride + x * 4;
         int col;
@@ -464,6 +532,8 @@ atlas_blit(KrySw *sw, const KrySwAtlasSize *as, const unsigned char *g,
     }
 }
 
+static int b_measure_text(const char *s, int size);
+
 static void
 b_text(const char *s, int x, int y, int size, unsigned color)
 {
@@ -472,6 +542,9 @@ b_text(const char *s, int x, int y, int size, unsigned color)
 
     if(sw == NULL || s == NULL || size <= 0)
         return;
+    /* mark the string bbox: the atlas path writes pixels directly and
+     * does not funnel through fill_rect */
+    sw_mark_dirty(sw, x, y, b_measure_text(s, size), size);
     if(sw->atlas != NULL && sw->atlas_sizes > 0) {
         const KrySwAtlasSize *as = atlas_size_for(sw, size);
         int pen = x;

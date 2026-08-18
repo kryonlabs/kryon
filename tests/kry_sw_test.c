@@ -222,6 +222,30 @@ main(void)
         remove(path);
     }
 
+    /* dirty rect: unions per-call, honors nothing else needed, one-shot */
+    {
+        int dx, dy, dw, dh;
+
+        b->clear(0xff0000ffu);
+        KrySwDirty(&sw, &dx, &dy, &dw, &dh);
+        if(dx != 0 || dy != 0 || dw != sw.w || dh != sw.h)
+            return fail("clear did not mark the full frame");
+        b->rect(4, 4, 4, 4, 0x00ff00ffu);
+        b->rect(12, 8, 4, 2, 0x00ff00ffu);
+        KrySwDirty(&sw, &dx, &dy, &dw, &dh);
+        if(dx != 4 || dy != 4 || dw != 12 || dh != 6)
+            return fail("dirty rect did not union two fills");
+        KrySwDirty(&sw, &dx, &dy, &dw, &dh);
+        if(dw != 0 || dh != 0)
+            return fail("dirty rect did not reset after read");
+        b->text("hi", 10, 4, 16, 0xffffffffu);
+        KrySwDirty(&sw, &dx, &dy, &dw, &dh);
+        if(dx != 10 || dy != 4 || dw != 16 || dh != 16) {
+            fprintf(stderr, "got x=%d y=%d w=%d h=%d\n", dx, dy, dw, dh);
+            return fail("text did not mark its string bbox");
+        }
+    }
+
     KrySwFree(&sw);
     printf("ok\n");
     return 0;
