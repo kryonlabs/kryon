@@ -662,26 +662,43 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 
 #include "ui_core.h"
 
-#define UI_WINDOW_MAX 8
-
 struct UIWindow {
     SDL_Window *window;
+    SDL_GLContext context;
     Uint32 window_id;
     int width;
     int height;
     float scale;
     Color background;
-    RenderTexture2D target;
     int clicked;
     int right_clicked;
     int click_x;
     int click_y;
 };
 
-static UIWindow *ui_windows[UI_WINDOW_MAX];
+static UIWindow **ui_windows;
 static int ui_window_count;
+static int ui_window_capacity;
 static UIWindow *ui_window_active;
 static int ui_window_event_watch_installed;
+static SDL_Window *ui_window_previous_sdl_window;
+static SDL_GLContext ui_window_previous_context;
+static Matrix ui_window_previous_projection;
+static Matrix ui_window_previous_modelview;
+
+/* rlgl context-state entry points intentionally kept private to this backend. */
+extern void rlDrawRenderBatchActive(void);
+extern void rlViewport(int x, int y, int width, int height);
+extern void rlMatrixMode(int mode);
+extern void rlLoadIdentity(void);
+extern void rlOrtho(double left, double right, double bottom, double top,
+                    double znear, double zfar);
+extern Matrix rlGetMatrixProjection(void);
+extern Matrix rlGetMatrixModelview(void);
+extern void rlSetMatrixProjection(Matrix projection);
+extern void rlSetMatrixModelview(Matrix view);
+
+enum { InbeRLModelview = 0x1700, InbeRLProjection = 0x1701 };
 
 /* raylib owns SDL's normal event pump.  An event watch sees secondary-window
  * pointer events without consuming the core window's events. */
@@ -709,8 +726,15 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
 static int
 ui_window_register(UIWindow *win)
 {
-    if(ui_window_count >= UI_WINDOW_MAX)
-        return 0;
+    if(ui_window_count == ui_window_capacity) {
+        int capacity = ui_window_capacity > 0 ? ui_window_capacity * 2 : 8;
+        UIWindow **windows = (UIWindow **)realloc(
+            ui_windows, (size_t)capacity * sizeof(*windows));
+        if(windows == NULL)
+            return 0;
+        ui_windows = windows;
+        ui_window_capacity = capacity;
+    }
     if(!ui_window_event_watch_installed) {
         SDL_AddEventWatch(ui_window_event_watch, NULL);
         ui_window_event_watch_installed = 1;
@@ -735,6 +759,9 @@ ui_window_unregister(UIWindow *win)
     if(ui_window_count == 0 && ui_window_event_watch_installed) {
         SDL_DelEventWatch(ui_window_event_watch, NULL);
         ui_window_event_watch_installed = 0;
+        free(ui_windows);
+        ui_windows = NULL;
+        ui_window_capacity = 0;
     }
 }
 
@@ -743,17 +770,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
              int flags, Color background, float ui_scale)
 {
     UIWindow *win;
-    Uint32 sdl_flags = 0;
-
-#if defined(__linux__) || defined(__FreeBSD__)
-    /* SDL secondary software windows and the main GLES context are not a safe
-     * combination across Mesa drivers: llvmpipe can segfault on the first
-     * framebuffer readback on both X11 and Wayland.  Report unsupported so
-     * callers can render their content in the main window instead. */
-    (void)title; (void)x; (void)y; (void)width; (void)height;
-    (void)flags; (void)background; (void)ui_scale;
-    return NULL;
-#endif
+    Uint32 sdl_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
 
     if(width <= 0 || height <= 0)
         return NULL;
@@ -779,8 +796,18 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     win = (UIWindow *)calloc(1, sizeof(UIWindow));
     if(win == NULL)
         return NULL;
+    /* Share fonts, icons and every other GPU asset with raylib's current
+     * context. Each secondary window still owns a real context and swaps
+     * directly; no framebuffer readback or software window surface is used. */
+    SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
     win->window = SDL_CreateWindow(title, x, y, width, height, sdl_flags);
     if(win->window == NULL) {
+        free(win);
+        return NULL;
+    }
+    win->context = SDL_GL_CreateContext(win->window);
+    if(win->context == NULL) {
+        SDL_DestroyWindow(win->window);
         free(win);
         return NULL;
     }
@@ -789,14 +816,13 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     win->height = height;
     win->scale = ui_scale > 0.0f ? ui_scale : 1.0f;
     win->background = background;
-    win->target = LoadRenderTexture(width, height);
-    if(win->target.id == 0 || !ui_window_register(win)) {
-        if(win->target.id != 0)
-            UnloadRenderTexture(win->target);
+    if(!ui_window_register(win)) {
+        SDL_GL_DeleteContext(win->context);
         SDL_DestroyWindow(win->window);
         free(win);
         return NULL;
     }
+    SDL_ShowWindow(win->window);
     return win;
 }
 
@@ -808,7 +834,7 @@ CloseUIWindow(UIWindow *window)
     ui_window_unregister(window);
     if(ui_window_active == window)
         ui_window_active = NULL;
-    UnloadRenderTexture(window->target);
+    SDL_GL_DeleteContext(window->context);
     SDL_DestroyWindow(window->window);
     free(window);
 }
@@ -818,8 +844,20 @@ BeginUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
+    rlDrawRenderBatchActive();
+    ui_window_previous_sdl_window = SDL_GL_GetCurrentWindow();
+    ui_window_previous_context = SDL_GL_GetCurrentContext();
+    ui_window_previous_projection = rlGetMatrixProjection();
+    ui_window_previous_modelview = rlGetMatrixModelview();
+    if(SDL_GL_MakeCurrent(window->window, window->context) != 0)
+        return;
     ui_window_active = window;
-    BeginTextureMode(window->target);
+    rlViewport(0, 0, window->width, window->height);
+    rlMatrixMode(InbeRLProjection);
+    rlLoadIdentity();
+    rlOrtho(0.0, window->width, window->height, 0.0, 0.0, 1.0);
+    rlMatrixMode(InbeRLModelview);
+    rlLoadIdentity();
     ClearBackground(window->background);
     BeginUIFrame(window->width, window->height, window->scale);
 }
@@ -828,32 +866,16 @@ void
 EndUIWindow(void)
 {
     UIWindow *window = ui_window_active;
-    Image image;
-    SDL_Surface *surface;
-
     if(window == NULL)
         return;
     ui_window_active = NULL;
     EndUIFrame();
-    /* EndTextureMode flushes the widget batch into the texture; the readback
-     * then picks up finished pixels (kryon-preview uses the same order). */
-    EndTextureMode();
-    image = LoadImageFromTexture(window->target.texture);
-    if(image.data == NULL)
-        return;
-    ImageFlipVertical(&image);
-
-    surface = SDL_GetWindowSurface(window->window);
-    if(surface != NULL && surface->pixels != NULL) {
-        /* GL RGBA8 readback is R,G,B,A in memory = SDL's ABGR8888. */
-        SDL_ConvertPixels(window->width, window->height,
-                          SDL_PIXELFORMAT_ABGR8888, image.data,
-                          window->width * 4,
-                          surface->format->format, surface->pixels,
-                          surface->pitch);
-        SDL_UpdateWindowSurface(window->window);
-    }
-    UnloadImage(image);
+    rlDrawRenderBatchActive();
+    SDL_GL_SwapWindow(window->window);
+    SDL_GL_MakeCurrent(ui_window_previous_sdl_window,
+                       ui_window_previous_context);
+    rlSetMatrixProjection(ui_window_previous_projection);
+    rlSetMatrixModelview(ui_window_previous_modelview);
 }
 
 int
