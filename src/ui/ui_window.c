@@ -990,6 +990,12 @@ EndUIWindow(void)
     {
         SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
         SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
+        /* The render target is shared with a different GL context. A context
+         * switch alone does not establish completion ordering for writes to
+         * shared objects; without this barrier Mesa can present partially
+         * rendered font quads and corrupted glyphs. GLES2 has no portable
+         * fence-sync API, so finish the small auxiliary target explicitly. */
+        glFinish();
         if(SDL_GL_MakeCurrent(window->window, window->context) == 0) {
             ui_window_present(window);
             SDL_GL_SwapWindow(window->window);
