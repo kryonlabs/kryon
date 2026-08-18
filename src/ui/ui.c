@@ -3246,6 +3246,12 @@ ui_sane_camera(Camera2D camera)
 }
 
 void
+ui_camera_ensure_sane(void)
+{
+    g_ui_camera = ui_sane_camera(g_ui_camera);
+}
+
+void
 BeginUIFrame(int width, int height, float dpi)
 {
     SetUIViewSize(width, height);

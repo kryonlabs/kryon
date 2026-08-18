@@ -35,6 +35,7 @@ enum {
 };
 
 Vector2 ui_mouse_world(void);
+void ui_camera_ensure_sane(void);
 void MarkUICursor(int cursor);
 void MarkUIClickable(void);
 void MarkUIDisabled(void);

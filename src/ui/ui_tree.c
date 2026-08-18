@@ -403,6 +403,10 @@ BeginUI(UIKey screen_key)
 {
     UINodeId root;
 
+    /* Embedders that never call SetUIFrame still need valid screen-to-world
+     * math for input routing; a zero camera would turn every hit test into
+     * NaN comparisons that silently never match. */
+    ui_camera_ensure_sane();
     ui_tree_clear_pending();
     ui_tree_screen_key = screen_key != 0 ? screen_key : 1;
     ui_tree_screen_id = (int)(ui_tree_screen_key & 0x7fffffffU);
@@ -964,6 +968,8 @@ DrawUITree(void)
 {
     int i;
 
+    if(!IsWindowReady())
+        return;
     if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
         return;
     for(i = 0; i < ui_committed_node_count; i++) {
@@ -1057,6 +1063,8 @@ DrawUITree(void)
 void
 DrawUIOverlays(void)
 {
+    if(!IsWindowReady())
+        return;
     DrawUIFrameOverlays();
 }
 
