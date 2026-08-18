@@ -1377,6 +1377,9 @@ void SetMusicVolume(Music music, float volume)
 
 #else /* !__EMSCRIPTEN__ */
 
-#error "canvas_backend.c is the HTML5 Canvas2D backend: build with emcc (KRYON_BACKEND=canvas is web-only)"
+/* Native builds that sweep kryon's src/ tree (every vendoring app's
+ * Makefile does a find over vendor/kryon/src) compile this to an empty
+ * translation unit. KRYON_BACKEND=canvas is web-only; selecting it for a
+ * native link fails at symbol resolution instead of #error here. */
 
 #endif /* __EMSCRIPTEN__ */
