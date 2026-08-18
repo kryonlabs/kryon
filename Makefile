@@ -553,7 +553,7 @@ $(KRB_MOUNT_TEST): tests/krb_mount_test.c src/krb/krb.c src/backend/kry_backend.
 		src/backend/kry_backend.c -o $@
 
 KRY_SW_SRCS = src/krb/krb.c src/krb/krb_caps.c src/backend/kry_backend.c \
-	src/backend/kry_sw.c src/backend/kry_backend_rec.c
+	src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend_rec.c
 KRY_SW_HDRS = include/krb.h include/kry_backend.h include/kry_sw.h \
 	include/kry_backend_rec.h
 
@@ -561,9 +561,10 @@ $(KRB_RUN): cmd/krb-run/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 	$(CC) $(CFLAGS) -Iinclude -Icmd/krb-run -o $@ cmd/krb-run/main.c \
 		cmd/krb-run/png_write.c $(KRY_SW_SRCS) -lm
 
-$(KRY_SW_TEST): tests/kry_sw_test.c src/backend/kry_sw.c src/backend/kry_backend_rec.c src/backend/kry_backend.c include/kry_sw.h include/kry_backend_rec.h | $(BUILD_DIR)
+$(KRY_SW_TEST): tests/kry_sw_test.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend_rec.c src/backend/kry_backend.c include/kry_sw.h include/kry_backend_rec.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_sw_test.c src/backend/kry_sw.c \
+		src/backend/kry_sw_png.c \
 		src/backend/kry_backend_rec.c src/backend/kry_backend.c -o $@ -lm
 
 $(KRB_LOGIC_TEST): tests/krb_logic_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)

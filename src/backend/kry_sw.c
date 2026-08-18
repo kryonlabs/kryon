@@ -1,6 +1,8 @@
 #include "kry_sw.h"
+#include "kry_sw_png.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -737,17 +739,125 @@ b_texture_rgba(const unsigned char *rgba, int sw, int sh, int x, int y,
     }
 }
 
+/* Decoded file assets, cached by path for the rasterizer's lifetime; the
+ * headless tools that drive kry_sw redraw every frame and would otherwise
+ * re-read and re-inflate the same image per frame. */
+#define SW_TEX_CACHE 16
+
+typedef struct {
+    char *path;
+    unsigned char *rgba;
+    int w;
+    int h;
+    unsigned long used;
+} SwTexEntry;
+
+static SwTexEntry sw_tex_cache[SW_TEX_CACHE];
+static unsigned long sw_tex_clock;
+
+static char *
+sw_read_file(const char *path, size_t *len_out)
+{
+    FILE *f;
+    long size;
+    char *data;
+
+    f = fopen(path, "rb");
+    if(f == NULL)
+        return NULL;
+    if(fseek(f, 0, SEEK_END) != 0 || (size = ftell(f)) <= 0 ||
+       fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    data = (char *)malloc((size_t)size);
+    if(data == NULL) {
+        fclose(f);
+        return NULL;
+    }
+    if(fread(data, 1, (size_t)size, f) != (size_t)size) {
+        free(data);
+        fclose(f);
+        return NULL;
+    }
+    fclose(f);
+    *len_out = (size_t)size;
+    return data;
+}
+
+static char *
+sw_strdup(const char *s)
+{
+    size_t n = strlen(s) + 1;
+    char *copy = (char *)malloc(n);
+
+    if(copy != NULL)
+        memcpy(copy, s, n);
+    return copy;
+}
+
+static unsigned char *
+sw_texture_load(const char *path, int *w, int *h)
+{
+    unsigned long stamp = ++sw_tex_clock;
+    int oldest = 0;
+    unsigned char *file_data;
+    unsigned char *rgba;
+    size_t len;
+    int i;
+
+    for(i = 0; i < SW_TEX_CACHE; i++) {
+        if(sw_tex_cache[i].path != NULL &&
+           strcmp(sw_tex_cache[i].path, path) == 0) {
+            sw_tex_cache[i].used = stamp;
+            *w = sw_tex_cache[i].w;
+            *h = sw_tex_cache[i].h;
+            return sw_tex_cache[i].rgba;
+        }
+        if(sw_tex_cache[i].used < sw_tex_cache[oldest].used)
+            oldest = i;
+    }
+
+    file_data = (unsigned char *)sw_read_file(path, &len);
+    if(file_data == NULL)
+        return NULL;
+    rgba = kry_sw_png_rgba(file_data, len, w, h);
+    free(file_data);
+    if(rgba == NULL)
+        return NULL;
+
+    free(sw_tex_cache[oldest].path);
+    free(sw_tex_cache[oldest].rgba);
+    sw_tex_cache[oldest].path = sw_strdup(path);
+    if(sw_tex_cache[oldest].path == NULL) {
+        free(rgba);
+        return NULL;
+    }
+    sw_tex_cache[oldest].rgba = rgba;
+    sw_tex_cache[oldest].w = *w;
+    sw_tex_cache[oldest].h = *h;
+    sw_tex_cache[oldest].used = stamp;
+    return rgba;
+}
+
 static void
 b_texture(const char *asset_path, int x, int y, int w, int h,
           unsigned tint, int fit)
 {
-    /* No asset decoder in the rasterizer yet: draw a tinted placeholder
-     * so layout and size are visible in headless previews. */
-    (void)asset_path;
+    unsigned char *rgba;
+    int sw_w, sw_h;
+
     (void)fit;
-    if(g_sw == NULL)
+    if(g_sw == NULL || asset_path == NULL || asset_path[0] == '\0')
         return;
-    fill_rect(g_sw, x, y, w, h, tint);
+    rgba = sw_texture_load(asset_path, &sw_w, &sw_h);
+    if(rgba == NULL) {
+        /* Undecodable or missing asset: keep the tinted placeholder so
+         * layout and size stay visible in headless previews. */
+        fill_rect(g_sw, x, y, w, h, tint);
+        return;
+    }
+    b_texture_rgba(rgba, sw_w, sw_h, x, y, w, h, tint);
 }
 
 const KryBackend *
