@@ -151,6 +151,9 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 ## Documentation
 
 - `docs/API.md` documents the public API.
+- `docs/FEATURE_MATRIX.md` maps widget and feature support across the C, Go,
+  and KRB targets and every renderer backend.
+- `docs/BACKENDS.md` documents the backend architecture and selection.
 - `docs/plans/` contains the KIR, C backend, and KRB cartridge roadmap.
 - `docs/site/` contains the static documentation website.
 - `docs/AGENTS.md` documents how downstream apps should use Kryon, including
