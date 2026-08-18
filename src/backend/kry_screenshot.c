@@ -36,6 +36,11 @@ __attribute__((weak))
 #endif
 extern void KryonRaylibBackend_rlDrawRenderBatch(void);
 
+/* Event-driven programs opt into Kryon's frame pacing through
+ * EnableEventWaiting().  Keep it after the backend frame completes so input
+ * has already been collected for the next application update. */
+extern void kry_event_wait_after_frame(void);
+
 /* When INBE_SHOT_ARM=1, every EndDrawing captures the completed back
  * buffer BEFORE the swap (the only readback point OpenGL ES 2 guarantees:
  * no glReadBuffer, and post-swap reads return undefined/cleared data on
@@ -51,6 +56,7 @@ void EndDrawing(void)
         return; /* non-raylib link: nothing to swap */
     if(getenv("INBE_SHOT_ARM") == NULL) {
         KryonRaylibBackend_EndDrawing();
+        kry_event_wait_after_frame();
         return;
     }
     if(KryonRaylibBackend_rlDrawRenderBatch != NULL)
@@ -73,6 +79,7 @@ void EndDrawing(void)
         }
     }
     KryonRaylibBackend_EndDrawing();
+    kry_event_wait_after_frame();
 }
 
 
