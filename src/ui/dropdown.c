@@ -689,6 +689,19 @@ draw_arrow:
 void
 ui_draw_dropdown_overlays(void)
 {
+    /* Escape and losing the window focus dismiss open popups, so a
+     * dropdown can never trap the pointer state. */
+    static int prev_focused = 1;
+    int focused = IsWindowFocused();
+    int lost_focus = prev_focused && !focused;
+    int escape_pressed = IsKeyPressed(KEY_ESCAPE);
+
+    prev_focused = focused;
+    if(lost_focus || escape_pressed) {
+        for(int i = 0; i < dropdown_state_count; i++)
+            close_dropdown_state(&dropdown_states[i]);
+        return;
+    }
     for(int i = 0; i < dropdown_state_count; i++) {
         if(dropdown_states[i].open)
             draw_dropdown_menu(dropdown_states[i].id);

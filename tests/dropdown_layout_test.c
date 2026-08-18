@@ -75,6 +75,19 @@ tap(int y)
     step();
 }
 
+/* UIInputCapturesClick includes open dropdown popups, so a probe inside
+ * the popup band, mid-height (away from the button and valid for clipped layouts too) reports
+ * whether the popup is currently open. */
+static int
+popup_open(void)
+{
+    int saved_frame = 0;
+
+    (void)saved_frame;
+    step();
+    return UIInputCapturesClick((Vector2){300.0f, 300.0f});
+}
+
 int
 main(void)
 {
@@ -117,6 +130,74 @@ main(void)
     open_dropdown();
     tap(660);
     check_int("outside click closes without selecting", g_selected, OPT_COUNT - 1);
+    check_int("outside click closes the popup", popup_open(), 0);
+
+    /* Clicking the button again must toggle the popup closed. */
+    open_dropdown();
+    check_int("popup reports open", popup_open(), 1);
+    tap(582);
+    check_int("button toggles the popup closed", popup_open(), 0);
+
+    /* Selecting an option closes the popup. */
+    open_dropdown();
+    g_selected = -1;
+    tap(46);
+    check_int("selection closes the popup", popup_open(), 0);
+
+    /* Wheel-scroll the list, then all close paths must still work. The
+     * wheel only registers while the pointer hovers the popup, so keep
+     * the injected position alive across the wheel frames. */
+    open_dropdown();
+    for(int i = 0; i < 8; i++) {
+        KryonInjectMousePosition(300, 300);
+        KryonInjectWheel(-1.0f);
+        step();
+    }
+    tap(582);
+    check_int("wheel: button toggles closed", popup_open(), 0);
+    open_dropdown();
+    for(int i = 0; i < 8; i++) {
+        KryonInjectMousePosition(300, 300);
+        KryonInjectWheel(-1.0f);
+        step();
+    }
+    tap(660);
+    check_int("wheel: outside click closes", popup_open(), 0);
+    open_dropdown();
+    for(int i = 0; i < 8; i++) {
+        KryonInjectMousePosition(300, 300);
+        KryonInjectWheel(-1.0f);
+        step();
+    }
+    g_selected = -1;
+    tap(46);
+    check_int("wheel: top row selects after scroll", g_selected, 8);
+    check_int("wheel: selection closes", popup_open(), 0);
+
+    /* Escape dismisses an open popup. */
+    open_dropdown();
+    KryonInjectKeyTap(KEY_ESCAPE);
+    step();
+    check_int("escape closes the popup", popup_open(), 0);
+
+    /* Same close paths with app-style clip constraints (titlebar above,
+     * bottom nav below) - the flip math must respect the clips. */
+    SetUIDropdownClipTop(60);
+    SetUIDropdownClipBottom(660);
+    open_dropdown();
+    check_int("clipped popup reports open", popup_open(), 1);
+    tap(660);
+    check_int("clipped: outside click closes", popup_open(), 0);
+    open_dropdown();
+    g_selected = -1;
+    tap(510);
+    check_int("clipped: bottom row selects", g_selected, 9);
+    check_int("clipped: selection closes", popup_open(), 0);
+    open_dropdown();
+    tap(582);
+    check_int("clipped: button toggles closed", popup_open(), 0);
+    SetUIDropdownClipTop(0);
+    SetUIDropdownClipBottom(0);
 
     printf("dropdown layout test ok\n");
     return 0;
