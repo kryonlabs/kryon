@@ -1,4 +1,26 @@
 # Changelog
+## v0.1.14 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.14
+- Ui: make retained frames work without a render context
+- Test: trace and stress retained text input
+- Ui: select all text on double click
+- Test: cover click then tab field traversal
+- Correct secondary window texture orientation
+- Ui: route retained focus traversal
+- Build: always index static runtime archives
+- Runtime: enforce one app instance by default
+- Synchronize shared secondary window textures
+- Runtime: pace event-driven UI frames
+- Kryui: window flags and min size on the k2g AppConfig
+- Present secondary window textures without readback
+- Ui: keep font atlases immutable while typing
+- K2g: host bridge, enums, switch and full for headers
+- Render SDL secondary windows with shared GL contexts
+- Disable unsafe Linux secondary SDL windows
+
 ## v0.1.13 - 2026-08-18
 
 ### Changed
