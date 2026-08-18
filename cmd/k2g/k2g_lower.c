@@ -112,6 +112,22 @@ go_type(const char *type, char *dst, size_t dst_size)
     n = strlen(t);
     while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
         t[--n] = '\0';
+    {
+        const char *p = t;
+
+        while(*p == ' ' || *p == '\t')
+            p++;
+        if(p != t)
+            memmove(t, p, strlen(p) + 1);
+        n = strlen(t);
+    }
+    /* 'char *' / 'char  *' mean 'char*': drop spaces adjacent to '*' */
+    for(size_t k = 0; t[k] != '\0'; k++) {
+        if(t[k] == ' ' && t[k + 1] == '*') {
+            memmove(t + k, t + k + 1, strlen(t + k));
+            k = (size_t)-1;
+        }
+    }
     /* strip a leading 'const ' */
     if(strncmp(t, "const ", 6) == 0)
         memmove(t, t + 6, strlen(t + 6) + 1);
@@ -1680,18 +1696,29 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             emit_indent(f, indent);
             if(colon != NULL && colon[1] != '=') {
                 char aname[K2G_NAME_MAX], gt[K2G_NAME_MAX];
+                char tbuf[K2G_TEXT_MAX];
                 size_t al = (size_t)(colon - rw);
 
                 while(al > 0 && rw[al - 1] == ' ')
                     al--;
                 memcpy(aname, rw, al);
                 aname[al] = '\0';
-                if(!go_type(colon + 1, gt, sizeof(gt)))
-                    snprintf(gt, sizeof(gt), "/* TODO %s */ any", colon + 1);
                 assign = strstr(colon, "= ");
+                /* the declared type ends where the initializer begins */
+                snprintf(tbuf, sizeof(tbuf), "%s", colon + 1);
                 if(assign != NULL)
-                    fprintf(f, "var %s %s = %s\n", aname, gt, assign + 2);
-                else
+                    tbuf[assign - (colon + 1)] = '\0';
+                if(!go_type(tbuf, gt, sizeof(gt)))
+                    snprintf(gt, sizeof(gt), "/* TODO %s */ any", tbuf);
+                if(assign != NULL) {
+                    const char *init = skip_ws(assign + 2);
+
+                    /* Go composite literals carry their type: 'var x = T{...}' */
+                    if(*init == '{' && strstr(gt, "TODO") == NULL)
+                        fprintf(f, "var %s = %s%s\n", aname, gt, init);
+                    else
+                        fprintf(f, "var %s %s = %s\n", aname, gt, assign + 2);
+                } else
                     fprintf(f, "var %s %s\n", aname, gt);
             } else if(colon != NULL) { /* ':=' */
                 fprintf(f, "%s\n", rw);
@@ -1728,9 +1755,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         case KIR_STMT_LABEL:
         case KIR_STMT_GOTO:
+            /* 'name:' and 'goto name' are valid Go; forward jumps over
+             * declarations are a Go compile error, not a silent miscompile */
             emit_indent(f, indent);
-            fprintf(f, "// TODO k2g %s: %s\n",
-                    st->kind == KIR_STMT_LABEL ? "label" : "goto", rw);
+            fprintf(f, "%s\n", rw);
             break;
         case KIR_STMT_ASSIGN:
         case KIR_STMT_EXPR:

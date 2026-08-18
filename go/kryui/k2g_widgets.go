@@ -9,6 +9,7 @@ package kryui
 import "C"
 
 import (
+	"reflect"
 	"strings"
 	"unsafe"
 )
@@ -78,6 +79,27 @@ func freeCStringList(list []*C.char) {
 	for _, c := range list {
 		C.free(unsafe.Pointer(c))
 	}
+}
+
+// labelsOf accepts every way generated code carries a string list: a
+// ';'-joined string, a []string, or a fixed-size [N]string array (the
+// lowering of a .kry 'name: [N] const char*' declaration).
+func labelsOf(v any) []string {
+	switch l := v.(type) {
+	case string:
+		return DropdownLabels(l)
+	case []string:
+		return l
+	}
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Array && rv.Type().Elem().Kind() == reflect.String {
+		out := make([]string, rv.Len())
+		for i := range out {
+			out[i] = rv.Index(i).String()
+		}
+		return out
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -424,8 +446,12 @@ func (r *runtime) TextInRect(text string, rect Rectangle, fontSize int32, color 
 	TextInRect(text, rect, fontSize, color)
 }
 
-func (r *runtime) TextLines(lines string, count int32, x int32, y *int32, font, lineH int32, color Color) {
-	TextLines(lines, count, x, y, font, lineH, color)
+func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color) {
+	s, ok := lines.(string)
+	if !ok {
+		s = strings.Join(labelsOf(lines), ";")
+	}
+	TextLines(s, count, x, y, font, lineH, color)
 }
 
 func (r *runtime) Bevel(x, y, w, h int32, light, dark Color) {

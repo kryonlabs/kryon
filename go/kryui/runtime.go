@@ -41,7 +41,7 @@ type Runtime interface {
 	TabBar(Rectangle, []string, *int32, *int32) int32
 	Progress(Rectangle, int32, int32, int32, string)
 	Checkbox(int32, int32, int32, string, *int32) bool
-	Dropdown(int32, int32, int32, int32, int32, string, *int32) bool
+	Dropdown(id, x, y, w, h int32, options any, rest ...any) bool
 	BeginUI(UIKey)
 	EndUI()
 	Column(ColumnProps)
@@ -56,7 +56,7 @@ type Runtime interface {
 	GetThemeButtonHover() Color
 	GetThemeLink() Color
 	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
-	TextLines(lines string, count int32, x int32, y *int32, font, lineH int32, color Color)
+	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
 	Bevel(x, y, w, h int32, light, dark Color)
 	IconTexture(id, x, y, size int32, iconType int32, tint Color)
 	Picture(props PictureProps)
@@ -195,6 +195,14 @@ func (r *runtime) Checkbox(id, x, y int32, label string, value *int32) bool {
 	}
 	return changed
 }
-func (r *runtime) Dropdown(id, x, y, w, h int32, options string, selected *int32) bool {
-	return DrawUIDropdown(id, x, y, w, h, DropdownLabels(options), selected)
+func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
+	var selected *int32
+
+	/* the C call carries an option count the Go side derives itself */
+	for _, v := range rest {
+		if p, ok := v.(*int32); ok {
+			selected = p
+		}
+	}
+	return DrawUIDropdown(id, x, y, w, h, labelsOf(options), selected)
 }

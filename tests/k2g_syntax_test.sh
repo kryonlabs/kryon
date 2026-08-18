@@ -97,6 +97,18 @@ frame main {
     TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = ScaleUIPx(320), .height = ScaleUIPx(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
     Toolbar((ToolbarProps){.id = 1, .x = 0, .y = ScaleUIPx(40), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
     BottomNav((BottomNavProps){.view_width = ScaleUIPx(320), .view_height = ScaleUIPx(240), .count = 0, .height = ScaleUIPx(56)})
+    scalar: int = 5
+    nums: [4] int = {1, 2, 3, 4}
+    choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
+    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
+    TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, UI_TEXT_16, ScaleUIPx(18), GetThemeText())
+    attempts: int = 0
+retry:
+    attempts += 1
+    if attempts < 3 {
+        goto retry
+    }
     EndDrawing()
 }
 EOF
@@ -180,6 +192,14 @@ grep -q 'rt.Toolbar(kryruntime.ToolbarProps{' "$out"
 grep -q 'rt.BottomNav(kryruntime.BottomNavProps{' "$out"
 grep -q 'rt.Fade(' "$out"
 grep -q 'rt.GetThemeSurface()' "$out"
+
+# typed declarations, arrays, and goto/labels lower for real now
+grep -q 'var scalar int32 = 5' "$out"
+grep -q 'var nums = \[4\]int32{1, 2, 3, 4}' "$out"
+grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
+grep -q 'rt.Dropdown(11, rt.ScaleUIPx(4), rt.ScaleUIPx(210), rt.ScaleUIPx(120), rt.ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
+grep -q 'retry:$' "$out"
+grep -q 'goto retry' "$out"
 
 # The generated source must compile against Kryon's real Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.

@@ -239,6 +239,22 @@ classify_stmt(const char *s)
         return KIR_STMT_CONTINUE;
     if(starts_word(s, "goto"))
         return KIR_STMT_GOTO;
+    /* goto label: a bare 'name:' / 'name: ;' — a following type marks a
+     * declaration ('scalar: int = 5'), not a label */
+    {
+        size_t n = 0;
+
+        while(isalnum((unsigned char)s[n]) || s[n] == '_')
+            n++;
+        if(n > 0 && s[n] == ':') {
+            const char *rest = s + n + 1;
+
+            while(*rest == ' ' || *rest == '\t')
+                rest++;
+            if(*rest == '\0' || strcmp(rest, ";") == 0)
+                return KIR_STMT_LABEL;
+        }
+    }
     if(starts_word(s, "defer"))
         return KIR_STMT_DEFER;
     if(starts_word(s, "unused"))
