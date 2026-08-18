@@ -60,6 +60,12 @@ ui_panel_color(int amount)
 static void
 ui_draw_panel(Rectangle bounds)
 {
+    if(ui_aero_style()) {
+        ui_aero_paint_panel(bounds, c_surface,
+                            ui_radius_px(bounds, GetUIStyleTokens().panel_radius),
+                            1);
+        return;
+    }
     DrawRectangleRec(bounds, c_surface);
     DrawRectangleLinesEx(bounds, 1.0f, c_button);
 }
@@ -71,6 +77,12 @@ ui_draw_menu_panel(Rectangle bounds)
     Color border = GetThemeButton();
     Color shadow = Fade(GetThemeText(), 0.16f);
 
+    if(ui_aero_style()) {
+        ui_aero_paint_panel(bounds, surface,
+                            ui_radius_px(bounds, GetUIStyleTokens().panel_radius),
+                            2);
+        return;
+    }
     DrawRectangleRec((Rectangle){bounds.x + 2.0f, bounds.y + 2.0f,
                                  bounds.width, bounds.height}, shadow);
     DrawRectangleRec(bounds, surface);
@@ -512,6 +524,28 @@ DrawUIRadioButton(RadioButtonProps radio)
         DrawUIText(radio.label != NULL ? radio.label : "",
                    (int)radio.bounds.x + touch + ScaleUIPx(4),
                    ui_row_text_y(radio.bounds, font), font, label);
+    } else if(ui_aero_style()) {
+        UIAeroScheme scheme = ui_aero_scheme();
+        Color ring = radio.checked ? scheme.glow : scheme.inset_border;
+
+        center.x = radio.bounds.x + diameter / 2.0f;
+        if(radio.disabled)
+            ring = ColorLerp(ring, c_bg, 0.5f);
+        if(hot && !radio.disabled) {
+            Color halo = scheme.glow;
+
+            halo.a = 60;
+            DrawCircleV(center, (float)diameter / 2.0f + ScaleUIPx(3), halo);
+        }
+        DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, ring);
+        if(radio.checked) {
+            Color dot = radio.disabled ? ColorLerp(scheme.glow, c_bg, 0.5f)
+                                       : scheme.glow;
+
+            DrawCircleV(center, (float)ScaleUIPx(5), dot);
+        }
+        DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
+                   ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     } else {
         center.x = radio.bounds.x + diameter / 2.0f;
         DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
@@ -540,9 +574,19 @@ DrawUIProgressBar(ProgressBarProps progress)
     if(t > 1.0f)
         t = 1.0f;
     fill.width *= t;
-    DrawRectangleRec(progress.bounds, ui_panel_color(10));
-    DrawRectangleRec(fill, c_icon);
-    DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
+    if(ui_aero_style()) {
+        float radius = ui_radius_px(progress.bounds,
+                                    GetUIStyleTokens().control_radius);
+
+        ui_aero_paint_inset(progress.bounds, BLANK, radius);
+        if(fill.width > ScaleUIPx(2))
+            ui_aero_paint_track(fill, LightenUIColor(c_circle, 22),
+                                DarkenUIColor(c_circle, 10), radius, 1);
+    } else {
+        DrawRectangleRec(progress.bounds, ui_panel_color(10));
+        DrawRectangleRec(fill, c_icon);
+        DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
+    }
     if(progress.label != NULL)
         DrawCenteredUIText(progress.label, (int)(progress.bounds.x + progress.bounds.width / 2),
                            (int)(progress.bounds.y + progress.bounds.height / 2),
@@ -569,8 +613,14 @@ DrawUISpinbox(SpinboxProps spinbox)
 
     if(spinbox.disabled)
         MarkUIDisabled();
-    DrawRectangleRec(text, c_surface);
-    DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
+    if(ui_aero_style())
+        ui_aero_paint_inset(spinbox.bounds, c_surface,
+                            ui_radius_px(spinbox.bounds,
+                                         GetUIStyleTokens().control_radius));
+    else {
+        DrawRectangleRec(text, c_surface);
+        DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
+    }
     if(spinbox.value_text != NULL)
         snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
     else
@@ -621,6 +671,25 @@ void
 DrawUILabelFrame(LabelFrameProps frame)
 {
     int font = GetUISmallFontSize();
+    if(ui_aero_style()) {
+        UIAeroScheme scheme = ui_aero_scheme();
+        int pad = ScaleUIPx(8);
+
+        ui_aero_paint_panel(frame.bounds, scheme.glass,
+                            ui_radius_px(frame.bounds,
+                                         GetUIStyleTokens().panel_radius),
+                            1);
+        if(frame.title != NULL) {
+            int w = MeasureUIText(frame.title, font) + pad * 2;
+
+            DrawRectangle((int)frame.bounds.x + pad,
+                          (int)frame.bounds.y - ScaleUIPx(8),
+                          w, ScaleUIPx(18), scheme.glass);
+            DrawUIText(frame.title, (int)frame.bounds.x + pad * 2,
+                       (int)frame.bounds.y - ScaleUIPx(9), font, c_text);
+        }
+        return;
+    }
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
     if(frame.title != NULL) {
         int pad = ScaleUIPx(8);

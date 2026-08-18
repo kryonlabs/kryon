@@ -361,12 +361,19 @@ DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
                       !UIInputCapturesClick(mouse);
         int active = type == selected;
 
-        DrawRectangleRounded(bounds, 0.12f, 8,
-                             hovered ? LightenUIColor(c_surface, 10)
-                                     : c_surface);
-        DrawUIBevel(x, y, cell, cell,
-                    LightenUIColor(c_surface, active ? 68 : 34),
-                    DarkenUIColor(c_surface, active ? 68 : 34));
+        if(ui_aero_style() && active) {
+            ui_aero_paint_control(bounds, c_surface, BLANK,
+                                  ui_radius_px(bounds,
+                                               GetUIStyleTokens().control_radius),
+                                  hovered, 0, 0);
+        } else {
+            DrawRectangleRounded(bounds, 0.12f, 8,
+                                 hovered ? LightenUIColor(c_surface, 10)
+                                         : c_surface);
+            DrawUIBevel(x, y, cell, cell,
+                        LightenUIColor(c_surface, active ? 68 : 34),
+                        DarkenUIColor(c_surface, active ? 68 : 34));
+        }
         if(active)
             DrawRectangleLinesEx(bounds, ScaleUIPx(2), c_button_hover);
         if(modal.icons != NULL && type > UI_ICON_TYPE_NONE &&

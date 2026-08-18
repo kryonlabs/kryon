@@ -83,9 +83,15 @@ DrawUIToast(void)
     y = ui_view_height - h - margin;
     bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
 
-    DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
-    DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, ScaleUIPx(1),
-                                DarkenUIColor(c_surface, 46));
+    if(ui_aero_style()) {
+        ui_aero_paint_panel(bounds, DarkenUIColor(c_surface, 18),
+                            ui_radius_px(bounds, GetUIStyleTokens().panel_radius),
+                            2);
+    } else {
+        DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
+        DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, ScaleUIPx(1),
+                                    DarkenUIColor(c_surface, 46));
+    }
     DrawUIText(display,
                x + (w - text_w) / 2,
                GetUIControlTextY(display, y, h, font),

@@ -12,6 +12,16 @@ ui_top_nav_background(Rectangle bounds)
                  scheme.outline);
         return;
     }
+    if(ui_aero_style()) {
+        Color top = ColorLerp(c_surface, c_circle, 0.08f);
+
+        ui_aero_paint_track(bounds, top, DarkenUIColor(c_bg, 4), 0.0f, 0);
+        DrawLine((int)bounds.x, (int)(bounds.y + bounds.height - 1),
+                 (int)(bounds.x + bounds.width),
+                 (int)(bounds.y + bounds.height - 1),
+                 DarkenUIColor(c_button, 18));
+        return;
+    }
 
     DrawRectangleRec(bounds, c_bg);
     DrawLine((int)bounds.x, (int)(bounds.y + bounds.height - 1),

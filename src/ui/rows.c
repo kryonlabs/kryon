@@ -135,10 +135,18 @@ DrawUIOverlayButton(OverlayButtonProps button)
                  : button.border;
     text = button.text.a != 0 ? button.text : c_text;
 
-    if(background.a != 0)
-        DrawRectangleRec(button.bounds, background);
-    if(border.a != 0)
-        DrawRectangleLinesEx(button.bounds, ScaleUIPx(1), border);
+    if(ui_aero_style() && background.a != 0) {
+        ui_aero_paint_control(button.bounds, background,
+                              border.a != 0 ? border : BLANK,
+                              ui_radius_px(button.bounds,
+                                           GetUIStyleTokens().control_radius),
+                              hovered, 0, 0);
+    } else {
+        if(background.a != 0)
+            DrawRectangleRec(button.bounds, background);
+        if(border.a != 0)
+            DrawRectangleLinesEx(button.bounds, ScaleUIPx(1), border);
+    }
     if(button.label != NULL) {
         text_w = MeasureUIText(button.label, font);
         DrawUIText(button.label,
