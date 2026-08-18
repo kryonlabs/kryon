@@ -189,7 +189,7 @@ li{margin:.25rem 0}
 <tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
 <tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
 <tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
-<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D</td><td class="">Web</td><td class="no">✗</td><td class=""><b>Documented but not implemented</b> — <code>src/backend/canvas_backend.c</code> does not exist; build fails if selected</td></tr>
+<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node call-sequence gate)</td><td class="">No raylib; glyphs rasterized from FontFace data; rounded rects/rings/clipboard approximated</td></tr>
 </table>
 <h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
 <table>
@@ -204,9 +204,9 @@ li{margin:.25rem 0}
 </table>
 <h2>Known gaps</h2>
 <ul>
-<li><code>canvas</code> Tier A backend is selectable and documented but has no</li>
+<li>The <code>canvas</code> Tier A backend exists and passes its node call-sequence</li>
 </ul>
-<p>implementation; the working web path is <code>krb-web</code> (<code>kry_sw</code> → wasm).</p>
+<p>gate, but is young: rounded rectangles and ring segments are approximated, the clipboard is not bridged, tint is alpha-only, and it has not yet been exercised in a real browser page.</p>
 <ul>
 <li><code>k2g</code>&#x27;s <code>Runtime</code> interface covers the full widget whitelist and lowers</li>
 </ul>

@@ -223,7 +223,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | `raylib` windows RGFW rule | GL 1.1 immediate mode | Windows | ✗ opt-in make rule | `KRYON_RAYLIB_WINDOWS_RULE` |
 | `raylib` android | GLES via NDK `NativeActivity` | Android (downstream Gradle) | ✗ downstream apps | `mk/android.mk` |
 | `null` | none (zero-return stubs) | all | ✗ (used by local headless tests) | Injected input still works |
-| `canvas` | HTML5 Canvas2D | Web | ✗ | **Documented but not implemented** — `src/backend/canvas_backend.c` does not exist; build fails if selected |
+| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node call-sequence gate) | No raylib; glyphs rasterized from FontFace data; rounded rects/rings/clipboard approximated |
 
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)
 
@@ -239,8 +239,10 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ## Known gaps
 
-- `canvas` Tier A backend is selectable and documented but has no
-  implementation; the working web path is `krb-web` (`kry_sw` → wasm).
+- The `canvas` Tier A backend exists and passes its node call-sequence
+  gate, but is young: rounded rectangles and ring segments are
+  approximated, the clipboard is not bridged, tint is alpha-only, and it
+  has not yet been exercised in a real browser page.
 - `k2g`'s `Runtime` interface covers the full widget whitelist and lowers
   typed declarations, arrays, and goto/labels. Remaining boundaries: a
   forward `goto` over declarations is a loud Go compile error (not silently
