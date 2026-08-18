@@ -385,6 +385,24 @@ done:
     return delivered;
 }
 
+int SendNotificationAction(const char *title, const char *body,
+                           const char *icon, int expire_ms,
+                           int action, const char *action_label,
+                           const char *action_url)
+{
+    /* No click plumbing yet: degrade to the plain notification. */
+    (void)icon; (void)expire_ms; (void)action; (void)action_label;
+    (void)action_url;
+    return SendNotificationEx(title, body, NULL, NOTIFICATION_ID_AUTO,
+                              NOTIFICATION_PRIORITY_DEFAULT);
+}
+
+int PollNotificationAction(char *url_buf, int url_buf_size)
+{
+    (void)url_buf; (void)url_buf_size;
+    return 0;
+}
+
 void CancelNotification(const char *tag, int id)
 {
     struct android_app *app = notify_app();
@@ -544,12 +562,32 @@ int RequestNotificationPermission(void)
 }
 
 int SendNotificationEx(const char *title, const char *body,
-                       const char *tag, int id, int priority)
+                       const char *tag, int id, NotificationPriority priority)
 {
     (void)priority;   /* browsers have no priority concept */
     if(title == NULL || body == NULL)
         return 0;
     return kryon_web_send(title, body, tag != NULL ? tag : "", id);
+}
+
+int SendNotificationAction(const char *title, const char *body,
+                           const char *icon, int expire_ms,
+                           int action, const char *action_label,
+                           const char *action_url)
+{
+    /* The web backend closes notifications on click but has no poll path
+     * for the app: degrade to the plain notification. */
+    (void)icon; (void)expire_ms; (void)action; (void)action_label;
+    (void)action_url;
+    if(title == NULL || body == NULL)
+        return 0;
+    return kryon_web_send(title, body, "", 0);
+}
+
+int PollNotificationAction(char *url_buf, int url_buf_size)
+{
+    (void)url_buf; (void)url_buf_size;
+    return 0;
 }
 
 void CancelNotification(const char *tag, int id)
@@ -576,6 +614,8 @@ void SetNotificationAppName(const char *name)
 #define KRYON_NOTIFICATIONS_PATH   "/org/freedesktop/Notifications"
 #define KRYON_NOTIFICATIONS_IFACE  "org.freedesktop.Notifications"
 #define KRYON_NOTIFIED_MAX 64
+#define KRYON_NOTIFICATION_ACTION_KEY "open"
+#define KRYON_NOTIFICATION_ACTION_SLOTS 16
 
 static char g_notification_app_name[64] = "kryon";
 /* Sent ids remembered so CancelAll can close them; the spec has no global
@@ -583,21 +623,135 @@ static char g_notification_app_name[64] = "kryon";
 static unsigned int g_notified[KRYON_NOTIFIED_MAX];
 static int g_notified_count;
 
+/* Action-capable notifications: Notify's returned daemon id is remembered
+ * with its URL so the ActionInvoked signal can resolve the click, and the
+ * resolved action waits in a single slot for PollNotificationAction. */
+static GMutex g_notification_lock;
+typedef struct NotificationActionSlot {
+    unsigned int daemon_id;
+    int action;
+    char url[384];
+} NotificationActionSlot;
+static NotificationActionSlot g_action_slots[KRYON_NOTIFICATION_ACTION_SLOTS];
+static unsigned int g_action_slot_next;
+static int g_pending_action;
+static char g_pending_url[384];
+
 void SetNotificationAppName(const char *name)
 {
     if(name == NULL || name[0] == '\0')
         return;
+    g_mutex_lock(&g_notification_lock);
     snprintf(g_notification_app_name, sizeof(g_notification_app_name), "%s",
              name);
+    g_mutex_unlock(&g_notification_lock);
 }
 
 static GDBusConnection *notification_bus(void)
 {
     static GDBusConnection *bus;
 
-    if(bus == NULL)
-        bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
+    if(bus == NULL) {
+        g_mutex_lock(&g_notification_lock);
+        if(bus == NULL)
+            bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
+        g_mutex_unlock(&g_notification_lock);
+    }
     return bus;
+}
+
+/* One Notify call. Returns 1 when the daemon accepted it and fills
+ * *daemon_id with the id the daemon assigned (0 when it did not give one);
+ * callers use that id to correlate ActionInvoked signals. */
+static int notification_notify(const char *icon, const char *title,
+                               const char *body, int expire_ms,
+                               const gchar *const *actions,
+                               unsigned int replaces_id, unsigned int urgency,
+                               unsigned int *daemon_id)
+{
+    GDBusConnection *bus = notification_bus();
+    GVariant *hints;
+    GVariant *result;
+    GError *error = NULL;
+    int delivered = 0;
+
+    *daemon_id = 0;
+    if(bus == NULL)
+        return 0;
+    hints = g_variant_new_parsed("{"
+            "'urgency': <%u>, "
+            "'desktop-entry': <%s>"
+            "}", urgency, g_notification_app_name);
+    result = g_dbus_connection_call_sync(bus,
+            KRYON_NOTIFICATIONS_BUS, KRYON_NOTIFICATIONS_PATH,
+            KRYON_NOTIFICATIONS_IFACE, "Notify",
+            g_variant_new("(susssasa{sv}i)",
+                    g_notification_app_name,
+                    replaces_id,
+                    icon != NULL ? icon : "",
+                    title,
+                    body,
+                    actions != NULL ? g_variant_new_strv(actions, -1) : NULL,
+                    NULL,
+                    hints,
+                    expire_ms > 0 ? expire_ms : -1),
+            G_VARIANT_TYPE("(u)"),
+            G_DBUS_CALL_FLAGS_NONE,
+            -1, NULL, &error);
+    if(result != NULL) {
+        g_variant_get(result, "(u)", daemon_id);
+        g_variant_unref(result);
+        delivered = 1;
+    } else {
+        g_error_free(error);
+    }
+    return delivered;
+}
+
+/* ActionInvoked arrives with the daemon's unique bus name as sender, so the
+ * subscription matches any sender on the Notifications object path. */
+static void
+on_notification_action(GDBusConnection *connection, const char *sender,
+                       const char *object_path, const char *interface_name,
+                       const char *signal_name, GVariant *parameters,
+                       gpointer user_data)
+{
+    guint32 invoked_id = 0;
+    const char *action_key = NULL;
+    int i;
+
+    (void)connection; (void)sender; (void)object_path;
+    (void)interface_name; (void)signal_name; (void)user_data;
+    g_variant_get(parameters, "(u&s)", &invoked_id, &action_key);
+    if(invoked_id == 0 || action_key == NULL ||
+       strcmp(action_key, KRYON_NOTIFICATION_ACTION_KEY) != 0)
+        return;
+    g_mutex_lock(&g_notification_lock);
+    for(i = 0; i < KRYON_NOTIFICATION_ACTION_SLOTS; i++) {
+        if(g_action_slots[i].daemon_id == invoked_id) {
+            g_pending_action = g_action_slots[i].action;
+            snprintf(g_pending_url, sizeof(g_pending_url), "%s",
+                     g_action_slots[i].url);
+            g_action_slots[i].daemon_id = 0;   /* one shot */
+            break;
+        }
+    }
+    g_mutex_unlock(&g_notification_lock);
+}
+
+static void
+ensure_notification_actions(GDBusConnection *bus)
+{
+    static int subscribed;
+
+    if(subscribed || bus == NULL)
+        return;
+    subscribed = 1;
+    g_dbus_connection_signal_subscribe(bus, NULL, KRYON_NOTIFICATIONS_IFACE,
+                                       "ActionInvoked",
+                                       KRYON_NOTIFICATIONS_PATH, NULL,
+                                       G_DBUS_SIGNAL_FLAGS_NONE,
+                                       on_notification_action, NULL, NULL);
 }
 
 int IsNotificationSupported(void)
@@ -616,57 +770,81 @@ int RequestNotificationPermission(void)
 }
 
 int SendNotificationEx(const char *title, const char *body,
-                       const char *tag, int id, int priority)
+                       const char *tag, int id, NotificationPriority priority)
 {
-    GDBusConnection *bus = notification_bus();
-    GVariant *hints;
-    GVariant *result;
-    GError *error = NULL;
     unsigned int replaces_id = id > 0 ? (unsigned int)id : 0;
     unsigned int urgency = priority == NOTIFICATION_PRIORITY_LOW ? 0 :
                            priority == NOTIFICATION_PRIORITY_HIGH ? 2 : 1;
-    const char *tag_key = (tag != NULL && tag[0] != '\0') ? tag : "";
-    int delivered = 0;
+    unsigned int daemon_id;
+    int delivered;
 
-    (void)tag_key;
-    if(bus == NULL || title == NULL || body == NULL)
+    (void)tag;
+    if(title == NULL || body == NULL)
         return 0;
-    hints = g_variant_new_parsed("{"
-            "'urgency': <%u>, "
-            "'desktop-entry': <%s>"
-            "}", urgency, g_notification_app_name);
-    result = g_dbus_connection_call_sync(bus,
-            KRYON_NOTIFICATIONS_BUS, KRYON_NOTIFICATIONS_PATH,
-            KRYON_NOTIFICATIONS_IFACE, "Notify",
-            g_variant_new("(susssasa{sv}i)",
-                    g_notification_app_name,
-                    replaces_id,
-                    "",              /* app_icon: the desktop-entry wins */
-                    title,
-                    body,
-                    NULL,            /* no actions */
-                    NULL,
-                    hints,
-                    -1),             /* default expiry */
-            G_VARIANT_TYPE("(u)"),
-            G_DBUS_CALL_FLAGS_NONE,
-            -1, NULL, &error);
-    if(result != NULL) {
-        unsigned int daemon_id = 0;
-
-        g_variant_get(result, "(u)", &daemon_id);
-        g_variant_unref(result);
-        delivered = 1;
-        /* Remember the daemon id so Cancel can close it; when the caller
-         * supplied its own id the daemon replaced that notification. */
-        if(daemon_id != 0) {
-            g_notified[g_notified_count % KRYON_NOTIFIED_MAX] = daemon_id;
-            g_notified_count++;
-        }
-    } else {
-        g_error_free(error);
+    /* The daemon-side icon (desktop-entry) wins; app_icon stays empty. */
+    delivered = notification_notify("", title, body, -1, NULL, replaces_id,
+                                    urgency, &daemon_id);
+    /* Remember the daemon id so Cancel can close it; when the caller
+     * supplied its own id the daemon replaced that notification. */
+    if(delivered && daemon_id != 0) {
+        g_notified[g_notified_count % KRYON_NOTIFIED_MAX] = daemon_id;
+        g_notified_count++;
     }
     return delivered;
+}
+
+int SendNotificationAction(const char *title, const char *body,
+                           const char *icon, int expire_ms,
+                           int action, const char *action_label,
+                           const char *action_url)
+{
+    GDBusConnection *bus = notification_bus();
+    const gchar *actions[3];
+    NotificationActionSlot *slot;
+    unsigned int daemon_id;
+    int delivered;
+
+    if(bus == NULL || title == NULL || body == NULL)
+        return 0;
+    if(action == 0 || action_label == NULL || action_label[0] == '\0')
+        return SendNotificationEx(title, body, NULL, NOTIFICATION_ID_AUTO,
+                                  NOTIFICATION_PRIORITY_DEFAULT);
+
+    ensure_notification_actions(bus);
+    actions[0] = KRYON_NOTIFICATION_ACTION_KEY;
+    actions[1] = action_label;
+    actions[2] = NULL;
+    delivered = notification_notify(icon, title, body, expire_ms, actions, 0,
+                                    1, &daemon_id);
+    if(delivered && daemon_id != 0) {
+        g_mutex_lock(&g_notification_lock);
+        slot = &g_action_slots[g_action_slot_next %
+                               KRYON_NOTIFICATION_ACTION_SLOTS];
+        slot->daemon_id = daemon_id;
+        slot->action = action;
+        snprintf(slot->url, sizeof(slot->url), "%s",
+                 action_url != NULL ? action_url : "");
+        g_action_slot_next++;
+        g_mutex_unlock(&g_notification_lock);
+    }
+    return delivered;
+}
+
+int PollNotificationAction(char *url_buf, int url_buf_size)
+{
+    int action;
+
+    /* Dispatch pending ActionInvoked callbacks even without an app-side
+     * main loop (non-blocking; the tray's gtk_main pumps the same default
+     * context when one is running). */
+    g_main_context_iteration(NULL, FALSE);
+    g_mutex_lock(&g_notification_lock);
+    action = g_pending_action;
+    g_pending_action = 0;
+    if(action != 0 && url_buf != NULL && url_buf_size > 0)
+        snprintf(url_buf, (size_t)url_buf_size, "%s", g_pending_url);
+    g_mutex_unlock(&g_notification_lock);
+    return action;
 }
 
 void CancelNotification(const char *tag, int id)
@@ -733,9 +911,25 @@ int RequestNotificationPermission(void)
 }
 
 int SendNotificationEx(const char *title, const char *body,
-                       const char *tag, int id, int priority)
+                       const char *tag, int id, NotificationPriority priority)
 {
     (void)title; (void)body; (void)tag; (void)id; (void)priority;
+    return 0;
+}
+
+int SendNotificationAction(const char *title, const char *body,
+                           const char *icon, int expire_ms,
+                           int action, const char *action_label,
+                           const char *action_url)
+{
+    (void)title; (void)body; (void)icon; (void)expire_ms;
+    (void)action; (void)action_label; (void)action_url;
+    return 0;
+}
+
+int PollNotificationAction(char *url_buf, int url_buf_size)
+{
+    (void)url_buf; (void)url_buf_size;
     return 0;
 }
 

@@ -35,5 +35,6 @@ int PollDesktopTrayAction(void);
 void SetDesktopTrayStatus(const char *text);
 void SetDesktopTrayMenu(const DesktopTrayMenuItem *items, int count);
 void SetDesktopTrayActivateAction(int action);
+void SetDesktopTrayIcon(const char *icon_path);
 
 #endif

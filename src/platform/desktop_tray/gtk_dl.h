@@ -38,6 +38,7 @@ int KryonGtkEnsure(void);
 #define gtk_status_icon_set_title             kryon_gtk_dl_gtk_status_icon_set_title
 #define gtk_status_icon_set_tooltip_text      kryon_gtk_dl_gtk_status_icon_set_tooltip_text
 #define gtk_status_icon_set_visible           kryon_gtk_dl_gtk_status_icon_set_visible
+#define gtk_status_icon_set_from_file         kryon_gtk_dl_gtk_status_icon_set_from_file
 #define gtk_main                              kryon_gtk_dl_gtk_main
 #define gtk_main_quit                         kryon_gtk_dl_gtk_main_quit
 #define gtk_widget_destroy                    kryon_gtk_dl_gtk_widget_destroy
@@ -72,6 +73,8 @@ extern void (*kryon_gtk_dl_gtk_status_icon_set_tooltip_text)(GtkStatusIcon *stat
                                                              const gchar *text);
 extern void (*kryon_gtk_dl_gtk_status_icon_set_visible)(GtkStatusIcon *status_icon,
                                                         gboolean visible);
+extern void (*kryon_gtk_dl_gtk_status_icon_set_from_file)(GtkStatusIcon *status_icon,
+                                                          const gchar *filename);
 extern void (*kryon_gtk_dl_gtk_main)(void);
 extern void (*kryon_gtk_dl_gtk_main_quit)(void);
 extern void (*kryon_gtk_dl_gtk_widget_destroy)(GtkWidget *widget);

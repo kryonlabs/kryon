@@ -49,7 +49,26 @@ int SendNotification(const char *title, const char *body);
 
 /* Full form: notifications sharing (tag, id) replace each other. */
 int SendNotificationEx(const char *title, const char *body,
-                       const char *tag, int id, int priority);
+                       const char *tag, int id, NotificationPriority priority);
+
+/* Action-capable form (desktop popups): expire_ms <= 0 keeps the daemon
+ * default; icon is an absolute path or icon name, "" lets the daemon resolve
+ * the desktop-entry icon registered via SetNotificationAppName. When action
+ * != 0 and action_label != NULL the popup carries one button labeled
+ * action_label, and clicking it is delivered once by
+ * PollNotificationAction() together with a copy of action_url. Backends
+ * without action support return 0 (callers should fall back). Never
+ * blocks. */
+int SendNotificationAction(const char *title, const char *body,
+                           const char *icon, int expire_ms,
+                           int action, const char *action_label,
+                           const char *action_url);
+
+/* Returns the pending notification action (0 if none) and copies its URL
+ * into url_buf when non-NULL. One slot: a click arriving before the previous
+ * one was polled replaces it. Also pumps the signal dispatch context, so
+ * clicks arrive without an app-side main loop. */
+int PollNotificationAction(char *url_buf, int url_buf_size);
 
 /* Dismiss a previously sent notification. */
 void CancelNotification(const char *tag, int id);

@@ -104,4 +104,13 @@ func SetDesktopTrayStatus(status string) {
 	C.free(unsafe.Pointer(cs))
 }
 
+// SetDesktopTrayIcon swaps the tray icon at runtime — the emblem/attention
+// state (e.g. a badge variant while unseen notifications wait). An empty
+// path restores the icon InitDesktopTray resolved.
+func SetDesktopTrayIcon(iconPath string) {
+	cs := C.CString(iconPath)
+	C.SetDesktopTrayIcon(cs)
+	C.free(unsafe.Pointer(cs))
+}
+
 func ShutdownDesktopTray() { C.ShutdownDesktopTray() }

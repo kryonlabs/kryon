@@ -38,6 +38,7 @@ static pthread_mutex_t TrayActionLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t TrayStateLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t TrayStatusLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t TrayMenuLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t TrayIconLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t TrayStateCond = PTHREAD_COND_INITIALIZER;
 static int PendingAction;
 static int TrayStarted;
@@ -46,6 +47,8 @@ static int TrayCloseAction;
 static int TrayActivateAction;
 static int TrayMenuUpdatePending;
 static int TrayStatusUpdatePending;
+static int TrayIconUpdatePending;
+static char TrayIconOverride[512]; /* non-empty: emblem/alternate icon */
 static char TrayTitle[128] = "App";
 static char TrayIconName[128] = "application-x-executable";
 static char TrayStatusText[128] = "App";
@@ -61,6 +64,8 @@ static AppIndicator *TrayIndicator;
 
 static gboolean ApplyDesktopTrayMenu(gpointer user_data);
 static gboolean ApplyDesktopTrayStatus(gpointer user_data);
+static gboolean ApplyDesktopTrayIcon(gpointer user_data);
+static const char *GetDesktopTrayIconPath(void);
 
 static char *
 CopyDesktopTrayString(const char *text)
@@ -302,6 +307,58 @@ ApplyDesktopTrayStatus(gpointer user_data)
 #if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
     if(TrayIndicator != NULL)
         app_indicator_set_title(TrayIndicator, text);
+#endif
+
+    return G_SOURCE_REMOVE;
+}
+
+/* Swap the tray icon at runtime — the emblem/attention state (e.g. a badge
+ * variant while unseen notifications wait). icon_path NULL or "" restores
+ * the icon InitDesktopTray resolved. Applied on the GTK thread. */
+void
+SetDesktopTrayIcon(const char *icon_path)
+{
+    pthread_mutex_lock(&TrayIconLock);
+    snprintf(TrayIconOverride, sizeof(TrayIconOverride), "%s",
+             icon_path != NULL ? icon_path : "");
+    if(TrayState == DESKTOP_TRAY_STATE_READY && !TrayIconUpdatePending) {
+        TrayIconUpdatePending = 1;
+        g_idle_add(ApplyDesktopTrayIcon, NULL);
+    }
+    pthread_mutex_unlock(&TrayIconLock);
+}
+
+static gboolean
+ApplyDesktopTrayIcon(gpointer user_data)
+{
+    char path[sizeof(TrayIconOverride)];
+
+    (void)user_data;
+    pthread_mutex_lock(&TrayIconLock);
+    snprintf(path, sizeof(path), "%s", TrayIconOverride);
+    TrayIconUpdatePending = 0;
+    pthread_mutex_unlock(&TrayIconLock);
+
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
+    if(TrayStatusIcon != NULL) {
+        if(path[0] != '\0') {
+            gtk_status_icon_set_from_file(TrayStatusIcon, path);
+        } else {
+            /* Empty override restores the icon InitDesktopTray resolved. */
+            const char *icon_path = GetDesktopTrayIconPath();
+
+            if(icon_path != NULL)
+                gtk_status_icon_set_from_file(TrayStatusIcon, icon_path);
+            else
+                gtk_status_icon_set_from_icon_name(TrayStatusIcon, TrayIconName);
+        }
+    }
+#endif
+#if defined(KRYON_DESKTOP_TRAY_AYATANA) || defined(KRYON_DESKTOP_TRAY_APPINDICATOR)
+    if(TrayIndicator != NULL)
+        app_indicator_set_icon_full(TrayIndicator,
+                                    path[0] != '\0' ? path : TrayIconName,
+                                    TrayTitle);
 #endif
 
     return G_SOURCE_REMOVE;
@@ -604,6 +661,7 @@ int InitDesktopTray(const DesktopTraySpec *spec) { (void)spec; return 0; }
 void ShutdownDesktopTray(void) {}
 int PollDesktopTrayAction(void) { return 0; }
 void SetDesktopTrayStatus(const char *text) { (void)text; }
+void SetDesktopTrayIcon(const char *icon_path) { (void)icon_path; }
 void SetDesktopTrayMenu(const DesktopTrayMenuItem *items, int count)
 {
     (void)items;
