@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 /* ------------------------------------------------------------------ */
 /* JS side: canvas, texture registry, event queues, draw helpers      */
@@ -1296,6 +1297,46 @@ int MakeDirectory(const char *dirPath)
     if(dirPath == NULL)
         return 0;
     return mkdir(dirPath, 0777) == 0 ? 1 : 0;
+}
+
+bool SaveFileData(const char *fileName, const void *data, int bytesToWrite)
+{
+    FILE *f;
+
+    if(fileName == NULL || data == NULL || bytesToWrite < 0)
+        return 0;
+    f = fopen(fileName, "wb");
+    if(f == NULL)
+        return 0;
+    if(fwrite(data, 1, (size_t)bytesToWrite, f) != (size_t)bytesToWrite) {
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+    return 1;
+}
+
+bool SaveFileText(const char *fileName, const char *text)
+{
+    if(text == NULL)
+        return 0;
+    return SaveFileData(fileName, text, (int)strlen(text));
+}
+
+int ChangeDirectory(const char *dir)
+{
+    if(dir == NULL)
+        return 0;
+    return chdir(dir) == 0;
+}
+
+const char *GetWorkingDirectory(void)
+{
+    static char cwd[1024];
+
+    if(getcwd(cwd, sizeof(cwd)) == NULL)
+        return ".";
+    return cwd;
 }
 
 unsigned char *LoadFileData(const char *fileName, int *dataSize)
