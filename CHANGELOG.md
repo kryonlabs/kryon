@@ -1,4 +1,32 @@
 # Changelog
+## v0.1.13 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.13
+- Web: build the current KRB compiler sources
+- Build: avoid case-colliding makefiles
+- Ci: invoke Homebrew GNU make directly
+- Ci: pin the macOS renderer compiler
+- Ci: ignore macOS make compatibility preload
+- Ci: reset inherited make flags on macOS
+- Web: link shared KIR parser into IDE tools
+- Ci: prevent recursive macOS renderer build
+- Ci: install renderer toolchain dependencies
+- Ci: build renderer targets from complete checkouts
+- Ui: enforce cross-lowering text input latency
+- Avoid fixed buffer when canonicalizing tray icon path
+- Pass absolute icon path to AppIndicator
+- Resolve tray icon theme path for GNOME
+- Ui: complete retained text editing actions
+- Revert "Fix C-style local declarations in k2c"
+- Test: cover legacy k2c declarations
+- Ui: retain mouse and keyboard text selection
+- Fix C-style local declarations in k2c
+- Ui: rebuild font atlases only between frames
+- Add SDL auxiliary windows for Wayland
+- K2c: preserve anonymous enum declarations
+
 ## v0.1.12 - 2026-08-17
 
 ### Changed
