@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
@@ -135,7 +135,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.ref.outputs.tag }}
           submodules: recursive
@@ -177,21 +177,21 @@ jobs:
           sha256sum "$KRYON_STATIC_ARCHIVE" "$KRYON_TOOLS_ARCHIVE" > SHA256SUMS
 
       - name: Upload Static Library Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kryon-static-library-${{ steps.ref.outputs.tag }}
           path: ${{ env.KRYON_STATIC_ARCHIVE }}
           if-no-files-found: error
 
       - name: Upload Tools Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kryon-tools-${{ steps.ref.outputs.tag }}
           path: ${{ env.KRYON_TOOLS_ARCHIVE }}
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.ref.outputs.tag }}
           name: Kryon ${{ steps.ref.outputs.tag }}

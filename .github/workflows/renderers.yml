@@ -24,7 +24,7 @@ jobs:
           - { os: macos-latest, cc: /usr/bin/clang, suffix: macos-arm64, build_dir: build/macos-arm64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Install mingw (windows cross)
@@ -48,7 +48,7 @@ jobs:
           cp "$target" build/krb-run
       - name: Rename
         run: cp build/krb-run krb-run-${{ matrix.suffix }}${{ matrix.suffix == 'windows-x86_64' && '.exe' || '' }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: krb-run-${{ matrix.suffix }}
           path: krb-run-${{ matrix.suffix }}*
@@ -56,7 +56,7 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: mymindstorm/setup-emsdk@v14
@@ -68,7 +68,7 @@ jobs:
         run: |
           mkdir -p krb-player-web && cp build/linux-x86_64/web/krb-web/* krb-player-web/
           cp examples/02_buttons.kry /tmp/ 2>/dev/null || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: krb-player-web
           path: krb-player-web/
@@ -79,7 +79,7 @@ jobs:
     # working screenshot pipeline: xvfb-run, as inbe's own CI does.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Build tools
@@ -105,6 +105,6 @@ jobs:
       - uses: actions/download-artifact@v4
       - run: |
           mkdir rel && cp -r krb-run-* krb-player-web rel/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: rel/*

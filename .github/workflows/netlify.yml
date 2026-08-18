@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -57,7 +57,7 @@ jobs:
           test ! -f build/site/API.md
 
       - name: Upload Site Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kryon-site
           path: build/site

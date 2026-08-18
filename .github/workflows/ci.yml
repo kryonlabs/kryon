@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -48,7 +48,7 @@ jobs:
           cat text-input-perf.jsonl >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload text input measurements
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: text-input-perf-linux
           path: text-input-perf.jsonl
@@ -60,7 +60,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
