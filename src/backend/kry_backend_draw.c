@@ -227,7 +227,9 @@ select_draw(void)
 }
 
 /* Plan-08 audio capability: the raylib surface owns a real audio
- * device, so cartridges get working cap.audio.play/stop here. */
+ * device, so cartridges get working cap.audio.play/stop here. Skipped
+ * whole when the app builds raylib without the audio module. */
+#if !defined(SUPPORT_MODULE_RAUDIO) || SUPPORT_MODULE_RAUDIO
 static int
 cap_audio_raylib(const char *asset_path, int stop)
 {
@@ -248,6 +250,10 @@ cap_audio_raylib(const char *asset_path, int stop)
     PlaySound(current);
     return 0;
 }
+#define KRY_KRB_CAP_AUDIO 1
+#else
+#define KRY_KRB_CAP_AUDIO 0
+#endif
 
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((constructor))
@@ -255,7 +261,9 @@ __attribute__((constructor))
 static void
 krb_caps_raylib_init(void)
 {
+#if KRY_KRB_CAP_AUDIO
     KrbCapAudioHook = cap_audio_raylib;
+#endif
     select_draw();
 }
 
