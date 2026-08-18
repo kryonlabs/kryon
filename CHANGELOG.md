@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.17 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.17
+- Docs: add FEATURE_MATRIX.md mapping widgets and features across targets and backends
+- Ci: drop the renderer KRY_SW_SRCS overrides
+
 ## v0.1.16 - 2026-08-18
 
 ### Changed
