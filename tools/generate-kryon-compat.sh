@@ -92,7 +92,7 @@ EOF
     echo "#endif"
 } > "$rename_header"
 
-awk -v prefix="$backend_prefix" -v input_symbols="$input_symbols" -v shared_symbols="$shared_symbols" '
+awk -v prefix="$backend_prefix" -v input_symbols="$input_symbols" -v shared_symbols="$shared_symbols" -v emit_audio="${KRYON_COMPAT_AUDIO:-1}" '
 function trim(s) {
     sub(/^[[:space:]]+/, "", s)
     sub(/[[:space:]]+$/, "", s)
@@ -204,6 +204,8 @@ BEGIN {
     print ""
 }
 
+/^\/\/ Audio Loading and Playing Functions/ { in_audio_section = 1 }
+
 /^[[:space:]]*(RLAPI|RMAPI)[[:space:]]/ {
     line = $0
     sub(/\/\/.*$/, "", line)
@@ -216,6 +218,11 @@ BEGIN {
     args = line
     sub(/^[^(]*\(/, "", args)
     sub(/\)$/, "", args)
+    # Apps that build raylib without the audio module (uku-style
+    # SUPPORT_MODULE_RAUDIO=0) must not get forwarders for symbols that
+    # no longer exist. Audio is the last module section in raylib.h.
+    if(emit_audio == "0" && in_audio_section)
+        next
     if(name in shared_owned)
         next
     if(args ~ /\.\.\./) {
