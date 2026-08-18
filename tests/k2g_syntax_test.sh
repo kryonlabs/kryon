@@ -100,6 +100,24 @@ frame main {
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    GenericButton(20, ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28), "GB", UI_BUTTON_STYLE_SECONDARY, 0, NULL)
+    TextButton(21, ScaleUIPx(150), ScaleUIPx(40), "TB", NULL)
+    LocaleDropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), &pick)
+    VerticalSlider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), 0, 10, &slider_val)
+    CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
+    SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), UI_TEXT_16, GetThemeText())
+    ShowUIToast("toast from kry")
+    TextInputControl((TextInputProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .focus_id = 30})
+    ReadonlyTextBox((ReadonlyTextBoxProps){.bounds = {ScaleUIPx(150), ScaleUIPx(152), ScaleUIPx(90), ScaleUIPx(24)}, .text = "ro"})
+    Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
+    Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
+    Combobox((ComboboxProps){{ScaleUIPx(240), ScaleUIPx(270), ScaleUIPx(70), ScaleUIPx(28)}, 25, choices, 3, &pick, 0})
+    LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(4), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .title = "frame"})
+    Notebook((NotebookProps){.bounds = {ScaleUIPx(140), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .tabs = choices[:], .selected_index = &pick})
+    ListBox((ListBoxProps){.bounds = {ScaleUIPx(280), ScaleUIPx(300), ScaleUIPx(60), ScaleUIPx(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
+    Collapsible((CollapsibleProps){.bounds = {ScaleUIPx(4), ScaleUIPx(360), ScaleUIPx(120), ScaleUIPx(30)}, .label = "sect", .open = NULL})
+    SetThemeDarkMode(1)
+    SetCurrentTheme(0, 1)
     Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, UI_TEXT_16, ScaleUIPx(18), GetThemeText())
@@ -192,6 +210,26 @@ grep -q 'rt.Toolbar(kryruntime.ToolbarProps{' "$out"
 grep -q 'rt.BottomNav(kryruntime.BottomNavProps{' "$out"
 grep -q 'rt.Fade(' "$out"
 grep -q 'rt.GetThemeSurface()' "$out"
+
+# Go-parity surface: the remaining widget families lower and compile
+grep -q 'rt.GenericButton(' "$out"
+grep -q 'rt.TextButton(' "$out"
+grep -q 'rt.LocaleDropdown(' "$out"
+grep -q 'rt.VerticalSlider(' "$out"
+grep -q 'rt.CanvasGrid(' "$out"
+grep -q 'rt.SelectableText(' "$out"
+grep -q 'rt.ShowUIToast("toast from kry")' "$out"
+grep -q 'rt.TextInputControl(kryruntime.TextInputProps{' "$out"
+grep -q 'rt.ReadonlyTextBox(kryruntime.ReadonlyTextBoxProps{' "$out"
+grep -q 'rt.Radio(kryruntime.RadioButtonProps{' "$out"
+grep -q 'rt.Spinbox(kryruntime.SpinboxProps{' "$out"
+grep -q 'rt.Combobox(kryruntime.ComboboxProps{' "$out"
+grep -q 'rt.LabelFrame(kryruntime.LabelFrameProps{' "$out"
+grep -q 'rt.Notebook(kryruntime.NotebookProps{' "$out"
+grep -q 'rt.ListBox(kryruntime.ListBoxProps{' "$out"
+grep -q 'rt.Collapsible(kryruntime.CollapsibleProps{' "$out"
+grep -q 'rt.SetThemeDarkMode(1' "$out"
+grep -q 'rt.SetCurrentTheme(0, 1)' "$out"
 
 # typed declarations, arrays, and goto/labels lower for real now
 grep -q 'var scalar int32 = 5' "$out"

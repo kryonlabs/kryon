@@ -102,6 +102,10 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
         {"Vector2", "kryruntime.Vector2"}, {"Rectangle", "kryruntime.Rectangle"},
+        {"UIFrame", "kryruntime.UIFrame"}, {"UIGrid", "kryruntime.UIGrid"},
+        {"UICanvas", "kryruntime.UICanvas"},
+        {"UICanvasResult", "kryruntime.UICanvasResult"},
+        {"UISide", "kryruntime.UISide"},
         {"Color", "kryruntime.Color"},     {"Texture2D", "kryruntime.Texture2D"},
         {NULL, NULL}
     };
@@ -689,6 +693,77 @@ props_field_at(const char *type, int index)
     return NULL;
 }
 
+/* .kry array variables ('name: [N] const char*' state or local): uses
+ * lower to Go slices, so identifier references append '[:]' (valid Go in
+ * argument, indexing, and len() positions alike). */
+static char k2g_array_names[24][K2G_NAME_MAX];
+static int k2g_array_count;
+
+static void
+k2g_register_arrays_module(const KirModule *m)
+{
+    int i;
+
+    for(i = 0; i < m->state_count && k2g_array_count < 24; i++) {
+        const KirStateField *sf = &m->state_fields[i];
+
+        if(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
+           strchr(sf->type, '*') != NULL) {
+            snprintf(k2g_array_names[k2g_array_count], KIR_NAME_MAX, "%s",
+                     sf->name);
+            k2g_array_count++;
+        }
+    }
+}
+
+static void
+k2g_register_arrays_stmt(const char *text)
+{
+    const char *t = text;
+    const char *colon;
+    const char *eq;
+
+    while(*t == ' ' || *t == '\t')
+        t++;
+    colon = strchr(t, ':');
+    eq = colon != NULL ? strchr(colon, '=') : NULL;
+    if(colon == NULL || eq == NULL || k2g_array_count >= 24)
+        return;
+    {
+        char decl_type[KIR_NAME_MAX];
+        size_t tl = (size_t)(eq - colon - 1);
+
+        if(tl >= sizeof(decl_type))
+            tl = sizeof(decl_type) - 1;
+        memcpy(decl_type, colon + 1, tl);
+        decl_type[tl] = '\0';
+        if(decl_type[0] != '[' || strstr(decl_type, "char") == NULL ||
+           strchr(decl_type, '*') == NULL)
+            return;
+    }
+    {
+        size_t nl = (size_t)(colon - t);
+
+        if(nl > 0 && nl < KIR_NAME_MAX) {
+            memcpy(k2g_array_names[k2g_array_count], t, nl);
+            k2g_array_names[k2g_array_count][nl] = '\0';
+            k2g_array_count++;
+        }
+    }
+}
+
+static int
+k2g_is_array_name(const char *ident, size_t len)
+{
+    int i;
+
+    for(i = 0; i < k2g_array_count; i++)
+        if(strlen(k2g_array_names[i]) == len &&
+           strncmp(k2g_array_names[i], ident, len) == 0)
+            return 1;
+    return 0;
+}
+
 /* Go Props fields that are bool while .kry writes C ints (0/1). */
 static int
 bool_prop_field(const char *field)
@@ -830,7 +905,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         }
         /* Props/Spec use C designated initializers. Translate them to named
          * Go fields and give the untyped bounds literal its Rectangle type. */
-        if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL) {
+        if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL ||
+           strcmp(type, "UICanvas") == 0) {
             char raw[K2G_TEXT_MAX], parts[32][K2G_TEXT_MAX];
             size_t rn = 0;
             int depth = 1;
@@ -1223,6 +1299,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"UI_BUTTON_STYLE_PRIMARY", "kryruntime.UIButtonStylePrimary"},
                     {"UI_BUTTON_STYLE_SECONDARY", "kryruntime.UIButtonStyleSecondary"},
                     {"UI_BUTTON_STYLE_DANGER", "kryruntime.UIButtonStyleDanger"},
+                    {"THEME_STYLE_SYSTEM", "kryruntime.THEME_STYLE_SYSTEM"},
+                    {"THEME_STYLE_RETRO", "kryruntime.THEME_STYLE_RETRO"},
+                    {"THEME_STYLE_MATERIAL", "kryruntime.THEME_STYLE_MATERIAL"},
+                    {"THEME_STYLE_AERO", "kryruntime.THEME_STYLE_AERO"},
                     {"UI_PICTURE_FIT_STRETCH", "kryruntime.UI_PICTURE_FIT_STRETCH"},
                     {"UI_PICTURE_FIT_CONTAIN", "kryruntime.UI_PICTURE_FIT_CONTAIN"},
                     {"UI_PICTURE_FIT_COVER", "kryruntime.UI_PICTURE_FIT_COVER"},
@@ -1287,6 +1367,17 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     p = q;
                     continue;
                 }
+            }
+            if(k2g_is_array_name(ident, il)) {
+                if(dn + il + 4 < dst_size) {
+                    memcpy(dst + dn, ident, il);
+                    dn += il;
+                    dst[dn++] = '[';
+                    dst[dn++] = ':';
+                    dst[dn++] = ']';
+                }
+                p = q;
+                continue;
             }
             /* runtime call? Capitalized identifiers route to rt. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
@@ -1693,6 +1784,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             char *colon = strchr(rw, ':');
             char *assign;
 
+            k2g_register_arrays_stmt(st->text);
             emit_indent(f, indent);
             if(colon != NULL && colon[1] != '=') {
                 char aname[K2G_NAME_MAX], gt[K2G_NAME_MAX];
@@ -1808,6 +1900,8 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 snprintf(seen_stems[seen_count++], sizeof(seen_stems[0]),
                          "%s", stem);
             camel(stem, guard, sizeof(guard));
+            k2g_array_count = 0;
+            k2g_register_arrays_module(m);
             snprintf(path, sizeof(path), "%s/%s.go", out_dir, stem);
             mkdir_parent(path);
             f = fopen(path, "wb");

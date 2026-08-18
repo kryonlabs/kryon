@@ -89,24 +89,24 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `Button` | ✅ node |
-| GenericButton (5 styles) | ✅ | ✅ | ✗ | ✅ `GenericButton` | ◐ BUTTON style byte |
+| GenericButton (5 styles) | ✅ | ✅ | ✅ | ✅ `GenericButton` | ◐ BUTTON style byte |
 | IconButton / IconBtn / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
-| TextButton | ✅ | ✅ | ✗ | ✅ `TextButton` | ✗ |
+| TextButton | ✅ | ✅ | ✅ | ✅ `TextButton` | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
-| TextInputControl | ✅ | ✅ | ✗ | ✅ `TextInputControl` | ✗ |
+| TextInputControl | ✅ | ✅ | ✅ | ✅ `TextInputControl` | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ `TextField`/`NewTextField`/`NewPasswordField` | ✅ TEXTINPUT node |
-| ReadonlyTextBox | ✅ | ✅ | ✗ | ✅ `ReadonlyTextBox` | ✗ |
-| TextArea (selection, syntax highlight) | ✅ | ✅ | ✗ | ✅ `NewTextArea`/`TextArea` | ✗ |
-| Dropdown / DropdownEx / LocaleDropdown | ✅ | ✅ | ✗ | ✅ `Dropdown(Ex)`/`LocaleDropdown` | ✅ DROPDOWN control |
+| ReadonlyTextBox | ✅ | ✅ | ✅ | ✅ `ReadonlyTextBox` | ✗ |
+| TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
+| Dropdown / DropdownEx / LocaleDropdown | ✅ | ✅ | ◐ `Dropdown`/`LocaleDropdown` only (Ex needs rich option arrays) | ✅ `Dropdown(Ex)`/`LocaleDropdown` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| VerticalSlider / WithMarks | ✅ | ✅ | ✗ | ◐ `VerticalSlider` only | ✅ VSLIDER control |
+| VerticalSlider / WithMarks | ✅ | ✅ | ◐ `VerticalSlider` only | ◐ `VerticalSlider` only | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
-| Radio | ✅ | ✅ | ✗ | ✅ `Radio` | ✗ |
+| Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✗ |
 | Progress | ✅ | ✅ | ✅ | ✅ `Progress` | ✗ |
-| Spinbox | ✅ | ✅ | ✗ | ✅ `Spinbox` | ✅ SPINBOX control |
-| Combobox | ✅ | ✅ | ✗ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
+| Spinbox | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
+| Combobox | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
 | ColorPicker (RGB sliders) | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### UI/Layout
@@ -117,23 +117,23 @@ declaration pass (`src/ui/ui_tree.c`).
 | Group | ✅ (lowers to Stack) | ✅ | ◐ via Column | ✅ via Stack | ✅ |
 | Scroll container | ✅ | ✅ | ✅ `Scroll`/`EndScroll` | ✅ `Begin/EndScrollContainer` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✗ | ✗ | ✅ |
-| LabelFrame | ✅ | ✅ | ✗ | ✅ `LabelFrame` | ✗ |
-| Notebook (tabs) | ✅ | ✅ | ✗ | ✅ `Notebook` | ✗ |
-| PanedView (splitter) | ✅ | ✅ | ✗ | ✅ `PanedView` | ✗ |
-| Collapsible | ✅ | ✅ | ✗ | ✅ `Collapsible` | ✗ |
-| Tk pack/grid helpers (`UIFramePack`, `UIGridCell`, `UIPlace`) | ✅ | ✅ | ✗ | ✅ | ✗ |
-| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✗ | ✅ `Begin/EndUICanvas`+hit-test | ✗ |
+| LabelFrame | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✗ |
+| Notebook (tabs) | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
+| PanedView (splitter) | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
+| Collapsible | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
+| Tk pack/grid helpers (`UIFramePack`, `UIGridCell`, `UIPlace`) | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ `Begin/EndUICanvas` | ✅ `Begin/EndUICanvas`+hit-test | ✗ |
 
 ### UI/Collections
 
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
-| ListBox | ✅ | ✅ | ✗ | ✅ `ListBox` | ✗ |
+| ListBox | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
 | TreeView / CascadingTreeView | ✅ | ✅ | ✗ | ✗ | ✗ |
-| SourceView (code + line numbers) | ✅ | ✅ | ✗ | ✅ `SourceView` | ✗ |
-| TableView (sortable) | ✅ | ✅ | ✗ | ✅ `TableView` | ✗ |
-| CanvasGrid | ✅ | ✅ | ✗ | ✅ `CanvasGrid` | ✗ |
-| SelectableText | ✅ | ✅ | ✗ | ✅ `SelectableText` | ✗ |
+| SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
+| TableView (sortable) | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
+| CanvasGrid | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
+| SelectableText | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
 
 ### UI/Navigation
 
@@ -151,11 +151,11 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
 | ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
-| MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✗ | ✅ | ✗ |
-| Toast | ✅ | ✅ | ✗ | ✅ `ShowToast(For)` | ✗ |
+| MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Toast | ✅ | ✅ | ✅ `ShowUIToast(For)` | ✅ `ShowToast(For)` | ✗ |
 | GuideOverlay / TutorialImage(Placeholder) | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TransitionFade / Focus ring | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
-| ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ✗ | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |
+| ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ◐ theme-control methods only | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |
 | FocusDebugOverlay | ✅ | ✅ | ✗ | ✗ | ✗ |
 | InfoRows / OverlayButton / IconSliderPopup | ✅ | ✅ | ✗ | ✗ | ✗ |
 
@@ -243,12 +243,14 @@ declaration pass (`src/ui/ui_tree.c`).
   gate, but is young: rounded rectangles and ring segments are
   approximated, the clipboard is not bridged, tint is alpha-only, and it
   has not yet been exercised in a real browser page.
-- `k2g`'s `Runtime` interface covers the full widget whitelist and lowers
-  typed declarations, arrays, and goto/labels. Remaining boundaries: a
-  forward `goto` over declarations is a loud Go compile error (not silently
-  miscompiled), and values of C pointer/`Texture2D` type cannot be expressed
-  from `.kry` (icons pass by `UIIconType`, option lists as `;`-joined strings
-  or `[N]string` arrays).
+- `k2g` is at Go parity: the `Runtime` interface covers the full widget
+  whitelist plus every widget family `go/kryui` itself exposes (controls,
+  Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme
+  control), with `.kry` array declarations lowering to Go slices at the use
+  site. Remaining boundaries: a forward `goto` over declarations is a loud
+  Go compile error, `DropdownEx`'s rich option arrays are not expressible
+  from `.kry`, and C pointer/`Texture2D` values cannot be written (icons
+  pass by `UIIconType`, option lists as joined strings or `[N]string`).
 - `k2b` drops unsupported widget calls and reports them per file; the
   cartridge widget set remains smaller than the C catalog (see matrix).
   `Combobox` lowers to a `KRB_CTRL_COMBOBOX` control that renders like the

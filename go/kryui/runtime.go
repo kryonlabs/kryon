@@ -70,6 +70,39 @@ type Runtime interface {
 	BottomNav(props BottomNavProps)
 	TopNav(props TopNavProps)
 	Toolbar(props ToolbarProps)
+	GenericButton(id, x, y, w, h int32, label string, style UIButtonStyle, disabled int32, hover *int32) bool
+	TextButton(id, x, y int32, label string, hover *int32) bool
+	LocaleDropdown(id, x, y, w, h int32, selected *int32) bool
+	VerticalSlider(id, x, y, h, min, max int32, value *int32) bool
+	CanvasGrid(bounds Rectangle, step int32, color Color)
+	SelectableText(value string, x, y, fontSize int32, color Color)
+	ShowUIToast(message string)
+	ShowUIToastFor(message string, seconds float64)
+	TextInputControl(props TextInputProps) bool
+	ReadonlyTextBox(props ReadonlyTextBoxProps)
+	TextArea(props TextAreaProps) bool
+	Radio(props RadioButtonProps) int32
+	Spinbox(props SpinboxProps) bool
+	Combobox(props ComboboxProps) bool
+	LabelFrame(props LabelFrameProps)
+	Notebook(props NotebookProps) int32
+	PanedView(props PanedViewProps) int32
+	Collapsible(props CollapsibleProps) int32
+	ListBox(props ListBoxProps) int32
+	SourceView(props SourceViewProps) int32
+	TableView(props TableViewProps) int32
+	MessageDialog(props MessageDialogProps) int32
+	ConfirmDialog(props ConfirmDialogProps) int32
+	PromptDialog(props PromptDialogProps) int32
+	BeginUICanvas(canvas UICanvas) UICanvasResult
+	EndUICanvas(canvas UICanvas)
+	BeginUIFrameBox(bounds Rectangle, padX, padY, gap int32) UIFrame
+	UIFramePack(frame *UIFrame, side UISide, size int32) Rectangle
+	UIGridCell(grid UIGrid, row, col, rowSpan, colSpan int32) Rectangle
+	UIPlace(parent Rectangle, x, y, w, h int32) Rectangle
+	SetCurrentTheme(themeID int32, darkMode int32)
+	SetThemeDarkMode(dark int32)
+	SetThemeStyle(style ThemeStyle)
 }
 
 type runtime struct {
