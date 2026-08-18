@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.20 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.20
+- Canvas: compile to an empty TU outside emcc
+- K2g: reach Go parity on the Runtime surface
+- Canvas: implement the HTML5 Canvas2D Tier A backend
+
 ## v0.1.19 - 2026-08-18
 
 ### Changed
