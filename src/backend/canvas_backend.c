@@ -1490,6 +1490,10 @@ void StopSound(Sound sound)
 {
     (void)sound;
 }
+void PauseSound(Sound sound)
+{
+    (void)sound;
+}
 void SetSoundVolume(Sound sound, float volume)
 {
     (void)sound;
@@ -1564,6 +1568,11 @@ bool IsSoundPlaying(Sound sound)
     return false;
 }
 bool IsMusicValid(Music music)
+{
+    (void)music;
+    return false;
+}
+bool IsMusicStreamPlaying(Music music)
 {
     (void)music;
     return false;
