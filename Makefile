@@ -133,7 +133,9 @@ ifneq ($(NIX_CFLAGS_COMPILE),)
 endif
 
 CPPFLAGS += $(CPPFLAGS_BASE)
-ARFLAGS ?= rcs
+# GNU make defines ARFLAGS=rv by default. A Kryon static library must carry
+# an index so downstream C/Go linkers can resolve every runtime module.
+ARFLAGS = rcs
 KRYON_DIR ?= .
 KRYON_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
 include mk/vendor.mk
