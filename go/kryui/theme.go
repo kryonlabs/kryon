@@ -190,20 +190,20 @@ func RegisterUIFont(name string, font Font) bool {
 // font has been initialized yet.
 func EnsureUIDefaultFont() bool { return C.EnsureUIDefaultFont() != 0 }
 
-// RegisterUIFontData registers embedded font bytes directly. Applications do
-// not need to create temporary files or manage a raylib Font lifetime.
+// RegisterUIFontData registers embedded font bytes and their declared glyph
+// coverage directly. Font atlases are fixed after registration, so typing can
+// never trigger a GPU texture rebuild.
 func RegisterUIFontData(name, fileType string, data []byte, codepoints []rune) bool {
-	return registerUIFontData(name, fileType, data, codepoints, false)
+	return registerUIFontData(name, fileType, data, codepoints)
 }
 
-// RegisterUIFixedFontData registers an embedded font whose fallback coverage
-// is exactly codepoints. Unlike a dynamic source, unrelated text never grows
-// or re-rasterizes its atlases.
+// RegisterUIFixedFontData is an explicit alias for RegisterUIFontData.
+// All Kryon font sources use declared, immutable coverage.
 func RegisterUIFixedFontData(name, fileType string, data []byte, codepoints []rune) bool {
-	return registerUIFontData(name, fileType, data, codepoints, true)
+	return RegisterUIFontData(name, fileType, data, codepoints)
 }
 
-func registerUIFontData(name, fileType string, data []byte, codepoints []rune, fixed bool) bool {
+func registerUIFontData(name, fileType string, data []byte, codepoints []rune) bool {
 	if len(data) == 0 {
 		return false
 	}
@@ -218,11 +218,6 @@ func registerUIFontData(name, fileType string, data []byte, codepoints []rune, f
 	var cpPtr *C.int
 	if len(cps) > 0 {
 		cpPtr = &cps[0]
-	}
-	if fixed {
-		return C.RegisterUIFixedFontSource(cn, ct,
-			(*C.uchar)(unsafe.Pointer(&data[0])), C.uint(len(data)), cpPtr,
-			C.int(len(cps))) != 0
 	}
 	return C.RegisterUIFontSource(cn, ct, (*C.uchar)(unsafe.Pointer(&data[0])),
 		C.uint(len(data)), cpPtr, C.int(len(cps))) != 0

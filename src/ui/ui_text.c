@@ -34,7 +34,6 @@ typedef struct UIFontEntry {
     const unsigned char *font_data;
     unsigned int font_data_size;
     int owns_font_data;
-    int dynamic_codepoints;
     int *codepoints;
     int codepoint_count;
     int codepoint_cap;
@@ -52,8 +51,6 @@ typedef struct UIFontEntry {
 #define UI_FONT_MAX_RASTER_TIERS 16
     Font tier_font[UI_FONT_MAX_RASTER_TIERS];
     int tier_size[UI_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
-    int tier_dirty;          /* codepoint set grew, rasters are stale */
-    unsigned long tier_serial; /* frame of the last dirty rebuild (throttle) */
 } UIFontEntry;
 
 static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
@@ -173,8 +170,6 @@ clear_font_cache(UIFontEntry *entry)
         entry->tier_font[i] = (Font){0};
         entry->tier_size[i] = 0;
     }
-    entry->tier_dirty = 0;
-    entry->tier_serial = 0;
 }
 
 static void
@@ -193,7 +188,6 @@ clear_font_entry(UIFontEntry *entry)
     entry->font_data = NULL;
     entry->font_data_size = 0;
     entry->owns_font_data = 0;
-    entry->dynamic_codepoints = 0;
     entry->codepoints = NULL;
     entry->codepoint_count = 0;
     entry->codepoint_cap = 0;
@@ -209,32 +203,6 @@ font_entry_has_codepoint(UIFontEntry *entry, int codepoint)
             return 1;
     }
     return 0;
-}
-
-static int
-font_entry_add_codepoint(UIFontEntry *entry, int codepoint)
-{
-    int *next;
-    int next_cap;
-
-    if(entry == NULL || codepoint <= 0 || codepoint >= 0x110000)
-        return 0;
-    if(codepoint >= 0xD800 && codepoint <= 0xDFFF)
-        return 0;
-    if(font_entry_has_codepoint(entry, codepoint))
-        return 1;
-
-    if(entry->codepoint_count >= entry->codepoint_cap) {
-        next_cap = entry->codepoint_cap == 0 ? 128 : entry->codepoint_cap * 2;
-        next = realloc(entry->codepoints, (size_t)next_cap * sizeof(*next));
-        if(next == NULL)
-            return 0;
-        entry->codepoints = next;
-        entry->codepoint_cap = next_cap;
-    }
-
-    entry->codepoints[entry->codepoint_count++] = codepoint;
-    return 1;
 }
 
 static Font
@@ -261,25 +229,6 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
     if(font_valid(font))
         SetTextureFilter(UIFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
     return font;
-}
-
-/* Re-rasterize every cached tier at its own size (codepoint set grew). */
-static void
-entry_rebuild_tiers(UIFontEntry *entry)
-{
-    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
-        int size = entry->tier_size[i];
-
-        if(size <= 0)
-            continue;
-        if(font_valid(entry->tier_font[i]))
-            UnloadFont(entry->tier_font[i]);
-        entry->tier_font[i] = load_font_source_size(entry, size);
-        if(!font_valid(entry->tier_font[i]))
-            entry->tier_size[i] = 0;
-    }
-    entry->tier_dirty = 0;
-    ui_font_trim_heap();
 }
 
 static Font
@@ -336,19 +285,9 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
 void
 ui_text_begin_frame(void)
 {
-    int rebuilt = 0;
-
-    for(int i = 0; i < g_ui_font_count; i++) {
-        UIFontEntry *entry = &g_ui_fonts[i];
-
-        if(!entry->tier_dirty)
-            continue;
-        entry->tier_serial = g_ui_frame_serial;
-        entry_rebuild_tiers(entry);
-        rebuilt = 1;
-    }
-    if(rebuilt)
-        ui_font_trim_heap();
+    /* Font atlases are immutable after registration.  Rebuilding an atlas
+     * while a user types stalls the only UI thread and invalidates textures
+     * referenced by the current frame. */
 }
 
 static Font
@@ -376,18 +315,12 @@ entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
 
     if(entry == NULL)
         return (Font){0};
-    if(!entry->dynamic_codepoints && codepoint > 0 && codepoint != ' ' &&
-       codepoint != '\t' && !font_entry_has_codepoint(entry, codepoint))
+    /* Coverage is declared when a source is registered.  Never add a glyph
+     * here: text drawing runs on the interaction path, and changing the
+     * codepoint set would require recreating every cached GPU atlas. */
+    if(codepoint > 0 && codepoint != ' ' && codepoint != '\t' &&
+       !font_entry_has_codepoint(entry, codepoint))
         return (Font){0};
-    if(entry->dynamic_codepoints && codepoint > 0 &&
-       !font_entry_has_codepoint(entry, codepoint)) {
-        /* Mark the raster stale instead of dropping it right away; the base
-         * tier rebuild is throttled to once per frame in
-         * entry_source_font_for_size, batching the whole burst of new
-         * glyphs into a single re-rasterization. */
-        if(font_entry_add_codepoint(entry, codepoint))
-            entry->tier_dirty = 1;
-    }
 
     font = entry_font_for_size(entry, font_size);
     if(!font_valid(font))
@@ -577,8 +510,7 @@ static int *ui_font_codepoints(int *out_count);
 static int
 register_ui_font_source(const char *name, const char *file_type,
                         const unsigned char *font_data, unsigned int font_size,
-                        const int *codepoints, int codepoint_count,
-                        int dynamic_codepoints)
+                        const int *codepoints, int codepoint_count)
 {
     int index;
 
@@ -602,10 +534,8 @@ register_ui_font_source(const char *name, const char *file_type,
         g_ui_fonts[index].codepoint_count = codepoint_count;
         g_ui_fonts[index].codepoint_cap = codepoint_count;
     } else {
-        /* No codepoint set given: seed the standard range (ASCII, Latin and
-         * Latin Extended, general punctuation, currency, Greek, Cyrillic) so
-         * the common scripts render with no first-frame atlas rebuilds. The
-         * font stays dynamic and grows for anything beyond this seed. */
+        /* No codepoint set given: use the standard UI coverage (ASCII, Latin
+         * Extended, punctuation, currency, Greek and Cyrillic). */
         int seed_count = 0;
         int *seed = ui_font_codepoints(&seed_count);
         if(seed == NULL || seed_count == 0) {
@@ -628,12 +558,6 @@ register_ui_font_source(const char *name, const char *file_type,
     g_ui_fonts[index].font_data_size = font_size;
     g_ui_fonts[index].font = (Font){0};
     g_ui_fonts[index].small_font = (Font){0};
-    /* Dynamic sources grow beyond their seed as new glyphs are encountered.
-     * Fixed sources are deliberately limited to their supplied subset, which
-     * keeps a fallback font from rebuilding its atlases for characters it can
-     * never serve. */
-    g_ui_fonts[index].dynamic_codepoints = dynamic_codepoints;
-
     if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE))) {
         clear_font_entry(&g_ui_fonts[index]);
         return 0;
@@ -647,7 +571,7 @@ RegisterUIFontSource(const char *name, const char *file_type,
                      const int *codepoints, int codepoint_count)
 {
     return register_ui_font_source(name, file_type, font_data, font_size,
-                                   codepoints, codepoint_count, 1);
+                                   codepoints, codepoint_count);
 }
 
 int
@@ -659,7 +583,7 @@ RegisterUIFixedFontSource(const char *name, const char *file_type,
     if(codepoints == NULL || codepoint_count <= 0)
         return 0;
     return register_ui_font_source(name, file_type, font_data, font_size,
-                                   codepoints, codepoint_count, 0);
+                                   codepoints, codepoint_count);
 }
 
 int
@@ -896,9 +820,9 @@ UIFontMemoryReport(const char *tag)
         UIFontEntry *entry = &g_ui_fonts[i];
 
         fprintf(stderr,
-                "[kryon-mem] font '%s' active=%d dynamic=%d codepoints=%d tiers=",
+                "[kryon-mem] font '%s' active=%d codepoints=%d tiers=",
                 entry->name, i == g_ui_active_font ? 1 : 0,
-                entry->dynamic_codepoints, entry->codepoint_count);
+                entry->codepoint_count);
         for(int t = 0; t < UI_FONT_MAX_RASTER_TIERS; t++) {
             if(entry->tier_size[t] > 0)
                 fprintf(stderr, "%s%dpx/%dglyphs", t ? "," : "",

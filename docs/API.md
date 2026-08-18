@@ -401,12 +401,12 @@ void UIFontMemoryReport(const char *tag);
 rasterized sizes, glyph counts) to stderr. It is a no-op unless
 `KRYON_MEM_DEBUG` is set in the environment.
 
-Source fonts registered through `RegisterUIFontSource` rasterize at each
-requested physical size and retain up to eight size tiers. A burst of new
-codepoints re-rasterizes at most once per frame. Use
-`RegisterUIFixedFontSource` when the supplied codepoints are the complete
-coverage of a fallback font; unrelated text then cannot grow or rebuild that
-font's atlases.
+Source fonts registered through `RegisterUIFontSource` rasterize their
+declared codepoints at each requested physical size and retain bounded size
+tiers. Their atlas coverage is immutable after registration: drawing or
+typing text never reallocates a font texture. Supply every codepoint the
+source is expected to render; omitting the list selects Kryon's standard UI
+coverage. `RegisterUIFixedFontSource` is an equivalent explicit name.
 
 #### Text Measurement
 
