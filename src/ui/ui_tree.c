@@ -650,6 +650,23 @@ UIRouteInput(void)
 
     if(ui_committed_node_count <= 0)
         return;
+
+    /* The retained tree owns focus order. Register every interactive node
+     * before routing input so Tab follows declaration order for fields and
+     * buttons exactly as it does in the immediate UI API. */
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+        int focus_id = 0;
+
+        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE)
+            focus_id = node->data.text_field.focus_id;
+        else if(node->kind == UI_WIDGET_BUTTON_NODE &&
+                !node->data.button.spec.disabled)
+            focus_id = node->data.button.spec.focus_id;
+        if(UIFocusFrameOpen() && focus_id > 0)
+            (void)RegisterUIFocus(focus_id, node->bounds);
+    }
+
     mouse = GetMousePosition();
     hit = UIHitTestNode(mouse);
     pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
@@ -684,6 +701,22 @@ UIRouteInput(void)
     }
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
+        UIEvent event;
+
+        if(!UIFocusFrameOpen() ||
+           node->kind != UI_WIDGET_BUTTON_NODE ||
+           node->data.button.spec.disabled ||
+           !IsUIFocusActivatePressed(node->data.button.spec.focus_id))
+            continue;
+        memset(&event, 0, sizeof(event));
+        event.key = node->key;
+        event.kind = UI_EVENT_CLICK;
+        event.timestamp = GetTime();
+        ui_event_push(event);
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
         TextFieldProps *field;
         UITextFieldState *state;
         int start;
@@ -697,6 +730,15 @@ UIRouteInput(void)
             continue;
         field = &node->data.text_field;
         state = node->state;
+        if(UIFocusFrameOpen() && field->focus_id > 0) {
+            int focused = IsUIFocusActive(field->focus_id);
+
+            if(state->focused != focused) {
+                state->focused = focused;
+                ui_text_field_event(node, focused ? UI_EVENT_FOCUS
+                                                  : UI_EVENT_BLUR, GetTime());
+            }
+        }
         if(target >= 0) {
             int focused = target == i;
 

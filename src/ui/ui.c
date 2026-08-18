@@ -1102,6 +1102,12 @@ EndUIFocus(void)
 }
 
 int
+UIFocusFrameOpen(void)
+{
+    return g_ui_focus_frame_open;
+}
+
+int
 RegisterUIFocus(int id, Rectangle bounds)
 {
     Vector2 mouse_world;

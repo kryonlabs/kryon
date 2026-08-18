@@ -278,5 +278,57 @@ main(void)
         KryonInjectPump();
     }
 
+    /* Retained declarations use the same traversal path as generated Kry
+     * programs: after Tab, text must enter the next declared field. */
+    {
+        char first[16] = "one";
+        char second[16] = "";
+        int first_cursor = 3, second_cursor = 0;
+        int first_focused = 0, second_focused = 0;
+
+        KryonInjectReset();
+        SetUIFocus(1001);
+        BeginUIFocus();
+        BeginUI(1000);
+        TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
+            .text = first, .text_size = sizeof(first),
+            .cursor_position = &first_cursor, .focused = &first_focused,
+            .focus_id = 1001, .font = 16 });
+        TextField((TextFieldProps){ .bounds = {10, 50, 160, 30},
+            .text = second, .text_size = sizeof(second),
+            .cursor_position = &second_cursor, .focused = &second_focused,
+            .focus_id = 1002, .font = 16 });
+        EndUI();
+        EndUIFocus();
+
+        KryonInjectKeyTap(KEY_TAB);
+        KryonInjectPump();
+        BeginUIFocus();
+        BeginUI(1000);
+        TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
+            .text_size = sizeof(first), .cursor_position = &first_cursor,
+            .focused = &first_focused, .focus_id = 1001, .font = 16 });
+        TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
+            .text_size = sizeof(second), .cursor_position = &second_cursor,
+            .focused = &second_focused, .focus_id = 1002, .font = 16 });
+        EndUI();
+        EndUIFocus();
+
+        KryonInjectPump();
+        KryonInjectText("x");
+        KryonInjectPump();
+        BeginUIFocus();
+        BeginUI(1000);
+        TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
+            .text_size = sizeof(first), .cursor_position = &first_cursor,
+            .focused = &first_focused, .focus_id = 1001, .font = 16 });
+        TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
+            .text_size = sizeof(second), .cursor_position = &second_cursor,
+            .focused = &second_focused, .focus_id = 1002, .font = 16 });
+        EndUI();
+        EndUIFocus();
+        check_int("retained tab focuses next field", strcmp(second, "x"), 0);
+    }
+
     return failures == 0 ? 0 : 1;
 }

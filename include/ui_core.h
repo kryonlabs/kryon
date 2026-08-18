@@ -82,6 +82,7 @@ int UITransitionCuesEnabled(void);
 
 void BeginUIFocus(void);
 void EndUIFocus(void);
+int UIFocusFrameOpen(void);
 int RegisterUIFocus(int id, Rectangle bounds);
 int IsUIFocusActive(int id);
 int IsUIFocusActivatePressed(int id);
