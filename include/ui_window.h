@@ -14,7 +14,10 @@
  * Mouse events on these windows are kept out of the core window's input
  * state; poll them with IsUIWindowClicked().
  *
- * Desktop (SDL) only; other platforms compile to no-ops.
+ * Desktop only; other platforms compile to no-ops. Linux and FreeBSD default
+ * to a private X11 connection (secondary windows without touching the app's
+ * SDL state); builds that prefer SDL windows, e.g. Wayland without XWayland,
+ * compile this translation unit with -DUI_WINDOW_HAVE_SDL.
  */
 
 #include "kryon_compat.generated.h"

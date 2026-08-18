@@ -331,7 +331,10 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 {
     UIWindow *win;
 
-    if(width <= 0 || height <= 0 || !ui_x11_init())
+    /* The render texture below needs a live GL context; without the app's
+     * main window there is nothing to share assets with and rlgl is not
+     * initialized. */
+    if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_x11_init())
         return NULL;
 
     if((flags & UI_WINDOW_TOP_RIGHT) != 0) {
@@ -866,7 +869,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     SDL_Window *previous_window;
     SDL_GLContext previous_context;
 
-    if(width <= 0 || height <= 0)
+    if(width <= 0 || height <= 0 || !IsWindowReady())
         return NULL;
     if((flags & UI_WINDOW_BORDERLESS) != 0)
         sdl_flags |= SDL_WINDOW_BORDERLESS;
