@@ -201,12 +201,13 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
 
         style_options[0] = ui_theme_settings_text(settings.style_system_label,
                                                   "theme_style_system", "System style");
+        /* Style names localize through GetThemeStyleLabel already. */
         style_options[1] = ui_theme_settings_text(settings.style_retro_label,
-                                                  GetThemeStyleLabel(THEME_STYLE_RETRO));
+                                                  NULL, GetThemeStyleLabel(THEME_STYLE_RETRO));
         style_options[2] = ui_theme_settings_text(settings.style_material_label,
-                                                  GetThemeStyleLabel(THEME_STYLE_MATERIAL));
+                                                  NULL, GetThemeStyleLabel(THEME_STYLE_MATERIAL));
         style_options[3] = ui_theme_settings_text(settings.style_aero_label,
-                                                  GetThemeStyleLabel(THEME_STYLE_AERO));
+                                                  NULL, GetThemeStyleLabel(THEME_STYLE_AERO));
         for(int i = 0; i < 4; i++) {
             if(*settings.theme_style == style_values[i])
                 style_index = i;

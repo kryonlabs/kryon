@@ -628,6 +628,33 @@ lookup_locale_value(const char *key)
     return key != NULL ? key : "";
 }
 
+/* Best available locale for this environment: LANGUAGE (may be a
+ * colon-separated list, per POSIX), then LC_ALL, LC_MESSAGES, LANG.
+ * Regional suffixes and codesets ("pt_BR.UTF-8") map onto the base
+ * catalog ("pt") when one exists; otherwise English. */
+const char *
+GetDefaultLocaleCode(void)
+{
+    static const char *names[] = {"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"};
+    char buf[32];
+    const char *env;
+    size_t len;
+
+    for(size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        env = getenv(names[i]);
+        if(env == NULL || env[0] == '\0' || strchr(env, '%') != NULL)
+            continue;
+        len = 0;
+        while(env[len] != '\0' && env[len] != ':' && env[len] != '.' &&
+              env[len] != '_' && len + 1 < sizeof(buf))
+            buf[len++] = env[len];
+        buf[len] = '\0';
+        if(len >= 2 && GetLocaleIndex(buf) >= 0)
+            return GetLocaleCode(GetLocaleIndex(buf));
+    }
+    return "en";
+}
+
 const char *
 GetLocaleText(const char *key)
 {
