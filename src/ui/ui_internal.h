@@ -77,6 +77,18 @@ void ui_material_state_layer(Rectangle bounds, Color on_color,
 void ui_material_focus(Rectangle bounds);
 void ui_material_elevation(Rectangle bounds, float radius, int level);
 void ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed);
+int ui_aero_style(void);
+Color ui_aero_on_color(Color color);
+UIAeroScheme ui_aero_scheme(void);
+void ui_aero_paint_control(Rectangle bounds, Color base, Color border,
+                           float radius, int hovered, int pressed, int focused);
+void ui_aero_paint_panel(Rectangle bounds, Color tint, float radius,
+                         int shadow_level);
+void ui_aero_paint_inset(Rectangle bounds, Color base, float radius);
+void ui_aero_paint_track(Rectangle bounds, Color top, Color bottom,
+                         float radius, int glossy);
+Color ui_aero_titlebar_top(void);
+Color ui_aero_titlebar_bottom(void);
 void ui_draw_control_background(Rectangle bounds, Color background,
                                 Color border, float classic_radius);
 

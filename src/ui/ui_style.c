@@ -51,6 +51,22 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
             .touch_target_min = 48,
             .shadow_offset_y = 2
         };
+    case THEME_STYLE_AERO:
+        return (UIStyleTokens){
+            /* Glass: 4px control / 8px panel corners, translucent fills so
+             * content shows through, a gloss strip on top of every control
+             * and a soft drop shadow. */
+            .control_radius = 4.0f,
+            .panel_radius = 8.0f,
+            .control_alpha = 235,
+            .panel_alpha = 205,
+            .border_alpha = 190,
+            .shadow_alpha = 60,
+            .shine_alpha = 90,
+            .bevel_enabled = 0,
+            .touch_target_min = 36,
+            .shadow_offset_y = 3
+        };
     case THEME_STYLE_SYSTEM:
     default:
         return (UIStyleTokens){
@@ -337,6 +353,16 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
         return;
     }
 
+    if(ui_aero_style()) {
+        /* Aero owns the whole control paint: gradient fill, gloss, inner
+         * highlight, border. classic_radius fractions belong to the retro
+         * look; the token radius keeps the glass consistent. */
+        ui_aero_paint_control(bounds, background, border,
+                              ui_radius_px(bounds, tokens.control_radius),
+                              0, 0, 0);
+        return;
+    }
+
     if(classic_radius > 0.0f)
         radius = classic_radius;
 
@@ -376,6 +402,14 @@ void
 ui_draw_box_background(Rectangle bounds, float radius, Color background,
                        Color border)
 {
+    if(ui_aero_style()) {
+        /* Fields read as carved into the surface, not as glossy buttons. */
+        ui_aero_paint_inset(bounds, background,
+                            radius > 0.0f ? radius
+                                          : ui_radius_px(bounds,
+                                                         GetUIStyleTokens().control_radius));
+        return;
+    }
     if(ui_modern_style()) {
         ui_draw_control_background(bounds, background, border, radius);
         return;

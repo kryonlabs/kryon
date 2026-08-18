@@ -687,7 +687,7 @@ GetThemeMode(void)
 void
 SetThemeStyle(ThemeStyle style)
 {
-    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_MATERIAL)
+    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_AERO)
         style = THEME_STYLE_SYSTEM;
     theme_style = style;
     ApplyCurrentUITheme();
@@ -751,6 +751,8 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
         return THEME_MONO;
     case THEME_STYLE_MATERIAL:
         return THEME_MINT;
+    case THEME_STYLE_AERO:
+        return THEME_AERO;
     case THEME_STYLE_SYSTEM:
     default:
         return THEME_MONO;
@@ -776,6 +778,10 @@ GetThemeStyleLabel(ThemeStyle style)
     case THEME_STYLE_MATERIAL:
         key = "theme_style_material";
         fallback = "Material";
+        break;
+    case THEME_STYLE_AERO:
+        key = "theme_style_aero";
+        fallback = "Aero";
         break;
     default:
         return "System";

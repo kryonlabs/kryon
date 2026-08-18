@@ -527,6 +527,7 @@ load_base_locale(void)
         {"theme_mono", "Mono"},
         {"theme_mint", "Mint"},
         {"theme_cobalt", "Cobalt"},
+        {"theme_aero", "Aero"},
     };
 
     for(size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++)

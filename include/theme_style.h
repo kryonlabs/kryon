@@ -4,7 +4,8 @@
 typedef enum ThemeStyle {
     THEME_STYLE_SYSTEM = 0,
     THEME_STYLE_RETRO,
-    THEME_STYLE_MATERIAL
+    THEME_STYLE_MATERIAL,
+    THEME_STYLE_AERO
 } ThemeStyle;
 
 #endif
