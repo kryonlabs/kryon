@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.19 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.19
+- K2c: emit a runnable main for screen-only apps
+- Build: keep the canvas backend out of native builds
+- Tools: aero_shot renders the themed widget showcase to PNG
+- Screenshots: neutral arm name, opt-in debug dumps, shared PNG writer
+- Docs: k2c column, bare widget names, and a permanent HTML renderer
+
 ## v0.1.18 - 2026-08-18
 
 ### Changed
