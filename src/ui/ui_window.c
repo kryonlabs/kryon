@@ -745,6 +745,16 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     UIWindow *win;
     Uint32 sdl_flags = 0;
 
+#if defined(__linux__) || defined(__FreeBSD__)
+    /* SDL secondary software windows and the main GLES context are not a safe
+     * combination across Mesa drivers: llvmpipe can segfault on the first
+     * framebuffer readback on both X11 and Wayland.  Report unsupported so
+     * callers can render their content in the main window instead. */
+    (void)title; (void)x; (void)y; (void)width; (void)height;
+    (void)flags; (void)background; (void)ui_scale;
+    return NULL;
+#endif
+
     if(width <= 0 || height <= 0)
         return NULL;
     if((flags & UI_WINDOW_BORDERLESS) != 0)
