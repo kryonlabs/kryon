@@ -65,6 +65,7 @@ void EndDrawing(void)
         int w = GetRenderWidth();
         int h = GetRenderHeight();
 
+
         if(w > 0 && h > 0) {
             if(w != g_shot_w || h != g_shot_h) {
                 free(g_shot_buf);
@@ -90,28 +91,36 @@ void EndDrawing(void)
 /* Minimal PNG writer (stored deflate): deterministic, no dependencies,
  * and deliberately not raylib's ExportImage — on this stack the raylib
  * exporter does not honor the passed image. */
-static unsigned kr_png_crc(const unsigned char *p, size_t n)
+static unsigned kr_png_crc_update(unsigned c, const unsigned char *p, size_t n)
 {
     static unsigned t[256];
     static int built = 0;
-    unsigned c = 0xffffffffu;
     size_t i;
 
     if(!built) {
         int k;
         unsigned j;
+        unsigned v;
 
         for(k = 0; k < 256; k++) {
-            c = (unsigned)k;
+            v = (unsigned)k;
             for(j = 0; j < 8; j++)
-                c = (c & 1) ? 0xedb88320u ^ (c >> 1) : c >> 1;
-            t[k] = c;
+                v = (v & 1) ? 0xedb88320u ^ (v >> 1) : v >> 1;
+            t[k] = v;
         }
         built = 1;
     }
     for(i = 0; i < n; i++)
         c = t[(c ^ p[i]) & 0xff] ^ (c >> 8);
-    return c ^ 0xffffffffu;
+    return c;
+}
+
+/* Chunk CRCs cover the chunk type followed by the chunk data. */
+static unsigned kr_png_crc(const unsigned char *type, const unsigned char *data,
+                           size_t n)
+{
+    return kr_png_crc_update(kr_png_crc_update(0xffffffffu, type, 4), data, n) ^
+           0xffffffffu;
 }
 
 static void kr_png_be32(unsigned char *p, unsigned long v)
@@ -204,20 +213,21 @@ static int kr_write_png(const char *path, const unsigned char *rgba, int w,
         memcpy(hdr + 4, "IHDR", 4);
         fwrite(hdr, 1, 8, f);
         fwrite(ihdr, 1, 13, f);
-        crc = kr_png_crc(ihdr, 13);
+        crc = kr_png_crc((const unsigned char *)"IHDR", ihdr, 13);
         kr_png_be32(hdr, crc);
         fwrite(hdr, 1, 4, f);
         kr_png_be32(hdr, zn);
         memcpy(hdr + 4, "IDAT", 4);
         fwrite(hdr, 1, 8, f);
         fwrite(z, 1, zn, f);
-        crc = kr_png_crc(z, zn);
+        crc = kr_png_crc((const unsigned char *)"IDAT", z, zn);
         kr_png_be32(hdr, crc);
         fwrite(hdr, 1, 4, f);
         kr_png_be32(hdr, 0);
         memcpy(hdr + 4, "IEND", 4);
         fwrite(hdr, 1, 8, f);
-        kr_png_be32(hdr, kr_png_crc((const unsigned char *)"IEND", 4));
+        kr_png_be32(hdr, kr_png_crc((const unsigned char *)"IEND",
+                                    (const unsigned char *)"", 0));
         fwrite(hdr, 1, 4, f);
     }
     free(raw);
