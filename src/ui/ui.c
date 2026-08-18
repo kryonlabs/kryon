@@ -68,6 +68,11 @@ typedef struct UITextSelection {
 
 static UITextSelection g_ui_text_area_selection = {0};
 static UITextSelection g_ui_text_field_selection = {0};
+static int g_ui_text_field_last_click_id = 0;
+static int *g_ui_text_field_last_click_owner = NULL;
+static int g_ui_text_field_last_click_x = 0;
+static int g_ui_text_field_last_click_y = 0;
+static double g_ui_text_field_last_click_time = 0.0;
 static int g_ui_text_field_drag_id = 0;
 static int *g_ui_text_field_drag_owner = NULL;
 
@@ -2720,16 +2725,37 @@ DrawUITextField(TextFieldProps field)
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         if(mouse_inside && !captured) {
+            double now = GetTime();
+            int click_dx = (int)mouse_world.x - g_ui_text_field_last_click_x;
+            int click_dy = (int)mouse_world.y - g_ui_text_field_last_click_y;
+            int double_click = g_ui_text_field_last_click_owner == field.focused &&
+                g_ui_text_field_last_click_id == field.focus_id &&
+                now - g_ui_text_field_last_click_time <= 0.45 &&
+                abs(click_dx) <= ScaleUIPx(6) && abs(click_dy) <= ScaleUIPx(6);
             focused = 1;
             ClaimUITextFieldFocus(field.focused);
-            *field.cursor_position = ui_text_cursor_from_x(
-                display_text, font, (int)field.bounds.x + padding_x,
-                (int)mouse_world.x);
-            g_ui_text_field_drag_id = field.focus_id;
-            g_ui_text_field_drag_owner = field.focused;
-            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, *field.cursor_position,
-                                  *field.cursor_position, 1);
+            if(double_click) {
+                int len = (int)strlen(field.text);
+                *field.cursor_position = len;
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                      field.focused, 0, len, 0);
+                g_ui_text_field_drag_id = 0;
+                g_ui_text_field_drag_owner = NULL;
+            } else {
+                *field.cursor_position = ui_text_cursor_from_x(
+                    display_text, font, (int)field.bounds.x + padding_x,
+                    (int)mouse_world.x);
+                g_ui_text_field_drag_id = field.focus_id;
+                g_ui_text_field_drag_owner = field.focused;
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                      field.focused, *field.cursor_position,
+                                      *field.cursor_position, 1);
+            }
+            g_ui_text_field_last_click_id = field.focus_id;
+            g_ui_text_field_last_click_owner = field.focused;
+            g_ui_text_field_last_click_x = (int)mouse_world.x;
+            g_ui_text_field_last_click_y = (int)mouse_world.y;
+            g_ui_text_field_last_click_time = now;
         } else if(focused && !context_active) {
             focused = 0;
             ReleaseUITextFocus(field.focused, field.focus_id);
