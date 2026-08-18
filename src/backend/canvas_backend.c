@@ -566,6 +566,11 @@ bool IsWindowReady(void)
     return g_win_ready != 0;
 }
 
+bool IsWindowFocused(void)
+{
+    return g_win_ready != 0;
+}
+
 void SetConfigFlags(unsigned int flags)
 {
     (void)flags;
