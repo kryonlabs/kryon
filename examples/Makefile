@@ -141,7 +141,9 @@ $(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(EXAMPL
 
 $(BIN_DIR)/%: $(CODEGEN_DIR)/%.c $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
-	@$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	@test -f $(CODEGEN_DIR)/kryon_project.c || \
+		$(K2C) --root . -o $(CODEGEN_DIR) $*.kry
+	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/$*.c $(CODEGEN_DIR)/kryon_project.c $(LDFLAGS)
 	@echo "Built: $@"
 
 $(EXAMPLES): %: $(BIN_DIR)/%
