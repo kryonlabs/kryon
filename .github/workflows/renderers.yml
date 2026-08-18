@@ -39,10 +39,10 @@ jobs:
           if [ "${{ runner.os }}" = macOS ]; then
             env -u MAKE -u MAKEFLAGS -u MFLAGS -u MAKEFILES \
               CC=${{ matrix.cc }} /opt/homebrew/bin/gmake -e -f ./Makefile "$target" \
-              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend_rec.c"
           else
             make "$target" CC=${{ matrix.cc }} \
-              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+              KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend_rec.c"
           fi
           [ "${{ matrix.suffix }}" = windows-x86_64 ] && target="$target.exe"
           cp "$target" build/krb-run
@@ -86,7 +86,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libsdl2-dev
-          make build/linux-x86_64/bin/k2b build/linux-x86_64/bin/krb-run                build/linux-x86_64/bin/krb-sdl                build/linux-x86_64/tests/krb_logic_test                build/linux-x86_64/tests/krb_asset_test                KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_backend_rec.c"
+          make build/linux-x86_64/bin/k2b build/linux-x86_64/bin/krb-run                build/linux-x86_64/bin/krb-sdl                build/linux-x86_64/tests/krb_logic_test                build/linux-x86_64/tests/krb_asset_test                KRY_SW_SRCS="src/krb/krb.c src/backend/kry_backend.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend_rec.c"
       - name: Cross-engine exactness
         run: sh tests/krb_exact_test.sh .
       - name: Unit tests
