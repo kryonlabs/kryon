@@ -149,6 +149,14 @@ LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
+# The Canvas2D backend is emcc-only (its sources #error on native
+# compilers) and is added explicitly via KRYON_BACKEND_SRCS when
+# KRYON_BACKEND=canvas; keep the find from dragging it into native
+# builds when the file happens to be present.
+ifneq ($(KRYON_BACKEND),canvas)
+SRCS := $(filter-out src/backend/canvas_backend.c,$(SRCS))
+endif
+
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
