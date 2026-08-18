@@ -1389,6 +1389,44 @@ void TraceLog(int logLevel, const char *text, ...)
     va_end(args);
 }
 
+/* Image generation: one plain color (the surface subset apps use). */
+Image GenImageColor(int width, int height, Color color)
+{
+    Image img;
+    unsigned char *px;
+    int i;
+
+    memset(&img, 0, sizeof(img));
+    if(width <= 0 || height <= 0)
+        return img;
+    px = malloc((size_t)width * height * 4);
+    if(px == NULL)
+        return img;
+    for(i = 0; i < width * height; i++) {
+        px[i * 4 + 0] = color.r;
+        px[i * 4 + 1] = color.g;
+        px[i * 4 + 2] = color.b;
+        px[i * 4 + 3] = color.a;
+    }
+    img.data = px;
+    img.width = width;
+    img.height = height;
+    img.mipmaps = 1;
+    img.format = 1;
+    return img;
+}
+
+void SetShapesTexture(Texture2D texture, Rectangle rec)
+{
+    (void)texture;
+    (void)rec;
+}
+
+void SetTraceLogCallback(TraceLogCallback callback)
+{
+    (void)callback;
+}
+
 /* ExportImage: reuse kry_screenshot.c's internal PNG writer. */
 extern int kry_write_png_file(const char *path, const unsigned char *rgba,
                               int w, int h);
@@ -1459,6 +1497,53 @@ void SetMusicVolume(Music music, float volume)
 {
     (void)music;
     (void)volume;
+}
+
+/* Audio device/wave surface (null-grade): apps drive these directly. */
+void InitAudioDevice(void) {}
+void CloseAudioDevice(void) {}
+bool IsAudioDeviceReady(void)
+{
+    return false;
+}
+Wave LoadWave(const char *fileName)
+{
+    (void)fileName;
+    return (Wave){0};
+}
+Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData,
+                        int dataSize)
+{
+    (void)fileType;
+    (void)fileData;
+    (void)dataSize;
+    return (Wave){0};
+}
+void UnloadWave(Wave wave)
+{
+    (void)wave;
+}
+void WaveFormat(Wave *wave, int sampleRate, int sampleSize, int channels)
+{
+    (void)wave;
+    (void)sampleRate;
+    (void)sampleSize;
+    (void)channels;
+}
+bool IsSoundPlaying(Sound sound)
+{
+    (void)sound;
+    return false;
+}
+void AttachAudioMixedProcessor(void (*processor)(void *buffer,
+                                                 unsigned int frames))
+{
+    (void)processor;
+}
+void DetachAudioMixedProcessor(void (*processor)(void *buffer,
+                                                 unsigned int frames))
+{
+    (void)processor;
 }
 
 #else /* !__EMSCRIPTEN__ */
