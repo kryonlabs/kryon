@@ -47,6 +47,9 @@ setTimeout(() => {
     if (!kinds.arc) fail.push('arc (DrawCircle)');
     if (!kinds.moveTo) fail.push('moveTo (DrawLine)');
     if (!kinds.drawImage) fail.push('drawImage (DrawText atlas blits)');
+    if (!kinds.roundRect) fail.push('roundRect (DrawRectangleRounded)');
+    if (!kinds.addColorStop) fail.push('addColorStop (gradient with both colors)');
+    if ((kinds.arc || 0) < 6) fail.push('arc (circle + annulus ring)');
     if (fail.length) { console.error('SMOKE FAIL:', fail.join(', ')); process.exit(1); }
     console.log('canvas backend smoke ok');
     process.exit(0);

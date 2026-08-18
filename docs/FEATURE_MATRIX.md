@@ -239,10 +239,12 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ## Known gaps
 
-- The `canvas` Tier A backend exists and passes its node call-sequence
-  gate, but is young: rounded rectangles and ring segments are
-  approximated, the clipboard is not bridged, tint is alpha-only, and it
-  has not yet been exercised in a real browser page.
+- The `canvas` Tier A backend passes its node call-sequence gate and has
+  been pixel-verified in a real browser page (rounded rects, annulus ring
+  segments, dual-color gradients, and full RGBA texture tinting all check
+  out). Remaining limits: cross-app clipboard paste is unreachable through
+  the synchronous API (an in-app mirror handles round-trips), and browser
+  audio is not wired (audio calls are null-grade).
 - `k2g` is at Go parity: the `Runtime` interface covers the full widget
   whitelist plus every widget family `go/kryui` itself exposes (controls,
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme

@@ -26,17 +26,21 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   (below) still works, which is what drives headless widget tests.
 - `canvas` - HTML5 Canvas2D backend, no raylib (`src/backend/canvas_backend.c`).
   Web-only (building it natively is a deliberate `#error`). Implements the
-  required surface through `EM_JS`: draws as canvas paths, textures as
-  offscreen canvases (`putImageData`/`drawImage` are synchronous), text as
-  glyph atlases rasterized from `FontFace` data, input via the
-  `KryonBackendRaw_*` hooks fed by JS event listeners. The app's
-  `while (!WindowShouldClose())` loop works because the build uses
-  `-sASYNCIFY` and the frame end yields with `emscripten_sleep`. Known
-  approximations: rounded rectangles draw square corners, ring segments
-  stroke at the mid-radius, the async clipboard API is not bridged
-  (`GetClipboardText` returns `""`), and texture tint is applied as alpha
-  only. `make canvas-test` builds a full app with this backend under emcc
-  and verifies the draw-call sequence in node (skips when emcc is absent).
+  required surface through `EM_JS`: draws as canvas paths (rounded rects via
+  `roundRect` with an `arcTo` fallback, rings as filled even-odd annulus
+  segments, gradients carry both full colors), textures as offscreen canvases
+  (`putImageData`/`drawImage` are synchronous — no async ImageBitmap on the
+  draw path), full RGBA tinting through cached multiply + destination-in
+  composites per (texture, tint), text as glyph atlases rasterized from
+  `FontFace` data, and input via the `KryonBackendRaw_*` hooks fed by JS
+  event listeners. The app's `while (!WindowShouldClose())` loop works
+  because the build uses `-sASYNCIFY` and the frame end yields with
+  `emscripten_sleep`. The clipboard keeps a mirror of the last written text
+  (copy/paste round-trips in-app; the browser write is attempted
+  fire-and-forget — cross-app paste stays out of reach of the sync API).
+  `make canvas-test` builds a full app with this backend under emcc and
+  verifies the draw-call sequence in node (skips when emcc is absent); the
+  rendering has additionally been pixel-verified in a real browser page.
 
 Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 `KRYON_BACKEND_LIBS`/`KRYON_BACKEND_LDLIBS` carry the backend's own link

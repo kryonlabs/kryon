@@ -161,12 +161,6 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     case 7: /* triangle */ ctx.fillStyle = col; ctx.beginPath();
             ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.lineTo(e, f);
             ctx.closePath(); ctx.fill(); break;
-    case 8: /* v-gradient rect */ {
-        var gr = ctx.createLinearGradient(0, b, 0, b + d);
-        gr.addColorStop(0, col);
-        gr.addColorStop(1, 'rgba(' + r + ',' + gg + ',' + bb + ',' +
-                           (e / 255.0) + ')');
-        ctx.fillStyle = gr; ctx.fillRect(a, b, c, d); break; }
     case 9: /* scissor push */ ctx.save(); ctx.beginPath();
             ctx.rect(a, b, c, d); ctx.clip(); K.saved++; break;
     case 10: /* scissor pop */ if (K.saved > 0) { ctx.restore(); K.saved--; }
@@ -186,18 +180,67 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     }
 });
 
+/* Gradients need both full colors; rounded rects need a radius. */
+EM_JS(void, js_draw_gradient_v, (double x, double y, double w, double h,
+                                 int tr, int tg, int tb, int ta,
+                                 int br, int bg, int bb, int ba), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    if (!ctx) return;
+    var gr = ctx.createLinearGradient(0, y, 0, y + h);
+    gr.addColorStop(0, 'rgba(' + tr + ',' + tg + ',' + tb + ',' +
+                       (ta / 255.0) + ')');
+    gr.addColorStop(1, 'rgba(' + br + ',' + bg + ',' + bb + ',' +
+                       (ba / 255.0) + ')');
+    ctx.fillStyle = gr;
+    ctx.fillRect(x, y, w, h);
+});
+
+EM_JS(void, js_draw_rounded, (int op, double x, double y, double w,
+                              double h, double rad,
+                              int r, int gg, int bb, int aa), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    if (!ctx) return;
+    var col = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
+    ctx.beginPath();
+    {
+        var rr = Math.min(rad, Math.min(w, h) * 0.5);
+        if (ctx.roundRect) {
+            ctx.roundRect(x, y, w, h, rr);
+        } else {
+            ctx.moveTo(x + rr, y);
+            ctx.lineTo(x + w - rr, y);
+            ctx.arcTo(x + w, y, x + w, y + rr, rr);
+            ctx.lineTo(x + w, y + h - rr);
+            ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+            ctx.lineTo(x + rr, y + h);
+            ctx.arcTo(x, y + h, x, y + h - rr, rr);
+            ctx.lineTo(x, y + rr);
+            ctx.arcTo(x, y, x + rr, y, rr);
+            ctx.closePath();
+        }
+    }
+    if (op === 0) { ctx.fillStyle = col; ctx.fill(); }
+    else { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); }
+});
+
+/* Ring as a true filled annulus segment: outer arc forward, inner arc
+ * back, even-odd fill. */
 EM_JS(void, js_draw_ring, (double cx, double cy, double inner, double outer,
                            double start, double end,
                            int r, int gg, int bb, int aa), {
     var K = globalThis.__kryCanvas;
     var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
     if (!ctx) return;
-    var mid = (inner + outer) * 0.5;
-    ctx.strokeStyle = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
-    ctx.lineWidth = Math.max(outer - inner, 1);
+    var s0 = start * Math.PI / 180.0;
+    var s1 = end * Math.PI / 180.0;
+    ctx.fillStyle = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
     ctx.beginPath();
-    ctx.arc(cx, cy, mid, start * Math.PI / 180.0, end * Math.PI / 180.0);
-    ctx.stroke();
+    ctx.arc(cx, cy, outer, s0, s1, false);
+    ctx.arc(cx, cy, inner, s1, s0, true);
+    ctx.closePath();
+    ctx.fill('evenodd');
 });
 
 EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
@@ -209,6 +252,31 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
     var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
     var tex = K.textures[id];
     if (!ctx || !tex) return;
+    var white = (r === 255 && gg === 255 && bb === 255 && aa === 255);
+    if (!white) {
+        /* tinted copies are cached per (texture, tint): multiply the RGB
+         * channels, then restore the source alpha with destination-in */
+        var key = id + ':' + r + ',' + gg + ',' + bb + ',' + aa;
+        if (!K.tints) K.tints = {};
+        if (!K.tints[key]) {
+            var cv;
+            if (globalThis.OffscreenCanvas)
+                cv = new OffscreenCanvas(tex.width, tex.height);
+            else {
+                cv = document.createElement('canvas');
+                cv.width = tex.width; cv.height = tex.height;
+            }
+            var c2 = cv.getContext('2d');
+            c2.drawImage(tex, 0, 0);
+            c2.globalCompositeOperation = 'multiply';
+            c2.fillStyle = 'rgb(' + r + ',' + gg + ',' + bb + ')';
+            c2.fillRect(0, 0, cv.width, cv.height);
+            c2.globalCompositeOperation = 'destination-in';
+            c2.drawImage(tex, 0, 0);
+            K.tints[key] = cv;
+        }
+        tex = K.tints[key];
+    }
     ctx.save();
     if (aa < 255) ctx.globalAlpha = aa / 255.0;
     ctx.translate(dx + ox, dy + oy);
@@ -634,34 +702,40 @@ void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color)
 void DrawRectangleGradientV(int posX, int posY, int width, int height,
                             Color top, Color bottom)
 {
-    js_ctx_call(8, posX, posY, width, height, bottom.a, 0, 0,
-                top.r, top.g, top.b, top.a);
+    js_draw_gradient_v(posX, posY, width, height,
+                       top.r, top.g, top.b, top.a,
+                       bottom.r, bottom.g, bottom.b, bottom.a);
 }
 
 void DrawRectangleRounded(Rectangle rec, float roundness, int segments,
                           Color color)
 {
-    /* v1: plain rect; corner radius approximated away */
-    (void)roundness;
     (void)segments;
-    js_ctx_call(1, rec.x, rec.y, rec.width, rec.height, 0, 0, 0,
-                color.r, color.g, color.b, color.a);
+    js_draw_rounded(0, rec.x, rec.y, rec.width, rec.height,
+                    roundness * 0.5f * (rec.width < rec.height ? rec.width
+                                                               : rec.height),
+                    color.r, color.g, color.b, color.a);
 }
 
 void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments,
                                Color color)
 {
-    (void)roundness;
     (void)segments;
-    js_ctx_call(2, rec.x, rec.y, rec.width, rec.height, 0, 0, 0,
-                color.r, color.g, color.b, color.a);
+    js_draw_rounded(1, rec.x, rec.y, rec.width, rec.height,
+                    roundness * 0.5f * (rec.width < rec.height ? rec.width
+                                                               : rec.height),
+                    color.r, color.g, color.b, color.a);
 }
 
 void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness,
                                  int segments, float lineThick, Color color)
 {
-    (void)lineThick;
-    DrawRectangleRoundedLines(rec, roundness, segments, color);
+    (void)segments;
+    js_draw_rounded(1, rec.x - lineThick, rec.y - lineThick,
+                    rec.width + lineThick * 2, rec.height + lineThick * 2,
+                    roundness * 0.5f *
+                        (rec.width < rec.height ? rec.width : rec.height),
+                    color.r, color.g, color.b, color.a);
 }
 
 void DrawCircle(int centerX, int centerY, float radius, Color color)
@@ -1161,14 +1235,26 @@ void DrawText(const char *text, int posX, int posY, int fontSize,
 /* OS services                                                        */
 /* ------------------------------------------------------------------ */
 
+/* navigator.clipboard is async, so the canvas backend keeps a mirror of
+ * the last text the app wrote: copy/paste round-trips within the app,
+ * and the browser write is attempted fire-and-forget. */
+static char g_clipboard[4096];
+
 const char *GetClipboardText(void)
 {
-    return ""; /* navigator.clipboard is async; unsupported here */
+    return g_clipboard;
 }
 
 void SetClipboardText(const char *text)
 {
-    (void)text;
+    if(text == NULL)
+        return;
+    snprintf(g_clipboard, sizeof(g_clipboard), "%s", text);
+    EM_ASM({
+        if (globalThis.navigator && globalThis.navigator.clipboard &&
+            globalThis.navigator.clipboard.writeText)
+            globalThis.navigator.clipboard.writeText(UTF8ToString($0));
+    }, text);
 }
 
 bool FileExists(const char *fileName)

@@ -204,9 +204,9 @@ li{margin:.25rem 0}
 </table>
 <h2>Known gaps</h2>
 <ul>
-<li>The <code>canvas</code> Tier A backend exists and passes its node call-sequence</li>
+<li>The <code>canvas</code> Tier A backend passes its node call-sequence gate and has</li>
 </ul>
-<p>gate, but is young: rounded rectangles and ring segments are approximated, the clipboard is not bridged, tint is alpha-only, and it has not yet been exercised in a real browser page.</p>
+<p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), and browser audio is not wired (audio calls are null-grade).</p>
 <ul>
 <li><code>k2g</code> is at Go parity: the <code>Runtime</code> interface covers the full widget</li>
 </ul>
