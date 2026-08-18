@@ -567,15 +567,15 @@ $(KRY_SW_TEST): tests/kry_sw_test.c src/backend/kry_sw.c src/backend/kry_sw_png.
 		src/backend/kry_sw_png.c \
 		src/backend/kry_backend_rec.c src/backend/kry_backend.c -o $@ -lm
 
-$(KRB_LOGIC_TEST): tests/krb_logic_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)
+$(KRB_LOGIC_TEST): tests/krb_logic_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_logic_test.c src/krb/krb.c \
-		src/backend/kry_sw.c src/backend/kry_backend.c -o $@ -lm
+		src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend.c -o $@ -lm
 
-$(KRB_ASSET_TEST): tests/krb_asset_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)
+$(KRB_ASSET_TEST): tests/krb_asset_test.c src/krb/krb.c src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend.c include/krb.h include/kry_sw.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_asset_test.c src/krb/krb.c \
-		src/backend/kry_sw.c src/backend/kry_backend.c -o $@ -lm
+		src/backend/kry_sw.c src/backend/kry_sw_png.c src/backend/kry_backend.c -o $@ -lm
 
 $(KRB_CAPS_TEST): tests/krb_caps_test.c src/krb/krb.c src/krb/krb_caps.c include/krb.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
