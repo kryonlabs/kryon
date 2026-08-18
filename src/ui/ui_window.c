@@ -658,6 +658,9 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
                                    * on Wayland, Windows, and macOS. */
 
 #include <SDL2/SDL.h>
+#if defined(__linux__) || defined(__FreeBSD__)
+#include <GLES2/gl2.h>
+#endif
 #include <stdlib.h>
 
 #include "ui_core.h"
@@ -670,6 +673,14 @@ struct UIWindow {
     int height;
     float scale;
     Color background;
+    RenderTexture2D target;
+#if defined(__linux__) || defined(__FreeBSD__)
+    GLuint present_program;
+    GLuint present_vbo;
+    GLint present_position;
+    GLint present_texcoord;
+    GLint present_texture;
+#endif
     int clicked;
     int right_clicked;
     int click_x;
@@ -681,24 +692,105 @@ static int ui_window_count;
 static int ui_window_capacity;
 static UIWindow *ui_window_active;
 static int ui_window_event_watch_installed;
-static SDL_Window *ui_window_previous_sdl_window;
-static SDL_GLContext ui_window_previous_context;
-static Matrix ui_window_previous_projection;
-static Matrix ui_window_previous_modelview;
+#if defined(__linux__) || defined(__FreeBSD__)
+static GLuint
+ui_window_compile_shader(GLenum type, const char *source)
+{
+    GLuint shader = glCreateShader(type);
+    GLint ok = GL_FALSE;
 
-/* rlgl context-state entry points intentionally kept private to this backend. */
-extern void rlDrawRenderBatchActive(void);
-extern void rlViewport(int x, int y, int width, int height);
-extern void rlMatrixMode(int mode);
-extern void rlLoadIdentity(void);
-extern void rlOrtho(double left, double right, double bottom, double top,
-                    double znear, double zfar);
-extern Matrix rlGetMatrixProjection(void);
-extern Matrix rlGetMatrixModelview(void);
-extern void rlSetMatrixProjection(Matrix projection);
-extern void rlSetMatrixModelview(Matrix view);
+    if(shader == 0)
+        return 0;
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+    if(ok != GL_TRUE) {
+        glDeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
 
-enum { InbeRLModelview = 0x1700, InbeRLProjection = 0x1701 };
+static int
+ui_window_init_presenter(UIWindow *window)
+{
+    static const char *vertex_source =
+        "attribute vec2 position; attribute vec2 texcoord;"
+        "varying vec2 uv; void main(){ uv=texcoord;"
+        "gl_Position=vec4(position,0.0,1.0); }";
+    static const char *fragment_source =
+        "precision mediump float; varying vec2 uv; uniform sampler2D image;"
+        "void main(){ gl_FragColor=texture2D(image,uv); }";
+    static const GLfloat vertices[] = {
+        -1, -1, 0, 1,   1, -1, 1, 1,   -1, 1, 0, 0,
+        -1,  1, 0, 0,   1, -1, 1, 1,    1, 1, 1, 0
+    };
+    GLuint vertex = ui_window_compile_shader(GL_VERTEX_SHADER, vertex_source);
+    GLuint fragment = ui_window_compile_shader(GL_FRAGMENT_SHADER, fragment_source);
+    GLint linked = GL_FALSE;
+
+    if(vertex == 0 || fragment == 0)
+        goto fail;
+    window->present_program = glCreateProgram();
+    if(window->present_program == 0)
+        goto fail;
+    glAttachShader(window->present_program, vertex);
+    glAttachShader(window->present_program, fragment);
+    glLinkProgram(window->present_program);
+    glGetProgramiv(window->present_program, GL_LINK_STATUS, &linked);
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    vertex = 0;
+    fragment = 0;
+    if(linked != GL_TRUE)
+        goto fail_program;
+    window->present_position = glGetAttribLocation(window->present_program, "position");
+    window->present_texcoord = glGetAttribLocation(window->present_program, "texcoord");
+    window->present_texture = glGetUniformLocation(window->present_program, "image");
+    glGenBuffers(1, &window->present_vbo);
+    if(window->present_vbo == 0)
+        goto fail_program;
+    glBindBuffer(GL_ARRAY_BUFFER, window->present_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    return 1;
+
+fail_program:
+    glDeleteProgram(window->present_program);
+    window->present_program = 0;
+fail:
+    if(vertex != 0)
+        glDeleteShader(vertex);
+    if(fragment != 0)
+        glDeleteShader(fragment);
+    return 0;
+}
+
+static void
+ui_window_present(UIWindow *window)
+{
+    glViewport(0, 0, window->width, window->height);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glUseProgram(window->present_program);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, window->target.texture.id);
+    glUniform1i(window->present_texture, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, window->present_vbo);
+    glEnableVertexAttribArray((GLuint)window->present_position);
+    glEnableVertexAttribArray((GLuint)window->present_texcoord);
+    glVertexAttribPointer((GLuint)window->present_position, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(GLfloat), (const void *)0);
+    glVertexAttribPointer((GLuint)window->present_texcoord, 2, GL_FLOAT, GL_FALSE,
+                          4 * sizeof(GLfloat), (const void *)(2 * sizeof(GLfloat)));
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDisableVertexAttribArray((GLuint)window->present_position);
+    glDisableVertexAttribArray((GLuint)window->present_texcoord);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
+}
+#endif
 
 /* raylib owns SDL's normal event pump.  An event watch sees secondary-window
  * pointer events without consuming the core window's events. */
@@ -771,6 +863,8 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 {
     UIWindow *win;
     Uint32 sdl_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
+    SDL_Window *previous_window;
+    SDL_GLContext previous_context;
 
     if(width <= 0 || height <= 0)
         return NULL;
@@ -796,21 +890,41 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     win = (UIWindow *)calloc(1, sizeof(UIWindow));
     if(win == NULL)
         return NULL;
+    win->target = LoadRenderTexture(width, height);
+    if(win->target.id == 0) {
+        free(win);
+        return NULL;
+    }
     /* Share fonts, icons and every other GPU asset with raylib's current
      * context. Each secondary window still owns a real context and swaps
      * directly; no framebuffer readback or software window surface is used. */
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
     win->window = SDL_CreateWindow(title, x, y, width, height, sdl_flags);
     if(win->window == NULL) {
+        UnloadRenderTexture(win->target);
         free(win);
         return NULL;
     }
+    previous_window = SDL_GL_GetCurrentWindow();
+    previous_context = SDL_GL_GetCurrentContext();
     win->context = SDL_GL_CreateContext(win->window);
     if(win->context == NULL) {
         SDL_DestroyWindow(win->window);
+        UnloadRenderTexture(win->target);
         free(win);
         return NULL;
     }
+#if defined(__linux__) || defined(__FreeBSD__)
+    if(!ui_window_init_presenter(win)) {
+        SDL_GL_MakeCurrent(previous_window, previous_context);
+        SDL_GL_DeleteContext(win->context);
+        SDL_DestroyWindow(win->window);
+        UnloadRenderTexture(win->target);
+        free(win);
+        return NULL;
+    }
+#endif
+    SDL_GL_MakeCurrent(previous_window, previous_context);
     win->window_id = SDL_GetWindowID(win->window);
     win->width = width;
     win->height = height;
@@ -819,6 +933,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     if(!ui_window_register(win)) {
         SDL_GL_DeleteContext(win->context);
         SDL_DestroyWindow(win->window);
+        UnloadRenderTexture(win->target);
         free(win);
         return NULL;
     }
@@ -834,8 +949,20 @@ CloseUIWindow(UIWindow *window)
     ui_window_unregister(window);
     if(ui_window_active == window)
         ui_window_active = NULL;
+#if defined(__linux__) || defined(__FreeBSD__)
+    {
+        SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
+        SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
+        if(SDL_GL_MakeCurrent(window->window, window->context) == 0) {
+            glDeleteBuffers(1, &window->present_vbo);
+            glDeleteProgram(window->present_program);
+            SDL_GL_MakeCurrent(previous_window, previous_context);
+        }
+    }
+#endif
     SDL_GL_DeleteContext(window->context);
     SDL_DestroyWindow(window->window);
+    UnloadRenderTexture(window->target);
     free(window);
 }
 
@@ -844,20 +971,8 @@ BeginUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
-    rlDrawRenderBatchActive();
-    ui_window_previous_sdl_window = SDL_GL_GetCurrentWindow();
-    ui_window_previous_context = SDL_GL_GetCurrentContext();
-    ui_window_previous_projection = rlGetMatrixProjection();
-    ui_window_previous_modelview = rlGetMatrixModelview();
-    if(SDL_GL_MakeCurrent(window->window, window->context) != 0)
-        return;
     ui_window_active = window;
-    rlViewport(0, 0, window->width, window->height);
-    rlMatrixMode(InbeRLProjection);
-    rlLoadIdentity();
-    rlOrtho(0.0, window->width, window->height, 0.0, 0.0, 1.0);
-    rlMatrixMode(InbeRLModelview);
-    rlLoadIdentity();
+    BeginTextureMode(window->target);
     ClearBackground(window->background);
     BeginUIFrame(window->width, window->height, window->scale);
 }
@@ -870,12 +985,20 @@ EndUIWindow(void)
         return;
     ui_window_active = NULL;
     EndUIFrame();
-    rlDrawRenderBatchActive();
+    EndTextureMode();
+#if defined(__linux__) || defined(__FreeBSD__)
+    {
+        SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
+        SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
+        if(SDL_GL_MakeCurrent(window->window, window->context) == 0) {
+            ui_window_present(window);
+            SDL_GL_SwapWindow(window->window);
+            SDL_GL_MakeCurrent(previous_window, previous_context);
+        }
+    }
+#else
     SDL_GL_SwapWindow(window->window);
-    SDL_GL_MakeCurrent(ui_window_previous_sdl_window,
-                       ui_window_previous_context);
-    rlSetMatrixProjection(ui_window_previous_projection);
-    rlSetMatrixModelview(ui_window_previous_modelview);
+#endif
 }
 
 int
