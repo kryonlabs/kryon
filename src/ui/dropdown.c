@@ -24,6 +24,7 @@ typedef struct UIDropdownState {
     int pending_index;
     int touch_pressed;
     int touch_press_start_y;
+    int touch_press_scroll;
     int touch_drag_active;
     int clip_top;
     int clip_bottom;
@@ -487,11 +488,14 @@ draw_dropdown_menu(int id)
             /* Pointer just went down - reset drag state */
             state->touch_pressed = 1;
             state->touch_press_start_y = my;
+            state->touch_press_scroll = state->scroll_offset;
             state->touch_drag_active = 0;
         } else if(!state->touch_drag_active) {
-            /* Check if movement exceeded threshold (making it a drag, not a click) */
+            /* Movement beyond the threshold makes it a drag - but only
+             * when the list can actually scroll, otherwise a touchpad
+             * click's natural wobble would swallow every selection. */
             int dy = my - state->touch_press_start_y;
-            if(abs(dy) > ScaleUIPx(8)) {  /* 8px threshold */
+            if(abs(dy) > ScaleUIPx(8) && max_scroll > 0) {
                 state->touch_drag_active = 1;
             }
         }
@@ -637,7 +641,9 @@ draw_dropdown_menu(int id)
             }
             MarkUIClickable();
 
-            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->touch_drag_active) {
+            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened &&
+               (!state->touch_drag_active ||
+                state->scroll_offset == state->touch_press_scroll)) {
                 UIConsumeRelease();
                 state->selected_index = i;
                 state->pending_index = i;
