@@ -722,8 +722,8 @@ ui_window_init_presenter(UIWindow *window)
         "precision mediump float; varying vec2 uv; uniform sampler2D image;"
         "void main(){ gl_FragColor=texture2D(image,uv); }";
     static const GLfloat vertices[] = {
-        -1, -1, 0, 1,   1, -1, 1, 1,   -1, 1, 0, 0,
-        -1,  1, 0, 0,   1, -1, 1, 1,    1, 1, 1, 0
+        -1, -1, 0, 0,   1, -1, 1, 0,   -1, 1, 0, 1,
+        -1,  1, 0, 1,   1, -1, 1, 0,    1, 1, 1, 1
     };
     GLuint vertex = ui_window_compile_shader(GL_VERTEX_SHADER, vertex_source);
     GLuint fragment = ui_window_compile_shader(GL_FRAGMENT_SHADER, fragment_source);
