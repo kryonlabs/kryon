@@ -51,6 +51,7 @@
 #include "markdown.h"
 #include "app_host.h"
 #include "app_runtime.h"
+#include "app_instance.h"
 #include "kryon_mem.h"
 #include "preview_canvas.h"
 #include "preview_host.h"

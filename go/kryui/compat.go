@@ -168,6 +168,19 @@ var (
 // Window / lifecycle
 // ---------------------------------------------------------------------------
 
+// SetSingleInstance controls Kryon's default process policy. When enabled,
+// launching the same titled app replaces its previous instance. Call before
+// InitWindow; pass false only when multiple windows are intentional.
+func SetSingleInstance(enabled bool) {
+	value := C.int(0)
+	if enabled {
+		value = 1
+	}
+	C.SetSingleInstance(value)
+}
+
+func SingleInstanceEnabled() bool { return C.SingleInstanceEnabled() != 0 }
+
 func InitWindow(w, h int32, title string) {
 	ct := C.CString(title)
 	defer C.free(unsafe.Pointer(ct))

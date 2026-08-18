@@ -245,5 +245,38 @@ main(void)
         check_int("textfield commit event", saw_commit, 1);
     }
 
+    /* Keyboard focus is a core traversal contract: every focusable widget
+     * registers in visual declaration order, and Tab / Shift+Tab move through
+     * that one shared order. */
+    {
+        Rectangle first = {10, 10, 100, 30};
+        Rectangle second = {10, 50, 100, 30};
+        Rectangle third = {10, 90, 100, 30};
+
+        KryonInjectReset();
+        SetUIFocus(901);
+        KryonInjectKeyTap(KEY_TAB);
+        KryonInjectPump();
+        BeginUIFocus();
+        RegisterUIFocus(901, first);
+        RegisterUIFocus(902, second);
+        RegisterUIFocus(903, third);
+        EndUIFocus();
+        check_int("tab advances focus", IsUIFocusActive(902), 1);
+        KryonInjectPump();
+
+        KryonInjectKey(KEY_LEFT_SHIFT, 1);
+        KryonInjectKeyTap(KEY_TAB);
+        KryonInjectPump();
+        BeginUIFocus();
+        RegisterUIFocus(901, first);
+        RegisterUIFocus(902, second);
+        RegisterUIFocus(903, third);
+        EndUIFocus();
+        check_int("shift tab reverses focus", IsUIFocusActive(901), 1);
+        KryonInjectKey(KEY_LEFT_SHIFT, 0);
+        KryonInjectPump();
+    }
+
     return failures == 0 ? 0 : 1;
 }
