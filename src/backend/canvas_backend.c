@@ -572,6 +572,241 @@ bool IsWindowFocused(void)
     return g_win_ready != 0;
 }
 
+/* Remaining audio surface: null-grade stubs. */
+void SetMasterVolume(float volume)
+{
+    (void)volume;
+    return;
+}
+
+float GetMasterVolume(void)
+{
+    
+    return 0.0f;
+}
+
+bool IsWaveValid(Wave wave)
+{
+    (void)wave;
+    return false;
+}
+
+Sound LoadSoundAlias(Sound source)
+{
+    (void)source;
+    return (Sound){0};
+}
+
+bool IsSoundValid(Sound sound)
+{
+    (void)sound;
+    return false;
+}
+
+void UpdateSound(Sound sound, const void *data, int frameCount)
+{
+    (void)sound; (void)data; (void)frameCount;
+    return;
+}
+
+void UnloadSoundAlias(Sound alias)
+{
+    (void)alias;
+    return;
+}
+
+bool ExportWave(Wave wave, const char *fileName)
+{
+    (void)wave; (void)fileName;
+    return false;
+}
+
+bool ExportWaveAsCode(Wave wave, const char *fileName)
+{
+    (void)wave; (void)fileName;
+    return false;
+}
+
+void ResumeSound(Sound sound)
+{
+    (void)sound;
+    return;
+}
+
+void SetSoundPan(Sound sound, float pan)
+{
+    (void)sound; (void)pan;
+    return;
+}
+
+Wave WaveCopy(Wave wave)
+{
+    (void)wave;
+    return (Wave){0};
+}
+
+void WaveCrop(Wave *wave, int initFrame, int finalFrame)
+{
+    (void)wave; (void)initFrame; (void)finalFrame;
+    return;
+}
+
+void UnloadWaveSamples(float *samples)
+{
+    (void)samples;
+    return;
+}
+
+Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data, int dataSize)
+{
+    (void)fileType; (void)data; (void)dataSize;
+    return (Music){0};
+}
+
+void PauseMusicStream(Music music)
+{
+    (void)music;
+    return;
+}
+
+void ResumeMusicStream(Music music)
+{
+    (void)music;
+    return;
+}
+
+void SeekMusicStream(Music music, float position)
+{
+    (void)music; (void)position;
+    return;
+}
+
+void SetMusicPitch(Music music, float pitch)
+{
+    (void)music; (void)pitch;
+    return;
+}
+
+void SetMusicPan(Music music, float pan)
+{
+    (void)music; (void)pan;
+    return;
+}
+
+float GetMusicTimeLength(Music music)
+{
+    (void)music;
+    return 0.0f;
+}
+
+float GetMusicTimePlayed(Music music)
+{
+    (void)music;
+    return 0.0f;
+}
+
+AudioStream LoadAudioStream(unsigned int sampleRate, unsigned int sampleSize, unsigned int channels)
+{
+    (void)sampleRate; (void)sampleSize; (void)channels;
+    return (AudioStream){0};
+}
+
+bool IsAudioStreamValid(AudioStream stream)
+{
+    (void)stream;
+    return false;
+}
+
+void UnloadAudioStream(AudioStream stream)
+{
+    (void)stream;
+    return;
+}
+
+void UpdateAudioStream(AudioStream stream, const void *data, int frameCount)
+{
+    (void)stream; (void)data; (void)frameCount;
+    return;
+}
+
+bool IsAudioStreamProcessed(AudioStream stream)
+{
+    (void)stream;
+    return false;
+}
+
+void PlayAudioStream(AudioStream stream)
+{
+    (void)stream;
+    return;
+}
+
+void PauseAudioStream(AudioStream stream)
+{
+    (void)stream;
+    return;
+}
+
+void ResumeAudioStream(AudioStream stream)
+{
+    (void)stream;
+    return;
+}
+
+bool IsAudioStreamPlaying(AudioStream stream)
+{
+    (void)stream;
+    return false;
+}
+
+void StopAudioStream(AudioStream stream)
+{
+    (void)stream;
+    return;
+}
+
+void SetAudioStreamVolume(AudioStream stream, float volume)
+{
+    (void)stream; (void)volume;
+    return;
+}
+
+void SetAudioStreamPitch(AudioStream stream, float pitch)
+{
+    (void)stream; (void)pitch;
+    return;
+}
+
+void SetAudioStreamPan(AudioStream stream, float pan)
+{
+    (void)stream; (void)pan;
+    return;
+}
+
+void SetAudioStreamBufferSizeDefault(int size)
+{
+    (void)size;
+    return;
+}
+
+void SetAudioStreamCallback(AudioStream stream, AudioCallback callback)
+{
+    (void)stream; (void)callback;
+    return;
+}
+
+void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
+{
+    (void)stream; (void)processor;
+    return;
+}
+
+void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
+{
+    (void)stream; (void)processor;
+    return;
+}
+
 void SetConfigFlags(unsigned int flags)
 {
     (void)flags;
