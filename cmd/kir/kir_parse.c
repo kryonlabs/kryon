@@ -1431,6 +1431,25 @@ kir_parse_file(const char *path, const char *root)
                                           KirSpan(rel, line_no, 1));
                 snprintf(fn->guard, sizeof(fn->guard), "%s", cur_guard);
                 fn->is_extern = is_extern;
+                /* '#extern "pkg.Fn"' — keep the quoted host symbol so the
+                 * Go backend can bridge the call instead of emitting C. */
+                if(is_extern) {
+                    const char *dir = strstr(t, "#extern");
+
+                    if(dir != NULL) {
+                        const char *q = strchr(dir + 7, '"');
+
+                        if(q != NULL) {
+                            size_t n = 0;
+                            const char *r = q + 1;
+
+                            while(*r != '\0' && *r != '"' &&
+                                  n + 1 < sizeof(fn->extern_target))
+                                fn->extern_target[n++] = *r++;
+                            fn->extern_target[n] = '\0';
+                        }
+                    }
+                }
                 fn->is_colon = strstr(t, "::") != NULL;
                 /* '#export' on a colon function keeps the plain Kry name as
                  * the C symbol (legacy global_name) so handwritten C and

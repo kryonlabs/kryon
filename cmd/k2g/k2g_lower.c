@@ -30,17 +30,21 @@ mkdir_parent(const char *path)
     }
 }
 
-/* stem of "examples/foo.kry" relative to root -> "foo"-ish path */
+/* stem of "path/app.kry" -> "app": Go output is flat (one package per
+ * output directory), so nested source trees must not nest the output. */
 static void
 stem_from_source(const char *src, char *dst, size_t dst_size)
 {
-    size_t n = strlen(src);
+    const char *base = strrchr(src, '/');
+    size_t n;
 
-    if(n > 4 && strcmp(src + n - 4, ".kry") == 0)
+    base = base != NULL ? base + 1 : src;
+    n = strlen(base);
+    if(n > 4 && strcmp(base + n - 4, ".kry") == 0)
         n -= 4;
     if(n >= dst_size)
         n = dst_size - 1;
-    memcpy(dst, src, n);
+    memcpy(dst, base, n);
     dst[n] = '\0';
 }
 
@@ -69,6 +73,12 @@ camel(const char *s, char *dst, size_t dst_size)
     dst[n] = '\0';
 }
 
+static int
+is_ident_char(int c)
+{
+    return isalnum(c) || c == '_';
+}
+
 /* C-ish type -> Go type. Returns 0 when unknown (caller falls back). */
 static int
 go_type(const char *type, char *dst, size_t dst_size)
@@ -78,20 +88,33 @@ go_type(const char *type, char *dst, size_t dst_size)
         const char *go;
     } map[] = {
         {"int", "int32"},   {"unsigned int", "uint32"},
+        {"unsigned", "uint32"}, {"uint", "uint32"},
         {"long", "int64"},  {"unsigned long", "uint64"},
+        {"long long", "int64"}, {"unsigned long long", "uint64"},
+        {"short", "int16"}, {"unsigned short", "uint16"},
+        {"size_t", "int64"}, {"ssize_t", "int64"},
         {"float", "float32"}, {"double", "float64"},
         {"bool", "bool"},   {"char*", "string"}, {"const char*", "string"},
+        {"char**", "[]string"}, {"const char**", "[]string"},
+        {"string", "string"},
+        {"char", "byte"}, {"unsigned char", "byte"}, {"byte", "byte"},
+        {"int8", "int8"}, {"int16", "int16"}, {"int32", "int32"},
+        {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
         {"Vector2", "kryruntime.Vector2"}, {"Rectangle", "kryruntime.Rectangle"},
         {"Color", "kryruntime.Color"},     {"Texture2D", "kryruntime.Texture2D"},
         {NULL, NULL}
     };
     char t[K2G_NAME_MAX];
-    size_t n = strlen(type);
+    size_t n;
 
     snprintf(t, sizeof(t), "%s", type);
+    n = strlen(t);
     while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
         t[--n] = '\0';
+    /* strip a leading 'const ' */
+    if(strncmp(t, "const ", 6) == 0)
+        memmove(t, t + 6, strlen(t + 6) + 1);
     if(t[0] == '[') {
         char *close = strchr(t, ']');
         const char *base;
@@ -105,7 +128,22 @@ go_type(const char *type, char *dst, size_t dst_size)
                 snprintf(dst, dst_size, "[%s]byte", t + 1);
                 return 1;
             }
+            if(strcmp(base, "char*") == 0 || strcmp(base, "string") == 0) {
+                *close = '\0';
+                snprintf(dst, dst_size, "[%s]string", t + 1);
+                return 1;
+            }
+            {
+                char gt[K2G_NAME_MAX];
+
+                if(go_type(base, gt, sizeof(gt))) {
+                    *close = '\0';
+                    snprintf(dst, dst_size, "[%s]%s", t + 1, gt);
+                    return 1;
+                }
+            }
         }
+        return 0;
     }
     for(int i = 0; map[i].c != NULL; i++) {
         if(strcmp(t, map[i].c) == 0) {
@@ -113,13 +151,51 @@ go_type(const char *type, char *dst, size_t dst_size)
             return 1;
         }
     }
-    return 0;
-}
+    /* trailing '*': pointer to a mapped scalar or a module typedef */
+    n = strlen(t);
+    if(n > 1 && t[n - 1] == '*') {
+        char base[K2G_NAME_MAX];
+        char gt[K2G_NAME_MAX];
 
-static int
-is_ident_char(int c)
-{
-    return isalnum(c) || c == '_';
+        snprintf(base, sizeof(base), "%.*s", (int)(n - 1), t);
+        /* trailing spaces before the '*' */
+        {
+            size_t bn = strlen(base);
+
+            while(bn > 0 && base[bn - 1] == ' ')
+                base[--bn] = '\0';
+        }
+        if(go_type(base, gt, sizeof(gt)) && strcmp(gt, "string") != 0) {
+            snprintf(dst, dst_size, "*%s", gt);
+            return 1;
+        }
+        /* unknown base: keep the identifier (module typedef pointer) */
+        {
+            int identish = base[0] != '\0';
+
+            for(char *c = base; *c != '\0'; c++)
+                if(!is_ident_char((unsigned char)*c))
+                    identish = 0;
+            if(identish) {
+                snprintf(dst, dst_size, "*%s", base);
+                return 1;
+            }
+        }
+        return 0;
+    }
+    /* bare unknown identifier: a module typedef (struct/enum) */
+    {
+        int identish = t[0] != '\0';
+
+        for(char *c = t; *c != '\0'; c++)
+            if(!is_ident_char((unsigned char)*c))
+                identish = 0;
+        if(identish) {
+            snprintf(dst, dst_size, "%s", t);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static int
@@ -142,6 +218,331 @@ module_fn_index(const KirModule *m, const char *name, size_t len)
             return i;
     }
     return -1;
+}
+
+/* ------------------------------------------------ module lowering context */
+
+static int split_top(const char *s, char parts[][K2G_TEXT_MAX], int max);
+
+/* One '#extern' declaration bridged to a Go host method. */
+typedef struct {
+    char kry[K2G_NAME_MAX];        /* kry call name */
+    char go[K2G_NAME_MAX];         /* Host interface method */
+    char pnames[8][K2G_NAME_MAX];  /* parameter names */
+    char ptypes[8][K2G_NAME_MAX];  /* parameter kry types */
+    int pcount;
+    char ret[K2G_NAME_MAX];
+    char host_var[K2G_NAME_MAX + 8];   /* guard-prefixed host var */
+} K2gExtern;
+
+/* One enum member visible to expressions (bare kry name -> qualified Go const). */
+typedef struct {
+    char kry[K2G_NAME_MAX];
+    char go[K2G_NAME_MAX * 2];
+    char val[K2G_TEXT_MAX];        /* explicit value text, or "" */
+} K2gEnumMember;
+
+typedef struct {
+    char go_type[K2G_NAME_MAX];    /* "" for anonymous '#enum' blocks */
+    char prefix[K2G_NAME_MAX];     /* enum-name prefix for Go const names */
+    K2gEnumMember members[64];
+    int count;
+} K2gEnum;
+
+/* Lowering is single-threaded and per-module sequential: one cached context. */
+static const KirModule *g_mod;
+static char g_guard[K2G_NAME_MAX];
+static K2gExtern g_externs[64];
+static int g_extern_count;
+static K2gEnum g_enums[32];
+static int g_enum_count;
+static K2gEnumMember *g_const_table[512];
+static int g_const_count;
+
+static int
+k2g_extern_index(const char *name, size_t len)
+{
+    for(int i = 0; i < g_extern_count; i++) {
+        if(strlen(g_externs[i].kry) == len &&
+           strncmp(g_externs[i].kry, name, len) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static K2gEnumMember *
+k2g_const_entry(const char *name, size_t len)
+{
+    for(int i = 0; i < g_const_count; i++) {
+        if(strlen(g_const_table[i]->kry) == len &&
+           strncmp(g_const_table[i]->kry, name, len) == 0)
+            return g_const_table[i];
+    }
+    return NULL;
+}
+
+/* "a: int, b: char*" -> parameter names/types on ex. */
+static void
+split_params(const char *args, K2gExtern *ex)
+{
+    char parts[8][K2G_TEXT_MAX];
+    int n = split_top(args, parts, 8);
+
+    ex->pcount = 0;
+    for(int i = 0; i < n; i++) {
+        char *colon = strchr(parts[i], ':');
+        size_t nl;
+
+        if(colon == NULL)
+            continue;
+        nl = (size_t)(colon - parts[i]);
+        while(nl > 0 && parts[i][nl - 1] == ' ')
+            nl--;
+        if(nl == 0 || ex->pcount >= 8)
+            continue;
+        snprintf(ex->pnames[ex->pcount], K2G_NAME_MAX, "%.*s", (int)nl,
+                 parts[i]);
+        {
+            const char *pt = colon + 1;
+
+            while(*pt == ' ' || *pt == '\t')
+                pt++;
+            snprintf(ex->ptypes[ex->pcount], K2G_NAME_MAX, "%s", pt);
+        }
+        ex->pcount++;
+    }
+}
+
+/* Extract the Go method name from a '#extern "pkg.Fn"' target: the segment
+ * after the last dot. */
+static void
+extern_go_name(const char *target, const char *kry, char *dst, size_t dst_size)
+{
+    const char *dot = strrchr(target, '.');
+    const char *base = dot != NULL ? dot + 1 : target;
+
+    if(base[0] != '\0') {
+        snprintf(dst, dst_size, "%s", base);
+        for(char *c = dst; *c != '\0'; c++)
+            if(!is_ident_char((unsigned char)*c))
+                *c = '_';
+    } else {
+        camel(kry, dst, dst_size);
+    }
+}
+
+/* Register one extern (idempotent: first declaration wins). */
+static void
+add_extern(const char *kry, const char *args, const char *ret,
+           const char *target)
+{
+    K2gExtern *ex;
+
+    if(k2g_extern_index(kry, strlen(kry)) >= 0 || g_extern_count >= 64)
+        return;
+    ex = &g_externs[g_extern_count++];
+    memset(ex, 0, sizeof(*ex));
+    snprintf(ex->kry, sizeof(ex->kry), "%s", kry);
+    snprintf(ex->ret, sizeof(ex->ret), "%s", ret);
+    split_params(args, ex);
+    extern_go_name(target, kry, ex->go, sizeof(ex->go));
+    /* guard "KryApp" -> host var "kryAppHost" */
+    snprintf(ex->host_var, sizeof(ex->host_var), "%c%sHost",
+             (char)tolower((unsigned char)g_guard[0]), g_guard + 1);
+}
+
+/* Parse "name :: (args) -> ret #extern \"pkg.Fn\"" from a raw extern import
+ * line (the KirImport.signature keeps the whole declaration). */
+static void
+parse_extern_import(const KirImport *imp)
+{
+    char args[K2G_TEXT_MAX];
+    char ret[K2G_NAME_MAX];
+    char target[K2G_NAME_MAX];
+    const char *lp = strchr(imp->signature, '(');
+    const char *rp = lp != NULL ? strchr(lp, ')') : NULL;
+    const char *dir = strstr(imp->signature, "#extern");
+
+    args[0] = '\0';
+    snprintf(ret, sizeof(ret), "void");
+    target[0] = '\0';
+    if(lp != NULL && rp != NULL && rp > lp)
+        snprintf(args, sizeof(args), "%.*s", (int)(rp - lp - 1), lp + 1);
+    if(rp != NULL) {
+        const char *arrow = strstr(rp, "->");
+
+        if(arrow != NULL && (dir == NULL || arrow < dir)) {
+            const char *r = arrow + 2;
+            size_t n = 0;
+
+            while(*r == ' ' || *r == '\t')
+                r++;
+            while(*r != '\0' && *r != '#' && n + 1 < sizeof(ret))
+                ret[n++] = *r++;
+            while(n > 0 && (ret[n - 1] == ' ' || ret[n - 1] == '\t'))
+                n--;
+            ret[n] = '\0';
+        }
+    }
+    if(dir != NULL) {
+        const char *q = strchr(dir + 7, '"');
+
+        if(q != NULL) {
+            size_t n = 0;
+            const char *r = q + 1;
+
+            while(*r != '\0' && *r != '"' && n + 1 < sizeof(target))
+                target[n++] = *r++;
+            target[n] = '\0';
+        }
+    }
+    add_extern(imp->name, args, ret, target);
+}
+
+/* Parse enum body members. The parser may deliver them newline-separated or
+ * comma-joined on one line ('A = 0, B, C'), so split on both. */
+static void
+parse_enum(const KirType *t)
+{
+    K2gEnum *e;
+    const char *p = t->body;
+
+    if(g_enum_count >= 32)
+        return;
+    if(strcmp(t->name, "#enum") == 0) {
+        e = &g_enums[g_enum_count++];
+        memset(e, 0, sizeof(*e));
+        e->prefix[0] = '\0';
+    } else {
+        e = &g_enums[g_enum_count++];
+        memset(e, 0, sizeof(*e));
+        camel(t->name, e->go_type, sizeof(e->go_type));
+        camel(t->name, e->prefix, sizeof(e->prefix));
+    }
+    while(*p != '\0') {
+        char line[K2G_TEXT_MAX];
+        char *name, *val;
+        size_t n = 0;
+
+        /* collect one member: up to ',' or newline */
+        while(*p != '\0' && *p != ',' && *p != '\n' &&
+              n + 1 < sizeof(line))
+            line[n++] = *p++;
+        if(*p == ',' || *p == '\n')
+            p++;
+        line[n] = '\0';
+        /* trim */
+        {
+            char *s = line;
+
+            while(*s == ' ' || *s == '\t' || *s == '\r')
+                s++;
+            memmove(line, s, strlen(s) + 1);
+        }
+        {
+            size_t ln = strlen(line);
+
+            while(ln > 0 && (line[ln - 1] == ' ' || line[ln - 1] == '\t' ||
+                             line[ln - 1] == '\r'))
+                line[--ln] = '\0';
+        }
+        if(line[0] == '\0')
+            continue;
+        name = line;
+        val = strchr(line, '=');
+        if(val != NULL) {
+            *val = '\0';
+            val++;
+            while(*val == ' ' || *val == '\t')
+                val++;
+        }
+        {
+            size_t nn = strlen(name);
+
+            while(nn > 0 && (name[nn - 1] == ' ' || name[nn - 1] == '\t'))
+                name[--nn] = '\0';
+        }
+        if(name[0] == '\0' || e->count >= 64)
+            continue;
+        K2gEnumMember *m = &e->members[e->count++];
+        memset(m, 0, sizeof(*m));
+        snprintf(m->kry, sizeof(m->kry), "%s", name);
+        if(e->prefix[0] != '\0')
+            snprintf(m->go, sizeof(m->go), "%s%s", e->prefix, m->kry);
+        else
+            camel(m->kry, m->go, sizeof(m->go));
+        if(val != NULL)
+            snprintf(m->val, sizeof(m->val), "%s", val);
+        if(g_const_count < 512)
+            g_const_table[g_const_count++] = m;
+    }
+}
+
+/* (Re)build the per-module context: extern bridge + enum constants. Must run
+ * before any expression or statement is emitted for the module. */
+static void
+k2g_set_module(const KirModule *m, const char *guard)
+{
+    g_mod = m;
+    snprintf(g_guard, sizeof(g_guard), "%s", guard);
+    g_extern_count = 0;
+    g_enum_count = 0;
+    g_const_count = 0;
+    for(int i = 0; i < m->import_count; i++) {
+        if(m->imports[i].kind == KIR_IMPORT_EXTERN)
+            parse_extern_import(&m->imports[i]);
+    }
+    for(int i = 0; i < m->function_count; i++) {
+        const KirFunction *fn = &m->functions[i];
+
+        if(!fn->is_extern)
+            continue;
+        if(fn->extern_target[0] != '\0')
+            add_extern(fn->name, fn->args, fn->return_type,
+                       fn->extern_target);
+        else
+            add_extern(fn->name, fn->args, fn->return_type, "");
+    }
+    for(int i = 0; i < m->type_count; i++) {
+        if(m->types[i].is_enum)
+            parse_enum(&m->types[i]);
+    }
+}
+
+/* Wrap a translated argument in a Go conversion for its kry parameter type,
+ * so int/long/float widening across the host bridge always compiles. */
+static const char *
+conv_arg(const char *kry_type, const char *expr)
+{
+    static char buf[K2G_TEXT_MAX];
+    char t[K2G_NAME_MAX];
+
+    snprintf(t, sizeof(t), "%s", kry_type);
+    {
+        size_t n = strlen(t);
+
+        while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
+            t[--n] = '\0';
+    }
+    if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0)
+        snprintf(buf, sizeof(buf), "int32(%s)", expr);
+    else if(strcmp(t, "long") == 0 || strcmp(t, "long long") == 0 ||
+            strcmp(t, "size_t") == 0 || strcmp(t, "ssize_t") == 0)
+        snprintf(buf, sizeof(buf), "int64(%s)", expr);
+    else if(strcmp(t, "unsigned int") == 0 || strcmp(t, "uint") == 0 ||
+            strcmp(t, "unsigned") == 0)
+        snprintf(buf, sizeof(buf), "uint32(%s)", expr);
+    else if(strcmp(t, "unsigned long") == 0)
+        snprintf(buf, sizeof(buf), "uint64(%s)", expr);
+    else if(strcmp(t, "short") == 0)
+        snprintf(buf, sizeof(buf), "int16(%s)", expr);
+    else if(strcmp(t, "float") == 0 || strcmp(t, "float32") == 0)
+        snprintf(buf, sizeof(buf), "float32(%s)", expr);
+    else if(strcmp(t, "double") == 0 || strcmp(t, "float64") == 0)
+        snprintf(buf, sizeof(buf), "float64(%s)", expr);
+    else
+        snprintf(buf, sizeof(buf), "%s", expr);
+    return buf;
 }
 
 /* skip spaces from *pp */
@@ -627,6 +1028,75 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     continue;
                 }
             }
+            /* '#extern' host bridge: name(args) -> host.Method(args). The
+             * check precedes the module-function path because extern
+             * prototypes also sit in the function table (bodyless). */
+            {
+                int xi = k2g_extern_index(ident, il);
+
+                if(xi >= 0 && *skip_ws(q) == '(') {
+                    char raw[K2G_TEXT_MAX];
+                    const char *ap = skip_ws(q) + 1;
+                    const char *ae = ap;
+                    int depth = 1;
+                    size_t rn = 0;
+                    int all_ws = 1;
+
+                    while(*ae != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
+                        if(*ae == '"') {
+                            all_ws = 0;
+                            raw[rn++] = *ae++;
+                            while(*ae != '\0' && *ae != '"' &&
+                                  rn + 1 < sizeof(raw))
+                                raw[rn++] = *ae++;
+                            if(*ae == '"')
+                                raw[rn++] = *ae++;
+                            continue;
+                        }
+                        if(*ae == '(' || *ae == '[' || *ae == '{')
+                            depth++;
+                        else if(*ae == ')' || *ae == ']' || *ae == '}') {
+                            depth--;
+                            if(depth == 0)
+                                break;
+                        } else if(*ae != ' ' && *ae != '\t')
+                            all_ws = 0;
+                        raw[rn++] = *ae++;
+                    }
+                    raw[rn] = '\0';
+                    if(*ae == ')')
+                        ae++;
+                    p = ae;
+                    dn += (size_t)snprintf(dst + dn, K2G_TEXT_MAX - dn,
+                                           "%s.%s(", g_externs[xi].host_var,
+                                           g_externs[xi].go);
+                    if(!all_ws) {
+                        char parts[8][K2G_TEXT_MAX];
+                        int n = split_top(raw, parts, 8);
+
+                        for(int i = 0; i < n; i++) {
+                            char arg[K2G_TEXT_MAX];
+
+                            tx_expr(m, skip_ws(parts[i]), arg, sizeof(arg));
+                            if(i > 0)
+                                dn += (size_t)snprintf(dst + dn,
+                                                       K2G_TEXT_MAX - dn, ", ");
+                            if(i < g_externs[xi].pcount) {
+                                dn += (size_t)snprintf(
+                                    dst + dn, K2G_TEXT_MAX - dn, "%s",
+                                    conv_arg(g_externs[xi].ptypes[i], arg));
+                            } else {
+                                dn += (size_t)snprintf(dst + dn,
+                                                       K2G_TEXT_MAX - dn, "%s",
+                                                       arg);
+                            }
+                        }
+                    }
+                    if(dn + 1 < dst_size)
+                        dst[dn++] = ')';
+                    continue;
+                }
+            }
             fni = module_fn_index(m, ident, il);
             if(fni >= 0 && *skip_ws(q) == '(') {
                 char fname[K2G_NAME_MAX * 2];
@@ -683,6 +1153,21 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     continue;
                 }
             }
+            /* enum members: bare ALL_CAPS name -> qualified Go const */
+            {
+                K2gEnumMember *mem = k2g_const_entry(ident, il);
+
+                if(mem != NULL) {
+                    size_t gl = strlen(mem->go);
+
+                    if(dn + gl + 1 < dst_size) {
+                        memcpy(dst + dn, mem->go, gl);
+                        dn += gl;
+                    }
+                    p = q;
+                    continue;
+                }
+            }
             /* runtime call? Capitalized identifiers route to rt. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
                sfi < 0) {
@@ -734,6 +1219,144 @@ emit_indent(FILE *f, int n)
         fputc('\t', f);
 }
 
+/* Rewrite a C-style three-clause for header into Go:
+ *   for int i = 0; i < n; i++   ->  for i := int32(0); i < n; i++
+ * The header arrives raw (kry names, semicolons intact, no 'for', no '{');
+ * each clause is translated separately so tx_expr never sees the ';'. */
+static void
+lower_for_header(const KirModule *m, char *head, size_t head_size)
+{
+    char initraw[K2G_TEXT_MAX], condraw[K2G_TEXT_MAX], stepraw[K2G_TEXT_MAX];
+    char cond[K2G_TEXT_MAX], step[K2G_TEXT_MAX], out[K2G_TEXT_MAX];
+    size_t seps[2];
+    int nsep = 0;
+    int depth = 0;
+
+    for(size_t i = 0; head[i] != '\0' && nsep < 2; i++) {
+        char ch = head[i];
+
+        if(ch == '(' || ch == '[' || ch == '{')
+            depth++;
+        else if(ch == ')' || ch == ']' || ch == '}')
+            depth--;
+        else if(ch == ';' && depth == 0)
+            seps[nsep++] = i;
+    }
+    if(nsep < 2) {
+        /* Go-style header (cond-only or infinite): translate verbatim */
+        if(head[0] != '\0') {
+            char tmp[K2G_TEXT_MAX];
+
+            tx_expr(m, head, tmp, sizeof(tmp));
+            snprintf(head, head_size, "%s", tmp);
+        }
+        return;
+    }
+    {
+        size_t len = strlen(head);
+
+        snprintf(initraw, sizeof(initraw), "%.*s", (int)seps[0], head);
+        snprintf(condraw, sizeof(condraw), "%.*s", (int)(seps[1] - seps[0] - 1),
+                 head + seps[0] + 1);
+        snprintf(stepraw, sizeof(stepraw), "%.*s",
+                 (int)(len - seps[1] - 1), head + seps[1] + 1);
+    }
+    {
+        char *c = condraw, *s2 = stepraw;
+
+        while(*c == ' ' || *c == '\t')
+            c++;
+        snprintf(condraw, sizeof(condraw), "%s", c);
+        while(*s2 == ' ' || *s2 == '\t')
+            s2++;
+        snprintf(stepraw, sizeof(stepraw), "%s", s2);
+    }
+    tx_expr(m, condraw, cond, sizeof(cond));
+    tx_expr(m, stepraw, step, sizeof(step));
+    /* init: 'T name = expr' -> 'name := GoT(expr)'; 'name = expr' stays. */
+    {
+        char trimmed[K2G_TEXT_MAX];
+        char *src2 = trimmed;
+        char *eq;
+
+        snprintf(trimmed, sizeof(trimmed), "%s", initraw);
+        while(*src2 == ' ' || *src2 == '\t')
+            src2++;
+        eq = strchr(src2, '=');
+        if(eq != NULL && eq > src2 && eq[-1] != '=' && eq[-1] != '!' &&
+           eq[-1] != '<' && eq[-1] != '>') {
+            char *name_end = eq;
+            char *name_start;
+
+            while(name_end > src2 &&
+                  (name_end[-1] == ' ' || name_end[-1] == '\t'))
+                name_end--;
+            name_start = name_end;
+            while(name_start > src2 && is_ident_char((unsigned char)name_start[-1]))
+                name_start--;
+            if(name_start < name_end) {
+                char before[K2G_NAME_MAX];
+                size_t bl = (size_t)(name_start - src2);
+                char name[K2G_NAME_MAX];
+                size_t nl = (size_t)(name_end - name_start);
+                char *valraw = eq + 1;
+                char val[K2G_TEXT_MAX];
+
+                while(*valraw == ' ' || *valraw == '\t')
+                    valraw++;
+                if(bl >= sizeof(before))
+                    bl = sizeof(before) - 1;
+                memcpy(before, src2, bl);
+                before[bl] = '\0';
+                if(nl >= sizeof(name))
+                    nl = sizeof(name) - 1;
+                memcpy(name, name_start, nl);
+                name[nl] = '\0';
+                tx_expr(m, valraw, val, sizeof(val));
+                /* one C type identifier before the name? */
+                {
+                    char ctype[K2G_NAME_MAX];
+                    size_t cn = strlen(before);
+                    int wordstart = -1;
+                    int words = 0;
+
+                    while(cn > 0 && (before[cn - 1] == ' ' ||
+                                     before[cn - 1] == '\t'))
+                        cn--;
+                    for(size_t k = 0; k < cn; k++) {
+                        if(is_ident_char((unsigned char)before[k])) {
+                            if(wordstart < 0)
+                                wordstart = (int)k;
+                        } else if(wordstart >= 0) {
+                            words++;
+                            wordstart = -1;
+                        }
+                    }
+                    if(wordstart >= 0)
+                        words++;
+                    if(words == 1 && wordstart == 0) {
+                        char gt[K2G_NAME_MAX];
+
+                        snprintf(ctype, sizeof(ctype), "%.*s", (int)cn,
+                                 before);
+                        if(go_type(ctype, gt, sizeof(gt)) && gt[0] != '\0')
+                            snprintf(out, sizeof(out), "%s := %s(%s)", name,
+                                     gt, val);
+                        else
+                            snprintf(out, sizeof(out), "%s := %s", name, val);
+                        goto init_done;
+                    }
+                }
+                snprintf(out, sizeof(out), "%s = %s", name, val);
+                goto init_done;
+            }
+        }
+        snprintf(out, sizeof(out), "%s", initraw);
+    }
+init_done:
+    snprintf(head, head_size, "%s; %s; %s", out, cond, step);
+}
+
 static void
 lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                const char *guard)
@@ -780,9 +1403,17 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     }
     for(int j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
+        char raw[K2G_TEXT_MAX];
         char rw[K2G_TEXT_MAX];
 
-        tx_expr(m, st->text, rw, sizeof(rw));
+        /* Strip the block-open brace BEFORE translating: tx_expr treats a
+         * trailing '{' as a braced group and would invent a matching '}',
+         * and it drops the ';' separators C-style for headers need. */
+        snprintf(raw, sizeof(raw), "%s", st->text);
+        if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
+           st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
+            strip_block_brace(raw);
+        tx_expr(m, raw, rw, sizeof(rw));
         switch(st->kind) {
         case KIR_STMT_BLOCK_OPEN:
             emit_indent(f, indent++);
@@ -791,6 +1422,18 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 indent = 1;
             break;
         case KIR_STMT_BLOCK_CLOSE:
+            /* '} else {' must share one line in Go: when the next statement
+             * is an else/else-if line, let it emit the merged close. */
+            if(j + 1 < fn->stmt_count &&
+               fn->stmts[j + 1].kind == KIR_STMT_IF) {
+                char peek[K2G_TEXT_MAX];
+
+                snprintf(peek, sizeof(peek), "%s", fn->stmts[j + 1].text);
+                strip_block_brace(peek);
+                if(strncmp(peek, "else", 4) == 0 &&
+                   (peek[4] == '\0' || peek[4] == ' '))
+                    break;
+            }
             if(--indent < 1)
                 indent = 1;
             emit_indent(f, indent);
@@ -798,19 +1441,30 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         case KIR_STMT_IF: {
             char cond[K2G_TEXT_MAX];
+            int chained = 0;
 
             snprintf(cond, sizeof(cond), "%s", rw);
             strip_block_brace(cond);
+            /* 'guard cond' lowers to a plain if: the body is the exit path
+             * and must return by itself (k2c fires defers + returns; on the
+             * Go path defer runs at function exit anyway). */
+            if(strncmp(cond, "guard ", 6) == 0)
+                memmove(cond, cond + 6, strlen(cond + 6) + 1);
+            if(strncmp(cond, "else", 4) == 0 &&
+               (cond[4] == '\0' || cond[4] == ' '))
+                chained = 1;
             emit_indent(f, indent);
             if(strncmp(cond, "else if ", 8) == 0)
                 fprintf(f, "} else if %s {\n", cond + 8);
-            else if(strncmp(cond, "else", 4) == 0 && cond[4] == '\0')
+            else if(chained)
                 fprintf(f, "} else {\n");
             else if(strncmp(cond, "if ", 3) == 0)
                 fprintf(f, "if %s {\n", cond + 3);
             else
                 fprintf(f, "if %s {\n", cond);
-            indent++;
+            /* an else branch reuses the level its BLOCK_CLOSE skipped */
+            if(!chained)
+                indent++;
             break;
         }
         case KIR_STMT_WHILE: {
@@ -825,19 +1479,94 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             indent++;
             break;
         }
-        case KIR_STMT_FOR:
+        case KIR_STMT_FOR: {
+            char head[K2G_TEXT_MAX];
+
+            snprintf(head, sizeof(head), "%s", raw);
+            if(strncmp(head, "for ", 4) == 0)
+                memmove(head, head + 4, strlen(head + 4) + 1);
+            lower_for_header(m, head, sizeof(head));
+            emit_indent(f, indent);
+            if(head[0] != '\0')
+                fprintf(f, "for %s {\n", head);
+            else
+                fprintf(f, "for {\n");
+            indent++;
+            break;
+        }
         case KIR_STMT_SWITCH: {
             char head[K2G_TEXT_MAX];
-            const char *kw = st->kind == KIR_STMT_FOR ? "for" : "switch";
 
             snprintf(head, sizeof(head), "%s", rw);
             strip_block_brace(head);
             emit_indent(f, indent);
-            if(strncmp(head, kw, strlen(kw)) == 0 && head[strlen(kw)] == ' ')
-                fprintf(f, "%s %s {\n", kw, head + strlen(kw) + 1);
+            if(strncmp(head, "switch", 6) == 0 &&
+                (head[6] == '\0' || head[6] == ' '))
+                fprintf(f, "%s {\n", head);
             else
-                fprintf(f, "%s %s {\n", kw, head);
+                fprintf(f, "switch %s {\n", head);
             indent++;
+            break;
+        }
+        case KIR_STMT_CASE: {
+            char head[K2G_TEXT_MAX];
+            int had_brace = 0;
+            size_t hl;
+
+            snprintf(head, sizeof(head), "%s", st->text);
+            hl = strlen(head);
+            while(hl > 0 && (head[hl - 1] == ' ' || head[hl - 1] == '\t' ||
+                             head[hl - 1] == '\r'))
+                head[--hl] = '\0';
+            if(hl > 0 && head[hl - 1] == '{') {
+                had_brace = 1;
+                head[--hl] = '\0';
+                while(hl > 0 && (head[hl - 1] == ' ' || head[hl - 1] == '\t'))
+                    head[--hl] = '\0';
+            }
+            /* ensure the trailing ':' survived expression translation */
+            if(hl > 0 && head[hl - 1] != ':') {
+                /* a same-line body ('case 1: foo()') keeps the statement;
+                 * split it so the label stands alone */
+                char *colon;
+
+                {
+                    char tmp[K2G_TEXT_MAX];
+
+                    tx_expr(m, head, tmp, sizeof(tmp));
+                    snprintf(head, sizeof(head), "%s", tmp);
+                }
+                colon = strchr(head, ':');
+                if(colon != NULL && colon[1] != '\0') {
+                    char rest[K2G_TEXT_MAX];
+
+                    snprintf(rest, sizeof(rest), "%s", colon + 1);
+                    colon[1] = '\0';
+                    emit_indent(f, indent > 1 ? indent - 1 : 1);
+                    fprintf(f, "%s\n", head);
+                    emit_indent(f, indent);
+                    fprintf(f, "%s\n", rest);
+                    if(had_brace) {
+                        emit_indent(f, indent);
+                        fprintf(f, "{\n");
+                        indent++;
+                    }
+                    break;
+                }
+                snprintf(head + hl, sizeof(head) - hl, ":");
+            } else {
+                char tmp[K2G_TEXT_MAX];
+
+                tx_expr(m, head, tmp, sizeof(tmp));
+                snprintf(head, sizeof(head), "%s", tmp);
+            }
+            emit_indent(f, indent > 1 ? indent - 1 : 1);
+            fprintf(f, "%s\n", head);
+            if(had_brace) {
+                emit_indent(f, indent);
+                fprintf(f, "{\n");
+                indent++;
+            }
             break;
         }
         case KIR_STMT_DECL: {
@@ -899,6 +1628,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             fprintf(f, "// TODO k2g %s: %s\n",
                     st->kind == KIR_STMT_LABEL ? "label" : "goto", rw);
             break;
+        case KIR_STMT_ASSIGN:
         case KIR_STMT_EXPR:
             if(rw[0] != '\0') {
                 emit_indent(f, indent);
@@ -920,6 +1650,8 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
           const char *runtime_import, int no_main)
 {
     char path[1024];
+    char seen_stems[64][512];
+    int seen_count = 0;
 
     (void)root;
     for(int pi = 0; pi < prog_count; pi++) {
@@ -931,6 +1663,18 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             FILE *f;
 
             stem_from_source(m->source_path, stem, sizeof(stem));
+            /* flat output: two sources with the same basename would collide */
+            for(int si = 0; si < seen_count; si++) {
+                if(strcmp(seen_stems[si], stem) == 0) {
+                    fprintf(stderr,
+                            "k2g: duplicate source basename %s "
+                            "(Go output is flat)\n", stem);
+                    return;
+                }
+            }
+            if(seen_count < 64)
+                snprintf(seen_stems[seen_count++], sizeof(seen_stems[0]),
+                         "%s", stem);
             camel(stem, guard, sizeof(guard));
             snprintf(path, sizeof(path), "%s/%s.go", out_dir, stem);
             mkdir_parent(path);
@@ -939,6 +1683,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 fprintf(stderr, "k2g: cannot write %s\n", path);
                 continue;
             }
+            k2g_set_module(m, guard);
             fprintf(f, "// Code generated by k2g from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
@@ -949,19 +1694,95 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
 
                 if(imp->kind == KIR_IMPORT_HEADER)
                     fprintf(f, "// #import %s\n", imp->target);
-                else if(imp->kind == KIR_IMPORT_EXTERN)
-                    fprintf(f, "// TODO k2g extern %s :: %s\n", imp->name,
-                            imp->signature);
+                /* KIR_IMPORT_EXTERN is bridged by the Host interface below. */
+            }
+            /* '#extern' host bridge: one interface, one package var, one
+             * setter. Generated frames call hostVar.Method(...) directly. */
+            if(g_extern_count > 0) {
+                fprintf(f, "// %sHost bridges '#extern' declarations to the",
+                        guard);
+                fprintf(f, " embedding Go program.\ntype %sHost interface {\n",
+                        guard);
+                for(int i = 0; i < g_extern_count; i++) {
+                    const K2gExtern *ex = &g_externs[i];
+                    char gt[K2G_NAME_MAX];
+
+                    fprintf(f, "\t%s(", ex->go);
+                    for(int a = 0; a < ex->pcount; a++) {
+                        char aname[K2G_NAME_MAX];
+
+                        camel(ex->pnames[a], aname, sizeof(aname));
+                        if(!go_type(ex->ptypes[a], gt, sizeof(gt)))
+                            snprintf(gt, sizeof(gt), "any");
+                        fprintf(f, "%s%s %s", a > 0 ? ", " : "", aname, gt);
+                    }
+                    fprintf(f, ")");
+                    if(go_type(ex->ret, gt, sizeof(gt)) && gt[0] != '\0')
+                        fprintf(f, " %s", gt);
+                    fprintf(f, "\n");
+                }
+                fprintf(f, "}\n\n");
+                fprintf(f, "var %s %sHost\n\n", g_externs[0].host_var, guard);
+                fprintf(f, "// Set%sHost wires the '#extern' bridge before",
+                        guard);
+                fprintf(f, " the first frame runs.\nfunc Set%sHost(host %sHost)",
+                        guard, guard);
+                fprintf(f, " {\n\t%s = host\n}\n\n", g_externs[0].host_var);
             }
             /* types */
+            int enum_idx = 0;
+
             for(int i = 0; i < m->type_count; i++) {
                 const KirType *t = &m->types[i];
 
                 if(t->is_enum) {
-                    fprintf(f, "// TODO k2g enum %s\n\ntype %s int32\n\n",
-                            t->name, t->name);
-                } else {
-                    fprintf(f, "type %s struct {\n", t->name);
+                    /* enums: typed constants with C counter semantics
+                         * (g_enums was built in the same order as m->types) */
+                        K2gEnum *e = enum_idx < g_enum_count
+                                         ? &g_enums[enum_idx++] : NULL;
+
+                        if(e == NULL)
+                            continue;
+                        if(e->go_type[0] != '\0')
+                            fprintf(f, "type %s int32\n\n", e->go_type);
+                        fprintf(f, "const (\n");
+                        long counter = 0;   /* -1: unknown (non-literal value) */
+                        char last_expr[K2G_TEXT_MAX];
+
+                        last_expr[0] = '\0';
+                        for(int mI = 0; mI < e->count; mI++) {
+                            K2gEnumMember *mem = &e->members[mI];
+                            char val[K2G_TEXT_MAX];
+
+                            if(mem->val[0] != '\0') {
+                                char *end;
+                                long parsed;
+
+                                tx_expr(m, mem->val, val, sizeof(val));
+                                parsed = strtol(mem->val, &end, 0);
+                                if(*end == '\0')
+                                    counter = parsed + 1;
+                                else {
+                                    counter = -1;
+                                    snprintf(last_expr, sizeof(last_expr),
+                                             "%s", val);
+                                }
+                            } else if(counter >= 0) {
+                                snprintf(val, sizeof(val), "%ld", counter);
+                                counter++;
+                            } else {
+                                snprintf(val, sizeof(val), "%s + 1",
+                                         last_expr);
+                                snprintf(last_expr, sizeof(last_expr), "%s",
+                                         val);
+                            }
+                            /* untyped: C enums convert implicitly; Go's
+                             * typed consts would not mix with int fields */
+                            fprintf(f, "\t%s = %s\n", mem->go, val);
+                        }
+                        fprintf(f, ")\n\n");
+                    } else {
+                        fprintf(f, "type %s struct {\n", t->name);
                     {
                         char line[K2G_TEXT_MAX];
                         const char *p = t->body;
@@ -1051,9 +1872,13 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 }
                 fprintf(f, "}\n\n");
             }
-            /* functions */
-            for(int i = 0; i < m->function_count; i++)
+            /* functions ('#extern' prototypes have no body: they lower to
+             * Host interface methods, not Go functions) */
+            for(int i = 0; i < m->function_count; i++) {
+                if(m->functions[i].is_extern)
+                    continue;
                 lower_function(f, m, &m->functions[i], guard);
+            }
 
             /* app -> main */
             if(m->app.has_app && !no_main) {

@@ -17,9 +17,15 @@ consume KIR:
 emits a portable `.krb` cartridge for renderers that implement the Kryon runtime
 contract. `k2g` emits Go source that drives a Go kryon runtime (the cgo
 surface binding — the same layer app uses), so Go-native apps can be written
-in .kry; v1 fully translates the declarative subset (state, app metadata,
-frames, widget calls) and marks unsupported imperative constructs with TODO
-comments instead of guessing. `k2ir` exists for tooling, debugging, tests,
+in .kry; it translates the declarative subset (state, app metadata, frames,
+widget calls), enums (untyped Go constants with C counter semantics),
+switch/case/default, C-style `for` headers, and `guard` (as a plain `if`;
+the body must return). `#extern "pkg.Fn"` declarations lower to a generated
+`<Guard>Host` interface plus `Set<Guard>Host`: every extern call in a frame
+becomes `host.Method(...)` on the embedding Go program, with numeric argument
+conversions so int/long/float widening always compiles. Unsupported
+imperative constructs (goto, raw C lines) still surface as TODO comments.
+`k2ir` exists for tooling, debugging, tests,
 and Krait inspection.
 Native C remains the direct path for platform, storage, and performance-sensitive
 code; portable cartridges call those services through explicit capabilities or

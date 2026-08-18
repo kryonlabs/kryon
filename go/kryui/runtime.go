@@ -21,15 +21,24 @@ type Runtime interface {
 	Text(string, int32, int32, int32, Color)
 	TextFormat(string, ...any) string
 	ScaleUIPx(int32) int32
+	GetScreenWidth() int32
+	GetScreenHeight() int32
 	GetThemeBackground() Color
 	GetThemeText() Color
 	GetThemeIcon() Color
 	NewVector2(any, any) Vector2
 	DrawCircleV(Vector2, any, Color)
 	DrawRing(Vector2, any, any, any, any, int32, Color)
+	Rect(int32, int32, int32, int32, Color)
+	RectGradientH(int32, int32, int32, int32, Color, Color)
+	Line(int32, int32, int32, int32, Color)
 	Scroll(int32, int32, int32, int32, int32, *int32)
 	EndScroll()
 	Button(ButtonProps) bool
+	TabBar(Rectangle, []string, *int32, *int32) int32
+	Progress(Rectangle, int32, int32, int32, string)
+	Checkbox(int32, int32, int32, string, *int32) bool
+	Dropdown(int32, int32, int32, int32, int32, string, *int32) bool
 	BeginUI(UIKey)
 	EndUI()
 	Column(ColumnProps)
@@ -124,3 +133,32 @@ func (r *runtime) EndUI()                         { EndUI() }
 func (r *runtime) Column(props ColumnProps)       { Column(props) }
 func (r *runtime) End()                           { End() }
 func (r *runtime) TextField(props TextFieldProps) { declareTextField(props) }
+
+func (r *runtime) GetScreenWidth() int32  { return GetScreenWidth() }
+func (r *runtime) GetScreenHeight() int32 { return GetScreenHeight() }
+func (r *runtime) Rect(x, y, w, h int32, c Color) {
+	DrawRectangleRec(NewRectangle(float32(x), float32(y), float32(w), float32(h)), c)
+}
+func (r *runtime) RectGradientH(x, y, w, h int32, left, right Color) {
+	DrawRectangleGradientH(x, y, w, h, left, right)
+}
+func (r *runtime) Line(x1, y1, x2, y2 int32, c Color) { DrawLine(x1, y1, x2, y2, c) }
+func (r *runtime) TabBar(bounds Rectangle, labels []string, selected *int32, scrollOffset *int32) int32 {
+	return TabBar(bounds, labels, selected, scrollOffset)
+}
+func (r *runtime) Progress(bounds Rectangle, min, max, value int32, label string) {
+	Progress(ProgressBarProps{Bounds: bounds, Min: min, Max: max, Value: value, Label: label})
+}
+func (r *runtime) Checkbox(id, x, y int32, label string, value *int32) bool {
+	on := *value != 0
+	changed := DrawUICheckboxToggle(x, y, label, &on)
+	if on {
+		*value = 1
+	} else {
+		*value = 0
+	}
+	return changed
+}
+func (r *runtime) Dropdown(id, x, y, w, h int32, options string, selected *int32) bool {
+	return DrawUIDropdown(id, x, y, w, h, DropdownLabels(options), selected)
+}

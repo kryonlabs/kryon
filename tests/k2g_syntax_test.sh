@@ -19,8 +19,22 @@ mkdir -p "$work/src" "$work/out"
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 
+query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
+label_text :: (i: int) -> char* #extern "smoke.LabelText"
+tab_labels :: () -> char** #extern "smoke.TabLabels"
+
+TabMode :: enum {
+    TAB_OVERVIEW = 0,
+    TAB_NETWORK,
+    TAB_JOBS = 5,
+    TAB_AFTER
+}
+
 state {
     scroll_off: int = 0
+    tab: int = TAB_OVERVIEW
+    check: int = 0
+    pick: int = 1
 }
 
 app "Smoke" {
@@ -32,7 +46,30 @@ app "Smoke" {
 frame main {
     BeginDrawing()
     ClearBackground(GetThemeBackground())
-    Text("hello", ScaleUIPx(10), ScaleUIPx(20), UI_TEXT_16, GetThemeText())
+    if tab == TAB_JOBS {
+        Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), UI_TEXT_16, GetThemeText())
+    } else {
+        Text("hello", ScaleUIPx(10), ScaleUIPx(20), UI_TEXT_16, GetThemeText())
+    }
+    switch tab {
+        case TAB_OVERVIEW: {
+            scroll_off = 0
+        }
+        case TAB_NETWORK:
+            scroll_off = scroll_off + 1
+        default:
+            scroll_off = 1
+    }
+    for int i = 0; i < 3; i++ {
+        Rect(ScaleUIPx(4), ScaleUIPx(8), ScaleUIPx(2), ScaleUIPx(2), GetThemeText())
+    }
+    guard tab >= 0 {
+        return
+    }
+    TabBar((Rectangle){ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(200), ScaleUIPx(30)}, tab_labels(), &tab, NULL)
+    Checkbox(0, ScaleUIPx(4), ScaleUIPx(60), "Check", &check)
+    Dropdown(1, ScaleUIPx(4), ScaleUIPx(80), ScaleUIPx(120), ScaleUIPx(30), "a;b;c", &pick)
+    Progress((Rectangle){ScaleUIPx(4), ScaleUIPx(120), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, query_jobs(0, 10), "")
     Scroll(ScaleUIPx(4), ScaleUIPx(8), ScaleUIPx(200), ScaleUIPx(100), ScaleUIPx(400), &scroll_off)
     DrawCircleV((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
     DrawRing((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(36), ScaleUIPx(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
@@ -59,6 +96,43 @@ if grep -q '0\.0f' "$out"; then
     echo "k2g left a C float suffix in Go output" >&2
     exit 1
 fi
+if grep -q 'TODO k2g' "$out"; then
+    echo "k2g left a TODO lowering in Go output:" >&2
+    grep 'TODO k2g' "$out" >&2
+    exit 1
+fi
+
+# '#extern' host bridge: interface, setter, converted calls.
+grep -q 'type ValidHost interface' "$out"
+grep -q 'func SetValidHost(host ValidHost)' "$out"
+grep -q 'QueryJobs(Since int64, Limit int32) int32' "$out"
+grep -q 'LabelText(I int32) string' "$out"
+grep -q 'TabLabels() \[\]string' "$out"
+grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
+grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
+
+# enums: typed constants with C counter semantics, rewritten at use sites.
+grep -q 'type TabMode int32' "$out"
+grep -q 'TabModeTAB_OVERVIEW = 0' "$out"
+grep -q 'TabModeTAB_NETWORK = 1' "$out"
+grep -q 'TabModeTAB_JOBS = 5' "$out"
+grep -q 'TabModeTAB_AFTER = 6' "$out"
+grep -q 'Tab: TabModeTAB_OVERVIEW' "$out"
+grep -q 'st.Tab == TabModeTAB_JOBS' "$out"
+
+# switch/case/default, C-style for headers, guard.
+grep -q 'case TabModeTAB_OVERVIEW:' "$out"
+grep -q 'case TabModeTAB_NETWORK:' "$out"
+grep -q 'default:' "$out"
+grep -q 'for i := int32(0); i < 3; i++' "$out"
+grep -q 'if st.Tab >= 0 {' "$out"
+
+# widget surface used by declarative apps.
+grep -q 'rt.TabBar(' "$out"
+grep -q 'rt.Checkbox(' "$out"
+grep -q 'rt.Dropdown(' "$out"
+grep -q 'rt.Progress(' "$out"
+grep -q 'rt.Rect(' "$out"
 
 # The generated source must compile against Kryon's real Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.
