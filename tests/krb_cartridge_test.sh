@@ -61,6 +61,9 @@ cat > "$work/frame.kry" <<'EOF'
 
 state {
     cb_flag: int = 0
+    combo_sel: int = 0
+    dd_sel: int = 0
+    choices: [3] const char * = {"Alpha","Beta","Gamma"}
 }
 
 app "Frame" {
@@ -77,21 +80,35 @@ frame main {
     Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
     Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, UI_PICTURE_FIT_CONTAIN})
     Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
+    Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
+    Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
     EndUIFrame()
     EndDrawing()
 }
 EOF
-"$k2b" --no-main --root "$work" -o "$work" "$work/frame.kry"
+frame_out=$("$k2b" --no-main --root "$work" -o "$work" "$work/frame.kry" 2>&1)
 if [ ! -f "$work/frame.krb" ]; then
     echo "frame main {} did not emit a cartridge" >&2
     exit 1
 fi
-if ! strings "$work/frame.krb" | grep -q "tiles/tile.png"; then
-    echo "frame cartridge missing Picture asset path" >&2
+if echo "$frame_out" | grep -q 'Combobox'; then
+    echo "k2b dropped the Combobox call: $frame_out" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "Gamma"; then
+    echo "frame cartridge missing Combobox options (string-array state)" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "cb_flag"; then
     echo "frame cartridge missing Checkbox value path" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "Alpha"; then
+    echo "frame cartridge missing Combobox options (string-array state)" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "combo_sel"; then
+    echo "frame cartridge missing Combobox selected-index path" >&2
     exit 1
 fi
 

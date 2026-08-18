@@ -161,7 +161,15 @@ typedef struct KrbBuild {
     int anim_count;
     KrbItem items[512];
     int item_count;
+    /* .kry string-array variables ('name: [N] const char* = {...}') usable
+     * as control option lists when lowering Dropdown/Combobox calls */
+    char array_name[8][KIR_NAME_MAX];
+    char array_joined[8][KIR_TEXT_MAX];
+    int array_count;
 } KrbBuild;
+
+static void register_string_array(KrbBuild *b, const char *name,
+                                  const char *init);
 
 
 static void
@@ -1123,6 +1131,34 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
         int opens = st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
                     st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH;
 
+        /* string-array locals ('opts: [3] const char* = {...}') become
+         * option-list sources for Dropdown/Combobox lowering */
+        {
+            const char *t = skip_ws(st->text);
+            const char *colon = t != NULL ? strchr(t, ':') : NULL;
+            const char *eq = colon != NULL ? strchr(colon, '=') : NULL;
+
+            if(colon != NULL && eq != NULL) {
+                char decl_type[KIR_NAME_MAX];
+                size_t tl = (size_t)(eq - colon - 1);
+
+                if(tl >= sizeof(decl_type))
+                    tl = sizeof(decl_type) - 1;
+                memcpy(decl_type, colon + 1, tl);
+                decl_type[tl] = '\0';
+                if(strstr(decl_type, "char") != NULL &&
+                   strchr(decl_type, '*') != NULL) {
+                    char aname[KIR_NAME_MAX];
+                    size_t nl = (size_t)(colon - t);
+
+                    if(nl >= sizeof(aname))
+                        nl = sizeof(aname) - 1;
+                    memcpy(aname, t, nl);
+                    aname[nl] = '\0';
+                    register_string_array(b, aname, eq + 1);
+                }
+            }
+        }
         if(st->kind == KIR_STMT_BLOCK_CLOSE) {
             depth--;
             if(open_guard >= 0 && depth < guard_depth) {
@@ -1829,6 +1865,233 @@ parse_spinbox(KrbBuild *b, const char *call)
 /* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
  * range; EndScroll() closes it. Widgets between get parent = the scroll. */
 /* TextField(x, y, w, h, &state.field) -> TEXTINPUT node. */
+/* Register a .kry string-array initializer as a joined "a;b;c" option list. */
+static void
+register_string_array(KrbBuild *b, const char *name, const char *init)
+{
+    const char *p = skip_ws(init);
+    size_t n = 0;
+
+    if(p == NULL || *p != '{' || name == NULL || name[0] == '\0')
+        return;
+    if(b->array_count >= 8)
+        return;
+    snprintf(b->array_name[b->array_count], KIR_NAME_MAX, "%s", name);
+    p++;
+    while(*p != '\0' && *p != '}') {
+        if(*p == '"') {
+            const char *q = p + 1;
+
+            while(*q != '\0' && *q != '"') {
+                if(*q == '\\' && q[1] != '\0')
+                    q++;
+                q++;
+            }
+            if(n + (size_t)(q - p) < KIR_TEXT_MAX - 2) {
+                memcpy(b->array_joined[b->array_count] + n, p,
+                       (size_t)(q - p));
+                n += (size_t)(q - p);
+            }
+            b->array_joined[b->array_count][n++] = ';';
+            p = q;
+        }
+        p++;
+    }
+    if(n > 0 && b->array_joined[b->array_count][n - 1] == ';')
+        n--;
+    b->array_joined[b->array_count][n] = '\0';
+    if(n > 0)
+        b->array_count++;
+}
+
+static void
+collect_string_arrays(KrbBuild *b, const KirModule *m)
+{
+    int i;
+
+    for(i = 0; i < m->state_count; i++) {
+        const KirStateField *sf = &m->state_fields[i];
+
+        if(strstr(sf->type, "char") != NULL && strchr(sf->type, '*') != NULL)
+            register_string_array(b, sf->name, sf->init);
+    }
+}
+
+/* Options expression: a ';'-joined string literal or a registered array
+ * variable name ('choices' etc.). Returns 1 when a non-empty list was found. */
+static int
+resolve_options(KrbBuild *b, const char *expr, char *dst, size_t dst_size)
+{
+    const char *p = skip_ws(expr);
+    int i;
+
+    if(p == NULL)
+        return 0;
+    if(*p == '"') {
+        extract_string(expr, dst, dst_size);
+        return dst[0] != '\0';
+    }
+    for(i = 0; i < b->array_count; i++) {
+        if(strcmp(b->array_name[i], p) == 0) {
+            snprintf(dst, dst_size, "%s", b->array_joined[i]);
+            return dst[0] != '\0';
+        }
+    }
+    return 0;
+}
+
+/* Combobox((ComboboxProps){...}) -> COMBOBOX control. The C widget forwards
+ * to the dropdown renderer, so the cartridge runtime does the same; options
+ * come from a joined literal or a string-array variable. */
+static int
+parse_combobox(KrbBuild *b, const char *call)
+{
+    char parts[8][KIR_TEXT_MAX];
+    char coords[4][KIR_TEXT_MAX];
+    const char *props = strstr(call, "ComboboxProps");
+    const char *brace;
+    char inner[KIR_TEXT_MAX];
+    char f_bounds[KIR_TEXT_MAX] = "";
+    char f_opts[KIR_TEXT_MAX] = "";
+    char f_count[KIR_TEXT_MAX] = "";
+    char f_sel[KIR_TEXT_MAX] = "";
+    char opts[KIR_TEXT_MAX];
+    char path[KIR_NAME_MAX];
+    KrbBuildNode *n;
+    char name[32];
+    int scaled;
+    int count;
+    int option_count;
+    int ncoords;
+    int i;
+
+    if(props == NULL)
+        return 0;
+    brace = strchr(props, '{');
+    if(brace == NULL)
+        return 0;
+    {
+        const char *q = brace + 1;
+        int depth = 1;
+        int in_string = 0;
+        size_t k = 0;
+
+        while(*q != '\0' && depth > 0 && k + 1 < sizeof(inner)) {
+            if(!in_string && *q == '{')
+                depth++;
+            else if(!in_string && *q == '}') {
+                depth--;
+                if(depth == 0)
+                    break;
+            } else if(*q == '"')
+                in_string = !in_string;
+            inner[k++] = *q++;
+        }
+        inner[k] = '\0';
+        if(depth != 0)
+            return 0;
+    }
+    count = split_args(inner, parts, 8);
+    if(count < 5)
+        return 0;
+    /* positional: bounds, id, options, option_count, &selected, disabled */
+    for(i = 0; i < count && i < 6; i++) {
+        const char *part = skip_ws(parts[i]);
+
+        if(*part == '.') {
+            const char *eq = strchr(part, '=');
+
+            if(eq == NULL)
+                continue;
+            if(strncmp(part, ".bounds", 7) == 0)
+                snprintf(f_bounds, sizeof(f_bounds), "%s", skip_ws(eq + 1));
+            else if(strncmp(part, ".options", 8) == 0)
+                snprintf(f_opts, sizeof(f_opts), "%s", skip_ws(eq + 1));
+            else if(strncmp(part, ".option_count", 13) == 0)
+                snprintf(f_count, sizeof(f_count), "%s", skip_ws(eq + 1));
+            else if(strncmp(part, ".selected_index", 16) == 0)
+                snprintf(f_sel, sizeof(f_sel), "%s", skip_ws(eq + 1));
+        } else {
+            switch(i) {
+            case 0: snprintf(f_bounds, sizeof(f_bounds), "%s", part); break;
+            case 2: snprintf(f_opts, sizeof(f_opts), "%s", part); break;
+            case 3: snprintf(f_count, sizeof(f_count), "%s", part); break;
+            case 4: snprintf(f_sel, sizeof(f_sel), "%s", part); break;
+            default: break;
+            }
+        }
+    }
+    if(f_bounds[0] != '{')
+        return 0;
+    strip_amp(f_sel, path, sizeof(path));
+    if(path[0] == '\0')
+        return 0;
+    if(!resolve_options(b, f_opts, opts, sizeof(opts)))
+        return 0;
+    option_count = atoi(f_count);
+    if(option_count <= 0) {
+        const char *p2 = opts;
+
+        option_count = 1;
+        while((p2 = strchr(p2, ';')) != NULL) {
+            option_count++;
+            p2++;
+        }
+    }
+    {
+        const char *bp = f_bounds;
+        char bounds_inner[KIR_TEXT_MAX];
+        size_t bn = 0;
+        int bd = 0;
+
+        while(*bp != '\0') {
+            if(*bp == '{')
+                bd++;
+            else if(*bp == '}') {
+                bd--;
+                if(bd == 0)
+                    break;
+            } else if(bd > 0 && bn + 1 < sizeof(bounds_inner))
+                bounds_inner[bn++] = *bp;
+            bp++;
+        }
+        bounds_inner[bn] = '\0';
+        ncoords = split_args(bounds_inner, coords, 4);
+        if(ncoords < 4)
+            return 0;
+    }
+    snprintf(name, sizeof(name), "cb%d", b->node_count);
+    n = add_node(b, KRB_NODE_CONTROL, name);
+    if(n == NULL)
+        return 0;
+    n->bind_slot = b->control_count;
+    if(parse_coord(coords[0], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(coords[1], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(coords[2], &n->w, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_W;
+    if(parse_coord(coords[3], &n->h, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_H;
+    if(n->h <= 0)
+        n->h = 24;
+    n->font_size = 16;
+    {
+        KrbBuildControl *c = &b->controls[b->control_count];
+
+        if(b->control_count >= KRB_BUILD_CTRL_MAX)
+            return 1;
+        memset(c, 0, sizeof(*c));
+        c->kind = KRB_CTRL_COMBOBOX;
+        c->id = (unsigned short)b->control_count;
+        snprintf(c->value, sizeof(c->value), "%s", path);
+        snprintf(c->options, sizeof(c->options), "%s", opts);
+        c->option_count = option_count;
+        b->control_count++;
+    }
+    return 1;
+}
+
 /* Dropdown(id, x, y, w, "opt;opt;opt", &val) -> DROPDOWN control. */
 static int
 parse_dropdown(KrbBuild *b, const char *call)
@@ -1853,7 +2116,8 @@ parse_dropdown(KrbBuild *b, const char *call)
         strip_amp(parts[6], path, sizeof(path));
         if(path[0] == '\0')
             return 0;
-        extract_string(parts[5], opts, sizeof(opts));
+        if(!resolve_options(b, parts[5], opts, sizeof(opts)))
+            return 0;
         {
             KrbBuildNode dummy;
             int sc2;
@@ -1865,7 +2129,8 @@ parse_dropdown(KrbBuild *b, const char *call)
         strip_amp(parts[5], path, sizeof(path));
         if(path[0] == '\0')
             return 0;
-        extract_string(parts[4], opts, sizeof(opts));
+        if(!resolve_options(b, parts[4], opts, sizeof(opts)))
+            return 0;
     }
     if(opts[0] == '\0')
         return 0;
@@ -2121,6 +2386,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_textfield(b, call);
     if(starts_ident(call, "Dropdown"))
         return parse_dropdown(b, call);
+    if(starts_ident(call, "Combobox"))
+        return parse_combobox(b, call);
     if(starts_ident(call, "NavButton"))
         return parse_navbutton(b, call);
     if(starts_ident(call, "TextFormat"))
@@ -2760,6 +3027,7 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     snprintf(build.asset_root, sizeof(build.asset_root), "%s",
              root != NULL ? root : ".");
     collect_state(&build, m);
+    collect_string_arrays(&build, m);
     for(i = 0; i < m->function_count; i++)
         collect_widgets(&build, &m->functions[i]);
 

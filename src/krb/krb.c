@@ -1052,6 +1052,12 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
             ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
                           val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
             break;
+        case KRB_CTRL_COMBOBOX:
+            /* the C widget forwards to the dropdown renderer; so does the
+             * cartridge runtime */
+            ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
+                          val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
+            break;
         default:
             break;
         }
