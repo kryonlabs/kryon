@@ -630,6 +630,64 @@ split_top(const char *s, char parts[][K2G_TEXT_MAX], int max)
 }
 
 /* "(Vector2){a,b}" style compound literal: p points after "(". */
+/* C field order for the Props/Spec types .kry writes positionally, e.g.
+ * Picture((PictureProps){"path", ...}). Designated initializers do not need
+ * this table; positional parts index into it. Names are the Go field names. */
+static const char *
+props_field_at(const char *type, int index)
+{
+    static const struct {
+        const char *type;
+        const char *fields[13];
+    } table[] = {
+        {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
+        {"PictureProps", {"AssetPath", "Bounds", "Source", "Origin",
+                          "Rotation", "Tint", "Fit"}},
+        {"IconButtonProps", {"Bounds", "Icon", "IconType", "IconSize",
+                             "IconPadding", "FocusID", "Disabled",
+                             "Background", "HoverBackground", "IconColor",
+                             "Border", "Radius"}},
+        {"HrefProps", {"Bounds", "Text", "Href", "Font", "FocusID",
+                       "Disabled", "Color", "HoverColor"}},
+        {"UIParagraphSpec", {"Text", "IconType", "IconSize", "Width",
+                             "Font", "LineGap", "Color"}},
+        {"ButtonProps", {"Bounds", "Label", "Style", "Font", "ID",
+                         "Disabled"}},
+        {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
+                            "Focused", "MaxCodepoints", "Font", "FocusID",
+                            "Style"}},
+    };
+    size_t i;
+
+    for(i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
+        if(strcmp(table[i].type, type) == 0) {
+            size_t n = 0;
+
+            while(table[i].fields[n] != NULL && n < sizeof(table[i].fields))
+                n++;
+            if(index >= 0 && (size_t)index < n)
+                return table[i].fields[index];
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
+/* Go Props fields that are bool while .kry writes C ints (0/1). */
+static int
+bool_prop_field(const char *field)
+{
+    static const char *names[] = {"Disabled", "DrawMenu", "Active",
+                                  "Secure", "Closeable", "Italic",
+                                  "FocusSelected", NULL};
+    int i;
+
+    for(i = 0; names[i] != NULL; i++)
+        if(strcmp(names[i], field) == 0)
+            return 1;
+    return 0;
+}
+
 static const char *
 tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 {
@@ -754,9 +812,9 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             }
             return p;
         }
-        /* Props use C designated initializers. Translate them to named Go
-         * fields and give the untyped bounds literal its Rectangle type. */
-        if(strstr(type, "Props") != NULL) {
+        /* Props/Spec use C designated initializers. Translate them to named
+         * Go fields and give the untyped bounds literal its Rectangle type. */
+        if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL) {
             char raw[K2G_TEXT_MAX], parts[32][K2G_TEXT_MAX];
             size_t rn = 0;
             int depth = 1;
@@ -778,37 +836,54 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             count = split_top(raw, parts, 32);
             *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
                                     "kryruntime.%s{", type);
-            for(int i = 0, emitted = 0; i < count; i++) {
+            for(int i = 0, emitted = 0, positional = 0; i < count; i++) {
                 char *part = (char *)skip_ws(parts[i]);
                 char *eq;
                 char field[K2G_NAME_MAX];
                 char value[K2G_TEXT_MAX];
 
-                if(*part != '.')
-                    continue;
-                eq = strchr(part, '=');
-                if(eq == NULL)
-                    continue;
-                *eq = '\0';
-                camel(part + 1, field, sizeof(field));
-                if(strcmp(field, "FocusId") == 0)
-                    snprintf(field, sizeof(field), "FocusID");
-                if(strcmp(field, "TextSize") == 0)
-                    continue;
-                if(strcmp(field, "Bounds") == 0 && *skip_ws(eq + 1) == '{') {
-                    char rect[K2G_TEXT_MAX];
-                    snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(eq + 1));
-                    tx_expr(m, rect, value, sizeof(value));
+                if(*part != '.') {
+                    /* positional initializer: map by C field order */
+                    const char *mapped = props_field_at(type, positional++);
+
+                    if(mapped == NULL)
+                        continue;
+                    snprintf(field, sizeof(field), "%s", mapped);
+                    if(*part == '\0')
+                        continue;
+                    tx_expr(m, part, value, sizeof(value));
                 } else {
-                    tx_expr(m, skip_ws(eq + 1), value, sizeof(value));
+                    eq = strchr(part, '=');
+                    if(eq == NULL)
+                        continue;
+                    *eq = '\0';
+                    camel(part + 1, field, sizeof(field));
+                    if(strcmp(field, "FocusId") == 0)
+                        snprintf(field, sizeof(field), "FocusID");
+                    if(strcmp(field, "Id") == 0)
+                        snprintf(field, sizeof(field), "ID");
+                    if(strcmp(field, "TextSize") == 0)
+                        continue;
+                    if(strcmp(field, "Bounds") == 0 && *skip_ws(eq + 1) == '{') {
+                        char rect[K2G_TEXT_MAX];
+                        snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(eq + 1));
+                        tx_expr(m, rect, value, sizeof(value));
+                    } else {
+                        tx_expr(m, skip_ws(eq + 1), value, sizeof(value));
+                    }
                 }
                 if(strcmp(type, "TextFieldProps") == 0 &&
                    strcmp(field, "Text") == 0 && strncmp(value, "st.", 3) == 0)
                     strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
                 if(emitted++)
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn, ", ");
-                *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                                        "%s: %s", field, value);
+                if(bool_prop_field(field) && strcmp(value, "true") != 0 &&
+                   strcmp(value, "false") != 0)
+                    *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
+                                            "%s: (%s != 0)", field, value);
+                else
+                    *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
+                                            "%s: %s", field, value);
             }
             if(*dn + 2 < K2G_TEXT_MAX)
                 dst[(*dn)++] = '}';
@@ -1132,6 +1207,35 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"UI_BUTTON_STYLE_PRIMARY", "kryruntime.UIButtonStylePrimary"},
                     {"UI_BUTTON_STYLE_SECONDARY", "kryruntime.UIButtonStyleSecondary"},
                     {"UI_BUTTON_STYLE_DANGER", "kryruntime.UIButtonStyleDanger"},
+                    {"UI_PICTURE_FIT_STRETCH", "kryruntime.UI_PICTURE_FIT_STRETCH"},
+                    {"UI_PICTURE_FIT_CONTAIN", "kryruntime.UI_PICTURE_FIT_CONTAIN"},
+                    {"UI_PICTURE_FIT_COVER", "kryruntime.UI_PICTURE_FIT_COVER"},
+                    {"WHITE", "kryruntime.WHITE"},
+                    {"BLACK", "kryruntime.BLACK"},
+                    {"RAYWHITE", "kryruntime.RAYWHITE"},
+                    {"BLANK", "kryruntime.BLANK"},
+                    {"LIGHTGRAY", "kryruntime.LIGHTGRAY"},
+                    {"GRAY", "kryruntime.GRAY"},
+                    {"DARKGRAY", "kryruntime.DARKGRAY"},
+                    {"YELLOW", "kryruntime.YELLOW"},
+                    {"GOLD", "kryruntime.GOLD"},
+                    {"ORANGE", "kryruntime.ORANGE"},
+                    {"PINK", "kryruntime.PINK"},
+                    {"RED", "kryruntime.RED"},
+                    {"MAROON", "kryruntime.MAROON"},
+                    {"GREEN", "kryruntime.GREEN"},
+                    {"LIME", "kryruntime.LIME"},
+                    {"DARKGREEN", "kryruntime.DARKGREEN"},
+                    {"SKYBLUE", "kryruntime.SKYBLUE"},
+                    {"BLUE", "kryruntime.BLUE"},
+                    {"DARKBLUE", "kryruntime.DARKBLUE"},
+                    {"PURPLE", "kryruntime.PURPLE"},
+                    {"VIOLET", "kryruntime.VIOLET"},
+                    {"DARKPURPLE", "kryruntime.DARKPURPLE"},
+                    {"BEIGE", "kryruntime.BEIGE"},
+                    {"BROWN", "kryruntime.BROWN"},
+                    {"DARKBROWN", "kryruntime.DARKBROWN"},
+                    {"MAGENTA", "kryruntime.MAGENTA"},
                     {NULL, NULL}
                 };
                 int matched = 0;

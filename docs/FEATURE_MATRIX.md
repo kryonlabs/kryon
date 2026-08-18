@@ -40,8 +40,9 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 ## Widget statement whitelist (`.kry` frontend)
 
 `parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 30 widget names.
-`k2c` compiles any library call regardless (plain call statement), so the
-whitelist matters for `k2g`/`k2b`, which only lower subsets of it:
+`k2c` compiles any library call regardless (plain call statement); `k2g` lowers
+the full whitelist onto its `Runtime` interface (except `Canvas`, below), and
+`k2b` lowers a subset of it:
 
 `Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
 Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox
@@ -70,14 +71,14 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|
 | Background | ✅ | ✅ | ✅ `Background` | ✅ node |
 | Text | ✅ | ✅ | ✅ `Text`/`DrawUIText` | ✅ node |
-| TextInRect | ✅ | ✗ | ✗ | ✅ |
-| Paragraph (rich text + inline icons) | ✅ | ✗ | ✗ | ✗ |
-| TextLines | ✅ | ✗ | ✗ | ✗ |
+| TextInRect | ✅ | ✅ | ✅ `TextInRect` | ✅ |
+| Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ `Paragraph` | ✗ |
+| TextLines | ✅ | ✅ | ✅ `TextLines` | ✗ |
 | Rect | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ `DrawLine` | ✅ |
-| Bevel | ✅ | ✗ | ✗ | ✅ |
-| IconTexture (114 embedded icons) | ✅ | ✗ | ✗ | ✗ |
-| Image/Picture | ✅ | ◐ `DrawPicture` primitives only | ◐ `DrawPicture` | ✅ node (embedded asset or PNG) |
+| Bevel | ✅ | ✅ | ✅ `Bevel` | ✅ |
+| IconTexture (114 embedded icons) | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
+| Image/Picture | ✅ | ✅ `Picture(PictureProps)` | ✅ `Picture`/`DrawPicture` | ✅ node (embedded asset or PNG) |
 
 ### UI/Input
 
@@ -85,18 +86,18 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ `DrawUIButton` | ✅ node |
 | GenericButton (5 styles) | ✅ | ✗ | ✅ `DrawUIGenericButton` | ◐ BUTTON style byte |
-| IconButton / IconBtn / PaddedIconBtn | ✅ | ✗ | ◐ `DrawUIIconButton` only | ✗ |
+| IconButton / IconBtn / PaddedIconBtn | ✅ | ◐ `IconButton` only | ◐ `DrawUIIconButton` only | ✗ |
 | TextButton | ✅ | ✗ | ✅ `DrawUITextButton` | ✗ |
 | InfoButton | ✅ | ✗ | ✗ | ✗ |
-| Href (hyperlink) / IconLink | ✅ | ✗ | ◐ `DrawUIHref` only | ✗ |
+| Href (hyperlink) / IconLink | ✅ | ◐ `Href` only | ◐ `DrawUIHref` only | ✗ |
 | TextInputControl | ✅ | ✗ | ✅ `DrawUITextInputControl` | ✗ |
 | TextField | ✅ | ✅ | ✅ `TextField`/`NewTextField`/`NewPasswordField` | ✅ TEXTINPUT node |
 | ReadonlyTextBox | ✅ | ✗ | ✅ `DrawUIReadonlyTextBox` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✗ | ✅ `NewTextArea`/`DrawUITextArea` | ✗ |
 | Dropdown / DropdownEx / LocaleDropdown | ✅ | ✗ | ✅ `DrawUIDropdown(Ex)`/`DrawUILocaleDropdown` | ✅ DROPDOWN control |
-| Slider | ✅ | ✗ | ✅ `DrawUISlider` | ✅ SLIDER control |
+| Slider | ✅ | ✅ | ✅ `DrawUISlider`/`Slider` | ✅ SLIDER control |
 | VerticalSlider / WithMarks | ✅ | ✗ | ◐ `DrawUIVerticalSlider` only | ✅ VSLIDER control |
-| Toggle (switch) | ✅ | ✗ | ✅ `DrawUIToggleSwitch` | ✅ node |
+| Toggle (switch) | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ `DrawUICheckboxToggle` | ✅ node |
 | Radio | ✅ | ✗ | ✅ `Radio` | ✗ |
 | Progress | ✅ | ✅ | ✅ `Progress` | ✗ |
@@ -108,7 +109,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2g | Go | KRB |
 |---|---|---|---|---|
-| Column / Row / Stack (flex-like) | ✅ | ◐ `Column` only | ✅ all three | ✅ structural no-ops (node table is the tree) |
+| Column / Row / Stack (flex-like) | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ◐ via Column | ✅ via Stack | ✅ |
 | Scroll container | ✅ | ✅ `Scroll`/`EndScroll` | ✅ `Begin/EndScrollContainer` | ✅ SCROLL node |
 | Separator | ✅ | ✗ | ✗ | ✅ |
@@ -137,15 +138,15 @@ declaration pass (`src/ui/ui_tree.c`).
 | MenuBar / PopupMenu / ContextMenu | ✅ | ✗ | ✗ | ✗ |
 | TabBar | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | SubtabBar / PaneTabBar (dock zones) | ✅ | ✗ | ✗ | ✗ |
-| BottomNav (+ config modal) | ✅ | ✗ | ✗ | ◐ `NavButton` lowers to a BUTTON |
-| TopNav / Toolbar / ToolbarHeader | ✅ | ✗ | ✗ | ✗ |
-| TitleBar family | ✅ | ✗ | ✗ | ✗ |
+| BottomNav (+ config modal) | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |
+| TopNav / Toolbar / ToolbarHeader | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |
+| TitleBar family | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
 
 ### UI/Overlays
 
 | Widget | C | k2g | Go | KRB |
 |---|---|---|---|---|
-| ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✗ | ✗ | ✗ |
+| ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
 | MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✗ | ✅ | ✗ |
 | Toast | ✅ | ✗ | ✅ `ShowToast(For)` | ✗ |
 | GuideOverlay / TutorialImage(Placeholder) | ✅ | ✗ | ✗ | ✗ |
@@ -236,9 +237,11 @@ declaration pass (`src/ui/ui_tree.c`).
 
 - `canvas` Tier A backend is selectable and documented but has no
   implementation; the working web path is `krb-web` (`kry_sw` → wasm).
-- `k2g` lowers a declarative subset: the `Runtime` interface carries 17 widget
-  methods; `goto`, labels, and some declarations emit TODO comments that fail
-  the build loudly.
+- `k2g`'s `Runtime` interface covers the full widget whitelist, but the
+  imperative surface is still a subset: `goto`, labels, and local array
+  declarations emit TODO comments that fail the build loudly, and values of
+  C pointer/`Texture2D` type cannot be expressed from `.kry` (icons are
+  passed by `UIIconType`, string lists as `;`-joined strings).
 - `k2b` drops unsupported widget calls and reports them per file; the cartridge
   widget set is much smaller than the C catalog (see matrix).
 - `KRB_CTRL_COMBOBOX` exists in the format but no `k2b` lowering produces it.

@@ -35,6 +35,9 @@ state {
     tab: int = TAB_OVERVIEW
     check: int = 0
     pick: int = 1
+    slider_val: int = 50
+    toggle_val: int = 0
+    lines_y: int = 0
 }
 
 app "Smoke" {
@@ -74,6 +77,26 @@ frame main {
     DrawCircleV((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
     DrawRing((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(36), ScaleUIPx(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
     EndScroll()
+    TextInRect("in rect", (Rectangle){ScaleUIPx(4), ScaleUIPx(130), ScaleUIPx(160), ScaleUIPx(20)}, UI_TEXT_16, GetThemeText())
+    TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, UI_TEXT_16, ScaleUIPx(18), GetThemeText())
+    Bevel(ScaleUIPx(10), ScaleUIPx(10), ScaleUIPx(60), ScaleUIPx(20), GetThemeSurface(), GetThemeButton())
+    IconTexture(2, ScaleUIPx(200), ScaleUIPx(10), ScaleUIPx(24), 3, WHITE)
+    Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(4), ScaleUIPx(150), ScaleUIPx(96), ScaleUIPx(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, UI_PICTURE_FIT_CONTAIN})
+    Paragraph((UIParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(200), .font = UI_TEXT_16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, ScaleUIPx(4), &lines_y)
+    IconButton((IconButtonProps){.bounds = {ScaleUIPx(210), ScaleUIPx(60), ScaleUIPx(36), ScaleUIPx(36)}, .icon_type = 2, .focus_id = 3})
+    Href((HrefProps){.bounds = {ScaleUIPx(210), ScaleUIPx(110), ScaleUIPx(90), ScaleUIPx(24)}, .text = "docs", .href = "https://example.com", .font = UI_TEXT_16, .color = GetThemeLink()})
+    Slider(9, ScaleUIPx(4), ScaleUIPx(170), ScaleUIPx(180), "S", 0, 100, &slider_val, "%", nil)
+    Toggle(10, ScaleUIPx(200), ScaleUIPx(170), ScaleUIPx(120), ScaleUIPx(32), &toggle_val, "Off", "On")
+    Stack((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}, .key = Key("smoke-stack")})
+    Rect(ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
+    End()
+    Row((ColumnProps){.bounds = {ScaleUIPx(120), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}})
+    End()
+    Modal("Title", "Message", "Cancel", "OK")
+    TitleBar("Smoke", ScaleUIPx(32))
+    TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = ScaleUIPx(320), .height = ScaleUIPx(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
+    Toolbar((ToolbarProps){.id = 1, .x = 0, .y = ScaleUIPx(40), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
+    BottomNav((BottomNavProps){.view_width = ScaleUIPx(320), .view_height = ScaleUIPx(240), .count = 0, .height = ScaleUIPx(56)})
     EndDrawing()
 }
 EOF
@@ -133,6 +156,30 @@ grep -q 'rt.Checkbox(' "$out"
 grep -q 'rt.Dropdown(' "$out"
 grep -q 'rt.Progress(' "$out"
 grep -q 'rt.Rect(' "$out"
+
+# full whitelisted widget surface: every widget statement must lower and
+# compile against the Runtime interface.
+grep -q 'rt.TextInRect(' "$out"
+grep -q 'rt.TextLines(' "$out"
+grep -q 'rt.Bevel(' "$out"
+grep -q 'rt.IconTexture(' "$out"
+grep -q 'rt.Picture(kryruntime.PictureProps{AssetPath: "tiles/tile.png"' "$out"
+grep -q 'rt.Paragraph(kryruntime.UIParagraphSpec{Text: "Rich text"' "$out"
+grep -q 'rt.IconButton(kryruntime.IconButtonProps{' "$out"
+grep -q 'FocusID: 3' "$out"
+grep -q 'rt.Href(kryruntime.HrefProps{' "$out"
+grep -q 'rt.Slider(9,' "$out"
+grep -q 'rt.Toggle(10,' "$out"
+grep -q 'rt.Stack(kryruntime.ColumnProps{' "$out"
+grep -q 'rt.Key("smoke-stack")' "$out"
+grep -q 'rt.Row(kryruntime.ColumnProps{' "$out"
+grep -q 'rt.Modal("Title"' "$out"
+grep -q 'rt.TitleBar("Smoke"' "$out"
+grep -q 'rt.TopNav(kryruntime.TopNavProps{' "$out"
+grep -q 'rt.Toolbar(kryruntime.ToolbarProps{' "$out"
+grep -q 'rt.BottomNav(kryruntime.BottomNavProps{' "$out"
+grep -q 'rt.Fade(' "$out"
+grep -q 'rt.GetThemeSurface()' "$out"
 
 # The generated source must compile against Kryon's real Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.

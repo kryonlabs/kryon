@@ -32,7 +32,7 @@ type Runtime interface {
 	NewVector2(any, any) Vector2
 	DrawCircleV(Vector2, any, Color)
 	DrawRing(Vector2, any, any, any, any, int32, Color)
-	Rect(int32, int32, int32, int32, Color)
+	Rect(int32, int32, int32, int32, Color, ...Color)
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
 	Scroll(int32, int32, int32, int32, int32, *int32)
@@ -45,8 +45,31 @@ type Runtime interface {
 	BeginUI(UIKey)
 	EndUI()
 	Column(ColumnProps)
+	Row(ColumnProps)
+	Stack(ColumnProps)
 	End()
 	TextField(TextFieldProps)
+	Key(text string) UIKey
+	Fade(Color, float32) Color
+	GetThemeSurface() Color
+	GetThemeButton() Color
+	GetThemeButtonHover() Color
+	GetThemeLink() Color
+	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
+	TextLines(lines string, count int32, x int32, y *int32, font, lineH int32, color Color)
+	Bevel(x, y, w, h int32, light, dark Color)
+	IconTexture(id, x, y, size int32, iconType int32, tint Color)
+	Picture(props PictureProps)
+	Paragraph(spec UIParagraphSpec, x int32, y *int32)
+	IconButton(props IconButtonProps) bool
+	Href(props HrefProps) bool
+	Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool
+	Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool
+	Modal(title, message, cancelBtn, confirmBtn string) int
+	TitleBar(title string, height int32)
+	BottomNav(props BottomNavProps)
+	TopNav(props TopNavProps)
+	Toolbar(props ToolbarProps)
 }
 
 type runtime struct {
@@ -145,8 +168,12 @@ func (r *runtime) TextField(props TextFieldProps) { declareTextField(props) }
 
 func (r *runtime) GetScreenWidth() int32  { return GetScreenWidth() }
 func (r *runtime) GetScreenHeight() int32 { return GetScreenHeight() }
-func (r *runtime) Rect(x, y, w, h int32, c Color) {
-	DrawRectangleRec(NewRectangle(float32(x), float32(y), float32(w), float32(h)), c)
+func (r *runtime) Rect(x, y, w, h int32, fill Color, border ...Color) {
+	if len(border) > 0 {
+		Rect(x, y, w, h, fill, border[0])
+		return
+	}
+	DrawRectangleRec(NewRectangle(float32(x), float32(y), float32(w), float32(h)), fill)
 }
 func (r *runtime) RectGradientH(x, y, w, h int32, left, right Color) {
 	DrawRectangleGradientH(x, y, w, h, left, right)
