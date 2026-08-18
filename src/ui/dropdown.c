@@ -127,10 +127,21 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
         *visible_options = state->option_count;
     }
 
-    if(open_up != NULL && *open_up)
-        *dropdown_y = state->y - menu_gap - total_h;
-    else
-        *dropdown_y = below_y;
+    /* Flip the popup above the button when it does not fit below and
+     * there is more room above. Callers used to have to request this via
+     * the open_up out-param, but none did - so a tall popup near the
+     * bottom of the view was sized for the space above yet placed below,
+     * running off-screen with its tail options unclickable. */
+    {
+        int open_up_local = (below_space < total_h && above_space > below_space);
+
+        if(open_up != NULL)
+            *open_up = open_up_local;
+        if(open_up_local)
+            *dropdown_y = state->y - menu_gap - total_h;
+        else
+            *dropdown_y = below_y;
+    }
 
     *dropdown_h = total_h;
 }
