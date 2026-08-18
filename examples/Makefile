@@ -103,7 +103,7 @@ LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
 	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
 	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility \
-	19_pictures 20_scene 21_signals 22_physics 23_animation 24_tilemap
+	19_pictures 20_scene 21_signals 22_physics 23_animation 24_tilemap 30_aero
 EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 
 .PHONY: all clean run list font-assets web web-clean
@@ -128,7 +128,7 @@ $(BIN_DIR):
 
 $(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating $*..."
-	@$(K2B) --root . -o $(CODEGEN_DIR) $<
+	@$(K2C) --root . -o $(CODEGEN_DIR) $<
 
 $(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating 02_buttons cartridge..."

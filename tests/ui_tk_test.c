@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void
 check_int(const char *name, int got, int want)
@@ -40,6 +41,31 @@ main(void)
     check_int("material effective style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
     check_int("material bevel", GetUIStyleTokens().bevel_enabled, 0);
     check_int("material touch target", GetUIStyleTokens().touch_target_min, 48);
+
+    SetThemeStyle(THEME_STYLE_AERO);
+    check_int("aero style", GetThemeStyle(), THEME_STYLE_AERO);
+    check_int("aero effective style", GetEffectiveThemeStyle(), THEME_STYLE_AERO);
+    check_int("aero bevel", GetUIStyleTokens().bevel_enabled, 0);
+    check_int("aero shine", GetUIStyleTokens().shine_alpha > 0, 1);
+    check_int("aero translucent panels", GetUIStyleTokens().panel_alpha < 255, 1);
+    check_int("aero default theme", GetDefaultThemeForThemeStyle(THEME_STYLE_AERO),
+              THEME_AERO);
+    check_int("aero style label", strcmp(GetThemeStyleLabel(THEME_STYLE_AERO),
+                                         "Aero") == 0, 1);
+    check_int("aero theme count", THEME_COUNT, 13);
+    check_int("aero theme id", NormalizeTheme(THEME_AERO), THEME_AERO);
+    check_int("aero theme label", strcmp(GetThemeLabel(THEME_AERO), "Aero") == 0, 1);
+    {
+        UIAeroScheme scheme = GetUIAeroScheme();
+
+        check_int("aero scheme glass alpha", scheme.glass.a > 0, 1);
+        check_int("aero scheme text alpha", scheme.text.a > 0, 1);
+        check_int("aero scheme fill top lighter",
+                  scheme.fill_top.r + scheme.fill_top.g + scheme.fill_top.b >=
+                  scheme.fill_bottom.r + scheme.fill_bottom.g + scheme.fill_bottom.b,
+                  1);
+    }
+    SetThemeStyle(THEME_STYLE_MATERIAL);
 
     SetThemeStyle((ThemeStyle)99);
     check_int("invalid style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
