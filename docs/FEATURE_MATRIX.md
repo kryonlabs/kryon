@@ -231,7 +231,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | `KryBackendDraw` | raylib surface | raylib | ✅ | full font stack | ✅ | Auto-installed via constructor; hooks cartridge audio; runs inside raylib apps and `kryon-preview` |
 | `kry_sw` | software RGBA8 rasterizer | injected (`KrySwMouse` etc.) | ✅ + PNG decode | font8x8 or KFA1 atlas | ✅ | No GPU/libc deps; `KrySwToRGB565` for embedded panels; one-shot dirty-rect tracking |
-| `krb-run` | `kry_sw` headless | injected | ✅ | via `kry_sw` | ✅ linux/windows/macos | PNG dump + `KryBackendRec` call log; conformance host; `--backend fb` presents on `/dev/fb0` (or a raw file target) with dirty-rect conversion |
+| `krb-run` | `kry_sw` headless | injected | ✅ | via `kry_sw` | ✅ linux/windows/macos | PNG dump + `KryBackendRec` call log; conformance host |
 | `krb-sdl` | `kry_sw` → SDL2 streaming texture | SDL2 | ✅ | via `kry_sw` | ✅ | Template for the planned Android EGL host |
 | `krb-web` | `kry_sw` → wasm, Canvas2D `putImageData` | JS bridge exports | ✅ | via `kry_sw` | ✅ renderers.yml | Byte-identical to native; node-capture for tests |
 | `KryBackendRec` | wraps any backend | passthrough | passthrough | passthrough | ✅ exactness job | Records the vtable call stream for cross-engine comparison |
@@ -266,10 +266,6 @@ declaration pass (`src/ui/ui_tree.c`).
 - `kry_sw` tracks the dirty rectangle per call (`KrySwDirty` is one-shot);
   hosts that present full frames (`krb-sdl`, `krb-web`) do not use it yet.
 - Plan 11 engines still to come: native Canvas2D fast path, Android EGL
-  host, ESP32 RGB565 host. The phase-2 Linux framebuffer host is done:
-  `krb-run --backend fb` presents on `/dev/fb0` (or a raw file target for
-  headless testing) with per-frame dirty-rect conversion.
-
-Plan 11 (`docs/plans/11-render-engines.md`) drafts further engines — Linux
-framebuffer, Android EGL, ESP32 RGB565, native Canvas2D fast path — none
-implemented yet.
+  host, ESP32 RGB565 host. The Linux framebuffer host was removed again -
+  raylib covers desktop presentation and the canvas backend covers native
+  web, so it carried maintenance cost without a user.
