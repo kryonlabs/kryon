@@ -1416,6 +1416,34 @@ Image GenImageColor(int width, int height, Color color)
     return img;
 }
 
+/* File-name helpers apps drive directly (raylib utils). */
+static const char *canvas_basename(const char *path)
+{
+    const char *slash = path != NULL ? strrchr(path, '/') : NULL;
+
+    return slash != NULL && slash[1] != '\0' ? slash + 1 : path;
+}
+
+const char *GetFileName(const char *filePath)
+{
+    return canvas_basename(filePath);
+}
+
+const char *GetFileExtension(const char *fileName)
+{
+    const char *base = canvas_basename(fileName);
+    const char *dot = base != NULL ? strrchr(base, '.') : NULL;
+
+    return dot != NULL && dot[1] != '\0' ? dot : "";
+}
+
+bool IsFileExtension(const char *fileName, const char *ext)
+{
+    const char *got = GetFileExtension(fileName);
+
+    return got != NULL && ext != NULL && strcmp(got, ext) == 0;
+}
+
 void SetShapesTexture(Texture2D texture, Rectangle rec)
 {
     (void)texture;
@@ -1533,6 +1561,11 @@ void WaveFormat(Wave *wave, int sampleRate, int sampleSize, int channels)
 bool IsSoundPlaying(Sound sound)
 {
     (void)sound;
+    return false;
+}
+bool IsMusicValid(Music music)
+{
+    (void)music;
     return false;
 }
 void AttachAudioMixedProcessor(void (*processor)(void *buffer,
