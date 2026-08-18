@@ -37,10 +37,22 @@ ui_theme_label(ThemeId theme)
     return GetThemeLabel(theme);
 }
 
+/* Prop override wins; otherwise the locale catalog; otherwise the
+ * English literal. The literals used to bypass the catalog entirely,
+ * which left the whole theme section English in localized apps. */
 static const char *
-ui_theme_settings_text(const char *text, const char *fallback)
+ui_theme_settings_text(const char *text, const char *key, const char *fallback)
 {
-    return text != NULL && text[0] != '\0' ? text : fallback;
+    const char *localized;
+
+    if(text != NULL && text[0] != '\0')
+        return text;
+    if(key != NULL) {
+        localized = GetLocaleText(key);
+        if(localized != NULL && localized[0] != '\0' && strcmp(localized, key) != 0)
+            return localized;
+    }
+    return fallback;
 }
 
 static int
@@ -126,16 +138,16 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         *settings.theme_mode = THEME_MODE_SYSTEM;
 
     mode_options[THEME_MODE_SYSTEM] =
-        ui_theme_settings_text(settings.mode_system_label, "System");
+        ui_theme_settings_text(settings.mode_system_label, "theme_follow_device", "System");
     mode_options[THEME_MODE_LIGHT] =
-        ui_theme_settings_text(settings.mode_light_label, "Light");
+        ui_theme_settings_text(settings.mode_light_label, "theme_light", "Light");
     mode_options[THEME_MODE_DARK] =
-        ui_theme_settings_text(settings.mode_dark_label, "Dark");
+        ui_theme_settings_text(settings.mode_dark_label, "theme_dark", "Dark");
     *settings.theme_mode = ui_clampi(*settings.theme_mode,
                                      THEME_MODE_SYSTEM,
                                      THEME_MODE_DARK);
     if(show_mode) {
-        DrawUIText(ui_theme_settings_text(settings.mode_label, "Mode"),
+        DrawUIText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
                    settings.x, y, font, c_text);
         if(DrawUIDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
                           settings.w, row_h, mode_options, 3,
@@ -154,7 +166,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     palette_index = ui_theme_palette_index(settings);
     if(settings.allow_system_source) {
         theme_options[0] = ui_theme_settings_text(settings.source_system_label,
-                                                  "System");
+                                                  "theme_system", "System");
         for(int i = 0; i < THEME_COUNT; i++)
             theme_options[i + 1] = ui_theme_label(theme_picker_order[i]);
     } else {
@@ -165,7 +177,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         state->palette_index = ui_clampi(palette_index, 0, palette_count - 1);
         palette_index = state->palette_index;
     }
-    DrawUIText(ui_theme_settings_text(settings.palette_label, "Color"),
+    DrawUIText(ui_theme_settings_text(settings.palette_label, "theme_color_label", "Color"),
                settings.x, y, font, c_text);
     if(DrawUIDropdown(settings.id_base + 2, settings.x, y + font + label_gap,
                       settings.w, row_h, theme_options, palette_count,
@@ -188,7 +200,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         int style_index = 0;
 
         style_options[0] = ui_theme_settings_text(settings.style_system_label,
-                                                  "System style");
+                                                  "theme_style_system", "System style");
         style_options[1] = ui_theme_settings_text(settings.style_retro_label,
                                                   GetThemeStyleLabel(THEME_STYLE_RETRO));
         style_options[2] = ui_theme_settings_text(settings.style_material_label,
@@ -199,7 +211,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
             if(*settings.theme_style == style_values[i])
                 style_index = i;
         }
-        DrawUIText(ui_theme_settings_text(settings.style_label, "Style"),
+        DrawUIText(ui_theme_settings_text(settings.style_label, "theme_style_label", "Style"),
                    settings.x, y, font, c_text);
         if(DrawUIDropdown(settings.id_base + 3,
                           settings.x, y + font + label_gap,

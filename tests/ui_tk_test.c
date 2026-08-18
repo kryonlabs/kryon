@@ -36,6 +36,28 @@ main(void)
     check_int("retro effective style", GetEffectiveThemeStyle(), THEME_STYLE_RETRO);
     check_int("retro bevel", GetUIStyleTokens().bevel_enabled, 1);
 
+    /* Theme-section locale keys must resolve to real strings (the
+     * settings picker wires these as fallbacks). */
+    {
+        static const char *keys[] = {
+            "theme_style_label", "theme_style_system", "theme_style_retro",
+            "theme_style_material", "theme_style_aero", "theme_label",
+            "theme_app", "theme_system", "theme_mode_label",
+            "theme_follow_device", "theme_light", "theme_dark",
+            "theme_color_label", "theme_picker_title"
+        };
+        size_t i;
+
+        for(i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+            const char *text = GetLocaleText(keys[i]);
+
+            if(text == NULL || text[0] == '\0' || strcmp(text, keys[i]) == 0) {
+                fprintf(stderr, "locale key unresolved: %s\n", keys[i]);
+                return 1;
+            }
+        }
+    }
+
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material style", GetThemeStyle(), THEME_STYLE_MATERIAL);
     check_int("material effective style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
@@ -65,6 +87,28 @@ main(void)
                   scheme.fill_bottom.r + scheme.fill_bottom.g + scheme.fill_bottom.b,
                   1);
     }
+    /* Theme-section locale keys must resolve to real strings (the
+     * settings picker wires these as fallbacks). */
+    {
+        static const char *keys[] = {
+            "theme_style_label", "theme_style_system", "theme_style_retro",
+            "theme_style_material", "theme_style_aero", "theme_label",
+            "theme_app", "theme_system", "theme_mode_label",
+            "theme_follow_device", "theme_light", "theme_dark",
+            "theme_color_label", "theme_picker_title"
+        };
+        size_t i;
+
+        for(i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+            const char *text = GetLocaleText(keys[i]);
+
+            if(text == NULL || text[0] == '\0' || strcmp(text, keys[i]) == 0) {
+                fprintf(stderr, "locale key unresolved: %s\n", keys[i]);
+                return 1;
+            }
+        }
+    }
+
     SetThemeStyle(THEME_STYLE_MATERIAL);
 
     SetThemeStyle((ThemeStyle)99);
