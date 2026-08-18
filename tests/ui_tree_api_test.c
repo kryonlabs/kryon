@@ -287,7 +287,9 @@ main(void)
         int first_focused = 0, second_focused = 0;
 
         KryonInjectReset();
-        SetUIFocus(1001);
+        KryonInjectMousePosition(20, 20);
+        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+        KryonInjectPump();
         BeginUIFocus();
         BeginUI(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
@@ -300,6 +302,8 @@ main(void)
             .focus_id = 1002, .font = 16 });
         EndUI();
         EndUIFocus();
+        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+        KryonInjectPump();
 
         KryonInjectKeyTap(KEY_TAB);
         KryonInjectPump();
