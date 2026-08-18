@@ -41,11 +41,11 @@ extern void KryonRaylibBackend_rlDrawRenderBatch(void);
  * has already been collected for the next application update. */
 extern void kry_event_wait_after_frame(void);
 
-/* When INBE_SHOT_ARM=1, every EndDrawing captures the completed back
- * buffer BEFORE the swap (the only readback point OpenGL ES 2 guarantees:
- * no glReadBuffer, and post-swap reads return undefined/cleared data on
- * Mesa's software drivers). The last captured frame is what
- * LoadImageFromScreen returns. */
+/* When KRYON_SHOT_ARM (or the older INBE_SHOT_ARM name) is set, every
+ * EndDrawing captures the completed back buffer BEFORE the swap (the only
+ * readback point OpenGL ES 2 guarantees: no glReadBuffer, and post-swap
+ * reads return undefined/cleared data on Mesa's software drivers). The last
+ * captured frame is what LoadImageFromScreen returns. */
 static unsigned char *g_shot_buf = NULL;
 static int g_shot_w = 0;
 static int g_shot_h = 0;
@@ -54,7 +54,7 @@ void EndDrawing(void)
 {
     if(KryonRaylibBackend_EndDrawing == NULL)
         return; /* non-raylib link: nothing to swap */
-    if(getenv("INBE_SHOT_ARM") == NULL) {
+    if(getenv("KRYON_SHOT_ARM") == NULL && getenv("INBE_SHOT_ARM") == NULL) {
         KryonRaylibBackend_EndDrawing();
         kry_event_wait_after_frame();
         return;
@@ -259,18 +259,24 @@ Image LoadImageFromScreen(void)
     image.height = g_shot_h;
     image.mipmaps = 1;
     image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    {
-        {
-            FILE *df = fopen("/tmp/shot-flip.raw", "wb");
+    if(getenv("KRYON_SHOT_DEBUG") != NULL) {
+        FILE *df = fopen("/tmp/shot-flip.raw", "wb");
 
-            if(df != NULL) {
-                fwrite(flip, 1, (size_t)row * g_shot_h, df);
-                fclose(df);
-            }
-            kr_write_png("/tmp/kryon-native.png", flip, g_shot_w, g_shot_h);
+        if(df != NULL) {
+            fwrite(flip, 1, (size_t)row * g_shot_h, df);
+            fclose(df);
         }
+        kr_write_png("/tmp/kryon-native.png", flip, g_shot_w, g_shot_h);
     }
     return image;
+}
+
+/* Shared entry point for kryon's screenshot tooling; kr_write_png itself
+ * stays file-local. Returns 0 on success. */
+int
+kry_write_png_file(const char *path, const unsigned char *rgba, int w, int h)
+{
+    return kr_write_png(path, rgba, w, h);
 }
 
 void TakeScreenshot(const char *fileName)
