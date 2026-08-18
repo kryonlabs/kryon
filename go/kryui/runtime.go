@@ -7,6 +7,9 @@ type AppConfig struct {
 	Title         string
 	Width, Height int
 	FPS           int
+	Flags         uint        // window flags applied before InitWindow (0 = none)
+	MinWidth      int         // minimum window size (0 = no limit)
+	MinHeight     int
 }
 
 // Runtime is the stable Go target used by generated Kry programs. It keeps
@@ -56,7 +59,13 @@ type runtimeScroll struct {
 }
 
 func New(config AppConfig) Runtime {
+	if config.Flags != 0 {
+		SetConfigFlags(config.Flags)
+	}
 	InitWindow(int32(config.Width), int32(config.Height), config.Title)
+	if config.MinWidth > 0 || config.MinHeight > 0 {
+		SetWindowMinSize(int32(config.MinWidth), int32(config.MinHeight))
+	}
 	if config.FPS > 0 {
 		SetTargetFPS(int32(config.FPS))
 	}
