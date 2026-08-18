@@ -1,4 +1,21 @@
 # Changelog
+## v0.1.18 - 2026-08-18
+
+### Changed
+
+- Release: bump version to v0.1.18
+- Backend: compile the KRB audio cap out without the raylib audio module
+- K2g: lower typed declarations, arrays, and goto/labels for real
+- Compat: let apps drop the audio forwarders from the generated wrappers
+- Krb-run: --backend fb presents cartridges on the Linux framebuffer
+- Kry_sw: track the dirty rectangle per call
+- K2b: lower Combobox to a KRB_CTRL_COMBOBOX control
+- Screenshots: fix PNG chunk CRCs in the native writer
+- Docs: cover the Aero style with an example, tests and API notes
+- Ui: Aero paint branches across the widget set
+- Theme: add the Aero widget style
+- K2g: cover the full widget whitelist on the Go Runtime interface
+
 ## v0.1.17 - 2026-08-18
 
 ### Changed
