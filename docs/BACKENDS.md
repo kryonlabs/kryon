@@ -24,8 +24,10 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
 - `null` - generated zero-return stubs (`build/generated/kryon_null_backend.c`)
   so the library links and runs headless with no GPU or window. Injected input
   (below) still works, which is what drives headless widget tests.
-- `canvas` - HTML5 Canvas2D backend, no raylib (`src/backend/canvas_backend.c`).
-  Web-only (building it natively is a deliberate `#error`). Implements the
+- `canvas` - HTML5 Canvas2D backend, no raylib (`src/backend/canvas_*.c`,
+  split by concern: window, input, draw, texture, text, os, audio).
+  Web-only (native sweeps of its sources compile to empty translation
+  units; a native canvas link fails at symbol resolution). Implements the
   required surface through `EM_JS`: draws as canvas paths (rounded rects via
   `roundRect` with an `arcTo` fallback, rings as filled even-odd annulus
   segments, gradients carry both full colors), textures as offscreen canvases

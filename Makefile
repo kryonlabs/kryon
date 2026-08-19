@@ -77,13 +77,16 @@ KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
 # Graphics/input backend. The kryon surface (kryon_compat.generated.h) is
 # backend-neutral; the concrete implementation is selected at link time here.
 #   raylib  -> generated raylib forwarders + libraylib.a   (default, unchanged)
-#   canvas  -> src/backend/canvas_backend.c (HTML5 Canvas2D; no raylib)
+#   canvas  -> src/backend/canvas_*.c (HTML5 Canvas2D; no raylib)
 #   null    -> generated zero-return stubs  (no-ops; for headless tests)
 KRYON_BACKEND ?= raylib
+KRYON_CANVAS_SRCS := $(wildcard src/backend/canvas_*.c)
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
 else ifeq ($(KRYON_BACKEND),canvas)
-  KRYON_BACKEND_SRCS = src/backend/canvas_backend.c
+  # the canvas sources live in src/ and arrive via the SRCS find below;
+  # appending them here would compile every canvas TU twice.
+  KRYON_BACKEND_SRCS =
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else
@@ -149,12 +152,12 @@ LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
-# The Canvas2D backend is emcc-only (its sources #error on native
-# compilers) and is added explicitly via KRYON_BACKEND_SRCS when
-# KRYON_BACKEND=canvas; keep the find from dragging it into native
-# builds when the file happens to be present.
+# The Canvas2D backend is emcc-only (its sources compile to empty
+# translation units under native compilers) and only links when
+# KRYON_BACKEND=canvas; keep the find from dragging it into the other
+# backends' builds when the files happen to be present.
 ifneq ($(KRYON_BACKEND),canvas)
-SRCS := $(filter-out src/backend/canvas_backend.c,$(SRCS))
+SRCS := $(filter-out $(KRYON_CANVAS_SRCS),$(SRCS))
 endif
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)

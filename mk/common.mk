@@ -29,7 +29,10 @@ ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_CFLAGS = $(RAY_CFLAGS)
   KRYON_BACKEND_LDLIBS = $(RAY_LDLIBS)
 else ifeq ($(KRYON_BACKEND),canvas)
-  KRYON_BACKEND_SRCS = $(KRYON_DIR)/src/backend/canvas_backend.c
+  # the canvas sources live in $(KRYON_DIR)/src and arrive via the find
+  # in KRYON_SRCS below; appending them here would compile every canvas
+  # TU twice.
+  KRYON_BACKEND_SRCS =
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =

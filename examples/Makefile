@@ -77,7 +77,10 @@ ifeq ($(KRYON_BACKEND),raylib)
   KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_RAYLIB_WRAPPERS_C)
   KRYON_EXAMPLES_WEB_BACKEND_LIBS := $(WEB_RAYLIB_A)
 else ifeq ($(KRYON_BACKEND),canvas)
-  KRYON_EXAMPLES_WEB_BACKEND_C := ../src/backend/canvas_backend.c
+  # the canvas sources are swept in by the ../src find in
+  # KRYON_LIBRARY_SRCS; appending them here would compile every canvas
+  # TU twice.
+  KRYON_EXAMPLES_WEB_BACKEND_C :=
   KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)

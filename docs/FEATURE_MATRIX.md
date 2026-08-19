@@ -223,7 +223,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | `raylib` windows RGFW rule | GL 1.1 immediate mode | Windows | ✗ opt-in make rule | `KRYON_RAYLIB_WINDOWS_RULE` |
 | `raylib` android | GLES via NDK `NativeActivity` | Android (downstream Gradle) | ✗ downstream apps | `mk/android.mk` |
 | `null` | none (zero-return stubs) | all | ✗ (used by local headless tests) | Injected input still works |
-| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node call-sequence gate) | No raylib; glyphs rasterized from FontFace data; rounded rects/rings/clipboard approximated |
+| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node call-sequence gate) | No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; audio null-grade |
 
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)
 
