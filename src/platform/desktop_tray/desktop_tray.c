@@ -490,11 +490,21 @@ GetDesktopTrayIconPath(void)
 }
 
 #if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
+static Uint32 TrayReadyTicks; /* SDL_GetTicks() when the icon became ready */
+
 static void
 DesktopTrayStatusIconActivate(GtkStatusIcon *status_icon, gpointer user_data)
 {
     (void)status_icon;
     (void)user_data;
+    /* Some systray hosts emit an activation during the XEMBED handshake.
+     * Honoring it would toggle (and hide!) the app window right after
+     * launch with nobody touching the icon. Ignore activates from an
+     * unembedded icon or within the embed window. */
+    if(TrayStatusIcon != NULL && !gtk_status_icon_is_embedded(TrayStatusIcon))
+        return;
+    if(TrayReadyTicks != 0 && SDL_GetTicks() - TrayReadyTicks < 2000)
+        return;
     if(TrayActivateAction != 0)
         SetDesktopTrayAction(TrayActivateAction);
 }
@@ -586,6 +596,9 @@ DesktopTrayThreadMain(void *arg)
 #endif
 
     SetDesktopTrayState(DESKTOP_TRAY_STATE_READY);
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
+    TrayReadyTicks = SDL_GetTicks();
+#endif
     gtk_main();
     SetDesktopTrayState(DESKTOP_TRAY_STATE_STOPPED);
     TrayMenu = NULL;
