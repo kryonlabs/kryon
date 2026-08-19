@@ -16,8 +16,8 @@
  * constructs are best-effort; anything unsupported is emitted as a
  * commented TODO line instead of silently miscompiling.
  */
-void k2g_lower(const KirProgram *const *progs, int prog_count,
-               const char *root, const char *out_dir, const char *pkg,
-               const char *runtime_import, int no_main);
+int k2g_lower(const KirProgram *const *progs, int prog_count,
+              const char *root, const char *out_dir, const char *pkg,
+              const char *runtime_import, int no_main);
 
 #endif

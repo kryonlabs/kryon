@@ -13,6 +13,33 @@
 void write_krb(const KirModule *m, const char *root, const char *out_dir,
                int no_main);
 
+static int
+validate_asserts(const KirModule *m)
+{
+    for(int i = 0; i < m->assert_count; i++) {
+        const KirAssert *a = &m->asserts[i];
+
+        if(a->guard[0] != '\0') {
+            fprintf(stderr,
+                    "k2b: %s:%d: guarded #assert is not supported by KRB: %s\n",
+                    a->span.path, a->span.line, a->message);
+            return 0;
+        }
+        if(!a->known) {
+            fprintf(stderr,
+                    "k2b: %s:%d: unresolved #assert is not supported by KRB: %s\n",
+                    a->span.path, a->span.line, a->condition);
+            return 0;
+        }
+        if(!a->value) {
+            fprintf(stderr, "k2b: %s:%d: #assert failed: %s\n",
+                    a->span.path, a->span.line, a->message);
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static void
 usage(void)
 {
@@ -52,8 +79,13 @@ main(int argc, char **argv)
             fprintf(stderr, "k2b: failed to parse %s\n", argv[i]);
             return 1;
         }
-        for(int m = 0; m < prog->module_count; m++)
+        for(int m = 0; m < prog->module_count; m++) {
+            if(!validate_asserts(&prog->modules[m])) {
+                KirProgramFree(prog);
+                return 1;
+            }
             write_krb(&prog->modules[m], root, out_dir, no_main);
+        }
         KirProgramFree(prog);
     }
     return 0;

@@ -1023,6 +1023,16 @@ emit_guard_close(FILE *out, const char *guard)
         fprintf(out, "#endif\n");
 }
 
+static void
+emit_compile_assert(FILE *out, const KirAssert *assertion)
+{
+    emit_guard_open(out, assertion->guard);
+    fprintf(out, "#if !(%s)\n", assertion->condition);
+    fprintf(out, "#error %s\n", assertion->message);
+    fprintf(out, "#endif\n");
+    emit_guard_close(out, assertion->guard);
+}
+
 /* '#intrinsic "web"' wrappers: static EM_ASM shims, built only when
  * PLATFORM_WEB is defined (matching the legacy compiler). */
 static const char *const web_download_body[] = {
@@ -1371,6 +1381,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         fprintf(c, "#define %s %s\n", d->name, d->value);
         emit_guard_close(c, d->guard);
     }
+    for(i = 0; i < m->assert_count; i++)
+        emit_compile_assert(c, &m->asserts[i]);
     /* '#intrinsic "web"' wrappers: static EM_ASM shims for web builds. */
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];

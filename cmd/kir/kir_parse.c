@@ -417,6 +417,358 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     return 1;
 }
 
+static void
+copy_trim_expr(char *dst, size_t dst_size, const char *src)
+{
+    char tmp[KIR_TEXT_MAX];
+    char *t;
+
+    snprintf(tmp, sizeof(tmp), "%s", src != NULL ? src : "");
+    t = trim(tmp);
+    snprintf(dst, dst_size, "%s", t);
+}
+
+static int
+is_simple_ident(const char *s)
+{
+    if(!(isalpha((unsigned char)s[0]) || s[0] == '_'))
+        return 0;
+    for(const char *p = s + 1; *p != '\0'; p++)
+        if(!(isalnum((unsigned char)*p) || *p == '_'))
+            return 0;
+    return 1;
+}
+
+static int
+is_int_literal_text(const char *s)
+{
+    char *end;
+
+    if(!isdigit((unsigned char)s[0]))
+        return 0;
+    (void)strtol(s, &end, 0);
+    if(end == s)
+        return 0;
+    while(*end != '\0') {
+        if(*end != 'u' && *end != 'U' && *end != 'l' && *end != 'L')
+            return 0;
+        end++;
+    }
+    return 1;
+}
+
+static int
+find_matching_close(const char *s, int open_pos)
+{
+    int depth = 0;
+    int in_string = 0;
+    int in_char = 0;
+
+    for(int i = open_pos; s[i] != '\0'; i++) {
+        if(in_string) {
+            if(s[i] == '\\' && s[i + 1] != '\0')
+                i++;
+            else if(s[i] == '"')
+                in_string = 0;
+        } else if(in_char) {
+            if(s[i] == '\\' && s[i + 1] != '\0')
+                i++;
+            else if(s[i] == '\'')
+                in_char = 0;
+        } else if(s[i] == '"') {
+            in_string = 1;
+        } else if(s[i] == '\'') {
+            in_char = 1;
+        } else if(s[i] == '(') {
+            depth++;
+        } else if(s[i] == ')') {
+            depth--;
+            if(depth == 0)
+                return i;
+        }
+    }
+    return -1;
+}
+
+static int
+find_top_op(const char *s, const char *const *ops, int op_count,
+            const char **op_out)
+{
+    int depth = 0;
+    int in_string = 0;
+    int in_char = 0;
+    int last = -1;
+    const char *last_op = NULL;
+
+    for(int i = 0; s[i] != '\0'; i++) {
+        if(in_string) {
+            if(s[i] == '\\' && s[i + 1] != '\0')
+                i++;
+            else if(s[i] == '"')
+                in_string = 0;
+        } else if(in_char) {
+            if(s[i] == '\\' && s[i + 1] != '\0')
+                i++;
+            else if(s[i] == '\'')
+                in_char = 0;
+        } else if(s[i] == '"') {
+            in_string = 1;
+        } else if(s[i] == '\'') {
+            in_char = 1;
+        } else if(s[i] == '(' || s[i] == '[' || s[i] == '{') {
+            depth++;
+        } else if(s[i] == ')' || s[i] == ']' || s[i] == '}') {
+            if(depth > 0)
+                depth--;
+        } else if(depth == 0) {
+            for(int op = 0; op < op_count; op++) {
+                size_t len = strlen(ops[op]);
+
+                if(strncmp(s + i, ops[op], len) == 0) {
+                    if((ops[op][0] == '+' || ops[op][0] == '-') &&
+                       (i == 0 || strchr("(!=<>+-*/%,", s[i - 1]) != NULL))
+                        continue;
+                    last = i;
+                    last_op = ops[op];
+                }
+            }
+        }
+    }
+    if(last >= 0 && op_out != NULL)
+        *op_out = last_op;
+    return last;
+}
+
+static int parse_expr_to_kir(KirFunction *fn, const char *text,
+                             KirSourceSpan span);
+
+static void
+append_call_arg(KirFunction *fn, int call_index, int child)
+{
+    int *slot;
+
+    if(fn == NULL || call_index < 0 || call_index >= fn->expr_count ||
+       child < 0)
+        return;
+    slot = &fn->exprs[call_index].first_child;
+    while(*slot >= 0 && *slot < fn->expr_count)
+        slot = &fn->exprs[*slot].next_sibling;
+    *slot = child;
+}
+
+static int
+parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
+{
+    static const char *const or_ops[] = { "||" };
+    static const char *const and_ops[] = { "&&" };
+    static const char *const eq_ops[] = { "==", "!=" };
+    static const char *const rel_ops[] = { "<=", ">=", "<", ">" };
+    static const char *const add_ops[] = { "+", "-" };
+    static const char *const mul_ops[] = { "*", "/", "%" };
+    const char *op = NULL;
+    const char *expr_ops[6][4];
+    int expr_counts[6] = { 1, 1, 2, 4, 2, 3 };
+    char s[KIR_TEXT_MAX];
+    KirExpr *expr;
+    int pos = -1;
+
+    copy_trim_expr(s, sizeof(s), text);
+    if(s[0] == '\0')
+        return -1;
+    expr_ops[0][0] = or_ops[0];
+    expr_ops[1][0] = and_ops[0];
+    expr_ops[2][0] = eq_ops[0];
+    expr_ops[2][1] = eq_ops[1];
+    expr_ops[3][0] = rel_ops[0];
+    expr_ops[3][1] = rel_ops[1];
+    expr_ops[3][2] = rel_ops[2];
+    expr_ops[3][3] = rel_ops[3];
+    expr_ops[4][0] = add_ops[0];
+    expr_ops[4][1] = add_ops[1];
+    expr_ops[5][0] = mul_ops[0];
+    expr_ops[5][1] = mul_ops[1];
+    expr_ops[5][2] = mul_ops[2];
+    for(int group = 0; group < 6; group++) {
+        pos = find_top_op(s, expr_ops[group], expr_counts[group], &op);
+        if(pos >= 0)
+            break;
+    }
+    if(pos > 0 && op != NULL) {
+        char left[KIR_TEXT_MAX];
+        char right[KIR_TEXT_MAX];
+        int idx;
+
+        snprintf(left, sizeof(left), "%.*s", pos, s);
+        snprintf(right, sizeof(right), "%s", s + pos + strlen(op));
+        expr = KirFunctionAddExpr(fn, KIR_EXPR_BINARY, s, span);
+        if(expr == NULL)
+            return -1;
+        idx = fn->expr_count - 1;
+        snprintf(expr->op, sizeof(expr->op), "%s", op);
+        {
+            int left_idx = parse_expr_to_kir(fn, left, span);
+            int right_idx = parse_expr_to_kir(fn, right, span);
+
+            if(idx >= 0 && idx < fn->expr_count) {
+                fn->exprs[idx].left = left_idx;
+                fn->exprs[idx].right = right_idx;
+            }
+        }
+        return idx;
+    }
+    {
+        char *open = strchr(s, '(');
+
+        if(open != NULL && open > s) {
+            int open_pos = (int)(open - s);
+            int close = find_matching_close(s, open_pos);
+            char *tail = close >= 0 ? s + close + 1 : NULL;
+
+            if(close >= 0 && tail != NULL) {
+                while(*tail == ' ' || *tail == '\t')
+                    tail++;
+                if(*tail == '\0') {
+                    char name[KIR_NAME_MAX];
+                    char args[KIR_TEXT_MAX];
+                    int idx;
+                    size_t nl = (size_t)(open - s);
+
+                    if(nl >= sizeof(name))
+                        nl = sizeof(name) - 1;
+                    memcpy(name, s, nl);
+                    name[nl] = '\0';
+                    if(is_simple_ident(name)) {
+                        expr = KirFunctionAddExpr(fn, KIR_EXPR_CALL, s, span);
+                        if(expr == NULL)
+                            return -1;
+                        idx = fn->expr_count - 1;
+                        snprintf(expr->name, sizeof(expr->name), "%s", name);
+                        snprintf(args, sizeof(args), "%.*s",
+                                 close - open_pos - 1, s + open_pos + 1);
+                        {
+                            char *start = args;
+                            int depth = 0;
+                            int in_string = 0;
+
+                            for(char *p = args;; p++) {
+                                if(in_string) {
+                                    if(*p == '\\' && p[1] != '\0')
+                                        p++;
+                                    else if(*p == '"')
+                                        in_string = 0;
+                                } else if(*p == '"') {
+                                    in_string = 1;
+                                } else if(*p == '(' || *p == '[' || *p == '{') {
+                                    depth++;
+                                } else if(*p == ')' || *p == ']' || *p == '}') {
+                                    if(depth > 0)
+                                        depth--;
+                                }
+                                if((*p == ',' && depth == 0) || *p == '\0') {
+                                    char save = *p;
+                                    int child;
+
+                                    *p = '\0';
+                                    if(trim(start)[0] != '\0') {
+                                        child = parse_expr_to_kir(fn, start, span);
+                                        append_call_arg(fn, idx, child);
+                                    }
+                                    if(save == '\0')
+                                        break;
+                                    start = p + 1;
+                                }
+                            }
+                        }
+                        return idx;
+                    }
+                }
+            }
+        }
+    }
+    if(s[0] == '"' && s[strlen(s) - 1] == '"') {
+        expr = KirFunctionAddExpr(fn, KIR_EXPR_STRING, s, span);
+        return expr != NULL ? fn->expr_count - 1 : -1;
+    }
+    if(is_int_literal_text(s)) {
+        expr = KirFunctionAddExpr(fn, KIR_EXPR_INT, s, span);
+        return expr != NULL ? fn->expr_count - 1 : -1;
+    }
+    if(is_simple_ident(s)) {
+        expr = KirFunctionAddExpr(fn, KIR_EXPR_IDENT, s, span);
+        if(expr != NULL)
+            snprintf(expr->name, sizeof(expr->name), "%s", s);
+        return expr != NULL ? fn->expr_count - 1 : -1;
+    }
+    expr = KirFunctionAddExpr(fn, KIR_EXPR_UNKNOWN, s, span);
+    return expr != NULL ? fn->expr_count - 1 : -1;
+}
+
+static void
+strip_expr_block_brace(char *s)
+{
+    size_t n = strlen(s);
+
+    while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' ||
+                    s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = '\0';
+    if(n > 0 && s[n - 1] == '{') {
+        s[--n] = '\0';
+        while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t'))
+            s[--n] = '\0';
+    }
+}
+
+static const char *
+stmt_expr_source(KirStmtKind kind, const char *text)
+{
+    const char *p;
+
+    if(kind == KIR_STMT_DECL) {
+        p = strstr(text, ":=");
+        if(p != NULL)
+            return p + 2;
+        p = strstr(text, " = ");
+        if(p != NULL)
+            return p + 3;
+        return NULL;
+    }
+    if(kind == KIR_STMT_ASSIGN) {
+        p = strrchr(text, '=');
+        if(p != NULL)
+            return p + 1;
+        return NULL;
+    }
+    if(kind == KIR_STMT_RETURN) {
+        p = text;
+        while(*p == ' ' || *p == '\t')
+            p++;
+        if(strncmp(p, "return", 6) == 0)
+            return p + 6;
+        return NULL;
+    }
+    if(kind == KIR_STMT_IF || kind == KIR_STMT_WHILE ||
+       kind == KIR_STMT_SWITCH) {
+        static char buf[KIR_TEXT_MAX];
+        char *b;
+
+        snprintf(buf, sizeof(buf), "%s", text);
+        strip_expr_block_brace(buf);
+        b = trim(buf);
+        if(strncmp(b, "else if ", 8) == 0)
+            return b + 8;
+        if(strncmp(b, "if ", 3) == 0)
+            return b + 3;
+        if(strncmp(b, "while ", 6) == 0)
+            return b + 6;
+        if(strncmp(b, "switch ", 7) == 0)
+            return b + 7;
+        return b;
+    }
+    if(kind == KIR_STMT_EXPR || kind == KIR_STMT_WIDGET)
+        return text;
+    return NULL;
+}
+
 /* 'if cond { body }' (also else/while/for/switch/case/default/guard) written
  * on one logical line: locate the block-open brace at paren/bracket depth 0
  * outside string/char literals, and report the header (up to and including
@@ -878,6 +1230,366 @@ expand_compile_expr(char *dst, size_t dst_size, const KirConsts *consts,
                     const char *src)
 {
     expand_compile_expr_depth(dst, dst_size, consts, src, 0);
+}
+
+static char *
+find_top_comma(char *s)
+{
+    int depth = 0;
+    int in_string = 0;
+    int in_char = 0;
+
+    for(char *p = s; *p != '\0'; p++) {
+        if(in_string) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '"')
+                in_string = 0;
+        } else if(in_char) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '\'')
+                in_char = 0;
+        } else if(*p == '"') {
+            in_string = 1;
+        } else if(*p == '\'') {
+            in_char = 1;
+        } else if(*p == '(' || *p == '[' || *p == '{') {
+            depth++;
+        } else if(*p == ')' || *p == ']' || *p == '}') {
+            if(depth > 0)
+                depth--;
+        } else if(*p == ',' && depth == 0) {
+            return p;
+        }
+    }
+    return NULL;
+}
+
+typedef struct KirEval {
+    const char *p;
+    int known;
+    long value;
+} KirEval;
+
+static void
+eval_skip(KirEval *ev)
+{
+    while(*ev->p == ' ' || *ev->p == '\t')
+        ev->p++;
+}
+
+static long eval_or(KirEval *ev);
+
+static long
+eval_primary(KirEval *ev)
+{
+    char *end;
+    long value;
+
+    eval_skip(ev);
+    if(*ev->p == '(') {
+        ev->p++;
+        value = eval_or(ev);
+        eval_skip(ev);
+        if(*ev->p == ')')
+            ev->p++;
+        else
+            ev->known = 0;
+        return value;
+    }
+    if(isdigit((unsigned char)*ev->p)) {
+        value = strtol(ev->p, &end, 0);
+        if(end == ev->p) {
+            ev->known = 0;
+            return 0;
+        }
+        ev->p = end;
+        while(isalnum((unsigned char)*ev->p) || *ev->p == '_')
+            ev->p++;   /* integer suffixes: U, L, UL */
+        return value;
+    }
+    if(isalpha((unsigned char)*ev->p) || *ev->p == '_') {
+        while(isalnum((unsigned char)*ev->p) || *ev->p == '_')
+            ev->p++;
+        ev->known = 0;
+        return 0;
+    }
+    ev->known = 0;
+    return 0;
+}
+
+static long
+eval_unary(KirEval *ev)
+{
+    eval_skip(ev);
+    if(*ev->p == '!') {
+        long v;
+
+        ev->p++;
+        v = eval_unary(ev);
+        return ev->known ? !v : 0;
+    }
+    if(*ev->p == '-') {
+        ev->p++;
+        return -eval_unary(ev);
+    }
+    if(*ev->p == '+') {
+        ev->p++;
+        return eval_unary(ev);
+    }
+    return eval_primary(ev);
+}
+
+static long
+eval_mul(KirEval *ev)
+{
+    long left = eval_unary(ev);
+
+    while(1) {
+        char op;
+        long right;
+        int left_known;
+
+        eval_skip(ev);
+        if(*ev->p != '*' && *ev->p != '/' && *ev->p != '%')
+            return left;
+        op = *ev->p++;
+        left_known = ev->known;
+        right = eval_unary(ev);
+        if(!left_known || !ev->known || (right == 0 && op != '*')) {
+            ev->known = 0;
+            left = 0;
+        } else if(op == '*') {
+            left *= right;
+        } else if(op == '/') {
+            left /= right;
+        } else {
+            left %= right;
+        }
+    }
+}
+
+static long
+eval_add(KirEval *ev)
+{
+    long left = eval_mul(ev);
+
+    while(1) {
+        char op;
+        long right;
+        int left_known;
+
+        eval_skip(ev);
+        if(*ev->p != '+' && *ev->p != '-')
+            return left;
+        op = *ev->p++;
+        left_known = ev->known;
+        right = eval_mul(ev);
+        if(!left_known || !ev->known) {
+            ev->known = 0;
+            left = 0;
+        } else if(op == '+') {
+            left += right;
+        } else {
+            left -= right;
+        }
+    }
+}
+
+static long
+eval_rel(KirEval *ev)
+{
+    long left = eval_add(ev);
+
+    while(1) {
+        const char *op = NULL;
+        long right;
+        int left_known;
+
+        eval_skip(ev);
+        if(strncmp(ev->p, "<=", 2) == 0 || strncmp(ev->p, ">=", 2) == 0)
+            op = ev->p, ev->p += 2;
+        else if(*ev->p == '<' || *ev->p == '>')
+            op = ev->p, ev->p++;
+        else
+            return left;
+        left_known = ev->known;
+        right = eval_add(ev);
+        if(!left_known || !ev->known) {
+            ev->known = 0;
+            left = 0;
+        } else if(op[0] == '<' && op[1] == '=') {
+            left = left <= right;
+        } else if(op[0] == '>' && op[1] == '=') {
+            left = left >= right;
+        } else if(op[0] == '<') {
+            left = left < right;
+        } else {
+            left = left > right;
+        }
+    }
+}
+
+static long
+eval_eq(KirEval *ev)
+{
+    long left = eval_rel(ev);
+
+    while(1) {
+        int neq = 0;
+        long right;
+        int left_known;
+
+        eval_skip(ev);
+        if(strncmp(ev->p, "==", 2) == 0) {
+            ev->p += 2;
+        } else if(strncmp(ev->p, "!=", 2) == 0) {
+            ev->p += 2;
+            neq = 1;
+        } else {
+            return left;
+        }
+        left_known = ev->known;
+        right = eval_rel(ev);
+        if(!left_known || !ev->known) {
+            ev->known = 0;
+            left = 0;
+        } else {
+            left = neq ? left != right : left == right;
+        }
+    }
+}
+
+static long
+eval_and(KirEval *ev)
+{
+    long left = eval_eq(ev);
+
+    while(1) {
+        long right;
+        int left_known;
+        long left_value;
+
+        eval_skip(ev);
+        if(strncmp(ev->p, "&&", 2) != 0)
+            return left;
+        ev->p += 2;
+        left_known = ev->known;
+        left_value = left;
+        right = eval_eq(ev);
+        if(left_known && !left_value) {
+            ev->known = 1;
+            left = 0;
+        } else if(left_known && ev->known) {
+            left = left_value && right;
+        } else {
+            ev->known = 0;
+            left = 0;
+        }
+    }
+}
+
+static long
+eval_or(KirEval *ev)
+{
+    long left = eval_and(ev);
+
+    while(1) {
+        long right;
+        int left_known;
+        long left_value;
+
+        eval_skip(ev);
+        if(strncmp(ev->p, "||", 2) != 0)
+            return left;
+        ev->p += 2;
+        left_known = ev->known;
+        left_value = left;
+        right = eval_and(ev);
+        if(left_known && left_value) {
+            ev->known = 1;
+            left = 1;
+        } else if(left_known && ev->known) {
+            left = left_value || right;
+        } else {
+            ev->known = 0;
+            left = 0;
+        }
+    }
+}
+
+static int
+eval_const_condition(const char *src, long *value)
+{
+    KirEval ev;
+
+    ev.p = src;
+    ev.known = 1;
+    ev.value = eval_or(&ev);
+    eval_skip(&ev);
+    if(*ev.p != '\0')
+        ev.known = 0;
+    if(value != NULL)
+        *value = ev.value;
+    return ev.known;
+}
+
+static int
+parse_compile_check(KirModule *module, const char *path, int line_no,
+                    char *line, const KirConsts *consts, const char *guard)
+{
+    char cond[KIR_TEXT_MAX];
+    char msg[KIR_TEXT_MAX];
+    KirAssert *a;
+
+    if(strncmp(line, "#assert", 7) == 0 &&
+       (line[7] == '\0' || isspace((unsigned char)line[7]))) {
+        char *body = trim(line + 7);
+        char *comma;
+
+        if(body[0] == '\0')
+            die("%s:%d: #assert needs a condition", path, line_no);
+        comma = find_top_comma(body);
+        if(comma != NULL) {
+            *comma = '\0';
+            snprintf(msg, sizeof(msg), "%s", trim(comma + 1));
+            if(msg[0] == '\0')
+                snprintf(msg, sizeof(msg), "\"Kry #assert failed\"");
+        } else {
+            snprintf(msg, sizeof(msg), "\"Kry #assert failed\"");
+        }
+        expand_compile_expr(cond, sizeof(cond), consts, trim(body));
+        {
+            long value = 0;
+            int known = eval_const_condition(cond, &value);
+
+            if(guard[0] == '\0' && known && !value)
+                die("%s:%d: #assert failed: %s", path, line_no, msg);
+            a = KirModuleAddAssert(module, cond, msg, KirSpan(path, line_no, 1));
+            if(a != NULL) {
+                a->known = known;
+                a->value = value != 0;
+                snprintf(a->guard, sizeof(a->guard), "%s", guard);
+            }
+        }
+        return 1;
+    }
+    if(strncmp(line, "#error", 6) == 0 &&
+       (line[6] == '\0' || isspace((unsigned char)line[6]))) {
+        char *body = trim(line + 6);
+
+        if(body[0] == '\0')
+            die("%s:%d: #error needs a message", path, line_no);
+        a = KirModuleAddAssert(module, "0", body, KirSpan(path, line_no, 1));
+        if(a != NULL) {
+            a->known = 1;
+            a->value = 0;
+            snprintf(a->guard, sizeof(a->guard), "%s", guard);
+        }
+        return 1;
+    }
+    return 0;
 }
 
 static void
@@ -1368,6 +2080,10 @@ kir_parse_file(const char *path, const char *root)
            cond_top_step(t, tframes, &tframe_count, cur_guard,
                          sizeof(cur_guard), &consts, rel, line_no)) {
             continue;
+        } else if(mode == TOP &&
+                  parse_compile_check(module, rel, line_no, t, &consts,
+                                      cur_guard)) {
+            continue;
         } else if(mode == TOP && t[0] == '#' &&
                   strncmp(t, "#if", 3) != 0 && strncmp(t, "#else", 5) != 0 &&
                   strncmp(t, "#endif", 6) != 0 &&
@@ -1654,9 +2370,23 @@ kir_parse_file(const char *path, const char *root)
                         snprintf(def->guard, sizeof(def->guard), "%s",
                                  cur_guard);
                 } else {
+                    char run_value[KIR_TEXT_MAX];
+
                     if(consts.count >= 16)
                         die("%s:%d: too many compile-time constants",
                             rel, line_no);
+                    if(starts_word(expr, "#run")) {
+                        char expanded[KIR_TEXT_MAX];
+                        long value = 0;
+
+                        expand_compile_expr(expanded, sizeof(expanded),
+                                            &consts, trim((char *)(expr + 4)));
+                        if(!eval_const_condition(expanded, &value))
+                            die("%s:%d: #run expression is not a constant: %s",
+                                rel, line_no, expanded);
+                        snprintf(run_value, sizeof(run_value), "%ld", value);
+                        expr = run_value;
+                    }
                     snprintf(consts.names[consts.count],
                              sizeof(consts.names[0]), "%s", cname);
                     snprintf(consts.exprs[consts.count],
@@ -1836,7 +2566,14 @@ kir_parse_file(const char *path, const char *root)
                 else
                     added = KirFunctionAddStmt(fn, kind, t, widget,
                                                KirSpan(rel, line_no, 1));
-                (void)added;
+                if(added != NULL) {
+                    const char *expr_src = stmt_expr_source(kind, t);
+
+                    if(expr_src != NULL)
+                        added->expr_root =
+                            parse_expr_to_kir(fn, expr_src,
+                                              KirSpan(rel, line_no, 1));
+                }
                 depth += brace_delta;
                 if(depth < 0)
                     depth = 0;

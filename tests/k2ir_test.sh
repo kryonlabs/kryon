@@ -23,6 +23,10 @@ cat > "$work/src/app.kry" <<'EOF'
 ui :: #import "src/ui/panel"
 
 WEB :: #defined(PLATFORM_WEB)
+ALWAYS :: 1
+ANSWER :: #run 6 * 7
+#assert ANSWER == 42, "fixture #run assertion should pass"
+#assert ALWAYS, "fixture assertion should pass"
 platform_ping :: (value: int, tag: const char*) -> int #extern
 
 state {
@@ -34,6 +38,7 @@ Counter :: (app: App*) {
     if Button("Increment") {
         app->click_count += 1
     }
+    value := click_count + 1
 }
 EOF
 
@@ -46,14 +51,34 @@ grep -Fq 'import header kryon.h target kryon.h' "$kir"
 grep -Fq 'import module ui target src/ui/panel' "$kir"
 grep -Fq 'import extern platform_ping target platform_ping' "$kir"
 grep -Fq 'signature platform_ping :: (value: int, tag: const char*) -> int #extern' "$kir"
+grep -Fq 'assert condition (42) == 42 known 1 value 1 message "fixture #run assertion should pass"' "$kir"
+grep -Fq 'assert condition (1) known 1 value 1 message "fixture assertion should pass"' "$kir"
 grep -Fq 'state click_count type int init 0' "$kir"
 grep -Fq 'function Counter args app: App* return void' "$kir"
 grep -Fq 'stmt widget widget Text args "Count" text Text("Count")' "$kir"
+grep -Fq 'expr call text Text("Count") name Text op' "$kir"
+grep -Fq 'expr string text "Count" name  op' "$kir"
 grep -Fq 'stmt if widget  args  text if Button("Increment") {' "$kir"
+grep -Fq 'expr call text Button("Increment") name Button op' "$kir"
 grep -Fq 'stmt assign widget  args  text app->click_count += 1' "$kir"
+grep -Fq 'expr int text 1 name  op' "$kir"
+grep -Fq 'stmt decl widget  args  text value := click_count + 1' "$kir"
+grep -Fq 'expr binary text click_count + 1 name  op +' "$kir"
+grep -Fq 'expr ident text click_count name click_count op' "$kir"
 if grep -Fq 'function WEB' "$kir"; then
     echo "top-level #defined binding was emitted as a function" >&2
     exit 1
 fi
+
+cat > "$work/src/assert_fail.kry" <<'EOF'
+#import "kryon.h"
+#assert 1 + 1 == 3, "constant assertion failed"
+EOF
+
+if "$k2ir" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
+    echo "false constant #assert did not fail during Kry parsing" >&2
+    exit 1
+fi
+grep -Fq 'constant assertion failed' "$work/assert_fail.err"
 
 echo "k2ir ok"

@@ -1868,7 +1868,34 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     fprintf(f, "}\n\n");
 }
 
-void
+static int
+k2g_validate_asserts(const KirModule *m)
+{
+    for(int i = 0; i < m->assert_count; i++) {
+        const KirAssert *a = &m->asserts[i];
+
+        if(a->guard[0] != '\0') {
+            fprintf(stderr,
+                    "k2g: %s:%d: guarded #assert is not supported by the Go backend: %s\n",
+                    a->span.path, a->span.line, a->message);
+            return 0;
+        }
+        if(!a->known) {
+            fprintf(stderr,
+                    "k2g: %s:%d: unresolved #assert is not supported by the Go backend: %s\n",
+                    a->span.path, a->span.line, a->condition);
+            return 0;
+        }
+        if(!a->value) {
+            fprintf(stderr, "k2g: %s:%d: #assert failed: %s\n",
+                    a->span.path, a->span.line, a->message);
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int
 k2g_lower(const KirProgram *const *progs, int prog_count,
           const char *root, const char *out_dir, const char *pkg,
           const char *runtime_import, int no_main)
@@ -1893,9 +1920,11 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     fprintf(stderr,
                             "k2g: duplicate source basename %s "
                             "(Go output is flat)\n", stem);
-                    return;
+                    return 1;
                 }
             }
+            if(!k2g_validate_asserts(m))
+                return 1;
             if(seen_count < 64)
                 snprintf(seen_stems[seen_count++], sizeof(seen_stems[0]),
                          "%s", stem);
@@ -2128,4 +2157,5 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             fclose(f);
         }
     }
+    return 0;
 }

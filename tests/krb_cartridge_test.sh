@@ -59,6 +59,9 @@ fi
 cat > "$work/frame.kry" <<'EOF'
 #import "kryon.h"
 
+ANSWER :: #run 6 * 7
+#assert ANSWER == 42, "KRB fixture #run assertion failed"
+
 state {
     cb_flag: int = 0
     combo_sel: int = 0
@@ -111,6 +114,22 @@ if ! strings "$work/frame.krb" | grep -q "combo_sel"; then
     echo "frame cartridge missing Combobox selected-index path" >&2
     exit 1
 fi
+
+cat > "$work/assert_unknown.kry" <<'EOF'
+#import "kryon.h"
+WEB :: #defined(PLATFORM_WEB)
+#assert WEB, "KRB unresolved assertion"
+
+screen BadAssert(viewport: Rectangle) {
+    Background(GetThemeBackground())
+}
+EOF
+
+if "$k2b" --root "$work" -o "$work" "$work/assert_unknown.kry" 2>"$work/assert_unknown.err"; then
+    echo "unresolved #assert did not fail in k2b" >&2
+    exit 1
+fi
+grep -q 'unresolved #assert is not supported by KRB' "$work/assert_unknown.err"
 
 if [ -n "$walker" ] && [ -x "$walker" ]; then
     "$walker" "$krb"

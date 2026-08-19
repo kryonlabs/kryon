@@ -48,6 +48,15 @@ typedef enum KirStmtKind {
     KIR_STMT_WIDGET
 } KirStmtKind;
 
+typedef enum KirExprKind {
+    KIR_EXPR_UNKNOWN = 0,
+    KIR_EXPR_IDENT,
+    KIR_EXPR_INT,
+    KIR_EXPR_STRING,
+    KIR_EXPR_CALL,
+    KIR_EXPR_BINARY
+} KirExprKind;
+
 typedef struct KirSourceSpan {
     char path[KIR_PATH_MAX];
     int line;
@@ -77,8 +86,21 @@ typedef struct KirStmt {
     char text[KIR_TEXT_MAX];
     char widget[KIR_NAME_MAX];
     char args[KIR_TEXT_MAX];
+    int expr_root;      /* index into enclosing function exprs, or -1 */
     KirSourceSpan span;
 } KirStmt;
+
+typedef struct KirExpr {
+    KirExprKind kind;
+    char text[KIR_TEXT_MAX];
+    char name[KIR_NAME_MAX];
+    char op[8];
+    int left;
+    int right;
+    int first_child;
+    int next_sibling;
+    KirSourceSpan span;
+} KirExpr;
 
 typedef struct KirFunction {
     char name[KIR_NAME_MAX];
@@ -94,6 +116,9 @@ typedef struct KirFunction {
     KirStmt *stmts;
     int stmt_count;
     int stmt_cap;
+    KirExpr *exprs;
+    int expr_count;
+    int expr_cap;
 } KirFunction;
 
 typedef struct KirGlobal {
@@ -112,6 +137,15 @@ typedef struct KirDefine {
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirDefine;
+
+typedef struct KirAssert {
+    char condition[KIR_TEXT_MAX]; /* expanded C preprocessor condition */
+    char message[KIR_TEXT_MAX];   /* C #error payload */
+    int known;                    /* condition resolved by Kry frontend */
+    int value;                    /* boolean value when known */
+    char guard[KIR_TEXT_MAX];     /* enclosing '#if' condition (expanded) */
+    KirSourceSpan span;
+} KirAssert;
 
 /* A `Name :: struct { fields }` type declaration. body holds the raw field
  * lines (one per line, no braces). */
@@ -149,6 +183,9 @@ typedef struct KirModule {
     KirDefine *defines;
     int define_count;
     int define_cap;
+    KirAssert *asserts;
+    int assert_count;
+    int assert_cap;
     KirType *types;
     int type_count;
     int type_cap;
@@ -190,6 +227,8 @@ void KirModuleAddStatic(KirModule *module, const char *name, const char *type,
                         const char *init, KirSourceSpan span);
 KirDefine *KirModuleAddDefine(KirModule *module, const char *name,
                               const char *value, KirSourceSpan span);
+KirAssert *KirModuleAddAssert(KirModule *module, const char *condition,
+                              const char *message, KirSourceSpan span);
 KirType *KirModuleAddType(KirModule *module, const char *name,
                           KirSourceSpan span);
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
@@ -200,6 +239,9 @@ KirStmt *KirFunctionAddWidget(KirFunction *fn, const char *widget,
                               KirSourceSpan span);
 const char *KirImportKindName(KirImportKind kind);
 const char *KirStmtKindName(KirStmtKind kind);
+const char *KirExprKindName(KirExprKind kind);
+KirExpr *KirFunctionAddExpr(KirFunction *fn, KirExprKind kind,
+                            const char *text, KirSourceSpan span);
 void KirProgramDump(const KirProgram *program, FILE *out);
 
 #endif /* KRYON_KIR_H */

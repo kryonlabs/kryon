@@ -48,12 +48,16 @@ KirProgramFree(KirProgram *program)
         KirModule *m = &program->modules[i];
         int j;
 
-        for(j = 0; j < m->function_count; j++)
+        for(j = 0; j < m->function_count; j++) {
             free(m->functions[j].stmts);
+            free(m->functions[j].exprs);
+        }
         free(m->state_fields);
         free(m->imports);
         free(m->functions);
         free(m->defines);
+        free(m->asserts);
+        free(m->types);
     }
     free(program->modules);
     free(program);
@@ -221,6 +225,28 @@ KirModuleAddDefine(KirModule *module, const char *name, const char *value,
     return d;
 }
 
+KirAssert *
+KirModuleAddAssert(KirModule *module, const char *condition,
+                   const char *message, KirSourceSpan span)
+{
+    KirAssert *asserts;
+    KirAssert *a;
+
+    if(module == NULL)
+        return NULL;
+    asserts = kir_realloc_array(module->asserts, &module->assert_cap,
+                                module->assert_count, sizeof(KirAssert));
+    if(asserts == NULL)
+        return NULL;
+    module->asserts = asserts;
+    a = &module->asserts[module->assert_count++];
+    memset(a, 0, sizeof(*a));
+    kir_copy(a->condition, sizeof(a->condition), condition);
+    kir_copy(a->message, sizeof(a->message), message);
+    a->span = span;
+    return a;
+}
+
 KirType *
 KirModuleAddType(KirModule *module, const char *name, KirSourceSpan span)
 {
@@ -259,6 +285,7 @@ KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind, const char *text,
     st->kind = kind;
     kir_copy(st->text, sizeof(st->text), text);
     kir_copy(st->widget, sizeof(st->widget), widget);
+    st->expr_root = -1;
     st->span = span;
     return st;
 }
@@ -274,6 +301,32 @@ KirFunctionAddWidget(KirFunction *fn, const char *widget, const char *args,
     return st;
 }
 
+KirExpr *
+KirFunctionAddExpr(KirFunction *fn, KirExprKind kind, const char *text,
+                   KirSourceSpan span)
+{
+    KirExpr *exprs;
+    KirExpr *expr;
+
+    if(fn == NULL)
+        return NULL;
+    exprs = kir_realloc_array(fn->exprs, &fn->expr_cap, fn->expr_count,
+                              sizeof(KirExpr));
+    if(exprs == NULL)
+        return NULL;
+    fn->exprs = exprs;
+    expr = &fn->exprs[fn->expr_count++];
+    memset(expr, 0, sizeof(*expr));
+    expr->kind = kind;
+    expr->left = -1;
+    expr->right = -1;
+    expr->first_child = -1;
+    expr->next_sibling = -1;
+    kir_copy(expr->text, sizeof(expr->text), text);
+    expr->span = span;
+    return expr;
+}
+
 const char *
 KirImportKindName(KirImportKind kind)
 {
@@ -284,6 +337,19 @@ KirImportKindName(KirImportKind kind)
     case KIR_IMPORT_INTRINSIC: return "intrinsic";
     case KIR_IMPORT_CAPABILITY: return "capability";
     case KIR_IMPORT_HOST: return "host";
+    default: return "unknown";
+    }
+}
+
+const char *
+KirExprKindName(KirExprKind kind)
+{
+    switch(kind) {
+    case KIR_EXPR_IDENT: return "ident";
+    case KIR_EXPR_INT: return "int";
+    case KIR_EXPR_STRING: return "string";
+    case KIR_EXPR_CALL: return "call";
+    case KIR_EXPR_BINARY: return "binary";
     default: return "unknown";
     }
 }
@@ -319,6 +385,29 @@ static void
 kir_dump_span(FILE *out, KirSourceSpan span)
 {
     fprintf(out, "%s:%d:%d", span.path, span.line, span.column);
+}
+
+static void
+kir_dump_expr(const KirFunction *fn, int index, FILE *out, int indent)
+{
+    const KirExpr *expr;
+
+    if(fn == NULL || index < 0 || index >= fn->expr_count)
+        return;
+    expr = &fn->exprs[index];
+    for(int i = 0; i < indent; i++)
+        fputs("  ", out);
+    fprintf(out, "expr %s text %s name %s op %s span ",
+            KirExprKindName(expr->kind), expr->text, expr->name, expr->op);
+    kir_dump_span(out, expr->span);
+    fprintf(out, "\n");
+    if(expr->left >= 0)
+        kir_dump_expr(fn, expr->left, out, indent + 1);
+    if(expr->right >= 0)
+        kir_dump_expr(fn, expr->right, out, indent + 1);
+    for(int child = expr->first_child; child >= 0 &&
+         child < fn->expr_count; child = fn->exprs[child].next_sibling)
+        kir_dump_expr(fn, child, out, indent + 1);
 }
 
 void
@@ -368,6 +457,14 @@ KirProgramDump(const KirProgram *program, FILE *out)
             kir_dump_span(out, f->span);
             fprintf(out, "\n");
         }
+        for(j = 0; j < m->assert_count; j++) {
+            const KirAssert *a = &m->asserts[j];
+
+            fprintf(out, "  assert condition %s known %d value %d message %s span ",
+                    a->condition, a->known, a->value, a->message);
+            kir_dump_span(out, a->span);
+            fprintf(out, "\n");
+        }
         for(j = 0; j < m->function_count; j++) {
             const KirFunction *fn = &m->functions[j];
             int k;
@@ -384,6 +481,8 @@ KirProgramDump(const KirProgram *program, FILE *out)
                         st->text);
                 kir_dump_span(out, st->span);
                 fprintf(out, "\n");
+                if(st->expr_root >= 0)
+                    kir_dump_expr(fn, st->expr_root, out, 3);
             }
         }
     }

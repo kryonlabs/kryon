@@ -72,8 +72,13 @@ main(int argc, char **argv)
             return 1;
         }
     }
-    k2g_lower((const KirProgram *const *)progs, file_count, root, out_dir,
-              pkg, runtime, no_main);
+    if(k2g_lower((const KirProgram *const *)progs, file_count, root, out_dir,
+                 pkg, runtime, no_main) != 0) {
+        for(i = 0; i < file_count; i++)
+            KirProgramFree(progs[i]);
+        free(progs);
+        return 1;
+    }
     for(i = 0; i < file_count; i++)
         KirProgramFree(progs[i]);
     free(progs);

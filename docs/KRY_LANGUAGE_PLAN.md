@@ -121,6 +121,13 @@ session_entry :: (app: InbeApp*) #export {
   operations.
 - `#pragma "text"` and `#error "message"` emit guarded C preprocessor
   directives for compiler and platform integration.
+- `NAME :: #run INTEGER_EXPR` evaluates a small integer compile-time
+  expression during Kry parsing and binds the result as a compile-time
+  constant for later `#if`, `#assert`, and `#run` expressions.
+- `#assert CONDITION, "message"` emits a compile-time check in generated C.
+  Kry compile-time constants such as `WEB :: #defined(PLATFORM_WEB)` expand in
+  the condition before lowering. Unguarded constant-false assertions fail before
+  backend lowering.
 
 Kry statements are deliberately minimal — declarations, assignments, calls,
 and control flow. There are no widget keywords and no bespoke sugar verbs:
@@ -133,6 +140,11 @@ and control flow. There are no widget keywords and no bespoke sugar verbs:
 - `if`, `else if`, `else`, `while`, `for`, `switch`, `case`, `default`,
   labels, `goto`, `break`, `continue`, `guard`, `defer`, and `return`.
 - `c line` for raw C glue and `unused expr` to silence unused-value warnings.
+
+KIR keeps the original statement text for backend compatibility and also stores
+a conservative structured expression tree for simple identifiers, literals,
+calls, and binary expressions. Backends can adopt the tree incrementally without
+changing the source pipeline or losing C-close escape hatches.
 
 `defer STMT` schedules `STMT` to run when the enclosing block exits, replacing
 the cleanup-`goto` idiom:

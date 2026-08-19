@@ -63,6 +63,13 @@ knr_branches :: (n: int) -> int {
 
 WEB :: #defined(PLATFORM_WEB)
 ANDROID :: ANDROID_BUILD
+ALWAYS :: 1
+ANSWER :: #run 6 * 7
+#assert ANSWER == 42, "valid #run assertion failed"
+#assert ALWAYS, "valid fixture assertion failed"
+#if WEB {
+    #assert 0, "web-only fixture assertion failed"
+}
 
 chain_root :: () -> const char* {
     cached: const char* = nil
@@ -147,6 +154,14 @@ grep -Fq '#else' "$c"
 grep -Fq '"desktop"' "$c"
 grep -Fq '#endif' "$c"
 
+# top-level #assert emits a native compile-time check
+grep -Fq '#if !((42) == 42)' "$c"
+grep -Fq '#error "valid #run assertion failed"' "$c"
+grep -Fq '#if !((1))' "$c"
+grep -Fq '#error "valid fixture assertion failed"' "$c"
+grep -Fq '#if (defined(PLATFORM_WEB))' "$c"
+grep -Fq '#error "web-only fixture assertion failed"' "$c"
+
 # adjacent string literals on continuation lines join into ONE statement
 # (regression: each fragment became an orphan expression statement and the
 # initializer kept only its first fragment — SQL prepared from it failed)
@@ -168,5 +183,21 @@ fi
 
 # the generated C compiles
 cc -fsyntax-only -I"$root/include" -I"$work/out" "$c"
+
+cat > "$work/src/assert_fail.kry" <<'EOF'
+#import "kryon.h"
+NEVER :: 0
+#assert NEVER, "intentional assertion failure"
+
+screen AssertFail(viewport: Rectangle) {
+    Background(GetThemeBackground())
+}
+EOF
+
+if "$k2c" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
+    echo "false #assert did not fail during Kry parsing" >&2
+    exit 1
+fi
+grep -Fq 'intentional assertion failure' "$work/assert_fail.err"
 
 echo "k2c ok"

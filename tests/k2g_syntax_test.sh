@@ -19,6 +19,9 @@ mkdir -p "$work/src" "$work/out"
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 
+ANSWER :: #run 21 * 2
+#assert ANSWER == 42, "k2g #run assertion failed"
+#assert 1 + 1 == 2, "k2g fixture assertion failed"
 query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
 label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
@@ -250,5 +253,28 @@ require github.com/waozixyz/kryon/go/kryui v0.0.0
 replace github.com/waozixyz/kryon/go/kryui => $root/go/kryui
 EOF
 (cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
+
+cat > "$work/src/assert_fail.kry" <<'EOF'
+#import "kryon.h"
+#assert 2 * 2 == 5, "k2g constant assertion failed"
+EOF
+
+if "$k2g" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
+    echo "false constant #assert did not fail during k2g parsing" >&2
+    exit 1
+fi
+grep -q 'k2g constant assertion failed' "$work/assert_fail.err"
+
+cat > "$work/src/assert_unknown.kry" <<'EOF'
+#import "kryon.h"
+WEB :: #defined(PLATFORM_WEB)
+#assert WEB, "k2g unresolved assertion"
+EOF
+
+if "$k2g" --root "$work" -o "$work/out" "$work/src/assert_unknown.kry" 2>"$work/assert_unknown.err"; then
+    echo "unresolved #assert did not fail in k2g" >&2
+    exit 1
+fi
+grep -q 'unresolved #assert is not supported by the Go backend' "$work/assert_unknown.err"
 
 echo "k2g syntax ok"
