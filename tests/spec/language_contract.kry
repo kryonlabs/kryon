@@ -1,0 +1,27 @@
+#import "kryon.h"
+
+ANSWER :: #run 6 * 7
+#assert ANSWER == 42, "spec #run assertion failed"
+#assert 1 + 1 == 2, "spec arithmetic assertion failed"
+
+state {
+    count: int = 0
+}
+
+app "Spec Contract" {
+    size 320 240
+    fps 60
+    frame main
+}
+
+frame main {
+    BeginDrawing()
+    ClearBackground(GetThemeBackground())
+    Background(GetThemeSurface())
+    Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), UI_TEXT_16, GetThemeText())
+    if count < 42 {
+        count = count + 1
+    }
+    Text("ready", ScaleUIPx(8), ScaleUIPx(32), UI_TEXT_16, GetThemeText())
+    EndDrawing()
+}

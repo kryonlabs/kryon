@@ -3,7 +3,7 @@
 What every widget and feature supports, per compile target and per renderer
 backend. For how backends are selected and implemented see `docs/BACKENDS.md`;
 for the cartridge binary format see `docs/KRB_FORMAT.md`; for the language see
-`docs/KRY_LANGUAGE_PLAN.md`. Keep this file current with the code, and
+`docs/KRY_LANGUAGE_SPEC.md`. Keep this file current with the code, and
 regenerate the browsable view after every change:
 `python3 scripts/feature-matrix-html.py` writes `docs/FEATURE_MATRIX.html`.
 

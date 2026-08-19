@@ -152,10 +152,11 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 ## Documentation
 
 - `docs/API.md` documents the public API.
+- `docs/KRY_LANGUAGE_SPEC.md` is the canonical `.kry` language and KIR
+  contract.
 - `docs/FEATURE_MATRIX.md` maps widget and feature support across the C, Go,
   and KRB targets and every renderer backend.
 - `docs/BACKENDS.md` documents the backend architecture and selection.
-- `docs/plans/` contains the KIR, C backend, and KRB cartridge roadmap.
 - `docs/site/` contains the static documentation website.
 - `docs/AGENTS.md` documents how downstream apps should use Kryon, including
   modal/input capture and submodule update rules.
@@ -168,13 +169,12 @@ immediate-mode drawing, and no builder objects or scripting runtime. The numbere
 examples `09_geometry` through `18_accessibility` demonstrate each toolkit
 feature family.
 
-## Kry Language Direction
+## Kry Language
 
-`docs/KRY_LANGUAGE_PLAN.md` describes the path for making `.kry` a C-close app
-language with two clean compiler outputs. Kry source lowers into KIR, a
-debuggable intermediate representation with source spans. From there `k2c`
-emits readable C for native apps, `k2g` emits Go source driving the cgo
-runtime binding, while `k2b` emits a portable `.krb`
+`docs/KRY_LANGUAGE_SPEC.md` is the canonical Kry language contract. Kry source
+lowers into KIR, a debuggable intermediate representation with source spans.
+From there `k2c` emits readable C for native apps, `k2g` emits Go source
+driving the cgo runtime binding, while `k2b` emits a portable `.krb`
 cartridge (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime
 contract. The intended tool set is Unix-shaped:
 

@@ -38,7 +38,7 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Kry Source Language</p>
       <h1>Language Reference</h1>
-      <p class="section-lead">Kry is C-close application code for Kryon. Source lowers into KIR first, then the same KIR can produce readable C, Go bindings, or portable KRB cartridges.</p>
+      <p class="section-lead">Kry is C-close application code for Kryon. This page mirrors the canonical source contract in <code>docs/KRY_LANGUAGE_SPEC.md</code>: source lowers into KIR first, then the same KIR can produce readable C, Go bindings, or portable KRB cartridges.</p>
 <pre><code>.kry -> KIR -> C
 .kry -> KIR -> Go
 .kry -> KIR -> KRB</code></pre>
@@ -144,6 +144,23 @@ k2b  --root . -o build/krb src/app.kry</code></pre>
         <li><strong>Text system limits remain runtime limits:</strong> font fallback exists, but shaping, bidi, RTL mirroring, and IME preedit are not complete.</li>
         <li><strong>KRB is portable by design:</strong> it carries a smaller widget and capability surface than native C.</li>
       </ul>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Backend Contract</p>
+      <h2>Conformance Summary</h2>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Feature</th><th>KIR</th><th>C</th><th>Go</th><th>KRB</th></tr></thead>
+          <tbody>
+            <tr><td><code>#run</code> integer constants</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
+            <tr><td><code>#assert</code></td><td class="ok">Yes</td><td class="ok"><code>#if/#error</code></td><td class="part">Known true only</td><td class="part">Known true only</td></tr>
+            <tr><td>State block</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
+            <tr><td>Raw C lines</td><td class="ok">Preserved</td><td class="ok">Yes</td><td class="no">No</td><td class="no">No</td></tr>
+            <tr><td>Structured expression metadata</td><td class="part">Partial</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="part">Metadata</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </main>
 

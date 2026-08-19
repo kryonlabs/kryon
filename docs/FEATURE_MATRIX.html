@@ -15,7 +15,7 @@ pre{background:#222;color:#ddd;padding:1rem;border-radius:6px;overflow-x:auto}
 li{margin:.25rem 0}
 </style></head><body>
 <h1>Kryon Feature Matrix</h1>
-<p>What every widget and feature supports, per compile target and per renderer backend. For how backends are selected and implemented see <code>docs/BACKENDS.md</code>; for the cartridge binary format see <code>docs/KRB_FORMAT.md</code>; for the language see <code>docs/KRY_LANGUAGE_PLAN.md</code>. Keep this file current with the code, and regenerate the browsable view after every change: <code>python3 scripts/feature-matrix-html.py</code> writes <code>docs/FEATURE_MATRIX.html</code>.</p>
+<p>What every widget and feature supports, per compile target and per renderer backend. For how backends are selected and implemented see <code>docs/BACKENDS.md</code>; for the cartridge binary format see <code>docs/KRB_FORMAT.md</code>; for the language see <code>docs/KRY_LANGUAGE_SPEC.md</code>. Keep this file current with the code, and regenerate the browsable view after every change: <code>python3 scripts/feature-matrix-html.py</code> writes <code>docs/FEATURE_MATRIX.html</code>.</p>
 <p>Legend: ✅ available · ◐ partial (reason given) · ✗ not available · — not applicable. <b>C</b> is the <code>libkryon.a</code> C API; <b>k2c</b> is what <code>.kry</code> reaches through the C compiler — always equal to C, because the language is C-close and every library call is a legal statement (the widget-statement whitelist below only adds sugar). The other compilers lower subsets, which is where the columns diverge.</p>
 <h2>The pipeline</h2>
 <pre>.kry source

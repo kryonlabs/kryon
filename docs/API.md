@@ -161,10 +161,9 @@ Migrate callers to the current Kryon API directly so the backend boundary stays
 simple.
 
 Cartridges (`.krb`) are portable Kryon render artifacts produced from KIR. The
-current runtime loads a packed node table plus a small program; the roadmap adds
-state schema, source maps, portable logic, capabilities, and explicit host
-imports. Load the image, bind host functions by import name when the cartridge
-declares them, and draw through `KryBackend`:
+runtime loads packed node data, state schema, source metadata, portable logic,
+capabilities, and explicit host imports. Load the image, bind host functions by
+import name when the cartridge declares them, and draw through `KryBackend`:
 
 ```c
 KrbImage img;
