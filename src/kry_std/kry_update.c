@@ -1,16 +1,29 @@
 /*
  * kry_update.c - desktop update checks for the Kry standard library.
- * Appcast fetching rides kry_http; parsing rides kry_json. Nothing here
- * downloads or replaces files.
+ * Appcast fetching rides kry_http; parsing rides kry_json; artifact
+ * downloads stream through kry_http_download and are verified with
+ * kry_sha256 before any apply step touches the installation.
  */
 #include "kry_update.h"
 #include "kry_filesystem.h"
 #include "kry_http.h"
 #include "kry_json.h"
+#include "kry_sha256.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#include <io.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 static void
 copy_str(char *dst, size_t cap, const char *src)
@@ -311,3 +324,430 @@ kry_update_free(KryUpdateCheck *check)
     kry_http_free(check->req);
     free(check);
 }
+
+/* --- self-update --------------------------------------------------------- */
+
+static int
+ensure_dir(const char *path)
+{
+#ifdef _WIN32
+    /* recursive _mkdir chain (kry_fs_mkdir_p is POSIX-only today) */
+    char partial[MAX_PATH];
+    size_t i;
+    size_t len;
+
+    len = strlen(path);
+    if(len == 0 || len >= sizeof(partial))
+        return 0;
+    memcpy(partial, path, len + 1);
+    /* walk parent prefixes; anything at or before index 2 is a drive root
+     * ("C:\") which _mkdir cannot create */
+    for(i = 3; i < len; i++) {
+        if(partial[i] != '\\' && partial[i] != '/')
+            continue;
+        partial[i] = '\0';
+        if(_mkdir(partial) != 0 && errno != EEXIST)
+            return 0;
+        partial[i] = path[i];
+    }
+    if(_mkdir(partial) != 0 && errno != EEXIST)
+        return 0;
+    return 1;
+#else
+    return kry_fs_mkdir_p(path) == 0;
+#endif
+}
+
+int
+kry_update_download_dir(const char *app_name, char *out, int cap)
+{
+    const char *base;
+
+    if(app_name == NULL || app_name[0] == '\0' || out == NULL || cap <= 0)
+        return 0;
+#ifdef _WIN32
+    {
+        char root[MAX_PATH];
+
+        base = getenv("LOCALAPPDATA");
+        if(base == NULL || base[0] == '\0')
+            return 0;
+        snprintf(root, sizeof(root), "%s", base);
+        base = root;
+        if(snprintf(out, (size_t)cap, "%s\\%s\\updates", base, app_name) >= cap)
+            return 0;
+    }
+#else
+    base = getenv("XDG_DATA_HOME");
+    if(base != NULL && base[0] != '\0') {
+        if(snprintf(out, (size_t)cap, "%s/%s/updates", base, app_name) >= cap)
+            return 0;
+    } else {
+        const char *home = getenv("HOME");
+
+        if(home == NULL || home[0] == '\0')
+            return 0;
+        if(snprintf(out, (size_t)cap, "%s/.local/share/%s/updates",
+                    home, app_name) >= cap)
+            return 0;
+    }
+#endif
+    return ensure_dir(out);
+}
+
+/* Last URL path segment (query string stripped). A name with no path, an
+ * empty result, or a ".." is rejected — the appcast is remote input. */
+static const char *
+url_file_name(const char *url)
+{
+    const char *slash;
+    const char *name;
+    size_t len;
+
+    if(url == NULL)
+        return NULL;
+    slash = strrchr(url, '/');
+    if(slash == NULL)
+        return NULL;
+    name = slash + 1;
+    len = strcspn(name, "?#");
+    if(len == 0 || len >= 128)
+        return NULL;
+    if(len == 2 && name[0] == '.' && name[1] == '.')
+        return NULL;
+    return name;
+}
+
+struct KryUpdateDownload {
+    KryHttpDownload *http;
+    char dest_path[600];
+    char expect_sha256[65];
+    int resolved;
+    KryUpdateDownloadStatus status;
+    char error[160];
+};
+
+KryUpdateDownload *
+kry_update_download_begin(const KryUpdateChannelInfo *entry, const char *dest_dir)
+{
+    KryUpdateDownload *dl;
+    const char *name;
+
+    if(entry == NULL || entry->url[0] == '\0' || dest_dir == NULL)
+        return NULL;
+    dl = calloc(1, sizeof(*dl));
+    if(dl == NULL)
+        return NULL;
+    name = url_file_name(entry->url);
+    if(name == NULL) {
+        copy_str(dl->error, sizeof(dl->error), "no file name in URL");
+        dl->status = KRY_UPDATE_DL_FAILED;
+        dl->resolved = 1;
+        return dl;
+    }
+    if(snprintf(dl->dest_path, sizeof(dl->dest_path), "%s/%.*s", dest_dir,
+                (int)strcspn(name, "?#"), name) >= (int)sizeof(dl->dest_path)) {
+        copy_str(dl->error, sizeof(dl->error), "destination path too long");
+        dl->status = KRY_UPDATE_DL_FAILED;
+        dl->resolved = 1;
+        return dl;
+    }
+    copy_str(dl->expect_sha256, sizeof(dl->expect_sha256), entry->sha256);
+    if(!ensure_dir(dest_dir)) {
+        copy_str(dl->error, sizeof(dl->error), "cannot create download dir");
+        dl->status = KRY_UPDATE_DL_FAILED;
+        dl->resolved = 1;
+        return dl;
+    }
+    dl->http = kry_http_download(entry->url, dl->dest_path, 900);
+    if(dl->http == NULL) {
+        copy_str(dl->error, sizeof(dl->error), "download unavailable");
+        dl->status = KRY_UPDATE_DL_FAILED;
+        dl->resolved = 1;
+        return dl;
+    }
+    dl->status = KRY_UPDATE_DL_PENDING;
+    return dl;
+}
+
+KryUpdateDownloadStatus
+kry_update_download_poll(KryUpdateDownload *dl)
+{
+    KryHttpStatus s;
+
+    if(dl == NULL)
+        return KRY_UPDATE_DL_FAILED;
+    if(dl->resolved)
+        return dl->status;
+    if(dl->http == NULL) {
+        dl->resolved = 1;
+        dl->status = KRY_UPDATE_DL_FAILED;
+        return dl->status;
+    }
+    s = kry_http_download_poll(dl->http);
+    if(s == KRY_HTTP_PENDING)
+        return KRY_UPDATE_DL_PENDING;
+    if(s == KRY_HTTP_RUNNING)
+        return KRY_UPDATE_DL_RUNNING;
+
+    dl->resolved = 1;
+    if(s == KRY_HTTP_DONE) {
+        if(dl->expect_sha256[0] != '\0') {
+            char got[65];
+
+            if(!kry_sha256_file(dl->dest_path, got)) {
+                copy_str(dl->error, sizeof(dl->error), "cannot hash download");
+                dl->status = KRY_UPDATE_DL_FAILED;
+                remove(dl->dest_path);
+            } else if(!kry_sha256_hex_equal(got, dl->expect_sha256)) {
+                copy_str(dl->error, sizeof(dl->error), "checksum mismatch");
+                dl->status = KRY_UPDATE_DL_FAILED;
+                remove(dl->dest_path);
+            } else {
+                dl->status = KRY_UPDATE_DL_DONE;
+            }
+        } else {
+            dl->status = KRY_UPDATE_DL_DONE;
+        }
+    } else {
+        const char *err = kry_http_download_error(dl->http);
+
+        copy_str(dl->error, sizeof(dl->error), err != NULL ? err : "download failed");
+        dl->status = KRY_UPDATE_DL_FAILED;
+        remove(dl->dest_path);
+    }
+    return dl->status;
+}
+
+double
+kry_update_download_progress(const KryUpdateDownload *dl)
+{
+    return kry_http_download_progress(dl != NULL ? dl->http : NULL);
+}
+
+const char *
+kry_update_download_error(const KryUpdateDownload *dl)
+{
+    if(dl == NULL || dl->status != KRY_UPDATE_DL_FAILED)
+        return NULL;
+    return dl->error;
+}
+
+const char *
+kry_update_download_path(const KryUpdateDownload *dl)
+{
+    if(dl == NULL || dl->status != KRY_UPDATE_DL_DONE)
+        return NULL;
+    return dl->dest_path;
+}
+
+void
+kry_update_download_free(KryUpdateDownload *dl)
+{
+    if(dl == NULL)
+        return;
+    kry_http_download_free(dl->http);
+    free(dl);
+}
+
+static int
+copy_file_mode(const char *src, const char *dst, unsigned mode)
+{
+    FILE *in = fopen(src, "rb");
+    FILE *out;
+    char buf[8192];
+    size_t got;
+
+    if(in == NULL)
+        return 0;
+    out = fopen(dst, "wb");
+    if(out == NULL) {
+        fclose(in);
+        return 0;
+    }
+    while((got = fread(buf, 1, sizeof(buf), in)) > 0) {
+        if(fwrite(buf, 1, got, out) != got) {
+            fclose(in);
+            fclose(out);
+            remove(dst);
+            return 0;
+        }
+    }
+    if(ferror(in)) {
+        fclose(in);
+        fclose(out);
+        remove(dst);
+        return 0;
+    }
+    fclose(in);
+    if(fclose(out) != 0) {
+        remove(dst);
+        return 0;
+    }
+#ifdef _WIN32
+    (void)mode;
+#else
+    if(mode != 0 && chmod(dst, (mode_t)mode) != 0) {
+        remove(dst);
+        return 0;
+    }
+#endif
+    return 1;
+}
+
+static void
+split_path(const char *path, char *dir, int dir_cap, char *name, int name_cap)
+{
+    const char *slash = strrchr(path, '/');
+#ifdef _WIN32
+    const char *bslash = strrchr(path, '\\');
+    const char *sep = slash != NULL && (bslash == NULL || slash > bslash)
+                        ? slash : bslash;
+#else
+    const char *sep = slash;
+#endif
+
+    if(sep == NULL) {
+        copy_str(dir, (size_t)dir_cap, ".");
+        copy_str(name, (size_t)name_cap, path);
+        return;
+    }
+    snprintf(dir, (size_t)dir_cap, "%.*s", (int)(sep - path), path);
+    copy_str(name, (size_t)name_cap, sep + 1);
+}
+
+int
+kry_update_appimage_stage(const char *downloaded_path, const char *appimage_path)
+{
+#ifndef _WIN32
+    char target_dir[512];
+    char name[160];
+    char staged[700];
+
+    if(downloaded_path == NULL || appimage_path == NULL ||
+       downloaded_path[0] == '\0' || appimage_path[0] == '\0')
+        return 0;
+    if(access(downloaded_path, R_OK) != 0)
+        return 0;
+    split_path(appimage_path, target_dir, sizeof(target_dir), name, sizeof(name));
+    if(name[0] == '\0' || target_dir[0] == '\0')
+        return 0;
+    /* stage inside the AppImage's own directory so the final rename is a
+     * same-filesystem atomic replace */
+    if(snprintf(staged, sizeof(staged), "%s/.%s.new", target_dir, name) >=
+       (int)sizeof(staged))
+        return 0;
+    if(!copy_file_mode(downloaded_path, staged, 0755))
+        return 0;
+    if(rename(staged, appimage_path) != 0) {
+        remove(staged);
+        return 0;
+    }
+    return 1;
+#else
+    (void)downloaded_path; (void)appimage_path;
+    return 0;
+#endif
+}
+
+KryUpdateApplyResult
+kry_update_appimage_apply(const char *downloaded_path)
+{
+#ifndef _WIN32
+    const char *appimage = getenv("APPIMAGE");
+
+    if(appimage == NULL || appimage[0] == '\0')
+        return KRY_UPDATE_APPLY_NOT_APPLICABLE;
+    if(!kry_update_appimage_stage(downloaded_path, appimage))
+        return KRY_UPDATE_APPLY_FAILED;
+    execl(appimage, appimage, (char *)NULL);
+    return KRY_UPDATE_APPLY_FAILED;   /* exec only returns on error */
+#else
+    (void)downloaded_path;
+    return KRY_UPDATE_APPLY_NOT_APPLICABLE;
+#endif
+}
+
+#ifdef _WIN32
+
+static int
+windows_spawn_detached(const char *cmdline)
+{
+    STARTUPINFOA si;
+    PROCESS_INFORMATION pi;
+
+    memset(&si, 0, sizeof(si));
+    si.cb = sizeof(si);
+    memset(&pi, 0, sizeof(pi));
+    if(!CreateProcessA(NULL, (LPSTR)cmdline, NULL, NULL, FALSE,
+                       CREATE_NO_WINDOW | DETACHED_PROCESS, NULL, NULL,
+                       &si, &pi))
+        return 0;
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return 1;
+}
+
+KryUpdateApplyResult
+kry_update_windows_stage_swap(const char *new_dir)
+{
+    char exe_path[MAX_PATH];
+    char old_dir[MAX_PATH];
+    char old_bak[MAX_PATH + 8];
+    char exe_name[MAX_PATH];
+    char script_path[MAX_PATH];
+    char temp_dir[MAX_PATH];
+    char cmdline[MAX_PATH * 2];
+    FILE *f;
+    const char *slash;
+    DWORD len;
+
+    if(new_dir == NULL || new_dir[0] == '\0')
+        return KRY_UPDATE_APPLY_NOT_APPLICABLE;
+    len = GetModuleFileNameA(NULL, exe_path, sizeof(exe_path));
+    if(len == 0 || len >= sizeof(exe_path))
+        return KRY_UPDATE_APPLY_FAILED;
+    slash = strrchr(exe_path, '\\');
+    if(slash == NULL)
+        return KRY_UPDATE_APPLY_FAILED;
+    snprintf(old_dir, sizeof(old_dir), "%.*s", (int)(slash - exe_path), exe_path);
+    copy_str(exe_name, sizeof(exe_name), slash + 1);
+    if(GetTempPathA(sizeof(temp_dir), temp_dir) == 0)
+        return KRY_UPDATE_APPLY_FAILED;
+    if(snprintf(script_path, sizeof(script_path), "%sinbe-update.cmd",
+                temp_dir) >= (int)sizeof(script_path))
+        return KRY_UPDATE_APPLY_FAILED;
+    snprintf(old_bak, sizeof(old_bak), "%s.old", old_dir);
+
+    f = fopen(script_path, "wb");
+    if(f == NULL)
+        return KRY_UPDATE_APPLY_FAILED;
+    /* CRLF line endings: cmd.exe batch files should carry them */
+    fprintf(f, "@echo off\r\n");
+    fprintf(f, "powershell -NoProfile -Command \"while (Get-Process -Id %lu "
+               "-ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 300 }\"\r\n",
+            (unsigned long)GetCurrentProcessId());
+    fprintf(f, "move /y \"%s\" \"%s\" >nul || exit /b 1\r\n", old_dir, old_bak);
+    fprintf(f, "move /y \"%s\" \"%s\" >nul || exit /b 1\r\n", new_dir, old_dir);
+    fprintf(f, "start \"\" \"%s\\%s\"\r\n", old_dir, exe_name);
+    fprintf(f, "rd /s /q \"%s\" >nul 2>&1\r\n", old_bak);
+    fclose(f);
+
+    snprintf(cmdline, sizeof(cmdline), "cmd.exe /c \"\"%s\"\"", script_path);
+    if(!windows_spawn_detached(cmdline)) {
+        remove(script_path);
+        return KRY_UPDATE_APPLY_FAILED;
+    }
+    return KRY_UPDATE_APPLY_RESTARTING;
+}
+
+#else /* !_WIN32 */
+
+KryUpdateApplyResult
+kry_update_windows_stage_swap(const char *new_dir)
+{
+    (void)new_dir;
+    return KRY_UPDATE_APPLY_NOT_APPLICABLE;
+}
+
+#endif /* _WIN32 */

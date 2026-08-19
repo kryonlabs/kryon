@@ -6,12 +6,14 @@
  * live appcast round trip runs only when KRYON_UPDATE_TEST_URL is set.
  */
 #include "kry_update.h"
+#include "kry_sha256.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 
 static int failures;
 
@@ -61,6 +63,12 @@ write_tmp(char *path, size_t cap, const char *tag, const char *content)
         fputs(content, f);
         fclose(f);
     }
+}
+
+static void
+copy_str_test(char *dst, size_t cap, const char *src)
+{
+    snprintf(dst, cap, "%s", src);
 }
 
 static void
@@ -231,6 +239,161 @@ test_live_gated(void)
     kry_update_free(c);
 }
 
+static KryUpdateDownloadStatus
+poll_download(KryUpdateDownload *dl, int spins)
+{
+    KryUpdateDownloadStatus s = kry_update_download_poll(dl);
+    int i;
+
+    for(i = 0; i < spins && (s == KRY_UPDATE_DL_PENDING ||
+                             s == KRY_UPDATE_DL_RUNNING); i++) {
+        struct timespec ts = {0, 10 * 1000 * 1000};
+
+        nanosleep(&ts, NULL);
+        s = kry_update_download_poll(dl);
+    }
+    return s;
+}
+
+static void
+test_download_dir(void)
+{
+    char root[256];
+    char dir[512];
+    struct stat st;
+
+    snprintf(root, sizeof(root), "/tmp/kry_update_dl.%d", (int)getpid());
+    setenv("XDG_DATA_HOME", root, 1);
+    CHECK(kry_update_download_dir("inbe", dir, sizeof(dir)) == 1);
+    CHECK(strstr(dir, "/inbe/updates") != NULL);
+    CHECK(stat(dir, &st) == 0 && S_ISDIR(st.st_mode));
+    CHECK(kry_update_download_dir(NULL, dir, sizeof(dir)) == 0);
+    unsetenv("XDG_DATA_HOME");
+}
+
+static void
+test_download_file(void)
+{
+    char root[256];
+    char dir[512];
+    char path[300];
+    char url[340];
+    char sha[65];
+    KryUpdateChannelInfo entry;
+    KryUpdateDownload *dl;
+    const char *got;
+    struct stat st;
+
+    snprintf(root, sizeof(root), "/tmp/kry_update_dl2.%d", (int)getpid());
+    snprintf(dir, sizeof(dir), "%s/updates", root);
+    mkdir(root, 0755);
+    write_tmp(path, sizeof(path), "artifact", "artifact-payload-123");
+    snprintf(url, sizeof(url), "file://%s", path);
+    CHECK(kry_sha256_file(path, sha) == 1);
+
+    /* good sha: verified download lands in dir under the URL file name */
+    memset(&entry, 0, sizeof(entry));
+    copy_str_test(entry.url, sizeof(entry.url), url);
+    copy_str_test(entry.sha256, sizeof(entry.sha256), sha);
+    dl = kry_update_download_begin(&entry, dir);
+    if(dl == NULL) {
+        printf("downloads unavailable (no libcurl); skipping download tests\n");
+        remove(path);
+        return;
+    }
+    CHECK(poll_download(dl, 500) == KRY_UPDATE_DL_DONE);
+    got = kry_update_download_path(dl);
+    CHECK(got != NULL && strstr(got, "kry_update_test.artifact.") != NULL);
+    if(got != NULL) {
+        CHECK(stat(got, &st) == 0 && st.st_size == strlen("artifact-payload-123"));
+        remove(got);
+    }
+    CHECK(kry_update_download_error(dl) == NULL);
+    kry_update_download_free(dl);
+
+    /* wrong sha: fails and removes the file */
+    copy_str_test(entry.sha256, sizeof(entry.sha256),
+                  "0000000000000000000000000000000000000000000000000000000000000000");
+    dl = kry_update_download_begin(&entry, dir);
+    CHECK(dl != NULL);
+    CHECK(poll_download(dl, 500) == KRY_UPDATE_DL_FAILED);
+    CHECK(kry_update_download_error(dl) != NULL);
+    CHECK(kry_update_download_path(dl) == NULL);
+    {
+        char leftover[600];
+
+        snprintf(leftover, sizeof(leftover), "%s/kry_update_test.artifact.%d",
+                 dir, (int)getpid());
+        CHECK(stat(leftover, &st) != 0);   /* failed download removed */
+    }
+    kry_update_download_free(dl);
+
+    /* URL without a file name is rejected synchronously */
+    copy_str_test(entry.url, sizeof(entry.url), "file:///tmp/");
+    copy_str_test(entry.sha256, sizeof(entry.sha256), sha);
+    dl = kry_update_download_begin(&entry, dir);
+    CHECK(dl != NULL);
+    CHECK(kry_update_download_poll(dl) == KRY_UPDATE_DL_FAILED);
+    CHECK(kry_update_download_error(dl) != NULL);
+    kry_update_download_free(dl);
+
+    /* missing source: transport failure */
+    snprintf(url, sizeof(url), "file:///tmp/definitely-not-here-kryon-dl");
+    copy_str_test(entry.url, sizeof(entry.url), url);
+    dl = kry_update_download_begin(&entry, dir);
+    CHECK(dl != NULL);
+    CHECK(poll_download(dl, 500) == KRY_UPDATE_DL_FAILED);
+    CHECK(kry_update_download_error(dl) != NULL);
+    kry_update_download_free(dl);
+
+    CHECK(kry_update_download_begin(NULL, dir) == NULL);
+    remove(path);
+}
+
+static void
+test_appimage_stage(void)
+{
+    char root[256];
+    char new_file[300];
+    char appimage[300];
+    char probe[512];
+    struct stat st;
+    FILE *f;
+
+    snprintf(root, sizeof(root), "/tmp/kry_update_stage.%d", (int)getpid());
+    mkdir(root, 0755);
+    snprintf(new_file, sizeof(new_file), "%s/inbe-9.9.9.AppImage", root);
+    snprintf(appimage, sizeof(appimage), "%s/inbe-old.AppImage", root);
+    write_tmp(new_file, sizeof(new_file), "stage", "#!/bin/sh\nexit 0\n");
+    write_tmp(appimage, sizeof(appimage), "old", "old content");
+
+    CHECK(kry_update_appimage_stage(new_file, appimage) == 1);
+    /* the target now carries the new content and the executable bit */
+    f = fopen(appimage, "rb");
+    if(f != NULL) {
+        char buf[32] = {0};
+
+        fread(buf, 1, sizeof(buf) - 1, f);
+        fclose(f);
+        CHECK(strncmp(buf, "#!/bin/sh", 9) == 0);
+    } else {
+        CHECK(0 && "staged appimage unreadable");
+    }
+    CHECK(stat(appimage, &st) == 0 && (st.st_mode & 0100) != 0);
+
+    /* no leftover staging file next to the target */
+    snprintf(probe, sizeof(probe), "%s/.inbe-old.AppImage.new", root);
+    CHECK(stat(probe, &st) != 0);
+
+    /* missing inputs fail cleanly */
+    CHECK(kry_update_appimage_stage("/tmp/definitely-not-here-kryon-stage",
+                                    appimage) == 0);
+    CHECK(kry_update_appimage_stage(new_file, NULL) == 0);
+
+    remove(new_file);
+    remove(appimage);
+}
+
 int
 main(void)
 {
@@ -238,6 +401,9 @@ main(void)
     test_appcast_parse();
     test_channel_detect();
     test_check_file_appcast();
+    test_download_dir();
+    test_download_file();
+    test_appimage_stage();
     test_live_gated();
     if(failures == 0)
         printf("kry_update tests passed\n");

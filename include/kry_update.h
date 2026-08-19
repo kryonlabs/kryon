@@ -127,6 +127,66 @@ const char *kry_update_error(KryUpdateCheck *check);
 /* Release the check (frees the underlying request). NULL is allowed. */
 void kry_update_free(KryUpdateCheck *check);
 
+/* --- self-update: download, verify, apply -------------------------------
+ *
+ * These target the two channels without a system updater (AppImage,
+ * Windows portable). Packaged channels (deb/rpm/pkg, Snap, Flatpak) and
+ * source builds must stay on check-and-notify only.
+ */
+
+/* A per-app staging dir for downloads: $XDG_DATA_HOME/<app>/updates
+ * (falling back to ~/.local/share) on POSIX, %LOCALAPPDATA%\<app>\updates
+ * on Windows. Creates it when missing. Returns 1 on success. */
+int kry_update_download_dir(const char *app_name, char *out, int cap);
+
+typedef struct KryUpdateDownload KryUpdateDownload;
+
+typedef enum {
+    KRY_UPDATE_DL_PENDING,  /* transfer in flight */
+    KRY_UPDATE_DL_RUNNING,
+    KRY_UPDATE_DL_DONE,     /* downloaded and, when provided, sha256 verified */
+    KRY_UPDATE_DL_FAILED,   /* partial file removed; error set */
+} KryUpdateDownloadStatus;
+
+/* Download `entry` into `dest_dir` (kry_update_download_dir output or any
+ * writable dir). The file name is the last URL segment. The sha256 from
+ * the appcast entry is verified on completion; a mismatch fails and
+ * removes the file. Returns NULL when downloads are unavailable. */
+KryUpdateDownload *kry_update_download_begin(const KryUpdateChannelInfo *entry,
+                                             const char *dest_dir);
+KryUpdateDownloadStatus kry_update_download_poll(KryUpdateDownload *dl);
+/* 0..1, or -1 while the size is unknown. */
+double kry_update_download_progress(const KryUpdateDownload *dl);
+const char *kry_update_download_error(const KryUpdateDownload *dl);
+/* Verified file path once DONE, NULL otherwise. Owned by the download. */
+const char *kry_update_download_path(const KryUpdateDownload *dl);
+void kry_update_download_free(KryUpdateDownload *dl);
+
+typedef enum {
+    KRY_UPDATE_APPLY_NOT_APPLICABLE = 0, /* wrong channel or missing input */
+    KRY_UPDATE_APPLY_FAILED,             /* staged but the swap failed */
+    KRY_UPDATE_APPLY_RESTARTING,         /* swap done; caller should quit/reexec */
+} KryUpdateApplyResult;
+
+/* AppImage channel: stage `downloaded_path` next to the running AppImage
+ * ($APPIMAGE) — same filesystem — chmod 0755, then atomically rename it
+ * over the old file. Testable on its own; it does not exec anything.
+ * Returns 1 on success. */
+int kry_update_appimage_stage(const char *downloaded_path, const char *appimage_path);
+
+/* kry_update_appimage_stage() against the real $APPIMAGE, then re-exec
+ * the new AppImage in place of this process. The call does not return on
+ * success. Call only after saving state and shutting down UI/audio. */
+KryUpdateApplyResult kry_update_appimage_apply(const char *downloaded_path);
+
+/* Windows portable channel: `new_dir` holds the extracted new version
+ * with the app executable at its root. Writes a swap script to %TEMP%,
+ * launches it detached, and returns KRY_UPDATE_APPLY_RESTARTING — the
+ * script waits for this process to exit, moves the old install aside,
+ * moves `new_dir` into its place, starts the new executable, and removes
+ * the old copy. No-op (NOT_APPLICABLE) on other platforms. */
+KryUpdateApplyResult kry_update_windows_stage_swap(const char *new_dir);
+
 #ifdef __cplusplus
 }
 #endif

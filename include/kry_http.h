@@ -51,6 +51,34 @@ size_t kry_http_partial(KryHttpRequest *request, char *buf, size_t size);
  * state first. NULL is allowed. */
 void kry_http_free(KryHttpRequest *request);
 
+/* --- streaming download to a file -------------------------------------- */
+
+typedef struct KryHttpDownload KryHttpDownload;
+
+/* GET `url`, streaming the body into `dest_path` (truncated on start)
+ * instead of buffering it in memory — the path large artifacts need.
+ * Same lifecycle as KryHttpRequest: poll, then free. A FAILED download
+ * leaves a partial file at `dest_path`; the caller decides what to do
+ * with it. Returns NULL when the platform has no client or the file
+ * cannot be opened for writing. */
+KryHttpDownload *kry_http_download(const char *url, const char *dest_path,
+                                   int timeout_s);
+
+KryHttpStatus kry_http_download_poll(KryHttpDownload *download);
+
+/* 0..1 fraction of the transfer, or -1.0 while the total size is unknown
+ * (no Content-Length yet, or a non-HTTP scheme). */
+double kry_http_download_progress(KryHttpDownload *download);
+
+/* Bytes written so far. */
+unsigned long kry_http_download_bytes(KryHttpDownload *download);
+
+/* Diagnostic when FAILED, NULL otherwise. Owned by the download. */
+const char *kry_http_download_error(KryHttpDownload *download);
+
+/* Release the download (joins the worker). NULL is allowed. */
+void kry_http_download_free(KryHttpDownload *download);
+
 #ifdef __cplusplus
 }
 #endif
