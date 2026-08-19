@@ -37,6 +37,7 @@ void (*kryon_gtk_dl_gtk_status_icon_set_tooltip_text)(GtkStatusIcon *status_icon
                                                       const gchar *text);
 void (*kryon_gtk_dl_gtk_status_icon_set_visible)(GtkStatusIcon *status_icon,
                                                  gboolean visible);
+gboolean (*kryon_gtk_dl_gtk_status_icon_is_embedded)(GtkStatusIcon *status_icon);
 void (*kryon_gtk_dl_gtk_status_icon_set_from_file)(GtkStatusIcon *status_icon,
                                                    const gchar *filename);
 void (*kryon_gtk_dl_gtk_main)(void);
@@ -106,6 +107,8 @@ kryon_gtk_dl_load(void)
                          "gtk_status_icon_set_tooltip_text");
     kryon_gtk_dl_resolve(handle, (void **)&kryon_gtk_dl_gtk_status_icon_set_visible,
                          "gtk_status_icon_set_visible");
+    kryon_gtk_dl_resolve(handle, (void **)&kryon_gtk_dl_gtk_status_icon_is_embedded,
+                         "gtk_status_icon_is_embedded");
     kryon_gtk_dl_resolve(handle, (void **)&kryon_gtk_dl_gtk_status_icon_set_from_file,
                          "gtk_status_icon_set_from_file");
     kryon_gtk_dl_resolve(handle, (void **)&kryon_gtk_dl_gtk_main, "gtk_main");
