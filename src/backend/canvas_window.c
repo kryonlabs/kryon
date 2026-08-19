@@ -28,6 +28,22 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
         buttonsDown: {}, buttonsPressed: [], buttonsReleased: [],
         wheel: 0, frames: 0, lastOp: 'boot'
     };
+    K.ctxNow = function () {
+        return K.target.length ? K.target[K.target.length - 1].ctx
+                               : K.ctx;
+    };
+    K.col = function (r, g, b, a) {
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255.0) + ')';
+    };
+    K.makeCanvas = function (w, h) {
+        if (globalThis.OffscreenCanvas) return new OffscreenCanvas(w, h);
+        if (typeof document !== 'undefined') {
+            var cv = document.createElement('canvas');
+            cv.width = w; cv.height = h;
+            return cv;
+        }
+        return null;
+    };
     var doc = (typeof document !== 'undefined') ? document : null;
     if (doc) {
         K.canvas = doc.getElementById('canvas');
@@ -122,10 +138,10 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
                           int r, int gg, int bb, int aa),
 {
     var K = globalThis.__kryCanvas;
-    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    var ctx = K.ctxNow();
     K.lastOp = 'ctx' + op;
     if (!ctx) return;
-    var col = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
+    var col = K.col(r, gg, bb, aa);
     switch (op) {
     case 0: /* clear */ ctx.fillStyle = col;
             ctx.fillRect(0, 0, K.w, K.h); break;

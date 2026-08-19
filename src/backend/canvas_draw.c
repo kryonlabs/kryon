@@ -20,13 +20,11 @@ EM_JS(void, js_draw_gradient_v, (double x, double y, double w, double h,
                                  int tr, int tg, int tb, int ta,
                                  int br, int bg, int bb, int ba), {
     var K = globalThis.__kryCanvas;
-    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    var ctx = K.ctxNow();
     if (!ctx) return;
     var gr = ctx.createLinearGradient(0, y, 0, y + h);
-    gr.addColorStop(0, 'rgba(' + tr + ',' + tg + ',' + tb + ',' +
-                       (ta / 255.0) + ')');
-    gr.addColorStop(1, 'rgba(' + br + ',' + bg + ',' + bb + ',' +
-                       (ba / 255.0) + ')');
+    gr.addColorStop(0, K.col(tr, tg, tb, ta));
+    gr.addColorStop(1, K.col(br, bg, bb, ba));
     ctx.fillStyle = gr;
     ctx.fillRect(x, y, w, h);
 });
@@ -35,9 +33,9 @@ EM_JS(void, js_draw_rounded, (int op, double x, double y, double w,
                               double h, double rad,
                               int r, int gg, int bb, int aa), {
     var K = globalThis.__kryCanvas;
-    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    var ctx = K.ctxNow();
     if (!ctx) return;
-    var col = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
+    var col = K.col(r, gg, bb, aa);
     ctx.beginPath();
     {
         var rr = Math.min(rad, Math.min(w, h) * 0.5);
@@ -66,11 +64,11 @@ EM_JS(void, js_draw_ring, (double cx, double cy, double inner, double outer,
                            double start, double end,
                            int r, int gg, int bb, int aa), {
     var K = globalThis.__kryCanvas;
-    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    var ctx = K.ctxNow();
     if (!ctx) return;
     var s0 = start * Math.PI / 180.0;
     var s1 = end * Math.PI / 180.0;
-    ctx.fillStyle = 'rgba(' + r + ',' + gg + ',' + bb + ',' + (aa / 255.0) + ')';
+    ctx.fillStyle = K.col(r, gg, bb, aa);
     ctx.beginPath();
     ctx.arc(cx, cy, outer, s0, s1, false);
     ctx.arc(cx, cy, inner, s1, s0, true);
@@ -117,13 +115,18 @@ void DrawRectangleGradientV(int posX, int posY, int width, int height,
                        bottom.r, bottom.g, bottom.b, bottom.a);
 }
 
+static float canvas_round_radius(Rectangle rec, float roundness)
+{
+    return roundness * 0.5f * (rec.width < rec.height ? rec.width
+                                                      : rec.height);
+}
+
 void DrawRectangleRounded(Rectangle rec, float roundness, int segments,
                           Color color)
 {
     (void)segments;
     js_draw_rounded(0, rec.x, rec.y, rec.width, rec.height,
-                    roundness * 0.5f * (rec.width < rec.height ? rec.width
-                                                               : rec.height),
+                    canvas_round_radius(rec, roundness),
                     color.r, color.g, color.b, color.a);
 }
 
@@ -132,8 +135,7 @@ void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments,
 {
     (void)segments;
     js_draw_rounded(1, rec.x, rec.y, rec.width, rec.height,
-                    roundness * 0.5f * (rec.width < rec.height ? rec.width
-                                                               : rec.height),
+                    canvas_round_radius(rec, roundness),
                     color.r, color.g, color.b, color.a);
 }
 
@@ -143,8 +145,7 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness,
     (void)segments;
     js_draw_rounded(1, rec.x - lineThick, rec.y - lineThick,
                     rec.width + lineThick * 2, rec.height + lineThick * 2,
-                    roundness * 0.5f *
-                        (rec.width < rec.height ? rec.width : rec.height),
+                    canvas_round_radius(rec, roundness),
                     color.r, color.g, color.b, color.a);
 }
 

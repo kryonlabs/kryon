@@ -21,7 +21,7 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
                                   double rot, int r, int gg, int bb, int aa),
 {
     var K = globalThis.__kryCanvas;
-    var ctx = K.target.length ? K.target[K.target.length - 1].ctx : K.ctx;
+    var ctx = K.ctxNow();
     var tex = K.textures[id];
     if (!ctx || !tex) return;
     var white = (r === 255 && gg === 255 && bb === 255 && aa === 255);
@@ -31,13 +31,7 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
         var key = id + ':' + r + ',' + gg + ',' + bb + ',' + aa;
         if (!K.tints) K.tints = {};
         if (!K.tints[key]) {
-            var cv;
-            if (globalThis.OffscreenCanvas)
-                cv = new OffscreenCanvas(tex.width, tex.height);
-            else {
-                cv = document.createElement('canvas');
-                cv.width = tex.width; cv.height = tex.height;
-            }
+            var cv = K.makeCanvas(tex.width, tex.height);
             var c2 = cv.getContext('2d');
             c2.drawImage(tex, 0, 0);
             c2.globalCompositeOperation = 'multiply';
@@ -59,11 +53,8 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
 
 EM_JS(int, js_texture_from_rgba, (int ptr, int w, int h), {
     var K = globalThis.__kryCanvas;
-    var cv;
-    if (globalThis.OffscreenCanvas) cv = new OffscreenCanvas(w, h);
-    else if (typeof document !== 'undefined') {
-        cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-    } else return 0;
+    var cv = K.makeCanvas(w, h);
+    if (!cv) return 0;
     var c2 = cv.getContext('2d');
     var img = c2.createImageData(w, h);
     img.data.set(HEAPU8.subarray(ptr, ptr + w * h * 4));
@@ -81,11 +72,8 @@ EM_JS(void, js_texture_free, (int id), {
  * the draw target — BeginTextureMode selects it. */
 EM_JS(int, js_render_target, (int w, int h), {
     var K = globalThis.__kryCanvas;
-    var cv;
-    if (globalThis.OffscreenCanvas) cv = new OffscreenCanvas(w, h);
-    else if (typeof document !== 'undefined') {
-        cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-    } else return 0;
+    var cv = K.makeCanvas(w, h);
+    if (!cv) return 0;
     var id = K.nextTex++;
     K.textures[id] = cv;
     return id;
