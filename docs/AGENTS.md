@@ -173,10 +173,10 @@ the downstream submodule pointer.
 Kryon owns the common Linux desktop package layout. Applications should expose
 portable metadata in `project.kryon` or the matching Make variables (`APP_ID`,
 `APP_TITLE`, `APP_SUMMARY`, `APP_CATEGORIES`, `APP_MIME_TYPES`,
-`APP_URL_SCHEMES`, `APP_ICON`, `APP_ICON_NAME`, `APP_WM_CLASS`) and build it
-with `kryon package linux-desktop`. The target stages the binary, `.desktop`
-entry, AppStream metainfo, hicolor icon, and optional MIME package under one
-AppDir-style tree.
+`APP_URL_SCHEMES`, `APP_ICON`, `APP_DESKTOP_ID`, `APP_ICON_NAME`,
+`APP_WM_CLASS`) and build it with `kryon package linux-desktop`. The target
+stages the binary, `.desktop` entry, AppStream metainfo, hicolor icon, and
+optional MIME package under one AppDir-style tree.
 
 Application code should call `InitDesktopApp` once at startup when it needs
 desktop identity, XDG config/data/cache directories, notification icon identity,

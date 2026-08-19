@@ -3,6 +3,8 @@ DESTDIR ?=
 APP_NAME ?= app
 APP_TITLE ?= $(APP_NAME)
 APP_ID ?= $(APP_NAME)
+APP_DESKTOP_ID ?= $(APP_ID)
+APP_ICON_NAME ?= $(APP_DESKTOP_ID)
 APP_VERSION ?= 0
 APP_COMMENT ?= $(APP_TITLE)
 APP_DESC ?= $(APP_COMMENT)
@@ -36,7 +38,9 @@ install-user: $(TARGET)
 
 uninstall:
 	rm -f "$(DESTDIR)$(PREFIX)/bin/$(APP_NAME)"
+	rm -f "$(DESTDIR)$(PREFIX)/share/applications/$(APP_DESKTOP_ID).desktop"
 	rm -f "$(DESTDIR)$(PREFIX)/share/applications/$(APP_NAME).desktop"
+	rm -f "$(DESTDIR)$(PREFIX)/share/icons/hicolor/$(APP_ICON_SIZE)/apps/$(APP_ICON_NAME).png"
 	rm -f "$(DESTDIR)$(PREFIX)/share/icons/hicolor/$(APP_ICON_SIZE)/apps/$(APP_NAME).png"
 	rm -f "$(DESTDIR)$(PREFIX)/share/metainfo/$(APP_ID).metainfo.xml"
 
@@ -51,15 +55,17 @@ stage: $(TARGET)
 	chmod 755 "$$bin_dir/$(APP_NAME)"; \
 	if [ -n "$(strip $(APP_DESKTOP))" ]; then \
 		mkdir -p "$$app_dir"; \
-		cp "$(APP_DESKTOP)" "$$app_dir/$(APP_NAME).desktop"; \
+		sed -e 's/^Icon=.*/Icon=$(APP_ICON_NAME)/' \
+			"$(APP_DESKTOP)" > "$$app_dir/$(APP_DESKTOP_ID).desktop"; \
 	fi; \
 	if [ -n "$(strip $(APP_ICON))" ]; then \
 		mkdir -p "$$icon_dir"; \
-		cp "$(APP_ICON)" "$$icon_dir/$(APP_NAME).png"; \
+		cp "$(APP_ICON)" "$$icon_dir/$(APP_ICON_NAME).png"; \
 	fi; \
 	if [ -n "$(strip $(APP_METAINFO))" ]; then \
 		mkdir -p "$$meta_dir"; \
 		sed -e 's/<release version="[^"]*"/<release version="$(APP_VERSION)"/' \
+			-e 's#<launchable type="desktop-id">[^<]*</launchable>#<launchable type="desktop-id">$(APP_DESKTOP_ID).desktop</launchable>#' \
 			"$(APP_METAINFO)" > "$$meta_dir/$(APP_ID).metainfo.xml"; \
 	fi; \
 	echo "Staged $(APP_NAME) under $(DESTDIR)$(PREFIX)"
