@@ -184,6 +184,8 @@ KSYNC_SYNC_TEST = $(BUILD_DIR)/tests/ksync_sync_test
 KSYNC_CRYPTO_TEST = $(BUILD_DIR)/tests/ksync_crypto_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
+DESKTOP_TEST = $(BUILD_DIR)/tests/desktop_test
+LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
@@ -274,7 +276,7 @@ docs-site:
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
 	sh tests/kt_cli_test.sh $(KT)
@@ -298,6 +300,8 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G)
 	$(KSYNC_CRYPTO_TEST)
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
+	$(DESKTOP_TEST)
+	@cat $(LINUX_DESKTOP_PACKAGE_TEST)
 	$(MARKDOWN_TEST)
 	$(RAYLIB_COMPAT_TEST)
 	$(UI_TK_TEST)
@@ -510,6 +514,14 @@ $(MARKDOWN_TEST): tests/markdown_test.c src/markdown.c include/markdown.h $(KRYO
 $(FILE_DIALOG_BACKEND_TEST): tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c include/file_dialog.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/file_dialog_backend_test.c src/file_dialog/file_dialog.c $(LDLIBS) -o $@
+
+$(DESKTOP_TEST): tests/desktop_test.c src/platform/desktop/desktop.c src/notification/notification.c include/desktop.h include/notification.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/desktop_test.c src/platform/desktop/desktop.c src/notification/notification.c $(LDLIBS) -o $@
+
+$(LINUX_DESKTOP_PACKAGE_TEST): tests/linux_desktop_package_test.sh scripts/package-linux-desktop.sh | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	sh tests/linux_desktop_package_test.sh . > $@
 
 $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

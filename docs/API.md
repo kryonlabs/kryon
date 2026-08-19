@@ -20,6 +20,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Sync](#sync)
   - [Transitions](#transitions)
   - [Runtime Assets](#runtime-assets)
+  - [Desktop App Integration](#desktop-app-integration)
   - [File Dialogs](#file-dialogs)
   - [Web Utilities](#web-utilities)
 - [UI Components](#ui-components)
@@ -855,12 +856,48 @@ void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
 
 ---
 
+### Desktop App Integration
+
+Desktop helpers centralize app identity, XDG paths, single-instance locks, and
+file/URL open events for native desktop apps. Public names follow the normal
+Kryon app-facing style, without a `Kry` prefix.
+
+```c
+typedef struct DesktopAppInfo {
+    const char *app_id;
+    const char *name;
+    const char *display_name;
+    const char *summary;
+    const char *icon_name;
+    const char *wm_class;
+    int single_instance;
+} DesktopAppInfo;
+
+void InitDesktopApp(const DesktopAppInfo *info);
+const DesktopAppInfo *GetDesktopAppInfo(void);
+const char *GetDesktopAppID(void);
+const char *GetDesktopDisplayName(void);
+int GetDesktopConfigDir(char *out, int cap);
+int GetDesktopDataDir(char *out, int cap);
+int GetDesktopCacheDir(char *out, int cap);
+int AcquireDesktopSingleInstance(const char *app_id, char *lock_path, int cap);
+void ReleaseDesktopSingleInstance(void);
+int QueueDesktopOpenPath(const char *path_or_url);
+DesktopOpenEventKind PollDesktopOpenEvent(char *out, int cap);
+```
+
+`InitDesktopApp` also registers the desktop-entry id with the notification
+backend so notification icons resolve through the installed desktop metadata.
+
+---
+
 ### File Dialogs
 
-Open native desktop file dialogs through an external helper backend. The default
-backend order is `zenity`, then `kdialog`, then `yad`. `KRYON_FILE_DIALOG_BACKEND`
-can force `zenity`, `kdialog`, `yad`, `auto`, or `none` for debugging and packaging
-checks. Explicit forced backends fail closed when the helper is not available.
+Open native desktop file dialogs through the best available Linux backend. The
+default backend order is XDG Desktop Portal, GTK, `zenity`, `kdialog`, then
+`yad`. `KRYON_FILE_DIALOG_BACKEND` can force `portal`, `gtk`, `zenity`,
+`kdialog`, `yad`, `auto`, or `none` for debugging and packaging checks. Explicit
+forced backends fail closed when the requested backend is not available.
 
 #### `GetFileDialogBackendName`
 

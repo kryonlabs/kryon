@@ -247,6 +247,11 @@ CloseFileDialog(FileDialog *dlg)
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if defined(KRYON_NOTIFICATION_GDBUS)
+#include <gio/gio.h>
+#define FILE_DIALOG_PORTAL 1
+#endif
+
 #if defined(SYSTEM_THEME_GTK)
 #include <gtk/gtk.h>
 #endif
@@ -262,6 +267,9 @@ typedef struct {
 typedef enum {
     DIALOG_BACKEND_AUTO,
     DIALOG_BACKEND_NONE,
+#if defined(FILE_DIALOG_PORTAL)
+    DIALOG_BACKEND_PORTAL,
+#endif
 #if defined(SYSTEM_THEME_GTK)
     DIALOG_BACKEND_GTK,
 #endif
@@ -340,6 +348,11 @@ backend_from_name(const char *name)
     if(strcmp(name, "none") == 0 || strcmp(name, "off") == 0 ||
        strcmp(name, "disabled") == 0)
         return DIALOG_BACKEND_NONE;
+#if defined(FILE_DIALOG_PORTAL)
+    if(strcmp(name, "portal") == 0 || strcmp(name, "xdg") == 0 ||
+       strcmp(name, "xdg-desktop-portal") == 0)
+        return DIALOG_BACKEND_PORTAL;
+#endif
 #if defined(SYSTEM_THEME_GTK)
     if(strcmp(name, "gtk") == 0)
         return DIALOG_BACKEND_GTK;
@@ -354,9 +367,50 @@ backend_from_name(const char *name)
 }
 
 static int
+portal_backend_available(void)
+{
+#if defined(FILE_DIALOG_PORTAL)
+    const char *forced = getenv("KRYON_TEST_FILE_DIALOG_PORTAL_AVAILABLE");
+    GDBusConnection *bus;
+    GVariant *result;
+    GError *error = NULL;
+    gboolean owned = FALSE;
+
+    if(forced != NULL && forced[0] != '\0')
+        return strcmp(forced, "1") == 0 || strcmp(forced, "true") == 0;
+    bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+    if(bus == NULL) {
+        if(error != NULL)
+            g_error_free(error);
+        return 0;
+    }
+    result = g_dbus_connection_call_sync(bus,
+            "org.freedesktop.DBus", "/org/freedesktop/DBus",
+            "org.freedesktop.DBus", "NameHasOwner",
+            g_variant_new("(s)", "org.freedesktop.portal.Desktop"),
+            G_VARIANT_TYPE("(b)"),
+            G_DBUS_CALL_FLAGS_NONE, 1000, NULL, &error);
+    if(result != NULL) {
+        g_variant_get(result, "(b)", &owned);
+        g_variant_unref(result);
+    } else if(error != NULL) {
+        g_error_free(error);
+    }
+    g_object_unref(bus);
+    return owned ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
+static int
 backend_available(DialogBackend backend)
 {
     switch(backend) {
+#if defined(FILE_DIALOG_PORTAL)
+    case DIALOG_BACKEND_PORTAL:
+        return portal_backend_available();
+#endif
 #if defined(SYSTEM_THEME_GTK)
     case DIALOG_BACKEND_GTK:
         return 1;
@@ -380,6 +434,10 @@ select_backend_from_request(DialogBackend requested)
     if(requested != DIALOG_BACKEND_AUTO)
         return backend_available(requested) ? requested : DIALOG_BACKEND_NONE;
 
+#if defined(FILE_DIALOG_PORTAL)
+    if(backend_available(DIALOG_BACKEND_PORTAL))
+        return DIALOG_BACKEND_PORTAL;
+#endif
 #if defined(SYSTEM_THEME_GTK)
     if(backend_available(DIALOG_BACKEND_GTK))
         return DIALOG_BACKEND_GTK;
@@ -410,6 +468,10 @@ backend_name(DialogBackend backend)
         return "auto";
     case DIALOG_BACKEND_NONE:
         return "none";
+#if defined(FILE_DIALOG_PORTAL)
+    case DIALOG_BACKEND_PORTAL:
+        return "portal";
+#endif
 #if defined(SYSTEM_THEME_GTK)
     case DIALOG_BACKEND_GTK:
         return "gtk";
@@ -594,15 +656,156 @@ run_helper(char *const argv[], char *out, size_t out_size)
 static void
 build_start_path(char *out, size_t out_size, const char *dir, const char *default_filename)
 {
+    const char *base;
+    size_t base_len;
+    size_t name_len;
+
     if(out == NULL || out_size == 0)
         return;
+    base = dir != NULL && dir[0] != '\0' ? dir : ".";
+    base_len = strlen(base);
     if(default_filename != NULL && default_filename[0] != '\0') {
-        snprintf(out, out_size, "%s/%s", dir != NULL && dir[0] != '\0' ? dir : ".",
-                 default_filename);
+        name_len = strlen(default_filename);
+        if(base_len + 1 + name_len >= out_size) {
+            out[0] = '\0';
+            return;
+        }
+        memcpy(out, base, base_len);
+        out[base_len] = '/';
+        memcpy(out + base_len + 1, default_filename, name_len + 1);
     } else {
-        snprintf(out, out_size, "%s/", dir != NULL && dir[0] != '\0' ? dir : ".");
+        if(base_len + 1 >= out_size) {
+            out[0] = '\0';
+            return;
+        }
+        memcpy(out, base, base_len);
+        out[base_len] = '/';
+        out[base_len + 1] = '\0';
     }
 }
+
+#if defined(FILE_DIALOG_PORTAL)
+typedef struct PortalDialogWait {
+    int done;
+    int confirmed;
+    char path[FILE_DIALOG_PATH_MAX];
+} PortalDialogWait;
+
+static void
+on_portal_response(GDBusConnection *connection, const char *sender,
+                   const char *object_path, const char *interface_name,
+                   const char *signal_name, GVariant *parameters,
+                   gpointer user_data)
+{
+    PortalDialogWait *wait = (PortalDialogWait *)user_data;
+    guint32 response = 1;
+    GVariant *results = NULL;
+    GVariant *uris = NULL;
+    const char *uri = NULL;
+    char *filename = NULL;
+
+    (void)connection; (void)sender; (void)object_path;
+    (void)interface_name; (void)signal_name;
+    if(wait == NULL)
+        return;
+    g_variant_get(parameters, "(u@a{sv})", &response, &results);
+    if(response == 0 && results != NULL) {
+        uris = g_variant_lookup_value(results, "uris", G_VARIANT_TYPE("as"));
+        if(uris != NULL && g_variant_n_children(uris) > 0) {
+            g_variant_get_child(uris, 0, "&s", &uri);
+            filename = g_filename_from_uri(uri, NULL, NULL);
+            if(filename != NULL && filename[0] != '\0') {
+                snprintf(wait->path, sizeof(wait->path), "%s", filename);
+                wait->confirmed = 1;
+            }
+        }
+    }
+    if(filename != NULL)
+        g_free(filename);
+    if(uris != NULL)
+        g_variant_unref(uris);
+    if(results != NULL)
+        g_variant_unref(results);
+    wait->done = 1;
+}
+
+static int
+run_portal_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
+                  const char *filter, const char *default_filename)
+{
+    FileDialogInternal *internal;
+    GDBusConnection *bus;
+    GVariantBuilder options;
+    GVariant *result;
+    GError *error = NULL;
+    const char *method;
+    const char *dialog_title;
+    char *handle = NULL;
+    guint sub_id;
+    PortalDialogWait wait;
+
+    (void)filter;
+    internal = ensure_internal(dlg);
+    reset_dialog_result(dlg, mode, title, filter, default_filename);
+    if(internal == NULL)
+        return 0;
+    bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+    if(bus == NULL) {
+        if(error != NULL)
+            g_error_free(error);
+        return 0;
+    }
+    if(!portal_backend_available()) {
+        g_object_unref(bus);
+        return 0;
+    }
+
+    g_variant_builder_init(&options, G_VARIANT_TYPE_VARDICT);
+    if(mode == FILE_DIALOG_SELECT_FOLDER)
+        g_variant_builder_add(&options, "{sv}", "directory",
+                              g_variant_new_boolean(TRUE));
+    if(mode == FILE_DIALOG_SAVE && default_filename != NULL &&
+       default_filename[0] != '\0')
+        g_variant_builder_add(&options, "{sv}", "current_name",
+                              g_variant_new_string(default_filename));
+
+    method = mode == FILE_DIALOG_SAVE ? "SaveFile" : "OpenFile";
+    dialog_title = title != NULL && title[0] != '\0' ? title : "Select file";
+    result = g_dbus_connection_call_sync(bus,
+            "org.freedesktop.portal.Desktop",
+            "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.FileChooser",
+            method,
+            g_variant_new("(ssa{sv})", "", dialog_title, &options),
+            G_VARIANT_TYPE("(o)"),
+            G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
+    if(result == NULL) {
+        if(error != NULL)
+            g_error_free(error);
+        g_object_unref(bus);
+        return 0;
+    }
+
+    memset(&wait, 0, sizeof(wait));
+    g_variant_get(result, "(o)", &handle);
+    g_variant_unref(result);
+    sub_id = g_dbus_connection_signal_subscribe(bus, NULL,
+            "org.freedesktop.portal.Request", "Response", handle, NULL,
+            G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, &wait, NULL);
+    while(!wait.done)
+        g_main_context_iteration(NULL, TRUE);
+    g_dbus_connection_signal_unsubscribe(bus, sub_id);
+    g_free(handle);
+    g_object_unref(bus);
+
+    if(!wait.confirmed || wait.path[0] == '\0')
+        return 0;
+    snprintf(dlg->result_path, sizeof(dlg->result_path), "%s", wait.path);
+    dlg->confirmed = 1;
+    update_current_dir_from_path(internal, wait.path);
+    return 1;
+}
+#endif
 
 #if defined(SYSTEM_THEME_GTK)
 static GtkFileChooserAction
@@ -727,6 +930,11 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
     backend = select_backend();
     if(backend == DIALOG_BACKEND_NONE)
         return 0;
+
+#if defined(FILE_DIALOG_PORTAL)
+    if(backend == DIALOG_BACKEND_PORTAL)
+        return run_portal_dialog(dlg, mode, title, filter, default_filename);
+#endif
 
 #if defined(SYSTEM_THEME_GTK)
     if(backend == DIALOG_BACKEND_GTK)

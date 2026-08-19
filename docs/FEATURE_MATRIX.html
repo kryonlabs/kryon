@@ -175,7 +175,7 @@ li{margin:.25rem 0}
 <tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
 <tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>Begin/EndUI</code> + <code>NextUIEvent</code></td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
-<tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/gtk/zenity/kdialog/yad), tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
+<tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
 <tr><td class="">Debug tooling</td><td class="ok">✅ widget inspector, node registry + snippets</td><td class="no">✗</td><td class="part">◐ <code>KryBackendRec</code> call-stream recording</td></tr>
 </table>
 <h2>Renderer backends</h2>
@@ -189,14 +189,14 @@ li{margin:.25rem 0}
 <tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
 <tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
 <tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
-<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node call-sequence gate)</td><td class="">No raylib; glyphs rasterized from FontFace data; rounded rects/rings/clipboard approximated</td></tr>
+<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node call-sequence gate)</td><td class="">No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; audio null-grade</td></tr>
 </table>
 <h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
 <table>
 <tr><th>Host</th><th>Rendering</th><th>Input</th><th>Textures</th><th>Text</th><th>CI</th><th>Notes</th></tr>
 <tr><td class=""><code>KryBackendDraw</code></td><td class="">raylib surface</td><td class="">raylib</td><td class="ok">✅</td><td class="">full font stack</td><td class="ok">✅</td><td class="">Auto-installed via constructor; hooks cartridge audio; runs inside raylib apps and <code>kryon-preview</code></td></tr>
 <tr><td class=""><code>kry_sw</code></td><td class="">software RGBA8 rasterizer</td><td class="">injected (<code>KrySwMouse</code> etc.)</td><td class="ok">✅ + PNG decode</td><td class="">font8x8 or KFA1 atlas</td><td class="ok">✅</td><td class="">No GPU/libc deps; <code>KrySwToRGB565</code> for embedded panels; one-shot dirty-rect tracking</td></tr>
-<tr><td class=""><code>krb-run</code></td><td class=""><code>kry_sw</code> headless</td><td class="">injected</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ linux/windows/macos</td><td class="">PNG dump + <code>KryBackendRec</code> call log; conformance host; <code>--backend fb</code> presents on <code>/dev/fb0</code> (or a raw file target) with dirty-rect conversion</td></tr>
+<tr><td class=""><code>krb-run</code></td><td class=""><code>kry_sw</code> headless</td><td class="">injected</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ linux/windows/macos</td><td class="">PNG dump + <code>KryBackendRec</code> call log; conformance host</td></tr>
 <tr><td class=""><code>krb-sdl</code></td><td class=""><code>kry_sw</code> → SDL2 streaming texture</td><td class="">SDL2</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅</td><td class="">Template for the planned Android EGL host</td></tr>
 <tr><td class=""><code>krb-web</code></td><td class=""><code>kry_sw</code> → wasm, Canvas2D <code>putImageData</code></td><td class="">JS bridge exports</td><td class="ok">✅</td><td class="">via <code>kry_sw</code></td><td class="ok">✅ renderers.yml</td><td class="">Byte-identical to native; node-capture for tests</td></tr>
 <tr><td class=""><code>KryBackendRec</code></td><td class="">wraps any backend</td><td class="">passthrough</td><td class="">passthrough</td><td class="">passthrough</td><td class="ok">✅ exactness job</td><td class="">Records the vtable call stream for cross-engine comparison</td></tr>
@@ -234,6 +234,5 @@ li{margin:.25rem 0}
 <ul>
 <li>Plan 11 engines still to come: native Canvas2D fast path, Android EGL</li>
 </ul>
-<p>host, ESP32 RGB565 host. The phase-2 Linux framebuffer host is done: <code>krb-run --backend fb</code> presents on <code>/dev/fb0</code> (or a raw file target for headless testing) with per-frame dirty-rect conversion.</p>
-<p>Plan 11 (<code>docs/plans/11-render-engines.md</code>) drafts further engines — Linux framebuffer, Android EGL, ESP32 RGB565, native Canvas2D fast path — none implemented yet.</p>
+<p>host, ESP32 RGB565 host. The Linux framebuffer host was removed again - raylib covers desktop presentation and the canvas backend covers native web, so it carried maintenance cost without a user.</p>
 </body></html>

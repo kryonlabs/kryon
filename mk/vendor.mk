@@ -9,10 +9,9 @@ KRYON_BUILD_ARCH ?= $(shell uname -m 2>/dev/null | sed -e s/amd64/x86_64/)
 KRYON_TOOLS_BIN ?= $(KRYON_DIR)/build/$(KRYON_BUILD_PLATFORM)-$(KRYON_BUILD_ARCH)/bin
 K2C ?= $(KRYON_TOOLS_BIN)/k2c
 
-# Desktop notifications (org.freedesktop.Notifications over GDBus) compile in
-# when gio-2.0 is present. Consumers opt in by adding
-# $(KRYON_NOTIFICATION_CPPFLAGS) $(KRYON_NOTIFICATION_CFLAGS) to their compile
-# flags and $(KRYON_NOTIFICATION_LDLIBS) to the link line.
+# Desktop notifications and XDG Desktop Portal dialogs compile in when gio-2.0
+# is present. Standard native builds add these flags through mk/common.mk;
+# custom app Makefiles can still opt in manually with the variables below.
 ifneq ($(filter Linux,$(shell uname -s 2>/dev/null)),)
 KRYON_NOTIFICATION_CFLAGS := $(shell pkg-config --cflags gio-2.0 2>/dev/null)
 ifneq ($(strip $(KRYON_NOTIFICATION_CFLAGS)),)

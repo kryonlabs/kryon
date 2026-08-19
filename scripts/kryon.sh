@@ -11,8 +11,9 @@ Commands:
   run [native]            run the native app
   build TARGET            build native, web, android-debug, android-release,
                           android-bundle, windows, or dist
-  package TARGET          build appimage, deb, rpm, flatpak, snap, click,
-                          freebsd, linux, windows, or web package output
+  package TARGET          build linux-desktop, appimage, deb, rpm, flatpak,
+                          snap, click, freebsd, linux, windows, or web package
+                          output
   test                    run the app test target
   clean [TARGET]          clean all or a target-specific build tree
   dev-backend             run a local Ksync sync server for this project
@@ -97,9 +98,13 @@ build)
 package)
     [ -n "$target" ] || die "package target is required"
     case "$target" in
-    appimage|deb|package-deb|rpm|package-rpm|flatpak|package-flatpak|snap|package-snap|click|package-freebsd|freebsd|linux|windows|web)
+    linux-desktop|package-linux-desktop|appimage|deb|package-deb|rpm|package-rpm|flatpak|package-flatpak|snap|package-snap|click|package-freebsd|freebsd|linux|windows|web)
         if [ "$target" = "freebsd" ]; then
             run_make package-freebsd
+        elif [ "$target" = "linux-desktop" ]; then
+            run_make package-linux-desktop
+        elif [ "$target" = "package-linux-desktop" ]; then
+            run_make package-linux-desktop
         elif [ "$target" = "linux" ]; then
             run_make dist-linux
         elif [ "$target" = "windows" ]; then

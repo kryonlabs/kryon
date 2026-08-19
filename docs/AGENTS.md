@@ -21,6 +21,11 @@ Flutter-style widgets with raylib-style C names: `Background`, `Text`, `Rect`,
 `Button`, and `Picture`. Lower-level immediate drawing keeps verb names such as
 `DrawUIText` and `DrawRectangle`. Do not reintroduce duplicate public widget
 names such as `WidgetText`, `UIText`, or `UITextNode` for the same behavior.
+New public widget constructors must not use a `UI` prefix. Reserve `UI*` names
+for shared types, lower-level UI system internals, and immediate draw helpers
+that already follow the established `DrawUI*`/`GetUI*` style. If a legacy
+prefixed widget constructor still exists, migrate callers to the canonical
+unprefixed widget name instead of adding another alias.
 
 Kryon owns live preview rendering, preview PNG capture, and hot-reload
 verification. Do not use Krait as the capture test harness for `.kry` files.
@@ -154,13 +159,28 @@ Kryon owns desktop file dialog backend selection. Applications should call
 `LoadFileDialog`, `SaveFileDialog`, or `SelectFileDialogFolder` instead of invoking
 desktop-specific picker commands directly.
 
-The default backend order is `zenity`, then `kdialog`, then `yad`. For local
-diagnostics and packaging checks, `KRYON_FILE_DIALOG_BACKEND` can be set to `auto`,
-`zenity`, `kdialog`, `yad`, or `none`.
+The default backend order is XDG Desktop Portal, GTK, `zenity`, then `kdialog`,
+then `yad`. For local diagnostics and packaging checks,
+`KRYON_FILE_DIALOG_BACKEND` can be set to `auto`, `portal`, `gtk`, `zenity`,
+`kdialog`, `yad`, or `none`.
 
 Do not add permanent app dependencies on an XFCE-specific picker. If a downstream app
 needs different desktop behavior, add the backend support in Kryon first, then update
 the downstream submodule pointer.
+
+## Linux Desktop Metadata
+
+Kryon owns the common Linux desktop package layout. Applications should expose
+portable metadata in `project.kryon` or the matching Make variables (`APP_ID`,
+`APP_TITLE`, `APP_SUMMARY`, `APP_CATEGORIES`, `APP_MIME_TYPES`,
+`APP_URL_SCHEMES`, `APP_ICON`, `APP_ICON_NAME`, `APP_WM_CLASS`) and build it
+with `kryon package linux-desktop`. The target stages the binary, `.desktop`
+entry, AppStream metainfo, hicolor icon, and optional MIME package under one
+AppDir-style tree.
+
+Application code should call `InitDesktopApp` once at startup when it needs
+desktop identity, XDG config/data/cache directories, notification icon identity,
+single-instance locking, or open-file/open-URL dispatch.
 
 ## Downstream Submodule Workflow
 

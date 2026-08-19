@@ -35,10 +35,11 @@ int SetFileDialogCurrentDir(FileDialog *dlg, const char *path);
 /* Set an explicit theme scope; pass NULL or empty to follow the current UI theme. */
 void SetFileDialogThemeScope(const char *scope);
 
-/* Return the resolved backend name: web, gtk, zenity, kdialog, yad, or none. */
+/* Return the resolved backend name: web, portal, gtk, zenity, kdialog, yad, or none. */
 const char *GetFileDialogBackendName(void);
 
-/* KRYON_FILE_DIALOG_BACKEND can force auto, gtk, zenity, kdialog, yad, or none. */
+/* KRYON_FILE_DIALOG_BACKEND can force auto, portal, gtk, zenity, kdialog, yad,
+   or none. */
 
 /* Save file dialog - returns 1 if file selected, 0 if cancelled */
 int SaveFileDialog(FileDialog *dlg, const char *title, const char *default_filename);

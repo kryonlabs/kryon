@@ -47,6 +47,7 @@
 #include "web.h"
 #include "runtime_assets.h"
 #include "embedded_assets.h"
+#include "desktop.h"
 #include "desktop_tray.h"
 #include "markdown.h"
 #include "app_host.h"

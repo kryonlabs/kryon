@@ -29,6 +29,7 @@ Kryon exposes one command surface for all apps:
 - `kryon build web`
 - `kryon build android-debug`
 - `kryon build android-release`
+- `kryon package linux-desktop`
 - `kryon package linux`
 - `kryon package appimage`
 - `kryon package deb`

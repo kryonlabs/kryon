@@ -60,6 +60,7 @@ test_backend_priority(void)
         return;
     }
     unsetenv("KRYON_FILE_DIALOG_BACKEND");
+    setenv("KRYON_TEST_FILE_DIALOG_PORTAL_AVAILABLE", "0", 1);
     set_test_path(dir);
 #if defined(SYSTEM_THEME_GTK)
     check_backend("gtk default", "gtk");
@@ -111,11 +112,40 @@ test_forced_backend(void)
     check_backend("env disables backend", "none");
 }
 
+static void
+test_portal_backend(void)
+{
+#if defined(KRYON_NOTIFICATION_GDBUS)
+    char template[] = "/tmp/kryon-file-dialog-test.XXXXXX";
+    char *dir = mkdtemp(template);
+
+    if(dir == NULL) {
+        fprintf(stderr, "FAIL: mkdtemp failed\n");
+        failures++;
+        return;
+    }
+    set_test_path(dir);
+    unsetenv("KRYON_FILE_DIALOG_BACKEND");
+    setenv("KRYON_TEST_FILE_DIALOG_PORTAL_AVAILABLE", "1", 1);
+    check_backend("portal default", "portal");
+
+    write_fake_command(dir, "zenity");
+    check_backend("portal preferred over helper dialogs", "portal");
+
+    setenv("KRYON_FILE_DIALOG_BACKEND", "portal", 1);
+    check_backend("env forces portal backend", "portal");
+
+    setenv("KRYON_TEST_FILE_DIALOG_PORTAL_AVAILABLE", "0", 1);
+    check_backend("env portal unavailable fails closed", "none");
+#endif
+}
+
 int
 main(void)
 {
     test_backend_priority();
     test_forced_backend();
+    test_portal_backend();
     if(failures != 0)
         return 1;
     printf("file dialog backend tests passed\n");

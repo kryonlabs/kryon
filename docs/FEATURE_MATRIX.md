@@ -207,7 +207,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | i18n | ✅ locale strings + CJK font switching; no RTL | ✗ | ✗ |
 | Multi-window | ✅ `OpenUIWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |
 | State/data binding | ✅ retained event queue; scene signals | ✅ `Begin/EndUI` + `NextUIEvent` | ✅ field mounts (`KrbMount*`) + bytecode |
-| Dialogs/platform | ✅ file dialogs (web/gtk/zenity/kdialog/yad), tray, notifications (Android/web/Linux) | ✅ tray + notify polling | ◐ host capability imports (storage/http/audio/notify) |
+| Dialogs/platform | ✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux) | ✅ tray + notify polling | ◐ host capability imports (storage/http/audio/notify) |
 | Debug tooling | ✅ widget inspector, node registry + snippets | ✗ | ◐ `KryBackendRec` call-stream recording |
 
 ## Renderer backends

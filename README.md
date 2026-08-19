@@ -106,6 +106,7 @@ Kryon owns the app command surface through `kryon`. From an app repository:
 kryon build native
 kryon build web
 kryon build android-debug
+kryon package linux-desktop
 kryon package appimage
 kryon preview
 ```

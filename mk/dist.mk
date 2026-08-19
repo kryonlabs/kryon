@@ -28,6 +28,9 @@ dist:
 	$(MAKE) dist-windows || exit $$?; \
 	$(MAKE) dist-web || exit $$?
 
+LINUX_DESKTOP_APPDIR ?= $(LINUX_DIST_DIR)/$(APP_NAME)-linux-desktop
+LINUX_DESKTOP_BINARY ?= $(LINUX_BIN_DIR)/$(APP_NAME)-linux-$(ARCH)
+
 dist-linux: linux | $(LINUX_DIST_DIR)
 	@echo "Creating Linux tar.gz package with all Linux arch binaries..."
 	@for bin in $(LINUX_BIN_DIR)/$(APP_NAME)-linux-*; do \
@@ -44,6 +47,22 @@ dist-linux: linux | $(LINUX_DIST_DIR)
 	@tar -czf $(abspath $(TARBALL)) -C $(LINUX_BIN_DIR) -T $(abspath $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files)
 	@rm -f $(LINUX_DIST_DIR)/$(APP_NAME)-linux.files
 	@echo "Created $(TARBALL)"
+
+linux-desktop package-linux-desktop: $(LINUX_DESKTOP_BINARY) | $(LINUX_DIST_DIR)
+	APP_NAME="$(APP_NAME)" \
+	APP_ID="$(APP_ID)" \
+	APP_TITLE="$(APP_TITLE)" \
+	APP_SUMMARY="$(APP_SUMMARY)" \
+	APP_VERSION="$(APP_VERSION)" \
+	APP_LICENSE="$(APP_LICENSE)" \
+	APP_WEBSITE="$(APP_WEBSITE)" \
+	APP_CATEGORIES="$(APP_CATEGORIES)" \
+	APP_MIME_TYPES="$(APP_MIME_TYPES)" \
+	APP_URL_SCHEMES="$(APP_URL_SCHEMES)" \
+	APP_ICON="$(APP_ICON)" \
+	APP_ICON_NAME="$(APP_ICON_NAME)" \
+	APP_WM_CLASS="$(APP_WM_CLASS)" \
+	sh "$(KRYON_DIR)/scripts/package-linux-desktop.sh" "$(LINUX_DESKTOP_APPDIR)" "$(LINUX_DESKTOP_BINARY)"
 
 install: dist-linux
 	@echo "Installing $(APP_NAME) to $(INSTALL_DIR)..."
