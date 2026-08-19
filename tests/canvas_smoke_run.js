@@ -2,10 +2,10 @@
 const calls = [];
 const rec = (name) => function (...a) { calls.push(name); };
 const grad = { addColorStop: rec('addColorStop') };
-const ctx = new Proxy({
+const ctxState = {
     canvas: {width: 320, height: 240},
     font: '', textBaseline: '', fillStyle: '', strokeStyle: '',
-    lineWidth: 1, lineCap: '', globalAlpha: 1,
+    lineWidth: 1, lineCap: '', globalAlpha: 1, imageSmoothingEnabled: true,
     fillRect: rec('fillRect'), strokeRect: rec('strokeRect'),
     clearRect: rec('clearRect'), beginPath: rec('beginPath'),
     arc: rec('arc'), fill: rec('fill'), stroke: rec('stroke'),
@@ -24,13 +24,22 @@ const ctx = new Proxy({
     getImageData: (x, y, w, h) => ({data: new Uint8ClampedArray(w * h * 4)}),
     putImageData: rec('putImageData'),
     createImageData: (w, h) => ({data: new Uint8ClampedArray(w * h * 4)})
-}, {get: (t, k) => k in t ? t[k] : rec(String(k))});
+};
+const ctx = new Proxy(ctxState, {
+    get: (t, k) => k in t ? t[k] : rec(String(k)),
+    set: (t, k, v) => {
+        if (k === 'imageSmoothingEnabled')
+            calls.push('imageSmoothingEnabled=' + v);
+        t[k] = v;
+        return true;
+    }
+});
 globalThis.OffscreenCanvas = class {
     constructor(w, h) { this.width = w; this.height = h; }
     getContext() { return ctx; }
 };
 globalThis.__kryTestCanvas = {
-    width: 320, height: 240,
+    width: 320, height: 240, style: {},
     getContext: () => ctx,
     getBoundingClientRect: () => ({left: 0, top: 0})
 };
@@ -43,13 +52,17 @@ setTimeout(() => {
     console.log('recorded calls:', calls.length, JSON.stringify(kinds));
     const fail = [];
     if (!kinds.fillRect || kinds.fillRect < 6) fail.push('fillRect (background/rect per frame)');
-    if (!kinds.strokeRect) fail.push('strokeRect (DrawRectangleLines)');
+    if ((kinds.strokeRect || 0) < 6) fail.push('strokeRect (rectangle outlines)');
     if (!kinds.arc) fail.push('arc (DrawCircle)');
     if (!kinds.moveTo) fail.push('moveTo (DrawLine)');
     if (!kinds.drawImage) fail.push('drawImage (DrawText atlas blits)');
     if (!kinds.roundRect) fail.push('roundRect (DrawRectangleRounded)');
     if (!kinds.addColorStop) fail.push('addColorStop (gradient with both colors)');
     if ((kinds.arc || 0) < 6) fail.push('arc (circle + annulus ring)');
+    if (!kinds['imageSmoothingEnabled=false'])
+        fail.push('imageSmoothingEnabled=false (nearest texture scaling)');
+    if (globalThis.__kryTestCanvas.style.cursor !== 'pointer')
+        fail.push('canvas style cursor pointer');
     if (fail.length) { console.error('SMOKE FAIL:', fail.join(', ')); process.exit(1); }
     console.log('canvas backend smoke ok');
     process.exit(0);

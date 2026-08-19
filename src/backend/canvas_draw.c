@@ -58,6 +58,21 @@ EM_JS(void, js_draw_rounded, (int op, double x, double y, double w,
     else { ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke(); }
 });
 
+EM_JS(void, js_draw_rect_lines_ex, (double x, double y, double w, double h,
+                                    double thick,
+                                    int r, int gg, int bb, int aa), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.ctxNow();
+    if (!ctx || w <= 0 || h <= 0) return;
+    thick = Math.max(1.0, thick);
+    ctx.save();
+    ctx.strokeStyle = K.col(r, gg, bb, aa);
+    ctx.lineWidth = thick;
+    ctx.strokeRect(x + thick * 0.5, y + thick * 0.5,
+                   Math.max(0, w - thick), Math.max(0, h - thick));
+    ctx.restore();
+});
+
 /* Ring as a true filled annulus segment: outer arc forward, inner arc
  * back, even-odd fill. */
 EM_JS(void, js_draw_ring, (double cx, double cy, double inner, double outer,
@@ -103,8 +118,8 @@ void DrawRectangleLines(int posX, int posY, int width, int height,
 
 void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color)
 {
-    js_ctx_call(6, rec.x, rec.y, rec.x + rec.width, rec.y + rec.height,
-                lineThick, 0, 0, color.r, color.g, color.b, color.a);
+    js_draw_rect_lines_ex(rec.x, rec.y, rec.width, rec.height, lineThick,
+                          color.r, color.g, color.b, color.a);
 }
 
 void DrawRectangleGradientV(int posX, int posY, int width, int height,

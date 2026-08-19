@@ -33,6 +33,7 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
         if (!K.tints[key]) {
             var cv = K.makeCanvas(tex.width, tex.height);
             var c2 = cv.getContext('2d');
+            c2.imageSmoothingEnabled = false;
             c2.drawImage(tex, 0, 0);
             c2.globalCompositeOperation = 'multiply';
             c2.fillStyle = 'rgb(' + r + ',' + gg + ',' + bb + ')';
@@ -44,6 +45,7 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
         tex = K.tints[key];
     }
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     if (aa < 255) ctx.globalAlpha = aa / 255.0;
     ctx.translate(dx + ox, dy + oy);
     if (rot !== 0.0) ctx.rotate(rot * Math.PI / 180.0);

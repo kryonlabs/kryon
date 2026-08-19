@@ -73,7 +73,14 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
         Digit2: 50, Digit3: 51, Digit4: 52, Digit5: 53, Digit6: 54,
         Digit7: 55, Digit8: 56, Digit9: 57
     };
-    var keyOf = function (code) {
+    var keyOf = function (code, key) {
+        if (!code && key) {
+            if (key.length === 1) {
+                var kc = key.toUpperCase().charCodeAt(0);
+                if (kc >= 32 && kc <= 126) return kc;
+            }
+            code = key;
+        }
         if (code.startsWith('Key') && code.length === 4) {
             var c = code.charCodeAt(3);
             if (c >= 65 && c <= 90) return c;
@@ -108,15 +115,22 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
             K.wheel += e.deltaY > 0 ? -1.0 : 1.0;
         });
         target.addEventListener('keydown', function (e) {
-            var k = keyOf(e.code);
+            var k = keyOf(e.code || "", e.key || "");
             if (k) {
                 if (!K.keysDown[k]) K.keysPressed.push(k);
                 K.keysDown[k] = 1;
+                if (k === 32 || (k >= 256 && k <= 269))
+                    e.preventDefault();
             }
         });
         target.addEventListener('keyup', function (e) {
-            var k = keyOf(e.code);
-            if (k) { delete K.keysDown[k]; K.keysReleased.push(k); }
+            var k = keyOf(e.code || "", e.key || "");
+            if (k) {
+                delete K.keysDown[k];
+                K.keysReleased.push(k);
+                if (k === 32 || (k >= 256 && k <= 269))
+                    e.preventDefault();
+            }
         });
         target.addEventListener('keypress', function (e) {
             if (e.key && e.key.length === 1)
@@ -131,6 +145,28 @@ EM_JS(void, js_canvas_resize, (int w, int h), {
     var K = globalThis.__kryCanvas;
     K.w = w; K.h = h;
     if (K.canvas) { K.canvas.width = w; K.canvas.height = h; }
+});
+
+EM_JS(void, js_canvas_set_cursor, (int cursor), {
+    var K = globalThis.__kryCanvas;
+    var canvas = K && K.canvas;
+    if (!canvas || !canvas.style) return;
+    var value = 'default';
+    switch (cursor) {
+    case 0: value = 'default'; break;
+    case 1: value = 'default'; break;
+    case 2: value = 'text'; break;
+    case 3: value = 'crosshair'; break;
+    case 4: value = 'pointer'; break;
+    case 5: value = 'ew-resize'; break;
+    case 6: value = 'ns-resize'; break;
+    case 7: value = 'nwse-resize'; break;
+    case 8: value = 'nesw-resize'; break;
+    case 9: value = 'move'; break;
+    case 10: value = 'not-allowed'; break;
+    default: value = 'default'; break;
+    }
+    canvas.style.cursor = value;
 });
 
 EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
@@ -308,7 +344,7 @@ Vector2 GetWindowScaleDPI(void)
 
 void SetMouseCursor(int cursor)
 {
-    (void)cursor;
+    js_canvas_set_cursor(cursor);
 }
 
 void SetTraceLogLevel(int logLevel)

@@ -105,12 +105,17 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int close_size = ScaleUIPx(28);
     int page_font = UI_TEXT_12;
     int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
+    int text_gap = ScaleUIPx(8);
+    int controls_gap = ScaleUIPx(12);
+    int max_tip_h;
     char page_text[32];
     UIParagraphSpec paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
     int y;
+    int text_clip_h;
+    int controls_y;
     int finish;
 
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
@@ -148,14 +153,21 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
 
     paragraph = (UIParagraphSpec){
         .text = guide.steps[step].text,
-        .width = tip_w - pad * 2 - close_size - ScaleUIPx(8),
+        .width = tip_w - pad * 2,
         .font = guide.paragraph_font,
         .line_gap = line_gap
     };
     paragraph_h = ui_paragraph_height(paragraph);
-    tip_h = pad + paragraph_h + ScaleUIPx(12) + button_size + pad;
+    tip_h = pad + close_size + text_gap + paragraph_h + controls_gap +
+            button_size + pad;
     if(tip_h < ScaleUIPx(112))
         tip_h = ScaleUIPx(112);
+    max_tip_h = view_h - guide.reserved_top - guide.reserved_bottom -
+                margin * 2;
+    if(max_tip_h < ScaleUIPx(112))
+        max_tip_h = view_h - margin * 2;
+    if(tip_h > max_tip_h)
+        tip_h = max_tip_h;
     tip = guide_tip_bounds(guide.steps[step].anchor, tip_w, tip_h, view_w, view_h,
                            guide.reserved_top, guide.reserved_bottom);
     SetUIModalCapture(tip);
@@ -183,13 +195,18 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
         return result;
     }
 
-    y = (int)tip.y + pad;
-    DrawUIParagraph(paragraph, (int)tip.x + pad, &y);
+    y = (int)tip.y + pad + close_size + text_gap;
+    controls_y = (int)tip.y + (int)tip.height - pad - button_size;
+    text_clip_h = controls_y - controls_gap - y;
+    if(text_clip_h > 0) {
+        BeginUIClip((int)tip.x + pad, y, paragraph.width, text_clip_h);
+        DrawUIParagraph(paragraph, (int)tip.x + pad, &y);
+        EndUIClip();
+    }
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
     DrawUIText(page_text, (int)tip.x + pad,
-                    (int)tip.y + (int)tip.height - pad - button_size +
-                        (button_size - page_font) / 2,
+                    controls_y + (button_size - page_font) / 2,
                     page_font, GetThemeText());
 
     finish = step >= guide.count - 1;
@@ -197,7 +214,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
         if(DrawUIIconButton((IconButtonProps){
                .bounds = {
                    tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8),
-                   tip.y + tip.height - pad - button_size,
+                   (float)controls_y,
                    (float)button_size,
                    (float)button_size
                },
@@ -213,7 +230,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     if(DrawUIIconButton((IconButtonProps){
            .bounds = {
                tip.x + tip.width - pad - button_size,
-               tip.y + tip.height - pad - button_size,
+               (float)controls_y,
                (float)button_size,
                (float)button_size
            },
