@@ -260,7 +260,7 @@ int RequestNotificationPermission(void)
 }
 
 int SendNotificationEx(const char *title, const char *body,
-                       const char *tag, int id, int priority)
+                       const char *tag, int id, NotificationPriority priority)
 {
     struct android_app *app = notify_app();
     JNIEnv *env;
