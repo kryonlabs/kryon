@@ -223,7 +223,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | `raylib` windows RGFW rule | GL 1.1 immediate mode | Windows | ✗ opt-in make rule | `KRYON_RAYLIB_WINDOWS_RULE` |
 | `raylib` android | GLES via NDK `NativeActivity` | Android (downstream Gradle) | ✗ downstream apps | `mk/android.mk` |
 | `null` | none (zero-return stubs) | all | ✗ (used by local headless tests) | Injected input still works |
-| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node call-sequence gate) | No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; audio null-grade |
+| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node graphics + audio smoke gates) | No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; WebAudio sound/music, PCM streams, callbacks/processors |
 
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)
 
@@ -243,8 +243,10 @@ declaration pass (`src/ui/ui_tree.c`).
   been pixel-verified in a real browser page (rounded rects, annulus ring
   segments, dual-color gradients, and full RGBA texture tinting all check
   out). Remaining limits: cross-app clipboard paste is unreachable through
-  the synchronous API (an in-app mirror handles round-trips), and browser
-  audio is not wired (audio calls are null-grade).
+  the synchronous API (an in-app mirror handles round-trips), WebAudio
+  playback depends on browser user-gesture unlock rules, and stream/mixed
+  processors apply to Canvas-managed stream buffers, not decoded browser
+  `AudioBuffer` playback that has already been handed to WebAudio.
 - `k2g` is at Go parity: the `Runtime` interface covers the full widget
   whitelist plus every widget family `go/kryui` itself exposes (controls,
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme

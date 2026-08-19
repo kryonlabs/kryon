@@ -78,7 +78,7 @@
             <tr><td><code>raylib</code> web</td><td>WebGL over GLFW3</td><td>Emscripten</td><td class="ok">Web builds</td><td class="ok">Shipping</td><td>Used by the normal web build path.</td></tr>
             <tr><td><code>raylib</code> Windows OpenGL</td><td>OpenGL 2.1</td><td>Windows</td><td class="ok">Release builds</td><td class="ok">Default Windows flavor</td><td>MinGW build path.</td></tr>
             <tr><td><code>raylib</code> Windows software</td><td>raylib software renderer</td><td>Windows</td><td class="ok">Release builds</td><td class="part">Secondary flavor</td><td>No-GPU fallback package flavor.</td></tr>
-            <tr><td><code>canvas</code></td><td>HTML5 Canvas2D via <code>EM_JS</code></td><td>Emscripten</td><td class="ok"><code>canvas-test</code></td><td class="part">Graphics usable; audio null-grade</td><td>No raylib; glyphs rasterized from FontFace data.</td></tr>
+            <tr><td><code>canvas</code></td><td>HTML5 Canvas2D via <code>EM_JS</code></td><td>Emscripten</td><td class="ok"><code>canvas-test</code></td><td class="ok">Graphics + WebAudio</td><td>No raylib; glyphs rasterized from FontFace data; sound/music, PCM streams, and stream processors.</td></tr>
             <tr><td><code>null</code></td><td>None</td><td>All</td><td class="part">Local headless usage</td><td class="part">Test backend</td><td>Zero-return stubs plus injected input.</td></tr>
             <tr><td><code>gtk</code> candidate</td><td>GTK/Cairo or GTK/GLArea</td><td>Linux desktops</td><td class="no">None</td><td class="no">Defer full surface</td><td>Too large for the current benefit; see decision above.</td></tr>
           </tbody>

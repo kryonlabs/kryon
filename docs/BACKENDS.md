@@ -35,7 +35,12 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   draw path), full RGBA tinting through cached multiply + destination-in
   composites per (texture, tint), text as glyph atlases rasterized from
   `FontFace` data, and input via the `KryonBackendRaw_*` hooks fed by JS
-  event listeners. The app's `while (!WindowShouldClose())` loop works
+  event listeners. Audio uses WebAudio for decoded sound/music buffers,
+  scheduled PCM streams, stream callbacks, and stream/mixed processors on
+  Canvas-managed stream buffers; wave export writes synchronously to MEMFS.
+  Encoded loaders rely on browser `decodeAudioData`, so Canvas web links use
+  `-sASYNCIFY`, and playback still follows normal browser user-gesture
+  unlock rules. The app's `while (!WindowShouldClose())` loop works
   because the build uses `-sASYNCIFY` and the frame end yields with
   `emscripten_sleep`. The clipboard keeps a mirror of the last written text
   (copy/paste round-trips in-app; the browser write is attempted
@@ -125,8 +130,8 @@ sites (~100 symbols); keep it in sync when adding surface usage. Grouped:
   `SetClipboardText`, `FileExists`, `DirectoryExists`, `GetDirectoryPath`,
   `MakeDirectory`, `LoadFileData/Text`, `UnloadFileData/Text`, `OpenURL`.
 - **Audio** (apps opt in; null-grade stubs are acceptable for UI-only
-  backends): `LoadSound`/`UnloadSound`/`PlaySound`, `SetSoundVolume/Pitch`,
-  music stream functions.
+  backends): `LoadSound`/`UnloadSound`/`PlaySound`, `SetSoundVolume/Pitch/Pan`,
+  music stream functions, and raw `AudioStream` update/playback functions.
 
 Everything else on the surface (3D, shaders, gestures, VR, ...) can be a
 zero-return stub exactly like the generated null backend.

@@ -214,7 +214,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test perf-text-input bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test perf-text-input bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test krb-web krb-sdl
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -249,6 +249,10 @@ $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 
 canvas-test:
 	sh tests/canvas_backend_test.sh
+	sh tests/canvas_audio_test.sh
+
+canvas-audio-test:
+	sh tests/canvas_audio_test.sh
 
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
 # blitted to ImageData (pixel-identical to the native headless renderer).

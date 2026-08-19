@@ -17,6 +17,9 @@ WEB_CFLAGS = -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_E
 WEB_SHELL = src/web_shell.html
 WEB_PUBLIC_FILES = $(wildcard manifest.json) $(shell find web-assets -type f 2>/dev/null)
 WEB_LDFLAGS = -sUSE_GLFW=3 -sFETCH=1 -sALLOW_MEMORY_GROWTH=1 -lidbfs.js --shell-file $(WEB_SHELL)
+ifeq ($(KRYON_BACKEND),canvas)
+  WEB_LDFLAGS += -sASYNCIFY
+endif
 
 $(WEB_RAYLIB_BUILD_DIR):
 	mkdir -p $@

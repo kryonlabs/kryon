@@ -189,7 +189,7 @@ li{margin:.25rem 0}
 <tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
 <tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
 <tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
-<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node call-sequence gate)</td><td class="">No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; audio null-grade</td></tr>
+<tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node graphics + audio smoke gates)</td><td class="">No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; WebAudio sound/music, PCM streams, callbacks/processors</td></tr>
 </table>
 <h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
 <table>
@@ -206,7 +206,7 @@ li{margin:.25rem 0}
 <ul>
 <li>The <code>canvas</code> Tier A backend passes its node call-sequence gate and has</li>
 </ul>
-<p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), and browser audio is not wired (audio calls are null-grade).</p>
+<p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), WebAudio playback depends on browser user-gesture unlock rules, and stream/mixed processors apply to Canvas-managed stream buffers, not decoded browser <code>AudioBuffer</code> playback that has already been handed to WebAudio.</p>
 <ul>
 <li><code>k2g</code> is at Go parity: the <code>Runtime</code> interface covers the full widget</li>
 </ul>
