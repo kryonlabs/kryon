@@ -197,7 +197,16 @@ func DrawUIBadge(props UIBadgeProps) Rectangle {
 	if radius == 0 {
 		radius = tokens.ControlRadius
 	}
-	bounds := MeasureUIBadge(props)
+	bounds := props.Bounds
+	if bounds.Width == 0 || bounds.Height == 0 {
+		measured := MeasureUIBadge(props)
+		if bounds.Width == 0 {
+			bounds.Width = measured.Width
+		}
+		if bounds.Height == 0 {
+			bounds.Height = measured.Height
+		}
+	}
 	drawUIRoundedFill(bounds, radius, background)
 	DrawUIText(props.Label, int32(bounds.X)+padX, int32(bounds.Y)+padY, font, text)
 	return bounds
