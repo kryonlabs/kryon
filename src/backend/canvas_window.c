@@ -149,8 +149,8 @@ EM_JS(void, js_canvas_resize, (int w, int h), {
 
 EM_JS(void, js_canvas_set_cursor, (int cursor), {
     var K = globalThis.__kryCanvas;
+    if (!K) return;
     var canvas = K && K.canvas;
-    if (!canvas || !canvas.style) return;
     var value = 'default';
     switch (cursor) {
     case 0: value = 'default'; break;
@@ -166,7 +166,16 @@ EM_JS(void, js_canvas_set_cursor, (int cursor), {
     case 10: value = 'not-allowed'; break;
     default: value = 'default'; break;
     }
-    canvas.style.cursor = value;
+    K.cursor = value;
+    var apply = function (node) {
+        if (node && node.style) node.style.cursor = value;
+    };
+    apply(canvas);
+    apply(canvas && canvas.parentElement);
+    if (typeof document !== 'undefined') {
+        apply(document.body);
+        apply(document.documentElement);
+    }
 });
 
 EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
