@@ -56,9 +56,9 @@ KryUpdateChannel kry_update_detect_channel(void);
 /* Stable display name ("AppImage", "Flatpak", ...). Never NULL. */
 const char *kry_update_channel_name(KryUpdateChannel channel);
 
-/* Appcast key the running channel should download from ("appimage",
- * "windows"), or NULL when the OS owns updates for this channel
- * (package managers, snap, flatpak, source builds). */
+/* Appcast key the running channel should download from — "appimage-<arch>"
+ * (AppImages are per-arch) or "windows" — or NULL when the OS owns updates
+ * for this channel (package managers, snap, flatpak, source builds). */
 const char *kry_update_channel_key(KryUpdateChannel channel);
 
 /* --- versions ----------------------------------------------------------- */

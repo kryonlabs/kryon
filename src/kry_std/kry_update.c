@@ -90,7 +90,17 @@ const char *
 kry_update_channel_key(KryUpdateChannel channel)
 {
     switch(channel) {
-    case KRY_UPDATE_CHANNEL_APPIMAGE:         return "appimage";
+    case KRY_UPDATE_CHANNEL_APPIMAGE:
+        /* AppImages are per-arch, so the appcast key carries the arch:
+         * "appimage-amd64", "appimage-arm64". Windows zips bundle every
+         * arch exe, so that key stays bare. */
+#if defined(__aarch64__) || defined(_M_ARM64)
+        return "appimage-arm64";
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+        return "appimage-amd64";
+#else
+        return "appimage";
+#endif
     case KRY_UPDATE_CHANNEL_WINDOWS_PORTABLE: return "windows";
     case KRY_UPDATE_CHANNEL_SNAP:
     case KRY_UPDATE_CHANNEL_FLATPAK:

@@ -36,7 +36,7 @@ func TestUpdateFlowLifecycle(t *testing.T) {
 	}
 	digest := sha256.Sum256(payload)
 	appcast := fmt.Sprintf(`{"version":"9.9.9","notes_url":"https://x/rel",`+
-		`"channels":{"appimage":{"url":"file://%s","sha256":"%s","size":%d}}}`,
+		`"channels":{"appimage-amd64":{"url":"file://%s","sha256":"%s","size":%d}}}`,
 		artifact, hex.EncodeToString(digest[:]), len(payload))
 	appcastPath := filepath.Join(dir, "appcast.json")
 	if err := os.WriteFile(appcastPath, []byte(appcast), 0o644); err != nil {

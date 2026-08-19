@@ -31,7 +31,7 @@ static const char *NEWER_APPCAST =
     "  \"notes\": \"Breath pattern fixes.\",\n"
     "  \"notes_url\": \"https://github.com/waozixyz/inbe/releases/tag/v1.9.5\",\n"
     "  \"channels\": {\n"
-    "    \"appimage\": {\"url\": \"https://x/inbe.AppImage\", \"sha256\": \"aa\", \"size\": 123},\n"
+    "    \"appimage-amd64\": {\"url\": \"https://x/inbe.AppImage\", \"sha256\": \"aa\", \"size\": 123},\n"
     "    \"windows\": {\"url\": \"https://x/inbe.zip\", \"sha256\": \"bb\"},\n"
     "    \"deb\": {\"url\": \"https://x/inbe.deb\"}\n"
     "  }\n"
@@ -98,7 +98,7 @@ test_appcast_parse(void)
     CHECK(strncmp(info.notes_url, "https://github.com/waozixyz/inbe", 31) == 0);
     CHECK(info.channel_count == 3);
 
-    ch = kry_update_find_channel(&info, "appimage");
+    ch = kry_update_find_channel(&info, "appimage-amd64");
     CHECK(ch != NULL);
     if(ch != NULL) {
         CHECK(strcmp(ch->url, "https://x/inbe.AppImage") == 0);
@@ -135,7 +135,7 @@ test_channel_detect(void)
     got = kry_update_detect_channel();
     CHECK(got == KRY_UPDATE_CHANNEL_APPIMAGE);
     CHECK(strcmp(kry_update_channel_name(got), "AppImage") == 0);
-    CHECK(strcmp(kry_update_channel_key(got), "appimage") == 0);
+    CHECK(strcmp(kry_update_channel_key(got), "appimage-amd64") == 0);
 
     unsetenv("APPIMAGE");
     setenv("SNAP", "/snap/inbe/123", 1);
@@ -175,7 +175,7 @@ test_check_file_appcast(void)
     CHECK(info != NULL);
     if(info != NULL) {
         CHECK(strcmp(info->version, "1.9.5") == 0);
-        CHECK(kry_update_find_channel(info, "appimage") != NULL);
+        CHECK(kry_update_find_channel(info, "appimage-amd64") != NULL);
     }
     CHECK(kry_update_error(c) == NULL);
     kry_update_free(c);

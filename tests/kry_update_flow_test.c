@@ -48,7 +48,7 @@ write_file(const char *path, const char *content)
 static const char *APPCAST_FMT =
     "{\"version\":\"9.9.9\",\"date\":\"2026-08-19\",\"notes\":\"n\","
     "\"notes_url\":\"https://x/release\","
-    "\"channels\":{\"appimage\":{\"url\":\"file://%s/artifact.bin\","
+    "\"channels\":{\"appimage-amd64\":{\"url\":\"file://%s/artifact.bin\","
     "\"sha256\":\"%s\",\"size\":%d}}}";
 
 int
