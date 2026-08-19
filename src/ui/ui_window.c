@@ -855,6 +855,11 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
                 window->drag_active = 1;
                 window->drag_release_seen = 0;
                 window->dragged = 0;
+                /* Baseline the drag at the true press position; starting
+                 * it at the first pump frame would swallow any motion
+                 * between press and pump. */
+                window->drag_last_gx = window->x + event->button.x;
+                window->drag_last_gy = window->y + event->button.y;
             } else if(event->type == SDL_MOUSEBUTTONUP) {
                 if(window->drag_active &&
                    event->button.button == SDL_BUTTON_LEFT)
@@ -1154,8 +1159,6 @@ PumpUIWindows(void)
             ui_window_drag_captured = 1;
             SDL_CaptureMouse(SDL_TRUE);
             SDL_GetWindowPosition(window->window, &window->x, &window->y);
-            SDL_GetGlobalMouseState(&window->drag_last_gx,
-                                    &window->drag_last_gy);
         }
         {
             int gx = 0, gy = 0;
