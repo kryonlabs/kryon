@@ -199,6 +199,7 @@ UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 UI_WINDOW_TEST = $(BUILD_DIR)/tests/ui_window_test
 UI_WINDOW_SDL_CHECK = $(BUILD_DIR)/check/ui_window_sdl.o
 TEXT_INPUT_PERF_TEST = $(BUILD_DIR)/tests/text_input_perf_test
+TEXT_INPUT_PRECISION_TEST = $(BUILD_DIR)/tests/text_input_precision_test
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
@@ -215,7 +216,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test perf-text-input bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test krb-web krb-sdl
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -280,6 +281,8 @@ docs-site:
 	sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
+	test -f $(SITE_BUILD_DIR)/language.html
+	test -f $(SITE_BUILD_DIR)/benchmarks.html
 	test -f $(SITE_BUILD_DIR)/matrices.html
 	test -f $(SITE_BUILD_DIR)/renderers.html
 
@@ -596,8 +599,20 @@ $(TEXT_INPUT_PERF_TEST): tests/text_input_perf_test.c $(LIB) $(KRYON_BACKEND_LIB
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-perf-text-input: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST)
+$(TEXT_INPUT_PRECISION_TEST): tests/text_input_precision_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/text_input_precision_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+perf-text-input: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
 	sh tests/text_input_perf.sh . $(BUILD_DIR)
+	$(TEXT_INPUT_PRECISION_TEST)
+
+perf-text-input-site: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
+	mkdir -p $(BUILD_DIR)
+	{ sh tests/text_input_perf.sh . $(BUILD_DIR); $(TEXT_INPUT_PRECISION_TEST); } | tee $(BUILD_DIR)/text-input-perf.jsonl
+	python3 scripts/render_benchmarks.py docs/site/benchmarks.json $(BUILD_DIR)/text-input-perf.jsonl
 
 $(SCENE_TREE_TEST): tests/scene_tree_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

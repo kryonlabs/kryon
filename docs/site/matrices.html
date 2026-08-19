@@ -25,6 +25,7 @@
       <nav class="header-nav" id="header-nav" aria-label="Primary">
         <a href="index.html#features">Features</a>
         <a href="index.html#platforms">Platforms</a>
+        <a href="language.html">Language</a>
         <a href="matrices.html">Matrices</a>
         <a href="renderers.html">Renderers</a>
         <a href="/api">API</a>
@@ -38,7 +39,7 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Capability Matrices</p>
       <h1>Widgets and language support</h1>
-      <p class="section-lead">A compact view of what Kryon supports through C, <code>.kry</code> lowering, Go generation, hand-written Go, and KRB cartridges.</p>
+      <p class="section-lead">A compact view of what Kryon supports through C, <code>.kry</code> lowering, Go generation, hand-written Go, and KRB cartridges. See the <a href="language.html">language reference</a> for syntax and lowering rules.</p>
       <div class="matrix-legend">
         <span class="status ok">Available</span>
         <span class="status part">Partial</span>
@@ -66,6 +67,9 @@
         <table class="matrix-table">
           <thead><tr><th>Feature</th><th>C</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
+            <tr><td><code>#run</code> integer constants</td><td class="ok">Frontend folded</td><td class="ok">Known constants only</td><td class="ok">Known constants only</td></tr>
+            <tr><td><code>#assert</code></td><td class="ok">Native <code>#if/#error</code></td><td class="part">Known true only</td><td class="part">Known true only</td></tr>
+            <tr><td>Structured expression KIR</td><td class="part">Stored, raw text still lowered</td><td class="part">Stored, raw text still lowered</td><td class="part">Stored, subset lowered</td></tr>
             <tr><td>Theming</td><td class="ok">6 palettes, light/dark, scopes, vars</td><td class="ok">Theme control APIs</td><td class="part">Theme color slots</td></tr>
             <tr><td>Style tokens</td><td class="ok">Radius, border, shadow, style presets</td><td class="ok">Get/set token API</td><td class="no">No token model</td></tr>
             <tr><td>Text/fonts</td><td class="part">Fallback fonts; no shaping, bidi, or IME</td><td class="ok">Font registry and input queue</td><td class="part">font8x8 or KFA1 atlas</td></tr>

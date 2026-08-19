@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Benchmarks</title>
+  <meta name="description" content="Kryon compiler and runtime benchmark summaries generated from checked performance harnesses.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kryonlabs.com/benchmarks.html">
+  <meta property="og:title" content="Kryon Benchmarks">
+  <meta property="og:description" content="Text-input latency and lowering benchmark summaries for Kryon.">
+  <meta name="theme-color" content="#f3f1ea">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/kryon.png">
+  <link rel="apple-touch-icon" href="icons/kryon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html#top">
+        <img src="icons/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
+      <nav class="header-nav" id="header-nav" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="language.html">Language</a>
+        <a href="matrices.html">Matrices</a>
+        <a href="renderers.html">Renderers</a>
+        <a href="/api">API</a>
+        <a href="ide.html">Web IDE</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="doc-hero">
+      <p class="section-eyebrow">Runtime Evidence</p>
+      <h1>Benchmarks</h1>
+      <p class="section-lead">The text-input harnesses measure one full retained UI frame per interaction: declare, reconcile, layout, route, and update. Rendering is GPU-side and not included in headless timings.</p>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Text Input</p>
+      <h2>Latest Generated Results</h2>
+      <p>Generate this page's data with:</p>
+<pre><code>make perf-text-input-site</code></pre>
+      <div class="table-wrap">
+        <table class="matrix-table" id="benchmark-table">
+          <thead>
+            <tr><th>Benchmark</th><th>Scenario</th><th>Samples</th><th>p50</th><th>p95</th><th>p99</th><th>Max</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="8">Loading <code>benchmarks.json</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p id="benchmark-meta"></p>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Contracts</p>
+      <h2>What The Harness Covers</h2>
+      <ul class="link-list">
+        <li><strong>Lowering:</strong> <code>perf-text-input</code> validates KIR, C, Go, and KRB outputs for the same <code>.kry</code> source.</li>
+        <li><strong>Retained typing:</strong> <code>text_input_perf_test</code> checks repeated keystroke frames under the retained UI core.</li>
+        <li><strong>Precision path:</strong> <code>text_input_precision_test</code> focuses random fields, sends one character or backspace, and verifies the edited text after each frame.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Kryon Labs &middot; <a href="index.html">Home</a> &middot; <a href="language.html">Language</a> &middot; <a href="matrices.html">Matrices</a></p>
+    </div>
+  </footer>
+  <script src="highlight.js"></script>
+  <script>
+    (function() {
+      var toggle = document.querySelector(".menu-toggle");
+      var nav = document.getElementById("header-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", function() {
+          var open = nav.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      }
+
+      function fmt(v) {
+        return typeof v === "number" ? v.toFixed(3) + " us" : "";
+      }
+
+      fetch("benchmarks.json").then(function(r) {
+        if (!r.ok) throw new Error("missing benchmarks.json");
+        return r.json();
+      }).then(function(doc) {
+        var body = document.querySelector("#benchmark-table tbody");
+        var meta = document.getElementById("benchmark-meta");
+        body.innerHTML = "";
+        (doc.runs || []).forEach(function(run) {
+          var tr = document.createElement("tr");
+          var notes = [];
+          if (run.generated_contract) notes.push(run.generated_contract);
+          if (typeof run.mismatches === "number") notes.push("mismatches " + run.mismatches);
+          if (typeof run.focus_misses === "number") notes.push("focus misses " + run.focus_misses);
+          tr.innerHTML = "<td>" + (run.benchmark || "lowering") + "</td>" +
+            "<td>" + (run.scenario || run.generated_lowerings || "-") + "</td>" +
+            "<td>" + (run.samples || "-") + "</td>" +
+            "<td>" + fmt(run.p50_us) + "</td>" +
+            "<td>" + fmt(run.p95_us) + "</td>" +
+            "<td>" + fmt(run.p99_us) + "</td>" +
+            "<td>" + fmt(run.max_us) + "</td>" +
+            "<td>" + notes.join(", ") + "</td>";
+          body.appendChild(tr);
+        });
+        meta.textContent = doc.generated ? "Generated " + doc.generated + ". " + (doc.what || "") : "";
+      }).catch(function() {
+        var body = document.querySelector("#benchmark-table tbody");
+        body.innerHTML = "<tr><td colspan=\"8\">No generated benchmark data is checked in yet. Run <code>make perf-text-input-site</code> to create <code>docs/site/benchmarks.json</code>.</td></tr>";
+      });
+    })();
+  </script>
+</body>
+</html>
