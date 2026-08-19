@@ -1123,9 +1123,18 @@ StealUICoreWindowClose(void)
     return pending;
 }
 
+/* While a drag is active the mouse is captured, so motion keeps arriving
+ * even when the pointer briefly outruns the small overlay window, and the
+ * window position is read from SDL exactly once per drag - per-frame
+ * position round-trips stall the frame loop and make the window visibly
+ * trail the pointer. */
+static int ui_window_drag_captured;
+
 void
 PumpUIWindows(void)
 {
+    int any_drag = 0;
+
     if(ui_window_core_close_pending) {
         SDL_Event quit;
 
@@ -1139,20 +1148,28 @@ PumpUIWindows(void)
 
         if(window == NULL || !window->drag_active)
             continue;
+        any_drag = 1;
+        if(!ui_window_drag_captured) {
+            ui_window_drag_captured = 1;
+            SDL_CaptureMouse(SDL_TRUE);
+            SDL_GetWindowPosition(window->window, &window->x, &window->y);
+        }
         if(window->drag_pending_dx != 0 || window->drag_pending_dy != 0) {
             int dx = window->drag_pending_dx;
             int dy = window->drag_pending_dy;
 
             window->drag_pending_dx = 0;
             window->drag_pending_dy = 0;
-            SDL_GetWindowPosition(window->window, &window->x, &window->y);
-            SDL_SetWindowPosition(window->window, window->x + dx,
-                                  window->y + dy);
             window->x += dx;
             window->y += dy;
+            SDL_SetWindowPosition(window->window, window->x, window->y);
             if(dx * dx + dy * dy > 9)
                 window->dragged = 1;
         }
+    }
+    if(ui_window_drag_captured && !any_drag) {
+        ui_window_drag_captured = 0;
+        SDL_CaptureMouse(SDL_FALSE);
     }
 }
 
