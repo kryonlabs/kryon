@@ -663,6 +663,12 @@ PumpUIWindows(void)
 {
 }
 
+int
+StealUICoreWindowClose(void)
+{
+    return 0;
+}
+
 #elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
                                    * on Wayland, Windows, and macOS. */
 
@@ -1108,16 +1114,25 @@ GetUIWindowPosition(UIWindow *window, int *x, int *y)
 /* Apply state the event watch recorded (drag motion, core-window close
  * requests) from the frame loop, where calling into SDL is safe. Called
  * once per frame by SetUIFrame. */
+int
+StealUICoreWindowClose(void)
+{
+    int pending = ui_window_core_close_pending;
+
+    ui_window_core_close_pending = 0;
+    return pending;
+}
+
 void
 PumpUIWindows(void)
 {
     if(ui_window_core_close_pending) {
         SDL_Event quit;
 
-        ui_window_core_close_pending = 0;
         SDL_zero(quit);
         quit.type = SDL_QUIT;
         SDL_PushEvent(&quit);
+        ui_window_core_close_pending = 0;
     }
     for(int i = 0; i < ui_window_count; i++) {
         UIWindow *window = ui_windows[i];
@@ -1202,6 +1217,12 @@ IsUIWindowDragged(UIWindow *window)
 void
 PumpUIWindows(void)
 {
+}
+
+int
+StealUICoreWindowClose(void)
+{
+    return 0;
 }
 
 void
