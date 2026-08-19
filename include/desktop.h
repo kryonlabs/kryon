@@ -20,6 +20,11 @@ typedef struct DesktopAppInfo {
     int single_instance;
 } DesktopAppInfo;
 
+typedef enum DesktopSingleInstanceMode {
+    DESKTOP_SINGLE_INSTANCE_REJECT = 0,
+    DESKTOP_SINGLE_INSTANCE_REPLACE = 1
+} DesktopSingleInstanceMode;
+
 typedef enum DesktopOpenEventKind {
     DESKTOP_OPEN_NONE = 0,
     DESKTOP_OPEN_FILE,
@@ -42,6 +47,9 @@ int GetDesktopCacheDir(char *out, int cap);
  * it, and -1 when the lock could not be created. The lock is held until
  * ReleaseDesktopSingleInstance() or process exit. */
 int AcquireDesktopSingleInstance(const char *app_id, char *lock_path, int cap);
+int AcquireDesktopSingleInstanceMode(const char *app_id,
+                                     DesktopSingleInstanceMode mode,
+                                     char *lock_path, int cap);
 void ReleaseDesktopSingleInstance(void);
 
 int QueueDesktopOpenPath(const char *path_or_url);

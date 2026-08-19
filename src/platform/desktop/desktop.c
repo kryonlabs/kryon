@@ -17,6 +17,7 @@
 #if !defined(_WIN32)
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <unistd.h>
 #endif
 
@@ -184,15 +185,112 @@ int GetDesktopCacheDir(char *out, int cap)
 int
 AcquireDesktopSingleInstance(const char *app_id, char *lock_path, int cap)
 {
+    return AcquireDesktopSingleInstanceMode(app_id,
+                                            DESKTOP_SINGLE_INSTANCE_REJECT,
+                                            lock_path, cap);
+}
+
+static int
+desktop_read_lock_pid(int fd)
+{
 #if defined(_WIN32)
-    (void)app_id; (void)lock_path; (void)cap;
+    (void)fd;
+    return 0;
+#else
+    char buf[64];
+    ssize_t n;
+    long pid = 0;
+
+    if(fd < 0)
+        return 0;
+    if(lseek(fd, 0, SEEK_SET) < 0)
+        return 0;
+    n = read(fd, buf, sizeof(buf) - 1);
+    if(n <= 0)
+        return 0;
+    buf[n] = '\0';
+    if(sscanf(buf, "%ld", &pid) != 1 || pid <= 1)
+        return 0;
+    return (int)pid;
+#endif
+}
+
+static void
+desktop_write_lock_pid(int fd)
+{
+#if defined(_WIN32)
+    (void)fd;
+#else
+    char buf[64];
+    int len;
+
+    if(fd < 0)
+        return;
+    len = snprintf(buf, sizeof(buf), "%ld\n", (long)getpid());
+    if(len <= 0)
+        return;
+    (void)ftruncate(fd, 0);
+    (void)lseek(fd, 0, SEEK_SET);
+    (void)write(fd, buf, (size_t)len);
+#endif
+}
+
+static int
+desktop_try_lock_fd(int fd)
+{
+#if defined(_WIN32)
+    (void)fd;
+    return -1;
+#else
+    struct flock lock;
+
+    if(fd < 0)
+        return -1;
+    memset(&lock, 0, sizeof(lock));
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    if(fcntl(fd, F_SETLK, &lock) != 0)
+        return (errno == EACCES || errno == EAGAIN) ? 0 : -1;
+    desktop_write_lock_pid(fd);
+    return 1;
+#endif
+}
+
+static void
+desktop_replace_lock_owner(int fd)
+{
+#if defined(_WIN32)
+    (void)fd;
+#else
+    int pid = desktop_read_lock_pid(fd);
+
+    if(pid <= 1 || kill((pid_t)pid, 0) != 0)
+        return;
+    kill((pid_t)pid, SIGTERM);
+    for(int i = 0; i < 50; i++) {
+        if(kill((pid_t)pid, 0) != 0)
+            return;
+        usleep(100 * 1000);
+    }
+    if(kill((pid_t)pid, 0) == 0)
+        kill((pid_t)pid, SIGKILL);
+#endif
+}
+
+int
+AcquireDesktopSingleInstanceMode(const char *app_id,
+                                 DesktopSingleInstanceMode mode,
+                                 char *lock_path, int cap)
+{
+#if defined(_WIN32)
+    (void)app_id; (void)mode; (void)lock_path; (void)cap;
     return -1;
 #else
     const char *runtime;
     const char *id;
     char dir[DESKTOP_PATH_MAX];
     char path[DESKTOP_PATH_MAX];
-    struct flock lock;
+    int result;
 
     if(g_instance_fd >= 0)
         return 1;
@@ -223,13 +321,15 @@ AcquireDesktopSingleInstance(const char *app_id, char *lock_path, int cap)
     g_instance_fd = open(path, O_RDWR | O_CREAT, 0600);
     if(g_instance_fd < 0)
         return -1;
-    memset(&lock, 0, sizeof(lock));
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    if(fcntl(g_instance_fd, F_SETLK, &lock) != 0) {
+    result = desktop_try_lock_fd(g_instance_fd);
+    if(result == 0 && mode == DESKTOP_SINGLE_INSTANCE_REPLACE) {
+        desktop_replace_lock_owner(g_instance_fd);
+        result = desktop_try_lock_fd(g_instance_fd);
+    }
+    if(result != 1) {
         close(g_instance_fd);
         g_instance_fd = -1;
-        return (errno == EACCES || errno == EAGAIN) ? 0 : -1;
+        return result;
     }
     return 1;
 #endif
