@@ -36,14 +36,19 @@ func TabBar(bounds Rectangle, labels []string, selected *int32, scrollOffset *in
 	if scrollOffset != nil {
 		scroll = (*C.int)(unsafe.Pointer(scrollOffset))
 	}
-	clicked := C.DrawUITabBar(C.TabBarProps{
-		bounds:        bounds.toC(),
-		tabs:          &tabs[0],
-		count:         C.int(len(tabs)),
-		selected_index: sel,
-		font:          0,
-		scroll_offset: scroll,
-	})
+	props := C.TabBarProps{}
+	props.bounds = bounds.toC()
+	props.tabs = &tabs[0]
+	props.count = C.int(len(tabs))
+	props.selected_index = sel
+	props.font = 0
+	props.min_tab_width = 0
+	props.max_tab_width = 0
+	props.scroll_offset = scroll
+	props.focus_selected = 0
+	props.closed_index = nil
+	props.double_clicked_index = nil
+	clicked := C.DrawUITabBar(props)
 	if clicked >= 0 {
 		*selected = int32(clicked)
 	}

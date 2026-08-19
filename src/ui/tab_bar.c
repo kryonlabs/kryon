@@ -84,8 +84,10 @@ DrawUITabBar(TabBarProps bar)
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
     int tab_gap = ScaleUIPx(4);
-    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : ScaleUIPx(120);
-    int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
+    int default_min_tab_w = ui_material_style() ? ScaleUIPx(72) : ScaleUIPx(120);
+    int default_max_tab_w = ui_material_style() ? ScaleUIPx(168) : default_min_tab_w;
+    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
+    int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
     int cues = UITransitionCuesEnabled();
     static int default_scroll_offset = 0;
@@ -118,7 +120,7 @@ DrawUITabBar(TabBarProps bar)
         icon_tab_w = max_tab_w;
 
     if(ui_material_style())
-        tab_gap = 0;
+        tab_gap = ScaleUIPx(6);
 
     // Calculate if scrolling is needed
     int total_gap_w = tab_gap * (bar.count - 1);
@@ -126,7 +128,7 @@ DrawUITabBar(TabBarProps bar)
     for(int i = 0; i < bar.count; i++)
         total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
     int needs_scroll = total_tabs_w > bar_w;
-    int equal_tabs = ui_material_style() && !needs_scroll;
+    int equal_tabs = 0;
 
     // Set scroll offset
     if(*scroll_offset < 0)
@@ -189,8 +191,8 @@ DrawUITabBar(TabBarProps bar)
                                         is_hovered, 0,
                                         is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
             if(is_selected) {
-                if(indicator_w > tab_w - ScaleUIPx(8))
-                    indicator_w = tab_w - ScaleUIPx(8);
+                if(indicator_w > tab_w - ScaleUIPx(24))
+                    indicator_w = tab_w - ScaleUIPx(24);
                 if(indicator_w > 0) {
                     indicator_x = tab_x + (tab_w - indicator_w) / 2;
                     DrawRectangleRounded((Rectangle){(float)indicator_x,
