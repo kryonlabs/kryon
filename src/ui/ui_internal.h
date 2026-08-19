@@ -3,6 +3,7 @@
 
 #include "ui.h"
 #include "ui_clip.h"
+#include "ui_window.h"
 #include "ui_dpi.h"
 #include "kryon.h"
 #include "ui_text_layout.h"

@@ -64,6 +64,11 @@ int IsUIWindowRightClicked(UIWindow *window);
  * click. */
 int IsUIWindowDragged(UIWindow *window);
 
+/* Once-per-frame pump for the window system: applies drag motion recorded
+ * by the SDL event watch and bridges core-window close requests. Called
+ * by SetUIFrame; a no-op on backends that need no pumping. */
+void PumpUIWindows(void);
+
 /* Current window position (top-left, screen coordinates). */
 void GetUIWindowPosition(UIWindow *window, int *x, int *y);
 

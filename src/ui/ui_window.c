@@ -657,6 +657,12 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
         *y = window != NULL ? window->click_y : -1;
 }
 
+/* The Xlib path polls its windows inside EndUIWindow; nothing to pump. */
+void
+PumpUIWindows(void)
+{
+}
+
 #elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
                                    * on Wayland, Windows, and macOS. */
 
@@ -688,6 +694,14 @@ struct UIWindow {
     int right_clicked;
     int click_x;
     int click_y;
+    int x, y;                   /* current window position (kept by drag) */
+    /* Borderless windows have no title bar, so dragging is app-side: the
+     * event watch records press/motion/release, and PumpUIWindows applies
+     * the move from the frame loop where calling into SDL is safe. */
+    int drag_active;
+    int drag_pending_dx;
+    int drag_pending_dy;
+    int dragged;
 };
 
 static UIWindow **ui_windows;
@@ -795,26 +809,66 @@ ui_window_present(UIWindow *window)
 }
 #endif
 
-/* raylib owns SDL's normal event pump.  An event watch sees secondary-window
- * pointer events without consuming the core window's events. */
+/* raylib owns SDL's normal event pump. An event watch sees secondary-window
+ * pointer events without consuming the core window's events. The watch only
+ * records plain state: it can run inside SDL's event pump, where calling
+ * back into SDL (moving windows, pushing events) is not safe. PumpUIWindows
+ * applies the recorded state from the frame loop. */
+static int ui_window_core_close_pending;
+
 static int
 ui_window_event_watch(void *userdata, SDL_Event *event)
 {
+    Uint32 window_id = 0;
+
     (void)userdata;
-    if(event == NULL || event->type != SDL_MOUSEBUTTONUP)
+    if(event == NULL)
         return 1;
-    for(int i = 0; i < ui_window_count; i++) {
-        UIWindow *window = ui_windows[i];
-        if(window == NULL || window->window_id != event->button.windowID)
-            continue;
-        window->click_x = event->button.x;
-        window->click_y = event->button.y;
-        if(event->button.button == SDL_BUTTON_RIGHT)
-            window->right_clicked = 1;
-        else if(event->button.button == SDL_BUTTON_LEFT)
-            window->clicked = 1;
-        break;
+
+    if(event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
+        window_id = event->button.windowID;
+    else if(event->type == SDL_MOUSEMOTION)
+        window_id = event->motion.windowID;
+    else if(event->type == SDL_WINDOWEVENT &&
+            event->window.event == SDL_WINDOWEVENT_CLOSE)
+        window_id = event->window.windowID;
+
+    if(window_id != 0) {
+        for(int i = 0; i < ui_window_count; i++) {
+            UIWindow *window = ui_windows[i];
+            if(window == NULL || window->window_id != window_id)
+                continue;
+            if(event->type == SDL_WINDOWEVENT) {
+                /* Closing an overlay is not the app quitting; swallow it so
+                 * the core-window bridge below never fires for our windows. */
+            } else if(event->type == SDL_MOUSEBUTTONDOWN &&
+                      event->button.button == SDL_BUTTON_LEFT) {
+                window->drag_active = 1;
+                window->drag_pending_dx = 0;
+                window->drag_pending_dy = 0;
+                window->dragged = 0;
+            } else if(event->type == SDL_MOUSEMOTION && window->drag_active) {
+                window->drag_pending_dx += event->motion.xrel;
+                window->drag_pending_dy += event->motion.yrel;
+            } else if(event->type == SDL_MOUSEBUTTONUP) {
+                window->drag_active = 0;
+                window->click_x = event->button.x;
+                window->click_y = event->button.y;
+                if(event->button.button == SDL_BUTTON_RIGHT)
+                    window->right_clicked = 1;
+                else if(event->button.button == SDL_BUTTON_LEFT)
+                    window->clicked = 1;
+            }
+            return 1;
+        }
     }
+
+    /* SDL2 reports the core window's close request (X button, Alt+F4, WM
+     * delete) as SDL_WINDOWEVENT_CLOSE; raylib's SDL backend only latches
+     * SDL_QUIT, so without a bridge the close button does nothing. */
+    if(event->type == SDL_WINDOWEVENT &&
+       event->window.event == SDL_WINDOWEVENT_CLOSE)
+        ui_window_core_close_pending = 1;
     return 1;
 }
 
@@ -941,6 +995,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
         return NULL;
     }
     SDL_ShowWindow(win->window);
+    SDL_GetWindowPosition(win->window, &win->x, &win->y);
     return win;
 }
 
@@ -1031,18 +1086,59 @@ IsUIWindowRightClicked(UIWindow *window)
 int
 IsUIWindowDragged(UIWindow *window)
 {
-    (void)window;
-    return 0;
+    if(window == NULL || !window->dragged)
+        return 0;
+    window->dragged = 0;
+    /* Swallow the click that started the drag so it is not also reported
+     * as a plain click. */
+    window->clicked = 0;
+    window->right_clicked = 0;
+    return 1;
 }
 
 void
 GetUIWindowPosition(UIWindow *window, int *x, int *y)
 {
     if(x != NULL)
-        *x = 0;
+        *x = window != NULL ? window->x : 0;
     if(y != NULL)
-        *y = 0;
-    (void)window;
+        *y = window != NULL ? window->y : 0;
+}
+
+/* Apply state the event watch recorded (drag motion, core-window close
+ * requests) from the frame loop, where calling into SDL is safe. Called
+ * once per frame by SetUIFrame. */
+void
+PumpUIWindows(void)
+{
+    if(ui_window_core_close_pending) {
+        SDL_Event quit;
+
+        ui_window_core_close_pending = 0;
+        SDL_zero(quit);
+        quit.type = SDL_QUIT;
+        SDL_PushEvent(&quit);
+    }
+    for(int i = 0; i < ui_window_count; i++) {
+        UIWindow *window = ui_windows[i];
+
+        if(window == NULL || !window->drag_active)
+            continue;
+        if(window->drag_pending_dx != 0 || window->drag_pending_dy != 0) {
+            int dx = window->drag_pending_dx;
+            int dy = window->drag_pending_dy;
+
+            window->drag_pending_dx = 0;
+            window->drag_pending_dy = 0;
+            SDL_GetWindowPosition(window->window, &window->x, &window->y);
+            SDL_SetWindowPosition(window->window, window->x + dx,
+                                  window->y + dy);
+            window->x += dx;
+            window->y += dy;
+            if(dx * dx + dy * dy > 9)
+                window->dragged = 1;
+        }
+    }
 }
 
 void
@@ -1101,6 +1197,11 @@ IsUIWindowDragged(UIWindow *window)
 {
     (void)window;
     return 0;
+}
+
+void
+PumpUIWindows(void)
+{
 }
 
 void
