@@ -260,6 +260,10 @@ func DrawRectangleRounded(r Rectangle, roundness float32, segments int32, c Colo
 	C.DrawRectangleRounded(r.toC(), C.float(roundness), C.int(segments), c.toC())
 }
 
+func DrawRectangleRoundedLinesEx(r Rectangle, roundness float32, segments int32, thickness float32, c Color) {
+	C.DrawRectangleRoundedLinesEx(r.toC(), C.float(roundness), C.int(segments), C.float(thickness), c.toC())
+}
+
 func DrawRectangleGradientH(x, y, w, h int32, left, right Color) {
 	C.DrawRectangleGradientH(C.int(x), C.int(y), C.int(w), C.int(h), left.toC(), right.toC())
 }
@@ -274,6 +278,16 @@ func DrawLine(startX, startY, endX, endY int32, c Color) {
 
 func Fade(c Color, alpha float32) Color {
 	cc := C.Fade(c.toC(), C.float(alpha))
+	return Color{R: uint8(cc.r), G: uint8(cc.g), B: uint8(cc.b), A: uint8(cc.a)}
+}
+
+func ColorLerp(a, b Color, factor float32) Color {
+	cc := C.ColorLerp(a.toC(), b.toC(), C.float(factor))
+	return Color{R: uint8(cc.r), G: uint8(cc.g), B: uint8(cc.b), A: uint8(cc.a)}
+}
+
+func ColorBrightness(c Color, factor float32) Color {
+	cc := C.ColorBrightness(c.toC(), C.float(factor))
 	return Color{R: uint8(cc.r), G: uint8(cc.g), B: uint8(cc.b), A: uint8(cc.a)}
 }
 
