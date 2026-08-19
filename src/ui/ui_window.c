@@ -702,11 +702,14 @@ struct UIWindow {
     int click_y;
     int x, y;                   /* current window position (kept by drag) */
     /* Borderless windows have no title bar, so dragging is app-side: the
-     * event watch records press/motion/release, and PumpUIWindows applies
-     * the move from the frame loop where calling into SDL is safe. */
+     * event watch only marks press/release, and PumpUIWindows follows the
+     * global pointer from the frame loop - derived motion events lose the
+     * final step to SDL3-style pointer batching, so the position itself is
+     * the source of truth. */
     int drag_active;
-    int drag_pending_dx;
-    int drag_pending_dy;
+    int drag_release_seen;
+    int drag_last_gx;
+    int drag_last_gy;
     int dragged;
 };
 
@@ -850,14 +853,12 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
             } else if(event->type == SDL_MOUSEBUTTONDOWN &&
                       event->button.button == SDL_BUTTON_LEFT) {
                 window->drag_active = 1;
-                window->drag_pending_dx = 0;
-                window->drag_pending_dy = 0;
+                window->drag_release_seen = 0;
                 window->dragged = 0;
-            } else if(event->type == SDL_MOUSEMOTION && window->drag_active) {
-                window->drag_pending_dx += event->motion.xrel;
-                window->drag_pending_dy += event->motion.yrel;
             } else if(event->type == SDL_MOUSEBUTTONUP) {
-                window->drag_active = 0;
+                if(window->drag_active &&
+                   event->button.button == SDL_BUTTON_LEFT)
+                    window->drag_release_seen = 1;
                 window->click_x = event->button.x;
                 window->click_y = event->button.y;
                 if(event->button.button == SDL_BUTTON_RIGHT)
@@ -1123,11 +1124,12 @@ StealUICoreWindowClose(void)
     return pending;
 }
 
-/* While a drag is active the mouse is captured, so motion keeps arriving
- * even when the pointer briefly outruns the small overlay window, and the
- * window position is read from SDL exactly once per drag - per-frame
- * position round-trips stall the frame loop and make the window visibly
- * trail the pointer. */
+/* While a drag is active the mouse is captured, so the release keeps
+ * arriving even when the pointer briefly outruns the small overlay
+ * window. Motion comes from diffing the global pointer position each
+ * frame: derived motion events lose the final step to SDL3-style
+ * pointer batching, and the window position is read from SDL exactly
+ * once per drag - per-frame round-trips stall the frame loop. */
 static int ui_window_drag_captured;
 
 void
@@ -1146,32 +1148,37 @@ PumpUIWindows(void)
     for(int i = 0; i < ui_window_count; i++) {
         UIWindow *window = ui_windows[i];
 
-        if(window == NULL)
+        if(window == NULL || !window->drag_active)
             continue;
-        /* Keep flushing a released drag's last motion: the button-up
-         * arrives in the watch before the pump sees the final deltas, and
-         * dropping them left the window short of the pointer. */
-        if(!window->drag_active &&
-           window->drag_pending_dx == 0 && window->drag_pending_dy == 0)
-            continue;
-        if(window->drag_active)
-            any_drag = 1;
-        if(window->drag_active && !ui_window_drag_captured) {
+        if(!ui_window_drag_captured) {
             ui_window_drag_captured = 1;
             SDL_CaptureMouse(SDL_TRUE);
             SDL_GetWindowPosition(window->window, &window->x, &window->y);
+            SDL_GetGlobalMouseState(&window->drag_last_gx,
+                                    &window->drag_last_gy);
         }
-        if(window->drag_pending_dx != 0 || window->drag_pending_dy != 0) {
-            int dx = window->drag_pending_dx;
-            int dy = window->drag_pending_dy;
+        {
+            int gx = 0, gy = 0;
+            int dx, dy;
 
-            window->drag_pending_dx = 0;
-            window->drag_pending_dy = 0;
-            window->x += dx;
-            window->y += dy;
-            SDL_SetWindowPosition(window->window, window->x, window->y);
-            if(dx * dx + dy * dy > 9)
-                window->dragged = 1;
+            SDL_GetGlobalMouseState(&gx, &gy);
+            dx = gx - window->drag_last_gx;
+            dy = gy - window->drag_last_gy;
+            window->drag_last_gx = gx;
+            window->drag_last_gy = gy;
+            if(dx != 0 || dy != 0) {
+                window->x += dx;
+                window->y += dy;
+                SDL_SetWindowPosition(window->window, window->x, window->y);
+                if(dx * dx + dy * dy > 9)
+                    window->dragged = 1;
+            }
+        }
+        if(window->drag_release_seen) {
+            window->drag_active = 0;
+            window->drag_release_seen = 0;
+        } else {
+            any_drag = 1;
         }
     }
     if(ui_window_drag_captured && !any_drag) {
