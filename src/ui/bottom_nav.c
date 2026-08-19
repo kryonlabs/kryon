@@ -129,6 +129,8 @@ DrawUIBottomNav(BottomNavProps nav)
                                              scheme.on_surface_variant;
             Color state_tint = item->active ? scheme.on_secondary :
                                               scheme.on_surface_variant;
+            icon_tint = item->active ? scheme.on_secondary :
+                                       scheme.on_surface_variant;
 
             icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
             icon_x = x + (w - icon_size) / 2;
