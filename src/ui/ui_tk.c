@@ -368,7 +368,8 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     for(int i = 0; i < menu_count; i++) {
         int w = MeasureUIText(menus[i].label != NULL ? menus[i].label : "", font) + ScaleUIPx(24);
         Rectangle item = {(float)x, bounds.y + ScaleUIPx(3), (float)w, bounds.height - ScaleUIPx(6)};
-        int open = g_menu_open_id == id + 1 + i;
+        int menu_id = id + 1 + i;
+        int open = g_menu_open_id == menu_id;
         int hot = ui_hot(item);
         if(hot || open)
             DrawRectangleRec(item, open ? c_button : c_button_hover);
@@ -378,14 +379,15 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
                    ui_row_text_y(item, font), font, c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
-            g_menu_open_id = open ? 0 : id + 1 + i;
+            g_menu_open_id = open ? 0 : menu_id;
             if(g_menu_open_id == 0)
                 g_menu_submenu_id = 0;
         }
         if(hot && g_menu_open_id != 0 && !open) {
-            g_menu_open_id = id + 1 + i;
+            g_menu_open_id = menu_id;
             g_menu_submenu_id = 0;
         }
+        open = g_menu_open_id == menu_id;
         if(open) {
             result.open_index = i;
             g_menu_overlay.active = 1;
