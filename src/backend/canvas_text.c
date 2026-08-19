@@ -251,9 +251,9 @@ Font LoadFont(const char *fileName)
     unsigned char *data = LoadFileData(fileName, &len);
     Font font;
 
+    memset(&font, 0, sizeof(font));
     if(data == NULL)
         return font;
-    memset(&font, 0, sizeof(font));
     font = LoadFontFromMemory(".ttf", data, len, 16, NULL, 0);
     free(data);
     return font;
