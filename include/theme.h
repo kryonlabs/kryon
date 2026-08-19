@@ -89,6 +89,17 @@ bool GetSystemDesktopBackground(char *out, int out_size);
 bool SystemThemePrefersDark(void);
 bool SystemThemeSupportsMode(void);
 void SetSystemThemeDarkMode(bool dark);
+void SetSystemThemePalette(const char *name,
+                           Color background,
+                           Color surface,
+                           Color text,
+                           Color circle,
+                           Color button,
+                           Color button_hover,
+                           Color icon,
+                           Color link,
+                           bool prefers_dark,
+                           bool supports_mode);
 bool GetEffectiveThemeDarkMode(void);
 
 void SetCurrentTheme(int theme_id, int dark_mode);

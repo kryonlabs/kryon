@@ -815,6 +815,39 @@ SetSystemThemeDarkMode(bool dark)
     }
 }
 
+void
+SetSystemThemePalette(const char *name,
+                      Color background,
+                      Color surface,
+                      Color text,
+                      Color circle,
+                      Color button,
+                      Color button_hover,
+                      Color icon,
+                      Color link,
+                      bool prefers_dark,
+                      bool supports_mode)
+{
+    system_palette.background = background;
+    system_palette.surface = surface;
+    system_palette.text = text;
+    system_palette.circle = circle;
+    system_palette.button = button;
+    system_palette.button_hover = button_hover;
+    system_palette.icon = icon;
+    system_palette.link = link;
+    system_palette.available = 1;
+    system_palette.prefers_dark = prefers_dark ? 1 : 0;
+    system_palette.supports_mode = supports_mode ? 1 : 0;
+    system_prefers_dark = prefers_dark ? 1 : 0;
+    snprintf(system_palette.name, sizeof(system_palette.name), "%s",
+             name != NULL && name[0] != '\0' ? name : "System");
+    if(prefers_dark)
+        system_dark_palette = system_palette;
+    else
+        system_light_palette = system_palette;
+}
+
 bool
 SystemThemeColor(const char *key, Color *color)
 {
