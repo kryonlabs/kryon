@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Widget and Language Matrices</title>
+  <meta name="description" content="Kryon widget, language, compiler, and runtime capability matrices.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kryonlabs.com/matrices.html">
+  <meta property="og:title" content="Kryon Widget and Language Matrices">
+  <meta property="og:description" content="View Kryon's widget, language, compiler, and runtime coverage by target.">
+  <meta name="theme-color" content="#f3f1ea">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/kryon.png">
+  <link rel="apple-touch-icon" href="icons/kryon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html#top">
+        <img src="icons/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
+      <nav class="header-nav" id="header-nav" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#platforms">Platforms</a>
+        <a href="matrices.html">Matrices</a>
+        <a href="renderers.html">Renderers</a>
+        <a href="/api">API</a>
+        <a href="ide.html">Web IDE</a>
+        <a class="btn btn-primary" href="index.html#start">Get started</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="doc-hero">
+      <p class="section-eyebrow">Capability Matrices</p>
+      <h1>Widgets and language support</h1>
+      <p class="section-lead">A compact view of what Kryon supports through C, <code>.kry</code> lowering, Go generation, hand-written Go, and KRB cartridges.</p>
+      <div class="matrix-legend">
+        <span class="status ok">Available</span>
+        <span class="status part">Partial</span>
+        <span class="status no">Missing</span>
+        <span class="status na">Not applicable</span>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Language</p>
+      <h2>Pipeline Matrix</h2>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>C</td><td><code>k2c</code></td><td><code>cc</code> + <code>libkryon.a</code></td><td class="ok">Production path; most complete</td></tr>
+            <tr><td>Go</td><td><code>k2g</code></td><td><code>go/kryui</code> cgo package</td><td class="ok">Declarative subset with executable CI gate</td></tr>
+            <tr><td>KRB cartridge</td><td><code>k2b</code></td><td><code>KrbLoad</code>/<code>KrbExec</code> on a <code>KryBackend</code></td><td class="part">Portable widget subset; byte-exact renderer tests</td></tr>
+            <tr><td>KIR</td><td><code>k2ir</code></td><td>Inspection artifact</td><td class="na">Debugging and tooling only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Feature</th><th>C</th><th>Go</th><th>KRB</th></tr></thead>
+          <tbody>
+            <tr><td>Theming</td><td class="ok">6 palettes, light/dark, scopes, vars</td><td class="ok">Theme control APIs</td><td class="part">Theme color slots</td></tr>
+            <tr><td>Style tokens</td><td class="ok">Radius, border, shadow, style presets</td><td class="ok">Get/set token API</td><td class="no">No token model</td></tr>
+            <tr><td>Text/fonts</td><td class="part">Fallback fonts; no shaping, bidi, or IME</td><td class="ok">Font registry and input queue</td><td class="part">font8x8 or KFA1 atlas</td></tr>
+            <tr><td>Input</td><td class="part">Pointer, keyboard, clipboard; no IME/gamepad nav</td><td class="ok">Key, mouse, char APIs</td><td class="part">Mouse, wheel, text-key queue</td></tr>
+            <tr><td>Accessibility</td><td class="part">Debug a11y structs; no screen-reader bridge</td><td class="no">Not exposed</td><td class="no">Not exposed</td></tr>
+            <tr><td>Dialogs/platform</td><td class="ok">Portal, GTK, shell pickers, notifications, tray, XDG</td><td class="ok">Tray and notify polling</td><td class="part">Host capability imports</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Widgets</p>
+      <h2>Widget Matrix</h2>
+      <p class="section-lead">Columns: C is the public runtime API. <code>k2c</code> follows C because library calls compile as C-close statements. <code>k2g</code> and KRB deliberately cover smaller subsets.</p>
+
+      <h3>Display</h3>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <tbody>
+            <tr><td>Background, Text, TextInRect</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Nodes</td></tr>
+            <tr><td>Paragraph, TextLines</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>Rect, Line, Bevel</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Nodes</td></tr>
+            <tr><td>IconTexture</td><td class="ok">114 icons</td><td class="ok">Yes</td><td class="ok">By icon type</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>Image/Picture</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Picture props</td><td class="ok">Yes</td><td class="ok">Embedded asset or PNG</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Input</h3>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <tbody>
+            <tr><td>Button, GenericButton</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Button control</td></tr>
+            <tr><td>IconButton, TextButton</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">IconButton/TextButton subset</td><td class="part">Subset</td><td class="no">Not lowered</td></tr>
+            <tr><td>Href / IconLink</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Href only</td><td class="part">Href only</td><td class="no">Not lowered</td></tr>
+            <tr><td>TextField, TextArea, ReadonlyTextBox</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">TextField only</td></tr>
+            <tr><td>Dropdown / LocaleDropdown</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">No rich option arrays</td><td class="ok">Yes</td><td class="ok">Dropdown control</td></tr>
+            <tr><td>Slider, Toggle, Checkbox</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Controls</td></tr>
+            <tr><td>Radio, Progress, Spinbox, Combobox</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Spinbox/combobox only</td></tr>
+            <tr><td>ColorPicker, InfoButton</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not exposed</td><td class="no">Not exposed</td><td class="no">Not lowered</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Layout, Collections, Navigation</h3>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Family</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <tbody>
+            <tr><td>Column, Row, Stack, Group</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Structural nodes</td></tr>
+            <tr><td>Scroll container</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Scroll/EndScroll</td><td class="ok">Yes</td><td class="ok">Scroll node</td></tr>
+            <tr><td>Notebook, PanedView, Collapsible</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>Canvas helpers</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Begin/EndUICanvas</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>ListBox, SourceView, TableView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>TreeView, CascadingTreeView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not exposed</td><td class="no">Not exposed</td><td class="no">Not lowered</td></tr>
+            <tr><td>TabBar, BottomNav, TopNav, Toolbar</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Main controls only</td><td class="ok">Main controls</td><td class="part">NavButton as button</td></tr>
+            <tr><td>Modal, Toast, dialogs</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Modal/toast/dialog subset</td><td class="part">Subset</td><td class="no">Not lowered</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Caveats</p>
+      <h2>Known Gaps</h2>
+      <ul class="link-list">
+        <li><strong>Retained painting:</strong> the retained tree paints a smaller subset than immediate mode and routes retained input mainly for button/text-field paths.</li>
+        <li><strong>Text shaping:</strong> font fallback works, but HarfBuzz shaping, bidi, RTL mirroring, and IME preedit are not implemented yet.</li>
+        <li><strong>KRB:</strong> intentionally portable and smaller than the full C catalog; unsupported widget calls are reported per file by <code>k2b</code>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Kryon Labs &middot; <a href="index.html">Home</a> &middot; <a href="renderers.html">Renderers</a> &middot; <a href="/api">API</a></p>
+    </div>
+  </footer>
+  <script src="highlight.js"></script>
+  <script>
+    (function() {
+      var toggle = document.querySelector(".menu-toggle");
+      var nav = document.getElementById("header-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", function() {
+          var open = nav.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

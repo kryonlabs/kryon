@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Renderer Matrices</title>
+  <meta name="description" content="Kryon renderer, backend, and native Linux integration matrices.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kryonlabs.com/renderers.html">
+  <meta property="og:title" content="Kryon Renderer Matrices">
+  <meta property="og:description" content="View Kryon's surface backends, KRB hosts, and GTK backend decision.">
+  <meta name="theme-color" content="#f3f1ea">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/kryon.png">
+  <link rel="apple-touch-icon" href="icons/kryon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="index.html#top">
+        <img src="icons/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
+      <nav class="header-nav" id="header-nav" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#platforms">Platforms</a>
+        <a href="matrices.html">Matrices</a>
+        <a href="renderers.html">Renderers</a>
+        <a href="/api">API</a>
+        <a href="ide.html">Web IDE</a>
+        <a class="btn btn-primary" href="index.html#start">Get started</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="doc-hero">
+      <p class="section-eyebrow">Renderer Matrices</p>
+      <h1>Backends, hosts, and native Linux direction</h1>
+      <p class="section-lead">Kryon has two backend tiers: link-time surface backends for full applications, and runtime KRB hosts for portable cartridges.</p>
+      <div class="matrix-legend">
+        <span class="status ok">Shipping</span>
+        <span class="status part">Partial</span>
+        <span class="status no">Not planned</span>
+        <span class="status na">Utility host</span>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Decision</p>
+      <h2>Should Kryon Add A GTK Backend?</h2>
+      <div class="decision-grid">
+        <article class="decision-card">
+          <h3>Recommendation</h3>
+          <p>Do not add a full GTK surface backend now. Keep the main native desktop path on the raylib/SDL/OpenGL surface and keep improving GTK/GIO/portal integration around it.</p>
+        </article>
+        <article class="decision-card">
+          <h3>Why</h3>
+          <p>A real GTK backend would need windowing, input, texture/render-texture handling, font rasterization, clipping, timing, clipboard, screenshots, and audio stubs across the raylib-shaped surface. That is a large second app runtime, not a small Linux polish feature.</p>
+        </article>
+        <article class="decision-card">
+          <h3>Better First Step</h3>
+          <p>Add a small experimental GTK/Cairo or GTK/GLArea KRB host only if we need a native widget-hosted preview surface. That keeps the risk inside the small <code>KryBackend</code> vtable instead of the full surface.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Tier A</p>
+      <h2>Surface Backends</h2>
+      <p class="section-lead">Selected at link time with <code>KRYON_BACKEND</code>. The full widget catalog runs here, so new entries carry the highest maintenance cost.</p>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Backend</th><th>Graphics API</th><th>Platforms</th><th>CI</th><th>Status</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>raylib</code></td><td>OpenGL ES 2.0 over SDL2</td><td>Linux, FreeBSD</td><td class="ok">Linux + FreeBSD</td><td class="ok">Default</td><td>Production path for native desktop apps.</td></tr>
+            <tr><td><code>raylib</code> web</td><td>WebGL over GLFW3</td><td>Emscripten</td><td class="ok">Web builds</td><td class="ok">Shipping</td><td>Used by the normal web build path.</td></tr>
+            <tr><td><code>raylib</code> Windows OpenGL</td><td>OpenGL 2.1</td><td>Windows</td><td class="ok">Release builds</td><td class="ok">Default Windows flavor</td><td>MinGW build path.</td></tr>
+            <tr><td><code>raylib</code> Windows software</td><td>raylib software renderer</td><td>Windows</td><td class="ok">Release builds</td><td class="part">Secondary flavor</td><td>No-GPU fallback package flavor.</td></tr>
+            <tr><td><code>canvas</code></td><td>HTML5 Canvas2D via <code>EM_JS</code></td><td>Emscripten</td><td class="ok"><code>canvas-test</code></td><td class="part">Graphics usable; audio null-grade</td><td>No raylib; glyphs rasterized from FontFace data.</td></tr>
+            <tr><td><code>null</code></td><td>None</td><td>All</td><td class="part">Local headless usage</td><td class="part">Test backend</td><td>Zero-return stubs plus injected input.</td></tr>
+            <tr><td><code>gtk</code> candidate</td><td>GTK/Cairo or GTK/GLArea</td><td>Linux desktops</td><td class="no">None</td><td class="no">Defer full surface</td><td>Too large for the current benefit; see decision above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Tier B</p>
+      <h2>KRB Hosts</h2>
+      <p class="section-lead">Selected at runtime through the compact <code>KryBackend</code> vtable. This is the right place to prototype new renderers.</p>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Host</th><th>Rendering</th><th>Input</th><th>Textures</th><th>Text</th><th>CI</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>KryBackendDraw</code></td><td>raylib surface</td><td>raylib</td><td class="ok">Yes</td><td class="ok">Full font stack</td><td class="ok">Yes</td><td>Runs cartridges inside raylib apps and preview tools.</td></tr>
+            <tr><td><code>kry_sw</code></td><td>Software RGBA8 rasterizer</td><td>Injected</td><td class="ok">PNG + embedded RGBA</td><td class="part">font8x8 or KFA1 atlas</td><td class="ok">Yes</td><td>No GPU/libc-heavy dependencies; supports RGB565 export.</td></tr>
+            <tr><td><code>krb-run</code></td><td><code>kry_sw</code> headless</td><td>Injected</td><td class="ok">Yes</td><td class="part">Via <code>kry_sw</code></td><td class="ok">Linux/Windows/macOS</td><td>Conformance host for PNG dumps and call logs.</td></tr>
+            <tr><td><code>krb-sdl</code></td><td><code>kry_sw</code> to SDL2 texture</td><td>SDL2</td><td class="ok">Yes</td><td class="part">Via <code>kry_sw</code></td><td class="ok">Yes</td><td>Template for small native host ports.</td></tr>
+            <tr><td><code>krb-web</code></td><td><code>kry_sw</code> to wasm Canvas2D</td><td>JS bridge</td><td class="ok">Yes</td><td class="part">Via <code>kry_sw</code></td><td class="ok">renderers.yml</td><td>Byte-identical to native software output.</td></tr>
+            <tr><td><code>KryBackendRec</code></td><td>Wraps any backend</td><td>Passthrough</td><td class="ok">Passthrough</td><td class="ok">Passthrough</td><td class="ok">Exactness job</td><td>Records vtable calls for cross-engine comparison.</td></tr>
+            <tr><td><code>KryBackendNull</code></td><td>Stub</td><td>None</td><td class="no">No <code>texture_rgba</code></td><td class="no">None</td><td class="ok">Logic tests</td><td>Default before host selection.</td></tr>
+            <tr><td>GTK KRB host candidate</td><td>GTK widget + Cairo/image upload</td><td>GTK events</td><td class="part">Can reuse <code>kry_sw</code></td><td class="part">Can reuse <code>kry_sw</code></td><td class="no">Future</td><td>Useful as an embeddable preview host, not as the production app backend.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <p class="section-eyebrow">Linux Integration</p>
+      <h2>GTK/GIO/Portal Support</h2>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Area</th><th>Current Backend</th><th>Status</th><th>Direction</th></tr></thead>
+          <tbody>
+            <tr><td>File dialogs</td><td>XDG Desktop Portal, GTK, zenity, kdialog, yad</td><td class="ok">Portal-first</td><td>Keep portal first; GTK remains a local fallback.</td></tr>
+            <tr><td>Notifications</td><td>Freedesktop Notifications over GDBus</td><td class="ok">Shipping</td><td>Use reverse-DNS desktop-entry IDs for icon resolution.</td></tr>
+            <tr><td>Tray</td><td>Ayatana/AppIndicator, GTK StatusIcon fallback</td><td class="part">Desktop-dependent</td><td>Prefer StatusNotifier/AppIndicator; keep GTK lazy-loaded fallback.</td></tr>
+            <tr><td>System theme</td><td>GTK3 style sampling plus config readers</td><td class="part">Useful but not authoritative everywhere</td><td>Add portal/settings sources before making GTK mandatory.</td></tr>
+            <tr><td>Packaging</td><td>XDG desktop entries, AppStream, hicolor icons</td><td class="ok">Improved</td><td>Keep app ID, desktop ID, icon name, and notification hint aligned.</td></tr>
+            <tr><td>Main app window</td><td>SDL2/raylib surface</td><td class="ok">Production</td><td>Keep this as the native Linux default.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Kryon Labs &middot; <a href="index.html">Home</a> &middot; <a href="matrices.html">Matrices</a> &middot; <a href="/api">API</a></p>
+    </div>
+  </footer>
+  <script src="highlight.js"></script>
+  <script>
+    (function() {
+      var toggle = document.querySelector(".menu-toggle");
+      var nav = document.getElementById("header-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", function() {
+          var open = nav.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

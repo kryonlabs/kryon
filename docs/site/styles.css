@@ -994,6 +994,134 @@ details.faq-item .faq-a p {
   color: var(--ink-strong);
 }
 
+/* ---- matrix/reference pages ---- */
+
+.doc-hero {
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-lg);
+}
+
+.doc-hero h1 {
+  max-width: 760px;
+  margin: 0 0 12px;
+  font-size: 34px;
+  line-height: 1.12;
+}
+
+.matrix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status.ok,
+.matrix-table td.ok {
+  background-color: #dff0e5;
+  color: #1f5636;
+}
+
+.status.part,
+.matrix-table td.part {
+  background-color: #f7e7b8;
+  color: #735313;
+}
+
+.status.no,
+.matrix-table td.no {
+  background-color: #f5d2cc;
+  color: #753126;
+}
+
+.status.na,
+.matrix-table td.na {
+  background-color: #e5e3dc;
+  color: #66645d;
+}
+
+.table-wrap {
+  width: 100%;
+  margin: 16px 0 28px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  box-shadow: var(--bevel);
+}
+
+.matrix-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.matrix-table th,
+.matrix-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.matrix-table th:last-child,
+.matrix-table td:last-child {
+  border-right: 0;
+}
+
+.matrix-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.matrix-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #203b42;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.matrix-table tbody tr:nth-child(even) td:not(.ok):not(.part):not(.no):not(.na) {
+  background-color: rgba(47, 111, 134, 0.04);
+}
+
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: var(--space-md);
+}
+
+.decision-card {
+  padding: 18px 20px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--bevel);
+}
+
+.decision-card h3 {
+  margin-top: 0;
+}
+
+.decision-card p {
+  color: var(--ink-soft);
+}
+
 /* ---- footer ---- */
 
 footer {
