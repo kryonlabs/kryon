@@ -12,6 +12,19 @@ static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;
 static Rectangle g_menu_panel_bounds = {0};
 static int g_menu_panel_valid = 0;
+typedef struct UIMenuOverlayState {
+    int active;
+    int bar_id;
+    int menu_id;
+    int x;
+    int y;
+    const UIMenuItem *items;
+    int item_count;
+} UIMenuOverlayState;
+
+static UIMenuOverlayState g_menu_overlay = {0};
+static int g_menu_pending_bar_id = 0;
+static int g_menu_pending_activated = 0;
 static int g_canvas_depth = 0;
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
 static int g_canvas_mode_depth = 0;
@@ -339,7 +352,12 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     int x = (int)bounds.x + ScaleUIPx(4);
     Vector2 mouse = ui_mouse_world();
 
-    g_menu_panel_valid = 0;
+    if(g_menu_pending_bar_id == id) {
+        result.activated_id = g_menu_pending_activated;
+        g_menu_pending_bar_id = 0;
+        g_menu_pending_activated = 0;
+    }
+    g_menu_overlay.active = 0;
     DrawRectangleRec(bounds, c_surface);
     DrawRectangleLinesEx(bounds, 1.0f, c_button);
     if(menu_count > UI_TK_MENU_MAX)
@@ -370,8 +388,13 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
         }
         if(open) {
             result.open_index = i;
-            result.activated_id = draw_menu_items(id + i, x, (int)(bounds.y + bounds.height),
-                                                  menus[i].items, menus[i].item_count);
+            g_menu_overlay.active = 1;
+            g_menu_overlay.bar_id = id;
+            g_menu_overlay.menu_id = id + i;
+            g_menu_overlay.x = x;
+            g_menu_overlay.y = (int)(bounds.y + bounds.height);
+            g_menu_overlay.items = menus[i].items;
+            g_menu_overlay.item_count = menus[i].item_count;
         }
         x += w + ScaleUIPx(2);
     }
@@ -386,6 +409,27 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     if(open_index != NULL)
         *open_index = result.open_index;
     return result;
+}
+
+void
+ui_draw_menu_overlays(void)
+{
+    int activated;
+
+    if(!g_menu_overlay.active || g_menu_open_id == 0)
+        return;
+
+    g_menu_panel_valid = 0;
+    activated = draw_menu_items(g_menu_overlay.menu_id,
+                                g_menu_overlay.x,
+                                g_menu_overlay.y,
+                                g_menu_overlay.items,
+                                g_menu_overlay.item_count);
+    if(activated != 0) {
+        g_menu_pending_bar_id = g_menu_overlay.bar_id;
+        g_menu_pending_activated = activated;
+    }
+    g_menu_overlay.active = 0;
 }
 
 int

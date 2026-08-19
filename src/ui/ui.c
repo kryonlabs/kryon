@@ -3304,6 +3304,7 @@ DrawUIFrameOverlays(void)
     g_ui_overlays_drawn_frame = g_ui_frame_serial;
     ResetUIClip();
     ui_draw_dropdown_overlays();
+    ui_draw_menu_overlays();
     ui_text_draw_context_overlay();
 }
 

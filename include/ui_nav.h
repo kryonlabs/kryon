@@ -215,6 +215,7 @@ typedef struct {
     int *scroll_offset;
     int focus_selected;
     int *closed_index;
+    int *double_clicked_index;
 } TabBarProps;
 
 typedef enum {
@@ -248,5 +249,6 @@ UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
 UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
 void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
 int GetUITabBarHeight(void);
+int TabBarHeight(void);
 
 #endif

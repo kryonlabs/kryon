@@ -56,6 +56,7 @@ int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 int ui_dropdown_captures_click(Vector2 point);
 void ui_dropdown_close(int id);
 void ui_draw_dropdown_overlays(void);
+void ui_draw_menu_overlays(void);
 void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);

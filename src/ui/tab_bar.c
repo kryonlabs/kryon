@@ -12,6 +12,12 @@ GetUITabBarHeight(void)
     return ui_tab_bar_height();
 }
 
+int
+TabBarHeight(void)
+{
+    return ui_tab_bar_height();
+}
+
 static int
 ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
                      int icon_tab_w)
@@ -85,11 +91,15 @@ DrawUITabBar(TabBarProps bar)
     static int default_scroll_offset = 0;
     static Vector2 last_drag_pos = {0};
     static int is_dragging = 0;
+    static int last_clicked_tab = -1;
+    static double last_click_time = 0.0;
     int *scroll_offset = bar.scroll_offset != NULL ? bar.scroll_offset
                                                    : &default_scroll_offset;
 
     if(bar.closed_index != NULL)
         *bar.closed_index = -1;
+    if(bar.double_clicked_index != NULL)
+        *bar.double_clicked_index = -1;
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
@@ -385,8 +395,17 @@ DrawUITabBar(TabBarProps bar)
                 clicked_tab = -1;
                 if(bar.closed_index != NULL)
                     *bar.closed_index = i;
+                last_clicked_tab = -1;
+                last_click_time = 0.0;
                 UIConsumeRelease();
             } else if(!close_active && released) {
+                double now = GetTime();
+
+                if(bar.double_clicked_index != NULL && last_clicked_tab == i &&
+                   now - last_click_time <= 0.45)
+                    *bar.double_clicked_index = i;
+                last_clicked_tab = i;
+                last_click_time = now;
                 clicked_tab = i;
             }
         }
