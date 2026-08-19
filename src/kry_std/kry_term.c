@@ -8,7 +8,7 @@
 #define _DEFAULT_SOURCE
 #endif
 
-#include "kry_term.h"
+#include "terminal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -249,7 +249,7 @@ set_winsize(int fd, int cols, int rows)
 }
 
 int
-KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
+TerminalSpawn(Terminal *t, const char *cwd, int cols, int rows)
 {
     int master;
     int pid;
@@ -257,7 +257,7 @@ KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
 
     if(t == NULL)
         return 0;
-    KryTermClose(t);
+    TerminalClose(t);
     if(!alloc_cells(t, cols, rows))
         return 0;
     master = posix_openpt(O_RDWR | O_NOCTTY);
@@ -318,7 +318,7 @@ KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
 }
 
 int
-KryTermWrite(KryTerm *t, const void *data, int n)
+TerminalWrite(Terminal *t, const void *data, int n)
 {
     int wrote;
 
@@ -332,7 +332,7 @@ KryTermWrite(KryTerm *t, const void *data, int n)
  * same escape processing as polled output, so a harness can mirror its
  * own command output into a live terminal pane. */
 void
-KryTermFeedOutput(KryTerm *t, const void *data, int n)
+TerminalFeedOutput(Terminal *t, const void *data, int n)
 {
     const unsigned char *p = data;
     int i;
@@ -344,7 +344,7 @@ KryTermFeedOutput(KryTerm *t, const void *data, int n)
 }
 
 int
-KryTermPoll(KryTerm *t)
+TerminalPoll(Terminal *t)
 {
     char buf[1024];
     int n;
@@ -375,7 +375,7 @@ KryTermPoll(KryTerm *t)
 }
 
 void
-KryTermResize(KryTerm *t, int cols, int rows)
+TerminalResize(Terminal *t, int cols, int rows)
 {
     if(t == NULL)
         return;
@@ -390,7 +390,7 @@ KryTermResize(KryTerm *t, int cols, int rows)
 }
 
 void
-KryTermClose(KryTerm *t)
+TerminalClose(Terminal *t)
 {
     int status;
 
@@ -410,7 +410,7 @@ KryTermClose(KryTerm *t)
 }
 
 void
-KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
+TerminalLine(const Terminal *t, int row, char *dst, int dst_size)
 {
     int x;
     int n;
@@ -433,7 +433,7 @@ KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
 #else
 
 int
-KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
+TerminalSpawn(Terminal *t, const char *cwd, int cols, int rows)
 {
     (void)cwd;
     (void)cols;
@@ -444,7 +444,7 @@ KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
 }
 
 int
-KryTermWrite(KryTerm *t, const void *data, int n)
+TerminalWrite(Terminal *t, const void *data, int n)
 {
     (void)t;
     (void)data;
@@ -453,14 +453,14 @@ KryTermWrite(KryTerm *t, const void *data, int n)
 }
 
 int
-KryTermPoll(KryTerm *t)
+TerminalPoll(Terminal *t)
 {
     (void)t;
     return 0;
 }
 
 void
-KryTermFeedOutput(KryTerm *t, const void *data, int n)
+TerminalFeedOutput(Terminal *t, const void *data, int n)
 {
     (void)t;
     (void)data;
@@ -468,7 +468,7 @@ KryTermFeedOutput(KryTerm *t, const void *data, int n)
 }
 
 void
-KryTermResize(KryTerm *t, int cols, int rows)
+TerminalResize(Terminal *t, int cols, int rows)
 {
     (void)t;
     (void)cols;
@@ -476,14 +476,14 @@ KryTermResize(KryTerm *t, int cols, int rows)
 }
 
 void
-KryTermClose(KryTerm *t)
+TerminalClose(Terminal *t)
 {
     if(t != NULL)
         memset(t, 0, sizeof(*t));
 }
 
 void
-KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
+TerminalLine(const Terminal *t, int row, char *dst, int dst_size)
 {
     (void)t;
     (void)row;
@@ -492,3 +492,45 @@ KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
 }
 
 #endif
+
+int
+KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
+{
+    return TerminalSpawn(t, cwd, cols, rows);
+}
+
+int
+KryTermWrite(KryTerm *t, const void *data, int n)
+{
+    return TerminalWrite(t, data, n);
+}
+
+int
+KryTermPoll(KryTerm *t)
+{
+    return TerminalPoll(t);
+}
+
+void
+KryTermFeedOutput(KryTerm *t, const void *data, int n)
+{
+    TerminalFeedOutput(t, data, n);
+}
+
+void
+KryTermResize(KryTerm *t, int cols, int rows)
+{
+    TerminalResize(t, cols, rows);
+}
+
+void
+KryTermClose(KryTerm *t)
+{
+    TerminalClose(t);
+}
+
+void
+KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
+{
+    TerminalLine(t, row, dst, dst_size);
+}

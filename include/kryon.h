@@ -62,6 +62,8 @@
 /* Kry standard library: platform surfaces (process, filesystem, dynamic
  * libraries) usable directly from .kry apps. */
 #include "kry_process.h"
+#include "terminal.h"
+#include "terminal_pane.h"
 #include "kry_term.h"
 #include "kry_filesystem.h"
 #include "kry_dylib.h"
