@@ -13,8 +13,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  guard-submodule-urls:
+    name: Submodule URLs are public HTTPS
+    runs-on: ubuntu-latest
+    steps:
+      # Plain checkout on purpose: the guard must not depend on fetching
+      # the submodules it validates (an SSH URL would break that fetch).
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Reject non-HTTPS submodule URLs
+        run: sh scripts/check-submodule-urls.sh
+
   test-linux:
     name: Build and test (Linux)
+    needs: guard-submodule-urls
     runs-on: ubuntu-latest
 
     steps:
@@ -56,6 +69,7 @@ jobs:
 
   test-freebsd:
     name: Build and test (FreeBSD)
+    needs: guard-submodule-urls
     runs-on: ubuntu-latest
 
     steps:
