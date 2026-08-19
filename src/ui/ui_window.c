@@ -1146,10 +1146,17 @@ PumpUIWindows(void)
     for(int i = 0; i < ui_window_count; i++) {
         UIWindow *window = ui_windows[i];
 
-        if(window == NULL || !window->drag_active)
+        if(window == NULL)
             continue;
-        any_drag = 1;
-        if(!ui_window_drag_captured) {
+        /* Keep flushing a released drag's last motion: the button-up
+         * arrives in the watch before the pump sees the final deltas, and
+         * dropping them left the window short of the pointer. */
+        if(!window->drag_active &&
+           window->drag_pending_dx == 0 && window->drag_pending_dy == 0)
+            continue;
+        if(window->drag_active)
+            any_drag = 1;
+        if(window->drag_active && !ui_window_drag_captured) {
             ui_window_drag_captured = 1;
             SDL_CaptureMouse(SDL_TRUE);
             SDL_GetWindowPosition(window->window, &window->x, &window->y);
