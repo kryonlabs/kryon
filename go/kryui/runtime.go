@@ -103,6 +103,8 @@ type Runtime interface {
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeDarkMode(dark int32)
 	SetThemeStyle(style ThemeStyle)
+	SetThemeSource(source ThemeSource)
+	SetThemeMode(mode ThemeMode)
 }
 
 type runtime struct {

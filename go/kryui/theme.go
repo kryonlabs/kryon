@@ -64,11 +64,34 @@ const (
 	ThemeStyleAero     ThemeStyle = C.THEME_STYLE_AERO
 )
 
+type ThemeSource int32
+
+const (
+	ThemeSourceApp    ThemeSource = C.THEME_SOURCE_APP
+	ThemeSourceSystem ThemeSource = C.THEME_SOURCE_SYSTEM
+)
+
+type ThemeMode int32
+
+const (
+	ThemeModeSystem ThemeMode = C.THEME_MODE_SYSTEM
+	ThemeModeLight  ThemeMode = C.THEME_MODE_LIGHT
+	ThemeModeDark   ThemeMode = C.THEME_MODE_DARK
+)
+
 // ---------------------------------------------------------------------------
 // Theme Functions
 // ---------------------------------------------------------------------------
 
 func SetThemeStyle(style ThemeStyle) { C.SetThemeStyle(C.ThemeStyle(style)) }
+
+// SetThemeSource selects whether colors come from the system palette or the
+// app theme catalog. System is the intended default; when no system palette
+// is available the current app theme is used as a fallback.
+func SetThemeSource(source ThemeSource) { C.SetThemeSource(C.ThemeSource(source)) }
+
+// SetThemeMode sets whether dark mode follows the system or is forced
+func SetThemeMode(mode ThemeMode) { C.SetThemeMode(C.ThemeMode(mode)) }
 
 // SetCurrentTheme sets the theme by ID and dark mode
 func SetCurrentTheme(themeID int32, darkMode bool) {

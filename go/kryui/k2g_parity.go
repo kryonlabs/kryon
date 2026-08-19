@@ -185,3 +185,7 @@ func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
 func (r *runtime) SetThemeDarkMode(dark int32) { SetThemeDarkMode(dark != 0) }
 
 func (r *runtime) SetThemeStyle(style ThemeStyle) { SetThemeStyle(style) }
+
+func (r *runtime) SetThemeSource(source ThemeSource) { SetThemeSource(source) }
+
+func (r *runtime) SetThemeMode(mode ThemeMode) { SetThemeMode(mode) }

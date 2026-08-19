@@ -723,13 +723,10 @@ GetDefaultPlatformThemeStyle(void)
 ThemeSource
 GetDefaultPlatformThemeSource(void)
 {
-#if defined(PLATFORM_ANDROID) || defined(__ANDROID__) || (defined(ANDROID_BUILD) && ANDROID_BUILD)
-    /* No system theme detection on Android; apps fall back to their own palette. */
-    return THEME_SOURCE_APP;
-#else
-    /* Desktop reads the toolkit palette; web reads prefers-color-scheme. */
+    /* System theme is the default everywhere. Platforms without a readable
+       system palette (e.g. Android before the app feeds device dark mode)
+       gracefully fall back to the app palette in GetCurrentThemeColor. */
     return THEME_SOURCE_SYSTEM;
-#endif
 }
 
 ThemeMode
