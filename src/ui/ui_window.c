@@ -41,6 +41,7 @@ enum {
     InbeLSBFirst = 0,
     InbeMSBFirst = 1,
     InbeZPixmap = 2,
+    InbeXA_ATOM = 4,
     InbeXA_CARDINAL = 6,
     InbePropModeReplace = 0,
     InbeExposureMask = 1 << 15,
@@ -153,6 +154,8 @@ typedef int (*InbeXFree)(void *);
 typedef int (*InbeXGetWindowProperty)(Display *, Window, Atom, long, long, int,
                                       Atom, Atom *, int *, unsigned long *,
                                       unsigned long *, unsigned char **);
+typedef int (*InbeXChangeProperty)(Display *, Window, Atom, Atom, int, int,
+                                   const unsigned char *, int);
 
 /* XCreateWindow attributes we set through XChangeWindowAttributes. */
 enum { InbeCWOverrideRedirect = 1 << 9 };
@@ -208,6 +211,7 @@ static InbeXNextEvent ui_next_event;
 static InbeXFlush ui_x11_flush;
 static InbeXFree ui_x11_free;
 static InbeXGetWindowProperty ui_get_window_property;
+static InbeXChangeProperty ui_change_property;
 
 static void *
 ui_resolve(void *handle, const char *name)
@@ -254,6 +258,7 @@ ui_x11_init(void)
     ui_x11_flush = (InbeXFlush)ui_resolve(ui_x11, "XFlush");
     ui_x11_free = (InbeXFree)ui_resolve(ui_x11, "XFree");
     ui_get_window_property = (InbeXGetWindowProperty)ui_resolve(ui_x11, "XGetWindowProperty");
+    ui_change_property = (InbeXChangeProperty)ui_resolve(ui_x11, "XChangeProperty");
 
     if(ui_open_display == NULL || ui_root_window == NULL ||
        ui_create_simple_window == NULL || ui_put_image == NULL ||
@@ -325,6 +330,54 @@ ui_primary_workarea(int *x, int *y, int *w, int *h)
     ui_x11_free(data);
 }
 
+static void
+ui_window_apply_ewmh_hints(Window window, int flags)
+{
+    Atom states[4];
+    int state_count = 0;
+
+    if(ui_intern_atom == NULL || ui_change_property == NULL)
+        return;
+
+    if((flags & UI_WINDOW_BORDERLESS) != 0) {
+        Atom motif = ui_intern_atom(ui_display, "_MOTIF_WM_HINTS", 0);
+        unsigned long hints[5] = { 2, 0, 0, 0, 0 };
+        if(motif != 0)
+            ui_change_property(ui_display, window, motif, motif, 32,
+                               InbePropModeReplace,
+                               (const unsigned char *)hints, 5);
+    }
+
+    if((flags & UI_WINDOW_ALWAYS_ON_TOP) != 0) {
+        Atom above = ui_intern_atom(ui_display, "_NET_WM_STATE_ABOVE", 0);
+        if(above != 0)
+            states[state_count++] = above;
+    }
+    if((flags & UI_WINDOW_SKIP_TASKBAR) != 0) {
+        Atom skip = ui_intern_atom(ui_display, "_NET_WM_STATE_SKIP_TASKBAR", 0);
+        if(skip != 0)
+            states[state_count++] = skip;
+    }
+    if((flags & UI_WINDOW_STICKY) != 0) {
+        Atom sticky = ui_intern_atom(ui_display, "_NET_WM_STATE_STICKY", 0);
+        Atom desktop = ui_intern_atom(ui_display, "_NET_WM_DESKTOP", 0);
+        unsigned long all_desktops = 0xFFFFFFFFUL;
+        if(sticky != 0)
+            states[state_count++] = sticky;
+        if(desktop != 0)
+            ui_change_property(ui_display, window, desktop, InbeXA_CARDINAL,
+                               32, InbePropModeReplace,
+                               (const unsigned char *)&all_desktops, 1);
+    }
+    if(state_count > 0) {
+        Atom state = ui_intern_atom(ui_display, "_NET_WM_STATE", 0);
+        if(state != 0)
+            ui_change_property(ui_display, window, state, InbeXA_ATOM, 32,
+                               InbePropModeReplace,
+                               (const unsigned char *)states, state_count);
+    }
+}
+
 UIWindow *
 OpenUIWindow(const char *title, int x, int y, int width, int height,
              int flags, Color background, float ui_scale)
@@ -369,15 +422,17 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     if(ui_store_name != NULL)
         ui_store_name(ui_display, win->window, title != NULL ? title : "kryon");
 
-    /* Borderless windows are override-redirect: no decorations, no taskbar
-     * entry, no window manager stacking. Managed windows get input events
-     * only, which is all the API polls for. */
-    if((flags & UI_WINDOW_BORDERLESS) != 0 && ui_change_attributes != NULL) {
+    /* Non-sticky borderless windows are override-redirect. Sticky windows
+     * need the window manager to honor EWMH workspace hints, so they stay
+     * managed and drop decorations through _MOTIF_WM_HINTS instead. */
+    if((flags & UI_WINDOW_BORDERLESS) != 0 &&
+       (flags & UI_WINDOW_STICKY) == 0 && ui_change_attributes != NULL) {
         InbeXSetWindowAttributes attributes;
         memset(&attributes, 0, sizeof(attributes));
         attributes.override_redirect = 1; /* True */
         ui_change_attributes(ui_display, win->window, InbeCWOverrideRedirect, &attributes);
     }
+    ui_window_apply_ewmh_hints(win->window, flags);
     if(ui_select_input != NULL)
         ui_select_input(ui_display, win->window,
                         InbeExposureMask | InbeButtonPressMask |

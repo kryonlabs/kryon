@@ -31,8 +31,11 @@ enum {
     UI_WINDOW_TOP_RIGHT = 0x08,      /* x/y are margins from the top-right
                                         corner of the primary display's work
                                         area instead of absolute positions */
-    UI_WINDOW_CENTER = 0x10          /* center the window on the primary
+    UI_WINDOW_CENTER = 0x10,         /* center the window on the primary
                                         display's work area (x/y ignored) */
+    UI_WINDOW_STICKY = 0x20          /* keep the window visible across
+                                        virtual desktops/workspaces when the
+                                        window system supports it */
 };
 
 /*
