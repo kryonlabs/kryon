@@ -190,12 +190,11 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     y += font + label_gap + row_h + row_gap;
 
     if(settings.theme_style != NULL) {
-        const char *style_options[4];
-        int style_values[4] = {
+        const char *style_options[3];
+        int style_values[3] = {
             THEME_STYLE_SYSTEM,
             THEME_STYLE_RETRO,
-            THEME_STYLE_MATERIAL,
-            THEME_STYLE_AERO
+            THEME_STYLE_MATERIAL
         };
         int style_index = 0;
 
@@ -206,9 +205,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
                                                   NULL, GetThemeStyleLabel(THEME_STYLE_RETRO));
         style_options[2] = ui_theme_settings_text(settings.style_material_label,
                                                   NULL, GetThemeStyleLabel(THEME_STYLE_MATERIAL));
-        style_options[3] = ui_theme_settings_text(settings.style_aero_label,
-                                                  NULL, GetThemeStyleLabel(THEME_STYLE_AERO));
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < 3; i++) {
             if(*settings.theme_style == style_values[i])
                 style_index = i;
         }
@@ -216,9 +213,9 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
                    settings.x, y, font, c_text);
         if(DrawUIDropdown(settings.id_base + 3,
                           settings.x, y + font + label_gap,
-                          settings.w, row_h, style_options, 4,
+                          settings.w, row_h, style_options, 3,
                           &style_index)) {
-            *settings.theme_style = style_values[ui_clampi(style_index, 0, 3)];
+            *settings.theme_style = style_values[ui_clampi(style_index, 0, 2)];
             if(state != NULL)
                 state->draw_style_menu = 2;
         } else if(state != NULL) {
@@ -291,8 +288,7 @@ DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *stat
     if(settings.theme_style != NULL) {
         if(*settings.theme_style != THEME_STYLE_SYSTEM &&
            *settings.theme_style != THEME_STYLE_RETRO &&
-           *settings.theme_style != THEME_STYLE_MATERIAL &&
-           *settings.theme_style != THEME_STYLE_AERO) {
+           *settings.theme_style != THEME_STYLE_MATERIAL) {
             *settings.theme_style = THEME_STYLE_SYSTEM;
             result.style_changed = 1;
             result.changed = 1;

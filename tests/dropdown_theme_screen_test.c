@@ -21,13 +21,12 @@ static const char *mode_opts[3] = {"System", "Light", "Dark"};
 static const char *palette_opts[12] = {"Cobalt", "Cherry", "Dawn", "Forest",
                                        "Lavender", "Mint", "Mono", "Ocean",
                                        "Sage", "Sepia", "Sky", "Sunset"};
-static const char *style_opts[4] = {"System style", "Retro", "Material",
-                                    "Aero"};
+static const char *style_opts[3] = {"System style", "Retro", "Material"};
 
 static int source_sel = 0;
 static int mode_sel = 0;
 static int palette_sel = 10;
-static int style_sel = 3;
+static int style_sel = 2;
 static UIThemeSettingsState menu_state = {0};
 
 static void
@@ -115,7 +114,7 @@ main(void)
     SetUIScale(1.0f);
     InitUI(VIEW_W, VIEW_H, 1.0f);
     SetThemeSource(THEME_SOURCE_APP);
-    SetThemeStyle(THEME_STYLE_AERO);
+    SetThemeStyle(THEME_STYLE_MATERIAL);
     SetCurrentTheme(THEME_SKY, 0);
 
     for(int i = 0; i < 3; i++)
@@ -169,9 +168,10 @@ main(void)
      * may flip upward across the other fields. */
     style_sel = 0;
     tap(450, style_row);
-    /* Aero is the fourth option: field bottom + gap + padding + 3.5 rows */
-    tap(450, style_row + 15 + 4 + 4 + 105);
-    check_int("Aero selectable from style popup", style_sel, THEME_STYLE_AERO);
+    /* Material is the third option: field bottom + gap + padding + 2.5 rows */
+    tap(450, style_row + 15 + 4 + 4 + 75);
+    check_int("Material selectable from style popup", style_sel,
+              THEME_STYLE_MATERIAL);
     check_int("style popup closed", popup_covers(style_row - 60) == 0 &&
                              popup_covers(style_row + 60) == 0, 1);
 

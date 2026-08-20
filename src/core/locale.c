@@ -505,7 +505,6 @@ load_base_locale(void)
         {"theme_style_fluent", "Fluent"},
         {"theme_style_adwaita", "Adwaita"},
         {"theme_style_liquid_glass", "Liquid Glass"},
-        {"theme_style_aero", "Aero"},
         {"theme_label", "Theme source"},
         {"theme_app", "Kryon"},
         {"theme_system", "System"},

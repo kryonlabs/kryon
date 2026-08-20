@@ -3630,18 +3630,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
         MarkUIClickable();
     }
 
-    if(ui_aero_style()) {
-        if(hover) {
-            Rectangle chip = {(float)btn_x, (float)btn_y,
-                              (float)btn_w, (float)btn_h};
-            UIAeroScheme scheme = ui_aero_scheme();
-
-            ui_aero_paint_control(chip, scheme.glass, scheme.inset_border,
-                                  ui_radius_px(chip,
-                                               GetUIStyleTokens().control_radius),
-                                  1, 0, 0);
-        }
-    } else if(hover) {
+    if(hover) {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button_hover);
         DrawUIBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
     } else {

@@ -400,22 +400,10 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, track_color, 72, 78, 28);
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, c_bg, 64, 62, 22);
 
-    if(ui_aero_style()) {
-        Rectangle trough = {(float)x, (float)y, (float)scrollbar_width,
-                            (float)viewport_h};
-
-        ui_aero_paint_inset(trough, track_color, 0.5f);
-        ui_aero_paint_control(thumb_bounds, thumb_color, BLANK, 0.5f,
-                              thumb_hover,
-                              scrollbar_drag_active &&
-                                  scrollbar_drag_offset == scroll_offset,
-                              0);
-    } else {
-        DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
-        DrawRectangleRec(thumb_bounds, thumb_color);
-        DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
-                             ui_scrollbar_contrast_from(thumb_color, 34));
-    }
+    DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
+    DrawRectangleRec(thumb_bounds, thumb_color);
+    DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
+                         ui_scrollbar_contrast_from(thumb_color, 34));
 
     return 1;
 }

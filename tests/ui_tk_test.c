@@ -82,7 +82,7 @@ main(void)
     {
         static const char *keys[] = {
             "theme_style_label", "theme_style_system", "theme_style_retro",
-            "theme_style_material", "theme_style_aero", "theme_label",
+            "theme_style_material", "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"
@@ -105,35 +105,19 @@ main(void)
     check_int("material bevel", GetUIStyleTokens().bevel_enabled, 0);
     check_int("material touch target", GetUIStyleTokens().touch_target_min, 48);
 
-    SetThemeStyle(THEME_STYLE_AERO);
-    check_int("aero style", GetThemeStyle(), THEME_STYLE_AERO);
-    check_int("aero effective style", GetEffectiveThemeStyle(), THEME_STYLE_AERO);
-    check_int("aero bevel", GetUIStyleTokens().bevel_enabled, 0);
-    check_int("aero shine", GetUIStyleTokens().shine_alpha > 0, 1);
-    check_int("aero translucent panels", GetUIStyleTokens().panel_alpha < 255, 1);
-    check_int("aero default theme", GetDefaultThemeForThemeStyle(THEME_STYLE_AERO),
-              THEME_SKY);
-    check_int("aero style label", strcmp(GetThemeStyleLabel(THEME_STYLE_AERO),
-                                         "Aero") == 0, 1);
+    SetThemeStyle((ThemeStyle)3);
+    check_int("out-of-range style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
+    check_int("out-of-range effective style", GetEffectiveThemeStyle(),
+              GetDefaultPlatformThemeStyle());
     check_int("theme count", THEME_COUNT, 12);
     check_int("out-of-range theme normalizes", NormalizeTheme(THEME_COUNT),
               THEME_MONO);
-    {
-        UIAeroScheme scheme = GetUIAeroScheme();
-
-        check_int("aero scheme glass alpha", scheme.glass.a > 0, 1);
-        check_int("aero scheme text alpha", scheme.text.a > 0, 1);
-        check_int("aero scheme fill top lighter",
-                  scheme.fill_top.r + scheme.fill_top.g + scheme.fill_top.b >=
-                  scheme.fill_bottom.r + scheme.fill_bottom.g + scheme.fill_bottom.b,
-                  1);
-    }
     /* Theme-section locale keys must resolve to real strings (the
      * settings picker wires these as fallbacks). */
     {
         static const char *keys[] = {
             "theme_style_label", "theme_style_system", "theme_style_retro",
-            "theme_style_material", "theme_style_aero", "theme_label",
+            "theme_style_material", "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"

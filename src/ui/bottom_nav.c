@@ -89,12 +89,6 @@ DrawUIBottomNav(BottomNavProps nav)
 
         ui_material_elevation(bar, 0.0f, 2);
         DrawRectangleRec(bar, scheme.surface_container);
-    } else if(ui_aero_style()) {
-        Rectangle bar = {0, (float)y, (float)nav.view_width, (float)height};
-        Color top = ColorLerp(c_surface, c_circle, 0.06f);
-
-        ui_aero_paint_track(bar, top, DarkenUIColor(c_bg, 2), 0.0f, 0);
-        DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
     } else {
         DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
         DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));

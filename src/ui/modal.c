@@ -176,14 +176,7 @@ DrawUIActionModal(ModalProps modal)
     btn_y = modal_y + modal_h - buttons_h - padding_bottom;
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
-    if(ui_aero_style()) {
-        Rectangle bounds = {(float)modal_x, (float)modal_y,
-                            (float)modal_w, (float)modal_h};
-
-        ui_aero_paint_panel(bounds, c_surface,
-                            ui_radius_px(bounds, GetUIStyleTokens().panel_radius),
-                            3);
-    } else if(ui_modern_style()) {
+    if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
         Color surface = c_surface;
@@ -357,14 +350,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     });
 
     DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
-    if(ui_aero_style()) {
-        Rectangle bounds = {(float)frame.x, (float)frame.y,
-                            (float)frame.w, (float)frame.h};
-
-        ui_aero_paint_panel(bounds, c_surface,
-                            ui_radius_px(bounds, GetUIStyleTokens().panel_radius),
-                            3);
-    } else if(ui_modern_style()) {
+    if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};
         Color surface = c_surface;

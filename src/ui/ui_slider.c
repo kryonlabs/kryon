@@ -58,11 +58,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     t = (float)(*value - min) / (float)(max - min);
     knob_x = x + (int)(t * (float)w) - knob_w / 2;
 
-    if(ui_aero_style()) {
-        ui_aero_paint_inset((Rectangle){(float)x, (float)track_y, (float)w,
-                                        (float)track_h},
-                            BLANK, 0.5f);
-    } else if(!ui_material_style() && ui_modern_style()) {
+    if(!ui_material_style() && ui_modern_style()) {
         DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else if(!ui_material_style()) {
@@ -127,28 +123,6 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
                    (float)ScaleUIPx(10), c_circle);
         DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
                         (float)ScaleUIPx(10), outline);
-    } else if(ui_aero_style()) {
-        int active_w = (int)(t * (float)w);
-        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !UIInputCapturesClick(mouse_world) &&
-                      UIHoverEffectsEnabled();
-        int dragging = g_ui_slider_active_id == id &&
-                       IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-
-        if(active_w > ScaleUIPx(2))
-            ui_aero_paint_track((Rectangle){(float)x, (float)track_y,
-                                            (float)active_w, (float)track_h},
-                                LightenUIColor(c_circle, 20),
-                                DarkenUIColor(c_circle, 10), 0.5f, 1);
-        ui_aero_paint_control((Rectangle){(float)knob_x, (float)knob_y,
-                                          (float)knob_w, (float)knob_h},
-                              c_button, BLANK,
-                              ui_radius_px((Rectangle){(float)knob_x,
-                                                       (float)knob_y,
-                                                       (float)knob_w,
-                                                       (float)knob_h},
-                                           3.0f),
-                              hovered, dragging, 0);
     } else if(ui_modern_style()) {
         DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
                    (float)(knob_h / 2), c_button);
@@ -207,11 +181,7 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
 
-    if(ui_aero_style()) {
-        ui_aero_paint_inset((Rectangle){(float)track_x, (float)y,
-                                        (float)track_w, (float)h},
-                            BLANK, 0.5f);
-    } else if(ui_modern_style()) {
+    if(ui_modern_style()) {
         DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
@@ -262,28 +232,7 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
         if(knob_y + knob_h > y + h)
             knob_y = y + h - knob_h;
 
-        if(ui_aero_style()) {
-            int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                          !UIInputCapturesClick(mouse_world) &&
-                          UIHoverEffectsEnabled();
-            int fill_h = y + h - position_y;
-
-            if(fill_h > ScaleUIPx(2))
-                ui_aero_paint_track((Rectangle){(float)track_x,
-                                                (float)position_y,
-                                                (float)track_w, (float)fill_h},
-                                    LightenUIColor(c_circle, 20),
-                                    DarkenUIColor(c_circle, 10), 0.5f, 1);
-            ui_aero_paint_control((Rectangle){(float)knob_x, (float)knob_y,
-                                              (float)knob_w, (float)knob_h},
-                                  c_button, BLANK,
-                                  ui_radius_px((Rectangle){(float)knob_x,
-                                                           (float)knob_y,
-                                                           (float)knob_w,
-                                                           (float)knob_h},
-                                               3.0f),
-                                  hovered, 0, 0);
-        } else if(ui_modern_style()) {
+        if(ui_modern_style()) {
             DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
                                              y + h - position_y},
                                  0.5f, 8, c_button_hover);
@@ -353,11 +302,7 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
 
-    if(ui_aero_style()) {
-        ui_aero_paint_inset((Rectangle){(float)track_x, (float)y,
-                                        (float)track_w, (float)h},
-                            BLANK, 0.5f);
-    } else if(ui_modern_style()) {
+    if(ui_modern_style()) {
         DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
@@ -411,28 +356,7 @@ DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
         if(knob_y + knob_h > y + h)
             knob_y = y + h - knob_h;
 
-        if(ui_aero_style()) {
-            int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                          !UIInputCapturesClick(mouse_world) &&
-                          UIHoverEffectsEnabled();
-            int fill_h = y + h - position_y;
-
-            if(fill_h > ScaleUIPx(2))
-                ui_aero_paint_track((Rectangle){(float)track_x,
-                                                (float)position_y,
-                                                (float)track_w, (float)fill_h},
-                                    LightenUIColor(c_circle, 20),
-                                    DarkenUIColor(c_circle, 10), 0.5f, 1);
-            ui_aero_paint_control((Rectangle){(float)knob_x, (float)knob_y,
-                                              (float)knob_w, (float)knob_h},
-                                  c_button, BLANK,
-                                  ui_radius_px((Rectangle){(float)knob_x,
-                                                           (float)knob_y,
-                                                           (float)knob_w,
-                                                           (float)knob_h},
-                                               3.0f),
-                                  hovered, 0, 0);
-        } else if(ui_modern_style()) {
+        if(ui_modern_style()) {
             DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
                                              y + h - position_y},
                                  0.5f, 8, c_button_hover);
@@ -550,29 +474,15 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         int off_x = x + w / 4 - off_w / 2;
         int on_x = x + w * 3 / 4 - on_w / 2;
 
-        if(ui_aero_style()) {
-            int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
-                          !UIInputCapturesClick(mouse_world) &&
-                          UIHoverEffectsEnabled();
+        if(ui_modern_style())
+            DrawRectangleRounded((Rectangle){x, y, w, h}, 0.5f, 8, bg);
+        else
+            DrawRectangle(x, y, w, h, bg);
 
-            ui_aero_paint_inset((Rectangle){(float)x + 3, (float)track_y,
-                                            (float)w - 6, (float)track_h},
-                                BLANK, 0.5f);
-            ui_aero_paint_control((Rectangle){(float)active_x, (float)track_y,
-                                              (float)active_w, (float)track_h},
-                                  *value ? c_button_hover : c_button, BLANK,
-                                  0.5f, hovered && *value, 0, 0);
-        } else {
-            if(ui_modern_style())
-                DrawRectangleRounded((Rectangle){x, y, w, h}, 0.5f, 8, bg);
-            else
-                DrawRectangle(x, y, w, h, bg);
-
-            DrawRectangleRounded((Rectangle){x + 3, track_y, w - 6, track_h},
-                                 0.5f, 8, DarkenUIColor(c_bg, 20));
-            DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h},
-                                 0.5f, 8, c_button);
-        }
+        DrawRectangleRounded((Rectangle){x + 3, track_y, w - 6, track_h},
+                             0.5f, 8, DarkenUIColor(c_bg, 20));
+        DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h},
+                             0.5f, 8, c_button);
         DrawUIText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
                    font, label_color);
         DrawUIText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
@@ -653,27 +563,6 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         if(fill.a != 0)
             DrawRectangleRounded(box, 0.12f, 8, fill);
         DrawRectangleRoundedLinesEx(box, 0.12f, 8, ScaleUIPx(2), border);
-    } else if(ui_aero_style()) {
-        Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
-        int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-                      !UIInputCapturesClick(mouse_world) &&
-                      UIHoverEffectsEnabled();
-        UIAeroScheme scheme = ui_aero_scheme();
-        float radius = ui_radius_px(box, GetUIStyleTokens().control_radius);
-
-        if(*value && !disabled)
-            ui_aero_paint_control(box, c_circle, scheme.border, radius,
-                                  hovered, 0, 0);
-        else
-            ui_aero_paint_inset(box, BLANK, radius);
-        if(disabled) {
-            Color veil = c_bg;
-
-            veil.a = 110;
-            DrawRectangleRounded(box, radius, 8, veil);
-        }
-        mark_color = *value && !disabled ? ui_aero_on_color(c_circle)
-                                         : scheme.text;
     } else if(ui_modern_style()) {
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         Color border = LightenUIColor(box_color, 22);

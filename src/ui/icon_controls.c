@@ -44,18 +44,9 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
         return 0;
     }
 
-    if(ui_aero_style()) {
-        Rectangle panel = {(float)popup_x, (float)popup_y,
-                           (float)popup_w, (float)popup_h};
-
-        ui_aero_paint_panel(panel, c_surface,
-                            ui_radius_px(panel, GetUIStyleTokens().panel_radius),
-                            2);
-    } else {
-        DrawRectangle(popup_x, popup_y, popup_w, popup_h, c_surface);
-        DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
-                    LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
-    }
+    DrawRectangle(popup_x, popup_y, popup_w, popup_h, c_surface);
+    DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
+                LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     return DrawUIVerticalSlider(popup.id, popup_x + popup_w / 2,
                                    popup_y + ScaleUIPx(14),

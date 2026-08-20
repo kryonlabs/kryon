@@ -581,8 +581,7 @@ Kryon supports three concrete widget styles plus a system selector:
 typedef enum ThemeStyle {
     THEME_STYLE_SYSTEM = 0,
     THEME_STYLE_RETRO,
-    THEME_STYLE_MATERIAL,
-    THEME_STYLE_AERO
+    THEME_STYLE_MATERIAL
 } ThemeStyle;
 
 void SetThemeStyle(ThemeStyle style);
@@ -598,22 +597,10 @@ Material uses Material 3 style tokens: 48px touch targets, rounded controls,
 state layers/ripple feedback, elevation shadows, and theme-derived Material color
 roles. Retro keeps the original beveled Kryon look.
 
-Aero renders the Windows Vista/7 glass look — translucent control and panel
-fills, gloss highlights, accent hover glow, soft layered shadows, inset text
-fields and gradient tracks — using only plain drawing primitives, so it renders
-identically on every backend including Android, web and the software renderer.
-It defaults to the Sky palette but derives its glass tints from
-whichever palette is active, so all built-in palettes work with it.
-
 ```c
 UIStyleTokens GetUIStyleTokens(void);
 UIMaterialScheme GetUIMaterialScheme(void);
-UIAeroScheme GetUIAeroScheme(void);
 ```
-
-`UIAeroScheme` exposes the derived Aero colors for the active palette (glass
-fill, gradient top/bottom, border, highlight, hover glow, focus ring, inset
-field colors) mirroring `UIMaterialScheme`.
 
 ---
 

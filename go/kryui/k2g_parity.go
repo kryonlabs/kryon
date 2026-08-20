@@ -10,7 +10,6 @@ const (
 	THEME_STYLE_SYSTEM   = ThemeStyleSystem
 	THEME_STYLE_RETRO    = ThemeStyleRetro
 	THEME_STYLE_MATERIAL = ThemeStyleMaterial
-	THEME_STYLE_AERO     = ThemeStyleAero
 )
 
 func boolPtrFromInt(p *int32) *bool {

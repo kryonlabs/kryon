@@ -202,40 +202,6 @@ DrawUITabBar(TabBarProps bar)
                                          0.50f, 12, scheme.secondary);
                 }
             }
-        } else if(ui_aero_style()) {
-            UIAeroScheme scheme = ui_aero_scheme();
-            float radius = ui_radius_px(tab_rect,
-                                        GetUIStyleTokens().control_radius);
-
-            if(is_disabled) {
-                tab_fill = ColorLerp(c_button, c_bg, 0.5f);
-                tab_fill.a = 150;
-                DrawRectangleRounded(tab_rect, radius, 4, tab_fill);
-            } else if(is_selected) {
-                ui_aero_paint_control(tab_rect, c_button, scheme.border, radius,
-                                      is_hovered,
-                                      is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-                                      0);
-                if(tab_w > ScaleUIPx(18)) {
-                    Color underline = scheme.glow;
-
-                    underline.a = 190;
-                    DrawRectangleRounded((Rectangle){(float)(tab_x + ScaleUIPx(9)),
-                                                     (float)(bar_y + bar_h - ScaleUIPx(3)),
-                                                     (float)(tab_w - ScaleUIPx(18)),
-                                                     (float)ScaleUIPx(2)},
-                                         0.5f, 4, underline);
-                    underline.a = 80;
-                    DrawRectangleRounded((Rectangle){(float)(tab_x + ScaleUIPx(6)),
-                                                     (float)(bar_y + bar_h - ScaleUIPx(1)),
-                                                     (float)(tab_w - ScaleUIPx(12)),
-                                                     1.0f},
-                                         0.5f, 4, underline);
-                }
-            } else if(is_hovered) {
-                ui_aero_paint_control(tab_rect, scheme.glass,
-                                      scheme.inset_border, radius, 1, 0, 0);
-            }
         } else {
             if(is_disabled) {
                 tab_fill = DarkenUIColor(c_bg, 18);
@@ -249,7 +215,7 @@ DrawUITabBar(TabBarProps bar)
             DrawRectangleRounded(tab_rect, 0.15f, 4, tab_fill);
         }
 
-        if(!ui_material_style() && !ui_aero_style() && is_selected) {
+        if(!ui_material_style() && is_selected) {
             // Strong bevel for selected tab (appears raised)
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
@@ -262,7 +228,7 @@ DrawUITabBar(TabBarProps bar)
                               tab_w - ScaleUIPx(18), cue_h,
                               LightenUIColor(c_button_hover, 18));
             }
-        } else if(!ui_material_style() && !ui_aero_style() && is_hovered && !is_disabled) {
+        } else if(!ui_material_style() && is_hovered && !is_disabled) {
             // Enhanced bevel for hovered tab
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, cues ? 42 : 30),
@@ -273,7 +239,7 @@ DrawUITabBar(TabBarProps bar)
                 DrawRectangle(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(1),
                               tab_w - ScaleUIPx(8), ScaleUIPx(1), cue);
             }
-        } else if(!ui_material_style() && !ui_aero_style() && !is_disabled) {
+        } else if(!ui_material_style() && !is_disabled) {
             // Subtle bevel for normal tab
             DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 20),

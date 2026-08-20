@@ -45,7 +45,7 @@ ThemeDarkMode :: () -> int {
 ApplyThemeState :: () {
     theme_source = ClampInt(theme_source, THEME_SOURCE_APP, THEME_SOURCE_SYSTEM)
     theme_mode = ClampInt(theme_mode, THEME_MODE_SYSTEM, THEME_MODE_DARK)
-    theme_style = ClampInt(theme_style, THEME_STYLE_SYSTEM, THEME_STYLE_AERO)
+    theme_style = ClampInt(theme_style, THEME_STYLE_SYSTEM, THEME_STYLE_MATERIAL)
     theme_id = ClampInt(theme_id, 0, THEME_COUNT - 1)
     SetThemeSource((ThemeSource)theme_source)
     SetThemeMode((ThemeMode)theme_mode)

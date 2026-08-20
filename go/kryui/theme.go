@@ -61,7 +61,6 @@ const (
 	ThemeStyleSystem   ThemeStyle = C.THEME_STYLE_SYSTEM
 	ThemeStyleRetro    ThemeStyle = C.THEME_STYLE_RETRO
 	ThemeStyleMaterial ThemeStyle = C.THEME_STYLE_MATERIAL
-	ThemeStyleAero     ThemeStyle = C.THEME_STYLE_AERO
 )
 
 type ThemeSource int32

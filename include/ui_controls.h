@@ -179,20 +179,6 @@ typedef struct UIMaterialScheme {
     Color disabled_content;
 } UIMaterialScheme;
 
-/* Derived Aero (Vista/7 glass) look for the active palette. */
-typedef struct UIAeroScheme {
-    Color glass;         /* translucent panel fill */
-    Color fill_top;      /* control gradient top */
-    Color fill_bottom;   /* control gradient bottom */
-    Color border;        /* outer control border */
-    Color highlight;     /* inner highlight line */
-    Color glow;          /* hover glow tint */
-    Color focus_ring;    /* keyboard focus ring tint */
-    Color inset_fill;    /* carved-in field fill */
-    Color inset_border;  /* carved-in field border */
-    Color text;          /* readable text on glass */
-} UIAeroScheme;
-
 typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
                                              int h, int min, int max, int value);
 
@@ -204,7 +190,6 @@ typedef struct {
 UIStyleTokens GetUIStyleTokens(void);
 UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
 UIMaterialScheme GetUIMaterialScheme(void);
-UIAeroScheme GetUIAeroScheme(void);
 void SetUIStyleTokens(UIStyleTokens tokens);
 void ClearUIStyleTokensOverride(void);
 

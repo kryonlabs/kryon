@@ -96,71 +96,233 @@ KryPictureFitRect(PictureProps picture, Texture2D texture)
     return dst;
 }
 
-static void
-picture_mask_rounded_corners_bleed(Rectangle bounds, int radius, int bleed,
-                                    Color color)
+static float
+picture_radius_from_roundness(Rectangle bounds, float roundness)
 {
-    int left = (int)bounds.x;
-    int top = (int)bounds.y;
-    int right = (int)(bounds.x + bounds.width);
-    int bottom = (int)(bounds.y + bounds.height);
-    int effective_radius = radius + bleed;
-    int radius_sq = effective_radius * effective_radius;
-    int py;
-    int px;
+    float min_side;
 
-    if(radius <= 0 || bounds.width <= 0.0f || bounds.height <= 0.0f)
-        return;
-    if(bleed < 0)
-        bleed = 0;
-
-    for(py = 0; py < radius; py++) {
-        int dy = radius - py;
-        for(px = 0; px < radius; px++) {
-            int dx = radius - px;
-
-            if(dx * dx + dy * dy <= radius_sq)
-                continue;
-            DrawRectangle(left + px, top + py, 1, 1, color);
-            DrawRectangle(right - px - 1, top + py, 1, 1, color);
-            DrawRectangle(left + px, bottom - py - 1, 1, 1, color);
-            DrawRectangle(right - px - 1, bottom - py - 1, 1, 1, color);
-        }
-    }
-}
-
-static int
-picture_style_radius(Rectangle bounds, UIPictureStyle style)
-{
-    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
-    int radius = style.radius_px;
-
-    if(radius <= 0 && style.roundness > 0.0f)
-        radius = (int)(min_side * style.roundness);
-    return radius > 0 ? radius : 0;
+    if(roundness <= 0.0f || bounds.width <= 0.0f || bounds.height <= 0.0f)
+        return 0.0f;
+    if(roundness > 1.0f)
+        roundness = 1.0f;
+    min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
+    return min_side * roundness * 0.5f;
 }
 
 static float
-picture_roundness_from_radius(Rectangle bounds, int radius)
+picture_style_radius(Rectangle bounds, UIPictureStyle style)
+{
+    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
+    float radius = (float)style.radius_px;
+
+    if(radius <= 0.0f && style.roundness > 0.0f)
+        radius = picture_radius_from_roundness(bounds, style.roundness);
+    if(min_side > 0.0f && radius > min_side * 0.5f)
+        radius = min_side * 0.5f;
+    return radius > 0.0f ? radius : 0.0f;
+}
+
+static float
+picture_roundness_from_radius(Rectangle bounds, float radius)
 {
     float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
 
-    if(radius <= 0 || min_side <= 0.0f)
+    if(radius <= 0.0f || min_side <= 0.0f)
         return 0.0f;
-    if((float)radius > min_side * 0.5f)
-        radius = (int)(min_side * 0.5f);
-    return (float)radius / min_side;
+    if(radius > min_side * 0.5f)
+        radius = min_side * 0.5f;
+    return (radius * 2.0f) / min_side;
+}
+
+static float
+picture_row_inset(Rectangle bounds, float radius, float sample_y)
+{
+    float top_center;
+    float bottom_center;
+    float dy = 0.0f;
+    float inside;
+
+    if(radius <= 0.0f)
+        return 0.0f;
+
+    top_center = bounds.y + radius;
+    bottom_center = bounds.y + bounds.height - radius;
+    if(sample_y < top_center)
+        dy = top_center - sample_y;
+    else if(sample_y > bottom_center)
+        dy = sample_y - bottom_center;
+    if(dy <= 0.0f)
+        return 0.0f;
+    if(dy >= radius)
+        return radius;
+
+    inside = radius * radius - dy * dy;
+    return radius - sqrtf(inside > 0.0f ? inside : 0.0f);
+}
+
+static Rectangle
+picture_source_for_strip(Texture2D texture, Rectangle dst, Rectangle strip)
+{
+    Rectangle source = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    if(dst.width == 0.0f || dst.height == 0.0f)
+        return source;
+    source.x = (strip.x - dst.x) * (float)texture.width / dst.width;
+    source.y = (strip.y - dst.y) * (float)texture.height / dst.height;
+    source.width = strip.width * (float)texture.width / dst.width;
+    source.height = strip.height * (float)texture.height / dst.height;
+    return source;
 }
 
 static void
-picture_apply_style(Rectangle bounds, UIPictureStyle *style, int *radius,
+picture_draw_texture_strip(Texture2D texture, Rectangle dst, Rectangle strip)
+{
+    Rectangle source;
+
+    if(strip.width <= 0.0f || strip.height <= 0.0f)
+        return;
+    source = picture_source_for_strip(texture, dst, strip);
+    DrawTexturePro(texture, source, strip, (Vector2){0.0f, 0.0f}, 0.0f,
+                   WHITE);
+}
+
+static void
+picture_draw_rounded_texture(Texture2D texture, Rectangle dst,
+                             Rectangle bounds, float radius)
+{
+    int y_start;
+    int y_end;
+
+    if(radius <= 0.0f) {
+        picture_draw_texture_strip(texture, dst, bounds);
+        return;
+    }
+
+    y_start = (int)floorf(bounds.y);
+    y_end = (int)ceilf(bounds.y + bounds.height);
+    for(int y = y_start; y < y_end; y++) {
+        float row_y = (float)y;
+        float row_bottom = row_y + 1.0f;
+        float strip_y = row_y < bounds.y ? bounds.y : row_y;
+        float strip_bottom = row_bottom > bounds.y + bounds.height
+                                 ? bounds.y + bounds.height
+                                 : row_bottom;
+        float strip_h = strip_bottom - strip_y;
+        float sample_y = strip_y + strip_h * 0.5f;
+        float inset;
+        Rectangle strip;
+
+        if(strip_h <= 0.0f)
+            continue;
+        inset = picture_row_inset(bounds, radius, sample_y);
+        strip = (Rectangle){bounds.x + inset, strip_y,
+                            bounds.width - inset * 2.0f, strip_h};
+        picture_draw_texture_strip(texture, dst, strip);
+    }
+}
+
+static void
+picture_draw_rounded_solid(Rectangle bounds, float radius, Color color)
+{
+    int y_start;
+    int y_end;
+
+    if(color.a == 0)
+        return;
+    if(radius <= 0.0f) {
+        DrawRectangleRec(bounds, color);
+        return;
+    }
+
+    y_start = (int)floorf(bounds.y);
+    y_end = (int)ceilf(bounds.y + bounds.height);
+    for(int y = y_start; y < y_end; y++) {
+        float row_y = (float)y;
+        float row_bottom = row_y + 1.0f;
+        float strip_y = row_y < bounds.y ? bounds.y : row_y;
+        float strip_bottom = row_bottom > bounds.y + bounds.height
+                                 ? bounds.y + bounds.height
+                                 : row_bottom;
+        float strip_h = strip_bottom - strip_y;
+        float sample_y = strip_y + strip_h * 0.5f;
+        float inset;
+
+        if(strip_h <= 0.0f)
+            continue;
+        inset = picture_row_inset(bounds, radius, sample_y);
+        DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
+                                     bounds.width - inset * 2.0f, strip_h},
+                         color);
+    }
+}
+
+static Color
+picture_lerp_color(Color top, Color bottom, float t)
+{
+    if(t < 0.0f)
+        t = 0.0f;
+    if(t > 1.0f)
+        t = 1.0f;
+    return (Color){
+        (unsigned char)((float)top.r + ((float)bottom.r - (float)top.r) * t),
+        (unsigned char)((float)top.g + ((float)bottom.g - (float)top.g) * t),
+        (unsigned char)((float)top.b + ((float)bottom.b - (float)top.b) * t),
+        (unsigned char)((float)top.a + ((float)bottom.a - (float)top.a) * t)
+    };
+}
+
+static void
+picture_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
+                              Color bottom)
+{
+    int y_start;
+    int y_end;
+
+    if(top.a == 0 && bottom.a == 0)
+        return;
+    if(radius <= 0.0f) {
+        DrawRectangleGradientV((int)bounds.x, (int)bounds.y,
+                               (int)bounds.width, (int)bounds.height, top,
+                               bottom);
+        return;
+    }
+
+    y_start = (int)floorf(bounds.y);
+    y_end = (int)ceilf(bounds.y + bounds.height);
+    for(int y = y_start; y < y_end; y++) {
+        float row_y = (float)y;
+        float row_bottom = row_y + 1.0f;
+        float strip_y = row_y < bounds.y ? bounds.y : row_y;
+        float strip_bottom = row_bottom > bounds.y + bounds.height
+                                 ? bounds.y + bounds.height
+                                 : row_bottom;
+        float strip_h = strip_bottom - strip_y;
+        float sample_y = strip_y + strip_h * 0.5f;
+        float inset;
+        float t;
+        Color color;
+
+        if(strip_h <= 0.0f)
+            continue;
+        inset = picture_row_inset(bounds, radius, sample_y);
+        t = bounds.height > 0.0f ? (sample_y - bounds.y) / bounds.height
+                                 : 0.0f;
+        color = picture_lerp_color(top, bottom, t);
+        DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
+                                     bounds.width - inset * 2.0f, strip_h},
+                         color);
+    }
+}
+
+static void
+picture_apply_style(Rectangle bounds, UIPictureStyle *style, float *radius,
                     float *roundness, int *segments, int *outline_px)
 {
     ThemeStyle theme_style = GetEffectiveThemeStyle();
     UIStyleTokens tokens = GetUIStyleTokens();
 
     if(theme_style == THEME_STYLE_RETRO) {
-        *radius = 0;
+        *radius = 0.0f;
         *roundness = 0.0f;
         *segments = 1;
         *outline_px = ScaleUIPx(2);
@@ -178,8 +340,8 @@ picture_apply_style(Rectangle bounds, UIPictureStyle *style, int *radius,
     if(theme_style == THEME_STYLE_MATERIAL) {
         UIMaterialScheme scheme = ui_material_scheme();
 
-        if(*radius <= 0)
-            *radius = ScaleUIPx((int)tokens.panel_radius);
+        if(*radius <= 0.0f)
+            *radius = (float)ScaleUIPx((int)tokens.panel_radius);
         *roundness = picture_roundness_from_radius(bounds, *radius);
         *segments = *segments < 12 ? 12 : *segments;
         style->background = scheme.surface_container;
@@ -195,24 +357,6 @@ picture_apply_style(Rectangle bounds, UIPictureStyle *style, int *radius,
         return;
     }
 
-    if(theme_style == THEME_STYLE_AERO) {
-        UIAeroScheme scheme = ui_aero_scheme();
-
-        if(*radius <= 0)
-            *radius = ScaleUIPx((int)tokens.panel_radius);
-        *roundness = picture_roundness_from_radius(bounds, *radius);
-        *segments = *segments < 12 ? 12 : *segments;
-        style->background = scheme.glass;
-        style->outline = scheme.border;
-        if(style->tonal_overlay.a < 22)
-            style->tonal_overlay.a = 22;
-        if(style->surface_overlay.a < 34)
-            style->surface_overlay.a = 34;
-        if(style->scrim_top.a < 18)
-            style->scrim_top.a = 18;
-        if(style->scrim_bottom.a < 46)
-            style->scrim_bottom.a = 46;
-    }
 }
 
 void
@@ -221,7 +365,7 @@ UIDrawStyledCoverPicture(Texture2D texture, Rectangle bounds,
 {
     PictureProps picture = {0};
     Rectangle dst;
-    int radius;
+    float radius;
     int segments;
     int outline_px;
     float roundness;
@@ -252,44 +396,14 @@ UIDrawStyledCoverPicture(Texture2D texture, Rectangle bounds,
             DrawRectangleRec(bounds, style.background);
     }
 
-    BeginScissorMode((int)bounds.x, (int)bounds.y, (int)bounds.width,
-                     (int)bounds.height);
-    DrawTexturePro(texture, (Rectangle){0.0f, 0.0f, (float)texture.width,
-                                        (float)texture.height},
-                   dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    picture_draw_rounded_texture(texture, dst, bounds, radius);
     if(style.tonal_overlay.a > 0)
-        DrawRectangleRec(bounds, style.tonal_overlay);
+        picture_draw_rounded_solid(bounds, radius, style.tonal_overlay);
     if(style.surface_overlay.a > 0)
-        DrawRectangleRec(bounds, style.surface_overlay);
+        picture_draw_rounded_solid(bounds, radius, style.surface_overlay);
     if(style.scrim_top.a > 0 || style.scrim_bottom.a > 0)
-        DrawRectangleGradientV((int)bounds.x, (int)bounds.y,
-                               (int)bounds.width, (int)bounds.height,
-                               style.scrim_top, style.scrim_bottom);
-    EndScissorMode();
-
-    if(roundness > 0.0f && radius > 0 && style.background.a > 0)
-        picture_mask_rounded_corners_bleed(bounds, radius,
-                                           outline_px + ScaleUIPx(1),
-                                           style.background);
-    if(theme_style == THEME_STYLE_AERO && roundness > 0.0f) {
-        Color shine = WHITE;
-        Color inner = WHITE;
-
-        shine.a = GetUIStyleTokens().shine_alpha;
-        if(shine.a > 0) {
-            BeginScissorMode((int)bounds.x, (int)bounds.y, (int)bounds.width,
-                             (int)(bounds.height * 0.42f));
-            DrawRectangleRounded(bounds, roundness, segments, shine);
-            EndScissorMode();
-        }
-        inner.a = GetEffectiveThemeDarkMode() ? 44 : 82;
-        if(bounds.width > 4.0f && bounds.height > 4.0f)
-            DrawRectangleRoundedLines((Rectangle){bounds.x + 1.0f,
-                                                  bounds.y + 1.0f,
-                                                  bounds.width - 2.0f,
-                                                  bounds.height - 2.0f},
-                                      roundness, segments, inner);
-    }
+        picture_draw_rounded_gradient(bounds, radius, style.scrim_top,
+                                      style.scrim_bottom);
     if(theme_style == THEME_STYLE_RETRO) {
         DrawUIBevel((int)bounds.x, (int)bounds.y, (int)bounds.width,
                     (int)bounds.height, LightenUIColor(GetThemeBackground(), 52),

@@ -387,31 +387,6 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUIL
 		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) \
 		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
 
-AERO_SHOT = $(BUILD_DIR)/bin/aero_shot
-AERO_SHOT_DIR = $(BUILD_DIR)/shots
-
-$(AERO_SHOT): cmd/aero_shot/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/aero_shot/main.c \
-		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_LIBOQS_A) \
-		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) \
-		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
-
-# Reference renders across palettes, modes and styles. Needs the default
-# raylib backend and a display for the GL context; not part of `make test`.
-.PHONY: aero-shot aero-shots
-aero-shot: $(AERO_SHOT)
-
-aero-shots: $(AERO_SHOT)
-	@mkdir -p $(AERO_SHOT_DIR)
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_light.png 0 0
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/aero_dark.png 0 1
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/cobalt_dark.png 11 1
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/mono_light.png 9 0
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/material_light.png 10 0 2
-	$(AERO_SHOT) $(AERO_SHOT_DIR)/retro_light.png 9 0 1
-	@echo "theme matrix in $(AERO_SHOT_DIR)"
-
 $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon.sh $@
 	chmod 755 $@

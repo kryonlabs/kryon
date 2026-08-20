@@ -48,7 +48,7 @@ DrawUIButton(UIButtonSpec button)
               RegisterUIFocus(button.focus_id, button.bounds);
     draw_bounds = button.bounds;
 
-    if((ui_material_style() || ui_aero_style()) && !button.disabled) {
+    if(ui_material_style() && !button.disabled) {
         unsigned int key = 2166136261u;
         const char *label = button.label != NULL ? button.label : "";
 
@@ -115,37 +115,6 @@ DrawUIButton(UIButtonSpec button)
                                   (int)(draw_bounds.x + draw_bounds.width * 0.5f),
                                   (int)(draw_bounds.y + draw_bounds.height * 0.5f),
                                   font, text);
-        EndUIWidget(&widget);
-        return clicked || IsUIFocusActivatePressed(button.focus_id);
-    }
-
-    if(ui_aero_style()) {
-        int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        UIAeroScheme scheme = ui_aero_scheme();
-        Color base = button.background.a != 0 ? button.background : c_button;
-        Color text_color = button.text.a != 0 ? button.text : ui_aero_on_color(base);
-
-        if(button.disabled) {
-            base = ColorLerp(base, c_bg, 0.55f);
-            base.a = 160;
-            text_color = ColorLerp(text_color, c_bg, 0.45f);
-            text_color.a = 160;
-        } else if(hovered && !pressed) {
-            base = ColorLerp(base, scheme.glow, 0.16f);
-        }
-        ui_aero_paint_control(draw_bounds, base,
-                              button.border.a != 0 ? button.border : scheme.border,
-                              ui_radius_px(draw_bounds,
-                                           GetUIStyleTokens().control_radius),
-                              hovered && !button.disabled,
-                              pressed && !button.disabled,
-                              focused && !button.disabled);
-        if(focused)
-            SetUIFocusTextInputActive(0);
-        DrawCenteredUIControlText(button.label ? button.label : "",
-                                  (int)(draw_bounds.x + draw_bounds.width * 0.5f),
-                                  (int)(draw_bounds.y + draw_bounds.height * 0.5f),
-                                  font, text_color);
         EndUIWidget(&widget);
         return clicked || IsUIFocusActivatePressed(button.focus_id);
     }
@@ -258,47 +227,6 @@ DrawUIIconButton(IconButtonProps button)
             SetUIFocusTextInputActive(0);
             ui_material_focus(button.bounds);
         }
-    } else if(ui_aero_style()) {
-        UIAeroScheme scheme = ui_aero_scheme();
-        int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        Color base = button.background.a != 0 ? button.background : BLANK;
-        float radius = ui_radius_px(button.bounds,
-                                     GetUIStyleTokens().control_radius);
-
-        if(button.icon_color.a != 0)
-            icon_tint = button.icon_color;
-        else if(base.a == 0)
-            icon_tint = c_icon.a != 0 ? c_icon : scheme.text;
-        if(button.disabled) {
-            icon_tint.a = icon_tint.a > 140 ? 140 : icon_tint.a;
-            base.a = base.a > 150 ? 150 : base.a;
-        }
-        if(base.a != 0)
-            ui_aero_paint_control(button.bounds, base,
-                                  button.border.a != 0 ? button.border
-                                                       : scheme.border,
-                                  radius, hovered && !button.disabled,
-                                  pressed && !button.disabled, focused);
-        else if(hovered && !button.disabled)
-            ui_aero_paint_control(button.bounds, scheme.glass,
-                                  scheme.inset_border, radius, 1, 0, 0);
-        else if(focused) {
-            Color ring = scheme.focus_ring;
-
-            ring.a = 200;
-            DrawRectangleRoundedLines((Rectangle){button.bounds.x - 1,
-                                                  button.bounds.y - 1,
-                                                  button.bounds.width + 2,
-                                                  button.bounds.height + 2},
-                                      ui_radius_px((Rectangle){button.bounds.x - 1,
-                                                               button.bounds.y - 1,
-                                                               button.bounds.width + 2,
-                                                               button.bounds.height + 2},
-                                                   GetUIStyleTokens().control_radius + 1),
-                                      12, ring);
-        }
-        if(focused)
-            SetUIFocusTextInputActive(0);
     } else {
         if(button.disabled) {
             background.a = background.a > 120 ? 120 : background.a;

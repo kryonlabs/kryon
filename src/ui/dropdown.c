@@ -355,11 +355,6 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
         button_bg = surface;
         ui_draw_control_background(btn_bounds, surface, border, 0.18f);
         ui_material_state_layer(btn_bounds, c_text, hover || state->open, 0, 0);
-    } else if(ui_aero_style()) {
-        ui_aero_paint_control(btn_bounds, button_bg, BLANK,
-                              ui_radius_px(btn_bounds,
-                                           GetUIStyleTokens().control_radius),
-                              hover || state->open, 0, 0);
     } else if(ui_modern_style()) {
         Color border = LightenUIColor(button_bg, 20);
         ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
@@ -542,17 +537,7 @@ draw_dropdown_menu(int id)
     }
 
     /* Draw dropdown background */
-    if(ui_aero_style()) {
-        Rectangle panel_bounds = {(float)x, (float)dropdown_y,
-                                  (float)w, (float)dropdown_h};
-
-        panel = c_surface;
-        option_text = ui_dropdown_text_on(panel);
-        ui_aero_paint_panel(panel_bounds, panel,
-                            ui_radius_px(panel_bounds,
-                                         GetUIStyleTokens().panel_radius),
-                            2);
-    } else if(ui_material_style()) {
+    if(ui_material_style()) {
         Color border = ui_material_outline();
 
         panel = ui_material_surface_container();

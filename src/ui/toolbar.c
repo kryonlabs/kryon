@@ -25,19 +25,11 @@ DrawUIToolbar(ToolbarProps toolbar)
         if(tokens.panel_alpha < bar.a)
             bar.a = tokens.panel_alpha;
     }
-    if(ui_aero_style()) {
-        Rectangle bounds = {(float)toolbar.x, (float)toolbar.y,
-                            (float)toolbar.width, (float)toolbar.height};
-        Color top = ColorLerp(c_surface, c_circle, 0.08f);
-
-        ui_aero_paint_track(bounds, top, DarkenUIColor(c_bg, 4), 0.0f, 0);
-    } else {
-        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height, bar);
-        if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
-            Color shine = WHITE;
-            shine.a = GetUIStyleTokens().shine_alpha;
-            DrawRectangle(toolbar.x, toolbar.y, toolbar.width, ScaleUIPx(1), shine);
-        }
+    DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height, bar);
+    if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+        Color shine = WHITE;
+        shine.a = GetUIStyleTokens().shine_alpha;
+        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, ScaleUIPx(1), shine);
     }
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
@@ -114,18 +106,11 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
             if(tokens.panel_alpha < bar.a)
                 bar.a = tokens.panel_alpha;
         }
-        if(ui_aero_style()) {
-            Rectangle bounds = {0, 0, (float)ui_view_width, (float)height};
-            Color top = ColorLerp(c_surface, c_circle, 0.08f);
-
-            ui_aero_paint_track(bounds, top, DarkenUIColor(c_bg, 4), 0.0f, 0);
-        } else {
-            DrawRectangle(0, 0, ui_view_width, height, bar);
-            if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
-                Color shine = WHITE;
-                shine.a = GetUIStyleTokens().shine_alpha;
-                DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
-            }
+        DrawRectangle(0, 0, ui_view_width, height, bar);
+        if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+            Color shine = WHITE;
+            shine.a = GetUIStyleTokens().shine_alpha;
+            DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
         }
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));

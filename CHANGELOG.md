@@ -15,7 +15,6 @@
 - Release: bump version to v0.1.19
 - K2c: emit a runnable main for screen-only apps
 - Build: keep the canvas backend out of native builds
-- Tools: aero_shot renders the themed widget showcase to PNG
 - Screenshots: neutral arm name, opt-in debug dumps, shared PNG writer
 - Docs: k2c column, bare widget names, and a permanent HTML renderer
 
@@ -31,9 +30,6 @@
 - Kry_sw: track the dirty rectangle per call
 - K2b: lower Combobox to a KRB_CTRL_COMBOBOX control
 - Screenshots: fix PNG chunk CRCs in the native writer
-- Docs: cover the Aero style with an example, tests and API notes
-- Ui: Aero paint branches across the widget set
-- Theme: add the Aero widget style
 - K2g: cover the full widget whitelist on the Go Runtime interface
 
 ## v0.1.17 - 2026-08-18

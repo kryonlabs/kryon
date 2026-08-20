@@ -13,20 +13,6 @@ DrawUITitleBarBackground(int height)
         if(tokens.panel_alpha < bar.a)
             bar.a = tokens.panel_alpha;
     }
-    if(ui_aero_style()) {
-        Rectangle bounds = {0, 0, (float)ui_view_width, (float)height};
-        Color top = ColorLerp(c_surface, c_circle, 0.10f);
-        Color shine = WHITE;
-
-        /* The Aero signature: a full-width glass gradient bar with a bright
-         * reflection line along its very top. */
-        ui_aero_paint_track(bounds, top, DarkenUIColor(c_bg, 6), 0.0f, 0);
-        shine.a = GetUIStyleTokens().shine_alpha;
-        DrawRectangle(0, 0, ui_view_width, ScaleUIPx(2), shine);
-        DrawLine(0, height - 1, ui_view_width, height - 1,
-                 DarkenUIColor(c_bg, 42));
-        return;
-    }
     DrawRectangle(0, 0, ui_view_width, height, bar);
     if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
         Color shine = WHITE;

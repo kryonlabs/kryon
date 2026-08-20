@@ -1302,7 +1302,6 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"THEME_STYLE_SYSTEM", "kryruntime.THEME_STYLE_SYSTEM"},
                     {"THEME_STYLE_RETRO", "kryruntime.THEME_STYLE_RETRO"},
                     {"THEME_STYLE_MATERIAL", "kryruntime.THEME_STYLE_MATERIAL"},
-                    {"THEME_STYLE_AERO", "kryruntime.THEME_STYLE_AERO"},
                     {"UI_PICTURE_FIT_STRETCH", "kryruntime.UI_PICTURE_FIT_STRETCH"},
                     {"UI_PICTURE_FIT_CONTAIN", "kryruntime.UI_PICTURE_FIT_CONTAIN"},
                     {"UI_PICTURE_FIT_COVER", "kryruntime.UI_PICTURE_FIT_COVER"},

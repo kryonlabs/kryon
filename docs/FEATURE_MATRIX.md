@@ -263,7 +263,7 @@ declaration pass (`src/ui/ui_tree.c`).
   above the widget matrix).
 - No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;
   no IME/preedit; no gamepad UI navigation.
-- Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass/aero
+- Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass
   labels in `ThemeSettingsProps`) fall back to SYSTEM tokens.
 - `kry_sw` tracks the dirty rectangle per call (`KrySwDirty` is one-shot);
   hosts that present full frames (`krb-sdl`, `krb-web`) do not use it yet.

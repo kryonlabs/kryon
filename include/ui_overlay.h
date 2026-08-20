@@ -66,7 +66,6 @@ typedef struct {
     const char *style_fluent_label;
     const char *style_adwaita_label;
     const char *style_liquid_glass_label;
-    const char *style_aero_label;
     const char *system_theme_label;
 } ThemeSettingsProps;
 
