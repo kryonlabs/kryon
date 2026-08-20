@@ -397,6 +397,50 @@ main(void)
             check_str("terminal pane clipboard selection copy text",
                       GetUIClipboardBufferText(&clipboard),
                       "abcdefghijklmnopq");
+            {
+                TerminalPaneClipboardController controller = {
+                    pane_clipboard,
+                    &selection,
+                    fixture_line_text,
+                    fixture_line_wrapped,
+                    &fixture,
+                    fixture.count,
+                    24,
+                };
+
+                SetUIPrimarySelectionTextValue("old primary");
+                check_int("terminal pane command primary update",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_UPDATE_PRIMARY_SELECTION,
+                              NULL),
+                          1);
+                check_str("terminal pane command primary text",
+                          GetUIPrimarySelectionTextValue(),
+                          "abcdefghijklmnopq");
+                check_int("terminal pane command copy selection",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION,
+                              NULL),
+                          1);
+                check_str("terminal pane command copy text",
+                          GetUIClipboardBufferText(&clipboard),
+                          "abcdefghijklmnopq");
+                TerminalPaneSelectionClear(&selection);
+                check_int("terminal pane command select all",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_SELECT_ALL,
+                              NULL),
+                          1);
+                check_int("terminal pane command select all active",
+                          selection.active, 1);
+                check_int("terminal pane command select all end row",
+                          selection.end_row, fixture.count - 1);
+                check_int("terminal pane command select all end col",
+                          selection.end_col, 24);
+            }
 
             TerminalPaneSelectionClear(&selection);
             check_int("terminal selection empty primary update",
@@ -650,6 +694,61 @@ main(void)
                       1);
             check_str("terminal pane action flushed host",
                       GetUIClipboardTextValue(), "action flush");
+
+            {
+                TerminalPaneClipboardController controller = {
+                    clipboard,
+                    NULL,
+                    NULL,
+                    NULL,
+                    NULL,
+                    0,
+                    0,
+                };
+
+                paste[0] = '\0';
+                check_int("terminal pane command text paste",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT,
+                              "command text"),
+                          12);
+                check_str("terminal pane command text", paste,
+                          "command text");
+
+                SetUIPrimarySelectionTextValue("command primary");
+                paste[0] = '\0';
+                check_int("terminal pane command primary paste",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PRIMARY,
+                              NULL),
+                          15);
+                check_str("terminal pane command primary", paste,
+                          "command primary");
+                check_int("terminal pane primary available",
+                          TerminalPaneClipboardPrimarySelectionAvailable(), 1);
+
+                SetUIClipboardTextValue("command host");
+                check_int("terminal pane command sync",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST,
+                              NULL),
+                          1);
+                check_str("terminal pane command synced buffer",
+                          GetUIClipboardBufferText(&buffer), "command host");
+
+                RequestUIClipboardBufferWrite(&buffer, "command flush");
+                check_int("terminal pane command flush",
+                          TerminalPaneClipboardPerformCommand(
+                              controller,
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_FLUSH_TO_HOST,
+                              NULL),
+                          1);
+                check_str("terminal pane command flushed host",
+                          GetUIClipboardTextValue(), "command flush");
+            }
         }
     }
 

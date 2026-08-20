@@ -192,6 +192,28 @@ typedef enum TerminalPaneClipboardAction {
     TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST
 } TerminalPaneClipboardAction;
 
+typedef enum TerminalPaneClipboardCommand {
+    TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_UPDATE_PRIMARY_SELECTION,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_SELECT_ALL,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_CLIPBOARD,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PRIMARY,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PREFERRED,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST,
+    TERMINAL_PANE_CLIPBOARD_COMMAND_FLUSH_TO_HOST
+} TerminalPaneClipboardCommand;
+
+typedef struct TerminalPaneClipboardController {
+    TerminalPaneClipboard clipboard;
+    TerminalPaneSelection *selection;
+    TerminalPaneSelectionLineFn line_text;
+    TerminalPaneSelectionWrappedFn line_wrapped;
+    void *userdata;
+    int total_rows;
+    int cols;
+} TerminalPaneClipboardController;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -368,6 +390,10 @@ int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,
                                  TerminalPaneClipboardAction action,
                                  const char *text);
+int TerminalPaneClipboardPrimarySelectionAvailable(void);
+int TerminalPaneClipboardPerformCommand(
+    TerminalPaneClipboardController controller,
+    TerminalPaneClipboardCommand command, const char *text);
 int TerminalPaneClipboardUpdatePrimarySelection(
     TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
     TerminalPaneSelectionLineFn line_text,

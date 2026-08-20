@@ -55,6 +55,12 @@ TerminalPaneClipboardSourceHasText(UIClipboardSource source)
 }
 
 int
+TerminalPaneClipboardPrimarySelectionAvailable(void)
+{
+    return TerminalPaneClipboardSourceHasText(UI_CLIPBOARD_SOURCE_PRIMARY);
+}
+
+int
 TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard)
 {
     if(clipboard.clipboard == NULL)
@@ -117,4 +123,54 @@ TerminalPaneClipboardCopySelection(
         return 0;
     return TerminalPaneSelectionCopyToClipboard(
         selection, line_text, line_wrapped, userdata, clipboard.clipboard);
+}
+
+int
+TerminalPaneClipboardPerformCommand(
+    TerminalPaneClipboardController controller,
+    TerminalPaneClipboardCommand command, const char *text)
+{
+    switch(command) {
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION:
+        return TerminalPaneClipboardCopySelection(
+            controller.clipboard, controller.selection, controller.line_text,
+            controller.line_wrapped, controller.userdata);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_UPDATE_PRIMARY_SELECTION:
+        return TerminalPaneClipboardUpdatePrimarySelection(
+            controller.clipboard, controller.selection, controller.line_text,
+            controller.line_wrapped, controller.userdata);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_SELECT_ALL:
+        if(controller.selection == NULL)
+            return 0;
+        TerminalPaneSelectionSelectAll(controller.selection,
+                                       controller.total_rows,
+                                       controller.cols);
+        return controller.selection->active ? 1 : 0;
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_PASTE_TEXT, text);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_CLIPBOARD:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_PASTE_CLIPBOARD,
+            text);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PRIMARY:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_PASTE_PRIMARY,
+            text);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PREFERRED:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_PASTE_PREFERRED,
+            text);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_SYNC_FROM_HOST,
+            text);
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_FLUSH_TO_HOST:
+        return TerminalPaneClipboardPerform(
+            controller.clipboard, TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST,
+            text);
+    default:
+        break;
+    }
+    return 0;
 }
