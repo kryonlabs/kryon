@@ -125,6 +125,11 @@ typedef struct TerminalPaneSearchMatch {
     int length;
 } TerminalPaneSearchMatch;
 
+typedef struct TerminalPaneSearchStart {
+    int row;
+    int col;
+} TerminalPaneSearchStart;
+
 typedef enum TerminalPaneKey {
     TERMINAL_PANE_KEY_ENTER = 1,
     TERMINAL_PANE_KEY_BACKSPACE,
@@ -415,6 +420,11 @@ int TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text,
                             const char *needle, int start_row, int start_col,
                             int direction, int wrap,
                             TerminalPaneSearchMatch *out);
+TerminalPaneSearchStart TerminalPaneSearchStartForDirection(
+    const TerminalPaneSelection *selection, int total_rows,
+    int first_visible_row, int direction);
+int TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
+                                        int match_row);
 int EncodeTerminalPaneCodepoint(char *out, int out_size,
                                 unsigned int codepoint, int mods,
                                 TerminalPaneKeyMode mode);

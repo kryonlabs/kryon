@@ -515,3 +515,49 @@ TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text, void *userdata,
     }
     return 0;
 }
+
+TerminalPaneSearchStart
+TerminalPaneSearchStartForDirection(const TerminalPaneSelection *selection,
+                                    int total_rows, int first_visible_row,
+                                    int direction)
+{
+    TerminalPaneSearchStart start = {0, 0};
+
+    if(total_rows <= 0) {
+        start.row = -1;
+        start.col = -1;
+        return start;
+    }
+    direction = direction >= 0 ? 1 : -1;
+    if(selection != NULL && selection->active) {
+        if(direction > 0) {
+            start.row = selection->end_row;
+            start.col = selection->end_col;
+        } else {
+            start.row = selection->start_row;
+            start.col = selection->start_col - 1;
+        }
+    } else if(direction > 0) {
+        start.row = first_visible_row;
+        start.col = 0;
+    } else {
+        start.row = total_rows - 1;
+        start.col = 4096;
+    }
+    start.row = pane_clamp_int(start.row, 0, total_rows - 1);
+    return start;
+}
+
+int
+TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
+                                    int match_row)
+{
+    int max_scroll;
+
+    if(total_rows <= 0 || visible_rows <= 0)
+        return 0;
+    max_scroll = pane_max_int(0, total_rows - visible_rows);
+    match_row = pane_clamp_int(match_row, 0, total_rows - 1);
+    return pane_clamp_int(total_rows - visible_rows - match_row, 0,
+                          max_scroll);
+}

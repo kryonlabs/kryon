@@ -531,6 +531,41 @@ main(void)
         check_int("terminal search empty row reset", match.row, -1);
         check_int("terminal search empty col reset", match.col, -1);
         check_int("terminal search empty length reset", match.length, 0);
+
+        {
+            TerminalPaneSelection selection;
+            TerminalPaneSearchStart start;
+
+            TerminalPaneSelectionClear(&selection);
+            start = TerminalPaneSearchStartForDirection(&selection, 12, 4, 1);
+            check_int("terminal search start visible row", start.row, 4);
+            check_int("terminal search start visible col", start.col, 0);
+            start = TerminalPaneSearchStartForDirection(&selection, 12, 4, -1);
+            check_int("terminal search reverse start last row", start.row, 11);
+            check_int("terminal search reverse start col", start.col, 4096);
+
+            TerminalPaneSelectionSetRange(&selection,
+                                          TERMINAL_PANE_SELECTION_CHAR, 0, 3,
+                                          2, 5, 7);
+            start = TerminalPaneSearchStartForDirection(&selection, 12, 4, 1);
+            check_int("terminal search start selection end row", start.row, 5);
+            check_int("terminal search start selection end col", start.col, 7);
+            start = TerminalPaneSearchStartForDirection(&selection, 12, 4, -1);
+            check_int("terminal search start selection begin row", start.row,
+                      3);
+            check_int("terminal search start selection begin col", start.col,
+                      1);
+
+            check_int("terminal search match scroll top",
+                      TerminalPaneSearchMatchScrollOffset(20, 5, 0), 15);
+            check_int("terminal search match scroll visible bottom",
+                      TerminalPaneSearchMatchScrollOffset(20, 5, 19), 0);
+            check_int("terminal search match scroll clamped",
+                      TerminalPaneSearchMatchScrollOffset(20, 5, 40), 0);
+            start = TerminalPaneSearchStartForDirection(NULL, 0, 4, 1);
+            check_int("terminal search empty start row", start.row, -1);
+            check_int("terminal search empty start col", start.col, -1);
+        }
     }
 
     {
