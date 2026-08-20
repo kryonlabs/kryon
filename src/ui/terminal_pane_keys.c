@@ -254,6 +254,23 @@ EncodeTerminalPaneCodepoint(char *out, int out_size, unsigned int codepoint,
     return terminal_pane_key_finish(out, out_size, used);
 }
 
+TerminalPaneMappedKey
+MapTerminalPaneFunctionKey(int function_index, int mods)
+{
+    TerminalPaneMappedKey mapped = {0};
+
+    mapped.mods = mods;
+    if(function_index < 1 || function_index > 24)
+        return mapped;
+    if(function_index <= 12 && (mods & TERMINAL_PANE_MOD_SHIFT) != 0) {
+        mapped.key = TERMINAL_PANE_KEY_F13 + function_index - 1;
+        mapped.mods = mods & ~TERMINAL_PANE_MOD_SHIFT;
+        return mapped;
+    }
+    mapped.key = TERMINAL_PANE_KEY_F1 + function_index - 1;
+    return mapped;
+}
+
 int
 EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
                       TerminalPaneKeyMode mode)

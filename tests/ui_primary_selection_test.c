@@ -1611,6 +1611,40 @@ main(void)
                   7);
         check_str("terminal f24 ctrl text", seq, "\x1b[24;6~");
 
+        {
+            TerminalPaneMappedKey mapped =
+                MapTerminalPaneFunctionKey(1, 0);
+            check_int("terminal map f1 key", mapped.key,
+                      TERMINAL_PANE_KEY_F1);
+            check_int("terminal map f1 mods", mapped.mods, 0);
+
+            mapped = MapTerminalPaneFunctionKey(
+                1, TERMINAL_PANE_MOD_SHIFT);
+            check_int("terminal map shift f1 key", mapped.key,
+                      TERMINAL_PANE_KEY_F13);
+            check_int("terminal map shift f1 mods", mapped.mods, 0);
+
+            mapped = MapTerminalPaneFunctionKey(
+                12, TERMINAL_PANE_MOD_SHIFT | TERMINAL_PANE_MOD_CTRL);
+            check_int("terminal map ctrl shift f12 key", mapped.key,
+                      TERMINAL_PANE_KEY_F24);
+            check_int("terminal map ctrl shift f12 mods", mapped.mods,
+                      TERMINAL_PANE_MOD_CTRL);
+
+            mapped = MapTerminalPaneFunctionKey(
+                24, TERMINAL_PANE_MOD_CTRL);
+            check_int("terminal map physical f24 key", mapped.key,
+                      TERMINAL_PANE_KEY_F24);
+            check_int("terminal map physical f24 mods", mapped.mods,
+                      TERMINAL_PANE_MOD_CTRL);
+
+            mapped = MapTerminalPaneFunctionKey(
+                0, TERMINAL_PANE_MOD_ALT);
+            check_int("terminal map invalid key", mapped.key, 0);
+            check_int("terminal map invalid mods", mapped.mods,
+                      TERMINAL_PANE_MOD_ALT);
+        }
+
         mode.application_cursor_keys = 1;
         check_int("terminal application cursor",
                   EncodeTerminalPaneKey(seq, (int)sizeof(seq),

@@ -192,6 +192,11 @@ typedef struct TerminalPaneKeyMode {
     int modify_other_keys;
 } TerminalPaneKeyMode;
 
+typedef struct TerminalPaneMappedKey {
+    int key;
+    int mods;
+} TerminalPaneMappedKey;
+
 typedef struct TerminalPaneMouseMode {
     int mode;
     int utf8;
@@ -429,6 +434,7 @@ int TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
 int EncodeTerminalPaneCodepoint(char *out, int out_size,
                                 unsigned int codepoint, int mods,
                                 TerminalPaneKeyMode mode);
+TerminalPaneMappedKey MapTerminalPaneFunctionKey(int function_index, int mods);
 int EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
                           TerminalPaneKeyMode mode);
 int EncodeTerminalPaneKeypad(char *out, int out_size, char key,
