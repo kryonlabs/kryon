@@ -596,6 +596,42 @@ main(void)
                       TerminalPaneClipboardFlushToHost(clipboard), 1);
             check_str("terminal pane clipboard flushed host",
                       GetUIClipboardTextValue(), "host flush");
+
+            paste[0] = '\0';
+            check_int("terminal pane action text paste",
+                      TerminalPaneClipboardPerform(
+                          clipboard, TERMINAL_PANE_CLIPBOARD_PASTE_TEXT,
+                          "action text"),
+                      11);
+            check_str("terminal pane action text", paste, "action text");
+
+            SetUIPrimarySelectionTextValue("action primary");
+            paste[0] = '\0';
+            check_int("terminal pane action preferred paste",
+                      TerminalPaneClipboardPerform(
+                          clipboard,
+                          TERMINAL_PANE_CLIPBOARD_PASTE_PREFERRED, NULL),
+                      14);
+            check_str("terminal pane action preferred", paste,
+                      "action primary");
+
+            SetUIClipboardTextValue("action host");
+            check_int("terminal pane action sync",
+                      TerminalPaneClipboardPerform(
+                          clipboard,
+                          TERMINAL_PANE_CLIPBOARD_SYNC_FROM_HOST, NULL),
+                      1);
+            check_str("terminal pane action synced buffer",
+                      GetUIClipboardBufferText(&buffer), "action host");
+
+            RequestUIClipboardBufferWrite(&buffer, "action flush");
+            check_int("terminal pane action flush",
+                      TerminalPaneClipboardPerform(
+                          clipboard,
+                          TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST, NULL),
+                      1);
+            check_str("terminal pane action flushed host",
+                      GetUIClipboardTextValue(), "action flush");
         }
     }
 

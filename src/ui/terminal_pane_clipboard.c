@@ -69,3 +69,29 @@ TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard)
         return 0;
     return FlushUIClipboardBufferToHost(clipboard.clipboard);
 }
+
+int
+TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,
+                             TerminalPaneClipboardAction action,
+                             const char *text)
+{
+    switch(action) {
+    case TERMINAL_PANE_CLIPBOARD_PASTE_TEXT:
+        return TerminalPaneClipboardPasteText(clipboard, text);
+    case TERMINAL_PANE_CLIPBOARD_PASTE_CLIPBOARD:
+        return TerminalPaneClipboardPasteClipboard(clipboard);
+    case TERMINAL_PANE_CLIPBOARD_PASTE_PRIMARY:
+        return TerminalPaneClipboardPastePrimary(clipboard);
+    case TERMINAL_PANE_CLIPBOARD_PASTE_PREFERRED:
+        return TerminalPaneClipboardPastePreferred(clipboard);
+    case TERMINAL_PANE_CLIPBOARD_SYNC_FROM_HOST:
+        (void)text;
+        return TerminalPaneClipboardSyncFromHost(clipboard);
+    case TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST:
+        (void)text;
+        return TerminalPaneClipboardFlushToHost(clipboard);
+    default:
+        break;
+    }
+    return 0;
+}

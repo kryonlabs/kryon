@@ -174,6 +174,15 @@ typedef struct TerminalPaneClipboard {
     void *userdata;
 } TerminalPaneClipboard;
 
+typedef enum TerminalPaneClipboardAction {
+    TERMINAL_PANE_CLIPBOARD_PASTE_TEXT,
+    TERMINAL_PANE_CLIPBOARD_PASTE_CLIPBOARD,
+    TERMINAL_PANE_CLIPBOARD_PASTE_PRIMARY,
+    TERMINAL_PANE_CLIPBOARD_PASTE_PREFERRED,
+    TERMINAL_PANE_CLIPBOARD_SYNC_FROM_HOST,
+    TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST
+} TerminalPaneClipboardAction;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -339,6 +348,9 @@ int TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardSourceHasText(UIClipboardSource source);
 int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
+int TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,
+                                 TerminalPaneClipboardAction action,
+                                 const char *text);
 int FormatTerminalPaneSessionTitle(char *out, int out_size, const char *text,
                                    const char *fallback);
 int TerminalPaneHandleInput(Terminal *terminal);
