@@ -67,6 +67,10 @@ main(void)
     SetUIPrimarySelectionTextValue("primary");
     check_str("primary selection resets", GetUIPrimarySelectionTextValue(),
               "primary");
+    check_int("primary source has text",
+              UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_PRIMARY), 1);
+    check_int("clipboard source has no text",
+              UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_CLIPBOARD), 0);
 
     {
         UIClipboardBuffer buffer;
@@ -96,6 +100,39 @@ main(void)
                   SyncUIClipboardBufferFromHost(&buffer), 1);
         check_str("clipboard buffer synced text",
                   GetUIClipboardBufferText(&buffer), "host");
+
+        check_int("clipboard source has text",
+                  UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_CLIPBOARD), 1);
+        check_str("clipboard source text",
+                  GetUIClipboardSourceText(&buffer,
+                                           UI_CLIPBOARD_SOURCE_CLIPBOARD),
+                  "host");
+        check_int("primary source update",
+                  SetUIPrimarySelectionFromText("selection"), 1);
+        check_str("primary source text",
+                  GetUIClipboardSourceText(&buffer,
+                                           UI_CLIPBOARD_SOURCE_PRIMARY),
+                  "selection");
+        check_int("preferred source uses primary",
+                  strcmp(GetUIClipboardSourceText(
+                             &buffer,
+                             UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
+                         "selection") == 0,
+                  1);
+        check_int("copy selection text",
+                  CopyUISelectionTextToClipboard(&buffer, "copied"), 1);
+        check_str("copied selection host", GetUIClipboardTextValue(),
+                  "copied");
+        check_str("copied selection buffer", GetUIClipboardBufferText(&buffer),
+                  "copied");
+        check_str("copied selection primary", GetUIPrimarySelectionTextValue(),
+                  "copied");
+        check_int("empty copy does not replace clipboard",
+                  CopyUISelectionTextToClipboard(&buffer, ""), 0);
+        check_str("empty copy keeps clipboard", GetUIClipboardTextValue(),
+                  "copied");
+        check_str("empty copy clears primary", GetUIPrimarySelectionTextValue(),
+                  "");
     }
 
     {
@@ -238,6 +275,32 @@ main(void)
                                         paste),
                   (int)strlen(sanitized));
         check_str("sanitized bracketed paste text", paste, sanitized);
+
+        {
+            UIClipboardBuffer buffer;
+
+            InitUIClipboardBuffer(&buffer, "");
+            SetUIClipboardTextValue("host paste");
+            SetUIPrimarySelectionTextValue("");
+            paste[0] = '\0';
+            check_int("clipboard source paste",
+                      WriteUIClipboardSourcePaste(
+                          &buffer, UI_CLIPBOARD_SOURCE_CLIPBOARD, 0,
+                          capture_paste_write, paste),
+                      10);
+            check_str("clipboard source paste text", paste, "host paste");
+            check_str("clipboard source paste buffer",
+                      GetUIClipboardBufferText(&buffer), "host paste");
+
+            SetUIPrimarySelectionTextValue("primary paste");
+            paste[0] = '\0';
+            check_int("preferred source paste",
+                      WriteUIClipboardSourcePaste(
+                          &buffer, UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD,
+                          0, capture_paste_write, paste),
+                      13);
+            check_str("preferred source paste text", paste, "primary paste");
+        }
     }
 
     return 0;

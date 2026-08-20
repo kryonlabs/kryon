@@ -67,6 +67,12 @@ typedef struct {
     int pending;
 } UIClipboardBuffer;
 
+typedef enum {
+    UI_CLIPBOARD_SOURCE_CLIPBOARD,
+    UI_CLIPBOARD_SOURCE_PRIMARY,
+    UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD
+} UIClipboardSource;
+
 typedef int (*UIClipboardOSC52WriteFn)(void *userdata, const char *text);
 typedef int (*UIClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
@@ -315,6 +321,12 @@ int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
 int SetUIPrimarySelectionTextValue(const char *text);
 const char *GetUIPrimarySelectionTextValue(void);
+int UIClipboardSourceHasText(UIClipboardSource source);
+const char *GetUIClipboardSourceText(const UIClipboardBuffer *clipboard,
+                                     UIClipboardSource source);
+int SetUIPrimarySelectionFromText(const char *text);
+int CopyUISelectionTextToClipboard(UIClipboardBuffer *clipboard,
+                                   const char *text);
 int UIClipboardTargetIncludes(const char *target, char wanted);
 int UIClipboardTargetUsesPrimary(const char *target);
 const char *GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
@@ -327,6 +339,13 @@ int HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
 int WriteUIClipboardPaste(const char *text, int bracketed,
                           UIClipboardPasteWriteFn write_text,
                           void *userdata);
+int WriteUIClipboardTextPaste(UIClipboardBuffer *clipboard, const char *text,
+                              int bracketed, UIClipboardPasteWriteFn write_text,
+                              void *userdata);
+int WriteUIClipboardSourcePaste(UIClipboardBuffer *clipboard,
+                                UIClipboardSource source, int bracketed,
+                                UIClipboardPasteWriteFn write_text,
+                                void *userdata);
 void InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text);
 int SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text);
 int RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text);

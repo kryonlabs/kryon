@@ -50,6 +50,74 @@ GetUIPrimarySelectionTextValue(void)
 }
 
 int
+UIClipboardSourceHasText(UIClipboardSource source)
+{
+    const char *text;
+
+    switch(source) {
+    case UI_CLIPBOARD_SOURCE_PRIMARY:
+        text = GetUIPrimarySelectionTextValue();
+        break;
+    case UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
+        text = GetUIPrimarySelectionTextValue();
+        if(text != NULL && text[0] != '\0')
+            return 1;
+        text = GetUIClipboardTextValue();
+        break;
+    case UI_CLIPBOARD_SOURCE_CLIPBOARD:
+    default:
+        text = GetUIClipboardTextValue();
+        break;
+    }
+    return text != NULL && text[0] != '\0';
+}
+
+const char *
+GetUIClipboardSourceText(const UIClipboardBuffer *clipboard,
+                         UIClipboardSource source)
+{
+    const char *text;
+
+    switch(source) {
+    case UI_CLIPBOARD_SOURCE_PRIMARY:
+        return GetUIPrimarySelectionTextValue();
+    case UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
+        text = GetUIPrimarySelectionTextValue();
+        if(text != NULL && text[0] != '\0')
+            return text;
+        (void)clipboard;
+        return GetUIClipboardTextValue();
+    case UI_CLIPBOARD_SOURCE_CLIPBOARD:
+    default:
+        (void)clipboard;
+        return GetUIClipboardTextValue();
+    }
+}
+
+int
+SetUIPrimarySelectionFromText(const char *text)
+{
+    if(text == NULL || text[0] == '\0')
+        text = "";
+    return SetUIPrimarySelectionTextValue(text);
+}
+
+int
+CopyUISelectionTextToClipboard(UIClipboardBuffer *clipboard, const char *text)
+{
+    int changed = 0;
+
+    if(text == NULL || text[0] == '\0') {
+        (void)SetUIPrimarySelectionTextValue("");
+        return 0;
+    }
+    changed |= SetUIClipboardTextValue(text);
+    changed |= SetUIClipboardBufferText(clipboard, text);
+    changed |= SetUIPrimarySelectionTextValue(text);
+    return changed;
+}
+
+int
 UIClipboardTargetIncludes(const char *target, char wanted)
 {
     int i;
@@ -411,6 +479,29 @@ WriteUIClipboardPaste(const char *text, int bracketed,
     written += ui_clipboard_write_paste_chunk(write_text, userdata,
                                               "\x1b[201~", 6);
     return written;
+}
+
+int
+WriteUIClipboardTextPaste(UIClipboardBuffer *clipboard, const char *text,
+                          int bracketed, UIClipboardPasteWriteFn write_text,
+                          void *userdata)
+{
+    if(text == NULL || text[0] == '\0')
+        return 0;
+    (void)SetUIClipboardBufferText(clipboard, text);
+    return WriteUIClipboardPaste(text, bracketed, write_text, userdata);
+}
+
+int
+WriteUIClipboardSourcePaste(UIClipboardBuffer *clipboard,
+                            UIClipboardSource source, int bracketed,
+                            UIClipboardPasteWriteFn write_text, void *userdata)
+{
+    const char *text;
+
+    text = GetUIClipboardSourceText(clipboard, source);
+    return WriteUIClipboardTextPaste(clipboard, text, bracketed, write_text,
+                                     userdata);
 }
 
 static int
