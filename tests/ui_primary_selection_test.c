@@ -622,6 +622,8 @@ main(void)
         };
         TerminalPaneProfileColors colors;
         TerminalPaneProfileState state;
+        char color_text[16];
+        int parsed_color = 0;
 
         check_int("terminal pane color rgb",
                   TerminalPaneColorToRGB((Color){0x11, 0x22, 0x33, 255}),
@@ -688,6 +690,52 @@ main(void)
                   colors.foreground);
         check_int("profile seed background", state.background,
                   colors.background);
+
+        check_int("profile color hash parse",
+                  ParseTerminalPaneProfileColor("#010203", &parsed_color),
+                  1);
+        check_int("profile color hash value", parsed_color,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203);
+        check_int("profile color bare parse",
+                  ParseTerminalPaneProfileColor("aabbcc", &parsed_color), 1);
+        check_int("profile color bare value", parsed_color,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
+        check_int("profile color default parse",
+                  ParseTerminalPaneProfileColor("default", &parsed_color), 1);
+        check_int("profile color default value", parsed_color,
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        parsed_color = 123;
+        check_int("profile color system parse",
+                  ParseTerminalPaneProfileColor("system", &parsed_color), 1);
+        check_int("profile color system value", parsed_color,
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        parsed_color = 123;
+        check_int("profile color theme parse",
+                  ParseTerminalPaneProfileColor("theme", &parsed_color), 1);
+        check_int("profile color theme value", parsed_color,
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        parsed_color = 123;
+        check_int("profile color invalid rejected",
+                  ParseTerminalPaneProfileColor("zzzzzz", &parsed_color), 0);
+        check_int("profile color invalid preserves out", parsed_color, 123);
+        check_int("profile color null rejected",
+                  ParseTerminalPaneProfileColor(NULL, &parsed_color), 0);
+        check_int("profile color format",
+                  FormatTerminalPaneProfileColor(
+                      color_text, (int)sizeof(color_text),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x0a0b0c),
+                  7);
+        check_str("profile color format text", color_text, "#0a0b0c");
+        color_text[0] = 'x';
+        check_int("profile color format default omitted",
+                  FormatTerminalPaneProfileColor(
+                      color_text, (int)sizeof(color_text),
+                      TERMINAL_PANE_COLOR_DEFAULT),
+                  0);
+        check_int("profile color format invalid omitted",
+                  FormatTerminalPaneProfileColor(color_text,
+                                                 (int)sizeof(color_text), 12),
+                  0);
 
         check_int("cursor style parse block",
                   ParseTerminalPaneCursorStyle("block",

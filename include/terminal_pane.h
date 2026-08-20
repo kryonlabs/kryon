@@ -208,6 +208,8 @@ void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
                                          TerminalPaneProfileColors new_colors);
 int ParseTerminalPaneCursorStyle(const char *text, int fallback);
 const char *TerminalPaneCursorStyleName(int style);
+int ParseTerminalPaneProfileColor(const char *text, int *out);
+int FormatTerminalPaneProfileColor(char *out, int out_size, int color);
 int ParseTerminalPaneOSCColor(const char *text);
 int TerminalPaneDefaultPaletteColor(int index);
 int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,

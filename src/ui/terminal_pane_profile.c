@@ -1,6 +1,7 @@
 #include "terminal_pane.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 static int
@@ -17,6 +18,18 @@ resolve_profile_color(int configured, Color fallback)
     if(color_visible(fallback))
         return TerminalPaneColorToRGB(fallback);
     return TERMINAL_PANE_COLOR_DEFAULT;
+}
+
+static int
+hex_value(int ch)
+{
+    if(ch >= '0' && ch <= '9')
+        return ch - '0';
+    if(ch >= 'a' && ch <= 'f')
+        return 10 + ch - 'a';
+    if(ch >= 'A' && ch <= 'F')
+        return 10 + ch - 'A';
+    return -1;
 }
 
 int
@@ -171,4 +184,48 @@ TerminalPaneCursorStyleName(int style)
     if(style == TERMINAL_PANE_CURSOR_BAR)
         return "bar";
     return "block";
+}
+
+int
+ParseTerminalPaneProfileColor(const char *text, int *out)
+{
+    int r1;
+    int r2;
+    int g1;
+    int g2;
+    int b1;
+    int b2;
+
+    if(out == NULL || text == NULL)
+        return 0;
+    if(strcmp(text, "default") == 0 || strcmp(text, "system") == 0 ||
+       strcmp(text, "theme") == 0) {
+        *out = TERMINAL_PANE_COLOR_DEFAULT;
+        return 1;
+    }
+    if(text[0] == '#')
+        text++;
+    if(strlen(text) != 6)
+        return 0;
+    r1 = hex_value((unsigned char)text[0]);
+    r2 = hex_value((unsigned char)text[1]);
+    g1 = hex_value((unsigned char)text[2]);
+    g2 = hex_value((unsigned char)text[3]);
+    b1 = hex_value((unsigned char)text[4]);
+    b2 = hex_value((unsigned char)text[5]);
+    if(r1 < 0 || r2 < 0 || g1 < 0 || g2 < 0 || b1 < 0 || b2 < 0)
+        return 0;
+    *out = TERMINAL_PANE_COLOR_TRUE_RGB | (((r1 << 4) | r2) << 16) |
+           (((g1 << 4) | g2) << 8) | ((b1 << 4) | b2);
+    return 1;
+}
+
+int
+FormatTerminalPaneProfileColor(char *out, int out_size, int color)
+{
+    if(out == NULL || out_size <= 0 || color == TERMINAL_PANE_COLOR_DEFAULT)
+        return 0;
+    if((color & TERMINAL_PANE_COLOR_TRUE_RGB) == 0)
+        return 0;
+    return snprintf(out, (size_t)out_size, "#%06x", color & 0xffffff);
 }
