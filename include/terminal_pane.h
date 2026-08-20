@@ -16,6 +16,10 @@ typedef struct TerminalPaneColors {
     Color selection_text;
     Color cursor;
     Color border;
+    Color scroll_indicator;
+    Color scroll_indicator_text;
+    Color bell_overlay;
+    Color bell_border;
 } TerminalPaneColors;
 
 typedef struct TerminalPanePalette {

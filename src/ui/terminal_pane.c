@@ -26,15 +26,25 @@ GetTerminalPaneThemeColors(void)
     Color text = GetThemeText();
     Color surface = GetThemeSurface();
     Color link = GetThemeLink();
+    Color border =
+        Fade(surface.r == bg.r && surface.g == bg.g && surface.b == bg.b
+                 ? text
+                 : surface,
+             0.72f);
+    Color selection = Fade(link, 0.28f);
 
     return (TerminalPaneColors){
         bg,
         text,
         Fade(text, 0.70f),
-        Fade(link, 0.28f),
+        selection,
         bg,
         text,
-        Fade(surface.r == bg.r && surface.g == bg.g && surface.b == bg.b ? text : surface, 0.72f)
+        border,
+        Fade(bg, 0.82f),
+        Fade(text, 0.78f),
+        Fade(link, 0.16f),
+        Fade(link, 0.85f)
     };
 }
 
