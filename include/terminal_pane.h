@@ -64,6 +64,13 @@ typedef struct TerminalPaneSearchMatch {
     int length;
 } TerminalPaneSearchMatch;
 
+typedef struct TerminalPaneClipboard {
+    UIClipboardBuffer *clipboard;
+    int bracketed_paste;
+    UIClipboardPasteWriteFn write_text;
+    void *userdata;
+} TerminalPaneClipboard;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -169,6 +176,12 @@ int TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text,
                             const char *needle, int start_row, int start_col,
                             int direction, int wrap,
                             TerminalPaneSearchMatch *out);
+int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
+                                   const char *text);
+int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
+                                     UIClipboardSource source);
+int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
+int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 

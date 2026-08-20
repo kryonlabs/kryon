@@ -511,6 +511,51 @@ main(void)
                       13);
             check_str("preferred source paste text", paste, "primary paste");
         }
+
+        {
+            UIClipboardBuffer buffer;
+            TerminalPaneClipboard clipboard;
+
+            InitUIClipboardBuffer(&buffer, "");
+            clipboard = (TerminalPaneClipboard){
+                &buffer,
+                1,
+                capture_paste_write,
+                paste,
+            };
+            paste[0] = '\0';
+            check_int("terminal pane clipboard text paste",
+                      TerminalPaneClipboardPasteText(clipboard,
+                                                     "pane\npaste"),
+                      22);
+            check_str("terminal pane clipboard text", paste,
+                      "\x1b[200~pane\npaste\x1b[201~");
+            check_str("terminal pane clipboard buffer",
+                      GetUIClipboardBufferText(&buffer), "pane\npaste");
+
+            SetUIPrimarySelectionTextValue("pane primary");
+            clipboard.bracketed_paste = 0;
+            paste[0] = '\0';
+            check_int("terminal pane clipboard source paste",
+                      TerminalPaneClipboardPasteSource(
+                          clipboard,
+                          UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
+                      12);
+            check_str("terminal pane clipboard source", paste,
+                      "pane primary");
+
+            SetUIClipboardTextValue("host sync");
+            check_int("terminal pane clipboard sync",
+                      TerminalPaneClipboardSyncFromHost(clipboard), 1);
+            check_str("terminal pane clipboard synced buffer",
+                      GetUIClipboardBufferText(&buffer), "host sync");
+
+            RequestUIClipboardBufferWrite(&buffer, "host flush");
+            check_int("terminal pane clipboard flush",
+                      TerminalPaneClipboardFlushToHost(clipboard), 1);
+            check_str("terminal pane clipboard flushed host",
+                      GetUIClipboardTextValue(), "host flush");
+        }
     }
 
     return 0;
