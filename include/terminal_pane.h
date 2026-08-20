@@ -203,6 +203,7 @@ typedef struct TerminalPaneResult {
 } TerminalPaneResult;
 
 TerminalPaneColors GetTerminalPaneThemeColors(void);
+TerminalPaneColors ResolveTerminalPaneThemeColors(TerminalPaneColors colors);
 int TerminalPaneColorToRGB(Color color);
 Color ResolveTerminalPaneColor(const TerminalPanePalette *palette, int value,
                                Color fallback);

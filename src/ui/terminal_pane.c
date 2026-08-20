@@ -6,6 +6,12 @@
 #include "ui_text.h"
 
 static int
+pane_color_visible(Color color)
+{
+    return color.a != 0;
+}
+
+static int
 pane_color_empty(Color color)
 {
     return color.r == 0 && color.g == 0 && color.b == 0 && color.a == 0;
@@ -45,6 +51,38 @@ GetTerminalPaneThemeColors(void)
         Fade(link, 0.16f),
         Fade(link, 0.85f)
     };
+}
+
+TerminalPaneColors
+ResolveTerminalPaneThemeColors(TerminalPaneColors colors)
+{
+    TerminalPaneColors fallback = GetTerminalPaneThemeColors();
+
+    if(!pane_color_visible(colors.background))
+        colors.background = fallback.background;
+    if(!pane_color_visible(colors.text))
+        colors.text = fallback.text;
+    if(!pane_color_visible(colors.muted_text))
+        colors.muted_text = fallback.muted_text;
+    if(!pane_color_visible(colors.selection))
+        colors.selection = fallback.selection;
+    if(!pane_color_visible(colors.selection_text))
+        colors.selection_text = fallback.selection_text;
+    if(!pane_color_visible(colors.cursor))
+        colors.cursor = fallback.cursor;
+    if(!pane_color_visible(colors.link))
+        colors.link = fallback.link;
+    if(!pane_color_visible(colors.border))
+        colors.border = fallback.border;
+    if(!pane_color_visible(colors.scroll_indicator))
+        colors.scroll_indicator = fallback.scroll_indicator;
+    if(!pane_color_visible(colors.scroll_indicator_text))
+        colors.scroll_indicator_text = fallback.scroll_indicator_text;
+    if(!pane_color_visible(colors.bell_overlay))
+        colors.bell_overlay = fallback.bell_overlay;
+    if(!pane_color_visible(colors.bell_border))
+        colors.bell_border = fallback.bell_border;
+    return colors;
 }
 
 TerminalPaneMetrics

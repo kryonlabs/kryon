@@ -659,6 +659,7 @@ main(void)
         };
         TerminalPaneProfileColors colors;
         TerminalPaneProfileState state;
+        TerminalPaneColors resolved_theme;
         TerminalPanePalette pane_palette;
         int color_overrides[256];
         char color_text[16];
@@ -672,6 +673,33 @@ main(void)
         check_int("terminal pane invisible color default",
                   TerminalPaneColorToRGB((Color){0, 0, 0, 0}),
                   TERMINAL_PANE_COLOR_DEFAULT);
+        resolved_theme = ResolveTerminalPaneThemeColors(
+            (TerminalPaneColors){
+                {0, 0, 0, 0},
+                {40, 41, 42, 255},
+                {0, 0, 0, 0},
+                {43, 44, 45, 255},
+                {0, 0, 0, 0},
+                {46, 47, 48, 255},
+                {0, 0, 0, 0},
+                {49, 50, 51, 255},
+                {0, 0, 0, 0},
+                {52, 53, 54, 255},
+                {0, 0, 0, 0},
+                {55, 56, 57, 255}
+            });
+        check_int("terminal theme resolve background",
+                  TerminalPaneColorToRGB(resolved_theme.background),
+                  TerminalPaneColorToRGB(GetTerminalPaneThemeColors().background));
+        check_int("terminal theme preserve text",
+                  TerminalPaneColorToRGB(resolved_theme.text),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x28292a);
+        check_int("terminal theme resolve link",
+                  TerminalPaneColorToRGB(resolved_theme.link),
+                  TerminalPaneColorToRGB(GetTerminalPaneThemeColors().link));
+        check_int("terminal theme preserve border",
+                  TerminalPaneColorToRGB(resolved_theme.border),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x313233);
         pane_palette = GetTerminalPaneDefaultPalette();
         memset(color_overrides, 0xff, sizeof(color_overrides));
         check_int("terminal pane true color resolve",
