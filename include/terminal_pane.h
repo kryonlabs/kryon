@@ -13,6 +13,7 @@ typedef struct TerminalPaneColors {
     Color text;
     Color muted_text;
     Color selection;
+    Color selection_text;
     Color cursor;
     Color border;
 } TerminalPaneColors;

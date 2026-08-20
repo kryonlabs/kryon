@@ -32,6 +32,7 @@ GetTerminalPaneThemeColors(void)
         text,
         Fade(text, 0.70f),
         Fade(link, 0.28f),
+        bg,
         text,
         Fade(surface.r == bg.r && surface.g == bg.g && surface.b == bg.b ? text : surface, 0.72f)
     };
