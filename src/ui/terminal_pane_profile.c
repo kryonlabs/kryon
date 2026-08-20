@@ -71,6 +71,28 @@ ResolveTerminalPaneColorWithOverrides(const TerminalPanePalette *palette,
     return ResolveTerminalPaneColor(palette, value, fallback);
 }
 
+TerminalPaneViewColors
+ResolveTerminalPaneViewColors(const TerminalPanePalette *palette,
+                              const int *overrides,
+                              TerminalPaneProfileColors colors,
+                              TerminalPaneColors fallback)
+{
+    TerminalPaneViewColors resolved;
+
+    fallback = ResolveTerminalPaneThemeColors(fallback);
+    resolved.foreground = ResolveTerminalPaneColorWithOverrides(
+        palette, overrides, colors.foreground, fallback.text);
+    resolved.background = ResolveTerminalPaneColorWithOverrides(
+        palette, overrides, colors.background, fallback.background);
+    resolved.cursor = ResolveTerminalPaneColorWithOverrides(
+        palette, overrides, colors.cursor, resolved.foreground);
+    resolved.selection_foreground = ResolveTerminalPaneColorWithOverrides(
+        palette, overrides, colors.selection_foreground, resolved.background);
+    resolved.selection_background = ResolveTerminalPaneColorWithOverrides(
+        palette, overrides, colors.selection_background, fallback.selection);
+    return resolved;
+}
+
 TerminalPaneProfileColors
 TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors)
 {

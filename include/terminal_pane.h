@@ -48,6 +48,14 @@ typedef struct TerminalPaneProfileColors {
     int selection_background;
 } TerminalPaneProfileColors;
 
+typedef struct TerminalPaneViewColors {
+    Color foreground;
+    Color background;
+    Color cursor;
+    Color selection_foreground;
+    Color selection_background;
+} TerminalPaneViewColors;
+
 typedef struct TerminalPaneProfileState {
     int base_foreground;
     int base_background;
@@ -210,6 +218,9 @@ Color ResolveTerminalPaneColor(const TerminalPanePalette *palette, int value,
 Color ResolveTerminalPaneColorWithOverrides(
     const TerminalPanePalette *palette, const int *overrides, int value,
     Color fallback);
+TerminalPaneViewColors ResolveTerminalPaneViewColors(
+    const TerminalPanePalette *palette, const int *overrides,
+    TerminalPaneProfileColors colors, TerminalPaneColors fallback);
 TerminalPaneProfileColors
 TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors);
 TerminalPaneProfileColors

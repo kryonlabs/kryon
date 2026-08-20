@@ -677,6 +677,7 @@ main(void)
         };
         TerminalPaneProfileColors colors;
         TerminalPaneProfileState state;
+        TerminalPaneViewColors view_colors;
         TerminalPaneColors resolved_theme;
         TerminalPanePalette pane_palette;
         int color_overrides[256];
@@ -740,6 +741,32 @@ main(void)
                       &pane_palette, color_overrides, 1,
                       (Color){1, 2, 3, 255})),
                   TERMINAL_PANE_COLOR_TRUE_RGB | 0x223344);
+        color_overrides[2] = TERMINAL_PANE_COLOR_TRUE_RGB | 0x778899;
+        view_colors = ResolveTerminalPaneViewColors(
+            &pane_palette, color_overrides,
+            (TerminalPaneProfileColors){
+                1,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                2
+            },
+            theme);
+        check_int("terminal view foreground override",
+                  TerminalPaneColorToRGB(view_colors.foreground),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x223344);
+        check_int("terminal view background true color",
+                  TerminalPaneColorToRGB(view_colors.background),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566);
+        check_int("terminal view cursor follows foreground",
+                  TerminalPaneColorToRGB(view_colors.cursor),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x223344);
+        check_int("terminal view selection foreground follows background",
+                  TerminalPaneColorToRGB(view_colors.selection_foreground),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566);
+        check_int("terminal view selection background override",
+                  TerminalPaneColorToRGB(view_colors.selection_background),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x778899);
         colors = ResolveTerminalPaneProfileColors(configured, theme);
         check_int("profile foreground from theme", colors.foreground,
                   TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506);
