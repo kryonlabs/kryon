@@ -7,6 +7,8 @@
  * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
  * copy and paste caps stay symmetric. */
 #define UI_TK_CLIPBOARD_MAX (1024 * 1024)
+#define UI_CLIPBOARD_OSC52_ENCODED_SIZE 5464
+#define UI_CLIPBOARD_OSC52_RESPONSE_SIZE 5520
 
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
 static char g_primary_selection_text[UI_TK_CLIPBOARD_MAX];
@@ -95,6 +97,165 @@ RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard, const char *target,
        UIClipboardTargetIncludes(target, 's') || !wrote)
         changed |= RequestUIClipboardBufferWrite(clipboard, text);
     return changed;
+}
+
+static int
+ui_clipboard_base64_value(int ch)
+{
+    if(ch >= 'A' && ch <= 'Z')
+        return ch - 'A';
+    if(ch >= 'a' && ch <= 'z')
+        return 26 + ch - 'a';
+    if(ch >= '0' && ch <= '9')
+        return 52 + ch - '0';
+    if(ch == '+')
+        return 62;
+    if(ch == '/')
+        return 63;
+    return -1;
+}
+
+static int
+ui_clipboard_decode_base64(char *out, int out_size, const char *text)
+{
+    int value = 0;
+    int bits = 0;
+    int used = 0;
+
+    if(out == NULL || out_size <= 0 || text == NULL)
+        return 0;
+    out[0] = '\0';
+    while(*text != '\0') {
+        int ch = (unsigned char)*text++;
+        int v;
+
+        if(ch == '=')
+            break;
+        if(ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')
+            continue;
+        v = ui_clipboard_base64_value(ch);
+        if(v < 0)
+            return 0;
+        value = (value << 6) | v;
+        bits += 6;
+        if(bits >= 8) {
+            bits -= 8;
+            if(used >= out_size - 1)
+                break;
+            out[used++] = (char)((value >> bits) & 0xff);
+        }
+    }
+    out[used] = '\0';
+    return used;
+}
+
+static int
+ui_clipboard_encode_base64(char *out, int out_size, const char *text, int size)
+{
+    static const char alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int used = 0;
+    int i;
+
+    if(out == NULL || out_size <= 0 || text == NULL || size < 0)
+        return 0;
+    out[0] = '\0';
+    for(i = 0; i < size; i += 3) {
+        unsigned int a = (unsigned char)text[i];
+        unsigned int b = i + 1 < size ? (unsigned char)text[i + 1] : 0;
+        unsigned int c = i + 2 < size ? (unsigned char)text[i + 2] : 0;
+
+        if(used + 4 >= out_size)
+            return 0;
+        out[used++] = alphabet[(a >> 2) & 0x3f];
+        out[used++] = alphabet[((a & 0x03) << 4) | ((b >> 4) & 0x0f)];
+        out[used++] = i + 1 < size
+                          ? alphabet[((b & 0x0f) << 2) | ((c >> 6) & 0x03)]
+                          : '=';
+        out[used++] = i + 2 < size ? alphabet[c & 0x3f] : '=';
+    }
+    out[used] = '\0';
+    return used;
+}
+
+static int
+ui_clipboard_copy_osc52_target(char *out, int out_size, const char *payload,
+                               const char **text_payload)
+{
+    int used = 0;
+
+    if(out == NULL || out_size <= 0 || text_payload == NULL)
+        return 0;
+    out[0] = '\0';
+    *text_payload = NULL;
+    if(payload == NULL)
+        return 0;
+    while(payload[used] != '\0' && payload[used] != ';' &&
+          payload[used] != '\a' && payload[used] != 0x1b &&
+          used < out_size - 1) {
+        out[used] = payload[used];
+        used++;
+    }
+    out[used] = '\0';
+    if(payload[used] != ';')
+        return 0;
+    if(used == 0) {
+        out[0] = 'c';
+        out[1] = '\0';
+    }
+    *text_payload = payload + used + 1;
+    return 1;
+}
+
+static int
+ui_clipboard_send_osc52_response(UIClipboardBuffer *clipboard,
+                                 const char *target,
+                                 UIClipboardOSC52WriteFn write_response,
+                                 void *userdata)
+{
+    char encoded[UI_CLIPBOARD_OSC52_ENCODED_SIZE];
+    char response[UI_CLIPBOARD_OSC52_RESPONSE_SIZE];
+    const char *text;
+    int size;
+    int encoded_size;
+
+    if(clipboard == NULL || write_response == NULL)
+        return 0;
+    text = GetUIClipboardTargetText(clipboard, target);
+    size = (int)strlen(text);
+    encoded_size =
+        ui_clipboard_encode_base64(encoded, (int)sizeof(encoded), text, size);
+    if(size > 0 && encoded_size <= 0)
+        return 0;
+    snprintf(response, sizeof(response), "\x1b]52;%s;%s\a", target, encoded);
+    return write_response(userdata, response);
+}
+
+int
+HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
+                       UIClipboardOSC52WriteFn write_response,
+                       void *userdata)
+{
+    char target[32];
+    const char *text_payload;
+
+    if(clipboard == NULL ||
+       !ui_clipboard_copy_osc52_target(target, (int)sizeof(target), payload,
+                                       &text_payload))
+        return 0;
+    if(text_payload[0] == '?')
+        return ui_clipboard_send_osc52_response(clipboard, target,
+                                                write_response, userdata);
+    if(text_payload[0] == '\0')
+        return RequestUIClipboardTargetWrite(clipboard, target, "");
+    {
+        char decoded[UI_CLIPBOARD_BUFFER_SIZE];
+
+        if(ui_clipboard_decode_base64(decoded, (int)sizeof(decoded),
+                                      text_payload) > 0)
+            return RequestUIClipboardTargetWrite(clipboard, target, decoded);
+    }
+    return 0;
 }
 
 static int

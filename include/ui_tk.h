@@ -67,6 +67,8 @@ typedef struct {
     int pending;
 } UIClipboardBuffer;
 
+typedef int (*UIClipboardOSC52WriteFn)(void *userdata, const char *text);
+
 typedef struct {
     int id;
     Rectangle trigger;
@@ -317,6 +319,9 @@ const char *GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
                                      const char *target);
 int RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard,
                                   const char *target, const char *text);
+int HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
+                           UIClipboardOSC52WriteFn write_response,
+                           void *userdata);
 void InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text);
 int SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text);
 int RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text);

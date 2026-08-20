@@ -23,6 +23,17 @@ check_str(const char *name, const char *got, const char *want)
     exit(1);
 }
 
+static int
+capture_osc52_response(void *userdata, const char *text)
+{
+    char *buffer = userdata;
+
+    if(buffer == NULL || text == NULL)
+        return 0;
+    snprintf(buffer, 256, "%s", text);
+    return 1;
+}
+
 int
 main(void)
 {
@@ -120,6 +131,49 @@ main(void)
                   RequestUIClipboardTargetWrite(&buffer, "x", "fallback"), 1);
         check_str("unknown target clipboard text",
                   GetUIClipboardBufferText(&buffer), "fallback");
+    }
+
+    {
+        UIClipboardBuffer buffer;
+        char response[256];
+
+        InitUIClipboardBuffer(&buffer, "");
+        SetUIPrimarySelectionTextValue("");
+        response[0] = '\0';
+
+        check_int("osc 52 writes clipboard",
+                  HandleUIClipboardOSC52(&buffer, "c;aGVsbG8=", NULL, NULL),
+                  1);
+        check_str("osc 52 clipboard text", GetUIClipboardBufferText(&buffer),
+                  "hello");
+        check_int("osc 52 clipboard query",
+                  HandleUIClipboardOSC52(&buffer, "c;?",
+                                         capture_osc52_response, response),
+                  1);
+        check_str("osc 52 clipboard response", response,
+                  "\x1b]52;c;aGVsbG8=\a");
+
+        check_int("osc 52 writes primary",
+                  HandleUIClipboardOSC52(&buffer, "p;cHJpbWFyeQ==", NULL,
+                                         NULL),
+                  1);
+        response[0] = '\0';
+        check_int("osc 52 primary query",
+                  HandleUIClipboardOSC52(&buffer, "p;?",
+                                         capture_osc52_response, response),
+                  1);
+        check_str("osc 52 primary response", response,
+                  "\x1b]52;p;cHJpbWFyeQ==\a");
+
+        check_int("osc 52 clears clipboard",
+                  HandleUIClipboardOSC52(&buffer, "c;", NULL, NULL), 1);
+        check_str("osc 52 cleared text", GetUIClipboardBufferText(&buffer),
+                  "");
+
+        check_int("osc 52 invalid payload ignored",
+                  HandleUIClipboardOSC52(&buffer, "c;%%%%", NULL, NULL), 0);
+        check_str("osc 52 invalid keeps clipboard",
+                  GetUIClipboardBufferText(&buffer), "");
     }
 
     {
