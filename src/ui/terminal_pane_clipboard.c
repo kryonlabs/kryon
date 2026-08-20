@@ -250,3 +250,128 @@ TerminalPaneClipboardRunSimpleCommand(TerminalPaneClipboard clipboard,
                                             0, 0, scroll_offset),
         command, text);
 }
+
+TerminalPaneClipboardActions
+MakeTerminalPaneClipboardActions(TerminalPaneClipboardController selection,
+                                 TerminalPaneClipboardController session)
+{
+    TerminalPaneClipboardActions actions = {0};
+
+    actions.selection = selection;
+    actions.session = session;
+    return actions;
+}
+
+static TerminalPaneClipboardController
+terminal_pane_clipboard_controller_for_command(
+    TerminalPaneClipboardActions actions, TerminalPaneClipboardCommand command)
+{
+    if(TerminalPaneClipboardCommandWritesInput(command) ||
+       command == TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST ||
+       command == TERMINAL_PANE_CLIPBOARD_COMMAND_FLUSH_TO_HOST)
+        return actions.session;
+    return actions.selection;
+}
+
+TerminalPaneClipboardCommandResult
+TerminalPaneClipboardRunActionsCommand(TerminalPaneClipboardActions actions,
+                                       TerminalPaneClipboardCommand command,
+                                       const char *text)
+{
+    return TerminalPaneClipboardRunCommand(
+        terminal_pane_clipboard_controller_for_command(actions, command),
+        command, text);
+}
+
+int
+TerminalPaneClipboardCollectSelectionText(TerminalPaneClipboardActions actions,
+                                          char *buffer, int buffer_size)
+{
+    TerminalPaneClipboardController controller = actions.selection;
+
+    if(buffer == NULL || buffer_size <= 0)
+        return 0;
+    buffer[0] = '\0';
+    if(controller.selection == NULL || controller.line_text == NULL)
+        return 0;
+    return TerminalPaneSelectionCollectText(
+        controller.selection, controller.line_text, controller.line_wrapped,
+        controller.userdata, buffer, buffer_size);
+}
+
+int
+TerminalPaneClipboardUpdatePrimary(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions,
+               TERMINAL_PANE_CLIPBOARD_COMMAND_UPDATE_PRIMARY_SELECTION,
+               NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardCopy(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardSelectAll(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_SELECT_ALL, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardPasteActionsText(TerminalPaneClipboardActions actions,
+                                      const char *text)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT, text)
+        .performed;
+}
+
+int
+TerminalPaneClipboardPasteActionsClipboard(
+    TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_CLIPBOARD, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardPasteActionsPrimary(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PRIMARY, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardPasteActionsPreferred(
+    TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PREFERRED, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardActionsSyncFromHost(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST, NULL)
+        .performed;
+}
+
+int
+TerminalPaneClipboardActionsFlushToHost(TerminalPaneClipboardActions actions)
+{
+    return TerminalPaneClipboardRunActionsCommand(
+               actions, TERMINAL_PANE_CLIPBOARD_COMMAND_FLUSH_TO_HOST, NULL)
+        .performed;
+}

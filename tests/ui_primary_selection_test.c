@@ -512,6 +512,19 @@ main(void)
                         pane_clipboard, &selection, fixture_line_text,
                         fixture_line_wrapped, &fixture, fixture.count, 24,
                         NULL);
+                char paste_capture[512] = "";
+                int scroll_offset = 7;
+                TerminalPaneClipboard session_clipboard =
+                    MakeTerminalPaneClipboard(&clipboard, 0,
+                                              capture_paste_write,
+                                              paste_capture);
+                TerminalPaneClipboardController session_controller =
+                    MakeTerminalPaneClipboardController(
+                        session_clipboard, NULL, NULL, NULL, NULL, 0, 0,
+                        &scroll_offset);
+                TerminalPaneClipboardActions actions =
+                    MakeTerminalPaneClipboardActions(controller,
+                                                     session_controller);
 
                 SetUIPrimarySelectionTextValue("old primary");
                 check_int("terminal pane command primary update",
@@ -545,6 +558,40 @@ main(void)
                           selection.end_row, fixture.count - 1);
                 check_int("terminal pane command select all end col",
                           selection.end_col, 24);
+
+                TerminalPaneSelectionSetRange(
+                    &selection, TERMINAL_PANE_SELECTION_CHAR, 0, 2, 0, 3,
+                    1);
+                check_int("terminal pane actions collect selection",
+                          TerminalPaneClipboardCollectSelectionText(
+                              actions, text, (int)sizeof(text)),
+                          1);
+                check_str("terminal pane actions selection text", text,
+                          "abcdefghijklmnopq");
+                SetUIPrimarySelectionTextValue("old primary");
+                check_int("terminal pane actions update primary",
+                          TerminalPaneClipboardUpdatePrimary(actions), 1);
+                check_str("terminal pane actions primary text",
+                          GetUIPrimarySelectionTextValue(),
+                          "abcdefghijklmnopq");
+                check_int("terminal pane actions copy",
+                          TerminalPaneClipboardCopy(actions), 1);
+                check_str("terminal pane actions copy text",
+                          GetUIClipboardBufferText(&clipboard),
+                          "abcdefghijklmnopq");
+                TerminalPaneSelectionClear(&selection);
+                check_int("terminal pane actions select all",
+                          TerminalPaneClipboardSelectAll(actions), 1);
+                check_int("terminal pane actions select all active",
+                          selection.active, 1);
+                check_int("terminal pane actions paste text",
+                          TerminalPaneClipboardPasteActionsText(actions,
+                                                               "typed"),
+                          5);
+                check_str("terminal pane actions paste capture",
+                          paste_capture, "typed");
+                check_int("terminal pane actions paste scroll reset",
+                          scroll_offset, 0);
             }
 
             TerminalPaneSelectionClear(&selection);
@@ -2011,12 +2058,35 @@ main(void)
     {
         char seq[64];
         TerminalPaneKeyMode mode = {0};
+        int used = 0;
 
         check_int("terminal key plain codepoint",
                   EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'a', 0,
                                               mode),
                   1);
         check_str("terminal key plain text", seq, "a");
+
+        seq[0] = '\0';
+        check_int("terminal utf8 append ascii",
+                  AppendTerminalPaneUTF8Codepoint(seq, (int)sizeof(seq),
+                                                  &used, 'A'),
+                  1);
+        check_int("terminal utf8 append accent",
+                  AppendTerminalPaneUTF8Codepoint(seq, (int)sizeof(seq),
+                                                  &used, 0x0301),
+                  1);
+        check_int("terminal utf8 append emoji",
+                  AppendTerminalPaneUTF8Codepoint(seq, (int)sizeof(seq),
+                                                  &used, 0x1f600),
+                  1);
+        check_str("terminal utf8 appended text", seq,
+                  "A\xcc\x81\xf0\x9f\x98\x80");
+        check_int("terminal utf8 rejects invalid",
+                  AppendTerminalPaneUTF8Codepoint(seq, (int)sizeof(seq),
+                                                  &used, 0x110000),
+                  0);
+        check_str("terminal utf8 invalid keeps text", seq,
+                  "A\xcc\x81\xf0\x9f\x98\x80");
 
         check_int("terminal key alt unicode",
                   EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 0x00e9,

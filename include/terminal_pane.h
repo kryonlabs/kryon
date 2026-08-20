@@ -384,6 +384,11 @@ typedef struct TerminalPaneClipboardCommandResult {
     int wrote_input;
 } TerminalPaneClipboardCommandResult;
 
+typedef struct TerminalPaneClipboardActions {
+    TerminalPaneClipboardController selection;
+    TerminalPaneClipboardController session;
+} TerminalPaneClipboardActions;
+
 typedef struct TerminalPaneSixelImage {
     int *pixels;
     int width;
@@ -611,6 +616,8 @@ int TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
 int EncodeTerminalPaneCodepoint(char *out, int out_size,
                                 unsigned int codepoint, int mods,
                                 TerminalPaneKeyMode mode);
+int AppendTerminalPaneUTF8Codepoint(char *out, int out_size, int *used,
+                                    unsigned int codepoint);
 TerminalPaneMappedKey MapTerminalPaneFunctionKey(int function_index, int mods);
 int EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
                           TerminalPaneKeyMode mode);
@@ -673,6 +680,29 @@ TerminalPaneClipboardCommandResult TerminalPaneClipboardRunSimpleCommand(
     TerminalPaneClipboardCommand command, const char *text);
 int TerminalPaneClipboardCommandWritesInput(
     TerminalPaneClipboardCommand command);
+TerminalPaneClipboardActions MakeTerminalPaneClipboardActions(
+    TerminalPaneClipboardController selection,
+    TerminalPaneClipboardController session);
+TerminalPaneClipboardCommandResult TerminalPaneClipboardRunActionsCommand(
+    TerminalPaneClipboardActions actions, TerminalPaneClipboardCommand command,
+    const char *text);
+int TerminalPaneClipboardCollectSelectionText(
+    TerminalPaneClipboardActions actions, char *buffer, int buffer_size);
+int TerminalPaneClipboardUpdatePrimary(TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardCopy(TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardSelectAll(TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardPasteActionsText(TerminalPaneClipboardActions actions,
+                                          const char *text);
+int TerminalPaneClipboardPasteActionsClipboard(
+    TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardPasteActionsPrimary(
+    TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardPasteActionsPreferred(
+    TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardActionsSyncFromHost(
+    TerminalPaneClipboardActions actions);
+int TerminalPaneClipboardActionsFlushToHost(
+    TerminalPaneClipboardActions actions);
 int TerminalPaneClipboardUpdatePrimarySelection(
     TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
     TerminalPaneSelectionLineFn line_text,
