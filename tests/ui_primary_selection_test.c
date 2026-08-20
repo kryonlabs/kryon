@@ -69,5 +69,16 @@ main(void)
                   GetUIClipboardBufferText(&buffer), "host");
     }
 
+    {
+        TerminalPanePalette palette = GetTerminalPaneDefaultPalette();
+
+        check_int("terminal palette black red", palette.ansi[1].r, 205);
+        check_int("terminal palette black red green", palette.ansi[1].g, 49);
+        check_int("terminal palette cube red", palette.ansi[196].r, 255);
+        check_int("terminal palette cube red green", palette.ansi[196].g, 0);
+        check_int("terminal palette gray", palette.ansi[232].r, 8);
+        check_int("terminal palette white", palette.ansi[255].b, 238);
+    }
+
     return 0;
 }
