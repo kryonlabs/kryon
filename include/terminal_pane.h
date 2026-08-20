@@ -3,6 +3,7 @@
 
 #include "kryon_compat.generated.h"
 #include "terminal.h"
+#include "ui_tk.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +34,29 @@ typedef struct TerminalPaneMetrics {
     int line_height;
     Rectangle content;
 } TerminalPaneMetrics;
+
+typedef enum TerminalPaneSelectionMode {
+    TERMINAL_PANE_SELECTION_CHAR = 0,
+    TERMINAL_PANE_SELECTION_WORD = 1,
+    TERMINAL_PANE_SELECTION_LINE = 2
+} TerminalPaneSelectionMode;
+
+typedef struct TerminalPaneSelection {
+    int active;
+    int dragging;
+    int mode;
+    int start_row;
+    int start_col;
+    int end_row;
+    int end_col;
+    int anchor_row;
+    int anchor_start_col;
+    int anchor_end_col;
+} TerminalPaneSelection;
+
+typedef int (*TerminalPaneSelectionLineFn)(void *userdata, int row,
+                                           char *out, int out_size);
+typedef int (*TerminalPaneSelectionWrappedFn)(void *userdata, int row);
 
 typedef struct TerminalPane {
     Rectangle bounds;
@@ -97,6 +121,43 @@ Rectangle TerminalPaneContentBounds(Rectangle bounds, int top_inset,
                                     int padding);
 TerminalPaneMetrics MeasureTerminalPaneContent(Rectangle content,
                                                int font_size);
+void TerminalPaneSelectionClear(TerminalPaneSelection *selection);
+void TerminalPaneSelectionSetRange(TerminalPaneSelection *selection, int mode,
+                                   int dragging, int start_row, int start_col,
+                                   int end_row, int end_col);
+void TerminalPaneSelectionBeginChar(TerminalPaneSelection *selection, int row,
+                                    int col);
+void TerminalPaneSelectionSelectLine(TerminalPaneSelection *selection,
+                                     TerminalPaneSelectionLineFn line_text,
+                                     void *userdata, int row);
+void TerminalPaneSelectionSelectWord(TerminalPaneSelection *selection,
+                                     TerminalPaneSelectionLineFn line_text,
+                                     void *userdata, int row, int col);
+void TerminalPaneSelectionSelectAll(TerminalPaneSelection *selection,
+                                    int total_rows, int cols);
+void TerminalPaneSelectionUpdateEnd(TerminalPaneSelection *selection,
+                                    TerminalPaneSelectionLineFn line_text,
+                                    void *userdata, int row, int col);
+int TerminalPaneSelectionContains(const TerminalPaneSelection *selection,
+                                  int row, int col);
+int TerminalPaneSelectionCollectText(
+    const TerminalPaneSelection *selection, TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata, char *buffer,
+    int buffer_size);
+int TerminalPaneSelectionUpdatePrimary(
+    const TerminalPaneSelection *selection, TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata);
+int TerminalPaneSelectionCopyToClipboard(
+    const TerminalPaneSelection *selection, TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
+    UIClipboardBuffer *clipboard);
+int TerminalPaneSelectionEdgeScrollDelta(float mouse_y, float viewport_y,
+                                         float viewport_height,
+                                         float edge_size);
+int TerminalPaneSelectionFirstVisibleRow(int total_rows, int visible_rows,
+                                         int scroll_offset);
+int TerminalPaneSelectionEdgeScrollRow(int first_visible_row, int visible_rows,
+                                       int scroll_delta);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 

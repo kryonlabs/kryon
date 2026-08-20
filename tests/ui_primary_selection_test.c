@@ -52,6 +52,38 @@ capture_paste_write(void *userdata, const char *text, int size)
     return size;
 }
 
+typedef struct {
+    const char **lines;
+    const int *wrapped;
+    int count;
+} SelectionFixture;
+
+static int
+fixture_line_text(void *userdata, int row, char *out, int out_size)
+{
+    SelectionFixture *fixture = userdata;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(fixture == NULL || row < 0 || row >= fixture->count ||
+       fixture->lines[row] == NULL)
+        return 0;
+    snprintf(out, (size_t)out_size, "%s", fixture->lines[row]);
+    return 1;
+}
+
+static int
+fixture_line_wrapped(void *userdata, int row)
+{
+    SelectionFixture *fixture = userdata;
+
+    if(fixture == NULL || fixture->wrapped == NULL || row < 0 ||
+       row >= fixture->count)
+        return 0;
+    return fixture->wrapped[row];
+}
+
 int
 main(void)
 {
@@ -246,6 +278,122 @@ main(void)
         check_int("terminal content y", (int)content.y, 60);
         check_int("terminal content width", (int)content.width, 288);
         check_int("terminal content height", (int)content.height, 154);
+    }
+
+    {
+        const char *lines[] = {"open /tmp/kapsule-test.txt now",
+                               "second line",
+                               "abcdefghijklmnop",
+                               "q"};
+        const int wrapped[] = {0, 0, 1, 0};
+        SelectionFixture fixture = {lines, wrapped, 4};
+        TerminalPaneSelection selection;
+        char text[256];
+
+        TerminalPaneSelectionClear(&selection);
+        TerminalPaneSelectionSelectWord(&selection, fixture_line_text,
+                                        &fixture, 0, 8);
+        check_int("terminal selection contains first path char",
+                  TerminalPaneSelectionContains(&selection, 0, 5), 1);
+        check_int("terminal selection contains last path char",
+                  TerminalPaneSelectionContains(&selection, 0, 25), 1);
+        check_int("terminal selection excludes after word",
+                  TerminalPaneSelectionContains(&selection, 0, 26), 0);
+        check_int("terminal word selection text",
+                  TerminalPaneSelectionCollectText(
+                      &selection, fixture_line_text, fixture_line_wrapped,
+                      &fixture, text, (int)sizeof(text)),
+                  1);
+        check_str("terminal word selection value", text,
+                  "/tmp/kapsule-test.txt");
+
+        TerminalPaneSelectionSelectLine(&selection, fixture_line_text,
+                                        &fixture, 1);
+        check_int("terminal line selection text",
+                  TerminalPaneSelectionCollectText(
+                      &selection, fixture_line_text, fixture_line_wrapped,
+                      &fixture, text, (int)sizeof(text)),
+                  1);
+        check_str("terminal line selection value", text, "second line");
+
+        TerminalPaneSelectionSelectWord(&selection, fixture_line_text,
+                                        &fixture, 0, 7);
+        TerminalPaneSelectionUpdateEnd(&selection, fixture_line_text,
+                                       &fixture, 0, 1);
+        check_int("terminal backward word drag text",
+                  TerminalPaneSelectionCollectText(
+                      &selection, fixture_line_text, fixture_line_wrapped,
+                      &fixture, text, (int)sizeof(text)),
+                  1);
+        check_str("terminal backward word drag value", text,
+                  "open /tmp/kapsule-test.txt");
+
+        TerminalPaneSelectionSetRange(&selection, TERMINAL_PANE_SELECTION_CHAR,
+                                      0, 2, 0, 3, 1);
+        check_int("terminal wrapped selection text",
+                  TerminalPaneSelectionCollectText(
+                      &selection, fixture_line_text, fixture_line_wrapped,
+                      &fixture, text, (int)sizeof(text)),
+                  1);
+        check_str("terminal wrapped selection value", text,
+                  "abcdefghijklmnopq");
+
+        {
+            UIClipboardBuffer clipboard;
+
+            InitUIClipboardBuffer(&clipboard, "");
+            SetUIPrimarySelectionTextValue("old primary");
+            check_int("terminal selection primary update",
+                      TerminalPaneSelectionUpdatePrimary(
+                          &selection, fixture_line_text, fixture_line_wrapped,
+                          &fixture),
+                      1);
+            check_str("terminal selection primary text",
+                      GetUIPrimarySelectionTextValue(), "abcdefghijklmnopq");
+            check_int("terminal selection clipboard copy",
+                      TerminalPaneSelectionCopyToClipboard(
+                          &selection, fixture_line_text, fixture_line_wrapped,
+                          &fixture, &clipboard),
+                      1);
+            check_str("terminal selection clipboard host",
+                      GetUIClipboardTextValue(), "abcdefghijklmnopq");
+            check_str("terminal selection clipboard buffer",
+                      GetUIClipboardBufferText(&clipboard),
+                      "abcdefghijklmnopq");
+
+            TerminalPaneSelectionClear(&selection);
+            check_int("terminal selection empty primary update",
+                      TerminalPaneSelectionUpdatePrimary(
+                          &selection, fixture_line_text, fixture_line_wrapped,
+                          &fixture),
+                      1);
+            check_str("terminal selection empty primary text",
+                      GetUIPrimarySelectionTextValue(), "");
+            check_int("terminal selection empty clipboard copy",
+                      TerminalPaneSelectionCopyToClipboard(
+                          &selection, fixture_line_text, fixture_line_wrapped,
+                          &fixture, &clipboard),
+                      0);
+        }
+
+        check_int("terminal selection edge top",
+                  TerminalPaneSelectionEdgeScrollDelta(90.0f, 100.0f, 200.0f,
+                                                       24.0f),
+                  1);
+        check_int("terminal selection edge middle",
+                  TerminalPaneSelectionEdgeScrollDelta(180.0f, 100.0f, 200.0f,
+                                                       24.0f),
+                  0);
+        check_int("terminal selection edge bottom",
+                  TerminalPaneSelectionEdgeScrollDelta(310.0f, 100.0f, 200.0f,
+                                                       24.0f),
+                  -1);
+        check_int("terminal first visible row",
+                  TerminalPaneSelectionFirstVisibleRow(40, 8, 5), 27);
+        check_int("terminal edge scroll row top",
+                  TerminalPaneSelectionEdgeScrollRow(12, 8, 1), 12);
+        check_int("terminal edge scroll row bottom",
+                  TerminalPaneSelectionEdgeScrollRow(12, 8, -1), 19);
     }
 
     {

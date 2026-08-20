@@ -5,8 +5,6 @@
 #include "ui_scaling.h"
 #include "ui_text.h"
 
-#include <string.h>
-
 static int
 pane_color_empty(Color color)
 {
