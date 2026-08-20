@@ -251,6 +251,37 @@ TerminalPaneCursorStyleReportCode(int style, int blink)
 }
 
 int
+DecodeTerminalPaneCursorStyleRequest(int code, int *style, int *blink)
+{
+    int decoded_style;
+    int decoded_blink;
+
+    if(code <= 0) {
+        decoded_style = TERMINAL_PANE_CURSOR_DEFAULT;
+        decoded_blink = 1;
+    } else if(code == 1) {
+        decoded_style = TERMINAL_PANE_CURSOR_BLOCK;
+        decoded_blink = 1;
+    } else if(code == 2) {
+        decoded_style = TERMINAL_PANE_CURSOR_BLOCK;
+        decoded_blink = 0;
+    } else if(code == 3 || code == 4) {
+        decoded_style = TERMINAL_PANE_CURSOR_UNDERLINE;
+        decoded_blink = code == 3 ? 1 : 0;
+    } else if(code == 5 || code == 6) {
+        decoded_style = TERMINAL_PANE_CURSOR_BAR;
+        decoded_blink = code == 5 ? 1 : 0;
+    } else {
+        return 0;
+    }
+    if(style != NULL)
+        *style = decoded_style;
+    if(blink != NULL)
+        *blink = decoded_blink;
+    return 1;
+}
+
+int
 ParseTerminalPaneProfileColor(const char *text, int *out)
 {
     int r1;

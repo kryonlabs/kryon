@@ -296,6 +296,7 @@ void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
 int ParseTerminalPaneCursorStyle(const char *text, int fallback);
 const char *TerminalPaneCursorStyleName(int style);
 int TerminalPaneCursorStyleReportCode(int style, int blink);
+int DecodeTerminalPaneCursorStyleRequest(int code, int *style, int *blink);
 int FormatTerminalPaneSGRStatus(char *out, int out_size,
                                 TerminalPaneSGRStatus status);
 int ParseTerminalPaneProfileColor(const char *text, int *out);
@@ -430,6 +431,9 @@ int FormatTerminalPaneDeviceStatusReport(char *out, int out_size,
                                          int cursor_row, int cursor_col);
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
+TerminalPaneClipboard MakeTerminalPaneClipboard(
+    UIClipboardBuffer *clipboard, int bracketed_paste,
+    UIClipboardPasteWriteFn write_text, void *userdata);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
                                      UIClipboardSource source);
 int TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard);

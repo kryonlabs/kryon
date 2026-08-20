@@ -362,8 +362,8 @@ main(void)
             TerminalPaneClipboard pane_clipboard;
 
             InitUIClipboardBuffer(&clipboard, "");
-            pane_clipboard = (TerminalPaneClipboard){&clipboard, 0, NULL,
-                                                     NULL};
+            pane_clipboard =
+                MakeTerminalPaneClipboard(&clipboard, 0, NULL, NULL);
             SetUIPrimarySelectionTextValue("old primary");
             check_int("terminal selection primary update",
                       TerminalPaneSelectionUpdatePrimary(
@@ -598,12 +598,8 @@ main(void)
             TerminalPaneClipboard clipboard;
 
             InitUIClipboardBuffer(&buffer, "");
-            clipboard = (TerminalPaneClipboard){
-                &buffer,
-                1,
-                capture_paste_write,
-                paste,
-            };
+            clipboard = MakeTerminalPaneClipboard(&buffer, 1,
+                                                  capture_paste_write, paste);
             paste[0] = '\0';
             check_int("terminal pane clipboard text paste",
                       TerminalPaneClipboardPasteText(clipboard,
@@ -783,6 +779,8 @@ main(void)
         char color_text[16];
         char sgr_text[80];
         int parsed_color = 0;
+        int decoded_cursor_style = 99;
+        int decoded_cursor_blink = 99;
         char escaped_text[64];
         char unescaped_text[64];
 
@@ -1094,6 +1092,72 @@ main(void)
                   TerminalPaneCursorStyleReportCode(
                       TERMINAL_PANE_CURSOR_BAR, 0),
                   6);
+        check_int("cursor style decode default",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      0, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode default style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_DEFAULT);
+        check_int("cursor style decode default blink",
+                  decoded_cursor_blink, 1);
+        check_int("cursor style decode block",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      1, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode block style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_BLOCK);
+        check_int("cursor style decode block blink",
+                  decoded_cursor_blink, 1);
+        check_int("cursor style decode steady block",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      2, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode steady block style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_BLOCK);
+        check_int("cursor style decode steady block blink",
+                  decoded_cursor_blink, 0);
+        check_int("cursor style decode underline",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      3, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode underline style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_UNDERLINE);
+        check_int("cursor style decode underline blink",
+                  decoded_cursor_blink, 1);
+        check_int("cursor style decode steady underline",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      4, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode steady underline style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_UNDERLINE);
+        check_int("cursor style decode steady underline blink",
+                  decoded_cursor_blink, 0);
+        check_int("cursor style decode bar",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      5, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode bar style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style decode bar blink",
+                  decoded_cursor_blink, 1);
+        check_int("cursor style decode steady bar",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      6, &decoded_cursor_style, &decoded_cursor_blink),
+                  1);
+        check_int("cursor style decode steady bar style",
+                  decoded_cursor_style, TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style decode steady bar blink",
+                  decoded_cursor_blink, 0);
+        decoded_cursor_style = 99;
+        decoded_cursor_blink = 99;
+        check_int("cursor style decode invalid",
+                  DecodeTerminalPaneCursorStyleRequest(
+                      7, &decoded_cursor_style, &decoded_cursor_blink),
+                  0);
+        check_int("cursor style decode invalid preserves style",
+                  decoded_cursor_style, 99);
+        check_int("cursor style decode invalid preserves blink",
+                  decoded_cursor_blink, 99);
         check_int("sgr status default",
                   FormatTerminalPaneSGRStatus(
                       sgr_text, (int)sizeof(sgr_text),

@@ -2,6 +2,19 @@
 
 #include <stddef.h>
 
+TerminalPaneClipboard
+MakeTerminalPaneClipboard(UIClipboardBuffer *clipboard, int bracketed_paste,
+                          UIClipboardPasteWriteFn write_text, void *userdata)
+{
+    TerminalPaneClipboard pane_clipboard = {0};
+
+    pane_clipboard.clipboard = clipboard;
+    pane_clipboard.bracketed_paste = bracketed_paste ? 1 : 0;
+    pane_clipboard.write_text = write_text;
+    pane_clipboard.userdata = userdata;
+    return pane_clipboard;
+}
+
 int
 TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                const char *text)
