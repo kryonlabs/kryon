@@ -131,22 +131,35 @@ copy_osc_token(const char **cursor, char *out, int out_size)
 }
 
 static int
-parse_palette_index_token(const char *text, int *out)
+parse_decimal_span(const char *start, const char *end, int max_value,
+                   int *out)
 {
     int value = 0;
 
-    if(text == NULL || text[0] == '\0' || out == NULL)
+    if(start == NULL || end == NULL || start == end || out == NULL ||
+       max_value < 0)
         return 0;
-    while(*text != '\0') {
-        if(*text < '0' || *text > '9')
+    while(start < end) {
+        if(*start < '0' || *start > '9')
             return 0;
-        value = value * 10 + (*text - '0');
-        if(value > 255)
+        value = value * 10 + (*start - '0');
+        if(value > max_value)
             return 0;
-        text++;
+        start++;
     }
     *out = value;
     return 1;
+}
+
+static int
+parse_palette_index_token(const char *text, int *out)
+{
+    const char *end;
+
+    if(text == NULL)
+        return 0;
+    end = text + strlen(text);
+    return parse_decimal_span(text, end, 255, out);
 }
 
 static int
@@ -224,6 +237,31 @@ ParseTerminalPaneOSCColor(const char *text)
             return TERMINAL_PANE_COLOR_TRUE_RGB | (r << 16) | (g << 8) | b;
     }
     return TERMINAL_PANE_COLOR_DEFAULT;
+}
+
+int
+ParseTerminalPaneOSCCommand(const char *text, int *out_code,
+                            const char **out_payload)
+{
+    const char *separator;
+    const char *end;
+    int code;
+
+    if(out_code != NULL)
+        *out_code = -1;
+    if(out_payload != NULL)
+        *out_payload = "";
+    if(text == NULL)
+        return 0;
+    separator = strchr(text, ';');
+    end = separator != NULL ? separator : text + strlen(text);
+    if(!parse_decimal_span(text, end, 999999, &code))
+        return 0;
+    if(out_code != NULL)
+        *out_code = code;
+    if(out_payload != NULL)
+        *out_payload = separator != NULL ? separator + 1 : "";
+    return 1;
 }
 
 int
@@ -492,7 +530,7 @@ int
 TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
 {
     const char *cursor = payload;
-    int saw_target = 0;
+    int saw_token = 0;
 
     if(window != NULL)
         *window = 0;
@@ -512,8 +550,15 @@ TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
             cursor++;
             continue;
         }
-        value = atoi(cursor);
-        saw_target = 1;
+        {
+            const char *start = cursor;
+
+            while(cursor[0] != '\0' && cursor[0] != ';')
+                cursor++;
+            saw_token = 1;
+            if(!parse_decimal_span(start, cursor, 999999, &value))
+                continue;
+        }
         if(value == 0) {
             if(window != NULL)
                 *window = 1;
@@ -526,10 +571,8 @@ TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
             if(window != NULL)
                 *window = 1;
         }
-        while(cursor[0] != '\0' && cursor[0] != ';')
-            cursor++;
     }
-    if(!saw_target) {
+    if(!saw_token) {
         if(window != NULL)
             *window = 1;
         if(icon != NULL)

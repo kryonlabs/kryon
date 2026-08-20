@@ -1334,7 +1334,32 @@ main(void)
         int title_count = 0;
         char popped[12];
         char path[80];
+        const char *osc_payload;
+        int osc_code;
 
+        check_int("osc command parse title",
+                  ParseTerminalPaneOSCCommand("2;Kapsule", &osc_code,
+                                              &osc_payload),
+                  1);
+        check_int("osc command title code", osc_code, 2);
+        check_str("osc command title payload", osc_payload, "Kapsule");
+        check_int("osc command parse reset",
+                  ParseTerminalPaneOSCCommand("110", &osc_code,
+                                              &osc_payload),
+                  1);
+        check_int("osc command reset code", osc_code, 110);
+        check_str("osc command reset payload", osc_payload, "");
+        check_int("osc command rejects empty",
+                  ParseTerminalPaneOSCCommand("", &osc_code, &osc_payload),
+                  0);
+        check_int("osc command rejects alpha",
+                  ParseTerminalPaneOSCCommand("x;Title", &osc_code,
+                                              &osc_payload),
+                  0);
+        check_int("osc command rejects suffix",
+                  ParseTerminalPaneOSCCommand("2x;Title", &osc_code,
+                                              &osc_payload),
+                  0);
         check_int("osc color hash short",
                   ParseTerminalPaneOSCColor("#abc"),
                   TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
@@ -1515,6 +1540,12 @@ main(void)
         TerminalPaneOSCTitleTargets("1", &window, &icon);
         check_int("osc title icon target window", window, 0);
         check_int("osc title icon target icon", icon, 1);
+        TerminalPaneOSCTitleTargets("x", &window, &icon);
+        check_int("osc title invalid target window", window, 0);
+        check_int("osc title invalid target icon", icon, 0);
+        TerminalPaneOSCTitleTargets("1x;2", &window, &icon);
+        check_int("osc title mixed invalid target window", window, 1);
+        check_int("osc title mixed invalid target icon", icon, 0);
 
         check_int("osc title sanitizer",
                   CopyTerminalPaneTitleText(title_report,

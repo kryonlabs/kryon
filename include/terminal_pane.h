@@ -352,6 +352,8 @@ int ParseTerminalPaneProfileColor(const char *text, int *out);
 int FormatTerminalPaneProfileColor(char *out, int out_size, int color);
 int EscapeTerminalPaneText(char *out, int out_size, const char *text);
 int UnescapeTerminalPaneText(char *out, int out_size, const char *text);
+int ParseTerminalPaneOSCCommand(const char *text, int *out_code,
+                                const char **out_payload);
 int ParseTerminalPaneOSCColor(const char *text);
 int TerminalPaneDefaultPaletteColor(int index);
 int TerminalPaneOSCColorTargetForCode(int code);
