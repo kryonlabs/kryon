@@ -1767,6 +1767,52 @@ main(void)
                                                  "terminal"),
                   4);
         check_str("session title truncates text", title, "abcd");
+
+        {
+            char line[8192];
+            TerminalPaneSessionRecord record = {0};
+            TerminalPaneSessionRecord parsed = {0};
+            int active = -1;
+
+            snprintf(record.cwd, sizeof(record.cwd), "%s",
+                     "/tmp/with\ttab");
+            snprintf(record.shell, sizeof(record.shell), "%s",
+                     "/bin/sh");
+            snprintf(record.title, sizeof(record.title), "%s",
+                     "work\none");
+            snprintf(record.command, sizeof(record.command), "%s",
+                     "printf '\\t'");
+            record.title_override = 1;
+            record.scroll_offset = 42;
+
+            check_int("session record format",
+                      FormatTerminalPaneSessionRecord(
+                          line, (int)sizeof(line), record) > 0,
+                      1);
+            check_int("session record parse",
+                      ParseTerminalPaneSessionRecord(line, &parsed), 1);
+            check_str("session record cwd", parsed.cwd, record.cwd);
+            check_str("session record shell", parsed.shell, record.shell);
+            check_str("session record title", parsed.title, record.title);
+            check_str("session record command", parsed.command,
+                      record.command);
+            check_int("session record title override",
+                      parsed.title_override, 1);
+            check_int("session record scroll offset", parsed.scroll_offset,
+                      42);
+            check_int("session active parse",
+                      ParseTerminalPaneSessionActive("active=3", &active), 1);
+            check_int("session active value", active, 3);
+            check_int("session active rejects tab",
+                      ParseTerminalPaneSessionActive(line, &active), 0);
+            check_int("session old record parse",
+                      ParseTerminalPaneSessionRecord(
+                          "tab\t/tmp\t/bin/sh\tlegacy", &parsed),
+                      1);
+            check_str("session old record title", parsed.title, "legacy");
+            check_int("session old record title override",
+                      parsed.title_override, 0);
+        }
     }
 
     {

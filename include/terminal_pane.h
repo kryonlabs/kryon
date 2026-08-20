@@ -344,6 +344,15 @@ typedef struct TerminalPaneDCSBuffer {
     int max_bytes;
 } TerminalPaneDCSBuffer;
 
+typedef struct TerminalPaneSessionRecord {
+    char cwd[1024];
+    char shell[512];
+    char command[1024];
+    char title[128];
+    int title_override;
+    int scroll_offset;
+} TerminalPaneSessionRecord;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -604,6 +613,11 @@ int TerminalPaneClipboardCopySelection(
     TerminalPaneSelectionWrappedFn line_wrapped, void *userdata);
 int FormatTerminalPaneSessionTitle(char *out, int out_size, const char *text,
                                    const char *fallback);
+int FormatTerminalPaneSessionRecord(char *out, int out_size,
+                                    TerminalPaneSessionRecord record);
+int ParseTerminalPaneSessionRecord(const char *line,
+                                   TerminalPaneSessionRecord *out);
+int ParseTerminalPaneSessionActive(const char *line, int *active);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 
