@@ -1135,6 +1135,7 @@ main(void)
 
     {
         char response[80];
+        char dcs_response[128];
         int len;
         int window;
         int icon;
@@ -1190,6 +1191,37 @@ main(void)
                       TERMINAL_PANE_COLOR_TRUE_RGB | 0xabcdef),
                   0);
         check_str("osc invalid response clears", response, "");
+
+        len = FormatTerminalPaneXTGETTCAPResponse(
+            dcs_response, (int)sizeof(dcs_response), "+q544e");
+        check_int("xtgettcap terminal name len", len,
+                  (int)strlen("\x1bP1+r544e=787465726d2d323536636f6c6f72\x1b\\"));
+        check_str("xtgettcap terminal name", dcs_response,
+                  "\x1bP1+r544e=787465726d2d323536636f6c6f72\x1b\\");
+        len = FormatTerminalPaneXTGETTCAPResponse(
+            dcs_response, (int)sizeof(dcs_response),
+            "+q436f;6b63757531;6b6635");
+        check_int("xtgettcap color and key len", len,
+                  (int)strlen("\x1bP1+r436f=323536;6b63757531=1b5b41;6b6635=1b5b31357e\x1b\\"));
+        check_str("xtgettcap color and key", dcs_response,
+                  "\x1bP1+r436f=323536;6b63757531=1b5b41;6b6635=1b5b31357e\x1b\\");
+        len = FormatTerminalPaneXTGETTCAPResponse(
+            dcs_response, (int)sizeof(dcs_response), "+q5858");
+        check_int("xtgettcap invalid len", len,
+                  (int)strlen("\x1bP0+r\x1b\\"));
+        check_str("xtgettcap invalid", dcs_response, "\x1bP0+r\x1b\\");
+        dcs_response[0] = 'x';
+        check_int("xtgettcap non request",
+                  FormatTerminalPaneXTGETTCAPResponse(
+                      dcs_response, (int)sizeof(dcs_response), "$qm"),
+                  0);
+        check_str("xtgettcap non request clears", dcs_response, "");
+        dcs_response[0] = 'x';
+        check_int("xtgettcap truncates",
+                  FormatTerminalPaneXTGETTCAPResponse(dcs_response, 8,
+                                                       "+q544e"),
+                  0);
+        check_str("xtgettcap truncates clears", dcs_response, "");
 
         check_int("osc hyperlink url sanitizer",
                   CopyTerminalPaneOSCHyperlinkURL(

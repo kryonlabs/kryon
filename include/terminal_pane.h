@@ -289,6 +289,8 @@ int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                        int color);
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
                                          int color);
+int FormatTerminalPaneXTGETTCAPResponse(char *out, int out_size,
+                                        const char *payload);
 int CopyTerminalPaneOSCHyperlinkURL(char *out, int out_size, const char *url);
 int CopyTerminalPaneOSCHyperlinkID(char *out, int out_size,
                                    const char *params);
