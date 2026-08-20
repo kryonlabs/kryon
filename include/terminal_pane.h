@@ -486,6 +486,11 @@ int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
 TerminalPaneClipboard MakeTerminalPaneClipboard(
     UIClipboardBuffer *clipboard, int bracketed_paste,
     UIClipboardPasteWriteFn write_text, void *userdata);
+TerminalPaneClipboardController MakeTerminalPaneClipboardController(
+    TerminalPaneClipboard clipboard, TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
+    int total_rows, int cols, int *scroll_offset);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
                                      UIClipboardSource source);
 int TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard);

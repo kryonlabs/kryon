@@ -15,6 +15,26 @@ MakeTerminalPaneClipboard(UIClipboardBuffer *clipboard, int bracketed_paste,
     return pane_clipboard;
 }
 
+TerminalPaneClipboardController
+MakeTerminalPaneClipboardController(
+    TerminalPaneClipboard clipboard, TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
+    int total_rows, int cols, int *scroll_offset)
+{
+    TerminalPaneClipboardController controller = {0};
+
+    controller.clipboard = clipboard;
+    controller.selection = selection;
+    controller.line_text = line_text;
+    controller.line_wrapped = line_wrapped;
+    controller.userdata = userdata;
+    controller.total_rows = total_rows;
+    controller.cols = cols;
+    controller.scroll_offset = scroll_offset;
+    return controller;
+}
+
 int
 TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                const char *text)

@@ -398,16 +398,11 @@ main(void)
                       GetUIClipboardBufferText(&clipboard),
                       "abcdefghijklmnopq");
             {
-                TerminalPaneClipboardController controller = {
-                    pane_clipboard,
-                    &selection,
-                    fixture_line_text,
-                    fixture_line_wrapped,
-                    &fixture,
-                    fixture.count,
-                    24,
-                    NULL,
-                };
+                TerminalPaneClipboardController controller =
+                    MakeTerminalPaneClipboardController(
+                        pane_clipboard, &selection, fixture_line_text,
+                        fixture_line_wrapped, &fixture, fixture.count, 24,
+                        NULL);
 
                 SetUIPrimarySelectionTextValue("old primary");
                 check_int("terminal pane command primary update",
@@ -729,16 +724,10 @@ main(void)
 
             {
                 int scroll_offset = 0;
-                TerminalPaneClipboardController controller = {
-                    clipboard,
-                    NULL,
-                    NULL,
-                    NULL,
-                    NULL,
-                    0,
-                    0,
-                    &scroll_offset,
-                };
+                TerminalPaneClipboardController controller =
+                    MakeTerminalPaneClipboardController(
+                        clipboard, NULL, NULL, NULL, NULL, 0, 0,
+                        &scroll_offset);
 
                 paste[0] = '\0';
                 check_int("terminal pane command text paste",
