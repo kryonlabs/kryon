@@ -946,7 +946,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
                     }
                     KrbWriteCStr(img, path, val);
                 } else if(cp >= 32 && cp < 0x110000) {
-                    char tmp[8];
+                    char tmp[5];
                     int tl = 0;
 
                     if(cp < 0x80) {
@@ -954,8 +954,13 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
                     } else if(cp < 0x800) {
                         tmp[tl++] = (char)(0xc0 | (cp >> 6));
                         tmp[tl++] = (char)(0x80 | (cp & 0x3f));
-                    } else {
+                    } else if(cp < 0x10000) {
                         tmp[tl++] = (char)(0xe0 | (cp >> 12));
+                        tmp[tl++] = (char)(0x80 | ((cp >> 6) & 0x3f));
+                        tmp[tl++] = (char)(0x80 | (cp & 0x3f));
+                    } else {
+                        tmp[tl++] = (char)(0xf0 | (cp >> 18));
+                        tmp[tl++] = (char)(0x80 | ((cp >> 12) & 0x3f));
                         tmp[tl++] = (char)(0x80 | ((cp >> 6) & 0x3f));
                         tmp[tl++] = (char)(0x80 | (cp & 0x3f));
                     }

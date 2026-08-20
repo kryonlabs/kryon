@@ -111,6 +111,7 @@ typedef struct UIWidgetNode {
     UIKey key;
     UIWidgetKind kind;
     Rectangle bounds;
+    Rectangle declared_bounds;
     int parent;
     int first_child;
     int next_sibling;

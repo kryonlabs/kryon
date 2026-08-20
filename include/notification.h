@@ -10,6 +10,7 @@
  *     created on API 26+, the legacy priority path covers API 21-25, and
  *     POST_NOTIFICATIONS is requested at runtime on API 33+.
  *   - Web (PLATFORM_WEB): the browser Notification API.
+ *   - Windows (_WIN32): native Shell_NotifyIcon notifications.
  *   - Desktop Linux (KRYON_NOTIFICATION_GDBUS): org.freedesktop.Notifications
  *     over the session bus (GDBus). Compile with -DKRYON_NOTIFICATION_GDBUS
  *     and link gio-2.0; mk/vendor.mk exports the flags when available.

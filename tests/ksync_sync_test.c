@@ -273,6 +273,10 @@ test_json_hardening(void)
                                   value, sizeof(value)) &&
               strcmp(value, "a\\b\n\xc3\xa9") == 0,
           "json find decodes escapes");
+    check(FindKsyncSyncJSONString("{\"nonce\":\"\\uD83D\\uDE00\"}", "nonce",
+                                  value, sizeof(value)) &&
+              strcmp(value, "\xf0\x9f\x98\x80") == 0,
+          "json find decodes surrogate pairs");
     /* a substring key must not satisfy a lookup for the short key */
     check(!FindKsyncSyncJSONString("{\"sync_nonce\":\"x\"}", "nonce",
                                    value, sizeof(value)),

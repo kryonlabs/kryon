@@ -253,7 +253,7 @@ sync_json_decode_escape(const char **pp, char *out, size_t out_size,
                         size_t *out_len)
 {
     const char *p = *pp + 1; /* past backslash */
-    char decoded[4];
+    char decoded[5];
     int decoded_len = 0;
 
     switch(*p) {
@@ -281,6 +281,27 @@ sync_json_decode_escape(const char **pp, char *out, size_t out_size,
                 cp = cp * 16 + v;
             }
             p += 4;
+            if(cp >= 0xd800 && cp <= 0xdbff && p[1] == '\\' && p[2] == 'u') {
+                unsigned int lo = 0;
+
+                for(int i = 3; i <= 6; i++) {
+                    char c = p[i];
+                    unsigned int v;
+                    if(c >= '0' && c <= '9')
+                        v = (unsigned int)(c - '0');
+                    else if(c >= 'a' && c <= 'f')
+                        v = (unsigned int)(c - 'a') + 10;
+                    else if(c >= 'A' && c <= 'F')
+                        v = (unsigned int)(c - 'A') + 10;
+                    else
+                        return 0;
+                    lo = lo * 16 + v;
+                }
+                if(lo >= 0xdc00 && lo <= 0xdfff) {
+                    cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
+                    p += 6;
+                }
+            }
             if(cp < 0x80) {
                 decoded[0] = (char)cp;
                 decoded_len = 1;
@@ -288,11 +309,19 @@ sync_json_decode_escape(const char **pp, char *out, size_t out_size,
                 decoded[0] = (char)(0xc0 | (cp >> 6));
                 decoded[1] = (char)(0x80 | (cp & 0x3f));
                 decoded_len = 2;
-            } else {
+            } else if(cp < 0x10000) {
                 decoded[0] = (char)(0xe0 | (cp >> 12));
                 decoded[1] = (char)(0x80 | ((cp >> 6) & 0x3f));
                 decoded[2] = (char)(0x80 | (cp & 0x3f));
                 decoded_len = 3;
+            } else if(cp <= 0x10ffff) {
+                decoded[0] = (char)(0xf0 | (cp >> 18));
+                decoded[1] = (char)(0x80 | ((cp >> 12) & 0x3f));
+                decoded[2] = (char)(0x80 | ((cp >> 6) & 0x3f));
+                decoded[3] = (char)(0x80 | (cp & 0x3f));
+                decoded_len = 4;
+            } else {
+                return 0;
             }
             break;
         }

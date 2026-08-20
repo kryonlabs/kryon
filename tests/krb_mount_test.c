@@ -78,6 +78,18 @@ cap_down(int button)
     return g_cap_down;
 }
 
+static unsigned g_text_keys[4];
+static int g_text_key_index;
+static unsigned
+cap_text_key(void)
+{
+    unsigned cp = g_text_keys[g_text_key_index];
+
+    if(cp != 0)
+        g_text_key_index++;
+    return cp;
+}
+
 /* header + 1 text node + strings("\0score\0n=%d\0") + prog + no imports */
 static int
 build_text_image(unsigned char *buf, size_t cap, const unsigned char *prog,
@@ -405,6 +417,60 @@ main(void)
         KrbDraw(&img, 0, 0, 200, 80);
         if(sv != 80)
             return fail("slider moved without drag");
+    }
+
+    /* TEXTINPUT must encode astral codepoints as 4-byte UTF-8. */
+    {
+        static const char istr[] = "\0value\0";  /* 0="" 1="value" */
+        unsigned char *p = buf;
+        KryBackend cap;
+        char value[32] = "";
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(istr));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, (unsigned)-1);
+        p = wr_u16(p, 1);                       /* name_off "value" */
+        *p++ = KRB_NODE_TEXTINPUT;
+        *p++ = 0;
+        p = wr_u16(p, 0xffff);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 100);
+        p = wr_u16(p, 24);
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 16);
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, istr, sizeof(istr));
+        p += sizeof(istr);
+        *p++ = KRB_OP_DRAW_TREE;
+        len = (size_t)(p - buf);
+
+        KrbFree(&img);
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load textinput image");
+        if(KrbBindMem(&img, "value", value, KRB_CSTR, sizeof(value)) != 0)
+            return fail("bind textinput value");
+        snprintf(img.focus_path, sizeof(img.focus_path), "%s", "value");
+        cap = KryBackendNull;
+        cap.text_key = cap_text_key;
+        KryBackendSelect(&cap);
+        g_text_keys[0] = 0x1f600;
+        g_text_keys[1] = 0;
+        g_text_key_index = 0;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(strcmp(value, "\xf0\x9f\x98\x80") != 0)
+            return fail("textinput emoji encoding");
     }
 
     KrbFree(&img);

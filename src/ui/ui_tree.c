@@ -168,6 +168,47 @@ ui_reconcile_same_identity(const UIWidgetNode *old_nodes, int old_index,
            old_parent == new_parent;
 }
 
+static int
+ui_reconcile_text_changed(const char *a, const char *b)
+{
+    if(a == NULL)
+        a = "";
+    if(b == NULL)
+        b = "";
+    return strcmp(a, b) != 0;
+}
+
+static int
+ui_reconcile_node_changed(const UIWidgetNode *old_node,
+                          const UIWidgetNode *new_node)
+{
+    UIWidgetData old_data;
+    UIWidgetData new_data;
+
+    if(old_node == NULL || new_node == NULL)
+        return 1;
+    if(old_node->id != new_node->id ||
+       old_node->key != new_node->key ||
+       old_node->kind != new_node->kind ||
+       old_node->parent != new_node->parent ||
+       old_node->first_child != new_node->first_child ||
+       old_node->next_sibling != new_node->next_sibling)
+        return 1;
+    if(memcmp(&old_node->declared_bounds, &new_node->declared_bounds,
+              sizeof(old_node->declared_bounds)) != 0)
+        return 1;
+    old_data = old_node->data;
+    new_data = new_node->data;
+    if(old_node->kind == UI_WIDGET_BUTTON_NODE) {
+        old_data.button.spec.label = NULL;
+        new_data.button.spec.label = NULL;
+    }
+    if(memcmp(&old_data, &new_data, sizeof(old_data)) != 0)
+        return 1;
+    return ui_reconcile_text_changed(old_node->owned_text,
+                                     new_node->owned_text);
+}
+
 static UINodeId
 ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
 {
@@ -188,6 +229,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     node->key = (UIKey)(unsigned)id;
     node->kind = kind;
     node->bounds = bounds;
+    node->declared_bounds = bounds;
     node->props = props;
     node->parent = -1;
     node->first_child = -1;
@@ -229,6 +271,7 @@ ui_node(int id, UIWidgetKind kind, Rectangle bounds)
     node.id = id;
     node.kind = kind;
     node.bounds = bounds;
+    node.declared_bounds = bounds;
     node.parent = -1;
     node.first_child = -1;
     node.next_sibling = -1;
@@ -246,6 +289,7 @@ ui_tree_store_node(UINodeId id, UIWidgetNode src)
     src.parent = dst->parent;
     src.first_child = dst->first_child;
     src.next_sibling = dst->next_sibling;
+    src.declared_bounds = dst->declared_bounds;
     *dst = src;
 }
 
@@ -512,14 +556,18 @@ void
 UIReconcileTree(void)
 {
     int *slots = NULL;
+    int *matched_old = NULL;
     UIWidgetNode *old_nodes = NULL;
     int old_count = ui_committed_node_count;
     int slot_count = 1;
+    int tree_changed;
+    unsigned invalid_before = ui_tree_invalid;
     int i;
 
     if(!ui_tree_reserve(&ui_committed_nodes, &ui_committed_node_capacity,
                         ui_tree_node_count))
         return;
+    tree_changed = old_count != ui_tree_node_count;
     if(old_count > 0) {
         old_nodes = malloc((size_t)old_count * sizeof(*old_nodes));
         if(old_nodes == NULL)
@@ -533,6 +581,16 @@ UIReconcileTree(void)
     if(slots == NULL) {
         free(old_nodes);
         return;
+    }
+    if(ui_tree_node_count > 0) {
+        matched_old = malloc((size_t)ui_tree_node_count * sizeof(*matched_old));
+        if(matched_old == NULL) {
+            free(slots);
+            free(old_nodes);
+            return;
+        }
+        for(i = 0; i < ui_tree_node_count; i++)
+            matched_old[i] = -1;
     }
     for(i = 0; i < slot_count; i++)
         slots[i] = -1;
@@ -564,14 +622,28 @@ UIReconcileTree(void)
             if(ui_reconcile_same_identity(old_nodes, old,
                                           ui_tree_nodes, i)) {
                 next.state = old_nodes[old].state;
-                next.flags |= old_nodes[old].flags & UI_NODE_OWNS_STATE;
+                next.flags |= old_nodes[old].flags &
+                    (UI_NODE_OWNS_STATE | UI_NODE_HOVERED | UI_NODE_PRESSED);
+                matched_old[i] = old;
+                if(ui_reconcile_node_changed(&old_nodes[old], &next))
+                    tree_changed = 1;
                 old_nodes[old].flags &= ~UI_NODE_OWNS_STATE;
                 break;
             }
             slot = (slot + 1U) & (unsigned)(slot_count - 1);
         }
+        if(matched_old[i] < 0)
+            tree_changed = 1;
         ui_committed_nodes[i] = next;
         ui_tree_nodes[i].owned_text = NULL;
+    }
+    if(!tree_changed && (invalid_before & UI_INVALIDATE_LAYOUT) == 0) {
+        for(i = 0; i < ui_tree_node_count; i++) {
+            int old = matched_old != NULL ? matched_old[i] : -1;
+
+            if(old >= 0)
+                ui_committed_nodes[i].bounds = old_nodes[old].bounds;
+        }
     }
     for(i = 0; i < old_count; i++) {
         free(old_nodes[i].owned_text);
@@ -598,10 +670,12 @@ UIReconcileTree(void)
             }
         }
     }
+    free(matched_old);
     free(slots);
     free(old_nodes);
     ui_committed_node_count = ui_tree_node_count;
-    ui_tree_invalid |= UI_INVALIDATE_LAYOUT | UI_INVALIDATE_PAINT;
+    if(tree_changed)
+        ui_tree_invalid |= UI_INVALIDATE_LAYOUT | UI_INVALIDATE_PAINT;
 }
 
 void

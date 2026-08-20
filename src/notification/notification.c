@@ -605,6 +605,114 @@ void SetNotificationAppName(const char *name)
     (void)name;   /* the browser labels notifications with the origin */
 }
 
+#elif defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>
+#define KRY_MSG (WM_APP + 75)
+#define KRY_SLOTS 64
+typedef struct { UINT id; int action, active; char url[384]; } WinNote;
+static char g_notification_app_name[64] = "kryon";
+static HWND g_note_window;
+static UINT g_next_note = 1;
+static WinNote g_notes[KRY_SLOTS];
+static int g_pending_action;
+static char g_pending_url[384];
+static void wide(const char *s, WCHAR *d, int n) {
+    if(!d || n < 1) return; d[0] = 0; if(!s) return;
+    if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, d, n))
+        MultiByteToWideChar(CP_ACP, 0, s, -1, d, n);
+    d[n - 1] = 0;
+}
+static WinNote *slot(UINT id, int add) {
+    WinNote *free_slot = NULL; int i;
+    for(i = 0; i < KRY_SLOTS; i++) {
+        if(g_notes[i].active && g_notes[i].id == id) return &g_notes[i];
+        if(!g_notes[i].active && !free_slot) free_slot = &g_notes[i];
+    }
+    if(!add) return NULL;
+    if(!free_slot) free_slot = &g_notes[id % KRY_SLOTS];
+    memset(free_slot, 0, sizeof(*free_slot));
+    free_slot->id = id; free_slot->active = 1; return free_slot;
+}
+static void remove_note(UINT id) {
+    NOTIFYICONDATAW n; WinNote *s;
+    if(!g_note_window) return; memset(&n, 0, sizeof(n)); n.cbSize = sizeof(n);
+    n.hWnd = g_note_window; n.uID = id; Shell_NotifyIconW(NIM_DELETE, &n);
+    s = slot(id, 0); if(s) memset(s, 0, sizeof(*s));
+}
+static LRESULT CALLBACK note_proc(HWND w, UINT m, WPARAM wp, LPARAM lp) {
+    UINT event, id; WinNote *s;
+    if(m != KRY_MSG) return DefWindowProcW(w, m, wp, lp);
+    event = (UINT)lp; id = (UINT)wp; s = slot(id, 0);
+    if(event == NIN_BALLOONUSERCLICK || event == WM_LBUTTONUP) {
+        if(s && s->action) { g_pending_action = s->action;
+            snprintf(g_pending_url, sizeof(g_pending_url), "%s", s->url); }
+        remove_note(id);
+    } else if(event == NIN_BALLOONHIDE || event == NIN_BALLOONTIMEOUT)
+        remove_note(id);
+    return 0;
+}
+static HWND note_window(void) {
+    static const WCHAR name[] = L"KryonNotificationWindow";
+    WNDCLASSEXW c; HINSTANCE h;
+    if(g_note_window) return g_note_window; h = GetModuleHandleW(NULL);
+    memset(&c, 0, sizeof(c)); c.cbSize = sizeof(c); c.lpfnWndProc = note_proc;
+    c.hInstance = h; c.lpszClassName = name; RegisterClassExW(&c);
+    g_note_window = CreateWindowExW(WS_EX_TOOLWINDOW, name, L"", WS_POPUP,
+        0, 0, 0, 0, NULL, NULL, h, NULL); return g_note_window;
+}
+static UINT note_id(const char *tag, int id) {
+    UINT h = 2166136261u; const unsigned char *p;
+    if(id <= 0) return g_next_note++;
+    for(p = (const unsigned char *)(tag ? tag : ""); *p; p++)
+        { h ^= *p; h *= 16777619u; }
+    h ^= (UINT)id; h *= 16777619u; return h ? h : 1;
+}
+static int win_send(const char *title, const char *body, const char *tag,
+                    int id, NotificationPriority priority, int action,
+                    const char *url) {
+    NOTIFYICONDATAW n; WinNote *s; UINT native_id; HINSTANCE h;
+    if(!title || !body || !note_window()) return 0;
+    native_id = note_id(tag, id); s = slot(native_id, 1); s->action = action;
+    snprintf(s->url, sizeof(s->url), "%s", url ? url : "");
+    memset(&n, 0, sizeof(n)); n.cbSize = sizeof(n); n.hWnd = g_note_window;
+    n.uID = native_id; n.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_INFO;
+    n.uCallbackMessage = KRY_MSG; h = GetModuleHandleW(NULL);
+    n.hIcon = LoadIconW(h, IDI_APPLICATION);
+    if(!n.hIcon) n.hIcon = LoadIconW(NULL, IDI_APPLICATION);
+    wide(g_notification_app_name, n.szTip, ARRAYSIZE(n.szTip));
+    wide(title, n.szInfoTitle, ARRAYSIZE(n.szInfoTitle));
+    wide(body, n.szInfo, ARRAYSIZE(n.szInfo)); n.dwInfoFlags = NIIF_USER;
+    if(priority == NOTIFICATION_PRIORITY_LOW) n.dwInfoFlags |= NIIF_NOSOUND;
+    if(!Shell_NotifyIconW(NIM_ADD, &n)) { memset(s, 0, sizeof(*s)); return 0; }
+    n.uVersion = NOTIFYICON_VERSION; Shell_NotifyIconW(NIM_SETVERSION, &n);
+    return 1;
+}
+void SetNotificationAppName(const char *name) { if(name && *name)
+    snprintf(g_notification_app_name, sizeof(g_notification_app_name), "%s", name); }
+int IsNotificationSupported(void) { return note_window() != NULL; }
+int IsNotificationPermissionGranted(void) { return IsNotificationSupported(); }
+int RequestNotificationPermission(void) { return IsNotificationSupported(); }
+int SendNotificationEx(const char *t, const char *b, const char *tag, int id,
+                       NotificationPriority p) { return win_send(t,b,tag,id,p,0,NULL); }
+int SendNotificationAction(const char *t, const char *b, const char *icon,
+    int expire, int action, const char *label, const char *url) {
+    (void)icon; (void)expire; (void)label;
+    return win_send(t,b,NULL,NOTIFICATION_ID_AUTO,NOTIFICATION_PRIORITY_DEFAULT,action,url);
+}
+int PollNotificationAction(char *url, int size) {
+    MSG m; int action;
+    while(PeekMessageW(&m, g_note_window, 0, 0, PM_REMOVE))
+        { TranslateMessage(&m); DispatchMessageW(&m); }
+    action = g_pending_action; g_pending_action = 0;
+    if(action && url && size > 0) { snprintf(url, (size_t)size, "%s", g_pending_url);
+        url[size - 1] = 0; } return action;
+}
+void CancelNotification(const char *tag, int id) { if(id > 0) remove_note(note_id(tag,id)); }
+void CancelAllNotifications(void) { int i; for(i=0;i<KRY_SLOTS;i++)
+    if(g_notes[i].active) remove_note(g_notes[i].id); }
+
 #elif defined(KRYON_NOTIFICATION_GDBUS)
 
 #include <gio/gio.h>

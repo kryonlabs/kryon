@@ -28,12 +28,12 @@ WIN_opengl_TARGET_PREFIX = $(APP_NAME)-windows-
 WIN_opengl_TARGET_SUFFIX =
 WIN_opengl_PLATFORM = PLATFORM_DESKTOP
 WIN_opengl_GRAPHICS = GRAPHICS_API_OPENGL_21
-WIN_opengl_LDLIBS = -lopengl32 -lgdi32 -lwinmm -lws2_32 -luser32
+WIN_opengl_LDLIBS = -lopengl32 -lgdi32 -lwinmm -lws2_32 -luser32 -lshell32
 WIN_rlsw_TARGET_PREFIX = $(APP_NAME)-windows-rlsw-
 WIN_rlsw_TARGET_SUFFIX =
 WIN_rlsw_PLATFORM = PLATFORM_DESKTOP_WIN32
 WIN_rlsw_GRAPHICS = GRAPHICS_API_OPENGL_SOFTWARE
-WIN_rlsw_LDLIBS = -lopengl32 -lgdi32 -lwinmm -lws2_32 -luser32 -lshcore
+WIN_rlsw_LDLIBS = -lopengl32 -lgdi32 -lwinmm -lws2_32 -luser32 -lshell32 -lshcore
 
 WINDOWS_TARGETS = $(foreach arch,$(WINDOWS_ARCHES),$(foreach renderer,$(WINDOWS_RENDERERS),$(WINDOWS_BIN_DIR)/$(WIN_$(renderer)_TARGET_PREFIX)$(arch)$(WIN_$(renderer)_TARGET_SUFFIX).exe))
 

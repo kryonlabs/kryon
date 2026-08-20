@@ -24,7 +24,6 @@
 
 #if defined(HAS_LIBCURL) && !defined(__EMSCRIPTEN__)
 #include <curl/curl.h>
-#include <pthread.h>
 #endif
 
 #if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(HAS_LIBCURL) && !ANDROID_BUILD
@@ -32,6 +31,72 @@
 #endif
 
 static RuntimeAssetDownloadBackend g_download_backend = NULL;
+
+typedef struct RuntimeAssetDownloadState {
+    KryThread thread;
+    KryMutex mutex;
+    int started;
+    int abandoned;
+    RuntimeAssetStatus status;
+    char url[1024];
+    char path[512];
+    char error[256];
+    long http_status;
+    size_t bytes;
+    size_t total_bytes;
+} RuntimeAssetDownloadState;
+
+static RuntimeAssetDownloadState *
+runtime_asset_state_new(const char *url, const char *path)
+{
+    RuntimeAssetDownloadState *state = calloc(1, sizeof(*state));
+
+    if(state == NULL)
+        return NULL;
+    KryMutexInit(&state->mutex);
+    state->status = RUNTIME_ASSET_DOWNLOADING;
+    snprintf(state->url, sizeof(state->url), "%s", url != NULL ? url : "");
+    snprintf(state->path, sizeof(state->path), "%s", path != NULL ? path : "");
+    return state;
+}
+
+static void
+runtime_asset_state_copy(RuntimeAssetDownload *download,
+                         const RuntimeAssetDownloadState *state)
+{
+    if(download == NULL || state == NULL)
+        return;
+    download->status = state->status;
+    snprintf(download->error, sizeof(download->error), "%s", state->error);
+    download->http_status = state->http_status;
+    download->bytes = state->bytes;
+    download->total_bytes = state->total_bytes;
+}
+
+static void
+runtime_asset_state_progress(RuntimeAssetDownloadState *state, size_t bytes,
+                             size_t total_bytes)
+{
+    if(state == NULL)
+        return;
+    KryMutexLock(&state->mutex);
+    state->bytes = bytes;
+    state->total_bytes = total_bytes;
+    KryMutexUnlock(&state->mutex);
+}
+
+static void
+runtime_asset_state_finish(RuntimeAssetDownloadState *state,
+                           RuntimeAssetStatus status, const char *error)
+{
+    if(state == NULL)
+        return;
+    KryMutexLock(&state->mutex);
+    state->status = status;
+    if(error != NULL)
+        snprintf(state->error, sizeof(state->error), "%s", error);
+    KryMutexUnlock(&state->mutex);
+}
 
 static int
 path_is_dir(const char *path)
@@ -179,74 +244,111 @@ SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend)
 static void
 fetch_done(emscripten_fetch_t *fetch)
 {
-    RuntimeAssetDownload *download = (RuntimeAssetDownload *)fetch->userData;
+    RuntimeAssetDownloadState *state = (RuntimeAssetDownloadState *)fetch->userData;
     FILE *file;
 
-    if(download == NULL) {
+    if(state == NULL) {
         emscripten_fetch_close(fetch);
         return;
     }
 
-    download->http_status = fetch->status;
-    download->bytes = (size_t)fetch->numBytes;
-    file = fopen(download->path, "wb");
+    KryMutexLock(&state->mutex);
+    state->http_status = fetch->status;
+    state->bytes = (size_t)fetch->numBytes;
+    KryMutexUnlock(&state->mutex);
+    file = fopen(state->path, "wb");
     if(file == NULL) {
-        snprintf(download->error, sizeof(download->error), "failed to open %s", download->path);
-        download->status = RUNTIME_ASSET_ERROR;
+        char msg[320];
+
+        snprintf(msg, sizeof(msg), "failed to open %s", state->path);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
         emscripten_fetch_close(fetch);
+        KryMutexLock(&state->mutex);
+        if(state->abandoned) {
+            KryMutexUnlock(&state->mutex);
+            free(state);
+        } else {
+            KryMutexUnlock(&state->mutex);
+        }
         return;
     }
 
     if(fwrite(fetch->data, 1, (size_t)fetch->numBytes, file) != (size_t)fetch->numBytes) {
-        snprintf(download->error, sizeof(download->error), "failed to write %s", download->path);
+        char msg[320];
+
+        snprintf(msg, sizeof(msg), "failed to write %s", state->path);
         fclose(file);
-        download->status = RUNTIME_ASSET_ERROR;
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
         emscripten_fetch_close(fetch);
+        KryMutexLock(&state->mutex);
+        if(state->abandoned) {
+            KryMutexUnlock(&state->mutex);
+            free(state);
+        } else {
+            KryMutexUnlock(&state->mutex);
+        }
         return;
     }
 
     fclose(file);
-    download->status = RUNTIME_ASSET_READY;
+    runtime_asset_state_finish(state, RUNTIME_ASSET_READY, NULL);
     SyncRuntimeAssets();
     emscripten_fetch_close(fetch);
+    KryMutexLock(&state->mutex);
+    if(state->abandoned) {
+        KryMutexUnlock(&state->mutex);
+        free(state);
+    } else {
+        KryMutexUnlock(&state->mutex);
+    }
 }
 
 static void
 fetch_failed(emscripten_fetch_t *fetch)
 {
-    RuntimeAssetDownload *download = (RuntimeAssetDownload *)fetch->userData;
+    RuntimeAssetDownloadState *state = (RuntimeAssetDownloadState *)fetch->userData;
 
-    if(download != NULL) {
-        download->http_status = fetch->status;
-        snprintf(download->error, sizeof(download->error), "HTTP %d", fetch->status);
-        download->status = RUNTIME_ASSET_ERROR;
+    if(state != NULL) {
+        char msg[64];
+
+        KryMutexLock(&state->mutex);
+        state->http_status = fetch->status;
+        KryMutexUnlock(&state->mutex);
+        snprintf(msg, sizeof(msg), "HTTP %d", fetch->status);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
     }
     emscripten_fetch_close(fetch);
+    if(state != NULL) {
+        KryMutexLock(&state->mutex);
+        if(state->abandoned) {
+            KryMutexUnlock(&state->mutex);
+            free(state);
+        } else {
+            KryMutexUnlock(&state->mutex);
+        }
+    }
 }
 #endif
 
 #if defined(_WIN32) && !defined(__EMSCRIPTEN__)
-typedef struct WindowsDownloadContext {
-    RuntimeAssetDownload *download;
-} WindowsDownloadContext;
-
 static void
-windows_set_last_error(RuntimeAssetDownload *download, const char *prefix)
+windows_set_last_error(RuntimeAssetDownloadState *state, const char *prefix)
 {
     DWORD err = GetLastError();
+    char msg[256];
 
-    if(download == NULL)
+    if(state == NULL)
         return;
-    snprintf(download->error, sizeof(download->error), "%s (%lu)",
+    snprintf(msg, sizeof(msg), "%s (%lu)",
              prefix != NULL ? prefix : "Windows download failed",
              (unsigned long)err);
+    runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
 }
 
-static DWORD WINAPI
+static void *
 windows_download_thread_main(void *user_data)
 {
-    WindowsDownloadContext *ctx = (WindowsDownloadContext *)user_data;
-    RuntimeAssetDownload *download = ctx != NULL ? ctx->download : NULL;
+    RuntimeAssetDownloadState *state = (RuntimeAssetDownloadState *)user_data;
     HINTERNET internet = NULL;
     HINTERNET request = NULL;
     FILE *file = NULL;
@@ -260,15 +362,16 @@ windows_download_thread_main(void *user_data)
     DWORD bytes_read = 0;
     BOOL read_ok;
 
-    free(ctx);
-    if(download == NULL)
-        return 0;
+    if(state == NULL)
+        return NULL;
 
-    file = fopen(download->path, "wb");
+    file = fopen(state->path, "wb");
     if(file == NULL) {
-        snprintf(download->error, sizeof(download->error), "failed to open %.200s", download->path);
-        download->status = RUNTIME_ASSET_ERROR;
-        return 0;
+        char msg[256];
+
+        snprintf(msg, sizeof(msg), "failed to open %.200s", state->path);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
+        return NULL;
     }
 
     internet = InternetOpenA("kryon-runtime-assets/1",
@@ -276,12 +379,11 @@ windows_download_thread_main(void *user_data)
                              NULL, NULL, 0);
     if(internet == NULL) {
         fclose(file);
-        windows_set_last_error(download, "failed to initialize Windows networking");
-        download->status = RUNTIME_ASSET_ERROR;
-        return 0;
+        windows_set_last_error(state, "failed to initialize Windows networking");
+        return NULL;
     }
 
-    request = InternetOpenUrlA(internet, download->url, NULL, 0,
+    request = InternetOpenUrlA(internet, state->url, NULL, 0,
                                INTERNET_FLAG_RELOAD |
                                INTERNET_FLAG_NO_CACHE_WRITE |
                                INTERNET_FLAG_PRAGMA_NOCACHE,
@@ -289,69 +391,75 @@ windows_download_thread_main(void *user_data)
     if(request == NULL) {
         fclose(file);
         InternetCloseHandle(internet);
-        remove(download->path);
-        windows_set_last_error(download, "Windows download failed");
-        download->status = RUNTIME_ASSET_ERROR;
-        return 0;
+        remove(state->path);
+        windows_set_last_error(state, "Windows download failed");
+        return NULL;
     }
 
     if(HttpQueryInfoA(request, HTTP_QUERY_STATUS_CODE, status_buf, &status_len, &status_index)) {
         status_buf[sizeof(status_buf) - 1] = '\0';
-        download->http_status = strtol(status_buf, NULL, 10);
+        KryMutexLock(&state->mutex);
+        state->http_status = strtol(status_buf, NULL, 10);
+        KryMutexUnlock(&state->mutex);
     }
-    if(download->http_status < 200 || download->http_status >= 300) {
-        snprintf(download->error, sizeof(download->error), "HTTP %ld", download->http_status);
+    if(state->http_status < 200 || state->http_status >= 300) {
+        char msg[64];
+
+        snprintf(msg, sizeof(msg), "HTTP %ld", state->http_status);
         fclose(file);
         InternetCloseHandle(request);
         InternetCloseHandle(internet);
-        remove(download->path);
-        download->status = RUNTIME_ASSET_ERROR;
-        return 0;
+        remove(state->path);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
+        return NULL;
     }
 
     if(HttpQueryInfoA(request, HTTP_QUERY_CONTENT_LENGTH, length_buf, &length_len, &length_index)) {
         length_buf[sizeof(length_buf) - 1] = '\0';
-        download->total_bytes = (size_t)strtoull(length_buf, NULL, 10);
+        KryMutexLock(&state->mutex);
+        state->total_bytes = (size_t)strtoull(length_buf, NULL, 10);
+        KryMutexUnlock(&state->mutex);
     }
 
     while((read_ok = InternetReadFile(request, buffer, sizeof(buffer), &bytes_read)) && bytes_read > 0) {
         if(fwrite(buffer, 1, bytes_read, file) != bytes_read) {
-            snprintf(download->error, sizeof(download->error), "failed to write %.200s", download->path);
+            char msg[256];
+
+            snprintf(msg, sizeof(msg), "failed to write %.200s", state->path);
             fclose(file);
             InternetCloseHandle(request);
             InternetCloseHandle(internet);
-            remove(download->path);
-            download->status = RUNTIME_ASSET_ERROR;
-            return 0;
+            remove(state->path);
+            runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
+            return NULL;
         }
-        download->bytes += (size_t)bytes_read;
+        KryMutexLock(&state->mutex);
+        state->bytes += (size_t)bytes_read;
+        KryMutexUnlock(&state->mutex);
     }
 
     if(!read_ok) {
         fclose(file);
         InternetCloseHandle(request);
         InternetCloseHandle(internet);
-        remove(download->path);
-        windows_set_last_error(download, "Windows download failed");
-        download->status = RUNTIME_ASSET_ERROR;
-        return 0;
+        remove(state->path);
+        windows_set_last_error(state, "Windows download failed");
+        return NULL;
     }
 
     fclose(file);
     InternetCloseHandle(request);
     InternetCloseHandle(internet);
-    if(download->total_bytes == 0)
-        download->total_bytes = download->bytes;
-    download->status = RUNTIME_ASSET_READY;
-    return 0;
+    KryMutexLock(&state->mutex);
+    if(state->total_bytes == 0)
+        state->total_bytes = state->bytes;
+    KryMutexUnlock(&state->mutex);
+    runtime_asset_state_finish(state, RUNTIME_ASSET_READY, NULL);
+    return NULL;
 }
 #endif
 
 #if defined(HAS_LIBCURL) && !defined(__EMSCRIPTEN__)
-typedef struct NativeDownloadContext {
-    RuntimeAssetDownload *download;
-} NativeDownloadContext;
-
 static size_t
 curl_write_file(void *ptr, size_t size, size_t nmemb, void *stream)
 {
@@ -362,48 +470,48 @@ static int
 curl_progress(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
               curl_off_t ultotal, curl_off_t ulnow)
 {
-    RuntimeAssetDownload *download = (RuntimeAssetDownload *)clientp;
+    RuntimeAssetDownloadState *state = (RuntimeAssetDownloadState *)clientp;
     (void)ultotal;
     (void)ulnow;
 
-    if(download == NULL)
+    if(state == NULL)
         return 0;
 
-    download->bytes = dlnow > 0 ? (size_t)dlnow : 0;
-    download->total_bytes = dltotal > 0 ? (size_t)dltotal : 0;
+    runtime_asset_state_progress(state, dlnow > 0 ? (size_t)dlnow : 0,
+                                 dltotal > 0 ? (size_t)dltotal : 0);
     return 0;
 }
 
 static void *
 curl_thread_main(void *user_data)
 {
-    NativeDownloadContext *ctx = (NativeDownloadContext *)user_data;
-    RuntimeAssetDownload *download = ctx != NULL ? ctx->download : NULL;
+    RuntimeAssetDownloadState *state = (RuntimeAssetDownloadState *)user_data;
     CURL *curl;
     FILE *file;
     CURLcode res;
     curl_off_t downloaded = 0;
 
-    free(ctx);
-    if(download == NULL)
+    if(state == NULL)
         return NULL;
 
-    file = fopen(download->path, "wb");
+    file = fopen(state->path, "wb");
     if(file == NULL) {
-        snprintf(download->error, sizeof(download->error), "failed to open %.200s", download->path);
-        download->status = RUNTIME_ASSET_ERROR;
+        char msg[256];
+
+        snprintf(msg, sizeof(msg), "failed to open %.200s", state->path);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
         return NULL;
     }
 
     curl = curl_easy_init();
     if(curl == NULL) {
         fclose(file);
-        snprintf(download->error, sizeof(download->error), "failed to initialize curl");
-        download->status = RUNTIME_ASSET_ERROR;
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR,
+                                   "failed to initialize curl");
         return NULL;
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, download->url);
+    curl_easy_setopt(curl, CURLOPT_URL, state->url);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_file);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
@@ -411,26 +519,31 @@ curl_thread_main(void *user_data)
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curl_progress);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, download);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, state);
 
     res = curl_easy_perform(curl);
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &download->http_status);
+    KryMutexLock(&state->mutex);
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &state->http_status);
+    KryMutexUnlock(&state->mutex);
     if(curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD_T, &downloaded) == CURLE_OK &&
        downloaded > 0)
-        download->bytes = (size_t)downloaded;
-    if(download->total_bytes == 0 && downloaded > 0)
-        download->total_bytes = (size_t)downloaded;
+        runtime_asset_state_progress(state, (size_t)downloaded,
+                                     state->total_bytes);
+    KryMutexLock(&state->mutex);
+    if(state->total_bytes == 0 && downloaded > 0)
+        state->total_bytes = (size_t)downloaded;
+    KryMutexUnlock(&state->mutex);
     curl_easy_cleanup(curl);
     fclose(file);
 
     if(res != CURLE_OK) {
-        snprintf(download->error, sizeof(download->error), "%s", curl_easy_strerror(res));
-        remove(download->path);
-        download->status = RUNTIME_ASSET_ERROR;
+        remove(state->path);
+        runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR,
+                                   curl_easy_strerror(res));
         return NULL;
     }
 
-    download->status = RUNTIME_ASSET_READY;
+    runtime_asset_state_finish(state, RUNTIME_ASSET_READY, NULL);
     return NULL;
 }
 #endif
@@ -445,8 +558,13 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
 
     if(download == NULL || url == NULL || url[0] == '\0' || path == NULL || path[0] == '\0')
         return 0;
-    if(download->status == RUNTIME_ASSET_DOWNLOADING)
+    if(download->platform != NULL) {
+        if(PollRuntimeAssetDownload(download) == RUNTIME_ASSET_DOWNLOADING)
+            return 0;
+        FreeRuntimeAssetDownload(download);
+    } else if(download->status == RUNTIME_ASSET_DOWNLOADING) {
         return 0;
+    }
 
     memset(download, 0, sizeof(*download));
     snprintf(download->url, sizeof(download->url), "%s", url);
@@ -478,52 +596,59 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
 #if defined(__EMSCRIPTEN__)
     {
         emscripten_fetch_attr_t attr;
+        RuntimeAssetDownloadState *state = runtime_asset_state_new(url, path);
+        if(state == NULL) {
+            snprintf(download->error, sizeof(download->error), "out of memory");
+            download->status = RUNTIME_ASSET_ERROR;
+            return 0;
+        }
+        download->platform = state;
         emscripten_fetch_attr_init(&attr);
         strcpy(attr.requestMethod, "GET");
         attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-        attr.userData = download;
+        attr.userData = state;
         attr.onsuccess = fetch_done;
         attr.onerror = fetch_failed;
-        emscripten_fetch(&attr, download->url);
+        emscripten_fetch(&attr, state->url);
         return 1;
     }
 #elif defined(_WIN32)
     {
-        HANDLE thread;
-        WindowsDownloadContext *ctx = (WindowsDownloadContext *)calloc(1, sizeof(*ctx));
-        if(ctx == NULL) {
+        RuntimeAssetDownloadState *state = runtime_asset_state_new(url, path);
+        if(state == NULL) {
             snprintf(download->error, sizeof(download->error), "out of memory");
             download->status = RUNTIME_ASSET_ERROR;
             return 0;
         }
-        ctx->download = download;
-        thread = CreateThread(NULL, 0, windows_download_thread_main, ctx, 0, NULL);
-        if(thread == NULL) {
-            free(ctx);
-            windows_set_last_error(download, "failed to create download thread");
-            download->status = RUNTIME_ASSET_ERROR;
+        download->platform = state;
+        if(!KryThreadStart(&state->thread, windows_download_thread_main, state)) {
+            download->platform = NULL;
+            runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR,
+                                       "failed to create download thread");
+            runtime_asset_state_copy(download, state);
+            free(state);
             return 0;
         }
-        CloseHandle(thread);
+        state->started = 1;
         return 1;
     }
 #elif defined(HAS_LIBCURL)
     {
-        pthread_t thread;
-        NativeDownloadContext *ctx = (NativeDownloadContext *)calloc(1, sizeof(*ctx));
-        if(ctx == NULL) {
+        RuntimeAssetDownloadState *state = runtime_asset_state_new(url, path);
+        if(state == NULL) {
             snprintf(download->error, sizeof(download->error), "out of memory");
             download->status = RUNTIME_ASSET_ERROR;
             return 0;
         }
-        ctx->download = download;
-        if(pthread_create(&thread, NULL, curl_thread_main, ctx) != 0) {
-            free(ctx);
+        download->platform = state;
+        if(!KryThreadStart(&state->thread, curl_thread_main, state)) {
+            download->platform = NULL;
             snprintf(download->error, sizeof(download->error), "failed to create download thread");
             download->status = RUNTIME_ASSET_ERROR;
+            free(state);
             return 0;
         }
-        pthread_detach(thread);
+        state->started = 1;
         return 1;
     }
 #else
@@ -531,4 +656,50 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
     download->status = RUNTIME_ASSET_ERROR;
     return 0;
 #endif
+}
+
+RuntimeAssetStatus
+PollRuntimeAssetDownload(RuntimeAssetDownload *download)
+{
+    RuntimeAssetDownloadState *state;
+
+    if(download == NULL)
+        return RUNTIME_ASSET_ERROR;
+    state = (RuntimeAssetDownloadState *)download->platform;
+    if(state == NULL)
+        return download->status;
+    KryMutexLock(&state->mutex);
+    runtime_asset_state_copy(download, state);
+    KryMutexUnlock(&state->mutex);
+    return download->status;
+}
+
+void
+FreeRuntimeAssetDownload(RuntimeAssetDownload *download)
+{
+    RuntimeAssetDownloadState *state;
+    RuntimeAssetStatus status;
+
+    if(download == NULL)
+        return;
+    state = (RuntimeAssetDownloadState *)download->platform;
+    if(state == NULL)
+        return;
+#if defined(__EMSCRIPTEN__)
+    status = PollRuntimeAssetDownload(download);
+    if(status == RUNTIME_ASSET_DOWNLOADING) {
+        KryMutexLock(&state->mutex);
+        state->abandoned = 1;
+        KryMutexUnlock(&state->mutex);
+        download->platform = NULL;
+        return;
+    }
+#else
+    if(state->started)
+        KryThreadJoin(&state->thread);
+    status = PollRuntimeAssetDownload(download);
+    (void)status;
+#endif
+    download->platform = NULL;
+    free(state);
 }

@@ -845,6 +845,15 @@ Download an asset.
 int DownloadRuntimeAsset(RuntimeAssetDownload *download, const char *url, const char *path);
 ```
 
+Poll the download to copy the worker-owned status snapshot into
+`RuntimeAssetDownload`. Release it with `FreeRuntimeAssetDownload`; native
+builds wait for an active worker before freeing its state.
+
+```c
+RuntimeAssetStatus PollRuntimeAssetDownload(RuntimeAssetDownload *download);
+void FreeRuntimeAssetDownload(RuntimeAssetDownload *download);
+```
+
 #### `SetRuntimeAssetDownloadBackend`
 
 Set custom download backend.

@@ -33,6 +33,8 @@ void SetRuntimeAssetDownloadBackend(RuntimeAssetDownloadBackend backend);
 int DownloadRuntimeAsset(RuntimeAssetDownload *download,
                                  const char *url,
                                  const char *path);
+RuntimeAssetStatus PollRuntimeAssetDownload(RuntimeAssetDownload *download);
+void FreeRuntimeAssetDownload(RuntimeAssetDownload *download);
 const char *GetRuntimeAssetStatusText(RuntimeAssetStatus status);
 
 #endif

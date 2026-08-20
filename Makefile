@@ -210,6 +210,7 @@ KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
+RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
 KRY_SHA256_TEST = $(BUILD_DIR)/tests/kry_sha256_test
 KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
@@ -289,7 +290,7 @@ docs-site:
 spec-test: $(K2IR) $(K2C) $(K2G) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -305,6 +306,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G)
 	$(KRY_TERM_TEST)
 	$(KRY_JSON_TEST)
 	$(KRY_HTTP_TEST)
+	$(RUNTIME_ASSETS_TEST)
 	$(KRY_UPDATE_TEST)
 	$(KRY_UPDATE_FLOW_TEST)
 	$(KRY_SHA256_TEST)
@@ -701,6 +703,10 @@ $(KRY_JSON_TEST): tests/kry_json_test.c src/kry_std/kry_json.c include/kry_json.
 $(KRY_HTTP_TEST): tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c include/kry_http.h include/platform.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(KRYON_CURL_CFLAGS) tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c $(KRYON_CURL_LDLIBS) $(KRYON_CURL_TRANSITIVE_LDLIBS) -o $@
+
+$(RUNTIME_ASSETS_TEST): tests/runtime_assets_test.c src/runtime_assets/runtime_assets.c src/platform/platform_thread.c include/runtime_assets.h include/platform.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(KRYON_CURL_CFLAGS) tests/runtime_assets_test.c src/runtime_assets/runtime_assets.c src/platform/platform_thread.c $(KRYON_CURL_LDLIBS) $(KRYON_CURL_TRANSITIVE_LDLIBS) -o $@
 
 $(KRY_UPDATE_TEST): tests/kry_update_test.c src/kry_std/kry_update.c src/kry_std/kry_json.c src/kry_std/kry_http.c src/kry_std/kry_filesystem.c src/kry_std/kry_sha256.c src/platform/platform_thread.c include/kry_update.h include/kry_json.h include/kry_http.h include/kry_filesystem.h include/kry_sha256.h include/platform.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

@@ -144,6 +144,15 @@ main(void)
     check_int("column first y", (int)nodes[2].bounds.y, 30);
     check_int("column stretch width", (int)nodes[2].bounds.width, 80);
     check_int("column second y", (int)nodes[3].bounds.y, 55);
+    BeginUI(31);
+    Column((ColumnProps){.bounds = {10, 20, 100, 200},
+                         .gap = 5, .padding = 10, .key = 40});
+    Stack((ColumnProps){.bounds = {0, 0, 0, 20}, .key = 41}); End();
+    Stack((ColumnProps){.bounds = {0, 0, 0, 30}, .key = 42}); End();
+    End();
+    EndUI();
+    nodes = UIGetTreeNodes(&count);
+    check_int("stable column keeps computed width", (int)nodes[2].bounds.width, 80);
 
     KryonInjectReset();
     KryonInjectTap(25, 25);
