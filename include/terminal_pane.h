@@ -27,6 +27,32 @@ typedef struct TerminalPanePalette {
     Color ansi[256];
 } TerminalPanePalette;
 
+typedef enum TerminalPaneColor {
+    TERMINAL_PANE_COLOR_DEFAULT = -1,
+    TERMINAL_PANE_COLOR_TRUE_RGB = 0x01000000
+} TerminalPaneColor;
+
+typedef struct TerminalPaneProfileColors {
+    int foreground;
+    int background;
+    int cursor;
+    int selection_foreground;
+    int selection_background;
+} TerminalPaneProfileColors;
+
+typedef struct TerminalPaneProfileState {
+    int base_foreground;
+    int base_background;
+    int base_cursor;
+    int base_selection_foreground;
+    int base_selection_background;
+    int foreground;
+    int background;
+    int cursor;
+    int selection_foreground;
+    int selection_background;
+} TerminalPaneProfileState;
+
 typedef struct TerminalPaneMetrics {
     int cols;
     int rows;
@@ -160,6 +186,19 @@ typedef struct TerminalPaneResult {
 } TerminalPaneResult;
 
 TerminalPaneColors GetTerminalPaneThemeColors(void);
+int TerminalPaneColorToRGB(Color color);
+TerminalPaneProfileColors
+TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors);
+TerminalPaneProfileColors
+ResolveTerminalPaneProfileColors(TerminalPaneProfileColors configured,
+                                 TerminalPaneColors fallback);
+void TerminalPaneProfileStateApplyNew(TerminalPaneProfileState *state,
+                                      TerminalPaneProfileColors colors);
+void TerminalPaneProfileStateSeedMissing(TerminalPaneProfileState *state,
+                                         TerminalPaneProfileColors colors);
+void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
+                                         TerminalPaneProfileColors old_colors,
+                                         TerminalPaneProfileColors new_colors);
 static inline TerminalPanePalette GetTerminalPaneDefaultPalette(void)
 {
     static const Color base16[16] = {

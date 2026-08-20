@@ -592,6 +592,97 @@ main(void)
     }
 
     {
+        TerminalPaneColors theme = {
+            {1, 2, 3, 255},
+            {4, 5, 6, 255},
+            {7, 8, 9, 255},
+            {10, 11, 12, 255},
+            {13, 14, 15, 255},
+            {16, 17, 18, 255},
+            {19, 20, 21, 255},
+            {22, 23, 24, 255},
+            {25, 26, 27, 255},
+            {28, 29, 30, 255},
+            {31, 32, 33, 255}
+        };
+        TerminalPaneProfileColors configured = {
+            TERMINAL_PANE_COLOR_DEFAULT,
+            TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566,
+            TERMINAL_PANE_COLOR_DEFAULT,
+            TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc,
+            TERMINAL_PANE_COLOR_DEFAULT
+        };
+        TerminalPaneProfileColors colors;
+        TerminalPaneProfileState state;
+
+        check_int("terminal pane color rgb",
+                  TerminalPaneColorToRGB((Color){0x11, 0x22, 0x33, 255}),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x112233);
+        colors = ResolveTerminalPaneProfileColors(configured, theme);
+        check_int("profile foreground from theme", colors.foreground,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506);
+        check_int("profile background configured", colors.background,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566);
+        check_int("profile cursor from theme", colors.cursor,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x101112);
+        check_int("profile selection foreground configured",
+                  colors.selection_foreground,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
+        check_int("profile selection background from theme",
+                  colors.selection_background,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x0a0b0c);
+
+        memset(&state, 0, sizeof(state));
+        state.cursor = TERMINAL_PANE_COLOR_DEFAULT;
+        state.selection_foreground = TERMINAL_PANE_COLOR_DEFAULT;
+        state.selection_background = TERMINAL_PANE_COLOR_DEFAULT;
+        TerminalPaneProfileStateApplyNew(&state, colors);
+        check_int("profile apply base foreground", state.base_foreground,
+                  colors.foreground);
+        check_int("profile apply foreground", state.foreground,
+                  colors.foreground);
+        check_int("profile apply cursor", state.cursor, colors.cursor);
+        check_int("profile apply selection background",
+                  state.selection_background, colors.selection_background);
+
+        state.foreground = TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203;
+        state.cursor = TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506;
+        state.selection_background =
+            TERMINAL_PANE_COLOR_TRUE_RGB | 0x070809;
+        TerminalPaneProfileStateSyncChanged(
+            &state, colors,
+            (TerminalPaneProfileColors){
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x111111,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x222222,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x333333,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x444444,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x555555
+            });
+        check_int("profile sync updates base foreground",
+                  state.base_foreground,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x111111);
+        check_int("profile sync preserves foreground override",
+                  state.foreground, TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203);
+        check_int("profile sync preserves cursor override", state.cursor,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506);
+        check_int("profile sync preserves selection background override",
+                  state.selection_background,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x070809);
+
+        memset(&state, 0, sizeof(state));
+        state.foreground = TERMINAL_PANE_COLOR_DEFAULT;
+        state.background = TERMINAL_PANE_COLOR_DEFAULT;
+        state.cursor = TERMINAL_PANE_COLOR_DEFAULT;
+        state.selection_foreground = TERMINAL_PANE_COLOR_DEFAULT;
+        state.selection_background = TERMINAL_PANE_COLOR_DEFAULT;
+        TerminalPaneProfileStateSeedMissing(&state, colors);
+        check_int("profile seed foreground", state.foreground,
+                  colors.foreground);
+        check_int("profile seed background", state.background,
+                  colors.background);
+    }
+
+    {
         char seq[64];
         TerminalPaneKeyMode mode = {0};
 
