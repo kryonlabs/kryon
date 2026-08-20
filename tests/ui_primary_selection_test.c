@@ -1065,6 +1065,34 @@ main(void)
         check_str("cursor style name default saved as block",
                   TerminalPaneCursorStyleName(TERMINAL_PANE_CURSOR_DEFAULT),
                   "block");
+        check_int("cursor style default report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_DEFAULT, 1),
+                  0);
+        check_int("cursor style blinking block report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_BLOCK, 1),
+                  1);
+        check_int("cursor style steady block report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_BLOCK, 0),
+                  2);
+        check_int("cursor style blinking underline report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_UNDERLINE, 1),
+                  3);
+        check_int("cursor style steady underline report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_UNDERLINE, 0),
+                  4);
+        check_int("cursor style blinking bar report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_BAR, 1),
+                  5);
+        check_int("cursor style steady bar report",
+                  TerminalPaneCursorStyleReportCode(
+                      TERMINAL_PANE_CURSOR_BAR, 0),
+                  6);
     }
 
     {

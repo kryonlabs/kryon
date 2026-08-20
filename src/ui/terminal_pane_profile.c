@@ -239,6 +239,18 @@ TerminalPaneCursorStyleName(int style)
 }
 
 int
+TerminalPaneCursorStyleReportCode(int style, int blink)
+{
+    if(style == TERMINAL_PANE_CURSOR_BLOCK)
+        return blink ? 1 : 2;
+    if(style == TERMINAL_PANE_CURSOR_UNDERLINE)
+        return blink ? 3 : 4;
+    if(style == TERMINAL_PANE_CURSOR_BAR)
+        return blink ? 5 : 6;
+    return 0;
+}
+
+int
 ParseTerminalPaneProfileColor(const char *text, int *out)
 {
     int r1;

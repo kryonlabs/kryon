@@ -257,6 +257,7 @@ void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
                                          TerminalPaneProfileColors new_colors);
 int ParseTerminalPaneCursorStyle(const char *text, int fallback);
 const char *TerminalPaneCursorStyleName(int style);
+int TerminalPaneCursorStyleReportCode(int style, int blink);
 int ParseTerminalPaneProfileColor(const char *text, int *out);
 int FormatTerminalPaneProfileColor(char *out, int out_size, int color);
 int EscapeTerminalPaneText(char *out, int out_size, const char *text);
