@@ -397,6 +397,62 @@ main(void)
     }
 
     {
+        const char *lines[] = {"Alpha beta",
+                               "gamma ALPHA",
+                               "needle middle needle",
+                               "final Beta"};
+        SelectionFixture fixture = {lines, NULL, 4};
+        TerminalPaneSearchMatch match;
+
+        check_int("terminal search smartcase lowercase",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4,
+                                          "alpha", 0, 0, 1, 0, &match),
+                  1);
+        check_int("terminal search lowercase row", match.row, 0);
+        check_int("terminal search lowercase col", match.col, 0);
+        check_int("terminal search lowercase len", match.length, 5);
+
+        check_int("terminal search smartcase uppercase",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4,
+                                          "ALPHA", 0, 0, 1, 0, &match),
+                  1);
+        check_int("terminal search uppercase row", match.row, 1);
+        check_int("terminal search uppercase col", match.col, 6);
+
+        check_int("terminal search forward wrap",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4,
+                                          "beta", 3, 7, 1, 1, &match),
+                  1);
+        check_int("terminal search forward wrap row", match.row, 0);
+        check_int("terminal search forward wrap col", match.col, 6);
+
+        check_int("terminal search backward wrap",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4,
+                                          "beta", 0, 0, -1, 1, &match),
+                  1);
+        check_int("terminal search backward wrap row", match.row, 3);
+        check_int("terminal search backward wrap col", match.col, 6);
+
+        check_int("terminal search backward same line",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4,
+                                          "needle", 2, 20, -1, 0, &match),
+                  1);
+        check_int("terminal search backward same row", match.row, 2);
+        check_int("terminal search backward same col", match.col, 14);
+
+        match.row = 99;
+        match.col = 99;
+        match.length = 99;
+        check_int("terminal search empty query",
+                  TerminalPaneSearchLines(fixture_line_text, &fixture, 4, "",
+                                          0, 0, 1, 1, &match),
+                  0);
+        check_int("terminal search empty row reset", match.row, -1);
+        check_int("terminal search empty col reset", match.col, -1);
+        check_int("terminal search empty length reset", match.length, 0);
+    }
+
+    {
         char paste[512];
         const char payload[] = "safe\x1b[201~after\x1b[31mred\xd0\x80\a"
                                "\x9b" "32mgreen"

@@ -58,6 +58,12 @@ typedef int (*TerminalPaneSelectionLineFn)(void *userdata, int row,
                                            char *out, int out_size);
 typedef int (*TerminalPaneSelectionWrappedFn)(void *userdata, int row);
 
+typedef struct TerminalPaneSearchMatch {
+    int row;
+    int col;
+    int length;
+} TerminalPaneSearchMatch;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -158,6 +164,11 @@ int TerminalPaneSelectionFirstVisibleRow(int total_rows, int visible_rows,
                                          int scroll_offset);
 int TerminalPaneSelectionEdgeScrollRow(int first_visible_row, int visible_rows,
                                        int scroll_delta);
+int TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text,
+                            void *userdata, int total_rows,
+                            const char *needle, int start_row, int start_col,
+                            int direction, int wrap,
+                            TerminalPaneSearchMatch *out);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 

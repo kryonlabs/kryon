@@ -375,3 +375,143 @@ TerminalPaneSelectionEdgeScrollRow(int first_visible_row, int visible_rows,
         return first_visible_row;
     return first_visible_row + visible_rows - 1;
 }
+
+static int
+pane_search_case_sensitive(const char *needle)
+{
+    const unsigned char *cursor = (const unsigned char *)needle;
+
+    if(needle == NULL)
+        return 0;
+    while(*cursor != '\0') {
+        if(isupper(*cursor))
+            return 1;
+        cursor++;
+    }
+    return 0;
+}
+
+static int
+pane_search_chars_equal(unsigned char a, unsigned char b, int case_sensitive)
+{
+    if(case_sensitive)
+        return a == b;
+    return tolower(a) == tolower(b);
+}
+
+static const char *
+pane_search_find_from(const char *line, const char *needle,
+                      int case_sensitive)
+{
+    int needle_len;
+    const char *cursor;
+
+    if(line == NULL || needle == NULL)
+        return NULL;
+    needle_len = (int)strlen(needle);
+    if(needle_len <= 0)
+        return NULL;
+    for(cursor = line; *cursor != '\0'; cursor++) {
+        int i;
+
+        for(i = 0; i < needle_len; i++) {
+            if(cursor[i] == '\0' ||
+               !pane_search_chars_equal((unsigned char)cursor[i],
+                                        (unsigned char)needle[i],
+                                        case_sensitive))
+                break;
+        }
+        if(i == needle_len)
+            return cursor;
+    }
+    return NULL;
+}
+
+static const char *
+pane_search_last_before(const char *line, const char *needle, int limit,
+                        int case_sensitive)
+{
+    const char *cursor;
+    const char *last = NULL;
+    int needle_len;
+
+    if(line == NULL || needle == NULL)
+        return NULL;
+    needle_len = (int)strlen(needle);
+    if(needle_len <= 0)
+        return NULL;
+    cursor = line;
+    while((cursor = pane_search_find_from(cursor, needle,
+                                          case_sensitive)) != NULL) {
+        if((int)(cursor - line) + needle_len > limit)
+            break;
+        last = cursor;
+        cursor++;
+    }
+    return last;
+}
+
+int
+TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text, void *userdata,
+                        int total_rows, const char *needle, int start_row,
+                        int start_col, int direction, int wrap,
+                        TerminalPaneSearchMatch *out)
+{
+    int needle_len;
+    int case_sensitive;
+    int pass;
+
+    if(out != NULL) {
+        out->row = -1;
+        out->col = -1;
+        out->length = 0;
+    }
+    if(line_text == NULL || total_rows <= 0 || needle == NULL ||
+       needle[0] == '\0')
+        return 0;
+    needle_len = (int)strlen(needle);
+    case_sensitive = pane_search_case_sensitive(needle);
+    direction = direction >= 0 ? 1 : -1;
+    if(start_row < 0)
+        start_row = direction > 0 ? 0 : total_rows - 1;
+    if(start_row >= total_rows)
+        start_row = direction > 0 ? 0 : total_rows - 1;
+
+    for(pass = 0; pass < (wrap ? 2 : 1); pass++) {
+        int row;
+        int end_row = direction > 0 ? total_rows : -1;
+
+        for(row = start_row; row != end_row; row += direction) {
+            char line[4096];
+            const char *match = NULL;
+            int line_len;
+            int col_limit;
+
+            (void)pane_selection_line_text(line_text, userdata, row, line,
+                                           (int)sizeof(line));
+            line_len = (int)strlen(line);
+            if(direction > 0) {
+                col_limit = row == start_row ? start_col : 0;
+                col_limit = pane_clamp_int(col_limit, 0, line_len);
+                match = pane_search_find_from(line + col_limit, needle,
+                                              case_sensitive);
+            } else {
+                col_limit = row == start_row ? start_col : line_len;
+                col_limit = pane_clamp_int(col_limit, 0, line_len);
+                match = pane_search_last_before(line, needle, col_limit,
+                                                case_sensitive);
+            }
+            if(match != NULL) {
+                if(out != NULL) {
+                    out->row = row;
+                    out->col = (int)(match - line);
+                    out->length = needle_len;
+                }
+                return 1;
+            }
+        }
+        start_row = direction > 0 ? 0 : total_rows - 1;
+        start_col = direction > 0 ? 0 : 4096;
+    }
+    return 0;
+}
