@@ -94,3 +94,96 @@ KryPictureFitRect(PictureProps picture, Texture2D texture)
     }
     return dst;
 }
+
+static void
+kry_picture_mask_rounded_corners(Rectangle bounds, int radius, Color color)
+{
+    int left = (int)bounds.x;
+    int top = (int)bounds.y;
+    int right = (int)(bounds.x + bounds.width);
+    int bottom = (int)(bounds.y + bounds.height);
+    int radius_sq = radius * radius;
+    int py;
+    int px;
+
+    if(radius <= 0 || bounds.width <= 0.0f || bounds.height <= 0.0f)
+        return;
+
+    for(py = 0; py < radius; py++) {
+        int dy = radius - py;
+        for(px = 0; px < radius; px++) {
+            int dx = radius - px;
+            if(dx * dx + dy * dy <= radius_sq)
+                continue;
+            DrawRectangle(left + px, top + py, 1, 1, color);
+            DrawRectangle(right - px - 1, top + py, 1, 1, color);
+            DrawRectangle(left + px, bottom - py - 1, 1, 1, color);
+            DrawRectangle(right - px - 1, bottom - py - 1, 1, 1, color);
+        }
+    }
+}
+
+static int
+kry_picture_style_radius(Rectangle bounds, UIPictureStyle style)
+{
+    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
+    int radius = style.radius_px;
+
+    if(radius <= 0 && style.roundness > 0.0f)
+        radius = (int)(min_side * style.roundness);
+    return radius > 0 ? radius : 0;
+}
+
+void
+UIDrawStyledCoverPicture(Texture2D texture, Rectangle bounds,
+                         UIPictureStyle style)
+{
+    PictureProps picture = {0};
+    Rectangle dst;
+    int radius;
+    int segments;
+    int outline_px;
+    float roundness;
+
+    if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
+       bounds.width <= 0.0f || bounds.height <= 0.0f)
+        return;
+
+    picture.bounds = bounds;
+    picture.fit = UI_PICTURE_FIT_COVER;
+    dst = KryPictureFitRect(picture, texture);
+    radius = kry_picture_style_radius(bounds, style);
+    segments = style.segments > 0 ? style.segments : 10;
+    outline_px = style.outline_px > 0 ? style.outline_px : 1;
+    roundness = style.roundness > 0.0f ? style.roundness : 0.0f;
+
+    if(style.background.a > 0) {
+        if(roundness > 0.0f)
+            DrawRectangleRounded(bounds, roundness, segments, style.background);
+        else
+            DrawRectangleRec(bounds, style.background);
+    }
+
+    BeginScissorMode((int)bounds.x, (int)bounds.y, (int)bounds.width,
+                     (int)bounds.height);
+    DrawTexturePro(texture, (Rectangle){0.0f, 0.0f, (float)texture.width,
+                                        (float)texture.height},
+                   dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    if(style.tonal_overlay.a > 0)
+        DrawRectangleRec(bounds, style.tonal_overlay);
+    if(style.surface_overlay.a > 0)
+        DrawRectangleRec(bounds, style.surface_overlay);
+    if(style.scrim_top.a > 0 || style.scrim_bottom.a > 0)
+        DrawRectangleGradientV((int)bounds.x, (int)bounds.y,
+                               (int)bounds.width, (int)bounds.height,
+                               style.scrim_top, style.scrim_bottom);
+    EndScissorMode();
+
+    if(roundness > 0.0f && radius > 0 && style.background.a > 0)
+        kry_picture_mask_rounded_corners(bounds, radius, style.background);
+    if(roundness > 0.0f && style.outline.a > 0)
+        DrawRectangleRoundedLinesEx(bounds, roundness, segments,
+                                    (float)outline_px, style.outline);
+    else if(style.outline.a > 0)
+        DrawRectangleLinesEx(bounds, (float)outline_px, style.outline);
+}
