@@ -561,3 +561,80 @@ TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
     return pane_clamp_int(total_rows - visible_rows - match_row, 0,
                           max_scroll);
 }
+
+TerminalPaneSearchController
+MakeTerminalPaneSearchController(TerminalPaneSelectionLineFn line_text,
+                                 void *userdata,
+                                 TerminalPaneSelection *selection,
+                                 int total_rows, int visible_rows,
+                                 int first_visible_row, int *scroll_offset)
+{
+    TerminalPaneSearchController controller = {0};
+
+    controller.line_text = line_text;
+    controller.userdata = userdata;
+    controller.selection = selection;
+    controller.total_rows = total_rows;
+    controller.visible_rows = visible_rows;
+    controller.first_visible_row = first_visible_row;
+    controller.scroll_offset = scroll_offset;
+    return controller;
+}
+
+int
+TerminalPaneSearchSelectMatch(TerminalPaneSearchController controller,
+                              TerminalPaneSearchMatch match)
+{
+    if(match.row < 0 || match.col < 0 || match.length <= 0)
+        return 0;
+    if(controller.scroll_offset != NULL)
+        *controller.scroll_offset = TerminalPaneSearchMatchScrollOffset(
+            controller.total_rows, controller.visible_rows, match.row);
+    if(controller.selection != NULL)
+        TerminalPaneSelectionSetRange(
+            controller.selection, TERMINAL_PANE_SELECTION_CHAR, 0, match.row,
+            match.col, match.row, match.col + match.length);
+    return 1;
+}
+
+int
+TerminalPaneSearchFindFrom(TerminalPaneSearchController controller,
+                           const char *needle, int start_row, int start_col,
+                           int direction, int wrap,
+                           TerminalPaneSearchMatch *out)
+{
+    TerminalPaneSearchMatch match;
+
+    if(out == NULL)
+        out = &match;
+    if(!TerminalPaneSearchLines(controller.line_text, controller.userdata,
+                                controller.total_rows, needle, start_row,
+                                start_col, direction, wrap, out))
+        return 0;
+    return TerminalPaneSearchSelectMatch(controller, *out);
+}
+
+int
+TerminalPaneSearchFindNext(TerminalPaneSearchController controller,
+                           const char *needle, int direction,
+                           TerminalPaneSearchMatch *out)
+{
+    TerminalPaneSearchStart start;
+
+    direction = direction >= 0 ? 1 : -1;
+    start = TerminalPaneSearchStartForDirection(
+        controller.selection, controller.total_rows,
+        controller.first_visible_row, direction);
+    return TerminalPaneSearchFindFrom(controller, needle, start.row, start.col,
+                                      direction, 1, out);
+}
+
+int
+TerminalPaneSearchFindInitial(TerminalPaneSearchController controller,
+                              const char *needle,
+                              TerminalPaneSearchMatch *out)
+{
+    return TerminalPaneSearchFindFrom(controller, needle,
+                                      controller.total_rows - 1, 4096, -1, 0,
+                                      out);
+}

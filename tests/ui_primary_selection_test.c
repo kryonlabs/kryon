@@ -687,6 +687,8 @@ main(void)
         {
             TerminalPaneSelection selection;
             TerminalPaneSearchStart start;
+            TerminalPaneSearchController controller;
+            int scroll_offset = 99;
 
             TerminalPaneSelectionClear(&selection);
             start = TerminalPaneSearchStartForDirection(&selection, 12, 4, 1);
@@ -717,6 +719,42 @@ main(void)
             start = TerminalPaneSearchStartForDirection(NULL, 0, 4, 1);
             check_int("terminal search empty start row", start.row, -1);
             check_int("terminal search empty start col", start.col, -1);
+
+            TerminalPaneSelectionClear(&selection);
+            controller = MakeTerminalPaneSearchController(
+                fixture_line_text, &fixture, &selection, fixture.count, 2, 1,
+                &scroll_offset);
+            check_int("terminal search controller initial",
+                      TerminalPaneSearchFindInitial(controller, "needle",
+                                                    &match),
+                      1);
+            check_int("terminal search controller initial row", match.row, 2);
+            check_int("terminal search controller initial col", match.col, 14);
+            check_int("terminal search controller selects", selection.active,
+                      1);
+            check_int("terminal search controller selection row",
+                      selection.start_row, 2);
+            check_int("terminal search controller selection col",
+                      selection.start_col, 14);
+            check_int("terminal search controller selection end",
+                      selection.end_col, 20);
+            check_int("terminal search controller scroll offset",
+                      scroll_offset, 0);
+
+            check_int("terminal search controller next wraps",
+                      TerminalPaneSearchFindNext(controller, "alpha", 1,
+                                                 &match),
+                      1);
+            check_int("terminal search controller next row", match.row, 0);
+            check_int("terminal search controller next col", match.col, 0);
+            check_int("terminal search controller next scroll",
+                      scroll_offset, 2);
+            check_int("terminal search controller previous",
+                      TerminalPaneSearchFindNext(controller, "beta", -1,
+                                                 &match),
+                      1);
+            check_int("terminal search controller previous row", match.row, 3);
+            check_int("terminal search controller previous col", match.col, 6);
         }
     }
 

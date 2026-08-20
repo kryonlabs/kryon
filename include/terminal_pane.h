@@ -221,6 +221,16 @@ typedef struct TerminalPaneSearchStart {
     int col;
 } TerminalPaneSearchStart;
 
+typedef struct TerminalPaneSearchController {
+    TerminalPaneSelectionLineFn line_text;
+    void *userdata;
+    TerminalPaneSelection *selection;
+    int total_rows;
+    int visible_rows;
+    int first_visible_row;
+    int *scroll_offset;
+} TerminalPaneSearchController;
+
 typedef enum TerminalPaneKey {
     TERMINAL_PANE_KEY_ENTER = 1,
     TERMINAL_PANE_KEY_BACKSPACE,
@@ -613,6 +623,22 @@ TerminalPaneSearchStart TerminalPaneSearchStartForDirection(
     int first_visible_row, int direction);
 int TerminalPaneSearchMatchScrollOffset(int total_rows, int visible_rows,
                                         int match_row);
+TerminalPaneSearchController MakeTerminalPaneSearchController(
+    TerminalPaneSelectionLineFn line_text, void *userdata,
+    TerminalPaneSelection *selection, int total_rows, int visible_rows,
+    int first_visible_row, int *scroll_offset);
+int TerminalPaneSearchSelectMatch(TerminalPaneSearchController controller,
+                                  TerminalPaneSearchMatch match);
+int TerminalPaneSearchFindFrom(TerminalPaneSearchController controller,
+                               const char *needle, int start_row,
+                               int start_col, int direction, int wrap,
+                               TerminalPaneSearchMatch *out);
+int TerminalPaneSearchFindNext(TerminalPaneSearchController controller,
+                               const char *needle, int direction,
+                               TerminalPaneSearchMatch *out);
+int TerminalPaneSearchFindInitial(TerminalPaneSearchController controller,
+                                  const char *needle,
+                                  TerminalPaneSearchMatch *out);
 int EncodeTerminalPaneCodepoint(char *out, int out_size,
                                 unsigned int codepoint, int mods,
                                 TerminalPaneKeyMode mode);
