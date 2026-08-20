@@ -87,6 +87,9 @@ const char *GetSystemThemeNameCached(void);
 bool GetSystemUIFontName(char *out, int out_size);
 bool GetSystemUIFontFile(char *out, int out_size);
 bool RefreshSystemTheme(void);
+/* Number of full detection attempts so far — lets tests and diagnostics
+   assert that per-frame theme queries never re-run file I/O. */
+long SystemThemeRefreshCount(void);
 bool GetSystemDesktopBackground(char *out, int out_size);
 bool SystemThemePrefersDark(void);
 bool SystemThemeSupportsMode(void);

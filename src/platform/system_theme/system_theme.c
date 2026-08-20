@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 
 #if defined(SYSTEM_THEME_GTK)
 #include <gtk/gtk.h>
@@ -49,6 +53,61 @@ static int system_prefers_dark = 0;
 static char system_ui_font_name[128];
 static char system_ui_font_file[512];
 static int system_ui_font_attempted = 0;
+
+/* Automatic refresh discipline.
+ *
+ * IsSystemThemeAvailable/SystemThemePrefersDark/... answer questions asked
+ * for every themed widget on every frame. When desktop detection fails (no
+ * readable GTK theme CSS), an uncached failure re-ran the whole file-reading
+ * probe on every single call — thousands of config-file reads per frame,
+ * freezing the UI. The automatic path now attempts detection at most once
+ * per retry window; the explicit RefreshSystemTheme() still forces a full
+ * re-detection. */
+#define SYSTEM_THEME_RETRY_S 30.0
+static double system_theme_last_attempt_s = -1.0;
+static int system_theme_clock_ok = 1;
+static long system_theme_refresh_count = 0;
+
+static double
+system_theme_now_s(void)
+{
+#if defined(_WIN32)
+    return (double)GetTickCount64() / 1000.0;
+#elif defined(PLATFORM_WEB)
+    return 0.0;
+#else
+    struct timespec ts;
+
+    if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        system_theme_clock_ok = 0;
+        return 0.0;
+    }
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9;
+#endif
+}
+
+static void
+system_theme_auto_refresh(void)
+{
+    double now;
+
+    if(system_palette.available)
+        return;
+    if(!system_theme_clock_ok) {
+        /* No monotonic clock: attempt exactly once, never per-frame. */
+        if(system_theme_last_attempt_s >= 0.0)
+            return;
+        system_theme_last_attempt_s = 0.0;
+        RefreshSystemTheme();
+        return;
+    }
+    now = system_theme_now_s();
+    if(system_theme_last_attempt_s >= 0.0 &&
+       now - system_theme_last_attempt_s < SYSTEM_THEME_RETRY_S)
+        return;
+    system_theme_last_attempt_s = now;
+    RefreshSystemTheme();
+}
 
 static const SystemThemePalette material_light_palette = {
     .background = {0xFF, 0xFB, 0xFE, 0xFF},
@@ -980,35 +1039,40 @@ RefreshSystemTheme(void)
         return true;
     }
 #endif
+    system_theme_refresh_count++;
     /* Prefer reading the theme CSS files directly: initializing GTK
        in-process while the app's SDL window and GL context are already live
        can corrupt the render context (GTK performs late global X
        initialization, realizes real X windows, and pumps the GLib main
        loop from the render thread). The CSS reader needs no X connection,
        so it is safe to call at any point after startup. Only fall back to
-       the in-process sampler when the theme files cannot be parsed. */
+       the in-process sampler while no app window exists yet. */
     if(gtk_css_palette_refresh())
         return true;
 #if defined(SYSTEM_THEME_GTK)
-    if(gtk_system_theme_refresh())
+    if(!IsWindowReady() && gtk_system_theme_refresh())
         return true;
 #endif
     return system_palette.available != 0;
 }
 
+long
+SystemThemeRefreshCount(void)
+{
+    return system_theme_refresh_count;
+}
+
 bool
 IsSystemThemeAvailable(void)
 {
-    if(!system_palette.available)
-        RefreshSystemTheme();
+    system_theme_auto_refresh();
     return system_palette.available != 0;
 }
 
 const char *
 GetSystemThemeName(void)
 {
-    if(!system_palette.available)
-        RefreshSystemTheme();
+    system_theme_auto_refresh();
     return system_palette.name;
 }
 
@@ -1049,16 +1113,14 @@ GetSystemUIFontFile(char *out, int out_size)
 bool
 SystemThemePrefersDark(void)
 {
-    if(!system_palette.available)
-        RefreshSystemTheme();
+    system_theme_auto_refresh();
     return system_prefers_dark != 0;
 }
 
 bool
 SystemThemeSupportsMode(void)
 {
-    if(!system_palette.available)
-        RefreshSystemTheme();
+    system_theme_auto_refresh();
     return system_palette.supports_mode != 0;
 }
 
