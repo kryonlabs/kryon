@@ -2185,6 +2185,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
             }
             draw_y += line_h;
             line_start = i + 1;
+            if(draw_y > clip_bottom)
+                break;
         }
     }
 }
