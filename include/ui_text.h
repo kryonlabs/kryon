@@ -53,6 +53,8 @@ int MeasureUIText(const char *text, int font_size);
 int GetUITextHeight(const char *text, int font_size);
 int GetUITextLineHeight(int font_size);
 int MeasureScaledUIText(const char *text, int scale);
+Font GetUIFontForCodepoint(int codepoint, int font_size);
+float GetUIFontScale(Font font, int font_size);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
 void DrawUITextItalic(const char *text, int x, int y, int font_size, Color color);

@@ -177,6 +177,28 @@ typedef struct TerminalPaneScrollIndicator {
     TerminalPaneColors colors;
 } TerminalPaneScrollIndicator;
 
+typedef enum TerminalPaneGridCellFlag {
+    TERMINAL_PANE_GRID_CELL_WIDE_CONT = 1,
+    TERMINAL_PANE_GRID_CELL_HIDDEN = 2
+} TerminalPaneGridCellFlag;
+
+typedef struct TerminalPaneGridCell {
+    unsigned int codepoint;
+    unsigned int combining;
+    Color foreground;
+    unsigned int flags;
+} TerminalPaneGridCell;
+
+typedef struct TerminalPaneGridDraw {
+    Rectangle bounds;
+    int cols;
+    int rows;
+    int cell_width;
+    int line_height;
+    int font_size;
+    const TerminalPaneGridCell *cells;
+} TerminalPaneGridDraw;
+
 typedef int (*TerminalPaneReflowBlankCellFn)(const void *cell,
                                              void *userdata);
 
@@ -601,6 +623,9 @@ int FormatTerminalPaneScrollIndicatorLabel(char *out, int out_size,
 Rectangle
 MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator);
 Rectangle DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator);
+void DrawTerminalPaneGlyphCell(unsigned int codepoint, unsigned int combining,
+                               int x, int y, int font_size, Color color);
+void DrawTerminalPaneGlyphGrid(TerminalPaneGridDraw grid);
 void TerminalPaneSelectionClear(TerminalPaneSelection *selection);
 void TerminalPaneSelectionSetRange(TerminalPaneSelection *selection, int mode,
                                    int dragging, int start_row, int start_col,

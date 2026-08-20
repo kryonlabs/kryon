@@ -1132,6 +1132,18 @@ MeasureScaledUIText(const char *text, int scale)
     return width;
 }
 
+Font
+GetUIFontForCodepoint(int codepoint, int font_size)
+{
+    return font_for_codepoint(codepoint, font_size);
+}
+
+float
+GetUIFontScale(Font font, int font_size)
+{
+    return font_size_scale(font, font_size);
+}
+
 void
 DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
              int selectable_arg)
