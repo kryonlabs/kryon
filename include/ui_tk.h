@@ -68,6 +68,8 @@ typedef struct {
 } UIClipboardBuffer;
 
 typedef int (*UIClipboardOSC52WriteFn)(void *userdata, const char *text);
+typedef int (*UIClipboardPasteWriteFn)(void *userdata, const char *text,
+                                       int size);
 
 typedef struct {
     int id;
@@ -322,6 +324,9 @@ int RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard,
 int HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
                            UIClipboardOSC52WriteFn write_response,
                            void *userdata);
+int WriteUIClipboardPaste(const char *text, int bracketed,
+                          UIClipboardPasteWriteFn write_text,
+                          void *userdata);
 void InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text);
 int SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text);
 int RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text);

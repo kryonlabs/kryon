@@ -34,6 +34,24 @@ capture_osc52_response(void *userdata, const char *text)
     return 1;
 }
 
+static int
+capture_paste_write(void *userdata, const char *text, int size)
+{
+    char *buffer = userdata;
+    size_t used;
+
+    if(buffer == NULL || text == NULL || size <= 0)
+        return 0;
+    used = strlen(buffer);
+    if(used + (size_t)size >= 512)
+        size = (int)(511 - used);
+    if(size <= 0)
+        return 0;
+    memcpy(buffer + used, text, (size_t)size);
+    buffer[used + (size_t)size] = '\0';
+    return size;
+}
+
 int
 main(void)
 {
@@ -185,6 +203,41 @@ main(void)
         check_int("terminal palette cube red green", palette.ansi[196].g, 0);
         check_int("terminal palette gray", palette.ansi[232].r, 8);
         check_int("terminal palette white", palette.ansi[255].b, 238);
+    }
+
+    {
+        char paste[512];
+        const char payload[] = "safe\x1b[201~after\x1b[31mred\xd0\x80\a"
+                               "\x9b" "32mgreen"
+                               "osc\x1b]2;title\aafterosc"
+                               "dcs\x1bPq~~\x1b\\afterdcs"
+                               "c1osc\x9d" "2;bad\aafterc1osc"
+                               "c1dcs\x90q~\x9c" "afterc1dcs";
+        const char sanitized[] = "\x1b[200~safeafterred\xd0\x80green"
+                                 "oscafteroscdcsafterdcs"
+                                 "c1oscafterc1oscc1dcsafterc1dcs\x1b[201~";
+
+        paste[0] = '\0';
+        check_int("plain paste writes bytes",
+                  WriteUIClipboardPaste("plain", 0, capture_paste_write,
+                                        paste),
+                  5);
+        check_str("plain paste text", paste, "plain");
+
+        paste[0] = '\0';
+        check_int("bracketed paste writes bytes",
+                  WriteUIClipboardPaste("paste\ntext", 1,
+                                        capture_paste_write, paste),
+                  22);
+        check_str("bracketed paste text", paste,
+                  "\x1b[200~paste\ntext\x1b[201~");
+
+        paste[0] = '\0';
+        check_int("sanitized bracketed paste writes bytes",
+                  WriteUIClipboardPaste(payload, 1, capture_paste_write,
+                                        paste),
+                  (int)strlen(sanitized));
+        check_str("sanitized bracketed paste text", paste, sanitized);
     }
 
     return 0;

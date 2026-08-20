@@ -263,6 +263,7 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     int activated = 0;
     Rectangle panel;
     Vector2 mouse;
+    int can_draw = IsWindowReady();
 
     (void)id;
     if(items == NULL || item_count <= 0)
@@ -276,7 +277,8 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     }
 
     panel = (Rectangle){(float)x, (float)y, (float)w, (float)(row_h * item_count + ScaleUIPx(8))};
-    ui_draw_menu_panel(panel);
+    if(can_draw)
+        ui_draw_menu_panel(panel);
     ui_menu_track_panel(panel);
     PushUIInputCapture(panel, 1);
     mouse = ui_mouse_world();
@@ -291,26 +293,30 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
         int hot = row_hot && !item->disabled;
 
         if(item->kind == UI_MENU_SEPARATOR) {
-            DrawUISeparator(row, 0);
+            if(can_draw)
+                DrawUISeparator(row, 0);
             continue;
         }
 
         if(hot) {
-            DrawRectangleRec(row, GetThemeButtonHover());
+            if(can_draw)
+                DrawRectangleRec(row, GetThemeButtonHover());
             MarkUIClickable();
         }
         if(item->disabled && row_hot)
             MarkUIDisabled();
-        if(item->checked)
+        if(can_draw && item->checked)
             DrawUIText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, GetThemeIcon());
-        DrawUIText(item->label != NULL ? item->label : "", (int)row.x + ScaleUIPx(28),
-                   ui_row_text_y(row, font),
-                   font, item->disabled ? GetThemeButton() : GetThemeText());
-        if(item->accelerator != NULL)
+        if(can_draw)
+            DrawUIText(item->label != NULL ? item->label : "",
+                       (int)row.x + ScaleUIPx(28), ui_row_text_y(row, font),
+                       font, item->disabled ? GetThemeButton()
+                                            : GetThemeText());
+        if(can_draw && item->accelerator != NULL)
             DrawUIText(item->accelerator, (int)(row.x + row.width - accel_w),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
-        if(item->kind == UI_MENU_SUBMENU)
+        if(can_draw && item->kind == UI_MENU_SUBMENU)
             DrawUIText(">", (int)(row.x + row.width - ScaleUIPx(18)),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
@@ -342,6 +348,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
     int bar_capture_pushed = 0;
+    int can_draw = IsWindowReady();
 
     if(g_menu_pending_bar_id == id) {
         result.activated_id = g_menu_pending_activated;
@@ -365,8 +372,10 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
         bar_capture_pushed = 1;
     }
     g_menu_overlay.active = 0;
-    DrawRectangleRec(bounds, c_surface);
-    DrawRectangleLinesEx(bounds, 1.0f, c_button);
+    if(can_draw) {
+        DrawRectangleRec(bounds, c_surface);
+        DrawRectangleLinesEx(bounds, 1.0f, c_button);
+    }
 
     for(int i = 0; i < menu_count; i++) {
         int w = MeasureUIText(menus[i].label != NULL ? menus[i].label : "", font) + ScaleUIPx(24);
@@ -374,12 +383,14 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
         int menu_id = id + 1 + i;
         int open = g_menu_open_id == menu_id;
         int hot = ui_hot(item);
-        if(hot || open)
+        if(can_draw && (hot || open))
             DrawRectangleRec(item, open ? c_button : c_button_hover);
         if(hot)
             MarkUIClickable();
-        DrawUIText(menus[i].label != NULL ? menus[i].label : "", x + ScaleUIPx(12),
-                   ui_row_text_y(item, font), font, c_text);
+        if(can_draw)
+            DrawUIText(menus[i].label != NULL ? menus[i].label : "",
+                       x + ScaleUIPx(12), ui_row_text_y(item, font), font,
+                       c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
             g_menu_open_id = open ? 0 : menu_id;

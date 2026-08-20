@@ -271,6 +271,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
                       ? !ui_base_input_captures_click(mouse, 1)
                       : !UIInputCapturesClick(mouse));
     int hover = active && UIHoverEffectsEnabled();
+    int can_draw = IsWindowReady();
 
     snprintf(editor_id, sizeof(editor_id), "dropdown:%d", id);
     widget = BeginUIWidget("dropdown", editor_id, btn_bounds,
@@ -348,21 +349,26 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     /* Draw button background */
     button_bg = state->open ? ui_dropdown_panel_color(28)
                             : (hover ? c_button_hover : ui_dropdown_panel_color(16));
-    if(ui_material_style()) {
-        Color surface = ui_material_surface_container();
-        Color border = state->open ? c_circle : ui_material_outline();
+    if(can_draw) {
+        if(ui_material_style()) {
+            Color surface = ui_material_surface_container();
+            Color border = state->open ? c_circle : ui_material_outline();
 
-        button_bg = surface;
-        ui_draw_control_background(btn_bounds, surface, border, 0.18f);
-        ui_material_state_layer(btn_bounds, c_text, hover || state->open, 0, 0);
-    } else if(ui_modern_style()) {
-        Color border = LightenUIColor(button_bg, 20);
-        ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
-    } else {
-        DrawRectangleRec(btn_bounds, button_bg);
-        DrawUIBevel(x, y, w, h,
-                    state->open ? LightenUIColor(button_bg, 34) : LightenUIColor(button_bg, 24),
-                    state->open ? DarkenUIColor(button_bg, 38) : DarkenUIColor(button_bg, 30));
+            button_bg = surface;
+            ui_draw_control_background(btn_bounds, surface, border, 0.18f);
+            ui_material_state_layer(btn_bounds, c_text, hover || state->open,
+                                    0, 0);
+        } else if(ui_modern_style()) {
+            Color border = LightenUIColor(button_bg, 20);
+            ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
+        } else {
+            DrawRectangleRec(btn_bounds, button_bg);
+            DrawUIBevel(x, y, w, h,
+                        state->open ? LightenUIColor(button_bg, 34)
+                                    : LightenUIColor(button_bg, 24),
+                        state->open ? DarkenUIColor(button_bg, 38)
+                                    : DarkenUIColor(button_bg, 30));
+        }
     }
     button_text = ui_dropdown_text_on(button_bg);
 
@@ -374,7 +380,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     const char *current_font = option_count > 0 ? state->option_fonts[current_index] : NULL;
     int text_x = x + ScaleUIPx(12);
     int text_w = arrow_x - arrow_size - ScaleUIPx(8) - text_x;
-    if(text_w > 0) {
+    if(can_draw && text_w > 0) {
         int font_token = PushUIFont(current_font);
         BeginUIClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
@@ -392,8 +398,10 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     int x2 = arrow_x + x_half;
     int y1 = arrow_y - x_half;
     int y2 = arrow_y + x_half;
-    DrawLine(x1, y1, x2, y2, button_text);
-    DrawLine(x1, y2, x2, y1, button_text);
+    if(can_draw) {
+        DrawLine(x1, y1, x2, y2, button_text);
+        DrawLine(x1, y2, x2, y1, button_text);
+    }
 
     EndUIWidget(&widget);
     return changed;
@@ -449,6 +457,8 @@ draw_dropdown_menu(int id)
     const char **option_fonts = state->option_fonts;
     Color panel = ui_dropdown_panel_color(18);
     Color option_text = ui_dropdown_text_on(panel);
+    int can_draw = IsWindowReady();
+    int clip_started = 0;
 
     int dropdown_y = 0;
     int dropdown_h = 0;
@@ -537,34 +547,41 @@ draw_dropdown_menu(int id)
     }
 
     /* Draw dropdown background */
-    if(ui_material_style()) {
-        Color border = ui_material_outline();
+    if(can_draw) {
+        if(ui_material_style()) {
+            Color border = ui_material_outline();
 
-        panel = ui_material_surface_container();
-        option_text = ui_dropdown_text_on(panel);
-        /* Use subtle radius for dropdown panels to prevent distortion during resize */
-        ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
-                                   panel, border, 0.06f);
-    } else if(ui_modern_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
-        Color border = ui_dropdown_panel_color(36);
-        if(tokens.panel_alpha < panel.a)
-            panel.a = tokens.panel_alpha;
-        option_text = ui_dropdown_text_on(panel);
-        ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
-                                   panel, border,
-                                   ui_radius_px((Rectangle){x, dropdown_y, w, dropdown_h},
-                                                tokens.panel_radius));
-    } else {
-        DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
-        DrawUIBevel(x, dropdown_y, w, dropdown_h,
-                    ui_dropdown_panel_color(32), ui_dropdown_panel_color(8));
+            panel = ui_material_surface_container();
+            option_text = ui_dropdown_text_on(panel);
+            /* Use subtle radius for dropdown panels to prevent distortion during resize */
+            ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
+                                       panel, border, 0.06f);
+        } else if(ui_modern_style()) {
+            UIStyleTokens tokens = GetUIStyleTokens();
+            Color border = ui_dropdown_panel_color(36);
+            if(tokens.panel_alpha < panel.a)
+                panel.a = tokens.panel_alpha;
+            option_text = ui_dropdown_text_on(panel);
+            ui_draw_control_background(
+                (Rectangle){x, dropdown_y, w, dropdown_h}, panel, border,
+                ui_radius_px((Rectangle){x, dropdown_y, w, dropdown_h},
+                             tokens.panel_radius));
+        } else {
+            DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
+            DrawUIBevel(x, dropdown_y, w, dropdown_h,
+                        ui_dropdown_panel_color(32),
+                        ui_dropdown_panel_color(8));
+        }
     }
 
-    BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
-                     (int)(g_ui_camera.offset.y + (float)dropdown_y * g_ui_camera.zoom),
-                     (int)((float)w * g_ui_camera.zoom),
-                     (int)((float)dropdown_h * g_ui_camera.zoom));
+    if(can_draw) {
+        BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
+                    (int)(g_ui_camera.offset.y +
+                          (float)dropdown_y * g_ui_camera.zoom),
+                    (int)((float)w * g_ui_camera.zoom),
+                    (int)((float)dropdown_h * g_ui_camera.zoom));
+        clip_started = 1;
+    }
 
     /* Draw options */
     for(int i = 0; i < option_count; i++) {
@@ -584,7 +601,7 @@ draw_dropdown_menu(int id)
         int option_active = CheckCollisionPointRec(mouse, visible_bounds);
         int option_hover = option_active && UIHoverEffectsEnabled();
 
-        if(ui_material_style() && state->selected_index == i) {
+        if(can_draw && ui_material_style() && state->selected_index == i) {
             Color selected = c_circle;
             selected.a = 28;
             DrawRectangleRounded((Rectangle){(float)(x + ScaleUIPx(4)),
@@ -595,7 +612,7 @@ draw_dropdown_menu(int id)
         }
 
         if(option_active) {
-            if(option_hover) {
+            if(can_draw && option_hover) {
                 if(ui_material_style()) {
                     int inset = ScaleUIPx(4);
                     Rectangle hover_bounds = {
@@ -636,12 +653,13 @@ draw_dropdown_menu(int id)
                 close_dropdown_state(state);
                 state->scroll_offset = 0;
                 changed = 1;
-                EndUIClip();
+                if(clip_started)
+                    EndUIClip();
                 goto draw_arrow;
             }
         }
 
-        {
+        if(can_draw) {
             int font_token = PushUIFont(option_fonts[i]);
             DrawUIText(options[i], x + ScaleUIPx(12),
                        GetUIControlTextY(options[i], option_y, option_h, font),
@@ -650,9 +668,10 @@ draw_dropdown_menu(int id)
         }
     }
 
-    EndUIClip();
+    if(clip_started)
+        EndUIClip();
 
-    if(max_scroll > 0)
+    if(can_draw && max_scroll > 0)
         DrawUIScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
                           dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll);
 
@@ -672,8 +691,10 @@ draw_arrow:
     int x2 = arrow_x + x_half;
     int y1 = arrow_y - x_half;
     int y2 = arrow_y + x_half;
-    DrawLine(x1, y1, x2, y2, option_text);
-    DrawLine(x1, y2, x2, y1, option_text);
+    if(can_draw) {
+        DrawLine(x1, y1, x2, y2, option_text);
+        DrawLine(x1, y2, x2, y1, option_text);
+    }
     return changed;
 }
 

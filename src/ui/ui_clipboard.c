@@ -259,6 +259,161 @@ HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
 }
 
 static int
+ui_clipboard_utf8_payload_bytes(const char *text)
+{
+    unsigned char ch;
+    int len;
+    int i;
+
+    if(text == NULL)
+        return 0;
+    ch = (unsigned char)text[0];
+    if(ch >= 0xc2 && ch <= 0xdf)
+        len = 2;
+    else if(ch >= 0xe0 && ch <= 0xef)
+        len = 3;
+    else if(ch >= 0xf0 && ch <= 0xf4)
+        len = 4;
+    else
+        return 0;
+    for(i = 1; i < len; i++) {
+        if(((unsigned char)text[i] & 0xc0) != 0x80)
+            return 0;
+    }
+    return len;
+}
+
+static const char *
+ui_clipboard_skip_paste_control_string(const char *cursor)
+{
+    unsigned char ch;
+    const char *seq;
+    int bel_terminated = 0;
+
+    if(cursor == NULL || cursor[0] == '\0')
+        return cursor;
+    ch = (unsigned char)cursor[0];
+    if(ch == 0x1b) {
+        unsigned char next = (unsigned char)cursor[1];
+
+        if(next == '[') {
+            seq = cursor + 2;
+            while(*seq != '\0' &&
+                  !((unsigned char)*seq >= 0x40 &&
+                    (unsigned char)*seq <= 0x7e))
+                seq++;
+            return *seq != '\0' ? seq + 1 : seq;
+        }
+        if(next == ']')
+            bel_terminated = 1;
+        else if(next != 'P' && next != 'X' && next != '^' && next != '_')
+            return cursor + (cursor[1] != '\0' ? 2 : 1);
+        seq = cursor + 2;
+    } else if(ch == 0x9b) {
+        seq = cursor + 1;
+        while(*seq != '\0' &&
+              !((unsigned char)*seq >= 0x40 &&
+                (unsigned char)*seq <= 0x7e))
+            seq++;
+        return *seq != '\0' ? seq + 1 : seq;
+    } else if(ch == 0x9d) {
+        bel_terminated = 1;
+        seq = cursor + 1;
+    } else if(ch == 0x90 || ch == 0x98 || ch == 0x9e || ch == 0x9f) {
+        seq = cursor + 1;
+    } else {
+        return NULL;
+    }
+    while(*seq != '\0') {
+        unsigned char c = (unsigned char)*seq;
+
+        if((bel_terminated && c == 0x07) || c == 0x9c)
+            return seq + 1;
+        if(c == 0x1b && seq[1] == '\\')
+            return seq + 2;
+        seq++;
+    }
+    return seq;
+}
+
+static int
+ui_clipboard_write_paste_chunk(UIClipboardPasteWriteFn write_text,
+                               void *userdata, const char *text, int size)
+{
+    if(write_text == NULL || text == NULL || size <= 0)
+        return 0;
+    return write_text(userdata, text, size);
+}
+
+int
+WriteUIClipboardPaste(const char *text, int bracketed,
+                      UIClipboardPasteWriteFn write_text, void *userdata)
+{
+    int written = 0;
+    const char *cursor;
+    const char *chunk;
+
+    if(text == NULL || text[0] == '\0' || write_text == NULL)
+        return 0;
+    if(!bracketed)
+        return ui_clipboard_write_paste_chunk(write_text, userdata, text,
+                                              (int)strlen(text));
+    written += ui_clipboard_write_paste_chunk(write_text, userdata,
+                                              "\x1b[200~", 6);
+    cursor = text;
+    chunk = cursor;
+    while(*cursor != '\0') {
+        unsigned char ch = (unsigned char)*cursor;
+
+        if(ch >= 0x80) {
+            int utf8_len = ui_clipboard_utf8_payload_bytes(cursor);
+
+            if(utf8_len > 0) {
+                cursor += utf8_len;
+                continue;
+            }
+        }
+        if(ch == 0x1b || ch == 0x9b) {
+            const char *next = ui_clipboard_skip_paste_control_string(cursor);
+
+            if(cursor > chunk)
+                written += ui_clipboard_write_paste_chunk(
+                    write_text, userdata, chunk, (int)(cursor - chunk));
+            cursor = next != NULL ? next : cursor + 1;
+            chunk = cursor;
+            continue;
+        }
+        if(ch == 0x90 || ch == 0x98 || ch == 0x9d || ch == 0x9e ||
+           ch == 0x9f) {
+            const char *next = ui_clipboard_skip_paste_control_string(cursor);
+
+            if(cursor > chunk)
+                written += ui_clipboard_write_paste_chunk(
+                    write_text, userdata, chunk, (int)(cursor - chunk));
+            cursor = next != NULL ? next : cursor + 1;
+            chunk = cursor;
+            continue;
+        }
+        if((ch < 0x20 && ch != '\t' && ch != '\r' && ch != '\n') ||
+           ch == 0x7f || (ch >= 0x80 && ch < 0xa0)) {
+            if(cursor > chunk)
+                written += ui_clipboard_write_paste_chunk(
+                    write_text, userdata, chunk, (int)(cursor - chunk));
+            cursor++;
+            chunk = cursor;
+            continue;
+        }
+        cursor++;
+    }
+    if(cursor > chunk)
+        written += ui_clipboard_write_paste_chunk(write_text, userdata, chunk,
+                                                  (int)(cursor - chunk));
+    written += ui_clipboard_write_paste_chunk(write_text, userdata,
+                                              "\x1b[201~", 6);
+    return written;
+}
+
+static int
 ui_clipboard_buffer_copy_text(char *dst, int dst_size, const char *text)
 {
     int changed;
