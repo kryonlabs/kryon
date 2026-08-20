@@ -95,3 +95,26 @@ TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,
     }
     return 0;
 }
+
+int
+TerminalPaneClipboardUpdatePrimarySelection(
+    TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata)
+{
+    (void)clipboard;
+    return TerminalPaneSelectionUpdatePrimary(selection, line_text,
+                                              line_wrapped, userdata);
+}
+
+int
+TerminalPaneClipboardCopySelection(
+    TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata)
+{
+    if(clipboard.clipboard == NULL)
+        return 0;
+    return TerminalPaneSelectionCopyToClipboard(
+        selection, line_text, line_wrapped, userdata, clipboard.clipboard);
+}

@@ -359,8 +359,11 @@ main(void)
 
         {
             UIClipboardBuffer clipboard;
+            TerminalPaneClipboard pane_clipboard;
 
             InitUIClipboardBuffer(&clipboard, "");
+            pane_clipboard = (TerminalPaneClipboard){&clipboard, 0, NULL,
+                                                     NULL};
             SetUIPrimarySelectionTextValue("old primary");
             check_int("terminal selection primary update",
                       TerminalPaneSelectionUpdatePrimary(
@@ -377,6 +380,21 @@ main(void)
             check_str("terminal selection clipboard host",
                       GetUIClipboardTextValue(), "abcdefghijklmnopq");
             check_str("terminal selection clipboard buffer",
+                      GetUIClipboardBufferText(&clipboard),
+                      "abcdefghijklmnopq");
+            check_int("terminal pane clipboard selection primary",
+                      TerminalPaneClipboardUpdatePrimarySelection(
+                          pane_clipboard, &selection, fixture_line_text,
+                          fixture_line_wrapped, &fixture),
+                      1);
+            check_str("terminal pane clipboard selection primary text",
+                      GetUIPrimarySelectionTextValue(), "abcdefghijklmnopq");
+            check_int("terminal pane clipboard selection copy",
+                      TerminalPaneClipboardCopySelection(
+                          pane_clipboard, &selection, fixture_line_text,
+                          fixture_line_wrapped, &fixture),
+                      1);
+            check_str("terminal pane clipboard selection copy text",
                       GetUIClipboardBufferText(&clipboard),
                       "abcdefghijklmnopq");
 

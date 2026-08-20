@@ -353,6 +353,14 @@ int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,
                                  TerminalPaneClipboardAction action,
                                  const char *text);
+int TerminalPaneClipboardUpdatePrimarySelection(
+    TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata);
+int TerminalPaneClipboardCopySelection(
+    TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
+    TerminalPaneSelectionLineFn line_text,
+    TerminalPaneSelectionWrappedFn line_wrapped, void *userdata);
 int FormatTerminalPaneSessionTitle(char *out, int out_size, const char *text,
                                    const char *fallback);
 int TerminalPaneHandleInput(Terminal *terminal);
