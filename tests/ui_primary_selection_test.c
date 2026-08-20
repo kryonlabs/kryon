@@ -1521,6 +1521,34 @@ main(void)
         check_str("xtgettcap truncates clears", dcs_response, "");
 
         {
+            TerminalPaneDCSBuffer dcs;
+
+            InitTerminalPaneDCSBuffer(&dcs, 8);
+            check_int("dcs append ascii",
+                      AppendTerminalPaneDCSCodepoint(&dcs, 'q'), 1);
+            check_int("dcs append utf8",
+                      AppendTerminalPaneDCSCodepoint(&dcs, 0x00e9), 2);
+            check_str("dcs buffer text",
+                      GetTerminalPaneDCSBufferText(&dcs), "q\xc3\xa9");
+            check_int("dcs buffer not ignored",
+                      TerminalPaneDCSBufferIgnored(&dcs), 0);
+            ResetTerminalPaneDCSBuffer(&dcs);
+            check_str("dcs reset text",
+                      GetTerminalPaneDCSBufferText(&dcs), "");
+            check_int("dcs reset not ignored",
+                      TerminalPaneDCSBufferIgnored(&dcs), 0);
+            check_int("dcs append large",
+                      AppendTerminalPaneDCSCodepoint(&dcs, 0x1f600), 4);
+            check_int("dcs append over limit",
+                      AppendTerminalPaneDCSCodepoint(&dcs, 0x1f600), 0);
+            check_int("dcs ignored after over limit",
+                      TerminalPaneDCSBufferIgnored(&dcs), 1);
+            check_int("dcs ignored text",
+                      GetTerminalPaneDCSBufferText(&dcs) == NULL, 1);
+            FreeTerminalPaneDCSBuffer(&dcs);
+        }
+
+        {
             TerminalPaneSixelImage image;
 
             check_int("sixel decode rows",

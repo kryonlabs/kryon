@@ -1,7 +1,10 @@
 #include "terminal_pane.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#define TERMINAL_PANE_DCS_DEFAULT_MAX_BYTES 4194304
 
 static int
 dcs_hex_value(int ch)
@@ -148,6 +151,130 @@ format_failure(char *out, int out_size)
         return 0;
     }
     return len;
+}
+
+static int
+dcs_append_utf8(char *out, int out_size, int *used, unsigned int codepoint)
+{
+    if(out == NULL || used == NULL || out_size <= 0)
+        return 0;
+    if(codepoint < 0x80) {
+        if(*used + 1 >= out_size)
+            return 0;
+        out[(*used)++] = (char)codepoint;
+    } else if(codepoint < 0x800) {
+        if(*used + 2 >= out_size)
+            return 0;
+        out[(*used)++] = (char)(0xc0 | (codepoint >> 6));
+        out[(*used)++] = (char)(0x80 | (codepoint & 0x3f));
+    } else if(codepoint < 0x10000) {
+        if(*used + 3 >= out_size)
+            return 0;
+        out[(*used)++] = (char)(0xe0 | (codepoint >> 12));
+        out[(*used)++] = (char)(0x80 | ((codepoint >> 6) & 0x3f));
+        out[(*used)++] = (char)(0x80 | (codepoint & 0x3f));
+    } else if(codepoint <= 0x10ffff) {
+        if(*used + 4 >= out_size)
+            return 0;
+        out[(*used)++] = (char)(0xf0 | (codepoint >> 18));
+        out[(*used)++] = (char)(0x80 | ((codepoint >> 12) & 0x3f));
+        out[(*used)++] = (char)(0x80 | ((codepoint >> 6) & 0x3f));
+        out[(*used)++] = (char)(0x80 | (codepoint & 0x3f));
+    } else {
+        return 0;
+    }
+    out[*used] = '\0';
+    return 1;
+}
+
+void
+InitTerminalPaneDCSBuffer(TerminalPaneDCSBuffer *buffer, int max_bytes)
+{
+    if(buffer == NULL)
+        return;
+    memset(buffer, 0, sizeof(*buffer));
+    buffer->max_bytes =
+        max_bytes > 0 ? max_bytes : TERMINAL_PANE_DCS_DEFAULT_MAX_BYTES;
+}
+
+void
+ResetTerminalPaneDCSBuffer(TerminalPaneDCSBuffer *buffer)
+{
+    if(buffer == NULL)
+        return;
+    buffer->length = 0;
+    buffer->ignored = 0;
+    if(buffer->text != NULL)
+        buffer->text[0] = '\0';
+    if(buffer->max_bytes <= 0)
+        buffer->max_bytes = TERMINAL_PANE_DCS_DEFAULT_MAX_BYTES;
+}
+
+void
+FreeTerminalPaneDCSBuffer(TerminalPaneDCSBuffer *buffer)
+{
+    if(buffer == NULL)
+        return;
+    free(buffer->text);
+    memset(buffer, 0, sizeof(*buffer));
+}
+
+int
+AppendTerminalPaneDCSCodepoint(TerminalPaneDCSBuffer *buffer,
+                               unsigned int codepoint)
+{
+    char bytes[8];
+    int used = 0;
+    int i;
+
+    if(buffer == NULL || buffer->ignored)
+        return 0;
+    if(buffer->max_bytes <= 0)
+        buffer->max_bytes = TERMINAL_PANE_DCS_DEFAULT_MAX_BYTES;
+    if(!dcs_append_utf8(bytes, (int)sizeof(bytes), &used, codepoint)) {
+        buffer->ignored = 1;
+        return 0;
+    }
+    if(buffer->capacity <= buffer->length + used + 1) {
+        int capacity = buffer->capacity > 0 ? buffer->capacity * 2 : 1024;
+        char *text;
+
+        while(capacity <= buffer->length + used + 1 &&
+              capacity < buffer->max_bytes)
+            capacity *= 2;
+        if(capacity > buffer->max_bytes)
+            capacity = buffer->max_bytes;
+        if(capacity <= buffer->length + used + 1) {
+            buffer->ignored = 1;
+            return 0;
+        }
+        text = realloc(buffer->text, (size_t)capacity);
+        if(text == NULL) {
+            buffer->ignored = 1;
+            return 0;
+        }
+        buffer->text = text;
+        buffer->capacity = capacity;
+    }
+    for(i = 0; i < used; i++)
+        buffer->text[buffer->length++] = bytes[i];
+    buffer->text[buffer->length] = '\0';
+    return used;
+}
+
+const char *
+GetTerminalPaneDCSBufferText(TerminalPaneDCSBuffer *buffer)
+{
+    if(buffer == NULL || buffer->ignored || buffer->text == NULL)
+        return NULL;
+    buffer->text[buffer->length] = '\0';
+    return buffer->text;
+}
+
+int
+TerminalPaneDCSBufferIgnored(const TerminalPaneDCSBuffer *buffer)
+{
+    return buffer != NULL && buffer->ignored;
 }
 
 int
