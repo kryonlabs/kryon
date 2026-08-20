@@ -67,6 +67,31 @@ typedef struct TerminalPaneProfileColors {
     int selection_background;
 } TerminalPaneProfileColors;
 
+typedef struct TerminalPaneProfileLimits {
+    int default_font_size;
+    int min_font_size;
+    int max_font_size;
+    int default_scrollback_limit;
+    int min_scrollback_limit;
+    int max_scrollback_limit;
+    int default_cursor_style;
+} TerminalPaneProfileLimits;
+
+typedef struct TerminalPaneProfileSettings {
+    int font_size;
+    int scrollback_limit;
+    int cursor_style;
+    int terminal_foreground;
+    int terminal_background;
+    int terminal_cursor;
+    int terminal_selection_foreground;
+    int terminal_selection_background;
+    char shell[512];
+    char working_directory[1024];
+    char command[1024];
+    char terminal_font[1024];
+} TerminalPaneProfileSettings;
+
 typedef struct TerminalPaneViewColors {
     Color foreground;
     Color background;
@@ -387,6 +412,12 @@ TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors);
 TerminalPaneProfileColors
 ResolveTerminalPaneProfileColors(TerminalPaneProfileColors configured,
                                  TerminalPaneColors fallback);
+TerminalPaneProfileLimits GetDefaultTerminalPaneProfileLimits(void);
+void InitTerminalPaneProfileSettings(TerminalPaneProfileSettings *settings,
+                                     TerminalPaneProfileLimits limits);
+int ApplyTerminalPaneProfileSetting(TerminalPaneProfileSettings *settings,
+                                    TerminalPaneProfileLimits limits,
+                                    const char *name, const char *value);
 void TerminalPaneProfileStateApplyNew(TerminalPaneProfileState *state,
                                       TerminalPaneProfileColors colors);
 void TerminalPaneProfileStateSeedMissing(TerminalPaneProfileState *state,

@@ -853,6 +853,8 @@ main(void)
         TerminalPaneViewColors view_colors;
         TerminalPaneColors resolved_theme;
         TerminalPanePalette pane_palette;
+        TerminalPaneProfileLimits limits;
+        TerminalPaneProfileSettings settings;
         int color_overrides[256];
         char color_text[16];
         char sgr_text[80];
@@ -1005,6 +1007,89 @@ main(void)
                   colors.foreground);
         check_int("profile seed background", state.background,
                   colors.background);
+
+        limits = GetDefaultTerminalPaneProfileLimits();
+        check_int("profile limits default font", limits.default_font_size, 16);
+        check_int("profile limits max scrollback",
+                  limits.max_scrollback_limit, 100000);
+        InitTerminalPaneProfileSettings(&settings, limits);
+        check_int("profile settings default font", settings.font_size, 16);
+        check_int("profile settings default scrollback",
+                  settings.scrollback_limit, 5000);
+        check_int("profile settings default cursor", settings.cursor_style,
+                  TERMINAL_PANE_CURSOR_BLOCK);
+        check_int("profile settings default fg",
+                  settings.terminal_foreground,
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        check_int("profile settings apply font",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "font-size", "22"),
+                  1);
+        check_int("profile settings font value", settings.font_size, 22);
+        check_int("profile settings reject small font",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "font-size", "4"),
+                  0);
+        check_int("profile settings font unchanged", settings.font_size, 22);
+        check_int("profile settings apply scrollback",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "scrollback_limit", "9000"),
+                  1);
+        check_int("profile settings scrollback value",
+                  settings.scrollback_limit, 9000);
+        check_int("profile settings apply cursor style",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "cursor-style", "bar"),
+                  1);
+        check_int("profile settings cursor value", settings.cursor_style,
+                  TERMINAL_PANE_CURSOR_BAR);
+        check_int("profile settings apply shell",
+                  ApplyTerminalPaneProfileSetting(&settings, limits, "shell",
+                                                  "/bin/sh"),
+                  1);
+        check_str("profile settings shell value", settings.shell, "/bin/sh");
+        check_int("profile settings apply cwd",
+                  ApplyTerminalPaneProfileSetting(&settings, limits, "cwd",
+                                                  "/tmp"),
+                  1);
+        check_str("profile settings cwd value", settings.working_directory,
+                  "/tmp");
+        check_int("profile settings apply command",
+                  ApplyTerminalPaneProfileSetting(&settings, limits, "command",
+                                                  "top"),
+                  1);
+        check_str("profile settings command value", settings.command, "top");
+        check_int("profile settings apply font path",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "terminal-font",
+                                                  "/tmp/font.ttf"),
+                  1);
+        check_str("profile settings font path", settings.terminal_font,
+                  "/tmp/font.ttf");
+        check_int("profile settings apply foreground",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "foreground", "#010203"),
+                  1);
+        check_int("profile settings foreground value",
+                  settings.terminal_foreground,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203);
+        check_int("profile settings apply cursor color",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "cursor-color", "default"),
+                  1);
+        check_int("profile settings cursor color value",
+                  settings.terminal_cursor, TERMINAL_PANE_COLOR_DEFAULT);
+        check_int("profile settings apply selection bg",
+                  ApplyTerminalPaneProfileSetting(
+                      &settings, limits, "selection-background", "040506"),
+                  1);
+        check_int("profile settings selection bg value",
+                  settings.terminal_selection_background,
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506);
+        check_int("profile settings reject unknown",
+                  ApplyTerminalPaneProfileSetting(&settings, limits,
+                                                  "unknown", "1"),
+                  0);
 
         check_int("profile color hash parse",
                   ParseTerminalPaneProfileColor("#010203", &parsed_color),

@@ -1,6 +1,7 @@
 #include "terminal_pane.h"
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -30,6 +31,35 @@ hex_value(int ch)
     if(ch >= 'A' && ch <= 'F')
         return 10 + ch - 'A';
     return -1;
+}
+
+static void
+profile_copy_text(char *dst, int dst_size, const char *src)
+{
+    if(dst == NULL || dst_size <= 0)
+        return;
+    if(src == NULL)
+        src = "";
+    snprintf(dst, (size_t)dst_size, "%s", src);
+}
+
+static int
+profile_setting_name_is(const char *name, const char *a, const char *b,
+                        const char *c, const char *d, const char *e)
+{
+    if(name == NULL)
+        return 0;
+    return (a != NULL && strcmp(name, a) == 0) ||
+           (b != NULL && strcmp(name, b) == 0) ||
+           (c != NULL && strcmp(name, c) == 0) ||
+           (d != NULL && strcmp(name, d) == 0) ||
+           (e != NULL && strcmp(name, e) == 0);
+}
+
+static int
+profile_setting_in_range(int value, int min_value, int max_value)
+{
+    return min_value <= max_value && value >= min_value && value <= max_value;
 }
 
 int
@@ -126,6 +156,137 @@ ResolveTerminalPaneProfileColors(TerminalPaneProfileColors configured,
     colors.selection_background = resolve_profile_color(
         configured.selection_background, fallback.selection);
     return colors;
+}
+
+TerminalPaneProfileLimits
+GetDefaultTerminalPaneProfileLimits(void)
+{
+    TerminalPaneProfileLimits limits;
+
+    limits.default_font_size = 16;
+    limits.min_font_size = 10;
+    limits.max_font_size = 48;
+    limits.default_scrollback_limit = 5000;
+    limits.min_scrollback_limit = 100;
+    limits.max_scrollback_limit = 100000;
+    limits.default_cursor_style = TERMINAL_PANE_CURSOR_BLOCK;
+    return limits;
+}
+
+void
+InitTerminalPaneProfileSettings(TerminalPaneProfileSettings *settings,
+                                TerminalPaneProfileLimits limits)
+{
+    if(settings == NULL)
+        return;
+    memset(settings, 0, sizeof(*settings));
+    settings->font_size = limits.default_font_size;
+    settings->scrollback_limit = limits.default_scrollback_limit;
+    settings->cursor_style = limits.default_cursor_style;
+    settings->terminal_foreground = TERMINAL_PANE_COLOR_DEFAULT;
+    settings->terminal_background = TERMINAL_PANE_COLOR_DEFAULT;
+    settings->terminal_cursor = TERMINAL_PANE_COLOR_DEFAULT;
+    settings->terminal_selection_foreground = TERMINAL_PANE_COLOR_DEFAULT;
+    settings->terminal_selection_background = TERMINAL_PANE_COLOR_DEFAULT;
+}
+
+int
+ApplyTerminalPaneProfileSetting(TerminalPaneProfileSettings *settings,
+                                TerminalPaneProfileLimits limits,
+                                const char *name, const char *value)
+{
+    int parsed;
+
+    if(settings == NULL || name == NULL || value == NULL)
+        return 0;
+    if(profile_setting_name_is(name, "font_size", "font-size", NULL, NULL,
+                               NULL)) {
+        parsed = atoi(value);
+        if(!profile_setting_in_range(parsed, limits.min_font_size,
+                                     limits.max_font_size))
+            return 0;
+        settings->font_size = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "scrollback", "scrollback_limit",
+                               "scrollback-limit", NULL, NULL)) {
+        parsed = atoi(value);
+        if(!profile_setting_in_range(parsed, limits.min_scrollback_limit,
+                                     limits.max_scrollback_limit))
+            return 0;
+        settings->scrollback_limit = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "cursor_style", "cursor-style", NULL,
+                               NULL, NULL)) {
+        settings->cursor_style =
+            ParseTerminalPaneCursorStyle(value, settings->cursor_style);
+        return 1;
+    }
+    if(strcmp(name, "shell") == 0) {
+        profile_copy_text(settings->shell, (int)sizeof(settings->shell),
+                          value);
+        return 1;
+    }
+    if(profile_setting_name_is(name, "working_directory",
+                               "working-directory", "cwd", NULL, NULL)) {
+        profile_copy_text(settings->working_directory,
+                          (int)sizeof(settings->working_directory), value);
+        return 1;
+    }
+    if(strcmp(name, "command") == 0) {
+        profile_copy_text(settings->command, (int)sizeof(settings->command),
+                          value);
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_font", "terminal-font",
+                               "font", NULL, NULL)) {
+        profile_copy_text(settings->terminal_font,
+                          (int)sizeof(settings->terminal_font), value);
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_foreground",
+                               "terminal-foreground", "foreground", NULL,
+                               NULL)) {
+        if(!ParseTerminalPaneProfileColor(value, &parsed))
+            return 0;
+        settings->terminal_foreground = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_background",
+                               "terminal-background", "background", NULL,
+                               NULL)) {
+        if(!ParseTerminalPaneProfileColor(value, &parsed))
+            return 0;
+        settings->terminal_background = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_cursor", "terminal-cursor",
+                               "cursor", "cursor_color", "cursor-color")) {
+        if(!ParseTerminalPaneProfileColor(value, &parsed))
+            return 0;
+        settings->terminal_cursor = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_selection_foreground",
+                               "terminal-selection-foreground",
+                               "selection_foreground",
+                               "selection-foreground", NULL)) {
+        if(!ParseTerminalPaneProfileColor(value, &parsed))
+            return 0;
+        settings->terminal_selection_foreground = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "terminal_selection_background",
+                               "terminal-selection-background",
+                               "selection_background",
+                               "selection-background", NULL)) {
+        if(!ParseTerminalPaneProfileColor(value, &parsed))
+            return 0;
+        settings->terminal_selection_background = parsed;
+        return 1;
+    }
+    return 0;
 }
 
 void
