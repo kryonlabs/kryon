@@ -47,6 +47,56 @@ GetUIPrimarySelectionTextValue(void)
     return g_primary_selection_text;
 }
 
+int
+UIClipboardTargetIncludes(const char *target, char wanted)
+{
+    int i;
+
+    if(target == NULL || target[0] == '\0')
+        return wanted == 'c';
+    for(i = 0; target[i] != '\0' && target[i] != ';' &&
+              target[i] != '\a' && target[i] != 0x1b;
+        i++) {
+        if(target[i] == wanted)
+            return 1;
+    }
+    return 0;
+}
+
+int
+UIClipboardTargetUsesPrimary(const char *target)
+{
+    return UIClipboardTargetIncludes(target, 'p') &&
+           !UIClipboardTargetIncludes(target, 'c') &&
+           !UIClipboardTargetIncludes(target, 's');
+}
+
+const char *
+GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
+                         const char *target)
+{
+    if(UIClipboardTargetUsesPrimary(target))
+        return GetUIPrimarySelectionTextValue();
+    return GetUIClipboardBufferText(clipboard);
+}
+
+int
+RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard, const char *target,
+                              const char *text)
+{
+    int changed = 0;
+    int wrote = 0;
+
+    if(UIClipboardTargetIncludes(target, 'p')) {
+        changed |= SetUIPrimarySelectionTextValue(text);
+        wrote = 1;
+    }
+    if(UIClipboardTargetIncludes(target, 'c') ||
+       UIClipboardTargetIncludes(target, 's') || !wrote)
+        changed |= RequestUIClipboardBufferWrite(clipboard, text);
+    return changed;
+}
+
 static int
 ui_clipboard_buffer_copy_text(char *dst, int dst_size, const char *text)
 {

@@ -311,6 +311,12 @@ int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
 int SetUIPrimarySelectionTextValue(const char *text);
 const char *GetUIPrimarySelectionTextValue(void);
+int UIClipboardTargetIncludes(const char *target, char wanted);
+int UIClipboardTargetUsesPrimary(const char *target);
+const char *GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
+                                     const char *target);
+int RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard,
+                                  const char *target, const char *text);
 void InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text);
 int SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text);
 int RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text);
