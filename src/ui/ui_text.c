@@ -6,6 +6,7 @@
 #include "ui_widget.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
+#include "theme.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -413,6 +414,7 @@ EnsureUIDefaultFont(void)
         "vendor/kryon/fonts/noto/NotoSans-Regular.ttf",
         NULL
     };
+    char system_font_path[512];
 
     if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
        font_valid(entry_font_for_size(&g_ui_fonts[g_ui_active_font],
@@ -424,6 +426,11 @@ EnsureUIDefaultFont(void)
         return 0;
 
     g_ui_default_font_attempted = 1;
+    if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
+       RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
+       UseUIFont(UI_FONT_DEFAULT_NAME))
+        return 1;
+
     for(int i = 0; paths[i] != NULL; i++) {
         if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
            UseUIFont(UI_FONT_DEFAULT_NAME))

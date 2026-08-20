@@ -46,6 +46,9 @@ static SystemThemePalette system_palette = {
 static SystemThemePalette system_light_palette;
 static SystemThemePalette system_dark_palette;
 static int system_prefers_dark = 0;
+static char system_ui_font_name[128];
+static char system_ui_font_file[512];
+static int system_ui_font_attempted = 0;
 
 static const SystemThemePalette material_light_palette = {
     .background = {0xFF, 0xFB, 0xFE, 0xFF},
@@ -353,22 +356,254 @@ xfce_desktop_config_path(char *out, int out_size)
 }
 
 static int
+xsettings_config_path(char *out, int out_size)
+{
+    const char *config = getenv("XDG_CONFIG_HOME");
+    const char *home = getenv("HOME");
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    if(config != NULL && config[0] != '\0')
+        snprintf(out, (size_t)out_size,
+                 "%s/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml",
+                 config);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(out, (size_t)out_size,
+                 "%s/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml",
+                 home);
+    else
+        return 0;
+    return out[0] != '\0';
+}
+
+static int
+gtk_settings_config_path(char *out, int out_size)
+{
+    const char *config = getenv("XDG_CONFIG_HOME");
+    const char *home = getenv("HOME");
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    if(config != NULL && config[0] != '\0')
+        snprintf(out, (size_t)out_size, "%s/gtk-3.0/settings.ini", config);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(out, (size_t)out_size, "%s/.config/gtk-3.0/settings.ini", home);
+    else
+        return 0;
+    return out[0] != '\0';
+}
+
+static int
 find_xml_value(const char *tag, char *out, int out_size)
 {
     const char *value;
     const char *end;
+    const char *tag_end;
 
     if(tag == NULL)
         return 0;
+    tag_end = strchr(tag, '>');
+    if(tag_end == NULL)
+        return 0;
     value = strstr(tag, "value=\"");
-    if(value == NULL)
+    if(value == NULL || value > tag_end)
         return 0;
     value += 7;
     end = strchr(value, '"');
-    if(end == NULL || end == value)
+    if(end == NULL || end > tag_end || end == value)
         return 0;
     copy_path(out, out_size, value, (int)(end - value));
     return out != NULL && out[0] != '\0';
+}
+
+static int
+trim_setting_value(const char *src, char *out, int out_size)
+{
+    const char *start;
+    const char *end;
+
+    if(src == NULL || out == NULL || out_size <= 0)
+        return 0;
+    start = src;
+    while(*start == ' ' || *start == '\t' || *start == '"')
+        start++;
+    end = start;
+    while(*end != '\0' && *end != '\n' && *end != '\r')
+        end++;
+    while(end > start &&
+          (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '"'))
+        end--;
+    copy_path(out, out_size, start, (int)(end - start));
+    return out[0] != '\0';
+}
+
+static int
+settings_ini_value(const char *text, const char *key, char *out, int out_size)
+{
+    const char *cursor;
+
+    if(text == NULL || key == NULL || out == NULL || out_size <= 0)
+        return 0;
+    cursor = strstr(text, key);
+    if(cursor == NULL)
+        return 0;
+    cursor = strchr(cursor, '=');
+    if(cursor == NULL)
+        return 0;
+    return trim_setting_value(cursor + 1, out, out_size);
+}
+
+static int shell_quote_arg(char *out, int out_size, const char *value);
+
+static int
+xfconf_query_value(const char *property, char *out, int out_size)
+{
+#if !defined(_WIN32) && !defined(PLATFORM_WEB)
+    char quoted[160];
+    char command[256];
+    FILE *pipe;
+    char line[256];
+
+    if(property == NULL || property[0] == '\0' || out == NULL || out_size <= 0)
+        return 0;
+    if(!shell_quote_arg(quoted, sizeof(quoted), property))
+        return 0;
+    snprintf(command, sizeof(command),
+             "xfconf-query -c xsettings -p %s 2>/dev/null", quoted);
+    pipe = popen(command, "r");
+    if(pipe == NULL)
+        return 0;
+    if(fgets(line, sizeof(line), pipe) == NULL) {
+        pclose(pipe);
+        return 0;
+    }
+    pclose(pipe);
+    return trim_setting_value(line, out, out_size);
+#else
+    (void)property;
+    (void)out;
+    (void)out_size;
+    return 0;
+#endif
+}
+
+static int
+read_system_ui_font_name(char *out, int out_size)
+{
+    char path[512];
+    char text[65536];
+    const char *cursor;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+
+    if(xsettings_config_path(path, sizeof(path)) &&
+       read_text_file(path, text, sizeof(text))) {
+        cursor = strstr(text, "name=\"FontName\"");
+        if(cursor != NULL && find_xml_value(cursor, out, out_size))
+            return 1;
+    }
+
+    if(xfconf_query_value("/Gtk/FontName", out, out_size))
+        return 1;
+
+    if(gtk_settings_config_path(path, sizeof(path)) &&
+       read_text_file(path, text, sizeof(text)) &&
+       settings_ini_value(text, "gtk-font-name", out, out_size))
+        return 1;
+
+    snprintf(out, (size_t)out_size, "%s", "Sans 10");
+    return 1;
+}
+
+static int
+shell_quote_arg(char *out, int out_size, const char *value)
+{
+    int n = 0;
+
+    if(out == NULL || out_size <= 0 || value == NULL)
+        return 0;
+    if(n < out_size)
+        out[n] = '\'';
+    n++;
+    for(const char *p = value; *p != '\0'; p++) {
+        if(*p == '\'') {
+            const char *esc = "'\\''";
+            for(int i = 0; esc[i] != '\0'; i++) {
+                if(n < out_size)
+                    out[n] = esc[i];
+                n++;
+            }
+        } else {
+            if(n < out_size)
+                out[n] = *p;
+            n++;
+        }
+    }
+    if(n < out_size)
+        out[n] = '\'';
+    n++;
+    if(n >= out_size) {
+        out[out_size - 1] = '\0';
+        return 0;
+    }
+    out[n] = '\0';
+    return 1;
+}
+
+static int
+fontconfig_match_file(const char *font_name, char *out, int out_size)
+{
+#if !defined(_WIN32) && !defined(PLATFORM_WEB)
+    char quoted[256];
+    char command[384];
+    FILE *pipe;
+    char line[512];
+
+    if(font_name == NULL || font_name[0] == '\0' || out == NULL || out_size <= 0)
+        return 0;
+    if(!shell_quote_arg(quoted, sizeof(quoted), font_name))
+        return 0;
+    snprintf(command, sizeof(command), "fc-match -f '%%{file}\\n' %s", quoted);
+    pipe = popen(command, "r");
+    if(pipe == NULL)
+        return 0;
+    if(fgets(line, sizeof(line), pipe) == NULL) {
+        pclose(pipe);
+        return 0;
+    }
+    pclose(pipe);
+    if(!trim_setting_value(line, out, out_size))
+        return 0;
+    return path_exists(out);
+#else
+    (void)font_name;
+    (void)out;
+    (void)out_size;
+    return 0;
+#endif
+}
+
+static int
+refresh_system_ui_font(void)
+{
+    char name[sizeof(system_ui_font_name)];
+    char file[sizeof(system_ui_font_file)];
+
+    if(system_ui_font_attempted)
+        return system_ui_font_file[0] != '\0';
+    system_ui_font_attempted = 1;
+    system_ui_font_name[0] = '\0';
+    system_ui_font_file[0] = '\0';
+
+    if(!read_system_ui_font_name(name, sizeof(name)))
+        return 0;
+    snprintf(system_ui_font_name, sizeof(system_ui_font_name), "%s", name);
+    if(!fontconfig_match_file(name, file, sizeof(file)))
+        return 0;
+    snprintf(system_ui_font_file, sizeof(system_ui_font_file), "%s", file);
+    return 1;
 }
 
 /*
@@ -781,6 +1016,34 @@ const char *
 GetSystemThemeNameCached(void)
 {
     return system_palette.name;
+}
+
+bool
+GetSystemUIFontName(char *out, int out_size)
+{
+    if(out == NULL || out_size <= 0)
+        return false;
+    out[0] = '\0';
+    if(system_ui_font_name[0] == '\0')
+        refresh_system_ui_font();
+    if(system_ui_font_name[0] == '\0')
+        return false;
+    snprintf(out, (size_t)out_size, "%s", system_ui_font_name);
+    return true;
+}
+
+bool
+GetSystemUIFontFile(char *out, int out_size)
+{
+    if(out == NULL || out_size <= 0)
+        return false;
+    out[0] = '\0';
+    if(system_ui_font_file[0] == '\0')
+        refresh_system_ui_font();
+    if(system_ui_font_file[0] == '\0')
+        return false;
+    snprintf(out, (size_t)out_size, "%s", system_ui_font_file);
+    return true;
 }
 
 bool
