@@ -18,6 +18,7 @@ package kryui
 import "C"
 
 import (
+	"fmt"
 	"math"
 	"unsafe"
 )
@@ -183,9 +184,23 @@ func SetSingleInstance(enabled bool) {
 func SingleInstanceEnabled() bool { return C.SingleInstanceEnabled() != 0 }
 
 func InitWindow(w, h int32, title string) {
+	checkAbiVersion()
 	ct := C.CString(title)
 	defer C.free(unsafe.Pointer(ct))
 	C.InitWindow(C.int(w), C.int(h), ct)
+}
+
+// checkAbiVersion compares the ABI version compiled into the linked static
+// archive against the one in the headers cgo just compiled against. A
+// mismatch means build/linux-*/libkryon.a (or libraylib.a) predates the
+// current sources — every Go binding silently ran against stale C code.
+// Rebuild with `make` in the kryon checkout (vendor/kryon for apps).
+func checkAbiVersion() {
+	if v := int(C.KryonAbiVersion()); v != int(C.KRYON_ABI_VERSION) {
+		panic(fmt.Sprintf(
+			"kryui: stale kryon static library (archive ABI %d, header ABI %d) — rebuild it, e.g. `make -C vendor/kryon`",
+			v, int(C.KRYON_ABI_VERSION)))
+	}
 }
 
 func CloseWindow()            { C.CloseWindow() }

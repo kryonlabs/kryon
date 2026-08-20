@@ -71,4 +71,13 @@
 #include "krb.h"
 #include "notification.h"
 
+/* ABI guard for prebuilt-library consumers (the Go bindings link static
+ * archives that are NOT rebuilt automatically when this tree moves).
+ * Bump KRYON_ABI_VERSION whenever a struct declared in include/ changes
+ * layout or a public function changes signature; KryonAbiVersion() is
+ * compiled into libkryon.a, while the macro is read from the current
+ * headers — a mismatch means the archive is stale and must be rebuilt. */
+#define KRYON_ABI_VERSION 1
+int KryonAbiVersion(void);
+
 #endif /* KRYON_H */
