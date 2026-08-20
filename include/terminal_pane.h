@@ -320,6 +320,8 @@ int TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
+int FormatTerminalPaneSessionTitle(char *out, int out_size, const char *text,
+                                   const char *fallback);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 

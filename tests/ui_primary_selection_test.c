@@ -794,6 +794,56 @@ main(void)
     }
 
     {
+        char title[32];
+
+        check_int("session title path",
+                  FormatTerminalPaneSessionTitle(
+                      title, (int)sizeof(title),
+                      "/home/wao/Projects/kapsule", "terminal"),
+                  7);
+        check_str("session title path text", title, "kapsule");
+
+        check_int("session title path trailing slash",
+                  FormatTerminalPaneSessionTitle(
+                      title, (int)sizeof(title),
+                      "/home/wao/Projects/kapsule///", "terminal"),
+                  7);
+        check_str("session title path trailing text", title, "kapsule");
+
+        check_int("session title host path",
+                  FormatTerminalPaneSessionTitle(
+                      title, (int)sizeof(title),
+                      "wao@omega:/mnt/storage/Projects/krait", "terminal"),
+                  5);
+        check_str("session title host path text", title, "krait");
+
+        check_int("session title host home path",
+                  FormatTerminalPaneSessionTitle(
+                      title, (int)sizeof(title),
+                      "wao@omega:~/Projects/Kapsule Test", "terminal"),
+                  12);
+        check_str("session title host home text", title, "Kapsule Test");
+
+        check_int("session title root",
+                  FormatTerminalPaneSessionTitle(title, (int)sizeof(title),
+                                                 "/", "terminal"),
+                  1);
+        check_str("session title root text", title, "/");
+
+        check_int("session title fallback",
+                  FormatTerminalPaneSessionTitle(title, (int)sizeof(title),
+                                                 "", "terminal"),
+                  8);
+        check_str("session title fallback text", title, "terminal");
+
+        check_int("session title truncates",
+                  FormatTerminalPaneSessionTitle(title, 5, "/tmp/abcdef",
+                                                 "terminal"),
+                  4);
+        check_str("session title truncates text", title, "abcd");
+    }
+
+    {
         char seq[64];
         TerminalPaneKeyMode mode = {0};
 
