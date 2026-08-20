@@ -294,6 +294,7 @@ main(void)
         TerminalPanePalette palette = GetTerminalPaneDefaultPalette();
         Rectangle content = TerminalPaneContentBounds(
             (Rectangle){10.0f, 20.0f, 300.0f, 200.0f}, 34, 6);
+        char label[16];
 
         check_int("terminal palette black red", palette.ansi[1].r, 205);
         check_int("terminal palette black red green", palette.ansi[1].g, 49);
@@ -305,6 +306,16 @@ main(void)
         check_int("terminal content y", (int)content.y, 60);
         check_int("terminal content width", (int)content.width, 288);
         check_int("terminal content height", (int)content.height, 154);
+        check_int("terminal scroll indicator hidden",
+                  FormatTerminalPaneScrollIndicatorLabel(
+                      label, (int)sizeof(label), 0),
+                  0);
+        check_str("terminal scroll indicator hidden text", label, "");
+        check_int("terminal scroll indicator label",
+                  FormatTerminalPaneScrollIndicatorLabel(
+                      label, (int)sizeof(label), 42),
+                  8);
+        check_str("terminal scroll indicator label text", label, "42 lines");
     }
 
     {

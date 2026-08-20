@@ -5,6 +5,8 @@
 #include "ui_scaling.h"
 #include "ui_text.h"
 
+#include <stdio.h>
+
 static int
 pane_color_visible(Color color)
 {
@@ -140,6 +142,68 @@ MeasureTerminalPane(Rectangle bounds, int font_size, int padding)
 {
     return MeasureTerminalPaneContent(
         TerminalPaneContentBounds(bounds, 0, padding), font_size);
+}
+
+int
+FormatTerminalPaneScrollIndicatorLabel(char *out, int out_size,
+                                       int scroll_offset)
+{
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(scroll_offset <= 0)
+        return 0;
+    return snprintf(out, (size_t)out_size, "%d lines", scroll_offset);
+}
+
+Rectangle
+MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
+{
+    char label[64];
+    int font;
+    int label_w;
+    Rectangle badge = {0};
+
+    if(indicator.viewport.width <= 0.0f || indicator.viewport.height <= 0.0f ||
+       FormatTerminalPaneScrollIndicatorLabel(label, (int)sizeof(label),
+                                              indicator.scroll_offset) <= 0)
+        return badge;
+    font = indicator.font_size > 0 ? indicator.font_size : ScaleUIPx(13);
+    label_w = MeasureUIText(label, font);
+    badge.x = indicator.viewport.x + indicator.viewport.width -
+              (float)label_w - (float)ScaleUIPx(16);
+    badge.y = indicator.viewport.y + (float)ScaleUIPx(6);
+    badge.width = (float)label_w + (float)ScaleUIPx(10);
+    badge.height = (float)ScaleUIPx(22);
+    if(badge.x < indicator.viewport.x)
+        badge.x = indicator.viewport.x;
+    if(badge.width > indicator.viewport.width)
+        badge.width = indicator.viewport.width;
+    return badge;
+}
+
+Rectangle
+DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
+{
+    TerminalPaneColors colors;
+    Rectangle badge;
+    char label[64];
+    int font;
+
+    badge = MeasureTerminalPaneScrollIndicator(indicator);
+    if(badge.width <= 0.0f || badge.height <= 0.0f ||
+       FormatTerminalPaneScrollIndicatorLabel(label, (int)sizeof(label),
+                                              indicator.scroll_offset) <= 0)
+        return badge;
+    colors = ResolveTerminalPaneThemeColors(indicator.colors);
+    font = indicator.font_size > 0 ? indicator.font_size : ScaleUIPx(13);
+    DrawRectangleRec(badge, colors.scroll_indicator);
+    DrawRectangleLines((int)badge.x, (int)badge.y, (int)badge.width,
+                       (int)badge.height, colors.border);
+    DrawUIText(label, (int)badge.x + ScaleUIPx(5),
+               (int)badge.y + ScaleUIPx(4), font,
+               colors.scroll_indicator_text);
+    return badge;
 }
 
 int

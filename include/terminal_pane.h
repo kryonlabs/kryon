@@ -156,6 +156,13 @@ typedef struct TerminalPaneMetrics {
     Rectangle content;
 } TerminalPaneMetrics;
 
+typedef struct TerminalPaneScrollIndicator {
+    Rectangle viewport;
+    int scroll_offset;
+    int font_size;
+    TerminalPaneColors colors;
+} TerminalPaneScrollIndicator;
+
 typedef int (*TerminalPaneReflowBlankCellFn)(const void *cell,
                                              void *userdata);
 
@@ -549,6 +556,11 @@ Rectangle TerminalPaneContentBounds(Rectangle bounds, int top_inset,
                                     int padding);
 TerminalPaneMetrics MeasureTerminalPaneContent(Rectangle content,
                                                int font_size);
+int FormatTerminalPaneScrollIndicatorLabel(char *out, int out_size,
+                                           int scroll_offset);
+Rectangle
+MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator);
+Rectangle DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator);
 void TerminalPaneSelectionClear(TerminalPaneSelection *selection);
 void TerminalPaneSelectionSetRange(TerminalPaneSelection *selection, int mode,
                                    int dragging, int start_row, int start_col,
