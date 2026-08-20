@@ -152,10 +152,16 @@ static double g_ui_backspace_next_repeat_at = 0.0;
 
 enum {
     UI_CURSOR_PRIORITY_DEFAULT = 0,
-    UI_CURSOR_PRIORITY_CLICKABLE = 1,
-    UI_CURSOR_PRIORITY_TEXT = 2,
-    UI_CURSOR_PRIORITY_RESIZE = 3,
-    UI_CURSOR_PRIORITY_DISABLED = 4
+    /* Disabled sits just above default and below every interactive intent:
+     * widgets draw back-to-front, so anything clickable, textual or
+     * resizable drawn after disabled background content is visually on top
+     * of it and must own the cursor. With DISABLED ranked highest, a board
+     * that disables its cards behind a modal banned the cursor for the
+     * whole frame — the modal's own buttons and text never got a say. */
+    UI_CURSOR_PRIORITY_DISABLED = 1,
+    UI_CURSOR_PRIORITY_CLICKABLE = 2,
+    UI_CURSOR_PRIORITY_TEXT = 3,
+    UI_CURSOR_PRIORITY_RESIZE = 4
 };
 
 #define UI_INPUT_CLIP_STACK_MAX 16
@@ -280,6 +286,12 @@ MarkUIDisabled(void)
     if(g_ui_cursor_disabled != NULL)
         *g_ui_cursor_disabled = 1;
     ui_set_cursor_intent(MOUSE_CURSOR_NOT_ALLOWED, UI_CURSOR_PRIORITY_DISABLED);
+}
+
+int
+GetUIMouseCursor(void)
+{
+    return g_ui_cursor_current;
 }
 
 static void
