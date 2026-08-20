@@ -25,6 +25,7 @@ typedef struct UIMenuOverlayState {
 static UIMenuOverlayState g_menu_overlay = {0};
 static int g_menu_pending_bar_id = 0;
 static int g_menu_pending_activated = 0;
+static int g_menu_pending_closed_bar_id = 0;
 static int g_canvas_depth = 0;
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
 static int g_canvas_mode_depth = 0;
@@ -351,18 +352,27 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     int font = GetUIFontSize();
     int x = (int)bounds.x + ScaleUIPx(4);
     Vector2 mouse = ui_mouse_world();
+    int skip_external_open = 0;
 
     if(g_menu_pending_bar_id == id) {
         result.activated_id = g_menu_pending_activated;
         g_menu_pending_bar_id = 0;
         g_menu_pending_activated = 0;
     }
+    if(g_menu_pending_closed_bar_id == id) {
+        g_menu_pending_closed_bar_id = 0;
+        g_menu_open_id = 0;
+        g_menu_submenu_id = 0;
+        skip_external_open = 1;
+        if(open_index != NULL)
+            *open_index = -1;
+    }
     g_menu_overlay.active = 0;
     DrawRectangleRec(bounds, c_surface);
     DrawRectangleLinesEx(bounds, 1.0f, c_button);
     if(menu_count > UI_TK_MENU_MAX)
         menu_count = UI_TK_MENU_MAX;
-    if(open_index != NULL && *open_index >= 0)
+    if(!skip_external_open && open_index != NULL && *open_index >= 0)
         g_menu_open_id = id + 1 + *open_index;
 
     for(int i = 0; i < menu_count; i++) {
@@ -382,6 +392,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
             g_menu_open_id = open ? 0 : menu_id;
             if(g_menu_open_id == 0)
                 g_menu_submenu_id = 0;
+            open = g_menu_open_id == menu_id;
         }
         if(hot && g_menu_open_id != 0 && !open) {
             g_menu_open_id = menu_id;
@@ -430,6 +441,7 @@ ui_draw_menu_overlays(void)
     if(activated != 0) {
         g_menu_pending_bar_id = g_menu_overlay.bar_id;
         g_menu_pending_activated = activated;
+        g_menu_pending_closed_bar_id = g_menu_overlay.bar_id;
     }
     g_menu_overlay.active = 0;
 }
