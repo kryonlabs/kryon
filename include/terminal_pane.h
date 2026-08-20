@@ -252,6 +252,11 @@ typedef struct TerminalPaneClipboardController {
     int cols;
 } TerminalPaneClipboardController;
 
+typedef struct TerminalPaneClipboardCommandResult {
+    int performed;
+    int wrote_input;
+} TerminalPaneClipboardCommandResult;
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -449,6 +454,11 @@ int TerminalPaneClipboardPrimarySelectionAvailable(void);
 int TerminalPaneClipboardPerformCommand(
     TerminalPaneClipboardController controller,
     TerminalPaneClipboardCommand command, const char *text);
+TerminalPaneClipboardCommandResult TerminalPaneClipboardRunCommand(
+    TerminalPaneClipboardController controller,
+    TerminalPaneClipboardCommand command, const char *text);
+int TerminalPaneClipboardCommandWritesInput(
+    TerminalPaneClipboardCommand command);
 int TerminalPaneClipboardUpdatePrimarySelection(
     TerminalPaneClipboard clipboard, const TerminalPaneSelection *selection,
     TerminalPaneSelectionLineFn line_text,

@@ -187,3 +187,32 @@ TerminalPaneClipboardPerformCommand(
     }
     return 0;
 }
+
+int
+TerminalPaneClipboardCommandWritesInput(TerminalPaneClipboardCommand command)
+{
+    switch(command) {
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT:
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_CLIPBOARD:
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PRIMARY:
+    case TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_PREFERRED:
+        return 1;
+    default:
+        break;
+    }
+    return 0;
+}
+
+TerminalPaneClipboardCommandResult
+TerminalPaneClipboardRunCommand(TerminalPaneClipboardController controller,
+                                TerminalPaneClipboardCommand command,
+                                const char *text)
+{
+    TerminalPaneClipboardCommandResult result = {0};
+
+    result.performed =
+        TerminalPaneClipboardPerformCommand(controller, command, text);
+    result.wrote_input =
+        result.performed ? TerminalPaneClipboardCommandWritesInput(command) : 0;
+    return result;
+}

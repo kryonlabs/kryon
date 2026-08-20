@@ -711,6 +711,14 @@ main(void)
                           12);
                 check_str("terminal pane command text", paste,
                           "command text");
+                check_int("terminal pane command paste writes input",
+                          TerminalPaneClipboardCommandWritesInput(
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT),
+                          1);
+                check_int("terminal pane command copy does not write input",
+                          TerminalPaneClipboardCommandWritesInput(
+                              TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION),
+                          0);
 
                 SetUIPrimarySelectionTextValue("command primary");
                 paste[0] = '\0';
@@ -724,6 +732,28 @@ main(void)
                           "command primary");
                 check_int("terminal pane primary available",
                           TerminalPaneClipboardPrimarySelectionAvailable(), 1);
+                {
+                    TerminalPaneClipboardCommandResult result;
+
+                    paste[0] = '\0';
+                    result = TerminalPaneClipboardRunCommand(
+                        controller,
+                        TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT,
+                        "result paste");
+                    check_int("terminal pane run command performed",
+                              result.performed, 12);
+                    check_int("terminal pane run command wrote input",
+                              result.wrote_input, 1);
+                    check_str("terminal pane run command text", paste,
+                              "result paste");
+                    result = TerminalPaneClipboardRunCommand(
+                        controller,
+                        TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST, NULL);
+                    check_int("terminal pane run command sync performed",
+                              result.performed, 1);
+                    check_int("terminal pane run command sync input",
+                              result.wrote_input, 0);
+                }
 
                 SetUIClipboardTextValue("command host");
                 check_int("terminal pane command sync",
