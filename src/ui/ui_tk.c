@@ -3,11 +3,6 @@
 
 #define UI_TK_MENU_MAX 8
 #define UI_RADIO_ANIM_MAX 128
-/* Large enough that the editor's source buffer (512 KiB) is the real ceiling,
- * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
- * copy and paste caps stay symmetric. */
-#define UI_TK_CLIPBOARD_MAX (1024 * 1024)
-
 static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;
 static Rectangle g_menu_panel_bounds = {0};
@@ -27,8 +22,6 @@ static int g_menu_pending_bar_id = 0;
 static int g_menu_pending_activated = 0;
 static int g_menu_pending_closed_bar_id = 0;
 static int g_canvas_depth = 0;
-static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
-static char g_primary_selection_text[UI_TK_CLIPBOARD_MAX];
 static int g_canvas_mode_depth = 0;
 
 typedef struct UIRadioAnimState {
@@ -1732,41 +1725,6 @@ DispatchUIAccelerators(const UIAccelerator *accelerators, int count)
             return id;
     }
     return 0;
-}
-
-int
-SetUIClipboardTextValue(const char *text)
-{
-    if(text == NULL)
-        text = "";
-    snprintf(g_clipboard_text, sizeof(g_clipboard_text), "%s", text);
-    SetClipboardText(g_clipboard_text);
-    return 1;
-}
-
-const char *
-GetUIClipboardTextValue(void)
-{
-    const char *text = GetClipboardText();
-    if(text != NULL && text[0] != '\0')
-        snprintf(g_clipboard_text, sizeof(g_clipboard_text), "%s", text);
-    return g_clipboard_text;
-}
-
-int
-SetUIPrimarySelectionTextValue(const char *text)
-{
-    if(text == NULL)
-        text = "";
-    snprintf(g_primary_selection_text, sizeof(g_primary_selection_text), "%s",
-             text);
-    return 1;
-}
-
-const char *
-GetUIPrimarySelectionTextValue(void)
-{
-    return g_primary_selection_text;
 }
 
 void
