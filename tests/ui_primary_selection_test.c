@@ -781,6 +781,7 @@ main(void)
         TerminalPanePalette pane_palette;
         int color_overrides[256];
         char color_text[16];
+        char sgr_text[80];
         int parsed_color = 0;
         char escaped_text[64];
         char unescaped_text[64];
@@ -1093,6 +1094,43 @@ main(void)
                   TerminalPaneCursorStyleReportCode(
                       TERMINAL_PANE_CURSOR_BAR, 0),
                   6);
+        check_int("sgr status default",
+                  FormatTerminalPaneSGRStatus(
+                      sgr_text, (int)sizeof(sgr_text),
+                      (TerminalPaneSGRStatus){
+                          0,
+                          TERMINAL_PANE_COLOR_DEFAULT,
+                          TERMINAL_PANE_COLOR_DEFAULT,
+                          TERMINAL_PANE_COLOR_DEFAULT,
+                      }),
+                  2);
+        check_str("sgr status default text", sgr_text, "0m");
+        check_int("sgr status mixed",
+                  FormatTerminalPaneSGRStatus(
+                      sgr_text, (int)sizeof(sgr_text),
+                      (TerminalPaneSGRStatus){
+                          TERMINAL_PANE_SGR_BOLD |
+                              TERMINAL_PANE_SGR_UNDERLINE |
+                              TERMINAL_PANE_SGR_OVERLINE,
+                          1,
+                          TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203,
+                          14,
+                      }),
+                  33);
+        check_str("sgr status mixed text", sgr_text,
+                  "1;4;53;38;5;1;48;2;1;2;3;58;5;14m");
+        sgr_text[0] = 'x';
+        check_int("sgr status truncates safely",
+                  FormatTerminalPaneSGRStatus(
+                      sgr_text, 4,
+                      (TerminalPaneSGRStatus){
+                          TERMINAL_PANE_SGR_BOLD,
+                          1,
+                          TERMINAL_PANE_COLOR_DEFAULT,
+                          TERMINAL_PANE_COLOR_DEFAULT,
+                      }),
+                  0);
+        check_str("sgr status truncated empty", sgr_text, "");
     }
 
     {

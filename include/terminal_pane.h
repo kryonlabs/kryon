@@ -40,6 +40,25 @@ typedef enum TerminalPaneCursorStyle {
     TERMINAL_PANE_CURSOR_BAR = 3
 } TerminalPaneCursorStyle;
 
+typedef enum TerminalPaneSGRStyle {
+    TERMINAL_PANE_SGR_BOLD = 1,
+    TERMINAL_PANE_SGR_ITALIC = 2,
+    TERMINAL_PANE_SGR_UNDERLINE = 4,
+    TERMINAL_PANE_SGR_INVERSE = 8,
+    TERMINAL_PANE_SGR_STRIKE = 16,
+    TERMINAL_PANE_SGR_FAINT = 64,
+    TERMINAL_PANE_SGR_CONCEAL = 128,
+    TERMINAL_PANE_SGR_BLINK = 256,
+    TERMINAL_PANE_SGR_OVERLINE = 512
+} TerminalPaneSGRStyle;
+
+typedef struct TerminalPaneSGRStatus {
+    int styles;
+    int foreground;
+    int background;
+    int underline;
+} TerminalPaneSGRStatus;
+
 typedef struct TerminalPaneProfileColors {
     int foreground;
     int background;
@@ -258,6 +277,8 @@ void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
 int ParseTerminalPaneCursorStyle(const char *text, int fallback);
 const char *TerminalPaneCursorStyleName(int style);
 int TerminalPaneCursorStyleReportCode(int style, int blink);
+int FormatTerminalPaneSGRStatus(char *out, int out_size,
+                                TerminalPaneSGRStatus status);
 int ParseTerminalPaneProfileColor(const char *text, int *out);
 int FormatTerminalPaneProfileColor(char *out, int out_size, int color);
 int EscapeTerminalPaneText(char *out, int out_size, const char *text);
