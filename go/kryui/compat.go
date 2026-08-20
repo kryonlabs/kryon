@@ -115,6 +115,7 @@ func fontFromC(cf C.Font) Font {
 // ---------------------------------------------------------------------------
 
 const (
+	FlagVsyncHint       uint = 0x00000040
 	FlagWindowResizable uint = 0x00000004
 
 	MouseButtonLeft   int32 = 0
