@@ -224,6 +224,7 @@ UIMenuBarResult MenuBar(int id, Rectangle bounds, const UIMenu *menus,
                               int menu_count, int *open_index);
 int PopupMenu(int id, int x, int y, const UIMenuItem *items,
                     int item_count);
+int ContextMenu(UIContextMenu menu);
 int Radio(RadioButtonProps radio);
 void Progress(ProgressBarProps progress);
 int Spinbox(SpinboxProps spinbox);

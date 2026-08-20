@@ -299,6 +299,7 @@ int DrawUICascadingTreeView(CascadingTreeViewProps tree);
 
 int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);
+int ContextMenu(UIContextMenu menu);
 int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
 int SetUIPrimarySelectionTextValue(const char *text);

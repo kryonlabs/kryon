@@ -1730,6 +1730,13 @@ PopupMenu(int id, int x, int y, const UIMenuItem *items,
 }
 
 int
+ContextMenu(UIContextMenu menu)
+{
+    ui_tree_add(menu.id, UI_WIDGET_CUSTOM_NODE, menu.trigger, &menu);
+    return DrawUIContextMenu(menu);
+}
+
+int
 Radio(RadioButtonProps radio)
 {
     ui_tree_add(radio.id, UI_WIDGET_CUSTOM_NODE, radio.bounds, &radio);
