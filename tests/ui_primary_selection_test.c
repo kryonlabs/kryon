@@ -1582,5 +1582,54 @@ main(void)
                   0);
     }
 
+    {
+        char report[32];
+        TerminalPaneModeState state = {0};
+
+        state.cursor_visible = 1;
+        state.autowrap = 1;
+        state.bracketed_paste = 1;
+        state.mouse_mode = 1002;
+        state.mouse_sgr = 1;
+        state.insert_mode = 1;
+
+        check_int("terminal mode report insert status",
+                  TerminalPaneModeReportStatus(state, 0, 4), 1);
+        check_int("terminal mode report newline reset",
+                  TerminalPaneModeReportStatus(state, 0, 20), 2);
+        check_int("terminal mode report unknown normal",
+                  TerminalPaneModeReportStatus(state, 0, 999), 0);
+        check_int("terminal private mode cursor visible",
+                  TerminalPaneModeReportStatus(state, 1, 25), 1);
+        check_int("terminal private mode bracketed paste",
+                  TerminalPaneModeReportStatus(state, 1, 2004), 1);
+        check_int("terminal private mode mouse active",
+                  TerminalPaneModeReportStatus(state, 1, 1002), 1);
+        check_int("terminal private mode mouse inactive",
+                  TerminalPaneModeReportStatus(state, 1, 1000), 2);
+        check_int("terminal private mode alternate cursor",
+                  TerminalPaneModeReportStatus(state, 1, 1048), 2);
+        check_int("terminal private mode unknown",
+                  TerminalPaneModeReportStatus(state, 1, 12345), 0);
+
+        check_int("terminal mode report format",
+                  FormatTerminalPaneModeReport(
+                      report, (int)sizeof(report), state, 0, 4),
+                  7);
+        check_str("terminal mode report format text", report,
+                  "\x1b[4;1$y");
+        check_int("terminal private mode report format",
+                  FormatTerminalPaneModeReport(
+                      report, (int)sizeof(report), state, 1, 2004),
+                  11);
+        check_str("terminal private mode report format text", report,
+                  "\x1b[?2004;1$y");
+        report[0] = 'x';
+        check_int("terminal mode report truncates",
+                  FormatTerminalPaneModeReport(report, 4, state, 1, 2004),
+                  0);
+        check_str("terminal mode report truncates clears", report, "");
+    }
+
     return 0;
 }

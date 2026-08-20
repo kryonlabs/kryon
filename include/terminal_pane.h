@@ -195,6 +195,25 @@ typedef struct TerminalPaneMouseMode {
     int pixels;
 } TerminalPaneMouseMode;
 
+typedef struct TerminalPaneModeState {
+    int cursor_blink;
+    int cursor_visible;
+    int origin_mode;
+    int autowrap;
+    int application_cursor_keys;
+    int mouse_mode;
+    int focus_reporting;
+    int mouse_utf8;
+    int mouse_sgr;
+    int alternate_scroll;
+    int mouse_urxvt;
+    int mouse_pixels;
+    int bracketed_paste;
+    int alternate_screen;
+    int insert_mode;
+    int newline_mode;
+} TerminalPaneModeState;
+
 typedef struct TerminalPaneClipboard {
     UIClipboardBuffer *clipboard;
     int bracketed_paste;
@@ -401,6 +420,11 @@ int EncodeTerminalPaneMouse(char *out, int out_size, int button, int col,
                             int row, int pixel_x, int pixel_y, int pressed,
                             int motion, int mods,
                             TerminalPaneMouseMode mode);
+int TerminalPaneModeReportStatus(TerminalPaneModeState state, int private_mode,
+                                 int mode);
+int FormatTerminalPaneModeReport(char *out, int out_size,
+                                 TerminalPaneModeState state,
+                                 int private_mode, int mode);
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
