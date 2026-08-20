@@ -1520,6 +1520,67 @@ main(void)
                   0);
         check_str("xtgettcap truncates clears", dcs_response, "");
 
+        {
+            TerminalPaneSixelImage image;
+
+            check_int("sixel decode rows",
+                      DecodeTerminalPaneSixel(
+                          &image, "q#1;2;100;0;0!3~-$#2;2;0;100;0!2~",
+                          TERMINAL_PANE_COLOR_TRUE_RGB, NULL, NULL),
+                      2);
+            check_int("sixel decode width", image.width, 3);
+            check_int("sixel decode height", image.height, 12);
+            check_int("sixel decode aspect num", image.pixel_aspect_num, 1);
+            check_int("sixel decode aspect den", image.pixel_aspect_den, 1);
+            check_int("sixel decode red pixel", image.pixels[0],
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xff0000);
+            check_int("sixel decode red lower pixel",
+                      image.pixels[5 * image.width + 2],
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xff0000);
+            check_int("sixel decode green pixel",
+                      image.pixels[6 * image.width],
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x00ff00);
+            check_int("sixel decode transparent background",
+                      image.pixels[6 * image.width + 2],
+                      TERMINAL_PANE_COLOR_DEFAULT);
+            FreeTerminalPaneSixelImage(&image);
+
+            check_int("sixel raster background",
+                      DecodeTerminalPaneSixel(
+                          &image, "0;2q\"1;1;4;6#3;1;120;50;100?",
+                          TERMINAL_PANE_COLOR_TRUE_RGB, NULL, NULL),
+                      1);
+            check_int("sixel raster width", image.width, 4);
+            check_int("sixel raster height", image.height, 6);
+            check_int("sixel raster background pixel", image.pixels[0],
+                      TERMINAL_PANE_COLOR_TRUE_RGB);
+            FreeTerminalPaneSixelImage(&image);
+
+            check_int("sixel aspect rows",
+                      DecodeTerminalPaneSixel(
+                          &image, "q\"2;1;2;6#4;2;0;0;100~~",
+                          TERMINAL_PANE_COLOR_TRUE_RGB, NULL, NULL),
+                      1);
+            check_int("sixel aspect width", image.width, 2);
+            check_int("sixel aspect height", image.height, 6);
+            check_int("sixel aspect num", image.pixel_aspect_num, 2);
+            check_int("sixel aspect den", image.pixel_aspect_den, 1);
+            check_int("sixel aspect blue pixel", image.pixels[0],
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x0000ff);
+            FreeTerminalPaneSixelImage(&image);
+
+            check_int("sixel missing q",
+                      DecodeTerminalPaneSixel(&image, "not sixel",
+                                              TERMINAL_PANE_COLOR_TRUE_RGB,
+                                              NULL, NULL),
+                      0);
+            check_int("sixel malformed repeat",
+                      DecodeTerminalPaneSixel(&image, "q!12",
+                                              TERMINAL_PANE_COLOR_TRUE_RGB,
+                                              NULL, NULL),
+                      0);
+        }
+
         check_int("osc hyperlink url sanitizer",
                   CopyTerminalPaneOSCHyperlinkURL(
                       title_report, (int)sizeof(title_report),

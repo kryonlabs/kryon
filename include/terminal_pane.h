@@ -310,6 +310,16 @@ typedef struct TerminalPaneClipboardCommandResult {
     int wrote_input;
 } TerminalPaneClipboardCommandResult;
 
+typedef struct TerminalPaneSixelImage {
+    int *pixels;
+    int width;
+    int height;
+    int pixel_aspect_num;
+    int pixel_aspect_den;
+} TerminalPaneSixelImage;
+
+typedef int (*TerminalPaneSixelPaletteFn)(void *userdata, int index);
+
 typedef struct TerminalPane {
     Rectangle bounds;
     Terminal *terminal;
@@ -379,6 +389,11 @@ int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
                                          int color);
 int FormatTerminalPaneXTGETTCAPResponse(char *out, int out_size,
                                         const char *payload);
+int DecodeTerminalPaneSixel(TerminalPaneSixelImage *out, const char *payload,
+                            int background,
+                            TerminalPaneSixelPaletteFn palette,
+                            void *userdata);
+void FreeTerminalPaneSixelImage(TerminalPaneSixelImage *image);
 int CopyTerminalPaneOSCHyperlinkURL(char *out, int out_size, const char *url);
 int CopyTerminalPaneOSCHyperlinkID(char *out, int out_size,
                                    const char *params);
