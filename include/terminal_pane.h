@@ -5,6 +5,8 @@
 #include "terminal.h"
 #include "ui_tk.h"
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -153,6 +155,30 @@ typedef struct TerminalPaneMetrics {
     int line_height;
     Rectangle content;
 } TerminalPaneMetrics;
+
+typedef int (*TerminalPaneReflowBlankCellFn)(const void *cell,
+                                             void *userdata);
+
+typedef struct TerminalPaneReflowSpec {
+    const void *input_cells;
+    const unsigned char *input_wrapped;
+    int input_cols;
+    int input_rows;
+    void *output_cells;
+    unsigned char *output_wrapped;
+    int output_cols;
+    int output_rows;
+    size_t cell_size;
+    const void *blank_cell;
+    TerminalPaneReflowBlankCellFn is_blank;
+    void *userdata;
+    int trim_blank_rows_after_cursor;
+    int cursor_input_col;
+    int cursor_input_row;
+    int *cursor_output_col;
+    int *cursor_output_row;
+    int *output_row_count;
+} TerminalPaneReflowSpec;
 
 typedef enum TerminalPaneSelectionMode {
     TERMINAL_PANE_SELECTION_CHAR = 0,
@@ -412,6 +438,7 @@ TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors);
 TerminalPaneProfileColors
 ResolveTerminalPaneProfileColors(TerminalPaneProfileColors configured,
                                  TerminalPaneColors fallback);
+int TerminalPaneReflowRows(const TerminalPaneReflowSpec *spec);
 TerminalPaneProfileLimits GetDefaultTerminalPaneProfileLimits(void);
 void InitTerminalPaneProfileSettings(TerminalPaneProfileSettings *settings,
                                      TerminalPaneProfileLimits limits);

@@ -96,6 +96,13 @@ fixture_line_wrapped(void *userdata, int row)
     return fixture->wrapped[row];
 }
 
+static int
+fixture_reflow_char_blank(const void *cell, void *userdata)
+{
+    (void)userdata;
+    return cell == NULL || *(const char *)cell == ' ';
+}
+
 int
 main(void)
 {
@@ -298,6 +305,96 @@ main(void)
         check_int("terminal content y", (int)content.y, 60);
         check_int("terminal content width", (int)content.width, 288);
         check_int("terminal content height", (int)content.height, 154);
+    }
+
+    {
+        const char input[3][8] = {
+            {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'},
+            {'i', 'j', 'k', 'l', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '}};
+        const unsigned char wrapped[3] = {1, 0, 0};
+        char output[4][12];
+        unsigned char output_wrapped[4];
+        char blank = ' ';
+        int cursor_col = -1;
+        int cursor_row = -1;
+        int row_count = -1;
+        TerminalPaneReflowSpec spec;
+
+        memset(&spec, 0, sizeof(spec));
+        spec.input_cells = input;
+        spec.input_wrapped = wrapped;
+        spec.input_cols = 8;
+        spec.input_rows = 3;
+        spec.output_cells = output;
+        spec.output_wrapped = output_wrapped;
+        spec.output_cols = 12;
+        spec.output_rows = 4;
+        spec.cell_size = sizeof(char);
+        spec.blank_cell = &blank;
+        spec.is_blank = fixture_reflow_char_blank;
+        spec.trim_blank_rows_after_cursor = 1;
+        spec.cursor_input_col = 2;
+        spec.cursor_input_row = 1;
+        spec.cursor_output_col = &cursor_col;
+        spec.cursor_output_row = &cursor_row;
+        spec.output_row_count = &row_count;
+
+        check_int("terminal reflow rows unwrap",
+                  TerminalPaneReflowRows(&spec), 1);
+        check_bytes("terminal reflow unwrapped line", output[0], 12,
+                    "abcdefghijkl", 12);
+        check_bytes("terminal reflow second blank", output[1], 12,
+                    "            ", 12);
+        check_int("terminal reflow unwrap row count", row_count, 1);
+        check_int("terminal reflow unwrap cursor row", cursor_row, 0);
+        check_int("terminal reflow unwrap cursor col", cursor_col, 10);
+        check_int("terminal reflow unwrap flag", output_wrapped[0], 0);
+    }
+
+    {
+        const char input[1][12] = {
+            {'a', 'b', 'c', 'd', 'e', 'f',
+             'g', 'h', 'i', 'j', 'k', 'l'}};
+        char output[3][5];
+        unsigned char output_wrapped[3];
+        char blank = ' ';
+        int cursor_col = -1;
+        int cursor_row = -1;
+        int row_count = -1;
+        TerminalPaneReflowSpec spec;
+
+        memset(&spec, 0, sizeof(spec));
+        spec.input_cells = input;
+        spec.input_cols = 12;
+        spec.input_rows = 1;
+        spec.output_cells = output;
+        spec.output_wrapped = output_wrapped;
+        spec.output_cols = 5;
+        spec.output_rows = 3;
+        spec.cell_size = sizeof(char);
+        spec.blank_cell = &blank;
+        spec.is_blank = fixture_reflow_char_blank;
+        spec.cursor_input_col = 11;
+        spec.cursor_input_row = 0;
+        spec.cursor_output_col = &cursor_col;
+        spec.cursor_output_row = &cursor_row;
+        spec.output_row_count = &row_count;
+
+        check_int("terminal reflow rows wrap",
+                  TerminalPaneReflowRows(&spec), 1);
+        check_bytes("terminal reflow wrap line 0", output[0], 5, "abcde",
+                    5);
+        check_bytes("terminal reflow wrap line 1", output[1], 5, "fghij",
+                    5);
+        check_bytes("terminal reflow wrap line 2", output[2], 5, "kl   ",
+                    5);
+        check_int("terminal reflow wrap flag 0", output_wrapped[0], 1);
+        check_int("terminal reflow wrap flag 1", output_wrapped[1], 1);
+        check_int("terminal reflow wrap flag 2", output_wrapped[2], 0);
+        check_int("terminal reflow wrap row count", row_count, 3);
+        check_int("terminal reflow wrap cursor row", cursor_row, 2);
+        check_int("terminal reflow wrap cursor col", cursor_col, 1);
     }
 
     {
