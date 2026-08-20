@@ -64,6 +64,59 @@ typedef struct TerminalPaneSearchMatch {
     int length;
 } TerminalPaneSearchMatch;
 
+typedef enum TerminalPaneKey {
+    TERMINAL_PANE_KEY_ENTER = 1,
+    TERMINAL_PANE_KEY_BACKSPACE,
+    TERMINAL_PANE_KEY_TAB,
+    TERMINAL_PANE_KEY_ESCAPE,
+    TERMINAL_PANE_KEY_UP,
+    TERMINAL_PANE_KEY_DOWN,
+    TERMINAL_PANE_KEY_RIGHT,
+    TERMINAL_PANE_KEY_LEFT,
+    TERMINAL_PANE_KEY_HOME,
+    TERMINAL_PANE_KEY_END,
+    TERMINAL_PANE_KEY_PAGE_UP,
+    TERMINAL_PANE_KEY_PAGE_DOWN,
+    TERMINAL_PANE_KEY_DELETE,
+    TERMINAL_PANE_KEY_INSERT,
+    TERMINAL_PANE_KEY_F1,
+    TERMINAL_PANE_KEY_F2,
+    TERMINAL_PANE_KEY_F3,
+    TERMINAL_PANE_KEY_F4,
+    TERMINAL_PANE_KEY_F5,
+    TERMINAL_PANE_KEY_F6,
+    TERMINAL_PANE_KEY_F7,
+    TERMINAL_PANE_KEY_F8,
+    TERMINAL_PANE_KEY_F9,
+    TERMINAL_PANE_KEY_F10,
+    TERMINAL_PANE_KEY_F11,
+    TERMINAL_PANE_KEY_F12,
+    TERMINAL_PANE_KEY_F13,
+    TERMINAL_PANE_KEY_F14,
+    TERMINAL_PANE_KEY_F15,
+    TERMINAL_PANE_KEY_F16,
+    TERMINAL_PANE_KEY_F17,
+    TERMINAL_PANE_KEY_F18,
+    TERMINAL_PANE_KEY_F19,
+    TERMINAL_PANE_KEY_F20,
+    TERMINAL_PANE_KEY_F21,
+    TERMINAL_PANE_KEY_F22,
+    TERMINAL_PANE_KEY_F23,
+    TERMINAL_PANE_KEY_F24
+} TerminalPaneKey;
+
+typedef enum TerminalPaneKeyModifier {
+    TERMINAL_PANE_MOD_SHIFT = 1,
+    TERMINAL_PANE_MOD_ALT = 2,
+    TERMINAL_PANE_MOD_CTRL = 4
+} TerminalPaneKeyModifier;
+
+typedef struct TerminalPaneKeyMode {
+    int application_cursor_keys;
+    int application_keypad;
+    int modify_other_keys;
+} TerminalPaneKeyMode;
+
 typedef struct TerminalPaneClipboard {
     UIClipboardBuffer *clipboard;
     int bracketed_paste;
@@ -176,6 +229,13 @@ int TerminalPaneSearchLines(TerminalPaneSelectionLineFn line_text,
                             const char *needle, int start_row, int start_col,
                             int direction, int wrap,
                             TerminalPaneSearchMatch *out);
+int EncodeTerminalPaneCodepoint(char *out, int out_size,
+                                unsigned int codepoint, int mods,
+                                TerminalPaneKeyMode mode);
+int EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
+                          TerminalPaneKeyMode mode);
+int EncodeTerminalPaneKeypad(char *out, int out_size, char key,
+                             TerminalPaneKeyMode mode);
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,

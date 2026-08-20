@@ -23,6 +23,17 @@ check_str(const char *name, const char *got, const char *want)
     exit(1);
 }
 
+static void
+check_bytes(const char *name, const char *got, int got_len,
+            const char *want, int want_len)
+{
+    if(got != NULL && want != NULL && got_len == want_len &&
+       memcmp(got, want, (size_t)want_len) == 0)
+        return;
+    fprintf(stderr, "%s: byte mismatch\n", name);
+    exit(1);
+}
+
 static int
 capture_osc52_response(void *userdata, const char *text)
 {
@@ -556,6 +567,129 @@ main(void)
             check_str("terminal pane clipboard flushed host",
                       GetUIClipboardTextValue(), "host flush");
         }
+    }
+
+    {
+        char seq[64];
+        TerminalPaneKeyMode mode = {0};
+
+        check_int("terminal key plain codepoint",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'a', 0,
+                                              mode),
+                  1);
+        check_str("terminal key plain text", seq, "a");
+
+        check_int("terminal key alt unicode",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 0x00e9,
+                                              TERMINAL_PANE_MOD_ALT, mode),
+                  3);
+        check_str("terminal key alt unicode text", seq, "\x1b\xc3\xa9");
+
+        check_int("terminal key ctrl c",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'c',
+                                              TERMINAL_PANE_MOD_CTRL, mode),
+                  1);
+        check_bytes("terminal key ctrl c bytes", seq, 1, "\x03", 1);
+
+        check_int("terminal key ctrl space",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), ' ',
+                                              TERMINAL_PANE_MOD_CTRL, mode),
+                  1);
+        check_bytes("terminal key ctrl space bytes", seq, 1, "\0", 1);
+
+        mode.modify_other_keys = 1;
+        check_int("terminal key modify ctrl",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'c',
+                                              TERMINAL_PANE_MOD_CTRL, mode),
+                  10);
+        check_str("terminal key modify ctrl text", seq, "\x1b[27;5;99~");
+
+        check_int("terminal key modify mode one shift",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'a',
+                                              TERMINAL_PANE_MOD_SHIFT, mode),
+                  1);
+        check_str("terminal key modify mode one shift text", seq, "a");
+
+        mode.modify_other_keys = 2;
+        check_int("terminal key modify mode two shift",
+                  EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), 'a',
+                                              TERMINAL_PANE_MOD_SHIFT, mode),
+                  10);
+        check_str("terminal key modify mode two shift text", seq,
+                  "\x1b[27;2;97~");
+
+        mode.modify_other_keys = 1;
+        check_int("terminal enter modify",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_ENTER,
+                                        TERMINAL_PANE_MOD_CTRL, mode),
+                  10);
+        check_str("terminal enter modify text", seq, "\x1b[27;5;13~");
+
+        mode.modify_other_keys = 0;
+        check_int("terminal shift tab",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_TAB,
+                                        TERMINAL_PANE_MOD_SHIFT, mode),
+                  3);
+        check_str("terminal shift tab text", seq, "\x1b[Z");
+
+        check_int("terminal f1",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_F1, 0, mode),
+                  3);
+        check_str("terminal f1 text", seq, "\x1bOP");
+
+        check_int("terminal f5",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_F5, 0, mode),
+                  5);
+        check_str("terminal f5 text", seq, "\x1b[15~");
+
+        check_int("terminal f12 ctrl",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_F12,
+                                        TERMINAL_PANE_MOD_CTRL, mode),
+                  7);
+        check_str("terminal f12 ctrl text", seq, "\x1b[24;5~");
+
+        check_int("terminal f13",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_F13, 0, mode),
+                  6);
+        check_str("terminal f13 text", seq, "\x1b[1;2P");
+
+        check_int("terminal f24 ctrl",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_F24,
+                                        TERMINAL_PANE_MOD_CTRL, mode),
+                  7);
+        check_str("terminal f24 ctrl text", seq, "\x1b[24;6~");
+
+        mode.application_cursor_keys = 1;
+        check_int("terminal application cursor",
+                  EncodeTerminalPaneKey(seq, (int)sizeof(seq),
+                                        TERMINAL_PANE_KEY_UP, 0, mode),
+                  3);
+        check_str("terminal application cursor text", seq, "\x1bOA");
+
+        mode.application_keypad = 0;
+        check_int("terminal keypad normal",
+                  EncodeTerminalPaneKeypad(seq, (int)sizeof(seq), '7', mode),
+                  1);
+        check_str("terminal keypad normal text", seq, "7");
+
+        mode.application_keypad = 1;
+        check_int("terminal keypad application",
+                  EncodeTerminalPaneKeypad(seq, (int)sizeof(seq), '7', mode),
+                  3);
+        check_str("terminal keypad application text", seq, "\x1bOw");
+
+        check_int("terminal keypad enter application",
+                  EncodeTerminalPaneKeypad(seq, (int)sizeof(seq), '\r',
+                                           mode),
+                  3);
+        check_str("terminal keypad enter application text", seq, "\x1bOM");
     }
 
     return 0;
