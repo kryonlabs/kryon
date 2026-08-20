@@ -301,4 +301,6 @@ int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);
 int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
+int SetUIPrimarySelectionTextValue(const char *text);
+const char *GetUIPrimarySelectionTextValue(void);
 #endif

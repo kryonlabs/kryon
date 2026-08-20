@@ -28,6 +28,7 @@ static int g_menu_pending_activated = 0;
 static int g_menu_pending_closed_bar_id = 0;
 static int g_canvas_depth = 0;
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
+static char g_primary_selection_text[UI_TK_CLIPBOARD_MAX];
 static int g_canvas_mode_depth = 0;
 
 typedef struct UIRadioAnimState {
@@ -1750,6 +1751,22 @@ GetUIClipboardTextValue(void)
     if(text != NULL && text[0] != '\0')
         snprintf(g_clipboard_text, sizeof(g_clipboard_text), "%s", text);
     return g_clipboard_text;
+}
+
+int
+SetUIPrimarySelectionTextValue(const char *text)
+{
+    if(text == NULL)
+        text = "";
+    snprintf(g_primary_selection_text, sizeof(g_primary_selection_text), "%s",
+             text);
+    return 1;
+}
+
+const char *
+GetUIPrimarySelectionTextValue(void)
+{
+    return g_primary_selection_text;
 }
 
 void
