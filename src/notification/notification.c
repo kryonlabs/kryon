@@ -619,7 +619,11 @@ static WinNote g_notes[KRY_SLOTS];
 static int g_pending_action;
 static char g_pending_url[384];
 static void wide(const char *s, WCHAR *d, int n) {
-    if(!d || n < 1) return; d[0] = 0; if(!s) return;
+    if(!d || n < 1)
+        return;
+    d[0] = 0;
+    if(!s)
+        return;
     if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s, -1, d, n))
         MultiByteToWideChar(CP_ACP, 0, s, -1, d, n);
     d[n - 1] = 0;
@@ -637,7 +641,10 @@ static WinNote *slot(UINT id, int add) {
 }
 static void remove_note(UINT id) {
     NOTIFYICONDATAW n; WinNote *s;
-    if(!g_note_window) return; memset(&n, 0, sizeof(n)); n.cbSize = sizeof(n);
+    if(!g_note_window)
+        return;
+    memset(&n, 0, sizeof(n));
+    n.cbSize = sizeof(n);
     n.hWnd = g_note_window; n.uID = id; Shell_NotifyIconW(NIM_DELETE, &n);
     s = slot(id, 0); if(s) memset(s, 0, sizeof(*s));
 }
@@ -656,7 +663,9 @@ static LRESULT CALLBACK note_proc(HWND w, UINT m, WPARAM wp, LPARAM lp) {
 static HWND note_window(void) {
     static const WCHAR name[] = L"KryonNotificationWindow";
     WNDCLASSEXW c; HINSTANCE h;
-    if(g_note_window) return g_note_window; h = GetModuleHandleW(NULL);
+    if(g_note_window)
+        return g_note_window;
+    h = GetModuleHandleW(NULL);
     memset(&c, 0, sizeof(c)); c.cbSize = sizeof(c); c.lpfnWndProc = note_proc;
     c.hInstance = h; c.lpszClassName = name; RegisterClassExW(&c);
     g_note_window = CreateWindowExW(WS_EX_TOOLWINDOW, name, L"", WS_POPUP,
@@ -679,8 +688,9 @@ static int win_send(const char *title, const char *body, const char *tag,
     memset(&n, 0, sizeof(n)); n.cbSize = sizeof(n); n.hWnd = g_note_window;
     n.uID = native_id; n.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_INFO;
     n.uCallbackMessage = KRY_MSG; h = GetModuleHandleW(NULL);
-    n.hIcon = LoadIconW(h, IDI_APPLICATION);
-    if(!n.hIcon) n.hIcon = LoadIconW(NULL, IDI_APPLICATION);
+    n.hIcon = LoadIconW(h, MAKEINTRESOURCEW(32512));
+    if(!n.hIcon)
+        n.hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(32512));
     wide(g_notification_app_name, n.szTip, ARRAYSIZE(n.szTip));
     wide(title, n.szInfoTitle, ARRAYSIZE(n.szInfoTitle));
     wide(body, n.szInfo, ARRAYSIZE(n.szInfo)); n.dwInfoFlags = NIIF_USER;

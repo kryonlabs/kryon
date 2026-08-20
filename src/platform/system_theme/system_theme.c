@@ -10,7 +10,13 @@
 #include <string.h>
 #include <time.h>
 #if defined(_WIN32)
+#define Rectangle Win32Rectangle
+#define CloseWindow Win32CloseWindow
+#define ShowCursor Win32ShowCursor
 #include <windows.h>
+#undef ShowCursor
+#undef CloseWindow
+#undef Rectangle
 #endif
 
 #if defined(SYSTEM_THEME_GTK)
@@ -91,8 +97,10 @@ system_theme_auto_refresh(void)
 {
     double now;
 
+#if !defined(_WIN32)
     if(system_palette.available)
         return;
+#endif
     if(!system_theme_clock_ok) {
         /* No monotonic clock: attempt exactly once, never per-frame. */
         if(system_theme_last_attempt_s >= 0.0)
@@ -148,6 +156,35 @@ apply_material_palette(bool dark)
     system_light_palette.supports_mode = 1;
     system_dark_palette.supports_mode = 1;
 }
+
+#if defined(_WIN32)
+static int
+windows_system_theme_refresh(void)
+{
+    static const WCHAR personalize_key[] =
+        L"Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Themes\\\\Personalize";
+    DWORD use_light = 1;
+    DWORD size = sizeof(use_light);
+    LSTATUS status;
+
+    status = RegGetValueW(HKEY_CURRENT_USER, personalize_key,
+                          L"AppsUseLightTheme", RRF_RT_REG_DWORD,
+                          NULL, &use_light, &size);
+    if(status != ERROR_SUCCESS) {
+        size = sizeof(use_light);
+        status = RegGetValueW(HKEY_CURRENT_USER, personalize_key,
+                              L"SystemUsesLightTheme", RRF_RT_REG_DWORD,
+                              NULL, &use_light, &size);
+    }
+    if(status != ERROR_SUCCESS)
+        return 0;
+    apply_material_palette(use_light == 0);
+    snprintf(system_palette.name, sizeof(system_palette.name), "Windows");
+    snprintf(system_light_palette.name, sizeof(system_light_palette.name), "Windows");
+    snprintf(system_dark_palette.name, sizeof(system_dark_palette.name), "Windows");
+    return 1;
+}
+#endif
 
 #if defined(SYSTEM_THEME_GTK)
 static Color
@@ -1040,6 +1077,9 @@ RefreshSystemTheme(void)
     }
 #endif
     system_theme_refresh_count++;
+#if defined(_WIN32)
+    return windows_system_theme_refresh() != 0;
+#endif
     /* Prefer reading the theme CSS files directly: initializing GTK
        in-process while the app's SDL window and GL context are already live
        can corrupt the render context (GTK performs late global X

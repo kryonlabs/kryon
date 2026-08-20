@@ -1,6 +1,209 @@
 #include "desktop_tray.h"
 
-#if defined(KRYON_DESKTOP_TRAY_ENABLED)
+#if defined(_WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define TRAY_MESSAGE (WM_APP + 76)
+#define TRAY_ICON_ID 0x4b52
+#define TRAY_COMMAND_BASE 0x5100
+#define TRAY_COMMAND_MAX 256
+
+static HWND TrayWindow;
+static NOTIFYICONDATAW TrayIcon;
+static DesktopTrayMenuItem *TrayItems;
+static int TrayItemCount;
+static int TrayActivateAction;
+static int PendingAction;
+static int CommandActions[TRAY_COMMAND_MAX];
+static int CommandCount;
+static char TrayTitle[128] = "App";
+
+static void Utf8Wide(const char *src, WCHAR *dst, int count)
+{
+    if(dst == NULL || count <= 0) return;
+    dst[0] = 0;
+    if(src == NULL) return;
+    if(!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, src, -1, dst, count))
+        MultiByteToWideChar(CP_ACP, 0, src, -1, dst, count);
+    dst[count - 1] = 0;
+}
+
+static char *CopyString(const char *text)
+{
+    size_t length;
+    char *copy;
+    if(text == NULL) text = "";
+    length = strlen(text) + 1;
+    copy = (char *)malloc(length);
+    if(copy != NULL) memcpy(copy, text, length);
+    return copy;
+}
+
+static void FreeItems(DesktopTrayMenuItem *items, int count)
+{
+    int i;
+    for(i = 0; i < count; i++) {
+        free((char *)items[i].label);
+        FreeItems((DesktopTrayMenuItem *)items[i].children, items[i].child_count);
+    }
+    free(items);
+}
+
+static DesktopTrayMenuItem *CopyItems(const DesktopTrayMenuItem *items, int count)
+{
+    DesktopTrayMenuItem *copy;
+    int i;
+    if(items == NULL || count <= 0) return NULL;
+    copy = (DesktopTrayMenuItem *)calloc((size_t)count, sizeof(*copy));
+    if(copy == NULL) return NULL;
+    for(i = 0; i < count; i++) {
+        copy[i] = items[i];
+        copy[i].label = CopyString(items[i].label);
+        copy[i].children = CopyItems(items[i].children, items[i].child_count);
+    }
+    return copy;
+}
+
+static HMENU BuildMenu(const DesktopTrayMenuItem *items, int count)
+{
+    HMENU menu = CreatePopupMenu();
+    int i;
+    for(i = 0; i < count; i++) {
+        WCHAR label[160];
+        UINT flags = MF_STRING;
+        if(items[i].kind == DESKTOP_TRAY_MENU_ITEM_SEPARATOR) {
+            AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+            continue;
+        }
+        Utf8Wide(items[i].label, label, (int)(sizeof(label) / sizeof(label[0])));
+        if(!items[i].enabled) flags |= MF_GRAYED;
+        if(items[i].kind == DESKTOP_TRAY_MENU_ITEM_SUBMENU) {
+            HMENU child = BuildMenu(items[i].children, items[i].child_count);
+            AppendMenuW(menu, flags | MF_POPUP, (UINT_PTR)child, label);
+        } else if(CommandCount < TRAY_COMMAND_MAX) {
+            UINT command = TRAY_COMMAND_BASE + (UINT)CommandCount;
+            CommandActions[CommandCount++] = items[i].action;
+            AppendMenuW(menu, flags, command, label);
+        }
+    }
+    return menu;
+}
+
+static void ShowMenu(void)
+{
+    POINT point;
+    HMENU menu;
+    CommandCount = 0;
+    menu = BuildMenu(TrayItems, TrayItemCount);
+    GetCursorPos(&point);
+    SetForegroundWindow(TrayWindow);
+    TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+                   point.x, point.y, 0, TrayWindow, NULL);
+    PostMessageW(TrayWindow, WM_NULL, 0, 0);
+    DestroyMenu(menu);
+}
+
+static LRESULT CALLBACK TrayWindowProc(HWND window, UINT message,
+                                       WPARAM wparam, LPARAM lparam)
+{
+    if(message == TRAY_MESSAGE) {
+        UINT event = (UINT)lparam;
+        if(event == WM_LBUTTONUP || event == NIN_SELECT ||
+           event == NIN_KEYSELECT)
+            PendingAction = TrayActivateAction;
+        else if(event == WM_RBUTTONUP || event == WM_CONTEXTMENU)
+            ShowMenu();
+        return 0;
+    }
+    if(message == WM_COMMAND) {
+        UINT command = LOWORD(wparam);
+        if(command >= TRAY_COMMAND_BASE &&
+           command < TRAY_COMMAND_BASE + (UINT)CommandCount)
+            PendingAction = CommandActions[command - TRAY_COMMAND_BASE];
+        return 0;
+    }
+    return DefWindowProcW(window, message, wparam, lparam);
+}
+
+int InitDesktopTray(const DesktopTraySpec *spec)
+{
+    static const WCHAR class_name[] = L"KryonDesktopTrayWindow";
+    WNDCLASSEXW window_class;
+    HINSTANCE instance;
+    if(spec == NULL) return 0;
+    instance = GetModuleHandleW(NULL);
+    memset(&window_class, 0, sizeof(window_class));
+    window_class.cbSize = sizeof(window_class);
+    window_class.lpfnWndProc = TrayWindowProc;
+    window_class.hInstance = instance;
+    window_class.lpszClassName = class_name;
+    RegisterClassExW(&window_class);
+    TrayWindow = CreateWindowExW(WS_EX_TOOLWINDOW, class_name, L"", WS_POPUP,
+        0, 0, 0, 0, NULL, NULL, instance, NULL);
+    if(TrayWindow == NULL) return 0;
+    snprintf(TrayTitle, sizeof(TrayTitle), "%s", spec->title ? spec->title : "App");
+    TrayActivateAction = spec->activate_action;
+    SetDesktopTrayMenu(spec->menu_items, spec->menu_item_count);
+    memset(&TrayIcon, 0, sizeof(TrayIcon));
+    TrayIcon.cbSize = sizeof(TrayIcon);
+    TrayIcon.hWnd = TrayWindow;
+    TrayIcon.uID = TRAY_ICON_ID;
+    TrayIcon.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    TrayIcon.uCallbackMessage = TRAY_MESSAGE;
+    TrayIcon.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(32512));
+    if(TrayIcon.hIcon == NULL)
+        TrayIcon.hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(32512));
+    Utf8Wide(TrayTitle, TrayIcon.szTip, (int)(sizeof(TrayIcon.szTip) / sizeof(WCHAR)));
+    if(!Shell_NotifyIconW(NIM_ADD, &TrayIcon)) return 0;
+    TrayIcon.uVersion = NOTIFYICON_VERSION;
+    Shell_NotifyIconW(NIM_SETVERSION, &TrayIcon);
+    return 1;
+}
+
+void ShutdownDesktopTray(void)
+{
+    if(TrayWindow != NULL) Shell_NotifyIconW(NIM_DELETE, &TrayIcon);
+    FreeItems(TrayItems, TrayItemCount);
+    TrayItems = NULL; TrayItemCount = 0;
+    if(TrayWindow != NULL) DestroyWindow(TrayWindow);
+    TrayWindow = NULL;
+}
+
+int PollDesktopTrayAction(void)
+{
+    MSG message;
+    int action;
+    while(TrayWindow != NULL && PeekMessageW(&message, TrayWindow, 0, 0, PM_REMOVE))
+        { TranslateMessage(&message); DispatchMessageW(&message); }
+    action = PendingAction; PendingAction = 0; return action;
+}
+
+void SetDesktopTrayStatus(const char *text)
+{
+    if(TrayWindow == NULL) return;
+    Utf8Wide(text ? text : TrayTitle, TrayIcon.szTip,
+             (int)(sizeof(TrayIcon.szTip) / sizeof(WCHAR)));
+    TrayIcon.uFlags = NIF_TIP;
+    Shell_NotifyIconW(NIM_MODIFY, &TrayIcon);
+}
+
+void SetDesktopTrayMenu(const DesktopTrayMenuItem *items, int count)
+{
+    DesktopTrayMenuItem *copy = CopyItems(items, count);
+    FreeItems(TrayItems, TrayItemCount);
+    TrayItems = copy; TrayItemCount = copy != NULL ? count : 0;
+}
+
+void SetDesktopTrayActivateAction(int action) { TrayActivateAction = action; }
+void SetDesktopTrayIcon(const char *icon_path) { (void)icon_path; }
+
+#elif defined(KRYON_DESKTOP_TRAY_ENABLED)
 
 #include <SDL.h>
 #if defined(KRYON_TRAY_GTK_DL)
