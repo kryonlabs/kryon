@@ -290,7 +290,7 @@ ui_window_unregister(UIWindow *win)
             for(j = i; j < ui_window_count - 1; j++)
                 ui_windows[j] = ui_windows[j + 1];
             ui_window_count--;
-            return;
+            break;
         }
     }
 }
@@ -1335,3 +1335,4 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 }
 
 #endif
+
