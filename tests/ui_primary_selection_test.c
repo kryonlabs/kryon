@@ -1916,6 +1916,98 @@ main(void)
         state.mouse_sgr = 1;
         state.insert_mode = 1;
 
+        check_int("terminal mode set insert",
+                  TerminalPaneModeStateSetMode(&state, 4, 0),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal mode set insert value", state.insert_mode, 0);
+        check_int("terminal mode set newline",
+                  TerminalPaneModeStateSetMode(&state, 20, 1),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal mode set newline value", state.newline_mode, 1);
+        check_int("terminal private mode origin action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 6, 1),
+                  TERMINAL_PANE_MODE_ACTION_ORIGIN_CURSOR);
+        check_int("terminal private mode origin value", state.origin_mode, 1);
+
+        state.mouse_mode = 0;
+        check_int("terminal private mode mouse press set",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1000, 1),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal private mode mouse press value", state.mouse_mode,
+                  1000);
+        check_int("terminal private mode mouse button set",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1002, 1),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal private mode mouse button value", state.mouse_mode,
+                  1002);
+        check_int("terminal private mode inactive mouse reset",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1000, 0),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal private mode inactive mouse keeps value",
+                  state.mouse_mode, 1002);
+        check_int("terminal private mode active mouse reset",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1002, 0),
+                  TERMINAL_PANE_MODE_ACTION_NONE);
+        check_int("terminal private mode active mouse clears value",
+                  state.mouse_mode, 0);
+
+        state.mouse_utf8 = 0;
+        state.mouse_sgr = 0;
+        state.mouse_urxvt = 0;
+        state.mouse_pixels = 0;
+        (void)TerminalPaneModeStateSetPrivateMode(&state, 1005, 1);
+        check_int("terminal private mode utf8 encoding", state.mouse_utf8, 1);
+        (void)TerminalPaneModeStateSetPrivateMode(&state, 1006, 1);
+        check_int("terminal private mode sgr clears utf8", state.mouse_utf8,
+                  0);
+        check_int("terminal private mode sgr encoding", state.mouse_sgr, 1);
+        (void)TerminalPaneModeStateSetPrivateMode(&state, 1015, 1);
+        check_int("terminal private mode urxvt clears sgr", state.mouse_sgr,
+                  0);
+        check_int("terminal private mode urxvt encoding", state.mouse_urxvt,
+                  1);
+        (void)TerminalPaneModeStateSetPrivateMode(&state, 1016, 1);
+        check_int("terminal private mode pixel clears urxvt",
+                  state.mouse_urxvt, 0);
+        check_int("terminal private mode pixel encoding", state.mouse_pixels,
+                  1);
+
+        check_int("terminal private mode save cursor action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1048, 1),
+                  TERMINAL_PANE_MODE_ACTION_SAVE_CURSOR);
+        check_int("terminal private mode restore cursor action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1048, 0),
+                  TERMINAL_PANE_MODE_ACTION_RESTORE_CURSOR);
+        check_int("terminal private mode 1047 enter action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1047, 1),
+                  TERMINAL_PANE_MODE_ACTION_CLEAR_SCREEN);
+        check_int("terminal private mode 1047 enter alternate",
+                  state.alternate_screen, 1);
+        check_int("terminal private mode 1047 leave action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1047, 0),
+                  TERMINAL_PANE_MODE_ACTION_CLEAR_ALTERNATE);
+        check_int("terminal private mode 1047 leave alternate",
+                  state.alternate_screen, 0);
+        check_int("terminal private mode 1049 enter action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1049, 1),
+                  TERMINAL_PANE_MODE_ACTION_SAVE_CURSOR |
+                      TERMINAL_PANE_MODE_ACTION_CLEAR_SCREEN);
+        check_int("terminal private mode 1049 enter alternate",
+                  state.alternate_screen, 1);
+        check_int("terminal private mode 1049 leave action",
+                  TerminalPaneModeStateSetPrivateMode(&state, 1049, 0),
+                  TERMINAL_PANE_MODE_ACTION_CLEAR_ALTERNATE |
+                      TERMINAL_PANE_MODE_ACTION_RESTORE_CURSOR);
+        check_int("terminal private mode 1049 leave alternate",
+                  state.alternate_screen, 0);
+
+        state.bracketed_paste = 1;
+        state.mouse_mode = 1002;
+        state.mouse_sgr = 1;
+        state.mouse_pixels = 0;
+        state.insert_mode = 1;
+        state.newline_mode = 0;
+
         check_int("terminal mode report insert status",
                   TerminalPaneModeReportStatus(state, 0, 4), 1);
         check_int("terminal mode report newline reset",

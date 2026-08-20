@@ -257,6 +257,15 @@ typedef struct TerminalPaneModeState {
     int newline_mode;
 } TerminalPaneModeState;
 
+typedef enum TerminalPaneModeAction {
+    TERMINAL_PANE_MODE_ACTION_NONE = 0,
+    TERMINAL_PANE_MODE_ACTION_ORIGIN_CURSOR = 1,
+    TERMINAL_PANE_MODE_ACTION_SAVE_CURSOR = 2,
+    TERMINAL_PANE_MODE_ACTION_RESTORE_CURSOR = 4,
+    TERMINAL_PANE_MODE_ACTION_CLEAR_SCREEN = 8,
+    TERMINAL_PANE_MODE_ACTION_CLEAR_ALTERNATE = 16
+} TerminalPaneModeAction;
+
 typedef struct TerminalPaneClipboard {
     UIClipboardBuffer *clipboard;
     int bracketed_paste;
@@ -488,6 +497,10 @@ int EncodeTerminalPaneMouse(char *out, int out_size, int button, int col,
                             TerminalPaneMouseMode mode);
 int TerminalPaneModeReportStatus(TerminalPaneModeState state, int private_mode,
                                  int mode);
+int TerminalPaneModeStateSetMode(TerminalPaneModeState *state, int mode,
+                                 int enabled);
+int TerminalPaneModeStateSetPrivateMode(TerminalPaneModeState *state, int mode,
+                                        int enabled);
 int FormatTerminalPaneModeReport(char *out, int out_size,
                                  TerminalPaneModeState state,
                                  int private_mode, int mode);
