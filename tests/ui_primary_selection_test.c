@@ -1629,6 +1629,47 @@ main(void)
                   FormatTerminalPaneModeReport(report, 4, state, 1, 2004),
                   0);
         check_str("terminal mode report truncates clears", report, "");
+
+        check_int("terminal status report ready",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 0, 5, 2, 4),
+                  4);
+        check_str("terminal status report ready text", report, "\x1b[0n");
+        check_int("terminal status report cursor",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 0, 6, 2, 4),
+                  6);
+        check_str("terminal status report cursor text", report, "\x1b[3;5R");
+        check_int("terminal private status report cursor",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 1, 6, 2, 4),
+                  7);
+        check_str("terminal private status report cursor text", report,
+                  "\x1b[?3;5R");
+        check_int("terminal private status report printer",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 1, 15, 0, 0),
+                  6);
+        check_str("terminal private status report printer text", report,
+                  "\x1b[?10n");
+        check_int("terminal private status report locator",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 1, 26, 0, 0),
+                  12);
+        check_str("terminal private status report locator text", report,
+                  "\x1b[?27;1;0;0n");
+        report[0] = 'x';
+        check_int("terminal status report unsupported",
+                  FormatTerminalPaneDeviceStatusReport(
+                      report, (int)sizeof(report), 0, 15, 0, 0),
+                  0);
+        check_str("terminal status report unsupported clears", report, "");
+        report[0] = 'x';
+        check_int("terminal status report truncates",
+                  FormatTerminalPaneDeviceStatusReport(report, 4, 1, 26,
+                                                       0, 0),
+                  0);
+        check_str("terminal status report truncates clears", report, "");
     }
 
     return 0;

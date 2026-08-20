@@ -425,6 +425,9 @@ int TerminalPaneModeReportStatus(TerminalPaneModeState state, int private_mode,
 int FormatTerminalPaneModeReport(char *out, int out_size,
                                  TerminalPaneModeState state,
                                  int private_mode, int mode);
+int FormatTerminalPaneDeviceStatusReport(char *out, int out_size,
+                                         int private_mode, int request,
+                                         int cursor_row, int cursor_col);
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
