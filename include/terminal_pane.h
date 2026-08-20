@@ -210,6 +210,15 @@ typedef enum TerminalPaneKeyModifier {
     TERMINAL_PANE_MOD_CTRL = 4
 } TerminalPaneKeyModifier;
 
+#define TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE 512
+
+typedef struct TerminalPaneInputState {
+    int last_control_keys[TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE];
+} TerminalPaneInputState;
+
+typedef int (*TerminalPaneInputWriteFn)(void *userdata, const char *text,
+                                        int length);
+
 typedef enum TerminalPaneMouseButton {
     TERMINAL_PANE_MOUSE_LEFT = 0,
     TERMINAL_PANE_MOUSE_MIDDLE = 1,
@@ -229,6 +238,13 @@ typedef struct TerminalPaneMappedKey {
     int key;
     int mods;
 } TerminalPaneMappedKey;
+
+typedef struct TerminalPaneInput {
+    TerminalPaneKeyMode mode;
+    TerminalPaneInputWriteFn write_text;
+    void *userdata;
+    TerminalPaneInputState *state;
+} TerminalPaneInput;
 
 typedef struct TerminalPaneMouseMode {
     int mode;
@@ -521,6 +537,14 @@ int EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
                           TerminalPaneKeyMode mode);
 int EncodeTerminalPaneKeypad(char *out, int out_size, char key,
                              TerminalPaneKeyMode mode);
+int GetTerminalPaneInputModifiers(void);
+TerminalPaneInput MakeTerminalPaneInput(TerminalPaneKeyMode mode,
+                                        TerminalPaneInputWriteFn write_text,
+                                        void *userdata,
+                                        TerminalPaneInputState *state);
+int SendTerminalPaneControlInput(TerminalPaneInput input, int platform_key,
+                                 int mods);
+int PumpTerminalPaneKeyboardInput(TerminalPaneInput input);
 int EncodeTerminalPaneMouse(char *out, int out_size, int button, int col,
                             int row, int pixel_x, int pixel_y, int pressed,
                             int motion, int mods,

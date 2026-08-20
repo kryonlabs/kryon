@@ -3,6 +3,53 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct TerminalPaneControlKeyMap {
+    int key;
+    unsigned int codepoint;
+} TerminalPaneControlKeyMap;
+
+static const TerminalPaneControlKeyMap terminal_pane_control_keys[] = {
+    {KEY_SPACE, ' '},
+    {KEY_TWO, '2'},
+    {KEY_A, 'a'},
+    {KEY_B, 'b'},
+    {KEY_C, 'c'},
+    {KEY_D, 'd'},
+    {KEY_E, 'e'},
+    {KEY_F, 'f'},
+    {KEY_G, 'g'},
+    {KEY_H, 'h'},
+    {KEY_I, 'i'},
+    {KEY_J, 'j'},
+    {KEY_K, 'k'},
+    {KEY_L, 'l'},
+    {KEY_M, 'm'},
+    {KEY_N, 'n'},
+    {KEY_O, 'o'},
+    {KEY_P, 'p'},
+    {KEY_Q, 'q'},
+    {KEY_R, 'r'},
+    {KEY_S, 's'},
+    {KEY_T, 't'},
+    {KEY_U, 'u'},
+    {KEY_V, 'v'},
+    {KEY_W, 'w'},
+    {KEY_X, 'x'},
+    {KEY_Y, 'y'},
+    {KEY_Z, 'z'},
+    {KEY_LEFT_BRACKET, '['},
+    {KEY_THREE, '3'},
+    {KEY_BACKSLASH, '\\'},
+    {KEY_FOUR, '4'},
+    {KEY_RIGHT_BRACKET, ']'},
+    {KEY_FIVE, '5'},
+    {KEY_SIX, '6'},
+    {KEY_SLASH, '/'},
+    {KEY_MINUS, '-'},
+    {KEY_SEVEN, '7'},
+    {KEY_EIGHT, '8'}
+};
+
 static int
 terminal_pane_key_finish(char *out, int out_size, int used)
 {
@@ -450,4 +497,250 @@ EncodeTerminalPaneKeypad(char *out, int out_size, char key,
     out[1] = 'O';
     out[2] = app;
     return terminal_pane_key_finish(out, out_size, 3);
+}
+
+static int
+terminal_pane_input_write(TerminalPaneInput input, const char *text, int len)
+{
+    if(input.write_text == NULL || text == NULL || len <= 0)
+        return 0;
+    return input.write_text(input.userdata, text, len);
+}
+
+static int
+terminal_pane_input_write_codepoint(TerminalPaneInput input,
+                                    unsigned int codepoint, int mods)
+{
+    char seq[64];
+    int len = EncodeTerminalPaneCodepoint(seq, (int)sizeof(seq), codepoint,
+                                          mods, input.mode);
+
+    return terminal_pane_input_write(input, seq, len);
+}
+
+static int
+terminal_pane_input_write_key(TerminalPaneInput input, int key, int mods)
+{
+    char seq[64];
+    int len = EncodeTerminalPaneKey(seq, (int)sizeof(seq), key, mods,
+                                    input.mode);
+
+    return terminal_pane_input_write(input, seq, len);
+}
+
+static int
+terminal_pane_input_write_function_key(TerminalPaneInput input,
+                                       int function_index, int mods)
+{
+    TerminalPaneMappedKey mapped =
+        MapTerminalPaneFunctionKey(function_index, mods);
+
+    if(mapped.key == 0)
+        return 0;
+    return terminal_pane_input_write_key(input, mapped.key, mapped.mods);
+}
+
+static int
+terminal_pane_input_write_keypad(TerminalPaneInput input, char key)
+{
+    char seq[16];
+    int len = EncodeTerminalPaneKeypad(seq, (int)sizeof(seq), key,
+                                       input.mode);
+
+    return terminal_pane_input_write(input, seq, len);
+}
+
+static int
+terminal_pane_input_key_pressed_or_repeat(int key, const int *queued)
+{
+    if(key > 0 && key < TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE && queued != NULL &&
+       queued[key])
+        return 1;
+    return IsKeyPressed(key) || IsKeyPressedRepeat(key);
+}
+
+static int
+terminal_pane_input_key_down_or_queued(int key, const int *queued)
+{
+    return IsKeyDown(key) ||
+           (key > 0 && key < TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE &&
+            queued != NULL && queued[key]);
+}
+
+int
+GetTerminalPaneInputModifiers(void)
+{
+    int mods = 0;
+
+    if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+        mods |= TERMINAL_PANE_MOD_SHIFT;
+    if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
+        mods |= TERMINAL_PANE_MOD_ALT;
+    if(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))
+        mods |= TERMINAL_PANE_MOD_CTRL;
+    return mods;
+}
+
+TerminalPaneInput
+MakeTerminalPaneInput(TerminalPaneKeyMode mode,
+                      TerminalPaneInputWriteFn write_text, void *userdata,
+                      TerminalPaneInputState *state)
+{
+    TerminalPaneInput input = {0};
+
+    input.mode = mode;
+    input.write_text = write_text;
+    input.userdata = userdata;
+    input.state = state;
+    return input;
+}
+
+int
+SendTerminalPaneControlInput(TerminalPaneInput input, int platform_key,
+                             int mods)
+{
+    int i;
+
+    for(i = 0; i < (int)(sizeof(terminal_pane_control_keys) /
+                         sizeof(terminal_pane_control_keys[0]));
+        i++) {
+        if(terminal_pane_control_keys[i].key == platform_key) {
+            return terminal_pane_input_write_codepoint(
+                input, terminal_pane_control_keys[i].codepoint, mods);
+        }
+    }
+    return 0;
+}
+
+int
+PumpTerminalPaneKeyboardInput(TerminalPaneInput input)
+{
+    int queued[TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE] = {0};
+    int mods = GetTerminalPaneInputModifiers();
+    int wrote = 0;
+    int control_wrote = 0;
+    int keypad_wrote = 0;
+    int ch;
+    int key;
+    int i;
+    static const int function_keys[] = {
+        KEY_F1, KEY_F2,  KEY_F3,  KEY_F4,  KEY_F5,  KEY_F6,
+        KEY_F7, KEY_F8,  KEY_F9,  KEY_F10, KEY_F11, KEY_F12
+    };
+    static const struct {
+        int key;
+        int terminal_key;
+    } special_keys[] = {
+        {KEY_BACKSPACE, TERMINAL_PANE_KEY_BACKSPACE},
+        {KEY_TAB, TERMINAL_PANE_KEY_TAB},
+        {KEY_ESCAPE, TERMINAL_PANE_KEY_ESCAPE},
+        {KEY_UP, TERMINAL_PANE_KEY_UP},
+        {KEY_DOWN, TERMINAL_PANE_KEY_DOWN},
+        {KEY_RIGHT, TERMINAL_PANE_KEY_RIGHT},
+        {KEY_LEFT, TERMINAL_PANE_KEY_LEFT},
+        {KEY_HOME, TERMINAL_PANE_KEY_HOME},
+        {KEY_END, TERMINAL_PANE_KEY_END},
+        {KEY_PAGE_UP, TERMINAL_PANE_KEY_PAGE_UP},
+        {KEY_PAGE_DOWN, TERMINAL_PANE_KEY_PAGE_DOWN},
+        {KEY_DELETE, TERMINAL_PANE_KEY_DELETE},
+        {KEY_INSERT, TERMINAL_PANE_KEY_INSERT}
+    };
+    static const struct {
+        int key;
+        char text;
+    } keypad_keys[] = {
+        {KEY_KP_0, '0'},
+        {KEY_KP_1, '1'},
+        {KEY_KP_2, '2'},
+        {KEY_KP_3, '3'},
+        {KEY_KP_4, '4'},
+        {KEY_KP_5, '5'},
+        {KEY_KP_6, '6'},
+        {KEY_KP_7, '7'},
+        {KEY_KP_8, '8'},
+        {KEY_KP_9, '9'},
+        {KEY_KP_DECIMAL, '.'},
+        {KEY_KP_DIVIDE, '/'},
+        {KEY_KP_MULTIPLY, '*'},
+        {KEY_KP_SUBTRACT, '-'},
+        {KEY_KP_ADD, '+'},
+        {KEY_KP_EQUAL, '='},
+        {KEY_KP_ENTER, '\r'}
+    };
+
+    if(input.write_text == NULL)
+        return 0;
+    key = GetKeyPressed();
+    while(key > 0) {
+        if(key > 0 && key < TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE)
+            queued[key] = 1;
+        key = GetKeyPressed();
+    }
+
+    if(terminal_pane_input_key_pressed_or_repeat(KEY_ENTER, queued) ||
+       (!input.mode.application_keypad &&
+        terminal_pane_input_key_pressed_or_repeat(KEY_KP_ENTER, queued))) {
+        if(terminal_pane_input_write_key(input, TERMINAL_PANE_KEY_ENTER, mods))
+            wrote = 1;
+    }
+    for(i = 0; i < (int)(sizeof(special_keys) / sizeof(special_keys[0]));
+        i++) {
+        if(terminal_pane_input_key_pressed_or_repeat(special_keys[i].key,
+                                                     queued)) {
+            if(terminal_pane_input_write_key(input, special_keys[i].terminal_key,
+                                             mods))
+                wrote = 1;
+        }
+    }
+    for(i = 0; i < (int)(sizeof(function_keys) / sizeof(function_keys[0]));
+        i++) {
+        if(terminal_pane_input_key_pressed_or_repeat(function_keys[i],
+                                                     queued)) {
+            if(terminal_pane_input_write_function_key(input, i + 1, mods))
+                wrote = 1;
+        }
+    }
+
+    if(input.mode.application_keypad) {
+        for(i = 0; i < (int)(sizeof(keypad_keys) / sizeof(keypad_keys[0]));
+            i++) {
+            if(terminal_pane_input_key_pressed_or_repeat(keypad_keys[i].key,
+                                                         queued)) {
+                if(terminal_pane_input_write_keypad(input, keypad_keys[i].text))
+                    keypad_wrote = 1;
+            }
+        }
+        if(keypad_wrote)
+            return 1;
+    }
+
+    if(input.state != NULL && (mods & TERMINAL_PANE_MOD_CTRL) != 0 &&
+       (mods & TERMINAL_PANE_MOD_SHIFT) == 0) {
+        for(i = 0; i < (int)(sizeof(terminal_pane_control_keys) /
+                             sizeof(terminal_pane_control_keys[0]));
+            i++) {
+            int control_key = terminal_pane_control_keys[i].key;
+            int down =
+                terminal_pane_input_key_down_or_queued(control_key, queued);
+
+            if(down && !input.state->last_control_keys[control_key]) {
+                if(SendTerminalPaneControlInput(input, control_key, mods))
+                    control_wrote = 1;
+            }
+            input.state->last_control_keys[control_key] = down;
+        }
+        if(control_wrote)
+            return 1;
+    } else if(input.state != NULL) {
+        memset(input.state->last_control_keys, 0,
+               sizeof(input.state->last_control_keys));
+    }
+
+    ch = GetCharPressed();
+    while(ch > 0) {
+        if(terminal_pane_input_write_codepoint(input, (unsigned int)ch, mods))
+            wrote = 1;
+        ch = GetCharPressed();
+    }
+    return wrote;
 }

@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "kry_inject.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1923,6 +1924,55 @@ main(void)
                                            mode),
                   3);
         check_str("terminal keypad enter application text", seq, "\x1bOM");
+    }
+
+    {
+        char out[512] = {0};
+        TerminalPaneKeyMode mode = {0};
+        TerminalPaneInputState state = {0};
+        TerminalPaneInput input =
+            MakeTerminalPaneInput(mode, capture_paste_write, out, &state);
+
+        KryonInjectReset();
+        KryonInjectText("ab");
+        KryonInjectPump();
+        check_int("terminal input text wrote",
+                  PumpTerminalPaneKeyboardInput(input), 1);
+        check_str("terminal input text", out, "ab");
+
+        out[0] = '\0';
+        KryonInjectReset();
+        KryonInjectKeyTap(KEY_F5);
+        KryonInjectPump();
+        check_int("terminal input function wrote",
+                  PumpTerminalPaneKeyboardInput(input), 1);
+        check_str("terminal input function", out, "\x1b[15~");
+
+        out[0] = '\0';
+        KryonInjectReset();
+        KryonInjectKey(KEY_LEFT_CONTROL, 1);
+        KryonInjectKeyTap(KEY_C);
+        KryonInjectPump();
+        check_int("terminal input ctrl c wrote",
+                  PumpTerminalPaneKeyboardInput(input), 1);
+        check_bytes("terminal input ctrl c", out, (int)strlen(out), "\x03",
+                    1);
+        KryonInjectPump();
+        check_int("terminal input ctrl c repeats once",
+                  PumpTerminalPaneKeyboardInput(input), 0);
+        KryonInjectKey(KEY_LEFT_CONTROL, 0);
+        KryonInjectPump();
+        (void)PumpTerminalPaneKeyboardInput(input);
+
+        out[0] = '\0';
+        mode.application_keypad = 1;
+        input = MakeTerminalPaneInput(mode, capture_paste_write, out, &state);
+        KryonInjectReset();
+        KryonInjectKeyTap(KEY_KP_7);
+        KryonInjectPump();
+        check_int("terminal input keypad wrote",
+                  PumpTerminalPaneKeyboardInput(input), 1);
+        check_str("terminal input keypad", out, "\x1bOw");
     }
 
     {
