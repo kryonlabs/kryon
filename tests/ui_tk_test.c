@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "kry_inject.h"
 #include "kryon_test.h"
 #include "theme.h"
 #include "ui_inspect.h"
@@ -14,6 +15,46 @@ check_int(const char *name, int got, int want)
         return;
     fprintf(stderr, "%s: got %d want %d\n", name, got, want);
     exit(1);
+}
+
+static void
+test_menu_bar_switches_while_popup_captures_input(void)
+{
+    static const UIMenuItem file_items[] = {
+        {UI_MENU_COMMAND, "Open", "Ctrl+O", 101, 0, 0, NULL, 0}
+    };
+    static const UIMenuItem edit_items[] = {
+        {UI_MENU_COMMAND, "Copy", "Ctrl+C", 201, 0, 0, NULL, 0}
+    };
+    static const UIMenu menus[] = {
+        {{0, 0, 0, 0}, "File", file_items, 1},
+        {{0, 0, 0, 0}, "Edit", edit_items, 1}
+    };
+    Rectangle bounds = {0, 0, 240, 28};
+    int open_index = 0;
+    int font;
+    int edit_x;
+    UIMenuBarResult result;
+
+    KryonInjectReset();
+    BeginUIFrame(640, 480, 1.0f);
+    font = GetUIFontSize();
+    edit_x = ScaleUIPx(4) + MeasureUIText("File", font) + ScaleUIPx(24) +
+             ScaleUIPx(2) + ScaleUIPx(8);
+    EndUIFrame();
+
+    KryonInjectTap((float)edit_x, 14.0f);
+    KryonInjectPump();
+    KryonInjectPump();
+
+    BeginUIFrame(640, 480, 1.0f);
+    PushUIInputCapture((Rectangle){0, 28, 180, 64}, 1);
+    result = MenuBar(700, bounds, menus, 2, &open_index);
+    EndUIFrame();
+
+    check_int("menu bar switches over popup capture", open_index, 1);
+    check_int("menu bar result switches over popup capture",
+              result.open_index, 1);
 }
 
 int
@@ -138,6 +179,7 @@ main(void)
 
     check_int("topmost hit", UICanvasHitTest((Vector2){15, 15}, hits, 3), 1);
     check_int("miss", UICanvasHitTest((Vector2){80, 80}, hits, 3), -1);
+    test_menu_bar_switches_while_popup_captures_input();
 
     {
         int sx = 10;
