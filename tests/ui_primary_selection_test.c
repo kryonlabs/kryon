@@ -39,5 +39,35 @@ main(void)
     check_str("primary selection resets", GetUIPrimarySelectionTextValue(),
               "primary");
 
+    {
+        UIClipboardBuffer buffer;
+
+        InitUIClipboardBuffer(&buffer, "seed");
+        check_str("clipboard buffer init", GetUIClipboardBufferText(&buffer),
+                  "seed");
+        check_int("clipboard buffer init pending",
+                  UIClipboardBufferHasPendingWrite(&buffer), 0);
+
+        check_int("clipboard buffer request",
+                  RequestUIClipboardBufferWrite(&buffer, "shared"), 1);
+        check_str("clipboard buffer request text",
+                  GetUIClipboardBufferText(&buffer), "shared");
+        check_int("clipboard buffer request pending",
+                  UIClipboardBufferHasPendingWrite(&buffer), 1);
+
+        check_int("clipboard buffer flush",
+                  FlushUIClipboardBufferToHost(&buffer), 1);
+        check_str("clipboard buffer host text", GetUIClipboardTextValue(),
+                  "shared");
+        check_int("clipboard buffer flush pending",
+                  UIClipboardBufferHasPendingWrite(&buffer), 0);
+
+        SetUIClipboardTextValue("host");
+        check_int("clipboard buffer host sync",
+                  SyncUIClipboardBufferFromHost(&buffer), 1);
+        check_str("clipboard buffer synced text",
+                  GetUIClipboardBufferText(&buffer), "host");
+    }
+
     return 0;
 }

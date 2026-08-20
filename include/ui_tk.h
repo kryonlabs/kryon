@@ -3,6 +3,11 @@
 
 #include "kryon_compat.generated.h"
 
+#include <stdio.h>
+#include <string.h>
+
+#define UI_CLIPBOARD_BUFFER_SIZE 4096
+
 typedef enum {
     UI_SIDE_TOP,
     UI_SIDE_BOTTOM,
@@ -59,6 +64,11 @@ typedef struct {
     int activated_id;
     int open_index;
 } UIMenuBarResult;
+
+typedef struct {
+    char text[UI_CLIPBOARD_BUFFER_SIZE];
+    int pending;
+} UIClipboardBuffer;
 
 typedef struct {
     int id;
@@ -304,4 +314,93 @@ int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
 int SetUIPrimarySelectionTextValue(const char *text);
 const char *GetUIPrimarySelectionTextValue(void);
+
+static inline int
+UIClipboardBufferCopyText(char *dst, int dst_size, const char *text)
+{
+    int changed;
+
+    if(dst == NULL || dst_size <= 0)
+        return 0;
+    if(text == NULL)
+        text = "";
+    changed = strcmp(dst, text) != 0;
+    snprintf(dst, (size_t)dst_size, "%s", text);
+    return changed;
+}
+
+static inline void
+InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text)
+{
+    if(buffer == NULL)
+        return;
+    buffer->text[0] = '\0';
+    buffer->pending = 0;
+    (void)UIClipboardBufferCopyText(buffer->text, (int)sizeof(buffer->text),
+                                    text);
+}
+
+static inline int
+SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text)
+{
+    int changed;
+
+    if(buffer == NULL)
+        return 0;
+    changed = UIClipboardBufferCopyText(buffer->text,
+                                        (int)sizeof(buffer->text), text);
+    buffer->pending = 0;
+    return changed;
+}
+
+static inline int
+RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text)
+{
+    int changed;
+    int was_pending;
+
+    if(buffer == NULL)
+        return 0;
+    was_pending = buffer->pending;
+    changed = UIClipboardBufferCopyText(buffer->text,
+                                        (int)sizeof(buffer->text), text);
+    buffer->pending = 1;
+    return changed || !was_pending;
+}
+
+static inline const char *
+GetUIClipboardBufferText(const UIClipboardBuffer *buffer)
+{
+    if(buffer == NULL)
+        return "";
+    return buffer->text;
+}
+
+static inline int
+UIClipboardBufferHasPendingWrite(const UIClipboardBuffer *buffer)
+{
+    return buffer != NULL && buffer->pending;
+}
+
+static inline int
+SyncUIClipboardBufferFromHost(UIClipboardBuffer *buffer)
+{
+    const char *text;
+
+    if(buffer == NULL || buffer->pending)
+        return 0;
+    text = GetUIClipboardTextValue();
+    return UIClipboardBufferCopyText(buffer->text,
+                                     (int)sizeof(buffer->text), text);
+}
+
+static inline int
+FlushUIClipboardBufferToHost(UIClipboardBuffer *buffer)
+{
+    if(buffer == NULL || !buffer->pending)
+        return 0;
+    SetUIClipboardTextValue(buffer->text);
+    buffer->pending = 0;
+    return 1;
+}
 #endif
