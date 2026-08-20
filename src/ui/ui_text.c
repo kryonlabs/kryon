@@ -60,6 +60,18 @@ static int g_ui_active_font = -1;
 static int g_ui_default_font_attempted = 0;
 static Font g_ui_italic_font = {0};
 static int g_ui_italic_font_attempted = 0;
+
+/* Trace flag resolved once: the draw loops check it per glyph, and a
+ * getenv() per glyph is a linear scan of the whole environment block. */
+static int g_ui_text_trace = -1;
+static int
+ui_text_trace_enabled(void)
+{
+    if(g_ui_text_trace < 0)
+        g_ui_text_trace = getenv("INBE_TEXT_TRACE") != NULL;
+    return g_ui_text_trace;
+}
+
 static int g_ui_text_selectable_stack[16];
 static int g_ui_text_selectable_stack_count = 0;
 static int g_ui_text_selectable = 1;
@@ -857,7 +869,7 @@ MeasureUIText(const char *text, int font_size)
         if(codepoint == '\n')
             break;
         glyph_font = font_for_codepoint(codepoint, font_size);
-        if(getenv("INBE_TEXT_TRACE") != NULL) {
+        if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
@@ -930,7 +942,7 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
         if(i + codepoint_byte_count > byte_len)
             break;
         glyph_font = font_for_codepoint(codepoint, font_size);
-        if(getenv("INBE_TEXT_TRACE") != NULL) {
+        if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
@@ -964,7 +976,7 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
         if(i + codepoint_byte_count > byte_len)
             return i;
         glyph_font = font_for_codepoint(codepoint, font_size);
-        if(getenv("INBE_TEXT_TRACE") != NULL) {
+        if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
@@ -1223,7 +1235,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
             break;
 
         glyph_font = font_for_codepoint(codepoint, font_size);
-        if(getenv("INBE_TEXT_TRACE") != NULL) {
+        if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
@@ -1233,7 +1245,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         glyph = UIFontGlyph(glyph_font, codepoint);
         src = UIFontAtlasRec(glyph_font, codepoint);
 
-        if(getenv("INBE_TEXT_TRACE") != NULL && i == 0) {
+        if(ui_text_trace_enabled() && i == 0) {
             TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
                      text, font_size, glyph_font.baseSize, scale, cursor_x, y,
                      glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,
@@ -1523,7 +1535,7 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
         glyph = UIFontGlyph(glyph_font, codepoint);
         src = UIFontAtlasRec(glyph_font, codepoint);
 
-        if(getenv("INBE_TEXT_TRACE") != NULL && i == 0) {
+        if(ui_text_trace_enabled() && i == 0) {
             TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
                      text, font_size, glyph_font.baseSize, scale, cursor_x, y,
                      glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,

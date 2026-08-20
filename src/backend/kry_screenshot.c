@@ -50,11 +50,23 @@ static unsigned char *g_shot_buf = NULL;
 static int g_shot_w = 0;
 static int g_shot_h = 0;
 
+/* Resolved once: EndDrawing runs every frame and getenv() scans the whole
+ * environment block each time. */
+static int g_shot_armed = -1;
+static int
+kry_shot_armed(void)
+{
+    if(g_shot_armed < 0)
+        g_shot_armed = getenv("KRYON_SHOT_ARM") != NULL ||
+                       getenv("INBE_SHOT_ARM") != NULL;
+    return g_shot_armed;
+}
+
 void EndDrawing(void)
 {
     if(KryonRaylibBackend_EndDrawing == NULL)
         return; /* non-raylib link: nothing to swap */
-    if(getenv("KRYON_SHOT_ARM") == NULL && getenv("INBE_SHOT_ARM") == NULL) {
+    if(!kry_shot_armed()) {
         KryonRaylibBackend_EndDrawing();
         kry_event_wait_after_frame();
         return;
