@@ -238,3 +238,15 @@ TerminalPaneClipboardRunCommand(TerminalPaneClipboardController controller,
         *controller.scroll_offset = 0;
     return result;
 }
+
+TerminalPaneClipboardCommandResult
+TerminalPaneClipboardRunSimpleCommand(TerminalPaneClipboard clipboard,
+                                      int *scroll_offset,
+                                      TerminalPaneClipboardCommand command,
+                                      const char *text)
+{
+    return TerminalPaneClipboardRunCommand(
+        MakeTerminalPaneClipboardController(clipboard, NULL, NULL, NULL, NULL,
+                                            0, 0, scroll_offset),
+        command, text);
+}

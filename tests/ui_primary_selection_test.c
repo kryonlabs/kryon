@@ -786,6 +786,20 @@ main(void)
                               result.wrote_input, 0);
                     check_int("terminal pane run command sync keeps scroll",
                               scroll_offset, 11);
+                    scroll_offset = 7;
+                    paste[0] = '\0';
+                    result = TerminalPaneClipboardRunSimpleCommand(
+                        clipboard, &scroll_offset,
+                        TERMINAL_PANE_CLIPBOARD_COMMAND_PASTE_TEXT,
+                        "simple paste");
+                    check_int("terminal pane simple command performed",
+                              result.performed, 12);
+                    check_int("terminal pane simple command wrote input",
+                              result.wrote_input, 1);
+                    check_int("terminal pane simple command reset scroll",
+                              scroll_offset, 0);
+                    check_str("terminal pane simple command text", paste,
+                              "simple paste");
                 }
 
                 SetUIClipboardTextValue("command host");

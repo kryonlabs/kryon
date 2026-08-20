@@ -535,6 +535,9 @@ int TerminalPaneClipboardPerformCommand(
 TerminalPaneClipboardCommandResult TerminalPaneClipboardRunCommand(
     TerminalPaneClipboardController controller,
     TerminalPaneClipboardCommand command, const char *text);
+TerminalPaneClipboardCommandResult TerminalPaneClipboardRunSimpleCommand(
+    TerminalPaneClipboard clipboard, int *scroll_offset,
+    TerminalPaneClipboardCommand command, const char *text);
 int TerminalPaneClipboardCommandWritesInput(
     TerminalPaneClipboardCommand command);
 int TerminalPaneClipboardUpdatePrimarySelection(
