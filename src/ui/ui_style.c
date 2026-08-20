@@ -164,20 +164,43 @@ ui_material_tone(Color base, int light_delta, int dark_delta)
 UIMaterialScheme
 ui_material_scheme(void)
 {
+    /* Every themed widget asks for the scheme on every frame (the Go
+     * bindings fetch it per draw call). The computation is pure given the
+     * current theme colors and dark mode, so memoize it on those inputs
+     * instead of re-deriving tones and dark-mode queries each time. */
+    static UIMaterialScheme cache;
+    static int cache_valid = 0;
+    static Color key_bg, key_surface, key_text, key_circle, key_button;
+    static int key_dark;
+    Color input_surface = c_surface.a != 0 ? c_surface : c_bg;
+    int dark = GetEffectiveThemeDarkMode();
     UIMaterialScheme scheme;
     Color disabled = c_text;
+
+    if(cache_valid && dark == key_dark &&
+       key_bg.r == c_bg.r && key_bg.g == c_bg.g && key_bg.b == c_bg.b &&
+       key_bg.a == c_bg.a &&
+       key_surface.r == input_surface.r && key_surface.g == input_surface.g &&
+       key_surface.b == input_surface.b && key_surface.a == input_surface.a &&
+       key_text.r == c_text.r && key_text.g == c_text.g &&
+       key_text.b == c_text.b && key_text.a == c_text.a &&
+       key_circle.r == c_circle.r && key_circle.g == c_circle.g &&
+       key_circle.b == c_circle.b && key_circle.a == c_circle.a &&
+       key_button.r == c_button.r && key_button.g == c_button.g &&
+       key_button.b == c_button.b && key_button.a == c_button.a)
+        return cache;
 
     scheme.primary = c_circle;
     scheme.on_primary = ui_material_on_color(scheme.primary);
     scheme.secondary = c_button;
     scheme.on_secondary = ui_material_on_color(scheme.secondary);
-    scheme.surface = c_surface.a != 0 ? c_surface : c_bg;
+    scheme.surface = input_surface;
     scheme.on_surface = c_text;
     scheme.surface_container = ui_material_tone(c_bg, 4, 10);
     scheme.surface_variant = ui_material_tone(c_bg, 10, 18);
     scheme.on_surface_variant = ui_material_tone(c_text, 34, 28);
     scheme.outline = ui_material_tone(c_bg, 44, 42);
-    scheme.error = GetEffectiveThemeDarkMode()
+    scheme.error = dark
                        ? (Color){0xF2, 0xB8, 0xB5, 0xFF}
                        : (Color){0xBA, 0x1A, 0x1A, 0xFF};
     scheme.on_error = ui_material_on_color(scheme.error);
@@ -185,6 +208,15 @@ ui_material_scheme(void)
     scheme.disabled_container.a = 96;
     disabled.a = 96;
     scheme.disabled_content = disabled;
+
+    cache = scheme;
+    cache_valid = 1;
+    key_bg = c_bg;
+    key_surface = input_surface;
+    key_text = c_text;
+    key_circle = c_circle;
+    key_button = c_button;
+    key_dark = dark;
     return scheme;
 }
 
