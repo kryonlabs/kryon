@@ -1009,12 +1009,37 @@ main(void)
         check_int("osc title icon target window", window, 0);
         check_int("osc title icon target icon", icon, 1);
 
+        check_int("osc title sanitizer",
+                  CopyTerminalPaneTitleText(title_report,
+                                            (int)sizeof(title_report),
+                                            "Bad\nTitle\tOK\x1bno\a"),
+                  1);
+        check_str("osc title sanitizer text", title_report,
+                  "BadTitle\tOKno");
+        check_int("osc title sanitizer empty",
+                  CopyTerminalPaneTitleText(title_report,
+                                            (int)sizeof(title_report),
+                                            "\a\x1b\n"),
+                  1);
+        check_str("osc title sanitizer empty text", title_report, "");
+        title_report[0] = 'x';
+        check_int("osc title sanitizer small",
+                  CopyTerminalPaneTitleText(title_report, 4,
+                                            "Too long"),
+                  0);
+        check_str("osc title sanitizer small clears", title_report, "");
+
         len = FormatTerminalPaneOSCTitleReport(
             title_report, (int)sizeof(title_report), 0,
             "Clean\a\x1bName\tOk");
         check_int("osc title report len", len, 17);
         check_str("osc title report", title_report,
                   "\x1b]lCleanName\tOk\x1b\\");
+        len = FormatTerminalPaneOSCTitleReport(
+            title_report, (int)sizeof(title_report), 0,
+            "\a\x1b\n");
+        check_int("osc title report empty len", len, 5);
+        check_str("osc title report empty", title_report, "\x1b]l\x1b\\");
         title_report[0] = 'x';
         check_int("osc title report small",
                   FormatTerminalPaneOSCTitleReport(title_report, 4, 1,

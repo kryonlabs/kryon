@@ -235,6 +235,7 @@ int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
                                          int color);
 int TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon);
+int CopyTerminalPaneTitleText(char *out, int out_size, const char *title);
 int FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,
                                      const char *title);
 void TerminalPaneOSCPushTitle(char *stack, int depth, int item_size,

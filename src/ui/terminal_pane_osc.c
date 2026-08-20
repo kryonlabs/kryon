@@ -299,6 +299,21 @@ TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
 }
 
 int
+CopyTerminalPaneTitleText(char *out, int out_size, const char *title)
+{
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(!append_osc_safe_text(out, out_size, &used, title)) {
+        out[0] = '\0';
+        return 0;
+    }
+    return 1;
+}
+
+int
 FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,
                                  const char *title)
 {
@@ -312,10 +327,11 @@ FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,
     out[used++] = '\x1b';
     out[used++] = ']';
     out[used++] = icon ? 'L' : 'l';
-    if(!append_osc_safe_text(out, out_size, &used, title)) {
+    if(!CopyTerminalPaneTitleText(out + used, out_size - used, title)) {
         out[0] = '\0';
         return 0;
     }
+    used += (int)strlen(out + used);
     if(used + 2 >= out_size) {
         out[0] = '\0';
         return 0;
