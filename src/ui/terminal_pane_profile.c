@@ -62,6 +62,26 @@ profile_setting_in_range(int value, int min_value, int max_value)
     return min_value <= max_value && value >= min_value && value <= max_value;
 }
 
+static int
+profile_parse_decimal(const char *text, int *out)
+{
+    int value = 0;
+    const unsigned char *cursor = (const unsigned char *)text;
+
+    if(text == NULL || text[0] == '\0' || out == NULL)
+        return 0;
+    while(*cursor != '\0') {
+        if(*cursor < '0' || *cursor > '9')
+            return 0;
+        value = value * 10 + (*cursor - '0');
+        if(value > 255)
+            return 0;
+        cursor++;
+    }
+    *out = value;
+    return 1;
+}
+
 int
 TerminalPaneColorToRGB(Color color)
 {
@@ -289,6 +309,158 @@ ApplyTerminalPaneProfileSetting(TerminalPaneProfileSettings *settings,
     return 0;
 }
 
+const char *
+TerminalPaneProfilePromptTitle(int prompt)
+{
+    switch(prompt) {
+    case TERMINAL_PANE_PROFILE_PROMPT_SHELL:
+        return "Shell";
+    case TERMINAL_PANE_PROFILE_PROMPT_WORKING_DIRECTORY:
+        return "Working Directory";
+    case TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT:
+        return "Terminal Font";
+    case TERMINAL_PANE_PROFILE_PROMPT_FONT_SIZE:
+        return "Font Size";
+    case TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK:
+        return "Scrollback Lines";
+    case TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND:
+        return "Terminal Foreground";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND:
+        return "Terminal Background";
+    case TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR:
+        return "Terminal Cursor";
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND:
+        return "Selection Foreground";
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
+        return "Selection Background";
+    default:
+        break;
+    }
+    return "Profile";
+}
+
+const char *
+TerminalPaneProfilePromptSettingName(int prompt)
+{
+    switch(prompt) {
+    case TERMINAL_PANE_PROFILE_PROMPT_SHELL:
+        return "shell";
+    case TERMINAL_PANE_PROFILE_PROMPT_WORKING_DIRECTORY:
+        return "working-directory";
+    case TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT:
+        return "terminal-font";
+    case TERMINAL_PANE_PROFILE_PROMPT_FONT_SIZE:
+        return "font-size";
+    case TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK:
+        return "scrollback";
+    case TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND:
+        return "terminal-foreground";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND:
+        return "terminal-background";
+    case TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR:
+        return "terminal-cursor";
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND:
+        return "terminal-selection-foreground";
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
+        return "terminal-selection-background";
+    default:
+        break;
+    }
+    return NULL;
+}
+
+int
+TerminalPaneProfilePromptAffectsColors(int prompt)
+{
+    return prompt == TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND ||
+           prompt == TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND ||
+           prompt == TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR ||
+           prompt == TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND ||
+           prompt == TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND;
+}
+
+int
+TerminalPaneProfilePromptAffectsFont(int prompt)
+{
+    return prompt == TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT;
+}
+
+int
+TerminalPaneProfilePromptAffectsScrollback(int prompt)
+{
+    return prompt == TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK;
+}
+
+static int
+format_profile_prompt_color(char *out, int out_size, int color)
+{
+    if(out == NULL || out_size <= 0)
+        return 0;
+    if(color == TERMINAL_PANE_COLOR_DEFAULT)
+        return snprintf(out, (size_t)out_size, "default");
+    if(FormatTerminalPaneProfileColor(out, out_size, color) > 0)
+        return (int)strlen(out);
+    out[0] = '\0';
+    return 0;
+}
+
+int
+FormatTerminalPaneProfilePromptValue(
+    char *out, int out_size, const TerminalPaneProfileSettings *settings,
+    int prompt)
+{
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(settings == NULL)
+        return 0;
+    switch(prompt) {
+    case TERMINAL_PANE_PROFILE_PROMPT_SHELL:
+        return snprintf(out, (size_t)out_size, "%s", settings->shell);
+    case TERMINAL_PANE_PROFILE_PROMPT_WORKING_DIRECTORY:
+        return snprintf(out, (size_t)out_size, "%s",
+                        settings->working_directory);
+    case TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT:
+        return snprintf(out, (size_t)out_size, "%s",
+                        settings->terminal_font);
+    case TERMINAL_PANE_PROFILE_PROMPT_FONT_SIZE:
+        return snprintf(out, (size_t)out_size, "%d", settings->font_size);
+    case TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK:
+        return snprintf(out, (size_t)out_size, "%d",
+                        settings->scrollback_limit);
+    case TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND:
+        return format_profile_prompt_color(out, out_size,
+                                           settings->terminal_foreground);
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND:
+        return format_profile_prompt_color(out, out_size,
+                                           settings->terminal_background);
+    case TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR:
+        return format_profile_prompt_color(out, out_size,
+                                           settings->terminal_cursor);
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND:
+        return format_profile_prompt_color(
+            out, out_size, settings->terminal_selection_foreground);
+    case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
+        return format_profile_prompt_color(
+            out, out_size, settings->terminal_selection_background);
+    default:
+        break;
+    }
+    return 0;
+}
+
+int
+ApplyTerminalPaneProfilePromptValue(TerminalPaneProfileSettings *settings,
+                                    TerminalPaneProfileLimits limits,
+                                    int prompt, const char *value)
+{
+    const char *name = TerminalPaneProfilePromptSettingName(prompt);
+
+    if(name == NULL)
+        return 0;
+    return ApplyTerminalPaneProfileSetting(settings, limits, name, value);
+}
+
 void
 TerminalPaneProfileStateApplyNew(TerminalPaneProfileState *state,
                                  TerminalPaneProfileColors colors)
@@ -459,6 +631,8 @@ ParseTerminalPaneProfileColor(const char *text, int *out)
         *out = TERMINAL_PANE_COLOR_DEFAULT;
         return 1;
     }
+    if(profile_parse_decimal(text, out))
+        return 1;
     if(text[0] == '#')
         text++;
     if(strlen(text) != 6)
@@ -481,6 +655,8 @@ FormatTerminalPaneProfileColor(char *out, int out_size, int color)
 {
     if(out == NULL || out_size <= 0 || color == TERMINAL_PANE_COLOR_DEFAULT)
         return 0;
+    if(color >= 0 && color < 256)
+        return snprintf(out, (size_t)out_size, "%d", color);
     if((color & TERMINAL_PANE_COLOR_TRUE_RGB) == 0)
         return 0;
     return snprintf(out, (size_t)out_size, "#%06x", color & 0xffffff);

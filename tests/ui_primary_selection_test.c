@@ -1283,6 +1283,45 @@ main(void)
                   ApplyTerminalPaneProfileSetting(&settings, limits,
                                                   "unknown", "1"),
                   0);
+        check_str("profile prompt shell title",
+                  TerminalPaneProfilePromptTitle(
+                      TERMINAL_PANE_PROFILE_PROMPT_SHELL),
+                  "Shell");
+        check_str("profile prompt foreground setting",
+                  TerminalPaneProfilePromptSettingName(
+                      TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND),
+                  "terminal-foreground");
+        check_int("profile prompt colors flag",
+                  TerminalPaneProfilePromptAffectsColors(
+                      TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR),
+                  1);
+        check_int("profile prompt font flag",
+                  TerminalPaneProfilePromptAffectsFont(
+                      TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT),
+                  1);
+        check_int("profile prompt scrollback flag",
+                  TerminalPaneProfilePromptAffectsScrollback(
+                      TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK),
+                  1);
+        check_int("profile prompt format shell",
+                  FormatTerminalPaneProfilePromptValue(
+                      escaped_text, (int)sizeof(escaped_text), &settings,
+                      TERMINAL_PANE_PROFILE_PROMPT_SHELL),
+                  7);
+        check_str("profile prompt shell value", escaped_text, "/bin/sh");
+        check_int("profile prompt format default color",
+                  FormatTerminalPaneProfilePromptValue(
+                      escaped_text, (int)sizeof(escaped_text), &settings,
+                      TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR),
+                  7);
+        check_str("profile prompt default color value", escaped_text,
+                  "default");
+        check_int("profile prompt apply font size",
+                  ApplyTerminalPaneProfilePromptValue(
+                      &settings, limits,
+                      TERMINAL_PANE_PROFILE_PROMPT_FONT_SIZE, "24"),
+                  1);
+        check_int("profile prompt font size value", settings.font_size, 24);
 
         check_int("profile color hash parse",
                   ParseTerminalPaneProfileColor("#010203", &parsed_color),
@@ -1307,6 +1346,10 @@ main(void)
                   ParseTerminalPaneProfileColor("theme", &parsed_color), 1);
         check_int("profile color theme value", parsed_color,
                   TERMINAL_PANE_COLOR_DEFAULT);
+        parsed_color = 123;
+        check_int("profile color index parse",
+                  ParseTerminalPaneProfileColor("7", &parsed_color), 1);
+        check_int("profile color index value", parsed_color, 7);
         parsed_color = 123;
         check_int("profile color invalid rejected",
                   ParseTerminalPaneProfileColor("zzzzzz", &parsed_color), 0);
@@ -1382,6 +1425,11 @@ main(void)
                       TERMINAL_PANE_COLOR_TRUE_RGB | 0x0a0b0c),
                   7);
         check_str("profile color format text", color_text, "#0a0b0c");
+        check_int("profile color format index",
+                  FormatTerminalPaneProfileColor(color_text,
+                                                 (int)sizeof(color_text), 7),
+                  1);
+        check_str("profile color format index text", color_text, "7");
         color_text[0] = 'x';
         check_int("profile color format default omitted",
                   FormatTerminalPaneProfileColor(
@@ -1390,7 +1438,7 @@ main(void)
                   0);
         check_int("profile color format invalid omitted",
                   FormatTerminalPaneProfileColor(color_text,
-                                                 (int)sizeof(color_text), 12),
+                                                 (int)sizeof(color_text), 256),
                   0);
         check_int("profile text escape",
                   EscapeTerminalPaneText(escaped_text,

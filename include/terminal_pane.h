@@ -94,6 +94,20 @@ typedef struct TerminalPaneProfileSettings {
     char terminal_font[1024];
 } TerminalPaneProfileSettings;
 
+typedef enum TerminalPaneProfilePrompt {
+    TERMINAL_PANE_PROFILE_PROMPT_NONE = 0,
+    TERMINAL_PANE_PROFILE_PROMPT_SHELL,
+    TERMINAL_PANE_PROFILE_PROMPT_WORKING_DIRECTORY,
+    TERMINAL_PANE_PROFILE_PROMPT_TERMINAL_FONT,
+    TERMINAL_PANE_PROFILE_PROMPT_FONT_SIZE,
+    TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK,
+    TERMINAL_PANE_PROFILE_PROMPT_FOREGROUND,
+    TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND,
+    TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR,
+    TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND,
+    TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND
+} TerminalPaneProfilePrompt;
+
 typedef struct TerminalPaneViewColors {
     Color foreground;
     Color background;
@@ -467,6 +481,17 @@ void InitTerminalPaneProfileSettings(TerminalPaneProfileSettings *settings,
 int ApplyTerminalPaneProfileSetting(TerminalPaneProfileSettings *settings,
                                     TerminalPaneProfileLimits limits,
                                     const char *name, const char *value);
+const char *TerminalPaneProfilePromptTitle(int prompt);
+const char *TerminalPaneProfilePromptSettingName(int prompt);
+int TerminalPaneProfilePromptAffectsColors(int prompt);
+int TerminalPaneProfilePromptAffectsFont(int prompt);
+int TerminalPaneProfilePromptAffectsScrollback(int prompt);
+int FormatTerminalPaneProfilePromptValue(
+    char *out, int out_size, const TerminalPaneProfileSettings *settings,
+    int prompt);
+int ApplyTerminalPaneProfilePromptValue(
+    TerminalPaneProfileSettings *settings, TerminalPaneProfileLimits limits,
+    int prompt, const char *value);
 void TerminalPaneProfileStateApplyNew(TerminalPaneProfileState *state,
                                       TerminalPaneProfileColors colors);
 void TerminalPaneProfileStateSeedMissing(TerminalPaneProfileState *state,
