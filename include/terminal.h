@@ -35,19 +35,6 @@ void TerminalResize(Terminal *t, int cols, int rows);
 void TerminalClose(Terminal *t);
 void TerminalLine(const Terminal *t, int row, char *dst, int dst_size);
 
-/* Compatibility aliases for older callers. New code should use Terminal*. */
-#define KRY_TERM_MAX_COLS TERMINAL_MAX_COLS
-#define KRY_TERM_MAX_ROWS TERMINAL_MAX_ROWS
-typedef Terminal KryTerm;
-
-int KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows);
-int KryTermWrite(KryTerm *t, const void *data, int n);
-int KryTermPoll(KryTerm *t);
-void KryTermFeedOutput(KryTerm *t, const void *data, int n);
-void KryTermResize(KryTerm *t, int cols, int rows);
-void KryTermClose(KryTerm *t);
-void KryTermLine(const KryTerm *t, int row, char *dst, int dst_size);
-
 #ifdef __cplusplus
 }
 #endif

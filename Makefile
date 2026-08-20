@@ -209,7 +209,7 @@ KIR_TEST = $(BUILD_DIR)/tests/kir_test
 K2IR_TEST = $(BUILD_DIR)/tests/k2ir.ok
 KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
-KRY_TERM_TEST = $(BUILD_DIR)/tests/kry_term_test
+TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
@@ -292,7 +292,7 @@ docs-site:
 spec-test: $(K2IR) $(K2C) $(K2G) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(KRY_TERM_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -305,7 +305,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check $(K2C) $(K2G)
 	$(K2B) --root examples -o $(BUILD_DIR)/tests/caps-fixture examples/02_buttons.kry
 	KRB_CAP_STORE_DIR=$(BUILD_DIR)/capstore $(KRB_CAPS_TEST) $(BUILD_DIR)/tests/caps-fixture/02_buttons.krb
 	$(KRB_MOUNT_TEST)
-	$(KRY_TERM_TEST)
+	$(TERMINAL_TEST)
 	$(KRY_JSON_TEST)
 	$(KRY_HTTP_TEST)
 	$(RUNTIME_ASSETS_TEST)
@@ -677,9 +677,9 @@ $(KRB_CAPS_TEST): tests/krb_caps_test.c src/krb/krb.c src/krb/krb_caps.c include
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/krb_caps_test.c src/krb/krb.c \
 		src/krb/krb_caps.c src/backend/kry_backend.c -o $@ -lm
 
-$(KRY_TERM_TEST): tests/kry_term_test.c src/kry_std/kry_term.c include/kry_term.h | $(BUILD_DIR)
+$(TERMINAL_TEST): tests/terminal_test.c src/kry_std/terminal.c include/terminal.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_term_test.c src/kry_std/kry_term.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/terminal_test.c src/kry_std/terminal.c -o $@
 
 $(SFS_TEST): tests/sfs_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

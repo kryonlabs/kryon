@@ -34,7 +34,7 @@ clamp_size(int v, int lo, int hi)
 }
 
 static void
-clear_row(KryTerm *t, int y)
+clear_row(Terminal *t, int y)
 {
     int x;
 
@@ -45,7 +45,7 @@ clear_row(KryTerm *t, int y)
 }
 
 static void
-clear_all(KryTerm *t)
+clear_all(Terminal *t)
 {
     int y;
 
@@ -56,13 +56,13 @@ clear_all(KryTerm *t)
 }
 
 static int
-alloc_cells(KryTerm *t, int cols, int rows)
+alloc_cells(Terminal *t, int cols, int rows)
 {
     char *cells;
     int n;
 
-    cols = clamp_size(cols, 8, KRY_TERM_MAX_COLS);
-    rows = clamp_size(rows, 4, KRY_TERM_MAX_ROWS);
+    cols = clamp_size(cols, 8, TERMINAL_MAX_COLS);
+    rows = clamp_size(rows, 4, TERMINAL_MAX_ROWS);
     n = cols * rows;
     cells = realloc(t->cells, (size_t)n);
     if(cells == NULL)
@@ -75,7 +75,7 @@ alloc_cells(KryTerm *t, int cols, int rows)
 }
 
 static void
-scroll_up(KryTerm *t)
+scroll_up(Terminal *t)
 {
     if(t->cells == NULL || t->rows < 2)
         return;
@@ -84,7 +84,7 @@ scroll_up(KryTerm *t)
 }
 
 static void
-put_char(KryTerm *t, unsigned char c)
+put_char(Terminal *t, unsigned char c)
 {
     if(t->cells == NULL)
         return;
@@ -103,7 +103,7 @@ put_char(KryTerm *t, unsigned char c)
 }
 
 static void
-cursor_clamp(KryTerm *t)
+cursor_clamp(Terminal *t)
 {
     if(t->cx < 0)
         t->cx = 0;
@@ -116,7 +116,7 @@ cursor_clamp(KryTerm *t)
 }
 
 static int
-csi_arg(const KryTerm *t, int i, int fallback)
+csi_arg(const Terminal *t, int i, int fallback)
 {
     if(i < 0 || i >= t->csi_n || t->csi[i] == 0)
         return fallback;
@@ -124,7 +124,7 @@ csi_arg(const KryTerm *t, int i, int fallback)
 }
 
 static void
-apply_csi(KryTerm *t, int final)
+apply_csi(Terminal *t, int final)
 {
     int n = csi_arg(t, 0, 1);
     int x;
@@ -170,7 +170,7 @@ apply_csi(KryTerm *t, int final)
 }
 
 static void
-feed(KryTerm *t, unsigned char c)
+feed(Terminal *t, unsigned char c)
 {
     if(t->parse == 1) {
         if(c == '[') {
@@ -379,8 +379,8 @@ TerminalResize(Terminal *t, int cols, int rows)
 {
     if(t == NULL)
         return;
-    cols = clamp_size(cols, 8, KRY_TERM_MAX_COLS);
-    rows = clamp_size(rows, 4, KRY_TERM_MAX_ROWS);
+    cols = clamp_size(cols, 8, TERMINAL_MAX_COLS);
+    rows = clamp_size(rows, 4, TERMINAL_MAX_ROWS);
     if(cols == t->cols && rows == t->rows)
         return;
     if(!alloc_cells(t, cols, rows))
@@ -492,45 +492,3 @@ TerminalLine(const Terminal *t, int row, char *dst, int dst_size)
 }
 
 #endif
-
-int
-KryTermSpawn(KryTerm *t, const char *cwd, int cols, int rows)
-{
-    return TerminalSpawn(t, cwd, cols, rows);
-}
-
-int
-KryTermWrite(KryTerm *t, const void *data, int n)
-{
-    return TerminalWrite(t, data, n);
-}
-
-int
-KryTermPoll(KryTerm *t)
-{
-    return TerminalPoll(t);
-}
-
-void
-KryTermFeedOutput(KryTerm *t, const void *data, int n)
-{
-    TerminalFeedOutput(t, data, n);
-}
-
-void
-KryTermResize(KryTerm *t, int cols, int rows)
-{
-    TerminalResize(t, cols, rows);
-}
-
-void
-KryTermClose(KryTerm *t)
-{
-    TerminalClose(t);
-}
-
-void
-KryTermLine(const KryTerm *t, int row, char *dst, int dst_size)
-{
-    TerminalLine(t, row, dst, dst_size);
-}

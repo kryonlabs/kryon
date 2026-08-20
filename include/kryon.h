@@ -64,7 +64,6 @@
 #include "kry_process.h"
 #include "terminal.h"
 #include "terminal_pane.h"
-#include "kry_term.h"
 #include "kry_filesystem.h"
 #include "kry_dylib.h"
 #include "kry_backend.h"

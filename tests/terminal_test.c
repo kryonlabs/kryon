@@ -63,7 +63,7 @@ main(void)
     }
     TerminalClose(&t);
 
-    /* harness-printed text lands in the grid like process output */
+    /* Harness-printed text lands in the grid like process output. */
     if(!TerminalSpawn(&t, "/", 80, 24)) {
         fprintf(stderr, "respawn failed\n");
         return 1;

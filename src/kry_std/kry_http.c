@@ -1,7 +1,7 @@
 /*
  * kry_http.c - async HTTP for the Kry standard library (libcurl easy on a
  * worker thread). Without HAS_LIBCURL every entry point degrades to an
- * unavailable stub, mirroring kry_term/kry_process on Windows.
+ * unavailable stub, mirroring terminal/kry_process on Windows.
  */
 #include "kry_http.h"
 #include "platform.h"

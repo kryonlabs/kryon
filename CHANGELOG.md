@@ -262,8 +262,8 @@
 - Widgets: PickerDialog; Spinbox value text + wrap; public ButtonRow height
 - Ui_window: Windows/macOS compile the no-op stubs
 - Guide overlay: Android back key closes the guide
-- Kry_term: drop downstream tool name from the feed comment (boundary check)
-- Kry_term: KryTermFeedOutput - harness text printed into the terminal
+- Terminal: drop downstream tool name from the feed comment (boundary check)
+- Terminal: TerminalFeedOutput - harness text printed into the terminal
 - Kry_http: streaming partial reads (kry_http_partial) + locked write callback
 - Ui_window: include stddef.h so the android/web stubs see NULL
 - Kry_sfs: the live engine as a synthetic file system + real input injection
@@ -357,12 +357,12 @@
 - Kryon.h: expose embedded_assets.h through the umbrella
 - Krb: drop unused GROUP node and export enums for a clean v1
 - Krb: implement F32 field read/write and float text formatting
-- Expose kry_term and krb in kryon.h; document the cartridge API
+- Expose terminal and krb in kryon.h; document the cartridge API
 - Add krb cartridge tests
 - Kryon-preview: render .kry/.krb to PNG via a cartridge subcommand
 - Kc: emit a krb cartridge from .kry (--emit-krb); route codegen via the AST
 - Add krb: a packed, mmapable Kryon cartridge format
-- Add kry_term: a PTY terminal for IDE hosts
+- Add terminal: a PTY terminal for IDE hosts
 - Add kry_backend: a draw/input vtable for non-raylib cartridge hosts
 - UI text: resolve font sources from embedded assets before the filesystem
 - UI: preserve ui_scale across SaveUIFrameState/RestoreUIFrameState
@@ -488,7 +488,7 @@
   (`dlopen("libgtk-3.so.0")` in the tray thread) instead of linking GTK.
   Applications that skip the tray then never map libgtk-3 or its
   gdk/pango/cairo dependency chain.
-- PTY terminal (`KryTerm`) for IDE hosts: spawn `$SHELL`, write keys, poll
+- PTY terminal (`Terminal`) for IDE hosts: spawn `$SHELL`, write keys, poll
   a screen grid, resize with `TIOCSWINSZ`. Basic CSI cursor and erase.
 - First krb cartridge slice: `k2c --emit-krb` packs widget calls into a
   mmapable `.krb` (VFS nodes, string table, `OP_DRAW_TREE`, host import
