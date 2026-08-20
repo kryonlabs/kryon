@@ -112,8 +112,16 @@ main(void)
               "primary");
     check_int("primary source has text",
               UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_PRIMARY), 1);
+    check_int("terminal pane primary source has text",
+              TerminalPaneClipboardSourceHasText(
+                  UI_CLIPBOARD_SOURCE_PRIMARY),
+              1);
     check_int("clipboard source has no text",
               UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_CLIPBOARD), 0);
+    check_int("terminal pane clipboard source has no text",
+              TerminalPaneClipboardSourceHasText(
+                  UI_CLIPBOARD_SOURCE_CLIPBOARD),
+              0);
 
     {
         UIClipboardBuffer buffer;
@@ -680,6 +688,63 @@ main(void)
                   colors.foreground);
         check_int("profile seed background", state.background,
                   colors.background);
+
+        check_int("cursor style parse block",
+                  ParseTerminalPaneCursorStyle("block",
+                                               TERMINAL_PANE_CURSOR_BAR),
+                  TERMINAL_PANE_CURSOR_BLOCK);
+        check_int("cursor style parse numeric block",
+                  ParseTerminalPaneCursorStyle("1",
+                                               TERMINAL_PANE_CURSOR_BAR),
+                  TERMINAL_PANE_CURSOR_BLOCK);
+        check_int("cursor style parse underline",
+                  ParseTerminalPaneCursorStyle("underline",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_UNDERLINE);
+        check_int("cursor style parse numeric underline",
+                  ParseTerminalPaneCursorStyle("2",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_UNDERLINE);
+        check_int("cursor style parse bar",
+                  ParseTerminalPaneCursorStyle("bar",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style parse beam",
+                  ParseTerminalPaneCursorStyle("beam",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style parse numeric bar",
+                  ParseTerminalPaneCursorStyle("3",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style parse default",
+                  ParseTerminalPaneCursorStyle("default",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_DEFAULT);
+        check_int("cursor style parse numeric default",
+                  ParseTerminalPaneCursorStyle("0",
+                                               TERMINAL_PANE_CURSOR_BLOCK),
+                  TERMINAL_PANE_CURSOR_DEFAULT);
+        check_int("cursor style parse invalid keeps fallback",
+                  ParseTerminalPaneCursorStyle("wide",
+                                               TERMINAL_PANE_CURSOR_BAR),
+                  TERMINAL_PANE_CURSOR_BAR);
+        check_int("cursor style parse null keeps fallback",
+                  ParseTerminalPaneCursorStyle(NULL,
+                                               TERMINAL_PANE_CURSOR_UNDERLINE),
+                  TERMINAL_PANE_CURSOR_UNDERLINE);
+        check_str("cursor style name block",
+                  TerminalPaneCursorStyleName(TERMINAL_PANE_CURSOR_BLOCK),
+                  "block");
+        check_str("cursor style name underline",
+                  TerminalPaneCursorStyleName(TERMINAL_PANE_CURSOR_UNDERLINE),
+                  "underline");
+        check_str("cursor style name bar",
+                  TerminalPaneCursorStyleName(TERMINAL_PANE_CURSOR_BAR),
+                  "bar");
+        check_str("cursor style name default saved as block",
+                  TerminalPaneCursorStyleName(TERMINAL_PANE_CURSOR_DEFAULT),
+                  "block");
     }
 
     {

@@ -32,6 +32,13 @@ typedef enum TerminalPaneColor {
     TERMINAL_PANE_COLOR_TRUE_RGB = 0x01000000
 } TerminalPaneColor;
 
+typedef enum TerminalPaneCursorStyle {
+    TERMINAL_PANE_CURSOR_DEFAULT = 0,
+    TERMINAL_PANE_CURSOR_BLOCK = 1,
+    TERMINAL_PANE_CURSOR_UNDERLINE = 2,
+    TERMINAL_PANE_CURSOR_BAR = 3
+} TerminalPaneCursorStyle;
+
 typedef struct TerminalPaneProfileColors {
     int foreground;
     int background;
@@ -199,6 +206,8 @@ void TerminalPaneProfileStateSeedMissing(TerminalPaneProfileState *state,
 void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
                                          TerminalPaneProfileColors old_colors,
                                          TerminalPaneProfileColors new_colors);
+int ParseTerminalPaneCursorStyle(const char *text, int fallback);
+const char *TerminalPaneCursorStyleName(int style);
 int ParseTerminalPaneOSCColor(const char *text);
 int TerminalPaneDefaultPaletteColor(int index);
 int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
@@ -318,6 +327,7 @@ int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
 int TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard);
+int TerminalPaneClipboardSourceHasText(UIClipboardSource source);
 int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int FormatTerminalPaneSessionTitle(char *out, int out_size, const char *text,

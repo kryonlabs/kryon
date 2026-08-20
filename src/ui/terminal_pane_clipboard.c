@@ -49,6 +49,12 @@ TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard)
 }
 
 int
+TerminalPaneClipboardSourceHasText(UIClipboardSource source)
+{
+    return UIClipboardSourceHasText(source);
+}
+
+int
 TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard)
 {
     if(clipboard.clipboard == NULL)

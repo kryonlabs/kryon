@@ -1,6 +1,7 @@
 #include "terminal_pane.h"
 
 #include <stddef.h>
+#include <string.h>
 
 static int
 color_visible(Color color)
@@ -143,4 +144,31 @@ TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
     if(state->selection_background == old_colors.selection_background ||
        state->selection_background == TERMINAL_PANE_COLOR_DEFAULT)
         state->selection_background = new_colors.selection_background;
+}
+
+int
+ParseTerminalPaneCursorStyle(const char *text, int fallback)
+{
+    if(text == NULL || text[0] == '\0')
+        return fallback;
+    if(strcmp(text, "default") == 0 || strcmp(text, "0") == 0)
+        return TERMINAL_PANE_CURSOR_DEFAULT;
+    if(strcmp(text, "block") == 0 || strcmp(text, "1") == 0)
+        return TERMINAL_PANE_CURSOR_BLOCK;
+    if(strcmp(text, "underline") == 0 || strcmp(text, "2") == 0)
+        return TERMINAL_PANE_CURSOR_UNDERLINE;
+    if(strcmp(text, "bar") == 0 || strcmp(text, "beam") == 0 ||
+       strcmp(text, "3") == 0)
+        return TERMINAL_PANE_CURSOR_BAR;
+    return fallback;
+}
+
+const char *
+TerminalPaneCursorStyleName(int style)
+{
+    if(style == TERMINAL_PANE_CURSOR_UNDERLINE)
+        return "underline";
+    if(style == TERMINAL_PANE_CURSOR_BAR)
+        return "bar";
+    return "block";
 }
