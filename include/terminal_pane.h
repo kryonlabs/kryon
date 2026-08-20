@@ -255,6 +255,7 @@ typedef struct TerminalPaneClipboardController {
     void *userdata;
     int total_rows;
     int cols;
+    int *scroll_offset;
 } TerminalPaneClipboardController;
 
 typedef struct TerminalPaneClipboardCommandResult {

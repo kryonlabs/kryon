@@ -214,5 +214,7 @@ TerminalPaneClipboardRunCommand(TerminalPaneClipboardController controller,
         TerminalPaneClipboardPerformCommand(controller, command, text);
     result.wrote_input =
         result.performed ? TerminalPaneClipboardCommandWritesInput(command) : 0;
+    if(result.wrote_input && controller.scroll_offset != NULL)
+        *controller.scroll_offset = 0;
     return result;
 }

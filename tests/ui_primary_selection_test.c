@@ -406,6 +406,7 @@ main(void)
                     &fixture,
                     fixture.count,
                     24,
+                    NULL,
                 };
 
                 SetUIPrimarySelectionTextValue("old primary");
@@ -727,6 +728,7 @@ main(void)
                       GetUIClipboardTextValue(), "action flush");
 
             {
+                int scroll_offset = 0;
                 TerminalPaneClipboardController controller = {
                     clipboard,
                     NULL,
@@ -735,6 +737,7 @@ main(void)
                     NULL,
                     0,
                     0,
+                    &scroll_offset,
                 };
 
                 paste[0] = '\0';
@@ -770,6 +773,7 @@ main(void)
                 {
                     TerminalPaneClipboardCommandResult result;
 
+                    scroll_offset = 9;
                     paste[0] = '\0';
                     result = TerminalPaneClipboardRunCommand(
                         controller,
@@ -779,8 +783,11 @@ main(void)
                               result.performed, 12);
                     check_int("terminal pane run command wrote input",
                               result.wrote_input, 1);
+                    check_int("terminal pane run command reset scroll",
+                              scroll_offset, 0);
                     check_str("terminal pane run command text", paste,
                               "result paste");
+                    scroll_offset = 11;
                     result = TerminalPaneClipboardRunCommand(
                         controller,
                         TERMINAL_PANE_CLIPBOARD_COMMAND_SYNC_FROM_HOST, NULL);
@@ -788,6 +795,8 @@ main(void)
                               result.performed, 1);
                     check_int("terminal pane run command sync input",
                               result.wrote_input, 0);
+                    check_int("terminal pane run command sync keeps scroll",
+                              scroll_offset, 11);
                 }
 
                 SetUIClipboardTextValue("command host");
