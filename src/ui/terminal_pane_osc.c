@@ -249,6 +249,74 @@ FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
 }
 
 int
+CopyTerminalPaneOSCHyperlinkURL(char *out, int out_size, const char *url)
+{
+    const unsigned char *cursor = (const unsigned char *)url;
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(cursor == NULL)
+        return 0;
+    while(*cursor != '\0') {
+        if(*cursor == '\a' || *cursor == 0x1b || *cursor == 0x7f ||
+           *cursor < 0x20) {
+            cursor++;
+            continue;
+        }
+        if(used + 1 >= out_size)
+            break;
+        out[used++] = (char)*cursor++;
+    }
+    out[used] = '\0';
+    return used > 0;
+}
+
+int
+CopyTerminalPaneOSCHyperlinkID(char *out, int out_size, const char *params)
+{
+    const char *cursor = params;
+    const char *params_end;
+    const char *value;
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(params == NULL)
+        return 0;
+    params_end = strchr(params, ';');
+    if(params_end == NULL)
+        params_end = params + strlen(params);
+    while(cursor < params_end) {
+        const char *end = cursor;
+        int length;
+
+        while(end < params_end && *end != ':')
+            end++;
+        length = (int)(end - cursor);
+
+        if(length >= 3 && strncmp(cursor, "id=", 3) == 0) {
+            value = cursor + 3;
+            while(used + 1 < out_size && value < cursor + length) {
+                unsigned char ch = (unsigned char)*value++;
+
+                if(ch == '\a' || ch == 0x1b || ch == 0x7f || ch < 0x20)
+                    continue;
+                out[used++] = (char)ch;
+            }
+            out[used] = '\0';
+            return used > 0;
+        }
+        if(end >= params_end)
+            break;
+        cursor = end + 1;
+    }
+    return 0;
+}
+
+int
 TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
 {
     const char *cursor = payload;

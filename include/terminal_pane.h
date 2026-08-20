@@ -234,6 +234,9 @@ int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                        int color);
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
                                          int color);
+int CopyTerminalPaneOSCHyperlinkURL(char *out, int out_size, const char *url);
+int CopyTerminalPaneOSCHyperlinkID(char *out, int out_size,
+                                   const char *params);
 int TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon);
 int CopyTerminalPaneTitleText(char *out, int out_size, const char *title);
 int FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,

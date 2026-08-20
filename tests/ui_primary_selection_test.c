@@ -999,6 +999,31 @@ main(void)
                   0);
         check_str("osc invalid response clears", response, "");
 
+        check_int("osc hyperlink url sanitizer",
+                  CopyTerminalPaneOSCHyperlinkURL(
+                      title_report, (int)sizeof(title_report),
+                      "https://example.test/a\nb\x1b" "c\x7f"),
+                  1);
+        check_str("osc hyperlink url sanitizer text", title_report,
+                  "https://example.test/abc");
+        check_int("osc hyperlink url sanitizer empty",
+                  CopyTerminalPaneOSCHyperlinkURL(
+                      title_report, (int)sizeof(title_report), "\a\x1b\n"),
+                  0);
+        check_str("osc hyperlink url sanitizer empty text", title_report, "");
+        check_int("osc hyperlink id sanitizer",
+                  CopyTerminalPaneOSCHyperlinkID(
+                      title_report, (int)sizeof(title_report),
+                      "foo=bar:id=link\n42\x1b" ":end=x;ignored"),
+                  1);
+        check_str("osc hyperlink id sanitizer text", title_report, "link42");
+        check_int("osc hyperlink id missing",
+                  CopyTerminalPaneOSCHyperlinkID(
+                      title_report, (int)sizeof(title_report),
+                      "foo=bar;id=ignored"),
+                  0);
+        check_str("osc hyperlink id missing text", title_report, "");
+
         TerminalPaneOSCTitleTargets("", &window, &icon);
         check_int("osc title empty targets window", window, 1);
         check_int("osc title empty targets icon", icon, 1);
