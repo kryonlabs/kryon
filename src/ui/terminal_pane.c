@@ -38,6 +38,7 @@ GetTerminalPaneThemeColors(void)
         selection,
         bg,
         text,
+        link,
         border,
         Fade(bg, 0.82f),
         Fade(text, 0.78f),
