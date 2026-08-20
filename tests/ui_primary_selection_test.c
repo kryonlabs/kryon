@@ -233,6 +233,8 @@ main(void)
 
     {
         TerminalPanePalette palette = GetTerminalPaneDefaultPalette();
+        Rectangle content = TerminalPaneContentBounds(
+            (Rectangle){10.0f, 20.0f, 300.0f, 200.0f}, 34, 6);
 
         check_int("terminal palette black red", palette.ansi[1].r, 205);
         check_int("terminal palette black red green", palette.ansi[1].g, 49);
@@ -240,6 +242,10 @@ main(void)
         check_int("terminal palette cube red green", palette.ansi[196].g, 0);
         check_int("terminal palette gray", palette.ansi[232].r, 8);
         check_int("terminal palette white", palette.ansi[255].b, 238);
+        check_int("terminal content x", (int)content.x, 16);
+        check_int("terminal content y", (int)content.y, 60);
+        check_int("terminal content width", (int)content.width, 288);
+        check_int("terminal content height", (int)content.height, 154);
     }
 
     {

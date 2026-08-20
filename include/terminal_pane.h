@@ -93,6 +93,10 @@ static inline TerminalPanePalette GetTerminalPaneDefaultPalette(void)
     return palette;
 }
 TerminalPaneMetrics MeasureTerminalPane(Rectangle bounds, int font_size, int padding);
+Rectangle TerminalPaneContentBounds(Rectangle bounds, int top_inset,
+                                    int padding);
+TerminalPaneMetrics MeasureTerminalPaneContent(Rectangle content,
+                                               int font_size);
 int TerminalPaneHandleInput(Terminal *terminal);
 TerminalPaneResult DrawTerminalPane(TerminalPane pane);
 

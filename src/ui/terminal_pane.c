@@ -49,26 +49,19 @@ GetTerminalPaneThemeColors(void)
 }
 
 TerminalPaneMetrics
-MeasureTerminalPane(Rectangle bounds, int font_size, int padding)
+MeasureTerminalPaneContent(Rectangle content, int font_size)
 {
     TerminalPaneMetrics metrics = {0};
-    int pad;
     int font;
 
     font = font_size > 0 ? font_size : ScaleUIPx(13);
-    pad = padding >= 0 ? padding : ScaleUIPx(6);
     metrics.cell_width = MeasureUIText("M", font);
     if(metrics.cell_width < 6)
         metrics.cell_width = font * 6 / 10;
     metrics.line_height = GetUITextLineHeight(font);
     if(metrics.line_height < font + 2)
         metrics.line_height = font + ScaleUIPx(2);
-    metrics.content = (Rectangle){
-        bounds.x + (float)pad,
-        bounds.y + (float)pad,
-        bounds.width - (float)(pad * 2),
-        bounds.height - (float)(pad * 2)
-    };
+    metrics.content = content;
     if(metrics.content.width < 0)
         metrics.content.width = 0;
     if(metrics.content.height < 0)
@@ -84,6 +77,32 @@ MeasureTerminalPane(Rectangle bounds, int font_size, int padding)
     if(metrics.rows > TERMINAL_MAX_ROWS)
         metrics.rows = TERMINAL_MAX_ROWS;
     return metrics;
+}
+
+Rectangle
+TerminalPaneContentBounds(Rectangle bounds, int top_inset, int padding)
+{
+    int top = top_inset > 0 ? top_inset : 0;
+    int pad = padding >= 0 ? padding : ScaleUIPx(6);
+    Rectangle content = {
+        bounds.x + (float)pad,
+        bounds.y + (float)(top + pad),
+        bounds.width - (float)(pad * 2),
+        bounds.height - (float)(top + pad * 2)
+    };
+
+    if(content.width < 0)
+        content.width = 0;
+    if(content.height < 0)
+        content.height = 0;
+    return content;
+}
+
+TerminalPaneMetrics
+MeasureTerminalPane(Rectangle bounds, int font_size, int padding)
+{
+    return MeasureTerminalPaneContent(
+        TerminalPaneContentBounds(bounds, 0, padding), font_size);
 }
 
 int
