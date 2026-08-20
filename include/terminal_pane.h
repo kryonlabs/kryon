@@ -114,6 +114,13 @@ typedef struct TerminalPaneOSCColorState {
     int base_selection_background;
 } TerminalPaneOSCColorState;
 
+typedef struct TerminalPaneOSCPaletteEntry {
+    int index;
+    int query;
+    int color;
+    int valid;
+} TerminalPaneOSCPaletteEntry;
+
 typedef struct TerminalPaneMetrics {
     int cols;
     int rows;
@@ -351,6 +358,10 @@ int TerminalPaneOSCColorTargetForCode(int code);
 int TerminalPaneOSCColorTargetForResetCode(int code);
 int TerminalPaneOSCColorQueryValue(int target,
                                    TerminalPaneOSCColorState state);
+int NextTerminalPaneOSCPaletteEntry(const char **cursor,
+                                    TerminalPaneOSCPaletteEntry *out);
+int NextTerminalPaneOSCPaletteResetIndex(const char **cursor,
+                                         int *out_index);
 int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                        int color);
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,

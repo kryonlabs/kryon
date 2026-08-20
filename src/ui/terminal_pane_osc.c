@@ -110,6 +110,46 @@ parse_hash_color(const char *text)
 }
 
 static int
+copy_osc_token(const char **cursor, char *out, int out_size)
+{
+    const char *start;
+    int used = 0;
+
+    if(cursor == NULL || *cursor == NULL || **cursor == '\0' ||
+       out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    start = *cursor;
+    while(*start != '\0' && *start != ';') {
+        if(used + 1 < out_size)
+            out[used++] = *start;
+        start++;
+    }
+    out[used] = '\0';
+    *cursor = *start == ';' ? start + 1 : start;
+    return 1;
+}
+
+static int
+parse_palette_index_token(const char *text, int *out)
+{
+    int value = 0;
+
+    if(text == NULL || text[0] == '\0' || out == NULL)
+        return 0;
+    while(*text != '\0') {
+        if(*text < '0' || *text > '9')
+            return 0;
+        value = value * 10 + (*text - '0');
+        if(value > 255)
+            return 0;
+        text++;
+    }
+    *out = value;
+    return 1;
+}
+
+static int
 parse_rgbi_component(const char **cursor)
 {
     char *end;
@@ -184,6 +224,63 @@ ParseTerminalPaneOSCColor(const char *text)
             return TERMINAL_PANE_COLOR_TRUE_RGB | (r << 16) | (g << 8) | b;
     }
     return TERMINAL_PANE_COLOR_DEFAULT;
+}
+
+int
+NextTerminalPaneOSCPaletteEntry(const char **cursor,
+                                TerminalPaneOSCPaletteEntry *out)
+{
+    char index_text[16];
+    char color_text[128];
+    int index;
+    int color;
+
+    if(out != NULL) {
+        out->index = -1;
+        out->query = 0;
+        out->color = TERMINAL_PANE_COLOR_DEFAULT;
+        out->valid = 0;
+    }
+    if(cursor == NULL || *cursor == NULL || **cursor == '\0')
+        return 0;
+    if(!copy_osc_token(cursor, index_text, (int)sizeof(index_text)))
+        return 0;
+    if(!copy_osc_token(cursor, color_text, (int)sizeof(color_text)))
+        return 1;
+    if(out == NULL)
+        return 1;
+    if(!parse_palette_index_token(index_text, &index))
+        return 1;
+    if(strcmp(color_text, "?") == 0) {
+        out->index = index;
+        out->query = 1;
+        out->valid = 1;
+        return 1;
+    }
+    color = ParseTerminalPaneOSCColor(color_text);
+    if(color == TERMINAL_PANE_COLOR_DEFAULT)
+        return 1;
+    out->index = index;
+    out->color = color;
+    out->valid = 1;
+    return 1;
+}
+
+int
+NextTerminalPaneOSCPaletteResetIndex(const char **cursor, int *out_index)
+{
+    char index_text[16];
+    int index = -1;
+
+    if(out_index != NULL)
+        *out_index = -1;
+    if(cursor == NULL || *cursor == NULL || **cursor == '\0')
+        return 0;
+    if(!copy_osc_token(cursor, index_text, (int)sizeof(index_text)))
+        return 0;
+    if(parse_palette_index_token(index_text, &index) && out_index != NULL)
+        *out_index = index;
+    return 1;
 }
 
 int

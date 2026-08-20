@@ -1020,6 +1020,69 @@ main(void)
         check_int("profile color invalid preserves out", parsed_color, 123);
         check_int("profile color null rejected",
                   ParseTerminalPaneProfileColor(NULL, &parsed_color), 0);
+        {
+            const char *cursor = "2;?;3;#445566;4;rgb:10/20/30";
+            TerminalPaneOSCPaletteEntry entry;
+            int reset_index = 99;
+
+            check_int("osc palette query entry",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette query valid", entry.valid, 1);
+            check_int("osc palette query index", entry.index, 2);
+            check_int("osc palette query flag", entry.query, 1);
+            check_int("osc palette color entry",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette color valid", entry.valid, 1);
+            check_int("osc palette color index", entry.index, 3);
+            check_int("osc palette color value", entry.color,
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x445566);
+            check_int("osc palette rgb entry",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette rgb valid", entry.valid, 1);
+            check_int("osc palette rgb index", entry.index, 4);
+            check_int("osc palette rgb value", entry.color,
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x102030);
+            check_int("osc palette entry end",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 0);
+
+            cursor = "x;?;1abc;#000000;256;#000000;1;?";
+            check_int("osc palette invalid alpha consumed",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette invalid alpha skipped", entry.valid, 0);
+            check_int("osc palette invalid suffix consumed",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette invalid suffix skipped", entry.valid, 0);
+            check_int("osc palette invalid range consumed",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette invalid range skipped", entry.valid, 0);
+            check_int("osc palette valid after malformed",
+                      NextTerminalPaneOSCPaletteEntry(&cursor, &entry), 1);
+            check_int("osc palette valid after malformed flag",
+                      entry.valid, 1);
+            check_int("osc palette valid after malformed index",
+                      entry.index, 1);
+
+            cursor = "2;x;3";
+            check_int("osc palette reset valid",
+                      NextTerminalPaneOSCPaletteResetIndex(&cursor,
+                                                           &reset_index),
+                      1);
+            check_int("osc palette reset index", reset_index, 2);
+            check_int("osc palette reset invalid",
+                      NextTerminalPaneOSCPaletteResetIndex(&cursor,
+                                                           &reset_index),
+                      1);
+            check_int("osc palette reset invalid value", reset_index, -1);
+            check_int("osc palette reset second valid",
+                      NextTerminalPaneOSCPaletteResetIndex(&cursor,
+                                                           &reset_index),
+                      1);
+            check_int("osc palette reset second index", reset_index, 3);
+            check_int("osc palette reset end",
+                      NextTerminalPaneOSCPaletteResetIndex(&cursor,
+                                                           &reset_index),
+                      0);
+        }
         check_int("profile color format",
                   FormatTerminalPaneProfileColor(
                       color_text, (int)sizeof(color_text),
