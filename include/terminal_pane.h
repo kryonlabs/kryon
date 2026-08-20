@@ -88,6 +88,32 @@ typedef struct TerminalPaneProfileState {
     int selection_background;
 } TerminalPaneProfileState;
 
+typedef enum TerminalPaneOSCColorTarget {
+    TERMINAL_PANE_OSC_COLOR_INVALID = 0,
+    TERMINAL_PANE_OSC_COLOR_FOREGROUND,
+    TERMINAL_PANE_OSC_COLOR_BACKGROUND,
+    TERMINAL_PANE_OSC_COLOR_CURSOR,
+    TERMINAL_PANE_OSC_COLOR_MOUSE_FOREGROUND,
+    TERMINAL_PANE_OSC_COLOR_MOUSE_BACKGROUND,
+    TERMINAL_PANE_OSC_COLOR_SELECTION_BACKGROUND,
+    TERMINAL_PANE_OSC_COLOR_SELECTION_FOREGROUND
+} TerminalPaneOSCColorTarget;
+
+typedef struct TerminalPaneOSCColorState {
+    int foreground;
+    int background;
+    int cursor;
+    int mouse_foreground;
+    int mouse_background;
+    int selection_foreground;
+    int selection_background;
+    int base_foreground;
+    int base_background;
+    int base_cursor;
+    int base_selection_foreground;
+    int base_selection_background;
+} TerminalPaneOSCColorState;
+
 typedef struct TerminalPaneMetrics {
     int cols;
     int rows;
@@ -321,6 +347,10 @@ int EscapeTerminalPaneText(char *out, int out_size, const char *text);
 int UnescapeTerminalPaneText(char *out, int out_size, const char *text);
 int ParseTerminalPaneOSCColor(const char *text);
 int TerminalPaneDefaultPaletteColor(int index);
+int TerminalPaneOSCColorTargetForCode(int code);
+int TerminalPaneOSCColorTargetForResetCode(int code);
+int TerminalPaneOSCColorQueryValue(int target,
+                                   TerminalPaneOSCColorState state);
 int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                        int color);
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,

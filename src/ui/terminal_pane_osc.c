@@ -202,6 +202,81 @@ TerminalPaneDefaultPaletteColor(int index)
 }
 
 int
+TerminalPaneOSCColorTargetForCode(int code)
+{
+    switch(code) {
+    case 10:
+        return TERMINAL_PANE_OSC_COLOR_FOREGROUND;
+    case 11:
+        return TERMINAL_PANE_OSC_COLOR_BACKGROUND;
+    case 12:
+        return TERMINAL_PANE_OSC_COLOR_CURSOR;
+    case 13:
+        return TERMINAL_PANE_OSC_COLOR_MOUSE_FOREGROUND;
+    case 14:
+        return TERMINAL_PANE_OSC_COLOR_MOUSE_BACKGROUND;
+    case 17:
+        return TERMINAL_PANE_OSC_COLOR_SELECTION_BACKGROUND;
+    case 19:
+        return TERMINAL_PANE_OSC_COLOR_SELECTION_FOREGROUND;
+    default:
+        break;
+    }
+    return TERMINAL_PANE_OSC_COLOR_INVALID;
+}
+
+int
+TerminalPaneOSCColorTargetForResetCode(int code)
+{
+    if(code < 100)
+        return TERMINAL_PANE_OSC_COLOR_INVALID;
+    return TerminalPaneOSCColorTargetForCode(code - 100);
+}
+
+int
+TerminalPaneOSCColorQueryValue(int target,
+                               TerminalPaneOSCColorState state)
+{
+    switch(target) {
+    case TERMINAL_PANE_OSC_COLOR_FOREGROUND:
+        return state.foreground != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.foreground
+                   : state.base_foreground;
+    case TERMINAL_PANE_OSC_COLOR_BACKGROUND:
+        return state.background != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.background
+                   : state.base_background;
+    case TERMINAL_PANE_OSC_COLOR_CURSOR:
+        return state.cursor != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.cursor
+                   : state.base_cursor;
+    case TERMINAL_PANE_OSC_COLOR_MOUSE_FOREGROUND:
+        return state.mouse_foreground != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.mouse_foreground
+                   : state.foreground != TERMINAL_PANE_COLOR_DEFAULT
+                         ? state.foreground
+                         : state.base_foreground;
+    case TERMINAL_PANE_OSC_COLOR_MOUSE_BACKGROUND:
+        return state.mouse_background != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.mouse_background
+                   : state.background != TERMINAL_PANE_COLOR_DEFAULT
+                         ? state.background
+                         : state.base_background;
+    case TERMINAL_PANE_OSC_COLOR_SELECTION_BACKGROUND:
+        return state.selection_background != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.selection_background
+                   : state.base_selection_background;
+    case TERMINAL_PANE_OSC_COLOR_SELECTION_FOREGROUND:
+        return state.selection_foreground != TERMINAL_PANE_COLOR_DEFAULT
+                   ? state.selection_foreground
+                   : state.base_selection_foreground;
+    default:
+        break;
+    }
+    return TERMINAL_PANE_COLOR_DEFAULT;
+}
+
+int
 FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                    int color)
 {

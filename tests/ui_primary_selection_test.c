@@ -1308,6 +1308,74 @@ main(void)
                   TerminalPaneDefaultPaletteColor(999),
                   TerminalPaneDefaultPaletteColor(255));
 
+        check_int("osc color target foreground",
+                  TerminalPaneOSCColorTargetForCode(10),
+                  TERMINAL_PANE_OSC_COLOR_FOREGROUND);
+        check_int("osc color target selection foreground",
+                  TerminalPaneOSCColorTargetForCode(19),
+                  TERMINAL_PANE_OSC_COLOR_SELECTION_FOREGROUND);
+        check_int("osc color target invalid",
+                  TerminalPaneOSCColorTargetForCode(99),
+                  TERMINAL_PANE_OSC_COLOR_INVALID);
+        check_int("osc color reset target cursor",
+                  TerminalPaneOSCColorTargetForResetCode(112),
+                  TERMINAL_PANE_OSC_COLOR_CURSOR);
+        check_int("osc color reset target invalid",
+                  TerminalPaneOSCColorTargetForResetCode(99),
+                  TERMINAL_PANE_OSC_COLOR_INVALID);
+        {
+            TerminalPaneOSCColorState state = {
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x112233,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_DEFAULT,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x334455,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0xeeccaa,
+                TERMINAL_PANE_COLOR_TRUE_RGB | 0x556677,
+            };
+
+            check_int("osc color query foreground fallback",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_FOREGROUND, state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
+            check_int("osc color query mouse foreground fallback",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_MOUSE_FOREGROUND, state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
+            state.foreground = TERMINAL_PANE_COLOR_TRUE_RGB | 0x102030;
+            check_int("osc color query mouse foreground current",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_MOUSE_FOREGROUND, state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x102030);
+            check_int("osc color query background current",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_BACKGROUND, state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x112233);
+            check_int("osc color query cursor fallback",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_CURSOR, state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x334455);
+            check_int("osc color query selection foreground fallback",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_SELECTION_FOREGROUND,
+                          state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xeeccaa);
+            check_int("osc color query selection background fallback",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_SELECTION_BACKGROUND,
+                          state),
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0x556677);
+            check_int("osc color query invalid",
+                      TerminalPaneOSCColorQueryValue(
+                          TERMINAL_PANE_OSC_COLOR_INVALID, state),
+                      TERMINAL_PANE_COLOR_DEFAULT);
+        }
+
         len = FormatTerminalPaneOSCColorResponse(
             response, (int)sizeof(response), 10,
             TERMINAL_PANE_COLOR_TRUE_RGB | 0x123456);
