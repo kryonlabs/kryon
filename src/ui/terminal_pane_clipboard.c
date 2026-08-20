@@ -28,6 +28,27 @@ TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
 }
 
 int
+TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard)
+{
+    return TerminalPaneClipboardPasteSource(clipboard,
+                                            UI_CLIPBOARD_SOURCE_CLIPBOARD);
+}
+
+int
+TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard)
+{
+    return TerminalPaneClipboardPasteSource(clipboard,
+                                            UI_CLIPBOARD_SOURCE_PRIMARY);
+}
+
+int
+TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard)
+{
+    return TerminalPaneClipboardPasteSource(
+        clipboard, UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD);
+}
+
+int
 TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard)
 {
     if(clipboard.clipboard == NULL)

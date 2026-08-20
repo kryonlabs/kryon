@@ -111,11 +111,28 @@ typedef enum TerminalPaneKeyModifier {
     TERMINAL_PANE_MOD_CTRL = 4
 } TerminalPaneKeyModifier;
 
+typedef enum TerminalPaneMouseButton {
+    TERMINAL_PANE_MOUSE_LEFT = 0,
+    TERMINAL_PANE_MOUSE_MIDDLE = 1,
+    TERMINAL_PANE_MOUSE_RIGHT = 2,
+    TERMINAL_PANE_MOUSE_RELEASE = 3,
+    TERMINAL_PANE_MOUSE_WHEEL_UP = 64,
+    TERMINAL_PANE_MOUSE_WHEEL_DOWN = 65
+} TerminalPaneMouseButton;
+
 typedef struct TerminalPaneKeyMode {
     int application_cursor_keys;
     int application_keypad;
     int modify_other_keys;
 } TerminalPaneKeyMode;
+
+typedef struct TerminalPaneMouseMode {
+    int mode;
+    int utf8;
+    int sgr;
+    int urxvt;
+    int pixels;
+} TerminalPaneMouseMode;
 
 typedef struct TerminalPaneClipboard {
     UIClipboardBuffer *clipboard;
@@ -236,10 +253,17 @@ int EncodeTerminalPaneKey(char *out, int out_size, int key, int mods,
                           TerminalPaneKeyMode mode);
 int EncodeTerminalPaneKeypad(char *out, int out_size, char key,
                              TerminalPaneKeyMode mode);
+int EncodeTerminalPaneMouse(char *out, int out_size, int button, int col,
+                            int row, int pixel_x, int pixel_y, int pressed,
+                            int motion, int mods,
+                            TerminalPaneMouseMode mode);
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
                                      UIClipboardSource source);
+int TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard);
+int TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard);
+int TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int TerminalPaneHandleInput(Terminal *terminal);

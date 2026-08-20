@@ -555,6 +555,28 @@ main(void)
             check_str("terminal pane clipboard source", paste,
                       "pane primary");
 
+            SetUIClipboardTextValue("pane clipboard");
+            (void)SyncUIClipboardBufferFromHost(&buffer);
+            paste[0] = '\0';
+            check_int("terminal pane clipboard helper paste",
+                      TerminalPaneClipboardPasteClipboard(clipboard), 14);
+            check_str("terminal pane clipboard helper", paste,
+                      "pane clipboard");
+
+            SetUIPrimarySelectionTextValue("helper primary");
+            paste[0] = '\0';
+            check_int("terminal pane primary helper paste",
+                      TerminalPaneClipboardPastePrimary(clipboard), 14);
+            check_str("terminal pane primary helper", paste,
+                      "helper primary");
+
+            SetUIPrimarySelectionTextValue("helper preferred");
+            paste[0] = '\0';
+            check_int("terminal pane preferred helper paste",
+                      TerminalPaneClipboardPastePreferred(clipboard), 16);
+            check_str("terminal pane preferred helper", paste,
+                      "helper preferred");
+
             SetUIClipboardTextValue("host sync");
             check_int("terminal pane clipboard sync",
                       TerminalPaneClipboardSyncFromHost(clipboard), 1);
@@ -690,6 +712,89 @@ main(void)
                                            mode),
                   3);
         check_str("terminal keypad enter application text", seq, "\x1bOM");
+    }
+
+    {
+        char seq[64];
+        TerminalPaneMouseMode mouse = {1000, 0, 1, 0, 0};
+
+        check_int("terminal mouse sgr press",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          -1, -1, 1, 0, 0, mouse),
+                  9);
+        check_str("terminal mouse sgr press text", seq, "\x1b[<0;5;3M");
+
+        check_int("terminal mouse sgr release",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          -1, -1, 0, 0, 0, mouse),
+                  9);
+        check_str("terminal mouse sgr release text", seq, "\x1b[<0;5;3m");
+
+        check_int("terminal mouse sgr ctrl wheel",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_WHEEL_DOWN, 4, 2,
+                                          -1, -1, 1, 0,
+                                          TERMINAL_PANE_MOD_CTRL, mouse),
+                  10);
+        check_str("terminal mouse sgr ctrl wheel text", seq, "\x1b[<81;5;3M");
+
+        mouse.sgr = 0;
+        check_int("terminal mouse x10 normal",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          -1, -1, 1, 0, 0, mouse),
+                  6);
+        check_str("terminal mouse x10 normal text", seq, "\x1b[M %#");
+
+        mouse.mode = 9;
+        check_int("terminal mouse x10 suppress release",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          -1, -1, 0, 0, 0, mouse),
+                  0);
+        check_int("terminal mouse x10 suppress wheel",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_WHEEL_DOWN, 4, 2,
+                                          -1, -1, 1, 0, 0, mouse),
+                  0);
+
+        mouse.mode = 1000;
+        mouse.urxvt = 1;
+        check_int("terminal mouse urxvt",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          -1, -1, 1, 0,
+                                          TERMINAL_PANE_MOD_CTRL, mouse),
+                  9);
+        check_str("terminal mouse urxvt text", seq, "\x1b[48;5;3M");
+
+        mouse.urxvt = 0;
+        mouse.utf8 = 1;
+        check_int("terminal mouse utf8",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 300, 2,
+                                          -1, -1, 1, 0, 0, mouse),
+                  7);
+        check_str("terminal mouse utf8 text", seq, "\x1b[M \xc5\x8d#");
+
+        mouse.utf8 = 0;
+        mouse.pixels = 1;
+        check_int("terminal mouse pixel",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_LEFT, 4, 2,
+                                          80, 40, 1, 0, 0, mouse),
+                  11);
+        check_str("terminal mouse pixel text", seq, "\x1b[<0;81;41M");
+
+        mouse.pixels = 0;
+        mouse.mode = 1002;
+        check_int("terminal mouse suppress hover",
+                  EncodeTerminalPaneMouse(seq, (int)sizeof(seq),
+                                          TERMINAL_PANE_MOUSE_RELEASE, 4, 2,
+                                          -1, -1, 1, 1, 0, mouse),
+                  0);
     }
 
     return 0;
