@@ -685,6 +685,13 @@ main(void)
     {
         char response[80];
         int len;
+        int window;
+        int icon;
+        char title_report[80];
+        char title_stack[2][12] = {{0}};
+        int title_count = 0;
+        char popped[12];
+        char path[80];
 
         check_int("osc color hash short",
                   ParseTerminalPaneOSCColor("#abc"),
@@ -732,6 +739,58 @@ main(void)
                       TERMINAL_PANE_COLOR_TRUE_RGB | 0xabcdef),
                   0);
         check_str("osc invalid response clears", response, "");
+
+        TerminalPaneOSCTitleTargets("", &window, &icon);
+        check_int("osc title empty targets window", window, 1);
+        check_int("osc title empty targets icon", icon, 1);
+        TerminalPaneOSCTitleTargets("1;2;99", &window, &icon);
+        check_int("osc title parsed targets window", window, 1);
+        check_int("osc title parsed targets icon", icon, 1);
+        TerminalPaneOSCTitleTargets("1", &window, &icon);
+        check_int("osc title icon target window", window, 0);
+        check_int("osc title icon target icon", icon, 1);
+
+        len = FormatTerminalPaneOSCTitleReport(
+            title_report, (int)sizeof(title_report), 0,
+            "Clean\a\x1bName\tOk");
+        check_int("osc title report len", len, 17);
+        check_str("osc title report", title_report,
+                  "\x1b]lCleanName\tOk\x1b\\");
+        title_report[0] = 'x';
+        check_int("osc title report small",
+                  FormatTerminalPaneOSCTitleReport(title_report, 4, 1,
+                                                   "Too long"),
+                  0);
+        check_str("osc title report small clears", title_report, "");
+
+        TerminalPaneOSCPushTitle((char *)title_stack, 2,
+                                 (int)sizeof(title_stack[0]), &title_count,
+                                 "first");
+        TerminalPaneOSCPushTitle((char *)title_stack, 2,
+                                 (int)sizeof(title_stack[0]), &title_count,
+                                 "second");
+        TerminalPaneOSCPushTitle((char *)title_stack, 2,
+                                 (int)sizeof(title_stack[0]), &title_count,
+                                 "third");
+        check_int("osc title stack clamps", title_count, 2);
+        check_str("osc title stack shifted", title_stack[0], "second");
+        TerminalPaneOSCPopTitle((char *)title_stack, 2,
+                                (int)sizeof(title_stack[0]), &title_count,
+                                popped, (int)sizeof(popped));
+        check_str("osc title stack pop", popped, "third");
+        check_int("osc title stack count after pop", title_count, 1);
+
+        check_int("osc file uri decode",
+                  DecodeTerminalPaneOSCFileURIPath(
+                      path, (int)sizeof(path),
+                      "file://host/tmp/with%20space"),
+                  1);
+        check_str("osc file uri path", path, "/tmp/with space");
+        check_int("osc file uri invalid",
+                  DecodeTerminalPaneOSCFileURIPath(path, (int)sizeof(path),
+                                                   "https://example.test"),
+                  0);
+        check_str("osc file uri invalid clears", path, "");
     }
 
     {

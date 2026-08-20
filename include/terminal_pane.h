@@ -205,6 +205,15 @@ int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
                                        int color);
 int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
                                          int color);
+int TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon);
+int FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,
+                                     const char *title);
+void TerminalPaneOSCPushTitle(char *stack, int depth, int item_size,
+                              int *count, const char *value);
+void TerminalPaneOSCPopTitle(char *stack, int depth, int item_size,
+                             int *count, char *value, int value_size);
+int DecodeTerminalPaneOSCFileURIPath(char *out, int out_size,
+                                     const char *uri);
 static inline TerminalPanePalette GetTerminalPaneDefaultPalette(void)
 {
     static const Color base16[16] = {

@@ -17,6 +17,30 @@ osc_hex_value(int ch)
 }
 
 static int
+append_osc_safe_text(char *buffer, int buffer_size, int *used,
+                     const char *text)
+{
+    const unsigned char *cursor = (const unsigned char *)text;
+
+    if(buffer == NULL || buffer_size <= 0 || used == NULL)
+        return 0;
+    if(cursor == NULL)
+        cursor = (const unsigned char *)"";
+    while(*cursor != '\0') {
+        if(*cursor == '\a' || *cursor == 0x1b ||
+           (*cursor < 0x20 && *cursor != '\t')) {
+            cursor++;
+            continue;
+        }
+        if(*used + 1 >= buffer_size)
+            return 0;
+        buffer[(*used)++] = (char)*cursor++;
+    }
+    buffer[*used] = '\0';
+    return 1;
+}
+
+static int
 parse_hex_byte(const char *text, int *used)
 {
     int hi;
@@ -222,4 +246,152 @@ FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
     return snprintf(out, (size_t)out_size,
                     "\x1b]4;%d;rgb:%02x%02x/%02x%02x/%02x%02x\a",
                     index, r, r, g, g, b, b);
+}
+
+int
+TerminalPaneOSCTitleTargets(const char *payload, int *window, int *icon)
+{
+    const char *cursor = payload;
+    int saw_target = 0;
+
+    if(window != NULL)
+        *window = 0;
+    if(icon != NULL)
+        *icon = 0;
+    if(cursor == NULL || cursor[0] == '\0') {
+        if(window != NULL)
+            *window = 1;
+        if(icon != NULL)
+            *icon = 1;
+        return 1;
+    }
+    while(cursor[0] != '\0') {
+        int value;
+
+        if(cursor[0] == ';') {
+            cursor++;
+            continue;
+        }
+        value = atoi(cursor);
+        saw_target = 1;
+        if(value == 0) {
+            if(window != NULL)
+                *window = 1;
+            if(icon != NULL)
+                *icon = 1;
+        } else if(value == 1) {
+            if(icon != NULL)
+                *icon = 1;
+        } else if(value == 2) {
+            if(window != NULL)
+                *window = 1;
+        }
+        while(cursor[0] != '\0' && cursor[0] != ';')
+            cursor++;
+    }
+    if(!saw_target) {
+        if(window != NULL)
+            *window = 1;
+        if(icon != NULL)
+            *icon = 1;
+    }
+    return 1;
+}
+
+int
+FormatTerminalPaneOSCTitleReport(char *out, int out_size, int icon,
+                                 const char *title)
+{
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(out_size < 5)
+        return 0;
+    out[used++] = '\x1b';
+    out[used++] = ']';
+    out[used++] = icon ? 'L' : 'l';
+    if(!append_osc_safe_text(out, out_size, &used, title)) {
+        out[0] = '\0';
+        return 0;
+    }
+    if(used + 2 >= out_size) {
+        out[0] = '\0';
+        return 0;
+    }
+    out[used++] = '\x1b';
+    out[used++] = '\\';
+    out[used] = '\0';
+    return used;
+}
+
+void
+TerminalPaneOSCPushTitle(char *stack, int depth, int item_size, int *count,
+                         const char *value)
+{
+    int i;
+
+    if(stack == NULL || depth <= 0 || item_size <= 0 || count == NULL)
+        return;
+    if(value == NULL)
+        value = "";
+    if(*count < 0)
+        *count = 0;
+    if(*count >= depth) {
+        for(i = 1; i < depth; i++)
+            snprintf(stack + (i - 1) * item_size, (size_t)item_size, "%s",
+                     stack + i * item_size);
+        *count = depth - 1;
+    }
+    snprintf(stack + (*count) * item_size, (size_t)item_size, "%s", value);
+    (*count)++;
+}
+
+void
+TerminalPaneOSCPopTitle(char *stack, int depth, int item_size, int *count,
+                        char *value, int value_size)
+{
+    char *item;
+
+    if(stack == NULL || depth <= 0 || item_size <= 0 || count == NULL ||
+       value == NULL || value_size <= 0)
+        return;
+    if(*count <= 0)
+        return;
+    if(*count > depth)
+        *count = depth;
+    (*count)--;
+    item = stack + (*count) * item_size;
+    snprintf(value, (size_t)value_size, "%s", item);
+    item[0] = '\0';
+}
+
+int
+DecodeTerminalPaneOSCFileURIPath(char *out, int out_size, const char *uri)
+{
+    const char *path;
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(uri == NULL || strncmp(uri, "file://", 7) != 0)
+        return 0;
+    path = strchr(uri + 7, '/');
+    if(path == NULL)
+        return 0;
+    while(*path != '\0' && used < out_size - 1) {
+        if(*path == '%' && osc_hex_value((unsigned char)path[1]) >= 0 &&
+           osc_hex_value((unsigned char)path[2]) >= 0) {
+            out[used++] =
+                (char)((osc_hex_value((unsigned char)path[1]) << 4) |
+                       osc_hex_value((unsigned char)path[2]));
+            path += 3;
+        } else {
+            out[used++] = *path++;
+        }
+    }
+    out[used] = '\0';
+    return used > 0;
 }
