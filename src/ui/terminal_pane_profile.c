@@ -41,6 +41,36 @@ TerminalPaneColorToRGB(Color color)
            ((int)color.g << 8) | (int)color.b;
 }
 
+Color
+ResolveTerminalPaneColor(const TerminalPanePalette *palette, int value,
+                         Color fallback)
+{
+    if(value >= 0 && (value & TERMINAL_PANE_COLOR_TRUE_RGB) != 0) {
+        int rgb = value & 0xffffff;
+
+        return (Color){(unsigned char)((rgb >> 16) & 255),
+                       (unsigned char)((rgb >> 8) & 255),
+                       (unsigned char)(rgb & 255), 255};
+    }
+    if(value >= 0 && value < 256) {
+        if(palette != NULL)
+            return palette->ansi[value];
+        return GetTerminalPaneDefaultPalette().ansi[value];
+    }
+    return fallback;
+}
+
+Color
+ResolveTerminalPaneColorWithOverrides(const TerminalPanePalette *palette,
+                                      const int *overrides, int value,
+                                      Color fallback)
+{
+    if(overrides != NULL && value >= 0 && value < 256 &&
+       overrides[value] != TERMINAL_PANE_COLOR_DEFAULT)
+        value = overrides[value];
+    return ResolveTerminalPaneColor(palette, value, fallback);
+}
+
 TerminalPaneProfileColors
 TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors)
 {

@@ -622,6 +622,8 @@ main(void)
         };
         TerminalPaneProfileColors colors;
         TerminalPaneProfileState state;
+        TerminalPanePalette pane_palette;
+        int color_overrides[256];
         char color_text[16];
         int parsed_color = 0;
         char escaped_text[64];
@@ -630,6 +632,31 @@ main(void)
         check_int("terminal pane color rgb",
                   TerminalPaneColorToRGB((Color){0x11, 0x22, 0x33, 255}),
                   TERMINAL_PANE_COLOR_TRUE_RGB | 0x112233);
+        check_int("terminal pane invisible color default",
+                  TerminalPaneColorToRGB((Color){0, 0, 0, 0}),
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        pane_palette = GetTerminalPaneDefaultPalette();
+        memset(color_overrides, 0xff, sizeof(color_overrides));
+        check_int("terminal pane true color resolve",
+                  TerminalPaneColorToRGB(ResolveTerminalPaneColor(
+                      &pane_palette, TERMINAL_PANE_COLOR_TRUE_RGB | 0x0a141e,
+                      (Color){1, 2, 3, 255})),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x0a141e);
+        check_int("terminal pane palette color resolve",
+                  TerminalPaneColorToRGB(ResolveTerminalPaneColor(
+                      &pane_palette, 1, (Color){1, 2, 3, 255})),
+                  TerminalPaneColorToRGB(pane_palette.ansi[1]));
+        check_int("terminal pane fallback color resolve",
+                  TerminalPaneColorToRGB(ResolveTerminalPaneColor(
+                      &pane_palette, TERMINAL_PANE_COLOR_DEFAULT,
+                      (Color){1, 2, 3, 255})),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x010203);
+        color_overrides[1] = TERMINAL_PANE_COLOR_TRUE_RGB | 0x223344;
+        check_int("terminal pane overridden color resolve",
+                  TerminalPaneColorToRGB(ResolveTerminalPaneColorWithOverrides(
+                      &pane_palette, color_overrides, 1,
+                      (Color){1, 2, 3, 255})),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x223344);
         colors = ResolveTerminalPaneProfileColors(configured, theme);
         check_int("profile foreground from theme", colors.foreground,
                   TERMINAL_PANE_COLOR_TRUE_RGB | 0x040506);

@@ -194,6 +194,11 @@ typedef struct TerminalPaneResult {
 
 TerminalPaneColors GetTerminalPaneThemeColors(void);
 int TerminalPaneColorToRGB(Color color);
+Color ResolveTerminalPaneColor(const TerminalPanePalette *palette, int value,
+                               Color fallback);
+Color ResolveTerminalPaneColorWithOverrides(
+    const TerminalPanePalette *palette, const int *overrides, int value,
+    Color fallback);
 TerminalPaneProfileColors
 TerminalPaneProfileColorsFromTheme(TerminalPaneColors colors);
 TerminalPaneProfileColors
