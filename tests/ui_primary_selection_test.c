@@ -70,6 +70,59 @@ main(void)
     }
 
     {
+        UIClipboardBuffer buffer;
+
+        InitUIClipboardBuffer(&buffer, "clip");
+        SetUIPrimarySelectionTextValue("primary");
+
+        check_int("default target includes clipboard",
+                  UIClipboardTargetIncludes(NULL, 'c'), 1);
+        check_int("default target excludes primary",
+                  UIClipboardTargetIncludes(NULL, 'p'), 0);
+        check_int("primary target uses primary",
+                  UIClipboardTargetUsesPrimary("p"), 1);
+        check_int("combined target uses clipboard for reads",
+                  UIClipboardTargetUsesPrimary("cp"), 0);
+        check_str("default target reads clipboard",
+                  GetUIClipboardTargetText(&buffer, NULL), "clip");
+        check_str("primary target reads primary",
+                  GetUIClipboardTargetText(&buffer, "p"), "primary");
+        check_str("combined target reads clipboard",
+                  GetUIClipboardTargetText(&buffer, "cp"), "clip");
+
+        check_int("primary target write",
+                  RequestUIClipboardTargetWrite(&buffer, "p", "ptext"), 1);
+        check_str("primary target write text",
+                  GetUIPrimarySelectionTextValue(), "ptext");
+        check_str("primary target leaves clipboard",
+                  GetUIClipboardBufferText(&buffer), "clip");
+
+        check_int("clipboard target write",
+                  RequestUIClipboardTargetWrite(&buffer, "c", "ctext"), 1);
+        check_str("clipboard target write text",
+                  GetUIClipboardBufferText(&buffer), "ctext");
+        check_str("clipboard target leaves primary",
+                  GetUIPrimarySelectionTextValue(), "ptext");
+
+        check_int("combined target write",
+                  RequestUIClipboardTargetWrite(&buffer, "cp", "both"), 1);
+        check_str("combined target clipboard text",
+                  GetUIClipboardBufferText(&buffer), "both");
+        check_str("combined target primary text",
+                  GetUIPrimarySelectionTextValue(), "both");
+
+        check_int("selection target writes clipboard",
+                  RequestUIClipboardTargetWrite(&buffer, "s", "select"), 1);
+        check_str("selection target clipboard text",
+                  GetUIClipboardBufferText(&buffer), "select");
+
+        check_int("unknown target falls back to clipboard",
+                  RequestUIClipboardTargetWrite(&buffer, "x", "fallback"), 1);
+        check_str("unknown target clipboard text",
+                  GetUIClipboardBufferText(&buffer), "fallback");
+    }
+
+    {
         TerminalPanePalette palette = GetTerminalPaneDefaultPalette();
 
         check_int("terminal palette black red", palette.ansi[1].r, 205);
