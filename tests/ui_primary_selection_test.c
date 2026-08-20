@@ -683,6 +683,58 @@ main(void)
     }
 
     {
+        char response[80];
+        int len;
+
+        check_int("osc color hash short",
+                  ParseTerminalPaneOSCColor("#abc"),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0xaabbcc);
+        check_int("osc color hash wide",
+                  ParseTerminalPaneOSCColor("#123456789"),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x124578);
+        check_int("osc color rgb short components",
+                  ParseTerminalPaneOSCColor("rgb:1/23/4567"),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x112345);
+        check_int("osc color rgba",
+                  ParseTerminalPaneOSCColor("rgba:10/30/50/70"),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0x103050);
+        check_int("osc color rgbi",
+                  ParseTerminalPaneOSCColor("rgbi:1/0.5/0"),
+                  TERMINAL_PANE_COLOR_TRUE_RGB | 0xff8000);
+        check_int("osc color invalid",
+                  ParseTerminalPaneOSCColor("rgb:zz/00/00"),
+                  TERMINAL_PANE_COLOR_DEFAULT);
+        check_int("osc default palette clamps low",
+                  TerminalPaneDefaultPaletteColor(-10),
+                  TerminalPaneDefaultPaletteColor(0));
+        check_int("osc default palette clamps high",
+                  TerminalPaneDefaultPaletteColor(999),
+                  TerminalPaneDefaultPaletteColor(255));
+
+        len = FormatTerminalPaneOSCColorResponse(
+            response, (int)sizeof(response), 10,
+            TERMINAL_PANE_COLOR_TRUE_RGB | 0x123456);
+        check_int("osc color response len", len, 24);
+        check_str("osc color response", response,
+                  "\x1b]10;rgb:1212/3434/5656\a");
+
+        len = FormatTerminalPaneOSCPaletteResponse(
+            response, (int)sizeof(response), 4,
+            TERMINAL_PANE_COLOR_TRUE_RGB | 0xabcdef);
+        check_int("osc palette response len", len, 25);
+        check_str("osc palette response", response,
+                  "\x1b]4;4;rgb:abab/cdcd/efef\a");
+
+        response[0] = 'x';
+        check_int("osc invalid response",
+                  FormatTerminalPaneOSCPaletteResponse(
+                      response, (int)sizeof(response), 300,
+                      TERMINAL_PANE_COLOR_TRUE_RGB | 0xabcdef),
+                  0);
+        check_str("osc invalid response clears", response, "");
+    }
+
+    {
         char seq[64];
         TerminalPaneKeyMode mode = {0};
 

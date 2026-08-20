@@ -199,6 +199,12 @@ void TerminalPaneProfileStateSeedMissing(TerminalPaneProfileState *state,
 void TerminalPaneProfileStateSyncChanged(TerminalPaneProfileState *state,
                                          TerminalPaneProfileColors old_colors,
                                          TerminalPaneProfileColors new_colors);
+int ParseTerminalPaneOSCColor(const char *text);
+int TerminalPaneDefaultPaletteColor(int index);
+int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,
+                                       int color);
+int FormatTerminalPaneOSCPaletteResponse(char *out, int out_size, int index,
+                                         int color);
 static inline TerminalPanePalette GetTerminalPaneDefaultPalette(void)
 {
     static const Color base16[16] = {
