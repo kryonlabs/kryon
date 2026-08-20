@@ -227,6 +227,7 @@ type TextAreaProps struct {
 	Placeholder    string
 	Syntax         UISyntaxMode
 	Style          UITextInputStyle
+	ContentVersion int32
 }
 
 type ReadonlyTextBoxProps struct {
@@ -525,6 +526,7 @@ func DrawUITextArea(props TextAreaProps) bool {
 		style:            props.Style.toC(),
 		filter:           nil,
 		filter_user_data: nil,
+		content_version:  C.int(props.ContentVersion),
 	}
 	changed := C.DrawUITextArea(cprops) != 0
 	if props.Focused != nil {

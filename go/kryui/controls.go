@@ -136,12 +136,13 @@ func (f *TextFieldState) Draw(bounds Rectangle, font int32, style UITextInputSty
 
 // TextArea owns a multiline editor and its scroll state.
 type TextArea struct {
-	buffer        []byte
-	cursor        int32
-	focused       bool
-	scrollY       int32
-	focusID       int32
-	maxCodepoints int32
+	buffer         []byte
+	cursor         int32
+	focused        bool
+	scrollY        int32
+	focusID        int32
+	maxCodepoints  int32
+	contentVersion int32
 }
 
 func NewTextArea(focusID, capacity int) *TextArea {
@@ -149,9 +150,10 @@ func NewTextArea(focusID, capacity int) *TextArea {
 		capacity = 2
 	}
 	return &TextArea{
-		buffer:        make([]byte, capacity),
-		focusID:       int32(focusID),
-		maxCodepoints: int32(capacity - 1),
+		buffer:         make([]byte, capacity),
+		focusID:        int32(focusID),
+		maxCodepoints:  int32(capacity - 1),
+		contentVersion: 1,
 	}
 }
 
@@ -170,9 +172,13 @@ func (a *TextArea) SetText(text string) {
 	if a == nil || len(a.buffer) == 0 {
 		return
 	}
+	old := a.Text()
 	clear(a.buffer)
 	n := copy(a.buffer[:len(a.buffer)-1], text)
 	a.cursor = int32(n)
+	if old != a.Text() {
+		a.bumpContentVersion()
+	}
 }
 
 func (a *TextArea) Clear() { a.SetText("") }
@@ -190,12 +196,24 @@ func (a *TextArea) Draw(bounds Rectangle, font, lineGap int32, placeholder strin
 	if a == nil {
 		return false
 	}
-	return DrawUITextArea(TextAreaProps{
+	changed := DrawUITextArea(TextAreaProps{
 		Bounds: bounds, Text: a.buffer, CursorPosition: &a.cursor,
 		Focused: &a.focused, ScrollY: &a.scrollY,
 		MaxCodepoints: a.maxCodepoints, Font: font, LineGap: lineGap,
 		FocusID: a.focusID, Placeholder: placeholder, Syntax: syntax, Style: style,
+		ContentVersion: a.contentVersion,
 	})
+	if changed {
+		a.bumpContentVersion()
+	}
+	return changed
+}
+
+func (a *TextArea) bumpContentVersion() {
+	a.contentVersion++
+	if a.contentVersion == 0 {
+		a.contentVersion = 1
+	}
 }
 
 // ScrollState owns a draggable/wheel-scrollable container offset.
