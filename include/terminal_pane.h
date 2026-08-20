@@ -210,6 +210,8 @@ int ParseTerminalPaneCursorStyle(const char *text, int fallback);
 const char *TerminalPaneCursorStyleName(int style);
 int ParseTerminalPaneProfileColor(const char *text, int *out);
 int FormatTerminalPaneProfileColor(char *out, int out_size, int color);
+int EscapeTerminalPaneText(char *out, int out_size, const char *text);
+int UnescapeTerminalPaneText(char *out, int out_size, const char *text);
 int ParseTerminalPaneOSCColor(const char *text);
 int TerminalPaneDefaultPaletteColor(int index);
 int FormatTerminalPaneOSCColorResponse(char *out, int out_size, int code,

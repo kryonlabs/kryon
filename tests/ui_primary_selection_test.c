@@ -624,6 +624,8 @@ main(void)
         TerminalPaneProfileState state;
         char color_text[16];
         int parsed_color = 0;
+        char escaped_text[64];
+        char unescaped_text[64];
 
         check_int("terminal pane color rgb",
                   TerminalPaneColorToRGB((Color){0x11, 0x22, 0x33, 255}),
@@ -736,6 +738,40 @@ main(void)
                   FormatTerminalPaneProfileColor(color_text,
                                                  (int)sizeof(color_text), 12),
                   0);
+        check_int("profile text escape",
+                  EscapeTerminalPaneText(escaped_text,
+                                         (int)sizeof(escaped_text),
+                                         "a\\b\tc\nd\r"),
+                  12);
+        check_str("profile text escaped value", escaped_text,
+                  "a\\\\b\\tc\\nd\\r");
+        check_int("profile text unescape",
+                  UnescapeTerminalPaneText(unescaped_text,
+                                           (int)sizeof(unescaped_text),
+                                           escaped_text),
+                  8);
+        check_str("profile text unescaped value", unescaped_text,
+                  "a\\b\tc\nd\r");
+        check_int("profile text escape null",
+                  EscapeTerminalPaneText(escaped_text,
+                                         (int)sizeof(escaped_text), NULL),
+                  0);
+        check_str("profile text escape null value", escaped_text, "");
+        check_int("profile text unescape unknown",
+                  UnescapeTerminalPaneText(unescaped_text,
+                                           (int)sizeof(unescaped_text),
+                                           "\\x"),
+                  1);
+        check_str("profile text unescape unknown value", unescaped_text,
+                  "x");
+        check_int("profile text escape truncates safely",
+                  EscapeTerminalPaneText(escaped_text, 4, "abcdef"), 3);
+        check_str("profile text escape truncated value", escaped_text,
+                  "abc");
+        check_int("profile text unescape truncates safely",
+                  UnescapeTerminalPaneText(unescaped_text, 4, "abcdef"), 3);
+        check_str("profile text unescape truncated value", unescaped_text,
+                  "abc");
 
         check_int("cursor style parse block",
                   ParseTerminalPaneCursorStyle("block",

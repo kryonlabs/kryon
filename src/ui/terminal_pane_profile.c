@@ -229,3 +229,68 @@ FormatTerminalPaneProfileColor(char *out, int out_size, int color)
         return 0;
     return snprintf(out, (size_t)out_size, "#%06x", color & 0xffffff);
 }
+
+int
+EscapeTerminalPaneText(char *out, int out_size, const char *text)
+{
+    const unsigned char *cursor = (const unsigned char *)text;
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    if(cursor == NULL)
+        cursor = (const unsigned char *)"";
+    while(*cursor != '\0' && used < out_size - 1) {
+        const char *escaped = NULL;
+
+        if(*cursor == '\\')
+            escaped = "\\\\";
+        else if(*cursor == '\t')
+            escaped = "\\t";
+        else if(*cursor == '\n')
+            escaped = "\\n";
+        else if(*cursor == '\r')
+            escaped = "\\r";
+        if(escaped != NULL) {
+            if(used + 2 >= out_size)
+                break;
+            out[used++] = escaped[0];
+            out[used++] = escaped[1];
+        } else {
+            out[used++] = (char)*cursor;
+        }
+        cursor++;
+    }
+    out[used] = '\0';
+    return used;
+}
+
+int
+UnescapeTerminalPaneText(char *out, int out_size, const char *text)
+{
+    int used = 0;
+
+    if(out == NULL || out_size <= 0)
+        return 0;
+    out[0] = '\0';
+    if(text == NULL)
+        return 0;
+    while(*text != '\0' && used < out_size - 1) {
+        if(*text == '\\' && text[1] != '\0') {
+            text++;
+            if(*text == 't')
+                out[used++] = '\t';
+            else if(*text == 'n')
+                out[used++] = '\n';
+            else if(*text == 'r')
+                out[used++] = '\r';
+            else
+                out[used++] = *text;
+        } else {
+            out[used++] = *text;
+        }
+        text++;
+    }
+    out[used] = '\0';
+    return used;
+}
