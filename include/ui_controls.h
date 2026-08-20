@@ -133,6 +133,7 @@ typedef struct {
     UITextInputStyle style;
     UITextInputFilter filter;
     void *filter_user_data;
+    int content_version;
 } TextAreaProps;
 
 typedef struct {

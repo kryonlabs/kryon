@@ -67,6 +67,20 @@ typedef struct UITextSelection {
 } UITextSelection;
 
 static UITextSelection g_ui_text_area_selection = {0};
+
+#define UI_TEXT_AREA_HEIGHT_CACHE_SIZE 16
+
+typedef struct UITextAreaHeightCacheEntry {
+    const char *text;
+    int font;
+    int line_gap;
+    int len;
+    int content_version;
+    int height;
+} UITextAreaHeightCacheEntry;
+
+static UITextAreaHeightCacheEntry g_ui_text_area_height_cache[UI_TEXT_AREA_HEIGHT_CACHE_SIZE];
+static int g_ui_text_area_height_cache_next = 0;
 static UITextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_last_click_id = 0;
 static int *g_ui_text_field_last_click_owner = NULL;
@@ -1770,15 +1784,14 @@ ui_text_area_line_height(const char *text, int start, int end, int base_font, in
 }
 
 static int
-ui_text_area_content_height(const char *text, int font, int line_gap)
+ui_text_area_content_height_uncached(const char *text, int font, int line_gap,
+                                     int len)
 {
-    int len;
     int line_start = 0;
     int height = 0;
 
     if(text == NULL)
         text = "";
-    len = (int)strlen(text);
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
             height += ui_text_area_line_height(text, line_start, i, font, line_gap);
@@ -1786,6 +1799,42 @@ ui_text_area_content_height(const char *text, int font, int line_gap)
         }
     }
     return height;
+}
+
+static int
+ui_text_area_content_height(const char *text, int font, int line_gap,
+                            int content_version, int force_recompute)
+{
+    int len;
+
+    if(text == NULL)
+        text = "";
+    len = (int)strlen(text);
+    if(content_version == 0)
+        return ui_text_area_content_height_uncached(text, font, line_gap, len);
+
+    if(!force_recompute) {
+        for(int i = 0; i < UI_TEXT_AREA_HEIGHT_CACHE_SIZE; i++) {
+            UITextAreaHeightCacheEntry *entry = &g_ui_text_area_height_cache[i];
+            if(entry->text == text && entry->font == font &&
+               entry->line_gap == line_gap && entry->len == len &&
+               entry->content_version == content_version)
+                return entry->height;
+        }
+    }
+
+    UITextAreaHeightCacheEntry *entry =
+        &g_ui_text_area_height_cache[g_ui_text_area_height_cache_next];
+    entry->text = text;
+    entry->font = font;
+    entry->line_gap = line_gap;
+    entry->len = len;
+    entry->content_version = content_version;
+    entry->height = ui_text_area_content_height_uncached(text, font, line_gap,
+                                                        len);
+    g_ui_text_area_height_cache_next =
+        (g_ui_text_area_height_cache_next + 1) % UI_TEXT_AREA_HEIGHT_CACHE_SIZE;
+    return entry->height;
 }
 
 static int
@@ -2557,7 +2606,8 @@ DrawUITextArea(TextAreaProps area)
                                     &g_ui_text_area_selection,
                                     selection_start, selection_end, 1, 0);
 
-    content_h = ui_text_area_content_height(area.text, font, line_gap);
+    content_h = ui_text_area_content_height(area.text, font, line_gap,
+                                            area.content_version, changed);
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
         max_scroll = 0;
