@@ -16,7 +16,7 @@ sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 grep -F 'widget TextField' "$work/ir/tests/perf/text_input.kir" >/dev/null
 grep -F 'TextField((TextFieldProps)' "$work/c/tests/perf/text_input.c" >/dev/null
 cc -fsyntax-only -I"$root/include" -I"$work/c" "$work/c/tests/perf/text_input.c"
-grep -F 'kryon.TextField(kryon.TextFieldProps' "$work/go/text_input.go" >/dev/null
+grep -F 'TextField(TextFieldProps' "$work/go/text_input.go" >/dev/null
 test -s "$work/krb/tests/perf/text_input.krb"
 test "$(od -An -tu4 -j8 -N4 "$work/krb/tests/perf/text_input.krb" | tr -d ' ')" -ge 1
 cp "$work/go/text_input.go" "$work/go-check/text_input.go"

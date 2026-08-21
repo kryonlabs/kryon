@@ -15,7 +15,7 @@ screen AccessibilityExample(viewport: Rectangle) {
     Background(GetThemeBackground())
     Text("Accessibility overlay", 40, 40, UI_TEXT_24, GetThemeText())
     Checkbox(1801,40,90,"Show focus/debug overlay",&enabled)
-    if GenericButton(101, 40, 140, 200, 40, "Focusable Button", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
+    if Button((ButtonProps){.bounds = {40, 140, 200, 40}, .label = "Focusable Button", .style = UI_BUTTON_STYLE_PRIMARY, .font = UI_TEXT_16, .id = 101}) {
         enabled = !enabled
     }
     if enabled {

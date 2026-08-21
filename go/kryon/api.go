@@ -100,29 +100,16 @@ func Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool {
 func Modal(title, message, cancelBtn, confirmBtn string) int {
 	return active().Modal(title, message, cancelBtn, confirmBtn)
 }
-func TitleBar(title string, height int32) { active().TitleBar(title, height) }
-func BottomNav(props BottomNavProps)      { active().BottomNav(props) }
-func TopNav(props TopNavProps)            { active().TopNav(props) }
-func Toolbar(props ToolbarProps)          { active().Toolbar(props) }
-func GenericButton(id, x, y, w, h int32, label string, style UIButtonStyle, disabled int32, hover *int32) bool {
-	return active().GenericButton(id, x, y, w, h, label, style, disabled, hover)
-}
-func TextButton(id, x, y int32, label string, hover *int32) bool {
-	return active().TextButton(id, x, y, label, hover)
-}
-func LocaleDropdown(id, x, y, w, h int32, selected *int32) bool {
-	return active().LocaleDropdown(id, x, y, w, h, selected)
-}
-func VerticalSlider(id, x, y, h, min, max int32, value *int32) bool {
-	return active().VerticalSlider(id, x, y, h, min, max, value)
-}
+func TitleBar(title string, height int32)                  { active().TitleBar(title, height) }
+func BottomNav(props BottomNavProps)                       { active().BottomNav(props) }
+func TopNav(props TopNavProps)                             { active().TopNav(props) }
+func Toolbar(props ToolbarProps)                           { active().Toolbar(props) }
 func CanvasGrid(bounds Rectangle, step int32, color Color) { active().CanvasGrid(bounds, step, color) }
 func SelectableText(value string, x, y, fontSize int32, color Color) {
 	active().SelectableText(value, x, y, fontSize, color)
 }
 func ShowUIToast(message string)                     { active().ShowUIToast(message) }
 func ShowUIToastFor(message string, seconds float64) { active().ShowUIToastFor(message, seconds) }
-func ReadonlyTextBox(props ReadonlyTextBoxProps)     { active().ReadonlyTextBox(props) }
 func TextField(props TextFieldProps)                 { active().TextField(props) }
 func TextArea(props TextAreaProps) bool              { return active().TextArea(props) }
 func Radio(props RadioButtonProps) int32             { return active().Radio(props) }

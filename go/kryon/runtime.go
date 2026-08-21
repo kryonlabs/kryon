@@ -224,14 +224,6 @@ type TextAreaProps struct {
 	ContentVersion int32
 }
 
-type ReadonlyTextBoxProps struct {
-	Bounds  Rectangle
-	Text    string
-	Font    int32
-	Style   TextInputStyle
-	LineGap int32
-}
-
 type ColumnProps struct {
 	Bounds  Rectangle
 	Gap     int32
@@ -524,15 +516,10 @@ type Runtime interface {
 	BottomNav(props BottomNavProps)
 	TopNav(props TopNavProps)
 	Toolbar(props ToolbarProps)
-	GenericButton(id, x, y, w, h int32, label string, style UIButtonStyle, disabled int32, hover *int32) bool
-	TextButton(id, x, y int32, label string, hover *int32) bool
-	LocaleDropdown(id, x, y, w, h int32, selected *int32) bool
-	VerticalSlider(id, x, y, h, min, max int32, value *int32) bool
 	CanvasGrid(bounds Rectangle, step int32, color Color)
 	SelectableText(value string, x, y, fontSize int32, color Color)
 	ShowUIToast(message string)
 	ShowUIToastFor(message string, seconds float64)
-	ReadonlyTextBox(props ReadonlyTextBoxProps)
 	TextArea(props TextAreaProps) bool
 	Radio(props RadioButtonProps) int32
 	Spinbox(props SpinboxProps) bool
@@ -706,37 +693,14 @@ func (r *runtime) Modal(title, message, cancelBtn, confirmBtn string) int {
 	_, _, _, _ = title, message, cancelBtn, confirmBtn
 	return 0
 }
-func (r *runtime) TitleBar(string, int32)   {}
-func (r *runtime) BottomNav(BottomNavProps) {}
-func (r *runtime) TopNav(TopNavProps)       {}
-func (r *runtime) Toolbar(ToolbarProps)     {}
-func (r *runtime) GenericButton(id, x, y, w, h int32, label string, style UIButtonStyle, disabled int32, hover *int32) bool {
-	_, _, _, _, _, _, _, _ = id, x, y, w, h, label, style, disabled
-	if hover != nil {
-		*hover = 0
-	}
-	return false
-}
-func (r *runtime) TextButton(id, x, y int32, label string, hover *int32) bool {
-	_, _, _, _ = id, x, y, label
-	if hover != nil {
-		*hover = 0
-	}
-	return false
-}
-func (r *runtime) LocaleDropdown(id, x, y, w, h int32, selected *int32) bool {
-	_, _, _, _, _, _ = id, x, y, w, h, selected
-	return false
-}
-func (r *runtime) VerticalSlider(id, x, y, h, min, max int32, value *int32) bool {
-	_, _, _, _, _, _, _ = id, x, y, h, min, max, value
-	return false
-}
+func (r *runtime) TitleBar(string, int32)                            {}
+func (r *runtime) BottomNav(BottomNavProps)                          {}
+func (r *runtime) TopNav(TopNavProps)                                {}
+func (r *runtime) Toolbar(ToolbarProps)                              {}
 func (r *runtime) CanvasGrid(Rectangle, int32, Color)                {}
 func (r *runtime) SelectableText(string, int32, int32, int32, Color) {}
 func (r *runtime) ShowUIToast(string)                                {}
 func (r *runtime) ShowUIToastFor(string, float64)                    {}
-func (r *runtime) ReadonlyTextBox(ReadonlyTextBoxProps)              {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	return r.editText(props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
 }

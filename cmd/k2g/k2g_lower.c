@@ -101,12 +101,12 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"int8", "int8"}, {"int16", "int16"}, {"int32", "int32"},
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
-        {"Vector2", "kryon.Vector2"}, {"Rectangle", "kryon.Rectangle"},
-        {"UIFrame", "kryon.UIFrame"}, {"UIGrid", "kryon.UIGrid"},
-        {"UICanvas", "kryon.UICanvas"},
-        {"UICanvasResult", "kryon.UICanvasResult"},
-        {"UISide", "kryon.UISide"},
-        {"Color", "kryon.Color"},     {"Texture2D", "kryon.Texture2D"},
+        {"Vector2", "Vector2"}, {"Rectangle", "Rectangle"},
+        {"UIFrame", "UIFrame"}, {"UIGrid", "UIGrid"},
+        {"UICanvas", "UICanvas"},
+        {"UICanvasResult", "UICanvasResult"},
+        {"UISide", "UISide"},
+        {"Color", "Color"},     {"Texture2D", "Texture2D"},
         {NULL, NULL}
     };
     char t[K2G_NAME_MAX];
@@ -824,12 +824,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 n = split_top(raw, parts, 4);
             }
             if(strcmp(type, "Vector2") == 0 && n == 2)
-                snprintf(out + on, sizeof(out) - on, "kryon.NewVector2");
+                snprintf(out + on, sizeof(out) - on, "NewVector2");
             else if(strcmp(type, "Rectangle") == 0 && n == 4)
-                snprintf(out + on, sizeof(out) - on, "kryon.NewRectangle");
+                snprintf(out + on, sizeof(out) - on, "NewRectangle");
             else {
                 /* odd arity: emit a TODO-safe zero value */
-                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "kryon.NewVector2(0, 0)");
+                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "NewVector2(0, 0)");
                 *dn += strlen(dst + *dn);
                 return p;
             }
@@ -896,7 +896,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
                 if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                        "kryon.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
+                        "Color{%s: %s, %s: %s, %s: %s, %s: %s}",
                         fields[0], args[0], fields[1], args[1],
                         fields[2], args[2], fields[3], args[3]);
                 }
@@ -927,7 +927,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             p = *q == '}' ? q + 1 : q;
             count = split_top(raw, parts, 32);
             *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                                    "kryon.%s{", type);
+                                    "%s{", type);
             for(int i = 0, emitted = 0, positional = 0; i < count; i++) {
                 char *part = (char *)skip_ws(parts[i]);
                 char *eq;
@@ -985,7 +985,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         {
             char ctor[K2G_NAME_MAX + 8];
 
-            snprintf(ctor, sizeof(ctor), "kryon.%s{", type);
+            snprintf(ctor, sizeof(ctor), "%s{", type);
             if(*dn + strlen(ctor) + 1 < K2G_TEXT_MAX) {
                 memcpy(dst + *dn, ctor, strlen(ctor));
                 *dn += strlen(ctor);
@@ -1292,45 +1292,45 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             /* Public Kryon constants become package constants. */
             {
                 struct { const char *c; const char *go; } constants[] = {
-                    {"UI_TEXT_8", "kryon.Text8"},
-                    {"UI_TEXT_12", "kryon.Text12"},
-                    {"UI_TEXT_16", "kryon.Text16"},
-                    {"UI_TEXT_24", "kryon.Text24"},
-                    {"UI_BUTTON_STYLE_PRIMARY", "kryon.UIButtonStylePrimary"},
-                    {"UI_BUTTON_STYLE_SECONDARY", "kryon.UIButtonStyleSecondary"},
-                    {"UI_BUTTON_STYLE_DANGER", "kryon.UIButtonStyleDanger"},
-                    {"THEME_STYLE_SYSTEM", "kryon.THEME_STYLE_SYSTEM"},
-                    {"THEME_STYLE_RETRO", "kryon.THEME_STYLE_RETRO"},
-                    {"THEME_STYLE_MATERIAL", "kryon.THEME_STYLE_MATERIAL"},
-                    {"PICTURE_FIT_STRETCH", "kryon.PICTURE_FIT_STRETCH"},
-                    {"PICTURE_FIT_CONTAIN", "kryon.PICTURE_FIT_CONTAIN"},
-                    {"PICTURE_FIT_COVER", "kryon.PICTURE_FIT_COVER"},
-                    {"WHITE", "kryon.WHITE"},
-                    {"BLACK", "kryon.BLACK"},
-                    {"RAYWHITE", "kryon.RAYWHITE"},
-                    {"BLANK", "kryon.BLANK"},
-                    {"LIGHTGRAY", "kryon.LIGHTGRAY"},
-                    {"GRAY", "kryon.GRAY"},
-                    {"DARKGRAY", "kryon.DARKGRAY"},
-                    {"YELLOW", "kryon.YELLOW"},
-                    {"GOLD", "kryon.GOLD"},
-                    {"ORANGE", "kryon.ORANGE"},
-                    {"PINK", "kryon.PINK"},
-                    {"RED", "kryon.RED"},
-                    {"MAROON", "kryon.MAROON"},
-                    {"GREEN", "kryon.GREEN"},
-                    {"LIME", "kryon.LIME"},
-                    {"DARKGREEN", "kryon.DARKGREEN"},
-                    {"SKYBLUE", "kryon.SKYBLUE"},
-                    {"BLUE", "kryon.BLUE"},
-                    {"DARKBLUE", "kryon.DARKBLUE"},
-                    {"PURPLE", "kryon.PURPLE"},
-                    {"VIOLET", "kryon.VIOLET"},
-                    {"DARKPURPLE", "kryon.DARKPURPLE"},
-                    {"BEIGE", "kryon.BEIGE"},
-                    {"BROWN", "kryon.BROWN"},
-                    {"DARKBROWN", "kryon.DARKBROWN"},
-                    {"MAGENTA", "kryon.MAGENTA"},
+                    {"UI_TEXT_8", "Text8"},
+                    {"UI_TEXT_12", "Text12"},
+                    {"UI_TEXT_16", "Text16"},
+                    {"UI_TEXT_24", "Text24"},
+                    {"UI_BUTTON_STYLE_PRIMARY", "UIButtonStylePrimary"},
+                    {"UI_BUTTON_STYLE_SECONDARY", "UIButtonStyleSecondary"},
+                    {"UI_BUTTON_STYLE_DANGER", "UIButtonStyleDanger"},
+                    {"THEME_STYLE_SYSTEM", "THEME_STYLE_SYSTEM"},
+                    {"THEME_STYLE_RETRO", "THEME_STYLE_RETRO"},
+                    {"THEME_STYLE_MATERIAL", "THEME_STYLE_MATERIAL"},
+                    {"PICTURE_FIT_STRETCH", "PICTURE_FIT_STRETCH"},
+                    {"PICTURE_FIT_CONTAIN", "PICTURE_FIT_CONTAIN"},
+                    {"PICTURE_FIT_COVER", "PICTURE_FIT_COVER"},
+                    {"WHITE", "WHITE"},
+                    {"BLACK", "BLACK"},
+                    {"RAYWHITE", "RAYWHITE"},
+                    {"BLANK", "BLANK"},
+                    {"LIGHTGRAY", "LIGHTGRAY"},
+                    {"GRAY", "GRAY"},
+                    {"DARKGRAY", "DARKGRAY"},
+                    {"YELLOW", "YELLOW"},
+                    {"GOLD", "GOLD"},
+                    {"ORANGE", "ORANGE"},
+                    {"PINK", "PINK"},
+                    {"RED", "RED"},
+                    {"MAROON", "MAROON"},
+                    {"GREEN", "GREEN"},
+                    {"LIME", "LIME"},
+                    {"DARKGREEN", "DARKGREEN"},
+                    {"SKYBLUE", "SKYBLUE"},
+                    {"BLUE", "BLUE"},
+                    {"DARKBLUE", "DARKBLUE"},
+                    {"PURPLE", "PURPLE"},
+                    {"VIOLET", "VIOLET"},
+                    {"DARKPURPLE", "DARKPURPLE"},
+                    {"BEIGE", "BEIGE"},
+                    {"BROWN", "BROWN"},
+                    {"DARKBROWN", "DARKBROWN"},
+                    {"MAGENTA", "MAGENTA"},
                     {NULL, NULL}
                 };
                 int matched = 0;
@@ -1396,13 +1396,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     runtime_name = ident;
                 }
 
-                if(dn + runtime_len + 8 < dst_size) {
-                    dst[dn++] = 'k';
-                    dst[dn++] = 'r';
-                    dst[dn++] = 'y';
-                    dst[dn++] = 'o';
-                    dst[dn++] = 'n';
-                    dst[dn++] = '.';
+                if(dn + runtime_len + 1 < dst_size) {
                     memcpy(dst + dn, runtime_name, runtime_len);
                     dn += runtime_len;
                 }
@@ -1846,7 +1840,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             camel(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
-            fprintf(f, "kryon.%s(%s)\n", wname, wargs);
+            fprintf(f, "%s(%s)\n", wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:
@@ -1962,7 +1956,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "// Code generated by k2g from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
-            fprintf(f, "import kryon \"%s\"\n\n", runtime_import);
+            fprintf(f, "import . \"%s\"\n\n", runtime_import);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
@@ -2161,13 +2155,13 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
 
                 camel(m->app.frame, frame, sizeof(frame));
                 fprintf(f, "func main() {\n");
-                fprintf(f, "\tkryon.Open(kryon.AppConfig{\n");
+                fprintf(f, "\tOpen(AppConfig{\n");
                 fprintf(f, "\t\tTitle: \"%s\",\n", m->app.title);
                 fprintf(f, "\t\tWidth: %d, Height: %d, FPS: %d,\n",
                         m->app.width, m->app.height, m->app.fps);
                 fprintf(f, "\t})\n");
-                fprintf(f, "\tdefer kryon.Close()\n");
-                fprintf(f, "\tfor !kryon.WindowShouldClose() {\n");
+                fprintf(f, "\tdefer Close()\n");
+                fprintf(f, "\tfor !WindowShouldClose() {\n");
                 if(m->state_count > 0)
                     fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard, frame, guard);
                 else

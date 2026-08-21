@@ -65,18 +65,17 @@ li{margin:.25rem 0}
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Button</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">GenericButton (5 styles)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>GenericButton</code></td><td class="part">◐ BUTTON style byte</td></tr>
-<tr><td class="">IconButton / IconBtn / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">TextButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextButton</code></td><td class="no">✗</td></tr>
+<tr><td class="">Legacy positional buttons</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>Button(ButtonProps)</code></td><td class="no">✗ generated Go uses <code>Button</code></td><td class="part">◐ BUTTON style byte</td></tr>
+<tr><td class="">IconButton / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
 <tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
 <tr><td class="">TextInputControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextField</code>/<code>NewTextField</code>/<code>NewPasswordField</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
-<tr><td class="">ReadonlyTextBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ReadonlyTextBox</code></td><td class="no">✗</td></tr>
+<tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code>/<code>TextInRect</code></td><td class="ok">✅ <code>Text</code>/<code>TextInRect</code></td><td class="no">✗</td></tr>
 <tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
-<tr><td class="">Dropdown / DropdownEx / LocaleDropdown</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Dropdown</code>/<code>LocaleDropdown</code> only (Ex needs rich option arrays)</td><td class="ok">✅ <code>Dropdown(Ex)</code>/<code>LocaleDropdown</code></td><td class="ok">✅ DROPDOWN control</td></tr>
+<tr><td class="">Dropdown / DropdownEx</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code> (Ex needs rich option arrays)</td><td class="ok">✅ <code>Dropdown(Ex)</code></td><td class="ok">✅ DROPDOWN control</td></tr>
 <tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider</code>/<code>Slider</code></td><td class="ok">✅ SLIDER control</td></tr>
-<tr><td class="">VerticalSlider / WithMarks</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>VerticalSlider</code> only</td><td class="part">◐ <code>VerticalSlider</code> only</td><td class="ok">✅ VSLIDER control</td></tr>
+<tr><td class="">Vertical sliders</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>Slider</code> in generated Go</td><td class="no">✗ generated Go uses <code>Slider</code></td><td class="ok">✅ VSLIDER control</td></tr>
 <tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="no">✗</td></tr>

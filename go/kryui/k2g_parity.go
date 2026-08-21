@@ -35,44 +35,6 @@ func intPtrFromBool(p *bool) *int32 {
 // Runtime methods: positional controls
 // ---------------------------------------------------------------------------
 
-func (r *runtime) GenericButton(id, x, y, w, h int32, label string,
-	style UIButtonStyle, disabled int32, hover *int32) bool {
-	_ = id
-	var hb bool
-	res := GenericButton(x, y, w, h, label, style, disabled != 0, &hb)
-	if hover != nil {
-		if hb {
-			*hover = 1
-		} else {
-			*hover = 0
-		}
-	}
-	return res
-}
-
-func (r *runtime) TextButton(id, x, y int32, label string, hover *int32) bool {
-	_ = id
-	var hb bool
-	res := TextButton(x, y, label, &hb)
-	if hover != nil {
-		if hb {
-			*hover = 1
-		} else {
-			*hover = 0
-		}
-	}
-	return res
-}
-
-func (r *runtime) LocaleDropdown(id, x, y, w, h int32, selected *int32) bool {
-	return LocaleDropdown(id, x, y, w, h, selected)
-}
-
-func (r *runtime) VerticalSlider(id, x, y, h, min, max int32,
-	value *int32) bool {
-	return VerticalSlider(id, x, y, h, min, max, value)
-}
-
 func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 	CanvasGrid(bounds, step, color)
 }
@@ -91,10 +53,6 @@ func (r *runtime) ShowUIToastFor(message string, seconds float64) {
 // ---------------------------------------------------------------------------
 // Runtime methods: Props widgets (types live with their package functions)
 // ---------------------------------------------------------------------------
-
-func (r *runtime) ReadonlyTextBox(props ReadonlyTextBoxProps) {
-	ReadonlyTextBox(props)
-}
 
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	return DrawUITextArea(props)

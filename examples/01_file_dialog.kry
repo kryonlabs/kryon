@@ -24,15 +24,15 @@ screen FileDialogExample(viewport: Rectangle) {
     }
     Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
     Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), UI_TEXT_16, GetThemeIcon())
-    if GenericButton(101, ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Open File", UI_BUTTON_STYLE_PRIMARY, 0, NULL) {
+    if Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Open File", .style = UI_BUTTON_STYLE_PRIMARY, .font = UI_TEXT_16, .id = 101}) {
         BeginLoadFileDialog(&dlg,"Open File")
         snprintf(status,sizeof(status),"Open file requested.")
     }
-    if GenericButton(102, ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Save File", UI_BUTTON_STYLE_SECONDARY, 0, NULL) {
+    if Button((ButtonProps){.bounds = {ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Save File", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 102}) {
         BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
         snprintf(status,sizeof(status),"Save file requested.")
     }
-    if GenericButton(103, ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42), "Select Folder", UI_BUTTON_STYLE_SECONDARY, 0, NULL) {
+    if Button((ButtonProps){.bounds = {ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Select Folder", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 103}) {
         BeginSelectFileDialogFolder(&dlg,"Select Folder")
         snprintf(status,sizeof(status),"Folder selection requested.")
     }

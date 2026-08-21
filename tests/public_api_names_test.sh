@@ -28,3 +28,16 @@ if [ -n "$matches" ]; then
     echo "$matches"
     exit 1
 fi
+
+generated_matches="$(
+    rg -n '\b(GenericButton|TextButton|LocaleDropdown|VerticalSlider|ReadonlyTextBox)\b' \
+        go/kryon examples tests/k2g_syntax_test.sh docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$generated_matches" ]; then
+    echo "Generated runtime surface must use clean widget names such as Button, Dropdown, Slider, Text, and TextField:"
+    echo "$generated_matches"
+    exit 1
+fi

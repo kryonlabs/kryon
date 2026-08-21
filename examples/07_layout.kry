@@ -21,7 +21,7 @@ WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
     if max_width == value {
         style = UI_BUTTON_STYLE_PRIMARY
     }
-    return GenericButton(1000 + x + y, x,y,ScaleUIPx(110),ScaleUIPx(34),label,style,0,NULL)
+    return Button((ButtonProps){.bounds = {x,y,ScaleUIPx(110),ScaleUIPx(34)}, .label = label, .style = style, .font = UI_TEXT_16, .id = 1000 + x + y})
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {

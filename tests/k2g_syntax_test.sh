@@ -105,15 +105,15 @@ frame main {
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
-    GenericButton(20, ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28), "GB", UI_BUTTON_STYLE_SECONDARY, 0, NULL)
-    TextButton(21, ScaleUIPx(150), ScaleUIPx(40), "TB", NULL)
-    LocaleDropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), &pick)
-    VerticalSlider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), 0, 10, &slider_val)
+    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 20})
+    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 21})
+    Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
+    Slider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), "", 0, 10, &slider_val, "", nil)
     CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
     SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), UI_TEXT_16, GetThemeText())
     ShowUIToast("toast from kry")
     TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 30})
-    ReadonlyTextBox((ReadonlyTextBoxProps){.bounds = {ScaleUIPx(150), ScaleUIPx(152), ScaleUIPx(90), ScaleUIPx(24)}, .text = "ro"})
+    Text("ro", ScaleUIPx(150), ScaleUIPx(152), UI_TEXT_16, GetThemeText())
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
     Combobox((ComboboxProps){{ScaleUIPx(240), ScaleUIPx(270), ScaleUIPx(70), ScaleUIPx(28)}, 25, choices, 3, &pick, 0})
@@ -144,13 +144,13 @@ sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
-grep -q 'import kryon "github.com/waozixyz/kryon/go/kryon"' "$out"
+grep -q 'import . "github.com/waozixyz/kryon/go/kryon"' "$out"
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
-grep -q 'kryon.BeginFrame()' "$out"
+grep -q 'BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
-grep -q 'kryon.NewVector2(float32(kryon.ScaleUIPx(120)), float32(kryon.ScaleUIPx(120)))' "$out"
-grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
+grep -q 'NewVector2(float32(ScaleUIPx(120)), float32(ScaleUIPx(120)))' "$out"
+grep -q 'Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
     echo "k2g left a C float suffix in Go output" >&2
@@ -188,61 +188,59 @@ grep -q 'for i := int32(0); i < 3; i++' "$out"
 grep -q 'if st.Tab >= 0 {' "$out"
 
 # widget surface used by declarative apps.
-grep -q 'kryon.TabBar(' "$out"
-grep -q 'kryon.Checkbox(' "$out"
-grep -q 'kryon.Dropdown(' "$out"
-grep -q 'kryon.Progress(' "$out"
-grep -q 'kryon.Rect(' "$out"
+grep -q 'TabBar(' "$out"
+grep -q 'Checkbox(' "$out"
+grep -q 'Dropdown(' "$out"
+grep -q 'Progress(' "$out"
+grep -q 'Rect(' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.
-grep -q 'kryon.TextInRect(' "$out"
-grep -q 'kryon.TextLines(' "$out"
-grep -q 'kryon.Bevel(' "$out"
-grep -q 'kryon.IconTexture(' "$out"
-grep -q 'kryon.Picture(kryon.PictureProps{AssetPath: "tiles/tile.png"' "$out"
-grep -q 'kryon.Paragraph(kryon.UIParagraphSpec{Text: "Rich text"' "$out"
-grep -q 'kryon.IconButton(kryon.IconButtonProps{' "$out"
+grep -q 'TextInRect(' "$out"
+grep -q 'TextLines(' "$out"
+grep -q 'Bevel(' "$out"
+grep -q 'IconTexture(' "$out"
+grep -q 'Picture(PictureProps{AssetPath: "tiles/tile.png"' "$out"
+grep -q 'Paragraph(UIParagraphSpec{Text: "Rich text"' "$out"
+grep -q 'IconButton(IconButtonProps{' "$out"
 grep -q 'FocusID: 3' "$out"
-grep -q 'kryon.Href(kryon.HrefProps{' "$out"
-grep -q 'kryon.Slider(9,' "$out"
-grep -q 'kryon.Toggle(10,' "$out"
-grep -q 'kryon.Stack(kryon.ColumnProps{' "$out"
-grep -q 'kryon.Key("smoke-stack")' "$out"
-grep -q 'kryon.Row(kryon.ColumnProps{' "$out"
-grep -q 'kryon.Modal("Title"' "$out"
-grep -q 'kryon.TitleBar("Smoke"' "$out"
-grep -q 'kryon.TopNav(kryon.TopNavProps{' "$out"
-grep -q 'kryon.Toolbar(kryon.ToolbarProps{' "$out"
-grep -q 'kryon.BottomNav(kryon.BottomNavProps{' "$out"
-grep -q 'kryon.Fade(' "$out"
-grep -q 'kryon.GetThemeSurface()' "$out"
+grep -q 'Href(HrefProps{' "$out"
+grep -q 'Slider(9,' "$out"
+grep -q 'Toggle(10,' "$out"
+grep -q 'Stack(ColumnProps{' "$out"
+grep -q 'Key("smoke-stack")' "$out"
+grep -q 'Row(ColumnProps{' "$out"
+grep -q 'Modal("Title"' "$out"
+grep -q 'TitleBar("Smoke"' "$out"
+grep -q 'TopNav(TopNavProps{' "$out"
+grep -q 'Toolbar(ToolbarProps{' "$out"
+grep -q 'BottomNav(BottomNavProps{' "$out"
+grep -q 'Fade(' "$out"
+grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
-grep -q 'kryon.GenericButton(' "$out"
-grep -q 'kryon.TextButton(' "$out"
-grep -q 'kryon.LocaleDropdown(' "$out"
-grep -q 'kryon.VerticalSlider(' "$out"
-grep -q 'kryon.CanvasGrid(' "$out"
-grep -q 'kryon.SelectableText(' "$out"
-grep -q 'kryon.ShowUIToast("toast from kry")' "$out"
-grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
-grep -q 'kryon.ReadonlyTextBox(kryon.ReadonlyTextBoxProps{' "$out"
-grep -q 'kryon.Radio(kryon.RadioButtonProps{' "$out"
-grep -q 'kryon.Spinbox(kryon.SpinboxProps{' "$out"
-grep -q 'kryon.Combobox(kryon.ComboboxProps{' "$out"
-grep -q 'kryon.LabelFrame(kryon.LabelFrameProps{' "$out"
-grep -q 'kryon.Notebook(kryon.NotebookProps{' "$out"
-grep -q 'kryon.ListBox(kryon.ListBoxProps{' "$out"
-grep -q 'kryon.Collapsible(kryon.CollapsibleProps{' "$out"
-grep -q 'kryon.SetThemeDarkMode(1' "$out"
-grep -q 'kryon.SetCurrentTheme(0, 1)' "$out"
+grep -q 'Button(ButtonProps{Bounds: NewRectangle(float32(ScaleUIPx(150)), float32(ScaleUIPx(8)), float32(ScaleUIPx(90)), float32(ScaleUIPx(28))), Label: "GB"' "$out"
+grep -q 'Button(ButtonProps{Bounds: NewRectangle(float32(ScaleUIPx(150)), float32(ScaleUIPx(40)), float32(ScaleUIPx(90)), float32(ScaleUIPx(28))), Label: "TB"' "$out"
+grep -q 'Dropdown(22,' "$out"
+grep -q 'CanvasGrid(' "$out"
+grep -q 'SelectableText(' "$out"
+grep -q 'ShowUIToast("toast from kry")' "$out"
+grep -q 'TextField(TextFieldProps{' "$out"
+grep -q 'Radio(RadioButtonProps{' "$out"
+grep -q 'Spinbox(SpinboxProps{' "$out"
+grep -q 'Combobox(ComboboxProps{' "$out"
+grep -q 'LabelFrame(LabelFrameProps{' "$out"
+grep -q 'Notebook(NotebookProps{' "$out"
+grep -q 'ListBox(ListBoxProps{' "$out"
+grep -q 'Collapsible(CollapsibleProps{' "$out"
+grep -q 'SetThemeDarkMode(1' "$out"
+grep -q 'SetCurrentTheme(0, 1)' "$out"
 
 # typed declarations, arrays, and goto/labels lower for real now
 grep -q 'var scalar int32 = 5' "$out"
 grep -q 'var nums = \[4\]int32{1, 2, 3, 4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'kryon.Dropdown(11, kryon.ScaleUIPx(4), kryon.ScaleUIPx(210), kryon.ScaleUIPx(120), kryon.ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
+grep -q 'Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 

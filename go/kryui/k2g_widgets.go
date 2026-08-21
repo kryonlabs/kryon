@@ -285,8 +285,8 @@ func BottomNav(props BottomNavProps) UIBottomNavResult {
 		citems := make([]C.UIBottomNavItem, n)
 		for i, it := range props.Items {
 			citems[i] = C.UIBottomNavItem{
-				route:    C.int(it.Route),
-				label:    clabels[i],
+				route: C.int(it.Route),
+				label: clabels[i],
 				icon: C.Texture{
 					id:      C.uint(it.Icon.ID),
 					width:   C.int(it.Icon.Width),
@@ -301,15 +301,15 @@ func BottomNav(props BottomNavProps) UIBottomNavResult {
 		items = &citems[0]
 	}
 	res := C.BottomNav(C.BottomNavProps{
-		view_width:      C.int(props.ViewWidth),
-		view_height:     C.int(props.ViewHeight),
-		count:           C.int(n),
-		items:           items,
-		height:          C.int(props.Height),
-		icon_size:       C.int(props.IconSize),
-		icon_padding:    C.int(props.IconPadding),
-		side_margin:     C.int(props.SideMargin),
-		bottom_margin:   C.int(props.BottomMargin),
+		view_width:       C.int(props.ViewWidth),
+		view_height:      C.int(props.ViewHeight),
+		count:            C.int(n),
+		items:            items,
+		height:           C.int(props.Height),
+		icon_size:        C.int(props.IconSize),
+		icon_padding:     C.int(props.IconPadding),
+		side_margin:      C.int(props.SideMargin),
+		bottom_margin:    C.int(props.BottomMargin),
 		max_button_width: C.int(props.MaxButtonWidth),
 	})
 	return UIBottomNavResult{
@@ -352,22 +352,22 @@ func TopNav(props TopNavProps) UITopNavResult {
 		selected = (*C.int)(unsafe.Pointer(props.SelectedIndex))
 	}
 	res := C.TopNav(C.TopNavProps{
-		id:                 C.int(props.ID),
-		x:                  C.int(props.X),
-		y:                  C.int(props.Y),
-		width:              C.int(props.Width),
-		height:             C.int(props.Height),
-		title:              ctitle,
-		options:            &options[0],
-		option_count:       C.int(len(options)),
-		selected_index:     selected,
-		disabled:           boolToInt(props.Disabled),
-		dropdown_min_width: C.int(props.DropdownMinWidth),
-		dropdown_height:    C.int(props.DropdownHeight),
-		action_icon_size:   C.int(props.ActionIconSize),
+		id:                  C.int(props.ID),
+		x:                   C.int(props.X),
+		y:                   C.int(props.Y),
+		width:               C.int(props.Width),
+		height:              C.int(props.Height),
+		title:               ctitle,
+		options:             &options[0],
+		option_count:        C.int(len(options)),
+		selected_index:      selected,
+		disabled:            boolToInt(props.Disabled),
+		dropdown_min_width:  C.int(props.DropdownMinWidth),
+		dropdown_height:     C.int(props.DropdownHeight),
+		action_icon_size:    C.int(props.ActionIconSize),
 		action_icon_padding: C.int(props.ActionIconPadding),
-		action_gap:         C.int(props.ActionGap),
-		side_padding:       C.int(props.SidePadding),
+		action_gap:          C.int(props.ActionGap),
+		side_padding:        C.int(props.SidePadding),
 	})
 	return UITopNavResult{
 		SelectedMenuItem: int32(res.selected_menu_item),
@@ -376,20 +376,20 @@ func TopNav(props TopNavProps) UITopNavResult {
 }
 
 type ToolbarProps struct {
-	ID                 int32
-	X, Y               int32
-	Width, Height      int32
-	DrawMenu           bool
-	Options            string // ';'-joined (see cStringList)
-	OptionCount        int32  // accepted for C parity; Options split wins
-	SelectedIndex      *int32
-	DropdownMinWidth   int32
-	DropdownMaxWidth   int32
-	DropdownHeight     int32
-	ActionIconSize     int32
-	ActionIconPadding  int32
-	ActionGap          int32
-	SidePadding        int32
+	ID                int32
+	X, Y              int32
+	Width, Height     int32
+	DrawMenu          bool
+	Options           string // ';'-joined (see cStringList)
+	OptionCount       int32  // accepted for C parity; Options split wins
+	SelectedIndex     *int32
+	DropdownMinWidth  int32
+	DropdownMaxWidth  int32
+	DropdownHeight    int32
+	ActionIconSize    int32
+	ActionIconPadding int32
+	ActionGap         int32
+	SidePadding       int32
 }
 
 type UIToolbarResult struct {
@@ -503,24 +503,6 @@ func (r *runtime) BottomNav(props BottomNavProps) { BottomNav(props) }
 func (r *runtime) TopNav(props TopNavProps)       { TopNav(props) }
 func (r *runtime) Toolbar(props ToolbarProps)     { Toolbar(props) }
 
-// ---------------------------------------------------------------------------
-// Bare widget names. The DrawUI*-prefixed immediate-mode spellings mirror
-// the C API; these aliases give every widget its plain name so generated
-// code and new hand-written code never need the prefix. Existing callers
-// keep compiling — the prefixed names remain as the definitions.
-// ---------------------------------------------------------------------------
-
-var (
-	TextInputControl = DrawUITextInputControl
-	GenericButton    = DrawUIGenericButton
-	TextButton       = DrawUITextButton
-	ReadonlyTextBox  = DrawUIReadonlyTextBox
-	Dropdown         = DrawUIDropdown
-	DropdownEx       = DrawUIDropdownEx
-	LocaleDropdown   = DrawUILocaleDropdown
-	VerticalSlider   = DrawUIVerticalSlider
-	Checkbox         = DrawUICheckboxToggle
-	ToggleSwitch     = DrawUIToggleSwitch
-	Hyperlink        = DrawUIHref
-	IconBtn          = DrawUIIconButton
-)
+// Clean widget names live in go/kryon for new generated code. The cgo bridge
+// keeps its lower-level DrawUI wrappers for hand-written compatibility, but no
+// longer exposes generated-code aliases here.

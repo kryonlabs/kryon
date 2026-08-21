@@ -89,18 +89,17 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `Button` | ✅ node |
-| GenericButton (5 styles) | ✅ | ✅ | ✅ | ✅ `GenericButton` | ◐ BUTTON style byte |
-| IconButton / IconBtn / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
-| TextButton | ✅ | ✅ | ✅ | ✅ `TextButton` | ✗ |
+| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `Button(ButtonProps)` | ✗ generated Go uses `Button` | ◐ BUTTON style byte |
+| IconButton / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
 | TextInputControl | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ `TextField`/`NewTextField`/`NewPasswordField` | ✅ TEXTINPUT node |
-| ReadonlyTextBox | ✅ | ✅ | ✅ | ✅ `ReadonlyTextBox` | ✗ |
+| Read-only text | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
-| Dropdown / DropdownEx / LocaleDropdown | ✅ | ✅ | ◐ `Dropdown`/`LocaleDropdown` only (Ex needs rich option arrays) | ✅ `Dropdown(Ex)`/`LocaleDropdown` | ✅ DROPDOWN control |
+| Dropdown / DropdownEx | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| VerticalSlider / WithMarks | ✅ | ✅ | ◐ `VerticalSlider` only | ◐ `VerticalSlider` only | ✅ VSLIDER control |
+| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✗ use `Slider` in generated Go | ✗ generated Go uses `Slider` | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
 | Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✗ |
