@@ -53,6 +53,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	kryon "github.com/waozixyz/kryon/go/kryon"
@@ -117,6 +118,25 @@ func drawButtons() {
 	kryon.EndFrame()
 }
 
+func requireFrameOps(label string, requirements map[kryon.FrameOpKind]int) {
+	ops := kryon.FrameOps()
+	if len(ops) == 0 {
+		panic(label + ": generated Go produced no frame operations")
+	}
+	counts := map[kryon.FrameOpKind]int{}
+	for _, op := range ops {
+		counts[op.Kind]++
+		if op.Secure && op.Text == "secret" {
+			panic(label + ": secure text field leaked plaintext frame operation")
+		}
+	}
+	for kind, min := range requirements {
+		if counts[kind] < min {
+			panic(fmt.Sprintf("%s: expected at least %d %s frame operations, got %d", label, min, kind, counts[kind]))
+		}
+	}
+}
+
 func text32(buf [32]byte) string {
 	for i, b := range buf {
 		if b == 0 {
@@ -154,6 +174,14 @@ func main() {
 	buttons := ButtonsLayoutStateValue
 
 	drawForm()
+	requireFrameOps("form", map[kryon.FrameOpKind]int{
+		kryon.FrameOpColumn:    1,
+		kryon.FrameOpRow:       1,
+		kryon.FrameOpText:      1,
+		kryon.FrameOpTextField: 3,
+		kryon.FrameOpTextArea:  1,
+		kryon.FrameOpButton:    2,
+	})
 	driver.SetFocus(101)
 	drawForm()
 	driver.QueueKey(kryon.KeyLeft)
@@ -184,6 +212,10 @@ func main() {
 	drawForm()
 
 	drawFields()
+	requireFrameOps("fields", map[kryon.FrameOpKind]int{
+		kryon.FrameOpTextField: 1,
+		kryon.FrameOpTextArea:  1,
+	})
 	driver.QueueTap(30, 30)
 	drawFields()
 	driver.QueueKey(kryon.KeyLeft)
@@ -206,6 +238,12 @@ func main() {
 	drawFocus()
 
 	drawButtons()
+	requireFrameOps("buttons", map[kryon.FrameOpKind]int{
+		kryon.FrameOpColumn: 1,
+		kryon.FrameOpRow:    1,
+		kryon.FrameOpText:   1,
+		kryon.FrameOpButton: 2,
+	})
 	driver.QueueTap(30, 130)
 	drawButtons()
 	driver.QueueTap(130, 130)
