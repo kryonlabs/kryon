@@ -3,11 +3,13 @@ package kryon
 var activeRuntime Runtime
 
 func Open(config AppConfig) Runtime {
+	resetDirectState()
 	activeRuntime = New(config)
 	return activeRuntime
 }
 
 func SetRuntime(runtime Runtime) {
+	resetDirectState()
 	activeRuntime = runtime
 }
 
@@ -46,8 +48,14 @@ func active() Runtime {
 
 func Close()                  { active().Close() }
 func WindowShouldClose() bool { return active().WindowShouldClose() }
-func BeginFrame()             { active().BeginFrame() }
-func EndFrame()               { active().EndFrame() }
+func BeginFrame() {
+	beginDirectFrame()
+	active().BeginFrame()
+}
+func EndFrame() {
+	active().EndFrame()
+	endDirectFrame()
+}
 func SetFocus(id int32) {
 	if runtime, ok := active().(focusController); ok {
 		runtime.SetFocus(id)

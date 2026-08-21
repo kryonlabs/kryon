@@ -14,6 +14,7 @@ type directTextFieldState struct {
 	focused bool
 	focusID int32
 	last    string
+	seen    uint64
 }
 
 type directTextFieldKey struct {
@@ -24,7 +25,26 @@ type directTextFieldKey struct {
 var (
 	directTextFields  = map[directTextFieldKey]*directTextFieldState{}
 	directNextFocusID = int32(100000)
+	directFrame       uint64
 )
+
+func resetDirectState() {
+	directTextFields = map[directTextFieldKey]*directTextFieldState{}
+	directNextFocusID = 100000
+	directFrame = 0
+}
+
+func beginDirectFrame() {
+	directFrame++
+}
+
+func endDirectFrame() {
+	for key, state := range directTextFields {
+		if state.seen != directFrame {
+			delete(directTextFields, key)
+		}
+	}
+}
 
 func button(args ...any) bool {
 	if len(args) == 1 {
@@ -86,8 +106,12 @@ func textFieldString(label string, value *string) bool {
 		}
 		directTextFields[key] = state
 	}
-	if len(state.buf) <= len(*value) {
-		state.buf = make([]byte, len(*value)+64)
+	state.seen = directFrame
+	if len(state.buf)-len(*value) < 64 {
+		next := maxInt(len(state.buf)*2, len(*value)+64)
+		buf := make([]byte, next)
+		copy(buf, state.buf)
+		state.buf = buf
 	}
 	if state.last != *value {
 		clear(state.buf)

@@ -400,3 +400,40 @@ func TestDirectPackageTextFieldStringKeepsCursorState(t *testing.T) {
 		t.Fatalf("direct TextField value = %q, want %q", got, want)
 	}
 }
+
+func TestDirectPackageTextFieldStateIsFrameScoped(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	first := "one"
+	second := "two"
+
+	BeginFrame()
+	TextField("First", &first)
+	EndFrame()
+	if got, want := len(directTextFields), 1; got != want {
+		t.Fatalf("direct field states = %d, want %d", got, want)
+	}
+
+	BeginFrame()
+	TextField("Second", &second)
+	EndFrame()
+	if got, want := len(directTextFields), 1; got != want {
+		t.Fatalf("direct field states after swap = %d, want %d", got, want)
+	}
+
+	for i := 0; i < 2000; i++ {
+		QueueTap(36, 12)
+		QueueText("a")
+		BeginFrame()
+		TextField("Second", &second)
+		EndFrame()
+	}
+	if got, want := len(directTextFields), 1; got != want {
+		t.Fatalf("direct field states after long typing = %d, want %d", got, want)
+	}
+	if got, want := len(second), len("two")+2000; got != want {
+		t.Fatalf("direct field length = %d, want %d", got, want)
+	}
+}
