@@ -128,7 +128,7 @@ Use canonical widget drawing names when drawing a concrete widget immediately:
 DrawUIIconButton(button);
 DrawUITextField(field);
 DrawUISlider(id, x, y, w, "Volume", 0, 100, &volume, "%");
-DrawUIOverlays();
+Overlays();
 ```
 
 Normal application UI is declared between `BeginUI` and `EndUI`. Containers
@@ -1207,7 +1207,7 @@ int TabBar(TabBar bar);
 ```c
 int Dropdown(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);
-void DrawUIOverlays(void);
+void Overlays(void);
 ```
 
 ---

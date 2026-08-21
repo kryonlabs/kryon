@@ -137,7 +137,7 @@ void UILayoutTree(void);
 void UIRouteInput(void);
 void UIUpdateTree(void);
 void DrawUITree(void);
-void DrawUIOverlays(void);
+void Overlays(void);
 const UIWidgetNode *UIGetTreeNodes(int *count);
 int UIGetNodeHeight(UIWidgetNode node);
 int UIGetNodeHeightById(int id);

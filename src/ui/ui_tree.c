@@ -486,7 +486,7 @@ EndUI(void)
     UIUpdateTree();
     update = GetTime();
     DrawUITree();
-    DrawUIOverlays();
+    Overlays();
     draw = GetTime();
     trace_frame++;
     /* Trace is deliberately sampled, plus every budget violation.  Writing a
@@ -1136,7 +1136,7 @@ DrawUITree(void)
 }
 
 void
-DrawUIOverlays(void)
+Overlays(void)
 {
     if(!IsWindowReady())
         return;
