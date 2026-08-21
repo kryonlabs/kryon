@@ -20,6 +20,23 @@ type pointerController interface {
 	QueueTap(float32, float32)
 }
 
+type inputController interface {
+	QueueText(string)
+	QueueKey(int32)
+	QueueShiftKey(int32)
+	QueueShortcut(int32)
+}
+
+type clipboardController interface {
+	SetClipboardText(string)
+	ClipboardText() string
+}
+
+type selectionController interface {
+	SetSelection(int32, int32, int32)
+	Selection(int32) (int32, int32, bool)
+}
+
 func active() Runtime {
 	if activeRuntime == nil {
 		activeRuntime = New(AppConfig{})
@@ -46,6 +63,48 @@ func QueueTap(x, y float32) {
 	if runtime, ok := active().(pointerController); ok {
 		runtime.QueueTap(x, y)
 	}
+}
+func QueueText(text string) {
+	if runtime, ok := active().(inputController); ok {
+		runtime.QueueText(text)
+	}
+}
+func QueueKey(key int32) {
+	if runtime, ok := active().(inputController); ok {
+		runtime.QueueKey(key)
+	}
+}
+func QueueShiftKey(key int32) {
+	if runtime, ok := active().(inputController); ok {
+		runtime.QueueShiftKey(key)
+	}
+}
+func QueueShortcut(key int32) {
+	if runtime, ok := active().(inputController); ok {
+		runtime.QueueShortcut(key)
+	}
+}
+func SetClipboardText(text string) {
+	if runtime, ok := active().(clipboardController); ok {
+		runtime.SetClipboardText(text)
+	}
+}
+func ClipboardText() string {
+	if runtime, ok := active().(clipboardController); ok {
+		return runtime.ClipboardText()
+	}
+	return ""
+}
+func SetSelection(focusID, anchor, cursor int32) {
+	if runtime, ok := active().(selectionController); ok {
+		runtime.SetSelection(focusID, anchor, cursor)
+	}
+}
+func Selection(focusID int32) (anchor, cursor int32, ok bool) {
+	if runtime, ok := active().(selectionController); ok {
+		return runtime.Selection(focusID)
+	}
+	return 0, 0, false
 }
 func ClearBackground(c Color) { active().ClearBackground(c) }
 func Background(c Color)      { active().Background(c) }

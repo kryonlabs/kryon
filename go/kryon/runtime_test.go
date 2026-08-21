@@ -215,3 +215,73 @@ func TestTextFieldLongTypingDoesNotGrowFieldOrder(t *testing.T) {
 		t.Fatalf("field order length = %d, want %d", got, want)
 	}
 }
+
+func TestPackageInputHelpersDriveActiveRuntime(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	text := make([]byte, 32)
+	cursor := int32(0)
+	focused := false
+
+	BeginFrame()
+	TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 140, Height: 28},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        71,
+		MaxCodepoints:  31,
+	})
+	EndFrame()
+
+	QueueTap(20, 20)
+	QueueText("abc")
+	BeginFrame()
+	TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 140, Height: 28},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        71,
+		MaxCodepoints:  31,
+	})
+	EndFrame()
+
+	if got, want := string(text[:zeroIndex(text)]), "abc"; got != want {
+		t.Fatalf("package QueueText result = %q, want %q", got, want)
+	}
+	if !focused {
+		t.Fatal("package QueueTap did not focus field")
+	}
+
+	SetSelection(71, 0, 3)
+	QueueShortcut(KeyC)
+	BeginFrame()
+	TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 140, Height: 28},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        71,
+		MaxCodepoints:  31,
+	})
+	EndFrame()
+
+	if got, want := ClipboardText(), "abc"; got != want {
+		t.Fatalf("package clipboard = %q, want %q", got, want)
+	}
+
+	QueueTap(25, 70)
+	BeginFrame()
+	clicked := Button(ButtonProps{
+		Bounds: Rectangle{X: 10, Y: 58, Width: 90, Height: 32},
+		Label:  "Save",
+		ID:     72,
+	})
+	EndFrame()
+	if !clicked {
+		t.Fatal("package QueueTap did not click button")
+	}
+}
