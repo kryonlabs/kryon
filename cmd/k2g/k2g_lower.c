@@ -101,12 +101,12 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"int8", "int8"}, {"int16", "int16"}, {"int32", "int32"},
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
-        {"Vector2", "kryruntime.Vector2"}, {"Rectangle", "kryruntime.Rectangle"},
-        {"UIFrame", "kryruntime.UIFrame"}, {"UIGrid", "kryruntime.UIGrid"},
-        {"UICanvas", "kryruntime.UICanvas"},
-        {"UICanvasResult", "kryruntime.UICanvasResult"},
-        {"UISide", "kryruntime.UISide"},
-        {"Color", "kryruntime.Color"},     {"Texture2D", "kryruntime.Texture2D"},
+        {"Vector2", "kryon.Vector2"}, {"Rectangle", "kryon.Rectangle"},
+        {"UIFrame", "kryon.UIFrame"}, {"UIGrid", "kryon.UIGrid"},
+        {"UICanvas", "kryon.UICanvas"},
+        {"UICanvasResult", "kryon.UICanvasResult"},
+        {"UISide", "kryon.UISide"},
+        {"Color", "kryon.Color"},     {"Texture2D", "kryon.Texture2D"},
         {NULL, NULL}
     };
     char t[K2G_NAME_MAX];
@@ -824,12 +824,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 n = split_top(raw, parts, 4);
             }
             if(strcmp(type, "Vector2") == 0 && n == 2)
-                snprintf(out + on, sizeof(out) - on, "kryruntime.NewVector2");
+                snprintf(out + on, sizeof(out) - on, "kryon.NewVector2");
             else if(strcmp(type, "Rectangle") == 0 && n == 4)
-                snprintf(out + on, sizeof(out) - on, "kryruntime.NewRectangle");
+                snprintf(out + on, sizeof(out) - on, "kryon.NewRectangle");
             else {
                 /* odd arity: emit a TODO-safe zero value */
-                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "kryruntime.NewVector2(0, 0)");
+                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "kryon.NewVector2(0, 0)");
                 *dn += strlen(dst + *dn);
                 return p;
             }
@@ -896,7 +896,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
                 if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                        "kryruntime.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
+                        "kryon.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
                         fields[0], args[0], fields[1], args[1],
                         fields[2], args[2], fields[3], args[3]);
                 }
@@ -927,7 +927,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             p = *q == '}' ? q + 1 : q;
             count = split_top(raw, parts, 32);
             *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                                    "kryruntime.%s{", type);
+                                    "kryon.%s{", type);
             for(int i = 0, emitted = 0, positional = 0; i < count; i++) {
                 char *part = (char *)skip_ws(parts[i]);
                 char *eq;
@@ -985,7 +985,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         {
             char ctor[K2G_NAME_MAX + 8];
 
-            snprintf(ctor, sizeof(ctor), "kryruntime.%s{", type);
+            snprintf(ctor, sizeof(ctor), "kryon.%s{", type);
             if(*dn + strlen(ctor) + 1 < K2G_TEXT_MAX) {
                 memcpy(dst + *dn, ctor, strlen(ctor));
                 *dn += strlen(ctor);
@@ -1279,58 +1279,58 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 p = skip_ws(q) + 1;
                 /* empty arg list? */
                 if(*skip_ws(p) == ')') {
-                    if(dn + 8 < dst_size) {
-                        memcpy(dst + dn, "rt, st", 6);
-                        dn += 6;
+                    if(m->state_count > 0 && dn + 3 < dst_size) {
+                        memcpy(dst + dn, "st", 2);
+                        dn += 2;
                     }
-                } else if(dn + 8 < dst_size) {
-                    memcpy(dst + dn, "rt, st, ", 8);
-                    dn += 8;
+                } else if(m->state_count > 0 && dn + 5 < dst_size) {
+                    memcpy(dst + dn, "st, ", 4);
+                    dn += 4;
                 }
                 continue;
             }
             /* Public Kryon constants become package constants. */
             {
                 struct { const char *c; const char *go; } constants[] = {
-                    {"UI_TEXT_8", "kryruntime.Text8"},
-                    {"UI_TEXT_12", "kryruntime.Text12"},
-                    {"UI_TEXT_16", "kryruntime.Text16"},
-                    {"UI_TEXT_24", "kryruntime.Text24"},
-                    {"UI_BUTTON_STYLE_PRIMARY", "kryruntime.UIButtonStylePrimary"},
-                    {"UI_BUTTON_STYLE_SECONDARY", "kryruntime.UIButtonStyleSecondary"},
-                    {"UI_BUTTON_STYLE_DANGER", "kryruntime.UIButtonStyleDanger"},
-                    {"THEME_STYLE_SYSTEM", "kryruntime.THEME_STYLE_SYSTEM"},
-                    {"THEME_STYLE_RETRO", "kryruntime.THEME_STYLE_RETRO"},
-                    {"THEME_STYLE_MATERIAL", "kryruntime.THEME_STYLE_MATERIAL"},
-                    {"PICTURE_FIT_STRETCH", "kryruntime.PICTURE_FIT_STRETCH"},
-                    {"PICTURE_FIT_CONTAIN", "kryruntime.PICTURE_FIT_CONTAIN"},
-                    {"PICTURE_FIT_COVER", "kryruntime.PICTURE_FIT_COVER"},
-                    {"WHITE", "kryruntime.WHITE"},
-                    {"BLACK", "kryruntime.BLACK"},
-                    {"RAYWHITE", "kryruntime.RAYWHITE"},
-                    {"BLANK", "kryruntime.BLANK"},
-                    {"LIGHTGRAY", "kryruntime.LIGHTGRAY"},
-                    {"GRAY", "kryruntime.GRAY"},
-                    {"DARKGRAY", "kryruntime.DARKGRAY"},
-                    {"YELLOW", "kryruntime.YELLOW"},
-                    {"GOLD", "kryruntime.GOLD"},
-                    {"ORANGE", "kryruntime.ORANGE"},
-                    {"PINK", "kryruntime.PINK"},
-                    {"RED", "kryruntime.RED"},
-                    {"MAROON", "kryruntime.MAROON"},
-                    {"GREEN", "kryruntime.GREEN"},
-                    {"LIME", "kryruntime.LIME"},
-                    {"DARKGREEN", "kryruntime.DARKGREEN"},
-                    {"SKYBLUE", "kryruntime.SKYBLUE"},
-                    {"BLUE", "kryruntime.BLUE"},
-                    {"DARKBLUE", "kryruntime.DARKBLUE"},
-                    {"PURPLE", "kryruntime.PURPLE"},
-                    {"VIOLET", "kryruntime.VIOLET"},
-                    {"DARKPURPLE", "kryruntime.DARKPURPLE"},
-                    {"BEIGE", "kryruntime.BEIGE"},
-                    {"BROWN", "kryruntime.BROWN"},
-                    {"DARKBROWN", "kryruntime.DARKBROWN"},
-                    {"MAGENTA", "kryruntime.MAGENTA"},
+                    {"UI_TEXT_8", "kryon.Text8"},
+                    {"UI_TEXT_12", "kryon.Text12"},
+                    {"UI_TEXT_16", "kryon.Text16"},
+                    {"UI_TEXT_24", "kryon.Text24"},
+                    {"UI_BUTTON_STYLE_PRIMARY", "kryon.UIButtonStylePrimary"},
+                    {"UI_BUTTON_STYLE_SECONDARY", "kryon.UIButtonStyleSecondary"},
+                    {"UI_BUTTON_STYLE_DANGER", "kryon.UIButtonStyleDanger"},
+                    {"THEME_STYLE_SYSTEM", "kryon.THEME_STYLE_SYSTEM"},
+                    {"THEME_STYLE_RETRO", "kryon.THEME_STYLE_RETRO"},
+                    {"THEME_STYLE_MATERIAL", "kryon.THEME_STYLE_MATERIAL"},
+                    {"PICTURE_FIT_STRETCH", "kryon.PICTURE_FIT_STRETCH"},
+                    {"PICTURE_FIT_CONTAIN", "kryon.PICTURE_FIT_CONTAIN"},
+                    {"PICTURE_FIT_COVER", "kryon.PICTURE_FIT_COVER"},
+                    {"WHITE", "kryon.WHITE"},
+                    {"BLACK", "kryon.BLACK"},
+                    {"RAYWHITE", "kryon.RAYWHITE"},
+                    {"BLANK", "kryon.BLANK"},
+                    {"LIGHTGRAY", "kryon.LIGHTGRAY"},
+                    {"GRAY", "kryon.GRAY"},
+                    {"DARKGRAY", "kryon.DARKGRAY"},
+                    {"YELLOW", "kryon.YELLOW"},
+                    {"GOLD", "kryon.GOLD"},
+                    {"ORANGE", "kryon.ORANGE"},
+                    {"PINK", "kryon.PINK"},
+                    {"RED", "kryon.RED"},
+                    {"MAROON", "kryon.MAROON"},
+                    {"GREEN", "kryon.GREEN"},
+                    {"LIME", "kryon.LIME"},
+                    {"DARKGREEN", "kryon.DARKGREEN"},
+                    {"SKYBLUE", "kryon.SKYBLUE"},
+                    {"BLUE", "kryon.BLUE"},
+                    {"DARKBLUE", "kryon.DARKBLUE"},
+                    {"PURPLE", "kryon.PURPLE"},
+                    {"VIOLET", "kryon.VIOLET"},
+                    {"DARKPURPLE", "kryon.DARKPURPLE"},
+                    {"BEIGE", "kryon.BEIGE"},
+                    {"BROWN", "kryon.BROWN"},
+                    {"DARKBROWN", "kryon.DARKBROWN"},
+                    {"MAGENTA", "kryon.MAGENTA"},
                     {NULL, NULL}
                 };
                 int matched = 0;
@@ -1378,7 +1378,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 p = q;
                 continue;
             }
-            /* runtime call? Capitalized identifiers route to rt. */
+            /* runtime call? Capitalized identifiers route to the package API. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
                sfi < 0) {
                 const char *runtime_name = NULL;
@@ -1396,9 +1396,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     runtime_name = ident;
                 }
 
-                if(dn + runtime_len + 5 < dst_size) {
+                if(dn + runtime_len + 8 < dst_size) {
+                    dst[dn++] = 'k';
                     dst[dn++] = 'r';
-                    dst[dn++] = 't';
+                    dst[dn++] = 'y';
+                    dst[dn++] = 'o';
+                    dst[dn++] = 'n';
                     dst[dn++] = '.';
                     memcpy(dst + dn, runtime_name, runtime_len);
                     dn += runtime_len;
@@ -1591,14 +1594,17 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int indent = 1;
 
     camel(fn->name, fname, sizeof(fname));
-    /* signature: (rt Runtime, st *State, <converted args>) */
+    /* signature: (st *State, <converted args>) */
     {
         char parts[8][K2G_TEXT_MAX];
-        int n, i, first = 1;
+        int n, i;
+        int emitted = 0;
 
-        fprintf(f, "func %s_%s(rt kryruntime.Runtime", guard, fname);
-        if(m->state_count > 0)
-            fprintf(f, ", st *%sState", guard);
+        fprintf(f, "func %s_%s(", guard, fname);
+        if(m->state_count > 0) {
+            fprintf(f, "st *%sState", guard);
+            emitted = 1;
+        }
         if(fn->args[0] != '\0') {
             n = split_top(fn->args, parts, 8);
             for(i = 0; i < n; i++) {
@@ -1617,8 +1623,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 snprintf(atype, sizeof(atype), "%s", colon + 1);
                 if(!go_type(atype, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", atype);
-                fprintf(f, ", %s %s", aname, gt);
-                (void)first;
+                fprintf(f, "%s%s %s", emitted ? ", " : "", aname, gt);
+                emitted = 1;
             }
         }
         fprintf(f, ")");
@@ -1840,7 +1846,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             camel(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
-            fprintf(f, "rt.%s(%s)\n", wname, wargs);
+            fprintf(f, "kryon.%s(%s)\n", wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:
@@ -1956,7 +1962,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "// Code generated by k2g from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
-            fprintf(f, "import kryruntime \"%s\"\n\n", runtime_import);
+            fprintf(f, "import kryon \"%s\"\n\n", runtime_import);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
@@ -2155,17 +2161,17 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
 
                 camel(m->app.frame, frame, sizeof(frame));
                 fprintf(f, "func main() {\n");
-                fprintf(f, "\trt := kryruntime.New(kryruntime.AppConfig{\n");
+                fprintf(f, "\tkryon.Open(kryon.AppConfig{\n");
                 fprintf(f, "\t\tTitle: \"%s\",\n", m->app.title);
                 fprintf(f, "\t\tWidth: %d, Height: %d, FPS: %d,\n",
                         m->app.width, m->app.height, m->app.fps);
                 fprintf(f, "\t})\n");
-                fprintf(f, "\tdefer rt.Close()\n");
-                fprintf(f, "\tfor !rt.WindowShouldClose() {\n");
+                fprintf(f, "\tdefer kryon.Close()\n");
+                fprintf(f, "\tfor !kryon.WindowShouldClose() {\n");
                 if(m->state_count > 0)
-                    fprintf(f, "\t\t%s_%s(rt, %sStateValue)\n", guard, frame, guard);
+                    fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard, frame, guard);
                 else
-                    fprintf(f, "\t\t%s_%s(rt)\n", guard, frame);
+                    fprintf(f, "\t\t%s_%s()\n", guard, frame);
                 fprintf(f, "\t}\n}\n");
             }
             fclose(f);

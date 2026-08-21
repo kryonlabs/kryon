@@ -20,7 +20,7 @@ the columns diverge.
 .kry source
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
-   ├── k2g  -> .go (rt.* calls)            -> go build + go/kryon -> Go app
+   ├── k2g  -> .go (kryon.* calls)         -> go build + go/kryon -> Go app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
    └── k2ir -> .kir (text IR dump; debugging, tests, Krait)
 ```
@@ -60,7 +60,7 @@ pairing, not the C `Begin/EndUIScrollContainer` API.)
 ## Widget matrix
 
 Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2g** = `.kry`→Go codegen
-(`go/kryon` `Runtime` interface) · **Go** = hand-written Go via the `go/kryon`
+(`go/kryon` package API) · **Go** = hand-written Go via the `go/kryon`
 package API · **KRB** = lowered into a cartridge by `k2b`.
 
 Retained-tree caveat that applies to the whole C column: `BeginUI/EndUI`

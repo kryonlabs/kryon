@@ -21,7 +21,7 @@ li{margin:.25rem 0}
 <pre>.kry source
    │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
    ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
-   ├── k2g  -&gt; .go (rt.* calls)            -&gt; go build + go/kryon -&gt; Go app
+   ├── k2g  -&gt; .go (kryon.* calls)         -&gt; go build + go/kryon -&gt; Go app
    ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
    └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
 <table>
@@ -45,7 +45,7 @@ li{margin:.25rem 0}
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginUICanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
-<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (<code>go/kryon</code> <code>Runtime</code> interface) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
+<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (<code>go/kryon</code> package API) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>BeginUI/EndUI</code> records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, and routes retained input for BUTTON and TEXT_FIELD; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
