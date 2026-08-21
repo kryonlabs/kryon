@@ -4,6 +4,16 @@
 
 #include "kryon.h"
 
+#if ANDROID_BUILD
+#include <android_native_app_glue.h>
+#include <jni.h>
+extern struct android_app *GetAndroidApp(void);
+#endif
+
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -627,31 +637,378 @@ lookup_locale_value(const char *key)
     return key != NULL ? key : "";
 }
 
-/* Best available locale for this environment: LANGUAGE (may be a
- * colon-separated list, per POSIX), then LC_ALL, LC_MESSAGES, LANG.
- * Regional suffixes and codesets ("pt_BR.UTF-8") map onto the base
- * catalog ("pt") when one exists; otherwise English. */
+static int
+locale_is_pref_separator(char c)
+{
+    return c == ':' || c == ';' || c == ',' || c == ' ' || c == '\t' ||
+           c == '\r' || c == '\n';
+}
+
+static char
+locale_ascii_lower(char c)
+{
+    if(c >= 'A' && c <= 'Z')
+        return (char)(c + ('a' - 'A'));
+    return c;
+}
+
+static int
+normalize_locale_candidate(const char *src, size_t src_len,
+                           char *dst, size_t dst_size)
+{
+    size_t out = 0;
+    int saw_alnum = 0;
+    int last_sep = 0;
+
+    if(src == NULL || dst == NULL || dst_size == 0)
+        return 0;
+
+    for(size_t i = 0; i < src_len && src[i] != '\0'; i++) {
+        char c = src[i];
+
+        if(c == '.' || c == '@' || c == '%')
+            break;
+        if((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9')) {
+            if(out + 1 >= dst_size)
+                break;
+            dst[out++] = locale_ascii_lower(c);
+            saw_alnum = 1;
+            last_sep = 0;
+            continue;
+        }
+        if(c == '-' || c == '_') {
+            if(out == 0 || last_sep)
+                continue;
+            if(out + 1 >= dst_size)
+                break;
+            dst[out++] = '-';
+            last_sep = 1;
+        }
+    }
+
+    while(out > 0 && dst[out - 1] == '-')
+        out--;
+    dst[out] = '\0';
+
+    if(!saw_alnum || strcmp(dst, "c") == 0 || strcmp(dst, "posix") == 0)
+        return 0;
+    return out > 0;
+}
+
+static int
+locale_code_equal_normalized(const char *code, const char *normalized)
+{
+    char norm_code[32];
+
+    if(code == NULL || normalized == NULL)
+        return 0;
+    if(!normalize_locale_candidate(code, strlen(code), norm_code, sizeof(norm_code)))
+        return 0;
+    return strcmp(norm_code, normalized) == 0;
+}
+
+static const char *
+find_supported_locale_code(const char *candidate)
+{
+    char normalized[32];
+    char base[32];
+    char *dash;
+
+    if(candidate == NULL)
+        return NULL;
+    if(!normalize_locale_candidate(candidate, strlen(candidate),
+                                   normalized, sizeof(normalized)))
+        return NULL;
+
+    for(size_t i = 0; i < g_language_count; i++) {
+        if(locale_code_equal_normalized(g_languages[i].code, normalized))
+            return g_languages[i].code;
+    }
+
+    snprintf(base, sizeof(base), "%s", normalized);
+    dash = strchr(base, '-');
+    if(dash != NULL)
+        *dash = '\0';
+    if(base[0] == '\0')
+        return NULL;
+
+    for(size_t i = 0; i < g_language_count; i++) {
+        if(locale_code_equal_normalized(g_languages[i].code, base))
+            return g_languages[i].code;
+    }
+
+    return NULL;
+}
+
+static const char *
+find_supported_locale_from_preferences(const char *preferences)
+{
+    const char *cursor;
+
+    if(preferences == NULL || preferences[0] == '\0')
+        return NULL;
+
+    cursor = preferences;
+    while(*cursor != '\0') {
+        const char *start;
+        size_t len;
+        char candidate[64];
+        const char *code;
+
+        while(locale_is_pref_separator(*cursor))
+            cursor++;
+        start = cursor;
+        while(*cursor != '\0' && !locale_is_pref_separator(*cursor))
+            cursor++;
+        len = (size_t)(cursor - start);
+        if(len == 0)
+            continue;
+        if(len >= sizeof(candidate))
+            len = sizeof(candidate) - 1;
+        memcpy(candidate, start, len);
+        candidate[len] = '\0';
+
+        code = find_supported_locale_code(candidate);
+        if(code != NULL)
+            return code;
+    }
+
+    return NULL;
+}
+
+static const char *
+append_locale_preference(char *dst, size_t dst_size, const char *value)
+{
+    size_t len;
+    size_t value_len;
+
+    if(dst == NULL || dst_size == 0 || value == NULL || value[0] == '\0')
+        return dst;
+
+    len = strlen(dst);
+    if(len + 1 >= dst_size)
+        return dst;
+    if(len > 0)
+        dst[len++] = ',';
+
+    value_len = strlen(value);
+    if(value_len >= dst_size - len)
+        value_len = dst_size - len - 1;
+    memcpy(dst + len, value, value_len);
+    dst[len + value_len] = '\0';
+    return dst;
+}
+
+static void
+get_platform_locale_preferences(char *dst, size_t dst_size)
+{
+    const char *env;
+
+    if(dst == NULL || dst_size == 0)
+        return;
+    dst[0] = '\0';
+
+    env = getenv("KRYON_TEST_LOCALE");
+    if(env != NULL && env[0] != '\0') {
+        append_locale_preference(dst, dst_size, env);
+        return;
+    }
+
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+    EM_ASM({
+        var values = [];
+        if(typeof navigator !== "undefined") {
+            if(navigator.languages && navigator.languages.length)
+                values = Array.prototype.slice.call(navigator.languages);
+            else if(navigator.language)
+                values = [navigator.language];
+        }
+        stringToUTF8(values.join(","), $0, $1);
+    }, dst, (int)dst_size);
+    if(dst[0] != '\0')
+        return;
+#endif
+
+#if ANDROID_BUILD
+    {
+        struct android_app *app = GetAndroidApp();
+        JNIEnv *jni = NULL;
+        int attached = 0;
+        jobject activity = NULL;
+        jobject resources = NULL;
+        jobject config = NULL;
+        jobject locale = NULL;
+        jstring tag = NULL;
+        const char *chars = NULL;
+
+        if(app != NULL && app->activity != NULL && app->activity->vm != NULL &&
+           app->activity->clazz != NULL) {
+            JavaVM *vm = app->activity->vm;
+            if((*vm)->GetEnv(vm, (void **)&jni, JNI_VERSION_1_6) != JNI_OK) {
+                if((*vm)->AttachCurrentThread(vm, &jni, NULL) == JNI_OK)
+                    attached = 1;
+            }
+            if(jni != NULL) {
+                activity = app->activity->clazz;
+                jclass activity_cls = (*jni)->GetObjectClass(jni, activity);
+                jmethodID get_resources = activity_cls != NULL
+                    ? (*jni)->GetMethodID(jni, activity_cls, "getResources",
+                                          "()Landroid/content/res/Resources;")
+                    : NULL;
+                if(get_resources != NULL)
+                    resources = (*jni)->CallObjectMethod(jni, activity, get_resources);
+                if(resources != NULL) {
+                    jclass resources_cls = (*jni)->GetObjectClass(jni, resources);
+                    jmethodID get_config = resources_cls != NULL
+                        ? (*jni)->GetMethodID(jni, resources_cls,
+                                              "getConfiguration",
+                                              "()Landroid/content/res/Configuration;")
+                        : NULL;
+                    if(get_config != NULL)
+                        config = (*jni)->CallObjectMethod(jni, resources, get_config);
+                    if(config != NULL) {
+                        jclass config_cls = (*jni)->GetObjectClass(jni, config);
+                        jmethodID get_locales = config_cls != NULL
+                            ? (*jni)->GetMethodID(jni, config_cls, "getLocales",
+                                                  "()Landroid/os/LocaleList;")
+                            : NULL;
+                        if(get_locales != NULL) {
+                            jobject locales = (*jni)->CallObjectMethod(jni, config,
+                                                                       get_locales);
+                            if(locales != NULL) {
+                                jclass locales_cls = (*jni)->GetObjectClass(jni, locales);
+                                jmethodID get = locales_cls != NULL
+                                    ? (*jni)->GetMethodID(jni, locales_cls, "get",
+                                                          "(I)Ljava/util/Locale;")
+                                    : NULL;
+                                if(get != NULL)
+                                    locale = (*jni)->CallObjectMethod(jni, locales, get, 0);
+                                if(locales_cls != NULL)
+                                    (*jni)->DeleteLocalRef(jni, locales_cls);
+                                (*jni)->DeleteLocalRef(jni, locales);
+                            }
+                            if((*jni)->ExceptionCheck(jni))
+                                (*jni)->ExceptionClear(jni);
+                        }
+                        if(locale == NULL && config_cls != NULL) {
+                            jfieldID locale_field = (*jni)->GetFieldID(
+                                jni, config_cls, "locale", "Ljava/util/Locale;");
+                            if(locale_field != NULL)
+                                locale = (*jni)->GetObjectField(jni, config, locale_field);
+                            if((*jni)->ExceptionCheck(jni))
+                                (*jni)->ExceptionClear(jni);
+                        }
+                        if(config_cls != NULL)
+                            (*jni)->DeleteLocalRef(jni, config_cls);
+                    }
+                    if(resources_cls != NULL)
+                        (*jni)->DeleteLocalRef(jni, resources_cls);
+                }
+                if(activity_cls != NULL)
+                    (*jni)->DeleteLocalRef(jni, activity_cls);
+
+                if(locale == NULL) {
+                    jclass locale_cls = (*jni)->FindClass(jni, "java/util/Locale");
+                    jmethodID get_default = locale_cls != NULL
+                        ? (*jni)->GetStaticMethodID(jni, locale_cls, "getDefault",
+                                                    "()Ljava/util/Locale;")
+                        : NULL;
+                    if(get_default != NULL)
+                        locale = (*jni)->CallStaticObjectMethod(jni, locale_cls,
+                                                                get_default);
+                    if(locale_cls != NULL)
+                        (*jni)->DeleteLocalRef(jni, locale_cls);
+                }
+
+                if(locale != NULL) {
+                    jclass locale_cls = (*jni)->GetObjectClass(jni, locale);
+                    jmethodID to_language_tag = locale_cls != NULL
+                        ? (*jni)->GetMethodID(jni, locale_cls, "toLanguageTag",
+                                              "()Ljava/lang/String;")
+                        : NULL;
+                    if(to_language_tag != NULL)
+                        tag = (jstring)(*jni)->CallObjectMethod(jni, locale,
+                                                                to_language_tag);
+                    if(tag != NULL) {
+                        chars = (*jni)->GetStringUTFChars(jni, tag, NULL);
+                        if(chars != NULL) {
+                            append_locale_preference(dst, dst_size, chars);
+                            (*jni)->ReleaseStringUTFChars(jni, tag, chars);
+                        }
+                        (*jni)->DeleteLocalRef(jni, tag);
+                    }
+                    if(locale_cls != NULL)
+                        (*jni)->DeleteLocalRef(jni, locale_cls);
+                    (*jni)->DeleteLocalRef(jni, locale);
+                }
+
+                if(config != NULL)
+                    (*jni)->DeleteLocalRef(jni, config);
+                if(resources != NULL)
+                    (*jni)->DeleteLocalRef(jni, resources);
+                if(attached)
+                    (*vm)->DetachCurrentThread(vm);
+            }
+        }
+        if(dst[0] != '\0')
+            return;
+    }
+#endif
+
+#if defined(_WIN32)
+    {
+        WCHAR name[LOCALE_NAME_MAX_LENGTH];
+        if(GetUserDefaultLocaleName(name, LOCALE_NAME_MAX_LENGTH) > 0) {
+            char out[LOCALE_NAME_MAX_LENGTH];
+            size_t i;
+            for(i = 0; i + 1 < sizeof(out) && name[i] != 0; i++)
+                out[i] = name[i] < 128 ? (char)name[i] : '\0';
+            out[i] = '\0';
+            append_locale_preference(dst, dst_size, out);
+            if(dst[0] != '\0')
+                return;
+        }
+    }
+#endif
+
+    env = getenv("LANGUAGE");
+    if(env != NULL && env[0] != '\0')
+        append_locale_preference(dst, dst_size, env);
+    env = getenv("LC_ALL");
+    if(env != NULL && env[0] != '\0')
+        append_locale_preference(dst, dst_size, env);
+    env = getenv("LC_MESSAGES");
+    if(env != NULL && env[0] != '\0')
+        append_locale_preference(dst, dst_size, env);
+    env = getenv("LANG");
+    if(env != NULL && env[0] != '\0')
+        append_locale_preference(dst, dst_size, env);
+}
+
+/* Best supported locale for this system or browser. Regional tags and
+ * codesets ("pt-BR", "pt_BR.UTF-8") map onto the base catalog ("pt") when
+ * one exists; unsupported preferences fall through to English. */
+const char *
+GetSystemLocaleCode(void)
+{
+    char preferences[512];
+    const char *code;
+
+    if(!g_loaded)
+        InitLocale();
+
+    get_platform_locale_preferences(preferences, sizeof(preferences));
+    code = find_supported_locale_from_preferences(preferences);
+    if(code != NULL)
+        return code;
+    return "en";
+}
+
 const char *
 GetDefaultLocaleCode(void)
 {
-    static const char *names[] = {"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"};
-    char buf[32];
-    const char *env;
-    size_t len;
-
-    for(size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
-        env = getenv(names[i]);
-        if(env == NULL || env[0] == '\0' || strchr(env, '%') != NULL)
-            continue;
-        len = 0;
-        while(env[len] != '\0' && env[len] != ':' && env[len] != '.' &&
-              env[len] != '_' && len + 1 < sizeof(buf))
-            buf[len++] = env[len];
-        buf[len] = '\0';
-        if(len >= 2 && GetLocaleIndex(buf) >= 0)
-            return GetLocaleCode(GetLocaleIndex(buf));
-    }
-    return "en";
+    return GetSystemLocaleCode();
 }
 
 const char *

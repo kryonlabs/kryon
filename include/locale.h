@@ -19,6 +19,7 @@ typedef struct LocaleLanguage {
 
 void InitLocale(void);
 int SetLocale(const char *code);
+const char *GetSystemLocaleCode(void);
 const char *GetDefaultLocaleCode(void);
 const char *GetLocaleText(const char *key);
 void FormatLocaleText(char *dst, size_t dst_size, const char *key, ...);
