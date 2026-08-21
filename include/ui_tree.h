@@ -106,6 +106,30 @@ typedef union UIWidgetData {
     } button;
     TextFieldProps text_field;
     TextAreaProps text_area;
+    /* Retained interactive controls. Pointer fields follow the TextField
+     * contract: callers keep them valid while the tree is not re-declared,
+     * painting reads them live, and retained input routing writes through
+     * them. */
+    struct {
+        int *value;
+        const char *off_label;
+        const char *on_label;
+    } toggle;
+    struct {
+        int *value;
+        const char *label;
+    } checkbox;
+    struct {
+        int *value;
+        const char *label;
+        const char *suffix;
+        const char *value_text_override;
+        int min;
+        int max;
+        int vertical;
+        UIVerticalSliderMarkCallback mark_callback;
+        void *mark_callback_user_data;
+    } slider;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {

@@ -38,6 +38,7 @@ static Vector2 g_ui_mouse_world_override = {0};
 static int ui_default_font_auto_load = 1;
 
 int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+int g_ui_scroll_gesture_pending = 0;
 
 #define UI_FOCUS_MAX_ITEMS 256
 static int g_ui_focus_active_id = 0;
@@ -388,6 +389,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_down = 1;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
+        g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
         g_ui_pointer_start_x = mx;
@@ -403,11 +405,13 @@ ui_update_pointer_gesture(void)
     } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
+        g_ui_scroll_gesture_pending = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
     } else if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
+        g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
     }
@@ -2459,7 +2463,7 @@ DrawUITextArea(TextAreaProps area)
             g_ui_text_area_last_click_x = (int)mouse_world.x;
             g_ui_text_area_last_click_y = (int)mouse_world.y;
             g_ui_text_area_last_click_time = now;
-        } else if(focused && !context_active) {
+        } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
             focused = 0;
             ReleaseUITextFocus(area.focused, area.focus_id);
         }
@@ -2933,7 +2937,7 @@ DrawUITextField(TextFieldProps field)
             g_ui_text_field_last_click_x = (int)mouse_world.x;
             g_ui_text_field_last_click_y = (int)mouse_world.y;
             g_ui_text_field_last_click_time = now;
-        } else if(focused && !context_active) {
+        } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
             focused = 0;
             ReleaseUITextFocus(field.focused, field.focus_id);
         }

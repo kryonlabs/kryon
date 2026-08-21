@@ -724,6 +724,145 @@ StealUICoreWindowClose(void)
     return 0;
 }
 
+#elif defined(_WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+#define Rectangle RectangleWin32
+#define CloseWindow CloseWindowWin32
+#define ShowCursor ShowCursorWin32
+#include <windows.h>
+#undef Rectangle
+#undef CloseWindow
+#undef ShowCursor
+#include <stdlib.h>
+#include <string.h>
+#include "ui_core.h"
+
+#define UI_WINDOW_CLASS_NAME "KryonUIWindow"
+#define UI_WINDOW_APP_ICON 101
+
+struct UIWindow {
+    HWND window;
+    int width, height;
+    float scale;
+    Color background;
+    RenderTexture2D target;
+    unsigned char *pixels;
+    int clicked, right_clicked;
+    int click_x, click_y;
+    int x, y;
+    int drag_active, dragged;
+    POINT drag_last;
+};
+
+static UIWindow *ui_window_active;
+static ATOM ui_window_class;
+static UIWindow *ui_windows[8];
+static int ui_window_count;
+
+static LRESULT CALLBACK
+ui_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+{
+    UIWindow *window = (UIWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    POINT point;
+    (void)wparam;
+    if(message == WM_NCCREATE) {
+        window = (UIWindow *)((CREATESTRUCT *)lparam)->lpCreateParams;
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)window);
+    }
+    if(window == NULL) return DefWindowProc(hwnd, message, wparam, lparam);
+    switch(message) {
+    case WM_LBUTTONDOWN:
+        window->click_x = (short)LOWORD(lparam); window->click_y = (short)HIWORD(lparam);
+        window->drag_active = 1; window->dragged = 0;
+        GetCursorPos(&window->drag_last); SetCapture(hwnd); return 0;
+    case WM_MOUSEMOVE:
+        if(window->drag_active) {
+            RECT work; int dx, dy;
+            GetCursorPos(&point); dx = point.x - window->drag_last.x; dy = point.y - window->drag_last.y;
+            if(dx != 0 || dy != 0) {
+                window->x += dx; window->y += dy;
+                SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+                if(window->x < work.left) window->x = work.left;
+                if(window->y < work.top) window->y = work.top;
+                if(window->x > work.right - 24) window->x = work.right - 24;
+                if(window->y > work.bottom - 24) window->y = work.bottom - 24;
+                SetWindowPos(hwnd, NULL, window->x, window->y, 0, 0, SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOZORDER);
+                window->drag_last = point;
+                if(dx*dx + dy*dy > 9) window->dragged = 1;
+            }
+        }
+        return 0;
+    case WM_LBUTTONUP:
+        if(window->drag_active) { window->drag_active = 0; ReleaseCapture(); if(!window->dragged) window->clicked = 1; }
+        return 0;
+    case WM_RBUTTONUP:
+        window->click_x = (short)LOWORD(lparam); window->click_y = (short)HIWORD(lparam);
+        window->right_clicked = 1; return 0;
+    case WM_ERASEBKGND: return 1;
+    case WM_CLOSE: return 0;
+    default: return DefWindowProc(hwnd, message, wparam, lparam);
+    }
+}
+
+static int ui_window_register_class(void)
+{
+    WNDCLASSEXA wc; HINSTANCE instance;
+    if(ui_window_class != 0) return 1;
+    instance = GetModuleHandle(NULL); memset(&wc, 0, sizeof(wc));
+    wc.cbSize = sizeof(wc); wc.style = CS_HREDRAW|CS_VREDRAW;
+    wc.lpfnWndProc = ui_window_proc; wc.hInstance = instance;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hIcon = (HICON)LoadImageW(instance, MAKEINTRESOURCEW(UI_WINDOW_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
+    wc.hIconSm = wc.hIcon; wc.lpszClassName = UI_WINDOW_CLASS_NAME;
+    ui_window_class = RegisterClassExA(&wc); return ui_window_class != 0;
+}
+
+UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
+                       int flags, Color background, float ui_scale)
+{
+    UIWindow *window; DWORD style = WS_POPUP, ex_style = 0; RECT work;
+    if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_window_register_class()) return NULL;
+    SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
+    if(flags & UI_WINDOW_CENTER) { x = work.left+(work.right-work.left-width)/2; y = work.top+(work.bottom-work.top-height)/2; }
+    else if(flags & UI_WINDOW_TOP_RIGHT) { x = work.right-width-x; y = work.top+y; }
+    if(!(flags & UI_WINDOW_BORDERLESS)) style = WS_OVERLAPPEDWINDOW;
+    if(flags & UI_WINDOW_ALWAYS_ON_TOP) ex_style |= WS_EX_TOPMOST;
+    if(flags & UI_WINDOW_SKIP_TASKBAR) ex_style |= WS_EX_TOOLWINDOW;
+    window = (UIWindow *)calloc(1, sizeof(*window)); if(window == NULL) return NULL;
+    window->width=width; window->height=height; window->scale=ui_scale>0?ui_scale:1; window->background=background; window->x=x; window->y=y;
+    window->target=LoadRenderTexture(width,height); if(window->target.id==0) { free(window); return NULL; }
+    window->window=CreateWindowExA(ex_style,UI_WINDOW_CLASS_NAME,title?title:"Kryon",style,x,y,width,height,NULL,NULL,GetModuleHandle(NULL),window);
+    if(window->window==NULL) { UnloadRenderTexture(window->target); free(window); return NULL; }
+    if(ui_window_count >= (int)(sizeof(ui_windows)/sizeof(ui_windows[0]))) {
+        DestroyWindow(window->window); UnloadRenderTexture(window->target); free(window); return NULL;
+    }
+    ui_windows[ui_window_count++] = window;
+    ShowWindow(window->window,SW_SHOWNOACTIVATE); UpdateWindow(window->window); return window;
+}
+
+void CloseUIWindow(UIWindow *window) { int i; if(!window)return; if(ui_window_active==window)ui_window_active=NULL; for(i=0;i<ui_window_count;i++)if(ui_windows[i]==window){for(;i<ui_window_count-1;i++)ui_windows[i]=ui_windows[i+1];ui_window_count--;break;} DestroyWindow(window->window); UnloadRenderTexture(window->target); free(window->pixels); free(window); }
+void BeginUIWindow(UIWindow *window) { if(!window)return; ui_window_active=window; BeginTextureMode(window->target); ClearBackground(window->background); BeginUIFrame(window->width,window->height,window->scale); }
+void EndUIWindow(void)
+{
+    UIWindow *window=ui_window_active; Image image; BITMAPINFO info; HDC dc; size_t count,i;
+    if(!window)return; ui_window_active=NULL; EndUIFrame(); EndTextureMode();
+    image=LoadImageFromTexture(window->target.texture); if(!image.data)return;
+    ImageFormat(&image,PIXELFORMAT_UNCOMPRESSED_R8G8B8A8); count=(size_t)window->width*window->height;
+    window->pixels=(unsigned char *)realloc(window->pixels,count*4); if(!window->pixels){UnloadImage(image);return;}
+    for(i=0;i<count;i++){const unsigned char *s=(const unsigned char *)image.data+i*4; unsigned char *d=window->pixels+i*4; d[0]=s[2];d[1]=s[1];d[2]=s[0];d[3]=255;}
+    UnloadImage(image); memset(&info,0,sizeof(info)); info.bmiHeader.biSize=sizeof(info.bmiHeader);
+    info.bmiHeader.biWidth=window->width; info.bmiHeader.biHeight=window->height; info.bmiHeader.biPlanes=1; info.bmiHeader.biBitCount=32; info.bmiHeader.biCompression=BI_RGB;
+    dc=GetDC(window->window); StretchDIBits(dc,0,0,window->width,window->height,0,0,window->width,window->height,window->pixels,&info,DIB_RGB_COLORS,SRCCOPY); ReleaseDC(window->window,dc);
+}
+int IsUIWindowClicked(UIWindow *w){int v=w&&w->clicked;if(w)w->clicked=0;return v;}
+int IsUIWindowRightClicked(UIWindow *w){int v=w&&w->right_clicked;if(w)w->right_clicked=0;return v;}
+int IsUIWindowDragged(UIWindow *w){int v=w&&w->dragged;if(w){w->dragged=0;if(v)w->clicked=0;}return v;}
+void GetUIWindowPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->x:0;if(y)*y=w?w->y:0;}
+void GetUIWindowClickPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->click_x:-1;if(y)*y=w?w->click_y:-1;}
+void PumpUIWindows(void){MSG m;int i;for(i=0;i<ui_window_count;i++)while(PeekMessage(&m,ui_windows[i]->window,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessage(&m);}}
+int StealUICoreWindowClose(void){return 0;}
+
 #elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
                                    * on Wayland, Windows, and macOS. */
 
@@ -1335,4 +1474,3 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 }
 
 #endif
-

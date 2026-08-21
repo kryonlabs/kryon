@@ -281,8 +281,14 @@ OpenURI(const char *uri)
         var uri = UTF8ToString($0);
         if (!/^https?:\/\//i.test(uri)) return 0;
         try {
-            var w = window.open(uri, '_blank', 'noopener');
-            return w ? 1 : 0;
+            var link = document.createElement('a');
+            link.href = uri;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            return 1;
         } catch (e) {
             return 0;
         }

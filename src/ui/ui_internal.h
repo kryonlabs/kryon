@@ -25,6 +25,7 @@ extern unsigned long g_ui_frame_serial;
 extern int g_ui_slider_active_id;
 extern int g_ui_pointer_dragging;
 extern int g_ui_pointer_owner;
+extern int g_ui_scroll_gesture_pending;
 
 enum {
     UI_POINTER_OWNER_NONE = 0,

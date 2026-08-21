@@ -190,6 +190,7 @@ BeginUIScrollContainer(UIScrollArea area)
            g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside && !captured &&
            !on_scrollbar) {
+            g_ui_scroll_gesture_pending = 1;
             content_drag_active = 1;
             content_dragging = 0;
             content_drag_start_y = (int)mouse_world.y;
