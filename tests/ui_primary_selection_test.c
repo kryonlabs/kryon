@@ -2065,9 +2065,9 @@ main(void)
         check_int("session title host path",
                   FormatTerminalPaneSessionTitle(
                       title, (int)sizeof(title),
-                      "wao@omega:/mnt/storage/Projects/krait", "terminal"),
+                      "wao@omega:/mnt/storage/Projects/tools", "terminal"),
                   5);
-        check_str("session title host path text", title, "krait");
+        check_str("session title host path text", title, "tools");
 
         check_int("session title host home path",
                   FormatTerminalPaneSessionTitle(
