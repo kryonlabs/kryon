@@ -4,5 +4,6 @@
 void ShowUIToast(const char *message);
 void ShowUIToastFor(const char *message, double seconds);
 void ClearUIToast(void);
+void DrawUIToast(void);
 
 #endif
