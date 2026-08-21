@@ -59,6 +59,8 @@ frame main {
     } else {
         Text("hello", ScaleUIPx(10), ScaleUIPx(20), UI_TEXT_16, GetThemeText())
     }
+    Text("small", ScaleUIPx(10), ScaleUIPx(38), UI_TEXT_14, GetThemeText())
+    Text("large", ScaleUIPx(10), ScaleUIPx(56), UI_TEXT_20, GetThemeText())
     switch tab {
         case TAB_OVERVIEW: {
             scroll_off = 0
@@ -193,6 +195,8 @@ grep -q 'Checkbox(' "$out"
 grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
 grep -q 'Rect(' "$out"
+grep -q 'Text("small", ScaleUIPx(10), ScaleUIPx(38), Text14, GetThemeText())' "$out"
+grep -q 'Text("large", ScaleUIPx(10), ScaleUIPx(56), Text20, GetThemeText())' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.

@@ -1301,8 +1301,13 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 struct { const char *c; const char *go; } constants[] = {
                     {"UI_TEXT_8", "Text8"},
                     {"UI_TEXT_12", "Text12"},
+                    {"UI_TEXT_14", "Text14"},
                     {"UI_TEXT_16", "Text16"},
+                    {"UI_TEXT_18", "Text18"},
+                    {"UI_TEXT_20", "Text20"},
                     {"UI_TEXT_24", "Text24"},
+                    {"UI_TEXT_32", "Text32"},
+                    {"UI_TEXT_48", "Text48"},
                     {"UI_BUTTON_STYLE_PRIMARY", "UIButtonStylePrimary"},
                     {"UI_BUTTON_STYLE_SECONDARY", "UIButtonStyleSecondary"},
                     {"UI_BUTTON_STYLE_DANGER", "UIButtonStyleDanger"},
