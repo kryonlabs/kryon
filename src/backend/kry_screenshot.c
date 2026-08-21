@@ -157,7 +157,7 @@ static int kr_write_png(const char *path, const unsigned char *rgba, int w,
     FILE *f;
     int y;
     size_t rowlen = (size_t)w * 4;
-    size_t rawlen = (h + 1) * rowlen;
+    size_t rawlen = (size_t)h * (rowlen + 1);
 
     f = fopen(path, "wb");
     if(f == NULL)
