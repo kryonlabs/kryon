@@ -52,12 +52,17 @@ const (
 
 	KeyNull      int32 = 0
 	KeyEnter     int32 = 257
+	KeyTab       int32 = 258
 	KeyBackspace int32 = 259
 	KeyDelete    int32 = 261
 	KeyRight     int32 = 262
 	KeyLeft      int32 = 263
 	KeyHome      int32 = 268
 	KeyEnd       int32 = 269
+	KeyA         int32 = 65
+	KeyC         int32 = 67
+	KeyV         int32 = 86
+	KeyX         int32 = 88
 
 	UISideTop UISide = iota
 	UISideBottom
@@ -556,12 +561,27 @@ type Runtime interface {
 }
 
 type runtime struct {
-	config    AppConfig
-	closed    bool
-	frames    int
-	focusID   int32
-	inputText []rune
-	inputKeys []int32
+	config      AppConfig
+	closed      bool
+	frames      int
+	focusID     int32
+	clipboard   string
+	inputEvents []inputEvent
+	fieldOrder  []int32
+	prevOrder   []int32
+	selection   map[int32]selection
+}
+
+type inputEvent struct {
+	key      int32
+	text     string
+	shift    bool
+	shortcut bool
+}
+
+type selection struct {
+	Anchor int
+	Cursor int
 }
 
 func New(config AppConfig) Runtime {
@@ -571,16 +591,38 @@ func New(config AppConfig) Runtime {
 	if config.Height <= 0 {
 		config.Height = 480
 	}
-	return &runtime{config: config}
+	return &runtime{config: config, selection: map[int32]selection{}}
 }
 
-func (r *runtime) QueueText(text string) { r.inputText = append(r.inputText, []rune(text)...) }
-func (r *runtime) QueueKey(key int32)    { r.inputKeys = append(r.inputKeys, key) }
+func (r *runtime) QueueText(text string) {
+	if text != "" {
+		r.inputEvents = append(r.inputEvents, inputEvent{text: text})
+	}
+}
+func (r *runtime) QueueKey(key int32) { r.inputEvents = append(r.inputEvents, inputEvent{key: key}) }
+func (r *runtime) QueueShiftKey(key int32) {
+	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shift: true})
+}
+func (r *runtime) QueueShortcut(key int32) {
+	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shortcut: true})
+}
+func (r *runtime) SetClipboardText(text string) { r.clipboard = text }
+func (r *runtime) ClipboardText() string        { return r.clipboard }
+func (r *runtime) SetSelection(focusID, anchor, cursor int32) {
+	r.selection[focusID] = selection{Anchor: int(anchor), Cursor: int(cursor)}
+}
+func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
+	s, ok := r.selection[focusID]
+	return int32(s.Anchor), int32(s.Cursor), ok
+}
 
-func (r *runtime) Close()                                                 { r.closed = true }
-func (r *runtime) WindowShouldClose() bool                                { return r.closed || r.frames > 0 }
-func (r *runtime) BeginDrawing()                                          {}
-func (r *runtime) EndDrawing()                                            { r.frames++ }
+func (r *runtime) Close()                  { r.closed = true }
+func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
+func (r *runtime) BeginDrawing()           { r.fieldOrder = r.fieldOrder[:0] }
+func (r *runtime) EndDrawing() {
+	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
+	r.frames++
+}
 func (r *runtime) ClearBackground(Color)                                  {}
 func (r *runtime) Background(Color)                                       {}
 func (r *runtime) Text(string, int32, int32, int32, Color)                {}
@@ -696,7 +738,7 @@ func (r *runtime) ShowUIToast(string)                                {}
 func (r *runtime) ShowUIToastFor(string, float64)                    {}
 func (r *runtime) ReadonlyTextBox(ReadonlyTextBoxProps)              {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
-	return r.editText(props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints)
+	return r.editText(props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
 	if props.Checked {
@@ -766,13 +808,14 @@ func (r *runtime) SetThemeSource(ThemeSource)   {}
 func (r *runtime) SetThemeMode(ThemeMode)       {}
 
 func (r *runtime) TextField(props TextFieldProps) {
-	r.editText(props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints)
+	r.editText(props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
 }
 
-func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32) bool {
+func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {
 	if len(buf) == 0 {
 		return false
 	}
+	r.registerField(focusID)
 	if commit != nil {
 		*commit = false
 	}
@@ -793,58 +836,109 @@ func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *boo
 	}
 	text := string(buf[:zeroIndex(buf)])
 	pos := clampCursor(text, int(*cursor))
+	sel := r.normalizedSelection(focusID, text, pos)
 	changed := false
-	for _, key := range r.inputKeys {
-		switch key {
+	for _, event := range r.inputEvents {
+		if event.text != "" {
+			var inserted bool
+			text, pos, inserted = insertText(text, pos, sel, event.text, textLimit(buf, maxCodepoints))
+			if inserted {
+				changed = true
+				sel = selection{Anchor: pos, Cursor: pos}
+			}
+			continue
+		}
+		if event.shortcut {
+			switch event.key {
+			case KeyA:
+				sel = selection{Anchor: 0, Cursor: len(text)}
+			case KeyC:
+				if !secure && sel.Anchor != sel.Cursor {
+					start, end := selectionRange(sel)
+					r.clipboard = text[start:end]
+				}
+			case KeyX:
+				if !secure && sel.Anchor != sel.Cursor {
+					start, end := selectionRange(sel)
+					r.clipboard = text[start:end]
+					text = text[:start] + text[end:]
+					pos = start
+					sel = selection{Anchor: pos, Cursor: pos}
+					changed = true
+				}
+			case KeyV:
+				var inserted bool
+				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, maxCodepoints))
+				if inserted {
+					changed = true
+					sel = selection{Anchor: pos, Cursor: pos}
+				}
+			}
+			continue
+		}
+		switch event.key {
+		case KeyTab:
+			r.focusID = r.nextFocus(focusID, event.shift)
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyLeft:
 			pos = prevRune(text, pos)
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyRight:
 			pos = nextRune(text, pos)
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyHome:
 			pos = 0
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyEnd:
 			pos = len(text)
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyBackspace:
-			if pos > 0 {
+			if sel.Anchor != sel.Cursor {
+				var deleted bool
+				text, pos, deleted = deleteSelection(text, sel)
+				if deleted {
+					changed = true
+				}
+			} else if pos > 0 {
 				prev := prevRune(text, pos)
 				text = text[:prev] + text[pos:]
 				pos = prev
 				changed = true
 			}
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyDelete:
-			if pos < len(text) {
+			if sel.Anchor != sel.Cursor {
+				var deleted bool
+				text, pos, deleted = deleteSelection(text, sel)
+				if deleted {
+					changed = true
+				}
+			} else if pos < len(text) {
 				next := nextRune(text, pos)
 				text = text[:pos] + text[next:]
 				changed = true
 			}
+			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyEnter:
 			if commit != nil {
 				*commit = true
 			}
 		}
 	}
-	if len(r.inputKeys) > 0 {
-		r.inputKeys = nil
-	}
-	limit := len(buf) - 1
-	if maxCodepoints > 0 && int(maxCodepoints) < limit {
-		limit = int(maxCodepoints)
-	}
-	for _, ch := range r.inputText {
-		add := string(ch)
-		if len([]byte(text))+len(add) > limit {
-			break
-		}
-		text = text[:pos] + add + text[pos:]
-		pos += len(add)
-		changed = true
-	}
-	if len(r.inputText) > 0 {
-		r.inputText = nil
+	if len(r.inputEvents) > 0 {
+		r.inputEvents = nil
 	}
 	clear(buf)
 	copy(buf, text)
 	*cursor = int32(pos)
+	if sel.Anchor == sel.Cursor {
+		delete(r.selection, focusID)
+	} else {
+		r.selection[focusID] = sel
+	}
+	if focused != nil {
+		*focused = r.focusID == focusID
+	}
 	return changed
 }
 
@@ -878,6 +972,112 @@ func labelsOf(v any) []string {
 		return out
 	}
 	return nil
+}
+
+func (r *runtime) registerField(focusID int32) {
+	if focusID == 0 {
+		return
+	}
+	for _, id := range r.fieldOrder {
+		if id == focusID {
+			return
+		}
+	}
+	r.fieldOrder = append(r.fieldOrder, focusID)
+}
+
+func (r *runtime) nextFocus(current int32, reverse bool) int32 {
+	order := r.prevOrder
+	if len(order) == 0 {
+		order = r.fieldOrder
+	}
+	if len(order) == 0 {
+		return current
+	}
+	index := -1
+	for i, id := range order {
+		if id == current {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return order[0]
+	}
+	if reverse {
+		return order[(index+len(order)-1)%len(order)]
+	}
+	return order[(index+1)%len(order)]
+}
+
+func (r *runtime) normalizedSelection(focusID int32, text string, pos int) selection {
+	s, ok := r.selection[focusID]
+	if !ok {
+		return selection{Anchor: pos, Cursor: pos}
+	}
+	s.Anchor = clampCursor(text, s.Anchor)
+	s.Cursor = clampCursor(text, s.Cursor)
+	return s
+}
+
+func selectionRange(sel selection) (int, int) {
+	if sel.Anchor < sel.Cursor {
+		return sel.Anchor, sel.Cursor
+	}
+	return sel.Cursor, sel.Anchor
+}
+
+func deleteSelection(text string, sel selection) (string, int, bool) {
+	start, end := selectionRange(sel)
+	if start == end {
+		return text, start, false
+	}
+	return text[:start] + text[end:], start, true
+}
+
+func insertText(text string, pos int, sel selection, value string, limit int) (string, int, bool) {
+	if value == "" {
+		return text, pos, false
+	}
+	if sel.Anchor != sel.Cursor {
+		var deleted bool
+		text, pos, deleted = deleteSelection(text, sel)
+		_ = deleted
+	}
+	available := limit - len([]byte(text))
+	if available <= 0 {
+		return text, pos, false
+	}
+	value = trimUTF8Bytes(value, available)
+	if value == "" {
+		return text, pos, false
+	}
+	text = text[:pos] + value + text[pos:]
+	return text, pos + len(value), true
+}
+
+func textLimit(buf []byte, maxCodepoints int32) int {
+	limit := len(buf) - 1
+	if maxCodepoints > 0 && int(maxCodepoints) < limit {
+		limit = int(maxCodepoints)
+	}
+	if limit < 0 {
+		return 0
+	}
+	return limit
+}
+
+func trimUTF8Bytes(text string, limit int) string {
+	if len(text) <= limit {
+		return text
+	}
+	if limit <= 0 {
+		return ""
+	}
+	for limit > 0 && !utf8.RuneStart(text[limit]) {
+		limit--
+	}
+	return text[:limit]
 }
 
 func number32(v any) float32 {
