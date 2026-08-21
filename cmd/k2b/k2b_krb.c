@@ -1551,7 +1551,7 @@ find_match_brace(const char *open)
     return NULL;
 }
 
-/* Picture((PictureProps){asset_path, bounds, source, origin, rot, tint, fit})
+/* Picture((PictureProps){asset_path, bounds, source, origin, rot, tint, fit, style})
  * -> a PICTURE node; text holds the asset path, style holds the UIPictureFit. */
 static int
 parse_picture(KrbBuild *b, const char *call)

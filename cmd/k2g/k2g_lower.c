@@ -662,7 +662,7 @@ props_field_at(const char *type, int index)
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"PictureProps", {"AssetPath", "Bounds", "Source", "Origin",
-                          "Rotation", "Tint", "Fit"}},
+                          "Rotation", "Tint", "Fit", "Style"}},
         {"IconButtonProps", {"Bounds", "Icon", "IconType", "IconSize",
                              "IconPadding", "FocusID", "Disabled",
                              "Background", "HoverBackground", "IconColor",
