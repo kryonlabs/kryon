@@ -119,19 +119,29 @@ func (f *TextFieldState) Draw(bounds Rectangle, font int32, style UITextInputSty
 		return false, false
 	}
 	*f.commitPressed = 0
+	focused := f.Focused()
+	commitPressed := false
 	changed = DrawUITextField(TextFieldProps{
 		Bounds:         bounds,
 		Text:           unsafe.Slice((*byte)(unsafe.Pointer(f.buffer)), f.capacity),
 		CursorPosition: (*int32)(unsafe.Pointer(f.cursor)),
-		Focused:        nil,
+		Focused:        &focused,
 		MaxCodepoints:  f.maxCodepoints,
 		Font:           font,
 		FocusID:        f.focusID,
 		Style:          style,
-		CommitPressed:  nil,
+		CommitPressed:  &commitPressed,
 		Secure:         f.secure,
 	})
-	return changed, *f.commitPressed != 0
+	*f.focused = 0
+	if focused {
+		*f.focused = 1
+	}
+	*f.commitPressed = 0
+	if commitPressed {
+		*f.commitPressed = 1
+	}
+	return changed, commitPressed
 }
 
 // TextArea owns a multiline editor and its scroll state.
