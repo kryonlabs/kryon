@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(__EMSCRIPTEN__) && !defined(_WIN32)
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(__ANDROID__)
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -25,7 +25,7 @@ extern bool KryonRaylibBackend_WindowShouldClose(void);
 static int g_single_instance = 1;
 static int g_instance_rejected = 0;
 
-#if !defined(__EMSCRIPTEN__) && !defined(_WIN32)
+#if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(__ANDROID__)
 static int g_instance_fd = -1;
 static char g_instance_path[512];
 
