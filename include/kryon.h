@@ -70,6 +70,7 @@
 #include "kry_backend.h"
 #include "krb.h"
 #include "notification.h"
+#include "kry_uri.h"
 
 /* ABI guard for prebuilt-library consumers (the Go bindings link static
  * archives that are NOT rebuilt automatically when this tree moves).

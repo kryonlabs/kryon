@@ -22,7 +22,7 @@ input_symbols="IsKeyPressed IsKeyDown IsKeyReleased GetKeyPressed GetCharPressed
 # arithmetic with no backend state); TakeScreenshot lives in
 # src/backend/kry_screenshot.c (absolute paths must bypass the backend's
 # basePath prefixing).
-shared_symbols="Fade ColorLerp CheckCollisionPointRec CheckCollisionRecs GetWorldToScreen2D GetScreenToWorld2D GetCodepointNext TakeScreenshot LoadImageFromScreen InitWindow CloseWindow WindowShouldClose EndDrawing EnableEventWaiting DisableEventWaiting"
+shared_symbols="Fade ColorLerp CheckCollisionPointRec CheckCollisionRecs GetWorldToScreen2D GetScreenToWorld2D GetCodepointNext TakeScreenshot LoadImageFromScreen InitWindow CloseWindow WindowShouldClose EndDrawing EnableEventWaiting DisableEventWaiting OpenURL"
 
 if [ ! -f "$raylib_header" ]; then
     echo "raylib header not found: $raylib_header" >&2

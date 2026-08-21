@@ -195,6 +195,7 @@ DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
 DROPDOWN_THEME_SCREEN_TEST = $(BUILD_DIR)/tests/dropdown_theme_screen_test
 PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
+OPEN_URI_TEST = $(BUILD_DIR)/tests/open_uri_test
 UI_TEXT_EDIT_TEST = $(BUILD_DIR)/tests/ui_text_edit_test
 UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 UI_WINDOW_TEST = $(BUILD_DIR)/tests/ui_window_test
@@ -297,7 +298,7 @@ spec-test: $(K2IR) $(K2C) $(K2G) $(K2B)
 runtime-parity-check:
 	sh tests/runtime_parity_test.sh .
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -334,6 +335,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(DROPDOWN_THEME_SCREEN_TEST)
 	$(PREVIEW_TEST)
 	$(PLATFORM_THREAD_TEST)
+	$(OPEN_URI_TEST)
 	$(UI_TEXT_EDIT_TEST)
 	$(UI_TREE_API_TEST)
 	$(UI_WINDOW_TEST)
@@ -580,6 +582,10 @@ $(PLATFORM_THREAD_TEST): tests/platform_thread_test.c src/platform/platform_thre
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/platform_thread_test.c \
 		src/platform/platform_thread.c -lpthread -o $@
+
+$(OPEN_URI_TEST): tests/open_uri_test.c src/platform/open_uri.c include/kry_uri.h include/kryon_compat.generated.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/open_uri_test.c src/platform/open_uri.c -o $@
 
 $(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kryon.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

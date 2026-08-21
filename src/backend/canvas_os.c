@@ -171,16 +171,6 @@ void UnloadFileText(char *text)
     free(text);
 }
 
-void OpenURL(const char *url)
-{
-    if(url == NULL)
-        return;
-    EM_ASM({
-        if (typeof window !== 'undefined')
-            window.open(UTF8ToString($0), '_blank');
-    }, url);
-}
-
 /* ------------------------------------------------------------------ */
 /* Misc surface                                                       */
 /* ------------------------------------------------------------------ */
