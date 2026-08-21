@@ -41,6 +41,8 @@ state {
     slider_val: int = 50
     toggle_val: int = 0
     lines_y: int = 0
+    field_text: [64] char = ""
+    field_cursor: int = 0
 }
 
 app "Smoke" {
@@ -110,7 +112,7 @@ frame main {
     CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
     SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), UI_TEXT_16, GetThemeText())
     ShowUIToast("toast from kry")
-    TextInputControl((TextInputProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .focus_id = 30})
+    TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 30})
     ReadonlyTextBox((ReadonlyTextBoxProps){.bounds = {ScaleUIPx(150), ScaleUIPx(152), ScaleUIPx(90), ScaleUIPx(24)}, .text = "ro"})
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
@@ -141,6 +143,7 @@ out=$(find "$work/out" -name "*.go" | head -1)
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
+grep -q 'import kryruntime "github.com/waozixyz/kryon/go/kryon"' "$out"
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'rt.BeginDrawing()' "$out"
@@ -222,7 +225,7 @@ grep -q 'rt.VerticalSlider(' "$out"
 grep -q 'rt.CanvasGrid(' "$out"
 grep -q 'rt.SelectableText(' "$out"
 grep -q 'rt.ShowUIToast("toast from kry")' "$out"
-grep -q 'rt.TextInputControl(kryruntime.TextInputProps{' "$out"
+grep -q 'rt.TextField(kryruntime.TextFieldProps{' "$out"
 grep -q 'rt.ReadonlyTextBox(kryruntime.ReadonlyTextBoxProps{' "$out"
 grep -q 'rt.Radio(kryruntime.RadioButtonProps{' "$out"
 grep -q 'rt.Spinbox(kryruntime.SpinboxProps{' "$out"
@@ -242,15 +245,32 @@ grep -q 'rt.Dropdown(11, rt.ScaleUIPx(4), rt.ScaleUIPx(210), rt.ScaleUIPx(120), 
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 
-# The generated source must compile against Kryon's real Go runtime. Textual
+if grep -q 'DrawUI' "$out"; then
+    echo "k2g generated blocked DrawUI-prefixed calls" >&2
+    exit 1
+fi
+if grep -q 'TextInputControl' "$out"; then
+    echo "k2g generated blocked TextInputControl calls" >&2
+    exit 1
+fi
+if grep -q 'go/kryui' "$out"; then
+    echo "k2g generated a cgo runtime import" >&2
+    exit 1
+fi
+if grep -q 'import "C"' "$out"; then
+    echo "k2g generated cgo" >&2
+    exit 1
+fi
+
+# The generated source must compile against Kryon's native Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.
 cat > "$work/out/go.mod" <<EOF
 module kryon-generated-smoke
 
 go 1.25.0
 
-require github.com/waozixyz/kryon/go/kryui v0.0.0
-replace github.com/waozixyz/kryon/go/kryui => $root/go/kryui
+require github.com/waozixyz/kryon/go/kryon v0.0.0
+replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon
 EOF
 (cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
 

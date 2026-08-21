@@ -7,13 +7,13 @@ type AppConfig struct {
 	Title         string
 	Width, Height int
 	FPS           int
-	Flags         uint        // window flags applied before InitWindow (0 = none)
-	MinWidth      int         // minimum window size (0 = no limit)
+	Flags         uint // window flags applied before InitWindow (0 = none)
+	MinWidth      int  // minimum window size (0 = no limit)
 	MinHeight     int
 }
 
-// Runtime is the stable Go target used by generated Kry programs. It keeps
-// window and nested-widget state behind Go methods rather than exposing cgo.
+// Runtime mirrors the native generated-code surface for existing cgo bridge
+// users. New k2g output targets go/kryon.
 type Runtime interface {
 	Close()
 	WindowShouldClose() bool
@@ -78,7 +78,6 @@ type Runtime interface {
 	SelectableText(value string, x, y, fontSize int32, color Color)
 	ShowUIToast(message string)
 	ShowUIToastFor(message string, seconds float64)
-	TextInputControl(props TextInputProps) bool
 	ReadonlyTextBox(props ReadonlyTextBoxProps)
 	TextArea(props TextAreaProps) bool
 	Radio(props RadioButtonProps) int32

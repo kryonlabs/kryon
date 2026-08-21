@@ -20,7 +20,7 @@ the columns diverge.
 .kry source
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
-   ├── k2g  -> .go (rt.* calls)            -> go build + go/kryui -> Go app
+   ├── k2g  -> .go (rt.* calls)            -> go build + go/kryon -> Go app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
    └── k2ir -> .kir (text IR dump; debugging, tests, Krait)
 ```
@@ -28,7 +28,7 @@ the columns diverge.
 | Target | Producer | Runtime | Status |
 |---|---|---|---|
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null surface backend) | Most complete path; production use (inbe) |
-| Go | `k2g` | `go/kryui` cgo package, links the same `libkryon.a` | Declarative subset; executable CI gate |
+| Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |
 
@@ -60,7 +60,7 @@ pairing, not the C `Begin/EndUIScrollContainer` API.)
 ## Widget matrix
 
 Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2g** = `.kry`→Go codegen
-(`go/kryui` `Runtime` interface) · **Go** = hand-written Go via the `go/kryui`
+(`go/kryon` `Runtime` interface) · **Go** = hand-written Go via the `go/kryon`
 package API · **KRB** = lowered into a cartridge by `k2b`.
 
 Retained-tree caveat that applies to the whole C column: `BeginUI/EndUI`
@@ -94,7 +94,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TextButton | ✅ | ✅ | ✅ | ✅ `TextButton` | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
-| TextInputControl | ✅ | ✅ | ✅ | ✅ `TextInputControl` | ✗ |
+| TextInputControl | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ `TextField`/`NewTextField`/`NewPasswordField` | ✅ TEXTINPUT node |
 | ReadonlyTextBox | ✅ | ✅ | ✅ | ✅ `ReadonlyTextBox` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
@@ -247,14 +247,14 @@ declaration pass (`src/ui/ui_tree.c`).
   playback depends on browser user-gesture unlock rules, and stream/mixed
   processors apply to Canvas-managed stream buffers, not decoded browser
   `AudioBuffer` playback that has already been handed to WebAudio.
-- `k2g` is at Go parity: the `Runtime` interface covers the full widget
-  whitelist plus every widget family `go/kryui` itself exposes (controls,
-  Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme
-  control), with `.kry` array declarations lowering to Go slices at the use
-  site. Remaining boundaries: a forward `goto` over declarations is a loud
-  Go compile error, `DropdownEx`'s rich option arrays are not expressible
-  from `.kry`, and C pointer/`Texture2D` values cannot be written (icons
-  pass by `UIIconType`, option lists as joined strings or `[N]string`).
+- `k2g` targets native Go: the `Runtime` interface covers the widget
+  whitelist plus the generated-code widget families in `go/kryon` (controls,
+  Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control),
+  with `.kry` array declarations lowering to Go slices at the use site.
+  Remaining boundaries: a forward `goto` over declarations is a loud Go
+  compile error, `DropdownEx`'s rich option arrays are not expressible from
+  `.kry`, and C pointer/`Texture2D` values cannot be written (icons pass by
+  `UIIconType`, option lists as joined strings or `[N]string`).
 - `k2b` drops unsupported widget calls and reports them per file; the
   cartridge widget set remains smaller than the C catalog (see matrix).
   `Combobox` lowers to a `KRB_CTRL_COMBOBOX` control that renders like the

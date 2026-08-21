@@ -1,8 +1,8 @@
 /*
  * k2g - .kry -> Go compiler. Shares the Kir frontend with k2c/k2b: every
  * .kry parses into a KirProgram (kir_parse.c), then lowers to Go source
- * (k2g_lower.c) that calls a Go kryon runtime (the cgo surface, like app's
- * kryui package). One frontend, three backends.
+ * (k2g_lower.c) that calls the native Go Kryon runtime. One frontend, three
+ * backends.
  *
  * usage: k2g [--no-main] [--pkg NAME] [--runtime IMPORT] --root DIR -o DIR file.kry ...
  */
@@ -28,7 +28,7 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     const char *pkg = "krygen";
-    const char *runtime = "github.com/waozixyz/kryon/go/kryui";
+    const char *runtime = "github.com/waozixyz/kryon/go/kryon";
     int no_main = 0;
     KirProgram **progs;
     int file_count;

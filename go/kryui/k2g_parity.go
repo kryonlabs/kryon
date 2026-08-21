@@ -1,9 +1,9 @@
 package kryui
 
-// This file completes the Runtime surface so k2g-generated code reaches
-// everything the hand-written Go API exposes: positional controls, Props
-// widgets, dialogs, the canvas, the Tk layout helpers, toasts, and theme
-// control. Everything forwards to existing package functions; no cgo here.
+// This file keeps the cgo bridge's Runtime surface aligned with the native
+// generated-code Runtime: positional controls, Props widgets, dialogs, the
+// canvas, Tk layout helpers, toasts, and theme control. Everything forwards
+// to existing package functions.
 
 // ThemeStyle constants under their C names for generated code.
 const (
@@ -91,10 +91,6 @@ func (r *runtime) ShowUIToastFor(message string, seconds float64) {
 // ---------------------------------------------------------------------------
 // Runtime methods: Props widgets (types live with their package functions)
 // ---------------------------------------------------------------------------
-
-func (r *runtime) TextInputControl(props TextInputProps) bool {
-	return TextInputControl(props)
-}
 
 func (r *runtime) ReadonlyTextBox(props ReadonlyTextBoxProps) {
 	ReadonlyTextBox(props)

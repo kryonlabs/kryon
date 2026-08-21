@@ -21,13 +21,13 @@ li{margin:.25rem 0}
 <pre>.kry source
    │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
    ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
-   ├── k2g  -&gt; .go (rt.* calls)            -&gt; go build + go/kryui -&gt; Go app
+   ├── k2g  -&gt; .go (rt.* calls)            -&gt; go build + go/kryon -&gt; Go app
    ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
    └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
 <table>
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
 <tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null surface backend)</td><td class="">Most complete path; production use (inbe)</td></tr>
-<tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryui</code> cgo package, links the same <code>libkryon.a</code></td><td class="">Declarative subset; executable CI gate</td></tr>
+<tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
 <tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
 </table>
@@ -45,7 +45,7 @@ li{margin:.25rem 0}
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginUICanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
-<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (<code>go/kryui</code> <code>Runtime</code> interface) · <b>Go</b> = hand-written Go via the <code>go/kryui</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
+<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (<code>go/kryon</code> <code>Runtime</code> interface) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>BeginUI/EndUI</code> records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, and routes retained input for BUTTON and TEXT_FIELD; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
@@ -70,7 +70,7 @@ li{margin:.25rem 0}
 <tr><td class="">TextButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextButton</code></td><td class="no">✗</td></tr>
 <tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">TextInputControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInputControl</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextInputControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextField</code>/<code>NewTextField</code>/<code>NewPasswordField</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
 <tr><td class="">ReadonlyTextBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ReadonlyTextBox</code></td><td class="no">✗</td></tr>
 <tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
@@ -208,9 +208,9 @@ li{margin:.25rem 0}
 </ul>
 <p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), WebAudio playback depends on browser user-gesture unlock rules, and stream/mixed processors apply to Canvas-managed stream buffers, not decoded browser <code>AudioBuffer</code> playback that has already been handed to WebAudio.</p>
 <ul>
-<li><code>k2g</code> is at Go parity: the <code>Runtime</code> interface covers the full widget</li>
+<li><code>k2g</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
 </ul>
-<p>whitelist plus every widget family <code>go/kryui</code> itself exposes (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownEx</code>&#x27;s rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
+<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownEx</code>&#x27;s rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
 <ul>
 <li><code>k2b</code> drops unsupported widget calls and reports them per file; the</li>
 </ul>
