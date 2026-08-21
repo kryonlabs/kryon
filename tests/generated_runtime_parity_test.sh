@@ -206,6 +206,10 @@ func main() {
 	drawFocus()
 
 	drawButtons()
+	driver.QueueTap(30, 130)
+	drawButtons()
+	driver.QueueTap(130, 130)
+	drawButtons()
 
 	out := snapshot{
 		FormFirst:          text64(form.First),
@@ -363,6 +367,13 @@ int main(void)
     KryonInjectPump();
     draw_focus();
 
+    draw_buttons();
+    KryonInjectTap(30, 130);
+    KryonInjectPump();
+    draw_buttons();
+    KryonInjectPump();
+    KryonInjectTap(130, 130);
+    KryonInjectPump();
     draw_buttons();
 
     printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"clipboard\":\"%s\"}\n",

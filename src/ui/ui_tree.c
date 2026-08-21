@@ -1562,13 +1562,23 @@ GenericButton(int id, int x, int y, int w, int h,
                     const char *label, UIButtonStyle style,
                     int disabled, int *hover)
 {
+    Rectangle bounds = (Rectangle){x, y, w, h};
+    int clicked = 0;
     UINodeId node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                                (Rectangle){x, y, w, h}, NULL);
+                                bounds, NULL);
+
+    if(!disabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+       CheckCollisionPointRec(GetMousePosition(), bounds)) {
+        clicked = 1;
+        if(hover != NULL)
+            *hover = 1;
+    } else if(hover != NULL) {
+        *hover = !disabled && CheckCollisionPointRec(GetMousePosition(), bounds);
+    }
 
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(label);
-        ui_tree_nodes[node].data.button.spec.bounds =
-            (Rectangle){x, y, w, h};
+        ui_tree_nodes[node].data.button.spec.bounds = bounds;
         ui_tree_nodes[node].data.button.spec.label =
             ui_tree_nodes[node].owned_text;
         ui_tree_nodes[node].data.button.spec.font = GetUIFontSize();
@@ -1577,7 +1587,7 @@ GenericButton(int id, int x, int y, int w, int h,
         ui_tree_nodes[node].data.button.style = style;
     }
     if(ui_tree_building)
-        return 0;
+        return clicked;
     return DrawUIGenericButton(x, y, w, h, label, style, disabled, hover);
 }
 
