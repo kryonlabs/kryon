@@ -279,7 +279,9 @@ OpenURI(const char *uri)
 #elif defined(__EMSCRIPTEN__) || defined(PLATFORM_WEB)
     return EM_ASM_INT({
         var uri = UTF8ToString($0);
-        if (!/^https?:\/\//i.test(uri)) return 0;
+        var http = 'http:' + '/' + '/';
+        var https = 'https:' + '/' + '/';
+        if (uri.indexOf(http) !== 0 && uri.indexOf(https) !== 0) return 0;
         try {
             var link = document.createElement('a');
             link.href = uri;
