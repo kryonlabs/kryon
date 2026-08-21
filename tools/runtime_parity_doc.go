@@ -180,6 +180,8 @@ func render(cgoBridge, native methodSet) (string, bool) {
 		b.WriteString(fmt.Sprintf("| `%s` | `%s` | `%s` | %s |\n",
 			name, display(ng, nok), display(lg, lok), status))
 	}
+	b.WriteString("\n## Generated Runtime Semantics\n\n")
+	b.WriteString("`tests/generated_runtime_parity_test.sh` transpiles `tests/parity/generated_form.kry` through k2g and k2c, rejects legacy generated output, drives both generated runtimes through text editing, focus traversal, selection replacement, secure clipboard copy, buttons, rows, columns, and text areas, then diffs the final state JSON.\n")
 	return b.String(), ok
 }
 

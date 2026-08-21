@@ -11,6 +11,11 @@ func SetRuntime(runtime Runtime) {
 	activeRuntime = runtime
 }
 
+type focusController interface {
+	SetFocus(int32)
+	Focus() int32
+}
+
 func active() Runtime {
 	if activeRuntime == nil {
 		activeRuntime = New(AppConfig{})
@@ -22,6 +27,17 @@ func Close()                  { active().Close() }
 func WindowShouldClose() bool { return active().WindowShouldClose() }
 func BeginFrame()             { active().BeginFrame() }
 func EndFrame()               { active().EndFrame() }
+func SetFocus(id int32) {
+	if runtime, ok := active().(focusController); ok {
+		runtime.SetFocus(id)
+	}
+}
+func Focus() int32 {
+	if runtime, ok := active().(focusController); ok {
+		return runtime.Focus()
+	}
+	return 0
+}
 func ClearBackground(c Color) { active().ClearBackground(c) }
 func Background(c Color)      { active().Background(c) }
 func Text(text string, x, y, fontSize int32, color Color) {

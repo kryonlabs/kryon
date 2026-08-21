@@ -658,7 +658,7 @@ props_field_at(const char *type, int index)
 {
     static const struct {
         const char *type;
-        const char *fields[13];
+        const char *fields[20];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"PictureProps", {"AssetPath", "Bounds", "Source", "Origin",
@@ -675,7 +675,13 @@ props_field_at(const char *type, int index)
                          "Disabled"}},
         {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
                             "Focused", "MaxCodepoints", "Font", "FocusID",
-                            "Style"}},
+                            "Style", "Filter", "FilterUserData",
+                            "CommitPressed", "Secure", "ReadOnly"}},
+        {"TextAreaProps", {"Bounds", "Text", "TextSize", "CursorPosition",
+                           "Focused", "ScrollY", "MaxCodepoints", "Font",
+                           "LineGap", "FocusID", "Placeholder", "Syntax",
+                           "Style", "Filter", "FilterUserData",
+                           "ContentVersion", "ReadOnly", "Wrap"}},
     };
     size_t i;
 
@@ -964,7 +970,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                         tx_expr(m, skip_ws(eq + 1), value, sizeof(value));
                     }
                 }
-                if(strcmp(type, "TextFieldProps") == 0 &&
+                if((strcmp(type, "TextFieldProps") == 0 ||
+                    strcmp(type, "TextAreaProps") == 0) &&
                    strcmp(field, "Text") == 0 && strncmp(value, "st.", 3) == 0)
                     strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
                 if(emitted++)
@@ -2134,7 +2141,9 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                          strcmp(finit, "\"\"") == 0)) {
                         if(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
                            finit[0] == '"')
-                            fprintf(f, "\t%s: %s(%s),\n", fname, gt, finit);
+                            fprintf(f,
+                                    "\t%s: func() %s { var v %s; copy(v[:], %s); return v }(),\n",
+                                    fname, gt, gt, finit);
                         else
                             fprintf(f, "\t%s: %s,\n", fname, finit);
                     }

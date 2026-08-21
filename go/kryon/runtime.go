@@ -610,6 +610,8 @@ func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.frames++
 }
+func (r *runtime) SetFocus(id int32)                                      { r.focusID = id }
+func (r *runtime) Focus() int32                                           { return r.focusID }
 func (r *runtime) ClearBackground(Color)                                  {}
 func (r *runtime) Background(Color)                                       {}
 func (r *runtime) Text(string, int32, int32, int32, Color)                {}
