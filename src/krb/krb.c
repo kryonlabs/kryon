@@ -840,7 +840,7 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         break;
     }
     case KRB_NODE_PICTURE:
-        /* text_off holds the asset path; style holds the UIPictureFit; color
+        /* text_off holds the asset path; style holds the PictureFit; color
          * the tint. Embedded assets render from cartridge pixels; paths the
          * cartridge does not embed fall back to host texture loading. */
         if(text[0] != '\0') {

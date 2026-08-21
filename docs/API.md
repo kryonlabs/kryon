@@ -942,11 +942,11 @@ int SyncWebWindowSize(void);
 ### Pictures
 
 ```c
-typedef enum UIPictureFit {
-    UI_PICTURE_FIT_STRETCH,
-    UI_PICTURE_FIT_CONTAIN,
-    UI_PICTURE_FIT_COVER
-} UIPictureFit;
+typedef enum PictureFit {
+    PICTURE_FIT_STRETCH,
+    PICTURE_FIT_CONTAIN,
+    PICTURE_FIT_COVER
+} PictureFit;
 
 typedef struct PictureProps {
     const char *asset_path;
@@ -955,8 +955,8 @@ typedef struct PictureProps {
     Vector2 origin;
     float rotation;
     Color tint;
-    UIPictureFit fit;
-    UIPictureStyle style;
+    PictureFit fit;
+    PictureStyle style;
 } PictureProps;
 
 void Picture(PictureProps picture);

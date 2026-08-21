@@ -50,11 +50,11 @@ var (
 	RAYWHITE   = Color{245, 245, 245, 255}
 )
 
-// UIPictureFit enum members under their C names.
+// PictureFit enum members under their C names.
 const (
-	UI_PICTURE_FIT_STRETCH = PictureFitStretch
-	UI_PICTURE_FIT_CONTAIN = PictureFitContain
-	UI_PICTURE_FIT_COVER   = PictureFitCover
+	PICTURE_FIT_STRETCH = PictureFitStretch
+	PICTURE_FIT_CONTAIN = PictureFitContain
+	PICTURE_FIT_COVER   = PictureFitCover
 )
 
 func boolToInt(b bool) C.int {
@@ -192,7 +192,7 @@ func Picture(props PictureProps) {
 		origin:     C.Vector2{x: C.float(props.Origin.X), y: C.float(props.Origin.Y)},
 		rotation:   C.float(props.Rotation),
 		tint:       props.Tint.toC(),
-		fit:        C.UIPictureFit(props.Fit),
+		fit:        C.PictureFit(props.Fit),
 	})
 }
 

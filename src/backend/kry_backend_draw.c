@@ -164,7 +164,7 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
         .asset_path = asset_path,
         .bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h},
         .tint = unpack_color(tint),
-        .fit = (UIPictureFit)fit,
+        .fit = (PictureFit)fit,
     };
     DrawTexturePro(tex,
                    (Rectangle){0, 0, (float)tex.width, (float)tex.height},

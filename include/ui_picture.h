@@ -14,13 +14,13 @@
 
 #define KRY_PICTURE_CACHE_MAX 128
 
-typedef enum UIPictureFit {
-    UI_PICTURE_FIT_STRETCH,
-    UI_PICTURE_FIT_CONTAIN,
-    UI_PICTURE_FIT_COVER
-} UIPictureFit;
+typedef enum PictureFit {
+    PICTURE_FIT_STRETCH,
+    PICTURE_FIT_CONTAIN,
+    PICTURE_FIT_COVER
+} PictureFit;
 
-typedef struct UIPictureStyle {
+typedef struct PictureStyle {
     int enabled;
     Color background;
     Color tonal_overlay;
@@ -32,7 +32,7 @@ typedef struct UIPictureStyle {
     int radius_px;
     int segments;
     int outline_px;
-} UIPictureStyle;
+} PictureStyle;
 
 typedef struct PictureProps {
     const char *asset_path;
@@ -41,8 +41,8 @@ typedef struct PictureProps {
     Vector2 origin;
     float rotation;
     Color tint;
-    UIPictureFit fit;
-    UIPictureStyle style;
+    PictureFit fit;
+    PictureStyle style;
 } PictureProps;
 
 #endif

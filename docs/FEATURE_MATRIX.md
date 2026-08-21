@@ -82,7 +82,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Line | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | IconTexture (114 embedded icons) | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
-| Image/Picture | ✅ | ✅ | ✅ `Picture(PictureProps)` | ✅ `Picture`/`DrawPicture` | ✅ node (embedded asset or PNG) |
+| Image/Picture | ✅ | ✅ | ✅ `Picture(PictureProps)` | ✅ `Picture` | ✅ node (embedded asset or PNG) |
 
 ### UI/Input
 

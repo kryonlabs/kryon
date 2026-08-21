@@ -252,7 +252,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .asset_path = \"assets/image.png\",\n"
                  "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)},\n"
                  "        .tint = WHITE,\n"
-                 "        .fit = UI_PICTURE_FIT_CONTAIN,\n"
+                 "        .fit = PICTURE_FIT_CONTAIN,\n"
                  "    })\n",
                  x, y);
     } else if(strcmp(type->name, "Button") == 0) {

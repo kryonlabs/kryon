@@ -22,7 +22,7 @@ DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w
     }
 
     picture.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    picture.fit = UI_PICTURE_FIT_COVER;
+    picture.fit = PICTURE_FIT_COVER;
     picture.tint = WHITE;
     picture.style.enabled = 1;
     PictureTexture(texture, picture);

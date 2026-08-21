@@ -22,11 +22,11 @@ screen main {
     Picture((PictureProps){"tiles/tile.png",
              (Rectangle){ScaleUIPx(52),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
              (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-             UI_PICTURE_FIT_CONTAIN})
+             PICTURE_FIT_CONTAIN})
     Picture((PictureProps){"pfp/lotus.png",
              (Rectangle){ScaleUIPx(168),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
              (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-             UI_PICTURE_FIT_CONTAIN})
+             PICTURE_FIT_CONTAIN})
     Text("Pictures keep their node bounds for editing",
                ScaleUIPx(52), ScaleUIPx(226), UI_TEXT_12, GetThemeIcon())
     End()

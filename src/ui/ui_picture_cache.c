@@ -81,12 +81,12 @@ PictureFitRect(PictureProps picture, Texture2D texture)
     float sy;
     float scale;
 
-    if(picture.fit == UI_PICTURE_FIT_CONTAIN || picture.fit == UI_PICTURE_FIT_COVER) {
+    if(picture.fit == PICTURE_FIT_CONTAIN || picture.fit == PICTURE_FIT_COVER) {
         if(src_w == 0.0f || src_h == 0.0f)
             return dst;
         sx = dst.width / src_w;
         sy = dst.height / src_h;
-        scale = picture.fit == UI_PICTURE_FIT_COVER
+        scale = picture.fit == PICTURE_FIT_COVER
                     ? (sx > sy ? sx : sy)
                     : (sx < sy ? sx : sy);
         dst.width = src_w * scale;
@@ -111,7 +111,7 @@ picture_radius_from_roundness(Rectangle bounds, float roundness)
 }
 
 static float
-picture_style_radius(Rectangle bounds, UIPictureStyle style)
+picture_style_radius(Rectangle bounds, PictureStyle style)
 {
     float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
     float radius = (float)style.radius_px;
@@ -327,7 +327,7 @@ picture_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
 }
 
 static void
-picture_apply_style(Rectangle bounds, UIPictureStyle *style, float *radius,
+picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
                     float *roundness, int *segments, int *outline_px)
 {
     ThemeStyle theme_style = GetEffectiveThemeStyle();

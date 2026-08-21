@@ -9,7 +9,7 @@
  */
 
 #include "kryon_compat.generated.h"
-#include "ui_picture.h" /* PictureProps / UIPictureFit, shared with the UI widget */
+#include "ui_picture.h" /* PictureProps / PictureFit, shared with the UI widget */
 #include "kry_animation.h" /* KryAnimation, held by AnimationPlayerProps */
 
 typedef struct Camera2DProps {
@@ -23,7 +23,7 @@ typedef struct Sprite2DProps {
     Rectangle source;       /* sub-rectangle of the texture; {0,0,0,0} = full texture */
     Vector2 size;           /* world-space size of the sprite (width/height) */
     Color tint;             /* .a == 0 -> WHITE */
-    UIPictureFit fit;         /* STRETCH/CONTAIN/COVER within `size` */
+    PictureFit fit;         /* STRETCH/CONTAIN/COVER within `size` */
 } Sprite2DProps;
 
 /*
