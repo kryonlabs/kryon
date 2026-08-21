@@ -360,3 +360,43 @@ func TestRowPlacesZeroOriginButtons(t *testing.T) {
 		t.Fatal("row tap did not click second button")
 	}
 }
+
+func TestDirectPackageButtonString(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	QueueTap(36, 12)
+	BeginFrame()
+	clicked := Button("Save")
+	EndFrame()
+
+	if !clicked {
+		t.Fatal("direct Button string did not consume tap")
+	}
+}
+
+func TestDirectPackageTextFieldStringKeepsCursorState(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	value := "abc"
+	BeginFrame()
+	TextField("Name", &value)
+	EndFrame()
+
+	QueueTap(36, 12)
+	QueueKey(KeyLeft)
+	QueueText("Z")
+	BeginFrame()
+	changed := TextField("Name", &value)
+	EndFrame()
+
+	if !changed {
+		t.Fatal("direct TextField string did not report change")
+	}
+	if got, want := value, "abZc"; got != want {
+		t.Fatalf("direct TextField value = %q, want %q", got, want)
+	}
+}

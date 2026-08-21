@@ -132,10 +132,8 @@ func Line(x1, y1, x2, y2 int32, color Color) { active().Line(x1, y1, x2, y2, col
 func Scroll(x, y, w, h, contentH int32, offset *int32) {
 	active().Scroll(x, y, w, h, contentH, offset)
 }
-func EndScroll() { active().EndScroll() }
-func Button(props ButtonProps) bool {
-	return active().Button(props)
-}
+func EndScroll()              { active().EndScroll() }
+func Button(args ...any) bool { return button(args...) }
 func TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
 	return active().TabBar(bounds, labels, selected, hover)
 }
@@ -194,7 +192,7 @@ func SelectableText(value string, x, y, fontSize int32, color Color) {
 }
 func ShowUIToast(message string)                     { active().ShowUIToast(message) }
 func ShowUIToastFor(message string, seconds float64) { active().ShowUIToastFor(message, seconds) }
-func TextField(props TextFieldProps)                 { active().TextField(props) }
+func TextField(args ...any) bool                     { return textField(args...) }
 func TextArea(props TextAreaProps) bool              { return active().TextArea(props) }
 func Radio(props RadioButtonProps) int32             { return active().Radio(props) }
 func Spinbox(props SpinboxProps) bool                { return active().Spinbox(props) }

@@ -88,13 +88,13 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
-| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `Button` | ✅ node |
+| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `Button(ButtonProps)` / `Button("Save")` | ✅ node |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `Button(ButtonProps)` | ✗ generated Go uses `Button` | ◐ BUTTON style byte |
 | IconButton / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
 | TextInputControl | ✅ | ✅ | ✗ | ✗ | ✗ |
-| TextField | ✅ | ✅ | ✅ | ✅ `TextField`/`NewTextField`/`NewPasswordField` | ✅ TEXTINPUT node |
+| TextField | ✅ | ✅ | ✅ | ✅ `TextField(TextFieldProps)` / `TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
 | Dropdown / DropdownEx | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |

@@ -190,6 +190,11 @@ names such as `Button`, `TextField`, `Text`, `Row`, `Column`, `BeginFrame`, and
 `EndFrame`. It must not use `import "C"`, `go/kryui`, injected runtime objects,
 or generated calls to legacy prefixed C APIs.
 
+Handwritten Go can use the same package directly. Generated code keeps the
+explicit props form (`Button(ButtonProps{...})`, `TextField(TextFieldProps{...})`)
+for deterministic layout/state, while app code may use shorter direct calls such
+as `Button("Save")` and `TextField("Name", &name)`.
+
 `k2g` output is compiled against that native runtime by the test suite, and the
 generated Go/C parity tests drive both runtimes through the same scripted input.
 This is an executable compatibility gate, not only a textual generated-source
