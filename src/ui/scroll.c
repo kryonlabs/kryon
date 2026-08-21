@@ -263,6 +263,42 @@ EndUIScrollContainer(UIScrollArea area, UIScrollView view)
                       view.max_scroll);
 }
 
+void
+EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin)
+{
+    UIScrollView view;
+    int next_scroll;
+    int viewport_top;
+    int viewport_bottom;
+    int rect_top;
+    int rect_bottom;
+
+    if(area.scroll_offset == NULL)
+        return;
+
+    view = MeasureUIScrollContainer(area);
+    if(view.max_scroll <= 0)
+        return;
+
+    if(margin < 0)
+        margin = 0;
+    next_scroll = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
+    viewport_top = (int)area.bounds.y + margin;
+    viewport_bottom = (int)(area.bounds.y + area.bounds.height) - margin;
+    rect_top = (int)rect.y;
+    rect_bottom = (int)(rect.y + rect.height);
+
+    if(viewport_bottom < viewport_top)
+        viewport_bottom = viewport_top;
+
+    if(rect_bottom > viewport_bottom)
+        next_scroll += rect_bottom - viewport_bottom;
+    if(rect_top < viewport_top)
+        next_scroll -= viewport_top - rect_top;
+
+    *area.scroll_offset = ui_clampi(next_scroll, 0, view.max_scroll);
+}
+
 /* ================================================================
  * SCROLLBAR
  * ================================================================ */

@@ -54,6 +54,7 @@ int GetUIScrollbarSafeContentWidth(int content_x, int content_width,
 UIScrollView MeasureUIScrollContainer(UIScrollArea area);
 UIScrollView BeginUIScrollContainer(UIScrollArea area);
 void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
+void EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin);
 UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
 void EndUIScrollPage(UIScrollPage page);
 
