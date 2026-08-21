@@ -554,6 +554,7 @@ type runtime struct {
 	focusID     int32
 	clipboard   string
 	inputEvents []inputEvent
+	taps        []tapEvent
 	fieldOrder  []int32
 	prevOrder   []int32
 	selection   map[int32]selection
@@ -564,6 +565,11 @@ type inputEvent struct {
 	text     string
 	shift    bool
 	shortcut bool
+}
+
+type tapEvent struct {
+	x, y     float32
+	consumed bool
 }
 
 type selection struct {
@@ -593,6 +599,7 @@ func (r *runtime) QueueShiftKey(key int32) {
 func (r *runtime) QueueShortcut(key int32) {
 	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shortcut: true})
 }
+func (r *runtime) QueueTap(x, y float32)        { r.taps = append(r.taps, tapEvent{x: x, y: y}) }
 func (r *runtime) SetClipboardText(text string) { r.clipboard = text }
 func (r *runtime) ClipboardText() string        { return r.clipboard }
 func (r *runtime) SetSelection(focusID, anchor, cursor int32) {
@@ -608,6 +615,7 @@ func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame()             { r.fieldOrder = r.fieldOrder[:0] }
 func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
+	r.taps = nil
 	r.frames++
 }
 func (r *runtime) SetFocus(id int32)                                      { r.focusID = id }
@@ -630,9 +638,14 @@ func (r *runtime) RectGradientH(int32, int32, int32, int32, Color, Color) {}
 func (r *runtime) Line(int32, int32, int32, int32, Color)                 {}
 func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32)       {}
 func (r *runtime) EndScroll()                                             {}
-func (r *runtime) Button(ButtonProps) bool                                { return false }
-func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32       { return -1 }
-func (r *runtime) Progress(Rectangle, int32, int32, int32, string)        {}
+func (r *runtime) Button(props ButtonProps) bool {
+	if props.Disabled {
+		return false
+	}
+	return r.consumeTap(props.Bounds)
+}
+func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
+func (r *runtime) Progress(Rectangle, int32, int32, int32, string)  {}
 func (r *runtime) Checkbox(_ int32, _ int32, _ int32, _ string, value *int32) bool {
 	if value == nil {
 		return false
@@ -704,7 +717,7 @@ func (r *runtime) SelectableText(string, int32, int32, int32, Color) {}
 func (r *runtime) ShowUIToast(string)                                {}
 func (r *runtime) ShowUIToastFor(string, float64)                    {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
-	return r.editText(props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
+	return r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
 	if props.Checked {
@@ -774,14 +787,18 @@ func (r *runtime) SetThemeSource(ThemeSource)   {}
 func (r *runtime) SetThemeMode(ThemeMode)       {}
 
 func (r *runtime) TextField(props TextFieldProps) {
-	r.editText(props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
+	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
 }
 
-func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {
+func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {
 	if len(buf) == 0 {
 		return false
 	}
 	r.registerField(focusID)
+	tapX, tapped := r.consumeTapPoint(bounds)
+	if focusID != 0 && tapped {
+		r.focusID = focusID
+	}
 	if commit != nil {
 		*commit = false
 	}
@@ -803,6 +820,10 @@ func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *boo
 	text := string(buf[:zeroIndex(buf)])
 	pos := clampCursor(text, int(*cursor))
 	sel := r.normalizedSelection(focusID, text, pos)
+	if tapped {
+		pos = cursorAtTap(text, bounds, tapX)
+		sel = selection{Anchor: pos, Cursor: pos}
+	}
 	changed := false
 	for _, event := range r.inputEvents {
 		if event.text != "" {
@@ -906,6 +927,53 @@ func (r *runtime) editText(buf []byte, cursor *int32, focused *bool, commit *boo
 		*focused = r.focusID == focusID
 	}
 	return changed
+}
+
+func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
+	for i := range r.taps {
+		if r.taps[i].consumed {
+			continue
+		}
+		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
+			r.taps[i].consumed = true
+			return r.taps[i].x, true
+		}
+	}
+	return 0, false
+}
+
+func (r *runtime) consumeTap(bounds Rectangle) bool {
+	for i := range r.taps {
+		if r.taps[i].consumed {
+			continue
+		}
+		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
+			r.taps[i].consumed = true
+			return true
+		}
+	}
+	return false
+}
+
+func pointInRect(x, y float32, bounds Rectangle) bool {
+	return x >= bounds.X && y >= bounds.Y &&
+		x < bounds.X+bounds.Width && y < bounds.Y+bounds.Height
+}
+
+func cursorAtTap(text string, bounds Rectangle, x float32) int {
+	const padding = float32(10)
+	const charWidth = float32(8)
+
+	rel := x - bounds.X - padding
+	if rel <= 0 {
+		return 0
+	}
+	target := int(rel / charWidth)
+	pos := 0
+	for i := 0; i < target && pos < len(text); i++ {
+		pos = nextRune(text, pos)
+	}
+	return pos
 }
 
 func NewVector2(x, y float32) Vector2 { return Vector2{X: x, Y: y} }

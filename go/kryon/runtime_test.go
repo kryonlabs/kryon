@@ -91,6 +91,69 @@ func TestTextFieldTabTraversal(t *testing.T) {
 	}
 }
 
+func TestTapFocusesTextField(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	aText, bText := make([]byte, 16), make([]byte, 16)
+	aCursor, bCursor := int32(0), int32(0)
+	aFocused, bFocused := false, false
+
+	draw := func() {
+		rt.BeginFrame()
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{X: 10, Y: 10, Width: 120, Height: 28},
+			Text:           aText,
+			CursorPosition: &aCursor,
+			Focused:        &aFocused,
+			FocusID:        101,
+		})
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{X: 10, Y: 50, Width: 120, Height: 28},
+			Text:           bText,
+			CursorPosition: &bCursor,
+			Focused:        &bFocused,
+			FocusID:        102,
+		})
+		rt.EndFrame()
+	}
+
+	draw()
+	rt.QueueTap(20, 62)
+	draw()
+	if aFocused || !bFocused {
+		t.Fatalf("tap focus = a:%v b:%v, want a:false b:true", aFocused, bFocused)
+	}
+	rt.QueueText("z")
+	draw()
+	if got, want := string(bText[:zeroIndex(bText)]), "z"; got != want {
+		t.Fatalf("typed focused field = %q, want %q", got, want)
+	}
+}
+
+func TestButtonConsumesTapInsideBounds(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+
+	rt.BeginFrame()
+	rt.QueueTap(40, 25)
+	clicked := rt.Button(ButtonProps{
+		Bounds: Rectangle{X: 20, Y: 10, Width: 80, Height: 32},
+		Label:  "Save",
+		ID:     201,
+	})
+	missed := rt.Button(ButtonProps{
+		Bounds: Rectangle{X: 120, Y: 10, Width: 80, Height: 32},
+		Label:  "Cancel",
+		ID:     202,
+	})
+	rt.EndFrame()
+
+	if !clicked {
+		t.Fatal("tap inside first button did not click")
+	}
+	if missed {
+		t.Fatal("tap was not consumed by first matching button")
+	}
+}
+
 func TestTextFieldSelectionClipboardAndSecureMode(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 	text := make([]byte, 64)

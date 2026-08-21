@@ -173,25 +173,27 @@ feature family.
 
 `docs/KRY_LANGUAGE_SPEC.md` is the canonical Kry language contract. Kry source
 lowers into KIR, a debuggable intermediate representation with source spans.
-From there `k2c` emits readable C for native apps, `k2g` emits Go source
-driving the cgo runtime binding, while `k2b` emits a portable `.krb`
-cartridge (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime
-contract. The intended tool set is Unix-shaped:
+From there `k2c` emits readable C for native apps, `k2g` emits pure Go source
+against the native Go runtime, while `k2b` emits a portable `.krb` cartridge
+(`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime contract.
+The intended tool set is Unix-shaped:
 
 ```text
 k2ir app.kry        # .kry -> .kir
 k2c  app.kry|app.kir
-k2g  app.kry        # .kry -> Go (cgo runtime)
+k2g  app.kry        # .kry -> Go (native Go runtime, no cgo)
 k2b  app.kry|app.kir
 ```
 
-Go applications import the maintained cgo runtime from
-`github.com/waozixyz/kryon/go/kryui`. The binding lives in this repository so
-generated `k2g` code and handwritten Go hosts share one Kryon-owned surface;
-downstream applications must not carry private copies of it.
+Generated Go imports `github.com/waozixyz/kryon/go/kryon` and uses clean widget
+names such as `Button`, `TextField`, `Text`, `Row`, `Column`, `BeginFrame`, and
+`EndFrame`. It must not use `import "C"`, `go/kryui`, injected runtime objects,
+or generated calls to legacy prefixed C APIs.
 
-`k2g` output is compiled against that real runtime by the test suite. This is
-an executable compatibility gate, not only a textual generated-source check.
+`k2g` output is compiled against that native runtime by the test suite, and the
+generated Go/C parity tests drive both runtimes through the same scripted input.
+This is an executable compatibility gate, not only a textual generated-source
+check.
 
 `k2c` and `k2b` accept either `.kry` or `.kir`; when given source, they run the
 KIR frontend internally. Native platform, storage, and performance-sensitive C

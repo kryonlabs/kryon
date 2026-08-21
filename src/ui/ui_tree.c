@@ -405,6 +405,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_LINE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_BUTTON_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_FIELD_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_TEXT_AREA_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_DROPDOWN_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_SLIDER_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TOGGLE_NODE] = {ui_measure_bounds_height},
@@ -536,16 +537,28 @@ SetSelection(UIKey key, int anchor, int cursor)
         UITextFieldState *state;
         int length;
 
-        if(node->key != key || node->kind != UI_WIDGET_TEXT_FIELD_NODE)
+        if(node->key != key ||
+           (node->kind != UI_WIDGET_TEXT_FIELD_NODE &&
+            node->kind != UI_WIDGET_TEXT_AREA_NODE))
             continue;
         state = node->state;
-        if(state == NULL || node->data.text_field.text == NULL)
-            return 0;
-        length = (int)strlen(node->data.text_field.text);
+        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
+            if(state == NULL || node->data.text_field.text == NULL)
+                return 0;
+            length = (int)strlen(node->data.text_field.text);
+        } else {
+            if(state == NULL || node->data.text_area.text == NULL)
+                return 0;
+            length = (int)strlen(node->data.text_area.text);
+        }
         state->anchor = ui_clampi(anchor, 0, length);
         state->cursor = ui_clampi(cursor, 0, length);
-        if(node->data.text_field.cursor_position != NULL)
-            *node->data.text_field.cursor_position = state->cursor;
+        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
+            if(node->data.text_field.cursor_position != NULL)
+                *node->data.text_field.cursor_position = state->cursor;
+        } else if(node->data.text_area.cursor_position != NULL) {
+            *node->data.text_area.cursor_position = state->cursor;
+        }
         ui_text_field_event(node, UI_EVENT_SELECTION_CHANGED, GetTime());
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
         return 1;
@@ -654,18 +667,25 @@ UIReconcileTree(void)
     for(i = 0; i < ui_tree_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
 
-        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE && node->state == NULL) {
+        if((node->kind == UI_WIDGET_TEXT_FIELD_NODE ||
+            node->kind == UI_WIDGET_TEXT_AREA_NODE) &&
+           node->state == NULL) {
             UITextFieldState *state = calloc(1, sizeof(*state));
 
             if(state != NULL) {
-                TextFieldProps *field = &node->data.text_field;
-                int length = field->text != NULL ? (int)strlen(field->text) : 0;
+                char *text = node->kind == UI_WIDGET_TEXT_FIELD_NODE
+                    ? node->data.text_field.text : node->data.text_area.text;
+                int *cursor_position = node->kind == UI_WIDGET_TEXT_FIELD_NODE
+                    ? node->data.text_field.cursor_position
+                    : node->data.text_area.cursor_position;
+                int *focused = node->kind == UI_WIDGET_TEXT_FIELD_NODE
+                    ? node->data.text_field.focused : node->data.text_area.focused;
+                int length = text != NULL ? (int)strlen(text) : 0;
 
-                state->cursor = field->cursor_position != NULL
-                    ? *field->cursor_position : length;
+                state->cursor = cursor_position != NULL
+                    ? *cursor_position : length;
                 state->anchor = state->cursor;
-                state->focused = field->focused != NULL
-                    ? *field->focused != 0 : 0;
+                state->focused = focused != NULL ? *focused != 0 : 0;
                 node->state = state;
                 node->flags |= UI_NODE_OWNS_STATE;
             }
@@ -764,6 +784,8 @@ UIRouteInput(void)
 
         if(node->kind == UI_WIDGET_TEXT_FIELD_NODE)
             focus_id = node->data.text_field.focus_id;
+        else if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
+            focus_id = node->data.text_area.focus_id;
         else if(node->kind == UI_WIDGET_BUTTON_NODE &&
                 !node->data.button.spec.disabled)
             focus_id = node->data.button.spec.focus_id;
@@ -821,6 +843,7 @@ UIRouteInput(void)
     }
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
+        TextFieldProps field_storage;
         TextFieldProps *field;
         UITextFieldState *state;
         int start;
@@ -830,9 +853,30 @@ UIRouteInput(void)
         int codepoint;
         int modifier;
 
-        if(node->kind != UI_WIDGET_TEXT_FIELD_NODE || node->state == NULL)
+        if((node->kind != UI_WIDGET_TEXT_FIELD_NODE &&
+            node->kind != UI_WIDGET_TEXT_AREA_NODE) ||
+           node->state == NULL)
             continue;
-        field = &node->data.text_field;
+        if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
+            field = &node->data.text_field;
+        } else {
+            TextAreaProps *area = &node->data.text_area;
+
+            memset(&field_storage, 0, sizeof(field_storage));
+            field_storage.bounds = area->bounds;
+            field_storage.text = area->text;
+            field_storage.text_size = area->text_size;
+            field_storage.cursor_position = area->cursor_position;
+            field_storage.focused = area->focused;
+            field_storage.max_codepoints = area->max_codepoints;
+            field_storage.font = area->font;
+            field_storage.focus_id = area->focus_id;
+            field_storage.style = area->style;
+            field_storage.filter = area->filter;
+            field_storage.filter_user_data = area->filter_user_data;
+            field_storage.read_only = area->read_only;
+            field = &field_storage;
+        }
         state = node->state;
         if(UIFocusFrameOpen() && field->focus_id > 0) {
             int focused = IsUIFocusActive(field->focus_id);
@@ -1102,11 +1146,33 @@ DrawUITree(void)
                 (int)(spec.bounds.y + spec.bounds.height * 0.5f), font, text);
             break;
         }
-        case UI_WIDGET_TEXT_FIELD_NODE: {
-            TextFieldProps field = node->data.text_field;
+        case UI_WIDGET_TEXT_FIELD_NODE:
+        case UI_WIDGET_TEXT_AREA_NODE: {
+            TextFieldProps field;
             UITextFieldState *state = node->state;
-            const char *display = field.text != NULL ? field.text : "";
+            const char *display;
             char *masked = NULL;
+
+            memset(&field, 0, sizeof(field));
+            if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
+                field = node->data.text_field;
+            } else {
+                TextAreaProps area = node->data.text_area;
+
+                field.bounds = area.bounds;
+                field.text = area.text;
+                field.text_size = area.text_size;
+                field.cursor_position = area.cursor_position;
+                field.focused = area.focused;
+                field.max_codepoints = area.max_codepoints;
+                field.font = area.font;
+                field.focus_id = area.focus_id;
+                field.style = area.style;
+                field.filter = area.filter;
+                field.filter_user_data = area.filter_user_data;
+                field.read_only = area.read_only;
+            }
+            display = field.text != NULL ? field.text : "";
 
             if(field.secure) {
                 size_t length = strlen(display);
@@ -1809,7 +1875,15 @@ TableView(TableViewProps table)
 int
 TextArea(TextAreaProps area)
 {
-    ui_tree_add(area.focus_id, UI_WIDGET_TEXT_FIELD_NODE, area.bounds, &area);
+    UINodeId node = ui_tree_add(area.focus_id, UI_WIDGET_TEXT_AREA_NODE,
+                                area.bounds, NULL);
+
+    if(node >= 0) {
+        ui_tree_nodes[node].key = (UIKey)(unsigned)area.focus_id;
+        ui_tree_nodes[node].data.text_area = area;
+    }
+    if(ui_tree_building)
+        return 0;
     return DrawUITextArea(area);
 }
 

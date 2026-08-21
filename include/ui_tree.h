@@ -53,6 +53,7 @@ typedef enum UIWidgetKind {
     UI_WIDGET_LINE_NODE,
     UI_WIDGET_BUTTON_NODE,
     UI_WIDGET_TEXT_FIELD_NODE,
+    UI_WIDGET_TEXT_AREA_NODE,
     UI_WIDGET_DROPDOWN_NODE,
     UI_WIDGET_SLIDER_NODE,
     UI_WIDGET_TOGGLE_NODE,
@@ -104,6 +105,7 @@ typedef union UIWidgetData {
         UIButtonStyle style;
     } button;
     TextFieldProps text_field;
+    TextAreaProps text_area;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {

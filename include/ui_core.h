@@ -89,6 +89,7 @@ int RegisterUIFocus(int id, Rectangle bounds);
 int IsUIFocusActive(int id);
 int IsUIFocusActivatePressed(int id);
 void SetUIFocus(int id);
+int GetUIFocus(void);
 void ClearUIFocus(void);
 void SetUIFocusTextInputActive(int active);
 

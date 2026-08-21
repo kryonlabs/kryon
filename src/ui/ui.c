@@ -1285,6 +1285,12 @@ SetUIFocus(int id)
     g_ui_focus_active_id = id;
 }
 
+int
+GetUIFocus(void)
+{
+    return g_ui_focus_active_id;
+}
+
 void
 ClearUIFocus(void)
 {

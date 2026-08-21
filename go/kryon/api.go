@@ -16,6 +16,10 @@ type focusController interface {
 	Focus() int32
 }
 
+type pointerController interface {
+	QueueTap(float32, float32)
+}
+
 func active() Runtime {
 	if activeRuntime == nil {
 		activeRuntime = New(AppConfig{})
@@ -37,6 +41,11 @@ func Focus() int32 {
 		return runtime.Focus()
 	}
 	return 0
+}
+func QueueTap(x, y float32) {
+	if runtime, ok := active().(pointerController); ok {
+		runtime.QueueTap(x, y)
+	}
 }
 func ClearBackground(c Color) { active().ClearBackground(c) }
 func Background(c Color)      { active().Background(c) }
