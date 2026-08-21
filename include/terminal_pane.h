@@ -322,6 +322,8 @@ typedef struct TerminalPaneInputState {
 
 typedef int (*TerminalPaneInputWriteFn)(void *userdata, const char *text,
                                         int length);
+typedef int (*TerminalPaneInputKeyFilterFn)(void *userdata, int platform_key,
+                                            int mods);
 
 typedef enum TerminalPaneMouseButton {
     TERMINAL_PANE_MOUSE_LEFT = 0,
@@ -707,6 +709,9 @@ TerminalPaneInput MakeTerminalPaneInput(TerminalPaneKeyMode mode,
 int SendTerminalPaneControlInput(TerminalPaneInput input, int platform_key,
                                  int mods);
 int PumpTerminalPaneKeyboardInput(TerminalPaneInput input);
+int PumpTerminalPaneKeyboardInputFiltered(TerminalPaneInput input,
+                                          TerminalPaneInputKeyFilterFn filter,
+                                          void *filter_userdata);
 int EncodeTerminalPaneMouse(char *out, int out_size, int button, int col,
                             int row, int pixel_x, int pixel_y, int pressed,
                             int motion, int mods,

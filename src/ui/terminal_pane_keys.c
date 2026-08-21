@@ -613,7 +613,9 @@ SendTerminalPaneControlInput(TerminalPaneInput input, int platform_key,
 }
 
 int
-PumpTerminalPaneKeyboardInput(TerminalPaneInput input)
+PumpTerminalPaneKeyboardInputFiltered(TerminalPaneInput input,
+                                      TerminalPaneInputKeyFilterFn filter,
+                                      void *filter_userdata)
 {
     int queued[TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE] = {0};
     int mods = GetTerminalPaneInputModifiers();
@@ -672,8 +674,11 @@ PumpTerminalPaneKeyboardInput(TerminalPaneInput input)
         return 0;
     key = GetKeyPressed();
     while(key > 0) {
-        if(key > 0 && key < TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE)
+        if(filter != NULL && filter(filter_userdata, key, mods)) {
+            wrote = 1;
+        } else if(key > 0 && key < TERMINAL_PANE_INPUT_KEY_QUEUE_SIZE) {
             queued[key] = 1;
+        }
         key = GetKeyPressed();
     }
 
@@ -743,4 +748,10 @@ PumpTerminalPaneKeyboardInput(TerminalPaneInput input)
         ch = GetCharPressed();
     }
     return wrote;
+}
+
+int
+PumpTerminalPaneKeyboardInput(TerminalPaneInput input)
+{
+    return PumpTerminalPaneKeyboardInputFiltered(input, NULL, NULL);
 }

@@ -1571,6 +1571,7 @@ int
 DrawUIPromptDialog(PromptDialogProps dialog)
 {
     int result;
+    int commit_pressed = 0;
     UIModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
@@ -1589,8 +1590,13 @@ DrawUIPromptDialog(PromptDialogProps dialog)
             .focused = dialog.focused,
             .max_codepoints = dialog.text_size - 1,
             .font = GetUIFontSize(),
-            .focus_id = 7301
+            .focus_id = 7301,
+            .commit_pressed = &commit_pressed
         });
+        if(result == 0 && commit_pressed)
+            result = 2;
+        if(result == 0 && IsKeyPressed(KEY_ESCAPE))
+            result = 1;
     }
     return result;
 }
