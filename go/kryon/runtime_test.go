@@ -285,3 +285,78 @@ func TestPackageInputHelpersDriveActiveRuntime(t *testing.T) {
 		t.Fatal("package QueueTap did not click button")
 	}
 }
+
+func TestColumnPlacesZeroOriginFields(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	aText, bText := make([]byte, 16), make([]byte, 16)
+	aCursor, bCursor := int32(0), int32(0)
+	aFocused, bFocused := false, false
+
+	draw := func() {
+		rt.BeginFrame()
+		rt.Column(ColumnProps{
+			Bounds:  Rectangle{X: 10, Y: 20, Width: 180, Height: 120},
+			Gap:     4,
+			Padding: 5,
+		})
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{Width: 100, Height: 20},
+			Text:           aText,
+			CursorPosition: &aCursor,
+			Focused:        &aFocused,
+			FocusID:        81,
+		})
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{Width: 100, Height: 20},
+			Text:           bText,
+			CursorPosition: &bCursor,
+			Focused:        &bFocused,
+			FocusID:        82,
+		})
+		rt.End()
+		rt.EndFrame()
+	}
+
+	draw()
+	rt.QueueTap(20, 54)
+	rt.QueueText("b")
+	draw()
+
+	if aFocused || !bFocused {
+		t.Fatalf("column tap focus = a:%v b:%v, want a:false b:true", aFocused, bFocused)
+	}
+	if got, want := string(bText[:zeroIndex(bText)]), "b"; got != want {
+		t.Fatalf("column-placed field text = %q, want %q", got, want)
+	}
+}
+
+func TestRowPlacesZeroOriginButtons(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+
+	rt.QueueTap(108, 24)
+	rt.BeginFrame()
+	rt.Row(ColumnProps{
+		Bounds:  Rectangle{X: 10, Y: 10, Width: 240, Height: 40},
+		Gap:     8,
+		Padding: 4,
+	})
+	first := rt.Button(ButtonProps{
+		Bounds: Rectangle{Width: 80, Height: 28},
+		Label:  "Save",
+		ID:     91,
+	})
+	second := rt.Button(ButtonProps{
+		Bounds: Rectangle{Width: 80, Height: 28},
+		Label:  "Cancel",
+		ID:     92,
+	})
+	rt.End()
+	rt.EndFrame()
+
+	if first {
+		t.Fatal("row tap clicked first button, want second")
+	}
+	if !second {
+		t.Fatal("row tap did not click second button")
+	}
+}

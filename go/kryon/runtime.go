@@ -558,6 +558,16 @@ type runtime struct {
 	fieldOrder  []int32
 	prevOrder   []int32
 	selection   map[int32]selection
+	layout      []layoutFrame
+}
+
+type layoutFrame struct {
+	bounds     Rectangle
+	cursorX    float32
+	cursorY    float32
+	gap        float32
+	padding    float32
+	horizontal bool
 }
 
 type inputEvent struct {
@@ -612,17 +622,24 @@ func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
 
 func (r *runtime) Close()                  { r.closed = true }
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
-func (r *runtime) BeginFrame()             { r.fieldOrder = r.fieldOrder[:0] }
+func (r *runtime) BeginFrame() {
+	r.fieldOrder = r.fieldOrder[:0]
+	r.layout = r.layout[:0]
+}
 func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.taps = nil
 	r.frames++
 }
-func (r *runtime) SetFocus(id int32)                                      { r.focusID = id }
-func (r *runtime) Focus() int32                                           { return r.focusID }
-func (r *runtime) ClearBackground(Color)                                  {}
-func (r *runtime) Background(Color)                                       {}
-func (r *runtime) Text(string, int32, int32, int32, Color)                {}
+func (r *runtime) SetFocus(id int32)     { r.focusID = id }
+func (r *runtime) Focus() int32          { return r.focusID }
+func (r *runtime) ClearBackground(Color) {}
+func (r *runtime) Background(Color)      {}
+func (r *runtime) Text(_ string, x, y, fontSize int32, _ Color) {
+	if x == 0 && y == 0 {
+		r.layoutRect(Rectangle{Width: float32(fontSize * 8), Height: float32(fontSize)})
+	}
+}
 func (r *runtime) TextFormat(format string, args ...any) string           { return fmt.Sprintf(format, args...) }
 func (r *runtime) ScaleUIPx(px int32) int32                               { return px }
 func (r *runtime) GetScreenWidth() int32                                  { return int32(r.config.Width) }
@@ -642,6 +659,7 @@ func (r *runtime) Button(props ButtonProps) bool {
 	if props.Disabled {
 		return false
 	}
+	props.Bounds = r.layoutRect(props.Bounds)
 	return r.consumeTap(props.Bounds)
 }
 func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
@@ -657,12 +675,22 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	_ = labelsOf(options)
 	return false
 }
-func (r *runtime) BeginUI(UIKey)         {}
-func (r *runtime) EndUI()                {}
-func (r *runtime) Column(ColumnProps)    {}
-func (r *runtime) Row(ColumnProps)       {}
-func (r *runtime) Stack(ColumnProps)     {}
-func (r *runtime) End()                  {}
+func (r *runtime) BeginUI(UIKey) {}
+func (r *runtime) EndUI()        {}
+func (r *runtime) Column(props ColumnProps) {
+	r.pushLayout(props, false)
+}
+func (r *runtime) Row(props ColumnProps) {
+	r.pushLayout(props, true)
+}
+func (r *runtime) Stack(props ColumnProps) {
+	r.pushLayout(props, false)
+}
+func (r *runtime) End() {
+	if len(r.layout) > 0 {
+		r.layout = r.layout[:len(r.layout)-1]
+	}
+}
 func (r *runtime) Key(text string) UIKey { return Key(text) }
 func (r *runtime) Fade(c Color, alpha float32) Color {
 	if alpha < 0 {
@@ -717,6 +745,7 @@ func (r *runtime) SelectableText(string, int32, int32, int32, Color) {}
 func (r *runtime) ShowUIToast(string)                                {}
 func (r *runtime) ShowUIToastFor(string, float64)                    {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
+	props.Bounds = r.layoutRect(props.Bounds)
 	return r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
@@ -787,7 +816,43 @@ func (r *runtime) SetThemeSource(ThemeSource)   {}
 func (r *runtime) SetThemeMode(ThemeMode)       {}
 
 func (r *runtime) TextField(props TextFieldProps) {
+	props.Bounds = r.layoutRect(props.Bounds)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
+}
+
+func (r *runtime) pushLayout(props ColumnProps, horizontal bool) {
+	bounds := r.layoutRect(props.Bounds)
+	padding := float32(props.Padding)
+	r.layout = append(r.layout, layoutFrame{
+		bounds:     bounds,
+		cursorX:    bounds.X + padding,
+		cursorY:    bounds.Y + padding,
+		gap:        float32(props.Gap),
+		padding:    padding,
+		horizontal: horizontal,
+	})
+}
+
+func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
+	if len(r.layout) == 0 || bounds.X != 0 || bounds.Y != 0 {
+		return bounds
+	}
+	frame := &r.layout[len(r.layout)-1]
+	out := bounds
+	out.X = frame.cursorX
+	out.Y = frame.cursorY
+	if out.Width <= 0 {
+		out.Width = frame.bounds.Width - frame.padding*2
+	}
+	if out.Height <= 0 {
+		out.Height = frame.bounds.Height - frame.padding*2
+	}
+	if frame.horizontal {
+		frame.cursorX += out.Width + frame.gap
+	} else {
+		frame.cursorY += out.Height + frame.gap
+	}
+	return out
 }
 
 func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {
