@@ -29,9 +29,11 @@ grep -Fq 'assert condition (42) == 42 known 1 value 1' "$kir"
 grep -Fq 'expr binary text count + 1 name  op +' "$kir"
 
 "$k2c" --root "$root" -o "$work/c" "$root/$case_file"
+sh "$root/tests/check_clean_generated_output.sh" "$work/c"
 cc -fsyntax-only -I"$root/include" -I"$work/c" "$work/c/tests/spec/language_contract.c"
 
 "$k2g" --root "$root" -o "$work/go" "$root/$case_file"
+sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 go_file=$(find "$work/go" -name "*.go" | head -1)
 test -f "$go_file"
 cp "$go_file" "$work/go-check/language_contract.go"
@@ -41,8 +43,8 @@ sed -i '/^func main()/,$d' "$work/go-check/language_contract.go"
     printf '\n'
     printf '%s\n' 'go 1.25.0'
     printf '\n'
-    printf '%s\n' 'require github.com/waozixyz/kryon/go/kryui v0.0.0'
-    printf '%s\n' "replace github.com/waozixyz/kryon/go/kryui => $root/go/kryui"
+    printf '%s\n' 'require github.com/waozixyz/kryon/go/kryon v0.0.0'
+    printf '%s\n' "replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon"
 } > "$work/go-check/go.mod"
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./...)
 

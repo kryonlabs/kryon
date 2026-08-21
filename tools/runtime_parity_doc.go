@@ -134,7 +134,7 @@ func checkForbidden(path string) {
 	data, err := os.ReadFile(path)
 	check(err)
 	text := string(data)
-	for _, forbidden := range []string{`import "C"`, "DrawUI", "TextInputControl", "github.com/waozixyz/kryon/go/kryui"} {
+	for _, forbidden := range []string{`import "C"`, "DrawUI", "UIText", "TextInputControl", "UIRender", "github.com/waozixyz/kryon/go/kryui"} {
 		if strings.Contains(text, forbidden) {
 			fmt.Fprintf(os.Stderr, "%s contains forbidden native-runtime token %q\n", path, forbidden)
 			os.Exit(1)

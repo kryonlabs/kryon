@@ -90,20 +90,15 @@ const (
 	PictureFitContain
 	PictureFitCover
 
-	UIText8  int32 = 8
-	UIText12 int32 = 12
-	UIText14 int32 = 14
-	UIText16 int32 = 16
-	UIText18 int32 = 18
-	UIText20 int32 = 20
-	UIText24 int32 = 24
-	UIText32 int32 = 32
-	UIText48 int32 = 48
-
-	UI_TEXT_8  = UIText8
-	UI_TEXT_12 = UIText12
-	UI_TEXT_16 = UIText16
-	UI_TEXT_24 = UIText24
+	Text8  int32 = 8
+	Text12 int32 = 12
+	Text14 int32 = 14
+	Text16 int32 = 16
+	Text18 int32 = 18
+	Text20 int32 = 20
+	Text24 int32 = 24
+	Text32 int32 = 32
+	Text48 int32 = 48
 
 	UI_BUTTON_STYLE_PRIMARY   = UIButtonStylePrimary
 	UI_BUTTON_STYLE_SECONDARY = UIButtonStyleSecondary
@@ -149,7 +144,7 @@ var (
 	Black      = BLACK
 )
 
-type UITextInputStyle struct {
+type TextInputStyle struct {
 	Background  Color
 	Border      Color
 	FocusBorder Color
@@ -203,7 +198,7 @@ type TextFieldProps struct {
 	MaxCodepoints  int32
 	Font           int32
 	FocusID        int32
-	Style          UITextInputStyle
+	Style          TextInputStyle
 	CommitPressed  *bool
 	Secure         bool
 }
@@ -220,7 +215,7 @@ type TextAreaProps struct {
 	FocusID        int32
 	Placeholder    string
 	Syntax         UISyntaxMode
-	Style          UITextInputStyle
+	Style          TextInputStyle
 	ContentVersion int32
 }
 
@@ -228,7 +223,7 @@ type ReadonlyTextBoxProps struct {
 	Bounds  Rectangle
 	Text    string
 	Font    int32
-	Style   UITextInputStyle
+	Style   TextInputStyle
 	LineGap int32
 }
 

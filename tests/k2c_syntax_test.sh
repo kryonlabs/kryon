@@ -93,6 +93,7 @@ concat_sql :: () -> const char* {
 EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry"
+sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
 c="$work/out/src/valid.c"
 h="$work/out/src/valid.h"

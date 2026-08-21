@@ -140,6 +140,7 @@ EOF
 out=$(find "$work/out" -name "*.go" | head -1)
 
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
+sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
@@ -244,23 +245,6 @@ grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
 grep -q 'rt.Dropdown(11, rt.ScaleUIPx(4), rt.ScaleUIPx(210), rt.ScaleUIPx(120), rt.ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
-
-if grep -q 'DrawUI' "$out"; then
-    echo "k2g generated blocked DrawUI-prefixed calls" >&2
-    exit 1
-fi
-if grep -q 'TextInputControl' "$out"; then
-    echo "k2g generated blocked TextInputControl calls" >&2
-    exit 1
-fi
-if grep -q 'go/kryui' "$out"; then
-    echo "k2g generated a cgo runtime import" >&2
-    exit 1
-fi
-if grep -q 'import "C"' "$out"; then
-    echo "k2g generated cgo" >&2
-    exit 1
-fi
 
 # The generated source must compile against Kryon's native Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.

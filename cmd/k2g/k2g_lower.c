@@ -1292,10 +1292,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             /* Public Kryon constants become package constants. */
             {
                 struct { const char *c; const char *go; } constants[] = {
-                    {"UI_TEXT_8", "kryruntime.UIText8"},
-                    {"UI_TEXT_12", "kryruntime.UIText12"},
-                    {"UI_TEXT_16", "kryruntime.UIText16"},
-                    {"UI_TEXT_24", "kryruntime.UIText24"},
+                    {"UI_TEXT_8", "kryruntime.Text8"},
+                    {"UI_TEXT_12", "kryruntime.Text12"},
+                    {"UI_TEXT_16", "kryruntime.Text16"},
+                    {"UI_TEXT_24", "kryruntime.Text24"},
                     {"UI_BUTTON_STYLE_PRIMARY", "kryruntime.UIButtonStylePrimary"},
                     {"UI_BUTTON_STYLE_SECONDARY", "kryruntime.UIButtonStyleSecondary"},
                     {"UI_BUTTON_STYLE_DANGER", "kryruntime.UIButtonStyleDanger"},
