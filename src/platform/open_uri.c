@@ -19,6 +19,7 @@ extern struct android_app *GetAndroidApp(void);
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <shellapi.h>
 #else
 #include <unistd.h>
 #endif

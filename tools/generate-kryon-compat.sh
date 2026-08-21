@@ -76,8 +76,11 @@ EOF
     echo "#ifndef KRYON_RAYLIB_BACKEND_RENAME_H"
     echo "#define KRYON_RAYLIB_BACKEND_RENAME_H"
     echo
-    awk '
+    awk -v emit_audio="${KRYON_COMPAT_AUDIO:-1}" '
+        /^\/\/ Audio Loading and Playing Functions/ { in_audio_section = 1 }
         /^[[:space:]]*(RLAPI|RMAPI)[[:space:]]/ {
+            if(emit_audio == "0" && in_audio_section)
+                next
             line = $0
             sub(/\(.*/, "", line)
             n = split(line, parts, /[[:space:]\*]+/)
