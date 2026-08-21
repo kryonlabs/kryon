@@ -6,7 +6,7 @@ how to update downstream projects without editing vendored copies by hand.
 
 ## Role
 
-Kryon is a small native UI runtime with a Kryon-owned, raylib-style app API.
+Kryon is a small native UI runtime with a Kryon-owned clean app API.
 The current default backend is raylib, but applications should not depend on
 raylib directly. Applications should use Kryon for shared UI behavior instead
 of duplicating pointer capture, modal backdrop, button, tab, scroll, text input,
@@ -14,20 +14,15 @@ theme, and DPI logic in each project.
 
 Do not add legacy wrappers or alias layers when the app API changes. Migrate
 Kryon itself first, then update downstream apps such as Inbe and Krait to the
-canonical names directly. Public app code should use names such as
-`DrawUIIconButton`, `DrawUITextField`, `DrawRectangle`, `GetMousePosition`,
-`IsKeyPressed`, and `KEY_*` through Kryon. Public widget construction uses
-Flutter-style widgets with raylib-style C names: `Background`, `Text`, `Rect`,
-`Button`, and `Picture`. Lower-level immediate drawing keeps verb names such as
-`DrawUIText` and `DrawRectangle`. Do not reintroduce duplicate public widget
-names such as `WidgetText`, `UIText`, or `UITextNode` for the same behavior.
-New public widget constructors must not use a `UI` prefix. Reserve `UI*` names
-for shared types, lower-level UI system internals, and immediate draw helpers
-that already follow the established `DrawUI*`/`GetUI*` style. If a legacy
+canonical names directly. Generated app code must use clean names such as
+`BeginFrame`, `EndFrame`, `Background`, `Text`, `Rect`, `Button`, `TextField`,
+`TextArea`, `Row`, `Column`, and `Picture`. Do not reintroduce duplicate public
+widget names such as `WidgetText`, `UIText`, or `UITextNode` for the same
+behavior. New public widget constructors must not use a `UI` prefix. If a legacy
 prefixed widget constructor still exists, migrate callers to the canonical
 unprefixed widget name instead of adding another alias.
-Do not add public picture/widget helpers with `DrawUI*` or reversed UI-draw
-prefix names when the behavior belongs on the simple widget API. Extend
+Do not add public picture/widget helpers with `DrawUI*`, `UIText*`, or reversed
+UI-draw prefix names when the behavior belongs on the simple widget API. Extend
 `PictureProps`, `ButtonProps`, or the relevant unprefixed widget props instead,
 and leave no legacy alias behind.
 

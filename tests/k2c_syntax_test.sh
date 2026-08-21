@@ -28,6 +28,11 @@ cat > "$work/src/valid.kry" <<'EOF'
 state {
     count: int = FixtureCount
     label: [64] char = "hello"
+    field_text: [64] char = "account"
+    field_cursor: int = 7
+    area_text: [128] char = "notes"
+    area_cursor: int = 5
+    area_scroll: int = 0
 }
 
 screen Valid(viewport: Rectangle) {
@@ -35,6 +40,13 @@ screen Valid(viewport: Rectangle) {
     BeginDrawing()
     Background(GetThemeBackground())
     Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    Column((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}, .gap = ScaleUIPx(4), .padding = ScaleUIPx(6), .key = Key("form")})
+    TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 101})
+    TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = UI_TEXT_16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
+    Row((RowProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(32)}, .gap = ScaleUIPx(4), .padding = 0, .key = Key("actions")})
+    Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = UI_BUTTON_STYLE_PRIMARY, .font = UI_TEXT_16, .id = 103})
+    End()
+    End()
     value := count + 1
     unused value
     if count == nil {
@@ -117,15 +129,26 @@ grep -Fq '#include "ui_inspect.h"' "$c"
 # state fields (array type converts to C declarator order)
 grep -Fq 'static int count = FixtureCount;' "$c"
 grep -Fq 'static char label[64] = "hello";' "$c"
+grep -Fq 'static char field_text[64] = "account";' "$c"
+grep -Fq 'static int field_cursor = 7;' "$c"
+grep -Fq 'static char area_text[128] = "notes";' "$c"
+grep -Fq 'static int area_cursor = 5;' "$c"
+grep -Fq 'static int area_scroll = 0;' "$c"
 
 # function definition
 grep -Fq 'Valid_kry_draw(Rectangle viewport)' "$c"
 grep -Fq 'int legacy_count;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry", 16);' "$c"
+grep -Fq 'PushUIInspectSource("src/valid.kry", 21);' "$c"
 grep -Fq 'BeginFrame();' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
+grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText());' "$c"
+grep -Fq 'Column((ColumnProps)' "$c"
+grep -Fq 'TextField((TextFieldProps)' "$c"
+grep -Fq 'TextArea((TextAreaProps)' "$c"
+grep -Fq 'Row((RowProps)' "$c"
+grep -Fq 'Button((ButtonProps)' "$c"
 grep -Fq 'EndFrame();' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
