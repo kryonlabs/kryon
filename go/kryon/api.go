@@ -39,6 +39,13 @@ type selectionController interface {
 	Selection(int32) (int32, int32, bool)
 }
 
+func FrameOps() []FrameOp {
+	if runtime, ok := active().(frameOpController); ok {
+		return runtime.FrameOps()
+	}
+	return nil
+}
+
 func active() Runtime {
 	if activeRuntime == nil {
 		activeRuntime = New(AppConfig{})

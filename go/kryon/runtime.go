@@ -559,6 +559,7 @@ type runtime struct {
 	prevOrder   []int32
 	selection   map[int32]selection
 	layout      []layoutFrame
+	ops         []FrameOp
 }
 
 type layoutFrame struct {
@@ -625,42 +626,78 @@ func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame() {
 	r.fieldOrder = r.fieldOrder[:0]
 	r.layout = r.layout[:0]
+	r.ops = r.ops[:0]
 }
 func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.taps = nil
 	r.frames++
 }
-func (r *runtime) SetFocus(id int32)     { r.focusID = id }
-func (r *runtime) Focus() int32          { return r.focusID }
-func (r *runtime) ClearBackground(Color) {}
-func (r *runtime) Background(Color)      {}
-func (r *runtime) Text(_ string, x, y, fontSize int32, _ Color) {
-	if x == 0 && y == 0 {
-		r.layoutRect(Rectangle{Width: float32(fontSize * 8), Height: float32(fontSize)})
-	}
+func (r *runtime) SetFocus(id int32) { r.focusID = id }
+func (r *runtime) Focus() int32      { return r.focusID }
+func (r *runtime) FrameOps() []FrameOp {
+	return append([]FrameOp(nil), r.ops...)
 }
-func (r *runtime) TextFormat(format string, args ...any) string           { return fmt.Sprintf(format, args...) }
-func (r *runtime) ScaleUIPx(px int32) int32                               { return px }
-func (r *runtime) GetScreenWidth() int32                                  { return int32(r.config.Width) }
-func (r *runtime) GetScreenHeight() int32                                 { return int32(r.config.Height) }
-func (r *runtime) GetThemeBackground() Color                              { return RAYWHITE }
-func (r *runtime) GetThemeText() Color                                    { return BLACK }
-func (r *runtime) GetThemeIcon() Color                                    { return DARKGRAY }
-func (r *runtime) NewVector2(x, y any) Vector2                            { return NewVector2(number32(x), number32(y)) }
-func (r *runtime) DrawCircleV(Vector2, any, Color)                        {}
-func (r *runtime) DrawRing(Vector2, any, any, any, any, int32, Color)     {}
-func (r *runtime) Rect(int32, int32, int32, int32, Color, ...Color)       {}
-func (r *runtime) RectGradientH(int32, int32, int32, int32, Color, Color) {}
-func (r *runtime) Line(int32, int32, int32, int32, Color)                 {}
-func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32)       {}
-func (r *runtime) EndScroll()                                             {}
+func (r *runtime) ClearBackground(c Color) {
+	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
+}
+func (r *runtime) Background(c Color) {
+	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
+}
+func (r *runtime) Text(text string, x, y, fontSize int32, color Color) {
+	bounds := Rectangle{X: float32(x), Y: float32(y), Width: float32(fontSize * 8), Height: float32(fontSize)}
+	if x == 0 && y == 0 {
+		bounds = r.layoutRect(bounds)
+	}
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: text, Color: color, FontSize: fontSize})
+}
+func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
+func (r *runtime) ScaleUIPx(px int32) int32                           { return px }
+func (r *runtime) GetScreenWidth() int32                              { return int32(r.config.Width) }
+func (r *runtime) GetScreenHeight() int32                             { return int32(r.config.Height) }
+func (r *runtime) GetThemeBackground() Color                          { return RAYWHITE }
+func (r *runtime) GetThemeText() Color                                { return BLACK }
+func (r *runtime) GetThemeIcon() Color                                { return DARKGRAY }
+func (r *runtime) NewVector2(x, y any) Vector2                        { return NewVector2(number32(x), number32(y)) }
+func (r *runtime) DrawCircleV(Vector2, any, Color)                    {}
+func (r *runtime) DrawRing(Vector2, any, any, any, any, int32, Color) {}
+func (r *runtime) Rect(x, y, w, h int32, color Color, rest ...Color) {
+	op := FrameOp{
+		Kind:   FrameOpRect,
+		Bounds: Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)},
+		Color:  color,
+	}
+	if len(rest) > 0 {
+		op.SecondaryColor = rest[0]
+	}
+	r.record(op)
+}
+func (r *runtime) RectGradientH(x, y, w, h int32, left, right Color) {
+	r.record(FrameOp{
+		Kind:           FrameOpRect,
+		Bounds:         Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)},
+		Color:          left,
+		SecondaryColor: right,
+	})
+}
+func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
+	r.record(FrameOp{
+		Kind:   FrameOpLine,
+		Bounds: Rectangle{X: float32(x1), Y: float32(y1), Width: float32(x2 - x1), Height: float32(y2 - y1)},
+		Color:  color,
+	})
+}
+func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32) {}
+func (r *runtime) EndScroll()                                       {}
 func (r *runtime) Button(props ButtonProps) bool {
 	if props.Disabled {
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: r.layoutRect(props.Bounds), Text: props.Label, ID: props.ID, FontSize: props.Font, Disabled: true})
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	return r.consumeTap(props.Bounds)
+	pressed := r.consumeTap(props.Bounds)
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, ID: props.ID, FontSize: props.Font, Pressed: pressed})
+	return pressed
 }
 func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
 func (r *runtime) Progress(Rectangle, int32, int32, int32, string)  {}
@@ -678,18 +715,19 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 func (r *runtime) BeginUI(UIKey) {}
 func (r *runtime) EndUI()        {}
 func (r *runtime) Column(props ColumnProps) {
-	r.pushLayout(props, false)
+	r.pushLayout(props, false, FrameOpColumn)
 }
 func (r *runtime) Row(props ColumnProps) {
-	r.pushLayout(props, true)
+	r.pushLayout(props, true, FrameOpRow)
 }
 func (r *runtime) Stack(props ColumnProps) {
-	r.pushLayout(props, false)
+	r.pushLayout(props, false, FrameOpStack)
 }
 func (r *runtime) End() {
 	if len(r.layout) > 0 {
 		r.layout = r.layout[:len(r.layout)-1]
 	}
+	r.record(FrameOp{Kind: FrameOpEnd})
 }
 func (r *runtime) Key(text string) UIKey { return Key(text) }
 func (r *runtime) Fade(c Color, alpha float32) Color {
@@ -702,13 +740,31 @@ func (r *runtime) Fade(c Color, alpha float32) Color {
 	c.A = uint8(float32(c.A) * alpha)
 	return c
 }
-func (r *runtime) GetThemeSurface() Color                     { return WHITE }
-func (r *runtime) GetThemeButton() Color                      { return LIGHTGRAY }
-func (r *runtime) GetThemeButtonHover() Color                 { return GRAY }
-func (r *runtime) GetThemeLink() Color                        { return BLUE }
-func (r *runtime) TextInRect(string, Rectangle, int32, Color) {}
+func (r *runtime) GetThemeSurface() Color     { return WHITE }
+func (r *runtime) GetThemeButton() Color      { return LIGHTGRAY }
+func (r *runtime) GetThemeButtonHover() Color { return GRAY }
+func (r *runtime) GetThemeLink() Color        { return BLUE }
+func (r *runtime) TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
+	r.record(FrameOp{Kind: FrameOpText, Bounds: rect, Text: text, Color: color, FontSize: fontSize})
+}
 func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color) {
 	_, _, _, _, _ = lines, count, x, font, color
+	for i, line := range labelsOf(lines) {
+		if int32(i) >= count {
+			break
+		}
+		lineY := int32(0)
+		if y != nil {
+			lineY = *y + int32(i)*lineH
+		}
+		r.record(FrameOp{
+			Kind:     FrameOpText,
+			Bounds:   Rectangle{X: float32(x), Y: float32(lineY), Width: float32(font * 8), Height: float32(font)},
+			Text:     line,
+			Color:    color,
+			FontSize: font,
+		})
+	}
 	if y != nil {
 		*y += lineH * count
 	}
@@ -746,7 +802,9 @@ func (r *runtime) ShowUIToast(string)                                {}
 func (r *runtime) ShowUIToastFor(string, float64)                    {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	return r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
+	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
+	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, false)
+	return changed
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
 	if props.Checked {
@@ -818,9 +876,37 @@ func (r *runtime) SetThemeMode(ThemeMode)       {}
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
+	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure)
 }
 
-func (r *runtime) pushLayout(props ColumnProps, horizontal bool) {
+func (r *runtime) record(op FrameOp) {
+	r.ops = append(r.ops, op)
+}
+
+func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure bool) {
+	text := string(buf[:zeroIndex(buf)])
+	if secure {
+		text = strings.Repeat("*", utf8.RuneCountInString(text))
+	}
+	op := FrameOp{
+		Kind:     kind,
+		Bounds:   bounds,
+		Text:     text,
+		FontSize: font,
+		FocusID:  focusID,
+		Focused:  r.focusID == focusID,
+		Secure:   secure,
+	}
+	if cursor != nil {
+		op.Cursor = *cursor
+	}
+	if focused != nil {
+		op.Focused = *focused
+	}
+	r.record(op)
+}
+
+func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {
 	bounds := r.layoutRect(props.Bounds)
 	padding := float32(props.Padding)
 	r.layout = append(r.layout, layoutFrame{
@@ -831,6 +917,7 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool) {
 		padding:    padding,
 		horizontal: horizontal,
 	})
+	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
 }
 
 func (r *runtime) layoutRect(bounds Rectangle) Rectangle {

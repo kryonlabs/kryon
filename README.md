@@ -195,6 +195,11 @@ explicit props form (`Button(ButtonProps{...})`, `TextField(TextFieldProps{...})
 for deterministic layout/state, while app code may use shorter direct calls such
 as `Button("Save")` and `TextField("Name", &name)`.
 
+The native Go runtime records each frame as pure Go `FrameOp` values available
+through `FrameOps()`. That operation stream is the host boundary for future
+native Go windows/renderers: it carries resolved bounds, text, colors, focus,
+button state, and redacted secure text without importing cgo or `go/kryui`.
+
 `k2g` output is compiled against that native runtime by the test suite, and the
 generated Go/C parity tests drive both runtimes through the same scripted input.
 This is an executable compatibility gate, not only a textual generated-source

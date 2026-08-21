@@ -437,3 +437,74 @@ func TestDirectPackageTextFieldStateIsFrameScoped(t *testing.T) {
 		t.Fatalf("direct field length = %d, want %d", got, want)
 	}
 }
+
+func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	text := make([]byte, 32)
+	copy(text, "secret")
+	cursor := int32(len("secret"))
+	focused := true
+
+	rt.QueueTap(18, 42)
+	rt.BeginFrame()
+	rt.ClearBackground(WHITE)
+	rt.Column(ColumnProps{Bounds: Rectangle{X: 10, Y: 10, Width: 180, Height: 160}, Gap: 6, Padding: 4, Key: Key("ops")})
+	rt.Text("geld", 0, 0, Text16, BLACK)
+	clicked := rt.Button(ButtonProps{Bounds: Rectangle{Width: 90, Height: 28}, Label: "Save", ID: 7, Font: Text16})
+	rt.TextField(TextFieldProps{
+		Bounds:         Rectangle{Width: 120, Height: 28},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        8,
+		Font:           Text16,
+		Secure:         true,
+	})
+	rt.End()
+	rt.EndFrame()
+
+	if !clicked {
+		t.Fatal("tap did not click recorded button")
+	}
+	ops := rt.FrameOps()
+	if len(ops) != 6 {
+		t.Fatalf("frame op count = %d, want 6: %#v", len(ops), ops)
+	}
+	if ops[0].Kind != FrameOpBackground || ops[0].Color != WHITE {
+		t.Fatalf("background op = %#v", ops[0])
+	}
+	if ops[1].Kind != FrameOpColumn || ops[1].Bounds.X != 10 || ops[1].Bounds.Y != 10 {
+		t.Fatalf("column op = %#v", ops[1])
+	}
+	if ops[2].Kind != FrameOpText || ops[2].Text != "geld" {
+		t.Fatalf("text op = %#v", ops[2])
+	}
+	if ops[3].Kind != FrameOpButton || ops[3].Text != "Save" || !ops[3].Pressed {
+		t.Fatalf("button op = %#v", ops[3])
+	}
+	if ops[4].Kind != FrameOpTextField || ops[4].Text != "******" || !ops[4].Secure {
+		t.Fatalf("text field op = %#v", ops[4])
+	}
+	if ops[5].Kind != FrameOpEnd {
+		t.Fatalf("end op = %#v", ops[5])
+	}
+}
+
+func TestFrameOpsResetEachFrame(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+
+	rt.BeginFrame()
+	rt.Text("first", 10, 10, Text16, BLACK)
+	rt.EndFrame()
+	if got, want := len(rt.FrameOps()), 1; got != want {
+		t.Fatalf("first frame op count = %d, want %d", got, want)
+	}
+
+	rt.BeginFrame()
+	rt.Rect(1, 2, 3, 4, RED)
+	rt.EndFrame()
+	ops := rt.FrameOps()
+	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
+		t.Fatalf("second frame ops = %#v, want one rect", ops)
+	}
+}
