@@ -32,6 +32,7 @@ state {
 
 screen Valid(viewport: Rectangle) {
     int legacy_count
+    BeginDrawing()
     Background(GetThemeBackground())
     Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText())
     value := count + 1
@@ -49,6 +50,7 @@ screen Valid(viewport: Rectangle) {
         count++
     }
     defer count = 0
+    EndDrawing()
 }
 
 knr_branches :: (n: int) -> int {
@@ -122,7 +124,9 @@ grep -Fq 'int legacy_count;' "$c"
 
 # calls wrap with Push/Pop + source line
 grep -Fq 'PushUIInspectSource("src/valid.kry", 16);' "$c"
+grep -Fq 'BeginFrame();' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
+grep -Fq 'EndFrame();' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
 # inferred decl

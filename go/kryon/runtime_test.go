@@ -71,10 +71,10 @@ func TestTextFieldTabTraversal(t *testing.T) {
 	aFocused, bFocused := true, false
 
 	draw := func() {
-		rt.BeginDrawing()
+		rt.BeginFrame()
 		rt.TextField(TextFieldProps{Text: aText, CursorPosition: &aCursor, Focused: &aFocused, FocusID: 1})
 		rt.TextField(TextFieldProps{Text: bText, CursorPosition: &bCursor, Focused: &bFocused, FocusID: 2})
-		rt.EndDrawing()
+		rt.EndFrame()
 	}
 
 	draw()
@@ -140,10 +140,10 @@ func TestTextFieldLongTypingDoesNotGrowFieldOrder(t *testing.T) {
 	focused := true
 
 	for i := 0; i < 3000; i++ {
-		rt.BeginDrawing()
+		rt.BeginFrame()
 		rt.QueueText("a")
 		rt.TextField(TextFieldProps{Text: text, CursorPosition: &cursor, Focused: &focused, FocusID: 31, MaxCodepoints: 8191})
-		rt.EndDrawing()
+		rt.EndFrame()
 	}
 	if got, want := len(string(text[:zeroIndex(text)])), 3000; got != want {
 		t.Fatalf("typed length = %d, want %d", got, want)

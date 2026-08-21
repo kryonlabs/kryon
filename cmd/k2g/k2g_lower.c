@@ -1381,12 +1381,27 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             /* runtime call? Capitalized identifiers route to rt. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
                sfi < 0) {
-                if(dn + il + 5 < dst_size) {
+                const char *runtime_name = NULL;
+                size_t runtime_len = il;
+
+                if(il == strlen("BeginDrawing") &&
+                   strncmp(ident, "BeginDrawing", il) == 0) {
+                    runtime_name = "BeginFrame";
+                    runtime_len = strlen(runtime_name);
+                } else if(il == strlen("EndDrawing") &&
+                          strncmp(ident, "EndDrawing", il) == 0) {
+                    runtime_name = "EndFrame";
+                    runtime_len = strlen(runtime_name);
+                } else {
+                    runtime_name = ident;
+                }
+
+                if(dn + runtime_len + 5 < dst_size) {
                     dst[dn++] = 'r';
                     dst[dn++] = 't';
                     dst[dn++] = '.';
-                    memcpy(dst + dn, ident, il);
-                    dn += il;
+                    memcpy(dst + dn, runtime_name, runtime_len);
+                    dn += runtime_len;
                 }
                 p = q;
                 continue;

@@ -246,6 +246,8 @@ func GetClipboardText() string {
 func ClearBackground(c Color) { C.ClearBackground(c.toC()) }
 func BeginDrawing()           { C.BeginDrawing() }
 func EndDrawing()             { C.EndDrawing() }
+func BeginFrame()             { BeginDrawing() }
+func EndFrame()               { EndDrawing() }
 
 // BeginUIFrame initializes Kryon's per-frame viewport, camera, clipping and
 // input state.  Raw raylib-style drawing does not need it, but higher-level

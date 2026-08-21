@@ -5,6 +5,7 @@
 /* Kryon's owned raylib-style graphics/input surface. The concrete backend is
  * selected at link time via KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
+#include "kryon_frame.h"
 
 #include "ui_color.h"
 #include "ui_scaling.h"

@@ -471,8 +471,8 @@ type UICanvasResult struct {
 type Runtime interface {
 	Close()
 	WindowShouldClose() bool
-	BeginDrawing()
-	EndDrawing()
+	BeginFrame()
+	EndFrame()
 	ClearBackground(Color)
 	Background(Color)
 	Text(string, int32, int32, int32, Color)
@@ -618,8 +618,8 @@ func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
 
 func (r *runtime) Close()                  { r.closed = true }
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
-func (r *runtime) BeginDrawing()           { r.fieldOrder = r.fieldOrder[:0] }
-func (r *runtime) EndDrawing() {
+func (r *runtime) BeginFrame()             { r.fieldOrder = r.fieldOrder[:0] }
+func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.frames++
 }

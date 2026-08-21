@@ -17,8 +17,8 @@ type AppConfig struct {
 type Runtime interface {
 	Close()
 	WindowShouldClose() bool
-	BeginDrawing()
-	EndDrawing()
+	BeginFrame()
+	EndFrame()
 	ClearBackground(Color)
 	Background(Color)
 	Text(string, int32, int32, int32, Color)
@@ -131,7 +131,7 @@ func New(config AppConfig) Runtime {
 
 func (r *runtime) Close()                  { CloseWindow() }
 func (r *runtime) WindowShouldClose() bool { return WindowShouldClose() }
-func (r *runtime) BeginDrawing() {
+func (r *runtime) BeginFrame() {
 	BeginDrawing()
 	w, h := GetScreenWidth(), GetScreenHeight()
 	dpi := GetWindowScaleDPI().X
@@ -140,7 +140,7 @@ func (r *runtime) BeginDrawing() {
 	}
 	BeginUIFrame(w, h, dpi)
 }
-func (r *runtime) EndDrawing() {
+func (r *runtime) EndFrame() {
 	EndUIFrame()
 	EndDrawing()
 }

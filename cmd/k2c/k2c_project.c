@@ -308,7 +308,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                                 sizeof(cname));
             /* Screens with no explicit frame hook still need a drawing
              * frame and their viewport argument each tick. */
-            fprintf(out, "        BeginDrawing();\n");
+            fprintf(out, "        BeginFrame();\n");
             if(strstr(routes[0].fn->args, "Rectangle") != NULL) {
                 fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
                              "GetScreenHeight(), GetUIScale());\n");
@@ -319,7 +319,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             } else {
                 fprintf(out, "        %s();\n", cname);
             }
-            fprintf(out, "        EndDrawing();\n");
+            fprintf(out, "        EndFrame();\n");
         } else {
             fprintf(out, "        ;\n");
         }
