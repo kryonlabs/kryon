@@ -273,7 +273,7 @@ KryActivitySetInputBlocked(int on)
     }
     if(!g_blocked)
         return 1;
-    ok = g_ungrab_keyboard(g_display, 0) == 0;
+    ok = g_ungrab_keyboard(g_display, 0) != 0;
     if(ok) {
         g_blocked = 0;
         if(g_sync != 0)
