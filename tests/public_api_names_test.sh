@@ -41,3 +41,32 @@ if [ -n "$generated_matches" ]; then
     echo "$generated_matches"
     exit 1
 fi
+
+kryc_name='kry''c'
+kryc_tool_matches="$(
+    find . \
+        -path './.git' -prune -o \
+        -path './build' -prune -o \
+        -path './vendor' -prune -o \
+        -name "$kryc_name" -print
+)"
+
+if [ -n "$kryc_tool_matches" ]; then
+    echo "Do not add a kryc tool. Kryon uses k2g for Go and k2c for C:"
+    echo "$kryc_tool_matches"
+    exit 1
+fi
+
+kryc_text_matches="$(
+    rg -n "\b${kryc_name}\b" \
+        README.md Makefile .github docs examples go include scripts src tests tools \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$kryc_text_matches" ]; then
+    echo "Do not document or reference kryc in user-facing/runtime surfaces; use k2g and k2c:"
+    echo "$kryc_text_matches"
+    exit 1
+fi
