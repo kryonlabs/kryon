@@ -310,7 +310,9 @@ OpenURI(const char *uri)
 #endif
 }
 
+#ifndef PLATFORM_ANDROID
 void OpenURL(const char *url)
 {
     (void)OpenURI(url);
 }
+#endif
