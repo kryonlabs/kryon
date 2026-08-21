@@ -1355,7 +1355,7 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y,
 
 static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
-                  int focused, int cursor_visible, int font,
+                  int focused, int text_input_active, int cursor_visible, int font,
                   UITextInputStyle style, int selection_start,
                   int selection_end)
 {
@@ -1373,7 +1373,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     Color border = focused ? style.focus_border : style.border;
     float radius = style.radius >= 0.0f ? style.radius : 0.12f;
 
-    if(focused)
+    if(focused && text_input_active)
         SetUIFocusTextInputActive(1);
 
     if(ui_material_style()) {
@@ -1447,8 +1447,8 @@ DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
                          UITextInputStyle style)
 {
-    DrawUITextInputEx(bounds, text, cursor_position, focused, cursor_visible,
-                      font, style, 0, 0);
+    DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
+                      cursor_visible, font, style, 0, 0);
 }
 
 static int
@@ -1487,7 +1487,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int focused, int font, UITextInputStyle style,
                              int selection_start, int selection_end)
 {
-    DrawUITextInputEx(bounds, text, cursor, focused, 1, font, style,
+    DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
                       selection_start, selection_end);
 }
 
@@ -2488,7 +2488,7 @@ DrawUITextArea(TextAreaProps area)
     }
 
     *area.focused = focused;
-    SetUIFocusTextInputActive(focused);
+    SetUIFocusTextInputActive(focused && !area.read_only);
     if(focused && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(area.focused, area.focus_id);
@@ -2746,7 +2746,8 @@ DrawUITextArea(TextAreaProps area)
         DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
-        ui_draw_text_area_text(area.text, *area.cursor_position, focused,
+        ui_draw_text_area_text(area.text, *area.cursor_position,
+                               focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width,
                                area.syntax, area.style, selection_start,
@@ -2949,7 +2950,7 @@ DrawUITextField(TextFieldProps field)
     }
 
     *field.focused = focused;
-    SetUIFocusTextInputActive(focused);
+    SetUIFocusTextInputActive(focused && !field.read_only);
     if(focused && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(field.focused, field.focus_id);
@@ -3125,7 +3126,8 @@ DrawUITextField(TextFieldProps field)
 
     DrawUITextInputEx(field.bounds, display_text, *field.cursor_position,
                       focused,
-                      focused && ui_caret_blink_visible(),
+                      !field.read_only,
+                      focused && !field.read_only && ui_caret_blink_visible(),
                       font, field.style, selection_start, selection_end);
     free(masked_text);
     EndUIWidget(&widget);
