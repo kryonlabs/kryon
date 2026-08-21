@@ -8,6 +8,7 @@
 #include "scene_tree.h"
 #include "node2d_props.h"
 #include "ui_picture.h"
+#include "../ui/ui_picture_internal.h"
 #include <stdlib.h>
 
 static void
@@ -42,7 +43,7 @@ kry_animated_sprite2d_draw(Scene *scene, NodeId node)
        props->asset_path[0] == '\0' || props->frame_count <= 0 ||
        props->frames_per_row <= 0)
         return;
-    texture = KryLoadPictureTexture(props->asset_path);
+    texture = LoadPictureTexture(props->asset_path);
     if(texture.id == 0)
         return;
     frame = (int)(props->time * props->fps) % props->frame_count;

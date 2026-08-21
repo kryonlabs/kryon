@@ -5,6 +5,7 @@
 
 #include "ui_internal.h"
 #include "ui_picture.h"
+#include "ui_picture_internal.h"
 #include "embedded_assets.h"
 #include <math.h>
 #include <stdio.h>
@@ -29,7 +30,7 @@ picture_file_ext(const char *path)
 }
 
 Texture2D
-KryLoadPictureTexture(const char *path)
+LoadPictureTexture(const char *path)
 {
     const EmbeddedAsset *asset;
     Image image;
@@ -69,7 +70,7 @@ KryLoadPictureTexture(const char *path)
 }
 
 Rectangle
-KryPictureFitRect(PictureProps picture, Texture2D texture)
+PictureFitRect(PictureProps picture, Texture2D texture)
 {
     Rectangle dst = picture.bounds;
     float src_w = picture.source.width != 0.0f ? fabsf(picture.source.width)
@@ -161,40 +162,51 @@ picture_row_inset(Rectangle bounds, float radius, float sample_y)
 }
 
 static Rectangle
-picture_source_for_strip(Texture2D texture, Rectangle dst, Rectangle strip)
+picture_default_source(Texture2D texture, Rectangle source)
+{
+    if(source.width == 0.0f || source.height == 0.0f)
+        return (Rectangle){0.0f, 0.0f, (float)texture.width,
+                           (float)texture.height};
+    return source;
+}
+
+static Rectangle
+picture_source_for_strip(Rectangle source_base, Rectangle dst, Rectangle strip)
 {
     Rectangle source = {0.0f, 0.0f, 0.0f, 0.0f};
 
     if(dst.width == 0.0f || dst.height == 0.0f)
         return source;
-    source.x = (strip.x - dst.x) * (float)texture.width / dst.width;
-    source.y = (strip.y - dst.y) * (float)texture.height / dst.height;
-    source.width = strip.width * (float)texture.width / dst.width;
-    source.height = strip.height * (float)texture.height / dst.height;
+    source.x = source_base.x + (strip.x - dst.x) * source_base.width / dst.width;
+    source.y = source_base.y + (strip.y - dst.y) * source_base.height / dst.height;
+    source.width = strip.width * source_base.width / dst.width;
+    source.height = strip.height * source_base.height / dst.height;
     return source;
 }
 
 static void
-picture_draw_texture_strip(Texture2D texture, Rectangle dst, Rectangle strip)
+picture_draw_texture_strip(Texture2D texture, Rectangle source_base,
+                           Rectangle dst, Rectangle strip, Color tint)
 {
     Rectangle source;
 
     if(strip.width <= 0.0f || strip.height <= 0.0f)
         return;
-    source = picture_source_for_strip(texture, dst, strip);
+    source = picture_source_for_strip(source_base, dst, strip);
     DrawTexturePro(texture, source, strip, (Vector2){0.0f, 0.0f}, 0.0f,
-                   WHITE);
+                   tint);
 }
 
 static void
-picture_draw_rounded_texture(Texture2D texture, Rectangle dst,
-                             Rectangle bounds, float radius)
+picture_draw_rounded_texture(Texture2D texture, Rectangle source,
+                             Rectangle dst, Rectangle bounds, float radius,
+                             Color tint)
 {
     int y_start;
     int y_end;
 
     if(radius <= 0.0f) {
-        picture_draw_texture_strip(texture, dst, bounds);
+        picture_draw_texture_strip(texture, source, dst, bounds, tint);
         return;
     }
 
@@ -217,7 +229,7 @@ picture_draw_rounded_texture(Texture2D texture, Rectangle dst,
         inset = picture_row_inset(bounds, radius, sample_y);
         strip = (Rectangle){bounds.x + inset, strip_y,
                             bounds.width - inset * 2.0f, strip_h};
-        picture_draw_texture_strip(texture, dst, strip);
+        picture_draw_texture_strip(texture, source, dst, strip, tint);
     }
 }
 
@@ -360,10 +372,9 @@ picture_apply_style(Rectangle bounds, UIPictureStyle *style, float *radius,
 }
 
 void
-UIDrawStyledCoverPicture(Texture2D texture, Rectangle bounds,
-                         UIPictureStyle style)
+PictureTexture(Texture2D texture, PictureProps picture)
 {
-    PictureProps picture = {0};
+    Rectangle source;
     Rectangle dst;
     float radius;
     int segments;
@@ -372,47 +383,63 @@ UIDrawStyledCoverPicture(Texture2D texture, Rectangle bounds,
     ThemeStyle theme_style;
 
     if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
-       bounds.width <= 0.0f || bounds.height <= 0.0f)
+       picture.bounds.width <= 0.0f || picture.bounds.height <= 0.0f)
         return;
 
-    picture.bounds = bounds;
-    picture.fit = UI_PICTURE_FIT_COVER;
-    dst = KryPictureFitRect(picture, texture);
-    radius = picture_style_radius(bounds, style);
-    segments = style.segments > 0 ? style.segments : 10;
-    outline_px = style.outline_px > 0 ? style.outline_px : 1;
-    roundness = style.roundness > 0.0f ? style.roundness : 0.0f;
+    source = picture_default_source(texture, picture.source);
+    dst = PictureFitRect(picture, texture);
+    picture.tint = picture.tint.a == 0 ? WHITE : picture.tint;
+
+    if(!picture.style.enabled) {
+        DrawTexturePro(texture, source, dst, picture.origin, picture.rotation,
+                       picture.tint);
+        return;
+    }
+
+    radius = picture_style_radius(picture.bounds, picture.style);
+    segments = picture.style.segments > 0 ? picture.style.segments : 10;
+    outline_px = picture.style.outline_px > 0 ? picture.style.outline_px : 1;
+    roundness = picture.style.roundness > 0.0f ? picture.style.roundness : 0.0f;
     theme_style = GetEffectiveThemeStyle();
-    picture_apply_style(bounds, &style, &radius, &roundness, &segments,
+    picture_apply_style(picture.bounds, &picture.style, &radius, &roundness, &segments,
                         &outline_px);
 
     if(theme_style == THEME_STYLE_MATERIAL)
-        ui_material_elevation(bounds, roundness, GetUIStyleTokens().shadow_offset_y);
+        ui_material_elevation(picture.bounds, roundness,
+                              GetUIStyleTokens().shadow_offset_y);
 
-    if(style.background.a > 0) {
+    if(picture.style.background.a > 0) {
         if(roundness > 0.0f)
-            DrawRectangleRounded(bounds, roundness, segments, style.background);
+            DrawRectangleRounded(picture.bounds, roundness, segments,
+                                 picture.style.background);
         else
-            DrawRectangleRec(bounds, style.background);
+            DrawRectangleRec(picture.bounds, picture.style.background);
     }
 
-    picture_draw_rounded_texture(texture, dst, bounds, radius);
-    if(style.tonal_overlay.a > 0)
-        picture_draw_rounded_solid(bounds, radius, style.tonal_overlay);
-    if(style.surface_overlay.a > 0)
-        picture_draw_rounded_solid(bounds, radius, style.surface_overlay);
-    if(style.scrim_top.a > 0 || style.scrim_bottom.a > 0)
-        picture_draw_rounded_gradient(bounds, radius, style.scrim_top,
-                                      style.scrim_bottom);
+    picture_draw_rounded_texture(texture, source, dst, picture.bounds, radius,
+                                 picture.tint);
+    if(picture.style.tonal_overlay.a > 0)
+        picture_draw_rounded_solid(picture.bounds, radius,
+                                   picture.style.tonal_overlay);
+    if(picture.style.surface_overlay.a > 0)
+        picture_draw_rounded_solid(picture.bounds, radius,
+                                   picture.style.surface_overlay);
+    if(picture.style.scrim_top.a > 0 || picture.style.scrim_bottom.a > 0)
+        picture_draw_rounded_gradient(picture.bounds, radius,
+                                      picture.style.scrim_top,
+                                      picture.style.scrim_bottom);
     if(theme_style == THEME_STYLE_RETRO) {
-        DrawUIBevel((int)bounds.x, (int)bounds.y, (int)bounds.width,
-                    (int)bounds.height, LightenUIColor(GetThemeBackground(), 52),
+        DrawUIBevel((int)picture.bounds.x, (int)picture.bounds.y,
+                    (int)picture.bounds.width, (int)picture.bounds.height,
+                    LightenUIColor(GetThemeBackground(), 52),
                     DarkenUIColor(GetThemeBackground(), 50));
-        if(style.outline.a > 0)
-            DrawRectangleLinesEx(bounds, (float)outline_px, style.outline);
-    } else if(roundness > 0.0f && style.outline.a > 0)
-        DrawRectangleRoundedLinesEx(bounds, roundness, segments,
-                                    (float)outline_px, style.outline);
-    else if(style.outline.a > 0)
-        DrawRectangleLinesEx(bounds, (float)outline_px, style.outline);
+        if(picture.style.outline.a > 0)
+            DrawRectangleLinesEx(picture.bounds, (float)outline_px,
+                                 picture.style.outline);
+    } else if(roundness > 0.0f && picture.style.outline.a > 0)
+        DrawRectangleRoundedLinesEx(picture.bounds, roundness, segments,
+                                    (float)outline_px, picture.style.outline);
+    else if(picture.style.outline.a > 0)
+        DrawRectangleLinesEx(picture.bounds, (float)outline_px,
+                             picture.style.outline);
 }

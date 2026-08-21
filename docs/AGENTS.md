@@ -26,6 +26,10 @@ for shared types, lower-level UI system internals, and immediate draw helpers
 that already follow the established `DrawUI*`/`GetUI*` style. If a legacy
 prefixed widget constructor still exists, migrate callers to the canonical
 unprefixed widget name instead of adding another alias.
+Do not add public picture/widget helpers with `DrawUI*` or reversed UI-draw
+prefix names when the behavior belongs on the simple widget API. Extend
+`PictureProps`, `ButtonProps`, or the relevant unprefixed widget props instead,
+and leave no legacy alias behind.
 
 Kryon owns live preview rendering, preview PNG capture, and hot-reload
 verification. Do not use Krait as the capture test harness for `.kry` files.

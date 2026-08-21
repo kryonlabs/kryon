@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_picture_internal.h"
 #include "embedded_assets.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1333,13 +1334,9 @@ void
 Picture(PictureProps picture)
 {
     Texture2D texture;
-    Rectangle source;
-    Rectangle dst;
-    Color tint;
 
     ui_tree_add(0, UI_WIDGET_PICTURE_NODE, picture.bounds, picture.asset_path);
-    texture = KryLoadPictureTexture(picture.asset_path);
-    tint = picture.tint.a == 0 ? WHITE : picture.tint;
+    texture = LoadPictureTexture(picture.asset_path);
     if(texture.id == 0) {
         DrawRectangleRec(picture.bounds, GetThemeSurface());
         DrawRectangleLinesEx(picture.bounds, 1.0f, GetThemeButtonHover());
@@ -1348,11 +1345,7 @@ Picture(PictureProps picture)
                    GetThemeIcon());
         return;
     }
-    source = picture.source;
-    if(source.width == 0.0f || source.height == 0.0f)
-        source = (Rectangle){0, 0, (float)texture.width, (float)texture.height};
-    dst = KryPictureFitRect(picture, texture);
-    DrawTexturePro(texture, source, dst, picture.origin, picture.rotation, tint);
+    PictureTexture(texture, picture);
 }
 
 void

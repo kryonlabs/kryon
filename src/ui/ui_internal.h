@@ -92,7 +92,6 @@ int ui_caret_blink_visible(void);
 /* Navigate to a URL: in-browser redirect on web, platform opener otherwise.
  * A no-op for a NULL/empty url. */
 void ui_open_url(const char *url);
-
 void DrawUIFrameOverlays(void);
 void DrawUIFocus(Rectangle bounds);
 int ui_readonly_text_box_height(const char *text, int font, int width,

@@ -2,6 +2,7 @@
 #include "krb.h"
 #include "kryon.h"
 #include "ui_picture.h"
+#include "../ui/ui_picture_internal.h"
 
 static unsigned
 pack_color(Color c)
@@ -156,7 +157,7 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
 
     if(asset_path == NULL || asset_path[0] == '\0' || w <= 0 || h <= 0)
         return;
-    tex = KryLoadPictureTexture(asset_path);
+    tex = LoadPictureTexture(asset_path);
     if(tex.id == 0)
         return;
     pic = (PictureProps){
@@ -167,7 +168,7 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
     };
     DrawTexturePro(tex,
                    (Rectangle){0, 0, (float)tex.width, (float)tex.height},
-                   KryPictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
+                   PictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
 }
 
 static unsigned
@@ -266,5 +267,3 @@ krb_caps_raylib_init(void)
 #endif
     select_draw();
 }
-
-

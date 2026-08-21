@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_picture_internal.h"
 
 void
 DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
@@ -13,20 +14,18 @@ DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 void
 DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
 {
+    PictureProps picture = {0};
+
     if(texture.id == 0) {
         DrawUITutorialImagePlaceholder(fallback, x, y, w, h);
         return;
     }
 
-    float scale_x = (float)w / (float)texture.width;
-    float scale_y = (float)h / (float)texture.height;
-    float scale = scale_x < scale_y ? scale_x : scale_y;
-    float dst_w = (float)texture.width * scale;
-    float dst_h = (float)texture.height * scale;
-    Rectangle src = {0, 0, (float)texture.width, (float)texture.height};
-    Rectangle dst = {x + ((float)w - dst_w) * 0.5f, y + ((float)h - dst_h) * 0.5f, dst_w, dst_h};
-
-    DrawTexturePro(texture, src, dst, (Vector2){0}, 0, WHITE);
+    picture.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    picture.fit = UI_PICTURE_FIT_COVER;
+    picture.tint = WHITE;
+    picture.style.enabled = 1;
+    PictureTexture(texture, picture);
 }
 
 /* ================================================================

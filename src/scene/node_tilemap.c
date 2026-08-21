@@ -9,6 +9,7 @@
 #include "scene_tree.h"
 #include "node2d_props.h"
 #include "ui_picture.h"
+#include "../ui/ui_picture_internal.h"
 #include <stdlib.h>
 
 static void
@@ -27,7 +28,7 @@ kry_tilemap_draw(Scene *scene, NodeId node)
        props->asset_path[0] == '\0' || props->tiles == NULL ||
        props->map_w <= 0 || props->map_h <= 0 || props->tiles_per_row <= 0)
         return;
-    texture = KryLoadPictureTexture(props->asset_path);
+    texture = LoadPictureTexture(props->asset_path);
     if(texture.id == 0)
         return;
     tint = props->tint.a == 0 ? WHITE : props->tint;

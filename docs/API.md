@@ -956,16 +956,18 @@ typedef struct PictureProps {
     float rotation;
     Color tint;
     UIPictureFit fit;
+    UIPictureStyle style;
 } PictureProps;
 
 void Picture(PictureProps picture);
 ```
 
 Pictures are image-backed UI widget nodes. `asset_path` is resolved first as a
-runtime file path and then as an embedded asset path. `Picture` uses the
-full image with contain fitting and exposes source rect, origin,
-rotation, tint, and fit mode. The `Sprite2D` scene node shares the same
-texture cache (`KryLoadPictureTexture`) for world-space game sprites. Named
+runtime file path and then as an embedded asset path. `Picture` uses the full
+image with contain fitting and exposes source rect, origin, rotation, tint, fit
+mode, and optional material-style image treatment through `style`. The
+`Sprite2D` scene node shares the same texture cache for world-space game
+sprites. Named
 `Picture` rather than `Image` because raylib already owns `Image` as a
 decoded-image-in-memory struct type.
 
