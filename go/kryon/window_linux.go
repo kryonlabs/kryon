@@ -26,6 +26,11 @@ type windowRuntime struct {
 	closed bool
 }
 
+type legacyPointerController interface {
+	QueueMouseButton(int32, float32, float32)
+	QueueMouseWheel(float32)
+}
+
 func openWindowRuntime(config AppConfig) (Runtime, error) {
 	base := New(config)
 	win, err := openX11Window(config)
@@ -107,8 +112,16 @@ func (r *windowRuntime) pumpEvents() {
 			r.window.width = ev.x
 			r.window.height = ev.y
 		case x11EventTap:
-			if c, ok := r.Runtime.(pointerController); ok {
-				c.QueueTap(float32(ev.x), float32(ev.y))
+			if c, ok := r.Runtime.(legacyPointerController); ok {
+				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
+			} else if ev.button == MouseButtonLeft {
+				if c, ok := r.Runtime.(pointerController); ok {
+					c.QueueTap(float32(ev.x), float32(ev.y))
+				}
+			}
+		case x11EventWheel:
+			if c, ok := r.Runtime.(legacyPointerController); ok {
+				c.QueueMouseWheel(ev.wheel)
 			}
 		case x11EventKey:
 			if c, ok := r.Runtime.(inputController); ok {
@@ -239,12 +252,15 @@ const (
 	x11EventClose x11EventKind = iota + 1
 	x11EventResize
 	x11EventTap
+	x11EventWheel
 	x11EventKey
 )
 
 type x11Event struct {
 	kind     x11EventKind
 	x, y     int
+	button   int32
+	wheel    float32
 	key      int32
 	shortcut int32
 	text     string
@@ -788,7 +804,19 @@ func (w *x11Window) poll() ([]x11Event, error) {
 func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 	switch buf[0] & 0x7f {
 	case x11EventButtonPress:
-		return x11Event{kind: x11EventTap, x: int(int16(get16(buf[24:]))), y: int(int16(get16(buf[26:])))}, true
+		button := int32(buf[1])
+		x := int(int16(get16(buf[24:])))
+		y := int(int16(get16(buf[26:])))
+		switch button {
+		case 1:
+			return x11Event{kind: x11EventTap, button: MouseButtonLeft, x: x, y: y}, true
+		case 3:
+			return x11Event{kind: x11EventTap, button: MouseButtonRight, x: x, y: y}, true
+		case 4:
+			return x11Event{kind: x11EventWheel, wheel: 1}, true
+		case 5:
+			return x11Event{kind: x11EventWheel, wheel: -1}, true
+		}
 	case x11EventConfigureNotify:
 		return x11Event{kind: x11EventResize, x: int(get16(buf[20:])), y: int(get16(buf[22:]))}, true
 	case x11EventClientMessage:

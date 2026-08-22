@@ -37,6 +37,10 @@ type Texture2D struct {
 	Format  int32
 }
 
+type Font struct {
+	Texture Texture2D
+}
+
 type KeyID uint64
 type Side int32
 type ButtonStyle int32
@@ -51,18 +55,27 @@ const (
 	FlagWindowResizable uint = 0x00000004
 
 	KeyNull      int32 = 0
+	KeyEscape    int32 = 256
 	KeyEnter     int32 = 257
 	KeyTab       int32 = 258
 	KeyBackspace int32 = 259
 	KeyDelete    int32 = 261
 	KeyRight     int32 = 262
 	KeyLeft      int32 = 263
+	KeyDown      int32 = 264
+	KeyUp        int32 = 265
 	KeyHome      int32 = 268
 	KeyEnd       int32 = 269
+	KeyF2        int32 = 291
 	KeyA         int32 = 65
 	KeyC         int32 = 67
 	KeyV         int32 = 86
 	KeyX         int32 = 88
+
+	MouseButtonLeft  int32 = 0
+	MouseButtonRight int32 = 1
+
+	FilterBilinear int32 = 1
 
 	SideTop Side = iota
 	SideBottom
@@ -549,6 +562,11 @@ type runtime struct {
 	clipboard   string
 	inputEvents []inputEvent
 	taps        []tapEvent
+	mousePos    Vector2
+	mouseWheel  float32
+	mouseDown   map[int32]bool
+	keyDown     map[int32]bool
+	chars       []rune
 	fieldOrder  []int32
 	prevOrder   []int32
 	selection   map[int32]selection
@@ -589,22 +607,60 @@ func New(config AppConfig) Runtime {
 	if config.Height <= 0 {
 		config.Height = 480
 	}
-	return &runtime{config: config, selection: map[int32]selection{}}
+	return &runtime{config: config, selection: map[int32]selection{}, mouseDown: map[int32]bool{}, keyDown: map[int32]bool{}}
 }
 
 func (r *runtime) QueueText(text string) {
 	if text != "" {
 		r.inputEvents = append(r.inputEvents, inputEvent{text: text})
+		r.chars = append(r.chars, []rune(text)...)
 	}
 }
-func (r *runtime) QueueKey(key int32) { r.inputEvents = append(r.inputEvents, inputEvent{key: key}) }
+func (r *runtime) QueueKey(key int32) {
+	r.inputEvents = append(r.inputEvents, inputEvent{key: key})
+	r.keyDown[key] = true
+}
 func (r *runtime) QueueShiftKey(key int32) {
 	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shift: true})
+	r.keyDown[key] = true
 }
 func (r *runtime) QueueShortcut(key int32) {
 	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shortcut: true})
+	r.keyDown[key] = true
 }
-func (r *runtime) QueueTap(x, y float32)        { r.taps = append(r.taps, tapEvent{x: x, y: y}) }
+func (r *runtime) QueueTap(x, y float32) {
+	r.QueueMouseButton(MouseButtonLeft, x, y)
+}
+func (r *runtime) QueueMouseButton(button int32, x, y float32) {
+	r.mousePos = Vector2{X: x, Y: y}
+	r.mouseDown[button] = true
+	if button == MouseButtonLeft {
+		r.taps = append(r.taps, tapEvent{x: x, y: y})
+	}
+}
+func (r *runtime) QueueMouseWheel(delta float32) {
+	r.mouseWheel += delta
+}
+func (r *runtime) MousePosition() Vector2 {
+	return r.mousePos
+}
+func (r *runtime) MouseButtonPressed(button int32) bool {
+	return r.mouseDown[button]
+}
+func (r *runtime) MouseWheelMove() float32 {
+	return r.mouseWheel
+}
+func (r *runtime) KeyPressed(key int32) bool {
+	return r.keyDown[key]
+}
+func (r *runtime) CharPressed() int32 {
+	if len(r.chars) == 0 {
+		return 0
+	}
+	rn := r.chars[0]
+	r.chars = r.chars[1:]
+	return rn
+}
 func (r *runtime) SetClipboardText(text string) { r.clipboard = text }
 func (r *runtime) ClipboardText() string        { return r.clipboard }
 func (r *runtime) SetSelection(focusID, anchor, cursor int32) {
@@ -625,6 +681,11 @@ func (r *runtime) BeginFrame() {
 func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.taps = nil
+	r.mouseWheel = 0
+	r.mouseDown = map[int32]bool{}
+	r.keyDown = map[int32]bool{}
+	r.chars = nil
+	r.inputEvents = nil
 	r.frames++
 }
 func (r *runtime) SetFocus(id int32) { r.focusID = id }
