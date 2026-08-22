@@ -37,7 +37,7 @@ state {
 
 screen Valid(viewport: Rectangle) {
     int legacy_count
-    BeginDrawing()
+    BeginFrame()
     Background(GetThemeBackground())
     Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText())
     Column((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}, .gap = ScaleUIPx(4), .padding = ScaleUIPx(6), .key = Key("form")})
@@ -62,7 +62,7 @@ screen Valid(viewport: Rectangle) {
         count++
     }
     defer count = 0
-    EndDrawing()
+    EndFrame()
 }
 
 knr_branches :: (n: int) -> int {

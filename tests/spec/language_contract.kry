@@ -15,7 +15,7 @@ app "Spec Contract" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     Background(GetThemeSurface())
     Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), UI_TEXT_16, GetThemeText())
@@ -23,5 +23,5 @@ frame main {
         count = count + 1
     }
     Text("ready", ScaleUIPx(8), ScaleUIPx(32), UI_TEXT_16, GetThemeText())
-    EndDrawing()
+    EndFrame()
 }

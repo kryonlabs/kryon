@@ -23,7 +23,7 @@ app "Inner Breeze — Statistics" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeBackground())
@@ -47,5 +47,5 @@ frame main {
     Text("M T W T F S S", ScaleUIPx(50), ScaleUIPx(340), UI_TEXT_12, GetThemeIcon())
     Text("Totals update after each session", ScaleUIPx(52), ScaleUIPx(400), UI_TEXT_12, GetThemeIcon())
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

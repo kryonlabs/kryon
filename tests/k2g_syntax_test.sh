@@ -52,7 +52,7 @@ app "Smoke" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     if tab == TAB_JOBS {
         Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), UI_TEXT_16, GetThemeText())
@@ -134,7 +134,7 @@ retry:
     if attempts < 3 {
         goto retry
     }
-    EndDrawing()
+    EndFrame()
 }
 EOF
 

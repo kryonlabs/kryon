@@ -1442,21 +1442,6 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             /* runtime call? Capitalized identifiers route to the package API. */
             if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
                sfi < 0) {
-                const char *runtime_name = NULL;
-                size_t runtime_len = il;
-
-                if(il == strlen("BeginDrawing") &&
-                   strncmp(ident, "BeginDrawing", il) == 0) {
-                    runtime_name = "BeginFrame";
-                    runtime_len = strlen(runtime_name);
-                } else if(il == strlen("EndDrawing") &&
-                          strncmp(ident, "EndDrawing", il) == 0) {
-                    runtime_name = "EndFrame";
-                    runtime_len = strlen(runtime_name);
-                } else {
-                    runtime_name = ident;
-                }
-
                 {
                     int written = snprintf(dst + dn, dst_size - dn,
                                            "%s.", K2G_RUNTIME_PKG);
@@ -1464,9 +1449,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(written > 0)
                         dn += (size_t)written;
                 }
-                if(dn + runtime_len + 1 < dst_size) {
-                    memcpy(dst + dn, runtime_name, runtime_len);
-                    dn += runtime_len;
+                if(dn + il + 1 < dst_size) {
+                    memcpy(dst + dn, ident, il);
+                    dn += il;
                 }
                 p = q;
                 continue;

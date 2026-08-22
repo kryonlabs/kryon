@@ -76,7 +76,7 @@ app "Frame" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
@@ -86,7 +86,7 @@ frame main {
     Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
     Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
     EndUIFrame()
-    EndDrawing()
+    EndFrame()
 }
 EOF
 frame_out=$("$k2b" --no-main --root "$work" -o "$work" "$work/frame.kry" 2>&1)

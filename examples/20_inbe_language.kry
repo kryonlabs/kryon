@@ -16,7 +16,7 @@ app "Inner Breeze — Language" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeBackground())
@@ -25,5 +25,5 @@ frame main {
     Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
     Text("Next", ScaleUIPx(204), ScaleUIPx(335), UI_TEXT_12, GetThemeText())
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

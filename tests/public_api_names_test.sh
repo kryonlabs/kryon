@@ -42,6 +42,22 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+frame_begin='Begin''Drawing'
+frame_end='End''Drawing'
+frame_alias_matches="$(
+    rg -n "\b(${frame_begin}|${frame_end})\s*\(" \
+        examples tests \
+        --glob '*.kry' \
+        --glob '*.sh' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$frame_alias_matches" ]; then
+    echo "Kry source must use clean frame names BeginFrame and EndFrame:"
+    echo "$frame_alias_matches"
+    exit 1
+fi
+
 kryc_name='kry''c'
 kryc_tool_matches="$(
     find . \

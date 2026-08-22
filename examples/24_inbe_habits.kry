@@ -24,7 +24,7 @@ app "Inner Breeze — Habits" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
@@ -47,5 +47,5 @@ frame main {
     }
     EndScroll()
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

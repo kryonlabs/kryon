@@ -24,7 +24,7 @@ app "Inner Breeze Habit Edit" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeBackground())
@@ -50,5 +50,5 @@ frame main {
     Spinbox(4, ScaleUIPx(40), ScaleUIPx(426), ScaleUIPx(160), ScaleUIPx(12), ScaleUIPx(240), 1, 7, 1, &interval)
     Button((ButtonProps){"Save", (Rectangle){ScaleUIPx(150), ScaleUIPx(500), ScaleUIPx(180), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 0}, "save")
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

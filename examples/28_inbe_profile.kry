@@ -17,7 +17,7 @@ app "Inner Breeze Profile" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeBackground())
@@ -37,5 +37,5 @@ frame main {
     Text("Import data", ScaleUIPx(40), ScaleUIPx(400), UI_TEXT_16, GetThemeText())
     Button((ButtonProps){"Sign out", (Rectangle){ScaleUIPx(150), ScaleUIPx(460), ScaleUIPx(180), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 1}, "signout")
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

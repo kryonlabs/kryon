@@ -22,7 +22,7 @@ app "Inner Breeze — Settings" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
@@ -45,5 +45,5 @@ frame main {
     }
     EndScroll()
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

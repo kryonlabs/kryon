@@ -18,7 +18,7 @@ app "Inner Breeze — Practice" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
@@ -38,5 +38,5 @@ frame main {
     Text("Start", ScaleUIPx(225), ScaleUIPx(510), UI_TEXT_16, GetThemeText())
     Button((ButtonProps){"Begin practice", (Rectangle){ScaleUIPx(140), ScaleUIPx(590), ScaleUIPx(200), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 0}, "start")
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }

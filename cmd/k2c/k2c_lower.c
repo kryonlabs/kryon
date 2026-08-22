@@ -251,31 +251,6 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
             if(!(p > src && p[-1] == '.') &&
                !(p > src + 1 && p[-1] == '>' && p[-2] == '-') &&
                *e == '(' && e[-1] != ' ') {
-                struct { const char *from; const char *to; } clean_calls[] = {
-                    {"BeginDrawing", "BeginFrame"},
-                    {"EndDrawing", "EndFrame"},
-                    {NULL, NULL}
-                };
-                int clean_matched = 0;
-
-                for(int ci = 0; clean_calls[ci].from != NULL; ci++) {
-                    size_t from_len = strlen(clean_calls[ci].from);
-
-                    if(from_len == (size_t)(e - p) &&
-                       strncmp(clean_calls[ci].from, p, from_len) == 0) {
-                        size_t to_len = strlen(clean_calls[ci].to);
-
-                        if(n + to_len < dst_size) {
-                            memcpy(dst + n, clean_calls[ci].to, to_len);
-                            n += to_len;
-                        }
-                        p = e - 1;
-                        clean_matched = 1;
-                        break;
-                    }
-                }
-                if(clean_matched)
-                    continue;
                 /* a call (not a member access 'x.fn' / 'p->fn'): resolve
                  * module-local functions to C names */
                 char cname[LOWER_NAME_MAX * 2];

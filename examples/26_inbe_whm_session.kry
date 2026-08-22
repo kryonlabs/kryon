@@ -23,7 +23,7 @@ app "Inner Breeze — WHM Session" {
 }
 
 frame main {
-    BeginDrawing()
+    BeginFrame()
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
@@ -55,5 +55,5 @@ frame main {
     AnimNode("ring0", "w", &radius)
     AnimNode("ring0", "h", &radius)
     EndUIFocus()
-    EndDrawing()
+    EndFrame()
 }
