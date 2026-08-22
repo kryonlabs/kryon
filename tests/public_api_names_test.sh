@@ -43,6 +43,11 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+if [ -d go/kryui ]; then
+    echo "The legacy go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
+    exit 1
+fi
+
 legacy_doc_matches="$(
     legacy_bridge='go/''kryui'
     legacy_input='Text''InputControl'
