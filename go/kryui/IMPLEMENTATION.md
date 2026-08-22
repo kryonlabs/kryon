@@ -206,19 +206,19 @@ All cgo bindings compile cleanly against:
 The toolchain works as follows:
 
 1. **Write .kry files** - Kryon language (declarative UI)
-2. **k2g compiles to Go** - Generates Go code using `kryui.*` calls
-3. **Go compiler** - Links against libkryon.a via cgo
-4. **Native binary** - Fully compiled, no runtime dependencies
+2. **k2g compiles to Go** - Generates Go code using `kryon.*` calls
+3. **Go compiler** - Links against the native Go runtime package
+4. **Native binary** - Fully compiled without cgo
 
 Example:
 ```bash
 # Compile .kry to Go
-k2g --root examples --pkg myapp --runtime core/kryui -o gen/ myapp.kry
+k2g --root examples --pkg myapp -o gen/ myapp.kry
 
-# The generated myapp.go imports "core/kryui" and calls:
-# - kryui.Text(...)
-# - kryui.Button(...)
-# - kryui.Radio(...)
+# The generated myapp.go imports github.com/waozixyz/kryon/go/kryon and calls:
+# - kryon.Text(...)
+# - kryon.Button(...)
+# - kryon.Radio(...)
 # etc.
 ```
 
@@ -266,7 +266,7 @@ import "core/kryui"
 ```bash
 cd /mnt/storage/Projects/kryon
 ./build/linux-x86_64/bin/k2g --root examples --pkg myapp \
-    --runtime core/kryui -o output/ example.kry
+    -o output/ example.kry
 ```
 
 ## Conclusion

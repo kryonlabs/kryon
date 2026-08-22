@@ -7,9 +7,8 @@
  * k2g_lower - Kir -> Go backend.
  *
  * Emits one .go file per module into out_dir, all in one Go package. The
- * generated code calls the native Go Kryon package API (import path given by
- * --runtime). It does not thread a cgo bridge or runtime object through
- * generated functions.
+ * generated code calls the native Go Kryon package API. It does not thread a
+ * cgo bridge or runtime object through generated functions.
  *
  * v1 scope: the declarative app subset translates fully — state blocks,
  * app metadata (-> generated main unless --no-main), frames, widget calls,
@@ -19,6 +18,6 @@
  */
 int k2g_lower(const KirProgram *const *progs, int prog_count,
               const char *root, const char *out_dir, const char *pkg,
-              const char *runtime_import, int no_main);
+              int no_main);
 
 #endif

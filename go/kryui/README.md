@@ -150,13 +150,15 @@ This package is part of Kryon's multi-target compiler:
 .kry source → KIR (intermediate) → Go (via k2g) or C (via k2c) or KRB (via k2b)
 ```
 
-The `k2g` compiler generates Go code that calls these bindings:
+The `k2g` compiler generates Go code against the first-class native Go runtime
+package, not this legacy binding package:
 
 ```bash
 # Compile .kry to Go
-k2g --root examples --pkg myapp --runtime core/kryui -o gen/ myapp.kry
+k2g --root examples --pkg myapp -o gen/ myapp.kry
 
-# The generated Go code uses kryui.* calls
+# The generated Go code imports github.com/waozixyz/kryon/go/kryon
+# and uses kryon.* calls
 ```
 
 ## Complete Example

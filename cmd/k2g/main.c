@@ -4,7 +4,7 @@
  * (k2g_lower.c) that calls the native Go Kryon runtime. One frontend, three
  * backends.
  *
- * usage: k2g [--no-main] [--pkg NAME] [--runtime IMPORT] --root DIR -o DIR file.kry ...
+ * usage: k2g [--no-main] [--pkg NAME] --root DIR -o DIR file.kry ...
  */
 #include "kir.h"
 #include "kir_parse.h"
@@ -18,7 +18,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2g [--no-main] [--pkg NAME] [--runtime IMPORT] "
+            "usage: k2g [--no-main] [--pkg NAME] "
             "--root DIR -o DIR file.kry ...\n");
 }
 
@@ -28,7 +28,6 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     const char *pkg = "krygen";
-    const char *runtime = "github.com/waozixyz/kryon/go/kryon";
     int no_main = 0;
     KirProgram **progs;
     int file_count;
@@ -42,8 +41,6 @@ main(int argc, char **argv)
             out_dir = argv[++i];
         } else if(strcmp(argv[i], "--pkg") == 0 && i + 1 < argc) {
             pkg = argv[++i];
-        } else if(strcmp(argv[i], "--runtime") == 0 && i + 1 < argc) {
-            runtime = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
         } else if(argv[i][0] == '-') {
@@ -73,7 +70,7 @@ main(int argc, char **argv)
         }
     }
     if(k2g_lower((const KirProgram *const *)progs, file_count, root, out_dir,
-                 pkg, runtime, no_main) != 0) {
+                 pkg, no_main) != 0) {
         for(i = 0; i < file_count; i++)
             KirProgramFree(progs[i]);
         free(progs);

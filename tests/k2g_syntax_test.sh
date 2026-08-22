@@ -144,6 +144,14 @@ out=$(find "$work/out" -name "*.go" | head -1)
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
+if "$k2g" --runtime github.com/waozixyz/kryon/go/kryui \
+    --root "$work" -o "$work/out" "$work/src/valid.kry" \
+    2>"$work/runtime_override.err"; then
+    echo "k2g accepted --runtime override; generated Go must target the native kryon runtime" >&2
+    exit 1
+fi
+grep -q 'usage: k2g' "$work/runtime_override.err"
+
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
 grep -q 'import kryon "github.com/waozixyz/kryon/go/kryon"' "$out"

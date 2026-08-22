@@ -11,6 +11,7 @@
 
 #define K2G_TEXT_MAX 8192
 #define K2G_NAME_MAX 256
+#define K2G_RUNTIME_IMPORT "github.com/waozixyz/kryon/go/kryon"
 #define K2G_RUNTIME_PKG "kryon"
 
 /* ---------------------------------------------------------------- helpers */
@@ -1979,7 +1980,7 @@ k2g_validate_asserts(const KirModule *m)
 int
 k2g_lower(const KirProgram *const *progs, int prog_count,
           const char *root, const char *out_dir, const char *pkg,
-          const char *runtime_import, int no_main)
+          int no_main)
 {
     char path[1024];
     char seen_stems[64][512];
@@ -2024,7 +2025,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
             fprintf(f, "import %s \"%s\"\n\n", K2G_RUNTIME_PKG,
-                    runtime_import);
+                    K2G_RUNTIME_IMPORT);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
