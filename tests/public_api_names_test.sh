@@ -42,6 +42,22 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+legacy_doc_matches="$(
+    legacy_bridge='go/''kryui'
+    legacy_input='Text''InputControl'
+    legacy_queue='Queue''UITextInput'
+    rg -n "${legacy_bridge}|${legacy_input}|${legacy_queue}" \
+        docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$legacy_doc_matches" ]; then
+    echo "Generated runtime docs must describe the clean native Go and C surfaces, not legacy bridge/input names:"
+    echo "$legacy_doc_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(

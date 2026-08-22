@@ -94,7 +94,6 @@ declaration pass (`src/ui/ui_tree.c`).
 | IconButton / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
-| TextInputControl | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
@@ -202,7 +201,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | DPI/scaling | ✅ viewport-derived scale, `ScaleUIPx` | ✅ `ScaleUIPx`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |
 | Clipping | ✅ 16-deep scissor stack + input clip stack | ✅ `Begin/EndScissorMode` | ✅ 16-deep `clip_push/pop` in `kry_sw` |
 | Z-order/popups | ✅ overlay paint pass, modal capture, input-capture stack | ◐ dropdown popups internal to `Dropdown` | ◐ dropdown menus handled by the engine |
-| Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav | ✅ key/mouse/char APIs, `QueueUITextInput*` | ◐ vtable: mouse, press, wheel, text-key queue |
+| Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav | ✅ native host key/mouse/text queues | ◐ vtable: mouse, press, wheel, text-key queue |
 | Accessibility | ◐ debug focus overlay + a11y node structs; no screen-reader bridge | ✗ | ✗ |
 | i18n | ✅ locale strings + CJK font switching; no RTL | ✗ | ✗ |
 | Multi-window | ✅ `OpenUIWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |

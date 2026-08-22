@@ -188,9 +188,9 @@ k2b  app.kry|app.kir
 Generated Go imports `github.com/waozixyz/kryon/go/kryon` as `kryon` and uses
 clean qualified widget names such as `kryon.Button`, `kryon.TextField`,
 `kryon.Text`, `kryon.Row`, `kryon.Column`, `kryon.BeginFrame`, and
-`kryon.EndFrame`. It must not use `import "C"`, `go/kryui`, injected runtime
-objects, dot-imported runtime names, or generated calls to legacy prefixed C
-APIs.
+`kryon.EndFrame`. It must not use `import "C"`, the legacy bridge package,
+injected runtime objects, dot-imported runtime names, or generated calls to
+legacy prefixed C APIs.
 
 Handwritten Go can use the same package directly. Generated code keeps the
 explicit props form (`kryon.Button(kryon.ButtonProps{...})`,
@@ -201,7 +201,7 @@ while app code may use shorter direct calls such as `kryon.Button("Save")` and
 The native Go runtime records each frame as pure Go `FrameOp` values available
 through `FrameOps()`. That operation stream is the host boundary for native Go
 windows/renderers: it carries resolved bounds, text, colors, focus, button
-state, and redacted secure text without importing cgo or `go/kryui`.
+state, and redacted secure text without importing cgo or the legacy bridge.
 `RenderFrame` and `RenderCurrentFrame` provide a dependency-free software
 renderer that turns those operations into an `image.RGBA`.
 `NewHost` owns a persistent native Go runtime, runs generated or handwritten

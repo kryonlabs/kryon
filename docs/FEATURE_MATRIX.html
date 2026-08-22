@@ -69,7 +69,6 @@ li{margin:.25rem 0}
 <tr><td class="">IconButton / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
 <tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">TextInputControl</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.TextField(kryon.TextFieldProps)</code> / <code>kryon.TextField(&quot;Name&quot;, &amp;value)</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
 <tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code>/<code>TextInRect</code></td><td class="ok">✅ <code>Text</code>/<code>TextInRect</code></td><td class="no">✗</td></tr>
 <tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
@@ -169,7 +168,7 @@ li{margin:.25rem 0}
 <tr><td class="">DPI/scaling</td><td class="ok">✅ viewport-derived scale, <code>ScaleUIPx</code></td><td class="ok">✅ <code>ScaleUIPx</code>, <code>GetWindowScaleDPI</code></td><td class="part">◐ per-mille UI scale (<code>KRB_RUN_UI_SCALE</code>)</td></tr>
 <tr><td class="">Clipping</td><td class="ok">✅ 16-deep scissor stack + input clip stack</td><td class="ok">✅ <code>Begin/EndScissorMode</code></td><td class="ok">✅ 16-deep <code>clip_push/pop</code> in <code>kry_sw</code></td></tr>
 <tr><td class="">Z-order/popups</td><td class="ok">✅ overlay paint pass, modal capture, input-capture stack</td><td class="part">◐ dropdown popups internal to <code>Dropdown</code></td><td class="part">◐ dropdown menus handled by the engine</td></tr>
-<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav</td><td class="ok">✅ key/mouse/char APIs, <code>QueueUITextInput*</code></td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
+<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav</td><td class="ok">✅ native host key/mouse/text queues</td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
 <tr><td class="">Accessibility</td><td class="part">◐ debug focus overlay + a11y node structs; no screen-reader bridge</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
