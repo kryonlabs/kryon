@@ -27,7 +27,7 @@ the columns diverge.
 
 | Target | Producer | Runtime | Status |
 |---|---|---|---|
-| C | `k2c` | `cc` + `libkryon.a` (raylib/null surface backend) | Most complete path; production use (inbe) |
+| C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use (inbe) |
 | Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |
@@ -36,7 +36,8 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 - **Tier A — surface backends**: implement the ~700-symbol raylib-compatible
   surface (`include/kryon_compat.generated.h`), selected at **link** time via
-  `KRYON_BACKEND=raylib|null|canvas`. The whole widget catalog runs on these.
+  `KRYON_BACKEND=raylib|null|canvas|libdraw`. The whole widget catalog runs on
+  these.
 - **Tier B — cartridge hosts**: implement the ~20-function `KryBackend` vtable
   (`include/kry_backend.h`), selected at **runtime**. Only the KRB widget
   subset runs on these.
@@ -223,6 +224,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | `raylib` android | GLES via NDK `NativeActivity` | Android (downstream Gradle) | ✗ downstream apps | `mk/android.mk` |
 | `null` | none (zero-return stubs) | all | ✗ (used by local headless tests) | Injected input still works |
 | `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node graphics + audio smoke gates) | No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; WebAudio sound/music, PCM streams, callbacks/processors |
+| `libdraw` | `kry_sw` RGBA8 presented through plan9port libdraw/devdraw | plan9port on Unix/X11 | ✅ `make libdraw-test` (devdraw smoke + `9c`/`9l` clean-surface check) | No libraylib; widgets/drawing/screenshots through software backend; TTF/TrueType-outline glyph atlases via `stb_truetype`; rounded controls, alpha/tint texture blits, rotation, render textures, plan9port input/resize; non-UI raylib areas use weak null stubs |
 
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)
 
@@ -246,6 +248,13 @@ declaration pass (`src/ui/ui_tree.c`).
   playback depends on browser user-gesture unlock rules, and stream/mixed
   processors apply to Canvas-managed stream buffers, not decoded browser
   `AudioBuffer` playback that has already been handed to WebAudio.
+- The `libdraw` Tier A backend passes the plan9port devdraw widget smoke and a
+  `9c`/`9l` clean-surface compile/link check. It is intended for C UI apps:
+  windowing, input, resize, software drawing, widgets, rounded controls, thick
+  lines, image loading, alpha/tint and source-rectangle texture blits, picture
+  rotation, render textures, TTF/TrueType-outline glyph-atlas text,
+  screenshots, files, and clipboard mirror are covered. Advanced raylib areas
+  outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.
 - `k2g` targets native Go: the `Runtime` interface covers the widget
   whitelist plus the generated-code widget families in `go/kryon` (controls,
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control),

@@ -504,10 +504,21 @@ DrawUIRadioButton(RadioButtonProps radio)
     int font = GetUIFontSize();
     int diameter = ScaleUIPx(20);
     int touch = ScaleUIPx(40);
+    Rectangle hit_bounds = radio.bounds;
     Vector2 center = {radio.bounds.x + touch / 2.0f,
                       radio.bounds.y + radio.bounds.height / 2.0f};
-    int hot = ui_hot(radio.bounds) && !radio.disabled;
-    int down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    int hot;
+    int down;
+
+    if(ui_material_style() && hit_bounds.height < touch &&
+       radio.bounds.height >= touch) {
+        hit_bounds.y -= ((float)touch - hit_bounds.height) * 0.5f;
+        hit_bounds.height = (float)touch;
+    }
+    if(ui_material_style() && hit_bounds.width < touch)
+        hit_bounds.width = (float)touch;
+    hot = ui_hot(hit_bounds) && !radio.disabled;
+    down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
         MarkUIClickable();
@@ -529,8 +540,9 @@ DrawUIRadioButton(RadioButtonProps radio)
         float press;
         float outer = (float)diameter / 2.0f;
         float stroke = (float)ScaleUIPx(2);
-        float dot_radius;
+        float fill_radius;
         Color ring;
+        Color fill;
         Color label = radio.disabled ? scheme.disabled_content : scheme.on_surface;
         const char *text = radio.label != NULL ? radio.label : "";
 
@@ -565,8 +577,12 @@ DrawUIRadioButton(RadioButtonProps radio)
         press = anim->press;
 
         ring = ColorLerp(scheme.on_surface_variant, scheme.primary, selected);
+        fill = c_text;
+        if(radio.checked)
+            ring = c_text;
         if(radio.disabled) {
             ring = scheme.disabled_content;
+            fill = scheme.disabled_content;
             selected = target;
             press = 0.0f;
         }
@@ -582,10 +598,10 @@ DrawUIRadioButton(RadioButtonProps radio)
             DrawCircleV(center, (float)touch / 2.0f, layer);
         }
         ui_material_ripple(state_bounds, ring, (int)key, down);
+        fill_radius = radio.checked ? outer - stroke : (outer - stroke * 1.5f) * selected;
+        if(fill_radius > 0.2f)
+            DrawCircleV(center, fill_radius, fill);
         DrawRing(center, outer - stroke, outer, 0.0f, 360.0f, 48, ring);
-        dot_radius = (float)ScaleUIPx(5) * selected;
-        if(dot_radius > 0.2f)
-            DrawCircleV(center, dot_radius, ring);
         DrawUIText(radio.label != NULL ? radio.label : "",
                    (int)radio.bounds.x + touch + ScaleUIPx(4),
                    ui_row_text_y(radio.bounds, font), font, label);
@@ -593,7 +609,8 @@ DrawUIRadioButton(RadioButtonProps radio)
         center.x = radio.bounds.x + diameter / 2.0f;
         DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
         if(radio.checked)
-            DrawCircleV(center, (float)ScaleUIPx(5), radio.disabled ? c_button : c_icon);
+            DrawCircleV(center, (float)diameter / 2.0f - (float)ScaleUIPx(3),
+                        radio.disabled ? c_button : c_text);
         DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
                    ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     }
@@ -609,6 +626,10 @@ DrawUIProgressBar(ProgressBarProps progress)
 {
     float t;
     Rectangle fill = progress.bounds;
+    const char *label = progress.label;
+    Color fill_color = c_button_hover;
+    int font = GetUISmallFontSize();
+    int center_x = (int)(progress.bounds.x + progress.bounds.width / 2);
     if(progress.max <= progress.min)
         progress.max = progress.min + 1;
     t = (float)(progress.value - progress.min) / (float)(progress.max - progress.min);
@@ -618,12 +639,27 @@ DrawUIProgressBar(ProgressBarProps progress)
         t = 1.0f;
     fill.width *= t;
     DrawRectangleRec(progress.bounds, ui_panel_color(10));
-    DrawRectangleRec(fill, c_icon);
+    DrawRectangleRec(fill, fill_color);
     DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
-    if(progress.label != NULL)
-        DrawCenteredUIText(progress.label, (int)(progress.bounds.x + progress.bounds.width / 2),
-                           (int)(progress.bounds.y + progress.bounds.height / 2),
-                           GetUISmallFontSize(), c_text);
+    if(label != NULL) {
+        int pad = ScaleUIPx(6);
+        int text_w = TextWidth(label, font);
+        int text_x = center_x - text_w / 2;
+        int text_y = GetUIControlTextY(label, (int)progress.bounds.y,
+                                       (int)progress.bounds.height, font);
+        Color text_color = c_text;
+        float fill_end = fill.x + fill.width;
+        float empty_w = progress.bounds.width - fill.width;
+
+        if(empty_w >= (float)(text_w + pad * 2)) {
+            text_x = (int)fill_end + pad;
+            text_color = c_text;
+        } else if(fill.width >= (float)(text_w + pad * 2)) {
+            text_x = (int)fill_end - text_w - pad;
+            text_color = ui_material_on_color(fill_color);
+        }
+        DrawUIText(label, text_x, text_y, font, text_color);
+    }
 }
 
 int

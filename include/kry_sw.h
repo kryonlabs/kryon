@@ -58,6 +58,8 @@ typedef struct KrySw {
     KryBackend backend;
 } KrySw;
 
+extern const unsigned char KrySwFont8x8[128][8];
+
 /* pixels == NULL allocates an internal w*h*4 buffer (free with KrySwFree). */
 int KrySwInit(KrySw *sw, unsigned char *pixels, int w, int h);
 void KrySwFree(KrySw *sw);

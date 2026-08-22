@@ -4,7 +4,6 @@ app "Kryon Theme Example" {
     size 900 680
     fps 60
     font examples
-    theme THEME_SKY light
 }
 
 state {

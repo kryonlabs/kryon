@@ -37,7 +37,10 @@ if [ -z "$assets" ]; then
     exit 0
 fi
 
-srcs=$(find "$root/src" -name '*.c' ! -path '*/ksync/*' | sort | tr '\n' ' ')
+srcs=$(find "$root/src" -name '*.c' \
+    ! -path '*/ksync/*' \
+    ! -name 'libdraw_*.c' \
+    | sort | tr '\n' ' ')
 
 emcc -I"$root/include" -I"$root/vendor/box2d/include" -O1 \
     -sASYNCIFY -sENVIRONMENT=node,web -sINITIAL_MEMORY=64MB \

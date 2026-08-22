@@ -287,7 +287,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "    %s();\n",
                     found ? hook : appmod->app.init);
         }
-        fprintf(out, "    while(!WindowShouldClose())\n");
+        fprintf(out, "    while(!WindowShouldClose()) {\n");
         if(appmod->app.frame[0] != '\0') {
             char hook[KIR_NAME_MAX * 3];
             int found = 0;
@@ -323,6 +323,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
         } else {
             fprintf(out, "        ;\n");
         }
+        fprintf(out, "    }\n");
         if(appmod->app.shutdown[0] != '\0') {
             char hook[KIR_NAME_MAX * 3];
             int found = 0;

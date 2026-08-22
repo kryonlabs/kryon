@@ -36,15 +36,28 @@ else ifeq ($(KRYON_BACKEND),canvas)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =
+else ifeq ($(KRYON_BACKEND),libdraw)
+  PLAN9PORT_DIR ?= /mnt/storage/Projects/plan9port
+  KRYON_BACKEND_SRCS =
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_CFLAGS = -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include -idirafter $(KRYON_DIR)/vendor/raylib/src/external
+  KRYON_BACKEND_LDLIBS = -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
 endif
-KRYON_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort)) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
+KRYON_ALL_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort))
+ifneq ($(KRYON_BACKEND),canvas)
+KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/canvas_%.c,$(KRYON_ALL_SRCS))
+endif
+ifneq ($(KRYON_BACKEND),libdraw)
+KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/libdraw_%.c,$(KRYON_ALL_SRCS))
+endif
+KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_INCLUDE = -I$(KRYON_DIR)/include
 KRYON_USE_SYSTEM_CURL ?= 1
 ifeq ($(KRYON_USE_SYSTEM_CURL),1)

@@ -48,15 +48,35 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   `make canvas-test` builds a full app with this backend under emcc and
   verifies the draw-call sequence in node (skips when emcc is absent); the
   rendering has additionally been pixel-verified in a real browser page.
+- `libdraw` - plan9port libdraw/devdraw backend, no raylib
+  (`src/backend/libdraw_*.c`). It keeps the same public surface as the other
+  backends: C apps still include `kryon.h` and call `InitWindow`,
+  `BeginDrawing`, `DrawRectangle`, `Button`, `TextField`, and the rest of
+  Kryon's normal API. Internally, the backend renders through `kry_sw` into an
+  RGBA buffer and presents it with libdraw, so the widget catalog shares the
+  same software drawing behavior as the KRB hosts. TTF/TrueType-outline font
+  data is rasterized into Kryon `Texture2D` atlases with `stb_truetype`
+  (header-only; no `libraylib` link). Plan9port owns the window, event,
+  keyboard, mouse, resize, and devdraw connection. Non-UI raylib areas such as
+  3D, shaders, gestures, and audio fall back to the generated weak null stubs
+  until a real libdraw implementation is added for them. `make libdraw-test`
+  builds and runs
+  a widget smoke app under plan9port devdraw (Xvfb when available),
+  pixel-verifies rounded widgets, thick lines, source-rectangle texture blits,
+  alpha blending, rotated texture blits, render textures, TTF glyph atlas
+  coverage, and screenshot export, and compiles/links a clean-surface C app
+  through plan9port `9c`/`9l`.
 
 Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 `KRYON_BACKEND_LIBS`/`KRYON_BACKEND_LDLIBS` carry the backend's own link
 inputs (only raylib needs `libraylib.a` and its SDL/GL system libs). The
 downstream fragments (`mk/common.mk`, `mk/native.mk`, `mk/web.mk`) honor the
 same variable, so `make KRYON_BACKEND=null` produces binaries with no raylib
-in the link graph. The cross-build dist targets (`dist-linux`, `dist-windows`,
-Android, and `make dist-static`, whose pkg-config/cmake manifests hardcode
-raylib) are raylib-only today.
+in the link graph, and `make KRYON_BACKEND=libdraw
+PLAN9PORT_DIR=/path/to/plan9port` links against plan9port instead. The
+cross-build dist targets (`dist-linux`, `dist-windows`, Android, and `make
+dist-static`, whose pkg-config/cmake manifests hardcode raylib) are raylib-only
+today.
 
 ## The shared input front-end
 
@@ -172,5 +192,7 @@ ui_text_backend.c` is the only place that reads `Font` fields directly
 - `make kryon-compat-check` - generated surface/rename/wrappers are in sync
   with `vendor/raylib/src/raylib.h` and every raylib symbol has a rename plus
   a public wrapper or `KryonBackendRaw_*` hook.
+- `make libdraw-test` - plan9port/devdraw smoke for the libdraw surface backend
+  plus a `9c`/`9l` clean-public-surface compile/link check.
 - `sh tools/backend-required-symbols.sh` - the live required-subset list a
   backend must cover.

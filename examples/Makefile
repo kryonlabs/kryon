@@ -41,6 +41,11 @@ KRYON_BACKEND ?= raylib
 ifeq ($(KRYON_BACKEND),raylib)
   EXAMPLE_BACKEND_LIBS = $(RAYLIB_A)
   EXAMPLE_BACKEND_LDLIBS = $(RAY_LDLIBS)
+else ifeq ($(KRYON_BACKEND),libdraw)
+  PLAN9PORT_DIR ?= /mnt/storage/Projects/plan9port
+  EXAMPLE_BACKEND_LIBS =
+  EXAMPLE_BACKEND_LDLIBS = -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9
+  CFLAGS += -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include
 else
   EXAMPLE_BACKEND_LIBS =
   EXAMPLE_BACKEND_LDLIBS =
@@ -52,8 +57,8 @@ endif
 KRYON_DIR := ..
 FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
-K2C ?= ../build/bin/k2c
-K2B ?= ../build/bin/k2b
+K2C ?= $(KRYON_BUILD_DIR)/bin/k2c
+K2B ?= $(KRYON_BUILD_DIR)/bin/k2b
 CODEGEN_DIR := $(BUILD_DIR)/codegen
 BIN_DIR := $(BUILD_DIR)/bin
 RAYLIB_BUILD_DIR := $(BUILD_DIR)/raylib-native
@@ -82,11 +87,14 @@ else ifeq ($(KRYON_BACKEND),canvas)
   # TU twice.
   KRYON_EXAMPLES_WEB_BACKEND_C :=
   KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
+else ifeq ($(KRYON_BACKEND),libdraw)
+  KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)
+  KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_EXAMPLES_WEB_BACKEND_C := $(KRYON_NULL_BACKEND_C)
   KRYON_EXAMPLES_WEB_BACKEND_LIBS :=
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
 endif
 KRYON_WEB_SRCS := $(filter-out ../src/file_dialog/file_dialog.c,$(KRYON_LIBRARY_SRCS)) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
 KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPLES_WEB_BACKEND_C)
@@ -118,7 +126,7 @@ $(KRYON_LIB):
 	@$(MAKE) -C .. KRYON_BACKEND=$(KRYON_BACKEND)
 
 $(K2C):
-	@$(MAKE) -C .. build/bin/k2c
+	@$(MAKE) -C .. k2c
 
 font-assets:
 	@printf '%s\n' 'font assets are checked in'
@@ -133,6 +141,12 @@ $(CODEGEN_DIR)/%.c $(CODEGEN_DIR)/%.h: %.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating $*..."
 	@$(K2C) --root . -o $(CODEGEN_DIR) $<
 
+$(CODEGEN_DIR)/%/.generated: %.kry $(K2C) | $(CODEGEN_DIR)
+	@echo "Generating native $*..."
+	@mkdir -p $(CODEGEN_DIR)/$*
+	@$(K2C) --root . -o $(CODEGEN_DIR)/$* $<
+	@touch $@
+
 $(CODEGEN_DIR)/02_buttons.krb.c $(CODEGEN_DIR)/02_buttons.krb.h: 02_buttons.kry $(K2C) | $(CODEGEN_DIR)
 	@echo "Generating 02_buttons cartridge..."
 	@$(K2B) --root . -o $(CODEGEN_DIR) $<
@@ -142,11 +156,11 @@ $(BIN_DIR)/02_buttons_krb: $(CODEGEN_DIR)/02_buttons.krb.c $(KRYON_LIB) $(EXAMPL
 	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/02_buttons.krb.c $(LDFLAGS)
 	@echo "Built: $@"
 
-$(BIN_DIR)/%: $(CODEGEN_DIR)/%.c $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
+$(BIN_DIR)/%: $(CODEGEN_DIR)/%/.generated $(KRYON_LIB) $(EXAMPLE_BACKEND_LIBS) $(FONT_OUTPUTS) | $(BIN_DIR)
 	@echo "Building $@..."
-	@test -f $(CODEGEN_DIR)/kryon_project.c || \
-		$(K2C) --root . -o $(CODEGEN_DIR) $*.kry
-	@$(CC) $(CFLAGS) -o $@ $(CODEGEN_DIR)/$*.c $(CODEGEN_DIR)/kryon_project.c $(LDFLAGS)
+	@$(CC) $(CFLAGS) -I$(CODEGEN_DIR)/$* -o $@ \
+		$(CODEGEN_DIR)/$*/$*.c $(CODEGEN_DIR)/$*/kryon_project.c \
+		$(LDFLAGS)
 	@echo "Built: $@"
 
 $(EXAMPLES): %: $(BIN_DIR)/%

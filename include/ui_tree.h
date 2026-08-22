@@ -199,7 +199,8 @@ void TextInRect(const char *text, Rectangle rect, int font_size,
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
-void Rect(int x, int y, int w, int h, Color fill, Color border);
+void UIRect(int x, int y, int w, int h, Color fill, Color border);
+#define Rect UIRect
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
 void IconTexture(int id, int x, int y, int size, Texture2D icon,
@@ -213,6 +214,9 @@ int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
                   int *hover);
 int PaddedIconBtn(int id, int x, int y, int size, int padding,
                         Texture2D icon, int *hover);
+int TextButton(int id, int center_x, int y, const char *label, int *hover);
+int StyledButton(int x, int y, int w, int h, const char *label,
+                 ButtonStyle style, int disabled, int *hover);
 int InfoButton(int id, int center_x, int center_y, int diameter);
 void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                     const char *url);
@@ -222,6 +226,8 @@ int Dropdown(int id, int x, int y, int w, int h,
 int DropdownEx(int id, int x, int y, int w, int h,
                      const UIDropdownOption *options, int option_count,
                      int *selected_index);
+int LocaleDropdown(int id, int x, int y, int w, int h,
+                   int *selected_index);
 int Slider(int id, int x, int y, int w, const char *label,
                  int min, int max, int *value, const char *suffix,
                  const char *value_text_override);
@@ -258,6 +264,7 @@ int MessageDialog(MessageDialogProps dialog);
 int ConfirmDialog(ConfirmDialogProps dialog);
 int PromptDialog(PromptDialogProps dialog);
 int PickerDialog(PickerDialogProps picker);
+int ReadonlyTextBox(ReadonlyTextBoxProps box);
 void Focus(Rectangle bounds);
 void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
 UIGuideResult GuideOverlay(GuideOverlayProps guide);

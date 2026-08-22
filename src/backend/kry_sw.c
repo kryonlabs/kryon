@@ -10,7 +10,7 @@
  * 8x8 bitmap font, ASCII 32..126. From font8x8 by Daniel Hepper
  * <https://github.com/dhepper/font8x8>, public domain.
  */
-static const unsigned char k_font8x8[128][8] = {
+const unsigned char KrySwFont8x8[128][8] = {
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
     {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
@@ -325,15 +325,29 @@ fill_rect(KrySw *sw, int x, int y, int w, int h, unsigned color)
 
     if(!clip_active(sw, &x, &y, &w, &h))
         return;
+    if(a == 0)
+        return;
     sw_mark_dirty(sw, x, y, w, h);
     for(row = y; row < y + h; row++) {
         unsigned char *p = sw->pixels + (size_t)row * sw->stride + x * 4;
         int col;
-        for(col = 0; col < w; col++) {
-            *p++ = r;
-            *p++ = g;
-            *p++ = b;
-            *p++ = a;
+        if(a == 255) {
+            for(col = 0; col < w; col++) {
+                *p++ = r;
+                *p++ = g;
+                *p++ = b;
+                *p++ = a;
+            }
+        } else {
+            for(col = 0; col < w; col++) {
+                unsigned inv = 255u - a;
+
+                p[0] = (unsigned char)(((unsigned)r * a + p[0] * inv) / 255u);
+                p[1] = (unsigned char)(((unsigned)g * a + p[1] * inv) / 255u);
+                p[2] = (unsigned char)(((unsigned)b * a + p[2] * inv) / 255u);
+                p[3] = (unsigned char)(a + p[3] * inv / 255u);
+                p += 4;
+            }
         }
     }
 }
@@ -578,7 +592,7 @@ b_text(const char *s, int x, int y, int size, unsigned color)
         advance = gw;
         for(c = s; *c != '\0'; c++) {
             if((unsigned char)*c <= FONT_LAST) {
-                const unsigned char *glyph = k_font8x8[(unsigned char)*c];
+                const unsigned char *glyph = KrySwFont8x8[(unsigned char)*c];
                 int gx;
                 int gy;
                 for(gy = 0; gy < gh; gy++) {

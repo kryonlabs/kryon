@@ -6,7 +6,6 @@ app "Kryon Tilemap" {
     size 640 420
     fps 60
     font examples
-    theme THEME_SKY 0
     scene main
 }
 

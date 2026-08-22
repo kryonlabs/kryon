@@ -1481,7 +1481,7 @@ TextLines(const char **lines, int count, int x, int *y, int font,
 }
 
 void
-Rect(int x, int y, int w, int h, Color fill, Color border)
+UIRect(int x, int y, int w, int h, Color fill, Color border)
 {
     NodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
                                 (Rectangle){x, y, w, h}, NULL);
@@ -1586,6 +1586,27 @@ PaddedIconBtn(int id, int x, int y, int size, int padding,
 }
 
 int
+TextButton(int id, int center_x, int y, const char *label, int *hover)
+{
+    const char *text = label != NULL ? label : "";
+    int font = GetUISmallFontSize();
+    int w = TextWidth(text, font) + ScaleUIPx(16);
+    int h = TextLineHeight(font) + ScaleUIPx(8);
+
+    ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
+                (Rectangle){center_x - w / 2, y, w, h}, hover);
+    return RenderTextButton(center_x, y, text, hover);
+}
+
+int
+StyledButton(int x, int y, int w, int h, const char *label,
+             ButtonStyle style, int disabled, int *hover)
+{
+    ui_tree_add(0, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, w, h}, hover);
+    return RenderStyledButton(x, y, w, h, label, style, disabled, hover);
+}
+
+int
 InfoButton(int id, int center_x, int center_y, int diameter)
 {
     ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
@@ -1630,6 +1651,14 @@ DropdownEx(int id, int x, int y, int w, int h,
                 selected_index);
     return DrawUIDropdownEx(id, x, y, w, h, options, option_count,
                             selected_index);
+}
+
+int
+LocaleDropdown(int id, int x, int y, int w, int h, int *selected_index)
+{
+    ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
+                selected_index);
+    return DrawUILocaleDropdown(id, x, y, w, h, selected_index);
 }
 
 int
@@ -1870,6 +1899,13 @@ PickerDialog(PickerDialogProps picker)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &picker);
     return DrawUIPickerDialog(picker);
+}
+
+int
+ReadonlyTextBox(ReadonlyTextBoxProps box)
+{
+    ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, &box);
+    return DrawUIReadonlyTextBox(box);
 }
 
 void

@@ -18,6 +18,9 @@
 
 /* glReadBuffer is GL 1.3+; declared manually so this stays backend-neutral
  * (the raylib rename header renames raylib symbols, not GL entry points). */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
 extern void glReadPixels(int x, int y, int width, int height,
                          unsigned int format, unsigned int type,
                          void *data);
@@ -35,6 +38,13 @@ extern void KryonRaylibBackend_EndDrawing(void);
 __attribute__((weak))
 #endif
 extern void KryonRaylibBackend_rlDrawRenderBatch(void);
+
+/* Non-OpenGL backends can provide this hook so LoadImageFromScreen remains
+ * the single public screenshot surface. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+extern int kry_backend_capture_screen(Image *image);
 
 /* Event-driven programs opt into Kryon's frame pacing through
  * EnableEventWaiting().  Keep it after the backend frame completes so input
@@ -85,7 +95,7 @@ void EndDrawing(void)
                 g_shot_w = w;
                 g_shot_h = h;
             }
-            if(g_shot_buf != NULL) {
+            if(g_shot_buf != NULL && glReadPixels != NULL) {
                 glReadPixels(0, 0, w, h, KR_GL_RGBA, KR_GL_UNSIGNED_BYTE,
                              g_shot_buf);
             }
@@ -254,6 +264,10 @@ Image LoadImageFromScreen(void)
     unsigned char *flip;
     int y;
     int row;
+
+    if(kry_backend_capture_screen != NULL &&
+       kry_backend_capture_screen(&image) == 0)
+        return image;
 
     if(g_shot_buf == NULL || g_shot_w <= 0 || g_shot_h <= 0)
         return image;

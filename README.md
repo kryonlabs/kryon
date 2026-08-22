@@ -44,6 +44,15 @@ Run the focused tests with:
 make test
 ```
 
+Backend selection is link-time via `KRYON_BACKEND`. The default is `raylib`;
+`canvas`, `null`, and `libdraw` are also available for their target
+environments. The plan9port path is:
+
+```bash
+make KRYON_BACKEND=libdraw PLAN9PORT_DIR=/mnt/storage/Projects/plan9port
+make libdraw-test
+```
+
 Build a distributable static-library archive with:
 
 ```bash

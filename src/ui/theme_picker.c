@@ -12,6 +12,7 @@ static const ThemeId theme_picker_order[THEME_COUNT] = {
     THEME_LAVENDER,
     THEME_MINT,
     THEME_MONO,
+    THEME_PLAN9,
     THEME_OCEAN,
     THEME_SAGE,
     THEME_INK,
@@ -58,6 +59,10 @@ ui_theme_settings_text(const char *text, const char *key, const char *fallback)
 static int
 ui_theme_settings_show_mode(ThemeSettingsProps settings)
 {
+    if(!settings.allow_system_mode &&
+       settings.theme_mode != NULL &&
+       *settings.theme_mode == THEME_MODE_SYSTEM)
+        *settings.theme_mode = THEME_MODE_LIGHT;
     if(settings.theme_source != NULL &&
        *settings.theme_source == THEME_SOURCE_SYSTEM &&
        !SystemThemeSupportsMode())
@@ -116,6 +121,7 @@ int
 DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
 {
     const char *mode_options[3];
+    int mode_values[3];
     const char *theme_options[THEME_COUNT + 1];
     int y = settings.y;
     int label_gap = ScaleUIPx(20);
@@ -125,6 +131,19 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     int palette_count;
     int palette_index;
     int show_mode;
+    int mode_count;
+    int mode_index = 0;
+
+#if defined(KRYON_BACKEND_LIBDRAW)
+    settings.allow_system_source = 0;
+    settings.allow_system_mode = 0;
+    if(settings.theme_source != NULL && *settings.theme_source == THEME_SOURCE_SYSTEM)
+        *settings.theme_source = THEME_SOURCE_APP;
+    if(settings.theme_mode != NULL && *settings.theme_mode == THEME_MODE_SYSTEM)
+        *settings.theme_mode = THEME_MODE_LIGHT;
+    if(settings.theme_style != NULL && *settings.theme_style == THEME_STYLE_SYSTEM)
+        *settings.theme_style = THEME_STYLE_RETRO;
+#endif
 
     if(state != NULL)
         memset(state, 0, sizeof(*state));
@@ -137,21 +156,36 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
        *settings.theme_mode != THEME_MODE_SYSTEM)
         *settings.theme_mode = THEME_MODE_SYSTEM;
 
-    mode_options[THEME_MODE_SYSTEM] =
-        ui_theme_settings_text(settings.mode_system_label, "theme_follow_device", "System");
-    mode_options[THEME_MODE_LIGHT] =
+    mode_count = 0;
+    if(settings.allow_system_mode) {
+        mode_values[mode_count] = THEME_MODE_SYSTEM;
+        mode_options[mode_count++] =
+            ui_theme_settings_text(settings.mode_system_label,
+                                   "theme_follow_device", "System");
+    }
+    mode_values[mode_count] = THEME_MODE_LIGHT;
+    mode_options[mode_count++] =
         ui_theme_settings_text(settings.mode_light_label, "theme_light", "Light");
-    mode_options[THEME_MODE_DARK] =
+    mode_values[mode_count] = THEME_MODE_DARK;
+    mode_options[mode_count++] =
         ui_theme_settings_text(settings.mode_dark_label, "theme_dark", "Dark");
+
     *settings.theme_mode = ui_clampi(*settings.theme_mode,
-                                     THEME_MODE_SYSTEM,
+                                     settings.allow_system_mode
+                                         ? THEME_MODE_SYSTEM
+                                         : THEME_MODE_LIGHT,
                                      THEME_MODE_DARK);
+    for(int i = 0; i < mode_count; i++) {
+        if(*settings.theme_mode == mode_values[i])
+            mode_index = i;
+    }
     if(show_mode) {
         DrawUIText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
                    settings.x, y, font, c_text);
         if(DrawUIDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
-                          settings.w, row_h, mode_options, 3,
-                          settings.theme_mode)) {
+                          settings.w, row_h, mode_options, mode_count,
+                          &mode_index)) {
+            *settings.theme_mode = mode_values[ui_clampi(mode_index, 0, mode_count - 1)];
             if(state != NULL)
                 state->draw_mode_menu = 2;
         } else if(state != NULL) {
@@ -234,6 +268,17 @@ DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *stat
 {
     UIThemeSettingsResult result = {0};
 
+#if defined(KRYON_BACKEND_LIBDRAW)
+    settings.allow_system_source = 0;
+    settings.allow_system_mode = 0;
+    if(settings.theme_source != NULL && *settings.theme_source == THEME_SOURCE_SYSTEM)
+        *settings.theme_source = THEME_SOURCE_APP;
+    if(settings.theme_mode != NULL && *settings.theme_mode == THEME_MODE_SYSTEM)
+        *settings.theme_mode = THEME_MODE_LIGHT;
+    if(settings.theme_style != NULL && *settings.theme_style == THEME_STYLE_SYSTEM)
+        *settings.theme_style = THEME_STYLE_RETRO;
+#endif
+
     if(state == NULL)
         return result;
     if(state->draw_mode_menu == 2)
@@ -272,8 +317,10 @@ DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *stat
                                                      : THEME_SOURCE_APP);
     if(settings.theme_mode != NULL)
         *settings.theme_mode = ui_clampi(*settings.theme_mode,
-                                               THEME_MODE_SYSTEM,
-                                               THEME_MODE_DARK);
+                                         settings.allow_system_mode
+                                             ? THEME_MODE_SYSTEM
+                                             : THEME_MODE_LIGHT,
+                                         THEME_MODE_DARK);
     if(settings.theme_source != NULL && settings.theme_mode != NULL &&
        *settings.theme_source == THEME_SOURCE_SYSTEM &&
        !ui_theme_settings_show_mode(settings) &&

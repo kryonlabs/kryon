@@ -6,7 +6,6 @@ app "Kryon Signals" {
     size 640 420
     fps 60
     font examples
-    theme THEME_CHERRY 0
     scene main
 }
 

@@ -4,7 +4,6 @@ app "Kryon Containers" {
     size 800 600
     fps 60
     font examples
-    theme THEME_SKY light
 }
 
 state {

@@ -73,6 +73,7 @@ KRYON_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/kryon_raylib_wrappers.c
 KRYON_NULL_BACKEND_C = $(BUILD_DIR)/generated/kryon_null_backend.c
 KRYON_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(KRYON_COMPAT_HEADER)
 KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
+KRYON_BACKEND_STAMP = $(BUILD_DIR)/.backend-$(KRYON_BACKEND)
 
 # Graphics/input backend. The kryon surface (kryon_compat.generated.h) is
 # backend-neutral; the concrete implementation is selected at link time here.
@@ -81,16 +82,21 @@ KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
 #   null    -> generated zero-return stubs  (no-ops; for headless tests)
 KRYON_BACKEND ?= raylib
 KRYON_CANVAS_SRCS := $(wildcard src/backend/canvas_*.c)
+KRYON_LIBDRAW_SRCS := $(wildcard src/backend/libdraw_*.c)
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
 else ifeq ($(KRYON_BACKEND),canvas)
   # the canvas sources live in src/ and arrive via the SRCS find below;
   # appending them here would compile every canvas TU twice.
   KRYON_BACKEND_SRCS =
+else ifeq ($(KRYON_BACKEND),libdraw)
+  # the libdraw sources live in src/ and arrive via the SRCS find below;
+  # appending them here would compile every libdraw TU twice.
+  KRYON_BACKEND_SRCS =
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
 endif
 
 # Link inputs for the selected backend: only raylib needs libraylib.a and the
@@ -99,6 +105,11 @@ endif
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_LIBS = $(RAYLIB_A)
   KRYON_BACKEND_LDLIBS ?= $(RAY_LDLIBS)
+else ifeq ($(KRYON_BACKEND),libdraw)
+  PLAN9PORT_DIR ?= /mnt/storage/Projects/plan9port
+  CPPFLAGS += -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include -idirafter $(RAYLIB_DIR)/external
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_LDLIBS ?= -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm
 else
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_LDLIBS ?=
@@ -159,6 +170,9 @@ SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 ifneq ($(KRYON_BACKEND),canvas)
 SRCS := $(filter-out $(KRYON_CANVAS_SRCS),$(SRCS))
 endif
+ifneq ($(KRYON_BACKEND),libdraw)
+SRCS := $(filter-out $(KRYON_LIBDRAW_SRCS),$(SRCS))
+endif
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h)
@@ -189,6 +203,7 @@ DESKTOP_TEST = $(BUILD_DIR)/tests/desktop_test
 LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
+LIBDRAW_SMOKE_TEST = $(BUILD_DIR)/tests/libdraw_smoke_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 UI_PRIMARY_SELECTION_TEST = $(BUILD_DIR)/tests/ui_primary_selection_test
 DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
@@ -222,7 +237,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test libdraw-test krb-web krb-sdl
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -261,6 +276,10 @@ canvas-test:
 
 canvas-audio-test:
 	sh tests/canvas_audio_test.sh
+
+libdraw-test:
+	sh tests/libdraw_backend_test.sh
+	sh tests/libdraw_9c_test.sh
 
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
 # blitted to ImageData (pixel-identical to the native headless renderer).
@@ -377,9 +396,13 @@ kryon-boundary-check:
 public-api-names-check:
 	sh tests/public_api_names_test.sh .
 
-$(LIB): $(OBJS) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
+$(LIB): $(OBJS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_LIBOQS_A) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
+
+$(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
+	rm -f $(BUILD_DIR)/.backend-*
+	touch $@
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
 K2C_HDRS := cmd/k2c/k2c_lower.h cmd/kir/kir.h cmd/kir/kir_parse.h
@@ -541,6 +564,12 @@ $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(KRYON_BACKEND_LIBS) |
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/raylib_compat_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) \
+		-o $@
+
+$(LIBDRAW_SMOKE_TEST): tests/libdraw_smoke_main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/libdraw_smoke_main.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
 $(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)

@@ -11,10 +11,17 @@
 static ThemeScope scopes[THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
-static int current_theme_id = THEME_MONO;
+#if defined(KRYON_BACKEND_LIBDRAW)
+static int current_theme_id = THEME_PLAN9;
 static ThemeSource theme_source = THEME_SOURCE_APP;
 static ThemeMode theme_mode = THEME_MODE_LIGHT;
 static ThemeStyle theme_style = THEME_STYLE_RETRO;
+#else
+static int current_theme_id = THEME_MONO;
+static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
+static ThemeMode theme_mode = THEME_MODE_SYSTEM;
+static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
+#endif
 
 static ThemeAggregateVariable aggregate_vars[THEME_MAX_VARS];
 static int aggregate_count = 0;
@@ -655,6 +662,11 @@ void ReloadThemes(void)
 void
 SetThemeSource(ThemeSource source)
 {
+#if defined(KRYON_BACKEND_LIBDRAW)
+    (void)source;
+    theme_source = THEME_SOURCE_APP;
+    return;
+#endif
     if(source != THEME_SOURCE_SYSTEM)
         source = THEME_SOURCE_APP;
     theme_source = source;
@@ -669,8 +681,16 @@ GetThemeSource(void)
 void
 SetThemeMode(ThemeMode mode)
 {
+#if defined(KRYON_BACKEND_LIBDRAW)
+    if(mode == THEME_MODE_SYSTEM)
+        mode = THEME_MODE_LIGHT;
+#endif
     if(mode < THEME_MODE_SYSTEM || mode > THEME_MODE_DARK)
+#if defined(KRYON_BACKEND_LIBDRAW)
+        mode = THEME_MODE_LIGHT;
+#else
         mode = THEME_MODE_SYSTEM;
+#endif
     theme_mode = mode;
     if(mode == THEME_MODE_LIGHT)
         dark_mode = false;
@@ -688,7 +708,11 @@ void
 SetThemeStyle(ThemeStyle style)
 {
     if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_MATERIAL)
+#if defined(KRYON_BACKEND_LIBDRAW)
+        style = THEME_STYLE_RETRO;
+#else
         style = THEME_STYLE_SYSTEM;
+#endif
     theme_style = style;
     ApplyCurrentUITheme();
 }
@@ -710,7 +734,9 @@ GetEffectiveThemeStyle(void)
 ThemeStyle
 GetDefaultPlatformThemeStyle(void)
 {
-#if defined(ANDROID_BUILD) && ANDROID_BUILD
+#if defined(KRYON_BACKEND_LIBDRAW)
+    return THEME_STYLE_RETRO;
+#elif defined(ANDROID_BUILD) && ANDROID_BUILD
     return THEME_STYLE_MATERIAL;
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     return THEME_STYLE_MATERIAL;
@@ -722,23 +748,35 @@ GetDefaultPlatformThemeStyle(void)
 ThemeSource
 GetDefaultPlatformThemeSource(void)
 {
+#if defined(KRYON_BACKEND_LIBDRAW)
+    return THEME_SOURCE_APP;
+#else
     /* System theme is the default everywhere. Platforms without a readable
        system palette (e.g. Android before the app feeds device dark mode)
        gracefully fall back to the app palette in GetCurrentThemeColor. */
     return THEME_SOURCE_SYSTEM;
+#endif
 }
 
 ThemeMode
 GetDefaultPlatformThemeMode(void)
 {
+#if defined(KRYON_BACKEND_LIBDRAW)
+    return THEME_MODE_LIGHT;
+#else
     if(GetDefaultPlatformThemeSource() == THEME_SOURCE_SYSTEM)
         return THEME_MODE_SYSTEM;
     return THEME_MODE_LIGHT;
+#endif
 }
 
 int
 GetDefaultThemeForThemeStyle(ThemeStyle style)
 {
+#if defined(KRYON_BACKEND_LIBDRAW)
+    (void)style;
+    return THEME_PLAN9;
+#else
     if(style == THEME_STYLE_SYSTEM)
         style = GetDefaultPlatformThemeStyle();
 
@@ -751,6 +789,7 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
     default:
         return THEME_MONO;
     }
+#endif
 }
 
 const char *

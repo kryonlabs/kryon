@@ -83,11 +83,18 @@ EM_JS(void, js_draw_ring, (double cx, double cy, double inner, double outer,
     if (!ctx) return;
     var s0 = start * Math.PI / 180.0;
     var s1 = end * Math.PI / 180.0;
+    var full = Math.abs(end - start) >= 359.999;
     ctx.fillStyle = K.col(r, gg, bb, aa);
     ctx.beginPath();
-    ctx.arc(cx, cy, outer, s0, s1, false);
-    ctx.arc(cx, cy, inner, s1, s0, true);
-    ctx.closePath();
+    if (full) {
+        ctx.arc(cx, cy, outer, 0, Math.PI * 2, false);
+        ctx.moveTo(cx + inner, cy);
+        ctx.arc(cx, cy, inner, Math.PI * 2, 0, true);
+    } else {
+        ctx.arc(cx, cy, outer, s0, s1, false);
+        ctx.arc(cx, cy, inner, s1, s0, true);
+        ctx.closePath();
+    }
     ctx.fill('evenodd');
 });
 

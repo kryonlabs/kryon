@@ -26,7 +26,7 @@ li{margin:.25rem 0}
    └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
 <table>
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
-<tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null surface backend)</td><td class="">Most complete path; production use (inbe)</td></tr>
+<tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use (inbe)</td></tr>
 <tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
 <tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
@@ -35,7 +35,7 @@ li{margin:.25rem 0}
 <ul>
 <li><b>Tier A — surface backends</b>: implement the ~700-symbol raylib-compatible</li>
 </ul>
-<p>surface (<code>include/kryon_compat.generated.h</code>), selected at <b>link</b> time via <code>KRYON_BACKEND=raylib|null|canvas</code>. The whole widget catalog runs on these.</p>
+<p>surface (<code>include/kryon_compat.generated.h</code>), selected at <b>link</b> time via <code>KRYON_BACKEND=raylib|null|canvas|libdraw</code>. The whole widget catalog runs on these.</p>
 <ul>
 <li><b>Tier B — cartridge hosts</b>: implement the ~20-function <code>KryBackend</code> vtable</li>
 </ul>
@@ -188,6 +188,7 @@ li{margin:.25rem 0}
 <tr><td class=""><code>raylib</code> android</td><td class="">GLES via NDK <code>NativeActivity</code></td><td class="">Android (downstream Gradle)</td><td class="no">✗ downstream apps</td><td class=""><code>mk/android.mk</code></td></tr>
 <tr><td class=""><code>null</code></td><td class="">none (zero-return stubs)</td><td class="">all</td><td class="no">✗ (used by local headless tests)</td><td class="">Injected input still works</td></tr>
 <tr><td class=""><code>canvas</code></td><td class="">HTML5 Canvas2D via <code>EM_JS</code> (ASYNCIFY loop)</td><td class="">Emscripten</td><td class="ok">✅ <code>make canvas-test</code> (node graphics + audio smoke gates)</td><td class="">No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; WebAudio sound/music, PCM streams, callbacks/processors</td></tr>
+<tr><td class=""><code>libdraw</code></td><td class=""><code>kry_sw</code> RGBA8 presented through plan9port libdraw/devdraw</td><td class="">plan9port on Unix/X11</td><td class="ok">✅ <code>make libdraw-test</code> (devdraw smoke + <code>9c</code>/<code>9l</code> clean-surface check)</td><td class="">No libraylib; widgets/drawing/screenshots through software backend; TTF/TrueType-outline glyph atlases via <code>stb_truetype</code>; rounded controls, alpha/tint texture blits, rotation, render textures, plan9port input/resize; non-UI raylib areas use weak null stubs</td></tr>
 </table>
 <h3>Tier B — cartridge hosts (<code>KryBackend</code> vtable, runtime selection)</h3>
 <table>
@@ -205,6 +206,10 @@ li{margin:.25rem 0}
 <li>The <code>canvas</code> Tier A backend passes its node call-sequence gate and has</li>
 </ul>
 <p>been pixel-verified in a real browser page (rounded rects, annulus ring segments, dual-color gradients, and full RGBA texture tinting all check out). Remaining limits: cross-app clipboard paste is unreachable through the synchronous API (an in-app mirror handles round-trips), WebAudio playback depends on browser user-gesture unlock rules, and stream/mixed processors apply to Canvas-managed stream buffers, not decoded browser <code>AudioBuffer</code> playback that has already been handed to WebAudio.</p>
+<ul>
+<li>The <code>libdraw</code> Tier A backend passes the plan9port devdraw widget smoke and a</li>
+</ul>
+<p><code>9c</code>/<code>9l</code> clean-surface compile/link check. It is intended for C UI apps: windowing, input, resize, software drawing, widgets, rounded controls, thick lines, image loading, alpha/tint and source-rectangle texture blits, picture rotation, render textures, TTF/TrueType-outline glyph-atlas text, screenshots, files, and clipboard mirror are covered. Advanced raylib areas outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.</p>
 <ul>
 <li><code>k2g</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
 </ul>

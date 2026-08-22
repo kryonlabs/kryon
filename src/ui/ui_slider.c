@@ -460,6 +460,13 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                                     c_circle, UIHoverEffectsEnabled(), 0,
                                     IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb);
+        if(*value) {
+            int dot_r = ScaleUIPx(4);
+            Color dot = DarkenUIColor(thumb, 110);
+            if(dot_r < 2)
+                dot_r = 2;
+            DrawCircle(thumb_cx, thumb_cy, (float)dot_r, dot);
+        }
         EndUIWidget(&widget);
         return pressed;
     }

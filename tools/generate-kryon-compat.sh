@@ -204,6 +204,11 @@ BEGIN {
     print "#include \"kryon.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
+    print "#if defined(__GNUC__) || defined(__clang__)"
+    print "#define KRYON_NULL_WEAK __attribute__((weak))"
+    print "#else"
+    print "#define KRYON_NULL_WEAK"
+    print "#endif"
     print ""
 }
 
@@ -291,6 +296,11 @@ BEGIN {
     print "#include \"kryon.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
+    print "#if defined(__GNUC__) || defined(__clang__)"
+    print "#define KRYON_NULL_WEAK __attribute__((weak))"
+    print "#else"
+    print "#define KRYON_NULL_WEAK"
+    print "#endif"
     print ""
 }
 
@@ -317,17 +327,17 @@ BEGIN {
 
     # Variadic stubs: TextFormat returns "", TraceLog is a no-op.
     if(name == "TextFormat") {
-        print "const char *TextFormat(const char *text, ...) { (void)text; return \"\"; }"
+        print "KRYON_NULL_WEAK const char *TextFormat(const char *text, ...) { (void)text; return \"\"; }"
         print ""
         next
     }
     if(name == "TraceLog") {
-        print "void TraceLog(int logLevel, const char *text, ...) { (void)logLevel; (void)text; }"
+        print "KRYON_NULL_WEAK void TraceLog(int logLevel, const char *text, ...) { (void)logLevel; (void)text; }"
         print ""
         next
     }
 
-    print return_type " " name "(" args ")"
+    print "KRYON_NULL_WEAK " return_type " " name "(" args ")"
     print "    {"
     # Cast every named parameter to void to suppress -Wunused-parameter.
     n_args = split(args, arg_parts, /,[[:space:]]*/)

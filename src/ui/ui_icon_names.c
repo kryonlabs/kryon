@@ -100,11 +100,11 @@ const char *ui_icon_names[] = {
     "platforms_fdroid.png",  /* UI_ICON_TYPE_PLATFORMS_FDROID */
     "platforms_freebsd.png",  /* UI_ICON_TYPE_PLATFORMS_FREEBSD */
     "platforms_github.png",  /* UI_ICON_TYPE_PLATFORMS_GITHUB */
+    "platforms_glenda.png",  /* UI_ICON_TYPE_PLATFORMS_GLENDA */
     "platforms_ios.png",  /* UI_ICON_TYPE_PLATFORMS_IOS */
     "platforms_itch.png",  /* UI_ICON_TYPE_PLATFORMS_ITCH */
     "platforms_macos.png",  /* UI_ICON_TYPE_PLATFORMS_MACOS */
     "platforms_microcontroller.png",  /* UI_ICON_TYPE_PLATFORMS_MICROCONTROLLER */
-    "platforms_plan9.png",  /* UI_ICON_TYPE_PLATFORMS_PLAN9 */
     "platforms_playstore.png",  /* UI_ICON_TYPE_PLATFORMS_PLAYSTORE */
     "platforms_srht.png",  /* UI_ICON_TYPE_PLATFORMS_SRHT */
     "platforms_telegram.png",  /* UI_ICON_TYPE_PLATFORMS_TELEGRAM */

@@ -3359,6 +3359,7 @@ InitUI(int width, int height, float dpi)
     ui_view_width = width;
     ui_view_height = height;
     SetUIScale(dpi);
+    ApplyCurrentUITheme();
     if(ui_default_font_auto_load)
         EnsureUIDefaultFont();
 }
