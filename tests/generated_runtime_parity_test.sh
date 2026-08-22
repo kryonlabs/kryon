@@ -318,19 +318,40 @@ func main() {
 	drawButtons()
 
 	drawLongText()
+	requireFrameOps("long_text", map[kryon.FrameOpKind]int{
+		kryon.FrameOpColumn:    1,
+		kryon.FrameOpText:      1,
+		kryon.FrameOpTextField: 2,
+	})
+	initialLongOps := len(host.FrameOps())
 	driver.SetFocus(701)
 	drawLongText()
+	if got := len(host.FrameOps()); got != initialLongOps {
+		panic(fmt.Sprintf("long_text: frame operation count changed after focus, got %d want %d", got, initialLongOps))
+	}
 	for i := 0; i < 2048; i++ {
 		if i > 0 && i%256 == 0 {
 			driver.QueueKey(kryon.KeyTab)
 			drawLongText()
+			if got := len(host.FrameOps()); got != initialLongOps {
+				panic(fmt.Sprintf("long_text: frame operation count changed after tab at %d, got %d want %d", i, got, initialLongOps))
+			}
 		}
 		driver.QueueText("x")
 		drawLongText()
+		if got := len(host.FrameOps()); got != initialLongOps {
+			panic(fmt.Sprintf("long_text: frame operation count changed after text at %d, got %d want %d", i, got, initialLongOps))
+		}
 		driver.QueueKey(kryon.KeyLeft)
 		drawLongText()
+		if got := len(host.FrameOps()); got != initialLongOps {
+			panic(fmt.Sprintf("long_text: frame operation count changed after left at %d, got %d want %d", i, got, initialLongOps))
+		}
 		driver.QueueKey(kryon.KeyRight)
 		drawLongText()
+		if got := len(host.FrameOps()); got != initialLongOps {
+			panic(fmt.Sprintf("long_text: frame operation count changed after right at %d, got %d want %d", i, got, initialLongOps))
+		}
 	}
 	longFirst := text4096(longText.LongFirst)
 	longSecond := text4096(longText.LongSecond)
@@ -373,6 +394,7 @@ EOF
 cat > "$work/c_runner.c" <<EOF
 #include "kryon.h"
 #include "kry_inject.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -436,6 +458,18 @@ static unsigned long long checksum(const char *text)
         hash *= 1099511628211ULL;
     }
     return hash;
+}
+
+static void require_long_text_node_count(int want, const char *label)
+{
+    int got = 0;
+    (void)UIGetTreeNodes(&got);
+    if(got != want) {
+        fprintf(stderr,
+                "long_text: retained node count changed after %s, got %d want %d\n",
+                label, got, want);
+        exit(1);
+    }
 }
 
 int main(void)
@@ -526,23 +560,30 @@ int main(void)
     draw_buttons();
 
     draw_long_text();
+    int long_text_nodes = 0;
+    (void)UIGetTreeNodes(&long_text_nodes);
     SetUIFocus(701);
     draw_long_text();
+    require_long_text_node_count(long_text_nodes, "focus");
     for(int i = 0; i < 2048; i++) {
         if(i > 0 && i % 256 == 0) {
             KryonInjectKeyTap(KEY_TAB);
             KryonInjectPump();
             draw_long_text();
+            require_long_text_node_count(long_text_nodes, "tab");
         }
         KryonInjectText("x");
         KryonInjectPump();
         draw_long_text();
+        require_long_text_node_count(long_text_nodes, "text");
         KryonInjectKeyTap(KEY_LEFT);
         KryonInjectPump();
         draw_long_text();
+        require_long_text_node_count(long_text_nodes, "left");
         KryonInjectKeyTap(KEY_RIGHT);
         KryonInjectPump();
         draw_long_text();
+        require_long_text_node_count(long_text_nodes, "right");
     }
 
     printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"clipboard\":\"%s\"}\n",
