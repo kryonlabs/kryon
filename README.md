@@ -185,15 +185,18 @@ k2g  app.kry        # .kry -> Go (native Go runtime, no cgo)
 k2b  app.kry|app.kir
 ```
 
-Generated Go imports `github.com/waozixyz/kryon/go/kryon` and uses clean widget
-names such as `Button`, `TextField`, `Text`, `Row`, `Column`, `BeginFrame`, and
-`EndFrame`. It must not use `import "C"`, `go/kryui`, injected runtime objects,
-or generated calls to legacy prefixed C APIs.
+Generated Go imports `github.com/waozixyz/kryon/go/kryon` as `kryon` and uses
+clean qualified widget names such as `kryon.Button`, `kryon.TextField`,
+`kryon.Text`, `kryon.Row`, `kryon.Column`, `kryon.BeginFrame`, and
+`kryon.EndFrame`. It must not use `import "C"`, `go/kryui`, injected runtime
+objects, dot-imported runtime names, or generated calls to legacy prefixed C
+APIs.
 
 Handwritten Go can use the same package directly. Generated code keeps the
-explicit props form (`Button(ButtonProps{...})`, `TextField(TextFieldProps{...})`)
-for deterministic layout/state, while app code may use shorter direct calls such
-as `Button("Save")` and `TextField("Name", &name)`.
+explicit props form (`kryon.Button(kryon.ButtonProps{...})`,
+`kryon.TextField(kryon.TextFieldProps{...})`) for deterministic layout/state,
+while app code may use shorter direct calls such as `kryon.Button("Save")` and
+`kryon.TextField("Name", &name)`.
 
 The native Go runtime records each frame as pure Go `FrameOp` values available
 through `FrameOps()`. That operation stream is the host boundary for native Go

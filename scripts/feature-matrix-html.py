@@ -119,7 +119,7 @@ def main():
         src = f.read().splitlines()
     rendered = convert(src)
     with open(dst_path, 'w') as f:
-        f.write(rendered)
+        f.write(rendered + '\n')
     print(f'rendered {dst_path}: '
           f'{rendered.count("<table>")} tables, '
           f'{rendered.count("<tr>")} rows')

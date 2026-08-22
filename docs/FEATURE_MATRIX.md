@@ -20,7 +20,7 @@ the columns diverge.
 .kry source
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
-   ├── k2g  -> .go (direct widget calls)   -> go build + go/kryon -> Go app
+   ├── k2g  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
    └── k2ir -> .kir (text IR dump; debugging, tests, Krait)
 ```
@@ -60,8 +60,9 @@ pairing, not the C `Begin/EndUIScrollContainer` API.)
 ## Widget matrix
 
 Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2g** = `.kry`→Go codegen
-(pure Go using direct names imported from `go/kryon`) · **Go** = hand-written
-Go via the `go/kryon` package API · **KRB** = lowered into a cartridge by `k2b`.
+(pure Go importing `go/kryon` as `kryon` and calling `kryon.<Widget>`) · **Go** =
+hand-written Go via the `go/kryon` package API · **KRB** = lowered into a
+cartridge by `k2b`.
 
 Retained-tree caveat that applies to the whole C column: `BeginUI/EndUI`
 records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT,
@@ -82,24 +83,24 @@ declaration pass (`src/ui/ui_tree.c`).
 | Line | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | IconTexture (114 embedded icons) | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
-| Image/Picture | ✅ | ✅ | ✅ `Picture(PictureProps)` | ✅ `Picture` | ✅ node (embedded asset or PNG) |
+| Image/Picture | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
 
 ### UI/Input
 
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
-| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `Button(ButtonProps)` / `Button("Save")` | ✅ node |
-| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `Button(ButtonProps)` | ✗ generated Go uses `Button` | ◐ BUTTON style byte |
+| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
+| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
 | IconButton / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
 | TextInputControl | ✅ | ✅ | ✗ | ✗ | ✗ |
-| TextField | ✅ | ✅ | ✅ | ✅ `TextField(TextFieldProps)` / `TextField("Name", &value)` | ✅ TEXTINPUT node |
+| TextField | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
 | Dropdown / DropdownEx | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✗ use `Slider` in generated Go | ✗ generated Go uses `Slider` | ✅ VSLIDER control |
+| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Slider` in generated Go | ✗ generated Go uses `kryon.Slider` | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
 | Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✗ |
