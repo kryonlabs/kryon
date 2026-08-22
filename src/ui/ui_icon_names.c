@@ -12,6 +12,7 @@ const char *ui_icon_names[] = {
     "calendar.png",  /* UI_ICON_TYPE_CALENDAR */
     "check.png",  /* UI_ICON_TYPE_CHECK */
     "edit.png",  /* UI_ICON_TYPE_EDIT */
+    "fingerprint.png",  /* UI_ICON_TYPE_FINGERPRINT */
     "forward.png",  /* UI_ICON_TYPE_FORWARD */
     "gear.png",  /* UI_ICON_TYPE_GEAR */
     "globe.png",  /* UI_ICON_TYPE_GLOBE */
