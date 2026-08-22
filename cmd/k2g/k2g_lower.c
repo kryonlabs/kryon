@@ -11,6 +11,7 @@
 
 #define K2G_TEXT_MAX 8192
 #define K2G_NAME_MAX 256
+#define K2G_RUNTIME_PKG "kryon"
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -77,6 +78,39 @@ static int
 is_ident_char(int c)
 {
     return isalnum(c) || c == '_';
+}
+
+static int
+is_runtime_go_type(const char *type)
+{
+    static const char *types[] = {
+        "Vector2", "Rectangle", "Color", "Texture2D", "UIKey", "UISide",
+        "UIButtonStyle", "UISyntaxMode", "ThemeStyle", "ThemeSource",
+        "ThemeMode", "PictureFit", "TextInputStyle", "ButtonProps",
+        "IconButtonProps", "HrefProps", "TextFieldProps", "TextAreaProps",
+        "ColumnProps", "RowProps", "UIFrame", "UIGrid", "UIParagraphSpec",
+        "PictureProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
+        "ToolbarProps", "RadioButtonProps", "ProgressBarProps",
+        "SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
+        "SourceViewProps", "UITableRow", "TableViewProps", "NotebookProps",
+        "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
+        "ConfirmDialogProps", "PromptDialogProps", "UICanvas",
+        "UICanvasResult", NULL
+    };
+
+    for(int i = 0; types[i] != NULL; i++)
+        if(strcmp(type, types[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static void
+qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
+{
+    if(is_runtime_go_type(type))
+        snprintf(dst, dst_size, "%s.%s", K2G_RUNTIME_PKG, type);
+    else
+        snprintf(dst, dst_size, "%s", type);
 }
 
 /* C-ish type -> Go type. Returns 0 when unknown (caller falls back). */
@@ -167,7 +201,7 @@ go_type(const char *type, char *dst, size_t dst_size)
     }
     for(int i = 0; map[i].c != NULL; i++) {
         if(strcmp(t, map[i].c) == 0) {
-            snprintf(dst, dst_size, "%s", map[i].go);
+            qualify_runtime_go_type(map[i].go, dst, dst_size);
             return 1;
         }
     }
@@ -197,7 +231,10 @@ go_type(const char *type, char *dst, size_t dst_size)
                 if(!is_ident_char((unsigned char)*c))
                     identish = 0;
             if(identish) {
-                snprintf(dst, dst_size, "*%s", base);
+                char qualified[K2G_NAME_MAX * 2];
+
+                qualify_runtime_go_type(base, qualified, sizeof(qualified));
+                snprintf(dst, dst_size, "*%s", qualified);
                 return 1;
             }
         }
@@ -211,7 +248,7 @@ go_type(const char *type, char *dst, size_t dst_size)
             if(!is_ident_char((unsigned char)*c))
                 identish = 0;
         if(identish) {
-            snprintf(dst, dst_size, "%s", t);
+            qualify_runtime_go_type(t, dst, dst_size);
             return 1;
         }
     }
@@ -801,6 +838,9 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         type[--tn] = '\0';
 
     if(*p == '{') {
+        char qtype[K2G_NAME_MAX * 2];
+
+        qualify_runtime_go_type(type, qtype, sizeof(qtype));
         p++;
         if(strcmp(type, "Vector2") == 0 || strcmp(type, "Rectangle") == 0) {
             char inner[K2G_TEXT_MAX], parts[4][K2G_TEXT_MAX], out[K2G_TEXT_MAX];
@@ -830,12 +870,15 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 n = split_top(raw, parts, 4);
             }
             if(strcmp(type, "Vector2") == 0 && n == 2)
-                snprintf(out + on, sizeof(out) - on, "NewVector2");
+                snprintf(out + on, sizeof(out) - on, "%s.NewVector2",
+                         K2G_RUNTIME_PKG);
             else if(strcmp(type, "Rectangle") == 0 && n == 4)
-                snprintf(out + on, sizeof(out) - on, "NewRectangle");
+                snprintf(out + on, sizeof(out) - on, "%s.NewRectangle",
+                         K2G_RUNTIME_PKG);
             else {
                 /* odd arity: emit a TODO-safe zero value */
-                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s", "NewVector2(0, 0)");
+                snprintf(dst + *dn, K2G_TEXT_MAX - *dn, "%s",
+                         K2G_RUNTIME_PKG ".NewVector2(0, 0)");
                 *dn += strlen(dst + *dn);
                 return p;
             }
@@ -902,7 +945,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
                 if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                        "Color{%s: %s, %s: %s, %s: %s, %s: %s}",
+                        "%s.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
+                        K2G_RUNTIME_PKG,
                         fields[0], args[0], fields[1], args[1],
                         fields[2], args[2], fields[3], args[3]);
                 }
@@ -933,7 +977,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             p = *q == '}' ? q + 1 : q;
             count = split_top(raw, parts, 32);
             *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
-                                    "%s{", type);
+                                    "%s{", qtype);
             for(int i = 0, emitted = 0, positional = 0; i < count; i++) {
                 char *part = (char *)skip_ws(parts[i]);
                 char *eq;
@@ -992,7 +1036,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         {
             char ctor[K2G_NAME_MAX + 8];
 
-            snprintf(ctor, sizeof(ctor), "%s{", type);
+            snprintf(ctor, sizeof(ctor), "%s{", qtype);
             if(*dn + strlen(ctor) + 1 < K2G_TEXT_MAX) {
                 memcpy(dst + *dn, ctor, strlen(ctor));
                 *dn += strlen(ctor);
@@ -1351,6 +1395,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(strlen(constants[ci].c) == il &&
                        strncmp(constants[ci].c, ident, il) == 0) {
                         size_t gl = strlen(constants[ci].go);
+                        int written = snprintf(dst + dn, dst_size - dn,
+                                               "%s.", K2G_RUNTIME_PKG);
+                        if(written > 0)
+                            dn += (size_t)written;
                         if(dn + gl + 1 < dst_size) {
                             memcpy(dst + dn, constants[ci].go, gl);
                             dn += gl;
@@ -1408,6 +1456,13 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     runtime_name = ident;
                 }
 
+                {
+                    int written = snprintf(dst + dn, dst_size - dn,
+                                           "%s.", K2G_RUNTIME_PKG);
+
+                    if(written > 0)
+                        dn += (size_t)written;
+                }
                 if(dn + runtime_len + 1 < dst_size) {
                     memcpy(dst + dn, runtime_name, runtime_len);
                     dn += runtime_len;
@@ -1852,7 +1907,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             camel(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
-            fprintf(f, "%s(%s)\n", wname, wargs);
+            fprintf(f, "%s.%s(%s)\n", K2G_RUNTIME_PKG, wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:
@@ -1968,7 +2023,8 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "// Code generated by k2g from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
-            fprintf(f, "import . \"%s\"\n\n", runtime_import);
+            fprintf(f, "import %s \"%s\"\n\n", K2G_RUNTIME_PKG,
+                    runtime_import);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
@@ -2169,13 +2225,15 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
 
                 camel(m->app.frame, frame, sizeof(frame));
                 fprintf(f, "func main() {\n");
-                fprintf(f, "\tOpen(AppConfig{\n");
+                fprintf(f, "\t%s.Open(%s.AppConfig{\n", K2G_RUNTIME_PKG,
+                        K2G_RUNTIME_PKG);
                 fprintf(f, "\t\tTitle: \"%s\",\n", m->app.title);
                 fprintf(f, "\t\tWidth: %d, Height: %d, FPS: %d,\n",
                         m->app.width, m->app.height, m->app.fps);
                 fprintf(f, "\t})\n");
-                fprintf(f, "\tdefer Close()\n");
-                fprintf(f, "\tfor !WindowShouldClose() {\n");
+                fprintf(f, "\tdefer %s.Close()\n", K2G_RUNTIME_PKG);
+                fprintf(f, "\tfor !%s.WindowShouldClose() {\n",
+                        K2G_RUNTIME_PKG);
                 if(m->state_count > 0)
                     fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard, frame, guard);
                 else

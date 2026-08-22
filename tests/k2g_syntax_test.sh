@@ -146,13 +146,13 @@ sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
-grep -q 'import . "github.com/waozixyz/kryon/go/kryon"' "$out"
+grep -q 'import kryon "github.com/waozixyz/kryon/go/kryon"' "$out"
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
-grep -q 'NewVector2(float32(ScaleUIPx(120)), float32(ScaleUIPx(120)))' "$out"
-grep -q 'Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
+grep -q 'kryon.NewVector2(float32(kryon.ScaleUIPx(120)), float32(kryon.ScaleUIPx(120)))' "$out"
+grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
     echo "k2g left a C float suffix in Go output" >&2
@@ -161,6 +161,14 @@ fi
 if grep -q 'TODO k2g' "$out"; then
     echo "k2g left a TODO lowering in Go output:" >&2
     grep 'TODO k2g' "$out" >&2
+    exit 1
+fi
+unqualified_runtime_calls="$(
+    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Rect|Scroll|EndScroll|Open|Close)\(' "$out" || true
+)"
+if [ -n "$unqualified_runtime_calls" ]; then
+    echo "k2g emitted unqualified runtime calls; generated Go must use kryon.<Name>:" >&2
+    echo "$unqualified_runtime_calls" >&2
     exit 1
 fi
 
@@ -195,8 +203,8 @@ grep -q 'Checkbox(' "$out"
 grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
 grep -q 'Rect(' "$out"
-grep -q 'Text("small", ScaleUIPx(10), ScaleUIPx(38), Text14, GetThemeText())' "$out"
-grep -q 'Text("large", ScaleUIPx(10), ScaleUIPx(56), Text20, GetThemeText())' "$out"
+grep -q 'kryon.Text("small".*kryon.Text14.*kryon.GetThemeText())' "$out"
+grep -q 'kryon.Text("large".*kryon.Text20.*kryon.GetThemeText())' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.
@@ -204,39 +212,39 @@ grep -q 'TextInRect(' "$out"
 grep -q 'TextLines(' "$out"
 grep -q 'Bevel(' "$out"
 grep -q 'IconTexture(' "$out"
-grep -q 'Picture(PictureProps{AssetPath: "tiles/tile.png"' "$out"
-grep -q 'Paragraph(UIParagraphSpec{Text: "Rich text"' "$out"
-grep -q 'IconButton(IconButtonProps{' "$out"
+grep -q 'kryon.Picture(kryon.PictureProps{AssetPath: "tiles/tile.png"' "$out"
+grep -q 'kryon.Paragraph(kryon.UIParagraphSpec{Text: "Rich text"' "$out"
+grep -q 'kryon.IconButton(kryon.IconButtonProps{' "$out"
 grep -q 'FocusID: 3' "$out"
-grep -q 'Href(HrefProps{' "$out"
+grep -q 'kryon.Href(kryon.HrefProps{' "$out"
 grep -q 'Slider(9,' "$out"
 grep -q 'Toggle(10,' "$out"
-grep -q 'Stack(ColumnProps{' "$out"
+grep -q 'kryon.Stack(kryon.ColumnProps{' "$out"
 grep -q 'Key("smoke-stack")' "$out"
-grep -q 'Row(ColumnProps{' "$out"
+grep -q 'kryon.Row(kryon.ColumnProps{' "$out"
 grep -q 'Modal("Title"' "$out"
 grep -q 'TitleBar("Smoke"' "$out"
-grep -q 'TopNav(TopNavProps{' "$out"
-grep -q 'Toolbar(ToolbarProps{' "$out"
-grep -q 'BottomNav(BottomNavProps{' "$out"
+grep -q 'kryon.TopNav(kryon.TopNavProps{' "$out"
+grep -q 'kryon.Toolbar(kryon.ToolbarProps{' "$out"
+grep -q 'kryon.BottomNav(kryon.BottomNavProps{' "$out"
 grep -q 'Fade(' "$out"
 grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
-grep -q 'Button(ButtonProps{Bounds: NewRectangle(float32(ScaleUIPx(150)), float32(ScaleUIPx(8)), float32(ScaleUIPx(90)), float32(ScaleUIPx(28))), Label: "GB"' "$out"
-grep -q 'Button(ButtonProps{Bounds: NewRectangle(float32(ScaleUIPx(150)), float32(ScaleUIPx(40)), float32(ScaleUIPx(90)), float32(ScaleUIPx(28))), Label: "TB"' "$out"
+grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "GB"' "$out"
+grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "TB"' "$out"
 grep -q 'Dropdown(22,' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'SelectableText(' "$out"
 grep -q 'ShowUIToast("toast from kry")' "$out"
-grep -q 'TextField(TextFieldProps{' "$out"
-grep -q 'Radio(RadioButtonProps{' "$out"
-grep -q 'Spinbox(SpinboxProps{' "$out"
-grep -q 'Combobox(ComboboxProps{' "$out"
-grep -q 'LabelFrame(LabelFrameProps{' "$out"
-grep -q 'Notebook(NotebookProps{' "$out"
-grep -q 'ListBox(ListBoxProps{' "$out"
-grep -q 'Collapsible(CollapsibleProps{' "$out"
+grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
+grep -q 'kryon.Radio(kryon.RadioButtonProps{' "$out"
+grep -q 'kryon.Spinbox(kryon.SpinboxProps{' "$out"
+grep -q 'kryon.Combobox(kryon.ComboboxProps{' "$out"
+grep -q 'kryon.LabelFrame(kryon.LabelFrameProps{' "$out"
+grep -q 'kryon.Notebook(kryon.NotebookProps{' "$out"
+grep -q 'kryon.ListBox(kryon.ListBoxProps{' "$out"
+grep -q 'kryon.Collapsible(kryon.CollapsibleProps{' "$out"
 grep -q 'SetThemeDarkMode(1' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"
 
@@ -244,7 +252,7 @@ grep -q 'SetCurrentTheme(0, 1)' "$out"
 grep -q 'var scalar int32 = 5' "$out"
 grep -q 'var nums = \[4\]int32{1, 2, 3, 4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
+grep -q 'kryon.Dropdown(11, kryon.ScaleUIPx(4), kryon.ScaleUIPx(210), kryon.ScaleUIPx(120), kryon.ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 

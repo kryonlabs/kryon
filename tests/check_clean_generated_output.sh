@@ -3,8 +3,18 @@ set -eu
 
 target=${1:?usage: check_clean_generated_output.sh PATH}
 
+legacy_draw='Draw''UI'
+legacy_text='UI''Text'
+legacy_input='Text''InputControl'
+legacy_render='UI''Render'
+legacy_begin='Begin''Drawing'
+legacy_end='End''Drawing'
+legacy_runtime='kry''runtime'
+legacy_kryui='go/''kryui'
+dot_import='import \. "github.com/waozixyz/kryon/go/kryon"'
+
 matches="$(
-    rg -n 'DrawUI|UIText|TextInputControl|UIRender|BeginDrawing|EndDrawing|kryruntime|rt\.|kryon\.[A-Z]|import "C"|go/kryui' "$target" \
+    rg -n "${legacy_draw}|${legacy_text}|${legacy_input}|${legacy_render}|${legacy_begin}|${legacy_end}|${legacy_runtime}|rt\\.|import \"C\"|${dot_import}|${legacy_kryui}" "$target" \
         --glob '*.go' \
         --glob '*.c' \
         --glob '*.h' || true
