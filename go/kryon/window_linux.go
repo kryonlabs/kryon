@@ -395,13 +395,13 @@ func (w *x11Window) handshake() error {
 	}
 	w.resourceBase = get32(body[4:])
 	w.resourceMask = get32(body[8:])
-	w.maxRequest = uint32(get16(body[22:]))
-	vendorLen := int(get16(body[20:]))
-	roots := int(body[24])
-	formats := int(body[25])
-	w.byteOrder = body[26]
-	w.minKeycode = body[30]
-	w.maxKeycode = body[31]
+	vendorLen := int(get16(body[16:]))
+	w.maxRequest = uint32(get16(body[18:]))
+	roots := int(body[20])
+	formats := int(body[21])
+	w.byteOrder = body[22]
+	w.minKeycode = body[26]
+	w.maxKeycode = body[27]
 	off := 32 + pad4(vendorLen)
 	formatsByDepth := map[uint8][2]uint8{}
 	for i := 0; i < formats && off+8 <= len(body); i++ {
