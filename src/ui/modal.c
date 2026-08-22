@@ -40,7 +40,7 @@ ui_modal_action_width(const char *label, int font)
 }
 
 static int
-ui_modal_measure_action_rows(const UIModalAction *actions, int count,
+ui_modal_measure_action_rows(const ModalAction *actions, int count,
                              int content_w, int gap, int font)
 {
     int rows = 1;
@@ -64,7 +64,7 @@ ui_modal_measure_action_rows(const UIModalAction *actions, int count,
 }
 
 static int
-ui_modal_draw_actions(const UIModalAction *actions, int count,
+ui_modal_draw_actions(const ModalAction *actions, int count,
                       int x, int y, int content_w, int button_h,
                       int gap, int font, Vector2 mouse_world)
 {
@@ -224,7 +224,7 @@ int
 DrawUIModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
-    UIModalAction actions[2] = {
+    ModalAction actions[2] = {
         { cancel_btn, ButtonStyleSecondary, 0 },
         { confirm_btn, ButtonStylePrimary, 0 }
     };
@@ -242,7 +242,7 @@ int
 DrawUIModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
-    UIModalAction actions[3] = {
+    ModalAction actions[3] = {
         { left_btn, ButtonStyleSecondary, 0 },
         { middle_btn, ButtonStylePrimary, 0 },
         { right_btn, ButtonStyleDanger, 0 }

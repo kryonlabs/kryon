@@ -1209,7 +1209,7 @@ void Overlays(void);
 
 ### Modals
 
-#### `UIActionModalNode`
+#### `ActionModal`
 
 Adaptive action modal for a title, message, optional close icon, and one to
 three action buttons.
@@ -1219,18 +1219,18 @@ typedef struct {
     const char *label;
     ButtonStyle style;
     int disabled;
-} UIModalAction;
+} ModalAction;
 
 typedef struct {
     const char *title;
     const char *message;
-    const UIModalAction *actions;
+    const ModalAction *actions;
     int action_count;
     Texture2D close_icon;
     int max_width;
 } ModalProps;
 
-int UIActionModalNode(ModalProps modal);
+int ActionModal(ModalProps modal);
 ```
 
 **Returns:** `-1` when the close icon is clicked, `0` for no action, or the
@@ -1242,35 +1242,35 @@ inside the button, and the action row wraps to multiple rows when labels do not
 fit. Backdrop clicks are blocked automatically for the current frame and the next
 frame.
 
-#### `UIModalNode`
+#### `Modal`
 
 Simple two-button modal.
 
 ```c
-int UIModalNode(const char *title, const char *message,
-                  const char *cancel_btn, const char *confirm_btn);
+int Modal(const char *title, const char *message,
+          const char *cancel_btn, const char *confirm_btn);
 ```
 
 **Returns:** 1 for cancel, 2 for confirm
 
-Uses the same adaptive modal behavior as `UIActionModalNode`: adaptive width,
+Uses the same adaptive modal behavior as `ActionModal`: adaptive width,
 reflowed message text, fitted button labels, wrapped actions when needed, and
 automatic backdrop capture for the current frame and the next frame.
 
-#### `UIModal3ButtonNode`
+#### `Modal3Button`
 
 Three-button modal.
 
 ```c
-int UIModal3ButtonNode(const char *title, const char *message,
-                       const char *left_btn, const char *middle_btn, const char *right_btn);
+int Modal3Button(const char *title, const char *message,
+                 const char *left_btn, const char *middle_btn, const char *right_btn);
 ```
 
-Uses the same adaptive modal behavior as `UIActionModalNode`: adaptive width,
+Uses the same adaptive modal behavior as `ActionModal`: adaptive width,
 reflowed message text, fitted button labels, wrapped actions when needed, and
 automatic backdrop capture for the current frame and the next frame.
 
-#### `UIPanelFrame` / `UIModalFrameNode`
+#### `UIPanelFrame` / `ModalFrame`
 
 ```c
 typedef struct {
@@ -1286,12 +1286,12 @@ typedef struct {
     int right_clicked;
 } UIPanelFrame;
 
-UIPanelFrame UIModalFrameNode(int width, int height, const char *title,
-                                     Texture2D left_icon, Texture2D right_icon);
+UIPanelFrame ModalFrame(int width, int height, const char *title,
+                        Texture2D left_icon, Texture2D right_icon);
 ```
 
-`UIModalFrameNode` also updates the modal capture bounds automatically for the
-current frame and the next frame.
+`ModalFrame` also updates the modal capture bounds automatically for the current
+frame and the next frame.
 
 ---
 
@@ -1462,14 +1462,14 @@ next frame. While a modal carried from the previous frame has not registered its
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
 
-Built-in modal helpers (`UIActionModalNode`, `UIModalNode`,
-`UIModal3ButtonNode`, `UIModalFrameNode`) register their bounds automatically.
+Built-in modal helpers (`ActionModal`, `Modal`, `Modal3Button`, `ModalFrame`)
+register their bounds automatically.
 
-Applications should use `UIActionModalNode` for standard title/message/action
-dialogs and `UIModalFrameNode` for custom modal content instead of manually
-drawing a backdrop and calling `SetUIModalCapture`. Manual capture remains
-available for specialized overlays, but the helpers keep modal bounds, backdrop,
-and input capture consistent across projects.
+Applications should use `ActionModal` for standard title/message/action dialogs
+and `ModalFrame` for custom modal content instead of manually drawing a backdrop
+and calling `SetUIModalCapture`. Manual capture remains available for
+specialized overlays, but the helpers keep modal bounds, backdrop, and input
+capture consistent across projects.
 
 ### Input Blocking
 

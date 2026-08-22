@@ -29,12 +29,12 @@ typedef struct {
     const char *label;
     ButtonStyle style;
     int disabled;
-} UIModalAction;
+} ModalAction;
 
 typedef struct {
     const char *title;
     const char *message;
-    const UIModalAction *actions;
+    const ModalAction *actions;
     int action_count;
     Texture2D close_icon;
     int max_width;

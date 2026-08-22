@@ -30,8 +30,8 @@ if [ -n "$matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|UIParagraphSpec|UIParagraphLayout)\b' \
-        go/kryon include/ui_tree.h include/ui_draw.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2g_syntax_test.sh docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|UIParagraphSpec|UIParagraphLayout|UIModalAction)\b' \
+        go/kryon include/ui_tree.h include/ui_draw.h include/ui_modal.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2g_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
@@ -132,7 +132,7 @@ if [ -n "$legacy_doc_matches" ]; then
 fi
 
 api_doc_matches="$(
-    rg -n '\b(DrawUI[A-Za-z0-9_]*|UITextInputControlNode|QueueUITextInput[A-Za-z0-9_]*|UIGenericButtonNode|UIVerticalSliderNode)\b' \
+    rg -n '\b(DrawUI[A-Za-z0-9_]*|UITextInputControlNode|QueueUITextInput[A-Za-z0-9_]*|UIGenericButtonNode|UIVerticalSliderNode|UIActionModalNode|UIModalNode|UIModal3ButtonNode|UIModalFrameNode)\b' \
         docs/API.md || true
 )"
 

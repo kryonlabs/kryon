@@ -1550,7 +1550,7 @@ DrawUICollapsible(CollapsibleProps section)
 int
 DrawUIMessageDialog(MessageDialogProps dialog)
 {
-    const UIModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
+    const ModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
                                   ButtonStylePrimary, 0};
     return DrawUIActionModal((ModalProps){dialog.title, dialog.message, &action, 1,
                                            g_ui_x_icon, ScaleUIPx(420)});
@@ -1559,7 +1559,7 @@ DrawUIMessageDialog(MessageDialogProps dialog)
 int
 DrawUIConfirmDialog(ConfirmDialogProps dialog)
 {
-    UIModalAction actions[2] = {
+    ModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };
@@ -1572,7 +1572,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
 {
     int result;
     int commit_pressed = 0;
-    UIModalAction actions[2] = {
+    ModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };

@@ -26,7 +26,7 @@ screen ModalExample(viewport: Rectangle) {
         modal_open = 1
     }
     if modal_open {
-        actions: [3] UIModalAction = {{"Cancel",ButtonStyleSecondary,0},{"Confirm",ButtonStylePrimary,0},{"Delete",ButtonStyleDanger,0}}
+        actions: [3] ModalAction = {{"Cancel",ButtonStyleSecondary,0},{"Confirm",ButtonStylePrimary,0},{"Delete",ButtonStyleDanger,0}}
         result: int = ActionModal((ModalProps){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
         if result == 1 {
             modal_open = 0
