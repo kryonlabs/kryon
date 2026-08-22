@@ -41,6 +41,7 @@ type Texture2D struct {
 
 type Font struct {
 	Texture Texture2D
+	ID      uint32
 }
 
 type KeyID uint64
@@ -484,6 +485,7 @@ type Runtime interface {
 	ClearBackground(Color)
 	Background(Color)
 	Text(string, int32, int32, int32, Color)
+	TextWithFont(string, int32, int32, int32, Color, uint32)
 	TextFormat(string, ...any) string
 	ScaleUIPx(int32) int32
 	GetScreenWidth() int32
@@ -748,11 +750,14 @@ func (r *runtime) Background(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
 }
 func (r *runtime) Text(text string, x, y, fontSize int32, color Color) {
+	r.TextWithFont(text, x, y, fontSize, color, 0)
+}
+func (r *runtime) TextWithFont(text string, x, y, fontSize int32, color Color, fontID uint32) {
 	bounds := Rectangle{X: float32(x), Y: float32(y), Width: float32(fontSize * 8), Height: float32(fontSize)}
 	if x == 0 && y == 0 {
 		bounds = r.layoutRect(bounds)
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: text, Color: color, FontSize: fontSize})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: text, Color: color, FontSize: fontSize, FontID: fontID})
 }
 func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
 func (r *runtime) ScaleUIPx(px int32) int32                           { return px }

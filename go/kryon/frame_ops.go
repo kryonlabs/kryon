@@ -24,6 +24,7 @@ type FrameOp struct {
 	Color          Color
 	SecondaryColor Color
 	FontSize       int32
+	FontID         uint32
 	ID             int32
 	FocusID        int32
 	Cursor         int32

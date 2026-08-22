@@ -750,6 +750,29 @@ func TestRendererHasPortfolioGlyphs(t *testing.T) {
 	}
 }
 
+func TestRendererUsesRegisteredUIFontData(t *testing.T) {
+	data, err := os.ReadFile("../../fonts/noto/NotoSans-Regular.ttf")
+	if err != nil {
+		t.Fatalf("read test font: %v", err)
+	}
+	if !RegisterUIFontData("test-noto", ".ttf", data, nil) {
+		t.Fatal("RegisterUIFontData rejected valid TTF")
+	}
+	UseUIFont("test-noto")
+
+	img := RenderFrame(220, 80, []FrameOp{
+		{Kind: FrameOpBackground, Color: WHITE},
+		{Kind: FrameOpText, Bounds: Rectangle{X: 8, Y: 8, Width: 200, Height: 28}, Text: "Geld Δƒ", FontSize: Text24, Color: BLACK},
+	})
+	if got := countPixelsNot(img, rgbaTest(WHITE)); got < 250 {
+		t.Fatalf("registered UI font rendered only %d pixels, want real glyph rasterization", got)
+	}
+
+	if measured, fallback := MeasureTextEx(Font{}, "iiii", 24, 1).X, float32(len([]rune("iiii")))*24*0.55; measured == fallback {
+		t.Fatalf("MeasureTextEx used fallback width %.2f after registering UI font", measured)
+	}
+}
+
 func TestRenderFrameClipsOutOfBoundsOps(t *testing.T) {
 	img := RenderFrame(32, 24, []FrameOp{
 		{Kind: FrameOpBackground, Color: WHITE},

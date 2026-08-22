@@ -33,7 +33,7 @@ func RenderFrame(width, height int, ops []FrameOp) *image.RGBA {
 		case FrameOpLine:
 			drawLine(img, op.Bounds, opaque(op.Color, BLACK))
 		case FrameOpText:
-			drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK))
+			drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK), op.FontID)
 		case FrameOpButton:
 			renderButton(img, op)
 		case FrameOpTextField, FrameOpTextArea:
@@ -65,7 +65,7 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	}
 	fillRect(img, op.Bounds, fill)
 	strokeRect(img, op.Bounds, border)
-	drawTextInBox(img, op.Text, op.Bounds, op.FontSize, text)
+	drawTextInBox(img, op.Text, op.Bounds, op.FontSize, text, op.FontID)
 }
 
 func renderTextInput(img *image.RGBA, op FrameOp) {
@@ -76,10 +76,10 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 	}
 	strokeRect(img, op.Bounds, border)
 	x := int(round(op.Bounds.X)) + 8
-	y := int(round(op.Bounds.Y)) + maxInt(3, (int(round(op.Bounds.Height))-int(textHeight(op.FontSize)))/2)
-	drawText(img, op.Text, x, y, op.FontSize, BLACK)
+	y := int(round(op.Bounds.Y)) + maxInt(3, (int(round(op.Bounds.Height))-int(textHeight(op.FontSize, op.FontID)))/2)
+	drawText(img, op.Text, x, y, op.FontSize, BLACK, op.FontID)
 	if op.Focused {
-		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize)
+		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5
 		drawVertical(img, cursorX, top, bottom, Color{29, 96, 196, 255})
@@ -166,13 +166,16 @@ func drawVertical(img *image.RGBA, x, y0, y1 int, c Color) {
 	}
 }
 
-func drawTextInBox(img *image.RGBA, text string, bounds Rectangle, fontSize int32, c Color) {
+func drawTextInBox(img *image.RGBA, text string, bounds Rectangle, fontSize int32, c Color, fontID uint32) {
 	x := int(round(bounds.X)) + 8
-	y := int(round(bounds.Y)) + maxInt(3, (int(round(bounds.Height))-int(textHeight(fontSize)))/2)
-	drawText(img, text, x, y, fontSize, c)
+	y := int(round(bounds.Y)) + maxInt(3, (int(round(bounds.Height))-int(textHeight(fontSize, fontID)))/2)
+	drawText(img, text, x, y, fontSize, c, fontID)
 }
 
-func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color) {
+func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, fontID uint32) {
+	if drawFontText(img, text, x, y, fontSize, c, fontID) {
+		return
+	}
 	scale := glyphScale(fontSize)
 	cursor := x
 	for _, r := range text {
@@ -198,7 +201,10 @@ func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color) {
 	}
 }
 
-func textAdvance(text string, cursor int32, fontSize int32) int {
+func textAdvance(text string, cursor int32, fontSize int32, fontID uint32) int {
+	if advance, ok := fontTextAdvance(text, cursor, fontSize, fontID); ok {
+		return advance
+	}
 	if cursor < 0 {
 		cursor = 0
 	}
@@ -209,7 +215,10 @@ func textAdvance(text string, cursor int32, fontSize int32) int {
 	return int(cursor) * 6 * glyphScale(fontSize)
 }
 
-func textHeight(fontSize int32) int32 {
+func textHeight(fontSize int32, fontID uint32) int32 {
+	if height, ok := fontTextHeight(fontSize, fontID); ok {
+		return height
+	}
 	return int32(7 * glyphScale(fontSize))
 }
 

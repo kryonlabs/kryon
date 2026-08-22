@@ -57,23 +57,31 @@ func CheckCollisionPointRec(p Vector2, r Rectangle) bool {
 	return pointInRect(p.X, p.Y, r)
 }
 
-func DrawTextEx(_ Font, text string, pos Vector2, size float32, _ float32, c Color) {
-	Text(text, int32(pos.X), int32(pos.Y), int32(size), c)
+func DrawTextEx(font Font, text string, pos Vector2, size float32, _ float32, c Color) {
+	active().TextWithFont(text, int32(pos.X), int32(pos.Y), int32(size), c, font.ID)
 }
 
-func MeasureTextEx(_ Font, text string, size float32, _ float32) Vector2 {
+func MeasureTextEx(font Font, text string, size float32, _ float32) Vector2 {
+	if measured, ok := measureFontText(text, int32(size), font.ID); ok {
+		return measured
+	}
 	return Vector2{X: float32(len([]rune(text))) * size * 0.55, Y: size}
 }
 
-func LoadFontFromMemory(string, []byte, int32, []rune) Font {
-	return Font{Texture: Texture2D{ID: 1}}
+func LoadFontFromMemory(typ string, data []byte, _ int32, _ []rune) Font {
+	id, ok := registerFontData("", typ, data)
+	if !ok {
+		return Font{}
+	}
+	return Font{Texture: Texture2D{ID: id}, ID: id}
 }
 
 func SetTextureFilter(Texture2D, int32) {}
-func RegisterUIFontData(string, string, []byte, []rune) bool {
-	return true
+func RegisterUIFontData(name string, typ string, data []byte, _ []rune) bool {
+	_, ok := registerFontData(name, typ, data)
+	return ok
 }
-func UseUIFont(string) {}
+func UseUIFont(name string) { _ = useUIFont(name) }
 
 func GetMousePosition() Vector2 {
 	if rt, ok := active().(compatInputRuntime); ok {
