@@ -122,12 +122,12 @@ if(IsKeyPressed(KEY_ESCAPE))
     CloseWindow();
 ```
 
-Use canonical widget drawing names when drawing a concrete widget immediately:
+Use canonical widget names when declaring controls:
 
 ```c
-DrawUIIconButton(button);
-DrawUITextField(field);
-DrawUISlider(id, x, y, w, "Volume", 0, 100, &volume, "%");
+IconButton(button);
+TextField(field);
+Slider(id, x, y, w, "Volume", 0, 100, &volume, "%", NULL);
 Overlays();
 ```
 
@@ -979,15 +979,11 @@ decoded-image-in-memory struct type.
 typedef struct {
     Rectangle bounds;
     const char *label;
+    UIButtonStyle style;
     int font;
-    int focus_id;
+    int id;
     int disabled;
-    Color background;
-    Color hover_background;
-    Color text;
-    Color border;
-    float radius;
-} UIButtonSpec;
+} ButtonProps;
 ```
 
 #### `Button`
@@ -995,7 +991,7 @@ typedef struct {
 Draw and handle a button.
 
 ```c
-int Button(UIButtonSpec button);
+int Button(ButtonProps button);
 ```
 
 **Returns:** 1 if clicked, 0 otherwise
@@ -1100,10 +1096,9 @@ typedef struct {
 } TextField;
 ```
 
-#### `UITextInputControlNode` / `TextField`
+#### `TextField`
 
 ```c
-int UITextInputControlNode(UITextInput input);
 int TextField(TextField field);
 ```
 
@@ -1378,8 +1373,6 @@ int UIGetNodeHeightById(int id);
 int UISliderNode(int id, int x, int y, int w, const char *label,
                    int min, int max, int *value, const char *suffix,
                    const char *value_text_override);
-int UIVerticalSliderNode(int id, int x, int y, int h,
-                            int min, int max, int *value);
 ```
 
 #### Toggle Switch
@@ -1496,16 +1489,6 @@ int UITransitionCuesEnabled(void);
 used by built-in controls. Leave it disabled when an application has transitions
 turned off.
 
-### Text Input Queuing
-
-```c
-void QueueUITextInputCodepoint(int codepoint);
-void QueueUITextInputBackspace(void);
-void QueueUITextInputEnter(void);
-```
-
----
-
 ## Focus System
 
 Keyboard navigation and focus management.
@@ -1574,13 +1557,6 @@ int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 int UIIconBtnNode(int id, int x, int y, UIIconSize size, Texture2D icon, int *hover);
 int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D icon, int *hover);
-```
-
-### Generic Button
-
-```c
-int UIGenericButtonNode(int x, int y, int w, int h, const char *label,
-                           UIButtonStyle style, int disabled, int *hover);
 ```
 
 ### Text Drawing Helpers
@@ -1719,8 +1695,12 @@ int main(void) {
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), dpi);
 
         // Draw UI
-        if (UIGenericButtonNode(10, 10, 100, 36, "Click Me",
-                                   UI_BUTTON_STYLE_PRIMARY, 0, NULL)) {
+        if (Button((ButtonProps){
+                .bounds = {10, 10, 100, 36},
+                .label = "Click Me",
+                .style = UI_BUTTON_STYLE_PRIMARY,
+                .id = 1,
+        })) {
             // Button clicked
         }
 

@@ -64,6 +64,17 @@ if [ -n "$legacy_doc_matches" ]; then
     exit 1
 fi
 
+api_doc_matches="$(
+    rg -n '\b(DrawUI[A-Za-z0-9_]*|UITextInputControlNode|QueueUITextInput[A-Za-z0-9_]*|UIGenericButtonNode|UIVerticalSliderNode)\b' \
+        docs/API.md || true
+)"
+
+if [ -n "$api_doc_matches" ]; then
+    echo "Public API docs must advertise clean generated/runtime names, not legacy widget helpers:"
+    echo "$api_doc_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(
