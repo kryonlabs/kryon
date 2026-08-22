@@ -3,6 +3,7 @@
 #include "ui_tk.h"
 #include "platform.h"
 #include "theme.h"
+#include "kry_uri.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -606,7 +607,7 @@ ui_open_url(const char *url)
         window.location.href = UTF8ToString($0);
     }, url);
 #else
-    OpenURL(url);
+    (void)OpenURI(url);
 #endif
 }
 
