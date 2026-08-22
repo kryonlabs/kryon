@@ -52,7 +52,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     else
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     DrawUIText(label, x, y, label_font, c_text);
-    DrawUIText(value_text, x + w - MeasureUIText(value_text, value_font),
+    DrawUIText(value_text, x + w - TextWidth(value_text, value_font),
                y, value_font, c_text);
 
     t = (float)(*value - min) / (float)(max - min);
@@ -391,8 +391,8 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     int min_touch = ui_touch_target_min();
     int font = GetUIFontSize();
     int material_style = ui_material_style();
-    int off_w = material_style ? 0 : MeasureUIText(off_label, font);
-    int on_w = material_style ? 0 : MeasureUIText(on_label, font);
+    int off_w = material_style ? 0 : TextWidth(off_label, font);
+    int on_w = material_style ? 0 : TextWidth(on_label, font);
     int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
     int min_w = material_style ? ScaleUIPx(52) : min_half_w * 2 + ScaleUIPx(6);
     Rectangle bounds;
@@ -502,8 +502,8 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     int font = GetUIFontSize();
     int box_size = ScaleUIPx(22);
     int label_gap = ScaleUIPx(10);
-    int label_w = MeasureUIText(label, font);
-    int label_h = GetUITextLineHeight(font);
+    int label_w = TextWidth(label, font);
+    int label_h = TextLineHeight(font);
     int row_h = box_size > label_h ? box_size : label_h;
     Rectangle bounds = {x, y, box_size + label_gap + label_w, row_h};
     Vector2 mouse_world = ui_mouse_world();

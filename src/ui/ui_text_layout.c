@@ -102,10 +102,10 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
 
     for(int i = 0; i < layout->element_count; i++) {
         if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
-            layout->elements[i].text_width = MeasureUIText(layout->elements[i].text, font_size);
+            layout->elements[i].text_width = TextWidth(layout->elements[i].text, font_size);
     }
 
-    int space_width = MeasureUIText(" ", font_size);
+    int space_width = TextWidth(" ", font_size);
     int icon_spacing = ScaleUIPx(4);
     layout->line_count = 0;
     layout->line_breaks[0] = 0;
@@ -143,7 +143,7 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
     layout->line_widths[layout->line_count] = current_line_width;
     layout->line_count++;
     {
-        int drawn_line_height = GetUITextLineHeight(font_size);
+        int drawn_line_height = TextLineHeight(font_size);
         layout->total_height = layout->line_count > 0
                                    ? layout->line_count * drawn_line_height +
                                      (layout->line_count - 1) * line_height
@@ -253,10 +253,10 @@ DrawTextLayout(TextLayout *layout, int x, int *y, int font_size, Color color)
         return;
 
     int current_y = *y;
-    int space_width = MeasureUIText(" ", font_size);
+    int space_width = TextWidth(" ", font_size);
     int icon_spacing = ScaleUIPx(4);
     int line_spacing = (layout->line_height > 0) ? layout->line_height : ScaleUIPx(4);
-    int drawn_line_height = GetUITextLineHeight(font_size);
+    int drawn_line_height = TextLineHeight(font_size);
     int line_count = layout->line_count > 0 ? layout->line_count : 1;
 
     for(int line = 0; line < line_count; line++) {

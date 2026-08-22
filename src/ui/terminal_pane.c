@@ -94,10 +94,10 @@ MeasureTerminalPaneContent(Rectangle content, int font_size)
     int font;
 
     font = font_size > 0 ? font_size : ScaleUIPx(13);
-    metrics.cell_width = MeasureUIText("M", font);
+    metrics.cell_width = TextWidth("M", font);
     if(metrics.cell_width < 6)
         metrics.cell_width = font * 6 / 10;
-    metrics.line_height = GetUITextLineHeight(font);
+    metrics.line_height = TextLineHeight(font);
     if(metrics.line_height < font + 2)
         metrics.line_height = font + ScaleUIPx(2);
     metrics.content = content;
@@ -169,7 +169,7 @@ MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
                                               indicator.scroll_offset) <= 0)
         return badge;
     font = indicator.font_size > 0 ? indicator.font_size : ScaleUIPx(13);
-    label_w = MeasureUIText(label, font);
+    label_w = TextWidth(label, font);
     badge.x = indicator.viewport.x + indicator.viewport.width -
               (float)label_w - (float)ScaleUIPx(16);
     badge.y = indicator.viewport.y + (float)ScaleUIPx(6);

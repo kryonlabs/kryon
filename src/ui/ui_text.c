@@ -853,7 +853,7 @@ UIFontMemoryReport(const char *tag)
 }
 
 int
-MeasureUIText(const char *text, int font_size)
+TextWidth(const char *text, int font_size)
 {
     Font font = active_font_for_size(font_size);
     int width = 0;
@@ -1032,7 +1032,7 @@ ui_text_draw_selection(const char *text, int x, int y, int font_size,
     if(text == NULL || end <= start)
         return;
 
-    line_h = GetUITextLineHeight(font_size);
+    line_h = TextLineHeight(font_size);
     start_x = x + ui_text_width_bytes(text, start, font_size);
     end_x = x + ui_text_width_bytes(text, end, font_size);
     if(end_x <= start_x)
@@ -1049,7 +1049,7 @@ ui_text_mod_key_down(void)
 }
 
 int
-GetUITextHeight(const char *text, int font_size)
+TextHeight(const char *text, int font_size)
 {
     Font font = active_font_for_size(font_size);
     float scale;
@@ -1096,7 +1096,7 @@ GetUITextHeight(const char *text, int font_size)
 }
 
 int
-GetUITextLineHeight(int font_size)
+TextLineHeight(int font_size)
 {
     Font font = active_font_for_size(font_size);
     float scale = font_size_scale(font, font_size);
@@ -1107,7 +1107,7 @@ GetUITextLineHeight(int font_size)
 }
 
 int
-MeasureScaledUIText(const char *text, int scale)
+ScaledTextWidth(const char *text, int scale)
 {
     Font font = active_font();
     int width = 0;
@@ -1163,8 +1163,8 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
 
     selectable = selectable_arg && g_ui_text_selectable && text[0] != '\0';
     byte_len = ui_text_line_byte_len(text);
-    text_w = MeasureUIText(text, font_size);
-    line_h = GetUITextLineHeight(font_size);
+    text_w = TextWidth(text, font_size);
+    line_h = TextLineHeight(font_size);
     id = selectable ? ui_text_id(text, x, y, font_size) : 0;
 
     if(text[0] != '\0' && text_w > 0 && line_h > 0) {
@@ -1336,7 +1336,7 @@ ui_text_block_lines(const char *text, int width, int font_size,
                 if(text[end] == ' ' || text[end] == '\t')
                     last_space = end;
                 slice = ui_text_slice(text, start, next);
-                measured = slice != NULL ? MeasureUIText(slice, font_size) : 0;
+                measured = slice != NULL ? TextWidth(slice, font_size) : 0;
                 free(slice);
                 if(width > 0 && measured > width) {
                     if(last_space >= start)
@@ -1382,7 +1382,7 @@ MeasureUISelectableTextBlock(const char *text, int width, int font_size,
 {
     UITextBlockLine *lines = NULL;
     int count = ui_text_block_lines(text, width, font_size, &lines);
-    int line_h = GetUITextLineHeight(font_size);
+    int line_h = TextLineHeight(font_size);
     int height = count > 0 ? count * line_h + (count - 1) * line_gap : 0;
 
     free(lines);
@@ -1390,7 +1390,7 @@ MeasureUISelectableTextBlock(const char *text, int width, int font_size,
 }
 
 int
-DrawUISelectableTextBlock(UISelectableTextBlock block)
+DrawUISelectableTextBlock(SelectableTextBlock block)
 {
     UITextBlockLine *lines = NULL;
     Vector2 mouse = ui_mouse_world();
@@ -1405,14 +1405,14 @@ DrawUISelectableTextBlock(UISelectableTextBlock block)
         return 0;
     count = ui_text_block_lines(block.text, (int)block.bounds.width,
                                 block.font_size, &lines);
-    line_h = GetUITextLineHeight(block.font_size);
+    line_h = TextLineHeight(block.font_size);
     height = count > 0 ? count * line_h + (count - 1) * block.line_gap : 0;
     captured = UIInputCapturesClick(mouse);
 
     for(int i = 0; i < count; i++) {
         int y = (int)block.bounds.y + i * (line_h + block.line_gap);
         char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
-        int line_w = line != NULL ? MeasureUIText(line, block.font_size) : 0;
+        int line_w = line != NULL ? TextWidth(line, block.font_size) : 0;
         Rectangle hit = {block.bounds.x, (float)y, (float)line_w, (float)line_h};
         int inside = CheckCollisionPointRec(mouse, hit);
 
@@ -1570,7 +1570,7 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
 }
 
 void
-DrawUITextStyled(const char *text, int x, int y, UITextStyle style)
+DrawUITextStyled(const char *text, int x, int y, TextStyle style)
 {
     int font_size = style.font_size > 0 ? style.font_size : UI_TEXT_BASE_SIZE;
 
@@ -1585,7 +1585,7 @@ DrawUITextStyled(const char *text, int x, int y, UITextStyle style)
 void
 DrawUITextItalic(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextStyled(text, x, y, (UITextStyle){font_size, color, 1, 1});
+    DrawUITextStyled(text, x, y, (TextStyle){font_size, color, 1, 1});
 }
 
 void
@@ -1595,7 +1595,7 @@ DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color col
 }
 
 int
-PushUITextSelectable(int selectable)
+PushTextSelectable(int selectable)
 {
     int token = g_ui_text_selectable;
 
@@ -1607,7 +1607,7 @@ PushUITextSelectable(int selectable)
 }
 
 void
-PopUITextSelectable(int token)
+PopTextSelectable(int token)
 {
     if(g_ui_text_selectable_stack_count > 0)
         g_ui_text_selectable = g_ui_text_selectable_stack[--g_ui_text_selectable_stack_count];
@@ -1655,9 +1655,9 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
 void
 DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color)
 {
-    int text_w = MeasureUIText(text, font_size);
-    int line_h = GetUITextLineHeight(font_size);
-    int y = GetUITextY("Hg", center_y - line_h / 2, line_h, font_size);
+    int text_w = TextWidth(text, font_size);
+    int line_h = TextLineHeight(font_size);
+    int y = TextBaselineY("Hg", center_y - line_h / 2, line_h, font_size);
 
     DrawUIText(text, center_x - text_w / 2, y, font_size, color);
 }
@@ -1666,9 +1666,9 @@ void
 DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
-    int text_w = MeasureUIText(value, font_size);
+    int text_w = TextWidth(value, font_size);
     int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
-    int y = GetUITextY(value, (int)rect.y, (int)rect.height, font_size);
+    int y = TextBaselineY(value, (int)rect.y, (int)rect.height, font_size);
     int clip_guard = 1;
 
     Rectangle clip = text_world_rect_to_screen((Rectangle){
@@ -1680,7 +1680,7 @@ DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
 }
 
 int
-GetScaledUITextY(const char *text, int box_y, int box_h, int scale)
+ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale)
 {
     Font font = active_font();
     int font_size;
@@ -1690,11 +1690,11 @@ GetScaledUITextY(const char *text, int box_y, int box_h, int scale)
         scale = 1;
     base = UIFontBaseSize(font);
     font_size = base > 0 ? base * scale : 16 * scale;
-    return GetUITextY(text, box_y, box_h, font_size);
+    return TextBaselineY(text, box_y, box_h, font_size);
 }
 
 int
-GetUITextY(const char *text, int box_y, int box_h, int font_size)
+TextBaselineY(const char *text, int box_y, int box_h, int font_size)
 {
     Font font = active_font_for_size(font_size);
     float min_top = 0.0f;
@@ -1702,7 +1702,7 @@ GetUITextY(const char *text, int box_y, int box_h, int font_size)
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || !UIFontReady(font))
-        return box_y + (int)(((float)box_h - (float)GetUITextLineHeight(font_size)) * 0.5f + 0.5f);
+        return box_y + (int)(((float)box_h - (float)TextLineHeight(font_size)) * 0.5f + 0.5f);
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;

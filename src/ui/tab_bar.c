@@ -36,7 +36,7 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
     if(tab->label == NULL || tab->label[0] == '\0')
         return min_tab_w;
 
-    label_w = MeasureUIText(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
     w = label_w + ScaleUIPx(16);
     if(w < min_tab_w)
         w = min_tab_w;
@@ -63,7 +63,7 @@ ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
     if(tab->label == NULL || tab->label[0] == '\0')
         return min_tab_w;
 
-    label_w = MeasureUIText(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
     w = label_w + ScaleUIPx(16);
     if(w < min_tab_w)
         w = min_tab_w;
@@ -290,7 +290,7 @@ DrawUITabBar(TabBarProps bar)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
             else if(ui_material_style()) {
                 int gap = ScaleUIPx(4);
-                int label_w = MeasureUIText(tab->label, font);
+                int label_w = TextWidth(tab->label, font);
                 int content_w = icon_size + gap + label_w;
                 if(content_w > tab_w - text_pad * 2)
                     content_w = tab_w - text_pad * 2;
@@ -308,7 +308,7 @@ DrawUITabBar(TabBarProps bar)
             text_x = icon_x + icon_size + ScaleUIPx(4);
         } else {
             text_x = ui_material_style() && has_label
-                         ? tab_x + (tab_w - MeasureUIText(tab->label, font)) / 2
+                         ? tab_x + (tab_w - TextWidth(tab->label, font)) / 2
                          : tab_x + text_pad;
         }
 
@@ -323,12 +323,12 @@ DrawUITabBar(TabBarProps bar)
 
         if(text_rect.width > 0 && has_label) {
             if(tab->italic) {
-                int y = GetUITextY(tab->label, (int)text_rect.y,
+                int y = TextBaselineY(tab->label, (int)text_rect.y,
                                    (int)text_rect.height, font);
                 BeginUIClip((int)text_rect.x, (int)text_rect.y,
                             (int)text_rect.width, (int)text_rect.height);
                 DrawUITextStyled(tab->label, (int)text_rect.x, y,
-                                   (UITextStyle){font, text_color, 1, 0});
+                                   (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
             } else if(ui_material_style())
                 DrawCenteredUIControlText(tab->label,
@@ -347,8 +347,8 @@ DrawUITabBar(TabBarProps bar)
                                                          : DarkenUIColor(c_button_hover, 8));
             DrawUIText("x",
                          (int)(close_rect.x + (close_rect.width -
-                                               (float)MeasureUIText("x", font)) * 0.5f),
-                         GetUITextY("x", (int)close_rect.y, (int)close_rect.height, font),
+                                               (float)TextWidth("x", font)) * 0.5f),
+                         TextBaselineY("x", (int)close_rect.y, (int)close_rect.height, font),
                          font, close_color);
         }
 

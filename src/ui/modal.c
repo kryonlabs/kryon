@@ -32,7 +32,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 static int
 ui_modal_action_width(const char *label, int font)
 {
-    int width = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(24);
+    int width = TextWidth(label != NULL ? label : "", font) + ScaleUIPx(24);
     int min_width = ScaleUIPx(88);
     int max_width = ScaleUIPx(150);
 
@@ -192,7 +192,7 @@ DrawUIActionModal(ModalProps modal)
     }
 
     title_font = GetUITitleFontSize(modal.title, modal_w - ScaleUIPx(92));
-    title_w = MeasureUIText(modal.title != NULL ? modal.title : "", title_font);
+    title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     DrawUIText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
                modal_y + ScaleUIPx(14), title_font, c_text);
@@ -344,7 +344,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     frame.content_w = frame.w - ScaleUIPx(36);
     frame.content_h = frame.h - ScaleUIPx(74);
     title_font = GetUITitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
-    title_w = MeasureUIText(title, title_font);
+    title_w = TextWidth(title, title_font);
     SetUIModalCapture((Rectangle){
         (float)frame.x, (float)frame.y, (float)frame.w, (float)frame.h
     });

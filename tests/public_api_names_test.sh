@@ -138,6 +138,22 @@ if [ -n "$public_text_draw_matches" ]; then
     exit 1
 fi
 
+public_text_helper_matches="$(
+    rg -n '\b(UITextStyle|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect)\b' \
+        include/ui_text.h \
+        include/ui_draw.h \
+        docs/API.md \
+        docs/site/highlight.js \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_text_helper_matches" ]; then
+    echo "Public text helper APIs must use clean Text* names without legacy UIText prefixes:"
+    echo "$public_text_helper_matches"
+    exit 1
+fi
+
 public_text_layout_matches="$(
     rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|DrawUITextLayout)\b' \
         include/ui_text_layout.h \

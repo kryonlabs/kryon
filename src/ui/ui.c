@@ -964,7 +964,7 @@ static void
 ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
-    int text_w = MeasureUIText(value, font_size);
+    int text_w = TextWidth(value, font_size);
     int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
     int y = GetUIControlTextY(value, (int)rect.y, (int)rect.height, font_size);
     int guard = 1;
@@ -978,7 +978,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
 static int
 ui_control_height_for_font(int font)
 {
-    int line_h = GetUITextLineHeight(font);
+    int line_h = TextLineHeight(font);
     int pad_y = ScaleUIPx(5);
 
     if(line_h < font)
@@ -1005,7 +1005,7 @@ ui_inspect_control_id(char *buf, size_t buf_size, const char *kind,
 static int
 ui_control_cursor_height(int font, int box_h)
 {
-    int h = GetUITextLineHeight(font);
+    int h = TextLineHeight(font);
     int max_h = box_h - ScaleUIPx(8);
 
     if(h < font)
@@ -1055,7 +1055,7 @@ DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Col
 }
 
 void
-DrawFittedUITextInRect(const char *text, Rectangle rect,
+DrawFittedTextInRect(const char *text, Rectangle rect,
                             int preferred_size, int min_size, Color color)
 {
     const char *value = text != NULL ? text : "";
@@ -1064,7 +1064,7 @@ DrawFittedUITextInRect(const char *text, Rectangle rect,
 
     if(font_size < min_allowed)
         font_size = min_allowed;
-    while(font_size > min_allowed && MeasureUIText(value, font_size) > (int)rect.width)
+    while(font_size > min_allowed && TextWidth(value, font_size) > (int)rect.width)
         font_size = ui_text_next_smaller_size(font_size);
     ui_draw_text_centered_in_rect(value, rect, font_size, color);
 }
@@ -1339,9 +1339,9 @@ GetUITitleFontSize(const char *title, int max_width)
 {
     const char *value = title != NULL ? title : "";
 
-    if(max_width <= 0 || MeasureUIText(value, UI_TEXT_24) <= max_width)
+    if(max_width <= 0 || TextWidth(value, UI_TEXT_24) <= max_width)
         return UI_TEXT_24;
-    if(MeasureUIText(value, UI_TEXT_16) <= max_width)
+    if(TextWidth(value, UI_TEXT_16) <= max_width)
         return UI_TEXT_16;
     return UI_TEXT_12;
 }
@@ -1350,14 +1350,14 @@ int
 GetUIControlTextY(const char *text, int box_y, int box_h, int font)
 {
     (void)text;
-    return GetUITextY("Hg", box_y, box_h, font);
+    return TextBaselineY("Hg", box_y, box_h, font);
 }
 
 void
 DrawCenteredUIControlText(const char *text, int center_x, int center_y,
                           int font, Color color)
 {
-    int text_w = MeasureUIText(text, font);
+    int text_w = TextWidth(text, font);
     int h = ui_control_height_for_font(font);
     int y = GetUIControlTextY(text, center_y - h / 2, h, font);
 
@@ -1425,12 +1425,12 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         prefix[prefix_len] = '\0';
         memcpy(selected_text, value + selection_start, (size_t)selected_len);
         selected_text[selected_len] = '\0';
-        sel_x = text_x + MeasureUIText(prefix, font);
-        sel_w = MeasureUIText(selected_text, font);
+        sel_x = text_x + TextWidth(prefix, font);
+        sel_w = TextWidth(selected_text, font);
         if(sel_w < ScaleUIPx(2))
             sel_w = ScaleUIPx(2);
         DrawRectangle(sel_x, text_y, sel_w,
-                      GetUITextLineHeight(font),
+                      TextLineHeight(font),
                       ui_material_style() ? ui_alpha(c_circle, 82) :
                                             (Color){78, 132, 196, 135});
     }
@@ -1446,7 +1446,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         memcpy(before_cursor, value, (size_t)copy_len);
         before_cursor[copy_len] = '\0';
 
-        int cursor_x = text_x + MeasureUIText(before_cursor, font);
+        int cursor_x = text_x + TextWidth(before_cursor, font);
         DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h,
                       ui_material_style() ? c_circle : style.cursor);
     }
@@ -1481,7 +1481,7 @@ ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
             copy_len = (int)sizeof(prefix) - 1;
         memcpy(prefix, text, (size_t)copy_len);
         prefix[copy_len] = '\0';
-        if(text_x + MeasureUIText(prefix, font) >= mouse_x)
+        if(text_x + TextWidth(prefix, font) >= mouse_x)
             return i;
     }
     return len;
@@ -1631,7 +1631,7 @@ DrawUIHref(HrefProps link)
     Vector2 mouse_world = ui_mouse_world();
     int font = link.font > 0 ? link.font : GetUIFontSize();
     const char *text = link.text != NULL ? link.text : "";
-    int text_w = MeasureUIText(text, font);
+    int text_w = TextWidth(text, font);
     Rectangle bounds = link.bounds;
     int mouse_inside;
     int captured;
@@ -1644,7 +1644,7 @@ DrawUIHref(HrefProps link)
     if(bounds.width <= 0)
         bounds.width = (float)text_w;
     if(bounds.height <= 0)
-        bounds.height = (float)GetUITextHeight(text, font);
+        bounds.height = (float)TextHeight(text, font);
     if(bounds.height <= 0)
         bounds.height = (float)font;
 
@@ -1743,7 +1743,7 @@ ui_text_column_x(const char *text, int start, int cursor, int font)
         len = (int)sizeof(prefix) - 1;
     memcpy(prefix, text + start, (size_t)len);
     prefix[len] = '\0';
-    return MeasureUIText(prefix, font);
+    return TextWidth(prefix, font);
 }
 
 static int
@@ -1760,7 +1760,7 @@ ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int t
             len = (int)sizeof(prefix) - 1;
         memcpy(prefix, text + start, (size_t)len);
         prefix[len] = '\0';
-        if(MeasureUIText(prefix, font) >= target_x)
+        if(TextWidth(prefix, font) >= target_x)
             return i;
     }
     return end;
@@ -1815,7 +1815,7 @@ static int
 ui_text_area_line_height(const char *text, int start, int end, int base_font, int line_gap)
 {
     int line_font = ui_text_area_line_font(text, start, end, base_font);
-    return GetUITextLineHeight(line_font) + line_gap;
+    return TextLineHeight(line_font) + line_gap;
 }
 
 static int
@@ -1832,13 +1832,13 @@ ui_text_area_wrap_chunk_end(const char *text, int start, int end, int font,
         remaining = (int)sizeof(line) - 1;
     memcpy(line, text + start, (size_t)remaining);
     line[remaining] = '\0';
-    if(MeasureUIText(line, font) <= wrap_width)
+    if(TextWidth(line, font) <= wrap_width)
         return end;
 
     chunk_len = 1;
     while(start + chunk_len < end && chunk_len + 1 < (int)sizeof(line)) {
         snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + start);
-        if(MeasureUIText(line, font) > wrap_width)
+        if(TextWidth(line, font) > wrap_width)
             break;
         chunk_len++;
     }
@@ -1857,7 +1857,7 @@ ui_text_area_content_height_uncached(const char *text, int font, int line_gap,
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
             int line_font = ui_text_area_line_font(text, line_start, i, font);
-            int line_h = GetUITextLineHeight(line_font) + line_gap;
+            int line_h = TextLineHeight(line_font) + line_gap;
 
             if(wrap_width <= 0 || line_start >= i) {
                 height += line_h;
@@ -1938,7 +1938,7 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap,
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
             int line_font = ui_text_area_line_font(text, line_start, i, font);
-            int line_h = GetUITextLineHeight(line_font) + line_gap;
+            int line_h = TextLineHeight(line_font) + line_gap;
             if(wrap_width <= 0 || line_start >= i) {
                 if(target_y < draw_y + line_h || text[i] == '\0')
                     return ui_text_cursor_from_line_x(text, line_start, i,
@@ -2199,7 +2199,7 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
         end_x += ScaleUIPx(6);
     if(end_x <= start_x)
         end_x = start_x + ScaleUIPx(4);
-    DrawRectangle(start_x, y, end_x - start_x, GetUITextLineHeight(font),
+    DrawRectangle(start_x, y, end_x - start_x, TextLineHeight(font),
                   color);
 }
 
@@ -2229,7 +2229,7 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
         if(token[0] != ' ' && token[0] != '\t')
             first_token = 0;
         DrawUIText(token, x, y, font, color);
-        x += MeasureUIText(token, font);
+        x += TextWidth(token, font);
         offset += token_len;
     }
 }
@@ -2258,7 +2258,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
             int line_font = ui_text_area_line_font(text, line_start, i, font);
-            int line_h = GetUITextLineHeight(line_font) + line_gap;
+            int line_h = TextLineHeight(line_font) + line_gap;
             int chunk_start = line_start;
             int chunk_end = i;
 
@@ -2292,7 +2292,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                         int cursor_x = text_x + ui_text_column_x(
                             text, chunk_start, cursor, line_font);
                         DrawRectangle(cursor_x, draw_y, ScaleUIPx(2),
-                                      GetUITextLineHeight(line_font),
+                                      TextLineHeight(line_font),
                                       style.cursor);
                     }
                 }
@@ -2357,7 +2357,7 @@ DrawUITextArea(TextAreaProps area)
 
     font = area.font > 0 ? area.font : GetUIFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
-    line_h = GetUITextLineHeight(font) + line_gap;
+    line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
     padding_y = area.style.padding_y > 0 ? area.style.padding_y : ScaleUIPx(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
@@ -3170,14 +3170,14 @@ ui_readonly_text_box_height(const char *text, int font, int width,
     while(offset < len) {
         int chunk_len;
 
-        if(MeasureUIText(text + offset, font) <= content_w) {
+        if(TextWidth(text + offset, font) <= content_w) {
             line_count++;
             break;
         }
         chunk_len = 1;
         while(offset + chunk_len < len && chunk_len + 1 < (int)sizeof(line)) {
             snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + offset);
-            if(MeasureUIText(line, font) > content_w)
+            if(TextWidth(line, font) > content_w)
                 break;
             chunk_len++;
         }
@@ -3186,7 +3186,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
     }
     if(line_count < 1)
         line_count = 1;
-    return padding_y * 2 + line_count * GetUITextLineHeight(font) +
+    return padding_y * 2 + line_count * TextLineHeight(font) +
            (line_count - 1) * line_gap;
 }
 
@@ -3202,7 +3202,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     int padding_y = box.style.padding_y > 0 ? box.style.padding_y : ScaleUIPx(8);
     int line_gap = box.line_gap > 0 ? box.line_gap : 0;
     int content_w = (int)box.bounds.width - padding_x * 2;
-    int line_h = GetUITextLineHeight(font);
+    int line_h = TextLineHeight(font);
     int offset = 0;
     int len = (int)strlen(text);
     int draw_y = (int)box.bounds.y + padding_y;
@@ -3232,7 +3232,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     while(offset < len) {
         int chunk_len;
 
-        if(MeasureUIText(text + offset, font) <= content_w) {
+        if(TextWidth(text + offset, font) <= content_w) {
             snprintf(line, sizeof(line), "%s", text + offset);
             DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
                             font, box.style.text);
@@ -3242,7 +3242,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
         chunk_len = 1;
         while(offset + chunk_len < len && chunk_len + 1 < (int)sizeof(line)) {
             snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + offset);
-            if(MeasureUIText(line, font) > content_w)
+            if(TextWidth(line, font) > content_w)
                 break;
             chunk_len++;
         }
@@ -3737,7 +3737,7 @@ DrawUISubtabBar(SubtabBarProps bar)
                 icon_tint.a = 150;
             DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_tint);
         } else {
-            DrawFittedUITextInRect(label, label_rect, font, UI_TEXT_8, text_color);
+            DrawFittedTextInRect(label, label_rect, font, UI_TEXT_8, text_color);
         }
     }
 

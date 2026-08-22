@@ -309,7 +309,7 @@ ui_theme_grid_layout(int w)
     layout.col_gap = ScaleUIPx(10);
     layout.cell_w = layout.circle_size;
     for(int i = 0; i < THEME_COUNT; i++) {
-        int name_w = MeasureUIText(ui_theme_label((ThemeId)i), small_font) + ScaleUIPx(8);
+        int name_w = TextWidth(ui_theme_label((ThemeId)i), small_font) + ScaleUIPx(8);
         if(name_w > layout.cell_w)
             layout.cell_w = name_w;
     }
@@ -384,7 +384,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
         }
 
         const char *name = ui_theme_label(theme);
-        int name_w = MeasureUIText(name, small_font);
+        int name_w = TextWidth(name, small_font);
         DrawUIText(name, cx - name_w / 2,
                         cy + layout.circle_size / 2 + layout.label_gap,
                         small_font, c_text);
@@ -404,8 +404,8 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
 
     DrawUIText(label ? label : "Theme", x, y, font, c_text);
 
-    int light_w = MeasureUIText(light_label ? light_label : "Light", font);
-    int dark_w = MeasureUIText(dark_label ? dark_label : "Dark", font);
+    int light_w = TextWidth(light_label ? light_label : "Light", font);
+    int dark_w = TextWidth(dark_label ? dark_label : "Dark", font);
     int max_label_w = light_w > dark_w ? light_w : dark_w;
     /* match DrawUIToggleSwitch's retro content minimum so the switch does
      * not silently grow past the computed rect */

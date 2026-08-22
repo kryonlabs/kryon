@@ -7,7 +7,7 @@ DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
     DrawRectangle(x, y, w, h, DarkenUIColor(c_bg, 12));
     DrawUIBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
     int font = GetUIFontSize();
-    int tw = MeasureUIText(label, font);
+    int tw = TextWidth(label, font);
     DrawUIText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
 }
 

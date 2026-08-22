@@ -14,7 +14,7 @@ typedef struct {
     Color color;
     int italic;
     int selectable;
-} UITextStyle;
+} TextStyle;
 
 typedef struct {
     int id;                 /* stable positive identity across frames */
@@ -23,7 +23,7 @@ typedef struct {
     int font_size;
     int line_gap;
     Color color;
-} UISelectableTextBlock;
+} SelectableTextBlock;
 
 Font GetUIFont(void);
 int EnsureUIDefaultFont(void);
@@ -49,15 +49,15 @@ void ClearUIFonts(void);
 /* Print per-font rasterization stats to stderr. No-op without
  * KRYON_MEM_DEBUG (see kryon_mem.h). */
 void UIFontMemoryReport(const char *tag);
-int MeasureUIText(const char *text, int font_size);
-int GetUITextHeight(const char *text, int font_size);
-int GetUITextLineHeight(int font_size);
-int MeasureScaledUIText(const char *text, int scale);
+int TextWidth(const char *text, int font_size);
+int TextHeight(const char *text, int font_size);
+int TextLineHeight(int font_size);
+int ScaledTextWidth(const char *text, int scale);
 Font GetUIFontForCodepoint(int codepoint, int font_size);
 float GetUIFontScale(Font font, int font_size);
-int PushUITextSelectable(int selectable);
-void PopUITextSelectable(int token);
-int GetUITextY(const char *text, int box_y, int box_h, int font_size);
-int GetScaledUITextY(const char *text, int box_y, int box_h, int scale);
+int PushTextSelectable(int selectable);
+void PopTextSelectable(int token);
+int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
+int ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale);
 
 #endif

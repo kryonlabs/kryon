@@ -192,8 +192,8 @@ DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
     const char *subtitle = header.subtitle != NULL ? header.subtitle : "";
     const char *friends_text =
         header.friends_text != NULL ? header.friends_text : "";
-    int username_w = MeasureUIText(username, name_font) + ScaleUIPx(8);
-    int username_h = GetUITextHeight(username, name_font) + ScaleUIPx(8);
+    int username_w = TextWidth(username, name_font) + ScaleUIPx(8);
+    int username_h = TextHeight(username, name_font) + ScaleUIPx(8);
     int max_name_w = header.width - (name_x - header.x) - ScaleUIPx(12);
     Texture2D pfp_icon = header.pfp_icon;
     Rectangle pfp_bounds;
@@ -251,7 +251,7 @@ DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
             result.username_clicked = 1;
         }
     }
-    DrawFittedUITextInRect(username, username_bounds, name_font,
+    DrawFittedTextInRect(username, username_bounds, name_font,
                            UI_TEXT_8, c_text);
     if(subtitle[0] != '\0')
         DrawUIText(subtitle, name_x, name_y + ScaleUIPx(22), small_font,

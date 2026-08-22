@@ -64,21 +64,21 @@ DrawUIToast(void)
 
     snprintf(display, sizeof(display), "%s", toast_message);
     content_w = max_w - pad_x * 2;
-    while(display[0] != '\0' && MeasureUIText(display, font) > content_w) {
+    while(display[0] != '\0' && TextWidth(display, font) > content_w) {
         size_t len = strlen(display);
         if(len <= 3)
             break;
         snprintf(display + len - 3, 4, "...");
-        if(MeasureUIText(display, font) <= content_w)
+        if(TextWidth(display, font) <= content_w)
             break;
         display[len - 4] = '\0';
     }
 
-    text_w = MeasureUIText(display, font);
+    text_w = TextWidth(display, font);
     w = text_w + pad_x * 2;
     if(w > max_w)
         w = max_w;
-    h = GetUITextLineHeight(font) + pad_y * 2;
+    h = TextLineHeight(font) + pad_y * 2;
     x = (ui_view_width - w) / 2;
     y = ui_view_height - h - margin;
     bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};

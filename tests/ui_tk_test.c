@@ -39,7 +39,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
     KryonInjectReset();
     BeginUIFrame(640, 480, 1.0f);
     font = GetUIFontSize();
-    edit_x = ScaleUIPx(4) + MeasureUIText("File", font) + ScaleUIPx(24) +
+    edit_x = ScaleUIPx(4) + TextWidth("File", font) + ScaleUIPx(24) +
              ScaleUIPx(2) + ScaleUIPx(8);
     EndUIFrame();
 

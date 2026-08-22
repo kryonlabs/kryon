@@ -323,8 +323,8 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
     Vector2 mouse_world = ui_mouse_world();
     int font = GetUISmallFontSize();
     const char *text = label != NULL ? label : "";
-    int w = (int)MeasureUIText(text, font) + ScaleUIPx(16);
-    int h = GetUITextLineHeight(font) + ScaleUIPx(8);
+    int w = (int)TextWidth(text, font) + ScaleUIPx(16);
+    int h = TextLineHeight(font) + ScaleUIPx(8);
     Rectangle bounds;
     int hovered;
 

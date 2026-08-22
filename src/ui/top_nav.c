@@ -30,10 +30,10 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
         title = "";
     if(max_w < ScaleUIPx(48))
         max_w = (int)bounds.width - ScaleUIPx(16);
-    title_w = MeasureUIText(title, font);
+    title_w = TextWidth(title, font);
     while(font > UI_TEXT_12 && title_w > max_w) {
         font--;
-        title_w = MeasureUIText(title, font);
+        title_w = TextWidth(title, font);
     }
     DrawUIText(title, (int)bounds.x + ((int)bounds.width - title_w) / 2,
                  (int)bounds.y + GetUIControlTextY(title, 0,

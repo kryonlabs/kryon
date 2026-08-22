@@ -24,6 +24,6 @@ void DrawCenteredUIControlText(const char *text, int center_x, int center_y,
                                int font, Color color);
 void DrawLeftUIControlTextInRect(const char *text, Rectangle rect,
                                  int font_size, Color color);
-void DrawFittedUITextInRect(const char *text, Rectangle rect,
+void DrawFittedTextInRect(const char *text, Rectangle rect,
                             int preferred_size, int min_size, Color color);
 #endif

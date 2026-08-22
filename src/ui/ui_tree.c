@@ -1435,7 +1435,7 @@ Text(const char *text, int x, int y, int font_size, Color color)
 {
     UINodeId node = ui_tree_add(0, UI_WIDGET_TEXT_NODE,
                                 (Rectangle){x, y, 0,
-                                    GetUITextHeight(text, font_size)}, NULL);
+                                    TextHeight(text, font_size)}, NULL);
 
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(text);
@@ -1545,7 +1545,7 @@ int
 Href(HrefProps link)
 {
     if(link.bounds.height <= 0)
-        link.bounds.height = GetUITextHeight(link.text, link.font);
+        link.bounds.height = TextHeight(link.text, link.font);
     ui_tree_add(link.focus_id, UI_WIDGET_TEXT_NODE, link.bounds, &link);
     return DrawUIHref(link);
 }

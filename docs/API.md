@@ -411,9 +411,9 @@ coverage. `RegisterUIFixedFontSource` is an equivalent explicit name.
 #### Text Measurement
 
 ```c
-int MeasureUIText(const char *text, int font_size);
-int GetUITextHeight(const char *text, int font_size);
-int GetUITextLineHeight(int font_size);
+int TextWidth(const char *text, int font_size);
+int TextHeight(const char *text, int font_size);
+int TextLineHeight(int font_size);
 ```
 
 #### Text Widgets
@@ -425,7 +425,7 @@ void Text(const char *text, int x, int y, int font_size, Color color);
 #### Vertical Centering
 
 ```c
-int GetUITextY(const char *text, int box_y, int box_h, int font_size);
+int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
 ```
 
 ---
@@ -1564,7 +1564,7 @@ int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D i
 ```c
 void DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font, Color color);
 void DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Color color);
-void DrawFittedUITextInRect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
+void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
 ```
 
 ---

@@ -85,7 +85,7 @@ DrawUISectionLabel(SectionLabelProps label, int x, int y)
     DrawUIText(text, x, y, font, color);
     if(!label.info_button)
         return 0;
-    label_w = MeasureUIText(text, font);
+    label_w = TextWidth(text, font);
     return DrawUIInfoButton(x + label_w + ScaleUIPx(16),
                                y + font / 2 + ScaleUIPx(1), icon_d);
 }
@@ -140,7 +140,7 @@ DrawUIOverlayButton(OverlayButtonProps button)
     if(border.a != 0)
         DrawRectangleLinesEx(button.bounds, ScaleUIPx(1), border);
     if(button.label != NULL) {
-        text_w = MeasureUIText(button.label, font);
+        text_w = TextWidth(button.label, font);
         DrawUIText(button.label,
                         (int)(button.bounds.x + (button.bounds.width - text_w) / 2),
                         GetUIControlTextY(button.label, (int)button.bounds.y,
@@ -172,7 +172,7 @@ GetUIButtonRowHeight(ButtonRowProps row)
         return height;
 
     for(int i = 0; i < row.count; i++) {
-        int item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
+        int item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
                                    font) + ScaleUIPx(20);
         int min_w = ScaleUIPx(76);
         int max_w = ScaleUIPx(144);
@@ -216,7 +216,7 @@ DrawUIButtonRow(ButtonRowProps row)
         int next_w;
 
         if(!end_row) {
-            item_w = MeasureUIText(row.items[i].label != NULL ? row.items[i].label : "",
+            item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
                                    font) + ScaleUIPx(20);
             if(item_w < ScaleUIPx(76))
                 item_w = ScaleUIPx(76);

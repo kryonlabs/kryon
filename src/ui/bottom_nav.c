@@ -112,7 +112,7 @@ DrawUIBottomNav(BottomNavProps nav)
         if(ui_material_style()) {
             Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
             int label_font = UI_TEXT_12;
-            int label_h = GetUITextLineHeight(label_font);
+            int label_h = TextLineHeight(label_font);
             int label_y = y + height - ScaleUIPx(10) - label_h;
             int indicator_w = ScaleUIPx(56);
             int indicator_h = ScaleUIPx(28);
@@ -160,7 +160,7 @@ DrawUIBottomNav(BottomNavProps nav)
                     (float)(w - label_pad * 2),
                     (float)label_h
                 };
-                DrawFittedUITextInRect(item->label, label_rect, label_font,
+                DrawFittedTextInRect(item->label, label_rect, label_font,
                                        UI_TEXT_8, text_tint);
             }
             continue;

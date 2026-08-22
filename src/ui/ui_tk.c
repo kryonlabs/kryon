@@ -61,7 +61,7 @@ ui_menu_bar_owns_open_menu(int id, int menu_count)
 static int
 ui_row_text_y(Rectangle bounds, int font)
 {
-    return (int)bounds.y + ((int)bounds.height - GetUITextLineHeight(font)) / 2;
+    return (int)bounds.y + ((int)bounds.height - TextLineHeight(font)) / 2;
 }
 
 static Color
@@ -270,8 +270,8 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
         return 0;
 
     for(int i = 0; i < item_count; i++) {
-        int text_w = items[i].label != NULL ? MeasureUIText(items[i].label, font) : 0;
-        int accel = items[i].accelerator != NULL ? MeasureUIText(items[i].accelerator, font) + accel_w : 0;
+        int text_w = items[i].label != NULL ? TextWidth(items[i].label, font) : 0;
+        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) + accel_w : 0;
         if(text_w + accel + pad * 2 > w)
             w = text_w + accel + pad * 2;
     }
@@ -378,7 +378,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int
     }
 
     for(int i = 0; i < menu_count; i++) {
-        int w = MeasureUIText(menus[i].label != NULL ? menus[i].label : "", font) + ScaleUIPx(24);
+        int w = TextWidth(menus[i].label != NULL ? menus[i].label : "", font) + ScaleUIPx(24);
         Rectangle item = {(float)x, bounds.y + ScaleUIPx(3), (float)w, bounds.height - ScaleUIPx(6)};
         int menu_id = id + 1 + i;
         int open = g_menu_open_id == menu_id;
@@ -701,7 +701,7 @@ DrawUILabelFrame(LabelFrameProps frame)
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
     if(frame.title != NULL) {
         int pad = ScaleUIPx(8);
-        int w = MeasureUIText(frame.title, font) + pad * 2;
+        int w = TextWidth(frame.title, font) + pad * 2;
         DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - ScaleUIPx(8),
                       w, ScaleUIPx(18), c_bg);
         DrawUIText(frame.title, (int)frame.bounds.x + pad * 2,
@@ -930,7 +930,7 @@ ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
 
     if(rect.width <= 0 || rect.height <= 0)
         return;
-    y = GetUITextY(value, (int)rect.y, (int)rect.height, font);
+    y = TextBaselineY(value, (int)rect.y, (int)rect.height, font);
     BeginUIClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
     DrawUIText(value, (int)rect.x, y, font, color);
     EndUIClip();
@@ -1142,7 +1142,7 @@ ui_source_line_width(const char *text, int len, int font)
         return 0;
     n = ui_source_expand_line(line, sizeof(line), text, len, 4);
     line[n] = '\0';
-    return MeasureUIText(line, font);
+    return TextWidth(line, font);
 }
 
 static int
@@ -1190,7 +1190,7 @@ DrawUISourceView(SourceViewProps source)
     const char *text = source.text != NULL ? source.text : "";
     int font = source.font_size > 0 ? source.font_size : GetUISmallFontSize();
     int line_h = source.line_height > 0 ? ScaleUIPx(source.line_height)
-                                        : GetUITextLineHeight(font) + ScaleUIPx(4);
+                                        : TextLineHeight(font) + ScaleUIPx(4);
     int pad = ScaleUIPx(12);
     int gutter_w = source.show_line_numbers ? ScaleUIPx(58) : 0;
     Rectangle view;
@@ -1469,7 +1469,7 @@ DrawUINotebook(NotebookProps notebook)
     int tab_h = ScaleUIPx(34);
 
     for(int i = 0; i < notebook.tab_count; i++) {
-        int w = MeasureUIText(notebook.tabs[i], font) + ScaleUIPx(28);
+        int w = TextWidth(notebook.tabs[i], font) + ScaleUIPx(28);
         Rectangle tab = {(float)x, notebook.bounds.y, (float)w, (float)tab_h};
         int selected = notebook.selected_index != NULL && *notebook.selected_index == i;
         int hot = ui_hot(tab);
@@ -1755,6 +1755,6 @@ DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
         DrawRectangleLinesEx(nodes[i].bounds, 1.0f, color);
         if(nodes[i].label != NULL)
             DrawUIText(nodes[i].label, (int)nodes[i].bounds.x,
-                       (int)nodes[i].bounds.y - GetUITextLineHeight(font), font, color);
+                       (int)nodes[i].bounds.y - TextLineHeight(font), font, color);
     }
 }

@@ -49,7 +49,7 @@ draw_measure_text(const char *s, int size)
 {
     if(s == NULL)
         s = "";
-    return MeasureUIText(s, size);
+    return TextWidth(s, size);
 }
 
 static void

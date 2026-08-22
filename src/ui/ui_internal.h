@@ -111,7 +111,7 @@ int ui_paragraph_height(UIParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
-void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
+void DrawUITextStyled(const char *text, int x, int y, TextStyle style);
 void DrawUINonSelectableText(const char *text, int x, int y, int font_size,
                              Color color);
 void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
@@ -121,7 +121,7 @@ void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
 int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
                                  int line_gap);
-int DrawUISelectableTextBlock(UISelectableTextBlock block);
+int DrawUISelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
 void DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y);
