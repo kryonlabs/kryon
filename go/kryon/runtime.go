@@ -1030,6 +1030,14 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	if headerClicked && headerClickX >= props.Bounds.X && headerClickX < props.Bounds.X+props.Bounds.Width &&
 		r.mousePos.Y >= props.Bounds.Y && r.mousePos.Y < props.Bounds.Y+float32(headerH) {
 		col := tableColumnAtX(props, headerClickX)
+		if col >= 0 && props.SelectedRow != nil {
+			*props.SelectedRow = -1
+			changed = 1
+		}
+		if col >= 0 && props.SelectedColumn != nil {
+			*props.SelectedColumn = col
+			changed = 1
+		}
 		if col >= 0 && props.SortColumn != nil {
 			*props.SortColumn = col
 			changed = 1
@@ -1830,7 +1838,13 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []UITableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
 		rect.Y = props.Bounds.Y
 		rect.Height = float32(headerH)
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.button, Row: -1, Column: col})
+		fill := theme.button
+		selected := false
+		if selectedRow < 0 && selectedCol == col {
+			fill = theme.selectedHot
+			selected = true
+		}
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: fill, Row: -1, Column: col, Selected: selected})
 		r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: theme.text, FontSize: font, Row: -1, Column: col})
 	}
 	scroll := int32(0)
@@ -1852,13 +1866,16 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		if row%2 == 1 {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: mixColor(theme.surface, theme.button, 0.16), Row: row})
 		}
+		if row == selectedRow && selectedCol < 0 {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: theme.selectedHot, Row: row, Column: -1, Selected: true})
+		}
 		for c := range props.Columns {
 			col := int32(c)
 			rect := TableCellRect(props, row, col)
 			if rect.Y+rect.Height < props.Bounds.Y+float32(headerH) || rect.Y > props.Bounds.Y+props.Bounds.Height {
 				continue
 			}
-			if row == selectedRow && col == selectedCol {
+			if row == selectedRow && col == selectedCol || selectedRow < 0 && col == selectedCol {
 				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.selectedHot, Row: row, Column: col, Selected: true})
 			}
 			text := ""

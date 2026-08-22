@@ -668,6 +668,9 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	if sortColumn != 2 {
 		t.Fatalf("sort column = %d, want 2", sortColumn)
 	}
+	if selectedRow != -1 || selectedColumn != 2 {
+		t.Fatalf("header selection = %d,%d, want -1,2", selectedRow, selectedColumn)
+	}
 }
 
 func TestTableViewSelectionPaintsCellNotWholeRow(t *testing.T) {
@@ -706,6 +709,58 @@ func TestTableViewSelectionPaintsCellNotWholeRow(t *testing.T) {
 	}
 	if !selectedCell {
 		t.Fatal("table did not paint the selected cell")
+	}
+}
+
+func TestTableViewPaintsFullRowAndColumnSelections(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(1)
+	selectedColumn := int32(-1)
+	scroll := int32(0)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:             43,
+		Columns:        []string{"#", "A", "B"},
+		Rows:           []UITableRow{{Cells: []string{"1", "cash", "10"}}, {Cells: []string{"2", "bank", "20"}}},
+		ColumnWidths:   []int32{40, 140, 120},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		ScrollOffset:   &scroll,
+		RowHeight:      24,
+	}
+
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	var fullRow bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpRect && op.Selected && op.Row == 1 && op.Column == -1 && op.Bounds.Width == props.Bounds.Width {
+			fullRow = true
+		}
+	}
+	if !fullRow {
+		t.Fatal("table did not paint the full selected row")
+	}
+
+	selectedRow = -1
+	selectedColumn = 2
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	headerSelected, bodySelected := false, false
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect || !op.Selected || op.Column != 2 {
+			continue
+		}
+		if op.Row == -1 {
+			headerSelected = true
+		}
+		if op.Row == 0 || op.Row == 1 {
+			bodySelected = true
+		}
+	}
+	if !headerSelected || !bodySelected {
+		t.Fatalf("table full-column selection missing header/body: header=%v body=%v", headerSelected, bodySelected)
 	}
 }
 
