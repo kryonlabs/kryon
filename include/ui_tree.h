@@ -13,7 +13,7 @@
 
 struct UITransition;
 
-typedef int UINodeId;
+typedef int NodeId;
 typedef unsigned long long UIKey;
 
 typedef enum UIEventKind {
@@ -166,8 +166,8 @@ void Overlays(void);
 const UIWidgetNode *UIGetTreeNodes(int *count);
 int UIGetNodeHeight(UIWidgetNode node);
 int UIGetNodeHeightById(int id);
-const UIWidgetNode *UIGetNode(UINodeId id);
-UINodeId UIHitTestNode(Vector2 point);
+const UIWidgetNode *UIGetNode(NodeId id);
+NodeId UIHitTestNode(Vector2 point);
 
 UIWidgetNode UINodeParagraph(ParagraphSpec paragraph, int x, int y);
 UIWidgetNode UINodeReadonlyTextBox(ReadonlyTextBoxProps box);
@@ -320,8 +320,8 @@ typedef struct {
     UIKey key;
 } RowProps;
 
-UINodeId Column(ColumnProps props);
-UINodeId Row(RowProps props);
-UINodeId Stack(ColumnProps props);
+NodeId Column(ColumnProps props);
+NodeId Row(RowProps props);
+NodeId Stack(ColumnProps props);
 
 #endif

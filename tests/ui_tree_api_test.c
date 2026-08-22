@@ -26,8 +26,8 @@ main(void)
     TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
     const UIWidgetNode *node;
-    UINodeId group;
-    UINodeId nested;
+    NodeId group;
+    NodeId nested;
     UIKey stable_key;
     UIEvent event;
     int count = 0;

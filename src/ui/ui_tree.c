@@ -25,7 +25,7 @@ static int ui_committed_node_capacity = 0;
 static int ui_tree_screen_id = 0;
 static UIKey ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
-static UINodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
+static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
 static unsigned ui_tree_generation = 0;
 static unsigned ui_tree_invalid = UI_INVALIDATE_TREE |
@@ -40,7 +40,7 @@ typedef struct UIWidgetOps {
     int (*measure_height)(UIWidgetNode node);
 } UIWidgetOps;
 
-static UIWidgetNode *ui_tree_node(UINodeId id);
+static UIWidgetNode *ui_tree_node(NodeId id);
 static void DrawTree(void);
 
 static char *
@@ -211,12 +211,12 @@ ui_reconcile_node_changed(const UIWidgetNode *old_node,
                                      new_node->owned_text);
 }
 
-static UINodeId
+static NodeId
 ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
 {
     UIWidgetNode *node;
     UIWidgetNode *parent;
-    UINodeId parent_id;
+    NodeId parent_id;
     int index;
 
     if(!ui_tree_building)
@@ -244,7 +244,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
             if(parent->first_child < 0) {
                 parent->first_child = index;
             } else {
-                UINodeId child = parent->first_child;
+                NodeId child = parent->first_child;
 
                 while(child >= 0 && ui_tree_nodes[child].next_sibling >= 0)
                     child = ui_tree_nodes[child].next_sibling;
@@ -257,7 +257,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
 }
 
 static UIWidgetNode *
-ui_tree_node(UINodeId id)
+ui_tree_node(NodeId id)
 {
     if(id < 0 || id >= ui_tree_node_count)
         return NULL;
@@ -281,7 +281,7 @@ ui_node(int id, UIWidgetKind kind, Rectangle bounds)
 }
 
 static void
-ui_tree_store_node(UINodeId id, UIWidgetNode src)
+ui_tree_store_node(NodeId id, UIWidgetNode src)
 {
     UIWidgetNode *dst;
 
@@ -448,7 +448,7 @@ Key(const char *text)
 void
 BeginUI(UIKey screen_key)
 {
-    UINodeId root;
+    NodeId root;
 
     /* Embedders that never call SetUIFrame still need valid screen-to-world
      * math for input routing; a zero camera would turn every hit test into
@@ -1220,7 +1220,7 @@ UIGetTreeNodes(int *count)
 }
 
 const UIWidgetNode *
-UIGetNode(UINodeId id)
+UIGetNode(NodeId id)
 {
     if(ui_committed_node_count > 0) {
         if(id < 0 || id >= ui_committed_node_count)
@@ -1230,7 +1230,7 @@ UIGetNode(UINodeId id)
     return ui_tree_node(id);
 }
 
-UINodeId
+NodeId
 UIHitTestNode(Vector2 point)
 {
     int i;
@@ -1418,7 +1418,7 @@ Picture(PictureProps picture)
 void
 Background(Color color)
 {
-    UINodeId node = ui_tree_add(0, UI_WIDGET_BACKGROUND_NODE,
+    NodeId node = ui_tree_add(0, UI_WIDGET_BACKGROUND_NODE,
                                 (Rectangle){0, 0, ui_view_width,
                                             ui_view_height}, NULL);
 
@@ -1433,7 +1433,7 @@ Background(Color color)
 void
 Text(const char *text, int x, int y, int font_size, Color color)
 {
-    UINodeId node = ui_tree_add(0, UI_WIDGET_TEXT_NODE,
+    NodeId node = ui_tree_add(0, UI_WIDGET_TEXT_NODE,
                                 (Rectangle){x, y, 0,
                                     TextHeight(text, font_size)}, NULL);
 
@@ -1459,7 +1459,7 @@ void
 Paragraph(ParagraphSpec paragraph, int x, int *y)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
     int start_y = y != NULL ? *y : 0;
 
     id = ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
@@ -1483,7 +1483,7 @@ TextLines(const char **lines, int count, int x, int *y, int font,
 void
 Rect(int x, int y, int w, int h, Color fill, Color border)
 {
-    UINodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
+    NodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
                                 (Rectangle){x, y, w, h}, NULL);
 
     if(node >= 0) {
@@ -1505,7 +1505,7 @@ Line(int x1, int y1, int x2, int y2, Color color)
     int w = abs(x2 - x1);
     int h = abs(y2 - y1);
 
-    UINodeId node = ui_tree_add(0, UI_WIDGET_LINE_NODE,
+    NodeId node = ui_tree_add(0, UI_WIDGET_LINE_NODE,
                                 (Rectangle){x, y, w, h}, NULL);
 
     if(node >= 0) {
@@ -1553,7 +1553,7 @@ Href(HrefProps link)
 int
 TextField(TextFieldProps field)
 {
-    UINodeId node = ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
+    NodeId node = ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
                                 field.bounds, NULL);
 
     if(field.commit_pressed != NULL)
@@ -1665,7 +1665,7 @@ ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
                     UIThemeSettingsResult *result)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
     UIThemeSettingsResult next = {0};
 
     id = ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
@@ -1790,7 +1790,7 @@ TableView(TableViewProps table)
 int
 TextArea(TextAreaProps area)
 {
-    UINodeId node = ui_tree_add(area.focus_id, UI_WIDGET_TEXT_AREA_NODE,
+    NodeId node = ui_tree_add(area.focus_id, UI_WIDGET_TEXT_AREA_NODE,
                                 area.bounds, NULL);
 
     if(node >= 0) {
@@ -1950,7 +1950,7 @@ int
 LabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
 
     id = ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
                      (Rectangle){x, y, w, 0}, NULL);
@@ -1963,7 +1963,7 @@ int
 SectionLabel(SectionLabelProps label, int x, int y)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
@@ -1976,7 +1976,7 @@ int
 CheckboxRow(CheckboxRowProps row, int x, int y)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
@@ -1996,7 +1996,7 @@ int
 ButtonRow(ButtonRowProps row)
 {
     UIWidgetNode node;
-    UINodeId id;
+    NodeId id;
 
     id = ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
                      (Rectangle){row.x, row.y, row.width, 0}, NULL);
@@ -2163,7 +2163,7 @@ Button(ButtonProps button)
         .focus_id = button.id,
         .disabled = button.disabled
     };
-    UINodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
+    NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
                                 button.bounds, NULL);
     int clicked = 0;
 
@@ -2186,11 +2186,11 @@ Button(ButtonProps button)
 
 /* Retained layout containers. Every container closes with End(). */
 
-static UINodeId
+static NodeId
 ui_begin_layout_node(UIWidgetKind kind, UIKey key, Rectangle bounds,
                      int gap, int padding)
 {
-    UINodeId node;
+    NodeId node;
 
     if(key == 0)
         key = (UIKey)(unsigned)(ui_tree_node_count + 1);
@@ -2206,21 +2206,21 @@ ui_begin_layout_node(UIWidgetKind kind, UIKey key, Rectangle bounds,
     return node;
 }
 
-UINodeId
+NodeId
 Column(ColumnProps props)
 {
     return ui_begin_layout_node(UI_WIDGET_COLUMN_NODE, props.key, props.bounds,
                                 props.gap, props.padding);
 }
 
-UINodeId
+NodeId
 Row(RowProps props)
 {
     return ui_begin_layout_node(UI_WIDGET_ROW_NODE, props.key, props.bounds,
                                 props.gap, props.padding);
 }
 
-UINodeId
+NodeId
 Stack(ColumnProps props)
 {
     return ui_begin_layout_node(UI_WIDGET_STACK_NODE, props.key, props.bounds,

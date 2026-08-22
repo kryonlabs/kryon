@@ -46,7 +46,7 @@ func main() {
 
 func cEntrypoints(paths ...string) (methodSet, error) {
 	out := methodSet{}
-	re := regexp.MustCompile(`(?m)^\s*(?:void|int|UINodeId|[A-Za-z_][A-Za-z0-9_]*Result)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
+	re := regexp.MustCompile(`(?m)^\s*(?:void|int|NodeId|[A-Za-z_][A-Za-z0-9_]*Result)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
 		if err != nil {
