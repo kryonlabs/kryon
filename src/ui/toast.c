@@ -39,6 +39,12 @@ ShowToast(const char *message)
 }
 
 void
+DrawToast(void)
+{
+    DrawUIToast();
+}
+
+void
 DrawUIToast(void)
 {
     int font = GetUISmallFontSize();
