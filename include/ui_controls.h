@@ -37,7 +37,7 @@ typedef struct {
     float radius;
     int padding_x;
     int padding_y;
-} UITextInputStyle;
+} TextInputStyle;
 
 typedef struct {
     Rectangle bounds;
@@ -86,20 +86,20 @@ typedef struct {
     int cursor_visible;
     int font;
     int focus_id;
-    UITextInputStyle style;
+    TextInputStyle style;
 } TextInputProps;
 
-typedef int (*UITextInputFilter)(int codepoint, void *user_data);
+typedef int (*TextInputFilter)(int codepoint, void *user_data);
 
 typedef struct {
     char *text;
     size_t text_size;
     int *cursor_position;
     int max_codepoints;
-    UITextInputFilter filter;
+    TextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
-} UITextEdit;
+} TextEdit;
 
 typedef struct {
     Rectangle bounds;
@@ -110,8 +110,8 @@ typedef struct {
     int max_codepoints;
     int font;
     int focus_id;
-    UITextInputStyle style;
-    UITextInputFilter filter;
+    TextInputStyle style;
+    TextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
     int secure;
@@ -131,8 +131,8 @@ typedef struct {
     int focus_id;
     const char *placeholder;
     UISyntaxMode syntax;
-    UITextInputStyle style;
-    UITextInputFilter filter;
+    TextInputStyle style;
+    TextInputFilter filter;
     void *filter_user_data;
     int content_version;
     int read_only;
@@ -143,7 +143,7 @@ typedef struct {
     Rectangle bounds;
     const char *text;
     int font;
-    UITextInputStyle style;
+    TextInputStyle style;
     int line_gap;
 } ReadonlyTextBoxProps;
 
@@ -196,12 +196,12 @@ UIMaterialScheme GetUIMaterialScheme(void);
 void SetUIStyleTokens(UIStyleTokens tokens);
 void ClearUIStyleTokensOverride(void);
 
-int EditUIText(UITextEdit edit);
+int EditText(TextEdit edit);
 void QueueTextInputCodepoint(int codepoint);
 void QueueTextInputBackspace(void);
 void QueueTextInputEnter(void);
-int GetUITextAreaSelection(int focus_id, int *start, int *end);
-void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
+int GetTextAreaSelection(int focus_id, int *start, int *end);
+void SetTextAreaSelection(int focus_id, int anchor, int cursor);
 
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);

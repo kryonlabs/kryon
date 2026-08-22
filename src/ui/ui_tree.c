@@ -968,7 +968,7 @@ UIRouteInput(void)
             if(end > start)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor, start, end);
-            changed |= ui_text_paste_clipboard((UITextEdit){
+            changed |= ui_text_paste_clipboard((TextEdit){
                 .text = field->text,
                 .text_size = field->text_size,
                 .cursor_position = &state->cursor,

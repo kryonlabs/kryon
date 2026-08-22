@@ -273,7 +273,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .max_codepoints = 128,\n"
                  "        .font = UI_TEXT_16,\n"
                  "        .focus_id = %d,\n"
-                 "        .style = (UITextInputStyle){\n"
+                 "        .style = (TextInputStyle){\n"
                  "            GetThemeSurface(), GetThemeButton(), GetThemeLink(),\n"
                  "            GetThemeText(), GetThemeLink(), 0, ScaleUIPx(8), ScaleUIPx(6),\n"
                  "        },\n"

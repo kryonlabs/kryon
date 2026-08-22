@@ -165,6 +165,22 @@ if [ -n "$public_text_platform_matches" ]; then
     exit 1
 fi
 
+public_text_input_matches="$(
+    rg -n '\b(UITextInputStyle|UITextInputFilter|UITextEdit|EditUIText|GetUITextAreaSelection|SetUITextAreaSelection|UITextInput)\b' \
+        include/ui_controls.h \
+        docs/API.md \
+        examples \
+        src/ui/ui_node_registry.c \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_text_input_matches" ]; then
+    echo "Public text input APIs must use TextInputStyle/TextEdit/EditText names without legacy UIText prefixes:"
+    echo "$public_text_input_matches"
+    exit 1
+fi
+
 public_tree_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \

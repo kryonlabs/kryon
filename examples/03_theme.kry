@@ -59,7 +59,7 @@ TokenValue :: (label: const char *, value: int, x: int, y: int) {
 
 ControlDemo :: (x: int, y: int, w: int) {
     options: [3] const char * = {"One", "Two", "Three"}
-    field_style := (UITextInputStyle){
+    field_style := (TextInputStyle){
         DarkenUIColor(GetThemeBackground(), 6),
         DarkenUIColor(GetThemeBackground(), 38),
         GetThemeButtonHover(),

@@ -96,7 +96,7 @@ void ui_open_url(const char *url);
 void DrawUIFrameOverlays(void);
 void DrawUIFocus(Rectangle bounds);
 int ui_readonly_text_box_height(const char *text, int font, int width,
-                               UITextInputStyle style, int line_gap);
+                               TextInputStyle style, int line_gap);
 int ui_label_text_field_height(LabelTextFieldProps row);
 int ui_section_label_height(SectionLabelProps label);
 int ui_checkbox_row_height(CheckboxRowProps row);
@@ -136,9 +136,9 @@ int DrawUIButton(UIButtonSpec button);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
 int DrawUITextInputControl(TextInputProps input);
-void DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
+void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
-                     UITextInputStyle style);
+                     TextInputStyle style);
 int DrawUITextField(TextFieldProps field);
 int DrawUITextArea(TextAreaProps area);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
@@ -261,21 +261,21 @@ void ui_text_begin_frame(void);
 int ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x);
 void ui_draw_text_input_selection(Rectangle bounds, const char *text,
                                   int cursor, int focused, int font,
-                                  UITextInputStyle style,
+                                  TextInputStyle style,
                                   int selection_start, int selection_end);
 int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
 int ui_text_copy_range(const char *text, int start, int end);
-int ui_text_paste_clipboard(UITextEdit edit, int allow_newlines);
+int ui_text_paste_clipboard(TextEdit edit, int allow_newlines);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
                              int codepoint, int max_codepoints);
 int ui_text_insert_text(char *text, size_t text_size, int *cursor,
                         const char *input, int allow_newlines,
-                        UITextInputFilter filter, void *filter_user_data,
+                        TextInputFilter filter, void *filter_user_data,
                         int max_codepoints);
 
 #endif

@@ -118,7 +118,7 @@ static char *g_ui_text_context_text = NULL;
 static size_t g_ui_text_context_text_size = 0;
 static int *g_ui_text_context_cursor = NULL;
 static int g_ui_text_context_max_codepoints = 0;
-static UITextInputFilter g_ui_text_context_filter = NULL;
+static TextInputFilter g_ui_text_context_filter = NULL;
 static void *g_ui_text_context_filter_user_data = NULL;
 static UITextSelection *g_ui_text_context_selection = NULL;
 static int g_ui_text_context_selection_start = 0;
@@ -637,7 +637,7 @@ ui_text_copy_range(const char *text, int start, int end)
 }
 
 int
-ui_text_paste_clipboard(UITextEdit edit, int allow_newlines)
+ui_text_paste_clipboard(TextEdit edit, int allow_newlines)
 {
     const char *clip;
 
@@ -766,7 +766,7 @@ static void
 ui_text_context_register_target(int kind, int id, int *owner,
                                 char *text, size_t text_size,
                                 int *cursor_position, int max_codepoints,
-                                UITextInputFilter filter,
+                                TextInputFilter filter,
                                 void *filter_user_data,
                                 UITextSelection *selection,
                                 int selection_start, int selection_end,
@@ -792,7 +792,7 @@ ui_text_context_register_target(int kind, int id, int *owner,
 }
 
 static int
-ui_text_apply_context_command(int command, UITextEdit edit,
+ui_text_apply_context_command(int command, TextEdit edit,
                               UITextSelection *selection, int selection_id,
                               int *selection_owner, int selection_start,
                               int selection_end, int allow_newlines,
@@ -912,7 +912,7 @@ ui_text_draw_context_overlay(void)
     if(command != 0) {
         int changed = ui_text_apply_context_command(
             command,
-            (UITextEdit){
+            (TextEdit){
                 .text = g_ui_text_context_text,
                 .text_size = g_ui_text_context_text_size,
                 .cursor_position = g_ui_text_context_cursor,
@@ -1367,7 +1367,7 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y,
 static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
-                  UITextInputStyle style, int selection_start,
+                  TextInputStyle style, int selection_start,
                   int selection_end)
 {
     const char *value = text ? text : "";
@@ -1454,9 +1454,9 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
 }
 
 void
-DrawUITextInput(Rectangle bounds, const char *text, int cursor_position,
+DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
-                         UITextInputStyle style)
+                         TextInputStyle style)
 {
     DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
                       cursor_visible, font, style, 0, 0);
@@ -1495,7 +1495,7 @@ ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x)
 
 void
 ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
-                             int focused, int font, UITextInputStyle style,
+                             int focused, int font, TextInputStyle style,
                              int selection_start, int selection_end)
 {
     DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
@@ -1503,7 +1503,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
 }
 
 int
-EditUIText(UITextEdit edit)
+EditText(TextEdit edit)
 {
     int changed = 0;
     int len;
@@ -1615,7 +1615,7 @@ DrawUITextInputControl(TextInputProps input)
         DrawUIFocus(input.bounds);
     }
 
-    DrawUITextInput(input.bounds, input.text, input.cursor_position,
+    DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetUIFontSize(),
                              input.style);
@@ -2077,7 +2077,7 @@ ui_syntax_make_keyword(const char *text, int len)
 
 static Color
 ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
-                      int first_token, UITextInputStyle style)
+                      int first_token, TextInputStyle style)
 {
     int dark = GetEffectiveThemeDarkMode();
     Color keyword = dark ? (Color){142, 160, 240, 255} : (Color){36, 72, 172, 255};
@@ -2205,7 +2205,7 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 
 static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
-                    UISyntaxMode syntax, UITextInputStyle style)
+                    UISyntaxMode syntax, TextInputStyle style)
 {
     char token[1024];
     int offset = 0;
@@ -2238,7 +2238,7 @@ static void
 ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, int wrap_width, UISyntaxMode syntax,
-                       UITextInputStyle style, int selection_start,
+                       TextInputStyle style, int selection_start,
                        int selection_end)
 {
     char line[1024];
@@ -2567,7 +2567,7 @@ DrawUITextArea(TextAreaProps area)
             ui_text_delete_range(area.text, area.text_size,
                                  area.cursor_position, selection_start,
                                  selection_end);
-            if(ui_text_paste_clipboard((UITextEdit){
+            if(ui_text_paste_clipboard((TextEdit){
                    .text = area.text,
                    .text_size = area.text_size,
                    .cursor_position = area.cursor_position,
@@ -2582,7 +2582,7 @@ DrawUITextArea(TextAreaProps area)
                                   *area.cursor_position, 0);
             selection_key_handled = 1;
         } else if(!area.read_only && ui_mod_key_down() && paste_pressed) {
-            if(ui_text_paste_clipboard((UITextEdit){
+            if(ui_text_paste_clipboard((TextEdit){
                    .text = area.text,
                    .text_size = area.text_size,
                    .cursor_position = area.cursor_position,
@@ -2686,7 +2686,7 @@ DrawUITextArea(TextAreaProps area)
             }
         }
         if(!area.read_only && !selection_key_handled) {
-            changed |= EditUIText((UITextEdit){
+            changed |= EditText((TextEdit){
                 .text = area.text,
                 .text_size = area.text_size,
                 .cursor_position = area.cursor_position,
@@ -2769,7 +2769,7 @@ DrawUITextArea(TextAreaProps area)
 }
 
 int
-GetUITextAreaSelection(int focus_id, int *start, int *end)
+GetTextAreaSelection(int focus_id, int *start, int *end)
 {
     int selection_start;
     int selection_end;
@@ -2798,7 +2798,7 @@ GetUITextAreaSelection(int focus_id, int *start, int *end)
 }
 
 void
-SetUITextAreaSelection(int focus_id, int anchor, int cursor)
+SetTextAreaSelection(int focus_id, int anchor, int cursor)
 {
     if(focus_id <= 0)
         return;
@@ -3018,7 +3018,7 @@ DrawUITextField(TextFieldProps field)
                 ui_text_delete_range(field.text, field.text_size,
                                      field.cursor_position, selection_start,
                                      selection_end);
-            if(ui_text_paste_clipboard((UITextEdit){
+            if(ui_text_paste_clipboard((TextEdit){
                    .text = field.text,
                    .text_size = field.text_size,
                    .cursor_position = field.cursor_position,
@@ -3098,7 +3098,7 @@ DrawUITextField(TextFieldProps field)
             }
         }
         if(!field.read_only && !selection_handled) {
-            changed = EditUIText((UITextEdit){
+            changed = EditText((TextEdit){
                 .text = field.text,
                 .text_size = field.text_size,
                 .cursor_position = field.cursor_position,
@@ -3147,7 +3147,7 @@ DrawUITextField(TextFieldProps field)
 
 int
 ui_readonly_text_box_height(const char *text, int font, int width,
-                                  UITextInputStyle style, int line_gap)
+                                  TextInputStyle style, int line_gap)
 {
     char line[1024];
     int len;

@@ -1048,7 +1048,7 @@ int UIHrefNode(Href link);
 
 ### Text Input
 
-#### `UITextInputStyle`
+#### `TextInputStyle`
 
 ```c
 typedef struct {
@@ -1059,10 +1059,10 @@ typedef struct {
     Color cursor;
     float radius;
     int padding_x;
-} UITextInputStyle;
+} TextInputStyle;
 ```
 
-#### `UITextInput`
+#### `TextInput`
 
 ```c
 typedef struct {
@@ -1073,8 +1073,8 @@ typedef struct {
     int cursor_visible;
     int font;
     int focus_id;
-    UITextInputStyle style;
-} UITextInput;
+    TextInputStyle style;
+} TextInput;
 ```
 
 #### `TextField`
@@ -1089,8 +1089,8 @@ typedef struct {
     int max_codepoints;
     int font;
     int focus_id;
-    UITextInputStyle style;
-    UITextInputFilter filter;
+    TextInputStyle style;
+    TextInputFilter filter;
     void *filter_user_data;
     int *commit_pressed;
 } TextField;
@@ -1655,7 +1655,7 @@ uses the same one-call shape: draw between `BeginUICanvas` and `EndUICanvas`;
 scroll and zoom in the `UICanvas` struct are applied to canvas drawing and hit
 coordinates.
 
-Text fields and text areas use the shared `EditUIText` core. Ctrl/Cmd+C copies
+Text fields and text areas use the shared `EditText` core. Ctrl/Cmd+C copies
 the field buffer, Ctrl/Cmd+X cuts it, and Ctrl/Cmd+V pastes clipboard text
 through the existing codepoint filter.
 
