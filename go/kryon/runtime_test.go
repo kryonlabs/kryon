@@ -565,6 +565,16 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 		t.Fatalf("activated cell = %d,%d, want 0,1", activatedRow, activatedColumn)
 	}
 
+	activatedRow, activatedColumn = -1, -1
+	rt.QueueTap(116, 52)
+	rt.QueueTap(116, 52)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if activatedRow != 0 || activatedColumn != 1 {
+		t.Fatalf("batched double-click activated cell = %d,%d, want 0,1", activatedRow, activatedColumn)
+	}
+
 	rt.QueueMouseButton(MouseButtonRight, 260, 76)
 	rt.BeginFrame()
 	rt.TableView(props)
@@ -579,6 +589,45 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	rt.EndFrame()
 	if sortColumn != 2 {
 		t.Fatalf("sort column = %d, want 2", sortColumn)
+	}
+}
+
+func TestTableViewSelectionPaintsCellNotWholeRow(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(0)
+	selectedColumn := int32(1)
+	scroll := int32(0)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:             42,
+		Columns:        []string{"section", "label", "units"},
+		Rows:           []UITableRow{{Cells: []string{"banks", "checking", "10"}}},
+		ColumnWidths:   []int32{90, 140, 70},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		ScrollOffset:   &scroll,
+		RowHeight:      24,
+	}
+
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+
+	var selectedCell bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect || !op.Selected {
+			continue
+		}
+		if op.Row == 0 && op.Column == 1 && op.Bounds.Width == 140 {
+			selectedCell = true
+			continue
+		}
+		if op.Row == 0 && op.Bounds.Width == props.Bounds.Width {
+			t.Fatalf("table painted a full selected row: %#v", op)
+		}
+	}
+	if !selectedCell {
+		t.Fatal("table did not paint the selected cell")
 	}
 }
 

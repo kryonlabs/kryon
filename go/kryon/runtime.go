@@ -1024,8 +1024,8 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		}
 	}
 
-	if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonLeft, body); clicked {
-		row, col := tableCellAt(props, body, rowH, clickX, r.mousePos.Y)
+	for _, click := range r.consumeMouseButtonEvents(MouseButtonLeft, body) {
+		row, col := tableCellAt(props, body, rowH, click.x, click.y)
 		if row >= 0 && col >= 0 {
 			if props.SelectedRow != nil && *props.SelectedRow != row {
 				*props.SelectedRow = row
@@ -1039,7 +1039,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				r.focusID = props.ID
 			}
 			if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
-				r.lastTableClick.column == col && time.Since(r.lastTableClick.when) <= 450*time.Millisecond {
+				r.lastTableClick.column == col && click.when.Sub(r.lastTableClick.when) <= 450*time.Millisecond {
 				if props.ActivatedRow != nil {
 					*props.ActivatedRow = row
 				}
@@ -1048,7 +1048,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				}
 				changed = 1
 			}
-			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: time.Now()}
+			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: click.when}
 		}
 	}
 
@@ -1440,6 +1440,20 @@ func (r *runtime) consumeMouseButtonPoint(button int32, bounds Rectangle) (float
 	return 0, false
 }
 
+func (r *runtime) consumeMouseButtonEvents(button int32, bounds Rectangle) []mouseClickEvent {
+	var events []mouseClickEvent
+	for i := range r.clicks {
+		if r.clicks[i].consumed || r.clicks[i].button != button {
+			continue
+		}
+		if pointInRect(r.clicks[i].x, r.clicks[i].y, bounds) {
+			r.clicks[i].consumed = true
+			events = append(events, r.clicks[i])
+		}
+	}
+	return events
+}
+
 func pointInRect(x, y float32, bounds Rectangle) bool {
 	return x >= bounds.X && y >= bounds.Y &&
 		x < bounds.X+bounds.Width && y < bounds.Y+bounds.Height
@@ -1817,9 +1831,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		row := first + i
 		rowY := props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll)
 		rowRect := Rectangle{X: props.Bounds.X, Y: rowY, Width: props.Bounds.Width, Height: float32(rowH)}
-		if row == selectedRow {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: theme.selected, Row: row, Selected: true})
-		} else if row%2 == 1 {
+		if row%2 == 1 {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: mixColor(theme.surface, theme.button, 0.16), Row: row})
 		}
 		for c := range props.Columns {
