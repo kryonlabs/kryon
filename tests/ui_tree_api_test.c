@@ -28,7 +28,7 @@ main(void)
     const UIWidgetNode *node;
     NodeId group;
     NodeId nested;
-    UIKey stable_key;
+    KeyID stable_key;
     UIEvent event;
     int count = 0;
 
@@ -94,7 +94,7 @@ main(void)
     BeginUI(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 1, 1},
-                            .key = (UIKey)(1000 + i)});
+                            .key = (KeyID)(1000 + i)});
         End();
     }
     EndUI();
@@ -107,7 +107,7 @@ main(void)
     BeginUI(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 2, 2},
-                            .key = (UIKey)(1000 + i)});
+                            .key = (KeyID)(1000 + i)});
         End();
     }
     EndUI();
@@ -172,7 +172,7 @@ main(void)
         char password[32] = "secret";
         int cursor = 6;
         int focused = 0;
-        UIKey password_key = 77;
+        KeyID password_key = 77;
         int saw_text = 0;
         int saw_selection = 0;
 

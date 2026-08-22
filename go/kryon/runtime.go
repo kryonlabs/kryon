@@ -37,7 +37,7 @@ type Texture2D struct {
 	Format  int32
 }
 
-type UIKey uint64
+type KeyID uint64
 type Side int32
 type ButtonStyle int32
 type SyntaxMode int32
@@ -224,7 +224,7 @@ type ColumnProps struct {
 	Bounds  Rectangle
 	Gap     int32
 	Padding int32
-	Key     UIKey
+	Key     KeyID
 }
 
 type RowProps = ColumnProps
@@ -484,14 +484,14 @@ type Runtime interface {
 	Progress(Rectangle, int32, int32, int32, string)
 	Checkbox(int32, int32, int32, string, *int32) bool
 	Dropdown(id, x, y, w, h int32, options any, rest ...any) bool
-	BeginUI(UIKey)
+	BeginUI(KeyID)
 	EndUI()
 	Column(ColumnProps)
 	Row(ColumnProps)
 	Stack(ColumnProps)
 	End()
 	TextField(TextFieldProps)
-	Key(text string) UIKey
+	Key(text string) KeyID
 	Fade(Color, float32) Color
 	GetThemeSurface() Color
 	GetThemeButton() Color
@@ -708,7 +708,7 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	_ = labelsOf(options)
 	return false
 }
-func (r *runtime) BeginUI(UIKey) {}
+func (r *runtime) BeginUI(KeyID) {}
 func (r *runtime) EndUI()        {}
 func (r *runtime) Column(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpColumn)
@@ -725,7 +725,7 @@ func (r *runtime) End() {
 	}
 	r.record(FrameOp{Kind: FrameOpEnd})
 }
-func (r *runtime) Key(text string) UIKey { return Key(text) }
+func (r *runtime) Key(text string) KeyID { return Key(text) }
 func (r *runtime) Fade(c Color, alpha float32) Color {
 	if alpha < 0 {
 		alpha = 0
@@ -1129,10 +1129,10 @@ func NewRectangle(x, y, w, h float32) Rectangle {
 	return Rectangle{X: x, Y: y, Width: w, Height: h}
 }
 
-func Key(text string) UIKey {
+func Key(text string) KeyID {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(text))
-	return UIKey(h.Sum64())
+	return KeyID(h.Sum64())
 }
 
 func labelsOf(v any) []string {

@@ -161,7 +161,7 @@ func Checkbox(id, x, y int32, label string, value *int32) bool {
 func Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
 	return active().Dropdown(id, x, y, w, h, options, rest...)
 }
-func BeginUI(key UIKey)                 { active().BeginUI(key) }
+func BeginUI(key KeyID)                 { active().BeginUI(key) }
 func EndUI()                            { active().EndUI() }
 func Column(props ColumnProps)          { active().Column(props) }
 func Row(props ColumnProps)             { active().Row(props) }

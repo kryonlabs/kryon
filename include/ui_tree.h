@@ -14,7 +14,7 @@
 struct UITransition;
 
 typedef int NodeId;
-typedef unsigned long long UIKey;
+typedef unsigned long long KeyID;
 
 typedef enum UIEventKind {
     UI_EVENT_NONE = 0,
@@ -28,7 +28,7 @@ typedef enum UIEventKind {
 } UIEventKind;
 
 typedef struct UIEvent {
-    UIKey key;
+    KeyID key;
     UIEventKind kind;
     double timestamp;
     union {
@@ -134,7 +134,7 @@ typedef union UIWidgetData {
 
 typedef struct UIWidgetNode {
     int id;
-    UIKey key;
+    KeyID key;
     UIWidgetKind kind;
     Rectangle bounds;
     Rectangle declared_bounds;
@@ -151,13 +151,13 @@ typedef struct UIWidgetNode {
 
 /* BeginUI starts a declaration pass. EndUI atomically reconciles, lays out,
  * routes, updates, and paints it. Every container closes with End(). */
-void BeginUI(UIKey screen_key);
+void BeginUI(KeyID screen_key);
 void EndUI(void);
 void End(void);
-UIKey Key(const char *text);
+KeyID Key(const char *text);
 void InvalidateUI(UIInvalidation invalidation);
 int NextUIEvent(UIEvent *event);
-int SetSelection(UIKey key, int anchor, int cursor);
+int SetSelection(KeyID key, int anchor, int cursor);
 void UIReconcileTree(void);
 void UILayoutTree(void);
 void UIRouteInput(void);
@@ -310,14 +310,14 @@ typedef struct {
     Rectangle bounds;
     int gap;
     int padding;
-    UIKey key;
+    KeyID key;
 } ColumnProps;
 
 typedef struct {
     Rectangle bounds;
     int gap;
     int padding;
-    UIKey key;
+    KeyID key;
 } RowProps;
 
 NodeId Column(ColumnProps props);

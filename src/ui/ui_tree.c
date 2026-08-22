@@ -23,7 +23,7 @@ static UIWidgetNode *ui_committed_nodes = NULL;
 static int ui_committed_node_count = 0;
 static int ui_committed_node_capacity = 0;
 static int ui_tree_screen_id = 0;
-static UIKey ui_tree_screen_key = 0;
+static KeyID ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
 static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
@@ -141,7 +141,7 @@ ui_tree_reserve(UIWidgetNode **nodes, int *capacity, int needed)
 }
 
 static unsigned long long
-ui_reconcile_hash(UIKey parent, UIKey key, UIWidgetKind kind)
+ui_reconcile_hash(KeyID parent, KeyID key, UIWidgetKind kind)
 {
     unsigned long long hash = key ^ (parent + 0x9e3779b97f4a7c15ULL +
                                      (key << 6) + (key >> 2));
@@ -160,9 +160,9 @@ ui_reconcile_same_identity(const UIWidgetNode *old_nodes, int old_index,
 {
     const UIWidgetNode *old_node = &old_nodes[old_index];
     const UIWidgetNode *new_node = &new_nodes[new_index];
-    UIKey old_parent = old_node->parent >= 0
+    KeyID old_parent = old_node->parent >= 0
         ? old_nodes[old_node->parent].key : 0;
-    UIKey new_parent = new_node->parent >= 0
+    KeyID new_parent = new_node->parent >= 0
         ? new_nodes[new_node->parent].key : 0;
 
     return old_node->key == new_node->key &&
@@ -228,7 +228,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     node = &ui_tree_nodes[index];
     memset(node, 0, sizeof(*node));
     node->id = id;
-    node->key = (UIKey)(unsigned)id;
+    node->key = (KeyID)(unsigned)id;
     node->kind = kind;
     node->bounds = bounds;
     node->declared_bounds = bounds;
@@ -431,10 +431,10 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_CUSTOM_NODE] = {ui_measure_bounds_height},
 };
 
-UIKey
+KeyID
 Key(const char *text)
 {
-    UIKey hash = 1469598103934665603ULL;
+    KeyID hash = 1469598103934665603ULL;
 
     if(text == NULL)
         return 0;
@@ -446,7 +446,7 @@ Key(const char *text)
 }
 
 void
-BeginUI(UIKey screen_key)
+BeginUI(KeyID screen_key)
 {
     NodeId root;
 
@@ -529,7 +529,7 @@ NextUIEvent(UIEvent *event)
 }
 
 int
-SetSelection(UIKey key, int anchor, int cursor)
+SetSelection(KeyID key, int anchor, int cursor)
 {
     int i;
 
@@ -611,7 +611,7 @@ UIReconcileTree(void)
         slots[i] = -1;
     for(i = 0; i < old_count; i++) {
         UIWidgetNode *node = &old_nodes[i];
-        UIKey parent = node->parent >= 0
+        KeyID parent = node->parent >= 0
             ? old_nodes[node->parent].key : 0;
         unsigned slot = (unsigned)(ui_reconcile_hash(parent, node->key,
                                                       node->kind) &
@@ -624,7 +624,7 @@ UIReconcileTree(void)
     ui_tree_generation++;
     for(i = 0; i < ui_tree_node_count; i++) {
         UIWidgetNode next = ui_tree_nodes[i];
-        UIKey parent = next.parent >= 0 ? ui_tree_nodes[next.parent].key : 0;
+        KeyID parent = next.parent >= 0 ? ui_tree_nodes[next.parent].key : 0;
         unsigned slot = (unsigned)(ui_reconcile_hash(parent, next.key,
                                                       next.kind) &
                                     (unsigned long long)(slot_count - 1));
@@ -1559,7 +1559,7 @@ TextField(TextFieldProps field)
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
     if(node >= 0) {
-        ui_tree_nodes[node].key = (UIKey)(unsigned)field.focus_id;
+        ui_tree_nodes[node].key = (KeyID)(unsigned)field.focus_id;
         ui_tree_nodes[node].data.text_field = field;
     }
     return 0;
@@ -1794,7 +1794,7 @@ TextArea(TextAreaProps area)
                                 area.bounds, NULL);
 
     if(node >= 0) {
-        ui_tree_nodes[node].key = (UIKey)(unsigned)area.focus_id;
+        ui_tree_nodes[node].key = (KeyID)(unsigned)area.focus_id;
         ui_tree_nodes[node].data.text_area = area;
     }
     if(ui_tree_building)
@@ -2187,13 +2187,13 @@ Button(ButtonProps button)
 /* Retained layout containers. Every container closes with End(). */
 
 static NodeId
-ui_begin_layout_node(UIWidgetKind kind, UIKey key, Rectangle bounds,
+ui_begin_layout_node(UIWidgetKind kind, KeyID key, Rectangle bounds,
                      int gap, int padding)
 {
     NodeId node;
 
     if(key == 0)
-        key = (UIKey)(unsigned)(ui_tree_node_count + 1);
+        key = (KeyID)(unsigned)(ui_tree_node_count + 1);
     node = ui_tree_add((int)(key & 0x7fffffffU), kind, bounds, NULL);
 
     if(node >= 0) {

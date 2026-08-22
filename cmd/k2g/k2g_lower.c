@@ -85,7 +85,7 @@ static int
 is_runtime_go_type(const char *type)
 {
     static const char *types[] = {
-        "Vector2", "Rectangle", "Color", "Texture2D", "UIKey", "Side",
+        "Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
         "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "PictureFit", "TextInputStyle", "ButtonProps",
         "IconButtonProps", "HrefProps", "TextFieldProps", "TextAreaProps",

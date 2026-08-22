@@ -33,7 +33,7 @@ typedef struct Field {
     float y;
 } Field;
 static Field fields[FIELD_COUNT];
-static UIKey screen_key = 1;
+static KeyID screen_key = 1;
 
 static double now_us(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return (double)t.tv_sec * 1e6 + (double)t.tv_nsec / 1e3; }
 static int cmp_double(const void *a, const void *b) { double x = *(const double *)a, y = *(const double *)b; return (x > y) - (x < y); }
