@@ -484,8 +484,6 @@ type Runtime interface {
 	Progress(Rectangle, int32, int32, int32, string)
 	Checkbox(int32, int32, int32, string, *int32) bool
 	Dropdown(id, x, y, w, h int32, options any, rest ...any) bool
-	BeginUI(KeyID)
-	EndUI()
 	Column(ColumnProps)
 	Row(ColumnProps)
 	Stack(ColumnProps)
@@ -708,8 +706,6 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	_ = labelsOf(options)
 	return false
 }
-func (r *runtime) BeginUI(KeyID) {}
-func (r *runtime) EndUI()        {}
 func (r *runtime) Column(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpColumn)
 }

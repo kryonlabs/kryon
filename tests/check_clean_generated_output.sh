@@ -26,8 +26,13 @@ matches="$(
         --glob '*.h' || true
 )"
 
-if [ -n "$matches" ]; then
+go_matches="$(
+    rg -n 'Begin''UI|End''UI' "$target" \
+        --glob '*.go' || true
+)"
+
+if [ -n "$matches$go_matches" ]; then
     echo "generated output contains blocked generated-runtime names:" >&2
-    echo "$matches" >&2
+    printf '%s\n%s\n' "$matches" "$go_matches" >&2
     exit 1
 fi

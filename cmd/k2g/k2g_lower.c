@@ -281,6 +281,17 @@ module_fn_index(const KirModule *m, const char *name, size_t len)
 /* ------------------------------------------------ module lowering context */
 
 static int split_top(const char *s, char parts[][K2G_TEXT_MAX], int max);
+static const char *skip_ws(const char *p);
+
+static int
+k2g_is_go_elided_lifecycle(const char *text)
+{
+    const char *p = skip_ws(text);
+
+    return strncmp(p, "BeginUI", 7) == 0 && skip_ws(p + 7)[0] == '('
+        ? 1
+        : (strncmp(p, "EndUI", 5) == 0 && skip_ws(p + 5)[0] == '(');
+}
 
 /* One '#extern' declaration bridged to a Go host method. */
 typedef struct {
@@ -1742,7 +1753,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
            st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
             strip_block_brace(raw);
-        tx_expr(m, raw, rw, sizeof(rw));
+        if(st->kind == KIR_STMT_EXPR && k2g_is_go_elided_lifecycle(raw)) {
+            rw[0] = '\0';
+        } else {
+            tx_expr(m, raw, rw, sizeof(rw));
+        }
         switch(st->kind) {
         case KIR_STMT_BLOCK_OPEN:
             emit_indent(f, indent++);
