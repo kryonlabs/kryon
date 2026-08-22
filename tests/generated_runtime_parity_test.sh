@@ -54,6 +54,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 
 	kryon "github.com/waozixyz/kryon/go/kryon"
@@ -137,6 +138,26 @@ func requireFrameOps(label string, requirements map[kryon.FrameOpKind]int) {
 	}
 }
 
+func requireRenderedFrame(label string, minChangedPixels int) {
+	img := kryon.RenderCurrentFrame()
+	bounds := img.Bounds()
+	if bounds.Dx() != 640 || bounds.Dy() != 480 {
+		panic(fmt.Sprintf("%s: rendered frame size = %dx%d, want 640x480", label, bounds.Dx(), bounds.Dy()))
+	}
+	background := color.RGBA{R: kryon.RAYWHITE.R, G: kryon.RAYWHITE.G, B: kryon.RAYWHITE.B, A: kryon.RAYWHITE.A}
+	changed := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if img.RGBAAt(x, y) != background {
+				changed++
+			}
+		}
+	}
+	if changed < minChangedPixels {
+		panic(fmt.Sprintf("%s: generated Go rendered only %d changed pixels, want at least %d", label, changed, minChangedPixels))
+	}
+}
+
 func text32(buf [32]byte) string {
 	for i, b := range buf {
 		if b == 0 {
@@ -182,6 +203,7 @@ func main() {
 		kryon.FrameOpTextArea:  1,
 		kryon.FrameOpButton:    2,
 	})
+	requireRenderedFrame("form", 2500)
 	driver.SetFocus(101)
 	drawForm()
 	driver.QueueKey(kryon.KeyLeft)
@@ -216,6 +238,7 @@ func main() {
 		kryon.FrameOpTextField: 1,
 		kryon.FrameOpTextArea:  1,
 	})
+	requireRenderedFrame("fields", 1200)
 	driver.QueueTap(30, 30)
 	drawFields()
 	driver.QueueKey(kryon.KeyLeft)
@@ -244,6 +267,7 @@ func main() {
 		kryon.FrameOpText:   1,
 		kryon.FrameOpButton: 2,
 	})
+	requireRenderedFrame("buttons", 1000)
 	driver.QueueTap(30, 130)
 	drawButtons()
 	driver.QueueTap(130, 130)
