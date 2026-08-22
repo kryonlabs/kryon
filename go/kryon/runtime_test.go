@@ -1,6 +1,10 @@
 package kryon
 
-import "testing"
+import (
+	"image"
+	"image/color"
+	"testing"
+)
 
 func TestTextFieldCursorNavigationAndUnicodeInput(t *testing.T) {
 	rt := New(AppConfig{Width: 320, Height: 200}).(*runtime)
@@ -507,4 +511,75 @@ func TestFrameOpsResetEachFrame(t *testing.T) {
 	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
 		t.Fatalf("second frame ops = %#v, want one rect", ops)
 	}
+}
+
+func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
+	rt := New(AppConfig{Width: 240, Height: 140}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	text := make([]byte, 32)
+	copy(text, "demo")
+	cursor := int32(4)
+	focused := true
+
+	BeginFrame()
+	ClearBackground(RAYWHITE)
+	Text("geld", 12, 12, Text16, BLACK)
+	Button(ButtonProps{Bounds: Rectangle{X: 12, Y: 40, Width: 82, Height: 28}, Label: "Save", ID: 1, Font: Text16})
+	TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 12, Y: 82, Width: 140, Height: 32},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        2,
+		Font:           Text16,
+	})
+	EndFrame()
+
+	img := RenderCurrentFrame()
+	if got := img.Bounds().Dx(); got != 240 {
+		t.Fatalf("render width = %d, want 240", got)
+	}
+	if got := img.Bounds().Dy(); got != 140 {
+		t.Fatalf("render height = %d, want 140", got)
+	}
+	if got := countPixelsNot(img, rgbaTest(RAYWHITE)); got < 700 {
+		t.Fatalf("rendered frame changed only %d pixels, want visible native UI", got)
+	}
+}
+
+func TestRenderFrameClipsOutOfBoundsOps(t *testing.T) {
+	img := RenderFrame(32, 24, []FrameOp{
+		{Kind: FrameOpBackground, Color: WHITE},
+		{Kind: FrameOpRect, Bounds: Rectangle{X: -10, Y: -8, Width: 18, Height: 16}, Color: BLUE},
+		{Kind: FrameOpLine, Bounds: Rectangle{X: -4, Y: 23, Width: 40, Height: -30}, Color: RED},
+		{Kind: FrameOpText, Bounds: Rectangle{X: 2, Y: 4, Width: 40, Height: 16}, Text: "A", FontSize: Text16, Color: BLACK},
+	})
+	if got := img.Bounds().Dx(); got != 32 {
+		t.Fatalf("render width = %d, want 32", got)
+	}
+	if got := countPixelsNot(img, rgbaTest(WHITE)); got == 0 {
+		t.Fatal("clipped render produced a blank image")
+	}
+}
+
+func countPixelsNot(img interface {
+	Bounds() image.Rectangle
+	RGBAAt(int, int) color.RGBA
+}, bg color.RGBA) int {
+	count := 0
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if img.RGBAAt(x, y) != bg {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func rgbaTest(c Color) color.RGBA {
+	return color.RGBA{R: c.R, G: c.G, B: c.B, A: c.A}
 }
