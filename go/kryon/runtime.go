@@ -248,7 +248,7 @@ type UIGrid struct {
 	PadY   int32
 }
 
-type UIParagraphSpec struct {
+type ParagraphSpec struct {
 	Text     string
 	IconType int32
 	IconSize int32
@@ -502,7 +502,7 @@ type Runtime interface {
 	Bevel(x, y, w, h int32, light, dark Color)
 	IconTexture(id, x, y, size int32, iconType int32, tint Color)
 	Picture(props PictureProps)
-	Paragraph(spec UIParagraphSpec, x int32, y *int32)
+	Paragraph(spec ParagraphSpec, x int32, y *int32)
 	IconButton(props IconButtonProps) bool
 	Href(props HrefProps) bool
 	Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool
@@ -768,7 +768,7 @@ func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lin
 func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color)       {}
 func (r *runtime) IconTexture(int32, int32, int32, int32, int32, Color) {}
 func (r *runtime) Picture(PictureProps)                                 {}
-func (r *runtime) Paragraph(spec UIParagraphSpec, x int32, y *int32) {
+func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	_, _ = spec, x
 	if y != nil {
 		*y += spec.Font + spec.LineGap

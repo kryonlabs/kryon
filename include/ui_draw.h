@@ -13,7 +13,7 @@ typedef struct {
     int font;
     int line_gap;
     Color color;
-} UIParagraphSpec;
+} ParagraphSpec;
 
 int GetUIFontSize(void);
 int GetUISmallFontSize(void);

@@ -268,7 +268,7 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
     int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
     int min_h = measure.min_height > 0 ? measure.min_height : 0;
     int content_w;
-    UIParagraphSpec paragraph;
+    ParagraphSpec paragraph;
     int height;
 
     if(width > ui_view_width - ScaleUIPx(24))
@@ -278,7 +278,7 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
     content_w = width - ScaleUIPx(36);
     if(content_w < ScaleUIPx(120))
         content_w = ScaleUIPx(120);
-    paragraph = (UIParagraphSpec){
+    paragraph = (ParagraphSpec){
         .text = measure.message,
         .width = content_w,
         .font = font,

@@ -183,7 +183,7 @@ func IconTexture(id, x, y, size int32, iconType int32, tint Color) {
 	active().IconTexture(id, x, y, size, iconType, tint)
 }
 func Picture(props PictureProps) { active().Picture(props) }
-func Paragraph(spec UIParagraphSpec, x int32, y *int32) {
+func Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	active().Paragraph(spec, x, y)
 }
 func IconButton(props IconButtonProps) bool { return active().IconButton(props) }

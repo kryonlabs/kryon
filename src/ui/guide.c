@@ -109,7 +109,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int controls_gap = ScaleUIPx(12);
     int max_tip_h;
     char page_text[32];
-    UIParagraphSpec paragraph;
+    ParagraphSpec paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
@@ -151,7 +151,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     else if(tip_w > ScaleUIPx(300))
         tip_w = ScaleUIPx(300);
 
-    paragraph = (UIParagraphSpec){
+    paragraph = (ParagraphSpec){
         .text = guide.steps[step].text,
         .width = tip_w - pad * 2,
         .font = guide.paragraph_font,

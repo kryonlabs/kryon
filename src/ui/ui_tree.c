@@ -305,7 +305,7 @@ static int
 ui_measure_paragraph(UIWidgetNode node)
 {
     if(node.props != NULL)
-        return ui_paragraph_height(*(const UIParagraphSpec *)node.props);
+        return ui_paragraph_height(*(const ParagraphSpec *)node.props);
     return ui_paragraph_height(node.data.paragraph);
 }
 
@@ -1275,7 +1275,7 @@ UIGetNodeHeightById(int id)
 }
 
 UIWidgetNode
-UINodeParagraph(UIParagraphSpec paragraph, int x, int y)
+UINodeParagraph(ParagraphSpec paragraph, int x, int y)
 {
     UIWidgetNode node;
 
@@ -1456,7 +1456,7 @@ TextInRect(const char *text, Rectangle rect, int font_size, Color color)
 }
 
 void
-Paragraph(UIParagraphSpec paragraph, int x, int *y)
+Paragraph(ParagraphSpec paragraph, int x, int *y)
 {
     UIWidgetNode node;
     UINodeId id;

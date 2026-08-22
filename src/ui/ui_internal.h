@@ -107,7 +107,7 @@ int ui_theme_settings_height(ThemeSettingsProps settings);
 int ui_theme_picker_height(int w);
 int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
-int ui_paragraph_height(UIParagraphSpec paragraph);
+int ui_paragraph_height(ParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
@@ -124,7 +124,7 @@ int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
 int DrawUISelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
-void DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y);
+void DrawUIParagraph(ParagraphSpec paragraph, int x, int *y);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);

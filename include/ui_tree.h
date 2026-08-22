@@ -83,7 +83,7 @@ typedef union UIWidgetData {
         int gap;
         int padding;
     } layout;
-    UIParagraphSpec paragraph;
+    ParagraphSpec paragraph;
     ReadonlyTextBoxProps readonly_text_box;
     LabelTextFieldProps label_text_field;
     SectionLabelProps section_label;
@@ -169,7 +169,7 @@ int UIGetNodeHeightById(int id);
 const UIWidgetNode *UIGetNode(UINodeId id);
 UINodeId UIHitTestNode(Vector2 point);
 
-UIWidgetNode UINodeParagraph(UIParagraphSpec paragraph, int x, int y);
+UIWidgetNode UINodeParagraph(ParagraphSpec paragraph, int x, int y);
 UIWidgetNode UINodeReadonlyTextBox(ReadonlyTextBoxProps box);
 UIWidgetNode UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
 UIWidgetNode UINodeSectionLabel(SectionLabelProps label, int x, int y);
@@ -196,7 +196,7 @@ void Background(Color color);
 void Text(const char *text, int x, int y, int font_size, Color color);
 void TextInRect(const char *text, Rectangle rect, int font_size,
                       Color color);
-void Paragraph(UIParagraphSpec paragraph, int x, int *y);
+void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
 void Rect(int x, int y, int w, int h, Color fill, Color border);

@@ -3269,7 +3269,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
 }
 
 static TextLayout
-UIParagraphLayout(UIParagraphSpec paragraph)
+ParagraphLayout(ParagraphSpec paragraph)
 {
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : ScaleUIPx(4);
@@ -3283,24 +3283,24 @@ UIParagraphLayout(UIParagraphSpec paragraph)
 }
 
 int
-ui_paragraph_height(UIParagraphSpec paragraph)
+ui_paragraph_height(ParagraphSpec paragraph)
 {
     if(paragraph.width <= 0)
         return 0;
-    TextLayout layout = UIParagraphLayout(paragraph);
+    TextLayout layout = ParagraphLayout(paragraph);
     int height = GetTextLayoutHeight(&layout);
     FreeTextLayout(&layout);
     return height;
 }
 
 void
-DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y)
+DrawUIParagraph(ParagraphSpec paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
-    TextLayout layout = UIParagraphLayout(paragraph);
+    TextLayout layout = ParagraphLayout(paragraph);
     DrawTextLayout(&layout, x, y, font, color);
     FreeTextLayout(&layout);
 }
