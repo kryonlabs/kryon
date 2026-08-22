@@ -15,7 +15,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     if(active)
         MarkUIClickable();
 
-    if(DrawUIButton((UIButtonSpec){
+    if(RenderButton((UIButtonSpec){
         .bounds = bounds,
         .label = label,
         .font = font,

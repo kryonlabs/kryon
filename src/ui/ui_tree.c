@@ -1530,7 +1530,7 @@ UIButtonNode(UIButtonSpec button)
 {
     ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
                 &button);
-    return DrawUIButton(button);
+    return RenderButton(button);
 }
 
 int
@@ -2181,7 +2181,7 @@ Button(ButtonProps button)
     }
     if(ui_tree_building)
         return clicked;
-    return DrawUIButton(spec);
+    return RenderButton(spec);
 }
 
 /* Retained layout containers. Every container closes with End(). */

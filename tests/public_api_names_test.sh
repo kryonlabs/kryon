@@ -214,6 +214,25 @@ if [ -n "$internal_text_input_matches" ]; then
     exit 1
 fi
 
+internal_button_matches="$(
+    rg -n '\b(DrawUIButton|DrawUITextButton|DrawUIGenericButton)\b' \
+        src/ui/button.c \
+        src/ui/rows.c \
+        src/ui/bottom_nav.c \
+        src/ui/modal.c \
+        src/ui/ui_tk.c \
+        src/ui/ui_tree.c \
+        src/ui/ui_internal.h \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$internal_button_matches" ]; then
+    echo "Button implementation must use clean internal Render* names without legacy DrawUI prefixes:"
+    echo "$internal_button_matches"
+    exit 1
+fi
+
 public_tree_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \

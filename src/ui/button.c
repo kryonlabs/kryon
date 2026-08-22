@@ -12,7 +12,7 @@ typedef struct UIButtonAnimState {
 static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
 
 int
-DrawUIButton(UIButtonSpec button)
+RenderButton(UIButtonSpec button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -318,7 +318,7 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
 }
 
 int
-DrawUITextButton(int x, int y, const char *label, int *hover)
+RenderTextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int font = GetUISmallFontSize();
@@ -335,7 +335,7 @@ DrawUITextButton(int x, int y, const char *label, int *hover)
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIButton((UIButtonSpec){
+    return RenderButton((UIButtonSpec){
         .bounds = bounds,
         .label = text,
         .font = font,
@@ -382,7 +382,7 @@ ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
 }
 
 int
-DrawUIGenericButton(int x, int y, int w, int h, const char *label,
+RenderStyledButton(int x, int y, int w, int h, const char *label,
                        UIButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
@@ -437,7 +437,7 @@ DrawUIGenericButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = DrawUIButton((UIButtonSpec){
+    clicked = RenderButton((UIButtonSpec){
         .bounds = bounds,
         .label = label,
         .font = font,

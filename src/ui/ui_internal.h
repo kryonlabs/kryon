@@ -132,7 +132,7 @@ void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
-int DrawUIButton(UIButtonSpec button);
+int RenderButton(UIButtonSpec button);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
 int RenderTextInputControl(TextInputProps input);
@@ -147,8 +147,8 @@ int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
 int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
                         int *hover);
 int DrawUIInfoButton(int center_x, int center_y, int diameter);
-int DrawUITextButton(int x, int y, const char *label, int *hover);
-int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
+int RenderTextButton(int x, int y, const char *label, int *hover);
+int RenderStyledButton(int x, int y, int w, int h, const char *label,
                         UIButtonStyle style, int disabled, int *hover);
 void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);

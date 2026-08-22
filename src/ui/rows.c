@@ -241,7 +241,7 @@ DrawUIButtonRow(ButtonRowProps row)
                 int hover = 0;
                 int item_index = row_start + j;
 
-                if(DrawUIGenericButton(x, y, button_w, row.height,
+                if(RenderStyledButton(x, y, button_w, row.height,
                                           row.items[item_index].label,
                                           row.items[item_index].style,
                                           row.items[item_index].disabled,
