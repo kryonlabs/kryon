@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"image"
 	"image/color"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -82,6 +83,31 @@ func TestWindowRuntimeDelegatesCompatInput(t *testing.T) {
 	base.QueueText("x")
 	if got := rt.CharPressed(); got != 'x' {
 		t.Fatalf("delegated char = %q, want x", rune(got))
+	}
+}
+
+func TestX11SetInputFocusRequest(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	win := &x11Window{conn: client, window: 0x01020304}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- win.setInputFocus()
+	}()
+
+	buf := make([]byte, 12)
+	if _, err := readFull(server, buf); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
+	}
+
+	want := []byte{42, 1, 3, 0, 4, 3, 2, 1, 0, 0, 0, 0}
+	if !bytes.Equal(buf, want) {
+		t.Fatalf("SetInputFocus request = %#v, want %#v", buf, want)
 	}
 }
 

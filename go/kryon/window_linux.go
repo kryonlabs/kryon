@@ -557,6 +557,7 @@ func (w *x11Window) create(config AppConfig) error {
 	if err := w.mapWindow(); err != nil {
 		return err
 	}
+	_ = w.setInputFocus()
 	return w.sync()
 }
 
@@ -578,6 +579,16 @@ func (w *x11Window) mapWindow() error {
 	req[0] = 8
 	put16(req[2:], 2)
 	put32(req[4:], w.window)
+	return w.write(req)
+}
+
+func (w *x11Window) setInputFocus() error {
+	req := make([]byte, 12)
+	req[0] = 42
+	req[1] = 1
+	put16(req[2:], 3)
+	put32(req[4:], w.window)
+	put32(req[8:], 0)
 	return w.write(req)
 }
 
@@ -839,6 +850,7 @@ func (w *x11Window) poll() ([]x11Event, error) {
 func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 	switch buf[0] & 0x7f {
 	case x11EventButtonPress:
+		_ = w.setInputFocus()
 		button := int32(buf[1])
 		x := int(int16(get16(buf[24:])))
 		y := int(int16(get16(buf[26:])))
