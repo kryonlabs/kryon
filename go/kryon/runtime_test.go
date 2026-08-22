@@ -136,6 +136,84 @@ func TestTapFocusesTextField(t *testing.T) {
 	}
 }
 
+func TestTextFieldWidgetWorkflowBackspaceCommitAndFocusSwitch(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	first, second := make([]byte, 32), make([]byte, 32)
+	copy(first, "first")
+	copy(second, "second")
+	firstCursor, secondCursor := int32(len("first")), int32(len("second"))
+	firstFocused, secondFocused := true, false
+	firstCommit, secondCommit := false, false
+
+	draw := func() {
+		rt.BeginFrame()
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{X: 20, Y: 20, Width: 180, Height: 30},
+			Text:           first,
+			CursorPosition: &firstCursor,
+			Focused:        &firstFocused,
+			CommitPressed:  &firstCommit,
+			FocusID:        501,
+			MaxCodepoints:  31,
+			Font:           Text16,
+		})
+		rt.TextField(TextFieldProps{
+			Bounds:         Rectangle{X: 20, Y: 64, Width: 180, Height: 30},
+			Text:           second,
+			CursorPosition: &secondCursor,
+			Focused:        &secondFocused,
+			CommitPressed:  &secondCommit,
+			FocusID:        502,
+			MaxCodepoints:  31,
+			Font:           Text16,
+		})
+		rt.EndFrame()
+	}
+
+	draw()
+	rt.QueueText("XYZ")
+	draw()
+	if got, want := string(first[:zeroIndex(first)]), "firstXYZ"; got != want {
+		t.Fatalf("first typed text = %q, want %q", got, want)
+	}
+
+	rt.QueueKey(KeyBackspace)
+	draw()
+	if got, want := string(first[:zeroIndex(first)]), "firstXY"; got != want {
+		t.Fatalf("first after backspace = %q, want %q", got, want)
+	}
+	if got, want := firstCursor, int32(len("firstXY")); got != want {
+		t.Fatalf("first cursor after backspace = %d, want %d", got, want)
+	}
+
+	rt.QueueKey(KeyEnter)
+	draw()
+	if !firstCommit {
+		t.Fatal("enter did not commit the focused first field")
+	}
+
+	rt.QueueTap(84, 74)
+	draw()
+	if firstFocused || !secondFocused {
+		t.Fatalf("focus after tapping second field = first:%v second:%v, want first:false second:true", firstFocused, secondFocused)
+	}
+
+	rt.QueueKey(KeyBackspace)
+	draw()
+	if got, want := string(second[:zeroIndex(second)]), "secon"; got != want {
+		t.Fatalf("second after backspace = %q, want %q", got, want)
+	}
+	if got, want := string(first[:zeroIndex(first)]), "firstXY"; got != want {
+		t.Fatalf("first changed while second focused = %q, want %q", got, want)
+	}
+
+	rt.QueueText("d!")
+	draw()
+	if got, want := string(second[:zeroIndex(second)]), "second!"; got != want {
+		t.Fatalf("second typed text = %q, want %q", got, want)
+	}
+}
+
 func TestButtonConsumesTapInsideBounds(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 

@@ -882,6 +882,9 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 func (w *x11Window) decodeKey(keycode uint8, state uint16) (x11Event, bool) {
 	syms := w.keysyms[keycode]
 	if len(syms) == 0 {
+		if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+			fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x no mapping\n", keycode, state)
+		}
 		return x11Event{}, false
 	}
 	shift := state&x11ShiftMask != 0
@@ -892,14 +895,26 @@ func (w *x11Window) decodeKey(keycode uint8, state uint16) (x11Event, bool) {
 	}
 	if ctrl {
 		if k := shortcutKey(ks); k != 0 {
+			if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+				fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x shortcut=%d\n", keycode, state, ks, k)
+			}
 			return x11Event{kind: x11EventKey, shortcut: k}, true
 		}
 	}
 	if key := specialKey(ks); key != 0 {
+		if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+			fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x special=%d\n", keycode, state, ks, key)
+		}
 		return x11Event{kind: x11EventKey, key: key}, true
 	}
 	if text := keysymText(ks); text != "" {
+		if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+			fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x text=%q\n", keycode, state, ks, text)
+		}
 		return x11Event{kind: x11EventKey, text: text}, true
+	}
+	if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x ignored\n", keycode, state, ks)
 	}
 	return x11Event{}, false
 }

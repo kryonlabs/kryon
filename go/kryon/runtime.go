@@ -607,6 +607,7 @@ type runtime struct {
 	chars          []rune
 	fieldOrder     []int32
 	prevOrder      []int32
+	focusRefs      map[int32]*bool
 	selection      map[int32]selection
 	layout         []layoutFrame
 	ops            []FrameOp
@@ -681,6 +682,7 @@ func New(config AppConfig) Runtime {
 	}
 	return &runtime{
 		config:         config,
+		focusRefs:      map[int32]*bool{},
 		selection:      map[int32]selection{},
 		mouseDown:      map[int32]bool{},
 		keyDown:        map[int32]bool{},
@@ -757,6 +759,7 @@ func (r *runtime) Close()                  { r.closed = true }
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame() {
 	r.fieldOrder = r.fieldOrder[:0]
+	clear(r.focusRefs)
 	r.layout = r.layout[:0]
 	r.ops = r.ops[:0]
 }
@@ -771,8 +774,20 @@ func (r *runtime) EndFrame() {
 	r.inputEvents = nil
 	r.frames++
 }
-func (r *runtime) SetFocus(id int32) { r.focusID = id }
+func (r *runtime) SetFocus(id int32) { r.setFocus(id) }
 func (r *runtime) Focus() int32      { return r.focusID }
+func (r *runtime) setFocus(id int32) {
+	if r.focusID == id {
+		return
+	}
+	if ref := r.focusRefs[r.focusID]; ref != nil {
+		*ref = false
+	}
+	r.focusID = id
+	if ref := r.focusRefs[id]; ref != nil {
+		*ref = true
+	}
+}
 func (r *runtime) FrameOps() []FrameOp {
 	return append([]FrameOp(nil), r.ops...)
 }
@@ -1020,7 +1035,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 			changed = 1
 		}
 		if props.ID != 0 {
-			r.focusID = props.ID
+			r.setFocus(props.ID)
 		}
 	}
 
@@ -1036,7 +1051,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				changed = 1
 			}
 			if props.ID != 0 {
-				r.focusID = props.ID
+				r.setFocus(props.ID)
 			}
 			if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
 				r.lastTableClick.column == col && click.when.Sub(r.lastTableClick.when) <= 450*time.Millisecond {
@@ -1267,15 +1282,18 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		return false
 	}
 	r.registerField(focusID)
+	if focused != nil {
+		r.focusRefs[focusID] = focused
+	}
 	tapX, tapped := r.consumeTapPoint(bounds)
 	if focusID != 0 && tapped {
-		r.focusID = focusID
+		r.setFocus(focusID)
 	}
 	if commit != nil {
 		*commit = false
 	}
 	if focused != nil && *focused {
-		r.focusID = focusID
+		r.setFocus(focusID)
 	}
 	if r.focusID != focusID {
 		if focused != nil {
@@ -1337,7 +1355,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		}
 		switch event.key {
 		case KeyTab:
-			r.focusID = r.nextFocus(focusID, event.shift)
+			r.setFocus(r.nextFocus(focusID, event.shift))
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyLeft:
 			pos = prevRune(text, pos)

@@ -21,7 +21,21 @@ test -s "$work/krb/tests/perf/text_input.krb"
 test "$(od -An -tu4 -j8 -N4 "$work/krb/tests/perf/text_input.krb" | tr -d ' ')" -ge 1
 cp "$work/go/text_input.go" "$work/go-check/text_input.go"
 sed -i '/^func main()/,$d' "$work/go-check/text_input.go"
-printf '%s\n' 'module kryon-text-input-perf' '' 'go 1.25.0' '' 'require github.com/waozixyz/kryon/go/kryon v0.0.0' "replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon" > "$work/go-check/go.mod"
+cat > "$work/go-check/go.mod" <<EOF
+module kryon-text-input-perf
+
+go 1.25.0
+
+require (
+	github.com/waozixyz/kryon/go/kryon v0.0.0
+	golang.org/x/image v0.45.0
+	golang.org/x/sys v0.47.0
+	golang.org/x/text v0.41.0
+)
+
+replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon
+EOF
+cp "$root/go/kryon/go.sum" "$work/go-check/go.sum"
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./... >/dev/null)
 printf '%s\n' '{"generated_lowerings":["kir","c","go","krb"],"generated_contract":"validated"}'
 "$build/tests/text_input_perf_test"

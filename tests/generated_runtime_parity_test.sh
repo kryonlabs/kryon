@@ -46,9 +46,15 @@ module kryon-generated-runtime-parity
 
 go 1.25.0
 
-require github.com/waozixyz/kryon/go/kryon v0.0.0
+require (
+	github.com/waozixyz/kryon/go/kryon v0.0.0
+	golang.org/x/image v0.45.0
+	golang.org/x/sys v0.47.0
+	golang.org/x/text v0.41.0
+)
 replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon
 EOF
+cp "$root/go/kryon/go.sum" "$work/go-run/go.sum"
 cat > "$work/go-run/main.go" <<'EOF'
 package main
 
@@ -256,6 +262,9 @@ func main() {
 	drawForm()
 	driver.QueueKey(kryon.KeyBackspace)
 	drawForm()
+	if got := text64(form.First); got != "alpha" {
+		panic(fmt.Sprintf("form: backspace restored first field to %q, want alpha", got))
+	}
 
 	driver.SetFocus(102)
 	drawForm()
@@ -488,6 +497,10 @@ int main(void)
     KryonInjectKeyTap(KEY_BACKSPACE);
     KryonInjectPump();
     draw_form();
+    if(strcmp(first, "alpha") != 0) {
+        fprintf(stderr, "form: backspace restored first field to '%s', want alpha\n", first);
+        return 1;
+    }
 
     SetUIFocus(102);
     draw_form();

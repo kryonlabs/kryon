@@ -58,6 +58,40 @@ func TestX11KeyTranslation(t *testing.T) {
 	}
 }
 
+func TestX11DecodeKeyEvents(t *testing.T) {
+	win := &x11Window{keysyms: map[uint8][]uint32{
+		22: {0xff08, 0},
+		36: {0xff0d, 0},
+		38: {'a', 'A'},
+		54: {'c', 'C'},
+	}}
+
+	ev, ok := win.decodeKey(38, 0)
+	if !ok || ev.kind != x11EventKey || ev.text != "a" {
+		t.Fatalf("decode a = %#v ok=%v, want text a", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(38, x11ShiftMask)
+	if !ok || ev.kind != x11EventKey || ev.text != "A" {
+		t.Fatalf("decode shifted a = %#v ok=%v, want text A", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(22, 0)
+	if !ok || ev.kind != x11EventKey || ev.key != KeyBackspace {
+		t.Fatalf("decode backspace = %#v ok=%v, want KeyBackspace", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(36, 0)
+	if !ok || ev.kind != x11EventKey || ev.key != KeyEnter {
+		t.Fatalf("decode enter = %#v ok=%v, want KeyEnter", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(54, x11ControlMask)
+	if !ok || ev.kind != x11EventKey || ev.shortcut != KeyC {
+		t.Fatalf("decode ctrl-c = %#v ok=%v, want shortcut KeyC", ev, ok)
+	}
+}
+
 func TestWindowRuntimeDelegatesCompatInput(t *testing.T) {
 	base := New(AppConfig{}).(*runtime)
 	rt := &windowRuntime{Runtime: base}
