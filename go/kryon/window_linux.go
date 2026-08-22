@@ -557,7 +557,6 @@ func (w *x11Window) create(config AppConfig) error {
 	if err := w.mapWindow(); err != nil {
 		return err
 	}
-	_ = w.setInputFocus()
 	return w.sync()
 }
 
