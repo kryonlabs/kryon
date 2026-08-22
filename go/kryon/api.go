@@ -1,5 +1,10 @@
 package kryon
 
+import (
+	"fmt"
+	"os"
+)
+
 var activeRuntime Runtime
 
 func Open(config AppConfig) Runtime {
@@ -7,6 +12,8 @@ func Open(config AppConfig) Runtime {
 	if runtime, err := openWindowRuntime(config); err == nil {
 		activeRuntime = runtime
 		return activeRuntime
+	} else if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintln(os.Stderr, "kryon: native window fallback:", err)
 	}
 	activeRuntime = New(config)
 	return activeRuntime
