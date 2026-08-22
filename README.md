@@ -146,7 +146,7 @@ A project can add `project.kryon` metadata such as `preview_size`,
 
 Kryon follows raylib-style C conventions where practical: lowercase module
 filenames, simple C structs, and public functions named like raylib APIs
-(`InitWindow`, `DrawTexture`, `BeginUIFrame`, `UIButtonNode`). Internal helpers
+(`InitWindow`, `DrawTexture`, `BeginUIFrame`, `ButtonNode`). Internal helpers
 stay private to `src/` unless a downstream app needs the API in `include/`.
 
 ## Documentation

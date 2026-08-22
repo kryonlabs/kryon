@@ -50,7 +50,7 @@ typedef struct {
     Color text;
     Color border;
     float radius;
-} UIButtonSpec;
+} ButtonSpec;
 
 typedef struct {
     Rectangle bounds;

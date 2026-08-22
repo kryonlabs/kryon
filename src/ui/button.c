@@ -12,7 +12,7 @@ typedef struct UIButtonAnimState {
 static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
 
 int
-RenderButton(UIButtonSpec button)
+RenderButton(ButtonSpec button)
 {
     char editor_id[96];
     UIWidget widget;
@@ -335,7 +335,7 @@ RenderTextButton(int x, int y, const char *label, int *hover)
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return RenderButton((UIButtonSpec){
+    return RenderButton((ButtonSpec){
         .bounds = bounds,
         .label = text,
         .font = font,
@@ -437,7 +437,7 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = RenderButton((UIButtonSpec){
+    clicked = RenderButton((ButtonSpec){
         .bounds = bounds,
         .label = label,
         .font = font,

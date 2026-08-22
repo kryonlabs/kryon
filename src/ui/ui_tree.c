@@ -1118,7 +1118,7 @@ DrawTree(void)
                      node->data.primitive.color);
             break;
         case UI_WIDGET_BUTTON_NODE: {
-            UIButtonSpec spec = node->data.button.spec;
+            ButtonSpec spec = node->data.button.spec;
             Color background;
             Color border;
             Color text;
@@ -1526,7 +1526,7 @@ Bevel(int x, int y, int w, int h, Color light, Color dark)
 }
 
 int
-UIButtonNode(UIButtonSpec button)
+ButtonNode(ButtonSpec button)
 {
     ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
                 &button);
@@ -2156,7 +2156,7 @@ ModalFrame(int width, int height, const char *title,
 int
 Button(ButtonProps button)
 {
-    UIButtonSpec spec = {
+    ButtonSpec spec = {
         .bounds = button.bounds,
         .label = button.label,
         .font = button.font,

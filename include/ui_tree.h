@@ -101,7 +101,7 @@ typedef union UIWidgetData {
         Color border;
     } primitive;
     struct {
-        UIButtonSpec spec;
+        ButtonSpec spec;
         UIButtonStyle style;
     } button;
     TextFieldProps text_field;
@@ -205,7 +205,7 @@ void Bevel(int x, int y, int w, int h, Color light, Color dark);
 void IconTexture(int id, int x, int y, int size, Texture2D icon,
                        Color tint);
 void Picture(PictureProps picture);
-int UIButtonNode(UIButtonSpec button);
+int ButtonNode(ButtonSpec button);
 int IconButton(IconButtonProps button);
 int Href(HrefProps link);
 int TextField(TextFieldProps field);

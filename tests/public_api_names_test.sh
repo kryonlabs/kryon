@@ -43,6 +43,26 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+public_button_matches="$(
+    rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
+        include/ui_controls.h \
+        include/ui_tree.h \
+        README.md \
+        src/ui/button.c \
+        src/ui/modal.c \
+        src/ui/ui_internal.h \
+        src/ui/ui_tk.c \
+        src/ui/ui_tree.c \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_button_matches" ]; then
+    echo "Public button APIs must use clean ButtonSpec/ButtonNode names without legacy UI prefixes:"
+    echo "$public_button_matches"
+    exit 1
+fi
+
 if [ -d go/kryui ]; then
     echo "The legacy go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1

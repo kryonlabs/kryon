@@ -654,7 +654,7 @@ DrawUISpinbox(SpinboxProps spinbox)
         snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
                        GetUIFontSize(), c_text);
-    if(RenderButton((UIButtonSpec){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
+    if(RenderButton((ButtonSpec){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL) {
         if(*spinbox.value > spinbox.min) {
@@ -667,7 +667,7 @@ DrawUISpinbox(SpinboxProps spinbox)
         if(*spinbox.value < spinbox.min)
             *spinbox.value = spinbox.min;
     }
-    if(RenderButton((UIButtonSpec){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
+    if(RenderButton((ButtonSpec){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL) {
         if(*spinbox.value < spinbox.max) {
@@ -1648,7 +1648,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
         int has_icon = picker.icons != NULL && picker.icons[i].id != 0;
         int text_x = x + pad + ScaleUIPx(12);
 
-        if(RenderButton((UIButtonSpec){
+        if(RenderButton((ButtonSpec){
             .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)row_h},
             .label = "",
             .font = GetUIFontSize(),
@@ -1676,7 +1676,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
     }
 
     y += pad;
-    if(RenderButton((UIButtonSpec){
+    if(RenderButton((ButtonSpec){
         .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)button_h},
         .label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel",
         .font = GetUIFontSize(),

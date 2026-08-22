@@ -132,7 +132,7 @@ void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
-int RenderButton(UIButtonSpec button);
+int RenderButton(ButtonSpec button);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
 int RenderTextInputControl(TextInputProps input);
