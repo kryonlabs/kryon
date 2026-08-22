@@ -1582,7 +1582,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
         Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
                            (float)(ui_view_height / 2 - ScaleUIPx(4)),
                            (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
-        DrawUITextField((TextFieldProps){
+        RenderTextField((TextFieldProps){
             .bounds = field,
             .text = dialog.text,
             .text_size = (size_t)dialog.text_size,

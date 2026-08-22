@@ -9,12 +9,12 @@
 #define UI_NODE_PRESSED (1U << 29)
 #define UI_NODE_OWNS_STATE (1U << 30)
 
-typedef struct UITextFieldState {
+typedef struct TextFieldState {
     int cursor;
     int anchor;
     int focused;
     int dragging;
-} UITextFieldState;
+} TextFieldState;
 
 static UIWidgetNode *ui_tree_nodes = NULL;
 static int ui_tree_node_count = 0;
@@ -98,7 +98,7 @@ static void
 ui_text_field_event(UIWidgetNode *node, UIEventKind kind, double timestamp)
 {
     UIEvent event;
-    UITextFieldState *state = node != NULL ? node->state : NULL;
+    TextFieldState *state = node != NULL ? node->state : NULL;
 
     if(node == NULL)
         return;
@@ -535,7 +535,7 @@ SetSelection(UIKey key, int anchor, int cursor)
 
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
-        UITextFieldState *state;
+        TextFieldState *state;
         int length;
 
         if(node->key != key ||
@@ -671,7 +671,7 @@ UIReconcileTree(void)
         if((node->kind == UI_WIDGET_TEXT_FIELD_NODE ||
             node->kind == UI_WIDGET_TEXT_AREA_NODE) &&
            node->state == NULL) {
-            UITextFieldState *state = calloc(1, sizeof(*state));
+            TextFieldState *state = calloc(1, sizeof(*state));
 
             if(state != NULL) {
                 char *text = node->kind == UI_WIDGET_TEXT_FIELD_NODE
@@ -846,7 +846,7 @@ UIRouteInput(void)
         UIWidgetNode *node = &ui_committed_nodes[i];
         TextFieldProps field_storage;
         TextFieldProps *field;
-        UITextFieldState *state;
+        TextFieldState *state;
         int start;
         int end;
         int changed = 0;
@@ -1150,7 +1150,7 @@ DrawTree(void)
         case UI_WIDGET_TEXT_FIELD_NODE:
         case UI_WIDGET_TEXT_AREA_NODE: {
             TextFieldProps field;
-            UITextFieldState *state = node->state;
+            TextFieldState *state = node->state;
             const char *display;
             char *masked = NULL;
 
@@ -1799,7 +1799,7 @@ TextArea(TextAreaProps area)
     }
     if(ui_tree_building)
         return 0;
-    return DrawUITextArea(area);
+    return RenderTextArea(area);
 }
 
 void

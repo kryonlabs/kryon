@@ -197,6 +197,23 @@ if [ -n "$public_text_input_matches" ]; then
     exit 1
 fi
 
+internal_text_input_matches="$(
+    rg -n '\b(DrawUITextInputControl|DrawUITextField|DrawUITextArea|UITextFieldState|UITextSelection|UITextAreaHeightCacheEntry)\b' \
+        src/ui/ui.c \
+        src/ui/ui_tree.c \
+        src/ui/rows.c \
+        src/ui/ui_tk.c \
+        src/ui/ui_internal.h \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$internal_text_input_matches" ]; then
+    echo "Text input implementation must use clean internal names without legacy UIText prefixes:"
+    echo "$internal_text_input_matches"
+    exit 1
+fi
+
 public_tree_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \

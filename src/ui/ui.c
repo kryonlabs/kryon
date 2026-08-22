@@ -60,19 +60,19 @@ static int g_ui_text_area_last_click_cursor = -1;
 static int g_ui_text_area_last_click_x = 0;
 static int g_ui_text_area_last_click_y = 0;
 static double g_ui_text_area_last_click_time = 0.0;
-typedef struct UITextSelection {
+typedef struct TextSelection {
     int id;
     int *owner;
     int anchor;
     int cursor;
     int dragging;
-} UITextSelection;
+} TextSelection;
 
-static UITextSelection g_ui_text_area_selection = {0};
+static TextSelection g_ui_text_area_selection = {0};
 
 #define UI_TEXT_AREA_HEIGHT_CACHE_SIZE 16
 
-typedef struct UITextAreaHeightCacheEntry {
+typedef struct TextAreaHeightCacheEntry {
     const char *text;
     int font;
     int line_gap;
@@ -80,11 +80,11 @@ typedef struct UITextAreaHeightCacheEntry {
     int len;
     int content_version;
     int height;
-} UITextAreaHeightCacheEntry;
+} TextAreaHeightCacheEntry;
 
-static UITextAreaHeightCacheEntry g_ui_text_area_height_cache[UI_TEXT_AREA_HEIGHT_CACHE_SIZE];
+static TextAreaHeightCacheEntry g_ui_text_area_height_cache[UI_TEXT_AREA_HEIGHT_CACHE_SIZE];
 static int g_ui_text_area_height_cache_next = 0;
-static UITextSelection g_ui_text_field_selection = {0};
+static TextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_last_click_id = 0;
 static int *g_ui_text_field_last_click_owner = NULL;
 static int g_ui_text_field_last_click_x = 0;
@@ -120,7 +120,7 @@ static int *g_ui_text_context_cursor = NULL;
 static int g_ui_text_context_max_codepoints = 0;
 static TextInputFilter g_ui_text_context_filter = NULL;
 static void *g_ui_text_context_filter_user_data = NULL;
-static UITextSelection *g_ui_text_context_selection = NULL;
+static TextSelection *g_ui_text_context_selection = NULL;
 static int g_ui_text_context_selection_start = 0;
 static int g_ui_text_context_selection_end = 0;
 static int g_ui_text_context_allow_newlines = 0;
@@ -182,7 +182,7 @@ static UIInputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
 static int g_ui_input_capture_stack_count = 0;
 
 static void
-ui_text_selection_clear(UITextSelection *selection)
+ui_text_selection_clear(TextSelection *selection)
 {
     if(selection == NULL)
         return;
@@ -210,7 +210,7 @@ ui_clear_text_area_selection(void)
 }
 
 static int
-ui_text_selection_matches(UITextSelection selection, int id, int *owner)
+ui_text_selection_matches(TextSelection selection, int id, int *owner)
 {
     if(owner != NULL && selection.owner == owner)
         return 1;
@@ -218,7 +218,7 @@ ui_text_selection_matches(UITextSelection selection, int id, int *owner)
 }
 
 static void
-ui_text_selection_set(UITextSelection *selection, int id, int *owner,
+ui_text_selection_set(TextSelection *selection, int id, int *owner,
                       int anchor, int cursor, int dragging)
 {
     if(selection == NULL)
@@ -654,7 +654,7 @@ ui_text_paste_clipboard(TextEdit edit, int allow_newlines)
 }
 
 static void
-ui_selection_range(UITextSelection selection, const char *text,
+ui_selection_range(TextSelection selection, const char *text,
                    int *start, int *end)
 {
     int len = text != NULL ? (int)strlen(text) : 0;
@@ -768,7 +768,7 @@ ui_text_context_register_target(int kind, int id, int *owner,
                                 int *cursor_position, int max_codepoints,
                                 TextInputFilter filter,
                                 void *filter_user_data,
-                                UITextSelection *selection,
+                                TextSelection *selection,
                                 int selection_start, int selection_end,
                                 int allow_newlines,
                                 int copy_all_when_empty,
@@ -793,7 +793,7 @@ ui_text_context_register_target(int kind, int id, int *owner,
 
 static int
 ui_text_apply_context_command(int command, TextEdit edit,
-                              UITextSelection *selection, int selection_id,
+                              TextSelection *selection, int selection_id,
                               int *selection_owner, int selection_start,
                               int selection_end, int allow_newlines,
                               int copy_all_when_empty, int read_only)
@@ -1594,7 +1594,7 @@ EditText(TextEdit edit)
 }
 
 int
-DrawUITextInputControl(TextInputProps input)
+RenderTextInputControl(TextInputProps input)
 {
     char editor_id[96];
     UIWidget widget;
@@ -1895,7 +1895,7 @@ ui_text_area_content_height(const char *text, int font, int line_gap,
 
     if(!force_recompute) {
         for(int i = 0; i < UI_TEXT_AREA_HEIGHT_CACHE_SIZE; i++) {
-            UITextAreaHeightCacheEntry *entry = &g_ui_text_area_height_cache[i];
+            TextAreaHeightCacheEntry *entry = &g_ui_text_area_height_cache[i];
             if(entry->text == text && entry->font == font &&
                entry->line_gap == line_gap &&
                entry->wrap_width == wrap_width && entry->len == len &&
@@ -1904,7 +1904,7 @@ ui_text_area_content_height(const char *text, int font, int line_gap,
         }
     }
 
-    UITextAreaHeightCacheEntry *entry =
+    TextAreaHeightCacheEntry *entry =
         &g_ui_text_area_height_cache[g_ui_text_area_height_cache_next];
     entry->text = text;
     entry->font = font;
@@ -2310,7 +2310,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 }
 
 int
-DrawUITextArea(TextAreaProps area)
+RenderTextArea(TextAreaProps area)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2807,7 +2807,7 @@ SetTextAreaSelection(int focus_id, int anchor, int cursor)
 }
 
 int
-DrawUITextField(TextFieldProps field)
+RenderTextField(TextFieldProps field)
 {
     char editor_id[96];
     UIWidget widget;

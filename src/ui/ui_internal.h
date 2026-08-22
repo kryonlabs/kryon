@@ -135,12 +135,12 @@ int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
 int DrawUIButton(UIButtonSpec button);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
-int DrawUITextInputControl(TextInputProps input);
+int RenderTextInputControl(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
                      TextInputStyle style);
-int DrawUITextField(TextFieldProps field);
-int DrawUITextArea(TextAreaProps area);
+int RenderTextField(TextFieldProps field);
+int RenderTextArea(TextAreaProps area);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);

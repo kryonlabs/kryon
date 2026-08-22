@@ -64,7 +64,7 @@ DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
 
     DrawUIText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
     field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
-    return DrawUITextField(field);
+    return RenderTextField(field);
 }
 
 int
