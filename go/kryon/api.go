@@ -4,6 +4,10 @@ var activeRuntime Runtime
 
 func Open(config AppConfig) Runtime {
 	resetDirectState()
+	if runtime, err := openWindowRuntime(config); err == nil {
+		activeRuntime = runtime
+		return activeRuntime
+	}
 	activeRuntime = New(config)
 	return activeRuntime
 }
