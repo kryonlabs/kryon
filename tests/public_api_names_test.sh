@@ -30,15 +30,15 @@ if [ -n "$matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|UIParagraphSpec|UIParagraphLayout|UIModalAction)\b' \
-        go/kryon include/ui_tree.h include/ui_draw.h include/ui_modal.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2g_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|UIParagraphSpec|UIParagraphLayout|UIModalAction|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|UICanvas|BeginUICanvas|EndUICanvas)\b' \
+        go/kryon include/ui_tree.h include/ui_draw.h include/ui_modal.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2g_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
 )"
 
 if [ -n "$generated_matches" ]; then
-    echo "Generated runtime surface must use clean widget names such as Button, Dropdown, Slider, Text, and TextField:"
+    echo "Generated runtime surface must use clean widget/layout names such as Button, TextField, FrameBox, Grid, and Canvas:"
     echo "$generated_matches"
     exit 1
 fi

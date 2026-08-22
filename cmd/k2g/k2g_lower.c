@@ -85,18 +85,18 @@ static int
 is_runtime_go_type(const char *type)
 {
     static const char *types[] = {
-        "Vector2", "Rectangle", "Color", "Texture2D", "UIKey", "UISide",
+        "Vector2", "Rectangle", "Color", "Texture2D", "UIKey", "Side",
         "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "PictureFit", "TextInputStyle", "ButtonProps",
         "IconButtonProps", "HrefProps", "TextFieldProps", "TextAreaProps",
-        "ColumnProps", "RowProps", "UIFrame", "UIGrid", "ParagraphSpec",
+        "ColumnProps", "RowProps", "FrameBox", "Grid", "ParagraphSpec",
         "PictureProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
         "ToolbarProps", "RadioButtonProps", "ProgressBarProps",
         "SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
         "SourceViewProps", "UITableRow", "TableViewProps", "NotebookProps",
         "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
-        "ConfirmDialogProps", "PromptDialogProps", "UICanvas",
-        "UICanvasResult", NULL
+        "ConfirmDialogProps", "PromptDialogProps", "Canvas",
+        "CanvasResult", NULL
     };
 
     for(int i = 0; types[i] != NULL; i++)
@@ -137,10 +137,10 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
         {"Vector2", "Vector2"}, {"Rectangle", "Rectangle"},
-        {"UIFrame", "UIFrame"}, {"UIGrid", "UIGrid"},
-        {"UICanvas", "UICanvas"},
-        {"UICanvasResult", "UICanvasResult"},
-        {"UISide", "UISide"},
+        {"FrameBox", "FrameBox"}, {"Grid", "Grid"},
+        {"Canvas", "Canvas"},
+        {"CanvasResult", "CanvasResult"},
+        {"Side", "Side"},
         {"Color", "Color"},     {"Texture2D", "Texture2D"},
         {NULL, NULL}
     };
@@ -720,6 +720,11 @@ props_field_at(const char *type, int index)
                            "LineGap", "FocusID", "Placeholder", "Syntax",
                            "Style", "Filter", "FilterUserData",
                            "ContentVersion", "ReadOnly", "Wrap"}},
+        {"FrameBox", {"Bounds", "PadX", "PadY", "Gap", "CursorX",
+                      "CursorY"}},
+        {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",
+                  "PadY"}},
+        {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},
     };
     size_t i;
 
@@ -735,6 +740,16 @@ props_field_at(const char *type, int index)
         }
     }
     return NULL;
+}
+
+static void
+go_field_name(const char *field, char *dst, size_t dst_size)
+{
+    camel(field, dst, dst_size);
+    if(strcmp(dst, "Id") == 0)
+        snprintf(dst, dst_size, "ID");
+    else if(strcmp(dst, "FocusId") == 0)
+        snprintf(dst, dst_size, "FocusID");
 }
 
 /* .kry array variables ('name: [N] const char*' state or local): uses
@@ -957,7 +972,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         /* Props/Spec use C designated initializers. Translate them to named
          * Go fields and give the untyped bounds literal its Rectangle type. */
         if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL ||
-           strcmp(type, "UICanvas") == 0) {
+           props_field_at(type, 0) != NULL) {
             char raw[K2G_TEXT_MAX], parts[32][K2G_TEXT_MAX];
             size_t rn = 0;
             int depth = 1;
@@ -994,7 +1009,14 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     snprintf(field, sizeof(field), "%s", mapped);
                     if(*part == '\0')
                         continue;
-                    tx_expr(m, part, value, sizeof(value));
+                    if(strcmp(field, "Bounds") == 0 && *skip_ws(part) == '{') {
+                        char rect[K2G_TEXT_MAX];
+
+                        snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(part));
+                        tx_expr(m, rect, value, sizeof(value));
+                    } else {
+                        tx_expr(m, part, value, sizeof(value));
+                    }
                 } else {
                     eq = strchr(part, '=');
                     if(eq == NULL)
@@ -1358,6 +1380,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"ButtonStyleDanger", "ButtonStyleDanger"},
                     {"ButtonStyleTab", "ButtonStyleTab"},
                     {"ButtonStyleTabSelected", "ButtonStyleTabSelected"},
+                    {"SideTop", "SideTop"},
+                    {"SideBottom", "SideBottom"},
+                    {"SideLeft", "SideLeft"},
+                    {"SideRight", "SideRight"},
                     {"SyntaxNone", "SyntaxNone"},
                     {"SyntaxKry", "SyntaxKry"},
                     {"SyntaxC", "SyntaxC"},
@@ -1464,8 +1490,27 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             }
             /* plain identifier: verbatim */
             if(dn + il + 1 < dst_size) {
+                if(addr && dn + 1 < dst_size)
+                    dst[dn++] = '&';
                 memcpy(dst + dn, ident, il);
                 dn += il;
+            }
+            p = q;
+            continue;
+        }
+        if(*p == '.' && (isalpha((unsigned char)p[1]) || p[1] == '_')) {
+            const char *q = p + 1;
+            char field[K2G_NAME_MAX], mapped[K2G_NAME_MAX];
+            size_t fl = 0;
+
+            while(is_ident_char((unsigned char)*q) && fl + 1 < sizeof(field))
+                field[fl++] = *q++;
+            field[fl] = '\0';
+            go_field_name(field, mapped, sizeof(mapped));
+            if(dn + strlen(mapped) + 2 < dst_size) {
+                dst[dn++] = '.';
+                memcpy(dst + dn, mapped, strlen(mapped));
+                dn += strlen(mapped);
             }
             p = q;
             continue;

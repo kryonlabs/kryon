@@ -207,34 +207,34 @@ func SelectableText(value string, x, y, fontSize int32, color Color) {
 }
 func ShowToast(message string)                     { active().ShowToast(message) }
 func ShowToastFor(message string, seconds float64) { active().ShowToastFor(message, seconds) }
-func TextField(args ...any) bool                     { return textField(args...) }
-func TextArea(props TextAreaProps) bool              { return active().TextArea(props) }
-func Radio(props RadioButtonProps) int32             { return active().Radio(props) }
-func Spinbox(props SpinboxProps) bool                { return active().Spinbox(props) }
-func Combobox(props ComboboxProps) bool              { return active().Combobox(props) }
-func LabelFrame(props LabelFrameProps)               { active().LabelFrame(props) }
-func Notebook(props NotebookProps) int32             { return active().Notebook(props) }
-func PanedView(props PanedViewProps) int32           { return active().PanedView(props) }
-func Collapsible(props CollapsibleProps) int32       { return active().Collapsible(props) }
-func ListBox(props ListBoxProps) int32               { return active().ListBox(props) }
-func SourceView(props SourceViewProps) int32         { return active().SourceView(props) }
-func TableView(props TableViewProps) int32           { return active().TableView(props) }
-func MessageDialog(props MessageDialogProps) int32   { return active().MessageDialog(props) }
-func ConfirmDialog(props ConfirmDialogProps) int32   { return active().ConfirmDialog(props) }
-func PromptDialog(props PromptDialogProps) int32     { return active().PromptDialog(props) }
-func BeginUICanvas(canvas UICanvas) UICanvasResult   { return active().BeginUICanvas(canvas) }
-func EndUICanvas(canvas UICanvas)                    { active().EndUICanvas(canvas) }
-func BeginUIFrameBox(bounds Rectangle, padX, padY, gap int32) UIFrame {
-	return active().BeginUIFrameBox(bounds, padX, padY, gap)
+func TextField(args ...any) bool                   { return textField(args...) }
+func TextArea(props TextAreaProps) bool            { return active().TextArea(props) }
+func Radio(props RadioButtonProps) int32           { return active().Radio(props) }
+func Spinbox(props SpinboxProps) bool              { return active().Spinbox(props) }
+func Combobox(props ComboboxProps) bool            { return active().Combobox(props) }
+func LabelFrame(props LabelFrameProps)             { active().LabelFrame(props) }
+func Notebook(props NotebookProps) int32           { return active().Notebook(props) }
+func PanedView(props PanedViewProps) int32         { return active().PanedView(props) }
+func Collapsible(props CollapsibleProps) int32     { return active().Collapsible(props) }
+func ListBox(props ListBoxProps) int32             { return active().ListBox(props) }
+func SourceView(props SourceViewProps) int32       { return active().SourceView(props) }
+func TableView(props TableViewProps) int32         { return active().TableView(props) }
+func MessageDialog(props MessageDialogProps) int32 { return active().MessageDialog(props) }
+func ConfirmDialog(props ConfirmDialogProps) int32 { return active().ConfirmDialog(props) }
+func PromptDialog(props PromptDialogProps) int32   { return active().PromptDialog(props) }
+func BeginCanvas(canvas Canvas) CanvasResult       { return active().BeginCanvas(canvas) }
+func EndCanvas(canvas Canvas)                      { active().EndCanvas(canvas) }
+func BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox {
+	return active().BeginFrameBox(bounds, padX, padY, gap)
 }
-func UIFramePack(frame *UIFrame, side UISide, size int32) Rectangle {
-	return active().UIFramePack(frame, side, size)
+func FramePack(frame *FrameBox, side Side, size int32) Rectangle {
+	return active().FramePack(frame, side, size)
 }
-func UIGridCell(grid UIGrid, row, col, rowSpan, colSpan int32) Rectangle {
-	return active().UIGridCell(grid, row, col, rowSpan, colSpan)
+func GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle {
+	return active().GridCell(grid, row, col, rowSpan, colSpan)
 }
-func UIPlace(parent Rectangle, x, y, w, h int32) Rectangle {
-	return active().UIPlace(parent, x, y, w, h)
+func Place(parent Rectangle, x, y, w, h int32) Rectangle {
+	return active().Place(parent, x, y, w, h)
 }
 func SetCurrentTheme(themeID, darkMode int32) { active().SetCurrentTheme(themeID, darkMode) }
 func SetThemeDarkMode(dark int32)             { active().SetThemeDarkMode(dark) }

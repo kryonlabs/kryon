@@ -6,11 +6,11 @@
 #define UI_CLIPBOARD_BUFFER_SIZE 4096
 
 typedef enum {
-    UI_SIDE_TOP,
-    UI_SIDE_BOTTOM,
-    UI_SIDE_LEFT,
-    UI_SIDE_RIGHT
-} UISide;
+    SideTop,
+    SideBottom,
+    SideLeft,
+    SideRight
+} Side;
 
 typedef struct {
     Rectangle bounds;
@@ -19,7 +19,7 @@ typedef struct {
     int gap;
     int cursor_x;
     int cursor_y;
-} UIFrame;
+} FrameBox;
 
 typedef struct {
     Rectangle bounds;
@@ -29,7 +29,7 @@ typedef struct {
     int gap_y;
     int pad_x;
     int pad_y;
-} UIGrid;
+} Grid;
 
 typedef enum {
     UI_MENU_COMMAND,
@@ -223,14 +223,14 @@ typedef struct {
     int *scroll_x;
     int *scroll_y;
     float *zoom;
-} UICanvas;
+} Canvas;
 
 typedef struct {
     int active;
     int dragging;
     int selected_index;
     Vector2 world;
-} UICanvasResult;
+} CanvasResult;
 
 typedef struct {
     Rectangle bounds;
@@ -303,15 +303,15 @@ typedef struct {
     int checked;
 } UIAccessibilityNode;
 
-UIFrame BeginUIFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap);
-Rectangle UIFramePack(UIFrame *frame, UISide side, int size);
-Rectangle UIGridCell(UIGrid grid, int row, int col, int row_span, int col_span);
-Rectangle UIPlace(Rectangle parent, int x, int y, int w, int h);
-UICanvasResult BeginUICanvas(UICanvas canvas);
-void EndUICanvas(UICanvas canvas);
-int UICanvasHitTest(Vector2 point, Rectangle *items, int item_count);
-Vector2 UICanvasToScreen(UICanvas canvas, Vector2 point);
-Rectangle UICanvasRectToScreen(UICanvas canvas, Rectangle rect);
+FrameBox BeginFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap);
+Rectangle FramePack(FrameBox *frame, Side side, int size);
+Rectangle GridCell(Grid grid, int row, int col, int row_span, int col_span);
+Rectangle Place(Rectangle parent, int x, int y, int w, int h);
+CanvasResult BeginCanvas(Canvas canvas);
+void EndCanvas(Canvas canvas);
+int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);
+Vector2 CanvasToScreen(Canvas canvas, Vector2 point);
+Rectangle CanvasRectToScreen(Canvas canvas, Rectangle rect);
 
 int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);

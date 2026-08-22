@@ -43,7 +43,7 @@ li{margin:.25rem 0}
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
 <p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below), and <code>k2b</code> lowers a subset of it:</p>
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
-<p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginUICanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
+<p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>BeginUI/EndUI</code> records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
@@ -94,8 +94,8 @@ li{margin:.25rem 0}
 <tr><td class="">Notebook (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Notebook</code></td><td class="no">✗</td></tr>
 <tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
 <tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
-<tr><td class="">Tk pack/grid helpers (<code>UIFramePack</code>, <code>UIGridCell</code>, <code>UIPlace</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Begin/EndUICanvas</code></td><td class="ok">✅ <code>Begin/EndUICanvas</code>+hit-test</td><td class="no">✗</td></tr>
+<tr><td class="">Tk pack/grid helpers (<code>FramePack</code>, <code>GridCell</code>, <code>Place</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
+<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Begin/EndCanvas</code></td><td class="ok">✅ <code>Begin/EndCanvas</code>+hit-test</td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Collections</h3>
 <table>

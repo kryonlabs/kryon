@@ -1641,8 +1641,8 @@ each widget: prepare a plain struct, keep state in caller variables, and call th
 matching immediate-mode function each frame.
 
 ```c
-UIFrame frame = BeginUIFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
-Rectangle row = UIFramePack(&frame, UI_SIDE_TOP, 32);
+FrameBox frame = BeginFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
+Rectangle row = FramePack(&frame, SideTop, 32);
 
 int selected = 0;
 UIListBoxNode((ListBox){
@@ -1656,8 +1656,8 @@ UIListBoxNode((ListBox){
 ```
 
 Collection widgets use `scroll_offset` as a caller-owned pixel offset. Canvas
-uses the same one-call shape: draw between `BeginUICanvas` and `EndUICanvas`;
-scroll and zoom in the `UICanvas` struct are applied to canvas drawing and hit
+uses the same one-call shape: draw between `BeginCanvas` and `EndCanvas`;
+scroll and zoom in the `Canvas` struct are applied to canvas drawing and hit
 coordinates.
 
 Text fields and text areas use the shared `EditText` core. Ctrl/Cmd+C copies
@@ -1666,11 +1666,11 @@ through the existing codepoint filter.
 
 Feature families:
 
-- Geometry: `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, `UIPlace`, `UISeparatorNode`
+- Geometry: `BeginFrameBox`, `FramePack`, `GridCell`, `Place`, `UISeparatorNode`
 - Menus: `UIMenuBarNode`, `UIPopupMenuNode`
 - Basic controls: `Radio`, `Progress`, `Spinbox`, `Combobox`, `UILabelFrameNode`, `UIImageBoxNode`
 - Collections: `UIListBoxNode`, `UITreeViewNode`, `UITableViewNode`
-- Canvas: `BeginUICanvas`, `EndUICanvas`, `UICanvasGridNode`, `UICanvasHitTest`
+- Canvas: `BeginCanvas`, `EndCanvas`, `UICanvasGridNode`, `CanvasHitTest`
 - Containers: `UINotebookNode`, `PanedView`, `Collapsible`
 - Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchUIAccelerators`, clipboard helpers
 - Accessibility/debug: `UIFocusDebugOverlayNode`

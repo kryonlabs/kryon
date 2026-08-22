@@ -155,10 +155,10 @@ ui_update_scroll(Rectangle bounds, int content_h, int *scroll_offset, int row_h)
     return max_scroll;
 }
 
-UIFrame
-BeginUIFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap)
+FrameBox
+BeginFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap)
 {
-    UIFrame frame;
+    FrameBox frame;
     frame.bounds = bounds;
     frame.pad_x = ScaleUIPx(pad_x);
     frame.pad_y = ScaleUIPx(pad_y);
@@ -169,7 +169,7 @@ BeginUIFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap)
 }
 
 Rectangle
-UIFramePack(UIFrame *frame, UISide side, int size)
+FramePack(FrameBox *frame, Side side, int size)
 {
     Rectangle item = {0};
     int scaled = ScaleUIPx(size);
@@ -183,15 +183,15 @@ UIFramePack(UIFrame *frame, UISide side, int size)
     item.width -= frame->pad_x * 2;
     item.height -= frame->pad_y * 2;
 
-    if(side == UI_SIDE_TOP) {
+    if(side == SideTop) {
         item.y = frame->cursor_y;
         item.height = scaled;
         frame->cursor_y += scaled + frame->gap;
-    } else if(side == UI_SIDE_BOTTOM) {
+    } else if(side == SideBottom) {
         item.y = frame->bounds.y + frame->bounds.height - frame->pad_y - scaled;
         item.height = scaled;
         frame->bounds.height -= scaled + frame->gap;
-    } else if(side == UI_SIDE_LEFT) {
+    } else if(side == SideLeft) {
         item.x = frame->cursor_x;
         item.width = scaled;
         frame->cursor_x += scaled + frame->gap;
@@ -205,7 +205,7 @@ UIFramePack(UIFrame *frame, UISide side, int size)
 }
 
 Rectangle
-UIGridCell(UIGrid grid, int row, int col, int row_span, int col_span)
+GridCell(Grid grid, int row, int col, int row_span, int col_span)
 {
     float gx = (float)ScaleUIPx(grid.gap_x);
     float gy = (float)ScaleUIPx(grid.gap_y);
@@ -235,7 +235,7 @@ UIGridCell(UIGrid grid, int row, int col, int row_span, int col_span)
 }
 
 Rectangle
-UIPlace(Rectangle parent, int x, int y, int w, int h)
+Place(Rectangle parent, int x, int y, int w, int h)
 {
     return (Rectangle){parent.x + ScaleUIPx(x), parent.y + ScaleUIPx(y),
                        ScaleUIPx(w), ScaleUIPx(h)};
@@ -1366,7 +1366,7 @@ DrawUITableView(TableViewProps table)
 }
 
 Vector2
-UICanvasToScreen(UICanvas canvas, Vector2 point)
+CanvasToScreen(Canvas canvas, Vector2 point)
 {
     float zoom = canvas.zoom != NULL && *canvas.zoom > 0.01f ? *canvas.zoom : 1.0f;
     if(canvas.scroll_x != NULL)
@@ -1379,17 +1379,17 @@ UICanvasToScreen(UICanvas canvas, Vector2 point)
 }
 
 Rectangle
-UICanvasRectToScreen(UICanvas canvas, Rectangle rect)
+CanvasRectToScreen(Canvas canvas, Rectangle rect)
 {
     float zoom = canvas.zoom != NULL && *canvas.zoom > 0.01f ? *canvas.zoom : 1.0f;
-    Vector2 p = UICanvasToScreen(canvas, (Vector2){rect.x, rect.y});
+    Vector2 p = CanvasToScreen(canvas, (Vector2){rect.x, rect.y});
     return (Rectangle){p.x, p.y, rect.width * zoom, rect.height * zoom};
 }
 
-UICanvasResult
-BeginUICanvas(UICanvas canvas)
+CanvasResult
+BeginCanvas(Canvas canvas)
 {
-    UICanvasResult result = {0};
+    CanvasResult result = {0};
     Vector2 mouse = ui_mouse_world();
 
     ui_draw_panel(canvas.bounds);
@@ -1423,7 +1423,7 @@ BeginUICanvas(UICanvas canvas)
 }
 
 void
-EndUICanvas(UICanvas canvas)
+EndCanvas(Canvas canvas)
 {
     if(g_canvas_depth > 0) {
         if(g_canvas_mode_depth > 0) {
@@ -1449,7 +1449,7 @@ DrawUICanvasGrid(Rectangle bounds, int step, Color color)
 }
 
 int
-UICanvasHitTest(Vector2 point, Rectangle *items, int item_count)
+CanvasHitTest(Vector2 point, Rectangle *items, int item_count)
 {
     if(items == NULL)
         return -1;

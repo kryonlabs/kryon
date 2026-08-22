@@ -54,7 +54,7 @@ Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav
 TopNav Toolbar`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
-`BeginUICanvas` directly. `Scroll` lowers to the `Scroll`/`EndScroll` runtime
+`BeginCanvas` directly. `Scroll` lowers to the `Scroll`/`EndScroll` runtime
 pairing, not the C `Begin/EndUIScrollContainer` API.)
 
 ## Widget matrix
@@ -120,8 +120,8 @@ declaration pass (`src/ui/ui_tree.c`).
 | Notebook (tabs) | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
-| Tk pack/grid helpers (`UIFramePack`, `UIGridCell`, `UIPlace`) | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ `Begin/EndUICanvas` | ✅ `Begin/EndUICanvas`+hit-test | ✗ |
+| Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
 
 ### UI/Collections
 

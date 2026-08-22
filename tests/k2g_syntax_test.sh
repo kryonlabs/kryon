@@ -46,6 +46,9 @@ state {
     area_text: [128] char = ""
     area_cursor: int = 0
     area_scroll: int = 0
+    canvas_scroll_x: int = 0
+    canvas_scroll_y: int = 0
+    canvas_zoom: float = 1.0f
 }
 
 app "Smoke" {
@@ -113,6 +116,16 @@ frame main {
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
     Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
+    frame_box: FrameBox = BeginFrameBox((Rectangle){ScaleUIPx(4), ScaleUIPx(392), ScaleUIPx(160), ScaleUIPx(80)}, ScaleUIPx(8), ScaleUIPx(8), ScaleUIPx(4))
+    packed: Rectangle = FramePack(&frame_box, SideTop, ScaleUIPx(24))
+    layout_grid: Grid = {frame_box.bounds, 2, 2, ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(0), ScaleUIPx(0)}
+    grid_cell: Rectangle = GridCell(layout_grid, 1, 1, 1, 1)
+    placed: Rectangle = Place(packed, ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(24), ScaleUIPx(12))
+    CanvasGrid(grid_cell, 8, GetThemeIcon())
+    CanvasGrid(placed, 4, GetThemeButton())
+    canvas_result: CanvasResult = BeginCanvas((Canvas){{ScaleUIPx(180), ScaleUIPx(392), ScaleUIPx(100), ScaleUIPx(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+    DrawCircleV(canvas_result.world, ScaleUIPx(3), GetThemeSurface())
+    EndCanvas((Canvas){{ScaleUIPx(180), ScaleUIPx(392), ScaleUIPx(100), ScaleUIPx(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
     Slider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), "", 0, 10, &slider_val, "", nil)
     CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
     SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), Text16, GetThemeText())
@@ -246,6 +259,12 @@ grep -q 'GetThemeSurface()' "$out"
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "GB"' "$out"
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "TB"' "$out"
 grep -q 'Dropdown(22,' "$out"
+grep -q 'kryon.BeginFrameBox(kryon.NewRectangle' "$out"
+grep -q 'kryon.FramePack(&frame_box, kryon.SideTop' "$out"
+grep -q 'kryon.GridCell(layout_grid, 1, 1, 1, 1)' "$out"
+grep -q 'kryon.Place(packed,' "$out"
+grep -q 'kryon.BeginCanvas(kryon.Canvas{' "$out"
+grep -q 'kryon.EndCanvas(kryon.Canvas{' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'SelectableText(' "$out"
 grep -q 'ShowToast("toast from kry")' "$out"

@@ -17,14 +17,14 @@ state {
 
 screen CanvasExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    canvas: UICanvasResult = BeginUICanvas((UICanvas){{40,50,620,420},&sx,&sy,&zoom})
+    canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
     CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
     for i in 0..2 {
         DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
         DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
     }
     if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
-        selected = UICanvasHitTest(canvas.world,shapes,2)
+        selected = CanvasHitTest(canvas.world,shapes,2)
     }
-    EndUICanvas((UICanvas){{40,50,620,420},&sx,&sy,&zoom})
+    EndCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
 }

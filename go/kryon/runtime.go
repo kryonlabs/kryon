@@ -38,7 +38,7 @@ type Texture2D struct {
 }
 
 type UIKey uint64
-type UISide int32
+type Side int32
 type ButtonStyle int32
 type SyntaxMode int32
 type ThemeStyle int32
@@ -64,10 +64,10 @@ const (
 	KeyV         int32 = 86
 	KeyX         int32 = 88
 
-	UISideTop UISide = iota
-	UISideBottom
-	UISideLeft
-	UISideRight
+	SideTop Side = iota
+	SideBottom
+	SideLeft
+	SideRight
 
 	ButtonStylePrimary ButtonStyle = iota
 	ButtonStyleSecondary
@@ -229,7 +229,7 @@ type ColumnProps struct {
 
 type RowProps = ColumnProps
 
-type UIFrame struct {
+type FrameBox struct {
 	Bounds  Rectangle
 	PadX    int32
 	PadY    int32
@@ -238,7 +238,7 @@ type UIFrame struct {
 	CursorY int32
 }
 
-type UIGrid struct {
+type Grid struct {
 	Bounds Rectangle
 	Rows   int32
 	Cols   int32
@@ -442,14 +442,14 @@ type PromptDialogProps struct {
 	ConfirmLabel string
 }
 
-type UICanvas struct {
+type Canvas struct {
 	Bounds  Rectangle
 	ScrollX *int32
 	ScrollY *int32
 	Zoom    *float32
 }
 
-type UICanvasResult struct {
+type CanvasResult struct {
 	Active        bool
 	Dragging      bool
 	SelectedIndex int32
@@ -530,12 +530,12 @@ type Runtime interface {
 	MessageDialog(props MessageDialogProps) int32
 	ConfirmDialog(props ConfirmDialogProps) int32
 	PromptDialog(props PromptDialogProps) int32
-	BeginUICanvas(canvas UICanvas) UICanvasResult
-	EndUICanvas(canvas UICanvas)
-	BeginUIFrameBox(bounds Rectangle, padX, padY, gap int32) UIFrame
-	UIFramePack(frame *UIFrame, side UISide, size int32) Rectangle
-	UIGridCell(grid UIGrid, row, col, rowSpan, colSpan int32) Rectangle
-	UIPlace(parent Rectangle, x, y, w, h int32) Rectangle
+	BeginCanvas(canvas Canvas) CanvasResult
+	EndCanvas(canvas Canvas)
+	BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox
+	FramePack(frame *FrameBox, side Side, size int32) Rectangle
+	GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle
+	Place(parent Rectangle, x, y, w, h int32) Rectangle
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeDarkMode(dark int32)
 	SetThemeStyle(style ThemeStyle)
@@ -820,37 +820,37 @@ func (r *runtime) TableView(TableViewProps) int32         { return 0 }
 func (r *runtime) MessageDialog(MessageDialogProps) int32 { return 0 }
 func (r *runtime) ConfirmDialog(ConfirmDialogProps) int32 { return 0 }
 func (r *runtime) PromptDialog(PromptDialogProps) int32   { return 0 }
-func (r *runtime) BeginUICanvas(canvas UICanvas) UICanvasResult {
-	return UICanvasResult{Active: true, World: Vector2{X: canvas.Bounds.X, Y: canvas.Bounds.Y}}
+func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
+	return CanvasResult{Active: true, World: Vector2{X: canvas.Bounds.X, Y: canvas.Bounds.Y}}
 }
-func (r *runtime) EndUICanvas(UICanvas) {}
-func (r *runtime) BeginUIFrameBox(bounds Rectangle, padX, padY, gap int32) UIFrame {
-	return UIFrame{Bounds: bounds, PadX: padX, PadY: padY, Gap: gap, CursorX: int32(bounds.X) + padX, CursorY: int32(bounds.Y) + padY}
+func (r *runtime) EndCanvas(Canvas) {}
+func (r *runtime) BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox {
+	return FrameBox{Bounds: bounds, PadX: padX, PadY: padY, Gap: gap, CursorX: int32(bounds.X) + padX, CursorY: int32(bounds.Y) + padY}
 }
-func (r *runtime) UIFramePack(frame *UIFrame, side UISide, size int32) Rectangle {
+func (r *runtime) FramePack(frame *FrameBox, side Side, size int32) Rectangle {
 	if frame == nil {
 		return Rectangle{}
 	}
 	out := frame.Bounds
 	switch side {
-	case UISideTop:
+	case SideTop:
 		out.Y = float32(frame.CursorY)
 		out.Height = float32(size)
 		frame.CursorY += size + frame.Gap
-	case UISideBottom:
+	case SideBottom:
 		out.Y = frame.Bounds.Y + frame.Bounds.Height - float32(size) - float32(frame.PadY)
 		out.Height = float32(size)
-	case UISideLeft:
+	case SideLeft:
 		out.X = float32(frame.CursorX)
 		out.Width = float32(size)
 		frame.CursorX += size + frame.Gap
-	case UISideRight:
+	case SideRight:
 		out.X = frame.Bounds.X + frame.Bounds.Width - float32(size) - float32(frame.PadX)
 		out.Width = float32(size)
 	}
 	return out
 }
-func (r *runtime) UIGridCell(grid UIGrid, row, col, rowSpan, colSpan int32) Rectangle {
+func (r *runtime) GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle {
 	if grid.Rows <= 0 || grid.Cols <= 0 {
 		return Rectangle{}
 	}
@@ -860,7 +860,7 @@ func (r *runtime) UIGridCell(grid UIGrid, row, col, rowSpan, colSpan int32) Rect
 	h := cellH(grid)*float32(rowSpan) + float32(max32(0, rowSpan-1)*grid.GapY)
 	return Rectangle{X: x, Y: y, Width: w, Height: h}
 }
-func (r *runtime) UIPlace(parent Rectangle, x, y, w, h int32) Rectangle {
+func (r *runtime) Place(parent Rectangle, x, y, w, h int32) Rectangle {
 	return Rectangle{X: parent.X + float32(x), Y: parent.Y + float32(y), Width: float32(w), Height: float32(h)}
 }
 func (r *runtime) SetCurrentTheme(int32, int32) {}
@@ -1322,11 +1322,11 @@ func nextRune(text string, pos int) int {
 	return pos + size
 }
 
-func cellW(grid UIGrid) float32 {
+func cellW(grid Grid) float32 {
 	return (grid.Bounds.Width - float32(grid.PadX*2) - float32(max32(0, grid.Cols-1)*grid.GapX)) / float32(grid.Cols)
 }
 
-func cellH(grid UIGrid) float32 {
+func cellH(grid Grid) float32 {
 	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
 }
 

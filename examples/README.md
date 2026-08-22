@@ -76,8 +76,8 @@ only needed for full projects that want custom build or run targets.
 
 The toolkit examples use one direct API shape per widget: fill the struct that
 describes the widget state and call the matching `...Node` declaration. Geometry
-uses `BeginUIFrameBox`, `UIFramePack`, `UIGridCell`, and `UIPlace`; canvas uses
-`BeginUICanvas` / `EndUICanvas`.
+uses `BeginFrameBox`, `FramePack`, `GridCell`, and `Place`; canvas uses
+`BeginCanvas` / `EndCanvas`.
 
 ## Usage
 
