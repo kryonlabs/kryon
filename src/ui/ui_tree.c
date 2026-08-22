@@ -1550,48 +1550,6 @@ Href(HrefProps link)
 }
 
 int
-TextInputControl(TextInputProps input)
-{
-    ui_tree_add(input.focus_id, UI_WIDGET_TEXT_FIELD_NODE, input.bounds,
-                &input);
-    return DrawUITextInputControl(input);
-}
-
-int
-GenericButton(int id, int x, int y, int w, int h,
-                    const char *label, UIButtonStyle style,
-                    int disabled, int *hover)
-{
-    Rectangle bounds = (Rectangle){x, y, w, h};
-    int clicked = 0;
-    UINodeId node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                                bounds, NULL);
-
-    if(!disabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-       CheckCollisionPointRec(GetMousePosition(), bounds)) {
-        clicked = 1;
-        if(hover != NULL)
-            *hover = 1;
-    } else if(hover != NULL) {
-        *hover = !disabled && CheckCollisionPointRec(GetMousePosition(), bounds);
-    }
-
-    if(node >= 0) {
-        ui_tree_nodes[node].owned_text = ui_tree_strdup(label);
-        ui_tree_nodes[node].data.button.spec.bounds = bounds;
-        ui_tree_nodes[node].data.button.spec.label =
-            ui_tree_nodes[node].owned_text;
-        ui_tree_nodes[node].data.button.spec.font = GetUIFontSize();
-        ui_tree_nodes[node].data.button.spec.focus_id = id;
-        ui_tree_nodes[node].data.button.spec.disabled = disabled;
-        ui_tree_nodes[node].data.button.style = style;
-    }
-    if(ui_tree_building)
-        return clicked;
-    return DrawUIGenericButton(x, y, w, h, label, style, disabled, hover);
-}
-
-int
 TextField(TextFieldProps field)
 {
     UINodeId node = ui_tree_add(field.focus_id, UI_WIDGET_TEXT_FIELD_NODE,
@@ -1604,18 +1562,6 @@ TextField(TextFieldProps field)
         ui_tree_nodes[node].data.text_field = field;
     }
     return 0;
-}
-
-int
-ReadonlyTextBox(ReadonlyTextBoxProps box)
-{
-    UIWidgetNode node;
-    UINodeId id;
-
-    id = ui_tree_add(0, UI_WIDGET_READONLY_TEXT_BOX_NODE, box.bounds, NULL);
-    node = UINodeReadonlyTextBox(box);
-    ui_tree_store_node(id, node);
-    return DrawUIReadonlyTextBox(box);
 }
 
 int
@@ -1645,17 +1591,6 @@ InfoButton(int id, int center_x, int center_y, int diameter)
                 (Rectangle){center_x - diameter / 2, center_y - diameter / 2,
                             diameter, diameter}, NULL);
     return DrawUIInfoButton(center_x, center_y, diameter);
-}
-
-int
-TextButton(int id, int x, int y, const char *label, int *hover)
-{
-    int font = GetUISmallFontSize();
-    int w = MeasureUIText(label != NULL ? label : "", font) + ScaleUIPx(16);
-    int h = GetUITextLineHeight(font) + ScaleUIPx(8);
-
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, w, h}, hover);
-    return DrawUITextButton(x, y, label, hover);
 }
 
 void
@@ -1697,14 +1632,6 @@ DropdownEx(int id, int x, int y, int w, int h,
 }
 
 int
-LocaleDropdown(int id, int x, int y, int w, int h, int *selected_index)
-{
-    ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
-                selected_index);
-    return DrawUILocaleDropdown(id, x, y, w, h, selected_index);
-}
-
-int
 Slider(int id, int x, int y, int w, const char *label,
              int min, int max, int *value, const char *suffix,
              const char *value_text_override)
@@ -1713,29 +1640,6 @@ Slider(int id, int x, int y, int w, const char *label,
                 (Rectangle){x, y, w, ScaleUIPx(56)}, value);
     return DrawUISlider(id, x, y, w, label, min, max, value, suffix,
                         value_text_override);
-}
-
-int
-VerticalSlider(int id, int x, int y, int h, int min, int max,
-                     int *value)
-{
-    ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
-                (Rectangle){x - ScaleUIPx(18), y, ScaleUIPx(36), h},
-                value);
-    return DrawUIVerticalSlider(id, x, y, h, min, max, value);
-}
-
-int
-VerticalSliderWithMarks(int id, int x, int y, int h, int min,
-                              int max, int *value,
-                              UIVerticalSliderMarkCallback callback,
-                              void *callback_user_data)
-{
-    ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
-                (Rectangle){x - ScaleUIPx(18), y, ScaleUIPx(36), h},
-                value);
-    return DrawUIVerticalSliderWithMarks(id, x, y, h, min, max, value,
-                                         callback, callback_user_data);
 }
 
 int
@@ -2248,7 +2152,36 @@ ModalFrame(int width, int height, const char *title,
     return DrawUIModalFrame(width, height, title, left_icon, right_icon);
 }
 
-int Button(ButtonProps button) { return GenericButton(button.id, (int)button.bounds.x, (int)button.bounds.y, (int)button.bounds.width, (int)button.bounds.height, button.label, button.style, button.disabled, NULL); }
+int
+Button(ButtonProps button)
+{
+    UIButtonSpec spec = {
+        .bounds = button.bounds,
+        .label = button.label,
+        .font = button.font,
+        .focus_id = button.id,
+        .disabled = button.disabled
+    };
+    UINodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
+                                button.bounds, NULL);
+    int clicked = 0;
+
+    if(spec.font <= 0)
+        spec.font = GetUIFontSize();
+    if(!button.disabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+       CheckCollisionPointRec(GetMousePosition(), button.bounds))
+        clicked = 1;
+    if(node >= 0) {
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
+        ui_tree_nodes[node].data.button.spec = spec;
+        ui_tree_nodes[node].data.button.spec.label =
+            ui_tree_nodes[node].owned_text;
+        ui_tree_nodes[node].data.button.style = button.style;
+    }
+    if(ui_tree_building)
+        return clicked;
+    return DrawUIButton(spec);
+}
 
 /* Retained layout containers. Every container closes with End(). */
 

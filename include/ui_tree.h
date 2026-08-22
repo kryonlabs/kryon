@@ -209,18 +209,12 @@ void Picture(PictureProps picture);
 int UIButtonNode(UIButtonSpec button);
 int IconButton(IconButtonProps button);
 int Href(HrefProps link);
-int TextInputControl(TextInputProps input);
-int GenericButton(int id, int x, int y, int w, int h,
-                        const char *label, UIButtonStyle style,
-                        int disabled, int *hover);
 int TextField(TextFieldProps field);
-int ReadonlyTextBox(ReadonlyTextBoxProps box);
 int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
                   int *hover);
 int PaddedIconBtn(int id, int x, int y, int size, int padding,
                         Texture2D icon, int *hover);
 int InfoButton(int id, int center_x, int center_y, int diameter);
-int TextButton(int id, int x, int y, const char *label, int *hover);
 void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                     const char *url);
 int Dropdown(int id, int x, int y, int w, int h,
@@ -229,17 +223,9 @@ int Dropdown(int id, int x, int y, int w, int h,
 int DropdownEx(int id, int x, int y, int w, int h,
                      const UIDropdownOption *options, int option_count,
                      int *selected_index);
-int LocaleDropdown(int id, int x, int y, int w, int h,
-                         int *selected_index);
 int Slider(int id, int x, int y, int w, const char *label,
                  int min, int max, int *value, const char *suffix,
                  const char *value_text_override);
-int VerticalSlider(int id, int x, int y, int h, int min, int max,
-                         int *value);
-int VerticalSliderWithMarks(int id, int x, int y, int h, int min,
-                                  int max, int *value,
-                                  UIVerticalSliderMarkCallback callback,
-                                  void *callback_user_data);
 int Toggle(int id, int x, int y, int w, int h, int *value,
                  const char *off_label, const char *on_label);
 int Checkbox(int id, int x, int y, const char *label, int *value);
