@@ -21,6 +21,8 @@ func InitWindow(width, height int32, title string) {
 	Open(AppConfig{Title: title, Width: int(width), Height: int(height)})
 }
 
+func CloseWindow() { Close() }
+
 func IsWindowReady() bool { return activeRuntime != nil }
 
 func BeginDrawing() { BeginFrame() }
@@ -45,6 +47,10 @@ func DrawRectangleLinesEx(r Rectangle, thick int32, c Color) {
 
 func DrawLine(x1, y1, x2, y2 int32, c Color) {
 	Line(x1, y1, x2, y2, c)
+}
+
+func CheckCollisionPointRec(p Vector2, r Rectangle) bool {
+	return pointInRect(p.X, p.Y, r)
 }
 
 func DrawTextEx(_ Font, text string, pos Vector2, size float32, _ float32, c Color) {
