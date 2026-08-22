@@ -17,7 +17,7 @@ state {
 
 screen BasicControlsExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    Text("Basic controls", 40, 40, UI_TEXT_24, GetThemeText())
+    Text("Basic controls", 40, 40, Text24, GetThemeText())
     picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
     if picked {
         radio = picked

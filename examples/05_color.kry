@@ -17,18 +17,18 @@ screen ColorExample(viewport: Rectangle) {
     base: Color = colors[color_index]
     light: Color = LightenUIColor(base,40)
     dark: Color = DarkenUIColor(base,40)
-    Text("Color Utilities", 50, 20, UI_TEXT_24, GetThemeText())
+    Text("Color Utilities", 50, 20, Text24, GetThemeText())
     Rect(50, 70, 70, 70, base, BLANK)
     Rect(50, 70, 70, 70, BLANK, GetThemeText())
-    Text("Original", 50+70+ScaleUIPx(10), 70+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    Text("Original", 50+70+ScaleUIPx(10), 70+ScaleUIPx(10), Text16, GetThemeText())
     Rect(50, 160, 70, 70, light, BLANK)
     Rect(50, 160, 70, 70, BLANK, GetThemeText())
-    Text("Lightened", 50+70+ScaleUIPx(10), 160+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    Text("Lightened", 50+70+ScaleUIPx(10), 160+ScaleUIPx(10), Text16, GetThemeText())
     Rect(50, 250, 70, 70, dark, BLANK)
     Rect(50, 250, 70, 70, BLANK, GetThemeText())
-    Text("Darkened", 50+70+ScaleUIPx(10), 250+ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    Text("Darkened", 50+70+ScaleUIPx(10), 250+ScaleUIPx(10), Text16, GetThemeText())
     Text(TextFormat("Color %d/5 - SPACE cycles",color_index+1), 320, 82, 18, GetThemeText())
-    Text(TextFormat("RGB:%d,%d,%d",base.r,base.g,base.b), 320, 116, UI_TEXT_16, GetThemeText())
+    Text(TextFormat("RGB:%d,%d,%d",base.r,base.g,base.b), 320, 116, Text16, GetThemeText())
     if (IsKeyPressed(KEY_SPACE)) {
         color_index = (color_index + 1) % 5
     }

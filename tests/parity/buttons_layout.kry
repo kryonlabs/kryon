@@ -13,12 +13,12 @@ state {
 frame buttons_frame {
     BeginUI(Key("layout"))
     Column((ColumnProps){.bounds = {20,20,220,80}, .gap = 6, .padding = 6, .key = Key("layout-column")})
-    Text("Actions", 0, 0, UI_TEXT_16, GetThemeText())
+    Text("Actions", 0, 0, Text16, GetThemeText())
     Row((RowProps){.bounds = {0,0,200,36}, .gap = 8, .padding = 0, .key = Key("layout-row")})
-    if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 501}) {
+    if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 501}) {
         buttons_action += 1
     }
-    if Button((ButtonProps){.bounds = {120,120,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 502}) {
+    if Button((ButtonProps){.bounds = {120,120,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = Text16, .id = 502}) {
         buttons_action += 10
     }
     End()

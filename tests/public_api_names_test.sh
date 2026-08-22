@@ -85,6 +85,31 @@ if [ -n "$button_style_matches" ]; then
     exit 1
 fi
 
+text_size_matches="$(
+    rg -n '\bUI_TEXT(_BASE_SIZE|_[0-9]+)\b' \
+        include \
+        src \
+        go/kryon \
+        cmd/k2g \
+        cmd/k2b \
+        docs/API.md \
+        examples \
+        tests/k2c_syntax_test.sh \
+        tests/k2g_syntax_test.sh \
+        tests/krb_cartridge_test.sh \
+        tests/parity \
+        tests/perf \
+        tests/spec \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$text_size_matches" ]; then
+    echo "Text size APIs must use clean Text8/Text16/TextBaseSize names without legacy UI_TEXT prefixes:"
+    echo "$text_size_matches"
+    exit 1
+fi
+
 if [ -d go/kryui ]; then
     echo "The legacy go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1

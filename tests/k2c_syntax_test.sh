@@ -39,12 +39,12 @@ screen Valid(viewport: Rectangle) {
     int legacy_count
     BeginFrame()
     Background(GetThemeBackground())
-    Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText())
+    Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText())
     Column((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}, .gap = ScaleUIPx(4), .padding = ScaleUIPx(6), .key = Key("form")})
-    TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 101})
-    TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = UI_TEXT_16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
+    TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
+    TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
     Row((RowProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(32)}, .gap = ScaleUIPx(4), .padding = 0, .key = Key("actions")})
-    Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 103})
+    Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
     End()
     End()
     value := count + 1
@@ -143,7 +143,7 @@ grep -Fq 'int legacy_count;' "$c"
 grep -Fq 'PushUIInspectSource("src/valid.kry", 21);' "$c"
 grep -Fq 'BeginFrame();' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
-grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), UI_TEXT_16, GetThemeText());' "$c"
+grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText());' "$c"
 grep -Fq 'Column((ColumnProps)' "$c"
 grep -Fq 'TextField((TextFieldProps)' "$c"
 grep -Fq 'TextArea((TextAreaProps)' "$c"

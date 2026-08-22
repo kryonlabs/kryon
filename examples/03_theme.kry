@@ -54,7 +54,7 @@ ApplyThemeState :: () {
 }
 
 TokenValue :: (label: const char *, value: int, x: int, y: int) {
-    Text(TextFormat("%s %d", label, value), x, y, UI_TEXT_12, GetThemeIcon())
+    Text(TextFormat("%s %d", label, value), x, y, Text12, GetThemeIcon())
 }
 
 ControlDemo :: (x: int, y: int, w: int) {
@@ -70,7 +70,7 @@ ControlDemo :: (x: int, y: int, w: int) {
         ScaleUIPx(8)
     }
 
-    Text("Live controls", x, y, UI_TEXT_24, GetThemeText())
+    Text("Live controls", x, y, Text24, GetThemeText())
     y += ScaleUIPx(46)
     Button((ButtonProps){
         .bounds = {x, y, ScaleUIPx(190), ScaleUIPx(44)},
@@ -87,7 +87,7 @@ ControlDemo :: (x: int, y: int, w: int) {
     y += ScaleUIPx(70)
 
     TextField((TextFieldProps){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
-                                  &text_cursor, &text_focused, 80, UI_TEXT_16, 303,
+                                  &text_cursor, &text_focused, 80, Text16, 303,
                                   field_style, NULL, NULL, NULL})
     y += ScaleUIPx(70)
     Dropdown(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
@@ -122,8 +122,8 @@ screen ThemeExample(viewport: Rectangle) {
         .style_system_label = "System style"
     }
 
-    Text("Kryon Native Theme State", margin, ScaleUIPx(24), UI_TEXT_24, GetThemeText())
-    Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), UI_TEXT_16, GetThemeIcon())
+    Text("Kryon Native Theme State", margin, ScaleUIPx(24), Text24, GetThemeText())
+    Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), Text16, GetThemeIcon())
     result: UIThemeSettingsResult = {0}
     ThemeSettings(settings, &menu_state, &result)
 
@@ -131,7 +131,7 @@ screen ThemeExample(viewport: Rectangle) {
 
     tokens := GetUIStyleTokens()
     token_y: int = ScaleUIPx(520)
-    Text("Active style tokens", right_x, token_y, UI_TEXT_16, GetThemeText())
+    Text("Active style tokens", right_x, token_y, Text16, GetThemeText())
     token_y += ScaleUIPx(30)
     TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
     TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)

@@ -369,13 +369,13 @@ font_size_of(const char *expr)
 {
     const char *p = skip_ws(expr);
 
-    if(strstr(p, "UI_TEXT_24") != NULL)
+    if(strstr(p, "Text24") != NULL)
         return 24;
-    if(strstr(p, "UI_TEXT_16") != NULL)
+    if(strstr(p, "Text16") != NULL)
         return 16;
-    if(strstr(p, "UI_TEXT_12") != NULL)
+    if(strstr(p, "Text12") != NULL)
         return 12;
-    if(strstr(p, "UI_TEXT_8") != NULL)
+    if(strstr(p, "Text8") != NULL)
         return 8;
     if(*p >= '0' && *p <= '9')
         return atoi(p);

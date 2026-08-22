@@ -20,9 +20,9 @@ screen ScalingExample(viewport: Rectangle) {
     box_size: int = ScaleUIPx(100)
     Text(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
     Rect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
-    Text("Scaled Box", box_x + 10, box_y + 10, UI_TEXT_16, GetThemeText())
-    Text(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, UI_TEXT_16, GetThemeText())
-    Text("SPACE cycles DPI,arrows move box", 50, 90, UI_TEXT_16, GetThemeIcon())
+    Text("Scaled Box", box_x + 10, box_y + 10, Text16, GetThemeText())
+    Text(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, Text16, GetThemeText())
+    Text("SPACE cycles DPI,arrows move box", 50, 90, Text16, GetThemeIcon())
     if (IsKeyDown(KEY_RIGHT)) {
         box_x += 3
     }

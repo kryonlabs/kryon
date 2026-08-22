@@ -14,6 +14,6 @@ app "KRB Spec Contract" {
 
 screen KrbSpec(viewport: Rectangle) {
     Background(GetThemeSurface())
-    Text("KRB Spec Contract", ScaleUIPx(8), ScaleUIPx(8), UI_TEXT_16, GetThemeText())
+    Text("KRB Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
     count = count + 1
 }

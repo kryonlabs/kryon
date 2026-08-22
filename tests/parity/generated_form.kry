@@ -22,16 +22,16 @@ state {
 frame form_frame {
     BeginUI(Key("generated-form"))
     Column((ColumnProps){.bounds = {20,20,360,220}, .gap = 8, .padding = 8, .key = Key("form-column")})
-    Text("Account", 0, 0, UI_TEXT_16, GetThemeText())
-    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = first, .text_size = sizeof(first), .cursor_position = &first_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 101})
-    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = second, .text_size = sizeof(second), .cursor_position = &second_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 102})
-    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = password, .text_size = sizeof(password), .cursor_position = &password_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 103, .secure = true})
-    TextArea((TextAreaProps){.bounds = {0,0,320,56}, .text = notes, .text_size = sizeof(notes), .cursor_position = &notes_cursor, .focused = NULL, .scroll_y = &notes_scroll, .max_codepoints = 127, .font = UI_TEXT_16, .line_gap = 4, .focus_id = 104, .placeholder = "Notes"})
+    Text("Account", 0, 0, Text16, GetThemeText())
+    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = first, .text_size = sizeof(first), .cursor_position = &first_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
+    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = second, .text_size = sizeof(second), .cursor_position = &second_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 102})
+    TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = password, .text_size = sizeof(password), .cursor_position = &password_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 103, .secure = true})
+    TextArea((TextAreaProps){.bounds = {0,0,320,56}, .text = notes, .text_size = sizeof(notes), .cursor_position = &notes_cursor, .focused = NULL, .scroll_y = &notes_scroll, .max_codepoints = 127, .font = Text16, .line_gap = 4, .focus_id = 104, .placeholder = "Notes"})
     Row((RowProps){.bounds = {0,0,320,40}, .gap = 8, .padding = 0, .key = Key("form-actions")})
-    if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 201}) {
+    if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 201}) {
         form_action += 1
     }
-    if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 202}) {
+    if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = Text16, .id = 202}) {
         form_action += 10
     }
     End()

@@ -15,14 +15,14 @@ state {
 
 screen ModalExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    Text("Modal capture example", 32, 32, UI_TEXT_24, GetThemeText())
-    Text("Open the modal and background clicks are blocked.", 32, 72, UI_TEXT_16, GetThemeIcon())
-    if Button((ButtonProps){.bounds = {32, 120, 220, 42}, .label = "Background Button", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 101}) {
+    Text("Modal capture example", 32, 32, Text24, GetThemeText())
+    Text("Open the modal and background clicks are blocked.", 32, 72, Text16, GetThemeIcon())
+    if Button((ButtonProps){.bounds = {32, 120, 220, 42}, .label = "Background Button", .style = ButtonStyleSecondary, .font = Text16, .id = 101}) {
         background_clicks++
     }
-    Text(TextFormat("Background clicks:%d",background_clicks), 32, 176, UI_TEXT_16, GetThemeText())
-    Text(TextFormat("Last modal result:%s",last_label), 32, 204, UI_TEXT_16, GetThemeText())
-    if Button((ButtonProps){.bounds = {32, 240, 220, 42}, .label = "Open Modal", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 102}) {
+    Text(TextFormat("Background clicks:%d",background_clicks), 32, 176, Text16, GetThemeText())
+    Text(TextFormat("Last modal result:%s",last_label), 32, 204, Text16, GetThemeText())
+    if Button((ButtonProps){.bounds = {32, 240, 220, 42}, .label = "Open Modal", .style = ButtonStylePrimary, .font = Text16, .id = 102}) {
         modal_open = 1
     }
     if modal_open {

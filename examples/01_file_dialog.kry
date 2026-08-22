@@ -22,17 +22,17 @@ screen FileDialogExample(viewport: Rectangle) {
         InitFileDialog(&dlg)
         dlg_ready = 1
     }
-    Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), UI_TEXT_24, GetThemeText())
-    Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), UI_TEXT_16, GetThemeIcon())
-    if Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Open File", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 101}) {
+    Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), Text24, GetThemeText())
+    Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), Text16, GetThemeIcon())
+    if Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Open File", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
         BeginLoadFileDialog(&dlg,"Open File")
         snprintf(status,sizeof(status),"Open file requested.")
     }
-    if Button((ButtonProps){.bounds = {ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Save File", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 102}) {
+    if Button((ButtonProps){.bounds = {ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Save File", .style = ButtonStyleSecondary, .font = Text16, .id = 102}) {
         BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
         snprintf(status,sizeof(status),"Save file requested.")
     }
-    if Button((ButtonProps){.bounds = {ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Select Folder", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 103}) {
+    if Button((ButtonProps){.bounds = {ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Select Folder", .style = ButtonStyleSecondary, .font = Text16, .id = 103}) {
         BeginSelectFileDialogFolder(&dlg,"Select Folder")
         snprintf(status,sizeof(status),"Folder selection requested.")
     }
@@ -45,6 +45,6 @@ screen FileDialogExample(viewport: Rectangle) {
         snprintf(status,sizeof(status),"Dialog cancelled.")
     }
     Text("Status", ScaleUIPx(32), ScaleUIPx(210), 18, GetThemeText())
-    Text(status, ScaleUIPx(32), ScaleUIPx(242), UI_TEXT_16, GetThemeText())
-    Text(last_path, ScaleUIPx(32), ScaleUIPx(274), UI_TEXT_16, GetThemeIcon())
+    Text(status, ScaleUIPx(32), ScaleUIPx(242), Text16, GetThemeText())
+    Text(last_path, ScaleUIPx(32), ScaleUIPx(274), Text16, GetThemeIcon())
 }

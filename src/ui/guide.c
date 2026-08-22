@@ -103,7 +103,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int pad = ScaleUIPx(12);
     int button_size = ScaleUIPx(34);
     int close_size = ScaleUIPx(28);
-    int page_font = UI_TEXT_12;
+    int page_font = Text12;
     int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
     int text_gap = ScaleUIPx(8);
     int controls_gap = ScaleUIPx(12);

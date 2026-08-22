@@ -13,7 +13,7 @@ state {
 
 LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
     info: const char * = TextFormat("%s:%d",label,value)
-    Text(info, x, y, UI_TEXT_16, GetThemeText())
+    Text(info, x, y, Text16, GetThemeText())
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
@@ -21,11 +21,11 @@ WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
     if max_width == value {
         style = ButtonStylePrimary
     }
-    return Button((ButtonProps){.bounds = {x,y,ScaleUIPx(110),ScaleUIPx(34)}, .label = label, .style = style, .font = UI_TEXT_16, .id = 1000 + x + y})
+    return Button((ButtonProps){.bounds = {x,y,ScaleUIPx(110),ScaleUIPx(34)}, .label = label, .style = style, .font = Text16, .id = 1000 + x + y})
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
-    Text(label, x, y, UI_TEXT_16, color)
+    Text(label, x, y, Text16, color)
 }
 
 screen LayoutExample(viewport: Rectangle) {
@@ -47,7 +47,7 @@ screen LayoutExample(viewport: Rectangle) {
     btn0_x = column_x + ScaleUIPx(16)
     btn1_x = column_x + ScaleUIPx(138)
     btn2_x = column_x + ScaleUIPx(260)
-    Text("Responsive layout", page_x, ScaleUIPx(16), UI_TEXT_24, GetThemeText())
+    Text("Responsive layout", page_x, ScaleUIPx(16), Text24, GetThemeText())
     Rect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
     Line(side_padding, y, side_padding, y+guide_h, GetThemeLink())
     Line(right_edge, y, right_edge, y+guide_h, GetThemeLink())

@@ -144,7 +144,7 @@ Column((ColumnProps){
     .padding = 16,
     .key = Key("settings/body"),
 });
-Text("Account", 0, 0, UI_TEXT_24, GetThemeText());
+Text("Account", 0, 0, Text24, GetThemeText());
 TextField(account_field);
 Button(save_button);
 End();
@@ -1620,11 +1620,16 @@ typedef enum {
 ## Text Sizes
 
 ```c
-#define UI_TEXT_8 8
-#define UI_TEXT_12 12
-#define UI_TEXT_16 16
-#define UI_TEXT_24 24
-#define UI_TEXT_BASE_SIZE 16
+#define Text8 8
+#define Text12 12
+#define Text14 14
+#define Text16 16
+#define Text18 18
+#define Text20 20
+#define Text24 24
+#define Text32 32
+#define Text48 48
+#define TextBaseSize 16
 ```
 
 ---

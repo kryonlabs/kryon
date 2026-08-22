@@ -31,7 +31,7 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
     if(max_w < ScaleUIPx(48))
         max_w = (int)bounds.width - ScaleUIPx(16);
     title_w = TextWidth(title, font);
-    while(font > UI_TEXT_12 && title_w > max_w) {
+    while(font > Text12 && title_w > max_w) {
         font--;
         title_w = TextWidth(title, font);
     }

@@ -17,13 +17,13 @@ state {
 
 screen DialogsExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 101}) {
+    if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
         dialog = 1
     }
-    if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 102}) {
+    if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm", .style = ButtonStylePrimary, .font = Text16, .id = 102}) {
         dialog = 2
     }
-    if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt", .style = ButtonStylePrimary, .font = UI_TEXT_16, .id = 103}) {
+    if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt", .style = ButtonStylePrimary, .font = Text16, .id = 103}) {
         dialog = 3
     }
     ColorPicker((Rectangle){240,60,320,160},&color)

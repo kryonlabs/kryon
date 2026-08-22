@@ -18,10 +18,10 @@ frame main {
     BeginFrame()
     ClearBackground(GetThemeBackground())
     Background(GetThemeSurface())
-    Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), UI_TEXT_16, GetThemeText())
+    Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
     if count < 42 {
         count = count + 1
     }
-    Text("ready", ScaleUIPx(8), ScaleUIPx(32), UI_TEXT_16, GetThemeText())
+    Text("ready", ScaleUIPx(8), ScaleUIPx(32), Text16, GetThemeText())
     EndFrame()
 }

@@ -252,7 +252,7 @@ DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
         }
     }
     DrawFittedTextInRect(username, username_bounds, name_font,
-                           UI_TEXT_8, c_text);
+                           Text8, c_text);
     if(subtitle[0] != '\0')
         DrawUIText(subtitle, name_x, name_y + ScaleUIPx(22), small_font,
                    DarkenUIColor(c_text, 34));

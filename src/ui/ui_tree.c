@@ -1408,7 +1408,7 @@ Picture(PictureProps picture)
         DrawRectangleRec(picture.bounds, GetThemeSurface());
         DrawRectangleLinesEx(picture.bounds, 1.0f, GetThemeButtonHover());
         DrawUIText("Missing image", (int)picture.bounds.x + ScaleUIPx(8),
-                   (int)picture.bounds.y + ScaleUIPx(8), UI_TEXT_12,
+                   (int)picture.bounds.y + ScaleUIPx(8), Text12,
                    GetThemeIcon());
         return;
     }

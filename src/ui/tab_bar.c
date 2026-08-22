@@ -36,7 +36,7 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
     if(tab->label == NULL || tab->label[0] == '\0')
         return min_tab_w;
 
-    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
     w = label_w + ScaleUIPx(16);
     if(w < min_tab_w)
         w = min_tab_w;
@@ -63,7 +63,7 @@ ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
     if(tab->label == NULL || tab->label[0] == '\0')
         return min_tab_w;
 
-    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : UI_TEXT_12);
+    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
     w = label_w + ScaleUIPx(16);
     if(w < min_tab_w)
         w = min_tab_w;
@@ -78,7 +78,7 @@ DrawUITabBar(TabBarProps bar)
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int clicked_tab = -1;
-    int font = bar.font > 0 ? bar.font : UI_TEXT_12;
+    int font = bar.font > 0 ? bar.font : Text12;
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
@@ -424,7 +424,7 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     UIPaneTabBarResult result = {-1, -1};
     TabBarProps tabs = {0};
     Vector2 mouse = ui_mouse_world();
-    int font = bar.font > 0 ? bar.font : UI_TEXT_12;
+    int font = bar.font > 0 ? bar.font : Text12;
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_h = (int)bar.bounds.height;

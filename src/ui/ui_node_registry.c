@@ -229,7 +229,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "\n    Background(GetThemeBackground())\n");
     } else if(strcmp(type->name, "Text") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Text(\"Text\", ScaleUIPx(%d), ScaleUIPx(%d), UI_TEXT_16, GetThemeText())\n",
+                 "\n    Text(\"Text\", ScaleUIPx(%d), ScaleUIPx(%d), Text16, GetThemeText())\n",
                  x, y);
     } else if(strcmp(type->name, "Rect") == 0) {
         snprintf(dst, (size_t)cap,
@@ -254,7 +254,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(140), ScaleUIPx(36)},\n"
                  "        .label = \"Button\",\n"
                  "        .style = ButtonStylePrimary,\n"
-                 "        .font = UI_TEXT_16,\n"
+                 "        .font = Text16,\n"
                  "        .id = %d,\n"
                  "    }) {\n"
                  "    }\n",
@@ -271,7 +271,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .cursor_position = &field_cursor_%d,\n"
                  "        .focused = &field_focused_%d,\n"
                  "        .max_codepoints = 128,\n"
-                 "        .font = UI_TEXT_16,\n"
+                 "        .font = Text16,\n"
                  "        .focus_id = %d,\n"
                  "        .style = (TextInputStyle){\n"
                  "            GetThemeSurface(), GetThemeButton(), GetThemeLink(),\n"

@@ -37,7 +37,7 @@ static void frame(void)
         TextField((TextFieldProps){.bounds={20,fields[i].y,600,40},
             .text=fields[i].text,.text_size=sizeof(fields[i].text),
             .cursor_position=&fields[i].cursor,.focused=&fields[i].focused,
-            .max_codepoints=500,.font=UI_TEXT_16,.focus_id=fields[i].focus_id});
+            .max_codepoints=500,.font=Text16,.focus_id=fields[i].focus_id});
     UIReconcileTree();
     UILayoutTree();
     UIRouteInput();

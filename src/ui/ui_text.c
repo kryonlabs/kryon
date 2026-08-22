@@ -156,9 +156,9 @@ font_physical_size(int font_size)
     int size = ScaleUIPx(font_size);
 
     if(size <= 0)
-        size = font_size > 0 ? font_size : UI_TEXT_BASE_SIZE;
+        size = font_size > 0 ? font_size : TextBaseSize;
     if(size <= 0)
-        size = UI_TEXT_BASE_SIZE;
+        size = TextBaseSize;
     return size;
 }
 
@@ -314,7 +314,7 @@ entry_font_for_size(UIFontEntry *entry, int font_size)
     font = entry_source_font_for_size(entry, font_size);
     if(font_valid(font))
         return font;
-    if(font_size == UI_TEXT_8 && font_valid(entry->small_font))
+    if(font_size == Text8 && font_valid(entry->small_font))
         return entry->small_font;
     if(font_valid(entry->font))
         return entry->font;
@@ -349,7 +349,7 @@ active_font(void)
 {
     if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count) {
         Font font = entry_font_for_size(&g_ui_fonts[g_ui_active_font],
-                                        UI_TEXT_BASE_SIZE);
+                                        TextBaseSize);
 
         if(font_valid(font))
             return font;
@@ -398,7 +398,7 @@ font_for_codepoint(int codepoint, int font_size)
 static Font
 font_for_scaled_codepoint(int codepoint)
 {
-    return font_for_codepoint(codepoint, UI_TEXT_BASE_SIZE);
+    return font_for_codepoint(codepoint, TextBaseSize);
 }
 
 static float
@@ -406,7 +406,7 @@ font_size_scale(Font font, int font_size)
 {
     int target_size = font_physical_size(font_size);
     int base = UIFontBaseSize(font);
-    int base_size = base > 0 ? base : UI_TEXT_BASE_SIZE;
+    int base_size = base > 0 ? base : TextBaseSize;
 
     return (float)target_size / (float)base_size;
 }
@@ -430,7 +430,7 @@ EnsureUIDefaultFont(void)
 
     if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
        font_valid(entry_font_for_size(&g_ui_fonts[g_ui_active_font],
-                                      UI_TEXT_BASE_SIZE)))
+                                      TextBaseSize)))
         return 1;
     if(!IsWindowReady())
         return 0;
@@ -473,7 +473,7 @@ ensure_ui_italic_font(void)
 
     g_ui_italic_font_attempted = 1;
     for(int i = 0; paths[i] != NULL; i++) {
-        g_ui_italic_font = LoadUIFontAsset(paths[i], UI_TEXT_BASE_SIZE);
+        g_ui_italic_font = LoadUIFontAsset(paths[i], TextBaseSize);
         if(font_valid(g_ui_italic_font))
             return 1;
     }
@@ -577,7 +577,7 @@ register_ui_font_source(const char *name, const char *file_type,
     g_ui_fonts[index].font_data_size = font_size;
     g_ui_fonts[index].font = (Font){0};
     g_ui_fonts[index].small_font = (Font){0};
-    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE))) {
+    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], TextBaseSize))) {
         clear_font_entry(&g_ui_fonts[index]);
         return 0;
     }
@@ -666,7 +666,7 @@ UseUIFont(const char *name)
 
     if(index < 0)
         return 0;
-    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], UI_TEXT_BASE_SIZE)) &&
+    if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], TextBaseSize)) &&
        !font_valid(g_ui_fonts[index].font))
         return 0;
 
@@ -765,7 +765,7 @@ LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
     font = LoadFontFromMemory(
         file_type != NULL && file_type[0] != '\0' ? file_type : ".ttf",
         font_data, (int)font_size,
-        base_size > 0 ? base_size : UI_TEXT_BASE_SIZE,
+        base_size > 0 ? base_size : TextBaseSize,
         codepoints, codepoint_count);
     free(codepoints);
 
@@ -1103,7 +1103,7 @@ TextLineHeight(int font_size)
     int base = UIFontBaseSize(font);
 
     return base > 0 ? (int)((float)base * scale + 0.5f) :
-        (int)((float)UI_TEXT_BASE_SIZE * scale + 0.5f);
+        (int)((float)TextBaseSize * scale + 0.5f);
 }
 
 int
@@ -1572,7 +1572,7 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
 void
 DrawUITextStyled(const char *text, int x, int y, TextStyle style)
 {
-    int font_size = style.font_size > 0 ? style.font_size : UI_TEXT_BASE_SIZE;
+    int font_size = style.font_size > 0 ? style.font_size : TextBaseSize;
 
     if(!style.italic) {
         DrawUITextEx(text, x, y, font_size, style.color, style.selectable);

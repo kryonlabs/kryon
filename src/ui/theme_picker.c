@@ -301,7 +301,7 @@ static UIThemeGridLayout
 ui_theme_grid_layout(int w)
 {
     UIThemeGridLayout layout = {0};
-    int small_font = UI_TEXT_12;
+    int small_font = Text12;
 
     int row_gap = ScaleUIPx(14);
     layout.circle_size = ScaleUIPx(24);
@@ -336,7 +336,7 @@ static int
 ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 {
     int changed = 0;
-    int small_font = UI_TEXT_12;
+    int small_font = Text12;
     int selected = theme_id != NULL ? *theme_id : THEME_SUNSET;
     UIThemeGridLayout layout = ui_theme_grid_layout(w);
     int start_x = x + (w - layout.row_width) / 2;

@@ -56,7 +56,7 @@ static void frame(void)
         TextField((TextFieldProps){.bounds = {20, fields[i].y, FIELD_W, FIELD_H},
             .text = fields[i].text, .text_size = sizeof(fields[i].text),
             .cursor_position = &fields[i].cursor, .focused = &fields[i].focused,
-            .max_codepoints = 500, .font = UI_TEXT_16,
+            .max_codepoints = 500, .font = Text16,
             .focus_id = fields[i].focus_id});
     UIReconcileTree();
     UILayoutTree();

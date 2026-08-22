@@ -1022,23 +1022,23 @@ ui_control_cursor_height(int font, int box_h)
 static int
 ui_text_next_smaller_size(int font_size)
 {
-    if(font_size > UI_TEXT_16)
-        return UI_TEXT_16;
-    if(font_size > UI_TEXT_12)
-        return UI_TEXT_12;
-    return UI_TEXT_8;
+    if(font_size > Text16)
+        return Text16;
+    if(font_size > Text12)
+        return Text12;
+    return Text8;
 }
 
 static int
 ui_text_normalize_size(int font_size)
 {
-    if(font_size <= UI_TEXT_8)
-        return UI_TEXT_8;
-    if(font_size <= UI_TEXT_12)
-        return UI_TEXT_12;
-    if(font_size <= UI_TEXT_16)
-        return UI_TEXT_16;
-    return UI_TEXT_24;
+    if(font_size <= Text8)
+        return Text8;
+    if(font_size <= Text12)
+        return Text12;
+    if(font_size <= Text16)
+        return Text16;
+    return Text24;
 }
 
 void
@@ -1325,13 +1325,13 @@ DrawUIFocus(Rectangle bounds)
 int
 GetUIFontSize(void)
 {
-    return UI_TEXT_16;
+    return Text16;
 }
 
 int
 GetUISmallFontSize(void)
 {
-    return UI_TEXT_12;
+    return Text12;
 }
 
 int
@@ -1339,11 +1339,11 @@ GetUITitleFontSize(const char *title, int max_width)
 {
     const char *value = title != NULL ? title : "";
 
-    if(max_width <= 0 || TextWidth(value, UI_TEXT_24) <= max_width)
-        return UI_TEXT_24;
-    if(TextWidth(value, UI_TEXT_16) <= max_width)
-        return UI_TEXT_16;
-    return UI_TEXT_12;
+    if(max_width <= 0 || TextWidth(value, Text24) <= max_width)
+        return Text24;
+    if(TextWidth(value, Text16) <= max_width)
+        return Text16;
+    return Text12;
 }
 
 int
@@ -1804,9 +1804,9 @@ ui_text_area_line_font(const char *text, int start, int end, int base_font)
         return base_font;
     while(start + hashes < end && hashes < 6 && text[start + hashes] == '#')
         hashes++;
-    if(hashes > 0 && start + hashes < end && text[start + hashes] == ' ' && base_font < UI_TEXT_24) {
+    if(hashes > 0 && start + hashes < end && text[start + hashes] == ' ' && base_font < Text24) {
         if(hashes <= 2)
-            return UI_TEXT_24;
+            return Text24;
     }
     return base_font;
 }
@@ -3737,7 +3737,7 @@ DrawUISubtabBar(SubtabBarProps bar)
                 icon_tint.a = 150;
             DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_tint);
         } else {
-            DrawFittedTextInRect(label, label_rect, font, UI_TEXT_8, text_color);
+            DrawFittedTextInRect(label, label_rect, font, Text8, text_color);
         }
     }
 

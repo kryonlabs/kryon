@@ -16,7 +16,7 @@ state {
 
 frame fields_frame {
     BeginUI(Key("fields"))
-    TextField((TextFieldProps){.bounds = {20,20,180,32}, .text = title, .text_size = sizeof(title), .cursor_position = &title_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 301})
-    TextArea((TextAreaProps){.bounds = {20,68,220,64}, .text = body, .text_size = sizeof(body), .cursor_position = &body_cursor, .focused = NULL, .scroll_y = &body_scroll, .max_codepoints = 127, .font = UI_TEXT_16, .line_gap = 4, .focus_id = 302, .placeholder = "Body"})
+    TextField((TextFieldProps){.bounds = {20,20,180,32}, .text = title, .text_size = sizeof(title), .cursor_position = &title_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 301})
+    TextArea((TextAreaProps){.bounds = {20,68,220,64}, .text = body, .text_size = sizeof(body), .cursor_position = &body_cursor, .focused = NULL, .scroll_y = &body_scroll, .max_codepoints = 127, .font = Text16, .line_gap = 4, .focus_id = 302, .placeholder = "Body"})
     EndUI()
 }

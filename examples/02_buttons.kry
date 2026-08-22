@@ -14,8 +14,8 @@ state {
 
 screen ButtonsExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    Text("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), UI_TEXT_24, GetThemeText())
-    Text("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(54), UI_TEXT_16, GetThemeText())
+    Text("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), Text24, GetThemeText())
+    Text("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(54), Text16, GetThemeText())
     if Button((ButtonProps){
         .bounds = {ScaleUIPx(20), ScaleUIPx(100), ScaleUIPx(200), ScaleUIPx(40)},
         .label = "Primary Button",
@@ -43,8 +43,8 @@ screen ButtonsExample(viewport: Rectangle) {
         click_count++
         snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
     }
-    Text(TextFormat("Clicks:%d",click_count), ScaleUIPx(20), ScaleUIPx(260), UI_TEXT_16, GetThemeText())
-    Text(last_action, ScaleUIPx(20), ScaleUIPx(290), UI_TEXT_16, GetThemeText())
+    Text(TextFormat("Clicks:%d",click_count), ScaleUIPx(20), ScaleUIPx(260), Text16, GetThemeText())
+    Text(last_action, ScaleUIPx(20), ScaleUIPx(290), Text16, GetThemeText())
     Text("Button Styles", ScaleUIPx(300), ScaleUIPx(100), 18, GetThemeText())
     Text("Primary,secondary,and danger styles use the active theme.", ScaleUIPx(300), ScaleUIPx(130), 14, GetThemeIcon())
 }

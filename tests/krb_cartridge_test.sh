@@ -80,7 +80,7 @@ frame main {
     ClearBackground(GetThemeBackground())
     BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
     Background(GetThemeSurface())
-    Text("hi", ScaleUIPx(4), ScaleUIPx(4), UI_TEXT_16, GetThemeText())
+    Text("hi", ScaleUIPx(4), ScaleUIPx(4), Text16, GetThemeText())
     Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
     Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
     Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
