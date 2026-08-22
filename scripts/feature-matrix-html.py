@@ -6,8 +6,14 @@ view with color-coded status cells (green = full, amber = partial, red =
 missing). Run it whenever the matrix changes:
 
     python3 scripts/feature-matrix-html.py
+
+CI can verify the generated HTML is current:
+
+    python3 scripts/feature-matrix-html.py --check
 """
 
+import argparse
+import difflib
 import html
 import os
 import re
@@ -113,16 +119,36 @@ li{margin:.25rem 0}
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--check', action='store_true',
+                        help='verify docs/FEATURE_MATRIX.html is current')
+    args = parser.parse_args()
+
     src_path = os.path.join(ROOT, 'docs', 'FEATURE_MATRIX.md')
     dst_path = os.path.join(ROOT, 'docs', 'FEATURE_MATRIX.html')
     with open(src_path) as f:
         src = f.read().splitlines()
-    rendered = convert(src)
-    with open(dst_path, 'w') as f:
-        f.write(rendered + '\n')
+    rendered = convert(src) + '\n'
+    if args.check:
+        with open(dst_path) as f:
+            current = f.read()
+        if current != rendered:
+            diff = difflib.unified_diff(
+                current.splitlines(),
+                rendered.splitlines(),
+                fromfile='docs/FEATURE_MATRIX.html',
+                tofile='generated docs/FEATURE_MATRIX.html',
+                lineterm='')
+            print('docs/FEATURE_MATRIX.html is stale; run '
+                  'tests/feature_matrix_docs_test.sh', file=sys.stderr)
+            print('\n'.join(diff), file=sys.stderr)
+            return 1
+    else:
+        with open(dst_path, 'w') as f:
+            f.write(rendered)
     print(f'rendered {dst_path}: '
-          f'{rendered.count("<table>")} tables, '
-          f'{rendered.count("<tr>")} rows')
+           f'{rendered.count("<table>")} tables, '
+           f'{rendered.count("<tr>")} rows')
 
 
 if __name__ == '__main__':
