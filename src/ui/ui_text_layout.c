@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-UITextLayout
-ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size)
+TextLayout
+ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size)
 {
-    UITextLayout layout = {0};
+    TextLayout layout = {0};
 
     if(input == NULL || input[0] == '\0')
         return layout;
@@ -34,7 +34,7 @@ ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int i
         }
     }
 
-    layout.elements = (UITextElement *)calloc((size_t)element_count, sizeof(UITextElement));
+    layout.elements = (TextElement *)calloc((size_t)element_count, sizeof(TextElement));
     if(layout.elements == NULL)
         return layout;
     layout.element_count = element_count;
@@ -77,7 +77,7 @@ ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int i
 }
 
 void
-ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_height)
+ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_height)
 {
     if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
         return;
@@ -153,13 +153,13 @@ ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_
 }
 
 static int
-ui_text_layout_line_text_len(UITextLayout *layout, int start, int end)
+ui_text_layout_line_text_len(TextLayout *layout, int start, int end)
 {
     int len = 0;
     int text_count = 0;
 
     for(int i = start; i < end; i++) {
-        UITextElement *element = &layout->elements[i];
+        TextElement *element = &layout->elements[i];
 
         if(element->type == UI_TEXT_ELEMENT_LINE_BREAK)
             continue;
@@ -177,7 +177,7 @@ ui_text_layout_line_text_len(UITextLayout *layout, int start, int end)
 }
 
 static void
-ui_text_layout_draw_text_line(UITextLayout *layout, int start, int end,
+ui_text_layout_draw_text_line(TextLayout *layout, int start, int end,
                               int x, int y, int font_size, Color color)
 {
     int len = ui_text_layout_line_text_len(layout, start, end);
@@ -193,7 +193,7 @@ ui_text_layout_draw_text_line(UITextLayout *layout, int start, int end,
         return;
 
     for(int i = start; i < end; i++) {
-        UITextElement *element = &layout->elements[i];
+        TextElement *element = &layout->elements[i];
         int element_len;
 
         if(element->type != UI_TEXT_ELEMENT_TEXT ||
@@ -212,7 +212,7 @@ ui_text_layout_draw_text_line(UITextLayout *layout, int start, int end,
 }
 
 static void
-ui_text_layout_draw_mixed_line(UITextLayout *layout, int start, int end,
+ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
                                int x, int y, int font_size, Color color,
                                int space_width, int icon_spacing)
 {
@@ -247,7 +247,7 @@ ui_text_layout_draw_mixed_line(UITextLayout *layout, int start, int end,
 }
 
 void
-DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color)
+DrawTextLayout(TextLayout *layout, int x, int *y, int font_size, Color color)
 {
     if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
         return;
@@ -289,7 +289,7 @@ DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size, Color color
 }
 
 int
-GetUITextLayoutHeight(UITextLayout *layout)
+GetTextLayoutHeight(TextLayout *layout)
 {
     if(layout == NULL)
         return 0;
@@ -297,7 +297,7 @@ GetUITextLayoutHeight(UITextLayout *layout)
 }
 
 void
-FreeUITextLayout(UITextLayout *layout)
+FreeTextLayout(TextLayout *layout)
 {
     if(layout == NULL)
         return;

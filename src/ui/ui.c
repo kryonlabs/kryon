@@ -3268,17 +3268,17 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     return 0;
 }
 
-static UITextLayout
+static TextLayout
 UIParagraphLayout(UIParagraphSpec paragraph)
 {
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : ScaleUIPx(4);
     int icon_size = paragraph.icon_size > 0 ? paragraph.icon_size : font;
-    UITextLayout layout = ParseUITextLayout(paragraph.text ? paragraph.text : "",
+    TextLayout layout = ParseTextLayout(paragraph.text ? paragraph.text : "",
                                                      paragraph.icon,
                                                      paragraph.icon_type,
                                                      icon_size);
-    ReflowUITextLayout(&layout, paragraph.width, font, line_gap);
+    ReflowTextLayout(&layout, paragraph.width, font, line_gap);
     return layout;
 }
 
@@ -3287,9 +3287,9 @@ ui_paragraph_height(UIParagraphSpec paragraph)
 {
     if(paragraph.width <= 0)
         return 0;
-    UITextLayout layout = UIParagraphLayout(paragraph);
-    int height = GetUITextLayoutHeight(&layout);
-    FreeUITextLayout(&layout);
+    TextLayout layout = UIParagraphLayout(paragraph);
+    int height = GetTextLayoutHeight(&layout);
+    FreeTextLayout(&layout);
     return height;
 }
 
@@ -3300,9 +3300,9 @@ DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y)
         return;
     int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
-    UITextLayout layout = UIParagraphLayout(paragraph);
-    DrawUITextLayout(&layout, x, y, font, color);
-    FreeUITextLayout(&layout);
+    TextLayout layout = UIParagraphLayout(paragraph);
+    DrawTextLayout(&layout, x, y, font, color);
+    FreeTextLayout(&layout);
 }
 
 void

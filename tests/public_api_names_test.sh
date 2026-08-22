@@ -138,6 +138,20 @@ if [ -n "$public_text_draw_matches" ]; then
     exit 1
 fi
 
+public_text_layout_matches="$(
+    rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|DrawUITextLayout)\b' \
+        include/ui_text_layout.h \
+        docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_text_layout_matches" ]; then
+    echo "Public text layout APIs must use TextLayout/TextElement names without legacy UIText prefixes:"
+    echo "$public_text_layout_matches"
+    exit 1
+fi
+
 public_tree_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \

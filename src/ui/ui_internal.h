@@ -122,7 +122,7 @@ void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
 int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
                                  int line_gap);
 int DrawUISelectableTextBlock(UISelectableTextBlock block);
-void DrawUITextLayout(UITextLayout *layout, int x, int *y, int font_size,
+void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
 void DrawUIParagraph(UIParagraphSpec paragraph, int x, int *y);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);

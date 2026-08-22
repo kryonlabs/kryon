@@ -152,15 +152,15 @@ DrawUIActionModal(ModalProps modal)
     if(msg_w < ScaleUIPx(120))
         msg_w = ScaleUIPx(120);
 
-    UITextLayout msg_layout = ParseUITextLayout(modal.message, g_ui_gear_icon,
+    TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 UI_ICON_TYPE_GEAR, msg_font);
-    ReflowUITextLayout(&msg_layout, msg_w, msg_font, ScaleUIPx(4));
+    ReflowTextLayout(&msg_layout, msg_w, msg_font, ScaleUIPx(4));
 
     button_rows = ui_modal_measure_action_rows(modal.actions, modal.action_count,
                                                msg_w, btn_gap, btn_font);
     buttons_h = button_rows > 0 ?
                 button_rows * btn_h + (button_rows - 1) * btn_gap : 0;
-    modal_h = title_h + GetUITextLayoutHeight(&msg_layout) +
+    modal_h = title_h + GetTextLayoutHeight(&msg_layout) +
               (buttons_h > 0 ? msg_gap + buttons_h : 0) + padding_bottom;
     if(modal_h < ScaleUIPx(160))
         modal_h = ScaleUIPx(160);
@@ -197,8 +197,8 @@ DrawUIActionModal(ModalProps modal)
                modal_x + (modal_w - title_w) / 2,
                modal_y + ScaleUIPx(14), title_font, c_text);
 
-    DrawUITextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
-    FreeUITextLayout(&msg_layout);
+    DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
+    FreeTextLayout(&msg_layout);
 
     if(modal.close_icon.id != 0) {
         int icon_size = ScaleUIPx(20);

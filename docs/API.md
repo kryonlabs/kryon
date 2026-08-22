@@ -434,11 +434,11 @@ int GetUITextY(const char *text, int box_y, int box_h, int font_size);
 
 Layout text with embedded icons and line breaks.
 
-#### `UITextLayout`
+#### `TextLayout`
 
 ```c
-typedef struct UITextLayout {
-    UITextElement *elements;
+typedef struct TextLayout {
+    TextElement *elements;
     int element_count;
     int *line_breaks;
     int line_count;
@@ -446,30 +446,30 @@ typedef struct UITextLayout {
     int total_height;
     int line_height;
     int last_reflow_width;
-} UITextLayout;
+} TextLayout;
 ```
 
-#### `ParseUITextLayout`
+#### `ParseTextLayout`
 
 Parse text input into a layout.
 
 ```c
-UITextLayout ParseUITextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
+TextLayout ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
 ```
 
-#### `ReflowUITextLayout`
+#### `ReflowTextLayout`
 
 Reflow layout for a given width.
 
 ```c
-void ReflowUITextLayout(UITextLayout *layout, int max_width, int font_size, int line_height);
+void ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_height);
 ```
 
-#### `GetUITextLayoutHeight` / `FreeUITextLayout`
+#### `GetTextLayoutHeight` / `FreeTextLayout`
 
 ```c
-int GetUITextLayoutHeight(UITextLayout *layout);
-void FreeUITextLayout(UITextLayout *layout);
+int GetTextLayoutHeight(TextLayout *layout);
+void FreeTextLayout(TextLayout *layout);
 ```
 
 ---
