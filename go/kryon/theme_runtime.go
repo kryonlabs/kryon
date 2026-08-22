@@ -234,9 +234,13 @@ func gtkCSSPalette() (systemThemePalette, bool) {
 	if haveSelected {
 		p.link = selected
 		p.focus = selected
+		p.selected = selected
+		p.selectedHot = selected
 	} else {
 		p.link = p.buttonHover
 		p.focus = p.link
+		p.selected = Color{}
+		p.selectedHot = Color{}
 	}
 	if haveSelectedText {
 		p.selectedText = selectedText

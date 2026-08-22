@@ -914,6 +914,12 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 		t.Fatalf("system CSS selected/link = %#v, want %#v", got, want)
 	}
 	theme := rt.theme()
+	if got, want := theme.selected, (Color{0xc5, 0x0e, 0xd2, 0xff}); got != want {
+		t.Fatalf("system CSS selected = %#v, want %#v", got, want)
+	}
+	if got, want := theme.selectedHot, (Color{0xc5, 0x0e, 0xd2, 0xff}); got != want {
+		t.Fatalf("system CSS selected hot = %#v, want %#v", got, want)
+	}
 	if got, want := theme.selectedText, (Color{0xfe, 0xfe, 0xfe, 0xff}); got != want {
 		t.Fatalf("system CSS selected text = %#v, want %#v", got, want)
 	}
