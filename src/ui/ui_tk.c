@@ -1286,6 +1286,10 @@ DrawUISourceView(SourceViewProps source)
 int
 DrawUITableView(TableViewProps table)
 {
+    static int last_table_id = 0;
+    static int last_table_row = -1;
+    static int last_table_column = -1;
+    static double last_table_click_time = 0.0;
     int font = GetUISmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
     int header_h = ScaleUIPx(30);
@@ -1299,6 +1303,14 @@ DrawUITableView(TableViewProps table)
 
     if(table.column_count < 1)
         return 0;
+    if(table.activated_row != NULL)
+        *table.activated_row = -1;
+    if(table.activated_column != NULL)
+        *table.activated_column = -1;
+    if(table.right_clicked_row != NULL)
+        *table.right_clicked_row = -1;
+    if(table.right_clicked_column != NULL)
+        *table.right_clicked_column = -1;
     default_col_w = (int)table.bounds.width / table.column_count;
     max_scroll = ui_update_scroll((Rectangle){table.bounds.x, table.bounds.y + header_h,
                                               table.bounds.width, table.bounds.height - header_h},
@@ -1351,8 +1363,54 @@ DrawUITableView(TableViewProps table)
             EndUIClip();
         }
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
+            int clicked_col = -1;
+            double now = GetTime();
+            Vector2 mouse = GetMousePosition();
             UIConsumeRelease();
             *table.selected_row = r;
+            for(int c = 0; c < table.column_count; c++) {
+                int x = (int)table.bounds.x;
+                int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
+                for(int prev = 0; prev < c; prev++)
+                    x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
+                if(mouse.x >= (float)x && mouse.x < (float)(x + col_w)) {
+                    clicked_col = c;
+                    break;
+                }
+            }
+            if(clicked_col >= 0 && table.selected_column != NULL)
+                *table.selected_column = clicked_col;
+            if(clicked_col >= 0 && last_table_id == table.id &&
+               last_table_row == r && last_table_column == clicked_col &&
+               now - last_table_click_time <= 0.45) {
+                if(table.activated_row != NULL)
+                    *table.activated_row = r;
+                if(table.activated_column != NULL)
+                    *table.activated_column = clicked_col;
+            }
+            last_table_id = table.id;
+            last_table_row = r;
+            last_table_column = clicked_col;
+            last_table_click_time = now;
+            changed = 1;
+        }
+        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+            int clicked_col = -1;
+            Vector2 mouse = GetMousePosition();
+            for(int c = 0; c < table.column_count; c++) {
+                int x = (int)table.bounds.x;
+                int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
+                for(int prev = 0; prev < c; prev++)
+                    x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
+                if(mouse.x >= (float)x && mouse.x < (float)(x + col_w)) {
+                    clicked_col = c;
+                    break;
+                }
+            }
+            if(table.right_clicked_row != NULL)
+                *table.right_clicked_row = r;
+            if(table.right_clicked_column != NULL)
+                *table.right_clicked_column = clicked_col;
             changed = 1;
         }
     }

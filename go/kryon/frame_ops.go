@@ -10,6 +10,7 @@ const (
 	FrameOpButton     FrameOpKind = "button"
 	FrameOpTextField  FrameOpKind = "text_field"
 	FrameOpTextArea   FrameOpKind = "text_area"
+	FrameOpTable      FrameOpKind = "table"
 	FrameOpColumn     FrameOpKind = "column"
 	FrameOpRow        FrameOpKind = "row"
 	FrameOpStack      FrameOpKind = "stack"
@@ -30,6 +31,9 @@ type FrameOp struct {
 	Pressed        bool
 	Disabled       bool
 	Secure         bool
+	Row            int32
+	Column         int32
+	Selected       bool
 }
 
 type frameOpController interface {

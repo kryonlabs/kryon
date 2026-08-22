@@ -735,6 +735,12 @@ props_field_at(const char *type, int index)
                       "CursorY"}},
         {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",
                   "PadY"}},
+        {"TableViewProps", {"Bounds", "ID", "Columns", "Rows",
+                            "ColumnWidths", "SelectedRow",
+                            "SelectedColumn", "ActivatedRow",
+                            "ActivatedColumn", "RightClickedRow",
+                            "RightClickedColumn", "SortColumn",
+                            "ScrollOffset", "RowHeight"}},
         {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},
     };
     size_t i;

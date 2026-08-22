@@ -213,6 +213,11 @@ typedef struct {
     int row_count;
     const int *column_widths;
     int *selected_row;
+    int *selected_column;
+    int *activated_row;
+    int *activated_column;
+    int *right_clicked_row;
+    int *right_clicked_column;
     int *sort_column;
     int *scroll_offset;
     int row_height;

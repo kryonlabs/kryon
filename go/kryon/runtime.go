@@ -401,15 +401,20 @@ type UITableRow struct {
 }
 
 type TableViewProps struct {
-	Bounds       Rectangle
-	ID           int32
-	Columns      []string
-	Rows         []UITableRow
-	ColumnWidths []int32
-	SelectedRow  *int32
-	SortColumn   *int32
-	ScrollOffset *int32
-	RowHeight    int32
+	Bounds             Rectangle
+	ID                 int32
+	Columns            []string
+	Rows               []UITableRow
+	ColumnWidths       []int32
+	SelectedRow        *int32
+	SelectedColumn     *int32
+	ActivatedRow       *int32
+	ActivatedColumn    *int32
+	RightClickedRow    *int32
+	RightClickedColumn *int32
+	SortColumn         *int32
+	ScrollOffset       *int32
+	RowHeight          int32
 }
 
 type NotebookProps struct {
@@ -555,23 +560,25 @@ type Runtime interface {
 }
 
 type runtime struct {
-	config      AppConfig
-	closed      bool
-	frames      int
-	focusID     int32
-	clipboard   string
-	inputEvents []inputEvent
-	taps        []tapEvent
-	mousePos    Vector2
-	mouseWheel  float32
-	mouseDown   map[int32]bool
-	keyDown     map[int32]bool
-	chars       []rune
-	fieldOrder  []int32
-	prevOrder   []int32
-	selection   map[int32]selection
-	layout      []layoutFrame
-	ops         []FrameOp
+	config         AppConfig
+	closed         bool
+	frames         int
+	focusID        int32
+	clipboard      string
+	inputEvents    []inputEvent
+	taps           []tapEvent
+	clicks         []mouseClickEvent
+	mousePos       Vector2
+	mouseWheel     float32
+	mouseDown      map[int32]bool
+	keyDown        map[int32]bool
+	chars          []rune
+	fieldOrder     []int32
+	prevOrder      []int32
+	selection      map[int32]selection
+	layout         []layoutFrame
+	ops            []FrameOp
+	lastTableClick tableClick
 }
 
 type layoutFrame struct {
@@ -593,6 +600,19 @@ type inputEvent struct {
 type tapEvent struct {
 	x, y     float32
 	consumed bool
+}
+
+type mouseClickEvent struct {
+	button   int32
+	x, y     float32
+	consumed bool
+}
+
+type tableClick struct {
+	id     int32
+	row    int32
+	column int32
+	frame  int
 }
 
 type selection struct {
@@ -634,6 +654,7 @@ func (r *runtime) QueueTap(x, y float32) {
 func (r *runtime) QueueMouseButton(button int32, x, y float32) {
 	r.mousePos = Vector2{X: x, Y: y}
 	r.mouseDown[button] = true
+	r.clicks = append(r.clicks, mouseClickEvent{button: button, x: x, y: y})
 	if button == MouseButtonLeft {
 		r.taps = append(r.taps, tapEvent{x: x, y: y})
 	}
@@ -681,6 +702,7 @@ func (r *runtime) BeginFrame() {
 func (r *runtime) EndFrame() {
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
 	r.taps = nil
+	r.clicks = nil
 	r.mouseWheel = 0
 	r.mouseDown = map[int32]bool{}
 	r.keyDown = map[int32]bool{}
@@ -865,15 +887,123 @@ func (r *runtime) Radio(props RadioButtonProps) int32 {
 	}
 	return 0
 }
-func (r *runtime) Spinbox(SpinboxProps) bool              { return false }
-func (r *runtime) Combobox(ComboboxProps) bool            { return false }
-func (r *runtime) LabelFrame(LabelFrameProps)             {}
-func (r *runtime) Notebook(NotebookProps) int32           { return 0 }
-func (r *runtime) PanedView(PanedViewProps) int32         { return 0 }
-func (r *runtime) Collapsible(CollapsibleProps) int32     { return 0 }
-func (r *runtime) ListBox(ListBoxProps) int32             { return 0 }
-func (r *runtime) SourceView(SourceViewProps) int32       { return 0 }
-func (r *runtime) TableView(TableViewProps) int32         { return 0 }
+func (r *runtime) Spinbox(SpinboxProps) bool          { return false }
+func (r *runtime) Combobox(ComboboxProps) bool        { return false }
+func (r *runtime) LabelFrame(LabelFrameProps)         {}
+func (r *runtime) Notebook(NotebookProps) int32       { return 0 }
+func (r *runtime) PanedView(PanedViewProps) int32     { return 0 }
+func (r *runtime) Collapsible(CollapsibleProps) int32 { return 0 }
+func (r *runtime) ListBox(ListBoxProps) int32         { return 0 }
+func (r *runtime) SourceView(SourceViewProps) int32   { return 0 }
+func (r *runtime) TableView(props TableViewProps) int32 {
+	props.Bounds = r.layoutRect(props.Bounds)
+	if len(props.Columns) == 0 {
+		return 0
+	}
+
+	rowH := props.RowHeight
+	if rowH <= 0 {
+		rowH = 28
+	}
+	headerH := int32(30)
+	body := Rectangle{
+		X:      props.Bounds.X,
+		Y:      props.Bounds.Y + float32(headerH),
+		Width:  props.Bounds.Width,
+		Height: props.Bounds.Height - float32(headerH),
+	}
+	if body.Height < 0 {
+		body.Height = 0
+	}
+	if props.ActivatedRow != nil {
+		*props.ActivatedRow = -1
+	}
+	if props.ActivatedColumn != nil {
+		*props.ActivatedColumn = -1
+	}
+	if props.RightClickedRow != nil {
+		*props.RightClickedRow = -1
+	}
+	if props.RightClickedColumn != nil {
+		*props.RightClickedColumn = -1
+	}
+
+	changed := int32(0)
+	maxScroll := max32(0, int32(len(props.Rows))*rowH-int32(body.Height))
+	if props.ScrollOffset != nil {
+		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+	}
+	if pointInRect(r.mousePos.X, r.mousePos.Y, body) && props.ScrollOffset != nil && r.mouseWheel != 0 {
+		*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
+		changed = 1
+	}
+
+	if props.ID != 0 {
+		r.registerField(props.ID)
+	}
+	headerBounds := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: props.Bounds.Width, Height: float32(headerH)}
+	headerClickX, headerClicked := r.consumeMouseButtonPoint(MouseButtonLeft, headerBounds)
+	if headerClicked && headerClickX >= props.Bounds.X && headerClickX < props.Bounds.X+props.Bounds.Width &&
+		r.mousePos.Y >= props.Bounds.Y && r.mousePos.Y < props.Bounds.Y+float32(headerH) {
+		col := tableColumnAtX(props, headerClickX)
+		if col >= 0 && props.SortColumn != nil {
+			*props.SortColumn = col
+			changed = 1
+		}
+		if props.ID != 0 {
+			r.focusID = props.ID
+		}
+	}
+
+	if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonLeft, body); clicked {
+		row, col := tableCellAt(props, body, rowH, clickX, r.mousePos.Y)
+		if row >= 0 && col >= 0 {
+			if props.SelectedRow != nil && *props.SelectedRow != row {
+				*props.SelectedRow = row
+				changed = 1
+			}
+			if props.SelectedColumn != nil && *props.SelectedColumn != col {
+				*props.SelectedColumn = col
+				changed = 1
+			}
+			if props.ID != 0 {
+				r.focusID = props.ID
+			}
+			if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
+				r.lastTableClick.column == col && r.frames-r.lastTableClick.frame <= 15 {
+				if props.ActivatedRow != nil {
+					*props.ActivatedRow = row
+				}
+				if props.ActivatedColumn != nil {
+					*props.ActivatedColumn = col
+				}
+				changed = 1
+			}
+			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, frame: r.frames}
+		}
+	}
+
+	if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonRight, body); clicked {
+		row, col := tableCellAt(props, body, rowH, clickX, r.mousePos.Y)
+		if row >= 0 && col >= 0 {
+			if props.RightClickedRow != nil {
+				*props.RightClickedRow = row
+			}
+			if props.RightClickedColumn != nil {
+				*props.RightClickedColumn = col
+			}
+			changed = 1
+		}
+	}
+
+	if props.ID != 0 && r.focusID == props.ID {
+		changed |= r.handleTableKeys(props)
+	}
+
+	r.record(FrameOp{Kind: FrameOpTable, Bounds: props.Bounds, ID: props.ID})
+	r.drawTableOps(props, rowH, headerH)
+	return changed
+}
 func (r *runtime) MessageDialog(MessageDialogProps) int32 { return 0 }
 func (r *runtime) ConfirmDialog(ConfirmDialogProps) int32 { return 0 }
 func (r *runtime) PromptDialog(PromptDialogProps) int32   { return 0 }
@@ -1160,6 +1290,19 @@ func (r *runtime) consumeTap(bounds Rectangle) bool {
 	return false
 }
 
+func (r *runtime) consumeMouseButtonPoint(button int32, bounds Rectangle) (float32, bool) {
+	for i := range r.clicks {
+		if r.clicks[i].consumed || r.clicks[i].button != button {
+			continue
+		}
+		if pointInRect(r.clicks[i].x, r.clicks[i].y, bounds) {
+			r.clicks[i].consumed = true
+			return r.clicks[i].x, true
+		}
+	}
+	return 0, false
+}
+
 func pointInRect(x, y float32, bounds Rectangle) bool {
 	return x >= bounds.X && y >= bounds.Y &&
 		x < bounds.X+bounds.Width && y < bounds.Y+bounds.Height
@@ -1385,6 +1528,254 @@ func cellW(grid Grid) float32 {
 
 func cellH(grid Grid) float32 {
 	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
+}
+
+func TableCellRect(props TableViewProps, row, col int32) Rectangle {
+	if len(props.Columns) == 0 || row < 0 || col < 0 || int(row) >= len(props.Rows) || int(col) >= len(props.Columns) {
+		return Rectangle{}
+	}
+	rowH := props.RowHeight
+	if rowH <= 0 {
+		rowH = 28
+	}
+	headerH := int32(30)
+	scroll := int32(0)
+	if props.ScrollOffset != nil {
+		scroll = *props.ScrollOffset
+	}
+	x := props.Bounds.X
+	for c := int32(0); c < col; c++ {
+		x += float32(tableColumnWidth(props, c))
+	}
+	return Rectangle{
+		X:      x,
+		Y:      props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll),
+		Width:  float32(tableColumnWidth(props, col)),
+		Height: float32(rowH),
+	}
+}
+
+func (r *runtime) handleTableKeys(props TableViewProps) int32 {
+	if props.SelectedRow == nil {
+		return 0
+	}
+	changed := int32(0)
+	row := clamp32(*props.SelectedRow, 0, int32(len(props.Rows)-1))
+	col := int32(0)
+	if props.SelectedColumn != nil {
+		col = clamp32(*props.SelectedColumn, 0, int32(len(props.Columns)-1))
+	}
+	for _, event := range r.inputEvents {
+		if event.shortcut || event.text != "" {
+			continue
+		}
+		switch event.key {
+		case KeyUp:
+			row = clamp32(row-1, 0, int32(len(props.Rows)-1))
+			changed = 1
+		case KeyDown:
+			row = clamp32(row+1, 0, int32(len(props.Rows)-1))
+			changed = 1
+		case KeyLeft:
+			col = clamp32(col-1, 0, int32(len(props.Columns)-1))
+			changed = 1
+		case KeyRight:
+			col = clamp32(col+1, 0, int32(len(props.Columns)-1))
+			changed = 1
+		case KeyTab:
+			if event.shift {
+				if col > 0 {
+					col--
+				} else {
+					col = int32(len(props.Columns) - 1)
+					row = clamp32(row-1, 0, int32(len(props.Rows)-1))
+				}
+			} else if col < int32(len(props.Columns)-1) {
+				col++
+			} else {
+				col = 0
+				row = clamp32(row+1, 0, int32(len(props.Rows)-1))
+			}
+			changed = 1
+		case KeyEnter, KeyF2:
+			if props.ActivatedRow != nil {
+				*props.ActivatedRow = row
+			}
+			if props.ActivatedColumn != nil {
+				*props.ActivatedColumn = col
+			}
+			changed = 1
+		}
+	}
+	if changed != 0 {
+		*props.SelectedRow = row
+		if props.SelectedColumn != nil {
+			*props.SelectedColumn = col
+		}
+		r.scrollTableSelectionIntoView(props)
+		r.inputEvents = nil
+	}
+	return changed
+}
+
+func (r *runtime) scrollTableSelectionIntoView(props TableViewProps) {
+	if props.ScrollOffset == nil || props.SelectedRow == nil {
+		return
+	}
+	rowH := props.RowHeight
+	if rowH <= 0 {
+		rowH = 28
+	}
+	bodyH := int32(props.Bounds.Height) - 30
+	if bodyH <= 0 {
+		return
+	}
+	top := *props.SelectedRow * rowH
+	bottom := top + rowH
+	if top < *props.ScrollOffset {
+		*props.ScrollOffset = top
+	} else if bottom > *props.ScrollOffset+bodyH {
+		*props.ScrollOffset = bottom - bodyH
+	}
+	maxScroll := max32(0, int32(len(props.Rows))*rowH-bodyH)
+	*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+}
+
+func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: Color{255, 255, 255, 255}})
+	selectedRow := int32(-1)
+	selectedCol := int32(-1)
+	if props.SelectedRow != nil {
+		selectedRow = *props.SelectedRow
+	}
+	if props.SelectedColumn != nil {
+		selectedCol = *props.SelectedColumn
+	}
+	font := Text12
+	if rowH >= 28 {
+		font = Text14
+	}
+	for c := range props.Columns {
+		col := int32(c)
+		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []UITableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
+		rect.Y = props.Bounds.Y
+		rect.Height = float32(headerH)
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: Color{232, 236, 242, 255}, Row: -1, Column: col})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: Color{36, 45, 58, 255}, FontSize: font, Row: -1, Column: col})
+	}
+	scroll := int32(0)
+	if props.ScrollOffset != nil {
+		scroll = *props.ScrollOffset
+	}
+	first := int32(0)
+	if rowH > 0 {
+		first = scroll / rowH
+	}
+	visible := int32(0)
+	if rowH > 0 {
+		visible = int32(props.Bounds.Height-float32(headerH))/rowH + 2
+	}
+	for i := int32(0); i < visible && first+i < int32(len(props.Rows)); i++ {
+		row := first + i
+		rowY := props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll)
+		rowRect := Rectangle{X: props.Bounds.X, Y: rowY, Width: props.Bounds.Width, Height: float32(rowH)}
+		if row == selectedRow {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: Color{218, 232, 252, 255}, Row: row, Selected: true})
+		} else if row%2 == 1 {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: Color{248, 250, 252, 255}, Row: row})
+		}
+		for c := range props.Columns {
+			col := int32(c)
+			rect := TableCellRect(props, row, col)
+			if rect.Y+rect.Height < props.Bounds.Y+float32(headerH) || rect.Y > props.Bounds.Y+props.Bounds.Height {
+				continue
+			}
+			if row == selectedRow && col == selectedCol {
+				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: Color{198, 220, 250, 255}, Row: row, Column: col, Selected: true})
+			}
+			text := ""
+			if int(row) < len(props.Rows) && c < len(props.Rows[row].Cells) {
+				text = props.Rows[row].Cells[c]
+			}
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: Color{25, 31, 40, 255}, FontSize: font, Row: row, Column: col})
+		}
+	}
+}
+
+func tableTextBounds(rect Rectangle) Rectangle {
+	return Rectangle{X: rect.X + 6, Y: rect.Y + 6, Width: rect.Width - 12, Height: rect.Height - 8}
+}
+
+func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32) (int32, int32) {
+	if rowH <= 0 || len(props.Columns) == 0 {
+		return -1, -1
+	}
+	scroll := int32(0)
+	if props.ScrollOffset != nil {
+		scroll = *props.ScrollOffset
+	}
+	row := int32((y - body.Y + float32(scroll)) / float32(rowH))
+	if row < 0 || int(row) >= len(props.Rows) {
+		return -1, -1
+	}
+	col := tableColumnAtX(props, x)
+	if col < 0 {
+		return -1, -1
+	}
+	return row, col
+}
+
+func tableColumnAtX(props TableViewProps, x float32) int32 {
+	if len(props.Columns) == 0 {
+		return -1
+	}
+	cursor := props.Bounds.X
+	for c := range props.Columns {
+		w := float32(tableColumnWidth(props, int32(c)))
+		if x >= cursor && x < cursor+w {
+			return int32(c)
+		}
+		cursor += w
+	}
+	return -1
+}
+
+func tableColumnWidth(props TableViewProps, col int32) int32 {
+	if col < 0 || int(col) >= len(props.Columns) {
+		return 0
+	}
+	if int(col) < len(props.ColumnWidths) && props.ColumnWidths[col] > 0 {
+		return props.ColumnWidths[col]
+	}
+	return int32(props.Bounds.Width) / int32(len(props.Columns))
+}
+
+func elideText(text string, maxWidth float32, font int32) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+	maxRunes := int(maxWidth / float32(6*glyphScale(font)))
+	runes := []rune(text)
+	if len(runes) <= maxRunes {
+		return text
+	}
+	if maxRunes <= 1 {
+		return ""
+	}
+	return string(runes[:maxRunes-1]) + "…"
+}
+
+func clamp32(v, lo, hi int32) int32 {
+	if hi < lo {
+		return lo
+	}
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
 
 func max32(a, b int32) int32 {

@@ -1,6 +1,7 @@
 package kryon
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"testing"
@@ -510,6 +511,141 @@ func TestFrameOpsResetEachFrame(t *testing.T) {
 	ops := rt.FrameOps()
 	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
 		t.Fatalf("second frame ops = %#v, want one rect", ops)
+	}
+}
+
+func TestTableViewSelectionActivationAndSort(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(-1)
+	selectedColumn := int32(-1)
+	activatedRow := int32(-1)
+	activatedColumn := int32(-1)
+	rightRow := int32(-1)
+	rightColumn := int32(-1)
+	sortColumn := int32(-1)
+	scroll := int32(0)
+	props := TableViewProps{
+		Bounds:             Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:                 41,
+		Columns:            []string{"section", "label", "units"},
+		Rows:               []UITableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
+		ColumnWidths:       []int32{90, 140, 70},
+		SelectedRow:        &selectedRow,
+		SelectedColumn:     &selectedColumn,
+		ActivatedRow:       &activatedRow,
+		ActivatedColumn:    &activatedColumn,
+		RightClickedRow:    &rightRow,
+		RightClickedColumn: &rightColumn,
+		SortColumn:         &sortColumn,
+		ScrollOffset:       &scroll,
+		RowHeight:          24,
+	}
+
+	rt.QueueTap(116, 52)
+	rt.BeginFrame()
+	changed := rt.TableView(props)
+	rt.EndFrame()
+	if changed == 0 {
+		t.Fatal("table click did not report change")
+	}
+	if selectedRow != 0 || selectedColumn != 1 {
+		t.Fatalf("selected cell = %d,%d, want 0,1", selectedRow, selectedColumn)
+	}
+	if rt.Focus() != 41 {
+		t.Fatalf("table focus = %d, want 41", rt.Focus())
+	}
+
+	rt.QueueTap(116, 52)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if activatedRow != 0 || activatedColumn != 1 {
+		t.Fatalf("activated cell = %d,%d, want 0,1", activatedRow, activatedColumn)
+	}
+
+	rt.QueueMouseButton(MouseButtonRight, 260, 76)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if rightRow != 1 || rightColumn != 2 {
+		t.Fatalf("right-clicked cell = %d,%d, want 1,2", rightRow, rightColumn)
+	}
+
+	rt.QueueTap(240, 20)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if sortColumn != 2 {
+		t.Fatalf("sort column = %d, want 2", sortColumn)
+	}
+}
+
+func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 260}).(*runtime)
+	selectedRow := int32(0)
+	selectedColumn := int32(0)
+	activatedRow := int32(-1)
+	activatedColumn := int32(-1)
+	scroll := int32(0)
+	rows := make([]UITableRow, 20)
+	for i := range rows {
+		rows[i] = UITableRow{Cells: []string{"section", fmt.Sprintf("row %d", i), fmt.Sprintf("%d", i)}}
+	}
+	props := TableViewProps{
+		Bounds:          Rectangle{X: 10, Y: 10, Width: 310, Height: 118},
+		ID:              51,
+		Columns:         []string{"section", "label", "units"},
+		Rows:            rows,
+		ColumnWidths:    []int32{90, 150, 70},
+		SelectedRow:     &selectedRow,
+		SelectedColumn:  &selectedColumn,
+		ActivatedRow:    &activatedRow,
+		ActivatedColumn: &activatedColumn,
+		ScrollOffset:    &scroll,
+		RowHeight:       22,
+	}
+
+	rt.SetFocus(51)
+	rt.QueueKey(KeyDown)
+	rt.QueueKey(KeyRight)
+	rt.QueueKey(KeyF2)
+	rt.BeginFrame()
+	rt.ClearBackground(RAYWHITE)
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 1 || selectedColumn != 1 {
+		t.Fatalf("keyboard selected cell = %d,%d, want 1,1", selectedRow, selectedColumn)
+	}
+	if activatedRow != 1 || activatedColumn != 1 {
+		t.Fatalf("keyboard activated cell = %d,%d, want 1,1", activatedRow, activatedColumn)
+	}
+
+	rt.QueueMouseWheel(-2)
+	rt.mousePos = Vector2{X: 40, Y: 70}
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if scroll == 0 {
+		t.Fatal("mouse wheel inside table did not scroll")
+	}
+
+	ops := rt.FrameOps()
+	seenTable, seenCell := false, false
+	for _, op := range ops {
+		if op.Kind == FrameOpTable && op.ID == 51 {
+			seenTable = true
+		}
+		if op.Kind == FrameOpText && op.Row >= 0 && op.Column == 1 {
+			seenCell = true
+		}
+	}
+	if !seenTable || !seenCell {
+		t.Fatalf("table frame ops missing table/cell: table=%v cell=%v ops=%#v", seenTable, seenCell, ops)
+	}
+
+	img := RenderFrame(360, 260, ops)
+	if got := countPixelsNot(img, rgbaTest(RAYWHITE)); got < 1000 {
+		t.Fatalf("rendered table changed only %d pixels, want visible table", got)
 	}
 }
 
