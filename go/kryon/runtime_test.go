@@ -870,6 +870,30 @@ func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 	t.Fatalf("table surface op not found: %#v", ops)
 }
 
+func TestDefaultSystemThemeSelectionIsNeutral(t *testing.T) {
+	resetSystemThemeForTest()
+	defer resetSystemThemeForTest()
+	t.Setenv("GTK_THEME", "KryonMissingTheme")
+	t.Setenv("KRYON_THEME_MODE", "")
+	t.Setenv("COLOR_SCHEME", "")
+	t.Setenv("QT_STYLE_OVERRIDE", "")
+	t.Setenv("XDG_CURRENT_DESKTOP", "")
+	temp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(temp, "home"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(temp, "config"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(temp, "data"))
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	theme := rt.theme()
+	assertNotBlueSelection(t, theme.selectedHot)
+}
+
+func assertNotBlueSelection(t *testing.T, color Color) {
+	t.Helper()
+	if color.B > color.R+20 && color.B > color.G+20 {
+		t.Fatalf("selection is blue-biased: %#v", color)
+	}
+}
+
 func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 	resetSystemThemeForTest()
 	defer resetSystemThemeForTest()
