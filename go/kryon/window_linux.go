@@ -274,6 +274,9 @@ func openX11Window(config AppConfig) (*x11Window, error) {
 		conn.Close()
 		return nil, err
 	}
+	if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "kryon: opened x11 window %#x\n", win.window)
+	}
 	return win, nil
 }
 
