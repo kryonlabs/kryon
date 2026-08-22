@@ -675,9 +675,9 @@ func (w *x11Window) loadKeyboardMapping() error {
 	count := int(w.maxKeycode-w.minKeycode) + 1
 	req := make([]byte, 8)
 	req[0] = 101
-	req[1] = w.minKeycode
 	put16(req[2:], 2)
-	req[4] = uint8(count)
+	req[4] = w.minKeycode
+	req[5] = uint8(count)
 	if err := w.write(req); err != nil {
 		return err
 	}

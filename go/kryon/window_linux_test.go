@@ -92,6 +92,55 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	}
 }
 
+func TestX11LoadKeyboardMappingRequestAndDecode(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	win := &x11Window{conn: client, minKeycode: 22, maxKeycode: 23}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- win.loadKeyboardMapping()
+	}()
+
+	req := make([]byte, 8)
+	if _, err := readFull(server, req); err != nil {
+		t.Fatal(err)
+	}
+	wantReq := []byte{101, 0, 2, 0, 22, 2, 0, 0}
+	if !bytes.Equal(req, wantReq) {
+		t.Fatalf("GetKeyboardMapping request = %#v, want %#v", req, wantReq)
+	}
+
+	reply := make([]byte, 32)
+	reply[0] = 1
+	reply[1] = 2
+	put32(reply[4:], 4)
+	data := make([]byte, 16)
+	put32(data[0:], 0xff08)
+	put32(data[4:], 0)
+	put32(data[8:], 'a')
+	put32(data[12:], 'A')
+	if _, err := server.Write(append(reply, data...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
+	}
+
+	if got := win.keysyms[22][0]; got != 0xff08 {
+		t.Fatalf("loaded keycode 22 = %#x, want Backspace", got)
+	}
+	ev, ok := win.decodeKey(22, 0)
+	if !ok || ev.key != KeyBackspace {
+		t.Fatalf("loaded backspace event = %#v ok=%v", ev, ok)
+	}
+	ev, ok = win.decodeKey(23, x11ShiftMask)
+	if !ok || ev.text != "A" {
+		t.Fatalf("loaded shifted text event = %#v ok=%v, want A", ev, ok)
+	}
+}
+
 func TestWindowRuntimeDelegatesCompatInput(t *testing.T) {
 	base := New(AppConfig{}).(*runtime)
 	rt := &windowRuntime{Runtime: base}
