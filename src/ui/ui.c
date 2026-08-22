@@ -51,7 +51,7 @@ static int g_ui_focus_text_input_active = 0;
 static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
-static UITextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
+static TextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 static int g_ui_text_area_drag_id = 0;
 static int *g_ui_text_area_drag_owner = NULL;
 static int g_ui_text_area_last_click_id = 0;
@@ -3587,7 +3587,7 @@ SetUIModalCapture(Rectangle bounds)
 }
 
 void
-SetUITextInputPlatformCallback(UITextInputPlatformCallback callback)
+SetTextInputPlatformCallback(TextInputPlatformCallback callback)
 {
     g_ui_text_input_platform_callback = callback;
 }

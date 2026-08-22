@@ -152,6 +152,19 @@ if [ -n "$public_text_layout_matches" ]; then
     exit 1
 fi
 
+public_text_platform_matches="$(
+    rg -n '\b(UITextInputPlatformCallback|SetUITextInputPlatformCallback)\b' \
+        include/ui_core.h \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_text_platform_matches" ]; then
+    echo "Public platform text input callbacks must use TextInputPlatformCallback names without legacy UIText prefixes:"
+    echo "$public_text_platform_matches"
+    exit 1
+fi
+
 public_tree_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \

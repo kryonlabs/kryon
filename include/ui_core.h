@@ -3,7 +3,7 @@
 
 #include "kryon_compat.generated.h"
 
-typedef void (*UITextInputPlatformCallback)(int active);
+typedef void (*TextInputPlatformCallback)(int active);
 
 typedef struct UIFrameState {
     int view_width;
@@ -60,7 +60,7 @@ void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 void SetUIModalCapture(Rectangle bounds);
 
-void SetUITextInputPlatformCallback(UITextInputPlatformCallback callback);
+void SetTextInputPlatformCallback(TextInputPlatformCallback callback);
 void SetUICursorClickable(int *cursor_clickable);
 void SetUICursorDisabled(int *cursor_disabled);
 void MarkUICursor(int cursor);
