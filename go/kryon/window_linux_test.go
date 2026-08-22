@@ -3,58 +3,99 @@
 package kryon
 
 import (
+	"bytes"
 	"image"
+	"image/color"
 	"testing"
 )
 
-func TestX11SocketParsesDisplay(t *testing.T) {
-	tests := map[string]string{
-		":0":     "/tmp/.X11-unix/X0",
-		":1.0":   "/tmp/.X11-unix/X1",
-		"bad":    "/tmp/.X11-unix/X0",
-		":44.12": "/tmp/.X11-unix/X44",
+func TestOpenFallsBackWithoutDisplay(t *testing.T) {
+	t.Setenv("DISPLAY", "")
+	defer SetRuntime(nil)
+
+	rt := Open(AppConfig{Width: 123, Height: 77})
+	if _, ok := rt.(*runtime); !ok {
+		t.Fatalf("Open without DISPLAY returned %T, want headless runtime fallback", rt)
 	}
-	for in, want := range tests {
-		if got := x11Socket(in); got != want {
-			t.Fatalf("x11Socket(%q) = %q, want %q", in, got, want)
+	if got, want := rt.GetScreenWidth(), int32(123); got != want {
+		t.Fatalf("fallback width = %d, want %d", got, want)
+	}
+	if got, want := rt.GetScreenHeight(), int32(77); got != want {
+		t.Fatalf("fallback height = %d, want %d", got, want)
+	}
+}
+
+func TestX11SocketParsesDisplay(t *testing.T) {
+	cases := map[string]string{
+		":0":        "/tmp/.X11-unix/X0",
+		":1.0":      "/tmp/.X11-unix/X1",
+		"2":         "/tmp/.X11-unix/X2",
+		"bad-value": "/tmp/.X11-unix/X0",
+	}
+	for display, want := range cases {
+		if got := x11Socket(display); got != want {
+			t.Fatalf("x11Socket(%q) = %q, want %q", display, got, want)
 		}
 	}
 }
 
-func TestX11KeysymMapping(t *testing.T) {
-	if got, want := keysymText('a'), "a"; got != want {
-		t.Fatalf("keysym text = %q, want %q", got, want)
+func TestX11KeyTranslation(t *testing.T) {
+	if got := specialKey(0xff51); got != KeyLeft {
+		t.Fatalf("left keysym = %d, want %d", got, KeyLeft)
 	}
-	if got, want := keysymText(0x010020ac), "€"; got != want {
-		t.Fatalf("unicode keysym text = %q, want %q", got, want)
+	if got := shortcutKey('v'); got != KeyV {
+		t.Fatalf("shortcut v = %d, want %d", got, KeyV)
 	}
-	if got, want := specialKey(0xff08), KeyBackspace; got != want {
-		t.Fatalf("backspace keysym = %d, want %d", got, want)
+	if got := keysymText(0x0101f600); got != "\U0001f600" {
+		t.Fatalf("unicode keysym text = %q, want grinning face", got)
 	}
-	if got, want := shortcutKey('c'), KeyC; got != want {
-		t.Fatalf("shortcut keysym = %d, want %d", got, want)
+	if got := keysymText(0xff51); got != "" {
+		t.Fatalf("special key text = %q, want empty", got)
 	}
 }
 
-func TestX11ImageDataPacksTrueColorPixels(t *testing.T) {
+func TestX11ImageDataUsesVisualMasksAndStride(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 2, 1))
+	img.SetRGBA(0, 0, rgbaTest(Color{R: 0x11, G: 0x22, B: 0x33, A: 0xff}))
+	img.SetRGBA(1, 0, rgbaTest(Color{R: 0xaa, G: 0xbb, B: 0xcc, A: 0xff}))
+
 	win := &x11Window{
-		bpp:        32,
+		bpp:        24,
 		scanPad:    32,
 		byteOrder:  0,
+		redMask:    0xff0000,
+		greenMask:  0x00ff00,
+		blueMask:   0x0000ff,
 		redShift:   16,
 		greenShift: 8,
 		blueShift:  0,
 	}
-	img := image.NewRGBA(image.Rect(0, 0, 2, 1))
-	img.SetRGBA(0, 0, rgbaTest(Color{R: 0x12, G: 0x34, B: 0x56, A: 0xff}))
-	img.SetRGBA(1, 0, rgbaTest(Color{R: 0xab, G: 0xcd, B: 0xef, A: 0xff}))
-
 	data, stride := win.imageData(img)
 	if stride != 8 {
-		t.Fatalf("stride = %d, want 8", stride)
+		t.Fatalf("24-bit stride = %d, want 8", stride)
 	}
-	want := []byte{0x56, 0x34, 0x12, 0x00, 0xef, 0xcd, 0xab, 0x00}
-	if string(data) != string(want) {
-		t.Fatalf("packed pixels = % x, want % x", data, want)
+	want := []byte{0x33, 0x22, 0x11, 0xcc, 0xbb, 0xaa, 0x00, 0x00}
+	if !bytes.Equal(data, want) {
+		t.Fatalf("24-bit image data = %#v, want %#v", data, want)
+	}
+}
+
+func TestX11PixelScalesToRGB565(t *testing.T) {
+	win := &x11Window{
+		redMask:    0xf800,
+		greenMask:  0x07e0,
+		blueMask:   0x001f,
+		redShift:   11,
+		greenShift: 5,
+		blueShift:  0,
+	}
+	if got, want := win.pixel(color.RGBA{R: 255, G: 0, B: 0, A: 255}), uint32(0xf800); got != want {
+		t.Fatalf("red 565 pixel = %#x, want %#x", got, want)
+	}
+	if got, want := win.pixel(color.RGBA{R: 0, G: 255, B: 0, A: 255}), uint32(0x07e0); got != want {
+		t.Fatalf("green 565 pixel = %#x, want %#x", got, want)
+	}
+	if got, want := win.pixel(color.RGBA{R: 0, G: 0, B: 255, A: 255}), uint32(0x001f); got != want {
+		t.Fatalf("blue 565 pixel = %#x, want %#x", got, want)
 	}
 }

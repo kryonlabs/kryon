@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"math/bits"
 	"net"
 	"os"
@@ -651,17 +652,17 @@ func (w *x11Window) imageData(img *image.RGBA) ([]byte, int) {
 				}
 			default:
 				if w.byteOrder == 0 {
-				binary.LittleEndian.PutUint32(out[off:], pixel)
-			} else {
-				binary.BigEndian.PutUint32(out[off:], pixel)
+					binary.LittleEndian.PutUint32(out[off:], pixel)
+				} else {
+					binary.BigEndian.PutUint32(out[off:], pixel)
+				}
 			}
 		}
-	}
 	}
 	return out, stride
 }
 
-func (w *x11Window) pixel(c Color) uint32 {
+func (w *x11Window) pixel(c color.RGBA) uint32 {
 	return x11Component(c.R, w.redMask, w.redShift) |
 		x11Component(c.G, w.greenMask, w.greenShift) |
 		x11Component(c.B, w.blueMask, w.blueShift)
