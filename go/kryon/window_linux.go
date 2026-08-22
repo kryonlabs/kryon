@@ -503,7 +503,7 @@ func (w *x11Window) create(config AppConfig) error {
 	if err := w.mapWindow(); err != nil {
 		return err
 	}
-	return nil
+	return w.sync()
 }
 
 func (w *x11Window) allocID() uint32 {
@@ -525,6 +525,15 @@ func (w *x11Window) mapWindow() error {
 	put16(req[2:], 2)
 	put32(req[4:], w.window)
 	return w.write(req)
+}
+
+func (w *x11Window) sync() error {
+	req := []byte{43, 0, 1, 0}
+	if err := w.write(req); err != nil {
+		return err
+	}
+	_, err := w.readReply()
+	return err
 }
 
 func (w *x11Window) createGC() error {
