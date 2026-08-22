@@ -31,7 +31,7 @@ fi
 
 generated_matches="$(
     rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox)\b' \
-        go/kryon include/ui_tree.h src/ui/ui_node_registry.c examples tests/k2g_syntax_test.sh docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
+        go/kryon include/ui_tree.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2g_syntax_test.sh docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true

@@ -1797,32 +1797,6 @@ parse_slider(KrbBuild *b, const char *call)
                             atoi(skip_ws(parts[6])), 1, label);
 }
 
-/* VerticalSlider(id,x,y,h,min,max,&val) -> vertical range control. */
-static int
-parse_vslider(KrbBuild *b, const char *call)
-{
-    char parts[12][KIR_TEXT_MAX];
-    char path[KIR_NAME_MAX];
-    const char *args = strchr(call, '(');
-    int count, x = 0, y = 0, h = 0;
-    unsigned flags = 0;
-
-    if(args == NULL)
-        return 0;
-    count = split_args(args + 1, parts, 12);
-    if(count < 7)
-        return 0;
-    strip_amp(parts[6], path, sizeof(path));
-    if(path[0] == '\0')
-        return 0;
-    coord_flag(parts[1], &x, &flags, KRB_FLAG_SCALE_X);
-    coord_flag(parts[2], &y, &flags, KRB_FLAG_SCALE_Y);
-    coord_flag(parts[3], &h, &flags, KRB_FLAG_SCALE_H);
-    return add_control_node(b, KRB_CTRL_VSLIDER, path, x, y, 16, h, flags,
-                            atoi(skip_ws(parts[0])), atoi(skip_ws(parts[4])),
-                            atoi(skip_ws(parts[5])), 1, "");
-}
-
 /* Spinbox((SpinboxProps){bounds,id,min,max,step,&val,disabled}) -> step control. */
 static int
 parse_spinbox(KrbBuild *b, const char *call)
@@ -2375,8 +2349,8 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_background(b, call);
     if(starts_ident(call, "Text") && !starts_ident(call, "TextFormat") &&
        !starts_ident(call, "TextInRect") && !starts_ident(call, "TextLines") &&
-       !starts_ident(call, "TextField") && !starts_ident(call, "TextInputControl") &&
-       !starts_ident(call, "TextButton") && !starts_ident(call, "TextArea"))
+       !starts_ident(call, "TextField") &&
+       !starts_ident(call, "TextArea"))
         return parse_text(b, call);
     if(starts_ident(call, "Rect"))
         return parse_rect(b, call);
@@ -2418,8 +2392,6 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_checkbox(b, call);
     if(starts_ident(call, "Toggle"))
         return parse_toggle(b, call);
-    if(starts_ident(call, "VerticalSlider"))
-        return parse_vslider(b, call);
     if(starts_ident(call, "Slider"))
         return parse_slider(b, call);
     if(starts_ident(call, "Spinbox"))
