@@ -1687,8 +1687,8 @@ Separator(Rectangle bounds, int vertical)
     DrawUISeparator(bounds, vertical);
 }
 
-UIMenuBarResult
-MenuBar(int id, Rectangle bounds, const UIMenu *menus,
+MenuBarResult
+MenuBar(int id, Rectangle bounds, const Menu *menus,
               int menu_count, int *open_index)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, bounds, open_index);
@@ -1696,7 +1696,7 @@ MenuBar(int id, Rectangle bounds, const UIMenu *menus,
 }
 
 int
-PopupMenu(int id, int x, int y, const UIMenuItem *items,
+PopupMenu(int id, int x, int y, const MenuItem *items,
                 int item_count)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, 0, 0}, items);
@@ -1704,7 +1704,7 @@ PopupMenu(int id, int x, int y, const UIMenuItem *items,
 }
 
 int
-ContextMenu(UIContextMenu menu)
+ContextMenu(ContextMenuProps menu)
 {
     ui_tree_add(menu.id, UI_WIDGET_CUSTOM_NODE, menu.trigger, &menu);
     return DrawUIContextMenu(menu);

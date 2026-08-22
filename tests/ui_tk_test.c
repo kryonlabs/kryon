@@ -20,13 +20,13 @@ check_int(const char *name, int got, int want)
 static void
 test_menu_bar_switches_while_popup_captures_input(void)
 {
-    static const UIMenuItem file_items[] = {
-        {UI_MENU_COMMAND, "Open", "Ctrl+O", 101, 0, 0, NULL, 0}
+    static const MenuItem file_items[] = {
+        {MenuCommand, "Open", "Ctrl+O", 101, 0, 0, NULL, 0}
     };
-    static const UIMenuItem edit_items[] = {
-        {UI_MENU_COMMAND, "Copy", "Ctrl+C", 201, 0, 0, NULL, 0}
+    static const MenuItem edit_items[] = {
+        {MenuCommand, "Copy", "Ctrl+C", 201, 0, 0, NULL, 0}
     };
-    static const UIMenu menus[] = {
+    static const Menu menus[] = {
         {{0, 0, 0, 0}, "File", file_items, 1},
         {{0, 0, 0, 0}, "Edit", edit_items, 1}
     };
@@ -34,7 +34,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
     int open_index = 0;
     int font;
     int edit_x;
-    UIMenuBarResult result;
+    MenuBarResult result;
 
     KryonInjectReset();
     BeginUIFrame(640, 480, 1.0f);

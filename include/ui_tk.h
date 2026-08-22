@@ -32,35 +32,35 @@ typedef struct {
 } Grid;
 
 typedef enum {
-    UI_MENU_COMMAND,
-    UI_MENU_CHECK,
-    UI_MENU_RADIO,
-    UI_MENU_SEPARATOR,
-    UI_MENU_SUBMENU
-} UIMenuItemKind;
+    MenuCommand,
+    MenuCheck,
+    MenuRadio,
+    MenuSeparator,
+    MenuSubmenu
+} MenuItemKind;
 
-typedef struct UIMenuItem {
-    UIMenuItemKind kind;
+typedef struct MenuItem {
+    MenuItemKind kind;
     const char *label;
     const char *accelerator;
     int id;
     int disabled;
     int checked;
-    const struct UIMenuItem *submenu;
+    const struct MenuItem *submenu;
     int submenu_count;
-} UIMenuItem;
+} MenuItem;
 
 typedef struct {
     Rectangle bounds;
     const char *label;
-    const UIMenuItem *items;
+    const MenuItem *items;
     int item_count;
-} UIMenu;
+} Menu;
 
 typedef struct {
     int activated_id;
     int open_index;
-} UIMenuBarResult;
+} MenuBarResult;
 
 typedef struct {
     char text[UI_CLIPBOARD_BUFFER_SIZE];
@@ -80,12 +80,12 @@ typedef int (*UIClipboardPasteWriteFn)(void *userdata, const char *text,
 typedef struct {
     int id;
     Rectangle trigger;
-    const UIMenuItem *items;
+    const MenuItem *items;
     int item_count;
     int *open;
     int *x;
     int *y;
-} UIContextMenu;
+} ContextMenuProps;
 
 typedef struct {
     Rectangle bounds;
@@ -292,7 +292,7 @@ typedef struct {
     int shift;
     int alt;
     int id;
-} UIAccelerator;
+} Accelerator;
 
 typedef struct {
     Rectangle bounds;
@@ -313,9 +313,9 @@ int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);
 Vector2 CanvasToScreen(Canvas canvas, Vector2 point);
 Rectangle CanvasRectToScreen(Canvas canvas, Rectangle rect);
 
-int UIAcceleratorPressed(UIAccelerator accelerator);
-int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);
-int ContextMenu(UIContextMenu menu);
+int AcceleratorPressed(Accelerator accelerator);
+int DispatchAccelerators(const Accelerator *accelerators, int count);
+int ContextMenu(ContextMenuProps menu);
 int SetUIClipboardTextValue(const char *text);
 const char *GetUIClipboardTextValue(void);
 int SetUIPrimarySelectionTextValue(const char *text);

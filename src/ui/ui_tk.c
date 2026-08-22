@@ -13,7 +13,7 @@ typedef struct UIMenuOverlayState {
     int menu_id;
     int x;
     int y;
-    const UIMenuItem *items;
+    const MenuItem *items;
     int item_count;
 } UIMenuOverlayState;
 
@@ -253,7 +253,7 @@ DrawUISeparator(Rectangle bounds, int vertical)
 }
 
 static int
-draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
+draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
 {
     int font = GetUIFontSize();
     int row_h = ScaleUIPx(30);
@@ -288,11 +288,11 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     for(int i = 0; i < item_count; i++) {
         Rectangle row = {(float)x + 4, (float)y + 4 + (float)(i * row_h),
                          (float)w - 8, (float)row_h};
-        const UIMenuItem *item = &items[i];
-        int row_hot = ui_contains(row, mouse) && item->kind != UI_MENU_SEPARATOR;
+        const MenuItem *item = &items[i];
+        int row_hot = ui_contains(row, mouse) && item->kind != MenuSeparator;
         int hot = row_hot && !item->disabled;
 
-        if(item->kind == UI_MENU_SEPARATOR) {
+        if(item->kind == MenuSeparator) {
             if(can_draw)
                 DrawUISeparator(row, 0);
             continue;
@@ -316,20 +316,20 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
             DrawUIText(item->accelerator, (int)(row.x + row.width - accel_w),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
-        if(can_draw && item->kind == UI_MENU_SUBMENU)
+        if(can_draw && item->kind == MenuSubmenu)
             DrawUIText(">", (int)(row.x + row.width - ScaleUIPx(18)),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
-        if(hot && item->kind == UI_MENU_SUBMENU)
+        if(hot && item->kind == MenuSubmenu)
             g_menu_submenu_id = item->id;
-        if(item->kind == UI_MENU_SUBMENU && g_menu_submenu_id == item->id &&
+        if(item->kind == MenuSubmenu && g_menu_submenu_id == item->id &&
            item->submenu != NULL && item->submenu_count > 0) {
             int sub = draw_menu_items(item->id, (int)(row.x + row.width), (int)row.y,
                                       item->submenu, item->submenu_count);
             if(sub != 0)
                 activated = sub;
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->kind != UI_MENU_SUBMENU) {
+        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->kind != MenuSubmenu) {
             UIConsumeRelease();
             activated = item->id;
             g_menu_open_id = 0;
@@ -339,10 +339,10 @@ draw_menu_items(int id, int x, int y, const UIMenuItem *items, int item_count)
     return activated;
 }
 
-UIMenuBarResult
-DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus, int menu_count, int *open_index)
+MenuBarResult
+DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
 {
-    UIMenuBarResult result = {0, -1};
+    MenuBarResult result = {0, -1};
     int font = GetUIFontSize();
     int x = (int)bounds.x + ScaleUIPx(4);
     Vector2 mouse = ui_mouse_world();
@@ -454,13 +454,13 @@ ui_draw_menu_overlays(void)
 }
 
 int
-DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items, int item_count)
+DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 {
     return draw_menu_items(id, x, y, items, item_count);
 }
 
 int
-DrawUIContextMenu(UIContextMenu menu)
+DrawUIContextMenu(ContextMenuProps menu)
 {
     Vector2 mouse = ui_mouse_world();
     int open_local = 0;
@@ -1716,7 +1716,7 @@ DrawUIColorPicker(Rectangle bounds, Color *color)
 }
 
 int
-UIAcceleratorPressed(UIAccelerator accelerator)
+AcceleratorPressed(Accelerator accelerator)
 {
     if(accelerator.ctrl &&
        !(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)))
@@ -1731,13 +1731,13 @@ UIAcceleratorPressed(UIAccelerator accelerator)
 }
 
 int
-DispatchUIAccelerators(const UIAccelerator *accelerators, int count)
+DispatchAccelerators(const Accelerator *accelerators, int count)
 {
     int id;
     if(accelerators == NULL)
         return 0;
     for(int i = 0; i < count; i++) {
-        id = UIAcceleratorPressed(accelerators[i]);
+        id = AcceleratorPressed(accelerators[i]);
         if(id != 0)
             return id;
     }

@@ -231,11 +231,11 @@ int Checkbox(int id, int x, int y, const char *label, int *value);
 int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
                         UIThemeSettingsResult *result);
 void Separator(Rectangle bounds, int vertical);
-UIMenuBarResult MenuBar(int id, Rectangle bounds, const UIMenu *menus,
+MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
-int PopupMenu(int id, int x, int y, const UIMenuItem *items,
+int PopupMenu(int id, int x, int y, const MenuItem *items,
                     int item_count);
-int ContextMenu(UIContextMenu menu);
+int ContextMenu(ContextMenuProps menu);
 int Radio(RadioButtonProps radio);
 void Progress(ProgressBarProps progress);
 int Spinbox(SpinboxProps spinbox);

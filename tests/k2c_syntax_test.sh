@@ -33,6 +33,7 @@ state {
     area_text: [128] char = "notes"
     area_cursor: int = 5
     area_scroll: int = 0
+    menu_open: int = -1
 }
 
 screen Valid(viewport: Rectangle) {
@@ -47,6 +48,15 @@ screen Valid(viewport: Rectangle) {
     Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
     End()
     End()
+    menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
+    menus: [1] Menu = {{{0},"File",menu_items,2}}
+    menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,ScaleUIPx(200),ScaleUIPx(30)},menus,1,&menu_open)
+    if menu_result.activated_id != 0 {
+        count = menu_result.activated_id
+    }
+    if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
+        count = 302
+    }
     value := count + 1
     unused value
     if count == nil {
@@ -134,13 +144,14 @@ grep -Fq 'static int field_cursor = 7;' "$c"
 grep -Fq 'static char area_text[128] = "notes";' "$c"
 grep -Fq 'static int area_cursor = 5;' "$c"
 grep -Fq 'static int area_scroll = 0;' "$c"
+grep -Fq 'static int menu_open = -1;' "$c"
 
 # function definition
 grep -Fq 'Valid_kry_draw(Rectangle viewport)' "$c"
 grep -Fq 'int legacy_count;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry", 21);' "$c"
+grep -Fq 'PushUIInspectSource("src/valid.kry", 22);' "$c"
 grep -Fq 'BeginFrame();' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
 grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText());' "$c"
@@ -149,6 +160,12 @@ grep -Fq 'TextField((TextFieldProps)' "$c"
 grep -Fq 'TextArea((TextAreaProps)' "$c"
 grep -Fq 'Row((RowProps)' "$c"
 grep -Fq 'Button((ButtonProps)' "$c"
+grep -Fq 'MenuItem menu_items[2]' "$c"
+grep -Fq 'MenuCommand' "$c"
+grep -Fq 'MenuSeparator' "$c"
+grep -Fq 'Menu menus[1]' "$c"
+grep -Fq 'MenuBarResult menu_result = MenuBar' "$c"
+grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
 grep -Fq 'EndFrame();' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 

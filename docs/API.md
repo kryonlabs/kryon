@@ -1672,7 +1672,7 @@ Feature families:
 - Collections: `UIListBoxNode`, `UITreeViewNode`, `UITableViewNode`
 - Canvas: `BeginCanvas`, `EndCanvas`, `UICanvasGridNode`, `CanvasHitTest`
 - Containers: `UINotebookNode`, `PanedView`, `Collapsible`
-- Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchUIAccelerators`, clipboard helpers
+- Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchAccelerators`, clipboard helpers
 - Accessibility/debug: `UIFocusDebugOverlayNode`
 
 Examples `09_geometry` through `18_accessibility` demonstrate these APIs.

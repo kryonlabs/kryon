@@ -863,7 +863,7 @@ ui_text_draw_context_overlay(void)
 #if ANDROID_BUILD
     return 0;
 #else
-    UIMenuItem items[4];
+    MenuItem items[4];
     int has_text = g_ui_text_context_text != NULL &&
                    g_ui_text_context_text[0] != '\0';
     int has_selection = g_ui_text_context_selection_end >
@@ -881,26 +881,26 @@ ui_text_draw_context_overlay(void)
         return 0;
     }
 
-    items[0] = (UIMenuItem){UI_MENU_COMMAND, "Cut", "Ctrl+X",
+    items[0] = (MenuItem){MenuCommand, "Cut", "Ctrl+X",
                             UI_TEXT_CONTEXT_CUT,
                             !(has_selection ||
                               (g_ui_text_context_copy_all_when_empty && has_text)) ||
                             g_ui_text_context_read_only,
                             0, NULL, 0};
-    items[1] = (UIMenuItem){UI_MENU_COMMAND, "Copy", "Ctrl+C",
+    items[1] = (MenuItem){MenuCommand, "Copy", "Ctrl+C",
                             UI_TEXT_CONTEXT_COPY,
                             !(has_selection ||
                               (g_ui_text_context_copy_all_when_empty && has_text)),
                             0, NULL, 0};
-    items[2] = (UIMenuItem){UI_MENU_COMMAND, "Paste", "Ctrl+V",
+    items[2] = (MenuItem){MenuCommand, "Paste", "Ctrl+V",
                             UI_TEXT_CONTEXT_PASTE,
                             !ui_clipboard_has_text() ||
                             g_ui_text_context_read_only, 0, NULL, 0};
-    items[3] = (UIMenuItem){UI_MENU_COMMAND, "Select All", "Ctrl+A",
+    items[3] = (MenuItem){MenuCommand, "Select All", "Ctrl+A",
                             UI_TEXT_CONTEXT_SELECT_ALL,
                             !has_text, 0, NULL, 0};
 
-    command = DrawUIContextMenu((UIContextMenu){
+    command = DrawUIContextMenu((ContextMenuProps){
         .id = 8500 + g_ui_text_context_kind,
         .trigger = (Rectangle){-10000.0f, -10000.0f, 1.0f, 1.0f},
         .items = items,

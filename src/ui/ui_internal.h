@@ -193,11 +193,11 @@ UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
 UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
 void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
 void DrawUISeparator(Rectangle bounds, int vertical);
-UIMenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const UIMenu *menus,
+MenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
-int DrawUIPopupMenu(int id, int x, int y, const UIMenuItem *items,
+int DrawUIPopupMenu(int id, int x, int y, const MenuItem *items,
                     int item_count);
-int DrawUIContextMenu(UIContextMenu menu);
+int DrawUIContextMenu(ContextMenuProps menu);
 int DrawUIRadioButton(RadioButtonProps radio);
 void DrawUIProgressBar(ProgressBarProps progress);
 int DrawUISpinbox(SpinboxProps spinbox);
