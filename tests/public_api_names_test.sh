@@ -125,6 +125,19 @@ if [ -n "$public_composite_draw_matches" ]; then
     exit 1
 fi
 
+public_text_draw_matches="$(
+    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
+        include/ui_text.h \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_text_draw_matches" ]; then
+    echo "Public text headers must expose clean text names, not DrawUI* internals:"
+    echo "$public_text_draw_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(

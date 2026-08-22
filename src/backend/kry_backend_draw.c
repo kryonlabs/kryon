@@ -2,6 +2,7 @@
 #include "krb.h"
 #include "kryon.h"
 #include "ui_picture.h"
+#include "../ui/ui_internal.h"
 #include "../ui/ui_picture_internal.h"
 
 static unsigned

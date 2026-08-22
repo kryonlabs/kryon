@@ -2,8 +2,8 @@
 
 #include "theme.h"
 #include "ui_clip.h"
+#include "ui_internal.h"
 #include "ui_scaling.h"
-#include "ui_text.h"
 
 #include <stdio.h>
 

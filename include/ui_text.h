@@ -55,14 +55,6 @@ int GetUITextLineHeight(int font_size);
 int MeasureScaledUIText(const char *text, int scale);
 Font GetUIFontForCodepoint(int codepoint, int font_size);
 float GetUIFontScale(Font font, int font_size);
-void DrawUIText(const char *text, int x, int y, int font_size, Color color);
-void DrawUITextStyled(const char *text, int x, int y, UITextStyle style);
-void DrawUITextItalic(const char *text, int x, int y, int font_size, Color color);
-void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
-                      Color color);
-int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
-                                 int line_gap);
-int DrawUISelectableTextBlock(UISelectableTextBlock block);
 int PushUITextSelectable(int selectable);
 void PopUITextSelectable(int token);
 int GetUITextY(const char *text, int box_y, int box_h, int font_size);
