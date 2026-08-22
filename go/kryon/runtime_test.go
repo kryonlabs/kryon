@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -682,6 +684,27 @@ func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
 	}
 	if got := countPixelsNot(img, rgbaTest(RAYWHITE)); got < 700 {
 		t.Fatalf("rendered frame changed only %d pixels, want visible native UI", got)
+	}
+}
+
+func TestTakeScreenshotWritesCurrentFramePNG(t *testing.T) {
+	rt := New(AppConfig{Width: 80, Height: 50}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	BeginFrame()
+	ClearBackground(WHITE)
+	Text("shot", 4, 4, Text16, BLACK)
+	EndFrame()
+
+	path := filepath.Join(t.TempDir(), "shot.png")
+	TakeScreenshot(path)
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("screenshot was not written: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatal("screenshot file is empty")
 	}
 }
 

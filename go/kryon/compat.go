@@ -1,6 +1,10 @@
 package kryon
 
-import "time"
+import (
+	"image/png"
+	"os"
+	"time"
+)
 
 var compatStart = time.Now()
 
@@ -110,4 +114,14 @@ func GetTime() float64 {
 	return time.Since(compatStart).Seconds()
 }
 
-func TakeScreenshot(string) {}
+func TakeScreenshot(path string) {
+	if path == "" {
+		return
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	_ = png.Encode(file, RenderCurrentFrame())
+}
