@@ -151,7 +151,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|
 | ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
 | MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Toast | ✅ | ✅ | ✅ `ShowUIToast(For)` | ✅ `ShowToast(For)` | ✗ |
+| Toast | ✅ | ✅ | ✅ `ShowToast(For)` | ✅ `ShowToast(For)` | ✗ |
 | GuideOverlay / TutorialImage(Placeholder) | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TransitionFade / Focus ring | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
 | ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ◐ theme-control methods only | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |

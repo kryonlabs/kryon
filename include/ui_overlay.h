@@ -77,8 +77,4 @@ typedef struct {
     int style_changed;
 } UIThemeSettingsResult;
 
-int DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state);
-UIThemeSettingsResult DrawUIThemeSettingsMenus(ThemeSettingsProps settings,
-                                                 UIThemeSettingsState *state);
-
 #endif

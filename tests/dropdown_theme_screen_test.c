@@ -1,7 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
 #include "kryon_test.h"
-#include "ui_overlay.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,12 +15,6 @@
 
 #define VIEW_W 900
 #define VIEW_H 720
-
-static const char *mode_opts[3] = {"System", "Light", "Dark"};
-static const char *palette_opts[12] = {"Cobalt", "Cherry", "Dawn", "Forest",
-                                       "Lavender", "Mint", "Mono", "Ocean",
-                                       "Sage", "Sepia", "Sky", "Sunset"};
-static const char *style_opts[3] = {"System style", "Retro", "Material"};
 
 static int source_sel = 0;
 static int mode_sel = 0;
@@ -66,9 +59,8 @@ step(void)
 
     KryonInjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    DrawUIThemeSettings(theme_props(), &menu_state);
+    ThemeSettings(theme_props(), &menu_state, &result);
     EndUIFrame();
-    result = DrawUIThemeSettingsMenus(theme_props(), &menu_state);
     (void)result;
 }
 

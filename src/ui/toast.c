@@ -13,10 +13,17 @@ copy_toast_message(const char *message)
 }
 
 void
-ShowUIToastFor(const char *message, double seconds)
+ClearToast(void)
+{
+    toast_message[0] = '\0';
+    toast_until = 0.0;
+}
+
+void
+ShowToastFor(const char *message, double seconds)
 {
     if(message == NULL || message[0] == '\0') {
-        ClearUIToast();
+        ClearToast();
         return;
     }
     if(seconds <= 0.0)
@@ -26,16 +33,9 @@ ShowUIToastFor(const char *message, double seconds)
 }
 
 void
-ShowUIToast(const char *message)
+ShowToast(const char *message)
 {
-    ShowUIToastFor(message, UI_TOAST_DEFAULT_SECONDS);
-}
-
-void
-ClearUIToast(void)
-{
-    toast_message[0] = '\0';
-    toast_until = 0.0;
+    ShowToastFor(message, UI_TOAST_DEFAULT_SECONDS);
 }
 
 void
@@ -58,7 +58,7 @@ DrawUIToast(void)
     if(toast_message[0] == '\0')
         return;
     if(GetTime() >= toast_until) {
-        ClearUIToast();
+        ClearToast();
         return;
     }
 

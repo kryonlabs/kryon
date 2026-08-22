@@ -79,12 +79,6 @@ typedef struct {
 } OverlayButtonProps;
 
 int GetUILabelTextFieldHeight(LabelTextFieldProps row);
-int DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w);
-int DrawUISectionLabel(SectionLabelProps label, int x, int y);
-int DrawUICheckboxRow(CheckboxRowProps row, int x, int y);
-int DrawUIOverlayButton(OverlayButtonProps button);
-int DrawUIButtonRow(ButtonRowProps row);
 int GetUIButtonRowHeight(ButtonRowProps row);
-void DrawUIInfoRows(InfoRowsProps rows);
 
 #endif

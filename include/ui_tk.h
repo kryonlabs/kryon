@@ -312,7 +312,6 @@ void EndUICanvas(UICanvas canvas);
 int UICanvasHitTest(Vector2 point, Rectangle *items, int item_count);
 Vector2 UICanvasToScreen(UICanvas canvas, Vector2 point);
 Rectangle UICanvasRectToScreen(UICanvas canvas, Rectangle rect);
-int DrawUICascadingTreeView(CascadingTreeViewProps tree);
 
 int UIAcceleratorPressed(UIAccelerator accelerator);
 int DispatchUIAccelerators(const UIAccelerator *accelerators, int count);

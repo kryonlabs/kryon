@@ -518,8 +518,8 @@ type Runtime interface {
 	Toolbar(props ToolbarProps)
 	CanvasGrid(bounds Rectangle, step int32, color Color)
 	SelectableText(value string, x, y, fontSize int32, color Color)
-	ShowUIToast(message string)
-	ShowUIToastFor(message string, seconds float64)
+	ShowToast(message string)
+	ShowToastFor(message string, seconds float64)
 	TextArea(props TextAreaProps) bool
 	Radio(props RadioButtonProps) int32
 	Spinbox(props SpinboxProps) bool
@@ -798,8 +798,8 @@ func (r *runtime) TopNav(TopNavProps)                                {}
 func (r *runtime) Toolbar(ToolbarProps)                              {}
 func (r *runtime) CanvasGrid(Rectangle, int32, Color)                {}
 func (r *runtime) SelectableText(string, int32, int32, int32, Color) {}
-func (r *runtime) ShowUIToast(string)                                {}
-func (r *runtime) ShowUIToastFor(string, float64)                    {}
+func (r *runtime) ShowToast(string)                                  {}
+func (r *runtime) ShowToastFor(string, float64)                      {}
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)

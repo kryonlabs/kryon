@@ -53,7 +53,4 @@ typedef struct {
     int right_clicked;
 } UIPanelFrame;
 
-UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
-                              Texture2D left_icon, Texture2D right_icon);
-
 #endif

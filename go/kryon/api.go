@@ -205,8 +205,8 @@ func CanvasGrid(bounds Rectangle, step int32, color Color) { active().CanvasGrid
 func SelectableText(value string, x, y, fontSize int32, color Color) {
 	active().SelectableText(value, x, y, fontSize, color)
 }
-func ShowUIToast(message string)                     { active().ShowUIToast(message) }
-func ShowUIToastFor(message string, seconds float64) { active().ShowUIToastFor(message, seconds) }
+func ShowToast(message string)                     { active().ShowToast(message) }
+func ShowToastFor(message string, seconds float64) { active().ShowToastFor(message, seconds) }
 func TextField(args ...any) bool                     { return textField(args...) }
 func TextArea(props TextAreaProps) bool              { return active().TextArea(props) }
 func Radio(props RadioButtonProps) int32             { return active().Radio(props) }

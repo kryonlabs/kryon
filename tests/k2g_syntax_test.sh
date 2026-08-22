@@ -113,7 +113,7 @@ frame main {
     Slider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), "", 0, 10, &slider_val, "", nil)
     CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
     SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), UI_TEXT_16, GetThemeText())
-    ShowUIToast("toast from kry")
+    ShowToast("toast from kry")
     TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = UI_TEXT_16, .focus_id = 30})
     Text("ro", ScaleUIPx(150), ScaleUIPx(152), UI_TEXT_16, GetThemeText())
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
@@ -244,7 +244,7 @@ grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "TB"'
 grep -q 'Dropdown(22,' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'SelectableText(' "$out"
-grep -q 'ShowUIToast("toast from kry")' "$out"
+grep -q 'ShowToast("toast from kry")' "$out"
 grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
 grep -q 'kryon.Radio(kryon.RadioButtonProps{' "$out"
 grep -q 'kryon.Spinbox(kryon.SpinboxProps{' "$out"

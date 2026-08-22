@@ -103,6 +103,28 @@ if [ -n "$public_control_draw_matches" ]; then
     exit 1
 fi
 
+public_composite_draw_matches="$(
+    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b|\b(ShowUIToast|ShowUIToastFor|ClearUIToast)\b" \
+        include/ui_overlay.h \
+        include/ui_rows.h \
+        include/ui_toast.h \
+        include/ui_modal.h \
+        include/ui_nav.h \
+        include/ui_tk.h \
+        go/kryon \
+        tests/k2g_syntax_test.sh \
+        docs/FEATURE_MATRIX.md \
+        docs/FEATURE_MATRIX.html \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_composite_draw_matches" ]; then
+    echo "Public/generated composite widget surfaces must use clean names such as ThemeSettings, TabBar, ModalFrame, and ShowToast:"
+    echo "$public_composite_draw_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(

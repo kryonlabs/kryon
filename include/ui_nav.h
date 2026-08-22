@@ -244,10 +244,7 @@ typedef struct {
     int dragged_index;
 } UIPaneTabBarResult;
 
-int DrawUITabBar(TabBarProps bar);
-UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
 UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
-void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
 int GetUITabBarHeight(void);
 int TabBarHeight(void);
 
