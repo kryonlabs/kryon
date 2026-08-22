@@ -89,6 +89,20 @@ if [ -n "$public_legacy_matches" ]; then
     exit 1
 fi
 
+legacy_ui_fragment='UI'
+public_control_draw_matches="$(
+    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
+        include/ui_controls.h \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_control_draw_matches" ]; then
+    echo "Public control headers must expose clean widget names, not DrawUI* internals:"
+    echo "$public_control_draw_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(

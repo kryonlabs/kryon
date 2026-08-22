@@ -1,7 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
 #include "kryon_test.h"
-#include "ui_controls.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,8 +43,8 @@ step(void)
 {
     KryonInjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    DrawUIDropdown(DD_ID, 100, 560, 400, 44,
-                   g_options, OPT_COUNT, &g_selected);
+    Dropdown(DD_ID, 100, 560, 400, 44,
+             g_options, OPT_COUNT, &g_selected);
     EndUIFrame();
 }
 

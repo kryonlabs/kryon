@@ -206,43 +206,6 @@ void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 
-int DrawUIButton(UIButtonSpec button);
-int DrawUIIconButton(IconButtonProps button);
-int DrawUIHref(HrefProps link);
-int DrawUITextInputControl(TextInputProps input);
-int DrawUITextField(TextFieldProps field);
-int DrawUITextArea(TextAreaProps area);
-int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
-int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
-                        int *hover);
-int DrawUIInfoButton(int center_x, int center_y, int diameter);
-int DrawUITextButton(int x, int y, const char *label, int *hover);
-int DrawUIGenericButton(int x, int y, int w, int h, const char *label,
-                          UIButtonStyle style, int disabled, int *hover);
-int DrawUIDropdown(int id, int x, int y, int w, int h,
-                   const char **options, int option_count,
-                   int *selected_index);
-int DrawUIDropdownEx(int id, int x, int y, int w, int h,
-                     const UIDropdownOption *options, int option_count,
-                     int *selected_index);
-int DrawUILocaleDropdown(int id, int x, int y, int w, int h,
-                         int *selected_index);
-int DrawUISlider(int id, int x, int y, int w, const char *label, int min,
-                   int max, int *value, const char *suffix,
-                   const char *value_text_override);
-int DrawUIVerticalSlider(int id, int x, int y, int h, int min, int max,
-                         int *value);
-int DrawUIVerticalSliderWithMarks(int id, int x, int y, int h, int min,
-                                  int max, int *value,
-                                  UIVerticalSliderMarkCallback callback,
-                                  void *callback_user_data);
-int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
-                         const char *off_label, const char *on_label);
-int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
-int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
-                                 int *value, int disabled);
-
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);
 
