@@ -27,7 +27,7 @@ typedef struct {
 
 typedef struct {
     const char *label;
-    UIButtonStyle style;
+    ButtonStyle style;
     int disabled;
 } UIModalAction;
 

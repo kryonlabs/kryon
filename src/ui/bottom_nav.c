@@ -101,9 +101,9 @@ DrawUIBottomNav(BottomNavProps nav)
         int icon_x;
         int icon_y;
         int hover = 0;
-        UIButtonStyle style = item->active
-                                  ? UI_BUTTON_STYLE_TAB_SELECTED
-                                  : UI_BUTTON_STYLE_TAB;
+        ButtonStyle style = item->active
+                                  ? ButtonStyleTabSelected
+                                  : ButtonStyleTab;
         Color icon_tint = WHITE;
 
         if(item->disabled)
@@ -337,7 +337,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         add_w = frame.content_w < ScaleUIPx(180) ? frame.content_w : ScaleUIPx(180);
         if(RenderStyledButton(frame.content_x + (frame.content_w - add_w) / 2,
                                   y, add_w, add_h, modal.add_label,
-                                  UI_BUTTON_STYLE_SECONDARY,
+                                  ButtonStyleSecondary,
                                   dropdown_blocks_buttons, &add_hover)) {
             modal.routes[route_count] = option_count > 0 ? modal.options[0].route : 0;
             route_count++;
@@ -350,17 +350,17 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     {
         int x = frame.x + (frame.w - total_button_w) / 2;
         if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.reset_label, UI_BUTTON_STYLE_SECONDARY,
+                                  modal.reset_label, ButtonStyleSecondary,
                                   dropdown_blocks_buttons, &reset_hover))
             result.action = 3;
         x += button_w + button_gap;
         if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.cancel_label, UI_BUTTON_STYLE_SECONDARY,
+                                  modal.cancel_label, ButtonStyleSecondary,
                                   dropdown_blocks_buttons, &cancel_hover))
             result.action = 1;
         x += button_w + button_gap;
         if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.save_label, UI_BUTTON_STYLE_PRIMARY,
+                                  modal.save_label, ButtonStylePrimary,
                                   dropdown_blocks_buttons, &save_hover))
             result.action = 2;
     }

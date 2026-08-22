@@ -2,13 +2,13 @@
 
 static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,
-                UIButtonStyle style, Vector2 mouse_world)
+                ButtonStyle style, Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
                  !UIInputCapturesClick(mouse_world);
-    Color background = style == UI_BUTTON_STYLE_PRIMARY ? c_button : c_surface;
-    Color hover_background = style == UI_BUTTON_STYLE_PRIMARY ? c_button_hover :
+    Color background = style == ButtonStylePrimary ? c_button : c_surface;
+    Color hover_background = style == ButtonStylePrimary ? c_button_hover :
                              LightenUIColor(c_surface, 14);
     Color text = c_text;
 
@@ -225,8 +225,8 @@ DrawUIModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
     UIModalAction actions[2] = {
-        { cancel_btn, UI_BUTTON_STYLE_SECONDARY, 0 },
-        { confirm_btn, UI_BUTTON_STYLE_PRIMARY, 0 }
+        { cancel_btn, ButtonStyleSecondary, 0 },
+        { confirm_btn, ButtonStylePrimary, 0 }
     };
 
     return DrawUIActionModal((ModalProps){
@@ -243,9 +243,9 @@ DrawUIModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
     UIModalAction actions[3] = {
-        { left_btn, UI_BUTTON_STYLE_SECONDARY, 0 },
-        { middle_btn, UI_BUTTON_STYLE_PRIMARY, 0 },
-        { right_btn, UI_BUTTON_STYLE_DANGER, 0 }
+        { left_btn, ButtonStyleSecondary, 0 },
+        { middle_btn, ButtonStylePrimary, 0 },
+        { right_btn, ButtonStyleDanger, 0 }
     };
 
     return DrawUIActionModal((ModalProps){

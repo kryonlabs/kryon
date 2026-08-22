@@ -385,9 +385,9 @@ font_size_of(const char *expr)
 static int
 button_style_of(const char *expr)
 {
-    if(strstr(expr, "UI_BUTTON_STYLE_DANGER") != NULL)
+    if(strstr(expr, "ButtonStyleDanger") != NULL)
         return 2;
-    if(strstr(expr, "UI_BUTTON_STYLE_SECONDARY") != NULL)
+    if(strstr(expr, "ButtonStyleSecondary") != NULL)
         return 1;
     return 0;
 }

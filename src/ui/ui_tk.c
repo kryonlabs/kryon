@@ -1551,7 +1551,7 @@ int
 DrawUIMessageDialog(MessageDialogProps dialog)
 {
     const UIModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
-                                  UI_BUTTON_STYLE_PRIMARY, 0};
+                                  ButtonStylePrimary, 0};
     return DrawUIActionModal((ModalProps){dialog.title, dialog.message, &action, 1,
                                            g_ui_x_icon, ScaleUIPx(420)});
 }
@@ -1560,8 +1560,8 @@ int
 DrawUIConfirmDialog(ConfirmDialogProps dialog)
 {
     UIModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
+        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
+        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };
     return DrawUIActionModal((ModalProps){dialog.title, dialog.message, actions, 2,
                                            g_ui_x_icon, ScaleUIPx(460)});
@@ -1573,8 +1573,8 @@ DrawUIPromptDialog(PromptDialogProps dialog)
     int result;
     int commit_pressed = 0;
     UIModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", UI_BUTTON_STYLE_SECONDARY, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", UI_BUTTON_STYLE_PRIMARY, 0}
+        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
+        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };
     result = DrawUIActionModal((ModalProps){dialog.title, "", actions, 2,
                                              g_ui_x_icon, ScaleUIPx(460)});

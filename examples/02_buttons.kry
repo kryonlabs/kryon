@@ -19,7 +19,7 @@ screen ButtonsExample(viewport: Rectangle) {
     if Button((ButtonProps){
         .bounds = {ScaleUIPx(20), ScaleUIPx(100), ScaleUIPx(200), ScaleUIPx(40)},
         .label = "Primary Button",
-        .style = UI_BUTTON_STYLE_PRIMARY,
+        .style = ButtonStylePrimary,
         .id = 101,
     }) {
         click_count++
@@ -28,7 +28,7 @@ screen ButtonsExample(viewport: Rectangle) {
     if Button((ButtonProps){
         .bounds = {ScaleUIPx(20), ScaleUIPx(150), ScaleUIPx(200), ScaleUIPx(40)},
         .label = "Secondary Button",
-        .style = UI_BUTTON_STYLE_SECONDARY,
+        .style = ButtonStyleSecondary,
         .id = 102,
     }) {
         click_count++
@@ -37,7 +37,7 @@ screen ButtonsExample(viewport: Rectangle) {
     if Button((ButtonProps){
         .bounds = {ScaleUIPx(20), ScaleUIPx(200), ScaleUIPx(200), ScaleUIPx(40)},
         .label = "Danger Button",
-        .style = UI_BUTTON_STYLE_DANGER,
+        .style = ButtonStyleDanger,
         .id = 103,
     }) {
         click_count++

@@ -75,13 +75,13 @@ ControlDemo :: (x: int, y: int, w: int) {
     Button((ButtonProps){
         .bounds = {x, y, ScaleUIPx(190), ScaleUIPx(44)},
         .label = "Primary",
-        .style = UI_BUTTON_STYLE_PRIMARY,
+        .style = ButtonStylePrimary,
         .id = 301,
     })
     Button((ButtonProps){
         .bounds = {x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)},
         .label = "Secondary",
-        .style = UI_BUTTON_STYLE_SECONDARY,
+        .style = ButtonStyleSecondary,
         .id = 302,
     })
     y += ScaleUIPx(70)

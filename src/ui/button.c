@@ -348,31 +348,31 @@ RenderTextButton(int x, int y, const char *label, int *hover)
 }
 
 static void
-ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
+ui_button_style_colors(ButtonStyle style, Color *bg, Color *hover_bg,
                        Color *text_color)
 {
     switch(style) {
-    case UI_BUTTON_STYLE_SECONDARY:
+    case ButtonStyleSecondary:
         *bg = DarkenUIColor(c_bg, 14);
         *hover_bg = c_button;
         *text_color = c_text;
         return;
-    case UI_BUTTON_STYLE_DANGER:
+    case ButtonStyleDanger:
         *bg = (Color){180, 70, 70, 255};
         *hover_bg = (Color){200, 90, 90, 255};
         *text_color = c_text;
         return;
-    case UI_BUTTON_STYLE_TAB:
+    case ButtonStyleTab:
         *bg = DarkenUIColor(c_bg, 10);
         *hover_bg = c_button;
         *text_color = c_text;
         return;
-    case UI_BUTTON_STYLE_TAB_SELECTED:
+    case ButtonStyleTabSelected:
         *bg = c_button;
         *hover_bg = c_button;
         *text_color = c_text;
         return;
-    case UI_BUTTON_STYLE_PRIMARY:
+    case ButtonStylePrimary:
     default:
         *bg = c_button;
         *hover_bg = c_button_hover;
@@ -383,7 +383,7 @@ ui_button_style_colors(UIButtonStyle style, Color *bg, Color *hover_bg,
 
 int
 RenderStyledButton(int x, int y, int w, int h, const char *label,
-                       UIButtonStyle style, int disabled, int *hover)
+                       ButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int font = GetUISmallFontSize();
@@ -401,27 +401,27 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
         UIMaterialScheme scheme = ui_material_scheme();
 
         switch(style) {
-        case UI_BUTTON_STYLE_SECONDARY:
+        case ButtonStyleSecondary:
             bg = scheme.surface_variant;
             hover_bg = scheme.surface_variant;
             text_color = scheme.on_surface_variant;
             break;
-        case UI_BUTTON_STYLE_DANGER:
+        case ButtonStyleDanger:
             bg = scheme.error;
             hover_bg = scheme.error;
             text_color = scheme.on_error;
             break;
-        case UI_BUTTON_STYLE_TAB:
+        case ButtonStyleTab:
             bg = BLANK;
             hover_bg = scheme.surface_variant;
             text_color = scheme.on_surface_variant;
             break;
-        case UI_BUTTON_STYLE_TAB_SELECTED:
+        case ButtonStyleTabSelected:
             bg = scheme.secondary;
             hover_bg = scheme.secondary;
             text_color = scheme.on_secondary;
             break;
-        case UI_BUTTON_STYLE_PRIMARY:
+        case ButtonStylePrimary:
         default:
             bg = scheme.primary;
             hover_bg = scheme.primary;
@@ -450,7 +450,7 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     });
 
     if(!ui_material_style() && UITransitionCuesEnabled() &&
-       style == UI_BUTTON_STYLE_TAB_SELECTED &&
+       style == ButtonStyleTabSelected &&
        !disabled && w > ScaleUIPx(18)) {
         int cue_h = ScaleUIPx(2);
         if(cue_h < 1)

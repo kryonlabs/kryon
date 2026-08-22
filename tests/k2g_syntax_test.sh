@@ -107,8 +107,8 @@ frame main {
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
-    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 20})
-    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = UI_BUTTON_STYLE_SECONDARY, .font = UI_TEXT_16, .id = 21})
+    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 20})
+    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = UI_TEXT_16, .id = 21})
     Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
     Slider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), "", 0, 10, &slider_val, "", nil)
     CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())

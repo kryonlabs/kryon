@@ -102,7 +102,7 @@ typedef union UIWidgetData {
     } primitive;
     struct {
         ButtonSpec spec;
-        UIButtonStyle style;
+        ButtonStyle style;
     } button;
     TextFieldProps text_field;
     TextAreaProps text_area;
@@ -186,7 +186,7 @@ UIWidgetNode UINodeTitleBar(int height);
 typedef struct ButtonProps {
     Rectangle bounds;
     const char *label;
-    UIButtonStyle style;
+    ButtonStyle style;
     int font;
     int id;
     int disabled;

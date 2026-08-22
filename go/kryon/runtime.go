@@ -39,7 +39,7 @@ type Texture2D struct {
 
 type UIKey uint64
 type UISide int32
-type UIButtonStyle int32
+type ButtonStyle int32
 type UISyntaxMode int32
 type ThemeStyle int32
 type ThemeSource int32
@@ -69,11 +69,11 @@ const (
 	UISideLeft
 	UISideRight
 
-	UIButtonStylePrimary UIButtonStyle = iota
-	UIButtonStyleSecondary
-	UIButtonStyleDanger
-	UIButtonStyleTab
-	UIButtonStyleTabSelected
+	ButtonStylePrimary ButtonStyle = iota
+	ButtonStyleSecondary
+	ButtonStyleDanger
+	ButtonStyleTab
+	ButtonStyleTabSelected
 
 	UISyntaxNone UISyntaxMode = iota
 	UISyntaxKry
@@ -104,10 +104,6 @@ const (
 	Text24 int32 = 24
 	Text32 int32 = 32
 	Text48 int32 = 48
-
-	UI_BUTTON_STYLE_PRIMARY   = UIButtonStylePrimary
-	UI_BUTTON_STYLE_SECONDARY = UIButtonStyleSecondary
-	UI_BUTTON_STYLE_DANGER    = UIButtonStyleDanger
 
 	THEME_STYLE_SYSTEM   = ThemeStyleSystem
 	THEME_STYLE_RETRO    = ThemeStyleRetro
@@ -163,7 +159,7 @@ type TextInputStyle struct {
 type ButtonProps struct {
 	Bounds   Rectangle
 	Label    string
-	Style    UIButtonStyle
+	Style    ButtonStyle
 	Font     int32
 	ID       int32
 	Disabled bool

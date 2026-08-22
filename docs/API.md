@@ -979,7 +979,7 @@ decoded-image-in-memory struct type.
 typedef struct {
     Rectangle bounds;
     const char *label;
-    UIButtonStyle style;
+    ButtonStyle style;
     int font;
     int id;
     int disabled;
@@ -1217,7 +1217,7 @@ three action buttons.
 ```c
 typedef struct {
     const char *label;
-    UIButtonStyle style;
+    ButtonStyle style;
     int disabled;
 } UIModalAction;
 
@@ -1424,7 +1424,7 @@ void UIInfoRowsNode(InfoRows rows);
 ```c
 typedef struct {
     const char *label;
-    UIButtonStyle style;
+    ButtonStyle style;
     int disabled;
 } UIButtonRowItem;
 
@@ -1573,12 +1573,12 @@ void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, 
 
 ```c
 typedef enum {
-    UI_BUTTON_STYLE_PRIMARY,
-    UI_BUTTON_STYLE_SECONDARY,
-    UI_BUTTON_STYLE_DANGER,
-    UI_BUTTON_STYLE_TAB,
-    UI_BUTTON_STYLE_TAB_SELECTED
-} UIButtonStyle;
+    ButtonStylePrimary,
+    ButtonStyleSecondary,
+    ButtonStyleDanger,
+    ButtonStyleTab,
+    ButtonStyleTabSelected
+} ButtonStyle;
 ```
 
 ---
@@ -1698,7 +1698,7 @@ int main(void) {
         if (Button((ButtonProps){
                 .bounds = {10, 10, 100, 36},
                 .label = "Click Me",
-                .style = UI_BUTTON_STYLE_PRIMARY,
+                .style = ButtonStylePrimary,
                 .id = 1,
         })) {
             // Button clicked

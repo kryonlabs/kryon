@@ -149,7 +149,7 @@ int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
 int DrawUIInfoButton(int center_x, int center_y, int diameter);
 int RenderTextButton(int x, int y, const char *label, int *hover);
 int RenderStyledButton(int x, int y, int w, int h, const char *label,
-                        UIButtonStyle style, int disabled, int *hover);
+                        ButtonStyle style, int disabled, int *hover);
 void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);
 int DrawUISlider(int id, int x, int y, int w, const char *label, int min,

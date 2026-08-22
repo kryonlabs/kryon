@@ -63,6 +63,28 @@ if [ -n "$public_button_matches" ]; then
     exit 1
 fi
 
+button_style_matches="$(
+    rg -n '\b(UIButtonStyle[A-Za-z0-9_]*|UI_BUTTON_STYLE_[A-Z_]+)\b' \
+        include \
+        src/ui \
+        go/kryon \
+        cmd/k2g \
+        cmd/k2b \
+        docs/API.md \
+        examples \
+        tests/k2c_syntax_test.sh \
+        tests/k2g_syntax_test.sh \
+        tests/parity \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$button_style_matches" ]; then
+    echo "Button style APIs must use clean ButtonStyle names without legacy UI prefixes:"
+    echo "$button_style_matches"
+    exit 1
+fi
+
 if [ -d go/kryui ]; then
     echo "The legacy go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1

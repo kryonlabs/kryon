@@ -14,12 +14,12 @@ typedef enum {
 } UIIconSize;
 
 typedef enum {
-    UI_BUTTON_STYLE_PRIMARY,
-    UI_BUTTON_STYLE_SECONDARY,
-    UI_BUTTON_STYLE_DANGER,
-    UI_BUTTON_STYLE_TAB,
-    UI_BUTTON_STYLE_TAB_SELECTED
-} UIButtonStyle;
+    ButtonStylePrimary,
+    ButtonStyleSecondary,
+    ButtonStyleDanger,
+    ButtonStyleTab,
+    ButtonStyleTabSelected
+} ButtonStyle;
 
 typedef enum {
     UI_SYNTAX_NONE,
