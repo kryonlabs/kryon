@@ -833,6 +833,73 @@ func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 	}
 }
 
+func TestTableViewClickFocusEnablesArrowNavigation(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(-1)
+	selectedColumn := int32(-1)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:             52,
+		Columns:        []string{"A", "B", "C"},
+		Rows:           []UITableRow{{Cells: []string{"a1", "b1", "c1"}}, {Cells: []string{"a2", "b2", "c2"}}},
+		ColumnWidths:   []int32{100, 100, 100},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		RowHeight:      24,
+	}
+
+	rt.QueueTap(116, 52)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 0 || selectedColumn != 1 {
+		t.Fatalf("clicked selection = %d,%d, want 0,1", selectedRow, selectedColumn)
+	}
+	if rt.Focus() != 52 {
+		t.Fatalf("focus after click = %d, want table focus 52", rt.Focus())
+	}
+
+	rt.QueueKey(KeyRight)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 0 || selectedColumn != 2 {
+		t.Fatalf("right selection = %d,%d, want 0,2", selectedRow, selectedColumn)
+	}
+
+	rt.QueueKey(KeyDown)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 1 || selectedColumn != 2 {
+		t.Fatalf("down selection = %d,%d, want 1,2", selectedRow, selectedColumn)
+	}
+
+	rt.QueueKey(KeyLeft)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 1 || selectedColumn != 1 {
+		t.Fatalf("left selection = %d,%d, want 1,1", selectedRow, selectedColumn)
+	}
+
+	rt.QueueKey(KeyUp)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 0 || selectedColumn != 1 {
+		t.Fatalf("up selection = %d,%d, want 0,1", selectedRow, selectedColumn)
+	}
+
+	rt.QueueKey(KeyEscape)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != -1 || selectedColumn != -1 {
+		t.Fatalf("escape selection = %d,%d, want -1,-1", selectedRow, selectedColumn)
+	}
+}
+
 func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 	resetSystemThemeForTest()
 	defer resetSystemThemeForTest()

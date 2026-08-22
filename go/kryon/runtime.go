@@ -1737,9 +1737,12 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 		return 0
 	}
 	changed := int32(0)
-	row := clamp32(*props.SelectedRow, 0, int32(len(props.Rows)-1))
+	row := int32(0)
+	if *props.SelectedRow >= 0 {
+		row = clamp32(*props.SelectedRow, 0, int32(len(props.Rows)-1))
+	}
 	col := int32(0)
-	if props.SelectedColumn != nil {
+	if props.SelectedColumn != nil && *props.SelectedColumn >= 0 {
 		col = clamp32(*props.SelectedColumn, 0, int32(len(props.Columns)-1))
 	}
 	for _, event := range r.inputEvents {
@@ -1782,6 +1785,12 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 				*props.ActivatedColumn = col
 			}
 			changed = 1
+		case KeyEscape:
+			if *props.SelectedRow >= 0 || props.SelectedColumn != nil && *props.SelectedColumn >= 0 {
+				row = -1
+				col = -1
+				changed = 1
+			}
 		}
 	}
 	if changed != 0 {
@@ -1789,7 +1798,9 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 		if props.SelectedColumn != nil {
 			*props.SelectedColumn = col
 		}
-		r.scrollTableSelectionIntoView(props)
+		if row >= 0 {
+			r.scrollTableSelectionIntoView(props)
+		}
 		r.inputEvents = nil
 	}
 	return changed
