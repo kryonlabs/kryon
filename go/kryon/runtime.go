@@ -3,8 +3,10 @@ package kryon
 import (
 	"fmt"
 	"hash/fnv"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -579,6 +581,21 @@ type runtime struct {
 	layout         []layoutFrame
 	ops            []FrameOp
 	lastTableClick tableClick
+	themeSource    ThemeSource
+	themeMode      ThemeMode
+	themeStyle     ThemeStyle
+}
+
+type themePalette struct {
+	background  Color
+	surface     Color
+	text        Color
+	button      Color
+	buttonHover Color
+	icon        Color
+	link        Color
+	selected    Color
+	selectedHot Color
 }
 
 type layoutFrame struct {
@@ -605,6 +622,7 @@ type tapEvent struct {
 type mouseClickEvent struct {
 	button   int32
 	x, y     float32
+	when     time.Time
 	consumed bool
 }
 
@@ -612,7 +630,7 @@ type tableClick struct {
 	id     int32
 	row    int32
 	column int32
-	frame  int
+	when   time.Time
 }
 
 type selection struct {
@@ -627,7 +645,15 @@ func New(config AppConfig) Runtime {
 	if config.Height <= 0 {
 		config.Height = 480
 	}
-	return &runtime{config: config, selection: map[int32]selection{}, mouseDown: map[int32]bool{}, keyDown: map[int32]bool{}}
+	return &runtime{
+		config:      config,
+		selection:   map[int32]selection{},
+		mouseDown:   map[int32]bool{},
+		keyDown:     map[int32]bool{},
+		themeSource: ThemeSourceSystem,
+		themeMode:   ThemeModeSystem,
+		themeStyle:  ThemeStyleSystem,
+	}
 }
 
 func (r *runtime) QueueText(text string) {
@@ -654,7 +680,7 @@ func (r *runtime) QueueTap(x, y float32) {
 func (r *runtime) QueueMouseButton(button int32, x, y float32) {
 	r.mousePos = Vector2{X: x, Y: y}
 	r.mouseDown[button] = true
-	r.clicks = append(r.clicks, mouseClickEvent{button: button, x: x, y: y})
+	r.clicks = append(r.clicks, mouseClickEvent{button: button, x: x, y: y, when: time.Now()})
 	if button == MouseButtonLeft {
 		r.taps = append(r.taps, tapEvent{x: x, y: y})
 	}
@@ -732,9 +758,9 @@ func (r *runtime) TextFormat(format string, args ...any) string       { return f
 func (r *runtime) ScaleUIPx(px int32) int32                           { return px }
 func (r *runtime) GetScreenWidth() int32                              { return int32(r.config.Width) }
 func (r *runtime) GetScreenHeight() int32                             { return int32(r.config.Height) }
-func (r *runtime) GetThemeBackground() Color                          { return RAYWHITE }
-func (r *runtime) GetThemeText() Color                                { return BLACK }
-func (r *runtime) GetThemeIcon() Color                                { return DARKGRAY }
+func (r *runtime) GetThemeBackground() Color                          { return r.theme().background }
+func (r *runtime) GetThemeText() Color                                { return r.theme().text }
+func (r *runtime) GetThemeIcon() Color                                { return r.theme().icon }
 func (r *runtime) NewVector2(x, y any) Vector2                        { return NewVector2(number32(x), number32(y)) }
 func (r *runtime) DrawCircleV(Vector2, any, Color)                    {}
 func (r *runtime) DrawRing(Vector2, any, any, any, any, int32, Color) {}
@@ -815,10 +841,10 @@ func (r *runtime) Fade(c Color, alpha float32) Color {
 	c.A = uint8(float32(c.A) * alpha)
 	return c
 }
-func (r *runtime) GetThemeSurface() Color     { return WHITE }
-func (r *runtime) GetThemeButton() Color      { return LIGHTGRAY }
-func (r *runtime) GetThemeButtonHover() Color { return GRAY }
-func (r *runtime) GetThemeLink() Color        { return BLUE }
+func (r *runtime) GetThemeSurface() Color     { return r.theme().surface }
+func (r *runtime) GetThemeButton() Color      { return r.theme().button }
+func (r *runtime) GetThemeButtonHover() Color { return r.theme().buttonHover }
+func (r *runtime) GetThemeLink() Color        { return r.theme().link }
 func (r *runtime) TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: rect, Text: text, Color: color, FontSize: fontSize})
 }
@@ -970,7 +996,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				r.focusID = props.ID
 			}
 			if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
-				r.lastTableClick.column == col && r.frames-r.lastTableClick.frame <= 15 {
+				r.lastTableClick.column == col && time.Since(r.lastTableClick.when) <= 450*time.Millisecond {
 				if props.ActivatedRow != nil {
 					*props.ActivatedRow = row
 				}
@@ -979,7 +1005,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				}
 				changed = 1
 			}
-			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, frame: r.frames}
+			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: time.Now()}
 		}
 	}
 
@@ -1050,16 +1076,97 @@ func (r *runtime) GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangl
 func (r *runtime) Place(parent Rectangle, x, y, w, h int32) Rectangle {
 	return Rectangle{X: parent.X + float32(x), Y: parent.Y + float32(y), Width: float32(w), Height: float32(h)}
 }
-func (r *runtime) SetCurrentTheme(int32, int32) {}
-func (r *runtime) SetThemeDarkMode(int32)       {}
-func (r *runtime) SetThemeStyle(ThemeStyle)     {}
-func (r *runtime) SetThemeSource(ThemeSource)   {}
-func (r *runtime) SetThemeMode(ThemeMode)       {}
+func (r *runtime) SetCurrentTheme(_ int32, darkMode int32) {
+	if darkMode != 0 {
+		r.themeMode = ThemeModeDark
+	} else {
+		r.themeMode = ThemeModeLight
+	}
+}
+func (r *runtime) SetThemeDarkMode(dark int32) {
+	if dark != 0 {
+		r.themeMode = ThemeModeDark
+	} else {
+		r.themeMode = ThemeModeLight
+	}
+}
+func (r *runtime) SetThemeStyle(style ThemeStyle)    { r.themeStyle = style }
+func (r *runtime) SetThemeSource(source ThemeSource) { r.themeSource = source }
+func (r *runtime) SetThemeMode(mode ThemeMode)       { r.themeMode = mode }
 
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
 	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure)
+}
+
+func (r *runtime) theme() themePalette {
+	if r.effectiveDark() {
+		return themePalette{
+			background:  Color{10, 10, 14, 255},
+			surface:     Color{25, 28, 35, 255},
+			text:        Color{228, 230, 235, 255},
+			button:      Color{52, 58, 68, 255},
+			buttonHover: Color{70, 78, 92, 255},
+			icon:        Color{150, 158, 174, 255},
+			link:        Color{102, 191, 255, 255},
+			selected:    Color{30, 48, 70, 255},
+			selectedHot: Color{42, 68, 98, 255},
+		}
+	}
+	return themePalette{
+		background:  RAYWHITE,
+		surface:     WHITE,
+		text:        BLACK,
+		button:      Color{226, 232, 240, 255},
+		buttonHover: Color{210, 220, 235, 255},
+		icon:        DARKGRAY,
+		link:        BLUE,
+		selected:    Color{218, 232, 252, 255},
+		selectedHot: Color{198, 220, 250, 255},
+	}
+}
+
+func (r *runtime) effectiveDark() bool {
+	switch r.themeMode {
+	case ThemeModeLight:
+		return false
+	case ThemeModeDark:
+		return true
+	}
+	return systemPrefersDark()
+}
+
+func systemPrefersDark() bool {
+	for _, value := range []string{
+		os.Getenv("KRYON_THEME_MODE"),
+		os.Getenv("GTK_THEME"),
+		os.Getenv("QT_STYLE_OVERRIDE"),
+		os.Getenv("COLOR_SCHEME"),
+	} {
+		if strings.Contains(strings.ToLower(value), "dark") {
+			return true
+		}
+	}
+	for _, path := range []string{
+		os.Getenv("XDG_CONFIG_HOME") + "/gtk-3.0/settings.ini",
+		os.Getenv("HOME") + "/.config/gtk-3.0/settings.ini",
+		os.Getenv("HOME") + "/.config/gtk-4.0/settings.ini",
+	} {
+		if strings.HasPrefix(path, "/gtk-") {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		text := strings.ToLower(string(data))
+		if strings.Contains(text, "gtk-application-prefer-dark-theme=true") ||
+			strings.Contains(text, "gtk-theme-name") && strings.Contains(text, "dark") {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *runtime) record(op FrameOp) {
@@ -1642,7 +1749,8 @@ func (r *runtime) scrollTableSelectionIntoView(props TableViewProps) {
 }
 
 func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: Color{255, 255, 255, 255}})
+	theme := r.theme()
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface})
 	selectedRow := int32(-1)
 	selectedCol := int32(-1)
 	if props.SelectedRow != nil {
@@ -1660,8 +1768,8 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []UITableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
 		rect.Y = props.Bounds.Y
 		rect.Height = float32(headerH)
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: Color{232, 236, 242, 255}, Row: -1, Column: col})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: Color{36, 45, 58, 255}, FontSize: font, Row: -1, Column: col})
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.button, Row: -1, Column: col})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: theme.text, FontSize: font, Row: -1, Column: col})
 	}
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
@@ -1680,9 +1788,9 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		rowY := props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll)
 		rowRect := Rectangle{X: props.Bounds.X, Y: rowY, Width: props.Bounds.Width, Height: float32(rowH)}
 		if row == selectedRow {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: Color{218, 232, 252, 255}, Row: row, Selected: true})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: theme.selected, Row: row, Selected: true})
 		} else if row%2 == 1 {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: Color{248, 250, 252, 255}, Row: row})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: mixColor(theme.surface, theme.button, 0.16), Row: row})
 		}
 		for c := range props.Columns {
 			col := int32(c)
@@ -1691,13 +1799,13 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				continue
 			}
 			if row == selectedRow && col == selectedCol {
-				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: Color{198, 220, 250, 255}, Row: row, Column: col, Selected: true})
+				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.selectedHot, Row: row, Column: col, Selected: true})
 			}
 			text := ""
 			if int(row) < len(props.Rows) && c < len(props.Rows[row].Cells) {
 				text = props.Rows[row].Cells[c]
 			}
-			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: Color{25, 31, 40, 255}, FontSize: font, Row: row, Column: col})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: theme.text, FontSize: font, Row: row, Column: col})
 		}
 	}
 }
@@ -1776,6 +1884,21 @@ func clamp32(v, lo, hi int32) int32 {
 		return hi
 	}
 	return v
+}
+
+func mixColor(a, b Color, t float32) Color {
+	if t < 0 {
+		t = 0
+	}
+	if t > 1 {
+		t = 1
+	}
+	return Color{
+		R: uint8(float32(a.R) + (float32(b.R)-float32(a.R))*t),
+		G: uint8(float32(a.G) + (float32(b.G)-float32(a.G))*t),
+		B: uint8(float32(a.B) + (float32(b.B)-float32(a.B))*t),
+		A: uint8(float32(a.A) + (float32(b.A)-float32(a.A))*t),
+	}
 }
 
 func max32(a, b int32) int32 {

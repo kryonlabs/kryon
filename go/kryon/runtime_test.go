@@ -651,6 +651,40 @@ func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 	}
 }
 
+func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
+	t.Setenv("KRYON_THEME_MODE", "dark")
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	selectedRow := int32(0)
+	selectedColumn := int32(0)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 180, Height: 80},
+		ID:             61,
+		Columns:        []string{"label"},
+		Rows:           []UITableRow{{Cells: []string{"row"}}},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		RowHeight:      24,
+	}
+
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+
+	if got, want := rt.GetThemeBackground(), (Color{10, 10, 14, 255}); got != want {
+		t.Fatalf("default system dark background = %#v, want %#v", got, want)
+	}
+	ops := rt.FrameOps()
+	for _, op := range ops {
+		if op.Kind == FrameOpRect && op.Bounds == props.Bounds {
+			if op.Color == WHITE || op.Color == RAYWHITE {
+				t.Fatalf("table used hard-coded light surface under system dark theme: %#v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("table surface op not found: %#v", ops)
+}
+
 func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
 	rt := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	SetRuntime(rt)
