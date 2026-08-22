@@ -3,7 +3,6 @@ package kryon
 import (
 	"fmt"
 	"hash/fnv"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -48,6 +47,7 @@ type KeyID uint64
 type Side int32
 type ButtonStyle int32
 type SyntaxMode int32
+type ThemeId int32
 type ThemeStyle int32
 type ThemeSource int32
 type ThemeMode int32
@@ -96,6 +96,20 @@ const (
 	SyntaxC    SyntaxMode = 2
 	SyntaxMake SyntaxMode = 3
 
+	ThemeSky ThemeId = iota
+	ThemeOcean
+	ThemeForest
+	ThemeSunset
+	ThemeLavender
+	ThemeCherry
+	ThemeDawn
+	ThemeSage
+	ThemeInk
+	ThemeMono
+	ThemeMint
+	ThemeCobalt
+	ThemeCount
+
 	ThemeStyleSystem ThemeStyle = iota
 	ThemeStyleRetro
 	ThemeStyleMaterial
@@ -124,6 +138,20 @@ const (
 	THEME_STYLE_SYSTEM   = ThemeStyleSystem
 	THEME_STYLE_RETRO    = ThemeStyleRetro
 	THEME_STYLE_MATERIAL = ThemeStyleMaterial
+
+	THEME_SKY      = ThemeSky
+	THEME_OCEAN    = ThemeOcean
+	THEME_FOREST   = ThemeForest
+	THEME_SUNSET   = ThemeSunset
+	THEME_LAVENDER = ThemeLavender
+	THEME_CHERRY   = ThemeCherry
+	THEME_DAWN     = ThemeDawn
+	THEME_SAGE     = ThemeSage
+	THEME_INK      = ThemeInk
+	THEME_MONO     = ThemeMono
+	THEME_MINT     = ThemeMint
+	THEME_COBALT   = ThemeCobalt
+	THEME_COUNT    = ThemeCount
 
 	PICTURE_FIT_STRETCH = PictureFitStretch
 	PICTURE_FIT_CONTAIN = PictureFitContain
@@ -583,6 +611,7 @@ type runtime struct {
 	layout         []layoutFrame
 	ops            []FrameOp
 	lastTableClick tableClick
+	currentThemeID ThemeId
 	themeSource    ThemeSource
 	themeMode      ThemeMode
 	themeStyle     ThemeStyle
@@ -648,13 +677,14 @@ func New(config AppConfig) Runtime {
 		config.Height = 480
 	}
 	return &runtime{
-		config:      config,
-		selection:   map[int32]selection{},
-		mouseDown:   map[int32]bool{},
-		keyDown:     map[int32]bool{},
-		themeSource: ThemeSourceSystem,
-		themeMode:   ThemeModeSystem,
-		themeStyle:  ThemeStyleSystem,
+		config:         config,
+		selection:      map[int32]selection{},
+		mouseDown:      map[int32]bool{},
+		keyDown:        map[int32]bool{},
+		currentThemeID: ThemeMono,
+		themeSource:    ThemeSourceSystem,
+		themeMode:      ThemeModeSystem,
+		themeStyle:     ThemeStyleSystem,
 	}
 }
 
@@ -798,13 +828,18 @@ func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
 func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32) {}
 func (r *runtime) EndScroll()                                       {}
 func (r *runtime) Button(props ButtonProps) bool {
+	theme := r.theme()
 	if props.Disabled {
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: r.layoutRect(props.Bounds), Text: props.Label, ID: props.ID, FontSize: props.Font, Disabled: true})
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: r.layoutRect(props.Bounds), Text: props.Label, Color: mixColor(theme.surface, theme.button, 0.5), BorderColor: theme.button, TextColor: theme.icon, ID: props.ID, FontSize: props.Font, Disabled: true})
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
 	pressed := r.consumeTap(props.Bounds)
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, ID: props.ID, FontSize: props.Font, Pressed: pressed})
+	fill := theme.button
+	if pressed {
+		fill = theme.buttonHover
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: theme.text, ID: props.ID, FontSize: props.Font, Pressed: pressed})
 	return pressed
 }
 func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
@@ -1081,7 +1116,8 @@ func (r *runtime) GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangl
 func (r *runtime) Place(parent Rectangle, x, y, w, h int32) Rectangle {
 	return Rectangle{X: parent.X + float32(x), Y: parent.Y + float32(y), Width: float32(w), Height: float32(h)}
 }
-func (r *runtime) SetCurrentTheme(_ int32, darkMode int32) {
+func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
+	r.currentThemeID = normalizeTheme(themeID)
 	if darkMode != 0 {
 		r.themeMode = ThemeModeDark
 	} else {
@@ -1095,9 +1131,24 @@ func (r *runtime) SetThemeDarkMode(dark int32) {
 		r.themeMode = ThemeModeLight
 	}
 }
-func (r *runtime) SetThemeStyle(style ThemeStyle)    { r.themeStyle = style }
-func (r *runtime) SetThemeSource(source ThemeSource) { r.themeSource = source }
-func (r *runtime) SetThemeMode(mode ThemeMode)       { r.themeMode = mode }
+func (r *runtime) SetThemeStyle(style ThemeStyle) {
+	if style < ThemeStyleSystem || style > ThemeStyleMaterial {
+		style = ThemeStyleSystem
+	}
+	r.themeStyle = style
+}
+func (r *runtime) SetThemeSource(source ThemeSource) {
+	if source != ThemeSourceSystem {
+		source = ThemeSourceApp
+	}
+	r.themeSource = source
+}
+func (r *runtime) SetThemeMode(mode ThemeMode) {
+	if mode < ThemeModeSystem || mode > ThemeModeDark {
+		mode = ThemeModeSystem
+	}
+	r.themeMode = mode
+}
 
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -1106,30 +1157,13 @@ func (r *runtime) TextField(props TextFieldProps) {
 }
 
 func (r *runtime) theme() themePalette {
-	if r.effectiveDark() {
-		return themePalette{
-			background:  Color{10, 10, 14, 255},
-			surface:     Color{25, 28, 35, 255},
-			text:        Color{228, 230, 235, 255},
-			button:      Color{52, 58, 68, 255},
-			buttonHover: Color{70, 78, 92, 255},
-			icon:        Color{150, 158, 174, 255},
-			link:        Color{102, 191, 255, 255},
-			selected:    Color{30, 48, 70, 255},
-			selectedHot: Color{42, 68, 98, 255},
+	dark := r.effectiveDark()
+	if r.themeSource == ThemeSourceSystem {
+		if palette, ok := currentSystemTheme(dark); ok {
+			return palette
 		}
 	}
-	return themePalette{
-		background:  RAYWHITE,
-		surface:     WHITE,
-		text:        BLACK,
-		button:      Color{226, 232, 240, 255},
-		buttonHover: Color{210, 220, 235, 255},
-		icon:        DARKGRAY,
-		link:        BLUE,
-		selected:    Color{218, 232, 252, 255},
-		selectedHot: Color{198, 220, 250, 255},
-	}
+	return themeCatalogPalette(r.currentThemeID, dark)
 }
 
 func (r *runtime) effectiveDark() bool {
@@ -1143,35 +1177,7 @@ func (r *runtime) effectiveDark() bool {
 }
 
 func systemPrefersDark() bool {
-	for _, value := range []string{
-		os.Getenv("KRYON_THEME_MODE"),
-		os.Getenv("GTK_THEME"),
-		os.Getenv("QT_STYLE_OVERRIDE"),
-		os.Getenv("COLOR_SCHEME"),
-	} {
-		if strings.Contains(strings.ToLower(value), "dark") {
-			return true
-		}
-	}
-	for _, path := range []string{
-		os.Getenv("XDG_CONFIG_HOME") + "/gtk-3.0/settings.ini",
-		os.Getenv("HOME") + "/.config/gtk-3.0/settings.ini",
-		os.Getenv("HOME") + "/.config/gtk-4.0/settings.ini",
-	} {
-		if strings.HasPrefix(path, "/gtk-") {
-			continue
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		text := strings.ToLower(string(data))
-		if strings.Contains(text, "gtk-application-prefer-dark-theme=true") ||
-			strings.Contains(text, "gtk-theme-name") && strings.Contains(text, "dark") {
-			return true
-		}
-	}
-	return false
+	return systemThemePrefersDark()
 }
 
 func (r *runtime) record(op FrameOp) {
@@ -1183,14 +1189,18 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	if secure {
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
+	theme := r.theme()
 	op := FrameOp{
-		Kind:     kind,
-		Bounds:   bounds,
-		Text:     text,
-		FontSize: font,
-		FocusID:  focusID,
-		Focused:  r.focusID == focusID,
-		Secure:   secure,
+		Kind:        kind,
+		Bounds:      bounds,
+		Text:        text,
+		Color:       theme.background,
+		BorderColor: theme.buttonHover,
+		TextColor:   theme.text,
+		FontSize:    font,
+		FocusID:     focusID,
+		Focused:     r.focusID == focusID,
+		Secure:      secure,
 	}
 	if cursor != nil {
 		op.Cursor = *cursor

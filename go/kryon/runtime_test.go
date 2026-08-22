@@ -652,7 +652,10 @@ func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 }
 
 func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
+	resetSystemThemeForTest()
+	defer resetSystemThemeForTest()
 	t.Setenv("KRYON_THEME_MODE", "dark")
+	t.Setenv("GTK_THEME", "KryonMissingTheme")
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
 	selectedRow := int32(0)
 	selectedColumn := int32(0)
@@ -670,7 +673,7 @@ func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 	rt.TableView(props)
 	rt.EndFrame()
 
-	if got, want := rt.GetThemeBackground(), (Color{10, 10, 14, 255}); got != want {
+	if got, want := rt.GetThemeBackground(), (Color{0x14, 0x12, 0x18, 255}); got != want {
 		t.Fatalf("default system dark background = %#v, want %#v", got, want)
 	}
 	ops := rt.FrameOps()
@@ -683,6 +686,71 @@ func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 		}
 	}
 	t.Fatalf("table surface op not found: %#v", ops)
+}
+
+func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
+	resetSystemThemeForTest()
+	defer resetSystemThemeForTest()
+	temp := t.TempDir()
+	config := filepath.Join(temp, "config")
+	themeDir := filepath.Join(temp, "home", ".themes", "Demo-Dark", "gtk-3.0")
+	if err := os.MkdirAll(filepath.Join(config, "xfce4", "xfconf", "xfce-perchannel-xml"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(themeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	xsettings := `<channel name="xsettings" version="1.0"><property name="Net" type="empty"><property name="ThemeName" type="string" value="Demo-Dark"/></property></channel>`
+	if err := os.WriteFile(filepath.Join(config, "xfce4", "xfconf", "xfce-perchannel-xml", "xsettings.xml"), []byte(xsettings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	css := `
+@define-color theme_fg_color #C3C7D1;
+@define-color theme_bg_color #161925;
+@define-color theme_base_color #181b28;
+@define-color theme_selected_bg_color #c50ed2;
+`
+	if err := os.WriteFile(filepath.Join(themeDir, "gtk.css"), []byte(css), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", filepath.Join(temp, "home"))
+	t.Setenv("XDG_CONFIG_HOME", config)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(temp, "data"))
+	t.Setenv("GTK_THEME", "")
+	t.Setenv("KRYON_THEME_MODE", "")
+
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	if got, want := rt.GetThemeBackground(), (Color{0x18, 0x1b, 0x28, 0xff}); got != want {
+		t.Fatalf("system CSS background = %#v, want %#v", got, want)
+	}
+	if got, want := rt.GetThemeSurface(), (Color{0x16, 0x19, 0x25, 0xff}); got != want {
+		t.Fatalf("system CSS surface = %#v, want %#v", got, want)
+	}
+	if got, want := rt.GetThemeLink(), (Color{0xc5, 0x0e, 0xd2, 0xff}); got != want {
+		t.Fatalf("system CSS selected/link = %#v, want %#v", got, want)
+	}
+	if !systemPrefersDark() {
+		t.Fatal("system CSS palette should prefer dark")
+	}
+}
+
+func TestAppThemeCatalogHonorsThemeID(t *testing.T) {
+	resetSystemThemeForTest()
+	defer resetSystemThemeForTest()
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	rt.SetThemeSource(ThemeSourceApp)
+	rt.SetCurrentTheme(int32(ThemeMint), 1)
+
+	if got, want := rt.GetThemeBackground(), (Color{0x12, 0x2d, 0x28, 0xff}); got != want {
+		t.Fatalf("mint dark background = %#v, want %#v", got, want)
+	}
+	if got, want := rt.GetThemeButton(), (Color{0x25, 0x55, 0x4b, 0xff}); got != want {
+		t.Fatalf("mint dark button = %#v, want %#v", got, want)
+	}
+	rt.SetCurrentTheme(999, 0)
+	if got, want := rt.GetThemeBackground(), (Color{0xc0, 0xc0, 0xc0, 0xff}); got != want {
+		t.Fatalf("out-of-range theme background = %#v, want default mono %#v", got, want)
+	}
 }
 
 func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {

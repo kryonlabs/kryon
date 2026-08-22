@@ -23,6 +23,8 @@ type FrameOp struct {
 	Text           string
 	Color          Color
 	SecondaryColor Color
+	BorderColor    Color
+	TextColor      Color
 	FontSize       int32
 	FontID         uint32
 	ID             int32

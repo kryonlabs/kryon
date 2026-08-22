@@ -55,13 +55,32 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	fill := Color{236, 240, 245, 255}
 	border := Color{136, 146, 160, 255}
 	text := Color{28, 36, 48, 255}
+	if op.Color.A != 0 {
+		fill = op.Color
+	}
+	if op.BorderColor.A != 0 {
+		border = op.BorderColor
+	}
+	if op.TextColor.A != 0 {
+		text = op.TextColor
+	}
 	if op.Disabled {
-		fill = Color{226, 228, 232, 255}
-		border = Color{174, 181, 190, 255}
-		text = Color{126, 134, 146, 255}
+		if op.Color.A == 0 {
+			fill = Color{226, 228, 232, 255}
+		}
+		if op.BorderColor.A == 0 {
+			border = Color{174, 181, 190, 255}
+		}
+		if op.TextColor.A == 0 {
+			text = Color{126, 134, 146, 255}
+		}
 	} else if op.Pressed {
-		fill = Color{198, 217, 246, 255}
-		border = Color{58, 110, 190, 255}
+		if op.Color.A == 0 {
+			fill = Color{198, 217, 246, 255}
+		}
+		if op.BorderColor.A == 0 {
+			border = Color{58, 110, 190, 255}
+		}
 	}
 	fillRect(img, op.Bounds, fill)
 	strokeRect(img, op.Bounds, border)
@@ -69,20 +88,33 @@ func renderButton(img *image.RGBA, op FrameOp) {
 }
 
 func renderTextInput(img *image.RGBA, op FrameOp) {
-	fillRect(img, op.Bounds, WHITE)
+	fill := WHITE
+	if op.Color.A != 0 {
+		fill = op.Color
+	}
+	fillRect(img, op.Bounds, fill)
 	border := Color{144, 152, 164, 255}
+	if op.BorderColor.A != 0 {
+		border = op.BorderColor
+	}
 	if op.Focused {
-		border = Color{29, 96, 196, 255}
+		if op.BorderColor.A == 0 {
+			border = Color{29, 96, 196, 255}
+		}
 	}
 	strokeRect(img, op.Bounds, border)
 	x := int(round(op.Bounds.X)) + 8
 	y := int(round(op.Bounds.Y)) + maxInt(3, (int(round(op.Bounds.Height))-int(textHeight(op.FontSize, op.FontID)))/2)
-	drawText(img, op.Text, x, y, op.FontSize, BLACK, op.FontID)
+	text := BLACK
+	if op.TextColor.A != 0 {
+		text = op.TextColor
+	}
+	drawText(img, op.Text, x, y, op.FontSize, text, op.FontID)
 	if op.Focused {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5
-		drawVertical(img, cursorX, top, bottom, Color{29, 96, 196, 255})
+		drawVertical(img, cursorX, top, bottom, border)
 	}
 }
 
