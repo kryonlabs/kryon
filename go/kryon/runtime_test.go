@@ -708,6 +708,14 @@ func TestTakeScreenshotWritesCurrentFramePNG(t *testing.T) {
 	}
 }
 
+func TestRendererHasPortfolioGlyphs(t *testing.T) {
+	for _, r := range "Δƒ…€£¥₿↑↓←→" {
+		if _, ok := glyphPattern(r); !ok {
+			t.Fatalf("renderer missing glyph for %q", r)
+		}
+	}
+}
+
 func TestRenderFrameClipsOutOfBoundsOps(t *testing.T) {
 	img := RenderFrame(32, 24, []FrameOp{
 		{Kind: FrameOpBackground, Color: WHITE},
