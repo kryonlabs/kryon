@@ -182,6 +182,8 @@ func render(cgoBridge, native methodSet) (string, bool) {
 	}
 	b.WriteString("\n## Generated Runtime Semantics\n\n")
 	b.WriteString("`tests/generated_runtime_parity_test.sh` transpiles the fixtures in `tests/parity/` through k2g and k2c, rejects legacy generated output, drives both generated runtimes through text editing, click-to-focus, focus traversal, selection replacement, secure clipboard copy, buttons, rows, columns, and text areas, asserts generated Go emits renderable native frame operations without leaking secure text, renders those operations into visible pure-Go images, then diffs the final state JSON.\n")
+	b.WriteString("\n## Native Host Text Input\n\n")
+	b.WriteString("`go/kryon` tests run the native `Host` through thousands of text-input frames with cursor navigation on every typed character, Tab traversal between fields, stable frame operation counts, and bounded focus/selection bookkeeping.\n")
 	return b.String(), ok
 }
 
