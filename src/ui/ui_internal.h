@@ -181,17 +181,17 @@ int DrawUICheckboxRow(CheckboxRowProps row, int x, int y);
 int DrawUIOverlayButton(OverlayButtonProps button);
 int DrawUIButtonRow(ButtonRowProps row);
 int DrawUIIconSliderPopup(IconSliderPopupProps popup);
-UIIconRowResult DrawUIBottomIconRow(BottomIconRowProps row);
-UIBottomNavResult DrawUIBottomNav(BottomNavProps nav);
-UIBottomNavConfigResult DrawUIBottomNavConfigModal(BottomNavConfigProps modal);
-UITopNavResult DrawUITopNav(TopNavProps nav);
-UIToolbarResult DrawUIToolbar(ToolbarProps toolbar);
-UIToolbarHeaderResult DrawUIToolbarHeader(ToolbarHeaderProps header);
+IconRowResult DrawUIBottomIconRow(BottomIconRowProps row);
+BottomNavResult DrawUIBottomNav(BottomNavProps nav);
+BottomNavConfigResult DrawUIBottomNavConfigModal(BottomNavConfigProps modal);
+TopNavResult DrawUITopNav(TopNavProps nav);
+ToolbarResult DrawUIToolbar(ToolbarProps toolbar);
+ToolbarHeaderResult DrawUIToolbarHeader(ToolbarHeaderProps header);
 int DrawUISubtabBar(SubtabBarProps bar);
 int DrawUITabBar(TabBarProps bar);
-UIPaneTabBarResult DrawUIPaneTabBar(UIPaneTabBar bar);
-UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
-void DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone);
+PaneTabBarResult DrawUIPaneTabBar(PaneTabBar bar);
+PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
+void DrawUIPaneDropPreview(Rectangle bounds, PaneDropZone zone);
 void DrawUISeparator(Rectangle bounds, int vertical);
 MenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
@@ -244,8 +244,8 @@ int DrawUIReturnDropdownTitleBar(Texture2D return_icon,
                                  UITitleBarDropdown dropdown, int height);
 UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
-UISidebarAccountHeaderResult DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header);
-UIProfilePicturePickerResult DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal);
+SidebarAccountHeaderResult DrawUISidebarAccountHeader(SidebarAccountHeaderProps header);
+ProfilePicturePickerResult DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal);
 void DrawUIReorderHandle(int x, int y, int w, int h, int active);
 void DrawUIReorderPlaceholder(Rectangle bounds);
 void DrawUIToast(void);

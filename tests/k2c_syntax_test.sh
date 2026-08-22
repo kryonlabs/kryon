@@ -57,6 +57,13 @@ screen Valid(viewport: Rectangle) {
     if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
         count = 302
     }
+    nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
+    nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = ScaleUIPx(200), .view_height = ScaleUIPx(120), .count = 1, .items = nav_items, .height = ScaleUIPx(40)})
+    if nav_result.clicked_route != -1 {
+        count = nav_result.clicked_route
+    }
+    tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
+    count = TabBar((TabBarProps){.bounds = {0, ScaleUIPx(32), ScaleUIPx(120), ScaleUIPx(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
     value := count + 1
     unused value
     if count == nil {
@@ -166,6 +173,10 @@ grep -Fq 'MenuSeparator' "$c"
 grep -Fq 'Menu menus[1]' "$c"
 grep -Fq 'MenuBarResult menu_result = MenuBar' "$c"
 grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
+grep -Fq 'BottomNavItem nav_items[1]' "$c"
+grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
+grep -Fq 'Tab tabs[1]' "$c"
+grep -Fq 'TabBar((TabBarProps)' "$c"
 grep -Fq 'EndFrame();' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 

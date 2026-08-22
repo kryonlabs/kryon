@@ -18,14 +18,14 @@ typedef struct {
     int content_padding_x;
     int current_frame;
     int block_click_frame;
-} UISidebarAccountHeaderSpec;
+} SidebarAccountHeaderProps;
 
 typedef struct {
     int pfp_clicked;
     int username_clicked;
     int friends_clicked;
     int height;
-} UISidebarAccountHeaderResult;
+} SidebarAccountHeaderResult;
 
 typedef struct {
     const char *title;
@@ -34,14 +34,14 @@ typedef struct {
     Texture2D close_icon;
     int max_width;
     int *scroll_offset;
-} UIProfilePicturePickerModal;
+} ProfilePicturePickerProps;
 
 typedef struct {
     int closed;
     int changed;
     int selected_index;
     UIIconType selected_icon_type;
-} UIProfilePicturePickerResult;
+} ProfilePicturePickerResult;
 
 typedef enum {
     UI_KSYNC_PROFILE_ICON_NONE = 0,

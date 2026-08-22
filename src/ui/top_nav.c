@@ -41,10 +41,10 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
                  font, c_text);
 }
 
-UITopNavResult
+TopNavResult
 DrawUITopNav(TopNavProps nav)
 {
-    UITopNavResult result = {-1, -1};
+    TopNavResult result = {-1, -1};
     int x = nav.x;
     int y = nav.y;
     int w = nav.width > 0 ? nav.width : ui_view_width;
@@ -97,7 +97,7 @@ DrawUITopNav(TopNavProps nav)
     }
 
     for(int i = 0; i < nav.action_count && nav.actions != NULL; i++) {
-        const UITopNavAction *action = &nav.actions[i];
+        const TopNavAction *action = &nav.actions[i];
         int ax = x + w - pad - action_total -
                  i * (action_total + action_gap);
         int ay = y + (h - action_total) / 2;

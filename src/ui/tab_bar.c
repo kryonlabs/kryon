@@ -7,7 +7,7 @@ ui_tab_bar_height(void)
 }
 
 int
-GetUITabBarHeight(void)
+GetTabBarHeight(void)
 {
     return ui_tab_bar_height();
 }
@@ -22,7 +22,7 @@ static int
 ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
                      int icon_tab_w)
 {
-    const UITab *tab;
+    const Tab *tab;
     int label_w;
     int w;
 
@@ -46,10 +46,10 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 }
 
 static int
-ui_pane_tab_bar_tab_width(UIPaneTabBar bar, int index, int min_tab_w,
+ui_pane_tab_bar_tab_width(PaneTabBar bar, int index, int min_tab_w,
                           int max_tab_w, int icon_tab_w)
 {
-    const UITab *tab;
+    const Tab *tab;
     int label_w;
     int w;
 
@@ -164,7 +164,7 @@ DrawUITabBar(TabBarProps bar)
     int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
 
     for(int i = 0; i < bar.count; i++) {
-        const UITab *tab = &bar.tabs[i];
+        const Tab *tab = &bar.tabs[i];
         int tab_w = equal_tabs ? bar_w / bar.count :
                     ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
         if(equal_tabs && i == bar.count - 1)
@@ -418,10 +418,10 @@ DrawUITabBar(TabBarProps bar)
     return clicked_tab;
 }
 
-UIPaneTabBarResult
-DrawUIPaneTabBar(UIPaneTabBar bar)
+PaneTabBarResult
+DrawUIPaneTabBar(PaneTabBar bar)
 {
-    UIPaneTabBarResult result = {-1, -1};
+    PaneTabBarResult result = {-1, -1};
     TabBarProps tabs = {0};
     Vector2 mouse = ui_mouse_world();
     int font = bar.font > 0 ? bar.font : Text12;
@@ -522,43 +522,43 @@ DrawUIPaneTabBar(UIPaneTabBar bar)
     return result;
 }
 
-UIPaneDropZone
-GetUIPaneDropZone(Rectangle bounds, Vector2 mouse)
+PaneDropZone
+GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 {
     int edge;
 
     if(!CheckCollisionPointRec(mouse, bounds))
-        return UI_PANE_DROP_NONE;
+        return PaneDropNone;
 
     edge = ScaleUIPx(46);
     if(mouse.x < bounds.x + (float)edge)
-        return UI_PANE_DROP_LEFT;
+        return PaneDropLeft;
     if(mouse.x > bounds.x + bounds.width - (float)edge)
-        return UI_PANE_DROP_RIGHT;
+        return PaneDropRight;
     if(mouse.y < bounds.y + (float)edge)
-        return UI_PANE_DROP_TOP;
+        return PaneDropTop;
     if(mouse.y > bounds.y + bounds.height - (float)edge)
-        return UI_PANE_DROP_BOTTOM;
+        return PaneDropBottom;
 
-    return UI_PANE_DROP_CENTER;
+    return PaneDropCenter;
 }
 
 void
-DrawUIPaneDropPreview(Rectangle bounds, UIPaneDropZone zone)
+DrawUIPaneDropPreview(Rectangle bounds, PaneDropZone zone)
 {
     Rectangle preview = bounds;
 
-    if(zone == UI_PANE_DROP_NONE)
+    if(zone == PaneDropNone)
         return;
 
-    if(zone == UI_PANE_DROP_LEFT) {
+    if(zone == PaneDropLeft) {
         preview.width = bounds.width * 0.35f;
-    } else if(zone == UI_PANE_DROP_RIGHT) {
+    } else if(zone == PaneDropRight) {
         preview.x = bounds.x + bounds.width * 0.65f;
         preview.width = bounds.width * 0.35f;
-    } else if(zone == UI_PANE_DROP_TOP) {
+    } else if(zone == PaneDropTop) {
         preview.height = bounds.height * 0.35f;
-    } else if(zone == UI_PANE_DROP_BOTTOM) {
+    } else if(zone == PaneDropBottom) {
         preview.y = bounds.y + bounds.height * 0.65f;
         preview.height = bounds.height * 0.35f;
     }

@@ -54,10 +54,10 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
                                    popup.min, popup.max, popup.value);
 }
 
-UIIconRowResult
+IconRowResult
 DrawUIBottomIconRow(BottomIconRowProps row)
 {
-    UIIconRowResult result = {-1, 0, 0};
+    IconRowResult result = {-1, 0, 0};
     int count = row.count;
     int icon_size = row.icon_size > 0 ? row.icon_size : ScaleUIPx(24);
     int icon_padding = row.icon_padding > 0 ? row.icon_padding : ScaleUIPx(10);

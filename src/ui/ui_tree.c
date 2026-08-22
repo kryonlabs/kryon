@@ -2013,7 +2013,7 @@ IconSliderPopup(IconSliderPopupProps popup)
     return DrawUIIconSliderPopup(popup);
 }
 
-UIIconRowResult
+IconRowResult
 BottomIconRow(BottomIconRowProps row)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
@@ -2021,7 +2021,7 @@ BottomIconRow(BottomIconRowProps row)
     return DrawUIBottomIconRow(row);
 }
 
-UIBottomNavResult
+BottomNavResult
 BottomNav(BottomNavProps nav)
 {
     ui_tree_add(0, UI_WIDGET_BOTTOM_NAV_NODE,
@@ -2029,14 +2029,14 @@ BottomNav(BottomNavProps nav)
     return DrawUIBottomNav(nav);
 }
 
-UIBottomNavConfigResult
+BottomNavConfigResult
 BottomNavConfig(BottomNavConfigProps modal)
 {
     ui_tree_add(modal.id, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return DrawUIBottomNavConfigModal(modal);
 }
 
-UITopNavResult
+TopNavResult
 TopNav(TopNavProps nav)
 {
     ui_tree_add(nav.id, UI_WIDGET_CUSTOM_NODE,
@@ -2044,7 +2044,7 @@ TopNav(TopNavProps nav)
     return DrawUITopNav(nav);
 }
 
-UIToolbarResult
+ToolbarResult
 Toolbar(ToolbarProps toolbar)
 {
     ui_tree_add(toolbar.id, UI_WIDGET_CUSTOM_NODE,
@@ -2052,7 +2052,7 @@ Toolbar(ToolbarProps toolbar)
     return DrawUIToolbar(toolbar);
 }
 
-UIToolbarHeaderResult
+ToolbarHeaderResult
 ToolbarHeader(ToolbarHeaderProps header)
 {
     ui_tree_add(header.toolbar.id, UI_WIDGET_CUSTOM_NODE,
@@ -2074,16 +2074,16 @@ TabBar(TabBarProps bar)
     return DrawUITabBar(bar);
 }
 
-UISidebarAccountHeaderResult
-SidebarAccountHeader(UISidebarAccountHeaderSpec header)
+SidebarAccountHeaderResult
+SidebarAccountHeader(SidebarAccountHeaderProps header)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){header.x, header.y, header.width, header.height}, &header);
     return DrawUISidebarAccountHeader(header);
 }
 
-UIProfilePicturePickerResult
-ProfilePicturePicker(UIProfilePicturePickerModal modal)
+ProfilePicturePickerResult
+ProfilePicturePicker(ProfilePicturePickerProps modal)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
     return DrawUIProfilePicturePickerModal(modal);

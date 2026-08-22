@@ -23,14 +23,14 @@ typedef struct {
 typedef struct {
     Texture2D icon;
     int disabled;
-} UIIconRowItem;
+} IconRowItem;
 
 typedef struct {
     int center_x;
     int view_width;
     int view_height;
     int count;
-    const UIIconRowItem *items;
+    const IconRowItem *items;
     int icon_size;
     int icon_padding;
     int gap;
@@ -46,7 +46,7 @@ typedef struct {
     int clicked_index;
     int y;
     int button_width;
-} UIIconRowResult;
+} IconRowResult;
 
 typedef struct {
     int route;
@@ -54,13 +54,13 @@ typedef struct {
     Texture2D icon;
     int active;
     int disabled;
-} UIBottomNavItem;
+} BottomNavItem;
 
 typedef struct {
     int view_width;
     int view_height;
     int count;
-    const UIBottomNavItem *items;
+    const BottomNavItem *items;
     int height;
     int icon_size;
     int icon_padding;
@@ -74,13 +74,13 @@ typedef struct {
     int clicked_route;
     int y;
     int height;
-} UIBottomNavResult;
+} BottomNavResult;
 
 typedef struct {
     int route;
     const char *label;
     Texture2D icon;
-} UIBottomNavOption;
+} BottomNavOption;
 
 typedef struct {
     int id;
@@ -89,7 +89,7 @@ typedef struct {
     int *route_count;
     int max_route_count;
     const char **slot_labels;
-    const UIBottomNavOption *options;
+    const BottomNavOption *options;
     int option_count;
     const char *add_label;
     const char *cancel_label;
@@ -101,12 +101,12 @@ typedef struct {
 typedef struct {
     int action;
     int changed;
-} UIBottomNavConfigResult;
+} BottomNavConfigResult;
 
 typedef struct {
     Texture2D icon;
     int disabled;
-} UIToolbarAction;
+} ToolbarAction;
 
 typedef struct {
     int id;
@@ -121,7 +121,7 @@ typedef struct {
     int dropdown_min_width;
     int dropdown_max_width;
     int dropdown_height;
-    const UIToolbarAction *actions;
+    const ToolbarAction *actions;
     int action_count;
     int action_icon_size;
     int action_icon_padding;
@@ -132,7 +132,7 @@ typedef struct {
 typedef struct {
     int selected_menu_item;
     int clicked_action;
-} UIToolbarResult;
+} ToolbarResult;
 
 typedef struct {
     ToolbarProps toolbar;
@@ -143,14 +143,14 @@ typedef struct {
 } ToolbarHeaderProps;
 
 typedef struct {
-    UIToolbarResult toolbar;
+    ToolbarResult toolbar;
     int leading_clicked;
-} UIToolbarHeaderResult;
+} ToolbarHeaderResult;
 
 typedef struct {
     Texture2D icon;
     int disabled;
-} UITopNavAction;
+} TopNavAction;
 
 typedef struct {
     int id;
@@ -165,7 +165,7 @@ typedef struct {
     int disabled;
     int dropdown_min_width;
     int dropdown_height;
-    const UITopNavAction *actions;
+    const TopNavAction *actions;
     int action_count;
     int action_icon_size;
     int action_icon_padding;
@@ -176,7 +176,7 @@ typedef struct {
 typedef struct {
     int selected_menu_item;
     int clicked_action;
-} UITopNavResult;
+} TopNavResult;
 
 typedef struct {
     const char *label;
@@ -184,11 +184,11 @@ typedef struct {
     int icon_size;
     int disabled;
     Color accent;
-} UISubtab;
+} Subtab;
 
 typedef struct {
     Rectangle bounds;
-    const UISubtab *tabs;
+    const Subtab *tabs;
     int count;
     int selected_index;
     int font;
@@ -202,11 +202,11 @@ typedef struct {
     Color accent;
     int italic;
     int closeable;
-} UITab;
+} Tab;
 
 typedef struct {
     Rectangle bounds;
-    const UITab *tabs;
+    const Tab *tabs;
     int count;
     int selected_index;
     int font;
@@ -219,17 +219,17 @@ typedef struct {
 } TabBarProps;
 
 typedef enum {
-    UI_PANE_DROP_NONE,
-    UI_PANE_DROP_CENTER,
-    UI_PANE_DROP_LEFT,
-    UI_PANE_DROP_RIGHT,
-    UI_PANE_DROP_TOP,
-    UI_PANE_DROP_BOTTOM
-} UIPaneDropZone;
+    PaneDropNone,
+    PaneDropCenter,
+    PaneDropLeft,
+    PaneDropRight,
+    PaneDropTop,
+    PaneDropBottom
+} PaneDropZone;
 
 typedef struct {
     Rectangle bounds;
-    const UITab *tabs;
+    const Tab *tabs;
     int count;
     int selected_index;
     int font;
@@ -237,15 +237,15 @@ typedef struct {
     int max_tab_width;
     int *scroll_offset;
     int *dragged_index;
-} UIPaneTabBar;
+} PaneTabBar;
 
 typedef struct {
     int clicked_index;
     int dragged_index;
-} UIPaneTabBarResult;
+} PaneTabBarResult;
 
-UIPaneDropZone GetUIPaneDropZone(Rectangle bounds, Vector2 mouse);
-int GetUITabBarHeight(void);
+PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
+int GetTabBarHeight(void);
 int TabBarHeight(void);
 
 #endif

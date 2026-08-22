@@ -169,10 +169,10 @@ ui_draw_pfp_fallback(int x, int y, int size, Color color)
                   size / 5, color);
 }
 
-UISidebarAccountHeaderResult
-DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
+SidebarAccountHeaderResult
+DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
 {
-    UISidebarAccountHeaderResult result = {0};
+    SidebarAccountHeaderResult result = {0};
     int height = header.height > 0 ? header.height : ScaleUIPx(138);
     int top_pad = ScaleUIPx(24);
     int avatar_r = ScaleUIPx(28);
@@ -274,10 +274,10 @@ DrawUISidebarAccountHeader(UISidebarAccountHeaderSpec header)
     return result;
 }
 
-UIProfilePicturePickerResult
-DrawUIProfilePicturePickerModal(UIProfilePicturePickerModal modal)
+ProfilePicturePickerResult
+DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
 {
-    UIProfilePicturePickerResult result = {0};
+    ProfilePicturePickerResult result = {0};
     static int default_scroll_offset = 0;
     int count = GetUIProfilePictureIconCount();
     int width = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(520);

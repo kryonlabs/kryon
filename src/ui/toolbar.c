@@ -1,9 +1,9 @@
 #include "ui_internal.h"
 
-UIToolbarResult
+ToolbarResult
 DrawUIToolbar(ToolbarProps toolbar)
 {
-    UIToolbarResult result = {-1, -1};
+    ToolbarResult result = {-1, -1};
     int side_padding = toolbar.side_padding < 0
                            ? 0
                            : (toolbar.side_padding > 0 ? toolbar.side_padding
@@ -84,10 +84,10 @@ DrawUIToolbar(ToolbarProps toolbar)
     return result;
 }
 
-UIToolbarHeaderResult
+ToolbarHeaderResult
 DrawUIToolbarHeader(ToolbarHeaderProps header)
 {
-    UIToolbarHeaderResult result;
+    ToolbarHeaderResult result;
     ToolbarProps toolbar = header.toolbar;
     int height = toolbar.height > 0 ? toolbar.height : ScaleUIPx(58);
     int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : ScaleUIPx(20);

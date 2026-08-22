@@ -1115,22 +1115,22 @@ typedef struct {
     Texture2D icon;
     int active;
     int disabled;
-} UIBottomNavItem;
+} BottomNavItem;
 
 typedef struct {
     int view_width;
     int view_height;
     int count;
-    const UIBottomNavItem *items;
+    const BottomNavItem *items;
     int height;
     int icon_size;
     int icon_padding;
     int side_margin;
     int bottom_margin;
     int max_button_width;
-} BottomNav;
+} BottomNavProps;
 
-UIBottomNavResult UIBottomNavNode(BottomNav nav);
+BottomNavResult BottomNav(BottomNavProps nav);
 ```
 
 #### Toolbar
@@ -1147,27 +1147,27 @@ typedef struct {
     int option_count;
     int *selected_index;
     // ... more fields
-} Toolbar;
+} ToolbarProps;
 
-UIToolbarResult UIToolbarNode(Toolbar toolbar);
-UIToolbarHeaderResult UIToolbarHeaderNode(ToolbarHeader header);
+ToolbarResult Toolbar(ToolbarProps toolbar);
+ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
 ```
 
 #### Sidebar Account Header
 
 ```c
-UISidebarAccountHeaderResult UISidebarAccountHeaderNode(SidebarAccountHeader header);
-UIProfilePicturePickerResult UIProfilePicturePickerNode(UIProfilePicturePickerModal modal);
+SidebarAccountHeaderResult SidebarAccountHeader(SidebarAccountHeaderProps header);
+ProfilePicturePickerResult ProfilePicturePicker(ProfilePicturePickerProps modal);
 ```
 
-`UISidebarAccountHeaderNode` draws the standard account top area with banner,
+`SidebarAccountHeader` draws the standard account top area with banner,
 username, subtitle, friends summary, and pfp. `content_padding_x` overrides
 the internal horizontal inset while the header bounds can fill its parent. It
 returns separate click flags
 for pfp, username, and friends so applications keep ownership of route changes
 and persistence.
 
-`UIProfilePicturePickerNode` draws the shared pfp selection modal over the
+`ProfilePicturePicker` draws the shared pfp selection modal over the
 standard built-in pfp icon set and writes the selected `UIIconType` when the
 user chooses one.
 
@@ -1180,11 +1180,11 @@ typedef struct {
     int icon_size;
     int disabled;
     Color accent;
-} UITab;
+} Tab;
 
 typedef struct {
     Rectangle bounds;
-    const UITab *tabs;
+    const Tab *tabs;
     int count;
     int selected_index;
     int font;

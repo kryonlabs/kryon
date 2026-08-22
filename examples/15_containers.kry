@@ -11,7 +11,7 @@ state {
     tab: int = 0
     split: int = 260
     open: int = 1
-    tabs: [3] const UITab = {{"Files"},{"Search"},{"Output"}}
+    tabs: [3] const Tab = {{"Files"},{"Search"},{"Output"}}
 }
 
 screen ContainersExample(viewport: Rectangle) {
