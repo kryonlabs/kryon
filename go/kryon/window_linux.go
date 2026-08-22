@@ -187,6 +187,41 @@ func (r *windowRuntime) FrameOps() []FrameOp {
 	return nil
 }
 
+func (r *windowRuntime) MousePosition() Vector2 {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.MousePosition()
+	}
+	return Vector2{}
+}
+
+func (r *windowRuntime) MouseButtonPressed(button int32) bool {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.MouseButtonPressed(button)
+	}
+	return false
+}
+
+func (r *windowRuntime) MouseWheelMove() float32 {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.MouseWheelMove()
+	}
+	return 0
+}
+
+func (r *windowRuntime) KeyPressed(key int32) bool {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.KeyPressed(key)
+	}
+	return false
+}
+
+func (r *windowRuntime) CharPressed() int32 {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.CharPressed()
+	}
+	return 0
+}
+
 const (
 	x11EventKeyPress        = 2
 	x11EventButtonPress     = 4

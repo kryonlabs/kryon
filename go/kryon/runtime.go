@@ -618,15 +618,18 @@ type runtime struct {
 }
 
 type themePalette struct {
-	background  Color
-	surface     Color
-	text        Color
-	button      Color
-	buttonHover Color
-	icon        Color
-	link        Color
-	selected    Color
-	selectedHot Color
+	background   Color
+	surface      Color
+	text         Color
+	button       Color
+	buttonHover  Color
+	icon         Color
+	link         Color
+	selected     Color
+	selectedHot  Color
+	selectedText Color
+	border       Color
+	focus        Color
 }
 
 type layoutFrame struct {
@@ -1190,23 +1193,35 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
 	theme := r.theme()
+	border := theme.border
+	if r.focusID == focusID || focused != nil && *focused {
+		border = theme.focus
+	}
 	op := FrameOp{
-		Kind:        kind,
-		Bounds:      bounds,
-		Text:        text,
-		Color:       theme.background,
-		BorderColor: theme.buttonHover,
-		TextColor:   theme.text,
-		FontSize:    font,
-		FocusID:     focusID,
-		Focused:     r.focusID == focusID,
-		Secure:      secure,
+		Kind:              kind,
+		Bounds:            bounds,
+		Text:              text,
+		Color:             theme.background,
+		BorderColor:       border,
+		TextColor:         theme.text,
+		SelectionColor:    theme.selectedHot,
+		SelectedTextColor: theme.selectedText,
+		CursorColor:       theme.focus,
+		FontSize:          font,
+		FocusID:           focusID,
+		Focused:           r.focusID == focusID,
+		Secure:            secure,
 	}
 	if cursor != nil {
 		op.Cursor = *cursor
 	}
 	if focused != nil {
 		op.Focused = *focused
+	}
+	if sel, ok := r.selection[focusID]; ok {
+		start, end := selectionRange(sel)
+		op.SelectionStart = int32(start)
+		op.SelectionEnd = int32(end)
 	}
 	r.record(op)
 }

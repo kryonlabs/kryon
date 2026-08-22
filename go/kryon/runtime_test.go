@@ -709,6 +709,8 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 @define-color theme_bg_color #161925;
 @define-color theme_base_color #181b28;
 @define-color theme_selected_bg_color #c50ed2;
+@define-color theme_selected_fg_color #fefefe;
+@define-color borders #090a0f;
 `
 	if err := os.WriteFile(filepath.Join(themeDir, "gtk.css"), []byte(css), 0o644); err != nil {
 		t.Fatal(err)
@@ -729,9 +731,65 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 	if got, want := rt.GetThemeLink(), (Color{0xc5, 0x0e, 0xd2, 0xff}); got != want {
 		t.Fatalf("system CSS selected/link = %#v, want %#v", got, want)
 	}
+	theme := rt.theme()
+	if got, want := theme.selectedText, (Color{0xfe, 0xfe, 0xfe, 0xff}); got != want {
+		t.Fatalf("system CSS selected text = %#v, want %#v", got, want)
+	}
+	if got, want := theme.border, (Color{0x09, 0x0a, 0x0f, 0xff}); got != want {
+		t.Fatalf("system CSS border = %#v, want %#v", got, want)
+	}
+	if got, want := theme.focus, (Color{0xc5, 0x0e, 0xd2, 0xff}); got != want {
+		t.Fatalf("system CSS focus = %#v, want %#v", got, want)
+	}
 	if !systemPrefersDark() {
 		t.Fatal("system CSS palette should prefer dark")
 	}
+}
+
+func TestTextFieldFrameOpsCarryThemeSelectionColors(t *testing.T) {
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	rt.SetThemeSource(ThemeSourceApp)
+	rt.SetCurrentTheme(int32(ThemeCobalt), 1)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	text := make([]byte, 32)
+	copy(text, "abcde")
+	cursor := int32(4)
+	focused := true
+	rt.SetSelection(77, 1, 4)
+
+	BeginFrame()
+	TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 160, Height: 32},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        77,
+		Font:           Text16,
+	})
+	EndFrame()
+
+	ops := FrameOps()
+	for _, op := range ops {
+		if op.Kind != FrameOpTextField {
+			continue
+		}
+		if got, want := op.BorderColor, rt.theme().focus; got != want {
+			t.Fatalf("focused field border = %#v, want focus %#v", got, want)
+		}
+		if got, want := op.SelectionColor, rt.theme().selectedHot; got != want {
+			t.Fatalf("selection color = %#v, want %#v", got, want)
+		}
+		if got, want := op.SelectedTextColor, rt.theme().selectedText; got != want {
+			t.Fatalf("selected text color = %#v, want %#v", got, want)
+		}
+		if op.SelectionStart != 1 || op.SelectionEnd != 4 {
+			t.Fatalf("selection range = %d..%d, want 1..4", op.SelectionStart, op.SelectionEnd)
+		}
+		return
+	}
+	t.Fatalf("text field op not found: %#v", ops)
 }
 
 func TestAppThemeCatalogHonorsThemeID(t *testing.T) {

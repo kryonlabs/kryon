@@ -147,14 +147,8 @@ func fontTextAdvance(text string, cursor int32, fontSize int32, fontID uint32) (
 	if face == nil {
 		return 0, false
 	}
-	runes := []rune(text)
-	if cursor < 0 {
-		cursor = 0
-	}
-	if int(cursor) > len(runes) {
-		cursor = int32(len(runes))
-	}
-	return xfont.MeasureString(face, string(runes[:cursor])).Round(), true
+	pos := clampByteCursor(text, int(cursor))
+	return xfont.MeasureString(face, text[:pos]).Round(), true
 }
 
 func fontTextHeight(fontSize int32, fontID uint32) (int32, bool) {

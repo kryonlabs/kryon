@@ -6,6 +6,7 @@ import (
 	"image/draw"
 	"math"
 	"strings"
+	"unicode/utf8"
 )
 
 // RenderFrame paints a native Go frame operation stream into an RGBA image.
@@ -109,12 +110,35 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 	if op.TextColor.A != 0 {
 		text = op.TextColor
 	}
+	if op.SelectionStart != op.SelectionEnd {
+		start, end := orderedInt32(op.SelectionStart, op.SelectionEnd)
+		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
+		ex := x + textAdvance(op.Text, end, op.FontSize, op.FontID)
+		selection := Color{58, 110, 190, 255}
+		if op.SelectionColor.A != 0 {
+			selection = op.SelectionColor
+		}
+		fillRectPixels(img, sx, int(round(op.Bounds.Y))+3, maxInt(1, ex-sx), maxInt(1, int(round(op.Bounds.Height))-6), selection)
+	}
 	drawText(img, op.Text, x, y, op.FontSize, text, op.FontID)
+	if op.SelectionStart != op.SelectionEnd {
+		start, end := orderedInt32(op.SelectionStart, op.SelectionEnd)
+		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
+		selected := text
+		if op.SelectedTextColor.A != 0 {
+			selected = op.SelectedTextColor
+		}
+		drawText(img, sliceTextByByteCursor(op.Text, start, end), sx, y, op.FontSize, selected, op.FontID)
+	}
 	if op.Focused {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5
-		drawVertical(img, cursorX, top, bottom, border)
+		cursor := border
+		if op.CursorColor.A != 0 {
+			cursor = op.CursorColor
+		}
+		drawVertical(img, cursorX, top, bottom, cursor)
 	}
 }
 
@@ -240,11 +264,41 @@ func textAdvance(text string, cursor int32, fontSize int32, fontID uint32) int {
 	if cursor < 0 {
 		cursor = 0
 	}
-	runes := []rune(text)
-	if int(cursor) > len(runes) {
-		cursor = int32(len(runes))
+	return byteCursorRuneCount(text, int(cursor)) * 6 * glyphScale(fontSize)
+}
+
+func orderedInt32(a, b int32) (int32, int32) {
+	if a < b {
+		return a, b
 	}
-	return int(cursor) * 6 * glyphScale(fontSize)
+	return b, a
+}
+
+func sliceTextByByteCursor(text string, start, end int32) string {
+	s := clampByteCursor(text, int(start))
+	e := clampByteCursor(text, int(end))
+	if s > e {
+		s, e = e, s
+	}
+	return text[s:e]
+}
+
+func byteCursorRuneCount(text string, cursor int) int {
+	cursor = clampByteCursor(text, cursor)
+	return len([]rune(text[:cursor]))
+}
+
+func clampByteCursor(text string, cursor int) int {
+	if cursor < 0 {
+		return 0
+	}
+	if cursor > len(text) {
+		return len(text)
+	}
+	for cursor > 0 && cursor < len(text) && !utf8.RuneStart(text[cursor]) {
+		cursor--
+	}
+	return cursor
 }
 
 func textHeight(fontSize int32, fontID uint32) int32 {

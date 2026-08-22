@@ -57,6 +57,34 @@ func TestX11KeyTranslation(t *testing.T) {
 	}
 }
 
+func TestWindowRuntimeDelegatesCompatInput(t *testing.T) {
+	base := New(AppConfig{}).(*runtime)
+	rt := &windowRuntime{Runtime: base}
+
+	base.QueueMouseButton(MouseButtonLeft, 12, 34)
+	if got, want := rt.MousePosition(), (Vector2{X: 12, Y: 34}); got != want {
+		t.Fatalf("delegated mouse position = %#v, want %#v", got, want)
+	}
+	if !rt.MouseButtonPressed(MouseButtonLeft) {
+		t.Fatal("delegated mouse button was not pressed")
+	}
+
+	base.QueueMouseWheel(-1)
+	if got := rt.MouseWheelMove(); got != -1 {
+		t.Fatalf("delegated wheel = %v, want -1", got)
+	}
+
+	base.QueueKey(KeyEscape)
+	if !rt.KeyPressed(KeyEscape) {
+		t.Fatal("delegated key was not pressed")
+	}
+
+	base.QueueText("x")
+	if got := rt.CharPressed(); got != 'x' {
+		t.Fatalf("delegated char = %q, want x", rune(got))
+	}
+}
+
 func TestX11AuthReadsMITCookie(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".Xauthority")

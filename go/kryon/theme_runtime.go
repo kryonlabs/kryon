@@ -70,7 +70,7 @@ func catalogPalette(bgR, bgG, bgB, surfaceR, surfaceG, surfaceB, textR, textG, t
 		icon:        Color{iconR, iconG, iconB, 255},
 		link:        Color{linkR, linkG, linkB, 255},
 	}
-	return withSelectionColors(p)
+	return completeThemePalette(p)
 }
 
 func themeCatalogPalette(id ThemeId, dark bool) themePalette {
@@ -143,7 +143,7 @@ func defaultSystemPalette() systemThemePalette {
 		icon:        Color{0x10, 0x10, 0x10, 0xFF},
 		link:        Color{0x20, 0x70, 0xC0, 0xFF},
 	}
-	p = withSelectionColors(p)
+	p = completeThemePalette(p)
 	return systemThemePalette{themePalette: p, name: "System"}
 }
 
@@ -170,7 +170,7 @@ func materialSystemPalette(dark bool) systemThemePalette {
 			link:        Color{0x67, 0x50, 0xA4, 0xFF},
 		}
 	}
-	p = withSelectionColors(p)
+	p = completeThemePalette(p)
 	return systemThemePalette{themePalette: p, name: "Material", available: true, prefersDark: dark, supportsMode: true}
 }
 
@@ -204,6 +204,11 @@ func gtkCSSPalette() (systemThemePalette, bool) {
 	if !haveSelected {
 		selected, haveSelected = cssDefineColor(text, "selected_bg_color")
 	}
+	selectedText, haveSelectedText := cssDefineColor(text, "theme_selected_fg_color")
+	if !haveSelectedText {
+		selectedText, haveSelectedText = cssDefineColor(text, "selected_fg_color")
+	}
+	border, haveBorder := cssDefineColor(text, "borders")
 	if !haveBase && !haveBG {
 		return systemThemePalette{}, false
 	}
@@ -228,12 +233,20 @@ func gtkCSSPalette() (systemThemePalette, bool) {
 	p.buttonHover = lightenColor(p.button, 18)
 	if haveSelected {
 		p.link = selected
+		p.focus = selected
 	} else {
 		p.link = p.buttonHover
+		p.focus = p.link
+	}
+	if haveSelectedText {
+		p.selectedText = selectedText
+	}
+	if haveBorder {
+		p.border = border
 	}
 	p.icon = p.text
 	p = systemThemePalette{
-		themePalette: withSelectionColors(p.themePalette),
+		themePalette: completeThemePalette(p.themePalette),
 		name:         theme,
 		available:    true,
 		prefersDark:  luminance(p.text) > luminance(p.background),
@@ -576,10 +589,41 @@ func fileExists(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
-func withSelectionColors(p themePalette) themePalette {
-	p.selected = mixColor(p.surface, p.link, 0.35)
-	p.selectedHot = mixColor(p.surface, p.link, 0.55)
+func completeThemePalette(p themePalette) themePalette {
+	if p.link.A == 0 {
+		p.link = p.buttonHover
+	}
+	if p.selected.A == 0 {
+		p.selected = mixColor(p.surface, p.link, 0.35)
+	}
+	if p.selectedHot.A == 0 {
+		p.selectedHot = mixColor(p.surface, p.link, 0.55)
+	}
+	if p.selectedText.A == 0 {
+		p.selectedText = readableTextOn(p.selectedHot, p.text, p.background)
+	}
+	if p.border.A == 0 {
+		p.border = mixColor(p.surface, p.text, 0.18)
+	}
+	if p.focus.A == 0 {
+		p.focus = p.link
+	}
 	return p
+}
+
+func readableTextOn(surface, primary, alternate Color) Color {
+	if colorContrast(surface, primary) >= colorContrast(surface, alternate) {
+		return primary
+	}
+	return alternate
+}
+
+func colorContrast(a, b Color) int {
+	d := luminance(a) - luminance(b)
+	if d < 0 {
+		return -d
+	}
+	return d
 }
 
 func lightenColor(c Color, delta int) Color {
