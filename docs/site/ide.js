@@ -9,6 +9,8 @@
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
   var compileButton = document.querySelector("[data-action='compile']");
   var sampleButton = document.querySelector("[data-action='load-sample']");
+  var menuToggle = document.querySelector(".menu-toggle");
+  var headerNav = document.getElementById("header-nav");
   var k2irMod = null;
   var k2bMod = null;
   var activeTab = "kir";
@@ -36,6 +38,13 @@
     "}"
   ].join("\n");
   source.value = sample;
+
+  if (menuToggle && headerNav) {
+    menuToggle.addEventListener("click", function() {
+      var open = headerNav.classList.toggle("is-open");
+      menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
 
   function setStatus(text) {
     if (status) status.textContent = text;
