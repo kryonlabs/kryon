@@ -197,9 +197,9 @@ void SetUIStyleTokens(UIStyleTokens tokens);
 void ClearUIStyleTokensOverride(void);
 
 int EditUIText(UITextEdit edit);
-void QueueUITextInputCodepoint(int codepoint);
-void QueueUITextInputBackspace(void);
-void QueueUITextInputEnter(void);
+void QueueTextInputCodepoint(int codepoint);
+void QueueTextInputBackspace(void);
+void QueueTextInputEnter(void);
 int GetUITextAreaSelection(int focus_id, int *start, int *end);
 void SetUITextAreaSelection(int focus_id, int anchor, int cursor);
 

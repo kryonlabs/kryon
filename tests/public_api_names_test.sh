@@ -75,6 +75,20 @@ if [ -n "$api_doc_matches" ]; then
     exit 1
 fi
 
+public_legacy_input='Queue''UITextInput'
+public_legacy_matches="$(
+    rg -n "${public_legacy_input}[A-Za-z0-9_]*" \
+        include/ui_controls.h src/ui/ui.c docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_legacy_matches" ]; then
+    echo "Public text input queue APIs must use clean QueueTextInput* names:"
+    echo "$public_legacy_matches"
+    exit 1
+fi
+
 frame_begin='Begin''Drawing'
 frame_end='End''Drawing'
 frame_alias_matches="$(

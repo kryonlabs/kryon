@@ -1070,7 +1070,7 @@ DrawFittedUITextInRect(const char *text, Rectangle rect,
 }
 
 void
-QueueUITextInputCodepoint(int codepoint)
+QueueTextInputCodepoint(int codepoint)
 {
     if(codepoint <= 0)
         return;
@@ -1080,14 +1080,14 @@ QueueUITextInputCodepoint(int codepoint)
 }
 
 void
-QueueUITextInputBackspace(void)
+QueueTextInputBackspace(void)
 {
     if(g_ui_text_input_backspace_count < UI_TEXT_INPUT_QUEUE_MAX)
         g_ui_text_input_backspace_count++;
 }
 
 void
-QueueUITextInputEnter(void)
+QueueTextInputEnter(void)
 {
     if(g_ui_text_input_enter_count < UI_TEXT_INPUT_QUEUE_MAX)
         g_ui_text_input_enter_count++;
