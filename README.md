@@ -201,6 +201,9 @@ windows/renderers: it carries resolved bounds, text, colors, focus, button
 state, and redacted secure text without importing cgo or `go/kryui`.
 `RenderFrame` and `RenderCurrentFrame` provide a dependency-free software
 renderer that turns those operations into an `image.RGBA`.
+`NewHost` owns a persistent native Go runtime, runs generated or handwritten
+frame functions, queues input, exposes frame operations, and renders frames
+without cgo.
 
 `k2g` output is compiled against that native runtime by the test suite, and the
 generated Go/C parity tests drive both runtimes through the same scripted input.

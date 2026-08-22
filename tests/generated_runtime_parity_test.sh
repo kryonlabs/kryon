@@ -95,32 +95,42 @@ type snapshot struct {
 	Clipboard          string `json:"clipboard"`
 }
 
+var host *kryon.Host
+
 func drawForm() {
-	kryon.BeginFrame()
-	GeneratedForm_FormFrame(GeneratedFormStateValue)
-	kryon.EndFrame()
+	host.Draw(func() {
+		kryon.BeginFrame()
+		GeneratedForm_FormFrame(GeneratedFormStateValue)
+		kryon.EndFrame()
+	})
 }
 
 func drawFields() {
-	kryon.BeginFrame()
-	Fields_FieldsFrame(FieldsStateValue)
-	kryon.EndFrame()
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Fields_FieldsFrame(FieldsStateValue)
+		kryon.EndFrame()
+	})
 }
 
 func drawFocus() {
-	kryon.BeginFrame()
-	Focus_FocusFrame(FocusStateValue)
-	kryon.EndFrame()
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Focus_FocusFrame(FocusStateValue)
+		kryon.EndFrame()
+	})
 }
 
 func drawButtons() {
-	kryon.BeginFrame()
-	ButtonsLayout_ButtonsFrame(ButtonsLayoutStateValue)
-	kryon.EndFrame()
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ButtonsLayout_ButtonsFrame(ButtonsLayoutStateValue)
+		kryon.EndFrame()
+	})
 }
 
 func requireFrameOps(label string, requirements map[kryon.FrameOpKind]int) {
-	ops := kryon.FrameOps()
+	ops := host.FrameOps()
 	if len(ops) == 0 {
 		panic(label + ": generated Go produced no frame operations")
 	}
@@ -139,7 +149,7 @@ func requireFrameOps(label string, requirements map[kryon.FrameOpKind]int) {
 }
 
 func requireRenderedFrame(label string, minChangedPixels int) {
-	img := kryon.RenderCurrentFrame()
+	img := host.Render()
 	bounds := img.Bounds()
 	if bounds.Dx() != 640 || bounds.Dy() != 480 {
 		panic(fmt.Sprintf("%s: rendered frame size = %dx%d, want 640x480", label, bounds.Dx(), bounds.Dy()))
@@ -186,8 +196,8 @@ func text128(buf [128]byte) string {
 }
 
 func main() {
-	rt := kryon.Open(kryon.AppConfig{Width: 640, Height: 480, FPS: 60})
-	driver := rt.(inputDriver)
+	host = kryon.NewHost(kryon.AppConfig{Width: 640, Height: 480, FPS: 60})
+	driver := host.Runtime().(inputDriver)
 
 	form := GeneratedFormStateValue
 	fields := FieldsStateValue
