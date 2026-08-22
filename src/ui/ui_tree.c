@@ -41,6 +41,7 @@ typedef struct UIWidgetOps {
 } UIWidgetOps;
 
 static UIWidgetNode *ui_tree_node(UINodeId id);
+static void DrawTree(void);
 
 static char *
 ui_tree_strdup(const char *text)
@@ -486,7 +487,7 @@ EndUI(void)
     input = GetTime();
     UIUpdateTree();
     update = GetTime();
-    DrawUITree();
+    DrawTree();
     Overlays();
     draw = GetTime();
     trace_frame++;
@@ -1082,8 +1083,8 @@ UIUpdateTree(void)
     }
 }
 
-void
-DrawUITree(void)
+static void
+DrawTree(void)
 {
     int i;
 
