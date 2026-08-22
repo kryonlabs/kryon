@@ -86,7 +86,7 @@ is_runtime_go_type(const char *type)
 {
     static const char *types[] = {
         "Vector2", "Rectangle", "Color", "Texture2D", "UIKey", "UISide",
-        "ButtonStyle", "UISyntaxMode", "ThemeStyle", "ThemeSource",
+        "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "PictureFit", "TextInputStyle", "ButtonProps",
         "IconButtonProps", "HrefProps", "TextFieldProps", "TextAreaProps",
         "ColumnProps", "RowProps", "UIFrame", "UIGrid", "ParagraphSpec",
@@ -1358,6 +1358,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"ButtonStyleDanger", "ButtonStyleDanger"},
                     {"ButtonStyleTab", "ButtonStyleTab"},
                     {"ButtonStyleTabSelected", "ButtonStyleTabSelected"},
+                    {"SyntaxNone", "SyntaxNone"},
+                    {"SyntaxKry", "SyntaxKry"},
+                    {"SyntaxC", "SyntaxC"},
+                    {"SyntaxMake", "SyntaxMake"},
                     {"THEME_STYLE_SYSTEM", "THEME_STYLE_SYSTEM"},
                     {"THEME_STYLE_RETRO", "THEME_STYLE_RETRO"},
                     {"THEME_STYLE_MATERIAL", "THEME_STYLE_MATERIAL"},

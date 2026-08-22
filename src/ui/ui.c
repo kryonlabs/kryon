@@ -2076,7 +2076,7 @@ ui_syntax_make_keyword(const char *text, int len)
 }
 
 static Color
-ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
+ui_syntax_token_color(SyntaxMode syntax, const char *text, int len,
                       int first_token, TextInputStyle style)
 {
     int dark = GetEffectiveThemeDarkMode();
@@ -2088,7 +2088,7 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
 
     if(len <= 0)
         return style.text;
-    if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
+    if((syntax == SyntaxKry || syntax == SyntaxMake) &&
        first_token && text[0] == '#')
         return comment;
     if(text[0] == '"')
@@ -2096,24 +2096,24 @@ ui_syntax_token_color(UISyntaxMode syntax, const char *text, int len,
     if((text[0] >= '0' && text[0] <= '9') ||
        (text[0] == '-' && len > 1 && text[1] >= '0' && text[1] <= '9'))
         return number;
-    if(syntax == UI_SYNTAX_KRY &&
+    if(syntax == SyntaxKry &&
        (text[0] == '/' ||
         (text[0] == '.' && len > 1 && (text[1] == '/' || text[1] == '.')) ||
         text[0] == '%'))
         return path;
-    if(syntax == UI_SYNTAX_KRY && ui_syntax_kry_keyword(text, len))
+    if(syntax == SyntaxKry && ui_syntax_kry_keyword(text, len))
         return keyword;
-    if(syntax == UI_SYNTAX_C && ui_syntax_c_keyword(text, len))
+    if(syntax == SyntaxC && ui_syntax_c_keyword(text, len))
         return keyword;
-    if(syntax == UI_SYNTAX_MAKE && ui_syntax_make_keyword(text, len))
+    if(syntax == SyntaxMake && ui_syntax_make_keyword(text, len))
         return keyword;
-    if(syntax == UI_SYNTAX_MAKE && len > 1 && text[0] == '$')
+    if(syntax == SyntaxMake && len > 1 && text[0] == '$')
         return path;
     return style.text;
 }
 
 static int
-ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
+ui_syntax_token_len(const char *line, int len, int index, SyntaxMode syntax,
                     int first_token)
 {
     int i = index;
@@ -2125,10 +2125,10 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
             i++;
         return i - index;
     }
-    if((syntax == UI_SYNTAX_KRY || syntax == UI_SYNTAX_MAKE) &&
+    if((syntax == SyntaxKry || syntax == SyntaxMake) &&
        first_token && line[i] == '#')
         return len - index;
-    if(syntax == UI_SYNTAX_C && line[i] == '/' && i + 1 < len &&
+    if(syntax == SyntaxC && line[i] == '/' && i + 1 < len &&
        line[i + 1] == '/')
         return len - index;
     if(line[i] == '"') {
@@ -2144,7 +2144,7 @@ ui_syntax_token_len(const char *line, int len, int index, UISyntaxMode syntax,
         return i - index;
     }
     if(line[i] == '/' || line[i] == '%' ||
-       (syntax == UI_SYNTAX_MAKE && line[i] == '$') ||
+       (syntax == SyntaxMake && line[i] == '$') ||
        (line[i] == '.' && i + 1 < len && (line[i + 1] == '/' || line[i + 1] == '.'))) {
         i++;
         while(i < len && !isspace((unsigned char)line[i]) &&
@@ -2205,7 +2205,7 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 
 static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
-                    UISyntaxMode syntax, TextInputStyle style)
+                    SyntaxMode syntax, TextInputStyle style)
 {
     char token[1024];
     int offset = 0;
@@ -2237,7 +2237,7 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
 static void
 ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
-                       int scroll_y, int wrap_width, UISyntaxMode syntax,
+                       int scroll_y, int wrap_width, SyntaxMode syntax,
                        TextInputStyle style, int selection_start,
                        int selection_end)
 {
@@ -2282,7 +2282,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                                                 text_x, draw_y, line_font,
                                                 (Color){0, 96, 192, 72},
                                                 selection_start, selection_end);
-                    if(syntax == UI_SYNTAX_NONE)
+                    if(syntax == SyntaxNone)
                         DrawUIText(line, text_x, draw_y, line_font, style.text);
                     else
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,

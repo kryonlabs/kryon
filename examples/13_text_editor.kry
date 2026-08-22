@@ -16,7 +16,7 @@ state {
 
 screen TextEditorExample(viewport: Rectangle) {
     Background(GetThemeBackground())
-    TextArea((TextAreaProps){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,Text16,6,401,"Write here",UI_SYNTAX_NONE,{0},NULL,NULL})
+    TextArea((TextAreaProps){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,Text16,6,401,"Write here",SyntaxNone,{0},NULL,NULL})
     Text("Ctrl/Cmd+C,X,and V work in the text area.", 40, 260, Text16, GetThemeText())
     if Button((ButtonProps){.bounds = {40, 300, 110, 34}, .label = "Copy", .style = ButtonStyleSecondary, .font = Text16, .id = 101}) {
         SetUIClipboardTextValue(text_value)

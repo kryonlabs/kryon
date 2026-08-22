@@ -249,17 +249,20 @@ if [ -n "$public_text_platform_matches" ]; then
 fi
 
 public_text_input_matches="$(
-    rg -n '\b(UITextInputStyle|UITextInputFilter|UITextEdit|EditUIText|GetUITextAreaSelection|SetUITextAreaSelection|UITextInput)\b' \
+    rg -n '\b(UITextInputStyle|UITextInputFilter|UITextEdit|EditUIText|GetUITextAreaSelection|SetUITextAreaSelection|UITextInput|UISyntaxMode|UISyntax[A-Za-z0-9_]*|UI_SYNTAX_[A-Z_]+)\b' \
+        go/kryon \
+        cmd/k2g \
         include/ui_controls.h \
         docs/API.md \
         examples \
+        src/ui/ui.c \
         src/ui/ui_node_registry.c \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
 if [ -n "$public_text_input_matches" ]; then
-    echo "Public text input APIs must use TextInputStyle/TextEdit/EditText names without legacy UIText prefixes:"
+    echo "Public text input APIs must use TextInputStyle/TextEdit/SyntaxMode names without legacy UIText/UISyntax prefixes:"
     echo "$public_text_input_matches"
     exit 1
 fi

@@ -40,7 +40,7 @@ type Texture2D struct {
 type UIKey uint64
 type UISide int32
 type ButtonStyle int32
-type UISyntaxMode int32
+type SyntaxMode int32
 type ThemeStyle int32
 type ThemeSource int32
 type ThemeMode int32
@@ -75,10 +75,10 @@ const (
 	ButtonStyleTab
 	ButtonStyleTabSelected
 
-	UISyntaxNone UISyntaxMode = iota
-	UISyntaxKry
-	UISyntaxC
-	UISyntaxMake
+	SyntaxNone SyntaxMode = 0
+	SyntaxKry  SyntaxMode = 1
+	SyntaxC    SyntaxMode = 2
+	SyntaxMake SyntaxMode = 3
 
 	ThemeStyleSystem ThemeStyle = iota
 	ThemeStyleRetro
@@ -215,7 +215,7 @@ type TextAreaProps struct {
 	LineGap        int32
 	FocusID        int32
 	Placeholder    string
-	Syntax         UISyntaxMode
+	Syntax         SyntaxMode
 	Style          TextInputStyle
 	ContentVersion int32
 }

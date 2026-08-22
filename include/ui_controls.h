@@ -22,11 +22,11 @@ typedef enum {
 } ButtonStyle;
 
 typedef enum {
-    UI_SYNTAX_NONE,
-    UI_SYNTAX_KRY,
-    UI_SYNTAX_C,
-    UI_SYNTAX_MAKE
-} UISyntaxMode;
+    SyntaxNone,
+    SyntaxKry,
+    SyntaxC,
+    SyntaxMake
+} SyntaxMode;
 
 typedef struct {
     Color background;
@@ -130,7 +130,7 @@ typedef struct {
     int line_gap;
     int focus_id;
     const char *placeholder;
-    UISyntaxMode syntax;
+    SyntaxMode syntax;
     TextInputStyle style;
     TextInputFilter filter;
     void *filter_user_data;

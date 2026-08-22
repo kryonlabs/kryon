@@ -43,6 +43,9 @@ state {
     lines_y: int = 0
     field_text: [64] char = ""
     field_cursor: int = 0
+    area_text: [128] char = ""
+    area_cursor: int = 0
+    area_scroll: int = 0
 }
 
 app "Smoke" {
@@ -115,6 +118,7 @@ frame main {
     SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), Text16, GetThemeText())
     ShowToast("toast from kry")
     TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
+    TextArea((TextAreaProps){.bounds = {ScaleUIPx(250), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     Text("ro", ScaleUIPx(150), ScaleUIPx(152), Text16, GetThemeText())
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
@@ -246,6 +250,7 @@ grep -q 'CanvasGrid(' "$out"
 grep -q 'SelectableText(' "$out"
 grep -q 'ShowToast("toast from kry")' "$out"
 grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
+grep -q 'kryon.TextArea(kryon.TextAreaProps{.*Syntax: kryon.SyntaxNone' "$out"
 grep -q 'kryon.Radio(kryon.RadioButtonProps{' "$out"
 grep -q 'kryon.Spinbox(kryon.SpinboxProps{' "$out"
 grep -q 'kryon.Combobox(kryon.ComboboxProps{' "$out"
