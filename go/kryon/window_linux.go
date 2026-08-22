@@ -3,6 +3,7 @@
 package kryon
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -277,23 +278,96 @@ func openX11Window(config AppConfig) (*x11Window, error) {
 }
 
 func x11Socket(display string) string {
-	if strings.HasPrefix(display, ":") {
-		display = display[1:]
-	}
-	if i := strings.IndexAny(display, "."); i >= 0 {
-		display = display[:i]
-	}
-	n, err := strconv.Atoi(display)
+	number := x11DisplayNumber(display)
+	n, err := strconv.Atoi(number)
 	if err != nil {
 		n = 0
 	}
 	return fmt.Sprintf("/tmp/.X11-unix/X%d", n)
 }
 
+func x11DisplayNumber(display string) string {
+	if strings.HasPrefix(display, ":") {
+		display = display[1:]
+	}
+	if i := strings.IndexAny(display, "."); i >= 0 {
+		display = display[:i]
+	}
+	if _, err := strconv.Atoi(display); err != nil {
+		return "0"
+	}
+	return display
+}
+
+func x11Auth(display string) ([]byte, []byte) {
+	path := os.Getenv("XAUTHORITY")
+	if path == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			path = home + "/.Xauthority"
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil
+	}
+	wantNumber := []byte(x11DisplayNumber(display))
+	var bestName, bestData []byte
+	for len(data) >= 12 {
+		family := binary.BigEndian.Uint16(data[:2])
+		data = data[2:]
+		address, ok := xauthPart(&data)
+		if !ok {
+			break
+		}
+		number, ok := xauthPart(&data)
+		if !ok {
+			break
+		}
+		name, ok := xauthPart(&data)
+		if !ok {
+			break
+		}
+		auth, ok := xauthPart(&data)
+		if !ok {
+			break
+		}
+		_ = address
+		if !bytes.Equal(number, wantNumber) || !bytes.Equal(name, []byte("MIT-MAGIC-COOKIE-1")) {
+			continue
+		}
+		if family == 256 || family == 65535 {
+			return name, auth
+		}
+		if bestName == nil {
+			bestName, bestData = name, auth
+		}
+	}
+	return bestName, bestData
+}
+
+func xauthPart(data *[]byte) ([]byte, bool) {
+	if len(*data) < 2 {
+		return nil, false
+	}
+	n := int(binary.BigEndian.Uint16((*data)[:2]))
+	*data = (*data)[2:]
+	if len(*data) < n {
+		return nil, false
+	}
+	out := (*data)[:n]
+	*data = (*data)[n:]
+	return out, true
+}
+
 func (w *x11Window) handshake() error {
-	req := make([]byte, 12)
+	authName, authData := x11Auth(os.Getenv("DISPLAY"))
+	req := make([]byte, 12+pad4(len(authName))+pad4(len(authData)))
 	req[0] = 'l'
 	put16(req[2:], 11)
+	put16(req[6:], uint16(len(authName)))
+	put16(req[8:], uint16(len(authData)))
+	copy(req[12:], authName)
+	copy(req[12+pad4(len(authName)):], authData)
 	if _, err := w.conn.Write(req); err != nil {
 		return err
 	}

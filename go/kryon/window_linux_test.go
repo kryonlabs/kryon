@@ -4,8 +4,11 @@ package kryon
 
 import (
 	"bytes"
+	"encoding/binary"
 	"image"
 	"image/color"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -54,6 +57,24 @@ func TestX11KeyTranslation(t *testing.T) {
 	}
 }
 
+func TestX11AuthReadsMITCookie(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".Xauthority")
+	data := xauthRecord(256, "localhost", "44", "MIT-MAGIC-COOKIE-1", []byte{1, 2, 3, 4})
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XAUTHORITY", path)
+
+	name, auth := x11Auth(":44.0")
+	if got, want := string(name), "MIT-MAGIC-COOKIE-1"; got != want {
+		t.Fatalf("auth name = %q, want %q", got, want)
+	}
+	if !bytes.Equal(auth, []byte{1, 2, 3, 4}) {
+		t.Fatalf("auth data = %v, want [1 2 3 4]", auth)
+	}
+}
+
 func TestX11ImageDataUsesVisualMasksAndStride(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	img.SetRGBA(0, 0, rgbaTest(Color{R: 0x11, G: 0x22, B: 0x33, A: 0xff}))
@@ -98,4 +119,19 @@ func TestX11PixelScalesToRGB565(t *testing.T) {
 	if got, want := win.pixel(color.RGBA{R: 0, G: 0, B: 255, A: 255}), uint32(0x001f); got != want {
 		t.Fatalf("blue 565 pixel = %#x, want %#x", got, want)
 	}
+}
+
+func xauthRecord(family uint16, address, number, name string, data []byte) []byte {
+	var out []byte
+	out = binary.BigEndian.AppendUint16(out, family)
+	out = xauthAppend(out, []byte(address))
+	out = xauthAppend(out, []byte(number))
+	out = xauthAppend(out, []byte(name))
+	out = xauthAppend(out, data)
+	return out
+}
+
+func xauthAppend(out, data []byte) []byte {
+	out = binary.BigEndian.AppendUint16(out, uint16(len(data)))
+	return append(out, data...)
 }
