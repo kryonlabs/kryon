@@ -24,6 +24,7 @@ tests/parity/generated_form.kry
 tests/parity/fields.kry
 tests/parity/focus.kry
 tests/parity/buttons_layout.kry
+tests/parity/long_text.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -92,6 +93,12 @@ type snapshot struct {
 	FocusThree         string `json:"focus_three"`
 	FocusID            int32  `json:"focus_id"`
 	ButtonsAction      int32  `json:"buttons_action"`
+	LongFirstLen       int    `json:"long_first_len"`
+	LongFirstCursor    int32  `json:"long_first_cursor"`
+	LongFirstHash      uint64 `json:"long_first_hash"`
+	LongSecondLen      int    `json:"long_second_len"`
+	LongSecondCursor   int32  `json:"long_second_cursor"`
+	LongSecondHash     uint64 `json:"long_second_hash"`
 	Clipboard          string `json:"clipboard"`
 }
 
@@ -125,6 +132,14 @@ func drawButtons() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		ButtonsLayout_ButtonsFrame(ButtonsLayoutStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawLongText() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		LongText_LongTextFrame(LongTextStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -195,6 +210,24 @@ func text128(buf [128]byte) string {
 	return string(buf[:])
 }
 
+func text4096(buf [4096]byte) string {
+	for i, b := range buf {
+		if b == 0 {
+			return string(buf[:i])
+		}
+	}
+	return string(buf[:])
+}
+
+func checksum(text string) uint64 {
+	var hash uint64 = 1469598103934665603
+	for i := 0; i < len(text); i++ {
+		hash ^= uint64(text[i])
+		hash *= 1099511628211
+	}
+	return hash
+}
+
 func main() {
 	host = kryon.NewHost(kryon.AppConfig{Width: 640, Height: 480, FPS: 60})
 	driver := host.Runtime().(inputDriver)
@@ -203,6 +236,7 @@ func main() {
 	fields := FieldsStateValue
 	focus := FocusStateValue
 	buttons := ButtonsLayoutStateValue
+	longText := LongTextStateValue
 
 	drawForm()
 	requireFrameOps("form", map[kryon.FrameOpKind]int{
@@ -283,6 +317,24 @@ func main() {
 	driver.QueueTap(130, 130)
 	drawButtons()
 
+	drawLongText()
+	driver.SetFocus(701)
+	drawLongText()
+	for i := 0; i < 2048; i++ {
+		if i > 0 && i%256 == 0 {
+			driver.QueueKey(kryon.KeyTab)
+			drawLongText()
+		}
+		driver.QueueText("x")
+		drawLongText()
+		driver.QueueKey(kryon.KeyLeft)
+		drawLongText()
+		driver.QueueKey(kryon.KeyRight)
+		drawLongText()
+	}
+	longFirst := text4096(longText.LongFirst)
+	longSecond := text4096(longText.LongSecond)
+
 	out := snapshot{
 		FormFirst:          text64(form.First),
 		FormFirstCursor:    form.FirstCursor,
@@ -302,6 +354,12 @@ func main() {
 		FocusThree:         text32(focus.Three),
 		FocusID:            driver.Focus(),
 		ButtonsAction:      buttons.ButtonsAction,
+		LongFirstLen:       len(longFirst),
+		LongFirstCursor:    longText.LongFirstCursor,
+		LongFirstHash:      checksum(longFirst),
+		LongSecondLen:      len(longSecond),
+		LongSecondCursor:   longText.LongSecondCursor,
+		LongSecondHash:     checksum(longSecond),
 		Clipboard:          driver.ClipboardText(),
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil {
@@ -322,6 +380,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/fields.c"
 #include "$work/c/tests/parity/focus.c"
 #include "$work/c/tests/parity/buttons_layout.c"
+#include "$work/c/tests/parity/long_text.c"
 
 static void drain_events(void)
 {
@@ -359,6 +418,24 @@ static void draw_buttons(void)
     buttons_frame_kry_draw();
     EndUIFocus();
     drain_events();
+}
+
+static void draw_long_text(void)
+{
+    BeginUIFocus();
+    long_text_frame_kry_draw();
+    EndUIFocus();
+    drain_events();
+}
+
+static unsigned long long checksum(const char *text)
+{
+    unsigned long long hash = 1469598103934665603ULL;
+    while(*text) {
+        hash ^= (unsigned char)*text++;
+        hash *= 1099511628211ULL;
+    }
+    return hash;
 }
 
 int main(void)
@@ -448,10 +525,32 @@ int main(void)
     KryonInjectPump();
     draw_buttons();
 
-    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"clipboard\":\"%s\"}\n",
+    draw_long_text();
+    SetUIFocus(701);
+    draw_long_text();
+    for(int i = 0; i < 2048; i++) {
+        if(i > 0 && i % 256 == 0) {
+            KryonInjectKeyTap(KEY_TAB);
+            KryonInjectPump();
+            draw_long_text();
+        }
+        KryonInjectText("x");
+        KryonInjectPump();
+        draw_long_text();
+        KryonInjectKeyTap(KEY_LEFT);
+        KryonInjectPump();
+        draw_long_text();
+        KryonInjectKeyTap(KEY_RIGHT);
+        KryonInjectPump();
+        draw_long_text();
+    }
+
+    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
         notes, notes_cursor, form_action, title, title_cursor, body,
         body_cursor, one, two, three, GetUIFocus(), buttons_action,
+        (int)strlen(long_first), long_first_cursor, checksum(long_first),
+        (int)strlen(long_second), long_second_cursor, checksum(long_second),
         GetUIClipboardTextValue());
     return 0;
 }
@@ -467,4 +566,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry"]}'
