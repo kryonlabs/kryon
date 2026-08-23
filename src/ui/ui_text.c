@@ -273,7 +273,15 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
         if(entry->tier_size[i] == 0) {
             entry->tier_font[i] = load_font_source_size(entry, physical_size);
             if(font_valid(entry->tier_font[i])) {
-                entry->tier_size[i] = physical_size;
+                /* Record the size the rasterizer actually produced. TTF
+                 * tiers come back at exactly physical_size; the plan9
+                 * bitmap buckets come back at their nearest available
+                 * height, so recording the real base size lets nearby
+                 * requests share one bucket tier. */
+                int raster_size = UIFontBaseSize(entry->tier_font[i]);
+
+                entry->tier_size[i] =
+                    raster_size > 0 ? raster_size : physical_size;
                 ui_font_trim_heap();
                 return entry->tier_font[i];
             }

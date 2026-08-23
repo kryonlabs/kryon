@@ -268,31 +268,97 @@ make_bitmap_font(void)
 }
 
 #ifdef KRYON_NATIVE_PLAN9
+static const char *native_font_candidates[] = {
+    "/lib/font/bit/lucida/unicode.5.font",
+    "/lib/font/bit/lucida/unicode.6.font",
+    "/lib/font/bit/lucida/unicode.7.font",
+    "/lib/font/bit/lucida/unicode.8.font",
+    "/lib/font/bit/lucida/unicode.9.font",
+    "/lib/font/bit/lucida/unicode.10.font",
+    "/lib/font/bit/lucida/unicode.12.font",
+    "/lib/font/bit/lucida/unicode.14.font",
+    "/lib/font/bit/lucida/unicode.16.font",
+    "/lib/font/bit/lucida/unicode.18.font",
+    "/lib/font/bit/lucida/unicode.20.font",
+    "/lib/font/bit/lucida/unicode.24.font",
+    "/lib/font/bit/lucida/unicode.28.font",
+    "/lib/font/bit/lucida/unicode.32.font"
+};
+
+/* The lucida unicode.N.font files do not render at N pixels: their real
+ * Font->height is roughly 2.5x the label (unicode.16.font is 40px tall).
+ * Selecting a bucket by label made native text draw ~2.5x larger than the
+ * requested size while the UI kept laying out at the requested size.
+ * Probe each candidate once, cache its real height, and serve the bucket
+ * whose rendered height is closest to the request. Bitmap fonts cannot be
+ * rescaled, so the nearest height is the best fit available; ties prefer
+ * the smaller font so text never outgrows its layout box. */
+static int native_font_candidate_heights[
+    sizeof(native_font_candidates) / sizeof(native_font_candidates[0])];
+
+static int
+native_font_candidate_count(void)
+{
+    return (int)(sizeof(native_font_candidates) /
+                 sizeof(native_font_candidates[0]));
+}
+
+static int
+native_font_height(int index)
+{
+    P9Font *probe;
+
+    if(index < 0 || index >= native_font_candidate_count())
+        return 0;
+    if(native_font_candidate_heights[index] == 0 && display != nil) {
+        probe = openfont(display, (char *)native_font_candidates[index]);
+        native_font_candidate_heights[index] =
+            probe != nil ? probe->height : -1;
+        if(probe != nil)
+            freefont(probe);
+    }
+    return native_font_candidate_heights[index];
+}
+
 static const char *
 native_font_path_for_size(int font_size)
 {
+    int count = native_font_candidate_count();
+    int best = -1;
+    int best_distance = 0;
+    int i;
+
+    if(font_size <= 0)
+        font_size = 16;
+    for(i = 0; i < count; i++) {
+        int height = native_font_height(i);
+        int distance;
+
+        if(height <= 0)
+            continue;
+        distance = height > font_size ? height - font_size
+                                      : font_size - height;
+        if(best < 0 || distance < best_distance) {
+            best = i;
+            best_distance = distance;
+        }
+    }
+    if(best >= 0)
+        return native_font_candidates[best];
+
+    /* No lucida candidate opened (unusual tree): approximate by label as
+     * before. The caller still falls back to pelm euro.9 and the display
+     * default font when this path fails to open as well. */
     if(font_size <= 6)
         return "/lib/font/bit/lucida/unicode.6.font";
-    if(font_size <= 7)
-        return "/lib/font/bit/lucida/unicode.7.font";
     if(font_size <= 8)
         return "/lib/font/bit/lucida/unicode.8.font";
-    if(font_size <= 9)
-        return "/lib/font/bit/lucida/unicode.9.font";
     if(font_size <= 10)
         return "/lib/font/bit/lucida/unicode.10.font";
-    if(font_size <= 12)
-        return "/lib/font/bit/lucida/unicode.12.font";
     if(font_size <= 14)
         return "/lib/font/bit/lucida/unicode.14.font";
-    if(font_size <= 16)
-        return "/lib/font/bit/lucida/unicode.16.font";
-    if(font_size <= 18)
-        return "/lib/font/bit/lucida/unicode.18.font";
     if(font_size <= 20)
         return "/lib/font/bit/lucida/unicode.20.font";
-    if(font_size <= 24)
-        return "/lib/font/bit/lucida/unicode.24.font";
     if(font_size <= 28)
         return "/lib/font/bit/lucida/unicode.28.font";
     return "/lib/font/bit/lucida/unicode.32.font";
