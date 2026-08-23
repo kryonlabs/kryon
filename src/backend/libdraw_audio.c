@@ -5,8 +5,15 @@
 typedef struct KryLibdrawAudioBuffer KryLibdrawAudioBuffer;
 typedef struct KryLibdrawVoice KryLibdrawVoice;
 typedef struct KryLibdrawMusic KryLibdrawMusic;
+typedef struct KryLibdrawStream KryLibdrawStream;
+
+enum {
+    KRY_AUDIO_HANDLE_BUFFER = 0x4b414255, /* KABU */
+    KRY_AUDIO_HANDLE_STREAM = 0x4b415354  /* KAST */
+};
 
 struct KryLibdrawAudioBuffer {
+    int kind;
     unsigned char *data;
     unsigned int bytes;
     unsigned int frameCount;
@@ -17,6 +24,7 @@ struct KryLibdrawAudioBuffer {
     float volume;
     float pitch;
     float pan;
+    AudioCallback processors[8];
 };
 
 struct KryLibdrawVoice {
@@ -40,12 +48,33 @@ struct KryLibdrawMusic {
     float pan;
 };
 
+struct KryLibdrawStream {
+    int kind;
+    float *frames;
+    unsigned int capacity;
+    unsigned int queued;
+    unsigned int read;
+    unsigned int write;
+    unsigned int sampleRate;
+    unsigned int sampleSize;
+    unsigned int channels;
+    int playing;
+    int paused;
+    double stepAccum;
+    float volume;
+    float pitch;
+    float pan;
+    AudioCallback callback;
+    AudioCallback processors[8];
+};
+
 enum {
     KRY_AUDIO_RATE = 44100,
     KRY_AUDIO_CHANNELS = 2,
     KRY_AUDIO_CHUNK_FRAMES = 512,
     KRY_AUDIO_MAX_VOICES = 32,
     KRY_AUDIO_MAX_MUSIC = 8,
+    KRY_AUDIO_MAX_STREAMS = 16,
     KRY_AUDIO_MAX_PROCESSORS = 8
 };
 
@@ -56,7 +85,9 @@ static Lock g_audio_lock;
 static float g_master_volume = 1.0f;
 static KryLibdrawVoice g_voices[KRY_AUDIO_MAX_VOICES];
 static KryLibdrawMusic *g_music[KRY_AUDIO_MAX_MUSIC];
+static KryLibdrawStream *g_streams[KRY_AUDIO_MAX_STREAMS];
 static AudioCallback g_mixed_processors[KRY_AUDIO_MAX_PROCESSORS];
+static int g_stream_default_frames = 4096;
 
 static int open_audio_owrite(void);
 
@@ -136,7 +167,23 @@ zero_sound(void)
 static KryLibdrawAudioBuffer *
 audio_buffer(AudioStream stream)
 {
-    return (KryLibdrawAudioBuffer *)stream.buffer;
+    KryLibdrawAudioBuffer *buffer;
+
+    buffer = (KryLibdrawAudioBuffer *)stream.buffer;
+    if(buffer == nil || buffer->kind != KRY_AUDIO_HANDLE_BUFFER)
+        return nil;
+    return buffer;
+}
+
+static KryLibdrawStream *
+audio_stream_state(AudioStream stream)
+{
+    KryLibdrawStream *state;
+
+    state = (KryLibdrawStream *)stream.buffer;
+    if(state == nil || state->kind != KRY_AUDIO_HANDLE_STREAM)
+        return nil;
+    return state;
 }
 
 static Music
@@ -211,6 +258,24 @@ buffer_sample(KryLibdrawAudioBuffer *buffer, double cursor, unsigned int channel
     return a + (b - a) * (float)frac;
 }
 
+static float
+stream_input_sample(const void *data, unsigned int frame, unsigned int channel,
+                    unsigned int sampleSize, unsigned int channels)
+{
+    const float *f;
+
+    if(data == nil || channels == 0)
+        return 0.0f;
+    if(channel >= channels)
+        channel = channels - 1;
+    if(sampleSize == 32) {
+        f = (const float *)data;
+        return f[frame * channels + channel];
+    }
+    return pcm_sample_at((const unsigned char *)data, frame, channel,
+                         sampleSize, channels);
+}
+
 static void
 write_sample(unsigned char *data, unsigned int index, unsigned int sampleSize,
              float value)
@@ -240,6 +305,129 @@ free_audio_buffer(KryLibdrawAudioBuffer *buffer)
     free(buffer);
 }
 
+static unsigned int
+stream_free_frames(KryLibdrawStream *state)
+{
+    if(state == nil || state->capacity < state->queued)
+        return 0;
+    return state->capacity - state->queued;
+}
+
+static int
+grow_stream_locked(KryLibdrawStream *state, unsigned int need_free)
+{
+    unsigned int need;
+    unsigned int capacity;
+    unsigned int i;
+    unsigned int ch;
+    float *frames;
+
+    if(state == nil)
+        return 0;
+    if(stream_free_frames(state) >= need_free)
+        return 1;
+    need = state->queued + need_free;
+    capacity = state->capacity > 0 ? state->capacity : 1024;
+    while(capacity < need)
+        capacity *= 2;
+    frames = malloc(capacity * state->channels * sizeof(float));
+    if(frames == nil)
+        return 0;
+    for(i = 0; i < state->queued; i++) {
+        for(ch = 0; ch < state->channels; ch++) {
+            frames[i * state->channels + ch] =
+                state->frames[((state->read + i) % state->capacity) *
+                              state->channels + ch];
+        }
+    }
+    free(state->frames);
+    state->frames = frames;
+    state->capacity = capacity;
+    state->read = 0;
+    state->write = state->queued;
+    return 1;
+}
+
+static void
+append_stream_frames_locked(KryLibdrawStream *state, const void *data,
+                            unsigned int frameCount)
+{
+    const unsigned char *bytes;
+    unsigned int i;
+    unsigned int ch;
+
+    if(state == nil || data == nil || frameCount == 0)
+        return;
+    if(!grow_stream_locked(state, frameCount))
+        return;
+    bytes = (const unsigned char *)data;
+    for(i = 0; i < frameCount; i++) {
+        for(ch = 0; ch < state->channels; ch++) {
+            state->frames[state->write * state->channels + ch] =
+                stream_input_sample(bytes, i, ch, state->sampleSize,
+                                    state->channels);
+        }
+        state->write++;
+        if(state->write >= state->capacity)
+            state->write = 0;
+        state->queued++;
+    }
+}
+
+static void
+fill_stream_callback_locked(KryLibdrawStream *state)
+{
+    unsigned int frames;
+    unsigned int bytes;
+    unsigned char *data;
+
+    if(state == nil || state->callback == nil)
+        return;
+    if(stream_free_frames(state) < (unsigned int)g_stream_default_frames)
+        return;
+    frames = (unsigned int)g_stream_default_frames;
+    bytes = frames * state->channels * (state->sampleSize / 8);
+    data = malloc(bytes);
+    if(data == nil)
+        return;
+    memset(data, 0, bytes);
+    state->callback(data, frames);
+    append_stream_frames_locked(state, data, frames);
+    free(data);
+}
+
+static void
+detach_processor(AudioCallback *processors, AudioCallback processor)
+{
+    int i;
+
+    if(processors == nil || processor == nil)
+        return;
+    for(i = 0; i < KRY_AUDIO_MAX_PROCESSORS; i++) {
+        if(processors[i] == processor)
+            processors[i] = nil;
+    }
+}
+
+static void
+attach_processor(AudioCallback *processors, AudioCallback processor)
+{
+    int i;
+
+    if(processors == nil || processor == nil)
+        return;
+    for(i = 0; i < KRY_AUDIO_MAX_PROCESSORS; i++) {
+        if(processors[i] == processor)
+            return;
+    }
+    for(i = 0; i < KRY_AUDIO_MAX_PROCESSORS; i++) {
+        if(processors[i] == nil) {
+            processors[i] = processor;
+            return;
+        }
+    }
+}
+
 static void
 stop_buffer_locked(KryLibdrawAudioBuffer *buffer)
 {
@@ -266,6 +454,12 @@ any_audio_active_locked(void)
         if(g_music[i] != nil && g_music[i]->playing && !g_music[i]->paused)
             return 1;
     }
+    for(i = 0; i < KRY_AUDIO_MAX_STREAMS; i++) {
+        if(g_streams[i] != nil && g_streams[i]->playing &&
+           !g_streams[i]->paused &&
+           (g_streams[i]->queued > 0 || g_streams[i]->callback != nil))
+            return 1;
+    }
     return 0;
 }
 
@@ -275,8 +469,10 @@ mix_buffer(float *mix, unsigned int frames, KryLibdrawAudioBuffer *buffer,
            int *still_active)
 {
     unsigned int i;
+    int p;
     double pos;
     double step;
+    float temp[KRY_AUDIO_CHUNK_FRAMES * 2];
     float left;
     float right;
     float lgain;
@@ -290,6 +486,9 @@ mix_buffer(float *mix, unsigned int frames, KryLibdrawAudioBuffer *buffer,
             *still_active = 0;
         return;
     }
+    if(frames > KRY_AUDIO_CHUNK_FRAMES)
+        frames = KRY_AUDIO_CHUNK_FRAMES;
+    memset(temp, 0, frames * 2 * sizeof(float));
 
     pos = *cursor;
     step = ((double)buffer->sampleRate / (double)KRY_AUDIO_RATE) *
@@ -312,11 +511,89 @@ mix_buffer(float *mix, unsigned int frames, KryLibdrawAudioBuffer *buffer,
         }
         left = buffer_sample(buffer, pos, 0);
         right = buffer->channels > 1 ? buffer_sample(buffer, pos, 1) : left;
-        mix[i * 2 + 0] += left * volume * lgain;
-        mix[i * 2 + 1] += right * volume * rgain;
+        temp[i * 2 + 0] += left * volume * lgain;
+        temp[i * 2 + 1] += right * volume * rgain;
         pos += step;
     }
+    for(p = 0; p < KRY_AUDIO_MAX_PROCESSORS; p++) {
+        if(buffer->processors[p] != nil)
+            buffer->processors[p](temp, frames);
+    }
+    for(i = 0; i < frames; i++) {
+        mix[i * 2 + 0] += temp[i * 2 + 0];
+        mix[i * 2 + 1] += temp[i * 2 + 1];
+    }
     *cursor = pos;
+}
+
+static void
+mix_stream(float *mix, unsigned int frames, KryLibdrawStream *state)
+{
+    unsigned int i;
+    unsigned int advance;
+    int p;
+    float temp[KRY_AUDIO_CHUNK_FRAMES * 2];
+    float left;
+    float right;
+    float volume;
+    float pitch;
+    float pan;
+    float lgain;
+    float rgain;
+    double step;
+
+    if(state == nil || state->channels == 0 || state->frames == nil)
+        return;
+    if(frames > KRY_AUDIO_CHUNK_FRAMES)
+        frames = KRY_AUDIO_CHUNK_FRAMES;
+    memset(temp, 0, frames * 2 * sizeof(float));
+
+    volume = clampf(state->volume, 0.0f, 8.0f);
+    pitch = clampf(state->pitch, 0.01f, 16.0f);
+    pan = clampf(state->pan, 0.0f, 1.0f);
+    lgain = pan <= 0.5f ? 1.0f : (1.0f - pan) * 2.0f;
+    rgain = pan >= 0.5f ? 1.0f : pan * 2.0f;
+    step = ((double)state->sampleRate / (double)KRY_AUDIO_RATE) *
+           (double)pitch;
+
+    fill_stream_callback_locked(state);
+    for(i = 0; i < frames; i++) {
+        if(state->queued == 0) {
+            fill_stream_callback_locked(state);
+            if(state->queued == 0)
+                break;
+        }
+
+        left = state->frames[state->read * state->channels];
+        if(state->channels > 1)
+            right = state->frames[state->read * state->channels + 1];
+        else
+            right = left;
+        temp[i * 2 + 0] = left * volume * lgain;
+        temp[i * 2 + 1] = right * volume * rgain;
+
+        state->stepAccum += step;
+        advance = (unsigned int)state->stepAccum;
+        if(advance == 0)
+            continue;
+        state->stepAccum -= (double)advance;
+        while(advance > 0 && state->queued > 0) {
+            state->read++;
+            if(state->read >= state->capacity)
+                state->read = 0;
+            state->queued--;
+            advance--;
+        }
+    }
+
+    for(p = 0; p < KRY_AUDIO_MAX_PROCESSORS; p++) {
+        if(state->processors[p] != nil)
+            state->processors[p](temp, frames);
+    }
+    for(i = 0; i < frames; i++) {
+        mix[i * 2 + 0] += temp[i * 2 + 0];
+        mix[i * 2 + 1] += temp[i * 2 + 1];
+    }
 }
 
 static void
@@ -345,6 +622,11 @@ mix_audio(float *mix, unsigned int frames)
             if(!active)
                 g_music[i]->playing = 0;
         }
+    }
+    for(i = 0; i < KRY_AUDIO_MAX_STREAMS; i++) {
+        if(g_streams[i] != nil && g_streams[i]->playing &&
+           !g_streams[i]->paused)
+            mix_stream(mix, frames, g_streams[i]);
     }
     for(i = 0; i < KRY_AUDIO_MAX_PROCESSORS; i++) {
         if(g_mixed_processors[i] != nil)
@@ -579,6 +861,7 @@ LoadSoundFromWave(Wave wave)
         free(buffer);
         return sound;
     }
+    buffer->kind = KRY_AUDIO_HANDLE_BUFFER;
     memcpy(buffer->data, wave.data, bytes);
     buffer->bytes = bytes;
     buffer->frameCount = wave.frameCount;
@@ -1112,45 +1395,239 @@ AudioStream LoadAudioStream(unsigned int sampleRate, unsigned int sampleSize,
                             unsigned int channels)
 {
     AudioStream stream;
+    KryLibdrawStream *state;
+    unsigned int capacity;
+    int i;
 
     stream = zero_stream();
+    if(sampleRate == 0 || channels == 0 ||
+       (sampleSize != 8 && sampleSize != 16 && sampleSize != 32))
+        return stream;
+    capacity = (unsigned int)g_stream_default_frames * 4;
+    if(capacity < 1024)
+        capacity = 1024;
+    state = malloc(sizeof(*state));
+    if(state == nil)
+        return stream;
+    memset(state, 0, sizeof(*state));
+    state->frames = malloc(capacity * channels * sizeof(float));
+    if(state->frames == nil) {
+        free(state);
+        return stream;
+    }
+    memset(state->frames, 0, capacity * channels * sizeof(float));
+    state->kind = KRY_AUDIO_HANDLE_STREAM;
+    state->capacity = capacity;
+    state->sampleRate = sampleRate;
+    state->sampleSize = sampleSize;
+    state->channels = channels;
+    state->volume = 1.0f;
+    state->pitch = 1.0f;
+    state->pan = 0.5f;
+    lock(&g_audio_lock);
+    for(i = 0; i < KRY_AUDIO_MAX_STREAMS; i++) {
+        if(g_streams[i] == nil) {
+            g_streams[i] = state;
+            break;
+        }
+    }
+    unlock(&g_audio_lock);
+    if(i == KRY_AUDIO_MAX_STREAMS) {
+        free(state->frames);
+        free(state);
+        return stream;
+    }
+    stream.buffer = (rAudioBuffer *)state;
     stream.sampleRate = sampleRate;
     stream.sampleSize = sampleSize;
     stream.channels = channels;
     return stream;
 }
-bool IsAudioStreamValid(AudioStream stream) { return stream.channels > 0; }
-void UnloadAudioStream(AudioStream stream) { (void)stream; }
+bool IsAudioStreamValid(AudioStream stream)
+{
+    return audio_stream_state(stream) != nil;
+}
+void UnloadAudioStream(AudioStream stream)
+{
+    KryLibdrawStream *state;
+    int i;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    for(i = 0; i < KRY_AUDIO_MAX_STREAMS; i++) {
+        if(g_streams[i] == state)
+            g_streams[i] = nil;
+    }
+    unlock(&g_audio_lock);
+    free(state->frames);
+    free(state);
+}
 void UpdateAudioStream(AudioStream stream, const void *data, int frameCount)
 {
-    (void)stream;
-    (void)data;
-    (void)frameCount;
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil || data == nil || frameCount <= 0)
+        return;
+    lock(&g_audio_lock);
+    append_stream_frames_locked(state, data, (unsigned int)frameCount);
+    unlock(&g_audio_lock);
 }
-bool IsAudioStreamProcessed(AudioStream stream) { (void)stream; return true; }
-void PlayAudioStream(AudioStream stream) { (void)stream; }
-void PauseAudioStream(AudioStream stream) { (void)stream; }
-void ResumeAudioStream(AudioStream stream) { (void)stream; }
-bool IsAudioStreamPlaying(AudioStream stream) { (void)stream; return false; }
-void StopAudioStream(AudioStream stream) { (void)stream; }
-void SetAudioStreamVolume(AudioStream stream, float volume) { (void)stream; (void)volume; }
-void SetAudioStreamPitch(AudioStream stream, float pitch) { (void)stream; (void)pitch; }
-void SetAudioStreamPan(AudioStream stream, float pan) { (void)stream; (void)pan; }
-void SetAudioStreamBufferSizeDefault(int size) { (void)size; }
+bool IsAudioStreamProcessed(AudioStream stream)
+{
+    KryLibdrawStream *state;
+    int processed;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return false;
+    lock(&g_audio_lock);
+    processed = stream_free_frames(state) >= (unsigned int)g_stream_default_frames;
+    unlock(&g_audio_lock);
+    return processed != 0;
+}
+void PlayAudioStream(AudioStream stream)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(!g_audio_ready || state == nil)
+        return;
+    start_audio_child();
+    lock(&g_audio_lock);
+    state->playing = 1;
+    state->paused = 0;
+    unlock(&g_audio_lock);
+}
+void PauseAudioStream(AudioStream stream)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->paused = 1;
+    unlock(&g_audio_lock);
+}
+void ResumeAudioStream(AudioStream stream)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->paused = 0;
+    unlock(&g_audio_lock);
+}
+bool IsAudioStreamPlaying(AudioStream stream)
+{
+    KryLibdrawStream *state;
+    int playing;
+
+    state = audio_stream_state(stream);
+    playing = 0;
+    lock(&g_audio_lock);
+    if(state != nil && state->playing && !state->paused)
+        playing = 1;
+    unlock(&g_audio_lock);
+    return playing != 0;
+}
+void StopAudioStream(AudioStream stream)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->playing = 0;
+    state->paused = 0;
+    state->queued = 0;
+    state->read = 0;
+    state->write = 0;
+    state->stepAccum = 0.0;
+    unlock(&g_audio_lock);
+}
+void SetAudioStreamVolume(AudioStream stream, float volume)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->volume = clampf(volume, 0.0f, 8.0f);
+    unlock(&g_audio_lock);
+}
+void SetAudioStreamPitch(AudioStream stream, float pitch)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->pitch = clampf(pitch, 0.01f, 16.0f);
+    unlock(&g_audio_lock);
+}
+void SetAudioStreamPan(AudioStream stream, float pan)
+{
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->pan = clampf(pan, 0.0f, 1.0f);
+    unlock(&g_audio_lock);
+}
+void SetAudioStreamBufferSizeDefault(int size)
+{
+    if(size > 0)
+        g_stream_default_frames = size;
+}
 void SetAudioStreamCallback(AudioStream stream, AudioCallback callback)
 {
-    (void)stream;
-    (void)callback;
+    KryLibdrawStream *state;
+
+    state = audio_stream_state(stream);
+    if(state == nil)
+        return;
+    lock(&g_audio_lock);
+    state->callback = callback;
+    unlock(&g_audio_lock);
 }
 void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
 {
-    (void)stream;
-    (void)processor;
+    KryLibdrawStream *state;
+    KryLibdrawAudioBuffer *buffer;
+
+    state = audio_stream_state(stream);
+    buffer = audio_buffer(stream);
+    lock(&g_audio_lock);
+    if(state != nil)
+        attach_processor(state->processors, processor);
+    else if(buffer != nil)
+        attach_processor(buffer->processors, processor);
+    unlock(&g_audio_lock);
 }
 void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
 {
-    (void)stream;
-    (void)processor;
+    KryLibdrawStream *state;
+    KryLibdrawAudioBuffer *buffer;
+
+    state = audio_stream_state(stream);
+    buffer = audio_buffer(stream);
+    lock(&g_audio_lock);
+    if(state != nil)
+        detach_processor(state->processors, processor);
+    else if(buffer != nil)
+        detach_processor(buffer->processors, processor);
+    unlock(&g_audio_lock);
 }
 void AttachAudioMixedProcessor(AudioCallback processor)
 {
