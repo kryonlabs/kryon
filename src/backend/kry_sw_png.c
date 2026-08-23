@@ -352,6 +352,16 @@ sw_be32(const unsigned char *p)
            ((unsigned)p[2] << 8) | (unsigned)p[3];
 }
 
+static int
+sw_png_packed_index(const unsigned char *row, int x, int depth)
+{
+    int bit = x * depth;
+    int shift = 8 - depth - (bit & 7);
+    int mask = (1 << depth) - 1;
+
+    return (row[bit >> 3] >> shift) & mask;
+}
+
 unsigned char *
 kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
 {
@@ -359,7 +369,7 @@ kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
     unsigned char palette[256 * 3];
     unsigned char trns[256];
     unsigned char *idat, *raw, *rgba;
-    size_t idat_len, idat_cap, pos, expect;
+    size_t idat_len, idat_cap, pos, expect, row_bytes;
     int palette_len, trns_len, w, h, depth, color, channels, bpp, x, y;
 
     if(data == NULL || len < 8 || w_out == NULL || h_out == NULL)
@@ -418,15 +428,23 @@ kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
     }
     if(w <= 0 || h <= 0 || w > 8192 || h > 8192)
         return NULL;
-    if(depth != 8 || color < 0 || color > 7 || channels_of[color] <= 0)
+    if(color < 0 || color > 7 || channels_of[color] <= 0)
         return NULL;
+    if(color == 3) {
+        if(depth != 1 && depth != 2 && depth != 4 && depth != 8)
+            return NULL;
+    } else if(depth != 8) {
+        return NULL;
+    }
     if(color == 3 && palette_len == 0)
         return NULL;
     if(idat == NULL)
         return NULL;
     channels = channels_of[color];
-    bpp = channels;
-    expect = (size_t)h * ((size_t)w * (size_t)channels + 1);
+    row_bytes = color == 3 ? (((size_t)w * (size_t)depth + 7u) >> 3)
+                           : (size_t)w * (size_t)channels;
+    bpp = color == 3 && depth < 8 ? 1 : channels;
+    expect = (size_t)h * (row_bytes + 1);
     if(expect > (size_t)1 << 27)
         return NULL;
     raw = sw_inflate(idat, idat_len, expect);
@@ -436,14 +454,14 @@ kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
 
     /* Reverse per-scanline filters in place, then expand to RGBA8. */
     for(y = 0; y < h; y++) {
-        unsigned char *row = raw + (size_t)y * ((size_t)w * channels + 1);
+        unsigned char *row = raw + (size_t)y * (row_bytes + 1);
         unsigned char *prior = y > 0
-            ? raw + (size_t)(y - 1) * ((size_t)w * channels + 1) + 1
+            ? raw + (size_t)(y - 1) * (row_bytes + 1) + 1
             : NULL;
         int filter = row[0];
 
         row++;
-        for(x = 0; x < w * channels; x++) {
+        for(x = 0; x < (int)row_bytes; x++) {
             int left = x >= bpp ? row[x - bpp] : 0;
             int up = prior != NULL ? prior[x] : 0;
             int ul = prior != NULL && x >= bpp ? prior[x - bpp] : 0;
@@ -476,7 +494,7 @@ kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
         return NULL;
     }
     for(y = 0; y < h; y++) {
-        const unsigned char *row = raw + (size_t)y * ((size_t)w * channels + 1) + 1;
+        const unsigned char *row = raw + (size_t)y * (row_bytes + 1) + 1;
 
         for(x = 0; x < w; x++) {
             unsigned char *dst = rgba + ((size_t)y * w + x) * 4;
@@ -504,7 +522,8 @@ kry_sw_png_rgba(const unsigned char *data, size_t len, int *w_out, int *h_out)
                 break;
             default: /* palette */
                 {
-                    int idx = row[x];
+                    int idx = depth == 8 ? row[x]
+                                         : sw_png_packed_index(row, x, depth);
 
                     if(idx >= palette_len) {
                         free(raw);

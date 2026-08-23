@@ -62,6 +62,10 @@ static KryLibdrawFont g_fonts[KRY_LIBDRAW_MAX_FONTS];
 static unsigned g_next_texture_id = 1;
 static unsigned g_next_font_id = 1;
 static unsigned char *g_clipboard;
+static TraceLogCallback g_trace_log_callback;
+static unsigned g_window_state;
+static int g_exit_key = KEY_ESCAPE;
+static float g_master_volume = 1.0f;
 
 static double
 now_seconds(void)
@@ -158,6 +162,8 @@ kry_libdraw_color(Color color)
 
 extern int kry_write_png_file(const char *path, const unsigned char *rgba,
                               int w, int h);
+extern unsigned char *kry_decode_image_rgba(const unsigned char *data, int len,
+                                            int *width, int *height);
 
 int
 kry_libdraw_write_png(const char *path, const unsigned char *rgba, int width,
@@ -636,6 +642,9 @@ bool
 KryonRaylibBackend_WindowShouldClose(void)
 {
     kry_libdraw_poll();
+    if(g_exit_key > 0 && g_exit_key < KRY_LIBDRAW_KEY_CAP &&
+       kry_libdraw_key_pressed[g_exit_key])
+        kry_libdraw_should_close = 1;
     return kry_libdraw_should_close != 0;
 }
 
@@ -675,10 +684,54 @@ KryonRaylibBackend_EndDrawing(void)
 
 bool IsWindowReady(void) { return kry_libdraw_ready != 0; }
 bool IsWindowFocused(void) { return kry_libdraw_ready != 0; }
+bool IsWindowFullscreen(void) { return (g_window_state & FLAG_FULLSCREEN_MODE) != 0; }
+bool IsWindowHidden(void) { return (g_window_state & FLAG_WINDOW_HIDDEN) != 0; }
+bool IsWindowMinimized(void) { return (g_window_state & FLAG_WINDOW_MINIMIZED) != 0; }
+bool IsWindowMaximized(void) { return (g_window_state & FLAG_WINDOW_MAXIMIZED) != 0; }
+bool IsWindowResized(void) { return false; }
+bool IsWindowState(unsigned int flag) { return (g_window_state & flag) != 0; }
+void SetWindowState(unsigned int flags) { g_window_state |= flags; }
+void ClearWindowState(unsigned int flags) { g_window_state &= ~flags; }
+void ToggleFullscreen(void) { g_window_state ^= FLAG_FULLSCREEN_MODE; }
+void ToggleBorderlessWindowed(void) {}
+void MaximizeWindow(void) { g_window_state |= FLAG_WINDOW_MAXIMIZED; }
+void MinimizeWindow(void) { g_window_state |= FLAG_WINDOW_MINIMIZED; }
+void RestoreWindow(void)
+{
+    g_window_state &= ~(FLAG_WINDOW_MINIMIZED | FLAG_WINDOW_MAXIMIZED |
+                        FLAG_WINDOW_HIDDEN);
+}
+void SetWindowIcon(Image image) { (void)image; }
+void SetWindowIcons(Image *images, int count)
+{
+    (void)images;
+    (void)count;
+}
+void SetWindowTitle(const char *title) { (void)title; }
+void SetWindowPosition(int x, int y)
+{
+    (void)x;
+    (void)y;
+}
+void SetWindowMonitor(int monitor) { (void)monitor; }
+void SetWindowMinSize(int width, int height)
+{
+    (void)width;
+    (void)height;
+}
+void SetWindowMaxSize(int width, int height)
+{
+    (void)width;
+    (void)height;
+}
+void SetWindowOpacity(float opacity) { (void)opacity; }
+void SetWindowFocused(void) {}
+void *GetWindowHandle(void) { return NULL; }
 void SetConfigFlags(unsigned int flags) { (void)flags; }
 void SetTargetFPS(int fps) { kry_libdraw_target_fps = fps > 0 ? fps : 0; }
 void SetTraceLogLevel(int logLevel) { (void)logLevel; }
 void SetMouseCursor(int cursor) { (void)cursor; }
+void SetExitKey(int key) { g_exit_key = key; }
 void SetWindowSize(int width, int height)
 {
     kry_libdraw_width = width;
@@ -689,6 +742,18 @@ int GetScreenWidth(void) { return kry_libdraw_width; }
 int GetScreenHeight(void) { return kry_libdraw_height; }
 int GetRenderWidth(void) { return kry_libdraw_width; }
 int GetRenderHeight(void) { return kry_libdraw_height; }
+int GetCurrentMonitor(void) { return 0; }
+int GetMonitorCount(void) { return 1; }
+int GetMonitorWidth(int monitor)
+{
+    (void)monitor;
+    return kry_libdraw_width;
+}
+int GetMonitorHeight(int monitor)
+{
+    (void)monitor;
+    return kry_libdraw_height;
+}
 float GetFrameTime(void) { return kry_libdraw_frame_time; }
 int GetFPS(void)
 {
@@ -1116,6 +1181,9 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
 
     (void)fileType;
     img.data = kry_libdraw_png_rgba(fileData, dataSize, &img.width, &img.height);
+    if(img.data == NULL)
+        img.data = kry_decode_image_rgba(fileData, dataSize, &img.width,
+                                         &img.height);
     if(img.data != NULL) {
         img.mipmaps = 1;
         img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
@@ -1126,7 +1194,8 @@ Image LoadImage(const char *fileName)
 {
     int len = 0;
     unsigned char *data = read_file(fileName, &len);
-    Image img = LoadImageFromMemory(".png", data, len);
+    const char *ext = fileName != NULL ? strrchr(fileName, '.') : NULL;
+    Image img = LoadImageFromMemory(ext != NULL ? ext : "", data, len);
     free(data);
     return img;
 }
@@ -1458,12 +1527,275 @@ const char *TextFormat(const char *text, ...)
 void TraceLog(int logLevel, const char *text, ...)
 {
     va_list ap;
-    (void)logLevel;
     va_start(ap, text);
-    vfprintf(stderr, text != NULL ? text : "", ap);
-    fputc('\n', stderr);
+    if(g_trace_log_callback != NULL) {
+        g_trace_log_callback(logLevel, text != NULL ? text : "", ap);
+    } else {
+        vfprintf(stderr, text != NULL ? text : "", ap);
+        fputc('\n', stderr);
+    }
     va_end(ap);
 }
+
+void SetTraceLogCallback(TraceLogCallback callback)
+{
+    g_trace_log_callback = callback;
+}
+
+void SetShapesTexture(Texture2D texture, Rectangle rec)
+{
+    (void)texture;
+    (void)rec;
+}
+
+void InitAudioDevice(void) {}
+void CloseAudioDevice(void) {}
+bool IsAudioDeviceReady(void) { return false; }
+void SetMasterVolume(float volume) { g_master_volume = volume; }
+float GetMasterVolume(void) { return g_master_volume; }
+
+Wave LoadWave(const char *fileName)
+{
+    (void)fileName;
+    return (Wave){0};
+}
+
+Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData,
+                        int dataSize)
+{
+    (void)fileType;
+    (void)fileData;
+    (void)dataSize;
+    return (Wave){0};
+}
+
+bool IsWaveValid(Wave wave)
+{
+    return wave.data != NULL && wave.frameCount > 0 && wave.sampleRate > 0 &&
+           wave.channels > 0 && wave.sampleSize > 0;
+}
+
+Sound LoadSound(const char *fileName)
+{
+    (void)fileName;
+    return (Sound){0};
+}
+
+Sound LoadSoundFromWave(Wave wave)
+{
+    (void)wave;
+    return (Sound){0};
+}
+
+Sound LoadSoundAlias(Sound source) { return source; }
+bool IsSoundValid(Sound sound) { return sound.stream.buffer != NULL; }
+void UpdateSound(Sound sound, const void *data, int frameCount)
+{
+    (void)sound;
+    (void)data;
+    (void)frameCount;
+}
+void UnloadWave(Wave wave) { (void)wave; }
+void UnloadSound(Sound sound) { (void)sound; }
+void UnloadSoundAlias(Sound alias) { (void)alias; }
+bool ExportWave(Wave wave, const char *fileName)
+{
+    (void)wave;
+    (void)fileName;
+    return false;
+}
+bool ExportWaveAsCode(Wave wave, const char *fileName)
+{
+    (void)wave;
+    (void)fileName;
+    return false;
+}
+void PlaySound(Sound sound) { (void)sound; }
+void StopSound(Sound sound) { (void)sound; }
+void PauseSound(Sound sound) { (void)sound; }
+void ResumeSound(Sound sound) { (void)sound; }
+bool IsSoundPlaying(Sound sound)
+{
+    (void)sound;
+    return false;
+}
+void SetSoundVolume(Sound sound, float volume)
+{
+    (void)sound;
+    (void)volume;
+}
+void SetSoundPitch(Sound sound, float pitch)
+{
+    (void)sound;
+    (void)pitch;
+}
+void SetSoundPan(Sound sound, float pan)
+{
+    (void)sound;
+    (void)pan;
+}
+Wave WaveCopy(Wave wave)
+{
+    Wave copy = {0};
+    size_t bytes;
+
+    if(!IsWaveValid(wave))
+        return copy;
+    bytes = (size_t)wave.frameCount * wave.channels * (wave.sampleSize / 8u);
+    if(bytes == 0)
+        return copy;
+    copy = wave;
+    copy.data = malloc(bytes);
+    if(copy.data == NULL)
+        return (Wave){0};
+    memcpy(copy.data, wave.data, bytes);
+    return copy;
+}
+void WaveCrop(Wave *wave, int initFrame, int finalFrame)
+{
+    (void)wave;
+    (void)initFrame;
+    (void)finalFrame;
+}
+void WaveFormat(Wave *wave, int sampleRate, int sampleSize, int channels)
+{
+    if(wave == NULL)
+        return;
+    wave->sampleRate = (unsigned int)sampleRate;
+    wave->sampleSize = (unsigned int)sampleSize;
+    wave->channels = (unsigned int)channels;
+}
+float *LoadWaveSamples(Wave wave)
+{
+    (void)wave;
+    return NULL;
+}
+void UnloadWaveSamples(float *samples) { free(samples); }
+
+Music LoadMusicStream(const char *fileName)
+{
+    (void)fileName;
+    return (Music){0};
+}
+Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
+                                int dataSize)
+{
+    (void)fileType;
+    (void)data;
+    (void)dataSize;
+    return (Music){0};
+}
+bool IsMusicValid(Music music) { return music.stream.buffer != NULL; }
+void UnloadMusicStream(Music music) { (void)music; }
+void PlayMusicStream(Music music) { (void)music; }
+bool IsMusicStreamPlaying(Music music)
+{
+    (void)music;
+    return false;
+}
+void UpdateMusicStream(Music music) { (void)music; }
+void StopMusicStream(Music music) { (void)music; }
+void PauseMusicStream(Music music) { (void)music; }
+void ResumeMusicStream(Music music) { (void)music; }
+void SeekMusicStream(Music music, float position)
+{
+    (void)music;
+    (void)position;
+}
+void SetMusicVolume(Music music, float volume)
+{
+    (void)music;
+    (void)volume;
+}
+void SetMusicPitch(Music music, float pitch)
+{
+    (void)music;
+    (void)pitch;
+}
+void SetMusicPan(Music music, float pan)
+{
+    (void)music;
+    (void)pan;
+}
+float GetMusicTimeLength(Music music)
+{
+    (void)music;
+    return 0.0f;
+}
+float GetMusicTimePlayed(Music music)
+{
+    (void)music;
+    return 0.0f;
+}
+
+AudioStream LoadAudioStream(unsigned int sampleRate, unsigned int sampleSize,
+                            unsigned int channels)
+{
+    AudioStream stream = {0};
+
+    stream.sampleRate = sampleRate;
+    stream.sampleSize = sampleSize;
+    stream.channels = channels;
+    return stream;
+}
+bool IsAudioStreamValid(AudioStream stream)
+{
+    return stream.buffer != NULL;
+}
+void UnloadAudioStream(AudioStream stream) { (void)stream; }
+void UpdateAudioStream(AudioStream stream, const void *data, int frameCount)
+{
+    (void)stream;
+    (void)data;
+    (void)frameCount;
+}
+bool IsAudioStreamProcessed(AudioStream stream)
+{
+    (void)stream;
+    return false;
+}
+void PlayAudioStream(AudioStream stream) { (void)stream; }
+void PauseAudioStream(AudioStream stream) { (void)stream; }
+void ResumeAudioStream(AudioStream stream) { (void)stream; }
+bool IsAudioStreamPlaying(AudioStream stream)
+{
+    (void)stream;
+    return false;
+}
+void StopAudioStream(AudioStream stream) { (void)stream; }
+void SetAudioStreamVolume(AudioStream stream, float volume)
+{
+    (void)stream;
+    (void)volume;
+}
+void SetAudioStreamPitch(AudioStream stream, float pitch)
+{
+    (void)stream;
+    (void)pitch;
+}
+void SetAudioStreamPan(AudioStream stream, float pan)
+{
+    (void)stream;
+    (void)pan;
+}
+void SetAudioStreamBufferSizeDefault(int size) { (void)size; }
+void SetAudioStreamCallback(AudioStream stream, AudioCallback callback)
+{
+    (void)stream;
+    (void)callback;
+}
+void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
+{
+    (void)stream;
+    (void)processor;
+}
+void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
+{
+    (void)stream;
+    (void)processor;
+}
+void AttachAudioMixedProcessor(AudioCallback processor) { (void)processor; }
+void DetachAudioMixedProcessor(AudioCallback processor) { (void)processor; }
 
 unsigned char *LoadFileData(const char *fileName, int *dataSize)
 {
