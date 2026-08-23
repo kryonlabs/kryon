@@ -22,3 +22,30 @@ UIDPIState ui_dpi_state;
 /* build-generated embedded_asset_data.c (UI_EMBEDDED_ONLY=0 build) */
 const EmbeddedAsset embedded_assets[] = {{0, 0, 0, 0}};
 const unsigned int embedded_asset_count = 0;
+
+/* ui.c: ApplyCurrentUITheme, inlined here for the theme-core-only build.
+ * It mirrors ui.c: ui_set_theme_colors(...) plus the link color. */
+void ApplyCurrentUITheme(void);
+void
+ApplyCurrentUITheme(void)
+{
+    c_text = GetThemeText();
+    c_bg = GetThemeBackground();
+    c_surface = GetThemeSurface();
+    c_circle = GetThemeCircle();
+    c_button = GetThemeButton();
+    c_button_hover = GetThemeButtonHover();
+    c_icon = GetThemeIcon();
+    c_link = GetThemeLink();
+}
+
+/* ui.c: mouse position helper; without the widget layer there is no live
+ * pointer state, and the material ripple (the only consumer) never runs
+ * from the theme core. */
+Vector2
+ui_mouse_world(void)
+{
+    Vector2 zero = {0, 0};
+
+    return zero;
+}
