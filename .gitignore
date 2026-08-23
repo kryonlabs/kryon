@@ -16,3 +16,4 @@ tools/otfchop/otfchop
 
 # native plan9 cpp-stage intermediates
 src/**/*.i
+src/**/*.8
