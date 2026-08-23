@@ -4,6 +4,7 @@
 #define STBI_NO_HDR
 #define STBI_NO_LINEAR
 #define STBI_NO_FAILURE_STRINGS
+#define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../vendor/raylib/src/external/stb_image.h"
 
