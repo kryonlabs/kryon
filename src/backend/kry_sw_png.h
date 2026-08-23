@@ -8,7 +8,11 @@
  * Returns NULL for anything malformed or unsupported.
  */
 
+#ifdef KRYON_NATIVE_PLAN9
+#include "kryon_plan9.h"
+#else
 #include <stddef.h>
+#endif
 
 unsigned char *kry_sw_png_rgba(const unsigned char *data, size_t len,
                                int *w, int *h);

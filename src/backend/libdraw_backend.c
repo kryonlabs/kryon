@@ -2,6 +2,7 @@
 #include "libdraw_internal.h"
 #include "kry_sw_png.h"
 
+#ifndef KRYON_NATIVE_PLAN9
 #include <stdarg.h>
 #include <math.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #define KRY_LIBDRAW_MAX_TEXTURES 512
 #define KRY_LIBDRAW_MAX_FONTS 64
@@ -69,13 +71,18 @@ static int g_exit_key = KEY_ESCAPE;
 static double
 now_seconds(void)
 {
-#if defined(CLOCK_MONOTONIC)
+#ifdef KRYON_PLATFORM_PLAN9
+    /* Native libc keeps a high-resolution clock in nsec(). */
+    return (double)nsec() / 1000000000.0;
+#else
+#ifdef CLOCK_MONOTONIC
     struct timespec ts;
 
     if(clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
         return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000.0;
 #endif
     return (double)time(NULL);
+#endif
 }
 
 static unsigned char *
@@ -159,16 +166,26 @@ kry_libdraw_color(Color color)
     return kry_libdraw_color_u32(pack(color));
 }
 
+#ifndef KRYON_NATIVE_PLAN9
 extern int kry_write_png_file(const char *path, const unsigned char *rgba,
                               int w, int h);
 extern unsigned char *kry_decode_image_rgba(const unsigned char *data, int len,
                                             int *width, int *height);
+#endif
 
 int
 kry_libdraw_write_png(const char *path, const unsigned char *rgba, int width,
                       int height)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    (void)path;
+    (void)rgba;
+    (void)width;
+    (void)height;
+    return -1;
+#else
     return kry_write_png_file(path, rgba, width, height);
+#endif
 }
 
 static void
@@ -463,6 +480,40 @@ kry_libdraw_png_rgba(const unsigned char *data, int len, int *width,
 static unsigned char *
 read_file(const char *path, int *len)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    int fd;
+    vlong n;
+    unsigned char *data;
+
+    if(len != NULL)
+        *len = 0;
+    if(path == NULL)
+        return NULL;
+    fd = open((char *)path, OREAD);
+    if(fd < 0)
+        return NULL;
+    n = seek(fd, 0, 2);
+    if(n < 0) {
+        close(fd);
+        return NULL;
+    }
+    seek(fd, 0, 0);
+    data = malloc((size_t)n + 1);
+    if(data == NULL) {
+        close(fd);
+        return NULL;
+    }
+    if(readn(fd, data, (long)n) != n) {
+        free(data);
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+    data[n] = 0;
+    if(len != NULL)
+        *len = (int)n;
+    return data;
+#else
     FILE *f;
     long n;
     unsigned char *data;
@@ -499,6 +550,7 @@ read_file(const char *path, int *len)
     if(len != NULL)
         *len = (int)n;
     return data;
+#endif
 }
 
 static int
@@ -707,7 +759,11 @@ KryonRaylibBackend_EndDrawing(void)
             double remaining = target - elapsed;
 
             if(remaining > 0.0)
+#ifdef KRYON_NATIVE_PLAN9
+                sleep((long)(remaining * 1000.0));
+#else
                 usleep((unsigned int)(remaining * 1000000.0));
+#endif
             now = now_seconds();
         }
     }
@@ -812,7 +868,11 @@ Vector2 GetWindowScaleDPI(void) { return (Vector2){1.0f, 1.0f}; }
 void WaitTime(double seconds)
 {
     if(seconds > 0.0)
+#ifdef KRYON_NATIVE_PLAN9
+        sleep((long)(seconds * 1000.0));
+#else
         usleep((unsigned int)(seconds * 1000000.0));
+#endif
 }
 
 void BeginDrawing(void)
@@ -1233,9 +1293,11 @@ Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
 
     (void)fileType;
     img.data = kry_libdraw_png_rgba(fileData, dataSize, &img.width, &img.height);
+#ifndef KRYON_NATIVE_PLAN9
     if(img.data == NULL)
         img.data = kry_decode_image_rgba(fileData, dataSize, &img.width,
                                          &img.height);
+#endif
     if(img.data != NULL) {
         img.mipmaps = 1;
         img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
@@ -1429,7 +1491,7 @@ void DrawTexture(Texture2D texture, int posX, int posY, Color tint)
                                         (float)texture.height},
                    (Rectangle){(float)posX, (float)posY,
                                (float)texture.width, (float)texture.height},
-                   (Vector2){0}, 0.0f, tint);
+                   (Vector2){0.0f, 0.0f}, 0.0f, tint);
 }
 void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                     Vector2 origin, float rotation, Color tint)
@@ -1590,8 +1652,13 @@ void TraceLog(int logLevel, const char *text, ...)
     if(g_trace_log_callback != NULL) {
         g_trace_log_callback(logLevel, text != NULL ? text : "", ap);
     } else {
+#ifdef KRYON_NATIVE_PLAN9
+        vfprint(2, (char *)(text != NULL ? text : ""), ap);
+        fprint(2, "\n");
+#else
         vfprintf(stderr, text != NULL ? text : "", ap);
         fputc('\n', stderr);
+#endif
     }
     va_end(ap);
 }
@@ -1620,12 +1687,26 @@ char *LoadFileText(const char *fileName)
 void UnloadFileText(char *text) { free(text); }
 bool SaveFileData(const char *fileName, const void *data, int dataSize)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    int fd;
+    int ok;
+
+    if(fileName == NULL || data == NULL || dataSize < 0)
+        return false;
+    fd = create((char *)fileName, OWRITE|OTRUNC, 0666);
+    if(fd < 0)
+        return false;
+    ok = write(fd, (void *)data, dataSize) == dataSize;
+    close(fd);
+    return ok;
+#else
     FILE *f = fopen(fileName, "wb");
     if(f == NULL)
         return false;
     fwrite(data, 1, (size_t)dataSize, f);
     fclose(f);
     return true;
+#endif
 }
 bool SaveFileText(const char *fileName, const char *text)
 {
@@ -1633,19 +1714,58 @@ bool SaveFileText(const char *fileName, const char *text)
 }
 bool FileExists(const char *fileName)
 {
+#ifdef KRYON_PLATFORM_PLAN9
+    Dir *d;
+    bool regular;
+
+    if(fileName == NULL)
+        return false;
+    d = dirstat(fileName);
+    if(d == NULL)
+        return false;
+    regular = (d->mode & DMDIR) == 0;
+    free(d);
+    return regular;
+#else
     struct stat st;
     return fileName != NULL && stat(fileName, &st) == 0 && S_ISREG(st.st_mode);
+#endif
 }
 bool DirectoryExists(const char *dirPath)
 {
+#ifdef KRYON_PLATFORM_PLAN9
+    Dir *d;
+    bool isdir;
+
+    if(dirPath == NULL)
+        return false;
+    d = dirstat(dirPath);
+    if(d == NULL)
+        return false;
+    isdir = (d->mode & DMDIR) != 0;
+    free(d);
+    return isdir;
+#else
     struct stat st;
     return dirPath != NULL && stat(dirPath, &st) == 0 && S_ISDIR(st.st_mode);
+#endif
 }
 int MakeDirectory(const char *dirPath)
 {
     if(dirPath == NULL)
         return -1;
+#ifdef KRYON_NATIVE_PLAN9
+    {
+        int fd = create((char *)dirPath, OREAD, DMDIR|0777);
+        if(fd >= 0) {
+            close(fd);
+            return 0;
+        }
+    }
+    return DirectoryExists(dirPath) ? 0 : -1;
+#else
     return (mkdir(dirPath, 0777) == 0 || DirectoryExists(dirPath)) ? 0 : -1;
+#endif
 }
 int ChangeDirectory(const char *dir)
 {
@@ -1654,7 +1774,11 @@ int ChangeDirectory(const char *dir)
 const char *GetWorkingDirectory(void)
 {
     static char buf[1024];
+#ifdef KRYON_PLATFORM_PLAN9
+    return getwd(buf, sizeof(buf)) != NULL ? buf : "";
+#else
     return getcwd(buf, sizeof(buf)) != NULL ? buf : "";
+#endif
 }
 const char *GetApplicationDirectory(void) { return GetWorkingDirectory(); }
 const char *GetDirectoryPath(const char *filePath)

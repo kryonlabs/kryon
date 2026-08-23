@@ -8,9 +8,13 @@
  * both generated files. Formulas track raylib's (rshapes.c, rtextures.c,
  * rcore.c GetCameraMatrix2D, rtext.c) so behavior is unchanged. */
 
+#ifdef KRYON_NATIVE_PLAN9
+#include "kryon_plan9.h"
+#else
 #include "kryon.h"
 
 #include <math.h>
+#endif
 
 Color Fade(Color color, float alpha)
 {

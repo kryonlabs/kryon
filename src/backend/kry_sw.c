@@ -1,10 +1,12 @@
 #include "kry_sw.h"
 #include "kry_sw_png.h"
 
+#ifndef KRYON_NATIVE_PLAN9
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#endif
 
 /*
  * 8x8 bitmap font, ASCII 32..126. From font8x8 by Daniel Hepper
@@ -845,6 +847,39 @@ static unsigned long sw_tex_clock;
 static char *
 sw_read_file(const char *path, size_t *len_out)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    int fd;
+    vlong size;
+    char *data;
+
+    if(len_out != NULL)
+        *len_out = 0;
+    if(path == NULL)
+        return NULL;
+    fd = open((char *)path, OREAD);
+    if(fd < 0)
+        return NULL;
+    size = seek(fd, 0, 2);
+    if(size <= 0) {
+        close(fd);
+        return NULL;
+    }
+    seek(fd, 0, 0);
+    data = (char *)malloc((size_t)size);
+    if(data == NULL) {
+        close(fd);
+        return NULL;
+    }
+    if(readn(fd, data, (long)size) != size) {
+        free(data);
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+    if(len_out != NULL)
+        *len_out = (size_t)size;
+    return data;
+#else
     FILE *f;
     long size;
     char *data;
@@ -870,6 +905,7 @@ sw_read_file(const char *path, size_t *len_out)
     fclose(f);
     *len_out = (size_t)size;
     return data;
+#endif
 }
 
 static char *

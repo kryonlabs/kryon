@@ -21,6 +21,8 @@
 #define NOUSER
 #endif
 #include <windows.h>
+#elif defined(KRYON_PLATFORM_PLAN9)
+#define KRYON_PLATFORM_NO_THREADS 1
 #elif defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
 #define KRYON_PLATFORM_NO_THREADS 1
 #else

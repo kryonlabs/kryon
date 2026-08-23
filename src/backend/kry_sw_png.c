@@ -9,8 +9,10 @@
 
 #include "kry_sw_png.h"
 
+#ifndef KRYON_NATIVE_PLAN9
 #include <stdlib.h>
 #include <string.h>
+#endif
 
 /* ---- inflate ---- */
 

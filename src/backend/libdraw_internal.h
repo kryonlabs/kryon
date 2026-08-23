@@ -2,9 +2,12 @@
 #define KRYON_LIBDRAW_INTERNAL_H
 
 #include "kry_sw.h"
+#ifdef KRYON_NATIVE_PLAN9
+#include "kryon_plan9.h"
+#else
 #include "kryon.h"
-
 #include <stddef.h>
+#endif
 
 #define Point P9Point
 #define Rectangle P9Rectangle
@@ -12,7 +15,6 @@
 #define Font P9Font
 #define Screen P9Screen
 #define Display P9Display
-#define Mouse P9Mouse
 #define Event P9Event
 #define Cursor P9Cursor
 #define Cursor2 P9Cursor2
@@ -24,17 +26,19 @@
 #ifdef PI
 #undef PI
 #endif
+#ifndef KRYON_NATIVE_PLAN9
 #include <u.h>
 #include <libc.h>
+#endif
 #include <draw.h>
 #include <event.h>
 #include <keyboard.h>
+typedef Mouse P9Mouse;
 #undef Menu
 #undef Rect
 #undef Cursor2
 #undef Cursor
 #undef Event
-#undef Mouse
 #undef Display
 #undef Screen
 #undef Font

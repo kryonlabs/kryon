@@ -79,6 +79,8 @@ system_theme_now_s(void)
 {
 #if defined(_WIN32)
     return (double)GetTickCount64() / 1000.0;
+#elif defined(KRYON_PLATFORM_PLAN9)
+    return (double)nsec() / 1.0e9;
 #elif defined(PLATFORM_WEB)
     return 0.0;
 #else
@@ -1060,6 +1062,135 @@ GetSystemDesktopBackground(char *out, int out_size)
     return false;
 }
 
+#if defined(KRYON_PLATFORM_PLAN9)
+/* Native Plan 9: the window manager owns the system theme.
+ *
+ * A rio(1) variant that links Kryon writes a small state file whenever the
+ * user switches the desktop style, palette, or mode:
+ *
+ *     /lib/kryon/system-theme     system-wide default written by the WM
+ *     $home/lib/kryon/theme       per-user WM state
+ *
+ * with one `key=value` pair per line (name, mode, style). Reading it here
+ * turns the WM choice into Kryon's system theme, so apps that follow
+ * THEME_SOURCE_SYSTEM re-skin together with the desktop. */
+static int
+plan9_theme_file_value(const char *text, const char *key, char *out, int out_size)
+{
+    const char *line = text;
+    size_t key_len = strlen(key);
+
+    while(line != NULL && *line != '\0') {
+        const char *eol = strchr(line, '\n');
+        size_t len = eol != NULL ? (size_t)(eol - line) : strlen(line);
+
+        if(len > key_len && strncmp(line, key, key_len) == 0 &&
+           line[key_len] == '=') {
+            size_t value_len = len - key_len - 1;
+
+            if(value_len >= (size_t)out_size)
+                value_len = (size_t)out_size - 1;
+            memcpy(out, line + key_len + 1, value_len);
+            out[value_len] = '\0';
+            return 1;
+        }
+        line = eol != NULL ? eol + 1 : NULL;
+    }
+    return 0;
+}
+
+static int
+plan9_read_theme_file(char *text, int text_size)
+{
+    char path[512];
+    char *home;
+    FILE *f;
+
+    f = fopen("/lib/kryon/system-theme", "r");
+    if(f == NULL) {
+        home = getenv("home");
+        if(home == NULL)
+            return 0;
+        snprintf(path, sizeof(path), "%s/lib/kryon/theme", home);
+        f = fopen(path, "r");
+    }
+    if(f == NULL)
+        return 0;
+    {
+        size_t got = fread(text, 1, (size_t)text_size - 1, f);
+
+        fclose(f);
+        text[got] = '\0';
+    }
+    return 1;
+}
+
+static int
+plan9_system_theme_refresh(void)
+{
+    char text[1024];
+    char name[THEME_NAME_SIZE];
+    char mode[16];
+    int theme_id = -1;
+    int dark = 0;
+    int i;
+
+    if(!plan9_read_theme_file(text, sizeof(text)))
+        return 0;
+
+    if(!plan9_theme_file_value(text, "name", name, sizeof(name)))
+        return 0;
+    plan9_theme_file_value(text, "mode", mode, sizeof(mode));
+    if(strcmp(mode, "dark") == 0)
+        dark = 1;
+
+    for(i = 0; i < THEME_COUNT; i++) {
+        if(strcmp(themes[i].name, name) == 0) {
+            theme_id = i;
+            break;
+        }
+    }
+    if(theme_id < 0)
+        return 0;
+
+    {
+        SystemThemePalette palette;
+        const char *keys[8] = {
+            "background", "surface", "text", "circle",
+            "button", "button_hover", "icon", "link"
+        };
+        Color *slots[8];
+        int k;
+
+        memset(&palette, 0, sizeof(palette));
+        slots[0] = &palette.background;
+        slots[1] = &palette.surface;
+        slots[2] = &palette.text;
+        slots[3] = &palette.circle;
+        slots[4] = &palette.button;
+        slots[5] = &palette.button_hover;
+        slots[6] = &palette.icon;
+        slots[7] = &palette.link;
+        for(k = 0; k < 8; k++) {
+            if(!GetThemeCatalogColor((ThemeId)theme_id, dark != 0, keys[k], slots[k]))
+                return 0;
+        }
+        palette.available = 1;
+        palette.prefers_dark = dark;
+        palette.supports_mode = 1;
+        snprintf(palette.name, sizeof(palette.name), "%s", name);
+
+        system_palette = palette;
+        system_light_palette = palette;
+        system_dark_palette = palette;
+        system_light_palette.prefers_dark = 0;
+        system_dark_palette.prefers_dark = 1;
+        system_prefers_dark = dark;
+    }
+    return 1;
+}
+#endif
+
 bool
 RefreshSystemTheme(void)
 {
@@ -1077,6 +1208,9 @@ RefreshSystemTheme(void)
     }
 #endif
     system_theme_refresh_count++;
+#if defined(KRYON_PLATFORM_PLAN9)
+    return plan9_system_theme_refresh() != 0;
+#endif
 #if defined(_WIN32)
     return windows_system_theme_refresh() != 0;
 #endif

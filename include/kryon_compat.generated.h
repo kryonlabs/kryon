@@ -116,7 +116,9 @@ void UpdateKeyPlatformState(void);
 #ifndef RAYLIB_H
 #define RAYLIB_H
 
+#ifndef KRYON_NATIVE_PLAN9
 #include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
+#endif
 
 #define RAYLIB_VERSION_MAJOR 6
 #define RAYLIB_VERSION_MINOR 1
@@ -126,17 +128,19 @@ void UpdateKeyPlatformState(void);
 // Function specifiers in case library is build/used as a shared library
 // NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
 // NOTE: visibility("default") attribute makes symbols "visible" when compiled with -fvisibility=hidden
-#if defined(_WIN32)
-    #if defined(__TINYC__)
+#ifdef _WIN32
+    #ifdef __TINYC__
         #define __declspec(x) __attribute__((x))
     #endif
-    #if defined(BUILD_LIBTYPE_SHARED)
+    #ifdef BUILD_LIBTYPE_SHARED
         #define RLAPI __declspec(dllexport)     // Building the library as a Win32 shared library (.dll)
-    #elif defined(USE_LIBTYPE_SHARED)
-        #define RLAPI __declspec(dllimport)     // Using the library as a Win32 shared library (.dll)
+    #else
+        #ifdef USE_LIBTYPE_SHARED
+            #define RLAPI __declspec(dllimport)     // Using the library as a Win32 shared library (.dll)
+        #endif
     #endif
 #else
-    #if defined(BUILD_LIBTYPE_SHARED)
+    #ifdef BUILD_LIBTYPE_SHARED
         #define RLAPI __attribute__((visibility("default"))) // Building as a Unix shared library (.so/.dylib)
     #endif
 #endif
@@ -176,7 +180,7 @@ void UpdateKeyPlatformState(void);
 // NOTE: MSVC C++ compiler does not support compound literals (C99 feature)
 // Plain structures in C++ (without constructors) can be initialized with { }
 // This is called aggregate initialization (C++11 feature)
-#if defined(__cplusplus)
+#ifdef __cplusplus
     #define CLITERAL(type)      type
 #else
     #define CLITERAL(type)      (type)
@@ -185,9 +189,6 @@ void UpdateKeyPlatformState(void);
 // Some compilers (mostly macos clang) default to C++98,
 // where aggregate initialization can't be used
 // So, give a more clear error stating how to fix this
-#if !defined(_MSC_VER) && (defined(__cplusplus) && __cplusplus < 201103L)
-    #error "C++11 or later is required. Add -std=c++11"
-#endif
 
 // NOTE: Set some defines with some data types declared by raylib
 // Other modules (raymath, rlgl) also require some of those types, so,
@@ -235,12 +236,14 @@ void UpdateKeyPlatformState(void);
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 // Boolean type
-#if !defined(__cplusplus)
-#if (defined(__STDC__) && __STDC_VERSION__ >= 199901L) || (defined(_MSC_VER) && _MSC_VER >= 1800)
-    #include <stdbool.h>
-#elif !defined(bool)
+#ifdef KRYON_NATIVE_PLAN9
+#ifndef bool
     typedef enum bool { false = 0, true = !false } bool;
     #define RL_BOOL_TYPE
+#endif
+#else
+#ifndef __cplusplus
+    #include <stdbool.h>
 #endif
 #endif
 
@@ -1012,7 +1015,7 @@ typedef bool (*SaveFileTextCallback)(const char *fileName, const char *text); //
 // Window and Graphics Device Functions (Module: core)
 //------------------------------------------------------------------------------------
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {            // Prevents name mangling of functions
 #endif
 
@@ -1782,7 +1785,7 @@ RLAPI void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processo
 RLAPI void AttachAudioMixedProcessor(AudioCallback processor); // Attach audio stream processor to the entire audio pipeline, receives frames x 2 samples as 'float' (stereo)
 RLAPI void DetachAudioMixedProcessor(AudioCallback processor); // Detach audio stream processor from the entire audio pipeline
 
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 

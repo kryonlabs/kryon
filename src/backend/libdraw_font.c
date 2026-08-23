@@ -1,11 +1,13 @@
 #include "libdraw_internal.h"
 
+#ifndef KRYON_NATIVE_PLAN9
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#endif
 
 #define LIBDRAW_FONT_ATLAS_W 1024
 #define LIBDRAW_FONT_ATLAS_START_H 128
@@ -14,9 +16,51 @@
 static Font g_default_font;
 static int g_default_ready;
 
+static Image
+zero_image(void)
+{
+    Image image;
+
+    memset(&image, 0, sizeof(image));
+    return image;
+}
+
+static Rectangle
+zero_rectangle(void)
+{
+    Rectangle rec;
+
+    memset(&rec, 0, sizeof(rec));
+    return rec;
+}
+
+static GlyphInfo
+zero_glyph_info(void)
+{
+    GlyphInfo glyph;
+
+    memset(&glyph, 0, sizeof(glyph));
+    return glyph;
+}
+
+static Font
+zero_font(void)
+{
+    Font font;
+
+    memset(&font, 0, sizeof(font));
+    return font;
+}
+
 static unsigned char *
 read_font_file(const char *path, int *len)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    (void)path;
+    if(len != NULL)
+        *len = 0;
+    return NULL;
+#else
     FILE *f;
     long n;
     unsigned char *data;
@@ -52,6 +96,7 @@ read_font_file(const char *path, int *len)
     if(len != NULL)
         *len = (int)n;
     return data;
+#endif
 }
 
 static int
@@ -175,7 +220,7 @@ make_bitmap_font(void)
         free(glyphs);
         free(recs);
         free(pixels);
-        return (Font){0};
+        return zero_font();
     }
 
     for(i = 0; i < glyph_count; i++) {
@@ -186,7 +231,7 @@ make_bitmap_font(void)
 
         glyphs[i].value = cp;
         glyphs[i].advanceX = cell_w;
-        glyphs[i].image = (Image){0};
+        glyphs[i].image = zero_image();
         recs[i] = (Rectangle){(float)(col * cell_w), (float)(row * cell_h),
                               cell_w, cell_h};
         for(gy = 0; gy < cell_h; gy++) {
@@ -215,7 +260,7 @@ make_bitmap_font(void)
     if(font.texture.id == 0) {
         free(glyphs);
         free(recs);
-        return (Font){0};
+        return zero_font();
     }
     g_default_font = font;
     g_default_ready = 1;
@@ -226,6 +271,14 @@ static Font
 make_ttf_font(const unsigned char *fileData, int dataSize, int fontSize,
               const int *codepoints, int codepointCount)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    (void)fileData;
+    (void)dataSize;
+    (void)fontSize;
+    (void)codepoints;
+    (void)codepointCount;
+    return make_bitmap_font();
+#else
     stbtt_fontinfo info;
     float scale;
     int ascent = 0;
@@ -307,7 +360,7 @@ make_ttf_font(const unsigned char *fileData, int dataSize, int fontSize,
             offy + (int)((float)ascent * scale);
         glyphs[glyph_count].advanceX =
             (int)((float)advance * scale + 0.5f);
-        glyphs[glyph_count].image = (Image){0};
+        glyphs[glyph_count].image = zero_image();
         recs[glyph_count] = (Rectangle){(float)x, (float)y, (float)gw,
                                         (float)gh};
         if(gw > 0 && gh > 0 && bitmap != NULL) {
@@ -353,7 +406,8 @@ fail:
     free(glyphs);
     free(recs);
     free(pixels);
-    return (Font){0};
+    return zero_font();
+#endif
 }
 
 Font
@@ -432,7 +486,7 @@ GlyphInfo
 GetGlyphInfo(Font font, int codepoint)
 {
     if(font.glyphs == NULL || font.glyphCount <= 0)
-        return (GlyphInfo){0};
+        return zero_glyph_info();
     return font.glyphs[GetGlyphIndex(font, codepoint)];
 }
 
@@ -440,7 +494,7 @@ Rectangle
 GetGlyphAtlasRec(Font font, int codepoint)
 {
     if(font.recs == NULL || font.glyphCount <= 0)
-        return (Rectangle){0};
+        return zero_rectangle();
     return font.recs[GetGlyphIndex(font, codepoint)];
 }
 

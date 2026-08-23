@@ -1,6 +1,10 @@
 #include "kry_backend.h"
 
+#ifdef KRYON_NATIVE_PLAN9
+#include "kryon_plan9.h"
+#else
 #include <stddef.h>
+#endif
 
 static void
 null_clear(unsigned color)

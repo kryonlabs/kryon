@@ -68,7 +68,69 @@ void UpdateKeyPlatformState(void);
 #endif
 
 EOF
-    cat "$raylib_header"
+    awk '
+        function begin_skip() {
+            skip_depth = 1
+        }
+
+        skip_depth > 0 {
+            if($0 ~ /^[[:space:]]*#if/)
+                skip_depth++
+            else if($0 ~ /^[[:space:]]*#endif/)
+                skip_depth--
+            next
+        }
+
+        /^[[:space:]]*#include[[:space:]]+<stdarg.h>/ {
+            print "#ifndef KRYON_NATIVE_PLAN9"
+            print $0
+            print "#endif"
+            next
+        }
+        /^[[:space:]]*#if[[:space:]]+defined\(_WIN32\)/ {
+            print "#ifdef _WIN32"
+            print "    #ifdef __TINYC__"
+            print "        #define __declspec(x) __attribute__((x))"
+            print "    #endif"
+            print "    #ifdef BUILD_LIBTYPE_SHARED"
+            print "        #define RLAPI __declspec(dllexport)     // Building the library as a Win32 shared library (.dll)"
+            print "    #else"
+            print "        #ifdef USE_LIBTYPE_SHARED"
+            print "            #define RLAPI __declspec(dllimport)     // Using the library as a Win32 shared library (.dll)"
+            print "        #endif"
+            print "    #endif"
+            print "#else"
+            print "    #ifdef BUILD_LIBTYPE_SHARED"
+            print "        #define RLAPI __attribute__((visibility(\"default\"))) // Building as a Unix shared library (.so/.dylib)"
+            print "    #endif"
+            print "#endif"
+            begin_skip()
+            next
+        }
+        /^[[:space:]]*#if[[:space:]]+defined\(__cplusplus\)/ {
+            print "#ifdef __cplusplus"
+            next
+        }
+        /^[[:space:]]*#if[[:space:]]+!defined\(_MSC_VER\)/ {
+            begin_skip()
+            next
+        }
+        /^[[:space:]]*#if[[:space:]]+!defined\(__cplusplus\)/ {
+            print "#ifdef KRYON_NATIVE_PLAN9"
+            print "#ifndef bool"
+            print "    typedef enum bool { false = 0, true = !false } bool;"
+            print "    #define RL_BOOL_TYPE"
+            print "#endif"
+            print "#else"
+            print "#ifndef __cplusplus"
+            print "    #include <stdbool.h>"
+            print "#endif"
+            print "#endif"
+            begin_skip()
+            next
+        }
+        { print }
+    ' "$raylib_header"
 } > "$public_header"
 
 {
