@@ -66,9 +66,21 @@ OFILES=\
 	src/platform/system_theme/system_theme.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
-	src/ui/*.$O *.$O src/*/*.i
+	src/ui/*.$O *.$O src/*/*.i src/*.i
 
-< /sys/src/cmd/mksyslib
+all:V: $LIB
+
+$LIB:V: $OFILES
+	ar vu $LIB $newprereq
+
+&:n: &.$O
+	ar vu $LIB $stem.$O
+
+clean:V:
+	rm -f $CLEANFILES
+
+nuke:V: clean
+	rm -f $LIB
 
 # The native Plan 9 compilers carry no expression preprocessor (no #if,
 # #elif, defined(), ||), so every source is first run through the system
@@ -96,5 +108,5 @@ src/platform/system_theme/%.$O: src/platform/system_theme/%.c
 src/ui/%.$O: src/ui/%.c
 	cd src/ui && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 
-src/%.$O: src/%.c
-	cd src && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+src/markdown.$O: src/markdown.c
+	cd src && cpp -+ $CPPFLAGS markdown.c > markdown.i && $CC $CFLAGS -c markdown.i && mv markdown.i.$O markdown.$O && rm -f markdown.i

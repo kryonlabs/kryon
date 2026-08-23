@@ -6,8 +6,11 @@
  * The theme engine (theme.c, theme_meta.c, ui_style.c, ui_color.c) keeps
  * its state in these shared globals; until the full widget layer is ported
  * to the native Plan 9 compiler, the definitions live here so the theme
- * core links standalone.
+ * core links standalone. Hosted builds compile the real ui.c instead, so
+ * this whole file is inert unless building for native Plan 9.
  */
+#if defined(KRYON_PLATFORM_PLAN9) || defined(KRYON_NATIVE_PLAN9)
+
 #include "../../ui/ui_internal.h"
 #include "embedded_assets.h"
 
@@ -49,3 +52,5 @@ ui_mouse_world(void)
 
     return zero;
 }
+
+#endif /* KRYON_PLATFORM_PLAN9 */
