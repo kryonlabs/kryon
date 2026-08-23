@@ -121,10 +121,11 @@ kry_sha256_final(KrySha256 *ctx, unsigned char out[32])
     pad = 0;
     while(ctx->buf_len != 56)
         kry_sha256_update(ctx, &pad, 1);
-    for(i = 7; i >= 0; i--)
-        kry_sha256_update(ctx,
-                          &(unsigned char){(unsigned char)((bits >> (i * 8)) & 0xff)},
-                          1);
+    for(i = 7; i >= 0; i--){
+        unsigned char byte = (unsigned char)((bits >> (i * 8)) & 0xff);
+
+        kry_sha256_update(ctx, &byte, 1);
+    }
 
     for(i = 0; i < 8; i++) {
         out[i * 4] = (unsigned char)(ctx->state[i] >> 24);
