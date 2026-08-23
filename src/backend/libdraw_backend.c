@@ -1384,8 +1384,6 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
 {
     KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
     unsigned char *region;
-    int sx0;
-    int sy0;
     int sw;
     int sh;
     int flip_x;
@@ -1396,10 +1394,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     if(t == NULL || t->rgba == NULL || g_sw_backend->texture_rgba == NULL)
         return;
 
-    sx0 = (int)source.x;
-    sy0 = (int)source.y;
-    sw = abs_int((int)source.width);
-    sh = abs_int((int)source.height);
+    sw = (int)ceilf(fabsf(source.width));
+    sh = (int)ceilf(fabsf(source.height));
     flip_x = source.width < 0.0f;
     flip_y = source.height < 0.0f;
     if(sw <= 0 || sh <= 0 || (int)dest.width == 0 || (int)dest.height == 0)
@@ -1409,10 +1405,16 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     if(region == NULL)
         return;
     for(y = 0; y < sh; y++) {
-        int src_y = sy0 + (flip_y ? (sh - 1 - y) : y);
+        float ty = ((float)y + 0.5f) / (float)sh;
+        float src_yf = flip_y ? source.y - ty * fabsf(source.height)
+                              : source.y + ty * fabsf(source.height);
+        int src_y = (int)floorf(src_yf);
 
         for(x = 0; x < sw; x++) {
-            int src_x = sx0 + (flip_x ? (sw - 1 - x) : x);
+            float tx = ((float)x + 0.5f) / (float)sw;
+            float src_xf = flip_x ? source.x - tx * fabsf(source.width)
+                                  : source.x + tx * fabsf(source.width);
+            int src_x = (int)floorf(src_xf);
             unsigned char *dst = region + ((size_t)y * sw + x) * 4;
 
             if(src_x < 0 || src_y < 0 || src_x >= t->width ||

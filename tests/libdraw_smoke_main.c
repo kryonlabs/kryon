@@ -133,6 +133,9 @@ main(void)
         DrawTexturePro(quad_texture, (Rectangle){0, 0, 2, 2},
                        (Rectangle){80, 206, 20, 20},
                        (Vector2){10, 10}, 90.0f, WHITE);
+        DrawTexturePro(quad_texture, (Rectangle){0, 0, 2, 0.5f},
+                       (Rectangle){116, 206, 20, 4},
+                       (Vector2){0, 0}, 0.0f, WHITE);
         DrawTexturePro(target.texture, (Rectangle){0, 0, 12, 12},
                        (Rectangle){336, 206, 12, 12},
                        (Vector2){0, 0}, 0.0f, WHITE);
@@ -178,6 +181,8 @@ main(void)
                                   ((size_t)216 * shot.width + 296) * 4;
         unsigned char *rotated_px = (unsigned char *)shot.data +
                                     ((size_t)201 * shot.width + 85) * 4;
+        unsigned char *fractional_px = (unsigned char *)shot.data +
+                                       ((size_t)207 * shot.width + 121) * 4;
         unsigned char *target_px = (unsigned char *)shot.data +
                                    ((size_t)212 * shot.width + 342) * 4;
 
@@ -193,6 +198,9 @@ main(void)
               alpha_px[1] > 80 && alpha_px[1] < 180 && alpha_px[0] < 20);
         check("rotated texture samples expected source pixel",
               rotated_px[0] > 180 && rotated_px[1] < 80 && rotated_px[2] < 80);
+        check("fractional source rectangle draws",
+              fractional_px[0] > 180 && fractional_px[1] < 80 &&
+                  fractional_px[2] < 80);
         check("render texture draws back to window",
               target_px[2] > 160 && target_px[0] < 90);
     }
