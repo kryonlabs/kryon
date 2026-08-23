@@ -53,6 +53,9 @@ OFILES=\
 	src/core/theme.$O\
 	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
+	src/ui/ui_color.$O\
+	src/ui/ui_scaling.$O\
+	src/ui/ui_style.$O\
 	src/kry_std/kry_archive.$O\
 	src/kry_std/kry_filesystem.$O\
 	src/kry_std/kry_json.$O\
@@ -60,63 +63,6 @@ OFILES=\
 	src/markdown.$O\
 	src/platform/plan9/plan9_os.$O\
 	src/platform/system_theme/system_theme.$O\
-	src/ui/bottom_nav.$O\
-	src/ui/button.$O\
-	src/ui/dropdown.$O\
-	src/ui/guide.$O\
-	src/ui/icon_controls.$O\
-	src/ui/kryon_test.$O\
-	src/ui/modal.$O\
-	src/ui/profile_header.$O\
-	src/ui/reorder.$O\
-	src/ui/rows.$O\
-	src/ui/scroll.$O\
-	src/ui/tab_bar.$O\
-	src/ui/terminal_pane.$O\
-	src/ui/terminal_pane_clipboard.$O\
-	src/ui/terminal_pane_csi.$O\
-	src/ui/terminal_pane_dcs.$O\
-	src/ui/terminal_pane_keys.$O\
-	src/ui/terminal_pane_modes.$O\
-	src/ui/terminal_pane_mouse.$O\
-	src/ui/terminal_pane_osc.$O\
-	src/ui/terminal_pane_profile.$O\
-	src/ui/terminal_pane_reflow.$O\
-	src/ui/terminal_pane_render.$O\
-	src/ui/terminal_pane_selection.$O\
-	src/ui/terminal_pane_session.$O\
-	src/ui/terminal_pane_sgr.$O\
-	src/ui/terminal_pane_sixel.$O\
-	src/ui/terminal_pane_text.$O\
-	src/ui/theme_picker.$O\
-	src/ui/toast.$O\
-	src/ui/toolbar.$O\
-	src/ui/top_nav.$O\
-	src/ui/tutorial.$O\
-	src/ui/ui.$O\
-	src/ui/ui_clipboard.$O\
-	src/ui/ui_clip.$O\
-	src/ui/ui_color.$O\
-	src/ui/ui_dpi.$O\
-	src/ui/ui_icon_assets.$O\
-	src/ui/ui_icon_names.$O\
-	src/ui/ui_icons.$O\
-	src/ui/ui_inspect.$O\
-	src/ui/ui_layout.$O\
-	src/ui/ui_node_registry.$O\
-	src/ui/ui_picture_cache.$O\
-	src/ui/ui_scaling.$O\
-	src/ui/ui_slider.$O\
-	src/ui/ui_style.$O\
-	src/ui/ui_text.$O\
-	src/ui/ui_text_backend.$O\
-	src/ui/ui_text_edit.$O\
-	src/ui/ui_text_layout.$O\
-	src/ui/ui_titlebar.$O\
-	src/ui/ui_tk.$O\
-	src/ui/ui_transition.$O\
-	src/ui/ui_tree.$O\
-	src/ui/ui_window.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
 	src/ui/*.$O *.$O src/*/*.i
