@@ -819,7 +819,9 @@ rounded_radius(Rectangle rec, float roundness)
 
     if(roundness <= 0.0f || m <= 0)
         return 0;
-    r = (int)((float)m * roundness + 0.5f);
+    if(roundness > 1.0f)
+        roundness = 1.0f;
+    r = (int)((float)m * roundness * 0.5f + 0.5f);
     if(r < 1)
         r = 1;
     if(r > m / 2)

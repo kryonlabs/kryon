@@ -182,6 +182,8 @@ main(void)
                             ((size_t)216 * shot.width + 318) * 4;
         unsigned char *rounded_corner = (unsigned char *)shot.data +
                                         ((size_t)14 * shot.width + 178) * 4;
+        unsigned char *rounded_top_edge = (unsigned char *)shot.data +
+                                          ((size_t)14 * shot.width + 188) * 4;
         unsigned char *rounded_center = (unsigned char *)shot.data +
                                         ((size_t)30 * shot.width + 202) * 4;
         unsigned char *line_px = (unsigned char *)shot.data +
@@ -201,6 +203,8 @@ main(void)
               px[1] > 180 && px[0] < 80 && px[2] < 100);
         check("rounded rectangle corner clipped",
               !(rounded_corner[0] > 180 && rounded_corner[1] > 130));
+        check("rounded rectangle radius matches raylib",
+              rounded_top_edge[0] > 180 && rounded_top_edge[1] > 130);
         check("rounded rectangle center filled",
               rounded_center[0] > 180 && rounded_center[1] > 130);
         check("thick line covers radius",
