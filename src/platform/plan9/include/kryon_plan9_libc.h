@@ -13,7 +13,13 @@
 #ifndef KRYON_PLAN9_SHIM_LIBC_H
 #define KRYON_PLAN9_SHIM_LIBC_H
 
+/* Native Plan 9 core headers are include-once by convention (u.h carries no
+ * include guard), so re-entry checks the nil/nelem macros they define. */
+#ifndef nil
 #include <u.h>
+#endif
+#ifndef nelem
 #include <libc.h>
+#endif
 
 #endif
