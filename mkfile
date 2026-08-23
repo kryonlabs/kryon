@@ -18,10 +18,11 @@
 
 LIB=/$objtype/lib/libkryon.a
 
-SHIM=src/platform/plan9/include
-RAYEXT=vendor/raylib/src/external
+ROOT=/sys/src/kryon
+SHIM=$ROOT/src/platform/plan9/include
+RAYEXT=$ROOT/vendor/raylib/src/external
 
-CPPFLAGS=-I$SHIM -Iinclude -Isrc -I$RAYEXT \
+CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
 	-DUI_EMBEDDED_ONLY=0
 
