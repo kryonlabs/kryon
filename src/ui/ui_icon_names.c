@@ -6,7 +6,6 @@ const char *ui_icon_names[] = {
     NULL,  /* UI_ICON_TYPE_NONE */
     "activity.png",  /* UI_ICON_TYPE_ACTIVITY */
     "amen.png",  /* UI_ICON_TYPE_AMEN */
-    "app.png",  /* UI_ICON_TYPE_APP */
     "backward.png",  /* UI_ICON_TYPE_BACKWARD */
     "c.png",  /* UI_ICON_TYPE_C */
     "calendar.png",  /* UI_ICON_TYPE_CALENDAR */
@@ -18,8 +17,6 @@ const char *ui_icon_names[] = {
     "globe.png",  /* UI_ICON_TYPE_GLOBE */
     "home.png",  /* UI_ICON_TYPE_HOME */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER */
-    "kryon.png",  /* UI_ICON_TYPE_KRYON */
-    "leadercat.png",  /* UI_ICON_TYPE_LEADERCAT */
     "left.png",  /* UI_ICON_TYPE_LEFT */
     "lightoff.png",  /* UI_ICON_TYPE_LIGHTOFF */
     "lighton.png",  /* UI_ICON_TYPE_LIGHTON */
@@ -36,7 +33,6 @@ const char *ui_icon_names[] = {
     "play.png",  /* UI_ICON_TYPE_PLAY */
     "plus.png",  /* UI_ICON_TYPE_PLUS */
     "profile.png",  /* UI_ICON_TYPE_PROFILE */
-    "quest.png",  /* UI_ICON_TYPE_QUEST */
     "return.png",  /* UI_ICON_TYPE_RETURN */
     "right.png",  /* UI_ICON_TYPE_RIGHT */
     "rocket.png",  /* UI_ICON_TYPE_ROCKET */
@@ -56,7 +52,6 @@ const char *ui_icon_names[] = {
     "todos.png",  /* UI_ICON_TYPE_TODOS */
     "trash.png",  /* UI_ICON_TYPE_TRASH */
     "venus.png",  /* UI_ICON_TYPE_VENUS */
-    "wao.png",  /* UI_ICON_TYPE_WAO */
     "weekly.png",  /* UI_ICON_TYPE_WEEKLY */
     "wrench.png",  /* UI_ICON_TYPE_WRENCH */
     "x.png",  /* UI_ICON_TYPE_X */
@@ -93,11 +88,16 @@ const char *ui_icon_names[] = {
     "pfp_tree2.png",  /* UI_ICON_TYPE_PFP_TREE2 */
     "pfp_tree3.png",  /* UI_ICON_TYPE_PFP_TREE3 */
     "pfp_tree4.png",  /* UI_ICON_TYPE_PFP_TREE4 */
+    "platforms_appimage.png",  /* UI_ICON_TYPE_PLATFORMS_APPIMAGE */
     "platforms_browser.png",  /* UI_ICON_TYPE_PLATFORMS_BROWSER */
+    "platforms_chromewebstore.png",  /* UI_ICON_TYPE_PLATFORMS_CHROMEWEBSTORE */
+    "platforms_debian.png",  /* UI_ICON_TYPE_PLATFORMS_DEBIAN */
     "platforms_discord.png",  /* UI_ICON_TYPE_PLATFORMS_DISCORD */
     "platforms_droid.png",  /* UI_ICON_TYPE_PLATFORMS_DROID */
     "platforms_esp32.png",  /* UI_ICON_TYPE_PLATFORMS_ESP32 */
     "platforms_fdroid.png",  /* UI_ICON_TYPE_PLATFORMS_FDROID */
+    "platforms_fedora.png",  /* UI_ICON_TYPE_PLATFORMS_FEDORA */
+    "platforms_flatpak.png",  /* UI_ICON_TYPE_PLATFORMS_FLATPAK */
     "platforms_freebsd.png",  /* UI_ICON_TYPE_PLATFORMS_FREEBSD */
     "platforms_github.png",  /* UI_ICON_TYPE_PLATFORMS_GITHUB */
     "platforms_glenda.png",  /* UI_ICON_TYPE_PLATFORMS_GLENDA */
@@ -106,10 +106,14 @@ const char *ui_icon_names[] = {
     "platforms_macos.png",  /* UI_ICON_TYPE_PLATFORMS_MACOS */
     "platforms_microcontroller.png",  /* UI_ICON_TYPE_PLATFORMS_MICROCONTROLLER */
     "platforms_playstore.png",  /* UI_ICON_TYPE_PLATFORMS_PLAYSTORE */
+    "platforms_snap.png",  /* UI_ICON_TYPE_PLATFORMS_SNAP */
     "platforms_srht.png",  /* UI_ICON_TYPE_PLATFORMS_SRHT */
     "platforms_telegram.png",  /* UI_ICON_TYPE_PLATFORMS_TELEGRAM */
     "platforms_tux.png",  /* UI_ICON_TYPE_PLATFORMS_TUX */
     "platforms_win.png",  /* UI_ICON_TYPE_PLATFORMS_WIN */
+    "proj_inbe.png",  /* UI_ICON_TYPE_PROJ_INBE */
+    "proj_kryon.png",  /* UI_ICON_TYPE_PROJ_KRYON */
+    "proj_wao.png",  /* UI_ICON_TYPE_PROJ_WAO */
     "tiles_tile.png",  /* UI_ICON_TYPE_TILES_TILE */
     "tiles_tile2.png",  /* UI_ICON_TYPE_TILES_TILE2 */
     "tiles_tile3.png",  /* UI_ICON_TYPE_TILES_TILE3 */

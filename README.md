@@ -99,7 +99,12 @@ To integrate Kryon into your project:
    to let Kryon assemble source lists and platform flags
 4. Use `scripts/embed-icons.sh` and `scripts/embed-assets.sh` when your app
    needs custom embedded icons, locale files, fonts, themes, or image/audio
-   assets
+   assets. Kryon's checked-in `icons/` tree is the source of truth for shared
+   UI, platform, payment, language, tile, profile, and first-party project
+   icons; project logos live under `icons/proj/`. Downstream apps can call
+   `vendor/kryon/scripts/sync-icons.sh` to copy those icons into web asset
+   directories without keeping separate icon originals. Run `make
+   icons-generate` after changing generated pixel icons.
 5. Include `mk/vendor.mk` when your app enables curl or liboqs-backed features
 
 Applications should keep build artifacts in their own build directories, but

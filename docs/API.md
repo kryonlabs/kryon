@@ -501,7 +501,16 @@ void LoadAllUIIconTextures(Texture2D *icons);
 void UnloadAllUIIconTextures(Texture2D *icons);
 ```
 
-Profile-picture PNGs in `pfp/` are embedded into the same icon catalog with
+Kryon's checked-in `icons/` tree is the shared icon source root. Subdirectories
+such as `icons/platforms/`, `icons/payments/`, `icons/language/`,
+`icons/tiles/`, `icons/pfp/`, and `icons/proj/` are embedded into the same icon
+catalog with names like `platforms_freebsd.png`, `proj_kryon.png`, and matching
+`UI_ICON_TYPE_PLATFORMS_*` / `UI_ICON_TYPE_PROJ_*` enum values. Downstream
+websites can sync shared assets from a vendored Kryon copy with
+`vendor/kryon/scripts/sync-icons.sh`. Generated pixel icons are rebuilt with
+`make icons-generate`.
+
+Profile-picture PNGs in `icons/pfp/` are embedded into the same icon catalog with
 `UI_ICON_TYPE_PFP_*` enum values. Use `GetUIProfilePictureIconCount`,
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.

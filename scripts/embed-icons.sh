@@ -5,11 +5,16 @@ icon_dir=${1:-icons}
 out=${2:-src/ui/ui_icon_assets.c}
 tmp="${out}.tmp"
 
-primary_icon_dir=${icon_dir%% *}
 icon_files=$(
-    for dir in $icon_dir; do
-        find "$dir" -maxdepth 1 -type f -name '*.png' 2>/dev/null
-    done | LC_ALL=C sort
+    {
+        find "$icon_dir" -maxdepth 1 -type f -name '*.png' -print 2>/dev/null |
+            LC_ALL=C sort
+        find "$icon_dir" -mindepth 1 -maxdepth 1 -type d ! -name review -print 2>/dev/null |
+            LC_ALL=C sort |
+            while IFS= read -r dir; do
+                find "$dir" -type f -name '*.png' -print 2>/dev/null | LC_ALL=C sort
+            done
+    }
 )
 
 icon_ident()
@@ -25,13 +30,9 @@ icon_enum()
 icon_name()
 {
     file=$1
-    dir=${file%/*}
-    base=$(basename "$file" .png)
-    if [ "$dir" = "$primary_icon_dir" ]; then
-        printf '%s' "$base"
-    else
-        printf '%s_%s' "$(basename "$dir")" "$base"
-    fi
+    name=${file#"$icon_dir"/}
+    name=${name%.png}
+    printf '%s' "$name" | tr '/' '_'
 }
 
 {

@@ -50,8 +50,8 @@ BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
-ICON_DIR ?= icons language payments platforms tiles pfp
-ICON_FILES = $(foreach dir,$(ICON_DIR),$(wildcard $(dir)/*.png))
+ICON_DIR ?= icons
+ICON_FILES = $(shell find $(ICON_DIR) -path '*/review/*' -prune -o -type f -name '*.png' -print 2>/dev/null | LC_ALL=C sort)
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
 # Default embedded assets: themes + the regular UI font. The CJK Noto faces
 # (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
@@ -237,7 +237,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test libdraw-test krb-web krb-sdl
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test libdraw-test krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -301,7 +301,7 @@ docs-site:
 	rm -rf $(SITE_BUILD_DIR)
 	mkdir -p $(SITE_BUILD_DIR)
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
-	cp -R icons platforms language $(SITE_BUILD_DIR)/
+	cp -R icons $(SITE_BUILD_DIR)/
 	cp -R $(SITE_DIR)/cursors $(SITE_BUILD_DIR)/
 	sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
@@ -779,6 +779,10 @@ $(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
 
 src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
+
+icons-generate: scripts/make_icons.py scripts/embed-icons.sh
+	python3 scripts/make_icons.py
+	sh scripts/embed-icons.sh "$(ICON_DIR)" $(ICON_ASSETS_C)
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
