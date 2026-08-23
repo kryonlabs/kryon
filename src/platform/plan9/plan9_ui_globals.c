@@ -8,7 +8,7 @@
  * to the native Plan 9 compiler, the definitions live here so the theme
  * core links standalone.
  */
-#include "../ui/ui_internal.h"
+#include "../../ui/ui_internal.h"
 #include "embedded_assets.h"
 
 /* ui.c */
