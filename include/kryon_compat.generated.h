@@ -2,8 +2,8 @@
 /*
  * Kryon graphics/input API surface.
  *
- * This header defines kryons public graphics, input, and asset API. It
- * currently tracks raylibs surface verbatim so that existing raylib-style
+ * This header defines kryon's public graphics, input, and asset API. It
+ * currently tracks raylib's surface verbatim so that existing raylib-style
  * code (DrawRectangle, Font, BeginDrawing, ...) compiles unchanged, and so
  * the raylib backend (build/generated/kryon_raylib_wrappers.c) can implement
  * every symbol by forwarding to raylib.
@@ -144,7 +144,7 @@ void UpdateKeyPlatformState(void);
 #endif
 
 #ifndef RLAPI
-    #define RLAPI       // Functions defined as extern by default (implicit specifiers)
+    #define RLAPI       // Functions defined as 'extern' by default (implicit specifiers)
 #endif
 
 //----------------------------------------------------------------------------------
@@ -185,7 +185,7 @@ void UpdateKeyPlatformState(void);
 #endif
 
 // Some compilers (mostly macos clang) default to C++98,
-// where aggregate initialization cant be used
+// where aggregate initialization can't be used
 // So, give a more clear error stating how to fix this
 
 // NOTE: Set some defines with some data types declared by raylib
@@ -622,7 +622,7 @@ typedef enum {
 typedef enum {
     KEY_NULL            = 0,        // Key: NULL, used for no key pressed
     // Alphanumeric keys
-    KEY_APOSTROPHE      = 39,       // Key: 
+    KEY_APOSTROPHE      = 39,       // Key: '
     KEY_COMMA           = 44,       // Key: ,
     KEY_MINUS           = 45,       // Key: -
     KEY_PERIOD          = 46,       // Key: .
@@ -666,7 +666,7 @@ typedef enum {
     KEY_Y               = 89,       // Key: Y | y
     KEY_Z               = 90,       // Key: Z | z
     KEY_LEFT_BRACKET    = 91,       // Key: [
-    KEY_BACKSLASH       = 92,       // Key: 
+    KEY_BACKSLASH       = 92,       // Key: '\'
     KEY_RIGHT_BRACKET   = 93,       // Key: ]
     KEY_GRAVE           = 96,       // Key: `
     // Function keys
@@ -1007,7 +1007,7 @@ typedef bool (*SaveFileTextCallback)(const char *fileName, const char *text); //
 //------------------------------------------------------------------------------------
 // Global Variables Definition
 //------------------------------------------------------------------------------------
-// Its lonely here...
+// It's lonely here...
 
 //------------------------------------------------------------------------------------
 // Window and Graphics Device Functions (Module: core)
@@ -1162,9 +1162,9 @@ RLAPI unsigned char *LoadFileData(const char *fileName, int *dataSize); // Load 
 RLAPI void UnloadFileData(unsigned char *data);                     // Unload file data allocated by LoadFileData()
 RLAPI bool SaveFileData(const char *fileName, const void *data, int dataSize); // Save data to file from byte array (write), returns true on success
 RLAPI bool ExportDataAsCode(const unsigned char *data, int dataSize, const char *fileName); // Export data to code (.h), returns true on success
-RLAPI char *LoadFileText(const char *fileName);                     // Load text data from file (read), returns a \0 terminated string
+RLAPI char *LoadFileText(const char *fileName);                     // Load text data from file (read), returns a '\0' terminated string
 RLAPI void UnloadFileText(char *text);                              // Unload file text data allocated by LoadFileText()
-RLAPI bool SaveFileText(const char *fileName, const char *text);    // Save text data to file (write), string must be \0 terminated, returns true on success
+RLAPI bool SaveFileText(const char *fileName, const char *text);    // Save text data to file (write), string must be '\0' terminated, returns true on success
 
 // File access custom callbacks
 // WARNING: Callbacks setup is intended for advanced users
@@ -1175,8 +1175,8 @@ RLAPI void SetSaveFileTextCallback(SaveFileTextCallback callback);  // Set custo
 
 RLAPI int FileRename(const char *fileName, const char *fileRename); // Rename file (if exists), returns 0 on success
 RLAPI int FileRemove(const char *fileName);                         // Remove file (if exists), returns 0 on success
-RLAPI int FileCopy(const char *srcPath, const char *dstPath);       // Copy file from one path to another, dstPath created if it doesnt exist, returns 0 on success
-RLAPI int FileMove(const char *srcPath, const char *dstPath);       // Move file from one directory to another, dstPath created if it doesnt exist, returns 0 on success
+RLAPI int FileCopy(const char *srcPath, const char *dstPath);       // Copy file from one path to another, dstPath created if it doesn't exist, returns 0 on success
+RLAPI int FileMove(const char *srcPath, const char *dstPath);       // Move file from one directory to another, dstPath created if it doesn't exist, returns 0 on success
 RLAPI int FileTextReplace(const char *fileName, const char *search, const char *replacement); // Replace text in an existing file, returns 0 on success
 RLAPI int FileTextFindIndex(const char *fileName, const char *search); // Find text in existing file, returns -1 if index not found or index otherwise
 RLAPI bool FileExists(const char *fileName);                        // Check if file exists
@@ -1184,7 +1184,7 @@ RLAPI bool DirectoryExists(const char *dirPath);                    // Check if 
 RLAPI bool IsFileExtension(const char *fileName, const char *ext);  // Check file extension (recommended include point: .png, .wav)
 RLAPI int GetFileLength(const char *fileName);                      // Get file length in bytes (NOTE: GetFileSize() conflicts with windows.h)
 RLAPI long GetFileModTime(const char *fileName);                    // Get file modification time (last write time)
-RLAPI const char *GetFileExtension(const char *fileName);           // Get pointer to extension for a filename string (includes dot: .png)
+RLAPI const char *GetFileExtension(const char *fileName);           // Get pointer to extension for a filename string (includes dot: '.png')
 RLAPI const char *GetFileName(const char *filePath);                // Get pointer to filename for a path string
 RLAPI const char *GetFileNameWithoutExt(const char *filePath);      // Get filename string without extension (uses static string)
 RLAPI const char *GetDirectoryPath(const char *filePath);           // Get full path for a given fileName with path (uses static string)
@@ -1197,13 +1197,13 @@ RLAPI bool IsPathFile(const char *path);                            // Check if 
 RLAPI bool IsPathDirectory(const char *path);                       // Check if given path points to a directory
 RLAPI bool IsFileNameValid(const char *fileName);                   // Check if fileName is valid for the platform/OS
 RLAPI FilePathList LoadDirectoryFiles(const char *dirPath);         // Load directory filepaths, files and directories, no subdirs scan
-RLAPI FilePathList LoadDirectoryFilesEx(const char *basePath, const char *filter, bool scanSubdirs); // Load directory filepaths with extension filtering and subdir scan; some filters available: *.*,FILES*,DIRS*
+RLAPI FilePathList LoadDirectoryFilesEx(const char *basePath, const char *filter, bool scanSubdirs); // Load directory filepaths with extension filtering and subdir scan; some filters available: '*.*','FILES*','DIRS*'
 RLAPI void UnloadDirectoryFiles(FilePathList files);                // Unload filepaths
 RLAPI bool IsFileDropped(void);                                     // Check if file has been dropped into window
 RLAPI FilePathList LoadDroppedFiles(void);                          // Load dropped filepaths
 RLAPI void UnloadDroppedFiles(FilePathList files);                  // Unload dropped filepaths
 RLAPI unsigned int GetDirectoryFileCount(const char *dirPath);      // Get the file count in a directory
-RLAPI unsigned int GetDirectoryFileCountEx(const char *basePath, const char *filter, bool scanSubdirs); // Get the file count in a directory with extension filtering and recursive directory scan. Use DIR in the filter string to include directories in the result
+RLAPI unsigned int GetDirectoryFileCountEx(const char *basePath, const char *filter, bool scanSubdirs); // Get the file count in a directory with extension filtering and recursive directory scan. Use 'DIR' in the filter string to include directories in the result
 
 // Compression/Encoding functionality
 RLAPI unsigned char *CompressData(const unsigned char *data, int dataSize, int *compDataSize);        // Compress data (DEFLATE algorithm), memory must be MemFree()
@@ -1237,7 +1237,7 @@ RLAPI bool IsKeyReleased(int key);                            // Check if key ha
 RLAPI bool IsKeyUp(int key);                                  // Check if key is NOT being pressed
 RLAPI int GetKeyPressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
 RLAPI int GetCharPressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
-RLAPI const char *GetKeyName(int key);                        // Get name of a QWERTY key on the current keyboard layout (eg returns string q for KEY_A on an AZERTY keyboard)
+RLAPI const char *GetKeyName(int key);                        // Get name of a QWERTY key on the current keyboard layout (eg returns string 'q' for KEY_A on an AZERTY keyboard)
 RLAPI void SetExitKey(int key);                               // Set a custom key to exit program (default is ESC)
 
 // Input-related functions: gamepads
@@ -1390,7 +1390,7 @@ RLAPI Image LoadImage(const char *fileName);                                    
 RLAPI Image LoadImageRaw(const char *fileName, int width, int height, int format, int headerSize);       // Load image from RAW file data
 RLAPI Image LoadImageAnim(const char *fileName, int *frames);                                            // Load image sequence from file (frames appended to image.data)
 RLAPI Image LoadImageAnimFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int *frames); // Load image sequence from memory buffer
-RLAPI Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, int dataSize);      // Load image from memory buffer, fileType refers to extension: i.e. .png
+RLAPI Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData, int dataSize);      // Load image from memory buffer, fileType refers to extension: i.e. '.png'
 RLAPI Image LoadImageFromTexture(Texture2D texture);                                                     // Load image from GPU texture data
 RLAPI Image LoadImageFromScreen(void);                                                                   // Load image from screen buffer (screenshot)
 RLAPI bool IsImageValid(Image image);                                                                    // Check if an image is valid (data and parameters)
@@ -1537,7 +1537,7 @@ RLAPI Font GetFontDefault(void);                                                
 RLAPI Font LoadFont(const char *fileName);                                                  // Load font from file into GPU memory (VRAM)
 RLAPI Font LoadFontEx(const char *fileName, int fontSize, const int *codepoints, int codepointCount); // Load font from file with defined codepoints and generation size, use NULL for codepoints and 0 for codepointCount to load the default character set, font size is provided in pixels height
 RLAPI Font LoadFontFromImage(Image image, Color key, int firstChar);                        // Load font from Image (XNA style)
-RLAPI Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize, const int *codepoints, int codepointCount); // Load font from memory buffer, fileType refers to extension: i.e. .ttf
+RLAPI Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize, const int *codepoints, int codepointCount); // Load font from memory buffer, fileType refers to extension: i.e. '.ttf'
 RLAPI bool IsFontValid(Font font);                                                          // Check if font is valid (font data loaded, WARNING: GPU texture not checked)
 RLAPI GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSize, const int *codepoints, int codepointCount, int type, int *glyphCount); // Load font data for further use
 RLAPI Image GenImageFontAtlas(const GlyphInfo *glyphs, Rectangle **glyphRecs, int glyphCount, int fontSize, int padding, int packMethod); // Generate image font atlas using chars info
@@ -1558,9 +1558,9 @@ RLAPI void SetTextLineSpacing(int spacing);                                     
 RLAPI int MeasureText(const char *text, int fontSize);                                      // Measure string width for default font
 RLAPI Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing);    // Measure string size for Font
 RLAPI Vector2 MeasureTextCodepoints(Font font, const int *codepoints, int length, float fontSize, float spacing); // Measure string size for an existing array of codepoints for Font
-RLAPI int GetGlyphIndex(Font font, int codepoint);                                          // Get glyph index position in font for a codepoint (unicode character), fallback to ? if not found
-RLAPI GlyphInfo GetGlyphInfo(Font font, int codepoint);                                     // Get glyph font info data for a codepoint (unicode character), fallback to ? if not found
-RLAPI Rectangle GetGlyphAtlasRec(Font font, int codepoint);                                 // Get glyph rectangle in font atlas for a codepoint (unicode character), fallback to ? if not found
+RLAPI int GetGlyphIndex(Font font, int codepoint);                                          // Get glyph index position in font for a codepoint (unicode character), fallback to '?' if not found
+RLAPI GlyphInfo GetGlyphInfo(Font font, int codepoint);                                     // Get glyph font info data for a codepoint (unicode character), fallback to '?' if not found
+RLAPI Rectangle GetGlyphAtlasRec(Font font, int codepoint);                                 // Get glyph rectangle in font atlas for a codepoint (unicode character), fallback to '?' if not found
 
 // Text codepoints management functions (unicode characters)
 RLAPI char *LoadUTF8(const int *codepoints, int length);                                    // Load UTF-8 text encoded from codepoints array
@@ -1568,19 +1568,19 @@ RLAPI void UnloadUTF8(char *text);                                              
 RLAPI int *LoadCodepoints(const char *text, int *count);                                    // Load all codepoints from a UTF-8 text string, codepoints count returned by parameter
 RLAPI void UnloadCodepoints(int *codepoints);                                               // Unload codepoints data from memory
 RLAPI int GetCodepointCount(const char *text);                                              // Get total number of codepoints in a UTF-8 encoded string
-RLAPI int GetCodepoint(const char *text, int *codepointSize);                               // Get next codepoint in a UTF-8 encoded string, 0x3f(?) is returned on failure
-RLAPI int GetCodepointNext(const char *text, int *codepointSize);                           // Get next codepoint in a UTF-8 encoded string, 0x3f(?) is returned on failure
-RLAPI int GetCodepointPrevious(const char *text, int *codepointSize);                       // Get previous codepoint in a UTF-8 encoded string, 0x3f(?) is returned on failure
+RLAPI int GetCodepoint(const char *text, int *codepointSize);                               // Get next codepoint in a UTF-8 encoded string, 0x3f('?') is returned on failure
+RLAPI int GetCodepointNext(const char *text, int *codepointSize);                           // Get next codepoint in a UTF-8 encoded string, 0x3f('?') is returned on failure
+RLAPI int GetCodepointPrevious(const char *text, int *codepointSize);                       // Get previous codepoint in a UTF-8 encoded string, 0x3f('?') is returned on failure
 RLAPI const char *CodepointToUTF8(int codepoint, int *utf8Size);                            // Encode one codepoint into UTF-8 byte array (array length returned as parameter)
 
 // Text strings management functions (no UTF-8 strings, only byte chars)
-// WARNING 1: Most of these functions use internal static buffers[], its recommended to store returned data on user-side for re-use
+// WARNING 1: Most of these functions use internal static buffers[], it's recommended to store returned data on user-side for re-use
 // WARNING 2: Some functions allocate memory internally for the returned strings, those strings must be freed by user using MemFree()
-RLAPI char **LoadTextLines(const char *text, int *count);                                   // Load text as separate lines (\n)
+RLAPI char **LoadTextLines(const char *text, int *count);                                   // Load text as separate lines ('\n')
 RLAPI void UnloadTextLines(char **text, int lineCount);                                     // Unload text lines
 RLAPI int TextCopy(char *dst, const char *src);                                             // Copy one string to another, returns bytes copied
 RLAPI bool TextIsEqual(const char *text1, const char *text2);                               // Check if two text strings are equal
-RLAPI unsigned int TextLength(const char *text);                                            // Get text length, checks for \0 ending
+RLAPI unsigned int TextLength(const char *text);                                            // Get text length, checks for '\0' ending
 RLAPI const char *TextFormat(const char *text, ...);                                        // Text formatting with variables (sprintf() style)
 RLAPI const char *TextSubtext(const char *text, int position, int length);                  // Get a piece of a text string
 RLAPI const char *TextRemoveSpaces(const char *text);                                       // Remove text spaces, concat words
@@ -1714,7 +1714,7 @@ RLAPI float GetMasterVolume(void);                                    // Get mas
 
 // Wave/Sound loading/unloading functions
 RLAPI Wave LoadWave(const char *fileName);                            // Load wave data from file
-RLAPI Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int dataSize); // Load wave from memory buffer, fileType refers to extension: i.e. .wav
+RLAPI Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int dataSize); // Load wave from memory buffer, fileType refers to extension: i.e. '.wav'
 RLAPI bool IsWaveValid(Wave wave);                                    // Check if wave data is valid (data loaded and parameters)
 RLAPI Sound LoadSound(const char *fileName);                          // Load sound from file
 RLAPI Sound LoadSoundFromWave(Wave wave);                             // Load sound from wave data
@@ -1777,10 +1777,10 @@ RLAPI void SetAudioStreamPan(AudioStream stream, float pan);          // Set pan
 RLAPI void SetAudioStreamBufferSizeDefault(int size);                 // Default size for new audio streams
 RLAPI void SetAudioStreamCallback(AudioStream stream, AudioCallback callback); // Audio thread callback to request new data
 
-RLAPI void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Attach audio stream processor to stream, receives frames x 2 samples as float (stereo)
+RLAPI void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Attach audio stream processor to stream, receives frames x 2 samples as 'float' (stereo)
 RLAPI void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor); // Detach audio stream processor from stream
 
-RLAPI void AttachAudioMixedProcessor(AudioCallback processor); // Attach audio stream processor to the entire audio pipeline, receives frames x 2 samples as float (stereo)
+RLAPI void AttachAudioMixedProcessor(AudioCallback processor); // Attach audio stream processor to the entire audio pipeline, receives frames x 2 samples as 'float' (stereo)
 RLAPI void DetachAudioMixedProcessor(AudioCallback processor); // Detach audio stream processor from the entire audio pipeline
 
 #ifdef __cplusplus

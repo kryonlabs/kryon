@@ -33,6 +33,7 @@ OFILES=\
 	src/backend/kry_event_wait.$O\
 	src/backend/kry_image_decode.$O\
 	src/backend/kry_input.$O\
+	src/backend/kry_instance.$O\
 	src/backend/kry_screenshot.$O\
 	src/backend/kry_surface_math.$O\
 	src/backend/kry_sw.$O\
@@ -53,15 +54,55 @@ OFILES=\
 	src/core/theme.$O\
 	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
+	src/ui/bottom_nav.$O\
+	src/ui/button.$O\
+	src/ui/dropdown.$O\
+	src/ui/guide.$O\
+	src/ui/icon_controls.$O\
+	src/ui/modal.$O\
+	src/ui/profile_header.$O\
+	src/ui/reorder.$O\
+	src/ui/rows.$O\
+	src/ui/scroll.$O\
+	src/ui/tab_bar.$O\
+	src/ui/theme_picker.$O\
+	src/ui/toast.$O\
+	src/ui/toolbar.$O\
+	src/ui/top_nav.$O\
+	src/ui/tutorial.$O\
+	src/ui/ui.$O\
+	src/ui/ui_clip.$O\
+	src/ui/ui_clipboard.$O\
 	src/ui/ui_color.$O\
+	src/ui/ui_dpi.$O\
+	src/ui/ui_icon_assets.$O\
+	src/ui/ui_icon_names.$O\
+	src/ui/ui_icons.$O\
+	src/ui/ui_inspect.$O\
+	src/ui/ui_layout.$O\
+	src/ui/ui_node_registry.$O\
+	src/ui/ui_picture_cache.$O\
 	src/ui/ui_scaling.$O\
+	src/ui/ui_slider.$O\
 	src/ui/ui_style.$O\
+	src/ui/ui_text.$O\
+	src/ui/ui_text_backend.$O\
+	src/ui/ui_text_edit.$O\
+	src/ui/ui_text_layout.$O\
+	src/ui/ui_titlebar.$O\
+	src/ui/ui_tk.$O\
+	src/ui/ui_transition.$O\
+	src/ui/ui_tree.$O\
+	src/ui/ui_window.$O\
 	src/kry_std/kry_archive.$O\
 	src/kry_std/kry_filesystem.$O\
 	src/kry_std/kry_json.$O\
 	src/kry_std/kry_sha256.$O\
 	src/markdown.$O\
+	src/platform/kry_activity_monitor.$O\
+	src/platform/plan9/plan9_notification.$O\
 	src/platform/plan9/plan9_os.$O\
+	src/platform/plan9/plan9_runtime_stubs.$O\
 	src/platform/plan9/plan9_ui_globals.$O\
 	src/platform/system_theme/system_theme.$O\
 
@@ -112,3 +153,6 @@ src/ui/%.$O: src/ui/%.c
 
 src/markdown.$O: src/markdown.c
 	cd src && cpp -+ $CPPFLAGS markdown.c > markdown.i && $CC $CFLAGS -c markdown.i && mv markdown.i.$O markdown.$O && rm -f markdown.i
+
+src/platform/kry_activity_monitor.$O: src/platform/kry_activity_monitor.c
+	cd src/platform && cpp -+ $CPPFLAGS kry_activity_monitor.c > kry_activity_monitor.i && $CC $CFLAGS -c kry_activity_monitor.i && mv kry_activity_monitor.i.$O kry_activity_monitor.$O && rm -f kry_activity_monitor.i

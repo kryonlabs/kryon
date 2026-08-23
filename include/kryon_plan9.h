@@ -5,19 +5,7 @@
 #define KRYON_NATIVE_PLAN9 1
 #endif
 
-/* Native Plan 9 core headers are include-once by convention (u.h carries no
- * include guard), so re-entry checks the nil/nelem macros they define. */
-#ifndef nil
-#include <u.h>
-#endif
-#ifndef nelem
-#include <libc.h>
-#endif
-
-#ifndef KRYON_PLAN9_SIZE_T_DEFINED
-#define KRYON_PLAN9_SIZE_T_DEFINED
-typedef usize size_t;
-#endif
+#include "kryon_plan9_libc.h"
 
 #ifndef NULL
 #define NULL nil

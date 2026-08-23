@@ -2,7 +2,9 @@
 
 #include "kryon_plan9.h"
 
-struct rAudioBuffer {
+typedef struct KryLibdrawAudioBuffer KryLibdrawAudioBuffer;
+
+struct KryLibdrawAudioBuffer {
     unsigned char *data;
     unsigned int bytes;
     int owns;
@@ -56,6 +58,12 @@ zero_sound(void)
 
     memset(&sound, 0, sizeof(sound));
     return sound;
+}
+
+static KryLibdrawAudioBuffer *
+audio_buffer(AudioStream stream)
+{
+    return (KryLibdrawAudioBuffer *)stream.buffer;
 }
 
 static Music
@@ -197,7 +205,7 @@ Sound
 LoadSoundFromWave(Wave wave)
 {
     Sound sound;
-    rAudioBuffer *buffer;
+    KryLibdrawAudioBuffer *buffer;
     unsigned int bytes;
 
     sound = zero_sound();
@@ -215,7 +223,7 @@ LoadSoundFromWave(Wave wave)
     memcpy(buffer->data, wave.data, bytes);
     buffer->bytes = bytes;
     buffer->owns = 1;
-    sound.stream.buffer = buffer;
+    sound.stream.buffer = (rAudioBuffer *)buffer;
     sound.stream.sampleRate = wave.sampleRate;
     sound.stream.sampleSize = wave.sampleSize;
     sound.stream.channels = wave.channels;
@@ -245,9 +253,12 @@ void UpdateSound(Sound sound, const void *data, int frameCount)
 void UnloadWave(Wave wave) { free(wave.data); }
 void UnloadSound(Sound sound)
 {
-    if(sound.stream.buffer != nil && sound.stream.buffer->owns) {
-        free(sound.stream.buffer->data);
-        free(sound.stream.buffer);
+    KryLibdrawAudioBuffer *buffer;
+
+    buffer = audio_buffer(sound.stream);
+    if(buffer != nil && buffer->owns) {
+        free(buffer->data);
+        free(buffer);
     }
 }
 void UnloadSoundAlias(Sound alias) { (void)alias; }
@@ -265,14 +276,16 @@ bool ExportWaveAsCode(Wave wave, const char *fileName)
 }
 void PlaySound(Sound sound)
 {
+    KryLibdrawAudioBuffer *buffer;
     int fd;
 
-    if(sound.stream.buffer == nil || sound.stream.buffer->data == nil)
+    buffer = audio_buffer(sound.stream);
+    if(buffer == nil || buffer->data == nil)
         return;
     fd = open("/dev/audio", OWRITE);
     if(fd < 0)
         return;
-    write(fd, sound.stream.buffer->data, sound.stream.buffer->bytes);
+    write(fd, buffer->data, buffer->bytes);
     close(fd);
 }
 void StopSound(Sound sound) { (void)sound; }

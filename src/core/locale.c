@@ -346,7 +346,7 @@ load_file_text_from_paths(const char *relative_path, char **out_text)
         return 0;
     *out_text = NULL;
 
-#if defined(UI_EMBEDDED_ONLY)
+#if defined(UI_EMBEDDED_ONLY) && UI_EMBEDDED_ONLY
     text = LoadEmbeddedAssetText(relative_path);
     if(text != NULL) {
         *out_text = text;
@@ -410,7 +410,7 @@ load_locale_file_for_code(const char *code, char **out_text)
     if(code == NULL || code[0] == 0)
         code = "en";
 
-#if defined(UI_EMBEDDED_ONLY)
+#if defined(UI_EMBEDDED_ONLY) && UI_EMBEDDED_ONLY
     snprintf(path, sizeof(path), "locales/%s.txt", code);
     text = LoadEmbeddedAssetText(path);
     if(text != NULL) {

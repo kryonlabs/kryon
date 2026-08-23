@@ -15,6 +15,40 @@
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
 
+static Rectangle
+ui_rect(float x, float y, float width, float height)
+{
+    Rectangle rect;
+
+    rect.x = x;
+    rect.y = y;
+    rect.width = width;
+    rect.height = height;
+    return rect;
+}
+
+static Vector2
+ui_vec2(float x, float y)
+{
+    Vector2 vec;
+
+    vec.x = x;
+    vec.y = y;
+    return vec;
+}
+
+static Color
+ui_rgba(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
+{
+    Color color;
+
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    color.a = a;
+    return color;
+}
+
 #if defined(PLATFORM_WEB)
 #include <emscripten.h>
 #endif
@@ -875,6 +909,9 @@ ui_text_draw_context_overlay(void)
     int has_selection = g_ui_text_context_selection_end >
                         g_ui_text_context_selection_start;
     int command;
+    ContextMenuProps menu;
+    TextEdit edit;
+    int changed;
 
     if(!g_ui_text_context_open)
         return 0;
@@ -906,26 +943,26 @@ ui_text_draw_context_overlay(void)
                             UI_TEXT_CONTEXT_SELECT_ALL,
                             !has_text, 0, NULL, 0};
 
-    command = DrawUIContextMenu((ContextMenuProps){
-        .id = 8500 + g_ui_text_context_kind,
-        .trigger = (Rectangle){-10000.0f, -10000.0f, 1.0f, 1.0f},
-        .items = items,
-        .item_count = 4,
-        .open = &g_ui_text_context_open,
-        .x = &g_ui_text_context_x,
-        .y = &g_ui_text_context_y
-    });
+    memset(&menu, 0, sizeof(menu));
+    menu.id = 8500 + g_ui_text_context_kind;
+    menu.trigger = ui_rect(-10000.0f, -10000.0f, 1.0f, 1.0f);
+    menu.items = items;
+    menu.item_count = 4;
+    menu.open = &g_ui_text_context_open;
+    menu.x = &g_ui_text_context_x;
+    menu.y = &g_ui_text_context_y;
+    command = DrawUIContextMenu(menu);
     if(command != 0) {
-        int changed = ui_text_apply_context_command(
+        memset(&edit, 0, sizeof(edit));
+        edit.text = g_ui_text_context_text;
+        edit.text_size = g_ui_text_context_text_size;
+        edit.cursor_position = g_ui_text_context_cursor;
+        edit.max_codepoints = g_ui_text_context_max_codepoints;
+        edit.filter = g_ui_text_context_filter;
+        edit.filter_user_data = g_ui_text_context_filter_user_data;
+        changed = ui_text_apply_context_command(
             command,
-            (TextEdit){
-                .text = g_ui_text_context_text,
-                .text_size = g_ui_text_context_text_size,
-                .cursor_position = g_ui_text_context_cursor,
-                .max_codepoints = g_ui_text_context_max_codepoints,
-                .filter = g_ui_text_context_filter,
-                .filter_user_data = g_ui_text_context_filter_user_data
-            },
+            edit,
             g_ui_text_context_selection,
             g_ui_text_context_id,
             g_ui_text_context_owner,
@@ -2348,9 +2385,17 @@ RenderTextArea(TextAreaProps area)
     int copy_pressed = 0;
     int cut_pressed = 0;
     int paste_pressed = 0;
+    TextEdit area_edit;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
+    memset(&area_edit, 0, sizeof(area_edit));
+    area_edit.text = area.text;
+    area_edit.text_size = area.text_size;
+    area_edit.cursor_position = area.cursor_position;
+    area_edit.max_codepoints = area.max_codepoints;
+    area_edit.filter = area.filter;
+    area_edit.filter_user_data = area.filter_user_data;
 
     widget = BeginUIWidget("text_area",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -2573,14 +2618,7 @@ RenderTextArea(TextAreaProps area)
             ui_text_delete_range(area.text, area.text_size,
                                  area.cursor_position, selection_start,
                                  selection_end);
-            if(ui_text_paste_clipboard((TextEdit){
-                   .text = area.text,
-                   .text_size = area.text_size,
-                   .cursor_position = area.cursor_position,
-                   .max_codepoints = area.max_codepoints,
-                   .filter = area.filter,
-                   .filter_user_data = area.filter_user_data
-               }, 1)) {
+            if(ui_text_paste_clipboard(area_edit, 1)) {
                 changed = 1;
             }
             ui_text_selection_set(&g_ui_text_area_selection, drag_id,
@@ -2588,14 +2626,7 @@ RenderTextArea(TextAreaProps area)
                                   *area.cursor_position, 0);
             selection_key_handled = 1;
         } else if(!area.read_only && ui_mod_key_down() && paste_pressed) {
-            if(ui_text_paste_clipboard((TextEdit){
-                   .text = area.text,
-                   .text_size = area.text_size,
-                   .cursor_position = area.cursor_position,
-                   .max_codepoints = area.max_codepoints,
-                   .filter = area.filter,
-                   .filter_user_data = area.filter_user_data
-               }, 1)) {
+            if(ui_text_paste_clipboard(area_edit, 1)) {
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, *area.cursor_position,
                                       *area.cursor_position, 0);
@@ -2692,14 +2723,7 @@ RenderTextArea(TextAreaProps area)
             }
         }
         if(!area.read_only && !selection_key_handled) {
-            changed |= EditText((TextEdit){
-                .text = area.text,
-                .text_size = area.text_size,
-                .cursor_position = area.cursor_position,
-                .max_codepoints = area.max_codepoints,
-                .filter = area.filter,
-                .filter_user_data = area.filter_user_data
-            });
+            changed |= EditText(area_edit);
         }
         if(!area.read_only && enter_requested) {
             int len = (int)strlen(area.text);
@@ -2831,12 +2855,23 @@ RenderTextField(TextFieldProps field)
     int context_active = 0;
     const char *display_text;
     char *masked_text = NULL;
+    TextEdit field_edit;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
     if(field.text == NULL || field.text_size == 0 ||
        field.cursor_position == NULL || field.focused == NULL)
         return 0;
+    memset(&field_edit, 0, sizeof(field_edit));
+    field_edit.text = field.text;
+    field_edit.text_size = field.text_size;
+    field_edit.cursor_position = field.cursor_position;
+    field_edit.max_codepoints = field.max_codepoints;
+    field_edit.filter = field.filter;
+    field_edit.filter_user_data = field.filter_user_data;
+    field_edit.commit_pressed = field.commit_pressed != NULL
+                                  ? field.commit_pressed
+                                  : &commit_pressed;
 
     display_text = field.text;
     if(field.secure) {
@@ -3024,14 +3059,7 @@ RenderTextField(TextFieldProps field)
                 ui_text_delete_range(field.text, field.text_size,
                                      field.cursor_position, selection_start,
                                      selection_end);
-            if(ui_text_paste_clipboard((TextEdit){
-                   .text = field.text,
-                   .text_size = field.text_size,
-                   .cursor_position = field.cursor_position,
-                   .max_codepoints = field.max_codepoints,
-                   .filter = field.filter,
-                   .filter_user_data = field.filter_user_data
-               }, 0))
+            if(ui_text_paste_clipboard(field_edit, 0))
                 changed = 1;
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
                                   field.focused, *field.cursor_position,
@@ -3104,17 +3132,7 @@ RenderTextField(TextFieldProps field)
             }
         }
         if(!field.read_only && !selection_handled) {
-            changed = EditText((TextEdit){
-                .text = field.text,
-                .text_size = field.text_size,
-                .cursor_position = field.cursor_position,
-                .max_codepoints = field.max_codepoints,
-                .filter = field.filter,
-                .filter_user_data = field.filter_user_data,
-                .commit_pressed = field.commit_pressed != NULL
-                                      ? field.commit_pressed
-                                      : &commit_pressed
-            });
+            changed = EditText(field_edit);
         }
         if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
@@ -3412,18 +3430,23 @@ ApplyCurrentUITheme(void)
 Camera2D
 GetUIDefaultCamera(void)
 {
-    return (Camera2D){
-        .offset = {0.0f, 0.0f},
-        .target = {0.0f, 0.0f},
-        .rotation = 0.0f,
-        .zoom = 1.0f
-    };
+    Camera2D camera;
+
+    memset(&camera, 0, sizeof(camera));
+    camera.zoom = 1.0f;
+    return camera;
+}
+
+static int
+ui_float_isfinite(float value)
+{
+    return value == value && value > -3.4e38f && value < 3.4e38f;
 }
 
 static float
 ui_sane_float(float value, float fallback)
 {
-    return isfinite(value) ? value : fallback;
+    return ui_float_isfinite(value) ? value : fallback;
 }
 
 static Camera2D
@@ -3434,7 +3457,7 @@ ui_sane_camera(Camera2D camera)
     camera.target.x = ui_sane_float(camera.target.x, 0.0f);
     camera.target.y = ui_sane_float(camera.target.y, 0.0f);
     camera.rotation = ui_sane_float(camera.rotation, 0.0f);
-    if(!isfinite(camera.zoom) || fabsf(camera.zoom) < 0.0001f)
+    if(!ui_float_isfinite(camera.zoom) || fabsf(camera.zoom) < 0.0001f)
         camera.zoom = 1.0f;
     return camera;
 }

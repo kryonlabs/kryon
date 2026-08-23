@@ -968,14 +968,18 @@ UIRouteInput(void)
             if(end > start)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor, start, end);
-            changed |= ui_text_paste_clipboard((TextEdit){
-                .text = field->text,
-                .text_size = field->text_size,
-                .cursor_position = &state->cursor,
-                .max_codepoints = field->max_codepoints,
-                .filter = field->filter,
-                .filter_user_data = field->filter_user_data
-            }, 0);
+            {
+                TextEdit edit;
+
+                memset(&edit, 0, sizeof(edit));
+                edit.text = field->text;
+                edit.text_size = field->text_size;
+                edit.cursor_position = &state->cursor;
+                edit.max_codepoints = field->max_codepoints;
+                edit.filter = field->filter;
+                edit.filter_user_data = field->filter_user_data;
+                changed |= ui_text_paste_clipboard(edit, 0);
+            }
             state->anchor = state->cursor;
             selection_changed = 1;
             start = end = state->cursor;

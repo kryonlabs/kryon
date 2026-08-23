@@ -16,6 +16,15 @@
 #define KRY_LIBDRAW_MAX_TEXTURES 512
 #define KRY_LIBDRAW_MAX_FONTS 64
 #define KRY_LIBDRAW_KEY_CAP 512
+#define KRY_LIBDRAW_MAX_TEXT_DRAWS 2048
+
+typedef struct KryLibdrawQueuedText {
+    unsigned font_id;
+    char *text;
+    int x;
+    int y;
+    Color color;
+} KryLibdrawQueuedText;
 
 int kry_libdraw_width = 800;
 int kry_libdraw_height = 600;
@@ -61,6 +70,8 @@ static int g_target_depth;
 static unsigned g_active_texture_id;
 static KryLibdrawTexture g_textures[KRY_LIBDRAW_MAX_TEXTURES];
 static KryLibdrawFont g_fonts[KRY_LIBDRAW_MAX_FONTS];
+static KryLibdrawQueuedText g_text_draws[KRY_LIBDRAW_MAX_TEXT_DRAWS];
+static int g_text_draw_count;
 static unsigned g_next_texture_id = 1;
 static unsigned g_next_font_id = 1;
 static unsigned char *g_clipboard;
@@ -99,6 +110,56 @@ dup_text_bytes(const char *text)
         return NULL;
     memcpy(copy, text, len + 1);
     return copy;
+}
+
+static char *
+dup_text_n_bytes(const char *text, int byte_len)
+{
+    char *copy;
+
+    if(text == NULL)
+        text = "";
+    if(byte_len < 0)
+        byte_len = (int)strlen(text);
+    copy = malloc((size_t)byte_len + 1);
+    if(copy == NULL)
+        return NULL;
+    memcpy(copy, text, (size_t)byte_len);
+    copy[byte_len] = '\0';
+    return copy;
+}
+
+static void
+clear_text_draws(void)
+{
+    int i;
+
+    for(i = 0; i < g_text_draw_count; i++)
+        free(g_text_draws[i].text);
+    g_text_draw_count = 0;
+}
+
+static void
+draw_queued_text(void)
+{
+    int i;
+
+    if(display == nil || screen == nil)
+        goto done;
+    for(i = 0; i < g_text_draw_count; i++) {
+        KryLibdrawQueuedText *q = &g_text_draws[i];
+        KryLibdrawFont *registered = kry_libdraw_font(q->font_id);
+        P9Font *p9font = registered != NULL ? registered->font : font;
+        P9Image *color = kry_libdraw_color(q->color);
+
+        if(p9font == nil || color == nil || q->text == NULL)
+            continue;
+        string(screen, addpt(screen->r.min, kry_p9_point(q->x, q->y)),
+               color, ZP, p9font, q->text);
+    }
+
+done:
+    clear_text_draws();
 }
 
 static int
@@ -302,6 +363,7 @@ present_sw(void)
         return;
     loadimage(g_present, g_present->r, (unsigned char *)pixels, ndata);
     draw(screen, screen->r, g_present, nil, ZP);
+    draw_queued_text();
     flushimage(display, 1);
 }
 
@@ -696,6 +758,50 @@ kry_libdraw_font_unregister(unsigned id)
     memset(f, 0, sizeof(*f));
 }
 
+int
+kry_libdraw_font_height(unsigned id)
+{
+    KryLibdrawFont *f = kry_libdraw_font(id);
+
+    if(f == NULL || f->font == nil)
+        return 0;
+    return f->font->height;
+}
+
+int
+kry_libdraw_font_text_width(unsigned id, const char *text, int byte_len)
+{
+    KryLibdrawFont *registered = kry_libdraw_font(id);
+    P9Font *p9font = registered != NULL ? registered->font : font;
+
+    if(p9font == nil || text == NULL)
+        return 0;
+    if(byte_len < 0)
+        return stringwidth(p9font, (char *)text);
+    return stringnwidth(p9font, (char *)text, byte_len);
+}
+
+void
+kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len, int x,
+                       int y, Color color)
+{
+    KryLibdrawQueuedText *q;
+
+    if(text == NULL || text[0] == '\0')
+        return;
+    if(g_text_draw_count >= KRY_LIBDRAW_MAX_TEXT_DRAWS)
+        return;
+    q = &g_text_draws[g_text_draw_count];
+    q->text = dup_text_n_bytes(text, byte_len);
+    if(q->text == NULL)
+        return;
+    q->font_id = font_id;
+    q->x = x;
+    q->y = y;
+    q->color = color;
+    g_text_draw_count++;
+}
+
 void
 KryonRaylibBackend_InitWindow(int width, int height, const char *title)
 {
@@ -721,6 +827,7 @@ void
 KryonRaylibBackend_CloseWindow(void)
 {
     kry_libdraw_ready = 0;
+    clear_text_draws();
     if(g_present != nil) {
         freeimage(g_present);
         g_present = nil;

@@ -84,6 +84,7 @@ BeginUIScrollPage(UIScrollPageSpec spec)
     int content_w = 0;
     int draw_w;
     int passes = spec.measure_passes > 0 ? spec.measure_passes : 3;
+    int i;
 
     memset(&page, 0, sizeof(page));
 
@@ -99,22 +100,24 @@ BeginUIScrollPage(UIScrollPageSpec spec)
     GetUICenteredColumn(max_content_w, side_padding, &content_x, &content_w);
     draw_w = content_w;
 
-    for(int i = 0; i < passes; i++) {
+    for(i = 0; i < passes; i++) {
         int content_h;
 
         if(spec.content_height != NULL)
             content_h = spec.content_height(draw_w, spec.user_data);
         else
             content_h = 0;
-        area = (UIScrollArea){
-            .bounds = {0.0f, (float)spec.y, (float)ui_view_width, (float)spec.height},
-            .content_height = content_h,
-            .content_x = content_x,
-            .content_width = content_w,
-            .scroll_offset = spec.scroll_offset,
-            .wheel_step = spec.wheel_step > 0 ? spec.wheel_step : ScaleUIPx(42),
-            .scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - ScaleUIPx(8)
-        };
+        memset(&area, 0, sizeof(area));
+        area.bounds.x = 0.0f;
+        area.bounds.y = (float)spec.y;
+        area.bounds.width = (float)ui_view_width;
+        area.bounds.height = (float)spec.height;
+        area.content_height = content_h;
+        area.content_x = content_x;
+        area.content_width = content_w;
+        area.scroll_offset = spec.scroll_offset;
+        area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step : ScaleUIPx(42);
+        area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - ScaleUIPx(8);
         measured = MeasureUIScrollContainer(area);
         if(measured.content_w == draw_w)
             break;
@@ -163,6 +166,12 @@ BeginUIScrollContainer(UIScrollArea area)
     };
     int on_scrollbar = view.max_scroll > 0 &&
                        CheckCollisionPointRec(mouse_world, scrollbar_bounds);
+    Rectangle capture;
+
+    capture.x = 0;
+    capture.y = 0;
+    capture.width = (float)ui_view_width;
+    capture.height = (float)ui_view_height;
 
     if(area.scroll_offset != NULL) {
         *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
@@ -205,13 +214,11 @@ BeginUIScrollContainer(UIScrollArea area)
                 content_dragging = 1;
                 *area.scroll_offset = content_drag_start_scroll - dy;
                 *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
-                PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
-                                                  (float)ui_view_height}, 0);
+                PushUIInputCapture(capture, 0);
             }
         } else if(content_drag_active) {
             if(content_dragging)
-                PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
-                                                  (float)ui_view_height}, 0);
+                PushUIInputCapture(capture, 0);
             content_drag_active = 0;
             content_dragging = 0;
         }

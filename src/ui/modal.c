@@ -11,20 +11,21 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
     Color hover_background = style == ButtonStylePrimary ? c_button_hover :
                              LightenUIColor(c_surface, 14);
     Color text = c_text;
+    ButtonSpec spec;
 
     if(active)
         MarkUIClickable();
 
-    if(RenderButton((ButtonSpec){
-        .bounds = bounds,
-        .label = label,
-        .font = font,
-        .background = background,
-        .hover_background = hover_background,
-        .text = text,
-        .border = DarkenUIColor(background, 28),
-        .radius = 0.08f
-    }))
+    memset(&spec, 0, sizeof(spec));
+    spec.bounds = bounds;
+    spec.label = label;
+    spec.font = font;
+    spec.background = background;
+    spec.hover_background = hover_background;
+    spec.text = text;
+    spec.border = DarkenUIColor(background, 28);
+    spec.radius = 0.08f;
+    if(RenderButton(spec))
         return 1;
     return 0;
 }
@@ -45,11 +46,12 @@ ui_modal_measure_action_rows(const ModalAction *actions, int count,
 {
     int rows = 1;
     int row_w = 0;
+    int i;
 
     if(actions == NULL || count <= 0)
         return 0;
 
-    for(int i = 0; i < count; i++) {
+    for(i = 0; i < count; i++) {
         int action_w = ui_modal_action_width(actions[i].label, font);
         int next_w = row_w > 0 ? row_w + gap + action_w : action_w;
 
@@ -72,11 +74,13 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
+    int i;
+    int j;
 
     if(actions == NULL || count <= 0)
         return 0;
 
-    for(int i = 0; i <= count; i++) {
+    for(i = 0; i <= count; i++) {
         int end_row = i == count;
         int action_w = !end_row ? ui_modal_action_width(actions[i].label, font) : 0;
         int next_w = row_w > 0 ? row_w + gap + action_w : action_w;
@@ -91,7 +95,7 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
             int equal_w = (content_w - gap * (row_count - 1)) / row_count;
             int draw_x = x + (content_w - (equal_w * row_count + gap * (row_count - 1))) / 2;
 
-            for(int j = 0; j < row_count; j++) {
+            for(j = 0; j < row_count; j++) {
                 int action_index = row_start + j;
 
                 if(ui_modal_button(draw_x, y, equal_w, button_h,
@@ -140,6 +144,8 @@ DrawUIActionModal(ModalProps modal)
     int title_w;
     int result = 0;
     Vector2 mouse_world = ui_mouse_world();
+    Rectangle capture;
+    Color scrim;
 
     modal_w = modal_max_w;
     if(modal_w > ui_view_width - screen_pad)
@@ -168,14 +174,20 @@ DrawUIActionModal(ModalProps modal)
         modal_h = ui_view_height - ScaleUIPx(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
-    SetUIModalCapture((Rectangle){
-        (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
-    });
+    capture.x = (float)modal_x;
+    capture.y = (float)modal_y;
+    capture.width = (float)modal_w;
+    capture.height = (float)modal_h;
+    SetUIModalCapture(capture);
     msg_x = modal_x + padding_x;
     msg_y = modal_y + title_h;
     btn_y = modal_y + modal_h - buttons_h - padding_bottom;
 
-    DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
+    scrim.r = 0;
+    scrim.g = 0;
+    scrim.b = 0;
+    scrim.a = 180;
+    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
     if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
@@ -228,14 +240,15 @@ DrawUIModal(const char *title, const char *message,
         { cancel_btn, ButtonStyleSecondary, 0 },
         { confirm_btn, ButtonStylePrimary, 0 }
     };
+    ModalProps props;
 
-    return DrawUIActionModal((ModalProps){
-        .title = title,
-        .message = message,
-        .actions = actions,
-        .action_count = 2,
-        .max_width = 360
-    });
+    memset(&props, 0, sizeof(props));
+    props.title = title;
+    props.message = message;
+    props.actions = actions;
+    props.action_count = 2;
+    props.max_width = 360;
+    return DrawUIActionModal(props);
 }
 
 int
@@ -247,14 +260,15 @@ DrawUIModal3Button(const char *title, const char *message,
         { middle_btn, ButtonStylePrimary, 0 },
         { right_btn, ButtonStyleDanger, 0 }
     };
+    ModalProps props;
 
-    return DrawUIActionModal((ModalProps){
-        .title = title,
-        .message = message,
-        .actions = actions,
-        .action_count = 3,
-        .max_width = 420
-    });
+    memset(&props, 0, sizeof(props));
+    props.title = title;
+    props.message = message;
+    props.actions = actions;
+    props.action_count = 3;
+    props.max_width = 420;
+    return DrawUIActionModal(props);
 }
 
 int
@@ -278,12 +292,11 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
     content_w = width - ScaleUIPx(36);
     if(content_w < ScaleUIPx(120))
         content_w = ScaleUIPx(120);
-    paragraph = (ParagraphSpec){
-        .text = measure.message,
-        .width = content_w,
-        .font = font,
-        .line_gap = line_gap
-    };
+    memset(&paragraph, 0, sizeof(paragraph));
+    paragraph.text = measure.message;
+    paragraph.width = content_w;
+    paragraph.font = font;
+    paragraph.line_gap = line_gap;
     height = header_h +
              ui_paragraph_height(paragraph) +
              extra_lines * (font + line_gap) +
@@ -308,6 +321,8 @@ DrawUIModalFrame(int width, int height, const char *title,
     int icon_w = icon_size + icon_padding * 2;
     int title_w;
     int hover = 0;
+    Rectangle capture;
+    Color scrim;
 
     if(width > ui_view_width - ScaleUIPx(24))
         width = ui_view_width - ScaleUIPx(24);
@@ -335,8 +350,10 @@ DrawUIModalFrame(int width, int height, const char *title,
             frame.w = ScaleUIPx(120);
         if(frame.h < ScaleUIPx(96))
             frame.h = ScaleUIPx(96);
-        bounds = (Rectangle){(float)frame.x, (float)frame.y,
-                             (float)frame.w, (float)frame.h};
+        bounds.x = (float)frame.x;
+        bounds.y = (float)frame.y;
+        bounds.width = (float)frame.w;
+        bounds.height = (float)frame.h;
         UIWidgetSetBounds(&widget, bounds);
     }
     frame.content_x = frame.x + ScaleUIPx(18);
@@ -345,11 +362,17 @@ DrawUIModalFrame(int width, int height, const char *title,
     frame.content_h = frame.h - ScaleUIPx(74);
     title_font = GetUITitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
     title_w = TextWidth(title, title_font);
-    SetUIModalCapture((Rectangle){
-        (float)frame.x, (float)frame.y, (float)frame.w, (float)frame.h
-    });
+    capture.x = (float)frame.x;
+    capture.y = (float)frame.y;
+    capture.width = (float)frame.w;
+    capture.height = (float)frame.h;
+    SetUIModalCapture(capture);
 
-    DrawRectangle(0, 0, ui_view_width, ui_view_height, (Color){0, 0, 0, 180});
+    scrim.r = 0;
+    scrim.g = 0;
+    scrim.b = 0;
+    scrim.a = 180;
+    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
     if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};

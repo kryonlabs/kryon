@@ -32,4 +32,16 @@
 typedef ulong size_t;
 #endif
 
+/* Hosted code commonly uses time_t and GCC-style attributes. Native Plan 9's
+ * libc has time(long*) but no C library time_t typedef, and 8c has no
+ * __attribute__ parser. */
+#ifndef KRYON_PLAN9_TIME_T_DEFINED
+#define KRYON_PLAN9_TIME_T_DEFINED
+typedef long time_t;
+#endif
+
+#ifndef __attribute__
+#define __attribute__(x)
+#endif
+
 #endif

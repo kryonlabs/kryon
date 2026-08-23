@@ -9,4 +9,12 @@
 
 #include "kryon_plan9_libc.h"
 
+#ifndef va_copy
+#define va_copy(dst, src) ((dst) = (src))
+#endif
+
+#ifndef __va_copy
+#define __va_copy(dst, src) va_copy(dst, src)
+#endif
+
 #endif

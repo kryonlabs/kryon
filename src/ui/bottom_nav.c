@@ -42,11 +42,15 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
 static void
 ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
 {
+    Rectangle src;
+
     if(icon.id == 0)
         return;
-    DrawTexturePro(icon,
-                   (Rectangle){0, 0, (float)icon.width, (float)icon.height},
-                   dst, kryon_zero_vector2, 0, tint);
+    src.x = 0;
+    src.y = 0;
+    src.width = (float)icon.width;
+    src.height = (float)icon.height;
+    DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, tint);
 }
 
 BottomNavResult
@@ -67,6 +71,10 @@ DrawUIBottomNav(BottomNavProps nav)
     UIWidget widget;
     Rectangle bounds;
     UIMaterialScheme scheme;
+    int i;
+    Rectangle src;
+    Rectangle dst;
+    Rectangle rounded;
 
     result.y = y;
     result.height = height;
@@ -85,7 +93,10 @@ DrawUIBottomNav(BottomNavProps nav)
         group_w = available_w;
     tab_w = group_w / count;
     start_x = side_margin + (available_w - group_w) / 2;
-    bounds = (Rectangle){0, y, nav.view_width, height};
+    bounds.x = 0;
+    bounds.y = (float)y;
+    bounds.width = (float)nav.view_width;
+    bounds.height = (float)height;
     widget = BeginUIWidget("bottom_nav", "tmp:bottom-nav", bounds,
                            UI_WIDGET_READONLY);
     UIWidgetSetAction(&widget, "DrawUIBottomNav");
@@ -101,7 +112,7 @@ DrawUIBottomNav(BottomNavProps nav)
         DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
     }
 
-    for(int i = 0; i < count; i++) {
+    for(i = 0; i < count; i++) {
         const BottomNavItem *item = &nav.items[i];
         int x = start_x + i * tab_w;
         int w = i == count - 1 ? start_x + group_w - x : tab_w;
@@ -148,17 +159,19 @@ DrawUIBottomNav(BottomNavProps nav)
             if(hover)
                 ui_material_state_layer(item_bounds, state_tint, hover, 0,
                                         hover && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-            if(item->active)
-                DrawRectangleRounded((Rectangle){(float)indicator_x,
-                                                 (float)indicator_y,
-                                                 (float)indicator_w,
-                                                 (float)indicator_h},
-                                     0.50f, 12, scheme.secondary);
+            if(item->active) {
+                rounded.x = (float)indicator_x;
+                rounded.y = (float)indicator_y;
+                rounded.width = (float)indicator_w;
+                rounded.height = (float)indicator_h;
+                DrawRectangleRounded(rounded, 0.50f, 12, scheme.secondary);
+            }
+            dst.x = (float)icon_x;
+            dst.y = (float)icon_y;
+            dst.width = (float)icon_size;
+            dst.height = (float)icon_size;
             ui_draw_material_bottom_nav_icon(item->icon,
-                                             (Rectangle){(float)icon_x,
-                                                         (float)icon_y,
-                                                         (float)icon_size,
-                                                         (float)icon_size},
+                                             dst,
                                              icon_tint);
             if(item->label != NULL && item->label[0] != '\0') {
                 Rectangle label_rect = {
@@ -192,10 +205,15 @@ DrawUIBottomNav(BottomNavProps nav)
         }
 
         if(item->icon.id != 0) {
-            DrawTexturePro(item->icon,
-                           (Rectangle){0, 0, item->icon.width, item->icon.height},
-                           (Rectangle){icon_x, icon_y, icon_size, icon_size},
-                           kryon_zero_vector2, 0, icon_tint);
+            src.x = 0;
+            src.y = 0;
+            src.width = (float)item->icon.width;
+            src.height = (float)item->icon.height;
+            dst.x = (float)icon_x;
+            dst.y = (float)icon_y;
+            dst.width = (float)icon_size;
+            dst.height = (float)icon_size;
+            DrawTexturePro(item->icon, src, dst, kryon_zero_vector2, 0, icon_tint);
         }
     }
 
@@ -207,9 +225,11 @@ static int
 bottom_nav_option_index(const BottomNavOption *options, int option_count,
                         int route)
 {
+    int i;
+
     if(options == NULL || option_count <= 0)
         return 0;
-    for(int i = 0; i < option_count; i++) {
+    for(i = 0; i < option_count; i++) {
         if(options[i].route == route)
             return i;
     }
@@ -247,6 +267,8 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     int cancel_hover = 0;
     int save_hover = 0;
     int dropdown_blocks_buttons;
+    int i;
+    int j;
 
     if(max_route_count > 16)
         max_route_count = 16;
@@ -256,9 +278,9 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         route_count = max_route_count;
     if(option_count > 16)
         option_count = 16;
-    for(int i = 0; i < option_count; i++)
+    for(i = 0; i < option_count; i++)
         option_labels[i] = modal.options[i].label;
-    for(int i = 0; i < route_count; i++)
+    for(i = 0; i < route_count; i++)
         selected[i] = bottom_nav_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
@@ -286,24 +308,21 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     if(route_view_h < ScaleUIPx(48))
         route_view_h = ScaleUIPx(48);
     route_content_h = row_h * route_count;
-    route_area = (UIScrollArea){
-        .bounds = {
-            (float)frame.content_x,
-            (float)frame.content_y,
-            (float)frame.content_w,
-            (float)route_view_h
-        },
-        .content_height = route_content_h,
-        .content_x = frame.content_x,
-        .content_width = frame.content_w,
-        .scroll_offset = &route_scroll_offset,
-        .wheel_step = row_h,
-        .scrollbar_x = frame.content_x + frame.content_w - ScaleUIPx(8)
-    };
+    memset(&route_area, 0, sizeof(route_area));
+    route_area.bounds.x = (float)frame.content_x;
+    route_area.bounds.y = (float)frame.content_y;
+    route_area.bounds.width = (float)frame.content_w;
+    route_area.bounds.height = (float)route_view_h;
+    route_area.content_height = route_content_h;
+    route_area.content_x = frame.content_x;
+    route_area.content_width = frame.content_w;
+    route_area.scroll_offset = &route_scroll_offset;
+    route_area.wheel_step = row_h;
+    route_area.scrollbar_x = frame.content_x + frame.content_w - ScaleUIPx(8);
 
     route_view = BeginUIScrollContainer(route_area);
     y = route_view.content_y;
-    for(int i = 0; i < route_count; i++) {
+    for(i = 0; i < route_count; i++) {
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
@@ -322,7 +341,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
                                   y + ScaleUIPx(22), ScaleUIPx(20),
                                   ScaleUIPx(8), modal.close_icon,
                                   &remove_hover)) {
-            for(int j = i; j < route_count - 1; j++)
+            for(j = i; j < route_count - 1; j++)
                 modal.routes[j] = modal.routes[j + 1];
             route_count--;
             if(modal.route_count != NULL)

@@ -49,4 +49,12 @@ int UIFontHasGlyphValue(Font font, int codepoint);
  * Used by diagnostics; regular UI code should not need it. */
 int UIFontGlyphCount(Font font);
 
+/* Native backend text path. Returns false/0 on backends that only support
+ * atlas-backed fonts. */
+int UIFontHasNativeText(Font font);
+int UIFontNativeTextWidth(Font font, const char *text, int byte_len);
+int UIFontNativeTextHeight(Font font);
+int UIFontDrawNativeText(Font font, const char *text, int byte_len, int x,
+                         int y, int font_size, Color color);
+
 #endif /* UI_TEXT_BACKEND_H */

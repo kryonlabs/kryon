@@ -281,20 +281,21 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
     int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
                   !UIInputCapturesClick(mouse_world) &&
                   UIHoverEffectsEnabled();
+    IconButtonProps props;
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((IconButtonProps){
-        .bounds = bounds,
-        .icon = icon,
-        .icon_size = btn_size,
-        .icon_padding = padding,
-        .background = c_button,
-        .hover_background = c_button_hover,
-        .icon_color = WHITE,
-        .border = DarkenUIColor(c_button, 35),
-        .radius = 0.12f
-    });
+    memset(&props, 0, sizeof(props));
+    props.bounds = bounds;
+    props.icon = icon;
+    props.icon_size = btn_size;
+    props.icon_padding = padding;
+    props.background = c_button;
+    props.hover_background = c_button_hover;
+    props.icon_color = WHITE;
+    props.border = DarkenUIColor(c_button, 35);
+    props.radius = 0.12f;
+    return DrawUIIconButton(props);
 }
 
 int
@@ -307,20 +308,21 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
     int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
                   !UIInputCapturesClick(mouse_world) &&
                   UIHoverEffectsEnabled();
+    IconButtonProps props;
 
     if(hover != NULL)
         *hover = hovered;
-    return DrawUIIconButton((IconButtonProps){
-        .bounds = bounds,
-        .icon = icon,
-        .icon_size = size,
-        .icon_padding = padding,
-        .background = c_button,
-        .hover_background = c_button_hover,
-        .icon_color = WHITE,
-        .border = DarkenUIColor(c_button, 35),
-        .radius = 0.12f
-    });
+    memset(&props, 0, sizeof(props));
+    props.bounds = bounds;
+    props.icon = icon;
+    props.icon_size = size;
+    props.icon_padding = padding;
+    props.background = c_button;
+    props.hover_background = c_button_hover;
+    props.icon_color = WHITE;
+    props.border = DarkenUIColor(c_button, 35);
+    props.radius = 0.12f;
+    return DrawUIIconButton(props);
 }
 
 int
@@ -333,24 +335,28 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     int h = TextLineHeight(font) + ScaleUIPx(8);
     Rectangle bounds;
     int hovered;
+    ButtonSpec spec;
 
     x = x - w / 2;
-    bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    bounds.x = (float)x;
+    bounds.y = (float)y;
+    bounds.width = (float)w;
+    bounds.height = (float)h;
     hovered = CheckCollisionPointRec(mouse_world, bounds) &&
               !UIInputCapturesClick(mouse_world) &&
               UIHoverEffectsEnabled();
     if(hover != NULL)
         *hover = hovered;
-    return RenderButton((ButtonSpec){
-        .bounds = bounds,
-        .label = text,
-        .font = font,
-        .background = c_button,
-        .hover_background = c_button_hover,
-        .text = c_text,
-        .border = LightenUIColor(c_button, 32),
-        .radius = 0.06f
-    });
+    memset(&spec, 0, sizeof(spec));
+    spec.bounds = bounds;
+    spec.label = text;
+    spec.font = font;
+    spec.background = c_button;
+    spec.hover_background = c_button_hover;
+    spec.text = c_text;
+    spec.border = LightenUIColor(c_button, 32);
+    spec.radius = 0.06f;
+    return RenderButton(spec);
 }
 
 static void
@@ -364,8 +370,14 @@ ui_button_style_colors(ButtonStyle style, Color *bg, Color *hover_bg,
         *text_color = c_text;
         return;
     case ButtonStyleDanger:
-        *bg = (Color){180, 70, 70, 255};
-        *hover_bg = (Color){200, 90, 90, 255};
+        bg->r = 180;
+        bg->g = 70;
+        bg->b = 70;
+        bg->a = 255;
+        hover_bg->r = 200;
+        hover_bg->g = 90;
+        hover_bg->b = 90;
+        hover_bg->a = 255;
         *text_color = c_text;
         return;
     case ButtonStyleTab:
@@ -401,6 +413,7 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     Color bg;
     Color hover_bg;
     Color text_color;
+    ButtonSpec spec;
 
     ui_button_style_colors(style, &bg, &hover_bg, &text_color);
     if(ui_material_style()) {
@@ -443,17 +456,17 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     if(hover != NULL)
         *hover = hovered;
 
-    clicked = RenderButton((ButtonSpec){
-        .bounds = bounds,
-        .label = label,
-        .font = font,
-        .disabled = disabled,
-        .background = bg,
-        .hover_background = hover_bg,
-        .text = text_color,
-        .border = LightenUIColor(bg, 32),
-        .radius = 0.08f
-    });
+    memset(&spec, 0, sizeof(spec));
+    spec.bounds = bounds;
+    spec.label = label;
+    spec.font = font;
+    spec.disabled = disabled;
+    spec.background = bg;
+    spec.hover_background = hover_bg;
+    spec.text = text_color;
+    spec.border = LightenUIColor(bg, 32);
+    spec.radius = 0.08f;
+    clicked = RenderButton(spec);
 
     if(!ui_material_style() && UITransitionCuesEnabled() &&
        style == ButtonStyleTabSelected &&

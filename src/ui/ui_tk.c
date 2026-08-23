@@ -1652,8 +1652,16 @@ DrawUIMessageDialog(MessageDialogProps dialog)
 {
     const ModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
                                   ButtonStylePrimary, 0};
-    return DrawUIActionModal((ModalProps){dialog.title, dialog.message, &action, 1,
-                                           g_ui_x_icon, ScaleUIPx(420)});
+    ModalProps props;
+
+    memset(&props, 0, sizeof(props));
+    props.title = dialog.title;
+    props.message = dialog.message;
+    props.actions = &action;
+    props.action_count = 1;
+    props.close_icon = g_ui_x_icon;
+    props.max_width = ScaleUIPx(420);
+    return DrawUIActionModal(props);
 }
 
 int
@@ -1663,8 +1671,16 @@ DrawUIConfirmDialog(ConfirmDialogProps dialog)
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };
-    return DrawUIActionModal((ModalProps){dialog.title, dialog.message, actions, 2,
-                                           g_ui_x_icon, ScaleUIPx(460)});
+    ModalProps props;
+
+    memset(&props, 0, sizeof(props));
+    props.title = dialog.title;
+    props.message = dialog.message;
+    props.actions = actions;
+    props.action_count = 2;
+    props.close_icon = g_ui_x_icon;
+    props.max_width = ScaleUIPx(460);
+    return DrawUIActionModal(props);
 }
 
 int
@@ -1676,23 +1692,32 @@ DrawUIPromptDialog(PromptDialogProps dialog)
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
         {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
     };
-    result = DrawUIActionModal((ModalProps){dialog.title, "", actions, 2,
-                                             g_ui_x_icon, ScaleUIPx(460)});
+    ModalProps props;
+    TextFieldProps field_props;
+
+    memset(&props, 0, sizeof(props));
+    props.title = dialog.title;
+    props.message = "";
+    props.actions = actions;
+    props.action_count = 2;
+    props.close_icon = g_ui_x_icon;
+    props.max_width = ScaleUIPx(460);
+    result = DrawUIActionModal(props);
     if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
         Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
                            (float)(ui_view_height / 2 - ScaleUIPx(4)),
                            (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
-        RenderTextField((TextFieldProps){
-            .bounds = field,
-            .text = dialog.text,
-            .text_size = (size_t)dialog.text_size,
-            .cursor_position = dialog.cursor_position,
-            .focused = dialog.focused,
-            .max_codepoints = dialog.text_size - 1,
-            .font = GetUIFontSize(),
-            .focus_id = 7301,
-            .commit_pressed = &commit_pressed
-        });
+        memset(&field_props, 0, sizeof(field_props));
+        field_props.bounds = field;
+        field_props.text = dialog.text;
+        field_props.text_size = (size_t)dialog.text_size;
+        field_props.cursor_position = dialog.cursor_position;
+        field_props.focused = dialog.focused;
+        field_props.max_codepoints = dialog.text_size - 1;
+        field_props.font = GetUIFontSize();
+        field_props.focus_id = 7301;
+        field_props.commit_pressed = &commit_pressed;
+        RenderTextField(field_props);
         if(result == 0 && commit_pressed)
             result = 2;
         if(result == 0 && IsKeyPressed(KEY_ESCAPE))
@@ -1716,7 +1741,10 @@ DrawUIPickerDialog(PickerDialogProps picker)
     int y;
     int i;
     Rectangle panel;
+    Rectangle icon_src;
+    Rectangle icon_dst;
     Color scrim = BLACK;
+    ButtonSpec button;
 
     if(picker.labels == NULL || picker.option_count <= 0)
         return 0;
@@ -1727,7 +1755,10 @@ DrawUIPickerDialog(PickerDialogProps picker)
     panel_h = title_h + picker.option_count * row_h + button_h + pad * 2;
     x = (ui_view_width - w) / 2;
     y = (ui_view_height - panel_h) / 2;
-    panel = (Rectangle){(float)x, (float)y, (float)w, (float)panel_h};
+    panel.x = (float)x;
+    panel.y = (float)y;
+    panel.width = (float)w;
+    panel.height = (float)panel_h;
 
     scrim.a = 130;
     DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
@@ -1748,24 +1779,31 @@ DrawUIPickerDialog(PickerDialogProps picker)
         int has_icon = picker.icons != NULL && picker.icons[i].id != 0;
         int text_x = x + pad + ScaleUIPx(12);
 
-        if(RenderButton((ButtonSpec){
-            .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)row_h},
-            .label = "",
-            .font = GetUIFontSize(),
-            .background = c_surface,
-            .hover_background = c_button_hover,
-            .text = c_text,
-            .border = c_button,
-            .radius = 0.08f
-        })) {
+        memset(&button, 0, sizeof(button));
+        button.bounds.x = (float)(x + pad);
+        button.bounds.y = (float)y;
+        button.bounds.width = (float)(w - pad * 2);
+        button.bounds.height = (float)row_h;
+        button.label = "";
+        button.font = GetUIFontSize();
+        button.background = c_surface;
+        button.hover_background = c_button_hover;
+        button.text = c_text;
+        button.border = c_button;
+        button.radius = 0.08f;
+        if(RenderButton(button)) {
             return i + 1;
         }
         if(has_icon) {
-            DrawTexturePro(picker.icons[i],
-                           (Rectangle){0, 0, (float)picker.icons[i].width,
-                                       (float)picker.icons[i].height},
-                           (Rectangle){(float)text_x, (float)(y + ScaleUIPx(4)),
-                                       (float)icon_size, (float)icon_size},
+            icon_src.x = 0;
+            icon_src.y = 0;
+            icon_src.width = (float)picker.icons[i].width;
+            icon_src.height = (float)picker.icons[i].height;
+            icon_dst.x = (float)text_x;
+            icon_dst.y = (float)(y + ScaleUIPx(4));
+            icon_dst.width = (float)icon_size;
+            icon_dst.height = (float)icon_size;
+            DrawTexturePro(picker.icons[i], icon_src, icon_dst,
                            kryon_zero_vector2, 0.0f, WHITE);
             text_x += icon_size + ScaleUIPx(12);
         }
@@ -1776,16 +1814,19 @@ DrawUIPickerDialog(PickerDialogProps picker)
     }
 
     y += pad;
-    if(RenderButton((ButtonSpec){
-        .bounds = {(float)(x + pad), (float)y, (float)(w - pad * 2), (float)button_h},
-        .label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel",
-        .font = GetUIFontSize(),
-        .background = c_surface,
-        .hover_background = c_button_hover,
-        .text = c_text,
-        .border = c_button,
-        .radius = 0.08f
-    }))
+    memset(&button, 0, sizeof(button));
+    button.bounds.x = (float)(x + pad);
+    button.bounds.y = (float)y;
+    button.bounds.width = (float)(w - pad * 2);
+    button.bounds.height = (float)button_h;
+    button.label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel";
+    button.font = GetUIFontSize();
+    button.background = c_surface;
+    button.hover_background = c_button_hover;
+    button.text = c_text;
+    button.border = c_button;
+    button.radius = 0.08f;
+    if(RenderButton(button))
         return -1;
     return 0;
 }

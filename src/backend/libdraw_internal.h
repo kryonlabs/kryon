@@ -125,5 +125,9 @@ int kry_libdraw_write_png(const char *path, const unsigned char *rgba,
 unsigned kry_libdraw_font_register(P9Font *font, int base_size);
 KryLibdrawFont *kry_libdraw_font(unsigned id);
 void kry_libdraw_font_unregister(unsigned id);
+int kry_libdraw_font_height(unsigned id);
+int kry_libdraw_font_text_width(unsigned id, const char *text, int byte_len);
+void kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len,
+                            int x, int y, Color color);
 
 #endif

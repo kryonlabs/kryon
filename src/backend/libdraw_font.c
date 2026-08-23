@@ -202,7 +202,7 @@ font_from_rgba(unsigned char *pixels, int atlas_w, int atlas_h,
 static Font
 make_bitmap_font(void)
 {
-    enum { cell_w = 4, cell_h = 8, cols = 32, glyph_count = 95 };
+    enum { cell_w = 8, cell_h = 8, cols = 32, glyph_count = 95 };
     GlyphInfo *glyphs;
     Rectangle *recs;
     unsigned char *pixels;
@@ -241,7 +241,7 @@ make_bitmap_font(void)
             for(gx = 0; gx < cell_w; gx++) {
                 unsigned char *dst;
 
-                if(((bits >> (gx * 8 / cell_w)) & 1) == 0)
+                if(((bits >> gx) & 1) == 0)
                     continue;
                 dst = pixels + ((size_t)(row * cell_h + gy) *
                                     (cols * cell_w) +
@@ -267,6 +267,117 @@ make_bitmap_font(void)
     return g_default_font;
 }
 
+#ifdef KRYON_NATIVE_PLAN9
+static const char *
+native_font_path_for_size(int font_size)
+{
+    if(font_size <= 6)
+        return "/lib/font/bit/lucida/unicode.6.font";
+    if(font_size <= 7)
+        return "/lib/font/bit/lucida/unicode.7.font";
+    if(font_size <= 8)
+        return "/lib/font/bit/lucida/unicode.8.font";
+    if(font_size <= 9)
+        return "/lib/font/bit/lucida/unicode.9.font";
+    if(font_size <= 10)
+        return "/lib/font/bit/lucida/unicode.10.font";
+    if(font_size <= 12)
+        return "/lib/font/bit/lucida/unicode.12.font";
+    if(font_size <= 14)
+        return "/lib/font/bit/lucida/unicode.14.font";
+    if(font_size <= 16)
+        return "/lib/font/bit/lucida/unicode.16.font";
+    if(font_size <= 18)
+        return "/lib/font/bit/lucida/unicode.18.font";
+    if(font_size <= 20)
+        return "/lib/font/bit/lucida/unicode.20.font";
+    if(font_size <= 24)
+        return "/lib/font/bit/lucida/unicode.24.font";
+    if(font_size <= 28)
+        return "/lib/font/bit/lucida/unicode.28.font";
+    return "/lib/font/bit/lucida/unicode.32.font";
+}
+
+static Font
+make_native_libdraw_font(int fontSize, const int *codepoints,
+                         int codepointCount)
+{
+    P9Font *p9font;
+    GlyphInfo *glyphs;
+    Rectangle *recs;
+    int *set;
+    int set_count;
+    int i;
+    unsigned font_id;
+    Font out;
+
+    out = zero_font();
+    p9font = nil;
+    if(display != nil)
+        p9font = openfont(display, (char *)native_font_path_for_size(fontSize));
+    if(p9font == nil && display != nil)
+        p9font = openfont(display, "/lib/font/bit/pelm/euro.9.font");
+    if(p9font == nil)
+        p9font = font;
+    if(p9font == nil)
+        return make_bitmap_font();
+
+    set = font_codepoint_set(codepoints, codepointCount, &set_count);
+    if(set == NULL || set_count <= 0)
+        return make_bitmap_font();
+    glyphs = calloc((size_t)set_count, sizeof(*glyphs));
+    recs = calloc((size_t)set_count, sizeof(*recs));
+    if(glyphs == NULL || recs == NULL) {
+        free(set);
+        free(glyphs);
+        free(recs);
+        return make_bitmap_font();
+    }
+
+    for(i = 0; i < set_count; i++) {
+        Rune r[2];
+        int width;
+
+        r[0] = (Rune)set[i];
+        r[1] = 0;
+        width = runestringnwidth(p9font, r, 1);
+        if(width <= 0)
+            width = p9font->height / 2;
+        if(width <= 0)
+            width = 1;
+        glyphs[i].value = set[i];
+        glyphs[i].offsetX = 0;
+        glyphs[i].offsetY = 0;
+        glyphs[i].advanceX = width;
+        glyphs[i].image = zero_image();
+        recs[i].x = 0.0f;
+        recs[i].y = 0.0f;
+        recs[i].width = (float)width;
+        recs[i].height = (float)p9font->height;
+    }
+
+    font_id = kry_libdraw_font_register(p9font, p9font->height);
+    free(set);
+    if(font_id == 0) {
+        free(glyphs);
+        free(recs);
+        return make_bitmap_font();
+    }
+
+    out.baseSize = p9font->height;
+    out.glyphCount = set_count;
+    out.glyphPadding = 0;
+    out.texture.id = font_id;
+    out.texture.width = 1;
+    out.texture.height = p9font->height;
+    out.texture.mipmaps = 1;
+    out.texture.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    out.recs = recs;
+    out.glyphs = glyphs;
+    return out;
+}
+#endif
+
 static Font
 make_ttf_font(const unsigned char *fileData, int dataSize, int fontSize,
               const int *codepoints, int codepointCount)
@@ -274,10 +385,7 @@ make_ttf_font(const unsigned char *fileData, int dataSize, int fontSize,
 #ifdef KRYON_NATIVE_PLAN9
     (void)fileData;
     (void)dataSize;
-    (void)fontSize;
-    (void)codepoints;
-    (void)codepointCount;
-    return make_bitmap_font();
+    return make_native_libdraw_font(fontSize, codepoints, codepointCount);
 #else
     stbtt_fontinfo info;
     float scale;
@@ -413,6 +521,14 @@ fail:
 Font
 GetFontDefault(void)
 {
+#ifdef KRYON_NATIVE_PLAN9
+    if(g_default_ready)
+        return g_default_font;
+    g_default_font = make_native_libdraw_font(16, NULL, 0);
+    g_default_ready = IsFontValid(g_default_font);
+    if(g_default_ready)
+        return g_default_font;
+#endif
     return make_bitmap_font();
 }
 
@@ -457,8 +573,13 @@ UnloadFont(Font font)
 {
     Font def = GetFontDefault();
 
+#ifdef KRYON_NATIVE_PLAN9
+    if(font.texture.id != 0 && font.texture.id != def.texture.id)
+        kry_libdraw_font_unregister(font.texture.id);
+#else
     if(font.texture.id != 0 && font.texture.id != def.texture.id)
         UnloadTexture(font.texture);
+#endif
     if(font.texture.id != def.texture.id) {
         free(font.glyphs);
         free(font.recs);
@@ -556,6 +677,17 @@ DrawTextEx(Font font, const char *text, Vector2 position, float fontSize,
         font = GetFontDefault();
     if(!IsFontValid(font) || text == NULL)
         return;
+#ifdef KRYON_NATIVE_PLAN9
+    if(kry_libdraw_font(font.texture.id) != NULL && spacing == 0.0f) {
+        int byte_len = 0;
+
+        while(text[byte_len] != '\0' && text[byte_len] != '\n')
+            byte_len++;
+        kry_libdraw_queue_text(font.texture.id, text, byte_len,
+                               (int)position.x, (int)position.y, tint);
+        return;
+    }
+#endif
     scale = font.baseSize > 0 ? fontSize / (float)font.baseSize : 1.0f;
     while(*p != '\0') {
         int bytes = 0;

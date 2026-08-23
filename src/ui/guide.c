@@ -12,6 +12,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     int tip_bottom = (int)(tip.y + tip.height);
     int arrow_size = ScaleUIPx(10);
     Vector2 start, end;
+    Vector2 tip0, tip1, tip2;
     Color color = GetThemeText();
 
     if(anchor_cy < tip_top) {
@@ -20,40 +21,52 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         end.x = (float)anchor_cx;
         end.y = (float)tip_top;
         DrawLineEx(start, end, (float)ScaleUIPx(2), color);
-        DrawTriangle((Vector2){end.x, end.y},
-                     (Vector2){end.x - arrow_size, end.y - arrow_size},
-                     (Vector2){end.x + arrow_size, end.y - arrow_size},
-                     color);
+        tip0.x = end.x;
+        tip0.y = end.y;
+        tip1.x = end.x - arrow_size;
+        tip1.y = end.y - arrow_size;
+        tip2.x = end.x + arrow_size;
+        tip2.y = end.y - arrow_size;
+        DrawTriangle(tip0, tip1, tip2, color);
     } else if(anchor_cy > tip_bottom) {
         start.x = (float)anchor_cx;
         start.y = (float)(anchor_cy - anchor.height / 2);
         end.x = (float)anchor_cx;
         end.y = (float)tip_bottom;
         DrawLineEx(start, end, (float)ScaleUIPx(2), color);
-        DrawTriangle((Vector2){end.x, end.y},
-                     (Vector2){end.x + arrow_size, end.y + arrow_size},
-                     (Vector2){end.x - arrow_size, end.y + arrow_size},
-                     color);
+        tip0.x = end.x;
+        tip0.y = end.y;
+        tip1.x = end.x + arrow_size;
+        tip1.y = end.y + arrow_size;
+        tip2.x = end.x - arrow_size;
+        tip2.y = end.y + arrow_size;
+        DrawTriangle(tip0, tip1, tip2, color);
     } else if(anchor_cx < tip_left) {
         start.x = (float)(anchor_cx + anchor.width / 2);
         start.y = (float)anchor_cy;
         end.x = (float)tip_left;
         end.y = (float)anchor_cy;
         DrawLineEx(start, end, (float)ScaleUIPx(2), color);
-        DrawTriangle((Vector2){end.x, end.y},
-                     (Vector2){end.x - arrow_size, end.y - arrow_size},
-                     (Vector2){end.x - arrow_size, end.y + arrow_size},
-                     color);
+        tip0.x = end.x;
+        tip0.y = end.y;
+        tip1.x = end.x - arrow_size;
+        tip1.y = end.y - arrow_size;
+        tip2.x = end.x - arrow_size;
+        tip2.y = end.y + arrow_size;
+        DrawTriangle(tip0, tip1, tip2, color);
     } else {
         start.x = (float)(anchor_cx - anchor.width / 2);
         start.y = (float)anchor_cy;
         end.x = (float)tip_right;
         end.y = (float)anchor_cy;
         DrawLineEx(start, end, (float)ScaleUIPx(2), color);
-        DrawTriangle((Vector2){end.x, end.y},
-                     (Vector2){end.x + arrow_size, end.y - arrow_size},
-                     (Vector2){end.x + arrow_size, end.y + arrow_size},
-                     color);
+        tip0.x = end.x;
+        tip0.y = end.y;
+        tip1.x = end.x + arrow_size;
+        tip1.y = end.y - arrow_size;
+        tip2.x = end.x + arrow_size;
+        tip2.y = end.y + arrow_size;
+        DrawTriangle(tip0, tip1, tip2, color);
     }
 }
 
@@ -88,7 +101,15 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
     if(y < margin)
         y = margin;
 
-    return (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    {
+        Rectangle rect;
+
+        rect.x = (float)x;
+        rect.y = (float)y;
+        rect.width = (float)w;
+        rect.height = (float)h;
+        return rect;
+    }
 }
 
 UIGuideResult
@@ -117,6 +138,8 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int text_clip_h;
     int controls_y;
     int finish;
+    Color scrim;
+    IconButtonProps icon_props;
 
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
@@ -151,12 +174,11 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     else if(tip_w > ScaleUIPx(300))
         tip_w = ScaleUIPx(300);
 
-    paragraph = (ParagraphSpec){
-        .text = guide.steps[step].text,
-        .width = tip_w - pad * 2,
-        .font = guide.paragraph_font,
-        .line_gap = line_gap
-    };
+    memset(&paragraph, 0, sizeof(paragraph));
+    paragraph.text = guide.steps[step].text;
+    paragraph.width = tip_w - pad * 2;
+    paragraph.font = guide.paragraph_font;
+    paragraph.line_gap = line_gap;
     paragraph_h = ui_paragraph_height(paragraph);
     tip_h = pad + close_size + text_gap + paragraph_h + controls_gap +
             button_size + pad;
@@ -172,7 +194,11 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
                            guide.reserved_top, guide.reserved_bottom);
     SetUIModalCapture(tip);
 
-    DrawRectangle(0, 0, view_w, view_h, (Color){0, 0, 0, 86});
+    scrim.r = 0;
+    scrim.g = 0;
+    scrim.b = 0;
+    scrim.a = 86;
+    DrawRectangle(0, 0, view_w, view_h, scrim);
     DrawRectangleLinesEx(guide.steps[step].anchor, (float)ScaleUIPx(2),
                          GetThemeText());
     DrawRectangleRounded(tip, 0.08f, 8, GetThemeButton());
@@ -180,17 +206,15 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
                               DarkenUIColor(GetThemeButton(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    if(DrawUIIconButton((IconButtonProps){
-           .bounds = {
-               tip.x + tip.width - pad - close_size,
-               tip.y + pad,
-               (float)close_size,
-               (float)close_size
-           },
-           .icon = guide.close_icon,
-           .icon_size = ScaleUIPx(16),
-           .icon_padding = ScaleUIPx(6)
-       })) {
+    memset(&icon_props, 0, sizeof(icon_props));
+    icon_props.bounds.x = tip.x + tip.width - pad - close_size;
+    icon_props.bounds.y = tip.y + pad;
+    icon_props.bounds.width = (float)close_size;
+    icon_props.bounds.height = (float)close_size;
+    icon_props.icon = guide.close_icon;
+    icon_props.icon_size = ScaleUIPx(16);
+    icon_props.icon_padding = ScaleUIPx(6);
+    if(DrawUIIconButton(icon_props)) {
         result.closed = 1;
         return result;
     }
@@ -211,33 +235,29 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
 
     finish = step >= guide.count - 1;
     if(step > 0) {
-        if(DrawUIIconButton((IconButtonProps){
-               .bounds = {
-                   tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8),
-                   (float)controls_y,
-                   (float)button_size,
-                   (float)button_size
-               },
-               .icon = guide.back_icon,
-               .icon_size = ScaleUIPx(19),
-               .icon_padding = ScaleUIPx(7)
-           })) {
+        memset(&icon_props, 0, sizeof(icon_props));
+        icon_props.bounds.x = tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8);
+        icon_props.bounds.y = (float)controls_y;
+        icon_props.bounds.width = (float)button_size;
+        icon_props.bounds.height = (float)button_size;
+        icon_props.icon = guide.back_icon;
+        icon_props.icon_size = ScaleUIPx(19);
+        icon_props.icon_padding = ScaleUIPx(7);
+        if(DrawUIIconButton(icon_props)) {
             *guide.step = step - 1;
             result.changed = 1;
             result.step = *guide.step;
         }
     }
-    if(DrawUIIconButton((IconButtonProps){
-           .bounds = {
-               tip.x + tip.width - pad - button_size,
-               (float)controls_y,
-               (float)button_size,
-               (float)button_size
-           },
-           .icon = finish ? guide.done_icon : guide.next_icon,
-           .icon_size = ScaleUIPx(19),
-           .icon_padding = ScaleUIPx(7)
-       })) {
+    memset(&icon_props, 0, sizeof(icon_props));
+    icon_props.bounds.x = tip.x + tip.width - pad - button_size;
+    icon_props.bounds.y = (float)controls_y;
+    icon_props.bounds.width = (float)button_size;
+    icon_props.bounds.height = (float)button_size;
+    icon_props.icon = finish ? guide.done_icon : guide.next_icon;
+    icon_props.icon_size = ScaleUIPx(19);
+    icon_props.icon_padding = ScaleUIPx(7);
+    if(DrawUIIconButton(icon_props)) {
         if(finish) {
             result.finished = 1;
         } else {

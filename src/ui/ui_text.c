@@ -228,8 +228,13 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
 {
     Font font;
 
+#if defined(KRYON_NATIVE_PLAN9)
+    if(entry == NULL)
+        return kryon_zero_font;
+#else
     if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
         return kryon_zero_font;
+#endif
 
     font = LoadFontFromMemory(
         entry->file_type != NULL && entry->file_type[0] != '\0' ? entry->file_type : ".ttf",
@@ -538,8 +543,13 @@ register_ui_font_source(const char *name, const char *file_type,
 {
     int index;
 
+#if defined(KRYON_NATIVE_PLAN9)
+    if(font_size == 0)
+        font_size = 1;
+#else
     if(font_data == NULL || font_size == 0)
         return 0;
+#endif
 
     index = font_entry_alloc(name);
     if(index < 0)
@@ -634,9 +644,17 @@ RegisterUIFontFileSource(const char *name, const char *path,
         owns_data = 0;
     } else {
         data = LoadFileData(path, &data_size);
-        if(data == NULL || data_size <= 0)
+        if(data == NULL || data_size <= 0) {
+#if defined(KRYON_NATIVE_PLAN9)
+            data = NULL;
+            data_size = 1;
+            owns_data = 0;
+#else
             return 0;
-        owns_data = 1;
+#endif
+        } else {
+            owns_data = 1;
+        }
     }
 
     dot = strrchr(path, '.');
@@ -866,6 +884,14 @@ TextWidth(const char *text, int font_size)
     if(text == NULL || !UIFontReady(font))
         return 0;
 
+    if(UIFontHasNativeText(font)) {
+        int byte_len = 0;
+
+        while(text[byte_len] != '\0' && text[byte_len] != '\n')
+            byte_len++;
+        return UIFontNativeTextWidth(font, text, byte_len);
+    }
+
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
         int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
@@ -934,6 +960,9 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
 
     if(text == NULL || byte_len <= 0 || !UIFontReady(font))
         return 0;
+
+    if(UIFontHasNativeText(font))
+        return UIFontNativeTextWidth(font, text, byte_len);
 
     for(int i = 0; i < byte_len && text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1065,6 +1094,12 @@ TextHeight(const char *text, int font_size)
     if(text == NULL || text[0] == '\0' || !UIFontReady(font))
         return font_size;
 
+    if(UIFontHasNativeText(font)) {
+        int native_h = UIFontNativeTextHeight(font);
+
+        return native_h > 0 ? native_h : font_size;
+    }
+
     scale = font_size_scale(font, font_size);
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1107,6 +1142,13 @@ TextLineHeight(int font_size)
     float scale = font_size_scale(font, font_size);
     int base = UIFontBaseSize(font);
 
+    if(UIFontHasNativeText(font)) {
+        int native_h = UIFontNativeTextHeight(font);
+
+        if(native_h > 0)
+            return native_h;
+    }
+
     return base > 0 ? (int)((float)base * scale + 0.5f) :
         (int)((float)TextBaseSize * scale + 0.5f);
 }
@@ -1121,6 +1163,9 @@ ScaledTextWidth(const char *text, int scale)
         return 0;
     if(scale < 1)
         scale = 1;
+
+    if(UIFontHasNativeText(font))
+        return UIFontNativeTextWidth(font, text, -1) * scale;
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1238,6 +1283,11 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                                    ui_text_default_selection_color(color),
                                    selected_start, selected_end);
         }
+    }
+
+    if(UIFontHasNativeText(font)) {
+        (void)UIFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
+        return;
     }
 
     for(int i = 0; text[i] != '\0';) {

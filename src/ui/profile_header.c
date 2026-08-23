@@ -116,9 +116,11 @@ GetUIProfilePictureIconName(int index)
 UIIconType
 GetUIProfilePictureIconTypeForKsyncID(int ksync_id)
 {
+    int i;
+
     if(ksync_id == UI_KSYNC_PROFILE_ICON_NONE)
         return UI_ICON_TYPE_NONE;
-    for(int i = 0; i < GetUIProfilePictureIconCount(); i++) {
+    for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
         if(ui_profile_picture_ksync_ids[i] == ksync_id)
             return ui_profile_picture_icons[i];
     }
@@ -128,9 +130,11 @@ GetUIProfilePictureIconTypeForKsyncID(int ksync_id)
 int
 GetUIKsyncIDForProfilePictureIconType(UIIconType type)
 {
+    int i;
+
     if(type == UI_ICON_TYPE_NONE)
         return UI_KSYNC_PROFILE_ICON_NONE;
-    for(int i = 0; i < GetUIProfilePictureIconCount(); i++) {
+    for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
         if(ui_profile_picture_icons[i] == type)
             return ui_profile_picture_ksync_ids[i];
     }
@@ -141,12 +145,22 @@ static void
 ui_draw_pfp_texture(Texture2D icon, int x, int y, int size)
 {
     Rectangle src;
-    Rectangle dst = {(float)x, (float)y, (float)size, (float)size};
+    Rectangle dst;
+    Vector2 origin;
 
     if(icon.id == 0 || size <= 0)
         return;
-    src = (Rectangle){0.0f, 0.0f, (float)icon.width, (float)icon.height};
-    DrawTexturePro(icon, src, dst, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    dst.x = (float)x;
+    dst.y = (float)y;
+    dst.width = (float)size;
+    dst.height = (float)size;
+    src.x = 0.0f;
+    src.y = 0.0f;
+    src.width = (float)icon.width;
+    src.height = (float)icon.height;
+    origin.x = 0.0f;
+    origin.y = 0.0f;
+    DrawTexturePro(icon, src, dst, origin, 0.0f, WHITE);
 }
 
 static void
@@ -205,6 +219,7 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     Rectangle pfp_bounds;
     Rectangle username_bounds;
     Rectangle friends_bounds;
+    Rectangle header_bounds;
     Vector2 mouse = ui_mouse_world();
     int released = click_enabled && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
@@ -217,20 +232,25 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
        header.pfp_icon_type < UI_ICON_TYPE_COUNT)
         pfp_icon = header.icons[header.pfp_icon_type];
 
-    pfp_bounds = (Rectangle){(float)(avatar_x - avatar_r - ScaleUIPx(4)),
-                             (float)(avatar_y - avatar_r - ScaleUIPx(4)),
-                             (float)(avatar_size + ScaleUIPx(8)),
-                             (float)(avatar_size + ScaleUIPx(8))};
-    username_bounds = (Rectangle){(float)name_x,
-                                  (float)(name_y - ScaleUIPx(4)),
-                                  (float)username_w, (float)username_h};
-    friends_bounds = (Rectangle){(float)header.x, (float)count_y,
-                                 (float)header.width, (float)ScaleUIPx(36)};
+    pfp_bounds.x = (float)(avatar_x - avatar_r - ScaleUIPx(4));
+    pfp_bounds.y = (float)(avatar_y - avatar_r - ScaleUIPx(4));
+    pfp_bounds.width = (float)(avatar_size + ScaleUIPx(8));
+    pfp_bounds.height = (float)(avatar_size + ScaleUIPx(8));
+    username_bounds.x = (float)name_x;
+    username_bounds.y = (float)(name_y - ScaleUIPx(4));
+    username_bounds.width = (float)username_w;
+    username_bounds.height = (float)username_h;
+    friends_bounds.x = (float)header.x;
+    friends_bounds.y = (float)count_y;
+    friends_bounds.width = (float)header.width;
+    friends_bounds.height = (float)ScaleUIPx(36);
     result.height = height;
 
-    DrawRectangleRounded((Rectangle){(float)header.x, (float)header.y,
-                                     (float)header.width, (float)height},
-                         0.06f, 8, DarkenUIColor(c_surface, 6));
+    header_bounds.x = (float)header.x;
+    header_bounds.y = (float)header.y;
+    header_bounds.width = (float)header.width;
+    header_bounds.height = (float)height;
+    DrawRectangleRounded(header_bounds, 0.06f, 8, DarkenUIColor(c_surface, 6));
     if(CheckCollisionPointRec(mouse, pfp_bounds) && !UIInputCapturesClick(mouse)) {
         MarkUIClickable();
         if(released) {
@@ -306,6 +326,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
                                          : UI_ICON_TYPE_NONE;
     Vector2 mouse;
+    int i;
 
     if(width > ui_view_width - ScaleUIPx(24))
         width = ui_view_width - ScaleUIPx(24);
@@ -341,20 +362,21 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
         return result;
     }
 
-    scroll_area = (UIScrollArea){
-        .bounds = {(float)frame.content_x, (float)frame.content_y,
-                   (float)frame.content_w, (float)frame.content_h},
-        .content_height = content_h,
-        .content_x = frame.content_x,
-        .content_width = frame.content_w,
-        .scroll_offset = scroll_offset,
-        .wheel_step = cell + gap
-    };
+    memset(&scroll_area, 0, sizeof(scroll_area));
+    scroll_area.bounds.x = (float)frame.content_x;
+    scroll_area.bounds.y = (float)frame.content_y;
+    scroll_area.bounds.width = (float)frame.content_w;
+    scroll_area.bounds.height = (float)frame.content_h;
+    scroll_area.content_height = content_h;
+    scroll_area.content_x = frame.content_x;
+    scroll_area.content_width = frame.content_w;
+    scroll_area.scroll_offset = scroll_offset;
+    scroll_area.wheel_step = cell + gap;
     scroll_view = BeginUIScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
     icon_inset = ScaleUIPx(12);
-    for(int i = 0; i < count; i++) {
+    for(i = 0; i < count; i++) {
         int row = i / columns;
         int col = i % columns;
         int x = scroll_view.content_x + (scroll_view.content_w - grid_w) / 2 +
