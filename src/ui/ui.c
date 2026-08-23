@@ -9,14 +9,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#if defined(PLATFORM_WEB)
-#include <emscripten.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
 
+#if defined(PLATFORM_WEB)
+#include <emscripten.h>
 #endif
 
 /* Global UI state */

@@ -76,6 +76,25 @@ CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
 # translation unit is compiled from its own directory so the object lands
 # where the archive step expects it. This keeps the Kryon sources
 # untouched: the same files build on hosted platforms with their native
-# toolchains.
-%.$O: %.c
-	d=`{dirname $stem}; b=`{basename $stem}; cd $d && cpp -+ $CPPFLAGS $b.c > $b.i && $CC $CFLAGS -c $b.i && mv $b.i.$O $b.$O && rm -f $b.i
+# toolchains. Keep these rules free of Unix helper commands; rsc Plan 9
+# does not ship dirname(1) or basename(1).
+src/backend/%.$O: src/backend/%.c
+	cd src/backend && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/core/%.$O: src/core/%.c
+	cd src/core && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/kry_std/%.$O: src/kry_std/%.c
+	cd src/kry_std && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/platform/plan9/%.$O: src/platform/plan9/%.c
+	cd src/platform/plan9 && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/platform/system_theme/%.$O: src/platform/system_theme/%.c
+	cd src/platform/system_theme && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/ui/%.$O: src/ui/%.c
+	cd src/ui && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+src/%.$O: src/%.c
+	cd src && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i

@@ -15,14 +15,13 @@
 #include <stddef.h>
 #include "kryon_mem.h"
 
-#if defined(__GLIBC__)
-#include <malloc.h>
-
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
 static const Font kryon_zero_font;
 
+#if defined(__GLIBC__)
+#include <malloc.h>
 #endif
 
 #define UI_FONT_MAX_REGISTERED 16
