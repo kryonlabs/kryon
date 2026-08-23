@@ -8,7 +8,7 @@
 # branches in the few files that touch OS services.
 #
 # Sources: the portable core, the libdraw backend, the full UI toolkit, the
-# scene layer, and the kry_std modules that do not need hosted OS services.
+# kry_std modules that do not need hosted OS services.
 # Excluded on purpose: canvas/KRB backends, raylib audio, dylib/process/http
 # surfaces, ksync, notifications, desktop integration, file dialogs, preview
 # hosts, and runtime asset downloads.
@@ -60,23 +60,6 @@ OFILES=\
 	src/markdown.$O\
 	src/platform/plan9/plan9_os.$O\
 	src/platform/system_theme/system_theme.$O\
-	src/scene/kry_animation.$O\
-	src/scene/kry_signal.$O\
-	src/scene/node_2d.$O\
-	src/scene/node_animated_sprite2d.$O\
-	src/scene/node_animation_player.$O\
-	src/scene/node_area2d.$O\
-	src/scene/node_audio_source.$O\
-	src/scene/node_body2d.$O\
-	src/scene/node_camera2d.$O\
-	src/scene/node_collision_shape2d.$O\
-	src/scene/node_sprite2d.$O\
-	src/scene/node_tilemap.$O\
-	src/scene/physics_world.$O\
-	src/scene/scene_builtins.$O\
-	src/scene/scene_inspect.$O\
-	src/scene/scene_property.$O\
-	src/scene/scene_tree.$O\
 	src/ui/bottom_nav.$O\
 	src/ui/button.$O\
 	src/ui/dropdown.$O\
@@ -136,7 +119,7 @@ OFILES=\
 	src/ui/ui_window.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
-	src/scene/*.$O src/ui/*.$O *.$O src/*/*.i
+	src/ui/*.$O *.$O src/*/*.i
 
 < /sys/src/cmd/mksyslib
 
