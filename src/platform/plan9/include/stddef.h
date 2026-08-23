@@ -7,7 +7,8 @@
 #include <u.h>
 #endif
 
-typedef ulong size_t;
+/* size_t/NULL arrive via the shared libc shim. */
+
 typedef long ptrdiff_t;
 
 #ifndef NULL

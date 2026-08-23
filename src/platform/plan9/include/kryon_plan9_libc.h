@@ -26,4 +26,10 @@
 #define NULL ((void *)0)
 #endif
 
+/* Hosted <stdlib.h> provides size_t; native libc does not. */
+#ifndef KRYON_PLAN9_SIZE_T_DEFINED
+#define KRYON_PLAN9_SIZE_T_DEFINED
+typedef ulong size_t;
+#endif
+
 #endif
