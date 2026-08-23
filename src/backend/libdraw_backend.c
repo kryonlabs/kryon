@@ -65,7 +65,6 @@ static unsigned char *g_clipboard;
 static TraceLogCallback g_trace_log_callback;
 static unsigned g_window_state;
 static int g_exit_key = KEY_ESCAPE;
-static float g_master_volume = 1.0f;
 
 static double
 now_seconds(void)
@@ -502,6 +501,26 @@ read_file(const char *path, int *len)
     return data;
 }
 
+static int
+texture_pixels_are_mask(const unsigned char *rgba, int width, int height)
+{
+    int seen = 0;
+    int i;
+
+    if(rgba == NULL || width <= 0 || height <= 0)
+        return 0;
+    for(i = 0; i < width * height; i++) {
+        const unsigned char *p = rgba + (size_t)i * 4;
+
+        if(p[3] == 0)
+            continue;
+        seen = 1;
+        if(p[0] != p[1] || p[1] != p[2])
+            return 0;
+    }
+    return seen;
+}
+
 unsigned
 kry_libdraw_texture_register(P9Image *image, unsigned char *rgba, int width,
                              int height, int owned_rgba, int render_target)
@@ -521,6 +540,8 @@ kry_libdraw_texture_register(P9Image *image, unsigned char *rgba, int width,
             g_textures[i].height = height;
             g_textures[i].owned_rgba = owned_rgba;
             g_textures[i].render_target = render_target;
+            g_textures[i].mask = !render_target &&
+                                 texture_pixels_are_mask(rgba, width, height);
             return id;
         }
     }
@@ -900,13 +921,19 @@ draw_rounded_rect_outline_pixels(Rectangle rec, float roundness, int thick,
 }
 
 static Color
-tinted_color_from_rgba(const unsigned char *src, Color tint)
+tinted_color_from_rgba(const unsigned char *src, Color tint, int mask)
 {
     Color color;
 
-    color.r = (unsigned char)((src[0] * (int)tint.r) / 255);
-    color.g = (unsigned char)((src[1] * (int)tint.g) / 255);
-    color.b = (unsigned char)((src[2] * (int)tint.b) / 255);
+    if(mask) {
+        color.r = tint.r;
+        color.g = tint.g;
+        color.b = tint.b;
+    } else {
+        color.r = (unsigned char)((src[0] * (int)tint.r) / 255);
+        color.g = (unsigned char)((src[1] * (int)tint.g) / 255);
+        color.b = (unsigned char)((src[2] * (int)tint.b) / 255);
+    }
     color.a = (unsigned char)((src[3] * (int)tint.a) / 255);
     return color;
 }
@@ -1427,9 +1454,9 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                 const unsigned char *src =
                     t->rgba + ((size_t)src_y * t->width + src_x) * 4;
 
-                dst[0] = src[0];
-                dst[1] = src[1];
-                dst[2] = src[2];
+                dst[0] = t->mask ? 255 : src[0];
+                dst[1] = t->mask ? 255 : src[1];
+                dst[2] = t->mask ? 255 : src[2];
                 dst[3] = src[3];
             }
         }
@@ -1439,7 +1466,10 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                                    (int)(dest.x - origin.x),
                                    (int)(dest.y - origin.y),
                                    abs_int((int)dest.width),
-                                   abs_int((int)dest.height), pack(tint));
+                                   abs_int((int)dest.height),
+                                   pack(t->mask ? (Color){tint.r, tint.g,
+                                                          tint.b, tint.a}
+                                                : tint));
     } else {
         float dw = (float)abs_int((int)dest.width);
         float dh = (float)abs_int((int)dest.height);
@@ -1504,7 +1534,7 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                 else if(ry >= sh)
                     ry = sh - 1;
                 src = region + ((size_t)ry * sw + rx) * 4;
-                color = tinted_color_from_rgba(src, tint);
+                color = tinted_color_from_rgba(src, tint, t->mask);
                 sw_rect(x, y, 1, 1, color);
             }
         }
@@ -1549,255 +1579,6 @@ void SetShapesTexture(Texture2D texture, Rectangle rec)
     (void)texture;
     (void)rec;
 }
-
-void InitAudioDevice(void) {}
-void CloseAudioDevice(void) {}
-bool IsAudioDeviceReady(void) { return false; }
-void SetMasterVolume(float volume) { g_master_volume = volume; }
-float GetMasterVolume(void) { return g_master_volume; }
-
-Wave LoadWave(const char *fileName)
-{
-    (void)fileName;
-    return (Wave){0};
-}
-
-Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData,
-                        int dataSize)
-{
-    (void)fileType;
-    (void)fileData;
-    (void)dataSize;
-    return (Wave){0};
-}
-
-bool IsWaveValid(Wave wave)
-{
-    return wave.data != NULL && wave.frameCount > 0 && wave.sampleRate > 0 &&
-           wave.channels > 0 && wave.sampleSize > 0;
-}
-
-Sound LoadSound(const char *fileName)
-{
-    (void)fileName;
-    return (Sound){0};
-}
-
-Sound LoadSoundFromWave(Wave wave)
-{
-    (void)wave;
-    return (Sound){0};
-}
-
-Sound LoadSoundAlias(Sound source) { return source; }
-bool IsSoundValid(Sound sound) { return sound.stream.buffer != NULL; }
-void UpdateSound(Sound sound, const void *data, int frameCount)
-{
-    (void)sound;
-    (void)data;
-    (void)frameCount;
-}
-void UnloadWave(Wave wave) { (void)wave; }
-void UnloadSound(Sound sound) { (void)sound; }
-void UnloadSoundAlias(Sound alias) { (void)alias; }
-bool ExportWave(Wave wave, const char *fileName)
-{
-    (void)wave;
-    (void)fileName;
-    return false;
-}
-bool ExportWaveAsCode(Wave wave, const char *fileName)
-{
-    (void)wave;
-    (void)fileName;
-    return false;
-}
-void PlaySound(Sound sound) { (void)sound; }
-void StopSound(Sound sound) { (void)sound; }
-void PauseSound(Sound sound) { (void)sound; }
-void ResumeSound(Sound sound) { (void)sound; }
-bool IsSoundPlaying(Sound sound)
-{
-    (void)sound;
-    return false;
-}
-void SetSoundVolume(Sound sound, float volume)
-{
-    (void)sound;
-    (void)volume;
-}
-void SetSoundPitch(Sound sound, float pitch)
-{
-    (void)sound;
-    (void)pitch;
-}
-void SetSoundPan(Sound sound, float pan)
-{
-    (void)sound;
-    (void)pan;
-}
-Wave WaveCopy(Wave wave)
-{
-    Wave copy = {0};
-    size_t bytes;
-
-    if(!IsWaveValid(wave))
-        return copy;
-    bytes = (size_t)wave.frameCount * wave.channels * (wave.sampleSize / 8u);
-    if(bytes == 0)
-        return copy;
-    copy = wave;
-    copy.data = malloc(bytes);
-    if(copy.data == NULL)
-        return (Wave){0};
-    memcpy(copy.data, wave.data, bytes);
-    return copy;
-}
-void WaveCrop(Wave *wave, int initFrame, int finalFrame)
-{
-    (void)wave;
-    (void)initFrame;
-    (void)finalFrame;
-}
-void WaveFormat(Wave *wave, int sampleRate, int sampleSize, int channels)
-{
-    if(wave == NULL)
-        return;
-    wave->sampleRate = (unsigned int)sampleRate;
-    wave->sampleSize = (unsigned int)sampleSize;
-    wave->channels = (unsigned int)channels;
-}
-float *LoadWaveSamples(Wave wave)
-{
-    (void)wave;
-    return NULL;
-}
-void UnloadWaveSamples(float *samples) { free(samples); }
-
-Music LoadMusicStream(const char *fileName)
-{
-    (void)fileName;
-    return (Music){0};
-}
-Music LoadMusicStreamFromMemory(const char *fileType, const unsigned char *data,
-                                int dataSize)
-{
-    (void)fileType;
-    (void)data;
-    (void)dataSize;
-    return (Music){0};
-}
-bool IsMusicValid(Music music) { return music.stream.buffer != NULL; }
-void UnloadMusicStream(Music music) { (void)music; }
-void PlayMusicStream(Music music) { (void)music; }
-bool IsMusicStreamPlaying(Music music)
-{
-    (void)music;
-    return false;
-}
-void UpdateMusicStream(Music music) { (void)music; }
-void StopMusicStream(Music music) { (void)music; }
-void PauseMusicStream(Music music) { (void)music; }
-void ResumeMusicStream(Music music) { (void)music; }
-void SeekMusicStream(Music music, float position)
-{
-    (void)music;
-    (void)position;
-}
-void SetMusicVolume(Music music, float volume)
-{
-    (void)music;
-    (void)volume;
-}
-void SetMusicPitch(Music music, float pitch)
-{
-    (void)music;
-    (void)pitch;
-}
-void SetMusicPan(Music music, float pan)
-{
-    (void)music;
-    (void)pan;
-}
-float GetMusicTimeLength(Music music)
-{
-    (void)music;
-    return 0.0f;
-}
-float GetMusicTimePlayed(Music music)
-{
-    (void)music;
-    return 0.0f;
-}
-
-AudioStream LoadAudioStream(unsigned int sampleRate, unsigned int sampleSize,
-                            unsigned int channels)
-{
-    AudioStream stream = {0};
-
-    stream.sampleRate = sampleRate;
-    stream.sampleSize = sampleSize;
-    stream.channels = channels;
-    return stream;
-}
-bool IsAudioStreamValid(AudioStream stream)
-{
-    return stream.buffer != NULL;
-}
-void UnloadAudioStream(AudioStream stream) { (void)stream; }
-void UpdateAudioStream(AudioStream stream, const void *data, int frameCount)
-{
-    (void)stream;
-    (void)data;
-    (void)frameCount;
-}
-bool IsAudioStreamProcessed(AudioStream stream)
-{
-    (void)stream;
-    return false;
-}
-void PlayAudioStream(AudioStream stream) { (void)stream; }
-void PauseAudioStream(AudioStream stream) { (void)stream; }
-void ResumeAudioStream(AudioStream stream) { (void)stream; }
-bool IsAudioStreamPlaying(AudioStream stream)
-{
-    (void)stream;
-    return false;
-}
-void StopAudioStream(AudioStream stream) { (void)stream; }
-void SetAudioStreamVolume(AudioStream stream, float volume)
-{
-    (void)stream;
-    (void)volume;
-}
-void SetAudioStreamPitch(AudioStream stream, float pitch)
-{
-    (void)stream;
-    (void)pitch;
-}
-void SetAudioStreamPan(AudioStream stream, float pan)
-{
-    (void)stream;
-    (void)pan;
-}
-void SetAudioStreamBufferSizeDefault(int size) { (void)size; }
-void SetAudioStreamCallback(AudioStream stream, AudioCallback callback)
-{
-    (void)stream;
-    (void)callback;
-}
-void AttachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
-{
-    (void)stream;
-    (void)processor;
-}
-void DetachAudioStreamProcessor(AudioStream stream, AudioCallback processor)
-{
-    (void)stream;
-    (void)processor;
-}
-void AttachAudioMixedProcessor(AudioCallback processor) { (void)processor; }
-void DetachAudioMixedProcessor(AudioCallback processor) { (void)processor; }
 
 unsigned char *LoadFileData(const char *fileName, int *dataSize)
 {

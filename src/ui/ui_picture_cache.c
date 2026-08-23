@@ -210,25 +210,21 @@ picture_draw_rounded_texture(Texture2D texture, Rectangle source,
         return;
     }
 
-    y_start = (int)floorf(bounds.y);
-    y_end = (int)ceilf(bounds.y + bounds.height);
+    y_start = (int)ceilf(bounds.y);
+    y_end = (int)floorf(bounds.y + bounds.height);
     for(int y = y_start; y < y_end; y++) {
-        float row_y = (float)y;
-        float row_bottom = row_y + 1.0f;
-        float strip_y = row_y < bounds.y ? bounds.y : row_y;
-        float strip_bottom = row_bottom > bounds.y + bounds.height
-                                 ? bounds.y + bounds.height
-                                 : row_bottom;
-        float strip_h = strip_bottom - strip_y;
-        float sample_y = strip_y + strip_h * 0.5f;
+        float sample_y = (float)y + 0.5f;
         float inset;
+        float left;
+        float right;
         Rectangle strip;
 
-        if(strip_h <= 0.0f)
+        inset = ceilf(picture_row_inset(bounds, radius, sample_y));
+        left = ceilf(bounds.x + inset);
+        right = floorf(bounds.x + bounds.width - inset);
+        if(right <= left)
             continue;
-        inset = picture_row_inset(bounds, radius, sample_y);
-        strip = (Rectangle){bounds.x + inset, strip_y,
-                            bounds.width - inset * 2.0f, strip_h};
+        strip = (Rectangle){left, (float)y, right - left, 1.0f};
         picture_draw_texture_strip(texture, source, dst, strip, tint);
     }
 }

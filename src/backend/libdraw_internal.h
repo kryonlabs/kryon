@@ -56,6 +56,7 @@ struct KryLibdrawTexture {
     int height;
     int owned_rgba;
     int render_target;
+    int mask;
     KrySw sw;
     int sw_ready;
 };

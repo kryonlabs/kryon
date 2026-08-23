@@ -33,6 +33,7 @@ main(void)
         20, 220, 40, 255
     };
     unsigned char alpha_pixels[4] = {0, 240, 0, 128};
+    unsigned char mask_pixels[4] = {0, 0, 0, 255};
     unsigned char quad_pixels[16] = {
         240, 20, 20, 255,
         20, 220, 40, 255,
@@ -43,10 +44,13 @@ main(void)
                     PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Image alpha = {alpha_pixels, 1, 1, 1,
                    PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+    Image mask = {mask_pixels, 1, 1, 1,
+                  PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Image quad = {quad_pixels, 2, 2, 1,
                   PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Texture2D sprite_texture;
     Texture2D alpha_texture;
+    Texture2D mask_texture;
     Texture2D quad_texture;
     RenderTexture2D target;
     Font atlas_font;
@@ -64,12 +68,14 @@ main(void)
     SetTargetFPS(60);
     sprite_texture = LoadTextureFromImage(sprite);
     alpha_texture = LoadTextureFromImage(alpha);
+    mask_texture = LoadTextureFromImage(mask);
     quad_texture = LoadTextureFromImage(quad);
     target = LoadRenderTexture(12, 12);
     atlas_font = LoadFontEx("fonts/noto/NotoSans-Regular.ttf", 24,
                             atlas_codepoints, 3);
     check("sprite texture", sprite_texture.id != 0);
     check("alpha texture", alpha_texture.id != 0);
+    check("mask texture", mask_texture.id != 0);
     check("quad texture", quad_texture.id != 0);
     check("render texture", target.texture.id != 0);
     check("font atlas", IsFontValid(atlas_font));
@@ -127,6 +133,9 @@ main(void)
         DrawTexturePro(alpha_texture, (Rectangle){0, 0, 1, 1},
                        (Rectangle){286, 206, 20, 20}, (Vector2){0, 0},
                        0.0f, WHITE);
+        DrawTexturePro(mask_texture, (Rectangle){0, 0, 1, 1},
+                       (Rectangle){142, 206, 12, 12}, (Vector2){0, 0},
+                       0.0f, (Color){245, 40, 60, 255});
         DrawTexturePro(sprite_texture, (Rectangle){1, 0, 1, 1},
                        (Rectangle){304, 206, 24, 20},
                        (Vector2){0, 0}, 0.0f, WHITE);
@@ -183,6 +192,8 @@ main(void)
                                     ((size_t)201 * shot.width + 85) * 4;
         unsigned char *fractional_px = (unsigned char *)shot.data +
                                        ((size_t)207 * shot.width + 121) * 4;
+        unsigned char *mask_px = (unsigned char *)shot.data +
+                                 ((size_t)211 * shot.width + 148) * 4;
         unsigned char *target_px = (unsigned char *)shot.data +
                                    ((size_t)212 * shot.width + 342) * 4;
 
@@ -201,6 +212,8 @@ main(void)
         check("fractional source rectangle draws",
               fractional_px[0] > 180 && fractional_px[1] < 80 &&
                   fractional_px[2] < 80);
+        check("monochrome mask texture tints",
+              mask_px[0] > 180 && mask_px[1] < 90 && mask_px[2] < 110);
         check("render texture draws back to window",
               target_px[2] > 160 && target_px[0] < 90);
     }
@@ -209,6 +222,7 @@ main(void)
     UnloadRenderTexture(target);
     UnloadFont(atlas_font);
     UnloadTexture(quad_texture);
+    UnloadTexture(mask_texture);
     UnloadTexture(alpha_texture);
     UnloadTexture(sprite_texture);
     check("export exists", FileExists(out));

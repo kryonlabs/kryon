@@ -1,0 +1,33 @@
+#ifndef SUPPORT_MODULE_RAUDIO
+#define SUPPORT_MODULE_RAUDIO 1
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_WAV
+#define SUPPORT_FILEFORMAT_WAV 1
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_OGG
+#define SUPPORT_FILEFORMAT_OGG 1
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_MP3
+#define SUPPORT_FILEFORMAT_MP3 1
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_QOA
+#define SUPPORT_FILEFORMAT_QOA 1
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_FLAC
+#define SUPPORT_FILEFORMAT_FLAC 0
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_XM
+#define SUPPORT_FILEFORMAT_XM 0
+#endif
+
+#ifndef SUPPORT_FILEFORMAT_MOD
+#define SUPPORT_FILEFORMAT_MOD 0
+#endif
+
+#include "../../vendor/raylib/src/raudio.c"
