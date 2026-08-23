@@ -19,53 +19,34 @@ static UIMaterialRipple g_material_ripples[UI_MATERIAL_RIPPLE_MAX];
 UIStyleTokens
 GetUIStyleTokensForThemeStyle(ThemeStyle style)
 {
+    UIStyleTokens tokens;
+
     if(style == THEME_STYLE_SYSTEM)
         style = GetDefaultPlatformThemeStyle();
 
-    switch(style) {
-    case THEME_STYLE_RETRO:
-        return (UIStyleTokens){
-            .control_radius = 2.0f,
-            .panel_radius = 0.0f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 255,
-            .shadow_alpha = 0,
-            .shine_alpha = 0,
-            .bevel_enabled = 1,
-            .touch_target_min = 36,
-            .shadow_offset_y = 0
-        };
-    case THEME_STYLE_MATERIAL:
-        return (UIStyleTokens){
-            /* Fixed pixels: 4px control / 6px panel corners. Fractional
-             * radii read as pills on tall controls. */
-            .control_radius = 4.0f,
-            .panel_radius = 6.0f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 255,
-            .shadow_alpha = 36,
-            .shine_alpha = 0,
-            .bevel_enabled = 0,
-            .touch_target_min = 48,
-            .shadow_offset_y = 2
-        };
-    case THEME_STYLE_SYSTEM:
-    default:
-        return (UIStyleTokens){
-            .control_radius = 2.0f,
-            .panel_radius = 0.0f,
-            .control_alpha = 255,
-            .panel_alpha = 255,
-            .border_alpha = 255,
-            .shadow_alpha = 0,
-            .shine_alpha = 0,
-            .bevel_enabled = 1,
-            .touch_target_min = 36,
-            .shadow_offset_y = 0
-        };
+    /* Field-wise assembly (rather than a designated compound literal) so
+     * the same source builds with the strict native Plan 9 compiler. */
+    tokens.control_radius = 2.0f;
+    tokens.panel_radius = 0.0f;
+    tokens.control_alpha = 255;
+    tokens.panel_alpha = 255;
+    tokens.border_alpha = 255;
+    tokens.shadow_alpha = 0;
+    tokens.shine_alpha = 0;
+    tokens.bevel_enabled = 1;
+    tokens.touch_target_min = 36;
+    tokens.shadow_offset_y = 0;
+    if(style == THEME_STYLE_MATERIAL) {
+        /* Fixed pixels: 4px control / 6px panel corners. Fractional
+         * radii read as pills on tall controls. */
+        tokens.control_radius = 4.0f;
+        tokens.panel_radius = 6.0f;
+        tokens.shadow_alpha = 36;
+        tokens.bevel_enabled = 0;
+        tokens.touch_target_min = 48;
+        tokens.shadow_offset_y = 2;
     }
+    return tokens;
 }
 
 UIStyleTokens
