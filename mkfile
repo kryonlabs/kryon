@@ -70,6 +70,8 @@ CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
 
 all:V: $LIB
 
+install:V: $LIB
+
 $LIB:V: $OFILES
 	ar vu $LIB $newprereq
 
