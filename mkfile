@@ -62,6 +62,7 @@ OFILES=\
 	src/kry_std/kry_sha256.$O\
 	src/markdown.$O\
 	src/platform/plan9/plan9_os.$O\
+	src/platform/plan9/plan9_ui_globals.$O\
 	src/platform/system_theme/system_theme.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
