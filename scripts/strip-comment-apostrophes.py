@@ -39,6 +39,7 @@ def strip_file(path):
         elif state == "line":
             if c == "\n":
                 state = "code"
+                out.append(c)
             elif c == "'":
                 changed += 1
             else:

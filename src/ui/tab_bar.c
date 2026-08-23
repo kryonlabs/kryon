@@ -122,14 +122,16 @@ DrawUITabBar(TabBarProps bar)
     if(ui_material_style())
         tab_gap = ScaleUIPx(6);
 
-    // Calculate if scrolling is needed    int total_gap_w = tab_gap * (bar.count - 1);
+    // Calculate if scrolling is needed
+    int total_gap_w = tab_gap * (bar.count - 1);
     int total_tabs_w = total_gap_w;
     for(int i = 0; i < bar.count; i++)
         total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
     int needs_scroll = total_tabs_w > bar_w;
     int equal_tabs = 0;
 
-    // Set scroll offset    if(*scroll_offset < 0)
+    // Set scroll offset
+    if(*scroll_offset < 0)
         *scroll_offset = 0;
     int max_scroll = total_tabs_w - bar_w;
     if(max_scroll < 0)
@@ -158,7 +160,8 @@ DrawUITabBar(TabBarProps bar)
             *scroll_offset = max_scroll;
     }
 
-    // Material top tabs are distributed equally across the full app bar.    int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
+    // Material top tabs are distributed equally across the full app bar.
+    int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
 
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
@@ -213,7 +216,8 @@ DrawUITabBar(TabBarProps bar)
         }
 
         if(!ui_material_style() && is_selected) {
-            // Strong bevel for selected tab (appears raised)            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            // Strong bevel for selected tab (appears raised)
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 50),
                          DarkenUIColor(tab_fill, 30));
             if(cues && tab_w > ScaleUIPx(18)) {
@@ -225,7 +229,8 @@ DrawUITabBar(TabBarProps bar)
                               LightenUIColor(c_button_hover, 18));
             }
         } else if(!ui_material_style() && is_hovered && !is_disabled) {
-            // Enhanced bevel for hovered tab            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            // Enhanced bevel for hovered tab
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, cues ? 42 : 30),
                          DarkenUIColor(tab_fill, 20));
             if(cues && tab_w > ScaleUIPx(8)) {
@@ -235,12 +240,14 @@ DrawUITabBar(TabBarProps bar)
                               tab_w - ScaleUIPx(8), ScaleUIPx(1), cue);
             }
         } else if(!ui_material_style() && !is_disabled) {
-            // Subtle bevel for normal tab            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
+            // Subtle bevel for normal tab
+            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
                          LightenUIColor(tab_fill, 20),
                          DarkenUIColor(tab_fill, 15));
         }
 
-        // Draw tab text and icon        int text_pad = ScaleUIPx(8);
+        // Draw tab text and icon
+        int text_pad = ScaleUIPx(8);
         int icon_size = tab->icon_size > 0 ? tab->icon_size : ScaleUIPx(16);
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
@@ -277,7 +284,8 @@ DrawUITabBar(TabBarProps bar)
             }
         }
 
-        // Draw icon if present        if(tab->icon.id != 0) {
+        // Draw icon if present
+        if(tab->icon.id != 0) {
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
             else if(ui_material_style()) {
@@ -304,7 +312,8 @@ DrawUITabBar(TabBarProps bar)
                          : tab_x + text_pad;
         }
 
-        // Draw tab label        Rectangle text_rect = {
+        // Draw tab label
+        Rectangle text_rect = {
             (float)text_x,
             (float)content_y,
             (float)(tab_x + tab_w - text_pad - text_x -
@@ -343,7 +352,8 @@ DrawUITabBar(TabBarProps bar)
                          font, close_color);
         }
 
-        // Handle click detection        if(is_active) {
+        // Handle click detection
+        if(is_active) {
             if(is_disabled)
                 MarkUIDisabled();
             else
@@ -372,10 +382,12 @@ DrawUITabBar(TabBarProps bar)
     }
 
     if(needs_scroll) {
-        // Handle manual drag scrolling        Vector2 current_pos = mouse_world;
+        // Handle manual drag scrolling
+        Vector2 current_pos = mouse_world;
         int is_mouse_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
-        // Check if mouse is over tab bar area        Rectangle scroll_area = {(float)bar_x, (float)bar_y, (float)bar_w, (float)bar_h};
+        // Check if mouse is over tab bar area
+        Rectangle scroll_area = {(float)bar_x, (float)bar_y, (float)bar_w, (float)bar_h};
         int is_over_bar = CheckCollisionPointRec(current_pos, scroll_area);
 
         if(is_mouse_down && is_over_bar && !is_dragging) {
@@ -388,7 +400,8 @@ DrawUITabBar(TabBarProps bar)
                 float dx = current_pos.x - last_drag_pos.x;
                 *scroll_offset -= (int)dx;
 
-                // Clamp scroll offset                if(*scroll_offset < 0)
+                // Clamp scroll offset
+                if(*scroll_offset < 0)
                     *scroll_offset = 0;
                 if(*scroll_offset > max_scroll)
                     *scroll_offset = max_scroll;

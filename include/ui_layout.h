@@ -3,14 +3,20 @@
 
 #include <stdint.h>
 
-// Set the view dimensions (should be called when window/viewport changes)void SetUIViewSize(int width, int height);
+// Set the view dimensions (should be called when window/viewport changes)
+void SetUIViewSize(int width, int height);
 
-// Get the current view widthint GetUIViewWidth(void);
+// Get the current view width
+int GetUIViewWidth(void);
 
-// Get the current view heightint GetUIViewHeight(void);
+// Get the current view height
+int GetUIViewHeight(void);
 
-// Calculate centered column dimensions// Returns x position and width via pointers if not NULLvoid GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
+// Calculate centered column dimensions
+// Returns x position and width via pointers if not NULL
+void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
 
-// Calculate page side padding based on current view widthint GetUIPageSidePadding(void);
+// Calculate page side padding based on current view width
+int GetUIPageSidePadding(void);
 
 #endif // UI_LAYOUT_H
