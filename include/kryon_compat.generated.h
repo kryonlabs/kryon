@@ -666,7 +666,7 @@ typedef enum {
     KEY_Y               = 89,       // Key: Y | y
     KEY_Z               = 90,       // Key: Z | z
     KEY_LEFT_BRACKET    = 91,       // Key: [
-    KEY_BACKSLASH       = 92,       // Key: \
+    KEY_BACKSLASH       = 92,       // Key: 
     KEY_RIGHT_BRACKET   = 93,       // Key: ]
     KEY_GRAVE           = 96,       // Key: `
     // Function keys

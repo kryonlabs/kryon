@@ -39,6 +39,10 @@ def strip_file(path):
         elif state == "line":
             if c == "\n":
                 state = "code"
+                # A backslash left as the last character of a line comment
+                # would splice the next line into the comment; drop it.
+                if out and out[-1] == "\\":
+                    out.pop()
                 out.append(c)
             elif c == "'":
                 changed += 1
