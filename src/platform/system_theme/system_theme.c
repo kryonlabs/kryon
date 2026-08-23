@@ -556,7 +556,7 @@ static int shell_quote_arg(char *out, int out_size, const char *value);
 static int
 xfconf_query_value(const char *property, char *out, int out_size)
 {
-#if !defined(_WIN32) && !defined(PLATFORM_WEB)
+#if !defined(_WIN32) && !defined(PLATFORM_WEB) && !defined(KRYON_PLATFORM_PLAN9)
     char quoted[160];
     char command[256];
     FILE *pipe;
@@ -653,7 +653,7 @@ shell_quote_arg(char *out, int out_size, const char *value)
 static int
 fontconfig_match_file(const char *font_name, char *out, int out_size)
 {
-#if !defined(_WIN32) && !defined(PLATFORM_WEB)
+#if !defined(_WIN32) && !defined(PLATFORM_WEB) && !defined(KRYON_PLATFORM_PLAN9)
     char quoted[256];
     char command[384];
     FILE *pipe;
