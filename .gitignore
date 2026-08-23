@@ -13,3 +13,6 @@ dist/
 assets/fonts/*
 
 tools/otfchop/otfchop
+
+# native plan9 cpp-stage intermediates
+src/**/*.i
