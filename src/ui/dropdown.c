@@ -498,7 +498,7 @@ draw_dropdown_menu(int id)
         } else if(!state->touch_drag_active) {
             /* Movement beyond the threshold makes it a drag - but only
              * when the list can actually scroll, otherwise a touchpad
-             * click's natural wobble would swallow every selection. */
+             * clicks natural wobble would swallow every selection. */
             int dy = my - state->touch_press_start_y;
             if(abs(dy) > ScaleUIPx(8) && max_scroll > 0) {
                 state->touch_drag_active = 1;

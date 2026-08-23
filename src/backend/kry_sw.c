@@ -828,7 +828,7 @@ b_texture_rgba(const unsigned char *rgba, int sw, int sh, int x, int y,
     }
 }
 
-/* Decoded file assets, cached by path for the rasterizer's lifetime; the
+/* Decoded file assets, cached by path for the rasterizers lifetime; the
  * headless tools that drive kry_sw redraw every frame and would otherwise
  * re-read and re-inflate the same image per frame. */
 #define SW_TEX_CACHE 16

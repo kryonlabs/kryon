@@ -95,7 +95,7 @@ void SceneDestroy(Scene *scene);
 /* --- tree mutation --- */
 /*
  * Create a node of `kind` as a child of `parent`. `name` may be NULL. The
- * node's props/state pointers are left NULL; the caller or the kind's ready
+ * nodes props/state pointers are left NULL; the caller or the kinds ready
  * hook is responsible for initializing kind-specific data. Returns the new
  * node id, or -1 if the arena is full or parent is invalid.
  */
@@ -104,7 +104,7 @@ NodeId NodeCreate(Scene *scene, NodeId parent, NodeKind kind,
 
 /*
  * Mark a node (and its subtree) for removal. The node is detached from its
- * parent and its `state`/`props` are released via the kind's registered
+ * parent and its `state`/`props` are released via the kinds registered
  * destroyer if any. The node slot stays in the array but is no longer ALIVE.
  */
 void NodeRemove(Scene *scene, NodeId node);
@@ -129,7 +129,7 @@ void SceneTick(Scene *scene, float dt);
 
 /*
  * Advance physics: fire _physics_process on all alive nodes. Fixed timestep
- * stepping is the caller's responsibility (k2c-generated main() does it).
+ * stepping is the callers responsibility (k2c-generated main() does it).
  */
 void ScenePhysicsTick(Scene *scene, float dt);
 

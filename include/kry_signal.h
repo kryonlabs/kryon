@@ -24,25 +24,25 @@ typedef struct SignalConnection {
 } SignalConnection;
 
 /* Connect (emitter.signal) to (target.handler). Subsequent emits of that
- * signal on that emitter invoke the target's handler. Duplicate connects are
+ * signal on that emitter invoke the targets handler. Duplicate connects are
  * ignored. Returns 1 if the connection was added, 0 on full/invalid. */
 int SignalConnect(Scene *scene, NodeId emitter, const char *signal,
                      NodeId target, const char *handler);
 
 /* Emit `signal` on `emitter`, passing `arg` to every connected handler. Each
- * connection's target node's kind ops may provide a `handle_signal` hook; the
+ * connections target nodes kind ops may provide a `handle_signal` hook; the
  * matching handler name is dispatched through it. Returns the number of
  * handlers invoked. */
 int SignalEmit(Scene *scene, NodeId emitter, const char *signal,
                   PropertyValue arg);
 
 /* Disconnect all connections involving `node` (as emitter or target). Called
- * automatically by NodeRemove via the scene tree so dead nodes don't
+ * automatically by NodeRemove via the scene tree so dead nodes dont
  * accumulate connections. */
 void SignalDisconnectNode(Scene *scene, NodeId node);
 
 /* Per-kind signal handler hook. If a kind registers one, SignalEmit looks
- * up the target node's kind ops and calls this when a connection matches. */
+ * up the target nodes kind ops and calls this when a connection matches. */
 typedef void (*SignalHandlerFn)(Scene *scene, NodeId target,
                                    NodeId emitter, const char *handler,
                                    PropertyValue arg);

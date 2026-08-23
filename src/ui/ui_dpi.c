@@ -46,7 +46,7 @@ SetUIDeviceDensity(float density)
     if(density > 0.0f) {
         g_device_density = density;
         /* Force a recompute on the next UpdateUIDPI call so the new density
-         * actually takes effect, even when the viewport size hasn't changed. */
+         * actually takes effect, even when the viewport size hasnt changed. */
         ui_dpi_state.view_width = -1;
         ui_dpi_state.view_height = -1;
     }
@@ -79,7 +79,7 @@ UpdateUIDPI(int view_width, int view_height)
          * factor is a legitimate additional scaling input. The web is
          * different: the viewport IS CSS pixels (density-independent by
          * definition) and the canvas backing store already absorbs
-         * devicePixelRatio — raylib's web GetWindowScaleDPI() returns exactly
+         * devicePixelRatio — raylibs web GetWindowScaleDPI() returns exactly
          * that ratio, and taking it here scaled phone UIs by dpr (~3x) on
          * top of an already-correct viewport ratio. */
         Vector2 dpi_scale = GetWindowScaleDPI();

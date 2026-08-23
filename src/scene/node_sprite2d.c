@@ -1,7 +1,7 @@
 /*
  * Sprite2D: a world-space textured sprite. Draws via the shared picture texture
  * cache so it shares loaded textures with the UI
- * Picture widget. The sprite is drawn at the node's world transform, sized by
+ * Picture widget. The sprite is drawn at the nodes world transform, sized by
  * Sprite2DProps.size, with the chosen fit mode applied within that size.
  */
 

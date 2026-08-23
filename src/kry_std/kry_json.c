@@ -90,8 +90,8 @@ append_utf8(char **dst, unsigned long cp)
     *dst = d;
 }
 
-/* Parse a JSON string literal at pp (which must point at '"'). Returns a
- * decoded malloc'd string or NULL on error; advances pp past the closing
+/* Parse a JSON string literal at pp (which must point at "). Returns a
+ * decoded mallocd string or NULL on error; advances pp past the closing
  * quote. */
 static char *
 parse_string_lit(const char **pp)
@@ -198,7 +198,7 @@ parse_object(Parser *ps)
 
     if(v == NULL)
         return NULL;
-    ps->p++;   /* '{' */
+    ps->p++;   /* { */
     skip_ws(&ps->p);
     if(*ps->p == '}') {
         ps->p++;
@@ -249,7 +249,7 @@ parse_array(Parser *ps)
 
     if(v == NULL)
         return NULL;
-    ps->p++;   /* '[' */
+    ps->p++;   /* [ */
     skip_ws(&ps->p);
     if(*ps->p == ']') {
         ps->p++;

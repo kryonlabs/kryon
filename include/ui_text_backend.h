@@ -12,7 +12,7 @@
  *
  * Font stays a real struct (raylib-layout); only the atlas internals are
  * hidden behind this seam. Functions take Font by value to match the
- * surface's own accessor signatures.
+ * surfaces own accessor signatures.
  */
 #include "kryon.h"
 
@@ -26,10 +26,10 @@ int UIFontBaseSize(Font font);
 int UIFontGlyphPadding(Font font);
 
 /* Glyph info (offsetX/offsetY/advanceX/value) for a codepoint, falling back to
- * '?' like raylib's GetGlyphInfo. */
+ * ? like raylibs GetGlyphInfo. */
 GlyphInfo UIFontGlyph(Font font, int codepoint);
 
-/* Atlas sub-rectangle for a codepoint, falling back to '?' like raylib's
+/* Atlas sub-rectangle for a codepoint, falling back to ? like raylibs
  * GetGlyphAtlasRec. */
 Rectangle UIFontAtlasRec(Font font, int codepoint);
 
@@ -38,14 +38,14 @@ Rectangle UIFontAtlasRec(Font font, int codepoint);
 Texture2D UIFontAtlasTexture(Font font);
 
 /* Horizontal pen advance for a codepoint in font units
- * (glyphs[GetGlyphIndex].advanceX), fallback '?' as raylib. */
+ * (glyphs[GetGlyphIndex].advanceX), fallback ? as raylib. */
 int UIFontAdvance(Font font, int codepoint);
 
 /* True if the font provides a glyph for `codepoint` (any glyph slot, not just
  * the loaded codepoint range). */
 int UIFontHasGlyphValue(Font font, int codepoint);
 
-/* Number of rasterized glyphs in the font's atlas (font.glyphCount), >= 0.
+/* Number of rasterized glyphs in the fonts atlas (font.glyphCount), >= 0.
  * Used by diagnostics; regular UI code should not need it. */
 int UIFontGlyphCount(Font font);
 

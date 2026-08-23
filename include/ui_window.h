@@ -11,11 +11,11 @@
  * and binds a UI frame sized to the window, EndUIWindow blits the result to
  * the OS window. Call the pair once per frame while the window is open.
  *
- * Mouse events on these windows are kept out of the core window's input
+ * Mouse events on these windows are kept out of the core windows input
  * state; poll them with IsUIWindowClicked().
  *
  * Desktop only; other platforms compile to no-ops. Linux and FreeBSD default
- * to a private X11 connection (secondary windows without touching the app's
+ * to a private X11 connection (secondary windows without touching the apps
  * SDL state); builds that prefer SDL windows, e.g. Wayland without XWayland,
  * compile this translation unit with -DUI_WINDOW_HAVE_SDL.
  */
@@ -29,10 +29,10 @@ enum {
     UI_WINDOW_ALWAYS_ON_TOP = 0x02,  /* float above normal windows */
     UI_WINDOW_SKIP_TASKBAR = 0x04,   /* keep the window out of taskbars/docks */
     UI_WINDOW_TOP_RIGHT = 0x08,      /* x/y are margins from the top-right
-                                        corner of the primary display's work
+                                        corner of the primary displays work
                                         area instead of absolute positions */
     UI_WINDOW_CENTER = 0x10,         /* center the window on the primary
-                                        display's work area (x/y ignored) */
+                                        displays work area (x/y ignored) */
     UI_WINDOW_STICKY = 0x20          /* keep the window visible across
                                         virtual desktops/workspaces when the
                                         window system supports it */
@@ -40,7 +40,7 @@ enum {
 
 /*
  * Open a window. ui_scale is the UI scale widgets inside the window should
- * use (ScaleUIPx etc.); pass the caller's current combined DPI/user scale.
+ * use (ScaleUIPx etc.); pass the callers current combined DPI/user scale.
  * Returns NULL when windows are unsupported or resources ran out.
  */
 UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
@@ -49,7 +49,7 @@ UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
 /* Close and free a window opened with OpenUIWindow. NULL is safe. */
 void CloseUIWindow(UIWindow *window);
 
-/* Begin drawing this window's content; widgets draw into the window until
+/* Begin drawing this windows content; widgets draw into the window until
  * EndUIWindow(). Also ends itself safely if the window is NULL. */
 void BeginUIWindow(UIWindow *window);
 

@@ -5,7 +5,7 @@
  * Live scene inspection server.
  *
  * Serves a JSON snapshot of a runtime Scene over TCP so external tools
- * (editors, debuggers, curl) can watch a running application's node tree.
+ * (editors, debuggers, curl) can watch a running applications node tree.
  * The snapshot is rebuilt on the game thread by SceneInspectPoll (call once
  * per frame); the socket thread only ever sends the latest completed
  * snapshot, so the tree is never walked concurrently with mutation.

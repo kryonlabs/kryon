@@ -11,7 +11,7 @@
 /* The Box2D-backed physics nodes (Body2D, CollisionShape2D, Area2D, plus the
  * physics world stepper) are optional. Build with -DKRYON_WITH_PHYSICS=0 and
  * omit the physics sources (see KRYON_PHYSICS_SRCS in mk/vendor.mk) for UI-only
- * apps that don't need 2D physics and don't want the box2d dependency. */
+ * apps that dont need 2D physics and dont want the box2d dependency. */
 #ifndef KRYON_WITH_PHYSICS
 #define KRYON_WITH_PHYSICS 1
 #endif

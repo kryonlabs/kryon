@@ -37,7 +37,7 @@ enum {
 };
 
 /* Interactive control kinds, carried in a KrbControl record (controls[] table)
- * referenced by a CONTROL node's bind_slot. Range widgets (slider/spinbox) use
+ * referenced by a CONTROL nodes bind_slot. Range widgets (slider/spinbox) use
  * min/max/step; dropdown/combobox carry an option list. The bound value is a
  * state-field path (value_off) read/written through the mount. */
 enum {
@@ -236,7 +236,7 @@ int KrbWriteCStr(KrbImage *img, const char *path, const char *value);
 int KrbAssetFind(const KrbImage *img, const char *path,
                  const unsigned char **data, unsigned *len, unsigned *kind,
                  unsigned *w, unsigned *h);
-/* Mount every DATA node's initializer so hosts without generated binds
+/* Mount every DATA nodes initializer so hosts without generated binds
  * still render bound text and widget defaults. Returns binds added. */
 int KrbAutoMount(KrbImage *img);
 

@@ -254,8 +254,7 @@ ThemeScope *RegisterThemeScope(const char *name, const char *path)
     copy_text(scope->name, THEME_NAME_SIZE, name);
     copy_text(scope->path, THEME_PATH_SIZE, path);
 
-    // Auto-generate dark path by inserting "_dark" before extension
-    if(path != NULL && path[0] != '\0') {
+    // Auto-generate dark path by inserting "_dark" before extension    if(path != NULL && path[0] != '\0') {
         char *dot = strrchr((char *)path, '.');
         if(dot != NULL && dot > path) {
             int base_len = (int)(dot - path);
@@ -610,11 +609,9 @@ void ReloadThemes(void)
         ThemeScope *scope = &scopes[i];
         const char *load_path = dark_mode && scope->dark_path[0] != '\0' ? scope->dark_path : scope->path;
 
-        // Clear current values
-        scope->count = 0;
+        // Clear current values        scope->count = 0;
 
-        // Load from appropriate file
-        if(load_path != NULL && load_path[0] != '\0') {
+        // Load from appropriate file        if(load_path != NULL && load_path[0] != '\0') {
             FILE *file = fopen(load_path, "r");
             if(file != NULL) {
                 char line[256];

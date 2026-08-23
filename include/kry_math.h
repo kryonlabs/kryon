@@ -2,7 +2,7 @@
 #define KRY_MATH_H
 
 /*
- * Tiny Kryon-owned 2D math helpers for the retained scene tree. Uses raylib's
+ * Tiny Kryon-owned 2D math helpers for the retained scene tree. Uses raylibs
  * Vector2 and Camera2D types directly so there is no conversion at the draw
  * boundary. Kept self-contained: no project outside this header is needed.
  */
@@ -99,7 +99,7 @@ Transform2DIdentity(void)
 /*
  * Compose a child local transform with a parent world transform. The child is
  * first scaled and rotated about its own origin, then translated by the
- * parent's position. This matches Godot 2D and raylib Camera2D conventions:
+ * parents position. This matches Godot 2D and raylib Camera2D conventions:
  * rotation is clockwise in screen space because +Y points down.
  */
 static inline Transform2D
@@ -126,8 +126,8 @@ Transform2DPoint(Transform2D t, Vector2 p)
 
 /*
  * Build a raylib Camera2D that views the world through `view` (the camera
- * node's world transform). The camera's target is its world position and its
- * offset is the screen center; zoom is the camera's uniform scale.
+ * nodes world transform). The cameras target is its world position and its
+ * offset is the screen center; zoom is the cameras uniform scale.
  */
 static inline Camera2D
 Camera2DFromTransform(Transform2D view, Vector2 screen_size, float zoom)

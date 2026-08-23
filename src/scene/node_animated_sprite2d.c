@@ -1,6 +1,6 @@
 /*
  * AnimatedSprite2D: cycles through frames of a grid sprite sheet each process
- * tick, drawing the current frame at the node's world transform. The sheet is
+ * tick, drawing the current frame at the nodes world transform. The sheet is
  * laid out as frames_per_row frames horizontally (rows derived from
  * frame_count). Shares the picture texture cache with Sprite2D / Picture.
  */

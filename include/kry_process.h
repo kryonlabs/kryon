@@ -21,7 +21,7 @@ typedef struct {
     int exit_status;  /* valid once running == 0 */
 } KryProcess;
 
-/* Spawn `command` (run via "/bin/sh -lc") with the child's working directory
+/* Spawn `command` (run via "/bin/sh -lc") with the childs working directory
  * set to `cwd` (pass NULL to inherit). On success fills `p` and returns 1.
  * Returns 0 (and leaves p zeroed) if the platform has no implementation or
  * spawn fails. Combined stdout/stderr is readable via kry_process_read_poll. */

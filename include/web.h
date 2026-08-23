@@ -21,7 +21,7 @@ void ScheduleWebStorageSync(int delay_ms, int log_success);
 void FlushWebStorageSync(int log_success);
 
 /*
- * Resize raylib's window to the current browser viewport when it changes.
+ * Resize raylibs window to the current browser viewport when it changes.
  * Returns 1 when a resize was applied, 0 otherwise.
  */
 int SyncWebWindowSize(void);

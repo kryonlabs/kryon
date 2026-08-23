@@ -2,7 +2,7 @@
  * plan9_os.c - Plan 9 OS helpers for Kryon.
  *
  * mkdir: create a single directory (the recursive walkers in kry_filesystem,
- * kry_archive and audio_library slice paths on '/' and call mkdir(path, mode)
+ * kry_archive and audio_library slice paths on / and call mkdir(path, mode)
  * per component, which this helper implements with create(OREAD, 0700|DMDIR)).
  * File probes go through dirstat directly at the guarded call sites.
  */

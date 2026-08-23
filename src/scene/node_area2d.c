@@ -24,7 +24,7 @@ kry_area2d_ready(Scene *scene, NodeId node)
         return;
     /* An Area2D is a sensor; the actual shape is provided by a child
      * CollisionShape2D with is_sensor. The ready is a no-op on the area node
-     * itself; shape attachment happens on the child's ready. */
+     * itself; shape attachment happens on the childs ready. */
 }
 
 static void

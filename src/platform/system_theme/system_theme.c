@@ -705,14 +705,14 @@ refresh_system_ui_font(void)
 }
 
 /*
- * --- GTK theme palette straight from the theme's CSS ---
+ * --- GTK theme palette straight from the themes CSS ---
  *
  * The in-process GTK sampler only exists where GTK is linked in
- * (SYSTEM_THEME_GTK). Apps that keep GTK out of the binary (inbe's
- * no-in-process-GTK policy) still deserve the desktop's real colors, so the
+ * (SYSTEM_THEME_GTK). Apps that keep GTK out of the binary (inbes
+ * no-in-process-GTK policy) still deserve the desktops real colors, so the
  * theme is read the same way the wallpaper is: the XFCE xsettings channel
  * (or GTK_THEME, or gtk-3.0 settings.ini) names the GTK theme, and the
- * theme's gtk-3.0/gtk.css @define-color lines carry the palette. Plain
+ * themes gtk-3.0/gtk.css @define-color lines carry the palette. Plain
  * hex / numeric / named colors are used; expressions (shade(), mix(),
  * @references) are skipped and fall back to the next candidate.
  */
@@ -734,7 +734,7 @@ css_parse_hex(const char *s, const char *end, Color *out)
     int nib[8];
     int n = 0;
 
-    s++; /* skip '#' */
+    s++; /* skip # */
     while(s < end && n < 8) {
         int v = css_hex_value(*s);
 
@@ -1072,7 +1072,7 @@ GetSystemDesktopBackground(char *out, int out_size)
  *     $home/lib/kryon/theme       per-user WM state
  *
  * with one `key=value` pair per line (name, mode, style). Reading it here
- * turns the WM choice into Kryon's system theme, so apps that follow
+ * turns the WM choice into Kryons system theme, so apps that follow
  * THEME_SOURCE_SYSTEM re-skin together with the desktop. */
 static int
 plan9_theme_file_value(const char *text, const char *key, char *out, int out_size)
@@ -1195,7 +1195,7 @@ bool
 RefreshSystemTheme(void)
 {
 #if defined(PLATFORM_WEB)
-    /* Browsers expose no desktop palette, but they do expose the user's
+    /* Browsers expose no desktop palette, but they do expose the users
        light/dark preference; map it onto the material palettes. */
     {
         int prefers_dark = EM_ASM_INT_V(
@@ -1215,7 +1215,7 @@ RefreshSystemTheme(void)
     return windows_system_theme_refresh() != 0;
 #endif
     /* Prefer reading the theme CSS files directly: initializing GTK
-       in-process while the app's SDL window and GL context are already live
+       in-process while the apps SDL window and GL context are already live
        can corrupt the render context (GTK performs late global X
        initialization, realizes real X windows, and pumps the GLib main
        loop from the render thread). The CSS reader needs no X connection,

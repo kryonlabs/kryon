@@ -50,9 +50,9 @@ typedef struct KryAnimation {
  * key (hold-before-first semantics returns the first value). */
 int KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value);
 
-/* Apply one animation's sampled values at time t to its target nodes via the
+/* Apply one animations sampled values at time t to its target nodes via the
  * scene property model. Walks each track, samples it, and writes the component
- * into the target node's property. */
+ * into the target nodes property. */
 void KryAnimationApply(Scene *scene, const KryAnimation *anim, float t);
 
 #endif

@@ -1,6 +1,6 @@
 /* Front-end screenshot capture, defined once for every backend.
  *
- * raylib's TakeScreenshot unconditionally prefixes CORE.Storage.basePath -
+ * raylibs TakeScreenshot unconditionally prefixes CORE.Storage.basePath -
  * on the SDL backend that is the directory holding the binary (SDL_GetBasePath)
  * - so an absolute output path arrived as "<bindir>//abs/path" and the export
  * silently failed (or landed somewhere unexpected). Kryon owns the surface
@@ -46,7 +46,7 @@ __attribute__((weak))
 #endif
 extern int kry_backend_capture_screen(Image *image);
 
-/* Event-driven programs opt into Kryon's frame pacing through
+/* Event-driven programs opt into Kryons frame pacing through
  * EnableEventWaiting().  Keep it after the backend frame completes so input
  * has already been collected for the next application update. */
 extern void kry_event_wait_after_frame(void);
@@ -54,7 +54,7 @@ extern void kry_event_wait_after_frame(void);
 /* When KRYON_SHOT_ARM (or the older INBE_SHOT_ARM name) is set, every
  * EndDrawing captures the completed back buffer BEFORE the swap (the only
  * readback point OpenGL ES 2 guarantees: no glReadBuffer, and post-swap
- * reads return undefined/cleared data on Mesa's software drivers). The last
+ * reads return undefined/cleared data on Mesas software drivers). The last
  * captured frame is what LoadImageFromScreen returns. */
 static unsigned char *g_shot_buf = NULL;
 static int g_shot_w = 0;
@@ -111,7 +111,7 @@ void EndDrawing(void)
  * (the ARGB window visual renders transparent without a compositor). */
 
 /* Minimal PNG writer (stored deflate): deterministic, no dependencies,
- * and deliberately not raylib's ExportImage — on this stack the raylib
+ * and deliberately not raylibs ExportImage — on this stack the raylib
  * exporter does not honor the passed image. */
 static unsigned kr_png_crc_update(unsigned c, const unsigned char *p, size_t n)
 {
@@ -297,7 +297,7 @@ Image LoadImageFromScreen(void)
     return image;
 }
 
-/* Shared entry point for kryon's screenshot tooling; kr_write_png itself
+/* Shared entry point for kryons screenshot tooling; kr_write_png itself
  * stays file-local. Returns 0 on success. */
 int
 kry_write_png_file(const char *path, const unsigned char *rgba, int w, int h)

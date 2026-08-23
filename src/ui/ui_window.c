@@ -5,12 +5,12 @@
 /*
  * Desktop implementation notes.
  *
- * Linux/FreeBSD talk to the X server directly through dlopen'd libX11 on a
+ * Linux/FreeBSD talk to the X server directly through dlopend libX11 on a
  * private Display connection: creating a second SDL window in this process
  * makes some Mesa stacks (llvmpipe reproducibly) crash on the next
  * glReadPixels-scissor-batch combination, and routing our window through
- * SDL's event queue would need raylib patches. A private connection keeps
- * the extra window, its events, and its blits completely out of SDL's way
+ * SDLs event queue would need raylib patches. A private connection keeps
+ * the extra window, its events, and its blits completely out of SDLs way
  * and adds no build-time dependency.
  *
  * Windows/macOS keep the plain SDL window path.
@@ -28,7 +28,7 @@
 
 #define UI_WINDOW_MAX 8
 
-/* Minimal X declarations for the dlopen'd calls; types mirror the X headers
+/* Minimal X declarations for the dlopend calls; types mirror the X headers
  * (XID/Window/Atom are unsigned long everywhere we ship, Display is opaque). */
 typedef struct _XDisplay Display;
 typedef struct _XImage XImage;
@@ -384,7 +384,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 {
     UIWindow *win;
 
-    /* The render texture below needs a live GL context; without the app's
+    /* The render texture below needs a live GL context; without the apps
      * main window there is nothing to share assets with and rlgl is not
      * initialized. */
     if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_x11_init())
@@ -1012,9 +1012,9 @@ ui_window_present(UIWindow *window)
 }
 #endif
 
-/* raylib owns SDL's normal event pump. An event watch sees secondary-window
- * pointer events without consuming the core window's events. The watch only
- * records plain state: it can run inside SDL's event pump, where calling
+/* raylib owns SDLs normal event pump. An event watch sees secondary-window
+ * pointer events without consuming the core windows events. The watch only
+ * records plain state: it can run inside SDLs event pump, where calling
  * back into SDL (moving windows, pushing events) is not safe. PumpUIWindows
  * applies the recorded state from the frame loop. */
 static int ui_window_core_close_pending;
@@ -1069,8 +1069,8 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
         }
     }
 
-    /* SDL2 reports the core window's close request (X button, Alt+F4, WM
-     * delete) as SDL_WINDOWEVENT_CLOSE; raylib's SDL backend only latches
+    /* SDL2 reports the core windows close request (X button, Alt+F4, WM
+     * delete) as SDL_WINDOWEVENT_CLOSE; raylibs SDL backend only latches
      * SDL_QUIT, so without a bridge the close button does nothing. */
     if(event->type == SDL_WINDOWEVENT &&
        event->window.event == SDL_WINDOWEVENT_CLOSE)
@@ -1158,7 +1158,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
         free(win);
         return NULL;
     }
-    /* Share fonts, icons and every other GPU asset with raylib's current
+    /* Share fonts, icons and every other GPU asset with raylibs current
      * context. Each secondary window still owns a real context and swaps
      * directly; no framebuffer readback or software window surface is used. */
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);

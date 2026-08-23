@@ -4,7 +4,7 @@
  * Mirrors the arena pattern from ui_tree.c: a fixed array of nodes, integer
  * index links, rebuilt links on add/remove. World transforms are recomputed
  * top-down each tick before _process fires, so reads during process see the
- * parent's updated world transform.
+ * parents updated world transform.
  */
 
 #include "scene_tree.h"

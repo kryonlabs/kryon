@@ -1,14 +1,14 @@
 #ifndef KRY_INJECT_H
 #define KRY_INJECT_H
 
-/* Synthetic input injection for kryon's owned input surface.
+/* Synthetic input injection for kryons owned input surface.
  *
  * The generated backend wrappers (see tools/generate-kryon-compat.sh)
  * consult this module before the real platform input, so injected events
  * behave exactly like physical ones everywhere - including app code that
  * calls GetMousePosition or IsMouseButtonReleased directly. KryonInjectPump
  * runs once per frame from UpdateKeyPlatformState: pending edges become
- * visible for exactly one frame, and a tap's release fires on the next
+ * visible for exactly one frame, and a taps release fires on the next
  * pump. Everything here is pure state, no GPU or window required, which is
  * what makes the synthetic file system (kry_sfs.h) and the KryT* test
  * helpers drivable headless. */

@@ -1,7 +1,7 @@
 /*
  * Box2D v3 physics world bridge. Owns the only #include of <box2d/box2d.h> in
  * the scene tree; the public scene_tree.h stores the b2WorldId as two opaque
- * unsigned shorts so consumers don't pull in Box2D.
+ * unsigned shorts so consumers dont pull in Box2D.
  *
  * ScenePhysicsCreate builds a world; ScenePhysicsTick steps it; Body2D
  * and CollisionShape2D nodes (in node_body2d.c / node_collision_shape2d.c)
@@ -193,7 +193,7 @@ kry_scene_physics_step(Scene *scene, float dt)
 {
     if(scene == NULL || !scene->physics_enabled)
         return;
-    /* fixed-substep integration; 4 sub-steps is Box2D's recommended default */
+    /* fixed-substep integration; 4 sub-steps is Box2Ds recommended default */
     b2World_Step(scene_world_id(scene), dt, 4);
 }
 

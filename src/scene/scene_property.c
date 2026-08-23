@@ -5,7 +5,7 @@
  *
  * Each kind publishes an ordered spec table at startup; the getter/setter use
  * the index into that table to decide which field to touch. The mapping is
- * fixed per kind (a property's index is its identity).
+ * fixed per kind (a propertys index is its identity).
  */
 
 #include "scene_property.h"
@@ -28,7 +28,7 @@ static KryPropertyTable g_property_tables[KRY_PROPERTY_KIND_MAX];
  * Register an application-defined node kind (id beyond the builtins, from
  * NodeRegisterCustomKind) together with its property spec table and
  * getter/setter callbacks. The callbacks receive the node id and the spec
- * index; they read/write the kind's props struct, whose pointer is stored on
+ * index; they read/write the kinds props struct, whose pointer is stored on
  * the node via NodeSetProps. Returns 1 on success.
  */
 int
@@ -233,7 +233,7 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
         Sprite2DProps *p = (Sprite2DProps *)n->props;
         if(index == 3) {
             /* asset_path is owned by the builder; the editor copies into the
-             * props struct's fixed buffer to avoid dangling pointers */
+             * props structs fixed buffer to avoid dangling pointers */
             p->asset_path = strdup(value.as.string_value);
             return 1;
         }

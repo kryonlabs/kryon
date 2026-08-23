@@ -29,12 +29,12 @@ typedef struct {
 } KryFileStat;
 
 /* Iterate the direct children of `dir`. Fills `out` (up to `cap` entries) and
- * returns the count (0 if empty or unavailable). Hidden entries (leading '.') ,
+ * returns the count (0 if empty or unavailable). Hidden entries (leading .) ,
  * `.` and `..` are skipped. */
 int kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap);
 
 /* Stat a path. Always fills the struct (exists=0 if missing). Returns 1 on
- * success (path stat-able, even if it doesn't exist), 0 on failure. */
+ * success (path stat-able, even if it doesnt exist), 0 on failure. */
 int kry_fs_stat(const char *path, KryFileStat *out);
 
 /* Convenience: just the modification time, or -1. */

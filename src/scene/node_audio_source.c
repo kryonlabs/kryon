@@ -1,5 +1,5 @@
 /*
- * AudioSource: plays a sound effect or a streaming music track. Wraps raylib's
+ * AudioSource: plays a sound effect or a streaming music track. Wraps raylibs
  * audio API (LoadSound/PlaySound, LoadMusicStream/PlayMusicStream). The handle
  * is loaded lazily on first play; music streams are updated each process tick.
  * The node draws nothing. InitAudioDevice must have been called by the app.

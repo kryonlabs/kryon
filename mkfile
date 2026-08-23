@@ -21,9 +21,11 @@ LIB=/$objtype/lib/libkryon.a
 SHIM=src/platform/plan9/include
 RAYEXT=vendor/raylib/src/external
 
-CFLAGS=-FTVw -I$SHIM -Iinclude -Isrc -I$RAYEXT \
+CPPFLAGS=-I$SHIM -Iinclude -Isrc -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
-	-DUI_EMBEDDED_ONLY=0 -c
+	-DUI_EMBEDDED_ONLY=0
+
+CFLAGS=-FTVw
 
 OFILES=\
 	src/backend/kry_backend.$O\
@@ -133,6 +135,16 @@ OFILES=\
 	src/ui/ui_window.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
-	src/scene/*.$O src/ui/*.$O *.$O
+	src/scene/*.$O src/ui/*.$O *.$O src/*/*.i
 
 < /sys/src/cmd/mksyslib
+
+# The native Plan 9 compilers carry no expression preprocessor (no #if,
+# #elif, defined(), ||), so every source is first run through the system
+# cpp - which supports the full directive set - and the fully preprocessed
+# translation unit is compiled from its own directory so the object lands
+# where the archive step expects it. This keeps the Kryon sources
+# untouched: the same files build on hosted platforms with their native
+# toolchains.
+%.$O: %.c
+	d=`{dirname $stem}; b=`{basename $stem}; cd $d && cpp $CPPFLAGS $b.c > $b.i && $CC $CFLAGS -c $b.i && rm -f $b.i

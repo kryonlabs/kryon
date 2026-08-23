@@ -51,7 +51,7 @@ typedef struct KryBackend {
     /* Mouse-wheel delta (pixels) accumulated since the last poll; positive
      * scrolls up. Optional. */
     int (*wheel)(void);
-    /* Pop one typed codepoint from this frame's queue; 0 when empty.
+    /* Pop one typed codepoint from this frames queue; 0 when empty.
      * 0x08 = backspace. Optional. */
     unsigned (*text_key)(void);
 } KryBackend;

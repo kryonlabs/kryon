@@ -349,7 +349,7 @@ ui_scrollbar_ensure_visible(Color color, Color against,
 int
 DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll)
 {
-    /* Don't show scrollbar if no scrolling needed */
+    /* Dont show scrollbar if no scrolling needed */
     if(max_scroll <= 0)
         return 0;
     if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)

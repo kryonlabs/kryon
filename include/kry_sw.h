@@ -28,7 +28,7 @@ typedef struct KrySw {
     int w;
     int h;
     int stride; /* bytes per row, >= w * 4 */
-    int owns;   /* pixels were malloc'd here */
+    int owns;   /* pixels were mallocd here */
     int clip_n;
     int clip_x[16];
     int clip_y[16];

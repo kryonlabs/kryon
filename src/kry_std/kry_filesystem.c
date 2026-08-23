@@ -110,7 +110,7 @@ kry_fs_stat(const char *path, KryFileStat *out)
     out->mtime = -1;
     d = dirstat(path);
     if(d == NULL)
-        return 1;   /* probe succeeded; path just doesn't exist */
+        return 1;   /* probe succeeded; path just doesnt exist */
     out->exists = 1;
     out->is_dir = (d->mode & DMDIR) != 0;
     out->mtime = (long)d->mtime;
@@ -337,7 +337,7 @@ kry_fs_stat(const char *path, KryFileStat *out)
     out->is_dir = 0;
     out->mtime = -1;
     if(stat(path, &st) != 0)
-        return 1;   /* stat-able call; path just doesn't exist */
+        return 1;   /* stat-able call; path just doesnt exist */
     out->exists = 1;
     out->is_dir = S_ISDIR(st.st_mode);
     out->mtime = (long)st.st_mtime;

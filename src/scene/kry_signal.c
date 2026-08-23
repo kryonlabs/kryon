@@ -1,7 +1,7 @@
 /*
  * Signal bus implementation. Connections are stored in a file-scope pool keyed
  * by scene pointer so Scene stays a fixed struct. Emits walk the pool,
- * match (emitter, signal), and dispatch via the target node kind's registered
+ * match (emitter, signal), and dispatch via the target node kinds registered
  * signal handler.
  */
 

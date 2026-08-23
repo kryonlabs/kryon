@@ -8,7 +8,7 @@
  * service channels get a download link). Nothing here downloads or
  * replaces files — later phases may add that on top of the same appcast.
  *
- * The appcast format (published as a release asset by each app's release
+ * The appcast format (published as a release asset by each apps release
  * workflow, fetchable from a version-less URL like
  * .../releases/latest/download/appcast.json):
  *

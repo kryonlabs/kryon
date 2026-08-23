@@ -142,7 +142,7 @@ static int *g_ui_text_focus_owner = NULL;
 /* Frame counter and the frame on which the current owner last confirmed it is
  * still alive. If the owner has not run for a frame, ownership is considered
  * released (the user navigated away from that screen / the widget is gone),
- * which lets a new screen's autofocus adopt cleanly. */
+ * which lets a new screens autofocus adopt cleanly. */
 static unsigned long g_ui_text_focus_frame = 0;
 static unsigned long g_ui_text_focus_owner_frame = 0;
 static int *g_ui_text_focus_owner_this_frame = NULL;
@@ -161,7 +161,7 @@ enum {
      * resizable drawn after disabled background content is visually on top
      * of it and must own the cursor. With DISABLED ranked highest, a board
      * that disables its cards behind a modal banned the cursor for the
-     * whole frame — the modal's own buttons and text never got a say. */
+     * whole frame — the modals own buttons and text never got a say. */
     UI_CURSOR_PRIORITY_DISABLED = 1,
     UI_CURSOR_PRIORITY_CLICKABLE = 2,
     UI_CURSOR_PRIORITY_TEXT = 3,
@@ -1101,7 +1101,7 @@ BeginUIFocus(void)
     g_ui_focus_frame_open = 1;
     /* Advance the frame counter and release ownership if the current owner did
      * not render last frame (the user navigated away or the widget is gone).
-     * This lets a new screen's autofocus adopt cleanly, while still preventing
+     * This lets a new screens autofocus adopt cleanly, while still preventing
      * two live widgets from both showing a caret within a single frame. */
     g_ui_text_focus_frame++;
     if(g_ui_text_focus_owner != NULL &&
@@ -1258,7 +1258,7 @@ IsUITextFocusOwner(int *focused)
         *focused = 0;
         return 0;
     }
-    /* No owner yet this frame. Allow adoption only if the app set this widget's
+    /* No owner yet this frame. Allow adoption only if the app set this widgets
      * flag (autofocus / programmatic SetUIFocus). First adoption wins; any
      * later widget with a stale flag is denied above. */
     if(*focused != 0 && g_ui_text_focus_owner == NULL) {

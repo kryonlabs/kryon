@@ -1,7 +1,7 @@
 /*
  * Body2D: a physics-driven 2D body. On ready it creates a Box2D body in the
- * scene's world (Body2DProps carries the body type: static/kinematic/dynamic).
- * On physics_process it copies the body's transform back into the node so the
+ * scenes world (Body2DProps carries the body type: static/kinematic/dynamic).
+ * On physics_process it copies the bodys transform back into the node so the
  * rest of the scene tree (and SceneDraw) sees the simulated position.
  */
 

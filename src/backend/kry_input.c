@@ -1,6 +1,6 @@
 /* Shared input front-end; see kry_input.h. The public input queries merge
  * synthetic injection, the modal input override, and the keyboard platform
- * callbacks around the active backend's KryonBackendRaw_* hooks, so every
+ * callbacks around the active backends KryonBackendRaw_* hooks, so every
  * backend gets identical input behavior. Previously this logic was emitted
  * only into the generated raylib wrappers (tools/generate-kryon-compat.sh). */
 

@@ -1,9 +1,9 @@
 /*
  * Camera2D: defines the view into the scene. On ready, if it is marked active
- * it becomes the scene's active camera; SceneDraw then wraps the world draw
- * in raylib BeginMode2D using this node's world transform and zoom.
+ * it becomes the scenes active camera; SceneDraw then wraps the world draw
+ * in raylib BeginMode2D using this nodes world transform and zoom.
  *
- * The node owns a Camera2DProps (zoom/rotation/active) allocated in the node's
+ * The node owns a Camera2DProps (zoom/rotation/active) allocated in the nodes
  * props slot by whoever creates it (the k2c-generated builder or app code).
  */
 

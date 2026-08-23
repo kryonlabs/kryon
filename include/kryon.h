@@ -2,7 +2,7 @@
 #define KRYON_H
 
 #include "kryon_version.h"
-/* Kryon's owned raylib-style graphics/input surface. The concrete backend is
+/* Kryons owned raylib-style graphics/input surface. The concrete backend is
  * selected at link time via KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
 #include "kryon_frame.h"

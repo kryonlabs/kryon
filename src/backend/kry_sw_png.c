@@ -3,8 +3,8 @@
  * Decodes 8-bit non-interlaced PNGs (grayscale, grayscale+alpha, RGB,
  * palette, RGBA) to tightly packed RGBA8. Chunk CRCs and the zlib adler32
  * are not verified; anything malformed or unsupported yields NULL instead
- * of an error, matching the rasterizer's best-effort drawing contract. The
- * inflate implementation follows the classic puff structure (zlib's
+ * of an error, matching the rasterizers best-effort drawing contract. The
+ * inflate implementation follows the classic puff structure (zlibs
  * reference decoder outline) over stored, fixed, and dynamic blocks. */
 
 #include "kry_sw_png.h"

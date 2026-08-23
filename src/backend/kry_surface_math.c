@@ -5,7 +5,7 @@
  * drawing nothing and touching no GPU state. Defining them once here means
  * the raylib wrappers, the null backend, and any future backend all answer
  * them identically - tools/generate-kryon-compat.sh skips these names in
- * both generated files. Formulas track raylib's (rshapes.c, rtextures.c,
+ * both generated files. Formulas track raylibs (rshapes.c, rtextures.c,
  * rcore.c GetCameraMatrix2D, rtext.c) so behavior is unchanged. */
 
 #ifdef KRYON_NATIVE_PLAN9
@@ -56,7 +56,7 @@ bool CheckCollisionRecs(Rectangle rec1, Rectangle rec2)
 }
 
 /* Camera2D transform composed analytically: translate by -target, rotate by
- * camera.rotation, uniform scale by zoom, translate by offset (raylib's
+ * camera.rotation, uniform scale by zoom, translate by offset (raylibs
  * GetCameraMatrix2D chain with row-vector application order). */
 static Vector2 k_camera_forward(Vector2 p, Camera2D camera)
 {
@@ -97,7 +97,7 @@ Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera)
 int GetCodepointNext(const char *text, int *codepointSize)
 {
     const char *ptr = text;
-    int codepoint = 0x3f;       /* Codepoint (defaults to '?') */
+    int codepoint = 0x3f;       /* Codepoint (defaults to ?) */
     *codepointSize = 1;
     if(text == NULL) return codepoint;
 

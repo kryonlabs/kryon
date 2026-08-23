@@ -22,13 +22,13 @@ void SceneRegisterProperties(NodeKind kind,
 
 /* Property access callbacks for application-defined kinds (ids from
  * NodeRegisterCustomKind). The spec index selects the field; read/write
- * the kind's props struct through the node's props pointer. */
+ * the kinds props struct through the nodes props pointer. */
 typedef PropertyValue (*ScenePropertyGetFn)(Scene *scene,
                                                    NodeId node, int index);
 typedef int (*ScenePropertySetFn)(Scene *scene, NodeId node,
                                      int index, PropertyValue value);
 
-/* Register an application-defined kind's spec table plus getter/setter.
+/* Register an application-defined kinds spec table plus getter/setter.
  * Indices 0..2 are reserved for the shared transform fields (position,
  * rotation, scale) and are handled generically; callbacks see index >= 3.
  * Either callback may be NULL (that direction becomes read-only zeroes). */
@@ -41,7 +41,7 @@ int SceneRegisterCustomKind(NodeKind kind,
  * NULL if the kind has no registered properties. */
 const PropertySpec *ScenePropertySpecs(NodeKind kind, int *out_count);
 
-/* Read a property by spec index on a runtime node. The kind's spec at `index`
+/* Read a property by spec index on a runtime node. The kinds spec at `index`
  * determines which field is read. Returns a zero value on bad index/node. */
 PropertyValue SceneNodeGetProperty(Scene *scene, NodeId node,
                                            int index);

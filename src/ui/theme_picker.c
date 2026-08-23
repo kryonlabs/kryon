@@ -454,7 +454,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
     int light_w = TextWidth(light_label ? light_label : "Light", font);
     int dark_w = TextWidth(dark_label ? dark_label : "Dark", font);
     int max_label_w = light_w > dark_w ? light_w : dark_w;
-    /* match DrawUIToggleSwitch's retro content minimum so the switch does
+    /* match DrawUIToggleSwitchs retro content minimum so the switch does
      * not silently grow past the computed rect */
     int toggle_w = (max_label_w + ScaleUIPx(16)) * 2 + ScaleUIPx(6);
     int min_toggle_w = ScaleUIPx(100);

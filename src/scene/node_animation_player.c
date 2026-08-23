@@ -1,6 +1,6 @@
 /*
  * AnimationPlayer: drives keyframe animations on the scene tree. Each process
- * tick advances the current animation's time and applies sampled values to the
+ * tick advances the current animations time and applies sampled values to the
  * target nodes via KryAnimationApply. On finish (non-loop animation reaching
  * duration) it emits an "animation_finished" signal on itself.
  */

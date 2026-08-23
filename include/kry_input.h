@@ -2,7 +2,7 @@
 #define KRY_INPUT_H
 
 /*
- * Shared input front-end for kryon's owned input surface.
+ * Shared input front-end for kryons owned input surface.
  *
  * The public input queries (IsKeyPressed, GetMousePosition, GetCharPressed,
  * ...) are implemented once here, not per backend. Before a query reaches the
