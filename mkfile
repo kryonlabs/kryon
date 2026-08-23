@@ -77,4 +77,4 @@ CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
 # untouched: the same files build on hosted platforms with their native
 # toolchains.
 %.$O: %.c
-	d=`{dirname $stem}; b=`{basename $stem}; cd $d && cpp -+ $CPPFLAGS $b.c > $b.i && $CC $CFLAGS -c $b.i && rm -f $b.i
+	d=`{dirname $stem}; b=`{basename $stem}; cd $d && cpp -+ $CPPFLAGS $b.c > $b.i && $CC $CFLAGS -c $b.i && mv $b.i.$O $b.$O && rm -f $b.i
