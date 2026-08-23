@@ -82,9 +82,10 @@ EOF
         }
 
         /^[[:space:]]*#include[[:space:]]+<stdarg.h>/ {
-            print "#ifndef KRYON_NATIVE_PLAN9"
+            # The plan9 build provides <stdarg.h> through the shim headers
+            # (src/platform/plan9/include), which pull va_list in from u.h,
+            # so the include passes through unchanged on every platform.
             print $0
-            print "#endif"
             next
         }
         /^[[:space:]]*#if[[:space:]]+defined\(_WIN32\)/ {

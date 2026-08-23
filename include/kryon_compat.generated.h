@@ -116,9 +116,7 @@ void UpdateKeyPlatformState(void);
 #ifndef RAYLIB_H
 #define RAYLIB_H
 
-#ifndef KRYON_NATIVE_PLAN9
 #include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
-#endif
 
 #define RAYLIB_VERSION_MAJOR 6
 #define RAYLIB_VERSION_MINOR 1
