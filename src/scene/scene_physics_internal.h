@@ -7,7 +7,12 @@
  * sync physics bodies. Kept out of the public headers because the signatures
  * use Box2D types (b2WorldId / b2BodyId) which would force every consumer to
  * include box2d.h.
+ *
+ * The whole bridge only exists when KRYON_WITH_PHYSICS is set; builds
+ * without it (native Plan 9) neither ship nor include Box2D.
  */
+
+#if KRYON_WITH_PHYSICS
 
 #include "scene_tree.h"
 #include "node2d_props.h"
@@ -19,5 +24,7 @@ void kry_body2d_sync(Scene *scene, NodeId node, Body2DProps *props);
 void kry_collision_shape2d_attach(Scene *scene, NodeId node,
                                   CollisionShape2DProps *props,
                                   Body2DProps *parent_body);
+
+#endif /* KRYON_WITH_PHYSICS */
 
 #endif
