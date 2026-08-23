@@ -14,6 +14,9 @@ typedef long ptrdiff_t;
 #define NULL ((void *)0)
 #endif
 
+/* libc.h defines offsetof identically; keep whichever arrives first. */
+#ifndef offsetof
 #define offsetof(s, m) ((ulong) & (((s *)0)->m))
+#endif
 
 #endif
