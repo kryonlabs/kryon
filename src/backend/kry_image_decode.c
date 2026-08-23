@@ -5,7 +5,7 @@
 #define STBI_NO_LINEAR
 #define STBI_NO_FAILURE_STRINGS
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../../vendor/raylib/src/external/stb_image.h"
 
 unsigned char *
 kry_decode_image_rgba(const unsigned char *data, int len, int *width,
