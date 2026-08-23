@@ -26,11 +26,18 @@ def rewrite(path):
     decls += " * object is equivalent on every platform. */\n"
     for t in types:
         decls += f"static const {t} kryon_zero_{t.lower()};\n"
-    # insert after the last #include line at the top of the file
+    # insert after the last #include line that is NOT inside a
+    # preprocessor conditional (otherwise the constants could vanish
+    # from the active build)
     lines = out.split("\n")
     last_inc = 0
+    depth = 0
     for i, line in enumerate(lines[:400]):
-        if line.startswith("#include"):
+        if re.match(r"#\s*(if|ifdef|ifndef)\b", line):
+            depth += 1
+        elif re.match(r"#\s*endif\b", line):
+            depth -= 1
+        elif depth == 0 and line.startswith("#include"):
             last_inc = i
     lines.insert(last_inc + 1, decls)
     with open(path, "w", encoding="utf-8") as f:
