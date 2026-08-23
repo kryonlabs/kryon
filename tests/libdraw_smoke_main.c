@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+void kry_libdraw_texture_preserve_colors(Texture2D texture);
+
 static int failures;
 
 static void
@@ -34,6 +36,10 @@ main(void)
     };
     unsigned char alpha_pixels[4] = {0, 240, 0, 128};
     unsigned char mask_pixels[4] = {0, 0, 0, 255};
+    unsigned char icon_pixels[8] = {
+        0, 0, 0, 255,
+        255, 255, 255, 255
+    };
     unsigned char quad_pixels[16] = {
         240, 20, 20, 255,
         20, 220, 40, 255,
@@ -46,11 +52,14 @@ main(void)
                    PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Image mask = {mask_pixels, 1, 1, 1,
                   PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+    Image icon = {icon_pixels, 2, 1, 1,
+                  PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Image quad = {quad_pixels, 2, 2, 1,
                   PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Texture2D sprite_texture;
     Texture2D alpha_texture;
     Texture2D mask_texture;
+    Texture2D icon_texture;
     Texture2D quad_texture;
     RenderTexture2D target;
     Font atlas_font;
@@ -69,6 +78,8 @@ main(void)
     sprite_texture = LoadTextureFromImage(sprite);
     alpha_texture = LoadTextureFromImage(alpha);
     mask_texture = LoadTextureFromImage(mask);
+    icon_texture = LoadTextureFromImage(icon);
+    kry_libdraw_texture_preserve_colors(icon_texture);
     quad_texture = LoadTextureFromImage(quad);
     target = LoadRenderTexture(12, 12);
     atlas_font = LoadFontEx("fonts/noto/NotoSans-Regular.ttf", 24,
@@ -76,6 +87,7 @@ main(void)
     check("sprite texture", sprite_texture.id != 0);
     check("alpha texture", alpha_texture.id != 0);
     check("mask texture", mask_texture.id != 0);
+    check("icon texture", icon_texture.id != 0);
     check("quad texture", quad_texture.id != 0);
     check("render texture", target.texture.id != 0);
     check("font atlas", IsFontValid(atlas_font));
@@ -127,6 +139,9 @@ main(void)
                                (Color){126, 58, 45, 255});
         DrawRectangleRounded((Rectangle){178, 14, 48, 32}, 0.5f, 12,
                              (Color){210, 170, 22, 255});
+        DrawTexturePro(icon_texture, (Rectangle){0, 0, 2, 1},
+                       (Rectangle){232, 18, 24, 12}, (Vector2){0, 0},
+                       0.0f, (Color){255, 0, 0, 255});
         DrawLineEx((Vector2){220, 206}, (Vector2){270, 206}, 8.0f,
                    (Color){235, 56, 62, 255});
         DrawRectangle(286, 206, 20, 20, (Color){0, 0, 0, 255});
@@ -186,6 +201,10 @@ main(void)
                                           ((size_t)14 * shot.width + 188) * 4;
         unsigned char *rounded_center = (unsigned char *)shot.data +
                                         ((size_t)30 * shot.width + 202) * 4;
+        unsigned char *icon_black_px = (unsigned char *)shot.data +
+                                       ((size_t)24 * shot.width + 238) * 4;
+        unsigned char *icon_white_px = (unsigned char *)shot.data +
+                                       ((size_t)24 * shot.width + 250) * 4;
         unsigned char *line_px = (unsigned char *)shot.data +
                                  ((size_t)209 * shot.width + 245) * 4;
         unsigned char *alpha_px = (unsigned char *)shot.data +
@@ -207,6 +226,12 @@ main(void)
               rounded_top_edge[0] > 180 && rounded_top_edge[1] > 130);
         check("rounded rectangle center filled",
               rounded_center[0] > 180 && rounded_center[1] > 130);
+        check("color-preserved icon keeps black",
+              icon_black_px[0] < 40 && icon_black_px[1] < 40 &&
+                  icon_black_px[2] < 40);
+        check("color-preserved icon keeps white",
+              icon_white_px[0] > 220 && icon_white_px[1] > 220 &&
+                  icon_white_px[2] > 220);
         check("thick line covers radius",
               line_px[0] > 180 && line_px[1] < 100 && line_px[2] < 100);
         check("texture alpha blended",
@@ -226,6 +251,7 @@ main(void)
     UnloadRenderTexture(target);
     UnloadFont(atlas_font);
     UnloadTexture(quad_texture);
+    UnloadTexture(icon_texture);
     UnloadTexture(mask_texture);
     UnloadTexture(alpha_texture);
     UnloadTexture(sprite_texture);

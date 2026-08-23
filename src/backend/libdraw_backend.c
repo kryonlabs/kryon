@@ -505,6 +505,9 @@ static int
 texture_pixels_are_mask(const unsigned char *rgba, int width, int height)
 {
     int seen = 0;
+    unsigned char r = 0;
+    unsigned char g = 0;
+    unsigned char b = 0;
     int i;
 
     if(rgba == NULL || width <= 0 || height <= 0)
@@ -514,11 +517,20 @@ texture_pixels_are_mask(const unsigned char *rgba, int width, int height)
 
         if(p[3] == 0)
             continue;
-        seen = 1;
-        if(p[0] != p[1] || p[1] != p[2])
+        if(!seen) {
+            r = p[0];
+            g = p[1];
+            b = p[2];
+            seen = 1;
+            continue;
+        }
+        if(p[0] != r || p[1] != g || p[2] != b)
             return 0;
     }
-    return seen;
+    if(!seen)
+        return 0;
+    return (r == 0 && g == 0 && b == 0) ||
+           (r == 255 && g == 255 && b == 255);
 }
 
 unsigned
@@ -563,6 +575,17 @@ kry_libdraw_texture(unsigned id)
         if(g_textures[i].id == id)
             return &g_textures[i];
     return NULL;
+}
+
+void
+kry_libdraw_texture_preserve_colors(Texture2D texture)
+{
+    KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
+
+    if(t == NULL)
+        return;
+    t->preserve_colors = 1;
+    t->mask = 0;
 }
 
 void
@@ -1413,6 +1436,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
 {
     KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
     unsigned char *region;
+    Color draw_tint;
+    int mask;
     int sw;
     int sh;
     int flip_x;
@@ -1423,6 +1448,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     if(t == NULL || t->rgba == NULL || g_sw_backend->texture_rgba == NULL)
         return;
 
+    mask = t->mask && !t->preserve_colors;
+    draw_tint = t->preserve_colors ? (Color){255, 255, 255, tint.a} : tint;
     sw = (int)ceilf(fabsf(source.width));
     sh = (int)ceilf(fabsf(source.height));
     flip_x = source.width < 0.0f;
@@ -1456,9 +1483,9 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                 const unsigned char *src =
                     t->rgba + ((size_t)src_y * t->width + src_x) * 4;
 
-                dst[0] = t->mask ? 255 : src[0];
-                dst[1] = t->mask ? 255 : src[1];
-                dst[2] = t->mask ? 255 : src[2];
+                dst[0] = mask ? 255 : src[0];
+                dst[1] = mask ? 255 : src[1];
+                dst[2] = mask ? 255 : src[2];
                 dst[3] = src[3];
             }
         }
@@ -1469,9 +1496,7 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                                    (int)(dest.y - origin.y),
                                    abs_int((int)dest.width),
                                    abs_int((int)dest.height),
-                                   pack(t->mask ? (Color){tint.r, tint.g,
-                                                          tint.b, tint.a}
-                                                : tint));
+                                   pack(draw_tint));
     } else {
         float dw = (float)abs_int((int)dest.width);
         float dh = (float)abs_int((int)dest.height);
@@ -1536,7 +1561,7 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                 else if(ry >= sh)
                     ry = sh - 1;
                 src = region + ((size_t)ry * sw + rx) * 4;
-                color = tinted_color_from_rgba(src, tint, t->mask);
+                color = tinted_color_from_rgba(src, draw_tint, mask);
                 sw_rect(x, y, 1, 1, color);
             }
         }
