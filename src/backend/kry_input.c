@@ -10,6 +10,12 @@
 
 #include <stddef.h>
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const KryonInputOverride kryon_zero_kryoninputoverride;
+
+
 #define KRYON_INPUT_OVERRIDE_STACK_CAP 8
 static KryonInputOverride g_kryon_input_override = {0};
 static KryonInputOverride g_kryon_input_override_stack[KRYON_INPUT_OVERRIDE_STACK_CAP];
@@ -49,7 +55,7 @@ void EndKryonInputOverride(void)
             g_kryon_input_override_stack[--g_kryon_input_override_depth];
         return;
     }
-    g_kryon_input_override = (KryonInputOverride){0};
+    g_kryon_input_override = kryon_zero_kryoninputoverride;
 }
 
 int SetKeyboardInputEnabled(int enabled)

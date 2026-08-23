@@ -15,6 +15,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const b2BodyId kryon_zero_b2bodyid;
+
+
 /* Convert between the opaque Scene fields and a real b2WorldId. */
 static b2WorldId
 scene_world_id(Scene *scene)
@@ -77,7 +83,7 @@ kry_body2d_create(Scene *scene, NodeId node, Body2DProps *props)
 
     n = NodeGet(scene, node);
     if(n == NULL || props == NULL || !scene->physics_enabled)
-        return (b2BodyId){0};
+        return kryon_zero_b2bodyid;
     bd = b2DefaultBodyDef();
     switch(props->body_type) {
     case KRY_BODY2D_STATIC: bd.type = b2_staticBody; break;

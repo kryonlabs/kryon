@@ -11,6 +11,12 @@
 #include <math.h>
 #if defined(PLATFORM_WEB)
 #include <emscripten.h>
+
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Vector2 kryon_zero_vector2;
+
 #endif
 
 /* Global UI state */
@@ -3639,7 +3645,7 @@ DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
 
     src = (Rectangle){0, 0, (float)icon.width, (float)icon.height};
     dst = (Rectangle){(float)x, (float)y, (float)size, (float)size};
-    DrawTexturePro(icon, src, dst, (Vector2){0}, 0, tint);
+    DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, tint);
 }
 
 int
@@ -3736,7 +3742,7 @@ DrawUISubtabBar(SubtabBarProps bar)
             Color icon_tint = WHITE;
             if(is_disabled)
                 icon_tint.a = 150;
-            DrawTexturePro(icon, src, dst, (Vector2){0}, 0, icon_tint);
+            DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, icon_tint);
         } else {
             DrawFittedTextInRect(label, label_rect, font, Text8, text_color);
         }

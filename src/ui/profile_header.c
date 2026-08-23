@@ -1,5 +1,11 @@
 #include "ui_internal.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Texture2D kryon_zero_texture2d;
+
+
 static const UIIconType ui_profile_picture_icons[] = {
     UI_ICON_TYPE_PFP_BAMBUS,
     UI_ICON_TYPE_PFP_BIRD,
@@ -329,7 +335,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
 
     frame = DrawUIModalFrame(width, height,
                              modal.title != NULL ? modal.title : "Profile picture",
-                             (Texture2D){0}, modal.close_icon);
+                             kryon_zero_texture2d, modal.close_icon);
     if(frame.right_clicked) {
         result.closed = 1;
         return result;

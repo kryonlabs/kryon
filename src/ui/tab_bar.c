@@ -1,5 +1,11 @@
 #include "ui_internal.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Vector2 kryon_zero_vector2;
+
+
 int
 ui_tab_bar_height(void)
 {
@@ -304,7 +310,7 @@ DrawUITabBar(TabBarProps bar)
                 (float)icon_size
             };
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
-            DrawTexturePro(tab->icon, icon_src, icon_rect, (Vector2){0}, 0, icon_tint);
+            DrawTexturePro(tab->icon, icon_src, icon_rect, kryon_zero_vector2, 0, icon_tint);
             text_x = icon_x + icon_size + ScaleUIPx(4);
         } else {
             text_x = ui_material_style() && has_label

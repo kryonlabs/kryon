@@ -1,6 +1,13 @@
 #include "ui_internal.h"
 #include "ui_widget.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Texture2D kryon_zero_texture2d;
+static const Vector2 kryon_zero_vector2;
+
+
 int
 ui_bottom_nav_height(void)
 {
@@ -39,7 +46,7 @@ ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
         return;
     DrawTexturePro(icon,
                    (Rectangle){0, 0, (float)icon.width, (float)icon.height},
-                   dst, (Vector2){0}, 0, tint);
+                   dst, kryon_zero_vector2, 0, tint);
 }
 
 BottomNavResult
@@ -188,7 +195,7 @@ DrawUIBottomNav(BottomNavProps nav)
             DrawTexturePro(item->icon,
                            (Rectangle){0, 0, item->icon.width, item->icon.height},
                            (Rectangle){icon_x, icon_y, icon_size, icon_size},
-                           (Vector2){0}, 0, icon_tint);
+                           kryon_zero_vector2, 0, icon_tint);
         }
     }
 
@@ -258,7 +265,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     frame = DrawUIModalFrame(ScaleUIPx(340),
                                 ScaleUIPx(128) + row_h * route_count + add_h + ScaleUIPx(58),
                                 modal.title,
-                                (Texture2D){0},
+                                kryon_zero_texture2d,
                                 modal.close_icon);
     if(frame.right_clicked) {
         result.action = 1;

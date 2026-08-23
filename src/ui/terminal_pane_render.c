@@ -3,6 +3,13 @@
 #include "ui_text.h"
 #include "ui_text_backend.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const GlyphInfo kryon_zero_glyphinfo;
+static const Rectangle kryon_zero_rectangle;
+
+
 typedef struct TerminalPaneGlyphCacheEntry {
     unsigned int active_texture_id;
     int active_glyph_count;
@@ -46,8 +53,8 @@ terminal_pane_cached_glyph(unsigned int codepoint, int font_size)
         entry->source = UIFontAtlasRec(entry->font, (int)codepoint);
     } else {
         entry->scale = 1.0f;
-        entry->glyph = (GlyphInfo){0};
-        entry->source = (Rectangle){0};
+        entry->glyph = kryon_zero_glyphinfo;
+        entry->source = kryon_zero_rectangle;
     }
     return entry;
 }

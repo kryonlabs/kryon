@@ -1,5 +1,11 @@
 #include "ui_internal.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Vector2 kryon_zero_vector2;
+
+
 #define UI_BUTTON_ANIM_MAX 128
 
 typedef struct UIButtonAnimState {
@@ -256,7 +262,7 @@ DrawUIIconButton(IconButtonProps button)
         if(button.icon.id != 0) {
             Rectangle src = {0, 0, (float)button.icon.width, (float)button.icon.height};
             Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
-            DrawTexturePro(button.icon, src, dst, (Vector2){0}, 0, icon_tint);
+            DrawTexturePro(button.icon, src, dst, kryon_zero_vector2, 0, icon_tint);
         }
     }
     EndUIWidget(&widget);

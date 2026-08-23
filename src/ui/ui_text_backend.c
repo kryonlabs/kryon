@@ -1,5 +1,12 @@
 #include "ui_text_backend.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const GlyphInfo kryon_zero_glyphinfo;
+static const Rectangle kryon_zero_rectangle;
+
+
 #define UI_GLYPH_INDEX_CACHE_SIZE 256
 
 typedef struct UIGlyphIndexCacheEntry {
@@ -77,7 +84,7 @@ GlyphInfo
 UIFontGlyph(Font font, int codepoint)
 {
     if(!UIFontReady(font))
-        return (GlyphInfo){0};
+        return kryon_zero_glyphinfo;
     return font.glyphs[ui_font_glyph_index(font, codepoint)];
 }
 
@@ -85,7 +92,7 @@ Rectangle
 UIFontAtlasRec(Font font, int codepoint)
 {
     if(!UIFontReady(font))
-        return (Rectangle){0};
+        return kryon_zero_rectangle;
     return font.recs[ui_font_glyph_index(font, codepoint)];
 }
 

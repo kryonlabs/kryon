@@ -6,6 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Vector2 kryon_zero_vector2;
+
+
 TextLayout
 ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size)
 {
@@ -239,7 +245,7 @@ ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
             if(icon.id != 0) {
                 Rectangle src = {0, 0, (float)icon.width, (float)icon.height};
                 Rectangle dst = {(float)current_x, (float)y, (float)icon_size, (float)icon_size};
-                DrawTexturePro(icon, src, dst, (Vector2){0}, 0, color);
+                DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, color);
             }
             current_x += icon_size;
         }

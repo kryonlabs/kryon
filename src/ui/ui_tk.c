@@ -1,6 +1,12 @@
 #include "ui_internal.h"
 #include "ui_tk.h"
 
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Vector2 kryon_zero_vector2;
+
+
 #define UI_TK_MENU_MAX 8
 #define UI_RADIO_ANIM_MAX 128
 static int g_menu_open_id = 0;
@@ -1760,7 +1766,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
                                        (float)picker.icons[i].height},
                            (Rectangle){(float)text_x, (float)(y + ScaleUIPx(4)),
                                        (float)icon_size, (float)icon_size},
-                           (Vector2){0}, 0.0f, WHITE);
+                           kryon_zero_vector2, 0.0f, WHITE);
             text_x += icon_size + ScaleUIPx(12);
         }
         DrawCenteredUIText(picker.labels[i] != NULL ? picker.labels[i] : "",

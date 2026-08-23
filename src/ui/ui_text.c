@@ -17,6 +17,12 @@
 
 #if defined(__GLIBC__)
 #include <malloc.h>
+
+/* zero constants: the native Plan 9 compiler rejects short
+ * compound literals like (Type){0}, and a copy of a zero
+ * object is equivalent on every platform. */
+static const Font kryon_zero_font;
+
 #endif
 
 #define UI_FONT_MAX_REGISTERED 16
@@ -180,7 +186,7 @@ clear_font_cache(UIFontEntry *entry)
     for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
         if(font_valid(entry->tier_font[i]))
             UnloadFont(entry->tier_font[i]);
-        entry->tier_font[i] = (Font){0};
+        entry->tier_font[i] = kryon_zero_font;
         entry->tier_size[i] = 0;
     }
 }
@@ -194,8 +200,8 @@ clear_font_entry(UIFontEntry *entry)
     if(entry->owns_font_data)
         UnloadFileData((unsigned char *)entry->font_data);
     free(entry->codepoints);
-    entry->font = (Font){0};
-    entry->small_font = (Font){0};
+    entry->font = kryon_zero_font;
+    entry->small_font = kryon_zero_font;
     entry->file_type = NULL;
     entry->file_type_buf[0] = '\0';
     entry->font_data = NULL;
@@ -224,7 +230,7 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
     Font font;
 
     if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
-        return (Font){0};
+        return kryon_zero_font;
 
     font = LoadFontFromMemory(
         entry->file_type != NULL && entry->file_type[0] != '\0' ? entry->file_type : ".ttf",
@@ -237,7 +243,7 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
      * default font masquerade as a valid entry and pollute the per-codepoint
      * fallback chain. A freshly loaded font always owns its own texture. */
     if(font.texture.id == GetFontDefault().texture.id)
-        return (Font){0};
+        return kryon_zero_font;
 
     if(font_valid(font))
         SetTextureFilter(UIFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
@@ -250,7 +256,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
     int physical_size = font_physical_size(font_size);
 
     if(entry == NULL || entry->font_data == NULL || entry->font_data_size == 0)
-        return (Font){0};
+        return kryon_zero_font;
 
     /* Exact tier hit: rasterized at this exact physical size, no resampling. */
     for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
@@ -267,7 +273,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
                 ui_font_trim_heap();
                 return entry->tier_font[i];
             }
-            return (Font){0};
+            return kryon_zero_font;
         }
     }
 
@@ -291,7 +297,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
         }
         if(nearest != 0x7fffffff)
             return entry->tier_font[victim];
-        return (Font){0};
+        return kryon_zero_font;
     }
 }
 
@@ -309,7 +315,7 @@ entry_font_for_size(UIFontEntry *entry, int font_size)
     Font font;
 
     if(entry == NULL)
-        return (Font){0};
+        return kryon_zero_font;
 
     font = entry_source_font_for_size(entry, font_size);
     if(font_valid(font))
@@ -318,7 +324,7 @@ entry_font_for_size(UIFontEntry *entry, int font_size)
         return entry->small_font;
     if(font_valid(entry->font))
         return entry->font;
-    return (Font){0};
+    return kryon_zero_font;
 }
 
 static Font
@@ -327,21 +333,21 @@ entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
     Font font;
 
     if(entry == NULL)
-        return (Font){0};
+        return kryon_zero_font;
     /* Coverage is declared when a source is registered.  Never add a glyph
      * here: text drawing runs on the interaction path, and changing the
      * codepoint set would require recreating every cached GPU atlas. */
     if(codepoint > 0 && codepoint != ' ' && codepoint != '\t' &&
        !font_entry_has_codepoint(entry, codepoint))
-        return (Font){0};
+        return kryon_zero_font;
 
     font = entry_font_for_size(entry, font_size);
     if(!font_valid(font))
-        return (Font){0};
+        return kryon_zero_font;
     if(codepoint <= 0 || codepoint == ' ' || codepoint == '\t' ||
        UIFontHasGlyphValue(font, codepoint))
         return font;
-    return (Font){0};
+    return kryon_zero_font;
 }
 
 static Font
@@ -575,8 +581,8 @@ register_ui_font_source(const char *name, const char *file_type,
     g_ui_fonts[index].file_type = g_ui_fonts[index].file_type_buf;
     g_ui_fonts[index].font_data = font_data;
     g_ui_fonts[index].font_data_size = font_size;
-    g_ui_fonts[index].font = (Font){0};
-    g_ui_fonts[index].small_font = (Font){0};
+    g_ui_fonts[index].font = kryon_zero_font;
+    g_ui_fonts[index].small_font = kryon_zero_font;
     if(!font_valid(entry_source_font_for_size(&g_ui_fonts[index], TextBaseSize))) {
         clear_font_entry(&g_ui_fonts[index]);
         return 0;
@@ -784,7 +790,7 @@ LoadUIFontAsset(const char *path, int base_size)
     Font font;
 
     if(path == NULL || path[0] == '\0')
-        return (Font){0};
+        return kryon_zero_font;
 
     file_type = GetEmbeddedAssetExtension(path);
     asset = GetEmbeddedAsset(path);
@@ -793,7 +799,7 @@ LoadUIFontAsset(const char *path, int base_size)
 
     data = LoadFileData(path, &data_size);
     if(data == NULL || data_size <= 0)
-        return (Font){0};
+        return kryon_zero_font;
 
     font = LoadUIFontFromMemory(file_type, data, (unsigned int)data_size, base_size);
     UnloadFileData(data);
@@ -807,7 +813,7 @@ UnloadUIFont(Font *font)
         return;
 
     UnloadFont(*font);
-    *font = (Font){0};
+    *font = kryon_zero_font;
 }
 
 void
@@ -818,7 +824,7 @@ ClearUIFonts(void)
     }
     if(font_valid(g_ui_italic_font))
         UnloadFont(g_ui_italic_font);
-    g_ui_italic_font = (Font){0};
+    g_ui_italic_font = kryon_zero_font;
     g_ui_italic_font_attempted = 0;
     memset(g_ui_fonts, 0, sizeof(g_ui_fonts));
     g_ui_font_count = 0;
