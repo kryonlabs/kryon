@@ -56,6 +56,7 @@ KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/canvas_%.c,$(KRYON_ALL_S
 endif
 ifneq ($(KRYON_BACKEND),libdraw)
 KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/libdraw_%.c,$(KRYON_ALL_SRCS))
+KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/platform/plan9/%.c,$(KRYON_ALL_SRCS))
 endif
 KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_INCLUDE = -I$(KRYON_DIR)/include
