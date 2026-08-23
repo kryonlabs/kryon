@@ -1,4 +1,11 @@
 # Changelog
+## Unreleased
+
+### Removed
+
+- Drop the unused Clay layout dependency: nothing in Kryon or downstream
+  apps called it, and it only compiled dead symbols into libkryon.
+
 ## v0.1.20 - 2026-08-18
 
 ### Changed

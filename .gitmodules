@@ -10,9 +10,6 @@
 [submodule "vendor/cmark-gfm"]
 	path = vendor/cmark-gfm
 	url = https://github.com/github/cmark-gfm.git
-[submodule "vendor/clay"]
-	path = vendor/clay
-	url = https://github.com/nicbarker/clay.git
 [submodule "vendor/box2d"]
 	path = vendor/box2d
 	url = https://github.com/erincatto/box2d.git

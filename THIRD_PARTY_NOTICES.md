@@ -7,7 +7,6 @@ submodules listed in `SUBMODULES.txt`.
 - liboqs: MIT license, see `vendor/liboqs/LICENSE.txt` in the source tree.
 - curl/libcurl: curl license, see `vendor/curl/COPYING` in the source tree.
 - cmark-gfm: BSD-style license, see `vendor/cmark-gfm/COPYING` in the source tree.
-- Clay: zlib/libpng license, see `vendor/clay/LICENSE.md` in the source tree.
 - Noto fonts: SIL Open Font License 1.1, see `fonts/noto/LICENSE.txt` in the source tree.
 
 OpenSSL is not vendored into the package by default. When `kryon.pc` lists
