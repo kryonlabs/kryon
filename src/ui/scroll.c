@@ -334,9 +334,25 @@ ui_scrollbar_color_delta(Color a, Color b)
 static Color
 ui_scrollbar_contrast_from(Color color, int amount)
 {
-    return ui_scrollbar_luminance(color) < 128
-               ? LightenUIColor(color, amount)
-               : DarkenUIColor(color, amount);
+    int delta = ui_scrollbar_luminance(color) < 128 ? amount : -amount;
+    int r = (int)color.r + delta;
+    int g = (int)color.g + delta;
+    int b = (int)color.b + delta;
+
+    if(r < 0)
+        r = 0;
+    if(r > 255)
+        r = 255;
+    if(g < 0)
+        g = 0;
+    if(g > 255)
+        g = 255;
+    if(b < 0)
+        b = 0;
+    if(b > 255)
+        b = 255;
+
+    return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color.a};
 }
 
 static Color

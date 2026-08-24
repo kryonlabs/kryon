@@ -31,6 +31,48 @@ check_int(const char *name, int got, int want)
     exit(1);
 }
 
+static int
+max3(int a, int b, int c)
+{
+    int max = a > b ? a : b;
+    return max > c ? max : c;
+}
+
+static int
+min3(int a, int b, int c)
+{
+    int min = a < b ? a : b;
+    return min < c ? min : c;
+}
+
+static void
+check_material_android_outline_neutral(void)
+{
+    UIMaterialScheme scheme;
+
+    SetThemeSource(THEME_SOURCE_SYSTEM);
+    SetThemeMode(THEME_MODE_LIGHT);
+    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetSystemThemePalette("Android",
+                          (Color){0xFF, 0xFB, 0xFE, 0xFF},
+                          (Color){0xF7, 0xF2, 0xFA, 0xFF},
+                          (Color){0x1D, 0x1B, 0x20, 0xFF},
+                          (Color){0x67, 0x50, 0xA4, 0xFF},
+                          (Color){0xE7, 0xE0, 0xEC, 0xFF},
+                          (Color){0xD0, 0xBC, 0xFF, 0xFF},
+                          (Color){0x1D, 0x1B, 0x20, 0xFF},
+                          (Color){0x67, 0x50, 0xA4, 0xFF},
+                          false,
+                          true);
+    ApplyCurrentUITheme();
+    scheme = GetUIMaterialScheme();
+
+    check_int("android material outline remains neutral",
+              max3(scheme.outline.r, scheme.outline.g, scheme.outline.b) -
+                  min3(scheme.outline.r, scheme.outline.g, scheme.outline.b),
+              4);
+}
+
 static ThemeSettingsProps
 theme_props(void)
 {
@@ -105,6 +147,7 @@ main(void)
 
     SetUIScale(1.0f);
     InitUI(VIEW_W, VIEW_H, 1.0f);
+    check_material_android_outline_neutral();
     SetThemeSource(THEME_SOURCE_APP);
     SetThemeStyle(THEME_STYLE_MATERIAL);
     SetCurrentTheme(THEME_SKY, 0);

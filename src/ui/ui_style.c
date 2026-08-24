@@ -138,8 +138,25 @@ ui_material_on_color(Color color)
 static Color
 ui_material_tone(Color base, int light_delta, int dark_delta)
 {
-    return GetEffectiveThemeDarkMode() ? LightenUIColor(base, dark_delta) :
-                                         DarkenUIColor(base, light_delta);
+    int delta = GetEffectiveThemeDarkMode() ? dark_delta : -light_delta;
+    int r = (int)base.r + delta;
+    int g = (int)base.g + delta;
+    int b = (int)base.b + delta;
+
+    if(r < 0)
+        r = 0;
+    if(r > 255)
+        r = 255;
+    if(g < 0)
+        g = 0;
+    if(g > 255)
+        g = 255;
+    if(b < 0)
+        b = 0;
+    if(b > 255)
+        b = 255;
+
+    return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, base.a};
 }
 
 UIMaterialScheme
