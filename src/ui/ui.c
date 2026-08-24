@@ -92,6 +92,7 @@ static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
 static TextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
+static void ui_sync_platform_text_input(void);
 static int g_ui_text_area_drag_id = 0;
 static int *g_ui_text_area_drag_owner = NULL;
 static int g_ui_text_area_last_click_id = 0;
@@ -3703,19 +3704,12 @@ BeginUIFrame(int width, int height, float dpi)
 void
 SetUIFrame(Camera2D camera)
 {
-    int text_input_active = g_ui_text_input_requested != 0;
-
     PumpUIWindows();
     EndUIFocus();
     BeginUIFocus();
     g_ui_frame_serial++;
     ui_text_begin_frame();
 
-    if(g_ui_platform_text_input_active != text_input_active) {
-        g_ui_platform_text_input_active = text_input_active;
-        if(g_ui_text_input_platform_callback != NULL)
-            g_ui_text_input_platform_callback(text_input_active);
-    }
     g_ui_text_input_requested = 0;
     g_ui_focus_text_input_active = 0;
     if(!g_ui_cursor_had_intent && g_ui_cursor_current != MOUSE_CURSOR_DEFAULT) {
@@ -3758,6 +3752,7 @@ EndUIFrame(void)
 {
     DrawUIFrameOverlays();
     EndUIFocus();
+    ui_sync_platform_text_input();
     EndUIInspectFrame();
 }
 
@@ -4058,4 +4053,15 @@ ui_centered_min_hit_rect(int x, int y, int w, int h, int min_w, int min_h)
         (float)hit_w,
         (float)hit_h
     };
+}
+static void
+ui_sync_platform_text_input(void)
+{
+    int text_input_active = g_ui_text_input_requested != 0;
+
+    if(g_ui_platform_text_input_active != text_input_active) {
+        g_ui_platform_text_input_active = text_input_active;
+        if(g_ui_text_input_platform_callback != NULL)
+            g_ui_text_input_platform_callback(text_input_active);
+    }
 }

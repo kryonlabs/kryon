@@ -36,16 +36,15 @@ main(void)
     SetTextInputPlatformCallback(text_input_callback);
 
     BeginUIFrame(640, 480, 1.0f);
-    EndUIFrame();
-
     SetUIFocusTextInputActive(1);
-    BeginUIFrame(640, 480, 1.0f);
     EndUIFrame();
 
+    BeginUIFrame(640, 480, 1.0f);
     SetUIFocusTextInputActive(0);
+    EndUIFrame();
 
-    SetUIFocusTextInputActive(1);
     BeginUIFrame(640, 480, 1.0f);
+    SetUIFocusTextInputActive(1);
     EndUIFrame();
 
     ok &= callback_count == 3;
