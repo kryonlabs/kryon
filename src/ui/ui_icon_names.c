@@ -17,6 +17,7 @@ const char *ui_icon_names[] = {
     "globe.png",  /* UI_ICON_TYPE_GLOBE */
     "home.png",  /* UI_ICON_TYPE_HOME */
     "jupiter.png",  /* UI_ICON_TYPE_JUPITER */
+    "kryon.png",  /* UI_ICON_TYPE_KRYON */
     "left.png",  /* UI_ICON_TYPE_LEFT */
     "lightoff.png",  /* UI_ICON_TYPE_LIGHTOFF */
     "lighton.png",  /* UI_ICON_TYPE_LIGHTON */
