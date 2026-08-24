@@ -19,41 +19,38 @@ state {
 app "Inner Breeze — WHM Session" {
     size 480 640
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    if (started < 0) {
-        started = TIME
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        if (started < 0) {
+            started = TIME
+        }
+        elapsed = TIME - started
+        phase_step = elapsed / 500
+        tri = phase_step % 2
+        if (tri == 0) {
+            radius = 40
+        } else {
+            radius = 90
+        }
+        breath = phase_step / 2
+        breath += 1
+        if (breath > breaths_per_round) {
+            breath = breaths_per_round
+        }
+        Text("Wim Hof Session", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
+        TextFormat("Breath %d of %d", breath, ScaleUIPx(70), ScaleUIPx(70), Text16, GetThemeIcon())
+        if (tri == 0) {
+            Text("Breathe in", ScaleUIPx(200), ScaleUIPx(560), Text16, GetThemeText())
+        } else {
+            Text("Breathe out", ScaleUIPx(200), ScaleUIPx(560), Text16, GetThemeText())
+        }
+        DrawCircleV((Vector2){ScaleUIPx(240), ScaleUIPx(300)}, ScaleUIPx(36), (Color){0x2d, 0x4d, 0x7b, 0xff})
+        DrawRing((Vector2){ScaleUIPx(240), ScaleUIPx(300)}, 44, ScaleUIPx(90), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
+        AnimNode("ring0", "w", &radius)
+        AnimNode("ring0", "h", &radius)
     }
-    elapsed = TIME - started
-    phase_step = elapsed / 500
-    tri = phase_step % 2
-    if (tri == 0) {
-        radius = 40
-    } else {
-        radius = 90
-    }
-    breath = phase_step / 2
-    breath += 1
-    if (breath > breaths_per_round) {
-        breath = breaths_per_round
-    }
-    Text("Wim Hof Session", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
-    TextFormat("Breath %d of %d", breath, ScaleUIPx(70), ScaleUIPx(70), Text16, GetThemeIcon())
-    if (tri == 0) {
-        Text("Breathe in", ScaleUIPx(200), ScaleUIPx(560), Text16, GetThemeText())
-    } else {
-        Text("Breathe out", ScaleUIPx(200), ScaleUIPx(560), Text16, GetThemeText())
-    }
-    DrawCircleV((Vector2){ScaleUIPx(240), ScaleUIPx(300)}, ScaleUIPx(36), (Color){0x2d, 0x4d, 0x7b, 0xff})
-    DrawRing((Vector2){ScaleUIPx(240), ScaleUIPx(300)}, 44, ScaleUIPx(90), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
-    AnimNode("ring0", "w", &radius)
-    AnimNode("ring0", "h", &radius)
-    EndUIFocus()
-    EndFrame()
 }

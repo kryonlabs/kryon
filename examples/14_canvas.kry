@@ -14,16 +14,19 @@ state {
     shapes: [2] Rectangle = {{100,100,90,60},{260,140,120,80}}
 }
 
-screen CanvasExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
-    CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
-    for i in 0..2 {
-        DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
-        DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
+CanvasExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
+        CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
+        for i in 0..2 {
+            DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
+            DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
+        }
+        if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
+            selected = CanvasHitTest(canvas.world,shapes,2)
+        }
+        EndCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
     }
-    if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
-        selected = CanvasHitTest(canvas.world,shapes,2)
-    }
-    EndCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
 }

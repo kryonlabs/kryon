@@ -14,25 +14,28 @@ state {
     color: Color = {120,160,220,255}
 }
 
-screen DialogsExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
-        dialog = 1
-    }
-    if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm", .style = ButtonStylePrimary, .font = Text16, .id = 102}) {
-        dialog = 2
-    }
-    if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt", .style = ButtonStylePrimary, .font = Text16, .id = 103}) {
-        dialog = 3
-    }
-    ColorPicker((Rectangle){240,60,320,160},&color)
-    if dialog == 1 && MessageDialog((MessageDialogProps){"Message","Hello from Kryon.","OK"}) > 0 {
-        dialog = 0
-    }
-    if dialog == 2 && ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"}) != 0 {
-        dialog = 0
-    }
-    if dialog == 3 && PromptDialog((PromptDialogProps){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
-        dialog = 0
+DialogsExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
+            dialog = 1
+        }
+        if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm", .style = ButtonStylePrimary, .font = Text16, .id = 102}) {
+            dialog = 2
+        }
+        if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt", .style = ButtonStylePrimary, .font = Text16, .id = 103}) {
+            dialog = 3
+        }
+        ColorPicker((Rectangle){240,60,320,160},&color)
+        if dialog == 1 && MessageDialog((MessageDialogProps){"Message","Hello from Kryon.","OK"}) > 0 {
+            dialog = 0
+        }
+        if dialog == 2 && ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"}) != 0 {
+            dialog = 0
+        }
+        if dialog == 3 && PromptDialog((PromptDialogProps){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
+            dialog = 0
+        }
     }
 }

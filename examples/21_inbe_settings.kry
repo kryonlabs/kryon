@@ -18,32 +18,29 @@ state {
 app "Inner Breeze — Settings" {
     size 480 640
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    Text("Settings", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
-    Text("Device", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
-    Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(480), ScaleUIPx(820), &scroll_off)
-    Text("Language", ScaleUIPx(40), ScaleUIPx(120), Text16, GetThemeText())
-    Dropdown(101, ScaleUIPx(40), ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), "System;English;Portugues;Espanol;Deutsch", &language_index)
-    Text("Orientation", ScaleUIPx(40), ScaleUIPx(230), Text16, GetThemeText())
-    Dropdown(103, ScaleUIPx(40), ScaleUIPx(256), ScaleUIPx(340), ScaleUIPx(36), "System;Portrait;Landscape;Sensor", &orientation_index)
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(340), "Fullscreen", &fullscreen)
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(380), "Keep screen on", &keep_screen_on)
-    if (fullscreen == 1) {
-        Text("Restarts the app to apply", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
-    } else {
-        Text("Uses the display the app started on", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("Settings", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
+        Text("Device", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
+        Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(480), ScaleUIPx(820), &scroll_off)
+        Text("Language", ScaleUIPx(40), ScaleUIPx(120), Text16, GetThemeText())
+        Dropdown(101, ScaleUIPx(40), ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), "System;English;Portugues;Espanol;Deutsch", &language_index)
+        Text("Orientation", ScaleUIPx(40), ScaleUIPx(230), Text16, GetThemeText())
+        Dropdown(103, ScaleUIPx(40), ScaleUIPx(256), ScaleUIPx(340), ScaleUIPx(36), "System;Portrait;Landscape;Sensor", &orientation_index)
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(340), "Fullscreen", &fullscreen)
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(380), "Keep screen on", &keep_screen_on)
+        if (fullscreen == 1) {
+            Text("Restarts the app to apply", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
+        } else {
+            Text("Uses the display the app started on", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
+        }
+        if (keep_screen_on == 1) {
+            Text("The screen stays awake during sessions", ScaleUIPx(40), ScaleUIPx(460), Text16, GetThemeIcon())
+        }
+        EndScroll()
     }
-    if (keep_screen_on == 1) {
-        Text("The screen stays awake during sessions", ScaleUIPx(40), ScaleUIPx(460), Text16, GetThemeIcon())
-    }
-    EndScroll()
-    EndUIFocus()
-    EndFrame()
 }

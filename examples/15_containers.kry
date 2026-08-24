@@ -13,12 +13,15 @@ state {
     tabs: [3] const Tab = {{"Files"},{"Search"},{"Output"}}
 }
 
-screen ContainersExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    TabBar((TabBarProps){{40,50,680,0},tabs,3,tab,0,0,0,NULL,1,NULL})
-    PanedView((PanedViewProps){{40,100,680,280},501,1,&split,120,160})
-    Collapsible((CollapsibleProps){{60,410,320,120},"Details",&open})
-    if open {
-        Text("Collapsible content", 80, 455, Text16, GetThemeText())
+ContainersExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        TabBar((TabBarProps){{40,50,680,0},tabs,3,tab,0,0,0,NULL,1,NULL})
+        PanedView((PanedViewProps){{40,100,680,280},501,1,&split,120,160})
+        Collapsible((CollapsibleProps){{60,410,320,120},"Details",&open})
+        if open {
+            Text("Collapsible content", 80, 455, Text16, GetThemeText())
+        }
     }
 }

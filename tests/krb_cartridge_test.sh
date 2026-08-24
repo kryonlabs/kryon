@@ -53,9 +53,7 @@ if ! strings "$krb" | grep -q last_action; then
     exit 1
 fi
 
-# A hook-driven app: 'frame main {}' is a top-level function definition that
-# the generated main() calls each loop. k2b must parse it (not reject it as an
-# unknown top-level statement) and emit a cartridge from its body.
+# A #ui app body should emit a cartridge with stateful controls.
 cat > "$work/frame.kry" <<'EOF'
 #import "kryon.h"
 
@@ -72,26 +70,23 @@ state {
 app "Frame" {
     size 100 100
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    Text("hi", ScaleUIPx(4), ScaleUIPx(4), Text16, GetThemeText())
-    Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
-    Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
-    Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
-    Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
-    EndUIFrame()
-    EndFrame()
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("hi", ScaleUIPx(4), ScaleUIPx(4), Text16, GetThemeText())
+        Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
+        Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
+        Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
+        Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
+    }
 }
 EOF
 frame_out=$("$k2b" --no-main --root "$work" -o "$work" "$work/frame.kry" 2>&1)
 if [ ! -f "$work/frame.krb" ]; then
-    echo "frame main {} did not emit a cartridge" >&2
+    echo "#ui hierarchy did not emit a cartridge" >&2
     exit 1
 fi
 if echo "$frame_out" | grep -q 'Combobox'; then
@@ -120,8 +115,11 @@ cat > "$work/assert_unknown.kry" <<'EOF'
 WEB :: #defined(PLATFORM_WEB)
 #assert WEB, "KRB unresolved assertion"
 
-screen BadAssert(viewport: Rectangle) {
-    Background(GetThemeBackground())
+BadAssert :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+    }
 }
 EOF
 

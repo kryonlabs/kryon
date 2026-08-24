@@ -68,8 +68,6 @@ top-level-form  = module-decl
                 | state-block
                 | app-block
                 | function-decl
-                | screen-decl
-                | frame-decl
                 | guarded-top-level ;
 
 module-decl     = "#module" , string ;
@@ -98,17 +96,14 @@ app-block       = "app" , string , "{" , { app-property } , "}" ;
 app-property    = "size" , integer , integer
                 | "fps" , integer
                 | "font" , identifier
-                | "theme" , identifier , identifier
-                | "frame" , identifier ;
+                | "theme" , identifier , identifier ;
 
 function-decl   = identifier , "::" , signature , modifiers , block ;
-screen-decl     = "screen" , identifier , "(" , params , ")" , block ;
-frame-decl      = "frame" , identifier , block ;
 signature       = "(" , [ params ] , ")" , [ "->" , type-text ] ;
 params          = param , { "," , param } ;
 param           = identifier , ":" , type-text ;
 modifiers       = { "#export" | "#private" | "#global" | "#extern" ,
-                    [ string ] | "#intrinsic" , string | abi-tag } ;
+                    [ string ] | "#intrinsic" , string | "#ui" | abi-tag } ;
 abi-tag         = "#storage" , string | "#abi" , string | "#attr" , string ;
 ```
 
@@ -119,6 +114,7 @@ block           = "{" , { statement } , "}" ;
 
 statement       = local-decl
                 | assignment
+                | ui-node
                 | call-statement
                 | if-statement
                 | while-statement
@@ -138,6 +134,9 @@ local-decl      = identifier , ":=" , expr-text
 assignment      = expr-text , assignment-op , expr-text ;
 assignment-op   = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" ;
 call-statement  = identifier , "(" , [ expr-text ] , ")" ;
+ui-node         = identifier , identifier , [ ":" ] , "{" ,
+                  { ui-prop | statement } , "}" ;
+ui-prop         = identifier , "=" , expr-text ;
 if-statement    = "if" , expr-text , block ,
                   { "else" , "if" , expr-text , block } ,
                   [ "else" , block ] ;

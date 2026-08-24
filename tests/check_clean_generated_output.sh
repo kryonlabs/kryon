@@ -3,24 +3,24 @@ set -eu
 
 target=${1:?usage: check_clean_generated_output.sh PATH}
 
-legacy_draw='Draw''UI'
-legacy_text='UI''Text'
-legacy_input='Text''InputControl'
-legacy_render='UI''Render'
-legacy_node='UI''NodeId'
-legacy_key='UI''Key'
-legacy_begin='Begin''Drawing'
-legacy_end='End''Drawing'
-legacy_frame='Begin''UIFrameBox|UIFramePack|UIGridCell|UIPlace|UIGrid|UISide|UI_SIDE_'
-legacy_canvas='Begin''UICanvas|EndUICanvas|UICanvas'
-legacy_menu='UIMenu|UI_MENU_|UIContextMenu|UIAccelerator|DispatchUIAccelerators|UIAcceleratorPressed'
-legacy_nav='UIBottomNav|UITopNav|UIToolbar|UITab|UISubtab|UIIconRow|UIPane|UIProfilePicture|UISidebarAccountHeader|UI_PANE_DROP_'
-legacy_runtime='kry''runtime'
-legacy_kryui='go/''kryui'
+stale_draw='Draw''UI'
+stale_text='UI''Text'
+stale_input='Text''InputControl'
+stale_render='UI''Render'
+stale_node='UI''NodeId'
+stale_key='UI''Key'
+stale_begin='Begin''Drawing'
+stale_end='End''Drawing'
+stale_frame='Begin''UIFrameBox|UIFramePack|UIGridCell|UIPlace|UIGrid|UISide|UI_SIDE_'
+stale_canvas='Begin''UICanvas|EndUICanvas|UICanvas'
+stale_menu='UIMenu|UI_MENU_|UIContextMenu|UIAccelerator|DispatchUIAccelerators|UIAcceleratorPressed'
+stale_nav='UIBottomNav|UITopNav|UIToolbar|UITab|UISubtab|UIIconRow|UIPane|UIProfilePicture|UISidebarAccountHeader|UI_PANE_DROP_'
+stale_runtime='kry''runtime'
+stale_kryui='go/''kryui'
 dot_import='import \. "github.com/waozixyz/kryon/go/kryon"'
 
 matches="$(
-    rg -n "${legacy_draw}|${legacy_text}|${legacy_input}|${legacy_render}|${legacy_node}|${legacy_key}|${legacy_begin}|${legacy_end}|${legacy_frame}|${legacy_canvas}|${legacy_menu}|${legacy_nav}|${legacy_runtime}|rt\\.|import \"C\"|${dot_import}|${legacy_kryui}" "$target" \
+    rg -n "${stale_draw}|${stale_text}|${stale_input}|${stale_render}|${stale_node}|${stale_key}|${stale_begin}|${stale_end}|${stale_frame}|${stale_canvas}|${stale_menu}|${stale_nav}|${stale_runtime}|rt\\.|import \"C\"|${dot_import}|${stale_kryui}" "$target" \
         --glob '*.go' \
         --glob '*.c' \
         --glob '*.h' || true

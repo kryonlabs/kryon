@@ -15,35 +15,38 @@ state {
     dlg_ready: int = 0
 }
 
-screen FileDialogExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    if dlg_ready == 0 {
-        InitFileDialog(&dlg)
-        dlg_ready = 1
+FileDialogExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        if dlg_ready == 0 {
+            InitFileDialog(&dlg)
+            dlg_ready = 1
+        }
+        Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), Text24, GetThemeText())
+        Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), Text16, GetThemeIcon())
+        if Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Open File", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
+            BeginLoadFileDialog(&dlg,"Open File")
+            snprintf(status,sizeof(status),"Open file requested.")
+        }
+        if Button((ButtonProps){.bounds = {ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Save File", .style = ButtonStyleSecondary, .font = Text16, .id = 102}) {
+            BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
+            snprintf(status,sizeof(status),"Save file requested.")
+        }
+        if Button((ButtonProps){.bounds = {ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Select Folder", .style = ButtonStyleSecondary, .font = Text16, .id = 103}) {
+            BeginSelectFileDialogFolder(&dlg,"Select Folder")
+            snprintf(status,sizeof(status),"Folder selection requested.")
+        }
+        dialog_result: int = UpdateFileDialog(&dlg)
+        if dialog_result == 1 {
+            snprintf(last_path,sizeof(last_path),"%s",GetFileDialogPath(&dlg))
+            snprintf(status,sizeof(status),"Selected: %s",last_path)
+        }
+        if dialog_result < 0 {
+            snprintf(status,sizeof(status),"Dialog cancelled.")
+        }
+        Text("Status", ScaleUIPx(32), ScaleUIPx(210), 18, GetThemeText())
+        Text(status, ScaleUIPx(32), ScaleUIPx(242), Text16, GetThemeText())
+        Text(last_path, ScaleUIPx(32), ScaleUIPx(274), Text16, GetThemeIcon())
     }
-    Text("Kryon File Dialog", ScaleUIPx(32), ScaleUIPx(28), Text24, GetThemeText())
-    Text("Dialog backend and result state", ScaleUIPx(32), ScaleUIPx(66), Text16, GetThemeIcon())
-    if Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Open File", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
-        BeginLoadFileDialog(&dlg,"Open File")
-        snprintf(status,sizeof(status),"Open file requested.")
-    }
-    if Button((ButtonProps){.bounds = {ScaleUIPx(226), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Save File", .style = ButtonStyleSecondary, .font = Text16, .id = 102}) {
-        BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
-        snprintf(status,sizeof(status),"Save file requested.")
-    }
-    if Button((ButtonProps){.bounds = {ScaleUIPx(420), ScaleUIPx(116), ScaleUIPx(180), ScaleUIPx(42)}, .label = "Select Folder", .style = ButtonStyleSecondary, .font = Text16, .id = 103}) {
-        BeginSelectFileDialogFolder(&dlg,"Select Folder")
-        snprintf(status,sizeof(status),"Folder selection requested.")
-    }
-    dialog_result: int = UpdateFileDialog(&dlg)
-    if dialog_result == 1 {
-        snprintf(last_path,sizeof(last_path),"%s",GetFileDialogPath(&dlg))
-        snprintf(status,sizeof(status),"Selected: %s",last_path)
-    }
-    if dialog_result < 0 {
-        snprintf(status,sizeof(status),"Dialog cancelled.")
-    }
-    Text("Status", ScaleUIPx(32), ScaleUIPx(210), 18, GetThemeText())
-    Text(status, ScaleUIPx(32), ScaleUIPx(242), Text16, GetThemeText())
-    Text(last_path, ScaleUIPx(32), ScaleUIPx(274), Text16, GetThemeIcon())
 }

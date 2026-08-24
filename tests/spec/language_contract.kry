@@ -11,17 +11,16 @@ state {
 app "Spec Contract" {
     size 320 240
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    Background(GetThemeSurface())
-    Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
-    if count < 42 {
-        count = count + 1
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
+        if count < 42 {
+            count = count + 1
+        }
+        Text("ready", ScaleUIPx(8), ScaleUIPx(32), Text16, GetThemeText())
     }
-    Text("ready", ScaleUIPx(8), ScaleUIPx(32), Text16, GetThemeText())
-    EndFrame()
 }

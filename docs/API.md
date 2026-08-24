@@ -131,29 +131,26 @@ Slider(id, x, y, w, "Volume", 0, 100, &volume, "%", NULL);
 Overlays();
 ```
 
-Normal application UI is declared between `BeginUI` and `EndUI`. Containers
-use one matching `End`, independent of their kind. Reconciliation, layout,
-input routing, updates, painting, and overlays are runtime-owned and are not
-application lifecycle calls:
+Normal application UI is declared in `#ui` functions. The root is an explicit
+`Screen` node and containers own lexical blocks. The compiler lowers named
+blocks to retained runtime nodes with stable path keys; reconciliation, layout,
+input routing, updates, painting, and overlays remain runtime-owned:
 
-```c
-BeginUI(Key("settings"));
-Column((ColumnProps){
-    .bounds = {20, 20, 360, 420},
-    .gap = 12,
-    .padding = 16,
-    .key = Key("settings/body"),
-});
-Text("Account", 0, 0, Text24, GetThemeText());
-TextField(account_field);
-Button(save_button);
-End();
-EndUI();
+```kry
+Settings :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
 
-while(NextUIEvent(&event)) {
-    if(event.key == Key("settings/save") &&
-       event.kind == UI_EVENT_CLICK)
-        SaveSettings();
+        Column body: {
+            bounds = {20, 20, 360, 420}
+            gap = 12
+            padding = 16
+
+            Text("Account", 0, 0, Text24, GetThemeText())
+            TextField(account_field)
+            Button(save_button)
+        }
+    }
 }
 ```
 

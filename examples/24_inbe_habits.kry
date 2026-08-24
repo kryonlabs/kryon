@@ -20,32 +20,29 @@ state {
 app "Inner Breeze — Habits" {
     size 480 640
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    Text("Habits", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
-    Text("Today", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
-    Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(490), ScaleUIPx(560), &scroll_off)
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(120), "Breathe 10 min", &breathe_done)
-    TextFormat("Streak: %d days", breathe_streak, ScaleUIPx(250), ScaleUIPx(120), Text16, GetThemeIcon())
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(180), "Stretch", &stretch_done)
-    TextFormat("Streak: %d days", stretch_streak, ScaleUIPx(250), ScaleUIPx(180), Text16, GetThemeIcon())
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(240), "Drink water", &water_done)
-    TextFormat("Streak: %d days", water_streak, ScaleUIPx(250), ScaleUIPx(240), Text16, GetThemeIcon())
-    Checkbox(0, ScaleUIPx(40), ScaleUIPx(300), "Journal", &journal_done)
-    TextFormat("Streak: %d days", journal_streak, ScaleUIPx(250), ScaleUIPx(300), Text16, GetThemeIcon())
-    if (breathe_done == 1) {
-        Text("Done for today", ScaleUIPx(40), ScaleUIPx(150), Text16, GetThemeIcon())
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("Habits", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
+        Text("Today", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
+        Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(490), ScaleUIPx(560), &scroll_off)
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(120), "Breathe 10 min", &breathe_done)
+        TextFormat("Streak: %d days", breathe_streak, ScaleUIPx(250), ScaleUIPx(120), Text16, GetThemeIcon())
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(180), "Stretch", &stretch_done)
+        TextFormat("Streak: %d days", stretch_streak, ScaleUIPx(250), ScaleUIPx(180), Text16, GetThemeIcon())
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(240), "Drink water", &water_done)
+        TextFormat("Streak: %d days", water_streak, ScaleUIPx(250), ScaleUIPx(240), Text16, GetThemeIcon())
+        Checkbox(0, ScaleUIPx(40), ScaleUIPx(300), "Journal", &journal_done)
+        TextFormat("Streak: %d days", journal_streak, ScaleUIPx(250), ScaleUIPx(300), Text16, GetThemeIcon())
+        if (breathe_done == 1) {
+            Text("Done for today", ScaleUIPx(40), ScaleUIPx(150), Text16, GetThemeIcon())
+        }
+        if (water_streak > 40) {
+            Text("Almost two months strong", ScaleUIPx(40), ScaleUIPx(360), Text16, GetThemeIcon())
+        }
+        EndScroll()
     }
-    if (water_streak > 40) {
-        Text("Almost two months strong", ScaleUIPx(40), ScaleUIPx(360), Text16, GetThemeIcon())
-    }
-    EndScroll()
-    EndUIFocus()
-    EndFrame()
 }

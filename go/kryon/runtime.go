@@ -541,6 +541,7 @@ type Runtime interface {
 	Column(ColumnProps)
 	Row(ColumnProps)
 	Stack(ColumnProps)
+	Screen(ColumnProps)
 	End()
 	TextField(TextFieldProps)
 	Key(text string) KeyID
@@ -644,6 +645,7 @@ type layoutFrame struct {
 	gap        float32
 	padding    float32
 	horizontal bool
+	noLayout   bool
 }
 
 type inputEvent struct {
@@ -885,6 +887,9 @@ func (r *runtime) Row(props ColumnProps) {
 }
 func (r *runtime) Stack(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpStack)
+}
+func (r *runtime) Screen(props ColumnProps) {
+	r.pushGroup(props, FrameOpScreen)
 }
 func (r *runtime) End() {
 	if len(r.layout) > 0 {
@@ -1276,11 +1281,23 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKin
 	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
 }
 
+func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
+	bounds := props.Bounds
+	r.layout = append(r.layout, layoutFrame{
+		bounds:   bounds,
+		noLayout: true,
+	})
+	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
+}
+
 func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 	if len(r.layout) == 0 || bounds.X != 0 || bounds.Y != 0 {
 		return bounds
 	}
 	frame := &r.layout[len(r.layout)-1]
+	if frame.noLayout {
+		return bounds
+	}
 	out := bounds
 	out.X = frame.cursorX
 	out.Y = frame.cursorY

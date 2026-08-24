@@ -11,14 +11,17 @@ state {
     status: [64] char = "No menu command"
 }
 
-screen MenusExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    file_items: [4] MenuItem = {{MenuCommand,"New","Ctrl+N",1,0,0,NULL,0},{MenuCommand,"Open","Ctrl+O",2,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0},{MenuCommand,"Quit","Esc",3,0,0,NULL,0}}
-    view_items: [3] MenuItem = {{MenuCheck,"Show Grid","G",4,0,1,NULL,0},{MenuRadio,"Compact",NULL,5,0,0,NULL,0},{MenuRadio,"Comfortable",NULL,6,0,1,NULL,0}}
-    menus: [2] Menu = {{{0},"File",file_items,4},{{0},"View",view_items,3}}
-    result: MenuBarResult = MenuBar(100,(Rectangle){0,0,GetScreenWidth(),34},menus,2,&open_menu)
-    if result.activated_id != 0 {
-        snprintf(status,sizeof(status),"Command %d",result.activated_id)
+MenusExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        file_items: [4] MenuItem = {{MenuCommand,"New","Ctrl+N",1,0,0,NULL,0},{MenuCommand,"Open","Ctrl+O",2,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0},{MenuCommand,"Quit","Esc",3,0,0,NULL,0}}
+        view_items: [3] MenuItem = {{MenuCheck,"Show Grid","G",4,0,1,NULL,0},{MenuRadio,"Compact",NULL,5,0,0,NULL,0},{MenuRadio,"Comfortable",NULL,6,0,1,NULL,0}}
+        menus: [2] Menu = {{{0},"File",file_items,4},{{0},"View",view_items,3}}
+        result: MenuBarResult = MenuBar(100,(Rectangle){0,0,GetScreenWidth(),34},menus,2,&open_menu)
+        if result.activated_id != 0 {
+            snprintf(status,sizeof(status),"Command %d",result.activated_id)
+        }
+        Text(status, 40, 80, 20, GetThemeText())
     }
-    Text(status, 40, 80, 20, GetThemeText())
 }

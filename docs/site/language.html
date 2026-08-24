@@ -56,7 +56,7 @@
           <tbody>
             <tr><td>Single frontend</td><td><code>.kry</code> parses into KIR before every backend. Backend-specific behavior must be visible in KIR or reported as a diagnostic.</td></tr>
             <tr><td>C-close expressions</td><td>Types, pointer expressions, calls, field access, and raw C escape lines stay familiar to C programmers.</td></tr>
-            <tr><td>Declarative UI shape</td><td>Plain calls used as statements declare UI nodes; the runtime owns reconciliation, layout, input routing, focus, and update order.</td></tr>
+            <tr><td>Declarative UI shape</td><td><code>#ui</code> functions declare named node hierarchies; the runtime owns reconciliation, layout, input routing, focus, and update order.</td></tr>
             <tr><td>Inspectable lowering</td><td><code>k2ir</code> prints imports, state, functions, statements, assertions, and simple structured expression trees for tooling.</td></tr>
             <tr><td>Honest subsets</td><td>C is the full path. Go and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics.</td></tr>
           </tbody>
@@ -78,10 +78,17 @@ state {
     click_count: int = 0
 }
 
-Counter :: (app: App*) {
-    Text("Count")
-    if Button("Increment") {
-        app->click_count += 1
+Counter :: (viewport: Rectangle, app: App*) #ui {
+    Screen root: {
+        bounds = viewport
+
+        Column body: {
+            gap = 8
+            Text("Count", 0, 0, Text16, GetThemeText())
+            if Button((ButtonProps){.label = "Increment"}) {
+                app->click_count += 1
+            }
+        }
     }
 }</code></pre>
       <div class="table-wrap">
@@ -91,6 +98,7 @@ Counter :: (app: App*) {
             <tr><td><code>#import "header.h"</code></td><td>Include a C header in generated native code.</td></tr>
             <tr><td><code>name :: #import "module"</code></td><td>Import another Kry module.</td></tr>
             <tr><td><code>name :: (...) -> Ret { ... }</code></td><td>Define a function. Module functions are source-prefixed in generated C unless exported.</td></tr>
+            <tr><td><code>name :: (...) #ui { ... }</code></td><td>Define a UI hierarchy function. Named nodes inside it get stable hierarchy paths.</td></tr>
             <tr><td><code>#export</code>, <code>#private</code>, <code>#extern</code></td><td>Control ABI visibility and declarations that are implemented outside Kry.</td></tr>
             <tr><td><code>#global</code></td><td>Create a file-level variable; combine with <code>#export</code> for public extern storage.</td></tr>
             <tr><td><code>Type :: struct { ... }</code></td><td>Define a C-compatible struct type.</td></tr>
@@ -106,7 +114,8 @@ Counter :: (app: App*) {
       <ul class="link-list">
         <li><strong>Locals:</strong> <code>name := expr</code>, <code>name: Type = expr</code>, or <code>name: Type</code>.</li>
         <li><strong>Assignments:</strong> <code>name = expr</code> and compound operators such as <code>+=</code>, <code>%=</code>, and <code>&=</code>.</li>
-        <li><strong>Calls:</strong> a plain call statement is a UI declaration and carries source-inspection metadata in generated C.</li>
+        <li><strong>UI nodes:</strong> <code>Screen root: { ... }</code>, <code>Column body: { ... }</code>, <code>Row actions: { ... }</code>, and <code>Stack layer: { ... }</code> declare hierarchy nodes.</li>
+        <li><strong>Calls:</strong> plain call statements remain available for leaf widgets and utility calls inside UI or normal functions.</li>
         <li><strong>Control flow:</strong> <code>if</code>, <code>else if</code>, <code>else</code>, <code>while</code>, <code>for</code>, <code>switch</code>, <code>case</code>, <code>default</code>, labels, <code>goto</code>, <code>break</code>, <code>continue</code>, <code>guard</code>, <code>defer</code>, and <code>return</code>.</li>
         <li><strong>Interop:</strong> <code>c line</code> emits raw C glue, and <code>unused expr</code> silences unused-value warnings.</li>
       </ul>

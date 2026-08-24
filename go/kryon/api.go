@@ -175,6 +175,7 @@ func Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
 func Column(props ColumnProps)          { active().Column(props) }
 func Row(props ColumnProps)             { active().Row(props) }
 func Stack(props ColumnProps)           { active().Stack(props) }
+func Screen(props ColumnProps)          { active().Screen(props) }
 func End()                              { active().End() }
 func Fade(c Color, alpha float32) Color { return active().Fade(c, alpha) }
 func GetThemeSurface() Color            { return active().GetThemeSurface() }

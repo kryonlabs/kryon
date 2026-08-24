@@ -1,11 +1,11 @@
 # Kryon Repository Rules
 
-Kryon is the canonical runtime. Keep it small, direct, and free of new legacy
+Kryon is the canonical runtime. Keep it small, direct, and free of stale
 surfaces.
 
 ## Clean API Rule
 
-Do not introduce new public generated-runtime APIs with legacy prefixes or
+Do not introduce new public generated-runtime APIs with stale prefixes or
 compatibility names. New `.kry` generated code must target the clean runtime
 surface:
 
@@ -22,7 +22,7 @@ Do not add `kryc`. The supported transpilers are `k2g` for native Go and `k2c`
 for native C.
 
 Generated Go must be native Go and must not use cgo, `go/kryui`, `kryruntime`,
-or an injected `rt` runtime object. Generated C must not call legacy prefixed UI
+or an injected `rt` runtime object. Generated C must not call stale prefixed UI
 symbols such as `DrawUI*`, `UIText*`, `TextInputControl`, or `UIRender*`.
 
 Existing compatibility code may only remain while actively migrating callers.

@@ -12,8 +12,11 @@ app "KRB Spec Contract" {
     fps 60
 }
 
-screen KrbSpec(viewport: Rectangle) {
-    Background(GetThemeSurface())
-    Text("KRB Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
-    count = count + 1
+KrbSpec :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeSurface())
+        Text("KRB Spec Contract", ScaleUIPx(8), ScaleUIPx(8), Text16, GetThemeText())
+        count = count + 1
+    }
 }

@@ -2133,9 +2133,9 @@ main(void)
                       ParseTerminalPaneSessionActive(line, &active), 0);
             check_int("session old record parse",
                       ParseTerminalPaneSessionRecord(
-                          "tab\t/tmp\t/bin/sh\tlegacy", &parsed),
+                          "tab\t/tmp\t/bin/sh\tstale", &parsed),
                       1);
-            check_str("session old record title", parsed.title, "legacy");
+            check_str("session old record title", parsed.title, "stale");
             check_int("session old record title override",
                       parsed.title_override, 0);
         }

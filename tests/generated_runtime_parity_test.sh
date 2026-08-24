@@ -419,44 +419,39 @@ static void drain_events(void)
     while(NextUIEvent(&event)) {}
 }
 
+static void draw_ui(void (*fn)(void))
+{
+    BeginUIFrame(640, 480, 1.0f);
+    BeginUI(Key("generated-runtime-parity"));
+    fn();
+    EndUI();
+    EndUIFrame();
+    drain_events();
+}
+
 static void draw_form(void)
 {
-    BeginUIFocus();
-    form_frame_kry_draw();
-    EndUIFocus();
-    drain_events();
+    draw_ui(form_frame);
 }
 
 static void draw_fields(void)
 {
-    BeginUIFocus();
-    fields_frame_kry_draw();
-    EndUIFocus();
-    drain_events();
+    draw_ui(fields_frame);
 }
 
 static void draw_focus(void)
 {
-    BeginUIFocus();
-    focus_frame_kry_draw();
-    EndUIFocus();
-    drain_events();
+    draw_ui(focus_frame);
 }
 
 static void draw_buttons(void)
 {
-    BeginUIFocus();
-    buttons_frame_kry_draw();
-    EndUIFocus();
-    drain_events();
+    draw_ui(buttons_frame);
 }
 
 static void draw_long_text(void)
 {
-    BeginUIFocus();
-    long_text_frame_kry_draw();
-    EndUIFocus();
-    drain_events();
+    draw_ui(long_text_frame);
 }
 
 static unsigned long long checksum(const char *text)

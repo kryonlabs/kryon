@@ -52,21 +52,20 @@
           </div>
           <textarea spellcheck="false" data-source>#import "kryon.h"
 
-app {
-    title: "Kryon Web IDE"
-    width: 800
-    height: 520
-    frame: App
+app "Kryon Web IDE" {
+    size 800 520
 }
 
-App :: () {
-    Background((Color){249, 246, 235, 255})
-    Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})
-    Text("Hello from .kry", 76, 86, UI_TEXT_24, (Color){31, 83, 102, 255})
-    Text("This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.", 76, 134, UI_TEXT_16, (Color){42, 59, 64, 255})
-    Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})
-    Text("Portable preview", 104, 219, UI_TEXT_20, WHITE)
-    Button((ButtonProps){.bounds = (Rectangle){76, 308, 184, 44}, .label = "Get started"})
+App :: () #ui {
+    Screen root: {
+        Background((Color){249, 246, 235, 255})
+        Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})
+        Text("Hello from .kry", 76, 86, Text24, (Color){31, 83, 102, 255})
+        Text("This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.", 76, 134, Text16, (Color){42, 59, 64, 255})
+        Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})
+        Text("Portable preview", 104, 219, Text20, WHITE)
+        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = "Get started"})
+    }
 }</textarea>
         </div>
 

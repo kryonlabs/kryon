@@ -301,6 +301,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                 fprintf(out, "        BeginFrame();\n");
                 fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
                              "GetScreenHeight(), GetUIScale());\n");
+                fprintf(out, "        BeginUI(Key(\"%s\"));\n", hook);
                 if(strstr(entry->args, "Rectangle") != NULL) {
                     fprintf(out, "        %s((Rectangle){0, 0, "
                                  "(float)GetScreenWidth(), (float)GetScreenHeight()});\n",
@@ -308,6 +309,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                 } else {
                     fprintf(out, "        %s();\n", hook);
                 }
+                fprintf(out, "        EndUI();\n");
                 fprintf(out, "        EndUIFrame();\n");
                 fprintf(out, "        EndFrame();\n");
             } else {
@@ -322,6 +324,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "        BeginFrame();\n");
             fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
                          "GetScreenHeight(), GetUIScale());\n");
+            fprintf(out, "        BeginUI(Key(\"%s\"));\n", cname);
             if(strstr(routes[0].fn->args, "Rectangle") != NULL) {
                 fprintf(out, "        %s((Rectangle){0, 0, "
                              "(float)GetScreenWidth(), (float)GetScreenHeight()});\n",
@@ -329,6 +332,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             } else {
                 fprintf(out, "        %s();\n", cname);
             }
+            fprintf(out, "        EndUI();\n");
             fprintf(out, "        EndUIFrame();\n");
             fprintf(out, "        EndFrame();\n");
         } else {

@@ -2266,3 +2266,10 @@ Stack(ColumnProps props)
     return ui_begin_layout_node(UI_WIDGET_STACK_NODE, props.key, props.bounds,
                                 props.gap, props.padding);
 }
+
+NodeId
+Screen(ColumnProps props)
+{
+    return ui_begin_layout_node(UI_WIDGET_GROUP_NODE, props.key, props.bounds,
+                                props.gap, props.padding);
+}

@@ -97,51 +97,54 @@ ControlDemo :: (x: int, y: int, w: int) {
     Checkbox(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
 }
 
-screen ThemeExample(viewport: Rectangle) {
-    ApplyThemeState()
-    Background(GetThemeBackground())
-
-    margin: int = ScaleUIPx(26)
-    panel_w: int = ScaleUIPx(310)
-    right_x: int = margin + panel_w + ScaleUIPx(42)
-    settings := (ThemeSettingsProps){
-        .id_base = 101,
-        .x = margin,
-        .y = ScaleUIPx(64),
-        .w = panel_w,
-        .theme_source = &theme_source,
-        .theme_mode = &theme_mode,
-        .theme_id = &theme_id,
-        .theme_style = &theme_style,
-        .allow_system_source = 1,
-        .allow_system_mode = 1,
-        .palette_label = "Color palette",
-        .source_system_label = "System colors",
-        .style_label = "Widget style",
-        .style_system_label = "System style"
-    }
-
-    Text("Kryon Native Theme State", margin, ScaleUIPx(24), Text24, GetThemeText())
-    Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), Text16, GetThemeIcon())
-    result: UIThemeSettingsResult = {0}
-    ThemeSettings(settings, &menu_state, &result)
-
-    ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
-
-    tokens := GetUIStyleTokens()
-    token_y: int = ScaleUIPx(520)
-    Text("Active style tokens", right_x, token_y, Text16, GetThemeText())
-    token_y += ScaleUIPx(30)
-    TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
-    TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
-    token_y += ScaleUIPx(24)
-    TokenValue("border alpha", tokens.border_alpha, right_x, token_y)
-    TokenValue("shadow alpha", tokens.shadow_alpha, right_x + ScaleUIPx(150), token_y)
-    token_y += ScaleUIPx(24)
-    TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
-    TokenValue("shadow y", tokens.shadow_offset_y, right_x + ScaleUIPx(150), token_y)
-
-    if result.changed {
+ThemeExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
         ApplyThemeState()
+        Background(GetThemeBackground())
+    
+        margin: int = ScaleUIPx(26)
+        panel_w: int = ScaleUIPx(310)
+        right_x: int = margin + panel_w + ScaleUIPx(42)
+        settings := (ThemeSettingsProps){
+            .id_base = 101,
+            .x = margin,
+            .y = ScaleUIPx(64),
+            .w = panel_w,
+            .theme_source = &theme_source,
+            .theme_mode = &theme_mode,
+            .theme_id = &theme_id,
+            .theme_style = &theme_style,
+            .allow_system_source = 1,
+            .allow_system_mode = 1,
+            .palette_label = "Color palette",
+            .source_system_label = "System colors",
+            .style_label = "Widget style",
+            .style_system_label = "System style"
+        }
+    
+        Text("Kryon Native Theme State", margin, ScaleUIPx(24), Text24, GetThemeText())
+        Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), Text16, GetThemeIcon())
+        result: UIThemeSettingsResult = {0}
+        ThemeSettings(settings, &menu_state, &result)
+    
+        ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
+    
+        tokens := GetUIStyleTokens()
+        token_y: int = ScaleUIPx(520)
+        Text("Active style tokens", right_x, token_y, Text16, GetThemeText())
+        token_y += ScaleUIPx(30)
+        TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
+        TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
+        token_y += ScaleUIPx(24)
+        TokenValue("border alpha", tokens.border_alpha, right_x, token_y)
+        TokenValue("shadow alpha", tokens.shadow_alpha, right_x + ScaleUIPx(150), token_y)
+        token_y += ScaleUIPx(24)
+        TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
+        TokenValue("shadow y", tokens.shadow_offset_y, right_x + ScaleUIPx(150), token_y)
+    
+        if result.changed {
+            ApplyThemeState()
+        }
     }
 }

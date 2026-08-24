@@ -12,18 +12,15 @@ state {
 app "Inner Breeze — Language" {
     size 480 640
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeBackground())
-    Text("Choose Language", ScaleUIPx(141), ScaleUIPx(28), Text24, GetThemeText())
-    Text("Language", ScaleUIPx(40), ScaleUIPx(243), Text16, GetThemeText())
-    Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
-    Text("Next", ScaleUIPx(204), ScaleUIPx(335), Text12, GetThemeText())
-    EndUIFocus()
-    EndFrame()
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeBackground())
+        Text("Choose Language", ScaleUIPx(141), ScaleUIPx(28), Text24, GetThemeText())
+        Text("Language", ScaleUIPx(40), ScaleUIPx(243), Text16, GetThemeText())
+        Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
+        Text("Next", ScaleUIPx(204), ScaleUIPx(335), Text12, GetThemeText())
+    }
 }

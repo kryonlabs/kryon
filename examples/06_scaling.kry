@@ -13,28 +13,31 @@ state {
     box_y: int = 100
 }
 
-screen ScalingExample(viewport: Rectangle) {
-    SetUIScale(scales[scale_index])
-    Background(GetThemeBackground())
-    box_size: int = ScaleUIPx(100)
-    Text(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
-    Rect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
-    Text("Scaled Box", box_x + 10, box_y + 10, Text16, GetThemeText())
-    Text(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, Text16, GetThemeText())
-    Text("SPACE cycles DPI,arrows move box", 50, 90, Text16, GetThemeIcon())
-    if (IsKeyDown(KEY_RIGHT)) {
-        box_x += 3
-    }
-    if (IsKeyDown(KEY_LEFT)) {
-        box_x -= 3
-    }
-    if (IsKeyDown(KEY_DOWN)) {
-        box_y += 3
-    }
-    if (IsKeyDown(KEY_UP)) {
-        box_y -= 3
-    }
-    if (IsKeyPressed(KEY_SPACE)) {
-        scale_index = (scale_index + 1) % 4
+ScalingExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        SetUIScale(scales[scale_index])
+        Background(GetThemeBackground())
+        box_size: int = ScaleUIPx(100)
+        Text(TextFormat("DPI Scale:%.1f",scales[scale_index]), 50, 20, 20, GetThemeText())
+        Rect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
+        Text("Scaled Box", box_x + 10, box_y + 10, Text16, GetThemeText())
+        Text(TextFormat("Base:100px Scaled:%dpx",box_size), 50, 60, Text16, GetThemeText())
+        Text("SPACE cycles DPI,arrows move box", 50, 90, Text16, GetThemeIcon())
+        if (IsKeyDown(KEY_RIGHT)) {
+            box_x += 3
+        }
+        if (IsKeyDown(KEY_LEFT)) {
+            box_x -= 3
+        }
+        if (IsKeyDown(KEY_DOWN)) {
+            box_y += 3
+        }
+        if (IsKeyDown(KEY_UP)) {
+            box_y -= 3
+        }
+        if (IsKeyPressed(KEY_SPACE)) {
+            scale_index = (scale_index + 1) % 4
+        }
     }
 }

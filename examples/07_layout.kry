@@ -27,42 +27,45 @@ LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
     Text(label, x, y, Text16, color)
 }
 
-screen LayoutExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    side_padding: int = GetUIPageSidePadding()
-    page_x: int = side_padding
-    page_w: int = GetUIViewWidth() - side_padding * 2
-    column_x: int = 0
-    column_w: int = 0
-    y: int = ScaleUIPx(42)
-    guide_h: int = ScaleUIPx(450)
-    column_y: int = y + ScaleUIPx(30)
-    btn_y: int = y + ScaleUIPx(170)
-    right_edge: int = GetUIViewWidth() - side_padding
-    btn0_x: int = column_x + ScaleUIPx(16)
-    btn1_x: int = column_x + ScaleUIPx(138)
-    btn2_x: int = column_x + ScaleUIPx(260)
-    GetUICenteredColumn(max_width,side_padding,&column_x,&column_w)
-    btn0_x = column_x + ScaleUIPx(16)
-    btn1_x = column_x + ScaleUIPx(138)
-    btn2_x = column_x + ScaleUIPx(260)
-    Text("Responsive layout", page_x, ScaleUIPx(16), Text24, GetThemeText())
-    Rect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
-    Line(side_padding, y, side_padding, y+guide_h, GetThemeLink())
-    Line(right_edge, y, right_edge, y+guide_h, GetThemeLink())
-    Rect(column_x, column_y, column_w, ScaleUIPx(360), GetThemeBackground(), GetThemeButton())
-    LayoutInfo("View width", GetUIViewWidth(), column_x+16, y+ScaleUIPx(54))
-    LayoutInfo("Side padding", side_padding, column_x+16, y+ScaleUIPx(84))
-    LayoutInfo("Column max", max_width, column_x+16, y+ScaleUIPx(114))
-    if WidthButton("Narrow", btn0_x, btn_y, 360) {
-        max_width = 360
+LayoutExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        side_padding: int = GetUIPageSidePadding()
+        page_x: int = side_padding
+        page_w: int = GetUIViewWidth() - side_padding * 2
+        column_x: int = 0
+        column_w: int = 0
+        y: int = ScaleUIPx(42)
+        guide_h: int = ScaleUIPx(450)
+        column_y: int = y + ScaleUIPx(30)
+        btn_y: int = y + ScaleUIPx(170)
+        right_edge: int = GetUIViewWidth() - side_padding
+        btn0_x: int = column_x + ScaleUIPx(16)
+        btn1_x: int = column_x + ScaleUIPx(138)
+        btn2_x: int = column_x + ScaleUIPx(260)
+        GetUICenteredColumn(max_width,side_padding,&column_x,&column_w)
+        btn0_x = column_x + ScaleUIPx(16)
+        btn1_x = column_x + ScaleUIPx(138)
+        btn2_x = column_x + ScaleUIPx(260)
+        Text("Responsive layout", page_x, ScaleUIPx(16), Text24, GetThemeText())
+        Rect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
+        Line(side_padding, y, side_padding, y+guide_h, GetThemeLink())
+        Line(right_edge, y, right_edge, y+guide_h, GetThemeLink())
+        Rect(column_x, column_y, column_w, ScaleUIPx(360), GetThemeBackground(), GetThemeButton())
+        LayoutInfo("View width", GetUIViewWidth(), column_x+16, y+ScaleUIPx(54))
+        LayoutInfo("Side padding", side_padding, column_x+16, y+ScaleUIPx(84))
+        LayoutInfo("Column max", max_width, column_x+16, y+ScaleUIPx(114))
+        if WidthButton("Narrow", btn0_x, btn_y, 360) {
+            max_width = 360
+        }
+        if WidthButton("Medium", btn1_x, btn_y, 560) {
+            max_width = 560
+        }
+        if WidthButton("Wide", btn2_x, btn_y, 720) {
+            max_width = 720
+        }
+        LayoutNote("Resize the preview/window or choose a width.", column_x+16, y+ScaleUIPx(240), GetThemeText())
+        LayoutNote("The column stays centered and clamped.", column_x+16, y+ScaleUIPx(272), GetThemeIcon())
     }
-    if WidthButton("Medium", btn1_x, btn_y, 560) {
-        max_width = 560
-    }
-    if WidthButton("Wide", btn2_x, btn_y, 720) {
-        max_width = 720
-    }
-    LayoutNote("Resize the preview/window or choose a width.", column_x+16, y+ScaleUIPx(240), GetThemeText())
-    LayoutNote("The column stays centered and clamped.", column_x+16, y+ScaleUIPx(272), GetThemeIcon())
 }

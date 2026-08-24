@@ -11,32 +11,29 @@ state {
 app "Inner Breeze — Manual" {
     size 480 640
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
-    ClearBackground(GetThemeBackground())
-    BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale())
-    Background(GetThemeSurface())
-    Text("Manual", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
-    Scroll(ScaleUIPx(24), ScaleUIPx(80), ScaleUIPx(432), ScaleUIPx(520), ScaleUIPx(1250), &scroll_off)
-    Text("Welcome to Inner Breeze", ScaleUIPx(24), ScaleUIPx(90), Text16, GetThemeText())
-    Text("Inner Breeze guides breathing practices with gentle visual and audio cues.", ScaleUIPx(24), ScaleUIPx(120), Text16, GetThemeIcon())
-    Text("Box breathing", ScaleUIPx(24), ScaleUIPx(180), Text16, GetThemeText())
-    Text("Inhale, hold, exhale, hold — four equal phases traced around a square.", ScaleUIPx(24), ScaleUIPx(210), Text16, GetThemeIcon())
-    Text("Start with four seconds per phase and lengthen gradually.", ScaleUIPx(24), ScaleUIPx(260), Text16, GetThemeIcon())
-    Text("Wim Hof method", ScaleUIPx(24), ScaleUIPx(320), Text16, GetThemeText())
-    Text("Thirty deep breaths, a retention hold, and a recovery breath.", ScaleUIPx(24), ScaleUIPx(350), Text16, GetThemeIcon())
-    Text("Always practice seated and never in or near water.", ScaleUIPx(24), ScaleUIPx(400), Text16, GetThemeIcon())
-    Text("Meditation", ScaleUIPx(24), ScaleUIPx(460), Text16, GetThemeText())
-    Text("Follow the expanding ring; the pause between breaths is the practice.", ScaleUIPx(24), ScaleUIPx(490), Text16, GetThemeIcon())
-    DrawCircleV((Vector2){ScaleUIPx(240), ScaleUIPx(640)}, ScaleUIPx(60), (Color){0x2d, 0x4d, 0x7b, 0xff})
-    DrawRing((Vector2){ScaleUIPx(240), ScaleUIPx(640)}, ScaleUIPx(66), ScaleUIPx(76), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
-    Text("Habits", ScaleUIPx(24), ScaleUIPx(760), Text16, GetThemeText())
-    Text("Small daily marks build streaks; missing one day is fine, two is a pattern.", ScaleUIPx(24), ScaleUIPx(790), Text16, GetThemeIcon())
-    Text("Scroll for more", ScaleUIPx(24), ScaleUIPx(1180), Text16, GetThemeIcon())
-    EndScroll()
-    EndUIFocus()
-    EndFrame()
+App :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("Manual", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
+        Scroll(ScaleUIPx(24), ScaleUIPx(80), ScaleUIPx(432), ScaleUIPx(520), ScaleUIPx(1250), &scroll_off)
+        Text("Welcome to Inner Breeze", ScaleUIPx(24), ScaleUIPx(90), Text16, GetThemeText())
+        Text("Inner Breeze guides breathing practices with gentle visual and audio cues.", ScaleUIPx(24), ScaleUIPx(120), Text16, GetThemeIcon())
+        Text("Box breathing", ScaleUIPx(24), ScaleUIPx(180), Text16, GetThemeText())
+        Text("Inhale, hold, exhale, hold — four equal phases traced around a square.", ScaleUIPx(24), ScaleUIPx(210), Text16, GetThemeIcon())
+        Text("Start with four seconds per phase and lengthen gradually.", ScaleUIPx(24), ScaleUIPx(260), Text16, GetThemeIcon())
+        Text("Wim Hof method", ScaleUIPx(24), ScaleUIPx(320), Text16, GetThemeText())
+        Text("Thirty deep breaths, a retention hold, and a recovery breath.", ScaleUIPx(24), ScaleUIPx(350), Text16, GetThemeIcon())
+        Text("Always practice seated and never in or near water.", ScaleUIPx(24), ScaleUIPx(400), Text16, GetThemeIcon())
+        Text("Meditation", ScaleUIPx(24), ScaleUIPx(460), Text16, GetThemeText())
+        Text("Follow the expanding ring; the pause between breaths is the practice.", ScaleUIPx(24), ScaleUIPx(490), Text16, GetThemeIcon())
+        DrawCircleV((Vector2){ScaleUIPx(240), ScaleUIPx(640)}, ScaleUIPx(60), (Color){0x2d, 0x4d, 0x7b, 0xff})
+        DrawRing((Vector2){ScaleUIPx(240), ScaleUIPx(640)}, ScaleUIPx(66), ScaleUIPx(76), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
+        Text("Habits", ScaleUIPx(24), ScaleUIPx(760), Text16, GetThemeText())
+        Text("Small daily marks build streaks; missing one day is fine, two is a pattern.", ScaleUIPx(24), ScaleUIPx(790), Text16, GetThemeIcon())
+        Text("Scroll for more", ScaleUIPx(24), ScaleUIPx(1180), Text16, GetThemeIcon())
+        EndScroll()
+    }
 }

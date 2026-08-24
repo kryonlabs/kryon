@@ -14,6 +14,7 @@ const (
 	FrameOpColumn     FrameOpKind = "column"
 	FrameOpRow        FrameOpKind = "row"
 	FrameOpStack      FrameOpKind = "stack"
+	FrameOpScreen     FrameOpKind = "screen"
 	FrameOpEnd        FrameOpKind = "end"
 )
 

@@ -14,29 +14,32 @@ state {
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
 }
 
-screen BasicControlsExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    Text("Basic controls", 40, 40, Text24, GetThemeText())
-    picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
-    if picked {
-        radio = picked
-    }
-    picked = Radio((RadioButtonProps){{40,124,160,28},"Choice B",2,radio==2,0})
-    if picked {
-        radio = picked
-    }
-    Text(TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), 40, 166, Text16, GetThemeText())
-    Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
-    Combobox((ComboboxProps){{240,140,180,34},202,choices,3,&combo,0})
-    Progress((ProgressBarProps){{40,210,380,28},0,100,progress,"Progress"})
-    if (IsKeyPressed(KEY_RIGHT)) {
-        if progress < 100 {
-            progress += 5
+BasicControlsExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        Text("Basic controls", 40, 40, Text24, GetThemeText())
+        picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
+        if picked {
+            radio = picked
         }
-    }
-    if (IsKeyPressed(KEY_LEFT)) {
-        if progress > 0 {
-            progress -= 5
+        picked = Radio((RadioButtonProps){{40,124,160,28},"Choice B",2,radio==2,0})
+        if picked {
+            radio = picked
+        }
+        Text(TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), 40, 166, Text16, GetThemeText())
+        Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
+        Combobox((ComboboxProps){{240,140,180,34},202,choices,3,&combo,0})
+        Progress((ProgressBarProps){{40,210,380,28},0,100,progress,"Progress"})
+        if (IsKeyPressed(KEY_RIGHT)) {
+            if progress < 100 {
+                progress += 5
+            }
+        }
+        if (IsKeyPressed(KEY_LEFT)) {
+            if progress > 0 {
+                progress -= 5
+            }
         }
     }
 }

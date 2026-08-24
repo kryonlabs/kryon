@@ -10,14 +10,17 @@ state {
     enabled: int = 1
 }
 
-screen AccessibilityExample(viewport: Rectangle) {
-    Background(GetThemeBackground())
-    Text("Accessibility overlay", 40, 40, Text24, GetThemeText())
-    Checkbox(1801,40,90,"Show focus/debug overlay",&enabled)
-    if Button((ButtonProps){.bounds = {40, 140, 200, 40}, .label = "Focusable Button", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
-        enabled = !enabled
-    }
-    if enabled {
-        Focus((Rectangle){36,136,208,48})
+AccessibilityExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        Text("Accessibility overlay", 40, 40, Text24, GetThemeText())
+        Checkbox(1801,40,90,"Show focus/debug overlay",&enabled)
+        if Button((ButtonProps){.bounds = {40, 140, 200, 40}, .label = "Focusable Button", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
+            enabled = !enabled
+        }
+        if enabled {
+            Focus((Rectangle){36,136,208,48})
+        }
     }
 }

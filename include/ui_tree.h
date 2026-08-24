@@ -330,5 +330,6 @@ typedef struct {
 NodeId Column(ColumnProps props);
 NodeId Row(RowProps props);
 NodeId Stack(ColumnProps props);
+NodeId Screen(ColumnProps props);
 
 #endif

@@ -24,7 +24,7 @@ matches="$(
 )"
 
 if [ -n "$matches" ]; then
-    echo "Picture API must use Picture/PictureProps names without legacy framework prefixes:"
+    echo "Picture API must use Picture/PictureProps names without stale framework prefixes:"
     echo "$matches"
     exit 1
 fi
@@ -58,7 +58,7 @@ public_button_matches="$(
 )"
 
 if [ -n "$public_button_matches" ]; then
-    echo "Public button APIs must use clean ButtonSpec/ButtonNode names without legacy UI prefixes:"
+    echo "Public button APIs must use clean ButtonSpec/ButtonNode names without stale UI prefixes:"
     echo "$public_button_matches"
     exit 1
 fi
@@ -80,7 +80,7 @@ button_style_matches="$(
 )"
 
 if [ -n "$button_style_matches" ]; then
-    echo "Button style APIs must use clean ButtonStyle names without legacy UI prefixes:"
+    echo "Button style APIs must use clean ButtonStyle names without stale UI prefixes:"
     echo "$button_style_matches"
     exit 1
 fi
@@ -105,29 +105,29 @@ text_size_matches="$(
 )"
 
 if [ -n "$text_size_matches" ]; then
-    echo "Text size APIs must use clean Text8/Text16/TextBaseSize names without legacy UI_TEXT prefixes:"
+    echo "Text size APIs must use clean Text8/Text16/TextBaseSize names without stale UI_TEXT prefixes:"
     echo "$text_size_matches"
     exit 1
 fi
 
 if [ -d go/kryui ]; then
-    echo "The legacy go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
+    echo "The removed go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1
 fi
 
-legacy_doc_matches="$(
-    legacy_bridge='go/''kryui'
-    legacy_input='Text''InputControl'
-    legacy_queue='Queue''UITextInput'
-    rg -n "${legacy_bridge}|${legacy_input}|${legacy_queue}" \
+stale_doc_matches="$(
+    stale_bridge='go/''kryui'
+    stale_input='Text''InputControl'
+    stale_queue='Queue''UITextInput'
+    rg -n "${stale_bridge}|${stale_input}|${stale_queue}" \
         docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
-if [ -n "$legacy_doc_matches" ]; then
-    echo "Generated runtime docs must describe the clean native Go and C surfaces, not legacy bridge/input names:"
-    echo "$legacy_doc_matches"
+if [ -n "$stale_doc_matches" ]; then
+    echo "Generated runtime docs must describe the clean native Go and C surfaces, not removed bridge/input names:"
+    echo "$stale_doc_matches"
     exit 1
 fi
 
@@ -137,28 +137,28 @@ api_doc_matches="$(
 )"
 
 if [ -n "$api_doc_matches" ]; then
-    echo "Public API docs must advertise clean generated/runtime names, not legacy widget helpers:"
+    echo "Public API docs must advertise clean generated/runtime names, not stale widget helpers:"
     echo "$api_doc_matches"
     exit 1
 fi
 
-public_legacy_input='Queue''UITextInput'
-public_legacy_matches="$(
-    rg -n "${public_legacy_input}[A-Za-z0-9_]*" \
+public_stale_input='Queue''UITextInput'
+public_stale_matches="$(
+    rg -n "${public_stale_input}[A-Za-z0-9_]*" \
         include/ui_controls.h src/ui/ui.c docs/API.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
-if [ -n "$public_legacy_matches" ]; then
+if [ -n "$public_stale_matches" ]; then
     echo "Public text input queue APIs must use clean QueueTextInput* names:"
-    echo "$public_legacy_matches"
+    echo "$public_stale_matches"
     exit 1
 fi
 
-legacy_ui_fragment='UI'
+stale_ui_fragment='UI'
 public_control_draw_matches="$(
-    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
+    rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_controls.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -171,7 +171,7 @@ if [ -n "$public_control_draw_matches" ]; then
 fi
 
 public_composite_draw_matches="$(
-    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b|\b(ShowUIToast|ShowUIToastFor|ClearUIToast)\b" \
+    rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b|\b(ShowUIToast|ShowUIToastFor|ClearUIToast)\b" \
         include/ui_overlay.h \
         include/ui_rows.h \
         include/ui_toast.h \
@@ -193,7 +193,7 @@ if [ -n "$public_composite_draw_matches" ]; then
 fi
 
 public_text_draw_matches="$(
-    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
+    rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_text.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -216,7 +216,7 @@ public_text_helper_matches="$(
 )"
 
 if [ -n "$public_text_helper_matches" ]; then
-    echo "Public text helper APIs must use clean Text* names without legacy UIText prefixes:"
+    echo "Public text helper APIs must use clean Text* names without stale UIText prefixes:"
     echo "$public_text_helper_matches"
     exit 1
 fi
@@ -230,7 +230,7 @@ public_text_layout_matches="$(
 )"
 
 if [ -n "$public_text_layout_matches" ]; then
-    echo "Public text layout APIs must use TextLayout/TextElement names without legacy UIText prefixes:"
+    echo "Public text layout APIs must use TextLayout/TextElement names without stale UIText prefixes:"
     echo "$public_text_layout_matches"
     exit 1
 fi
@@ -243,7 +243,7 @@ public_text_platform_matches="$(
 )"
 
 if [ -n "$public_text_platform_matches" ]; then
-    echo "Public platform text input callbacks must use TextInputPlatformCallback names without legacy UIText prefixes:"
+    echo "Public platform text input callbacks must use TextInputPlatformCallback names without stale UIText prefixes:"
     echo "$public_text_platform_matches"
     exit 1
 fi
@@ -262,7 +262,7 @@ public_text_input_matches="$(
 )"
 
 if [ -n "$public_text_input_matches" ]; then
-    echo "Public text input APIs must use TextInputStyle/TextEdit/SyntaxMode names without legacy UIText/UISyntax prefixes:"
+    echo "Public text input APIs must use TextInputStyle/TextEdit/SyntaxMode names without stale UIText/UISyntax prefixes:"
     echo "$public_text_input_matches"
     exit 1
 fi
@@ -279,7 +279,7 @@ internal_text_input_matches="$(
 )"
 
 if [ -n "$internal_text_input_matches" ]; then
-    echo "Text input implementation must use clean internal names without legacy UIText prefixes:"
+    echo "Text input implementation must use clean internal names without stale UIText prefixes:"
     echo "$internal_text_input_matches"
     exit 1
 fi
@@ -298,13 +298,13 @@ internal_button_matches="$(
 )"
 
 if [ -n "$internal_button_matches" ]; then
-    echo "Button implementation must use clean internal Render* names without legacy DrawUI prefixes:"
+    echo "Button implementation must use clean internal Render* names without stale DrawUI prefixes:"
     echo "$internal_button_matches"
     exit 1
 fi
 
 public_tree_draw_matches="$(
-    rg -n "\bDraw[A-Za-z0-9_]*${legacy_ui_fragment}[A-Za-z0-9_]*\b" \
+    rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b" \
         include/ui_tree.h \
         --glob '!vendor/**' \
         --glob '!build/**' || true

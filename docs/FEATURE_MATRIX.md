@@ -51,7 +51,7 @@ the full whitelist onto its `Runtime` interface (except `Canvas`, below), and
 
 `Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
 Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox
-Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav
+Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav
 TopNav Toolbar`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
@@ -65,7 +65,7 @@ Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) �
 hand-written Go via the `go/kryon` package API · **KRB** = lowered into a
 cartridge by `k2b`.
 
-Retained-tree caveat that applies to the whole C column: `BeginUI/EndUI`
+Retained-tree caveat that applies to the whole C column: `#ui` lowering
 records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT,
 LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA;
 every other kind renders through its immediate-mode call during the
@@ -206,7 +206,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Accessibility | ◐ debug focus overlay + a11y node structs; no screen-reader bridge | ✗ | ✗ |
 | i18n | ✅ locale strings + CJK font switching; no RTL | ✗ | ✗ |
 | Multi-window | ✅ `OpenUIWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |
-| State/data binding | ✅ retained event queue; scene signals | ✅ `Begin/EndUI` + `NextUIEvent` | ✅ field mounts (`KrbMount*`) + bytecode |
+| State/data binding | ✅ retained event queue; scene signals | ✅ `#ui` functions + retained events | ✅ field mounts (`KrbMount*`) + bytecode |
 | Dialogs/platform | ✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux) | ✅ tray + notify polling | ◐ host capability imports (storage/http/audio/notify) |
 | Debug tooling | ✅ widget inspector, node registry + snippets | ✗ | ◐ `KryBackendRec` call-stream recording |
 

@@ -3,7 +3,6 @@
 app "Generated Long Text Parity" {
     size 640 360
     fps 60
-    frame long_text_frame
 }
 
 state {
@@ -13,12 +12,16 @@ state {
     long_second_cursor: int = 0
 }
 
-frame long_text_frame {
-    BeginUI(Key("long-text"))
-    Column((ColumnProps){.bounds = {20,20,420,120}, .gap = 8, .padding = 8, .key = Key("long-text-column")})
-    Text("Long input", 0, 0, Text16, GetThemeText())
-    TextField((TextFieldProps){.bounds = {0,0,360,32}, .text = long_first, .text_size = sizeof(long_first), .cursor_position = &long_first_cursor, .focused = NULL, .max_codepoints = 4095, .font = Text16, .focus_id = 701})
-    TextField((TextFieldProps){.bounds = {0,0,360,32}, .text = long_second, .text_size = sizeof(long_second), .cursor_position = &long_second_cursor, .focused = NULL, .max_codepoints = 4095, .font = Text16, .focus_id = 702})
-    End()
-    EndUI()
+long_text_frame :: () #ui {
+    Screen root: {
+        Column long_text_column: {
+            bounds = {20,20,420,120}
+            gap = 8
+            padding = 8
+            key = Key("long-text-column")
+            Text("Long input", 0, 0, Text16, GetThemeText())
+            TextField((TextFieldProps){.bounds = {0,0,360,32}, .text = long_first, .text_size = sizeof(long_first), .cursor_position = &long_first_cursor, .focused = NULL, .max_codepoints = 4095, .font = Text16, .focus_id = 701})
+            TextField((TextFieldProps){.bounds = {0,0,360,32}, .text = long_second, .text_size = sizeof(long_second), .cursor_position = &long_second_cursor, .focused = NULL, .max_codepoints = 4095, .font = Text16, .focus_id = 702})
+        }
+    }
 }

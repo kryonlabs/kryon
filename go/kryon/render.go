@@ -39,7 +39,7 @@ func RenderFrame(width, height int, ops []FrameOp) *image.RGBA {
 			renderButton(img, op)
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
-		case FrameOpColumn, FrameOpRow, FrameOpStack:
+		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpScreen:
 			strokeRect(img, op.Bounds, Color{220, 224, 229, 255})
 		}
 	}
