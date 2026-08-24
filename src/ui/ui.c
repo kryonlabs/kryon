@@ -220,6 +220,8 @@ typedef struct UIInputCapture {
 
 static UIInputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
 static int g_ui_input_capture_stack_count = 0;
+static Rectangle g_ui_modal_capture_next_frame_bounds;
+static int g_ui_modal_capture_next_frame = 0;
 
 static void
 ui_text_selection_clear(TextSelection *selection)
@@ -3504,6 +3506,10 @@ SetUIFrame(Camera2D camera)
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
     ClearUIInputCaptures();
+    if(g_ui_modal_capture_next_frame) {
+        PushUIInputCapture(g_ui_modal_capture_next_frame_bounds, 1);
+        g_ui_modal_capture_next_frame = 0;
+    }
     if(g_ui_text_context_open)
         PushUIInputCapture((Rectangle){0.0f, 0.0f,
                                        (float)ui_view_width,
@@ -3614,6 +3620,8 @@ SetUIModalCapture(Rectangle bounds)
 {
     ClearUIInputCaptures();
     PushUIInputCapture(bounds, 1);
+    g_ui_modal_capture_next_frame_bounds = bounds;
+    g_ui_modal_capture_next_frame = 1;
 }
 
 void

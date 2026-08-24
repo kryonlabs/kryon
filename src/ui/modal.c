@@ -179,6 +179,11 @@ DrawUIActionModal(ModalProps modal)
     capture.width = (float)modal_w;
     capture.height = (float)modal_h;
     SetUIModalCapture(capture);
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !CheckCollisionPointRec(mouse_world, capture)) {
+        UIConsumeRelease();
+        result = -1;
+    }
     msg_x = modal_x + padding_x;
     msg_y = modal_y + title_h;
     btn_y = modal_y + modal_h - buttons_h - padding_bottom;
@@ -212,7 +217,7 @@ DrawUIActionModal(ModalProps modal)
     DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
     FreeTextLayout(&msg_layout);
 
-    if(modal.close_icon.id != 0) {
+    if(result == 0 && modal.close_icon.id != 0) {
         int icon_size = ScaleUIPx(20);
         int icon_padding = ScaleUIPx(8);
         int icon_w = icon_size + icon_padding * 2;
@@ -321,6 +326,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     int icon_w = icon_size + icon_padding * 2;
     int title_w;
     int hover = 0;
+    Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
     Color scrim;
 
@@ -367,6 +373,11 @@ DrawUIModalFrame(int width, int height, const char *title,
     capture.width = (float)frame.w;
     capture.height = (float)frame.h;
     SetUIModalCapture(capture);
+    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !CheckCollisionPointRec(mouse_world, capture)) {
+        UIConsumeRelease();
+        frame.right_clicked = 1;
+    }
 
     scrim.r = 0;
     scrim.g = 0;
@@ -397,7 +408,7 @@ DrawUIModalFrame(int width, int height, const char *title,
                                                      icon_size, icon_padding,
                                                      left_icon, &hover);
     }
-    if(right_icon.id != 0) {
+    if(frame.right_clicked == 0 && right_icon.id != 0) {
         frame.right_clicked = DrawUIPaddedIconBtn(frame.x + frame.w - icon_w - ScaleUIPx(6),
                                                       frame.y + ScaleUIPx(6),
                                                       icon_size, icon_padding,
