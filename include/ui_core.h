@@ -32,6 +32,7 @@ typedef struct UIFrameState {
     int focus_frame_open;
     int focus_text_input_active;
     int text_input_requested;
+    int text_input_show_requested;
     int mouse_world_override_enabled;
     Vector2 mouse_world_override;
     unsigned long frame_serial;

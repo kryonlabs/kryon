@@ -91,6 +91,7 @@ static int g_ui_focus_text_input_active = 0;
 static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
 static int g_ui_text_input_requested = 0;
+static int g_ui_text_input_show_requested = 0;
 static TextInputPlatformCallback g_ui_text_input_platform_callback = NULL;
 static void ui_sync_platform_text_input(void);
 static int g_ui_text_area_drag_id = 0;
@@ -2569,6 +2570,7 @@ RenderTextArea(TextAreaProps area)
 
             focused = 1;
             ClaimUITextAreaFocus(area.focused);
+            g_ui_text_input_show_requested = 1;
             clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 wrap_width,
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
@@ -3102,6 +3104,7 @@ RenderTextField(TextFieldProps field)
                 abs(click_dx) <= ScaleUIPx(6) && abs(click_dy) <= ScaleUIPx(6);
             focused = 1;
             ClaimUITextFieldFocus(field.focused);
+            g_ui_text_input_show_requested = 1;
             if(max_scroll_x > 0) {
                 g_ui_text_field_pan_id = field.focus_id;
                 g_ui_text_field_pan_owner = field.focused;
@@ -3788,6 +3791,7 @@ SaveUIFrameState(void)
     state.focus_frame_open = g_ui_focus_frame_open;
     state.focus_text_input_active = g_ui_focus_text_input_active;
     state.text_input_requested = g_ui_text_input_requested;
+    state.text_input_show_requested = g_ui_text_input_show_requested;
     state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
     state.mouse_world_override = g_ui_mouse_world_override;
     state.frame_serial = g_ui_frame_serial;
@@ -3825,6 +3829,7 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_focus_frame_open = state.focus_frame_open;
     g_ui_focus_text_input_active = state.focus_text_input_active;
     g_ui_text_input_requested = state.text_input_requested;
+    g_ui_text_input_show_requested = state.text_input_show_requested;
     g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
     g_ui_mouse_world_override = state.mouse_world_override;
     g_ui_frame_serial = state.frame_serial;
@@ -4063,5 +4068,9 @@ ui_sync_platform_text_input(void)
         g_ui_platform_text_input_active = text_input_active;
         if(g_ui_text_input_platform_callback != NULL)
             g_ui_text_input_platform_callback(text_input_active);
+    } else if(text_input_active && g_ui_text_input_show_requested &&
+              g_ui_text_input_platform_callback != NULL) {
+        g_ui_text_input_platform_callback(1);
     }
+    g_ui_text_input_show_requested = 0;
 }
