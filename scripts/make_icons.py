@@ -295,6 +295,45 @@ def make_snap():
 
 fb_palette = {"R": R, "D": RD, "W": W, "K": K}
 mac_palette = {"G": G, "D": GD, "L": L}
+eye_palette = {"W": (245, 245, 245, 255)}
+
+eye = [
+    "................",
+    "................",
+    "................",
+    ".....WWWWWW.....",
+    "...WW......WW...",
+    "..WW........WW..",
+    ".WW....WW....WW.",
+    ".WW...WWWW...WW.",
+    ".WW...WWWW...WW.",
+    ".WW....WW....WW.",
+    "..WW........WW..",
+    "...WW......WW...",
+    ".....WWWWWW.....",
+    "................",
+    "................",
+    "................",
+]
+
+eye_off = [
+    "................",
+    ".............WW.",
+    "............WW..",
+    ".....WWWWW.WW...",
+    "...WW.....WWWW..",
+    "..WW.....WW..WW.",
+    ".WW....WW.....WW",
+    ".WW...WWWW...WW.",
+    ".WW..WW.WW...WW.",
+    ".WW.WW..WW...WW.",
+    "..WW........WW..",
+    ".WWWW......WW...",
+    "WW...WWWWWW.....",
+    "W...............",
+    "................",
+    "................",
+]
 
 
 def main():
@@ -308,6 +347,17 @@ def main():
     c_px, c_w, c_h = make_c()
     encode_png(os.path.join(icons, "c.png"), c_px, c_w, c_h)
     print("wrote icons/c.png (%dx%d)" % (c_w, c_h))
+
+    eye_rows, eye_w = grid(eye)
+    encode_png(os.path.join(icons, "eye.png"),
+               render(eye_rows, eye_palette), eye_w, len(eye_rows))
+    print("wrote icons/eye.png (%dx%d)" % (eye_w, len(eye_rows)))
+
+    eye_off_rows, eye_off_w = grid(eye_off)
+    encode_png(os.path.join(icons, "eye_off.png"),
+               render(eye_off_rows, eye_palette), eye_off_w, len(eye_off_rows))
+    print("wrote icons/eye_off.png (%dx%d)" %
+          (eye_off_w, len(eye_off_rows)))
 
     debian_px, debian_w, debian_h = make_debian()
     encode_png(os.path.join(platforms, "debian.png"),
