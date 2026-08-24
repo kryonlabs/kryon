@@ -2841,6 +2841,7 @@ SetTextAreaSelection(int focus_id, int anchor, int cursor)
 int
 RenderTextField(TextFieldProps field)
 {
+    static int fallback_focused = 0;
     char editor_id[96];
     UIWidget widget;
     int changed = 0;
@@ -2862,8 +2863,10 @@ RenderTextField(TextFieldProps field)
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
     if(field.text == NULL || field.text_size == 0 ||
-       field.cursor_position == NULL || field.focused == NULL)
+       field.cursor_position == NULL)
         return 0;
+    if(field.focused == NULL)
+        field.focused = &fallback_focused;
     memset(&field_edit, 0, sizeof(field_edit));
     field_edit.text = field.text;
     field_edit.text_size = field.text_size;
