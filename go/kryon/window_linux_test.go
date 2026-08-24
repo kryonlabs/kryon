@@ -44,6 +44,9 @@ func TestX11SocketParsesDisplay(t *testing.T) {
 }
 
 func TestX11KeyTranslation(t *testing.T) {
+	if got := specialKey(0xff1b); got != KeyEscape {
+		t.Fatalf("escape keysym = %d, want %d", got, KeyEscape)
+	}
 	if got := specialKey(0xff51); got != KeyLeft {
 		t.Fatalf("left keysym = %d, want %d", got, KeyLeft)
 	}
@@ -60,6 +63,7 @@ func TestX11KeyTranslation(t *testing.T) {
 
 func TestX11DecodeKeyEvents(t *testing.T) {
 	win := &x11Window{keysyms: map[uint8][]uint32{
+		9:  {0xff1b, 0},
 		22: {0xff08, 0},
 		36: {0xff0d, 0},
 		38: {'a', 'A'},
@@ -79,6 +83,11 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	ev, ok = win.decodeKey(22, 0)
 	if !ok || ev.kind != x11EventKey || ev.key != KeyBackspace {
 		t.Fatalf("decode backspace = %#v ok=%v, want KeyBackspace", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(9, 0)
+	if !ok || ev.kind != x11EventKey || ev.key != KeyEscape {
+		t.Fatalf("decode escape = %#v ok=%v, want KeyEscape", ev, ok)
 	}
 
 	ev, ok = win.decodeKey(36, 0)

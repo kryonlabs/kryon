@@ -968,6 +968,8 @@ func (w *x11Window) close() {
 
 func specialKey(ks uint32) int32 {
 	switch ks {
+	case 0xff1b:
+		return KeyEscape
 	case 0xff08:
 		return KeyBackspace
 	case 0xff09:
