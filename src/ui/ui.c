@@ -2843,7 +2843,12 @@ SetTextAreaSelection(int focus_id, int anchor, int cursor)
 int
 RenderTextField(TextFieldProps field)
 {
-    static int fallback_focused = 0;
+    enum { TEXT_FIELD_FALLBACK_FOCUS_SLOTS = 128 };
+    typedef struct {
+        unsigned int key;
+        int focused;
+    } TextFieldFallbackFocus;
+    static TextFieldFallbackFocus fallback_focus[TEXT_FIELD_FALLBACK_FOCUS_SLOTS];
     char editor_id[96];
     UIWidget widget;
     int changed = 0;
@@ -2867,8 +2872,38 @@ RenderTextField(TextFieldProps field)
     if(field.text == NULL || field.text_size == 0 ||
        field.cursor_position == NULL)
         return 0;
-    if(field.focused == NULL)
-        field.focused = &fallback_focused;
+    if(field.focused == NULL) {
+        unsigned int key = (unsigned int)field.focus_id;
+        int slot = -1;
+        int empty_slot = -1;
+
+        if(key == 0) {
+            key = 2166136261u;
+            key = (key ^ (unsigned int)(int)field.bounds.x) * 16777619u;
+            key = (key ^ (unsigned int)(int)field.bounds.y) * 16777619u;
+            key = (key ^ (unsigned int)(int)field.bounds.width) * 16777619u;
+            key = (key ^ (unsigned int)(int)field.bounds.height) * 16777619u;
+        }
+        if(key == 0)
+            key = 1;
+
+        for(int i = 0; i < TEXT_FIELD_FALLBACK_FOCUS_SLOTS; i++) {
+            if(fallback_focus[i].key == key) {
+                slot = i;
+                break;
+            }
+            if(fallback_focus[i].key == 0 && empty_slot < 0)
+                empty_slot = i;
+        }
+        if(slot < 0) {
+            slot = empty_slot >= 0
+                       ? empty_slot
+                       : (int)(key % TEXT_FIELD_FALLBACK_FOCUS_SLOTS);
+            fallback_focus[slot].key = key;
+            fallback_focus[slot].focused = 0;
+        }
+        field.focused = &fallback_focus[slot].focused;
+    }
     memset(&field_edit, 0, sizeof(field_edit));
     field_edit.text = field.text;
     field_edit.text_size = field.text_size;
