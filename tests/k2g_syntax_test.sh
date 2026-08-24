@@ -14,7 +14,7 @@ if [ ! -f "$k2g" ]; then
     exit 1
 fi
 
-mkdir -p "$work/src" "$work/out"
+mkdir -p "$work/src" "$work/out" "$work/hierarchy-out"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
@@ -55,11 +55,10 @@ state {
 app "Smoke" {
     size 320 240
     fps 60
-    frame main
 }
 
-frame main {
-    BeginFrame()
+App :: () #ui {
+    Screen root: {
     ClearBackground(GetThemeBackground())
     if tab == TAB_JOBS {
         Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
@@ -101,11 +100,14 @@ frame main {
     Href((HrefProps){.bounds = {ScaleUIPx(210), ScaleUIPx(110), ScaleUIPx(90), ScaleUIPx(24)}, .text = "docs", .href = "https://example.com", .font = Text16, .color = GetThemeLink()})
     Slider(9, ScaleUIPx(4), ScaleUIPx(170), ScaleUIPx(180), "S", 0, 100, &slider_val, "%", nil)
     Toggle(10, ScaleUIPx(200), ScaleUIPx(170), ScaleUIPx(120), ScaleUIPx(32), &toggle_val, "Off", "On")
-    Stack((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}, .key = Key("smoke-stack")})
-    Rect(ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
-    End()
-    Row((ColumnProps){.bounds = {ScaleUIPx(120), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}})
-    End()
+    Stack smoke_stack: {
+        bounds = {ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}
+        key = Key("smoke-stack")
+        Rect(ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
+    }
+    Row smoke_row: {
+        bounds = {ScaleUIPx(120), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}
+    }
     Modal("Title", "Message", "Cancel", "OK")
     TitleBar("Smoke", ScaleUIPx(32))
     TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = ScaleUIPx(320), .height = ScaleUIPx(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
@@ -153,15 +155,39 @@ retry:
     if attempts < 3 {
         goto retry
     }
-    EndFrame()
+    }
+}
+EOF
+
+cat > "$work/src/hierarchy.kry" <<'EOF'
+#import "kryon.h"
+
+app "Hierarchy" {
+    size 320 240
+}
+
+Main :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        padding = 8
+
+        Column body: {
+            gap = 4
+            Text("Hello", 0, 0, Text16, GetThemeText())
+        }
+    }
 }
 EOF
 
 "$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry"
-out=$(find "$work/out" -name "*.go" | head -1)
+"$k2g" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
+out="$work/out/valid.go"
+hier="$work/hierarchy-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
+[ -f "$hier" ] || { echo "k2g produced no hierarchy output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
+sh "$root/tests/check_clean_generated_output.sh" "$work/hierarchy-out"
 
 if "$k2g" --runtime github.com/waozixyz/kryon/go/kryui \
     --root "$work" -o "$work/out" "$work/src/valid.kry" \
@@ -176,7 +202,7 @@ grep -q 'package krygen' "$out"
 grep -q 'import kryon "github.com/waozixyz/kryon/go/kryon"' "$out"
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
-grep -q 'BeginFrame()' "$out"
+grep -q 'kryon.BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
 grep -q 'kryon.NewVector2(float32(kryon.ScaleUIPx(120)), float32(kryon.ScaleUIPx(120)))' "$out"
 grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
@@ -228,6 +254,11 @@ grep -q 'if st.Tab >= 0 {' "$out"
 
 # widget surface used by declarative apps.
 grep -q 'TabBar(' "$out"
+grep -q 'func Hierarchy_Main(viewport kryon.Rectangle)' "$hier"
+grep -q 'kryon.Screen(kryon.ColumnProps{Bounds: viewport, Padding: 8, Key: kryon.Key("Main/root")})' "$hier"
+grep -q 'kryon.Column(kryon.ColumnProps{Gap: 4, Key: kryon.Key("Main/root/body")})' "$hier"
+grep -q 'viewport := kryon.Rectangle{Width: float32(kryon.GetScreenWidth()), Height: float32(kryon.GetScreenHeight())}' "$hier"
+grep -q 'Hierarchy_Main(viewport)' "$hier"
 grep -q 'Checkbox(' "$out"
 grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
@@ -250,7 +281,7 @@ grep -q 'Slider(9,' "$out"
 grep -q 'Toggle(10,' "$out"
 grep -q 'kryon.Stack(kryon.ColumnProps{' "$out"
 grep -q 'Key("smoke-stack")' "$out"
-grep -q 'kryon.Row(kryon.ColumnProps{' "$out"
+grep -q 'kryon.Row(kryon.RowProps{' "$out"
 grep -q 'Modal("Title"' "$out"
 grep -q 'TitleBar("Smoke"' "$out"
 grep -q 'kryon.TopNav(kryon.TopNavProps{' "$out"

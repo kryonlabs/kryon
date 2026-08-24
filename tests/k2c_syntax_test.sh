@@ -36,50 +36,60 @@ state {
     menu_open: int = -1
 }
 
-screen Valid(viewport: Rectangle) {
-    int legacy_count
-    BeginFrame()
-    Background(GetThemeBackground())
-    Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText())
-    Column((ColumnProps){.bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}, .gap = ScaleUIPx(4), .padding = ScaleUIPx(6), .key = Key("form")})
-    TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
-    TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
-    Row((RowProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(32)}, .gap = ScaleUIPx(4), .padding = 0, .key = Key("actions")})
-    Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
-    End()
-    End()
-    menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
-    menus: [1] Menu = {{{0},"File",menu_items,2}}
-    menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,ScaleUIPx(200),ScaleUIPx(30)},menus,1,&menu_open)
-    if menu_result.activated_id != 0 {
-        count = menu_result.activated_id
+Valid :: (viewport: Rectangle) #ui {
+    app_count: int = 0
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText())
+        Column form: {
+            bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}
+            gap = ScaleUIPx(4)
+            padding = ScaleUIPx(6)
+            key = Key("form")
+            TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
+            TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
+            Row actions: {
+                bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(32)}
+                gap = ScaleUIPx(4)
+                padding = 0
+                key = Key("actions")
+                Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
+            }
+        }
+        menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
+        menus: [1] Menu = {{{0},"File",menu_items,2}}
+        menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,ScaleUIPx(200),ScaleUIPx(30)},menus,1,&menu_open)
+        if menu_result.activated_id != 0 {
+            count = menu_result.activated_id
+        }
+        if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
+            count = 302
+        }
+        nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
+        nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = ScaleUIPx(200), .view_height = ScaleUIPx(120), .count = 1, .items = nav_items, .height = ScaleUIPx(40)})
+        if nav_result.clicked_route != -1 {
+            count = nav_result.clicked_route
+        }
+        tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
+        count = TabBar((TabBarProps){.bounds = {0, ScaleUIPx(32), ScaleUIPx(120), ScaleUIPx(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
+        value := count + 1
+        unused value
+        if count == nil {
+            count = 0
+        }
+        else if count > 10 {
+            count = 1
+        }
+        else {
+            count = 2
+        }
+        while count < 3 {
+            count++
+        }
+        defer count = 0
+        unused app_count
     }
-    if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
-        count = 302
-    }
-    nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
-    nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = ScaleUIPx(200), .view_height = ScaleUIPx(120), .count = 1, .items = nav_items, .height = ScaleUIPx(40)})
-    if nav_result.clicked_route != -1 {
-        count = nav_result.clicked_route
-    }
-    tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
-    count = TabBar((TabBarProps){.bounds = {0, ScaleUIPx(32), ScaleUIPx(120), ScaleUIPx(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
-    value := count + 1
-    unused value
-    if count == nil {
-        count = 0
-    }
-    else if count > 10 {
-        count = 1
-    }
-    else {
-        count = 2
-    }
-    while count < 3 {
-        count++
-    }
-    defer count = 0
-    EndFrame()
 }
 
 knr_branches :: (n: int) -> int {
@@ -123,19 +133,43 @@ concat_sql :: () -> const char* {
 }
 EOF
 
-"$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry"
+cat > "$work/src/hierarchy.kry" <<'EOF'
+#import "kryon.h"
+
+app "Hierarchy" {
+    size 320 240
+}
+
+Main :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        padding = 8
+
+        Column body: {
+            gap = 4
+            Text("Hello", 0, 0, Text16, GetThemeText())
+        }
+    }
+}
+EOF
+
+"$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/hierarchy.kry"
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 
 c="$work/out/src/valid.c"
 h="$work/out/src/valid.h"
+hc="$work/out/src/hierarchy.c"
+project="$work/out/kryon_project.c"
 
 test -f "$c"
 test -f "$h"
+test -f "$hc"
+test -f "$project"
 
 # header: guard + include + prototype with converted args
 grep -Fq '#ifndef K_SRC_VALID_H' "$h"
 grep -Fq '#include "kryon.h"' "$h"
-grep -Fq 'void Valid_kry_draw(Rectangle viewport);' "$h"
+grep -Fq 'void Valid(Rectangle viewport);' "$h"
 grep -Fq 'FixtureCount = 4,' "$h"
 grep -Fq 'FixtureLimit = 12,' "$h"
 
@@ -154,18 +188,17 @@ grep -Fq 'static int area_scroll = 0;' "$c"
 grep -Fq 'static int menu_open = -1;' "$c"
 
 # function definition
-grep -Fq 'Valid_kry_draw(Rectangle viewport)' "$c"
-grep -Fq 'int legacy_count;' "$c"
+grep -Fq 'Valid(Rectangle viewport)' "$c"
+grep -Fq 'int app_count = 0;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry", 22);' "$c"
-grep -Fq 'BeginFrame();' "$c"
+grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
 grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText());' "$c"
 grep -Fq 'Column((ColumnProps)' "$c"
 grep -Fq 'TextField((TextFieldProps)' "$c"
 grep -Fq 'TextArea((TextAreaProps)' "$c"
-grep -Fq 'Row((RowProps)' "$c"
+grep -Fq 'Row((' "$c"
 grep -Fq 'Button((ButtonProps)' "$c"
 grep -Fq 'MenuItem menu_items[2]' "$c"
 grep -Fq 'MenuCommand' "$c"
@@ -177,7 +210,6 @@ grep -Fq 'BottomNavItem nav_items[1]' "$c"
 grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar((TabBarProps)' "$c"
-grep -Fq 'EndFrame();' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
 # inferred decl
@@ -239,14 +271,24 @@ fi
 
 # the generated C compiles
 cc -fsyntax-only -I"$root/include" -I"$work/out" "$c"
+cc -fsyntax-only -I"$root/include" -I"$work/out" "$hc"
+
+grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.h"
+grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
+grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
+grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
+grep -Fq '{"Main", "Project", "Main", "src/hierarchy.kry"' "$project"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"
 NEVER :: 0
 #assert NEVER, "intentional assertion failure"
 
-screen AssertFail(viewport: Rectangle) {
-    Background(GetThemeBackground())
+AssertFail :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+    }
 }
 EOF
 
