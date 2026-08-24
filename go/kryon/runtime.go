@@ -656,6 +656,8 @@ type runtime struct {
 	mousePos       Vector2
 	mouseWheel     float32
 	mouseDown      map[int32]bool
+	mousePressed   map[int32]bool
+	mouseReleased  map[int32]bool
 	keyDown        map[int32]bool
 	chars          []rune
 	fieldOrder     []int32
@@ -739,6 +741,8 @@ func New(config AppConfig) Runtime {
 		focusRefs:      map[int32]*bool{},
 		selection:      map[int32]selection{},
 		mouseDown:      map[int32]bool{},
+		mousePressed:   map[int32]bool{},
+		mouseReleased:  map[int32]bool{},
 		keyDown:        map[int32]bool{},
 		currentThemeID: ThemeMono,
 		themeSource:    ThemeSourceSystem,
@@ -769,12 +773,25 @@ func (r *runtime) QueueTap(x, y float32) {
 	r.QueueMouseButton(MouseButtonLeft, x, y)
 }
 func (r *runtime) QueueMouseButton(button int32, x, y float32) {
+	r.QueueMouseButtonDown(button, x, y)
+	r.QueueMouseButtonUp(button, x, y)
+}
+func (r *runtime) QueueMouseButtonDown(button int32, x, y float32) {
 	r.mousePos = Vector2{X: x, Y: y}
 	r.mouseDown[button] = true
+	r.mousePressed[button] = true
 	r.clicks = append(r.clicks, mouseClickEvent{button: button, x: x, y: y, when: time.Now()})
 	if button == MouseButtonLeft {
 		r.taps = append(r.taps, tapEvent{x: x, y: y})
 	}
+}
+func (r *runtime) QueueMouseMove(x, y float32) {
+	r.mousePos = Vector2{X: x, Y: y}
+}
+func (r *runtime) QueueMouseButtonUp(button int32, x, y float32) {
+	r.mousePos = Vector2{X: x, Y: y}
+	r.mouseDown[button] = false
+	r.mouseReleased[button] = true
 }
 func (r *runtime) QueueMouseWheel(delta float32) {
 	r.mouseWheel += delta
@@ -783,7 +800,13 @@ func (r *runtime) MousePosition() Vector2 {
 	return r.mousePos
 }
 func (r *runtime) MouseButtonPressed(button int32) bool {
+	return r.mousePressed[button]
+}
+func (r *runtime) MouseButtonDown(button int32) bool {
 	return r.mouseDown[button]
+}
+func (r *runtime) MouseButtonReleased(button int32) bool {
+	return r.mouseReleased[button]
 }
 func (r *runtime) MouseWheelMove() float32 {
 	return r.mouseWheel
@@ -822,7 +845,8 @@ func (r *runtime) EndFrame() {
 	r.taps = nil
 	r.clicks = nil
 	r.mouseWheel = 0
-	r.mouseDown = map[int32]bool{}
+	r.mousePressed = map[int32]bool{}
+	r.mouseReleased = map[int32]bool{}
 	r.keyDown = map[int32]bool{}
 	r.chars = nil
 	r.inputEvents = nil

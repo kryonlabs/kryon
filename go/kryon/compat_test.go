@@ -17,6 +17,12 @@ func TestCompatDrawingAndInputAPI(t *testing.T) {
 	if !IsMouseButtonPressed(MouseButtonLeft) {
 		t.Fatal("left mouse button not reported")
 	}
+	if IsMouseButtonDown(MouseButtonLeft) {
+		t.Fatal("tap should not remain down")
+	}
+	if !IsMouseButtonReleased(MouseButtonLeft) {
+		t.Fatal("tap release not reported")
+	}
 	if !IsKeyPressed(KeyDown) {
 		t.Fatal("key down not reported")
 	}

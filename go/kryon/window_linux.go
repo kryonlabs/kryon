@@ -112,12 +112,18 @@ func (r *windowRuntime) pumpEvents() {
 			r.window.width = ev.x
 			r.window.height = ev.y
 		case x11EventTap:
-			if c, ok := r.Runtime.(legacyPointerController); ok {
+			if c, ok := r.Runtime.(mouseController); ok {
+				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
+			} else if c, ok := r.Runtime.(legacyPointerController); ok {
 				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
-			} else if ev.button == MouseButtonLeft {
-				if c, ok := r.Runtime.(pointerController); ok {
-					c.QueueTap(float32(ev.x), float32(ev.y))
-				}
+			}
+		case x11EventMotion:
+			if c, ok := r.Runtime.(mouseController); ok {
+				c.QueueMouseMove(float32(ev.x), float32(ev.y))
+			}
+		case x11EventRelease:
+			if c, ok := r.Runtime.(mouseController); ok {
+				c.QueueMouseButtonUp(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventWheel:
 			if c, ok := r.Runtime.(legacyPointerController); ok {
@@ -201,6 +207,20 @@ func (r *windowRuntime) MouseButtonPressed(button int32) bool {
 	return false
 }
 
+func (r *windowRuntime) MouseButtonDown(button int32) bool {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.MouseButtonDown(button)
+	}
+	return false
+}
+
+func (r *windowRuntime) MouseButtonReleased(button int32) bool {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.MouseButtonReleased(button)
+	}
+	return false
+}
+
 func (r *windowRuntime) MouseWheelMove() float32 {
 	if c, ok := r.Runtime.(compatInputRuntime); ok {
 		return c.MouseWheelMove()
@@ -225,6 +245,8 @@ func (r *windowRuntime) CharPressed() int32 {
 const (
 	x11EventKeyPress        = 2
 	x11EventButtonPress     = 4
+	x11EventButtonRelease   = 5
+	x11EventMotionNotify    = 6
 	x11EventExpose          = 12
 	x11EventConfigureNotify = 22
 	x11EventClientMessage   = 33
@@ -234,6 +256,8 @@ const (
 
 	x11EventMaskKeyPress        = 1 << 0
 	x11EventMaskButtonPress     = 1 << 2
+	x11EventMaskButtonRelease   = 1 << 3
+	x11EventMaskPointerMotion   = 1 << 6
 	x11EventMaskExposure        = 1 << 15
 	x11EventMaskStructureNotify = 1 << 17
 
@@ -287,6 +311,8 @@ const (
 	x11EventClose x11EventKind = iota + 1
 	x11EventResize
 	x11EventTap
+	x11EventMotion
+	x11EventRelease
 	x11EventWheel
 	x11EventKey
 )
@@ -517,7 +543,7 @@ func (w *x11Window) create(config AppConfig) error {
 
 	values := []uint32{
 		0xffffff,
-		x11EventMaskKeyPress | x11EventMaskButtonPress | x11EventMaskExposure | x11EventMaskStructureNotify,
+		x11EventMaskKeyPress | x11EventMaskButtonPress | x11EventMaskButtonRelease | x11EventMaskPointerMotion | x11EventMaskExposure | x11EventMaskStructureNotify,
 	}
 	req := make([]byte, 32+len(values)*4)
 	req[0] = 1
@@ -863,6 +889,20 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 		case 5:
 			return x11Event{kind: x11EventWheel, wheel: -1}, true
 		}
+	case x11EventButtonRelease:
+		button := int32(buf[1])
+		x := int(int16(get16(buf[24:])))
+		y := int(int16(get16(buf[26:])))
+		switch button {
+		case 1:
+			return x11Event{kind: x11EventRelease, button: MouseButtonLeft, x: x, y: y}, true
+		case 3:
+			return x11Event{kind: x11EventRelease, button: MouseButtonRight, x: x, y: y}, true
+		}
+	case x11EventMotionNotify:
+		x := int(int16(get16(buf[24:])))
+		y := int(int16(get16(buf[26:])))
+		return x11Event{kind: x11EventMotion, x: x, y: y}, true
 	case x11EventConfigureNotify:
 		return x11Event{kind: x11EventResize, x: int(get16(buf[20:])), y: int(get16(buf[22:]))}, true
 	case x11EventClientMessage:

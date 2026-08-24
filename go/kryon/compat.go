@@ -11,6 +11,8 @@ var compatStart = time.Now()
 type compatInputRuntime interface {
 	MousePosition() Vector2
 	MouseButtonPressed(int32) bool
+	MouseButtonDown(int32) bool
+	MouseButtonReleased(int32) bool
 	MouseWheelMove() float32
 	KeyPressed(int32) bool
 	CharPressed() int32
@@ -93,6 +95,20 @@ func GetMousePosition() Vector2 {
 func IsMouseButtonPressed(button int32) bool {
 	if rt, ok := active().(compatInputRuntime); ok {
 		return rt.MouseButtonPressed(button)
+	}
+	return false
+}
+
+func IsMouseButtonDown(button int32) bool {
+	if rt, ok := active().(compatInputRuntime); ok {
+		return rt.MouseButtonDown(button)
+	}
+	return false
+}
+
+func IsMouseButtonReleased(button int32) bool {
+	if rt, ok := active().(compatInputRuntime); ok {
+		return rt.MouseButtonReleased(button)
 	}
 	return false
 }

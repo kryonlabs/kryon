@@ -169,6 +169,29 @@ func TestWindowRuntimeDelegatesCompatInput(t *testing.T) {
 	}
 }
 
+func TestX11DecodeMouseReleaseAndMotion(t *testing.T) {
+	win := &x11Window{}
+	buf := make([]byte, 32)
+
+	buf[0] = x11EventButtonRelease
+	buf[1] = 1
+	put16(buf[24:], 42)
+	put16(buf[26:], 58)
+	ev, ok := win.decodeEvent(buf)
+	if !ok || ev.kind != x11EventRelease || ev.button != MouseButtonLeft || ev.x != 42 || ev.y != 58 {
+		t.Fatalf("decoded release = %#v ok=%v", ev, ok)
+	}
+
+	buf = make([]byte, 32)
+	buf[0] = x11EventMotionNotify
+	put16(buf[24:], 77)
+	put16(buf[26:], 91)
+	ev, ok = win.decodeEvent(buf)
+	if !ok || ev.kind != x11EventMotion || ev.x != 77 || ev.y != 91 {
+		t.Fatalf("decoded motion = %#v ok=%v", ev, ok)
+	}
+}
+
 func TestX11SetInputFocusRequest(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

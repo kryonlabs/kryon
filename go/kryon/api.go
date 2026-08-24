@@ -33,6 +33,13 @@ type pointerController interface {
 	QueueTap(float32, float32)
 }
 
+type mouseController interface {
+	QueueMouseButton(int32, float32, float32)
+	QueueMouseButtonDown(int32, float32, float32)
+	QueueMouseMove(float32, float32)
+	QueueMouseButtonUp(int32, float32, float32)
+}
+
 type inputController interface {
 	QueueText(string)
 	QueueKey(int32)

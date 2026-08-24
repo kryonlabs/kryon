@@ -854,6 +854,46 @@ func TestTableViewClipboardShortcuts(t *testing.T) {
 	}
 }
 
+func TestMouseButtonDownAndReleaseState(t *testing.T) {
+	rt := New(AppConfig{Width: 200, Height: 120}).(*runtime)
+
+	rt.QueueMouseButtonDown(MouseButtonLeft, 10, 20)
+	rt.BeginFrame()
+	if !rt.MouseButtonPressed(MouseButtonLeft) {
+		t.Fatal("button down should report pressed on first frame")
+	}
+	if !rt.MouseButtonDown(MouseButtonLeft) {
+		t.Fatal("button down should remain held")
+	}
+	if rt.MouseButtonReleased(MouseButtonLeft) {
+		t.Fatal("button down should not report released")
+	}
+	rt.EndFrame()
+
+	rt.BeginFrame()
+	if rt.MouseButtonPressed(MouseButtonLeft) {
+		t.Fatal("held button should not report pressed on following frame")
+	}
+	if !rt.MouseButtonDown(MouseButtonLeft) {
+		t.Fatal("button should remain down after frame")
+	}
+	rt.EndFrame()
+
+	rt.QueueMouseMove(15, 25)
+	rt.QueueMouseButtonUp(MouseButtonLeft, 30, 40)
+	rt.BeginFrame()
+	if rt.MouseButtonDown(MouseButtonLeft) {
+		t.Fatal("button should not remain down after release")
+	}
+	if !rt.MouseButtonReleased(MouseButtonLeft) {
+		t.Fatal("button release not reported")
+	}
+	if got, want := rt.MousePosition(), (Vector2{X: 30, Y: 40}); got != want {
+		t.Fatalf("release position = %#v, want %#v", got, want)
+	}
+	rt.EndFrame()
+}
+
 func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 260}).(*runtime)
 	selectedRow := int32(0)

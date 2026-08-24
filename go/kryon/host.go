@@ -84,6 +84,42 @@ func (h *Host) QueueTap(x, y float32) {
 	}
 }
 
+func (h *Host) QueueMouseButton(button int32, x, y float32) {
+	if h == nil {
+		return
+	}
+	if runtime, ok := h.runtime.(mouseController); ok {
+		runtime.QueueMouseButton(button, x, y)
+	}
+}
+
+func (h *Host) QueueMouseButtonDown(button int32, x, y float32) {
+	if h == nil {
+		return
+	}
+	if runtime, ok := h.runtime.(mouseController); ok {
+		runtime.QueueMouseButtonDown(button, x, y)
+	}
+}
+
+func (h *Host) QueueMouseMove(x, y float32) {
+	if h == nil {
+		return
+	}
+	if runtime, ok := h.runtime.(mouseController); ok {
+		runtime.QueueMouseMove(x, y)
+	}
+}
+
+func (h *Host) QueueMouseButtonUp(button int32, x, y float32) {
+	if h == nil {
+		return
+	}
+	if runtime, ok := h.runtime.(mouseController); ok {
+		runtime.QueueMouseButtonUp(button, x, y)
+	}
+}
+
 func (h *Host) QueueText(text string) {
 	if h == nil {
 		return
