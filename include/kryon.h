@@ -50,6 +50,7 @@
 #include "embedded_assets.h"
 #include "desktop.h"
 #include "desktop_tray.h"
+#include "android_surface.h"
 #include "markdown.h"
 #include "app_host.h"
 #include "app_runtime.h"
