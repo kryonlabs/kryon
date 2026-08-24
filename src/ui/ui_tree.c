@@ -1470,7 +1470,7 @@ Paragraph(ParagraphSpec paragraph, int x, int *y)
                      (Rectangle){x, start_y, paragraph.width, 0}, NULL);
     node = UINodeParagraph(paragraph, x, start_y);
     ui_tree_store_node(id, node);
-    DrawUIParagraph(paragraph, x, y);
+    ui_draw_paragraph(paragraph, x, y);
 }
 
 void

@@ -224,7 +224,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     text_clip_h = controls_y - controls_gap - y;
     if(text_clip_h > 0) {
         BeginUIClip((int)tip.x + pad, y, paragraph.width, text_clip_h);
-        DrawUIParagraph(paragraph, (int)tip.x + pad, &y);
+        Paragraph(paragraph, (int)tip.x + pad, &y);
         EndUIClip();
     }
 

@@ -124,7 +124,7 @@ int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
 int DrawUISelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
-void DrawUIParagraph(ParagraphSpec paragraph, int x, int *y);
+void ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);

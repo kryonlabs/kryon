@@ -3318,7 +3318,7 @@ ui_paragraph_height(ParagraphSpec paragraph)
 }
 
 void
-DrawUIParagraph(ParagraphSpec paragraph, int x, int *y)
+ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;

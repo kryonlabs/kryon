@@ -208,9 +208,11 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     case 7: /* triangle */ ctx.fillStyle = col; ctx.beginPath();
             ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.lineTo(e, f);
             ctx.closePath(); ctx.fill(); break;
-    case 9: /* scissor push */ ctx.save(); ctx.beginPath();
-            ctx.rect(a, b, c, d); ctx.clip(); K.saved++; break;
-    case 10: /* scissor pop */ if (K.saved > 0) { ctx.restore(); K.saved--; }
+    case 9: /* scissor begin: raylib replaces the active scissor */
+            while (K.saved > 0) { ctx.restore(); K.saved--; }
+            ctx.save(); ctx.beginPath();
+            ctx.rect(a, b, c, d); ctx.clip(); K.saved = 1; break;
+    case 10: /* scissor end */ if (K.saved > 0) { ctx.restore(); K.saved = 0; }
              break;
     case 11: /* mode2d push: raylib camera transform */
              ctx.save();
@@ -221,6 +223,7 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
              break;
     case 12: /* mode2d pop */ ctx.restore(); break;
     case 13: /* frame reset: identity transform */
+             while (K.saved > 0) { ctx.restore(); K.saved--; }
              ctx.setTransform(1, 0, 0, 1, 0, 0);
              K.saved = 0;
              break;
