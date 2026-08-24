@@ -1416,6 +1416,12 @@ SetUIFocusTextInputActive(int active)
         g_ui_text_input_requested = 1;
     } else {
         g_ui_focus_text_input_active = 0;
+        g_ui_text_input_requested = 0;
+        if(g_ui_platform_text_input_active) {
+            g_ui_platform_text_input_active = 0;
+            if(g_ui_text_input_platform_callback != NULL)
+                g_ui_text_input_platform_callback(0);
+        }
     }
 }
 
