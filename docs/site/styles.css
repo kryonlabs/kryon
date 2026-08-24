@@ -835,12 +835,6 @@ a.app-author:hover {
   margin-top: 22px;
 }
 
-.showcase-note {
-  margin-top: var(--space-sm);
-  color: var(--ink-soft);
-  font-size: 13px;
-}
-
 .showcase-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
