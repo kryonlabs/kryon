@@ -58,6 +58,10 @@ app "Smoke" {
     fps 60
 }
 
+local_value :: () -> int {
+    return ScaleUIPx(5)
+}
+
 App :: () #ui {
     Screen root: {
     ClearBackground(GetThemeBackground())
@@ -151,6 +155,7 @@ App :: () #ui {
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), "")
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), "")
+    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), "")
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
 retry:
@@ -255,6 +260,7 @@ grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
+grep -q 'Valid_LocalValue(st)' "$out"
 
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"

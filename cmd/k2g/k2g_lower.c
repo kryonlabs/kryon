@@ -1525,7 +1525,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 char fname[K2G_NAME_MAX * 2];
                 size_t fl;
 
-                camel(m->functions[fni].name, fname, sizeof(fname));
+                {
+                    char local[K2G_NAME_MAX];
+
+                    camel(m->functions[fni].name, local, sizeof(local));
+                    snprintf(fname, sizeof(fname), "%s_%s", g_guard, local);
+                }
                 fl = strlen(fname);
                 if(dn + fl + 16 < dst_size) {
                     memcpy(dst + dn, fname, fl);
@@ -1922,7 +1927,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     camel(fn->name, fname, sizeof(fname));
     /* signature: (st *State, <converted args>) */
     {
-        char parts[8][K2G_TEXT_MAX];
+        char parts[32][K2G_TEXT_MAX];
         int n, i;
         int emitted = 0;
 
@@ -1932,7 +1937,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             emitted = 1;
         }
         if(fn->args[0] != '\0') {
-            n = split_top(fn->args, parts, 8);
+            n = split_top(fn->args, parts, 32);
             for(i = 0; i < n; i++) {
                 char *colon = strchr(parts[i], ':');
                 char aname[K2G_NAME_MAX], atype[K2G_NAME_MAX];
