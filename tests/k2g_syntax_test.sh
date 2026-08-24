@@ -26,6 +26,7 @@ query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
 label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
+direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -148,6 +149,7 @@ App :: () #ui {
     SetCurrentTheme(0, 1)
     Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
+    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), "")
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
 retry:
@@ -200,6 +202,7 @@ grep -q 'usage: k2g' "$work/runtime_override.err"
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
 grep -q 'import kryon "github.com/waozixyz/kryon/go/kryon"' "$out"
+grep -q 'import kryonpkg "github.com/waozixyz/kryon/go/kryon"' "$out"
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'kryon.BeginFrame()' "$out"
@@ -232,9 +235,14 @@ grep -q 'QueryJobs(Since int64, Limit int32) int32' "$out"
 grep -q 'LabelText(I int32) string' "$out"
 grep -q 'TabLabels() \[\]string' "$out"
 grep -q 'StoreSecret(Secret string, Site string, Login string, A int32, B int32, C int32, D int32, E int32, F int32, Exclude string) int32' "$out"
+if grep -q 'ScaleUIPx(Value int32)' "$out"; then
+    echo "k2g placed a direct Go extern in the host interface" >&2
+    exit 1
+fi
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
+grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
 
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"

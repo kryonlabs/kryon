@@ -299,11 +299,14 @@ k2g_is_go_elided_lifecycle(const char *text)
 typedef struct {
     char kry[K2G_NAME_MAX];        /* kry call name */
     char go[K2G_NAME_MAX];         /* Host interface method */
+    char go_import_path[KIR_PATH_MAX];  /* direct Go package import path */
+    char go_import_alias[K2G_NAME_MAX]; /* import alias for direct calls */
     char pnames[K2G_EXTERN_PARAM_MAX][K2G_NAME_MAX];  /* parameter names */
     char ptypes[K2G_EXTERN_PARAM_MAX][K2G_NAME_MAX];  /* parameter kry types */
     int pcount;
     char ret[K2G_NAME_MAX];
     char host_var[K2G_NAME_MAX + 8];   /* guard-prefixed host var */
+    int direct_go;
 } K2gExtern;
 
 /* One enum member visible to expressions (bare kry name -> qualified Go const). */
@@ -402,6 +405,49 @@ extern_go_name(const char *target, const char *kry, char *dst, size_t dst_size)
     }
 }
 
+/* A fully-qualified Go extern target uses an import path plus function name,
+ * e.g. '#extern "github.com/waozixyz/pass.Generate"'. Short targets like
+ * 'smoke.QueryJobs' intentionally keep the historical host-interface bridge. */
+static int
+extern_direct_go_target(const char *target, char *import_path,
+                        size_t import_path_size, char *alias,
+                        size_t alias_size)
+{
+    const char *dot;
+    const char *slash;
+    const char *base;
+    size_t n = 0;
+
+    if(target == NULL)
+        return 0;
+    dot = strrchr(target, '.');
+    slash = strrchr(target, '/');
+    if(dot == NULL || slash == NULL || slash > dot)
+        return 0;
+    snprintf(import_path, import_path_size, "%.*s", (int)(dot - target),
+             target);
+    base = slash + 1;
+    while(base < dot && n + 1 < alias_size) {
+        char c = *base++;
+
+        if(isalnum((unsigned char)c) || c == '_')
+            alias[n++] = c;
+        else
+            alias[n++] = '_';
+    }
+    if(n == 0 && alias_size > 1)
+        alias[n++] = 'x';
+    if(isdigit((unsigned char)alias[0]) && n + 1 < alias_size) {
+        memmove(alias + 1, alias, n + 1);
+        alias[0] = 'x';
+        n++;
+    }
+    alias[n] = '\0';
+    if(strcmp(alias, K2G_RUNTIME_PKG) == 0 && n + 2 < alias_size)
+        snprintf(alias + n, alias_size - n, "pkg");
+    return import_path[0] != '\0';
+}
+
 /* Register one extern (idempotent: first declaration wins). */
 static void
 add_extern(const char *kry, const char *args, const char *ret,
@@ -417,6 +463,10 @@ add_extern(const char *kry, const char *args, const char *ret,
     snprintf(ex->ret, sizeof(ex->ret), "%s", ret);
     split_params(args, ex);
     extern_go_name(target, kry, ex->go, sizeof(ex->go));
+    ex->direct_go = extern_direct_go_target(target, ex->go_import_path,
+                                            sizeof(ex->go_import_path),
+                                            ex->go_import_alias,
+                                            sizeof(ex->go_import_alias));
     /* guard "KryApp" -> host var "kryAppHost" */
     snprintf(ex->host_var, sizeof(ex->host_var), "%c%sHost",
              (char)tolower((unsigned char)g_guard[0]), g_guard + 1);
@@ -1333,9 +1383,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     continue;
                 }
             }
-            /* '#extern' host bridge: name(args) -> host.Method(args). The
-             * check precedes the module-function path because extern
-             * prototypes also sit in the function table (bodyless). */
+            /* '#extern' bridge: direct Go import for fully-qualified targets,
+             * otherwise the historical host-interface method. The check
+             * precedes the module-function path because extern prototypes
+             * also sit in the function table (bodyless). */
             {
                 int xi = k2g_extern_index(ident, il);
 
@@ -1372,9 +1423,16 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(*ae == ')')
                         ae++;
                     p = ae;
-                    dn += (size_t)snprintf(dst + dn, K2G_TEXT_MAX - dn,
-                                           "%s.%s(", g_externs[xi].host_var,
-                                           g_externs[xi].go);
+                    if(g_externs[xi].direct_go)
+                        dn += (size_t)snprintf(dst + dn, K2G_TEXT_MAX - dn,
+                                               "%s.%s(",
+                                               g_externs[xi].go_import_alias,
+                                               g_externs[xi].go);
+                    else
+                        dn += (size_t)snprintf(dst + dn, K2G_TEXT_MAX - dn,
+                                               "%s.%s(",
+                                               g_externs[xi].host_var,
+                                               g_externs[xi].go);
                     if(!all_ws) {
                         char parts[K2G_EXTERN_PARAM_MAX][K2G_TEXT_MAX];
                         int n = split_top(raw, parts, K2G_EXTERN_PARAM_MAX);
@@ -2148,17 +2206,49 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "package %s\n\n", pkg);
             fprintf(f, "import %s \"%s\"\n\n", K2G_RUNTIME_PKG,
                     K2G_RUNTIME_IMPORT);
+            for(int i = 0; i < g_extern_count; i++) {
+                int duplicate = 0;
+
+                if(!g_externs[i].direct_go)
+                    continue;
+                for(int j = 0; j < i; j++) {
+                    if(g_externs[j].direct_go &&
+                       strcmp(g_externs[j].go_import_path,
+                              g_externs[i].go_import_path) == 0) {
+                        duplicate = 1;
+                        break;
+                    }
+                }
+                if(!duplicate)
+                    fprintf(f, "import %s \"%s\"\n",
+                            g_externs[i].go_import_alias,
+                            g_externs[i].go_import_path);
+            }
+            if(g_extern_count > 0)
+                fprintf(f, "\n");
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
 
                 if(imp->kind == KIR_IMPORT_HEADER)
                     fprintf(f, "// #import %s\n", imp->target);
-                /* KIR_IMPORT_EXTERN is bridged by the Host interface below. */
+                /* KIR_IMPORT_EXTERN lowers either to direct Go imports above
+                 * or to the Host interface below. */
             }
             /* '#extern' host bridge: one interface, one package var, one
              * setter. Generated frames call hostVar.Method(...) directly. */
-            if(g_extern_count > 0) {
+            {
+                int first_host = -1;
+                int host_count = 0;
+
+                for(int i = 0; i < g_extern_count; i++) {
+                    if(g_externs[i].direct_go)
+                        continue;
+                    if(first_host < 0)
+                        first_host = i;
+                    host_count++;
+                }
+            if(host_count > 0) {
                 fprintf(f, "// %sHost bridges '#extern' declarations to the",
                         guard);
                 fprintf(f, " embedding Go program.\ntype %sHost interface {\n",
@@ -2167,6 +2257,8 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     const K2gExtern *ex = &g_externs[i];
                     char gt[K2G_NAME_MAX];
 
+                    if(ex->direct_go)
+                        continue;
                     fprintf(f, "\t%s(", ex->go);
                     for(int a = 0; a < ex->pcount; a++) {
                         char aname[K2G_NAME_MAX];
@@ -2182,12 +2274,15 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     fprintf(f, "\n");
                 }
                 fprintf(f, "}\n\n");
-                fprintf(f, "var %s %sHost\n\n", g_externs[0].host_var, guard);
+                fprintf(f, "var %s %sHost\n\n",
+                        g_externs[first_host].host_var, guard);
                 fprintf(f, "// Set%sHost wires the '#extern' bridge before",
                         guard);
                 fprintf(f, " the first frame runs.\nfunc Set%sHost(host %sHost)",
                         guard, guard);
-                fprintf(f, " {\n\t%s = host\n}\n\n", g_externs[0].host_var);
+                fprintf(f, " {\n\t%s = host\n}\n\n",
+                        g_externs[first_host].host_var);
+            }
             }
             /* types */
             int enum_idx = 0;

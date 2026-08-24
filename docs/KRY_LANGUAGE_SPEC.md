@@ -206,7 +206,7 @@ must not require a second source-language path around KIR.
 | Module imports | yes | yes | partial | partial |
 | State block | yes | yes | yes | yes |
 | Structs and type aliases | yes | yes | partial | partial |
-| Tagged extern declarations | yes | yes | host interface | host/capability subset |
+| Tagged extern declarations | yes | yes | host interface or direct Go package call | host/capability subset |
 | `#defined` guards | yes | yes | partial | partial |
 | `#run` integer constants | yes | yes | yes | yes |
 | `#assert` | yes | `#if/#error` | known true only | known true only |
@@ -219,7 +219,10 @@ must not require a second source-language path around KIR.
 ## Known Boundaries
 
 - C is the broadest backend and the canonical ABI path.
-- Go is a declarative app subset with host interfaces for tagged externs.
+- Go is a declarative app subset. Tagged extern targets that contain a full Go
+  import path, such as `github.com/example/app.Generate`, are imported and
+  called directly by generated Go; short targets such as `app.Generate` remain
+  host-interface methods.
 - KRB is a portable cartridge subset with explicit host/capability boundaries.
 - `defer` is currently a C-oriented compile-time transform.
 - Raw C lines are not portable.
