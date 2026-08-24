@@ -133,6 +133,23 @@ static double g_ui_text_field_last_click_time = 0.0;
 static int g_ui_text_field_drag_id = 0;
 static int *g_ui_text_field_drag_owner = NULL;
 
+#define UI_TEXT_FIELD_SCROLL_CACHE_SIZE 128
+
+typedef struct UITextFieldScrollCacheEntry {
+    int id;
+    int *owner;
+    int scroll_x;
+} UITextFieldScrollCacheEntry;
+
+static UITextFieldScrollCacheEntry g_ui_text_field_scroll_cache[UI_TEXT_FIELD_SCROLL_CACHE_SIZE];
+static int g_ui_text_field_scroll_cache_next = 0;
+static int g_ui_text_field_pan_id = 0;
+static int *g_ui_text_field_pan_owner = NULL;
+static int g_ui_text_field_pan_start_x = 0;
+static int g_ui_text_field_pan_start_y = 0;
+static int g_ui_text_field_pan_start_scroll = 0;
+static int g_ui_text_field_panning = 0;
+
 enum {
     UI_TEXT_CONTEXT_NONE = 0,
     UI_TEXT_CONTEXT_FIELD,
@@ -241,6 +258,9 @@ ui_clear_text_field_selection(void)
     ui_text_selection_clear(&g_ui_text_field_selection);
     g_ui_text_field_drag_id = 0;
     g_ui_text_field_drag_owner = NULL;
+    g_ui_text_field_pan_id = 0;
+    g_ui_text_field_pan_owner = NULL;
+    g_ui_text_field_panning = 0;
 }
 
 static void
@@ -270,6 +290,46 @@ ui_text_selection_set(TextSelection *selection, int id, int *owner,
     selection->anchor = anchor;
     selection->cursor = cursor;
     selection->dragging = dragging;
+}
+
+static int
+ui_text_field_scroll_entry_matches(UITextFieldScrollCacheEntry entry,
+                                   int id, int *owner)
+{
+    if(id > 0)
+        return entry.id == id;
+    return entry.id == 0 && entry.owner == owner;
+}
+
+static int *
+ui_text_field_scroll_for(int id, int *owner)
+{
+    int empty_slot = -1;
+    int slot;
+
+    for(int i = 0; i < UI_TEXT_FIELD_SCROLL_CACHE_SIZE; i++) {
+        if(ui_text_field_scroll_entry_matches(g_ui_text_field_scroll_cache[i],
+                                              id, owner))
+            return &g_ui_text_field_scroll_cache[i].scroll_x;
+        if(g_ui_text_field_scroll_cache[i].id == 0 &&
+           g_ui_text_field_scroll_cache[i].owner == NULL &&
+           empty_slot < 0)
+            empty_slot = i;
+    }
+
+    if(empty_slot >= 0) {
+        slot = empty_slot;
+    } else {
+        slot = g_ui_text_field_scroll_cache_next;
+        g_ui_text_field_scroll_cache_next =
+            (g_ui_text_field_scroll_cache_next + 1) %
+            UI_TEXT_FIELD_SCROLL_CACHE_SIZE;
+    }
+
+    g_ui_text_field_scroll_cache[slot].id = id;
+    g_ui_text_field_scroll_cache[slot].owner = id > 0 ? NULL : owner;
+    g_ui_text_field_scroll_cache[slot].scroll_x = 0;
+    return &g_ui_text_field_scroll_cache[slot].scroll_x;
 }
 
 Vector2
@@ -1413,7 +1473,7 @@ static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
-                  int selection_end)
+                  int selection_end, int scroll_x)
 {
     const char *value = text ? text : "";
     int x = (int)bounds.x;
@@ -1421,8 +1481,9 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     int w = (int)bounds.width;
     int h = (int)bounds.height;
     int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
+    int clip_w = w - padding_x * 2;
     int clip_guard = 1;
-    int text_x = x + padding_x;
+    int text_x = x + padding_x - scroll_x;
     int text_y = GetUIControlTextY(value, y, h, font);
     int cursor_h = ui_control_cursor_height(font, h);
     int cursor_y = y + (h - cursor_h) / 2;
@@ -1450,8 +1511,10 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         ui_draw_box_background(bounds, radius, style.background, border);
     }
 
+    if(clip_w < 0)
+        clip_w = 0;
     ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
-                                    (float)(w - padding_x * 2),
+                                    (float)clip_w,
                                     (float)(h + clip_guard * 2)});
     if(selection_end > selection_start) {
         char prefix[1024];
@@ -1508,7 +1571,7 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          TextInputStyle style)
 {
     DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0);
+                      cursor_visible, font, style, 0, 0, 0);
 }
 
 static int
@@ -1536,6 +1599,25 @@ ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
     return len;
 }
 
+static int
+ui_text_width_before_cursor(const char *text, int font, int cursor_position)
+{
+    char before_cursor[1024];
+    int len;
+    int copy_len;
+
+    if(text == NULL)
+        return 0;
+
+    len = (int)strlen(text);
+    copy_len = ui_clampi(cursor_position, 0, len);
+    if(copy_len >= (int)sizeof(before_cursor))
+        copy_len = (int)sizeof(before_cursor) - 1;
+    memcpy(before_cursor, text, (size_t)copy_len);
+    before_cursor[copy_len] = '\0';
+    return TextWidth(before_cursor, font);
+}
+
 int
 ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x)
 {
@@ -1548,7 +1630,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int selection_start, int selection_end)
 {
     DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
-                      selection_start, selection_end);
+                      selection_start, selection_end, 0);
 }
 
 int
@@ -2866,6 +2948,12 @@ RenderTextField(TextFieldProps field)
     const char *display_text;
     char *masked_text = NULL;
     TextEdit field_edit;
+    int *scroll_x_ptr;
+    int clip_w;
+    int text_w;
+    int max_scroll_x;
+    int text_origin_x;
+    int panning_field = 0;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -2941,6 +3029,16 @@ RenderTextField(TextFieldProps field)
     padding_x = field.style.padding_x > 0 ? field.style.padding_x : ScaleUIPx(10);
     focused = *field.focused != 0;
     focused = IsUITextFocusOwner(field.focused) ? focused : 0;
+    clip_w = (int)field.bounds.width - padding_x * 2;
+    if(clip_w < 0)
+        clip_w = 0;
+    scroll_x_ptr = ui_text_field_scroll_for(field.focus_id, field.focused);
+    text_w = TextWidth(display_text, font);
+    max_scroll_x = text_w - clip_w;
+    if(max_scroll_x < 0)
+        max_scroll_x = 0;
+    *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
+    text_origin_x = (int)field.bounds.x + padding_x - *scroll_x_ptr;
 
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
@@ -2972,8 +3070,7 @@ RenderTextField(TextFieldProps field)
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
         clicked_cursor = ui_text_cursor_from_x(
-            display_text, font, (int)field.bounds.x + padding_x,
-            (int)mouse_world.x);
+            display_text, font, text_origin_x, (int)mouse_world.x);
         if(ui_text_selection_matches(g_ui_text_field_selection,
                                      field.focus_id, field.focused))
             ui_selection_range(g_ui_text_field_selection, field.text,
@@ -2998,6 +3095,14 @@ RenderTextField(TextFieldProps field)
                 abs(click_dx) <= ScaleUIPx(6) && abs(click_dy) <= ScaleUIPx(6);
             focused = 1;
             ClaimUITextFieldFocus(field.focused);
+            if(max_scroll_x > 0) {
+                g_ui_text_field_pan_id = field.focus_id;
+                g_ui_text_field_pan_owner = field.focused;
+                g_ui_text_field_pan_start_x = (int)mouse_world.x;
+                g_ui_text_field_pan_start_y = (int)mouse_world.y;
+                g_ui_text_field_pan_start_scroll = *scroll_x_ptr;
+                g_ui_text_field_panning = 0;
+            }
             if(double_click) {
                 int len = (int)strlen(field.text);
                 *field.cursor_position = len;
@@ -3007,8 +3112,7 @@ RenderTextField(TextFieldProps field)
                 g_ui_text_field_drag_owner = NULL;
             } else {
                 *field.cursor_position = ui_text_cursor_from_x(
-                    display_text, font, (int)field.bounds.x + padding_x,
-                    (int)mouse_world.x);
+                    display_text, font, text_origin_x, (int)mouse_world.x);
                 g_ui_text_field_drag_id = field.focus_id;
                 g_ui_text_field_drag_owner = field.focused;
                 ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
@@ -3025,13 +3129,47 @@ RenderTextField(TextFieldProps field)
             ReleaseUITextFocus(field.focused, field.focus_id);
         }
     }
+    if(g_ui_text_field_pan_owner == field.focused &&
+       (field.focus_id <= 0 || g_ui_text_field_pan_id == field.focus_id) &&
+       IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+       (g_ui_pointer_owner == UI_POINTER_OWNER_NONE ||
+        g_ui_pointer_owner == UI_POINTER_OWNER_TEXT_FIELD_PAN)) {
+        int dx = (int)mouse_world.x - g_ui_text_field_pan_start_x;
+        int dy = (int)mouse_world.y - g_ui_text_field_pan_start_y;
+        int drag_threshold = ScaleUIPx(5);
+
+        if(g_ui_text_field_panning ||
+           ((dx > drag_threshold || dx < -drag_threshold) &&
+            abs(dx) >= abs(dy))) {
+            Rectangle capture = {
+                0.0f,
+                0.0f,
+                (float)ui_view_width,
+                (float)ui_view_height
+            };
+
+            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_FIELD_PAN;
+            g_ui_text_field_panning = 1;
+            *scroll_x_ptr = g_ui_text_field_pan_start_scroll - dx;
+            *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
+            text_origin_x = (int)field.bounds.x + padding_x - *scroll_x_ptr;
+            g_ui_text_field_drag_id = 0;
+            g_ui_text_field_drag_owner = NULL;
+            g_ui_text_field_selection.dragging = 0;
+            PushUIInputCapture(capture, 0);
+        }
+    }
+    panning_field = g_ui_text_field_pan_owner == field.focused &&
+                    (field.focus_id <= 0 ||
+                     g_ui_text_field_pan_id == field.focus_id) &&
+                    g_ui_text_field_panning;
     if(g_ui_text_field_drag_owner == field.focused &&
+       !panning_field &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
         *field.cursor_position = ui_text_cursor_from_x(
-            field.text, font, (int)field.bounds.x + padding_x,
-            (int)mouse_world.x);
+            display_text, font, text_origin_x, (int)mouse_world.x);
         g_ui_text_field_selection.cursor = *field.cursor_position;
         g_ui_text_field_selection.dragging = 1;
     }
@@ -3040,6 +3178,13 @@ RenderTextField(TextFieldProps field)
         g_ui_text_field_drag_id = 0;
         g_ui_text_field_drag_owner = NULL;
         g_ui_text_field_selection.dragging = 0;
+    }
+    if(g_ui_text_field_pan_owner == field.focused &&
+       (field.focus_id <= 0 || g_ui_text_field_pan_id == field.focus_id) &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        g_ui_text_field_pan_id = 0;
+        g_ui_text_field_pan_owner = NULL;
+        g_ui_text_field_panning = 0;
     }
 
     *field.focused = focused;
@@ -3190,6 +3335,37 @@ RenderTextField(TextFieldProps field)
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
     }
 
+    if(field.secure) {
+        size_t len = strlen(field.text);
+
+        free(masked_text);
+        masked_text = NULL;
+        display_text = "";
+        masked_text = malloc(len + 1);
+        if(masked_text != NULL) {
+            memset(masked_text, '*', len);
+            masked_text[len] = '\0';
+            display_text = masked_text;
+        }
+    }
+
+    text_w = TextWidth(display_text, font);
+    max_scroll_x = text_w - clip_w;
+    if(max_scroll_x < 0)
+        max_scroll_x = 0;
+    *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
+    if(focused) {
+        int cursor_text_x = ui_text_width_before_cursor(
+            display_text, font, *field.cursor_position);
+        int margin = ScaleUIPx(8);
+
+        if(cursor_text_x < *scroll_x_ptr + margin)
+            *scroll_x_ptr = cursor_text_x - margin;
+        if(cursor_text_x > *scroll_x_ptr + clip_w - margin)
+            *scroll_x_ptr = cursor_text_x - clip_w + margin;
+        *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
+    }
+
     if(!field.secure)
         ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
                                         field.focused, field.text,
@@ -3204,7 +3380,8 @@ RenderTextField(TextFieldProps field)
                       focused,
                       !field.read_only,
                       focused && !field.read_only && ui_caret_blink_visible(),
-                      font, field.style, selection_start, selection_end);
+                      font, field.style, selection_start, selection_end,
+                      *scroll_x_ptr);
     free(masked_text);
     EndUIWidget(&widget);
     return changed;
