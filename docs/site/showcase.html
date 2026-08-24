@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon Showcase — apps built with Kryon</title>
-  <meta name="description" content="Apps built with Kryon, ranked from trusted public source platforms.">
+  <meta name="description" content="Apps built with Kryon, ranked by stars from public source platforms.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/showcase.html">
   <meta property="og:title" content="Kryon Showcase">
-  <meta property="og:description" content="Apps built with Kryon, ranked from trusted public source platforms.">
+  <meta property="og:description" content="Apps built with Kryon, ranked by stars from public source platforms.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/showcase.html">
   <meta name="twitter:title" content="Kryon Showcase">
-  <meta name="twitter:description" content="Apps built with Kryon, ranked from trusted public source platforms.">
+  <meta name="twitter:description" content="Apps built with Kryon, ranked by stars from public source platforms.">
   <meta name="theme-color" content="#f3f1ea">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
@@ -45,17 +45,17 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Showcase</p>
       <h1>Apps built with Kryon</h1>
-      <p class="section-lead">The top projects are ranked by live stars from trusted public source platforms. Submit your Kryon app through the public metadata repository.</p>
+      <p class="section-lead">The top projects are ranked by live stars from public source platforms. Submit your Kryon app through the public metadata repository.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit a project</a>
         <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" target="_blank" rel="noopener">View metadata</a>
       </div>
-      <p class="showcase-note">Current trusted ranking source: live GitHub stars. Unranked projects remain visible after review but do not enter the top-10 list.</p>
+      <p class="showcase-note">Current ranking source: live GitHub stars. Unranked projects remain visible after review but do not enter the top-10 list.</p>
     </section>
 
     <section>
       <p class="section-eyebrow">Top projects</p>
-      <h2>Top 10 by trusted stars</h2>
+      <h2>Top 10 by stars</h2>
       <div class="showcase-grid" id="showcase-projects" data-showcase-projects aria-live="polite"></div>
     </section>
   </main>
@@ -89,8 +89,16 @@
         var match = text(project.repository).match(/^https:\/\/github\.com\/([^\/]+)\/([^\/?#]+)/);
         return match ? match[1] + "/" + match[2].replace(/\.git$/, "") : "";
       }
-      function trustedStars(project) {
+      function rankedStars(project) {
         return typeof project.stars === "number" && !project.unranked ? project.stars : -1;
+      }
+      function authorHtml(project) {
+        var author = project.author || {};
+        var name = author.name || "";
+        var url = author.url || "";
+        if (!name) return "";
+        if (!url) return '<span class="app-author">By ' + escapeHtml(name) + '</span>';
+        return '<a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">By ' + escapeHtml(name) + '</a>';
       }
       function rerankProjects(projects) {
         return projects
@@ -102,7 +110,7 @@
           })
           .sort(function(a, b) {
             if (!!a.unranked !== !!b.unranked) return a.unranked ? 1 : -1;
-            var starDelta = trustedStars(b) - trustedStars(a);
+            var starDelta = rankedStars(b) - rankedStars(a);
             return starDelta || a._sourceOrder - b._sourceOrder;
           })
           .slice(0, 10)
@@ -127,9 +135,10 @@
           '<span class="showcase-rank">' + escapeHtml(rank + starLabel(project.stars)) + '</span>' +
           '<span class="app-kicker">' + escapeHtml(tags) + '</span>' +
           '<h3>' + escapeHtml(project.name) + '</h3>' +
+          authorHtml(project) +
           '<p>' + escapeHtml(project.summary) + '</p>' +
           '<div class="app-actions">' +
-          '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open app</a>' +
+          '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open</a>' +
           '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' +
           '</div>' +
           '</div>' +

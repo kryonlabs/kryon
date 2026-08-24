@@ -808,6 +808,20 @@ h3 {
   line-height: 1.08;
 }
 
+.app-author {
+  display: inline-block;
+  margin: -2px 0 12px;
+  color: #bde9df;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+a.app-author:hover {
+  color: #fffdf8;
+  text-decoration: underline;
+}
+
 .app-card p {
   max-width: 54ch;
   margin: 0;

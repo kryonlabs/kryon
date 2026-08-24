@@ -102,11 +102,16 @@ def download_banner(project, banner_dir):
 
 def site_project(project, banner_path, stars):
     repository = project["repository"]
+    author = project.get("author") or {}
     unranked = bool(project.get("unranked")) or stars is None
     return {
         "slug": project["slug"],
         "name": project["name"],
         "summary": project["summary"],
+        "author": {
+            "name": author.get("name", repository["owner"]),
+            "url": author.get("url", repository["url"]),
+        },
         "repository": repository["url"],
         "homepage": project.get("homepage", repository["url"]),
         "banner": banner_path,
@@ -118,7 +123,7 @@ def site_project(project, banner_path, stars):
     }
 
 
-def trusted_stars(project):
+def ranked_stars(project):
     return project["stars"] if isinstance(project.get("stars"), int) and not project.get("unranked") else -1
 
 
@@ -127,7 +132,7 @@ def rank_projects(projects, limit):
         projects,
         key=lambda project: (
             bool(project.get("unranked")),
-            -trusted_stars(project),
+            -ranked_stars(project),
             project["name"].lower(),
         ),
     )[:limit]
@@ -175,7 +180,7 @@ def main():
         "schemaVersion": 1,
         "updatedAt": dt.datetime.now(dt.timezone.utc).date().isoformat(),
         "source": source,
-        "trustedPlatforms": ["github"],
+        "starPlatforms": ["github"],
         "projects": rank_projects(site_projects, args.limit),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

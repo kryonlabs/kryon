@@ -230,7 +230,7 @@ Greeting.krb  # portable cartridge</code></pre>
     <section id="apps">
       <p class="section-eyebrow">Showcase</p>
       <h2>Real apps built with Kryon</h2>
-      <p class="section-lead">The showcase tracks shipped Kryon applications and ranks public submissions from trusted source platforms. Add a project through the public metadata repo.</p>
+      <p class="section-lead">The showcase tracks shipped Kryon applications and ranks public submissions by stars from public source platforms. Add a project through the public metadata repo.</p>
 
       <div class="app-slider" data-app-slider>
         <div class="app-slider-head">
@@ -490,8 +490,16 @@ gmake run ARGS=/path/to/project</code></pre>
         var match = text(project.repository).match(/^https:\/\/github\.com\/([^\/]+)\/([^\/?#]+)/);
         return match ? match[1] + "/" + match[2].replace(/\.git$/, "") : "";
       }
-      function trustedStars(project) {
+      function rankedStars(project) {
         return typeof project.stars === "number" && !project.unranked ? project.stars : -1;
+      }
+      function authorHtml(project) {
+        var author = project.author || {};
+        var name = author.name || "";
+        var url = author.url || "";
+        if (!name) return "";
+        if (!url) return '<span class="app-author">By ' + escapeHtml(name) + '</span>';
+        return '<a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">By ' + escapeHtml(name) + '</a>';
       }
       function rerankProjects(projects) {
         return projects
@@ -503,7 +511,7 @@ gmake run ARGS=/path/to/project</code></pre>
           })
           .sort(function(a, b) {
             if (!!a.unranked !== !!b.unranked) return a.unranked ? 1 : -1;
-            var starDelta = trustedStars(b) - trustedStars(a);
+            var starDelta = rankedStars(b) - rankedStars(a);
             return starDelta || a._sourceOrder - b._sourceOrder;
           })
           .slice(0, 10)
@@ -522,9 +530,10 @@ gmake run ARGS=/path/to/project</code></pre>
           '<div class="app-card-body">' +
           '<span class="app-kicker">' + escapeHtml(kicker) + '</span>' +
           '<h3>' + escapeHtml(project.name) + '</h3>' +
+          authorHtml(project) +
           '<p>' + escapeHtml(project.summary) + '</p>' +
           '<div class="app-actions">' +
-          '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open app</a>' +
+          '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open</a>' +
           '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' +
           '</div>' +
           '</div>' +

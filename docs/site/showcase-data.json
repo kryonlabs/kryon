@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "updatedAt": null,
   "source": "https://github.com/kryonlabs/showcase",
-  "trustedPlatforms": [
+  "starPlatforms": [
     "github"
   ],
   "projects": [
@@ -10,6 +10,10 @@
       "slug": "inner-breeze",
       "name": "Inner Breeze",
       "summary": "Breathing, meditation, and habit practice flows across mobile and web.",
+      "author": {
+        "name": "waozixyz",
+        "url": "https://waozi.xyz"
+      },
       "repository": "https://github.com/waozixyz/inbe",
       "homepage": "https://inbe.waozi.xyz",
       "banner": "showcase/inner-breeze.png",
@@ -26,6 +30,10 @@
       "slug": "krait",
       "name": "Krait",
       "summary": "Standalone Kryon IDE for editing, previewing, inspecting, and building Kryon projects.",
+      "author": {
+        "name": "kryonlabs",
+        "url": "https://kryonlabs.com"
+      },
       "repository": "https://github.com/kryonlabs/krait",
       "homepage": "https://krait.kryonlabs.com",
       "banner": "showcase/krait.png",
@@ -41,6 +49,10 @@
       "slug": "pass",
       "name": "Pass",
       "summary": "Deterministic password generator with CLI, desktop, Android, and browser builds.",
+      "author": {
+        "name": "waozixyz",
+        "url": "https://waozi.xyz"
+      },
       "repository": "https://github.com/waozixyz/pass",
       "homepage": "https://pass.waozi.xyz",
       "banner": "showcase/pass.png",
@@ -58,6 +70,10 @@
       "slug": "kapsule",
       "name": "Kapsule",
       "summary": "Native terminal application with sessions, tabs, and focused developer workflows.",
+      "author": {
+        "name": "kryonlabs",
+        "url": "https://kryonlabs.com"
+      },
       "repository": "https://github.com/kryonlabs/kapsule",
       "homepage": "https://kapsule.kryonlabs.com",
       "banner": "showcase/kapsule.png",

@@ -43,6 +43,7 @@ def github_stars(owner, repo):
 
 def ranked_entry(project, offline):
     repo = project["repository"]
+    author = project.get("author") or {}
     stars = None
     unranked = bool(project.get("unranked"))
     if not offline and not unranked and repo.get("platform") == "github":
@@ -57,6 +58,10 @@ def ranked_entry(project, offline):
         "slug": project["slug"],
         "name": project["name"],
         "summary": project["summary"],
+        "author": {
+            "name": author.get("name", repo["owner"]),
+            "url": author.get("url", repo["url"])
+        },
         "repository": repo["url"],
         "homepage": project.get("homepage", repo["url"]),
         "banner": LOCAL_BANNERS.get(project["slug"], project["banner"]["url"]),
@@ -86,7 +91,7 @@ def main():
         "schemaVersion": 1,
         "updatedAt": date.today().isoformat(),
         "source": "https://github.com/kryonlabs/showcase",
-        "trustedPlatforms": ["github"],
+        "starPlatforms": ["github"],
         "projects": ranked[:10] + sorted(unranked, key=lambda entry: entry["name"].lower())
     }
 
