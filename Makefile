@@ -172,6 +172,7 @@ SRCS := $(filter-out $(KRYON_CANVAS_SRCS),$(SRCS))
 endif
 ifneq ($(KRYON_BACKEND),libdraw)
 SRCS := $(filter-out $(KRYON_LIBDRAW_SRCS),$(SRCS))
+SRCS := $(filter-out src/platform/plan9/%.c,$(SRCS))
 endif
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
