@@ -1427,6 +1427,8 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     int cursor_h = ui_control_cursor_height(font, h);
     int cursor_y = y + (h - cursor_h) / 2;
     Color border = focused ? style.focus_border : style.border;
+    Color text_color = style.text.a != 0 ? style.text : c_text;
+    Color cursor_color = style.cursor.a != 0 ? style.cursor : c_circle;
     float radius = style.radius >= 0.0f ? style.radius : 0.12f;
 
     if(focused && text_input_active)
@@ -1481,7 +1483,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                       ui_material_style() ? ui_alpha(c_circle, 82) :
                                             (Color){78, 132, 196, 135});
     }
-    DrawUIText(value, text_x, text_y, font, style.text);
+    DrawUIText(value, text_x, text_y, font, text_color);
 
     if(focused && cursor_visible) {
         char before_cursor[1024];
@@ -1495,7 +1497,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
 
         int cursor_x = text_x + TextWidth(before_cursor, font);
         DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h,
-                      ui_material_style() ? c_circle : style.cursor);
+                      ui_material_style() ? c_circle : cursor_color);
     }
     EndUIClip();
 }
@@ -1659,7 +1661,6 @@ RenderTextInputControl(TextInputProps input)
     if(input.focus_id > 0 && RegisterUIFocus(input.focus_id, input.bounds)) {
         focused = 1;
         SetUIFocusTextInputActive(1);
-        DrawUIFocus(input.bounds);
     }
 
     DrawTextInput(input.bounds, input.text, input.cursor_position,
@@ -2427,7 +2428,6 @@ RenderTextArea(TextAreaProps area)
     if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
-        DrawUIFocus(area.bounds);
     }
 
     mouse_world = ui_mouse_world();
@@ -2945,7 +2945,6 @@ RenderTextField(TextFieldProps field)
     if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
-        DrawUIFocus(field.bounds);
     }
 
     mouse_world = ui_mouse_world();
