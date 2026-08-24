@@ -217,6 +217,7 @@ UI_TREE_API_TEST = $(BUILD_DIR)/tests/ui_tree_api_test
 UI_WINDOW_TEST = $(BUILD_DIR)/tests/ui_window_test
 SYSTEM_THEME_TEST = $(BUILD_DIR)/tests/system_theme_test
 CURSOR_INTENT_TEST = $(BUILD_DIR)/tests/cursor_intent_test
+TEXT_INPUT_PLATFORM_TEST = $(BUILD_DIR)/tests/text_input_platform_test
 UI_WINDOW_SDL_CHECK = $(BUILD_DIR)/check/ui_window_sdl.o
 TEXT_INPUT_PERF_TEST = $(BUILD_DIR)/tests/text_input_perf_test
 TEXT_INPUT_PRECISION_TEST = $(BUILD_DIR)/tests/text_input_precision_test
@@ -329,7 +330,7 @@ feature-matrix-docs-check:
 generated-runtime-parity-test: $(K2C) $(K2G) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check feature-matrix-docs-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check feature-matrix-docs-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -593,6 +594,12 @@ $(SYSTEM_THEME_TEST): tests/system_theme_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $
 $(CURSOR_INTENT_TEST): tests/cursor_intent_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/cursor_intent_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(TEXT_INPUT_PLATFORM_TEST): tests/text_input_platform_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/text_input_platform_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
