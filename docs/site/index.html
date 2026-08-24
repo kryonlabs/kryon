@@ -81,10 +81,12 @@
             <div class="pane-label">app.kry</div>
 <pre><code>#import "kryon.h"
 
-AppHome :: (app: InbeApp*) {
-    y: int = ScaleUIPx(24)
-    Text("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24)
-    BottomNav(app->bottom_nav)
+AppHome :: (app: InbeApp*) #ui {
+    Screen root: {
+        y: int = ScaleUIPx(24)
+        Text("Inner Breeze", ScaleUIPx(20), y, ScaleUIPx(24))
+        BottomNav(app->bottom_nav)
+    }
 }</code></pre>
           </div>
           <div class="pane">
@@ -327,11 +329,13 @@ k2b  app.kry    # or app.kir</code></pre>
       <p>A simple <code>.kry</code> shape:</p>
 <pre><code>#import "kryon.h"
 
-AppHome :: (app: InbeApp*) {
-    y: int = ScaleUIPx(24)
+AppHome :: (app: InbeApp*) #ui {
+    Screen root: {
+        y: int = ScaleUIPx(24)
 
-    Text("Inner Breeze", ScaleUIPx(20), y, UI_TEXT_24)
-    BottomNav(app->bottom_nav)
+        Text("Inner Breeze", ScaleUIPx(20), y, ScaleUIPx(24))
+        BottomNav(app->bottom_nav)
+    }
 }</code></pre>
       <p>Open a project in Krait:</p>
 <pre><code>git clone https://github.com/kryonlabs/krait.git

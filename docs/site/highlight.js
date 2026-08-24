@@ -1,6 +1,6 @@
 (function() {
   var keywords = /\b(return|if|else|while|for|int|float|void|const|static|typedef|struct|enum|include|define|draw|native)\b|#\b(module|output|import|enum|global|export|private|extern|intrinsic|type)\b/g;
-  var types = /\b(Color|Rectangle|Texture2D|Camera2D|UIPanelFrame|UITextField|UILabelTextField|Font)\b/g;
+  var types = /\b(Color|Rectangle|Texture2D|Camera2D|UIPanelFrame|Font)\b/g;
   var functions = /\b([A-Za-z_][A-Za-z0-9_]*)\s*(?=\()/g;
   var strings = /("([^"\\]|\\.)*"|'([^'\\]|\\.)*')/g;
   var comments = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g;
