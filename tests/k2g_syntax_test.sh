@@ -150,6 +150,7 @@ App :: () #ui {
     Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), "")
+    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), "")
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
 retry:
@@ -181,12 +182,22 @@ Main :: (viewport: Rectangle) #ui {
 }
 EOF
 
-"$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry"
+cat > "$work/src/helper.kry" <<'EOF'
+#import "kryon.h"
+
+helper_value :: () -> int {
+    return ScaleUIPx(7)
+}
+EOF
+
+"$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/helper.kry"
 "$k2g" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
+helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
+[ -f "$helper" ] || { echo "k2g produced no helper output" >&2; exit 1; }
 [ -f "$hier" ] || { echo "k2g produced no hierarchy output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 sh "$root/tests/check_clean_generated_output.sh" "$work/hierarchy-out"
@@ -243,6 +254,7 @@ grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
+grep -q 'Helper_HelperValue()' "$out"
 
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"

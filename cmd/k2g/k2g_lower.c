@@ -280,6 +280,66 @@ module_fn_index(const KirModule *m, const char *name, size_t len)
     return -1;
 }
 
+typedef struct {
+    char kry[K2G_NAME_MAX];
+    char go[K2G_NAME_MAX * 2];
+    char guard[K2G_NAME_MAX];
+    int state_count;
+} K2gGlobalFunction;
+
+static K2gGlobalFunction g_functions[512];
+static int g_function_count;
+
+static int
+k2g_global_function_index(const char *name, size_t len)
+{
+    int match = -1;
+
+    for(int i = 0; i < g_function_count; i++) {
+        if(strlen(g_functions[i].kry) != len ||
+           strncmp(g_functions[i].kry, name, len) != 0)
+            continue;
+        if(match >= 0)
+            return -2;
+        match = i;
+    }
+    return match;
+}
+
+static void
+k2g_build_global_functions(const KirProgram *const *progs, int prog_count)
+{
+    g_function_count = 0;
+    for(int pi = 0; pi < prog_count; pi++) {
+        const KirProgram *prog = progs[pi];
+
+        for(int mi = 0; mi < prog->module_count; mi++) {
+            const KirModule *m = &prog->modules[mi];
+            char stem[KIR_PATH_MAX];
+            char guard[K2G_NAME_MAX];
+
+            stem_from_source(m->source_path, stem, sizeof(stem));
+            camel(stem, guard, sizeof(guard));
+            for(int fi = 0; fi < m->function_count; fi++) {
+                const KirFunction *fn = &m->functions[fi];
+                char fname[K2G_NAME_MAX];
+
+                if(fn->is_extern || g_function_count >= 512)
+                    continue;
+                camel(fn->name, fname, sizeof(fname));
+                snprintf(g_functions[g_function_count].kry,
+                         sizeof(g_functions[0].kry), "%s", fn->name);
+                snprintf(g_functions[g_function_count].guard,
+                         sizeof(g_functions[0].guard), "%s", guard);
+                snprintf(g_functions[g_function_count].go,
+                         sizeof(g_functions[0].go), "%s_%s", guard, fname);
+                g_functions[g_function_count].state_count = m->state_count;
+                g_function_count++;
+            }
+        }
+    }
+}
+
 /* ------------------------------------------------ module lowering context */
 
 static int split_top(const char *s, char parts[][K2G_TEXT_MAX], int max);
@@ -1485,6 +1545,34 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 }
                 continue;
             }
+            if(*skip_ws(q) == '(') {
+                int gfi = k2g_global_function_index(ident, il);
+
+                if(gfi >= 0 && strcmp(g_functions[gfi].guard, g_guard) != 0) {
+                    size_t fl = strlen(g_functions[gfi].go);
+
+                    if(dn + fl + 16 < dst_size) {
+                        memcpy(dst + dn, g_functions[gfi].go, fl);
+                        dn += fl;
+                        dst[dn++] = '(';
+                    }
+                    p = skip_ws(q) + 1;
+                    if(*skip_ws(p) == ')') {
+                        if(g_functions[gfi].state_count > 0 &&
+                           dn + strlen(g_functions[gfi].guard) + 16 < dst_size) {
+                            dn += (size_t)snprintf(
+                                dst + dn, dst_size - dn, "%sStateValue",
+                                g_functions[gfi].guard);
+                        }
+                    } else if(g_functions[gfi].state_count > 0 &&
+                              dn + strlen(g_functions[gfi].guard) + 18 < dst_size) {
+                        dn += (size_t)snprintf(
+                            dst + dn, dst_size - dn, "%sStateValue, ",
+                            g_functions[gfi].guard);
+                    }
+                    continue;
+                }
+            }
             /* Public Kryon constants become package constants. */
             {
                 struct { const char *c; const char *go; } constants[] = {
@@ -2092,12 +2180,19 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         }
         case KIR_STMT_RETURN:
+        {
+            const char *value = skip_ws(rw);
+
+            if(strncmp(value, "return", 6) == 0 &&
+               !is_ident_char((unsigned char)value[6]))
+                value = skip_ws(value + 6);
             emit_indent(f, indent);
-            if(rw[0] != '\0' && strcmp(rw, "return") != 0)
-                fprintf(f, "return %s\n", rw);
+            if(value[0] != '\0')
+                fprintf(f, "return %s\n", value);
             else
                 fprintf(f, "return\n");
             break;
+        }
         case KIR_STMT_BREAK:
         case KIR_STMT_CONTINUE:
             emit_indent(f, indent);
@@ -2167,6 +2262,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
     int seen_count = 0;
 
     (void)root;
+    k2g_build_global_functions(progs, prog_count);
     for(int pi = 0; pi < prog_count; pi++) {
         const KirProgram *prog = progs[pi];
 
