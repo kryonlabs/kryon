@@ -837,11 +837,29 @@ h3 {
 }
 
 .showcase-grid .app-card {
-  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #0b1820;
+}
+
+.showcase-grid .app-card::after {
+  display: none;
 }
 
 .showcase-grid .app-card-image {
-  min-height: 360px;
+  height: 210px;
+  min-height: 210px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.showcase-grid .app-card-body {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  padding: 22px;
 }
 
 .showcase-rank {
@@ -856,6 +874,22 @@ h3 {
   background: rgba(255, 253, 248, 0.12);
   font-size: 12px;
   font-weight: 700;
+}
+
+@media (max-width: 620px) {
+  .showcase-grid .app-card {
+    min-height: 0;
+  }
+
+  .showcase-grid .app-card-image {
+    height: 220px;
+    min-height: 220px;
+    padding: 18px;
+  }
+
+  .showcase-grid .app-card h3 {
+    font-size: 34px;
+  }
 }
 
 /* ---- platform grid ---- */

@@ -1,20 +1,18 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-22",
+  "updatedAt": null,
   "source": "https://github.com/kryonlabs/showcase",
   "trustedPlatforms": [
     "github"
   ],
   "projects": [
     {
-      "rank": 1,
       "slug": "inner-breeze",
       "name": "Inner Breeze",
-      "summary": "Breathing, meditation, and habit practice flows built as a real Kryon app target.",
+      "summary": "Breathing, meditation, and habit practice flows across mobile and web.",
       "repository": "https://github.com/waozixyz/inbe",
       "homepage": "https://inbe.waozi.xyz",
       "banner": "showcase/inner-breeze.png",
-      "stars": 28,
       "tags": [
         "wellness",
         "habits",
@@ -25,14 +23,12 @@
       "unranked": false
     },
     {
-      "rank": 2,
       "slug": "krait",
       "name": "Krait",
       "summary": "Standalone Kryon IDE for editing, previewing, inspecting, and building Kryon projects.",
       "repository": "https://github.com/kryonlabs/krait",
       "homepage": "https://krait.kryonlabs.com",
       "banner": "showcase/krait.png",
-      "stars": 1,
       "tags": [
         "ide",
         "developer-tools",
@@ -42,14 +38,12 @@
       "unranked": false
     },
     {
-      "rank": 3,
       "slug": "pass",
       "name": "Pass",
       "summary": "Deterministic password generator with CLI, desktop, Android, and browser builds.",
       "repository": "https://github.com/waozixyz/pass",
       "homepage": "https://pass.waozi.xyz",
       "banner": "showcase/pass.png",
-      "stars": 1,
       "tags": [
         "security",
         "passwords",
@@ -61,14 +55,12 @@
       "unranked": false
     },
     {
-      "rank": 4,
       "slug": "kapsule",
       "name": "Kapsule",
       "summary": "Native terminal application with sessions, tabs, and focused developer workflows.",
       "repository": "https://github.com/kryonlabs/kapsule",
       "homepage": "https://kapsule.kryonlabs.com",
       "banner": "showcase/kapsule.png",
-      "stars": 0,
       "tags": [
         "terminal",
         "developer-tools",

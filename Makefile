@@ -304,6 +304,11 @@ docs-site:
 	cp -R $(SITE_DIR)/. $(SITE_BUILD_DIR)/
 	cp -R icons $(SITE_BUILD_DIR)/
 	cp -R $(SITE_DIR)/cursors $(SITE_BUILD_DIR)/
+	if [ -n "$(SHOWCASE_PROJECTS_DIR)" ]; then \
+		python3 scripts/update-showcase.py --projects-dir "$(SHOWCASE_PROJECTS_DIR)" --output $(SITE_BUILD_DIR)/showcase-data.json --banner-dir $(SITE_BUILD_DIR)/showcase; \
+	else \
+		python3 scripts/update-showcase.py --output $(SITE_BUILD_DIR)/showcase-data.json --banner-dir $(SITE_BUILD_DIR)/showcase; \
+	fi
 	sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html

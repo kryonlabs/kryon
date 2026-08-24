@@ -56,60 +56,7 @@
     <section>
       <p class="section-eyebrow">Top projects</p>
       <h2>Top 10 by trusted stars</h2>
-      <div class="showcase-grid" id="showcase-projects" data-showcase-projects>
-        <article class="app-card">
-          <img class="app-card-image" src="showcase/inner-breeze.png" alt="Inner Breeze app banner">
-          <div class="app-card-body">
-            <span class="showcase-rank">#1 · 28 stars</span>
-            <span class="app-kicker">wellness · habits · mobile · web</span>
-            <h3>Inner Breeze</h3>
-            <p>Breathing, meditation, and habit practice flows built as a real Kryon app target.</p>
-            <div class="app-actions">
-              <a class="btn btn-primary" href="https://inbe.waozi.xyz" target="_blank" rel="noopener">Open app</a>
-              <a class="btn" href="https://github.com/waozixyz/inbe" target="_blank" rel="noopener">Source</a>
-            </div>
-          </div>
-        </article>
-        <article class="app-card">
-          <img class="app-card-image" src="showcase/krait.png" alt="Krait IDE banner">
-          <div class="app-card-body">
-            <span class="showcase-rank">#2 · 1 star</span>
-            <span class="app-kicker">IDE · developer-tools · desktop</span>
-            <h3>Krait</h3>
-            <p>Standalone Kryon IDE for editing, previewing, inspecting, and building Kryon projects.</p>
-            <div class="app-actions">
-              <a class="btn btn-primary" href="https://krait.kryonlabs.com" target="_blank" rel="noopener">Open app</a>
-              <a class="btn" href="https://github.com/kryonlabs/krait" target="_blank" rel="noopener">Source</a>
-            </div>
-          </div>
-        </article>
-        <article class="app-card">
-          <img class="app-card-image" src="showcase/pass.png" alt="Pass password generator banner">
-          <div class="app-card-body">
-            <span class="showcase-rank">#3 · 1 star</span>
-            <span class="app-kicker">security · passwords · desktop · mobile · web</span>
-            <h3>Pass</h3>
-            <p>Deterministic password generator with CLI, desktop, Android, and browser builds.</p>
-            <div class="app-actions">
-              <a class="btn btn-primary" href="https://pass.waozi.xyz" target="_blank" rel="noopener">Open app</a>
-              <a class="btn" href="https://github.com/waozixyz/pass" target="_blank" rel="noopener">Source</a>
-            </div>
-          </div>
-        </article>
-        <article class="app-card">
-          <img class="app-card-image" src="showcase/kapsule.png" alt="Kapsule terminal banner">
-          <div class="app-card-body">
-            <span class="showcase-rank">#4 · 0 stars</span>
-            <span class="app-kicker">terminal · developer-tools · desktop</span>
-            <h3>Kapsule</h3>
-            <p>Native terminal application with sessions, tabs, and focused developer workflows.</p>
-            <div class="app-actions">
-              <a class="btn btn-primary" href="https://kapsule.kryonlabs.com" target="_blank" rel="noopener">Open app</a>
-              <a class="btn" href="https://github.com/kryonlabs/kapsule" target="_blank" rel="noopener">Source</a>
-            </div>
-          </div>
-        </article>
-      </div>
+      <div class="showcase-grid" id="showcase-projects" data-showcase-projects aria-live="polite"></div>
     </section>
   </main>
 
@@ -175,7 +122,7 @@
         var tags = (project.tags || []).join(" · ");
         var homepage = project.homepage || project.repository;
         return '<article class="app-card">' +
-          '<img class="app-card-image" src="' + escapeHtml(project.banner) + '" alt="' + escapeHtml(project.name) + ' app banner">' +
+          '<img class="app-card-image" src="' + escapeHtml(project.banner) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
           '<div class="app-card-body">' +
           '<span class="showcase-rank">' + escapeHtml(rank + starLabel(project.stars)) + '</span>' +
           '<span class="app-kicker">' + escapeHtml(tags) + '</span>' +
@@ -224,11 +171,14 @@
           .then(function(data) {
             if (!data || !Array.isArray(data.projects) || !data.projects.length) return;
             var projects = rerankProjects(data.projects);
-            grid.innerHTML = projects.map(renderProject).join("");
+            var hasGeneratedStars = projects.some(function(project) {
+              return typeof project.stars === "number";
+            });
+            if (hasGeneratedStars) {
+              grid.innerHTML = projects.map(renderProject).join("");
+            }
             refreshStars(projects).then(function(liveProjects) {
-              if (liveProjects !== projects) {
-                grid.innerHTML = liveProjects.map(renderProject).join("");
-              }
+              grid.innerHTML = liveProjects.map(renderProject).join("");
             });
           })
           .catch(function() {});
