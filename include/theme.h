@@ -84,6 +84,8 @@ const char *GetThemeStyleLabel(ThemeStyle style);
 bool IsSystemThemeAvailable(void);
 const char *GetSystemThemeName(void);
 const char *GetSystemThemeNameCached(void);
+ThemeStyle GetSystemThemeStyle(void);
+ThemeStyle GetSystemThemeStyleCached(void);
 bool GetSystemUIFontName(char *out, int out_size);
 bool GetSystemUIFontFile(char *out, int out_size);
 bool RefreshSystemTheme(void);

@@ -56,6 +56,11 @@ static SystemThemePalette system_palette = {
 static SystemThemePalette system_light_palette;
 static SystemThemePalette system_dark_palette;
 static int system_prefers_dark = 0;
+#if defined(KRYON_PLATFORM_PLAN9)
+static ThemeStyle system_theme_style = THEME_STYLE_RETRO;
+#else
+static ThemeStyle system_theme_style = THEME_STYLE_SYSTEM;
+#endif
 static char system_ui_font_name[128];
 static char system_ui_font_file[512];
 static int system_ui_font_attempted = 0;
@@ -1131,6 +1136,7 @@ plan9_system_theme_refresh(void)
     char text[1024];
     char name[THEME_NAME_SIZE];
     char mode[16];
+    char style[16];
     int theme_id = -1;
     int dark = 0;
     int i;
@@ -1143,6 +1149,16 @@ plan9_system_theme_refresh(void)
     plan9_theme_file_value(text, "mode", mode, sizeof(mode));
     if(strcmp(mode, "dark") == 0)
         dark = 1;
+    if(plan9_theme_file_value(text, "style", style, sizeof(style))) {
+        if(strcmp(style, "material") == 0)
+            system_theme_style = THEME_STYLE_MATERIAL;
+        else if(strcmp(style, "retro") == 0)
+            system_theme_style = THEME_STYLE_RETRO;
+        else
+            system_theme_style = THEME_STYLE_RETRO;
+    } else {
+        system_theme_style = THEME_STYLE_RETRO;
+    }
 
     for(i = 0; i < THEME_COUNT; i++) {
         if(strcmp(themes[i].name, name) == 0) {
@@ -1254,6 +1270,19 @@ const char *
 GetSystemThemeNameCached(void)
 {
     return system_palette.name;
+}
+
+ThemeStyle
+GetSystemThemeStyle(void)
+{
+    system_theme_auto_refresh();
+    return system_theme_style;
+}
+
+ThemeStyle
+GetSystemThemeStyleCached(void)
+{
+    return system_theme_style;
 }
 
 bool
