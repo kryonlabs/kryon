@@ -293,6 +293,8 @@ ToolbarResult Toolbar(ToolbarProps toolbar);
 ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
 int SubtabBar(SubtabBarProps bar);
 int TabBar(TabBarProps bar);
+PaneTabBarResult PaneTabs(PaneTabBar bar);
+void PaneDropPreview(Rectangle bounds, PaneDropZone zone);
 SidebarAccountHeaderResult SidebarAccountHeader(SidebarAccountHeaderProps header);
 ProfilePicturePickerResult ProfilePicturePicker(ProfilePicturePickerProps modal);
 void ReorderHandle(int id, int x, int y, int w, int h, int active);

@@ -2114,6 +2114,20 @@ TabBar(TabBarProps bar)
     return DrawUITabBar(bar);
 }
 
+PaneTabBarResult
+PaneTabs(PaneTabBar bar)
+{
+    ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
+    return DrawUIPaneTabBar(bar);
+}
+
+void
+PaneDropPreview(Rectangle bounds, PaneDropZone zone)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, &zone);
+    DrawUIPaneDropPreview(bounds, zone);
+}
+
 SidebarAccountHeaderResult
 SidebarAccountHeader(SidebarAccountHeaderProps header)
 {
