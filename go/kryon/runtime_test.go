@@ -9,6 +9,16 @@ import (
 	"testing"
 )
 
+func TestCStringTrimsFixedBufferAtNUL(t *testing.T) {
+	buf := []byte{'s', 'e', 'c', 'r', 'e', 't', 0, 'x'}
+	if got, want := CString(buf), "secret"; got != want {
+		t.Fatalf("CString() = %q, want %q", got, want)
+	}
+	if got, want := CString([]byte("plain")), "plain"; got != want {
+		t.Fatalf("CString(no nul) = %q, want %q", got, want)
+	}
+}
+
 func TestTextFieldCursorNavigationAndUnicodeInput(t *testing.T) {
 	rt := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	text := make([]byte, 64)

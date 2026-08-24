@@ -25,6 +25,7 @@ ANSWER :: #run 21 * 2
 query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
 label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
+store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -132,6 +133,7 @@ frame main {
     ShowToast("toast from kry")
     TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
     TextArea((TextAreaProps){.bounds = {ScaleUIPx(250), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+    store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
     Text("ro", ScaleUIPx(150), ScaleUIPx(152), Text16, GetThemeText())
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
@@ -203,8 +205,10 @@ grep -q 'func SetValidHost(host ValidHost)' "$out"
 grep -q 'QueryJobs(Since int64, Limit int32) int32' "$out"
 grep -q 'LabelText(I int32) string' "$out"
 grep -q 'TabLabels() \[\]string' "$out"
+grep -q 'StoreSecret(Secret string, Site string, Login string, A int32, B int32, C int32, D int32, E int32, F int32, Exclude string) int32' "$out"
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
+grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"
@@ -295,9 +299,15 @@ module kryon-generated-smoke
 
 go 1.25.0
 
-require github.com/waozixyz/kryon/go/kryon v0.0.0
+require (
+	github.com/waozixyz/kryon/go/kryon v0.0.0
+	golang.org/x/image v0.45.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
+)
 replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon
 EOF
+cp "$root/go/kryon/go.sum" "$work/out/go.sum"
 (cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
 
 cat > "$work/src/assert_fail.kry" <<'EOF'

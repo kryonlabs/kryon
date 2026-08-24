@@ -1665,6 +1665,12 @@ func zeroIndex(buf []byte) int {
 	return len(buf)
 }
 
+// CString returns the text before the first NUL byte in a generated fixed
+// char buffer.
+func CString(buf []byte) string {
+	return string(buf[:zeroIndex(buf)])
+}
+
 func clampCursor(text string, pos int) int {
 	if pos < 0 {
 		return 0

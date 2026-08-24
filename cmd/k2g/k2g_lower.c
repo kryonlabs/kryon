@@ -11,6 +11,7 @@
 
 #define K2G_TEXT_MAX 8192
 #define K2G_NAME_MAX 256
+#define K2G_EXTERN_PARAM_MAX 16
 #define K2G_RUNTIME_IMPORT "github.com/waozixyz/kryon/go/kryon"
 #define K2G_RUNTIME_PKG "kryon"
 
@@ -297,8 +298,8 @@ k2g_is_go_elided_lifecycle(const char *text)
 typedef struct {
     char kry[K2G_NAME_MAX];        /* kry call name */
     char go[K2G_NAME_MAX];         /* Host interface method */
-    char pnames[8][K2G_NAME_MAX];  /* parameter names */
-    char ptypes[8][K2G_NAME_MAX];  /* parameter kry types */
+    char pnames[K2G_EXTERN_PARAM_MAX][K2G_NAME_MAX];  /* parameter names */
+    char ptypes[K2G_EXTERN_PARAM_MAX][K2G_NAME_MAX];  /* parameter kry types */
     int pcount;
     char ret[K2G_NAME_MAX];
     char host_var[K2G_NAME_MAX + 8];   /* guard-prefixed host var */
@@ -354,8 +355,8 @@ k2g_const_entry(const char *name, size_t len)
 static void
 split_params(const char *args, K2gExtern *ex)
 {
-    char parts[8][K2G_TEXT_MAX];
-    int n = split_top(args, parts, 8);
+    char parts[K2G_EXTERN_PARAM_MAX][K2G_TEXT_MAX];
+    int n = split_top(args, parts, K2G_EXTERN_PARAM_MAX);
 
     ex->pcount = 0;
     for(int i = 0; i < n; i++) {
@@ -367,7 +368,7 @@ split_params(const char *args, K2gExtern *ex)
         nl = (size_t)(colon - parts[i]);
         while(nl > 0 && parts[i][nl - 1] == ' ')
             nl--;
-        if(nl == 0 || ex->pcount >= 8)
+        if(nl == 0 || ex->pcount >= K2G_EXTERN_PARAM_MAX)
             continue;
         snprintf(ex->pnames[ex->pcount], K2G_NAME_MAX, "%.*s", (int)nl,
                  parts[i]);
@@ -578,6 +579,48 @@ k2g_set_module(const KirModule *m, const char *guard)
     }
 }
 
+static int
+k2g_char_ptr_type(const char *type)
+{
+    char t[K2G_NAME_MAX];
+    size_t n;
+
+    snprintf(t, sizeof(t), "%s", type);
+    n = strlen(t);
+    while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
+        t[--n] = '\0';
+    while(t[0] == ' ' || t[0] == '\t')
+        memmove(t, t + 1, strlen(t));
+    if(strncmp(t, "const ", 6) == 0)
+        memmove(t, t + 6, strlen(t + 6) + 1);
+    for(size_t i = 0; t[i] != '\0'; i++) {
+        if(t[i] == ' ' && t[i + 1] == '*') {
+            memmove(t + i, t + i + 1, strlen(t + i));
+            i = (size_t)-1;
+        }
+    }
+    return strcmp(t, "char*") == 0 || strcmp(t, "string") == 0;
+}
+
+static int
+k2g_expr_is_state_char_buffer(const char *expr)
+{
+    if(g_mod == NULL || strncmp(expr, "st.", 3) != 0)
+        return 0;
+    for(int i = 0; i < g_mod->state_count; i++) {
+        char name[K2G_NAME_MAX];
+
+        if(g_mod->state_fields[i].type[0] != '[' ||
+           strstr(g_mod->state_fields[i].type, "char") == NULL ||
+           strchr(g_mod->state_fields[i].type, '*') != NULL)
+            continue;
+        camel(g_mod->state_fields[i].name, name, sizeof(name));
+        if(strcmp(expr + 3, name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 /* Wrap a translated argument in a Go conversion for its kry parameter type,
  * so int/long/float widening across the host bridge always compiles. */
 static const char *
@@ -593,7 +636,10 @@ conv_arg(const char *kry_type, const char *expr)
         while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
             t[--n] = '\0';
     }
-    if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0)
+    if(k2g_char_ptr_type(t) && k2g_expr_is_state_char_buffer(expr))
+        snprintf(buf, sizeof(buf), "%s.CString(%s[:])", K2G_RUNTIME_PKG,
+                 expr);
+    else if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0)
         snprintf(buf, sizeof(buf), "int32(%s)", expr);
     else if(strcmp(t, "long") == 0 || strcmp(t, "long long") == 0 ||
             strcmp(t, "size_t") == 0 || strcmp(t, "ssize_t") == 0)
@@ -1329,8 +1375,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                                            "%s.%s(", g_externs[xi].host_var,
                                            g_externs[xi].go);
                     if(!all_ws) {
-                        char parts[8][K2G_TEXT_MAX];
-                        int n = split_top(raw, parts, 8);
+                        char parts[K2G_EXTERN_PARAM_MAX][K2G_TEXT_MAX];
+                        int n = split_top(raw, parts, K2G_EXTERN_PARAM_MAX);
 
                         for(int i = 0; i < n; i++) {
                             char arg[K2G_TEXT_MAX];
