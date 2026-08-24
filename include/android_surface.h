@@ -7,5 +7,6 @@
  * in width/height when provided, and returns 1. Other platforms leave the
  * current Kryon screen size in width/height and return 0. */
 int SyncAndroidSurfaceSize(int *width, int *height);
+int GetAndroidSurfaceSize(int *width, int *height);
 
 #endif /* KRYON_ANDROID_SURFACE_H */

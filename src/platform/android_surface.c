@@ -17,6 +17,22 @@ void rlViewport(int x, int y, int width, int height);
 #define KRY_RL_PROJECTION 0x1701
 #endif
 
+static int g_android_surface_w;
+static int g_android_surface_h;
+
+int
+GetAndroidSurfaceSize(int *width, int *height)
+{
+    int w = g_android_surface_w > 0 ? g_android_surface_w : GetScreenWidth();
+    int h = g_android_surface_h > 0 ? g_android_surface_h : GetScreenHeight();
+
+    if(width != NULL)
+        *width = w;
+    if(height != NULL)
+        *height = h;
+    return g_android_surface_w > 0 && g_android_surface_h > 0;
+}
+
 int
 SyncAndroidSurfaceSize(int *width, int *height)
 {
@@ -32,6 +48,8 @@ SyncAndroidSurfaceSize(int *width, int *height)
         w = ANativeWindow_getWidth(window);
         h = ANativeWindow_getHeight(window);
         if(w > 0 && h > 0) {
+            g_android_surface_w = w;
+            g_android_surface_h = h;
             rlViewport(0, 0, w, h);
             rlMatrixMode(KRY_RL_PROJECTION);
             rlLoadIdentity();
