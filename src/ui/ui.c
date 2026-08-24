@@ -4061,22 +4061,6 @@ ui_sync_platform_text_input(void)
         g_ui_text_input_requested != 0 ||
         (g_ui_text_focus_owner != NULL &&
          g_ui_text_focus_owner_this_frame == g_ui_text_focus_owner);
-    static int last_logged_active = -1;
-    static int last_logged_show = -1;
-    static int last_logged_has_callback = -1;
-    int has_callback = g_ui_text_input_platform_callback != NULL;
-
-    if(text_input_active != last_logged_active ||
-       g_ui_text_input_show_requested != last_logged_show ||
-       has_callback != last_logged_has_callback) {
-        TraceLog(LOG_INFO,
-                 "KRYON_IME: active=%d platform_active=%d show=%d callback=%d",
-                 text_input_active, g_ui_platform_text_input_active,
-                 g_ui_text_input_show_requested, has_callback);
-        last_logged_active = text_input_active;
-        last_logged_show = g_ui_text_input_show_requested;
-        last_logged_has_callback = has_callback;
-    }
 
     if(g_ui_text_input_show_requested &&
        g_ui_text_input_platform_callback != NULL) {
