@@ -808,12 +808,16 @@ h3 {
   line-height: 1.08;
 }
 
-.app-author {
+.app-byline {
   display: inline-block;
   margin: -2px 0 12px;
   color: #bde9df;
   font-size: 14px;
   font-weight: 700;
+}
+
+.app-author {
+  color: #bde9df;
   text-decoration: none;
 }
 

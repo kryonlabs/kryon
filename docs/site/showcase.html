@@ -96,8 +96,8 @@
         var name = author.name || "";
         var url = author.url || "";
         if (!name) return "";
-        if (!url) return '<span class="app-author">By ' + escapeHtml(name) + '</span>';
-        return '<a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">By ' + escapeHtml(name) + '</a>';
+        if (!url) return '<span class="app-byline">By <span class="app-author">' + escapeHtml(name) + '</span></span>';
+        return '<span class="app-byline">By <a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(name) + '</a></span>';
       }
       function rerankProjects(projects) {
         return projects
