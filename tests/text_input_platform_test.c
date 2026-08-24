@@ -47,6 +47,11 @@ main(void)
     SetUIFocusTextInputActive(1);
     EndUIFrame();
 
+    BeginUIFrame(640, 480, 1.0f);
+    SetUIFocusTextInputActive(0);
+    SetUIFocusTextInputActive(1);
+    EndUIFrame();
+
     ok &= callback_count == 3;
     if(callback_count != 3)
         fprintf(stderr, "FAIL: callback count got %d want 3\n", callback_count);
