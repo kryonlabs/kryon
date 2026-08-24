@@ -50,16 +50,21 @@ EM_JS(int, js_glyph_metrics, (int face_id, int cp, int size,
     var ch = String.fromCodePoint(cp);
     var m = ctx.measureText(ch);
     var advX = Math.ceil(m.width);
-    var asc = Math.ceil(m.actualBoundingBoxAscent !== undefined
-                        ? m.actualBoundingBoxAscent : size * 0.8);
-    var desc = Math.ceil(m.actualBoundingBoxDescent !== undefined
-                         ? m.actualBoundingBoxDescent : 2);
+    var glyphAsc = Math.ceil(m.actualBoundingBoxAscent !== undefined
+                             ? m.actualBoundingBoxAscent : size * 0.8);
+    var glyphDesc = Math.ceil(m.actualBoundingBoxDescent !== undefined
+                              ? m.actualBoundingBoxDescent : 2);
+    var fontAsc = Math.ceil(m.fontBoundingBoxAscent !== undefined
+                            ? m.fontBoundingBoxAscent : size * 0.8);
+    var fontDesc = Math.ceil(m.fontBoundingBoxDescent !== undefined
+                             ? m.fontBoundingBoxDescent : Math.max(2, size * 0.2));
+    var baseline = Math.max(fontAsc, glyphAsc) + 1;
     var left = Math.ceil(m.actualBoundingBoxLeft !== undefined
                          ? m.actualBoundingBoxLeft : 0);
     var right = Math.ceil(m.actualBoundingBoxRight !== undefined
                           ? m.actualBoundingBoxRight : m.width);
     var gw = Math.max(right + left + 2, 1);
-    var gh = Math.max(asc + desc + 2, 1);
+    var gh = Math.max(baseline + Math.max(fontDesc, glyphDesc) + 1, 1);
     if (gw > 256 || gh > 256) return 0;
     if (cv.width < gw || cv.height < gh) {
         cv.width = Math.max(cv.width, gw);
@@ -70,8 +75,7 @@ EM_JS(int, js_glyph_metrics, (int face_id, int cp, int size,
     }
     ctx.clearRect(0, 0, gw, gh);
     ctx.fillStyle = '#fff';
-    /* baseline sits asc+1 px into the cell; left bearing at left+1 */
-    ctx.fillText(ch, left + 1, asc + 1);
+    ctx.fillText(ch, left + 1, baseline);
     var d;
     try {
         d = ctx.getImageData(0, 0, gw, gh).data;
@@ -83,7 +87,7 @@ EM_JS(int, js_glyph_metrics, (int face_id, int cp, int size,
     setValue(w, gw, 'i32');
     setValue(h, gh, 'i32');
     setValue(offx, -(left + 1), 'i32');
-    setValue(offy, -(asc + 1), 'i32');
+    setValue(offy, 0, 'i32');
     return 1;
 });
 
