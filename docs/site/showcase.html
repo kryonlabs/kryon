@@ -45,12 +45,12 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Showcase</p>
       <h1>Apps built with Kryon</h1>
-      <p class="section-lead">The top projects are ranked by stars from trusted public source platforms. Submit your Kryon app through the public metadata repository.</p>
+      <p class="section-lead">The top projects are ranked by live stars from trusted public source platforms. Submit your Kryon app through the public metadata repository.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit a project</a>
         <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" target="_blank" rel="noopener">View metadata</a>
       </div>
-      <p class="showcase-note">Current trusted ranking source: GitHub stars. Unranked projects remain visible after review but do not enter the top-10 list.</p>
+      <p class="showcase-note">Current trusted ranking source: live GitHub stars. Unranked projects remain visible after review but do not enter the top-10 list.</p>
     </section>
 
     <section>
@@ -138,6 +138,33 @@
         if (stars == null) return "unranked";
         return stars === 1 ? "1 star" : stars + " stars";
       }
+      function repositorySlug(project) {
+        var match = text(project.repository).match(/^https:\/\/github\.com\/([^\/]+)\/([^\/?#]+)/);
+        return match ? match[1] + "/" + match[2].replace(/\.git$/, "") : "";
+      }
+      function trustedStars(project) {
+        return typeof project.stars === "number" && !project.unranked ? project.stars : -1;
+      }
+      function rerankProjects(projects) {
+        return projects
+          .map(function(project, index) {
+            var copy = {};
+            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
+            copy._sourceOrder = index;
+            return copy;
+          })
+          .sort(function(a, b) {
+            if (!!a.unranked !== !!b.unranked) return a.unranked ? 1 : -1;
+            var starDelta = trustedStars(b) - trustedStars(a);
+            return starDelta || a._sourceOrder - b._sourceOrder;
+          })
+          .slice(0, 10)
+          .map(function(project, index) {
+            delete project._sourceOrder;
+            project.rank = project.unranked ? null : index + 1;
+            return project;
+          });
+      }
       function escapeHtml(value) {
         return text(value).replace(/[&<>"']/g, function(ch) {
           return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"}[ch];
@@ -161,12 +188,48 @@
           '</div>' +
           '</article>';
       }
+      function refreshStars(projects) {
+        var requests = projects.map(function(project, index) {
+          var slug = repositorySlug(project);
+          if (!slug) return Promise.resolve({index: index});
+          return fetch("https://api.github.com/repos/" + slug)
+            .then(function(response) { return response.ok ? response.json() : null; })
+            .then(function(repo) {
+              return {
+                index: index,
+                stars: repo && typeof repo.stargazers_count === "number" ? repo.stargazers_count : null
+              };
+            })
+            .catch(function() { return {index: index}; });
+        });
+        return Promise.all(requests).then(function(results) {
+          var changed = false;
+          var next = projects.map(function(project) {
+            var copy = {};
+            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
+            return copy;
+          });
+          results.forEach(function(result) {
+            if (typeof result.stars === "number" && next[result.index].stars !== result.stars) {
+              next[result.index].stars = result.stars;
+              changed = true;
+            }
+          });
+          return changed ? rerankProjects(next) : projects;
+        });
+      }
       if (grid && window.fetch) {
         fetch("showcase-data.json")
           .then(function(response) { return response.ok ? response.json() : null; })
           .then(function(data) {
             if (!data || !Array.isArray(data.projects) || !data.projects.length) return;
-            grid.innerHTML = data.projects.map(renderProject).join("");
+            var projects = rerankProjects(data.projects);
+            grid.innerHTML = projects.map(renderProject).join("");
+            refreshStars(projects).then(function(liveProjects) {
+              if (liveProjects !== projects) {
+                grid.innerHTML = liveProjects.map(renderProject).join("");
+              }
+            });
           })
           .catch(function() {});
       }
