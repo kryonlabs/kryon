@@ -2326,8 +2326,28 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             /* app -> main */
             if(m->app.has_app && !no_main) {
                 char frame[K2G_NAME_MAX * 2];
+                const KirFunction *entry = NULL;
 
-                camel(m->app.frame, frame, sizeof(frame));
+                if(m->app.frame[0] != '\0') {
+                    for(int i = 0; i < m->function_count; i++) {
+                        if(strcmp(m->functions[i].name, m->app.frame) == 0) {
+                            entry = &m->functions[i];
+                            break;
+                        }
+                    }
+                }
+                if(entry == NULL) {
+                    for(int i = 0; i < m->function_count; i++) {
+                        if(m->functions[i].is_ui) {
+                            entry = &m->functions[i];
+                            break;
+                        }
+                    }
+                }
+                if(entry != NULL)
+                    camel(entry->name, frame, sizeof(frame));
+                else
+                    camel(m->app.frame, frame, sizeof(frame));
                 fprintf(f, "func main() {\n");
                 fprintf(f, "\t%s.Open(%s.AppConfig{\n", K2G_RUNTIME_PKG,
                         K2G_RUNTIME_PKG);
@@ -2338,10 +2358,41 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 fprintf(f, "\tdefer %s.Close()\n", K2G_RUNTIME_PKG);
                 fprintf(f, "\tfor !%s.WindowShouldClose() {\n",
                         K2G_RUNTIME_PKG);
-                if(m->state_count > 0)
-                    fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard, frame, guard);
-                else
-                    fprintf(f, "\t\t%s_%s()\n", guard, frame);
+                if(entry != NULL && entry->is_ui) {
+                    fprintf(f, "\t\t%s.BeginFrame()\n", K2G_RUNTIME_PKG);
+                    if(strstr(entry->args, "Rectangle") != NULL) {
+                        fprintf(f, "\t\tviewport := %s.Rectangle{Width: float32(%s.GetScreenWidth()), Height: float32(%s.GetScreenHeight())}\n",
+                                K2G_RUNTIME_PKG, K2G_RUNTIME_PKG,
+                                K2G_RUNTIME_PKG);
+                        if(m->state_count > 0)
+                            fprintf(f, "\t\t%s_%s(%sStateValue, viewport)\n",
+                                    guard, frame, guard);
+                        else
+                            fprintf(f, "\t\t%s_%s(viewport)\n", guard, frame);
+                    } else {
+                        if(m->state_count > 0)
+                            fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard,
+                                    frame, guard);
+                        else
+                            fprintf(f, "\t\t%s_%s()\n", guard, frame);
+                    }
+                    fprintf(f, "\t\t%s.EndFrame()\n", K2G_RUNTIME_PKG);
+                } else if(entry != NULL && strstr(entry->args, "Rectangle") != NULL) {
+                    fprintf(f, "\t\tviewport := %s.Rectangle{Width: float32(%s.GetScreenWidth()), Height: float32(%s.GetScreenHeight())}\n",
+                            K2G_RUNTIME_PKG, K2G_RUNTIME_PKG,
+                            K2G_RUNTIME_PKG);
+                    if(m->state_count > 0)
+                        fprintf(f, "\t\t%s_%s(%sStateValue, viewport)\n",
+                                guard, frame, guard);
+                    else
+                        fprintf(f, "\t\t%s_%s(viewport)\n", guard, frame);
+                } else if(entry != NULL) {
+                    if(m->state_count > 0)
+                        fprintf(f, "\t\t%s_%s(%sStateValue)\n", guard, frame,
+                                guard);
+                    else
+                        fprintf(f, "\t\t%s_%s()\n", guard, frame);
+                }
                 fprintf(f, "\t}\n}\n");
             }
             fclose(f);
