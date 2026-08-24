@@ -39,10 +39,15 @@ fi
 
 srcs=$(find "$root/src" -name '*.c' \
     ! -path '*/ksync/*' \
+    ! -path '*/platform/plan9/*' \
+    ! -path '*/scene/physics_world.c' \
+    ! -path '*/scene/node_body2d.c' \
+    ! -path '*/scene/node_area2d.c' \
+    ! -path '*/scene/node_collision_shape2d.c' \
     ! -name 'libdraw_*.c' \
     | sort | tr '\n' ' ')
 
-emcc -I"$root/include" -I"$root/vendor/box2d/include" -O1 \
+emcc -I"$root/include" -DKRYON_WITH_PHYSICS=0 -O1 \
     -sASYNCIFY -sENVIRONMENT=node,web -sINITIAL_MEMORY=64MB \
     -o "$work/canvas_smoke.js" "$work/main.c" $srcs "$assets"
 
