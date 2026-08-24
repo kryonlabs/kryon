@@ -1437,6 +1437,8 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         Color outline = focused ? c_circle : ui_material_outline();
 
         DrawRectangleRounded(bounds, 0.18f, 12, background);
+        DrawRectangleRoundedLinesEx(bounds, 0.18f, 12,
+                                    ScaleUIPx(focused ? 2 : 1), outline);
         DrawRectangle((int)bounds.x + ScaleUIPx(8),
                       (int)(bounds.y + bounds.height) -
                           ScaleUIPx(focused ? 2 : 1),
