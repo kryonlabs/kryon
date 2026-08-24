@@ -443,6 +443,10 @@ type TableViewProps struct {
 	ActivatedColumn    *int32
 	RightClickedRow    *int32
 	RightClickedColumn *int32
+	CopyText           *string
+	PastedText         *string
+	PastedRow          *int32
+	PastedColumn       *int32
 	SortColumn         *int32
 	ScrollOffset       *int32
 	RowHeight          int32
@@ -1010,6 +1014,15 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	}
 	if props.RightClickedColumn != nil {
 		*props.RightClickedColumn = -1
+	}
+	if props.PastedText != nil {
+		*props.PastedText = ""
+	}
+	if props.PastedRow != nil {
+		*props.PastedRow = -1
+	}
+	if props.PastedColumn != nil {
+		*props.PastedColumn = -1
 	}
 
 	changed := int32(0)
@@ -1743,31 +1756,65 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 		return 0
 	}
 	changed := int32(0)
+	handled := false
+	selectionChanged := false
+	selectedRow := *props.SelectedRow
+	selectedCol := int32(-1)
+	if props.SelectedColumn != nil {
+		selectedCol = *props.SelectedColumn
+	}
 	row := int32(0)
-	if *props.SelectedRow >= 0 {
-		row = clamp32(*props.SelectedRow, 0, int32(len(props.Rows)-1))
+	if selectedRow >= 0 {
+		row = clamp32(selectedRow, 0, int32(len(props.Rows)-1))
 	}
 	col := int32(0)
-	if props.SelectedColumn != nil && *props.SelectedColumn >= 0 {
-		col = clamp32(*props.SelectedColumn, 0, int32(len(props.Columns)-1))
+	if selectedCol >= 0 {
+		col = clamp32(selectedCol, 0, int32(len(props.Columns)-1))
 	}
 	for _, event := range r.inputEvents {
-		if event.shortcut || event.text != "" {
+		if event.text != "" {
+			continue
+		}
+		if event.shortcut {
+			switch event.key {
+			case KeyC, KeyX:
+				if text, ok := tableClipboardText(props, selectedRow, selectedCol); ok {
+					r.clipboard = text
+					handled = true
+					changed = 1
+				}
+			case KeyV:
+				if props.PastedText != nil {
+					*props.PastedText = r.clipboard
+					if props.PastedRow != nil {
+						*props.PastedRow = selectedRow
+					}
+					if props.PastedColumn != nil {
+						*props.PastedColumn = selectedCol
+					}
+					handled = true
+					changed = 1
+				}
+			}
 			continue
 		}
 		switch event.key {
 		case KeyUp:
 			row = clamp32(row-1, 0, int32(len(props.Rows)-1))
 			changed = 1
+			selectionChanged = true
 		case KeyDown:
 			row = clamp32(row+1, 0, int32(len(props.Rows)-1))
 			changed = 1
+			selectionChanged = true
 		case KeyLeft:
 			col = clamp32(col-1, 0, int32(len(props.Columns)-1))
 			changed = 1
+			selectionChanged = true
 		case KeyRight:
 			col = clamp32(col+1, 0, int32(len(props.Columns)-1))
 			changed = 1
+			selectionChanged = true
 		case KeyTab:
 			if event.shift {
 				if col > 0 {
@@ -1783,6 +1830,7 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 				row = clamp32(row+1, 0, int32(len(props.Rows)-1))
 			}
 			changed = 1
+			selectionChanged = true
 		case KeyEnter, KeyF2:
 			if props.ActivatedRow != nil {
 				*props.ActivatedRow = row
@@ -1791,15 +1839,17 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 				*props.ActivatedColumn = col
 			}
 			changed = 1
+			selectionChanged = true
 		case KeyEscape:
 			if *props.SelectedRow >= 0 || props.SelectedColumn != nil && *props.SelectedColumn >= 0 {
 				row = -1
 				col = -1
 				changed = 1
+				selectionChanged = true
 			}
 		}
 	}
-	if changed != 0 {
+	if selectionChanged {
 		*props.SelectedRow = row
 		if props.SelectedColumn != nil {
 			*props.SelectedColumn = col
@@ -1807,9 +1857,45 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 		if row >= 0 {
 			r.scrollTableSelectionIntoView(props)
 		}
+	}
+	if handled || changed != 0 {
 		r.inputEvents = nil
 	}
 	return changed
+}
+
+func tableClipboardText(props TableViewProps, row, col int32) (string, bool) {
+	if props.CopyText != nil {
+		return *props.CopyText, true
+	}
+	switch {
+	case row >= 0 && int(row) < len(props.Rows) && col >= 0:
+		return tableCellText(props, row, col), true
+	case row >= 0 && int(row) < len(props.Rows):
+		cells := make([]string, len(props.Columns))
+		for c := range cells {
+			cells[c] = tableCellText(props, row, int32(c))
+		}
+		return strings.Join(cells, "\t"), true
+	case col >= 0 && int(col) < len(props.Columns):
+		cells := make([]string, len(props.Rows))
+		for r := range cells {
+			cells[r] = tableCellText(props, int32(r), col)
+		}
+		return strings.Join(cells, "\n"), true
+	}
+	return "", false
+}
+
+func tableCellText(props TableViewProps, row, col int32) string {
+	if row < 0 || int(row) >= len(props.Rows) || col < 0 {
+		return ""
+	}
+	cells := props.Rows[row].Cells
+	if int(col) >= len(cells) {
+		return ""
+	}
+	return cells[col]
 }
 
 func (r *runtime) scrollTableSelectionIntoView(props TableViewProps) {

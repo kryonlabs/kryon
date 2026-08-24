@@ -774,6 +774,86 @@ func TestTableViewPaintsFullRowAndColumnSelections(t *testing.T) {
 	}
 }
 
+func TestTableViewClipboardShortcuts(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(0)
+	selectedColumn := int32(1)
+	pastedText := ""
+	pastedRow := int32(-1)
+	pastedColumn := int32(-1)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:             50,
+		Columns:        []string{"section", "label", "units"},
+		Rows:           []UITableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
+		ColumnWidths:   []int32{90, 140, 70},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		PastedText:     &pastedText,
+		PastedRow:      &pastedRow,
+		PastedColumn:   &pastedColumn,
+		RowHeight:      24,
+	}
+
+	rt.SetFocus(50)
+	rt.QueueShortcut(KeyC)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if got, want := rt.ClipboardText(), "checking"; got != want {
+		t.Fatalf("cell clipboard = %q, want %q", got, want)
+	}
+	if selectedRow != 0 || selectedColumn != 1 {
+		t.Fatalf("cell copy changed selection to %d,%d", selectedRow, selectedColumn)
+	}
+
+	selectedColumn = -1
+	rt.QueueShortcut(KeyC)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if got, want := rt.ClipboardText(), "banks\tchecking\t10"; got != want {
+		t.Fatalf("row clipboard = %q, want %q", got, want)
+	}
+
+	selectedRow = -1
+	selectedColumn = 2
+	rt.QueueShortcut(KeyC)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if got, want := rt.ClipboardText(), "10\n5"; got != want {
+		t.Fatalf("column clipboard = %q, want %q", got, want)
+	}
+	if selectedRow != -1 || selectedColumn != 2 {
+		t.Fatalf("column copy changed selection to %d,%d", selectedRow, selectedColumn)
+	}
+
+	copyText := "editable-id"
+	selectedRow = 1
+	selectedColumn = 1
+	props.CopyText = &copyText
+	rt.QueueShortcut(KeyC)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if got := rt.ClipboardText(); got != "editable-id" {
+		t.Fatalf("override clipboard = %q, want editable-id", got)
+	}
+
+	rt.SetClipboardText("new\tvalues")
+	rt.QueueShortcut(KeyV)
+	rt.BeginFrame()
+	changed := rt.TableView(props)
+	rt.EndFrame()
+	if changed == 0 {
+		t.Fatal("paste did not report table change")
+	}
+	if pastedText != "new\tvalues" || pastedRow != 1 || pastedColumn != 1 {
+		t.Fatalf("paste = %q at %d,%d, want new values at 1,1", pastedText, pastedRow, pastedColumn)
+	}
+}
+
 func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 260}).(*runtime)
 	selectedRow := int32(0)
