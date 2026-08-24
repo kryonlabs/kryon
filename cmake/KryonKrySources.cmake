@@ -26,7 +26,21 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
     list(APPEND KRYGEN_K2C_SOURCES
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir.c"
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir_parse.c")
-    find_program(KRYGEN_HOST_CC NAMES cc clang gcc REQUIRED)
+    set(KRYON_HOST_CC "" CACHE FILEPATH "Host C compiler used to build Kryon code generation tools")
+    if(NOT KRYON_HOST_CC)
+        find_program(KRYON_HOST_CC
+            NAMES cc gcc clang
+            PATHS /usr/bin /bin /usr/local/bin /opt/homebrew/bin
+            NO_DEFAULT_PATH)
+    endif()
+    if(NOT KRYON_HOST_CC)
+        find_program(KRYON_HOST_CC
+            NAMES cc gcc clang
+            NO_CMAKE_FIND_ROOT_PATH)
+    endif()
+    if(NOT KRYON_HOST_CC)
+        message(FATAL_ERROR "kryon_generate_kry_sources requires a host C compiler; set KRYON_HOST_CC")
+    endif()
     set(KRYGEN_K2C "${CMAKE_BINARY_DIR}/kryon-host-tools/k2c")
 
     set(krygen_generated_sources)
@@ -63,7 +77,7 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
     add_custom_command(
         OUTPUT "${KRYGEN_K2C}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/kryon-host-tools"
-        COMMAND "${KRYGEN_HOST_CC}" -Wall -Wextra -O2
+        COMMAND "${KRYON_HOST_CC}" -Wall -Wextra -O2
             -I${KRYGEN_KRYON_DIR}/cmd/kir
             -I${KRYGEN_KRYON_DIR}/cmd/k2c
             -o "${KRYGEN_K2C}"
