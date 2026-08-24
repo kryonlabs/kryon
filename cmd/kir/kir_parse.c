@@ -352,7 +352,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "Background", "Text", "TextInRect", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "IconTexture", "Picture", "Button",
         "IconButton", "Href", "TextField", "Dropdown", "Slider",
-        "Toggle", "Checkbox", "Progress", "Column", "Row", "Stack",
+        "Toggle", "Checkbox", "Progress", "Screen", "Column", "Row", "Stack",
         "End", "Scroll", "Canvas", "Modal", "TitleBar", "TabBar",
         "BottomNav", "TopNav", "Toolbar"
     };
@@ -415,6 +415,139 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     memcpy(args, open + 1, (size_t)(close - open - 1));
     args[close - open - 1] = '\0';
     return 1;
+}
+
+typedef struct UiBlock {
+    char widget[KIR_NAME_MAX];
+    char name[KIR_NAME_MAX];
+    char path[KIR_TEXT_MAX];
+    char props[KIR_TEXT_MAX];
+    int close_depth;
+    int opened;
+    int prop_count;
+} UiBlock;
+
+static int
+is_layout_widget(const char *name)
+{
+    return strcmp(name, "Screen") == 0 || strcmp(name, "Column") == 0 ||
+           strcmp(name, "Row") == 0 || strcmp(name, "Stack") == 0;
+}
+
+static int
+parse_ui_block_header(const char *text, char *widget, size_t widget_size,
+                      char *name, size_t name_size)
+{
+    const char *p = text;
+    const char *start;
+    size_t n = 0;
+
+    while(*p == ' ' || *p == '\t')
+        p++;
+    start = p;
+    while(isalnum((unsigned char)*p) || *p == '_')
+        p++;
+    n = (size_t)(p - start);
+    if(n == 0 || n >= widget_size)
+        return 0;
+    memcpy(widget, start, n);
+    widget[n] = '\0';
+    if(!is_layout_widget(widget))
+        return 0;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    start = p;
+    n = 0;
+    while(isalnum((unsigned char)*p) || *p == '_') {
+        if(n + 1 < name_size)
+            name[n++] = *p;
+        p++;
+    }
+    name[n] = '\0';
+    if(name[0] == '\0')
+        return 0;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(*p == ':')
+        p++;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    return p[0] == '{' && p[1] == '\0';
+}
+
+static int
+parse_ui_prop_line(char *text, char *field, size_t field_size,
+                   char *value, size_t value_size)
+{
+    char *eq;
+    char *name;
+    char *expr;
+    size_t n;
+
+    eq = strchr(text, '=');
+    if(eq == NULL || strstr(text, "==") != NULL || strstr(text, "!=") != NULL ||
+       strstr(text, "<=") != NULL || strstr(text, ">=") != NULL)
+        return 0;
+    *eq = '\0';
+    name = trim(text);
+    expr = trim(eq + 1);
+    if(name[0] == '\0' || expr[0] == '\0')
+        return 0;
+    for(const char *p = name; *p != '\0'; p++)
+        if(!isalnum((unsigned char)*p) && *p != '_')
+            return 0;
+    n = strlen(expr);
+    if(n > 0 && expr[n - 1] == ';') {
+        expr[n - 1] = '\0';
+        expr = trim(expr);
+    }
+    snprintf(field, field_size, "%s", name);
+    snprintf(value, value_size, "%s", expr);
+    return 1;
+}
+
+static void
+ui_block_append_prop(UiBlock *block, const char *field, const char *value)
+{
+    size_t used = strlen(block->props);
+
+    if(used + strlen(field) + strlen(value) + 8 >= sizeof(block->props))
+        return;
+    snprintf(block->props + used, sizeof(block->props) - used, ".%.120s = %.3000s, ",
+             field, value);
+    block->prop_count++;
+}
+
+static const char *
+ui_block_prop_type(const char *widget)
+{
+    if(strcmp(widget, "Row") == 0)
+        return "RowProps";
+    return "ColumnProps";
+}
+
+static void
+ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
+{
+    char call[KIR_TEXT_MAX];
+    char args[KIR_TEXT_MAX];
+    const char *prop_type;
+    int has_key;
+
+    if(block == NULL || block->opened)
+        return;
+    prop_type = ui_block_prop_type(block->widget);
+    has_key = strstr(block->props, ".key") != NULL ||
+              strstr(block->props, ".Key") != NULL;
+    if(has_key)
+        snprintf(args, sizeof(args), "(%s){%.3800s}", prop_type, block->props);
+    else
+        snprintf(args, sizeof(args),
+                 "(%s){%.3000s.key = Key(\"%.900s\")}",
+                 prop_type, block->props, block->path);
+    snprintf(call, sizeof(call), "%.120s(%.3900s)", block->widget, args);
+    KirFunctionAddWidget(fn, block->widget, args, call, span);
+    block->opened = 1;
 }
 
 static void
@@ -916,17 +1049,6 @@ parse_function_header(char *name, size_t name_size, char *args,
               n + 1 < name_size)
             name[n++] = *q++;
         name[n] = '\0';
-    } else if(starts_word(line, "screen") || starts_word(line, "preview") ||
-              starts_word(line, "page") || starts_word(line, "scene") ||
-              starts_word(line, "frame") || starts_word(line, "fn")) {
-        p = strchr(line, ' ');
-        if(p != NULL) {
-            p = trim((char *)(void *)p);
-            while((isalnum((unsigned char)*p) || *p == '_') &&
-                  n + 1 < name_size)
-                name[n++] = *p++;
-            name[n] = '\0';
-        }
     }
     p = strchr(line, '(');
     q = p == NULL ? NULL : strchr(p, ')');
@@ -1002,7 +1124,7 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
     if(intrinsic != NULL) {
         /* 'name :: (args) -> int #intrinsic "web"' — lowered by k2c to a
          * static EM_ASM wrapper on web builds. Only the two known web
-         * intrinsics exist, mirroring the legacy compiler. */
+         * intrinsics exist. */
         const char *b = intrinsic + strlen("#intrinsic");
         char backend[KIR_NAME_MAX];
         char ret[KIR_NAME_MAX] = "";
@@ -1055,10 +1177,6 @@ looks_like_function_header(const char *line)
     char *p;
     char *body;
 
-    if(starts_word(line, "screen") || starts_word(line, "preview") ||
-       starts_word(line, "page") || starts_word(line, "scene") ||
-       starts_word(line, "frame") || starts_word(line, "fn"))
-        return 1;
     p = strstr(line, "::");
     if(p == NULL)
         return 0;
@@ -1075,7 +1193,7 @@ looks_like_function_header(const char *line)
 
 
 /* ---- compile-time conditionals ------------------------------------------
- * '#if COND { ... } #else { ... }' regions keep the legacy model: top-level
+ * '#if COND { ... } #else { ... }' regions use one model: top-level
  * captures inside a region are stamped with the expanded C preprocessor
  * condition and the emitter wraps each item in '#if cond / #endif'; the
  * condition's 'Name' constants ('WEB :: #defined(PLATFORM_WEB)') expand to
@@ -1772,6 +1890,8 @@ kir_parse_file(const char *path, const char *root)
     int body_mdepth[8];
     int body_mcount = 0;
     int in_block_comment = 0;
+    UiBlock ui_blocks[64];
+    int ui_block_count = 0;
 
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
@@ -1842,10 +1962,14 @@ kir_parse_file(const char *path, const char *root)
                  * expression braces). */
                 {
                     char nc = pending[wl];
+                    char uiw[KIR_NAME_MAX];
+                    char uin[KIR_NAME_MAX];
 
                     header_line =
                         pending[0] == '#' ||
                         strcmp(pending, "{") == 0 ||   /* bare scope-open */
+                        parse_ui_block_header(pending, uiw, sizeof(uiw),
+                                              uin, sizeof(uin)) ||
                         /* 'name :: Type = {' carries an initializer, not a
                          * body: its braces are expression braces so the
                          * logical line continues until they balance. Header
@@ -1863,12 +1987,6 @@ kir_parse_file(const char *path, const char *root)
                           strcmp(w0, "do") == 0 ||
                           strcmp(w0, "case") == 0 ||
                           strcmp(w0, "default") == 0 ||
-                          strcmp(w0, "screen") == 0 ||
-                          strcmp(w0, "preview") == 0 ||
-                          strcmp(w0, "page") == 0 ||
-                          strcmp(w0, "scene") == 0 ||
-                          strcmp(w0, "frame") == 0 ||
-                          strcmp(w0, "fn") == 0 ||
                           strcmp(w0, "struct") == 0 ||
                           strcmp(w0, "enum") == 0 ||
                           strcmp(w0, "state") == 0 ||
@@ -1934,8 +2052,7 @@ kir_parse_file(const char *path, const char *root)
                expr_brace > 0)
                 continue;
             /* Continuation: a line ending in a binary operator or comma
-             * continues onto the next (legacy line_needs_continuation).
-             * Exclude ++/-- (they end statements). */
+             * continues onto the next. Exclude ++/-- (they end statements). */
             {
                 size_t pl = (size_t)pending_len;
                 char last;
@@ -1968,8 +2085,7 @@ kir_parse_file(const char *path, const char *root)
                     continue;
                 /* Look ahead: a next line starting with a continuation
                  * token ('?' / ':' ternary branches, '.', ',', leading
-                 * binary operators) continues this statement (legacy
-                 * line_starts_continuation). Skipped for queued one-liner
+                 * binary operators) continues this statement. Skipped for queued one-liner
                  * parts and while a stash is pending: their "next line" is
                  * not the next physical source line, and reading ahead here
                  * would overwrite/lose the stashed one. */
@@ -2141,7 +2257,8 @@ kir_parse_file(const char *path, const char *root)
             } else if(starts_word(t, "font") && strstr(t, "examples")) {
                 module->app.font_examples = 1;
             } else if(starts_word(t, "frame")) {
-                sscanf(t, "frame %127s", module->app.frame);
+                die("%s:%d: app frame property is not supported; declare a #ui function",
+                    rel, line_no);
             } else if(starts_word(t, "init")) {
                 sscanf(t, "init %127s", module->app.init);
             } else if(starts_word(t, "scene")) {
@@ -2149,11 +2266,17 @@ kir_parse_file(const char *path, const char *root)
             } else if(starts_word(t, "shutdown")) {
                 sscanf(t, "shutdown %127s", module->app.shutdown);
             }
+        } else if(mode == TOP &&
+                  (starts_word(t, "screen") || starts_word(t, "preview") ||
+                   starts_word(t, "page") || starts_word(t, "frame") ||
+                   starts_word(t, "fn"))) {
+            die("%s:%d: declare UI with Name :: (...) #ui", rel, line_no);
         } else if(mode == TOP && looks_like_function_header(t)) {
             char name[KIR_NAME_MAX];
             char args[KIR_TEXT_MAX];
             char ret[KIR_NAME_MAX];
             int is_extern = strstr(t, "#extern") != NULL;
+            int is_ui = strstr(t, "#ui") != NULL;
             int has_body = strchr(t, '{') != NULL;
 
             parse_function_header(name, sizeof(name), args, sizeof(args),
@@ -2183,24 +2306,20 @@ kir_parse_file(const char *path, const char *root)
                     }
                 }
                 fn->is_colon = strstr(t, "::") != NULL;
+                fn->is_ui = is_ui;
                 /* '#export' on a colon function keeps the plain Kry name as
-                 * the C symbol (legacy global_name) so handwritten C and
-                 * JNI entry points can call it directly. */
+                 * the C symbol so handwritten C and JNI entry points can call
+                 * it directly. */
                 fn->exported = fn->is_colon && strstr(t, "#export") != NULL;
-                /* Legacy rule: screen-keyword and colon functions are public
-                 * (project routes); '#private' opts out. */
+                /* Public functions are emitted in headers; #ui functions are
+                 * also project routes. */
                 fn->is_public = !is_extern &&
                                 strstr(t, "#private") == NULL &&
-                                (fn->is_colon ||
-                                 starts_word(t, "screen") ||
-                                 starts_word(t, "preview") ||
-                                 starts_word(t, "page") ||
-                                 starts_word(t, "frame") ||
-                                 starts_word(t, "scene") ||
-                                 starts_word(t, "fn"));
+                                (is_ui || fn->is_colon);
                 if(has_body && !is_extern) {
                     mode = FUNCTION;
                     depth = 1;
+                    ui_block_count = 0;
                 } else {
                     /* extern / body-less prototype: no body follows */
                     fn = NULL;
@@ -2475,21 +2594,7 @@ kir_parse_file(const char *path, const char *root)
             char *bcnd = NULL;
             int bck = parse_cond_start(t, &bcnd);
 
-            if(strncmp(t, "args ", 5) == 0 && depth <= 1 &&
-               fn != NULL && !fn->is_colon) {
-                /* 'args <decl>' header directive: append parameters to the
-                 * screen's signature ('args InbeApp *app'). */
-                const char *extra = t + 5;
-
-                if(fn->args[0] != '\0') {
-                    size_t used = strlen(fn->args);
-
-                    snprintf(fn->args + used, sizeof(fn->args) - used,
-                             ", %s", extra);
-                } else {
-                    snprintf(fn->args, sizeof(fn->args), "%s", extra);
-                }
-            } else if(bck != 0 || line_is_hash_else(t)) {
+            if(bck != 0 || line_is_hash_else(t)) {
                 /* body-level '#if COND {' — the braces are consumed here;
                  * the region lowers to raw #if/#elif/#else/#endif lines.
                  * (bck was computed once above: parse_cond_start strips the
@@ -2521,6 +2626,16 @@ kir_parse_file(const char *path, const char *root)
                                    KirSpan(rel, line_no, 1));
             } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
+            } else if(t[0] == '}' && ui_block_count > 0 &&
+                      depth == ui_blocks[ui_block_count - 1].close_depth) {
+                UiBlock *block = &ui_blocks[ui_block_count - 1];
+
+                ui_block_open(fn, block, KirSpan(rel, line_no, 1));
+                KirFunctionAddWidget(fn, "End", "", "End()",
+                                     KirSpan(rel, line_no, 1));
+                ui_block_count--;
+                if(depth > 0)
+                    depth--;
             } else if(t[0] == '}') {
                 /* K&R "} else {" / "} else if (...) {": the brace closes the
                  * if-body and the else re-opens a new one, so depth is net
@@ -2543,6 +2658,7 @@ kir_parse_file(const char *path, const char *root)
                         mode = TOP;
                         cond_frame_settle(tframes, tframe_count);
                         fn = NULL;
+                        ui_block_count = 0;
                     } else {
                         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, t, "",
                                            KirSpan(rel, line_no, 1));
@@ -2554,6 +2670,63 @@ kir_parse_file(const char *path, const char *root)
                 char widget_args[KIR_TEXT_MAX] = "";
                 KirStmt *added;
                 int brace_delta = net_block_braces(t);
+                char block_widget[KIR_NAME_MAX];
+                char block_name[KIR_NAME_MAX];
+                char prop_field[KIR_NAME_MAX];
+                char prop_value[KIR_TEXT_MAX];
+                char prop_line[K2IR_LINE_MAX];
+
+                if(parse_ui_block_header(t, block_widget,
+                                         sizeof(block_widget),
+                                         block_name, sizeof(block_name))) {
+                    UiBlock *block;
+
+                    if(ui_block_count > 0)
+                        ui_block_open(fn, &ui_blocks[ui_block_count - 1],
+                                      KirSpan(rel, line_no, 1));
+                    if(ui_block_count >=
+                       (int)(sizeof(ui_blocks) / sizeof(ui_blocks[0])))
+                        die("%s:%d: too many nested UI blocks", rel, line_no);
+                    block = &ui_blocks[ui_block_count++];
+                    memset(block, 0, sizeof(*block));
+                    snprintf(block->widget, sizeof(block->widget), "%s",
+                             block_widget);
+                    snprintf(block->name, sizeof(block->name), "%s",
+                             block_name);
+                    if(ui_block_count > 1)
+                    {
+                        char parent_path[KIR_TEXT_MAX];
+
+                        snprintf(parent_path, sizeof(parent_path), "%s",
+                                 ui_blocks[ui_block_count - 2].path);
+                        snprintf(block->path, sizeof(block->path), "%.3000s/%.900s",
+                                 parent_path, block_name);
+                    }
+                    else
+                        snprintf(block->path, sizeof(block->path), "%.3000s/%.900s",
+                                 fn != NULL ? fn->name : "ui", block_name);
+                    block->close_depth = depth + 1;
+                    depth++;
+                    continue;
+                }
+
+                snprintf(prop_line, sizeof(prop_line), "%s", t);
+                if(ui_block_count > 0 &&
+                   !ui_blocks[ui_block_count - 1].opened &&
+                   depth == ui_blocks[ui_block_count - 1].close_depth &&
+                   parse_ui_prop_line(prop_line, prop_field,
+                                      sizeof(prop_field), prop_value,
+                                      sizeof(prop_value))) {
+                    ui_block_append_prop(&ui_blocks[ui_block_count - 1],
+                                         prop_field, prop_value);
+                    continue;
+                }
+
+                if(ui_block_count > 0 &&
+                   !ui_blocks[ui_block_count - 1].opened &&
+                   depth == ui_blocks[ui_block_count - 1].close_depth)
+                    ui_block_open(fn, &ui_blocks[ui_block_count - 1],
+                                  KirSpan(rel, line_no, 1));
 
                 if(kind == KIR_STMT_EXPR &&
                    parse_widget_statement(t, widget, sizeof(widget),

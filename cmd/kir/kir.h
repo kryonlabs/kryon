@@ -109,7 +109,8 @@ typedef struct KirFunction {
     int exported;
     int is_extern;
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
-    int is_public;  /* screen/preview/page keyword: a project route */
+    int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
+    int is_public;  /* exported function or project route */
     char extern_target[KIR_NAME_MAX];   /* '#extern "pkg.Fn"' quoted symbol */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;

@@ -1,9 +1,8 @@
 /*
  * k2c_project.c — emit kryon_project.h/.c after all files lower. The
  * app-host ABI (CreateAppHost/DestroyAppHost + route table) consumed by
- * the preview tool and IDE host builds. Routes auto-collect from public
- * screens (screen/preview/page/frame/scene/fn keywords); explicit route{}
- * blocks are not captured by Kir yet.
+ * the preview tool and IDE host builds. Routes auto-collect from #ui
+ * functions; explicit route{} blocks are not captured by Kir yet.
  */
 #include "k2c_lower.h"
 #include "kir.h"
@@ -79,10 +78,7 @@ collect_routes(KirProgram *const *progs, int prog_count,
             for(int j = 0; j < mod->function_count; j++) {
                 const KirFunction *fn = &mod->functions[j];
 
-                /* Legacy route rule: public AND not a colon function
-                 * (exact_name) — only screen/preview/page keyword screens
-                 * are routes; colon helpers stay callable but unrouted. */
-                if(!fn->is_public || fn->is_colon || fn->name[0] == '\0')
+                if(!fn->is_public || !fn->is_ui || fn->name[0] == '\0')
                     continue;
                 if(count >= max_routes)
                     return count;
@@ -290,35 +286,50 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         if(appmod->app.frame[0] != '\0') {
             char hook[KIR_NAME_MAX * 3];
+            const KirFunction *entry = NULL;
             int found = 0;
 
             for(int j = 0; j < appmod->function_count && !found; j++) {
                 if(strcmp(appmod->functions[j].name, appmod->app.frame) == 0) {
                     k2c_function_c_name(appmod, &appmod->functions[j],
                                         hook, sizeof(hook));
+                    entry = &appmod->functions[j];
                     found = 1;
                 }
             }
-            fprintf(out, "        %s();\n",
-                    found ? hook : appmod->app.frame);
+            if(entry != NULL && entry->is_ui) {
+                fprintf(out, "        BeginFrame();\n");
+                fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
+                             "GetScreenHeight(), GetUIScale());\n");
+                if(strstr(entry->args, "Rectangle") != NULL) {
+                    fprintf(out, "        %s((Rectangle){0, 0, "
+                                 "(float)GetScreenWidth(), (float)GetScreenHeight()});\n",
+                            hook);
+                } else {
+                    fprintf(out, "        %s();\n", hook);
+                }
+                fprintf(out, "        EndUIFrame();\n");
+                fprintf(out, "        EndFrame();\n");
+            } else {
+                fprintf(out, "        %s();\n",
+                        found ? hook : appmod->app.frame);
+            }
         } else if(count > 0) {
             char cname[KIR_NAME_MAX * 3];
 
             k2c_function_c_name(routes[0].m, routes[0].fn, cname,
                                 sizeof(cname));
-            /* Screens with no explicit frame hook still need a drawing
-             * frame and their viewport argument each tick. */
             fprintf(out, "        BeginFrame();\n");
+            fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
+                         "GetScreenHeight(), GetUIScale());\n");
             if(strstr(routes[0].fn->args, "Rectangle") != NULL) {
-                fprintf(out, "        BeginUIFrame(GetScreenWidth(), "
-                             "GetScreenHeight(), GetUIScale());\n");
                 fprintf(out, "        %s((Rectangle){0, 0, "
                              "(float)GetScreenWidth(), (float)GetScreenHeight()});\n",
                         cname);
-                fprintf(out, "        EndUIFrame();\n");
             } else {
                 fprintf(out, "        %s();\n", cname);
             }
+            fprintf(out, "        EndUIFrame();\n");
             fprintf(out, "        EndFrame();\n");
         } else {
             fprintf(out, "        ;\n");
