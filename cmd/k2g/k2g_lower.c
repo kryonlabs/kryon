@@ -732,6 +732,14 @@ k2g_expr_is_state_char_buffer(const char *expr)
     return 0;
 }
 
+static int
+k2g_expr_is_char_buffer_slice(const char *expr)
+{
+    size_t n = strlen(expr);
+
+    return n >= 3 && strcmp(expr + n - 3, "[:]") == 0;
+}
+
 /* Wrap a translated argument in a Go conversion for its kry parameter type,
  * so int/long/float widening across the host bridge always compiles. */
 static const char *
@@ -750,6 +758,8 @@ conv_arg(const char *kry_type, const char *expr)
     if(k2g_char_ptr_type(t) && k2g_expr_is_state_char_buffer(expr))
         snprintf(buf, sizeof(buf), "%s.CString(%s[:])", K2G_RUNTIME_PKG,
                  expr);
+    else if(k2g_char_ptr_type(t) && k2g_expr_is_char_buffer_slice(expr))
+        snprintf(buf, sizeof(buf), "%s.CString(%s)", K2G_RUNTIME_PKG, expr);
     else if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0)
         snprintf(buf, sizeof(buf), "int32(%s)", expr);
     else if(strcmp(t, "long") == 0 || strcmp(t, "long long") == 0 ||
@@ -970,8 +980,7 @@ k2g_register_arrays_stmt(const char *text)
             tl = sizeof(decl_type) - 1;
         memcpy(decl_type, colon + 1, tl);
         decl_type[tl] = '\0';
-        if(decl_type[0] != '[' || strstr(decl_type, "char") == NULL ||
-           strchr(decl_type, '*') == NULL)
+        if(decl_type[0] != '[' || strstr(decl_type, "char") == NULL)
             return;
     }
     {
@@ -982,6 +991,53 @@ k2g_register_arrays_stmt(const char *text)
             k2g_array_names[k2g_array_count][nl] = '\0';
             k2g_array_count++;
         }
+    }
+}
+
+static void
+k2g_trim_ws(char *s)
+{
+    size_t n;
+
+    while(*s == ' ' || *s == '\t')
+        memmove(s, s + 1, strlen(s));
+    n = strlen(s);
+    while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' ||
+                    s[n - 1] == '\r' || s[n - 1] == '\n'))
+        s[--n] = '\0';
+}
+
+static void
+k2g_register_arrays_args(const char *args)
+{
+    char parts[32][K2G_TEXT_MAX];
+    int n, i;
+
+    if(args[0] == '\0')
+        return;
+    n = split_top(args, parts, 32);
+    for(i = 0; i < n && k2g_array_count < 24; i++) {
+        char *colon = strchr(parts[i], ':');
+        char *name = parts[i];
+        size_t al;
+        char atype[K2G_NAME_MAX];
+
+        if(colon == NULL)
+            continue;
+        snprintf(atype, sizeof(atype), "%s", colon + 1);
+        k2g_trim_ws(atype);
+        if(atype[0] != '[' || strstr(atype, "char") == NULL)
+            continue;
+        while(*name == ' ' || *name == '\t')
+            name++;
+        al = (size_t)(colon - name);
+        while(al > 0 && (name[al - 1] == ' ' || name[al - 1] == '\t'))
+            al--;
+        if(al == 0 || al >= K2G_NAME_MAX)
+            continue;
+        memcpy(k2g_array_names[k2g_array_count], name, al);
+        k2g_array_names[k2g_array_count][al] = '\0';
+        k2g_array_count++;
     }
 }
 
@@ -1923,6 +1979,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     char fname[K2G_NAME_MAX * 2];
     char ret[K2G_NAME_MAX];
     int indent = 1;
+    int saved_array_count = k2g_array_count;
 
     camel(fn->name, fname, sizeof(fname));
     /* signature: (st *State, <converted args>) */
@@ -1963,6 +2020,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             fprintf(f, " %s", ret);
         fprintf(f, " {\n");
     }
+    k2g_register_arrays_args(fn->args);
     for(int j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
         char raw[K2G_TEXT_MAX];
@@ -2228,6 +2286,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         }
     }
     fprintf(f, "}\n\n");
+    k2g_array_count = saved_array_count;
 }
 
 static int

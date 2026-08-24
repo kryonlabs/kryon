@@ -27,6 +27,7 @@ label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
 direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
+direct_queue_text :: (value: const char*) #extern "github.com/waozixyz/kryon/go/kryon.QueueText"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -60,6 +61,10 @@ app "Smoke" {
 
 local_value :: () -> int {
     return ScaleUIPx(5)
+}
+
+relay_text :: (value: [64] char) {
+    direct_queue_text(value)
 }
 
 App :: () #ui {
@@ -156,6 +161,7 @@ App :: () #ui {
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), "")
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), "")
     Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), "")
+    relay_text(field_text)
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
 retry:
@@ -261,6 +267,7 @@ grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(s
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
+grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"
 
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"
