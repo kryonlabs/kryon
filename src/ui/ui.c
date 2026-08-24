@@ -4080,13 +4080,14 @@ ui_sync_platform_text_input(void)
         last_logged_has_callback = has_callback;
     }
 
-    if(g_ui_platform_text_input_active != text_input_active) {
+    if(g_ui_text_input_show_requested &&
+       g_ui_text_input_platform_callback != NULL) {
+        g_ui_platform_text_input_active = 1;
+        g_ui_text_input_platform_callback(1);
+    } else if(g_ui_platform_text_input_active != text_input_active) {
         g_ui_platform_text_input_active = text_input_active;
         if(g_ui_text_input_platform_callback != NULL)
             g_ui_text_input_platform_callback(text_input_active);
-    } else if(text_input_active && g_ui_text_input_show_requested &&
-              g_ui_text_input_platform_callback != NULL) {
-        g_ui_text_input_platform_callback(1);
     }
     g_ui_text_input_show_requested = 0;
 }
