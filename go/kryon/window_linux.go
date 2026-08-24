@@ -974,18 +974,24 @@ func specialKey(ks uint32) int32 {
 		return KeyBackspace
 	case 0xff09:
 		return KeyTab
-	case 0xff0d:
+	case 0xff0d, 0xff8d:
 		return KeyEnter
-	case 0xffff:
+	case 0xffff, 0xff9f:
 		return KeyDelete
-	case 0xff51:
+	case 0xff51, 0xff96:
 		return KeyLeft
-	case 0xff53:
+	case 0xff52, 0xff97:
+		return KeyUp
+	case 0xff53, 0xff98:
 		return KeyRight
-	case 0xff50:
+	case 0xff54, 0xff99:
+		return KeyDown
+	case 0xff50, 0xff95:
 		return KeyHome
-	case 0xff57:
+	case 0xff57, 0xff9c:
 		return KeyEnd
+	case 0xffbf:
+		return KeyF2
 	}
 	return 0
 }

@@ -44,12 +44,40 @@ func TestX11SocketParsesDisplay(t *testing.T) {
 }
 
 func TestX11KeyTranslation(t *testing.T) {
-	if got := specialKey(0xff1b); got != KeyEscape {
-		t.Fatalf("escape keysym = %d, want %d", got, KeyEscape)
+	cases := []struct {
+		name string
+		ks   uint32
+		want int32
+	}{
+		{"escape", 0xff1b, KeyEscape},
+		{"backspace", 0xff08, KeyBackspace},
+		{"tab", 0xff09, KeyTab},
+		{"enter", 0xff0d, KeyEnter},
+		{"keypad enter", 0xff8d, KeyEnter},
+		{"delete", 0xffff, KeyDelete},
+		{"keypad delete", 0xff9f, KeyDelete},
+		{"left", 0xff51, KeyLeft},
+		{"keypad left", 0xff96, KeyLeft},
+		{"up", 0xff52, KeyUp},
+		{"keypad up", 0xff97, KeyUp},
+		{"right", 0xff53, KeyRight},
+		{"keypad right", 0xff98, KeyRight},
+		{"down", 0xff54, KeyDown},
+		{"keypad down", 0xff99, KeyDown},
+		{"home", 0xff50, KeyHome},
+		{"keypad home", 0xff95, KeyHome},
+		{"end", 0xff57, KeyEnd},
+		{"keypad end", 0xff9c, KeyEnd},
+		{"f2", 0xffbf, KeyF2},
 	}
-	if got := specialKey(0xff51); got != KeyLeft {
-		t.Fatalf("left keysym = %d, want %d", got, KeyLeft)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := specialKey(tc.ks); got != tc.want {
+				t.Fatalf("specialKey(%#x) = %d, want %d", tc.ks, got, tc.want)
+			}
+		})
 	}
+
 	if got := shortcutKey('v'); got != KeyV {
 		t.Fatalf("shortcut v = %d, want %d", got, KeyV)
 	}
@@ -93,6 +121,18 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	ev, ok = win.decodeKey(36, 0)
 	if !ok || ev.kind != x11EventKey || ev.key != KeyEnter {
 		t.Fatalf("decode enter = %#v ok=%v, want KeyEnter", ev, ok)
+	}
+
+	win.keysyms[111] = []uint32{0xff52, 0}
+	ev, ok = win.decodeKey(111, 0)
+	if !ok || ev.kind != x11EventKey || ev.key != KeyUp {
+		t.Fatalf("decode up = %#v ok=%v, want KeyUp", ev, ok)
+	}
+
+	win.keysyms[113] = []uint32{0xffbf, 0}
+	ev, ok = win.decodeKey(113, 0)
+	if !ok || ev.kind != x11EventKey || ev.key != KeyF2 {
+		t.Fatalf("decode f2 = %#v ok=%v, want KeyF2", ev, ok)
 	}
 
 	ev, ok = win.decodeKey(54, x11ControlMask)
