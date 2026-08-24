@@ -1566,7 +1566,7 @@ TextField(TextFieldProps field)
         ui_tree_nodes[node].key = (KeyID)(unsigned)field.focus_id;
         ui_tree_nodes[node].data.text_field = field;
     }
-    return 0;
+    return RenderTextField(field);
 }
 
 int
