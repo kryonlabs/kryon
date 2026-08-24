@@ -135,23 +135,28 @@ const (
 	Text32 int32 = 32
 	Text48 int32 = 48
 
-	THEME_STYLE_SYSTEM   = ThemeStyleSystem
-	THEME_STYLE_RETRO    = ThemeStyleRetro
-	THEME_STYLE_MATERIAL = ThemeStyleMaterial
+	THEME_STYLE_SYSTEM   = 0
+	THEME_STYLE_RETRO    = 1
+	THEME_STYLE_MATERIAL = 2
+	THEME_SOURCE_APP     = 0
+	THEME_SOURCE_SYSTEM  = 1
+	THEME_MODE_SYSTEM    = 0
+	THEME_MODE_LIGHT     = 1
+	THEME_MODE_DARK      = 2
 
-	THEME_SKY      = ThemeSky
-	THEME_OCEAN    = ThemeOcean
-	THEME_FOREST   = ThemeForest
-	THEME_SUNSET   = ThemeSunset
-	THEME_LAVENDER = ThemeLavender
-	THEME_CHERRY   = ThemeCherry
-	THEME_DAWN     = ThemeDawn
-	THEME_SAGE     = ThemeSage
-	THEME_INK      = ThemeInk
-	THEME_MONO     = ThemeMono
-	THEME_MINT     = ThemeMint
-	THEME_COBALT   = ThemeCobalt
-	THEME_COUNT    = ThemeCount
+	THEME_SKY      = 0
+	THEME_OCEAN    = 1
+	THEME_FOREST   = 2
+	THEME_SUNSET   = 3
+	THEME_LAVENDER = 4
+	THEME_CHERRY   = 5
+	THEME_DAWN     = 6
+	THEME_SAGE     = 7
+	THEME_INK      = 8
+	THEME_MONO     = 9
+	THEME_MINT     = 10
+	THEME_COBALT   = 11
+	THEME_COUNT    = 12
 
 	PICTURE_FIT_STRETCH = PictureFitStretch
 	PICTURE_FIT_CONTAIN = PictureFitContain
@@ -198,6 +203,49 @@ type TextInputStyle struct {
 	Radius      float32
 	PaddingX    int32
 	PaddingY    int32
+}
+
+type UIThemeSettingsState struct {
+	DrawSourceMenu  int32
+	DrawModeMenu    int32
+	DrawPaletteMenu int32
+	DrawStyleMenu   int32
+	PaletteIndex    int32
+}
+
+type ThemeSettingsProps struct {
+	IdBase                int32
+	X, Y, W               int32
+	ThemeSource           *int32
+	ThemeMode             *int32
+	ThemeId               *int32
+	ThemeStyle            *int32
+	AllowSystemSource     int32
+	AllowSystemMode       int32
+	ThemeLabel            string
+	SourceAppLabel        string
+	SourceSystemLabel     string
+	ModeLabel             string
+	ModeSystemLabel       string
+	ModeLightLabel        string
+	ModeDarkLabel         string
+	PaletteLabel          string
+	StyleLabel            string
+	StyleSystemLabel      string
+	StyleRetroLabel       string
+	StyleMaterialLabel    string
+	StyleFluentLabel      string
+	StyleAdwaitaLabel     string
+	StyleLiquidGlassLabel string
+	SystemThemeLabel      string
+}
+
+type UIThemeSettingsResult struct {
+	Changed        int32
+	SourceChanged  int32
+	ModeChanged    int32
+	PaletteChanged int32
+	StyleChanged   int32
 }
 
 type ButtonProps struct {
@@ -1192,6 +1240,169 @@ func (r *runtime) SetThemeMode(mode ThemeMode) {
 		mode = ThemeModeSystem
 	}
 	r.themeMode = mode
+}
+
+func themeSettingsText(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
+
+func themeSettingsThemeLabel(id int32) string {
+	switch normalizeTheme(id) {
+	case ThemeSky:
+		return "Sky"
+	case ThemeOcean:
+		return "Ocean"
+	case ThemeForest:
+		return "Forest"
+	case ThemeSunset:
+		return "Sunset"
+	case ThemeLavender:
+		return "Lavender"
+	case ThemeCherry:
+		return "Cherry"
+	case ThemeDawn:
+		return "Dawn"
+	case ThemeSage:
+		return "Sage"
+	case ThemeInk:
+		return "Ink"
+	case ThemeMint:
+		return "Mint"
+	case ThemeCobalt:
+		return "Cobalt"
+	default:
+		return "Mono"
+	}
+}
+
+func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result *UIThemeSettingsResult) bool {
+	if result != nil {
+		*result = UIThemeSettingsResult{}
+	}
+	if props.ThemeSource == nil || props.ThemeMode == nil || props.ThemeId == nil || props.W <= 0 {
+		return false
+	}
+
+	if state != nil {
+		state.DrawSourceMenu = 0
+		state.DrawModeMenu = 0
+		state.DrawPaletteMenu = 0
+		state.DrawStyleMenu = 0
+	}
+
+	changed := false
+	id := props.IdBase
+	if id == 0 {
+		id = 9000
+	}
+	x, y, w := props.X, props.Y, props.W
+	rowH := int32(34)
+	rowGap := int32(14)
+	labelGap := int32(22)
+
+	rowButton := func(buttonID int32, label, value string) bool {
+		Text(label, x, y, Text14, GetThemeText())
+		pressed := Button(ButtonProps{
+			Bounds: NewRectangle(float32(x), float32(y+labelGap), float32(w), float32(rowH)),
+			Label:  value,
+			Style:  ButtonStyleSecondary,
+			Font:   Text14,
+			ID:     buttonID,
+		})
+		y += labelGap + rowH + rowGap
+		return pressed
+	}
+
+	if *props.ThemeSource < int32(ThemeSourceApp) || *props.ThemeSource > int32(ThemeSourceSystem) {
+		*props.ThemeSource = int32(ThemeSourceApp)
+	}
+	if *props.ThemeMode < int32(ThemeModeSystem) || *props.ThemeMode > int32(ThemeModeDark) {
+		*props.ThemeMode = int32(ThemeModeSystem)
+	}
+	if *props.ThemeId < 0 || *props.ThemeId >= int32(ThemeCount) {
+		*props.ThemeId = int32(ThemeMono)
+	}
+
+	modeValue := themeSettingsText(props.ModeSystemLabel, "System")
+	switch ThemeMode(*props.ThemeMode) {
+	case ThemeModeLight:
+		modeValue = themeSettingsText(props.ModeLightLabel, "Light")
+	case ThemeModeDark:
+		modeValue = themeSettingsText(props.ModeDarkLabel, "Dark")
+	}
+	if rowButton(id+1, themeSettingsText(props.ModeLabel, "Mode"), modeValue) {
+		previous := *props.ThemeMode
+		if props.AllowSystemMode != 0 {
+			*props.ThemeMode = (*props.ThemeMode + 1) % 3
+		} else if ThemeMode(*props.ThemeMode) == ThemeModeLight {
+			*props.ThemeMode = int32(ThemeModeDark)
+		} else {
+			*props.ThemeMode = int32(ThemeModeLight)
+		}
+		if previous != *props.ThemeMode {
+			changed = true
+			if result != nil {
+				result.ModeChanged = 1
+			}
+		}
+	}
+
+	paletteValue := themeSettingsThemeLabel(*props.ThemeId)
+	if props.AllowSystemSource != 0 && ThemeSource(*props.ThemeSource) == ThemeSourceSystem {
+		paletteValue = themeSettingsText(props.SourceSystemLabel, "System")
+	}
+	if rowButton(id+2, themeSettingsText(props.PaletteLabel, "Color"), paletteValue) {
+		previousSource := *props.ThemeSource
+		previousTheme := *props.ThemeId
+		if props.AllowSystemSource != 0 && ThemeSource(*props.ThemeSource) != ThemeSourceSystem {
+			*props.ThemeSource = int32(ThemeSourceSystem)
+		} else {
+			*props.ThemeSource = int32(ThemeSourceApp)
+			*props.ThemeId = (*props.ThemeId + 1) % int32(ThemeCount)
+		}
+		if previousSource != *props.ThemeSource {
+			changed = true
+			if result != nil {
+				result.SourceChanged = 1
+			}
+		}
+		if previousTheme != *props.ThemeId {
+			changed = true
+			if result != nil {
+				result.PaletteChanged = 1
+			}
+		}
+	}
+
+	if props.ThemeStyle != nil {
+		if *props.ThemeStyle < int32(ThemeStyleSystem) || *props.ThemeStyle > int32(ThemeStyleMaterial) {
+			*props.ThemeStyle = int32(ThemeStyleSystem)
+		}
+		styleValue := themeSettingsText(props.StyleSystemLabel, "System style")
+		switch ThemeStyle(*props.ThemeStyle) {
+		case ThemeStyleRetro:
+			styleValue = themeSettingsText(props.StyleRetroLabel, "Retro")
+		case ThemeStyleMaterial:
+			styleValue = themeSettingsText(props.StyleMaterialLabel, "Material")
+		}
+		if rowButton(id+3, themeSettingsText(props.StyleLabel, "Style"), styleValue) {
+			previous := *props.ThemeStyle
+			*props.ThemeStyle = (*props.ThemeStyle + 1) % 3
+			if previous != *props.ThemeStyle {
+				changed = true
+				if result != nil {
+					result.StyleChanged = 1
+				}
+			}
+		}
+	}
+	if result != nil && changed {
+		result.Changed = 1
+	}
+	return changed
 }
 
 func (r *runtime) TextField(props TextFieldProps) {
