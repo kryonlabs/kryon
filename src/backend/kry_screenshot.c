@@ -37,7 +37,7 @@ extern void KryonRaylibBackend_EndDrawing(void);
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
-extern void KryonRaylibBackend_rlDrawRenderBatch(void);
+extern void rlDrawRenderBatchActive(void);
 
 /* Non-OpenGL backends can provide this hook so LoadImageFromScreen remains
  * the single public screenshot surface. */
@@ -81,8 +81,8 @@ void EndDrawing(void)
         kry_event_wait_after_frame();
         return;
     }
-    if(KryonRaylibBackend_rlDrawRenderBatch != NULL)
-        KryonRaylibBackend_rlDrawRenderBatch();
+    if(rlDrawRenderBatchActive != NULL)
+        rlDrawRenderBatchActive();
     {
         int w = GetRenderWidth();
         int h = GetRenderHeight();
