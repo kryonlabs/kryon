@@ -117,6 +117,14 @@ static int is_module_alias(const KirModule *m, const char *alias,
 static void function_c_name(const KirModule *m, const KirFunction *fn,
                             char *dst, size_t dst_size);
 
+static int
+function_name_needs_global_prefix(const char *name)
+{
+    return strcmp(name, "App") == 0 ||
+           strcmp(name, "AppHost") == 0 ||
+           strcmp(name, "AppRouteInfo") == 0;
+}
+
 /* If ident (len chars, followed by '(') names a function in this module,
  * write its full C name into dst and return its length; else return 0. */
 static size_t
@@ -346,6 +354,8 @@ function_c_name(const KirModule *m, const KirFunction *fn,
             mod[n++] = (*p == '.') ? '_' : *p;
         mod[n] = '\0';
         snprintf(dst, dst_size, "%s_%s%s", mod, fn->name, suffix);
+    } else if(function_name_needs_global_prefix(fn->name)) {
+        snprintf(dst, dst_size, "kry_%s%s", fn->name, suffix);
     } else {
         snprintf(dst, dst_size, "%s%s", fn->name, suffix);
     }

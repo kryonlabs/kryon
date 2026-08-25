@@ -1792,6 +1792,14 @@
       ]
     }
   ],
+  "downstream_checks": [
+    {
+      "command": "make -C ../kapsule test",
+      "id": "kapsule",
+      "label": "Kapsule terminal app",
+      "scope": "Builds and runs Kapsule against this Kryon checkout as a real downstream terminal consumer."
+    }
+  ],
   "pipelines": [
     {
       "evidence": "tests/k2ir_test.sh plus conformance-matrix-check",
@@ -1929,6 +1937,14 @@
       "scope": "Node capture path exists; per-source wasm capture matrix not yet implemented.",
       "status": "partial",
       "status_class": "part"
+    }
+  ],
+  "runtime_checks": [
+    {
+      "command": "make -C . generated-runtime-parity-test",
+      "id": "generated-go-c",
+      "label": "Generated Go/C runtime parity",
+      "scope": "Lowers parity fixtures through k2g and k2c, drives matching workflows, renders frames, and compares final state JSON."
     }
   ],
   "schema": 1,

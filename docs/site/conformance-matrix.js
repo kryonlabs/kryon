@@ -3,6 +3,8 @@
   var pipelineBody = document.querySelector("[data-conformance-pipelines]");
   var rendererBody = document.querySelector("[data-conformance-renderers]");
   var rendererCheckBody = document.querySelector("[data-conformance-renderer-checks]");
+  var runtimeCheckBody = document.querySelector("[data-conformance-runtime-checks]");
+  var downstreamCheckBody = document.querySelector("[data-conformance-downstream-checks]");
   var sourceBody = document.querySelector("[data-conformance-sources]");
   var search = document.querySelector("[data-conformance-search]");
   var typeFilter = document.querySelector("[data-conformance-type]");
@@ -65,10 +67,14 @@
   }
 
   function renderRendererChecks(data) {
-    if (!rendererCheckBody) {
+    renderCheckRows(rendererCheckBody, data.renderer_checks);
+  }
+
+  function renderCheckRows(body, rows) {
+    if (!body) {
       return;
     }
-    rendererCheckBody.innerHTML = (data.renderer_checks || []).map(function(row) {
+    body.innerHTML = (rows || []).map(function(row) {
       return "<tr><td>" + escapeText(row.label) + "</td><td><code>" +
         escapeText(row.command) + "</code></td><td>" + escapeText(row.scope) + "</td></tr>";
     }).join("");
@@ -133,6 +139,8 @@
       renderPipelines(data);
       renderRenderers(data);
       renderRendererChecks(data);
+      renderCheckRows(runtimeCheckBody, data.runtime_checks);
+      renderCheckRows(downstreamCheckBody, data.downstream_checks);
       renderSources(data);
       renderWidgets(data);
       if (search) {

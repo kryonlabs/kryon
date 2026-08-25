@@ -43,9 +43,15 @@ sed -i '/^func main()/,$d' "$work/go-check/language_contract.go"
     printf '\n'
     printf '%s\n' 'go 1.25.0'
     printf '\n'
-    printf '%s\n' 'require github.com/waozixyz/kryon/go/kryon v0.0.0'
+    printf '%s\n' 'require ('
+    printf '%s\n' '	github.com/waozixyz/kryon/go/kryon v0.0.0'
+    printf '%s\n' '	golang.org/x/image v0.45.0'
+    printf '%s\n' '	golang.org/x/sys v0.47.0'
+    printf '%s\n' '	golang.org/x/text v0.41.0'
+    printf '%s\n' ')'
     printf '%s\n' "replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon"
 } > "$work/go-check/go.mod"
+cp "$root/go/kryon/go.sum" "$work/go-check/go.sum"
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./...)
 
 "$k2b" --root "$root" -o "$work/krb" "$root/tests/spec/krb_contract.kry"

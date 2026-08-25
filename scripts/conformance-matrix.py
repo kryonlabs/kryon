@@ -143,6 +143,25 @@ RENDERER_SMOKE_CHECKS = [
     },
 ]
 
+RUNTIME_PARITY_CHECKS = [
+    {
+        "id": "generated-go-c",
+        "label": "Generated Go/C runtime parity",
+        "command": ["make", "-C", ".", "generated-runtime-parity-test"],
+        "scope": "Lowers parity fixtures through k2g and k2c, drives matching workflows, renders frames, and compares final state JSON.",
+    },
+]
+
+DOWNSTREAM_CHECKS = [
+    {
+        "id": "kapsule",
+        "label": "Kapsule terminal app",
+        "command": ["make", "-C", "../kapsule", "test"],
+        "scope": "Builds and runs Kapsule against this Kryon checkout as a real downstream terminal consumer.",
+        "optional_dir": "../kapsule",
+    },
+]
+
 KRB_ALPHA_BYTE_GAPS = {
     "examples/20_scene.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "examples/21_signals.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -339,6 +358,24 @@ def matrix() -> dict:
                 "scope": item["scope"],
             }
             for item in RENDERER_SMOKE_CHECKS
+        ],
+        "runtime_checks": [
+            {
+                "id": item["id"],
+                "label": item["label"],
+                "command": " ".join(item["command"]),
+                "scope": item["scope"],
+            }
+            for item in RUNTIME_PARITY_CHECKS
+        ],
+        "downstream_checks": [
+            {
+                "id": item["id"],
+                "label": item["label"],
+                "command": " ".join(item["command"]),
+                "scope": item["scope"],
+            }
+            for item in DOWNSTREAM_CHECKS
         ],
         "widget_counts": dict(sorted(widget_counts.items())),
         "cases": cases,
@@ -567,12 +604,24 @@ def verify_krb_visuals(data: dict) -> int:
     return 0
 
 
-def verify_renderer_smokes() -> int:
+def resolve_command(command: list[str]) -> list[str]:
+    out = list(command)
+    for i, arg in enumerate(out):
+        if arg == ".":
+            out[i] = str(ROOT)
+        elif arg.startswith("../"):
+            out[i] = str((ROOT / arg).resolve())
+    return out
+
+
+def run_checks(checks: list[dict], label: str) -> int:
     failures = []
-    for check in RENDERER_SMOKE_CHECKS:
-        command = list(check["command"])
-        if command[2] == ".":
-            command[2] = str(ROOT)
+    for check in checks:
+        optional_dir = check.get("optional_dir")
+        if optional_dir is not None and not (ROOT / optional_dir).resolve().is_dir():
+            print(f"{label} skipped: {check['id']} ({optional_dir} not found)")
+            continue
+        command = resolve_command(check["command"])
         run = subprocess.run(
             command,
             cwd=ROOT,
@@ -583,14 +632,26 @@ def verify_renderer_smokes() -> int:
         if run.returncode != 0:
             failures.append((check["id"], run.stdout.strip().splitlines()[-20:]))
         else:
-            print(f"renderer smoke ok: {check['id']}")
+            print(f"{label} ok: {check['id']}")
     if failures:
         for check_id, tail in failures:
-            print(f"renderer smoke failed: {check_id}", file=sys.stderr)
+            print(f"{label} failed: {check_id}", file=sys.stderr)
             for line in tail:
                 print(f"  {line}", file=sys.stderr)
         return 1
     return 0
+
+
+def verify_renderer_smokes() -> int:
+    return run_checks(RENDERER_SMOKE_CHECKS, "renderer smoke")
+
+
+def verify_runtime_parity() -> int:
+    return run_checks(RUNTIME_PARITY_CHECKS, "runtime parity")
+
+
+def verify_downstream() -> int:
+    return run_checks(DOWNSTREAM_CHECKS, "downstream")
 
 
 def main() -> int:
@@ -599,6 +660,8 @@ def main() -> int:
     parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
+    parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
+    parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
     args = parser.parse_args()
 
     data = matrix()
@@ -607,7 +670,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not args.verify_pipelines and not args.verify_krb_visuals and not args.verify_renderer_smokes:
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -624,7 +687,15 @@ def main() -> int:
         if rc:
             return rc
     if args.verify_renderer_smokes:
-        return verify_renderer_smokes()
+        rc = verify_renderer_smokes()
+        if rc:
+            return rc
+    if args.verify_runtime_parity:
+        rc = verify_runtime_parity()
+        if rc:
+            return rc
+    if args.verify_downstream:
+        return verify_downstream()
     return 0
 
 
