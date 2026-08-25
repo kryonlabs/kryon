@@ -1,8 +1,10 @@
 #include "ui_icons.h"
 #include "ui_internal.h"
 #include "kryon.h"
+#include "../backend/kry_sw_png.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 extern const UIIconAsset ui_icon_assets[];
@@ -45,12 +47,13 @@ load_icon_asset_texture(const UIIconAsset *asset)
     if(asset == NULL || asset->data == NULL || asset->size == 0)
         return texture;
 
-    image = LoadImageFromMemory(".png", asset->data, (int)asset->size);
+    image = (Image){0};
+    image.data = kry_sw_png_rgba(asset->data, (size_t)asset->size,
+                                 &image.width, &image.height);
     if(image.data == NULL)
         return texture;
-
-    if(image.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
-        ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    image.mipmaps = 1;
+    image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
     texture = LoadTextureFromImage(image);
     UnloadImage(image);
