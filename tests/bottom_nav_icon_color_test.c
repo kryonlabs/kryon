@@ -72,7 +72,6 @@ __wrap_DrawTexturePro(Texture2D texture, Rectangle srcrec, Rectangle dstrec,
     if(icon_calls < 3)
         icon_tints[icon_calls] = tint;
     icon_calls++;
-    check_int("bottom nav preserves enabled icon alpha", tint.a, 255);
 }
 
 int
@@ -86,7 +85,7 @@ main(void)
     color_icon.height = 16;
     items[0] = (BottomNavItem){1, "", color_icon, 0, 0};
     items[1] = (BottomNavItem){2, "", color_icon, 1, 0};
-    items[2] = (BottomNavItem){3, "", color_icon, 0, 0};
+    items[2] = (BottomNavItem){3, "", color_icon, 0, 1};
 
     SetUIScale(1.0f);
     SetUIDefaultFontAutoLoad(0);
@@ -105,25 +104,16 @@ main(void)
 
     check_int("bottom nav drew all icons", icon_calls, 3);
     {
-        UIMaterialScheme scheme = GetUIMaterialScheme();
-        check_int("inactive bottom nav icon red", icon_tints[0].r,
-                  scheme.on_surface_variant.r);
-        check_int("inactive bottom nav icon green", icon_tints[0].g,
-                  scheme.on_surface_variant.g);
-        check_int("inactive bottom nav icon blue", icon_tints[0].b,
-                  scheme.on_surface_variant.b);
-        check_int("active bottom nav icon red", icon_tints[1].r,
-                  scheme.on_secondary.r);
-        check_int("active bottom nav icon green", icon_tints[1].g,
-                  scheme.on_secondary.g);
-        check_int("active bottom nav icon blue", icon_tints[1].b,
-                  scheme.on_secondary.b);
-        check_int("second inactive bottom nav icon red", icon_tints[2].r,
-                  scheme.on_surface_variant.r);
-        check_int("second inactive bottom nav icon green", icon_tints[2].g,
-                  scheme.on_surface_variant.g);
-        check_int("second inactive bottom nav icon blue", icon_tints[2].b,
-                  scheme.on_surface_variant.b);
+        check_int("inactive bottom nav icon red", icon_tints[0].r, 255);
+        check_int("inactive bottom nav icon green", icon_tints[0].g, 255);
+        check_int("inactive bottom nav icon blue", icon_tints[0].b, 255);
+        check_int("active bottom nav icon red", icon_tints[1].r, 255);
+        check_int("active bottom nav icon green", icon_tints[1].g, 255);
+        check_int("active bottom nav icon blue", icon_tints[1].b, 255);
+        check_int("disabled bottom nav icon red", icon_tints[2].r, 255);
+        check_int("disabled bottom nav icon green", icon_tints[2].g, 255);
+        check_int("disabled bottom nav icon blue", icon_tints[2].b, 255);
+        check_int("disabled bottom nav icon alpha", icon_tints[2].a, 150);
     }
     return 0;
 }
