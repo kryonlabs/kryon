@@ -49,6 +49,9 @@ load_icon_asset_texture(const UIIconAsset *asset)
     if(image.data == NULL)
         return texture;
 
+    if(image.format != PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
+        ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+
     texture = LoadTextureFromImage(image);
     UnloadImage(image);
     if(texture.id != 0) {
