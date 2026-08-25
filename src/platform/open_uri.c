@@ -297,6 +297,16 @@ OpenURI(const char *uri)
     }, uri);
 #elif defined(_WIN32)
     return (INT_PTR)ShellExecuteA(NULL, "open", uri, NULL, NULL, SW_SHOWNORMAL) > 32;
+#elif defined(KRYON_NATIVE_PLAN9)
+    switch(rfork(RFPROC|RFFDG|RFENVG|RFNOTEG|RFNOWAIT)) {
+    case -1:
+        return 0;
+    case 0:
+        execl("/bin/plumb", "plumb", (char *)uri, nil);
+        exits("exec");
+    default:
+        return 1;
+    }
 #elif defined(__APPLE__)
     pid_t pid = fork();
     if(pid < 0)

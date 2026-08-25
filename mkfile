@@ -65,6 +65,22 @@ OFILES=\
 	src/ui/rows.$O\
 	src/ui/scroll.$O\
 	src/ui/tab_bar.$O\
+	src/ui/terminal_pane.$O\
+	src/ui/terminal_pane_clipboard.$O\
+	src/ui/terminal_pane_csi.$O\
+	src/ui/terminal_pane_dcs.$O\
+	src/ui/terminal_pane_keys.$O\
+	src/ui/terminal_pane_modes.$O\
+	src/ui/terminal_pane_mouse.$O\
+	src/ui/terminal_pane_osc.$O\
+	src/ui/terminal_pane_profile.$O\
+	src/ui/terminal_pane_reflow.$O\
+	src/ui/terminal_pane_render.$O\
+	src/ui/terminal_pane_selection.$O\
+	src/ui/terminal_pane_session.$O\
+	src/ui/terminal_pane_sgr.$O\
+	src/ui/terminal_pane_sixel.$O\
+	src/ui/terminal_pane_text.$O\
 	src/ui/theme_picker.$O\
 	src/ui/toast.$O\
 	src/ui/toolbar.$O\
@@ -100,6 +116,7 @@ OFILES=\
 	src/kry_std/kry_sha256.$O\
 	src/markdown.$O\
 	src/platform/kry_activity_monitor.$O\
+	src/platform/open_uri.$O\
 	src/platform/plan9/plan9_notification.$O\
 	src/platform/plan9/plan9_os.$O\
 	src/platform/plan9/plan9_runtime_stubs.$O\
