@@ -296,6 +296,18 @@ ui_tree_store_node(NodeId id, UIWidgetNode src)
     *dst = src;
 }
 
+static void
+ui_tree_mark_painted_immediate(NodeId id)
+{
+    UIWidgetNode *node;
+
+    if(!ui_tree_building)
+        return;
+    node = ui_tree_node(id);
+    if(node != NULL)
+        node->flags |= UI_NODE_PAINTED_IMMEDIATE;
+}
+
 static int
 ui_measure_bounds_height(UIWidgetNode node)
 {
@@ -1132,6 +1144,8 @@ DrawTree(void)
             int font;
             int hovered;
 
+            if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
+                break;
             spec.bounds = node->bounds;
             spec.label = node->owned_text != NULL ? node->owned_text : "";
             font = spec.font > 0 ? spec.font : GetUIFontSize();
@@ -1549,17 +1563,27 @@ Bevel(int x, int y, int w, int h, Color light, Color dark)
 int
 ButtonNode(ButtonSpec button)
 {
-    ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
-                &button);
-    return RenderButton(button);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
+                       &button);
+    clicked = RenderButton(button);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
 IconButton(IconButtonProps button)
 {
-    ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
-                &button);
-    return DrawUIIconButton(button);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
+                       &button);
+    clicked = DrawUIIconButton(button);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
@@ -1593,45 +1617,71 @@ IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
               int *hover)
 {
     int s = GetUIIconButtonSize(size);
+    NodeId node;
+    int clicked;
 
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, s, s}, hover);
-    return DrawUIIconBtn(x, y, size, icon, hover);
+    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, s, s},
+                       hover);
+    clicked = DrawUIIconBtn(x, y, size, icon, hover);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
 PaddedIconBtn(int id, int x, int y, int size, int padding,
                     Texture2D icon, int *hover)
 {
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                (Rectangle){x, y, size + padding * 2, size + padding * 2},
-                hover);
-    return DrawUIPaddedIconBtn(x, y, size, padding, icon, hover);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
+                       (Rectangle){x, y, size + padding * 2,
+                                   size + padding * 2},
+                       hover);
+    clicked = DrawUIPaddedIconBtn(x, y, size, padding, icon, hover);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
 StyledButton(int x, int y, int w, int h, const char *label,
              ButtonStyle style, int disabled, int *hover)
 {
-    ui_tree_add(0, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, w, h}, hover);
-    return RenderStyledButton(x, y, w, h, label, style, disabled, hover);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(0, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, w, h},
+                       hover);
+    clicked = RenderStyledButton(x, y, w, h, label, style, disabled, hover);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
 InfoButton(int id, int center_x, int center_y, int diameter)
 {
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                (Rectangle){center_x - diameter / 2, center_y - diameter / 2,
-                            diameter, diameter}, NULL);
-    return DrawUIInfoButton(center_x, center_y, diameter);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
+                       (Rectangle){center_x - diameter / 2,
+                                   center_y - diameter / 2,
+                                   diameter, diameter}, NULL);
+    clicked = DrawUIInfoButton(center_x, center_y, diameter);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 void
 IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                const char *url)
 {
-    ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                (Rectangle){x, y, icon_size, icon_size}, url);
+    NodeId node;
+
+    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
+                       (Rectangle){x, y, icon_size, icon_size}, url);
     DrawUIIconLink(x, y, icon_size, icon, url);
+    ui_tree_mark_painted_immediate(node);
 }
 
 void
@@ -2019,8 +2069,13 @@ CheckboxRow(CheckboxRowProps row, int x, int y)
 int
 OverlayButton(OverlayButtonProps button)
 {
-    ui_tree_add(0, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    return DrawUIOverlayButton(button);
+    NodeId node;
+    int clicked;
+
+    node = ui_tree_add(0, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
+    clicked = DrawUIOverlayButton(button);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 int
@@ -2210,13 +2265,10 @@ Button(ButtonProps button)
     };
     NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
                                 button.bounds, NULL);
-    int clicked = 0;
+    int clicked;
 
     if(spec.font <= 0)
         spec.font = GetUIFontSize();
-    if(!button.disabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-       CheckCollisionPointRec(GetMousePosition(), button.bounds))
-        clicked = 1;
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
         ui_tree_nodes[node].data.button.spec = spec;
@@ -2224,9 +2276,9 @@ Button(ButtonProps button)
             ui_tree_nodes[node].owned_text;
         ui_tree_nodes[node].data.button.style = button.style;
     }
-    if(ui_tree_building)
-        return clicked;
-    return RenderButton(spec);
+    clicked = RenderButton(spec);
+    ui_tree_mark_painted_immediate(node);
+    return clicked;
 }
 
 /* Retained layout containers. Every container closes with End(). */

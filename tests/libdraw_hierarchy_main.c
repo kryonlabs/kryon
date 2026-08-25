@@ -90,6 +90,12 @@ main(void)
     Text("HHHHHHHHHHHH", 54, 68, 32, lower);
     DrawRectangle(44, 54, 160, 84, cover);
     Text("TOP", 72, 86, 24, WHITE);
+    Button((ButtonProps){.bounds = {54, 134, 110, 28},
+                         .label = "BUTTON-LEAK",
+                         .style = ButtonStyleSecondary,
+                         .font = Text12,
+                         .id = 901});
+    DrawRectangle(44, 128, 160, 42, cover);
     EndUI();
     EndUIFrame();
     EndDrawing();
@@ -106,6 +112,10 @@ main(void)
           !region_has_red_leak(&shot, 48, 58, 150, 76));
     check("later text remains visible",
           region_has_light_pixel(&shot, 68, 82, 70, 34));
+    check("opaque later rect covers earlier button",
+          pixel_near(image_pixel(&shot, 92, 146), cover, 8));
+    check("opaque later rect has no button replay",
+          !region_has_light_pixel(&shot, 54, 134, 110, 28));
 
     UnloadImage(shot);
     CloseWindow();
