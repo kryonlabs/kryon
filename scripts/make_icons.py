@@ -335,6 +335,65 @@ eye_off = [
     "................",
 ]
 
+workbook_palette = {"W": (245, 247, 248, 255)}
+
+workbook_clear_formatting = [
+    "................",
+    "..WW........WW..",
+    "...WW......WW...",
+    "....WW....WW....",
+    ".....WW..WW.....",
+    "......WWWW......",
+    ".......WW.......",
+    "......WWWW......",
+    ".....WW..WW.....",
+    "....WW....WW....",
+    "...WW......WW...",
+    "..WW........WW..",
+    "................",
+    "................",
+    "................",
+    "................",
+]
+
+workbook_fill_color = [
+    "................",
+    ".....WWWW.......",
+    "....WWWWWW......",
+    "...WWW..WWW.....",
+    "..WWW....WWW....",
+    ".WWW......WWW...",
+    "..WWW....WWW....",
+    "...WWW..WWW.....",
+    "....WWWWWW......",
+    ".....WWWW.......",
+    "................",
+    "..WWWWWWWWWWWW..",
+    "..WWWWWWWWWWWW..",
+    "..WWWWWWWWWWWW..",
+    "................",
+    "................",
+]
+
+workbook_text_color = [
+    "................",
+    "......WWWW......",
+    ".....WWWWWW.....",
+    "....WWW..WWW....",
+    "....WW....WW....",
+    "...WWWWWWWWWW...",
+    "...WWWWWWWWWW...",
+    "..WWW......WWW..",
+    "..WW........WW..",
+    ".WWWW......WWWW.",
+    "................",
+    "..WWWWWWWWWWWW..",
+    "..WWWWWWWWWWWW..",
+    "..WWWWWWWWWWWW..",
+    "................",
+    "................",
+]
+
 
 def main():
     import os
@@ -342,7 +401,9 @@ def main():
     root = os.path.dirname(here)
     icons = os.path.join(root, "icons")
     platforms = os.path.join(root, "icons", "platforms")
+    workbook = os.path.join(root, "icons", "workbook")
     os.makedirs(platforms, exist_ok=True)
+    os.makedirs(workbook, exist_ok=True)
 
     c_px, c_w, c_h = make_c()
     encode_png(os.path.join(icons, "c.png"), c_px, c_w, c_h)
@@ -383,6 +444,24 @@ def main():
     encode_png(os.path.join(platforms, "macos.png"),
                render(mac_rows, mac_palette), mac_w, len(mac_rows))
     print("wrote icons/platforms/macos.png (%dx%d)" % (mac_w, len(mac_rows)))
+
+    clear_rows, clear_w = grid(workbook_clear_formatting)
+    encode_png(os.path.join(workbook, "clear_formatting.png"),
+               render(clear_rows, workbook_palette), clear_w, len(clear_rows))
+    print("wrote icons/workbook/clear_formatting.png (%dx%d)" %
+          (clear_w, len(clear_rows)))
+
+    fill_rows, fill_w = grid(workbook_fill_color)
+    encode_png(os.path.join(workbook, "fill_color.png"),
+               render(fill_rows, workbook_palette), fill_w, len(fill_rows))
+    print("wrote icons/workbook/fill_color.png (%dx%d)" %
+          (fill_w, len(fill_rows)))
+
+    text_rows, text_w = grid(workbook_text_color)
+    encode_png(os.path.join(workbook, "text_color.png"),
+               render(text_rows, workbook_palette), text_w, len(text_rows))
+    print("wrote icons/workbook/text_color.png (%dx%d)" %
+          (text_w, len(text_rows)))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ const (
 	FrameOpRect       FrameOpKind = "rect"
 	FrameOpLine       FrameOpKind = "line"
 	FrameOpButton     FrameOpKind = "button"
+	FrameOpIcon       FrameOpKind = "icon"
 	FrameOpTextField  FrameOpKind = "text_field"
 	FrameOpTextArea   FrameOpKind = "text_area"
 	FrameOpTable      FrameOpKind = "table"
@@ -43,6 +44,8 @@ type FrameOp struct {
 	Row               int32
 	Column            int32
 	Selected          bool
+	IconType          int32
+	IconSize          int32
 }
 
 type frameOpController interface {

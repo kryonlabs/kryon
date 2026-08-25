@@ -37,6 +37,8 @@ func RenderFrame(width, height int, ops []FrameOp) *image.RGBA {
 			drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK), op.FontID)
 		case FrameOpButton:
 			renderButton(img, op)
+		case FrameOpIcon:
+			renderIcon(img, op)
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
 		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpScreen:
@@ -86,6 +88,175 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	fillRect(img, op.Bounds, fill)
 	strokeRect(img, op.Bounds, border)
 	drawTextInBox(img, op.Text, op.Bounds, op.FontSize, text, op.FontID)
+}
+
+func renderIcon(img *image.RGBA, op FrameOp) {
+	tint := BLACK
+	if op.Color.A != 0 {
+		tint = op.Color
+	}
+	size := int(round(op.Bounds.Width))
+	if op.IconSize > 0 {
+		size = int(op.IconSize)
+	}
+	if size <= 0 {
+		size = 16
+	}
+	rows := iconPattern(op.IconType)
+	if len(rows) == 0 {
+		rows = iconPattern(UIIconTypeText)
+	}
+	cell := maxInt(1, size/16)
+	x0 := int(round(op.Bounds.X)) + maxInt(0, (size-cell*16)/2)
+	y0 := int(round(op.Bounds.Y)) + maxInt(0, (size-cell*16)/2)
+	for y, row := range rows {
+		for x, on := range row {
+			if on == ' ' || on == '.' {
+				continue
+			}
+			fillRectPixels(img, x0+x*cell, y0+y*cell, cell, cell, tint)
+		}
+	}
+}
+
+func iconPattern(iconType int32) []string {
+	switch iconType {
+	case UIIconTypeSave:
+		return []string{
+			"................",
+			"..############..",
+			".##############.",
+			".###......#####.",
+			".###......#####.",
+			".##############.",
+			".##############.",
+			".####......####.",
+			".###........###.",
+			".###........###.",
+			".###........###.",
+			".###........###.",
+			".##############.",
+			".##############.",
+			"................",
+			"................",
+		}
+	case UIIconTypePlus:
+		return []string{
+			"................",
+			"................",
+			".......##.......",
+			".......##.......",
+			".......##.......",
+			".......##.......",
+			"..############..",
+			"..############..",
+			".......##.......",
+			".......##.......",
+			".......##.......",
+			".......##.......",
+			"................",
+			"................",
+			"................",
+			"................",
+		}
+	case UIIconTypeTrash:
+		return []string{
+			"................",
+			".....######.....",
+			"...##########...",
+			"...##......##...",
+			"..############..",
+			"....########....",
+			"....##.##.##....",
+			"....##.##.##....",
+			"....##.##.##....",
+			"....##.##.##....",
+			"....##.##.##....",
+			"....##.##.##....",
+			"....########....",
+			".....######.....",
+			"................",
+			"................",
+		}
+	case UIIconTypeX, UIIconTypeWorkbookClearFormatting:
+		return []string{
+			"................",
+			"..##........##..",
+			"...##......##...",
+			"....##....##....",
+			".....##..##.....",
+			"......####......",
+			".......##.......",
+			"......####......",
+			".....##..##.....",
+			"....##....##....",
+			"...##......##...",
+			"..##........##..",
+			"................",
+			"................",
+			"................",
+			"................",
+		}
+	case UIIconTypeWorkbookFillColor:
+		return []string{
+			"................",
+			".....####.......",
+			"....######......",
+			"...###..###.....",
+			"..###....###....",
+			".###......###...",
+			"..###....###....",
+			"...###..###.....",
+			"....######......",
+			".....####.......",
+			"................",
+			"..############..",
+			"..############..",
+			"..############..",
+			"................",
+			"................",
+		}
+	case UIIconTypeWorkbookTextColor, UIIconTypeText:
+		return []string{
+			"................",
+			"......####......",
+			".....######.....",
+			"....###..###....",
+			"....##....##....",
+			"...##########...",
+			"...##########...",
+			"..###......###..",
+			"..##........##..",
+			".####......####.",
+			"................",
+			"..############..",
+			"..############..",
+			"..############..",
+			"................",
+			"................",
+		}
+	case UIIconTypeEdit, UIIconTypePencil:
+		return []string{
+			"............##..",
+			"...........####.",
+			"..........######",
+			".........######.",
+			"........######..",
+			".......######...",
+			"......######....",
+			".....######.....",
+			"....######......",
+			"...######.......",
+			"..######........",
+			".######.........",
+			".####...........",
+			"..##............",
+			"................",
+			"................",
+		}
+	default:
+		return nil
+	}
 }
 
 func renderTextInput(img *image.RGBA, op FrameOp) {

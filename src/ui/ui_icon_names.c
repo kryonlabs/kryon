@@ -121,4 +121,7 @@ const char *ui_icon_names[] = {
     "tiles_tile2.png",  /* UI_ICON_TYPE_TILES_TILE2 */
     "tiles_tile3.png",  /* UI_ICON_TYPE_TILES_TILE3 */
     "tiles_tile4.png",  /* UI_ICON_TYPE_TILES_TILE4 */
+    "workbook_clear_formatting.png",  /* UI_ICON_TYPE_WORKBOOK_CLEAR_FORMATTING */
+    "workbook_fill_color.png",  /* UI_ICON_TYPE_WORKBOOK_FILL_COLOR */
+    "workbook_text_color.png",  /* UI_ICON_TYPE_WORKBOOK_TEXT_COLOR */
 };
