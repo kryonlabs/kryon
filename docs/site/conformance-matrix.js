@@ -5,6 +5,7 @@
   var rendererCheckBody = document.querySelector("[data-conformance-renderer-checks]");
   var runtimeCheckBody = document.querySelector("[data-conformance-runtime-checks]");
   var downstreamCheckBody = document.querySelector("[data-conformance-downstream-checks]");
+  var sourceHead = document.querySelector("[data-conformance-source-head]");
   var sourceBody = document.querySelector("[data-conformance-sources]");
   var search = document.querySelector("[data-conformance-search]");
   var typeFilter = document.querySelector("[data-conformance-type]");
@@ -23,7 +24,9 @@
 
   function cell(status) {
     var cls = status.status_class || "na";
-    return '<td class="' + escapeText(cls) + '">' + escapeText(status.status || "unknown") + "</td>";
+    var title = [status.evidence, status.scope].filter(Boolean).join(" | ");
+    return '<td class="' + escapeText(cls) + '" title="' + escapeText(title) + '">' +
+      escapeText(status.status || "unknown") + "</td>";
   }
 
   function evidence(items) {
@@ -46,6 +49,9 @@
       ["KRB Byte Exact", s.krb_alpha_byte_exact_cases],
       ["Libdraw C Capture", s.libdraw_c_visual_cases + " / " + s.source_cases],
       ["Libdraw C Gaps", s.libdraw_c_visual_gaps],
+      ["Renderer Cells", s.renderer_source_cells],
+      ["Renderer OK Cells", s.renderer_source_ok_cells],
+      ["Renderer Partial Cells", s.renderer_source_partial_cells],
       ["State Parity", s.semantic_parity_cases],
       ["Widgets Covered", s.widgets_detected + " / " + s.widgets_declared],
       ["Widgets Missing", s.widgets_missing]
@@ -89,11 +95,30 @@
     }).join("");
   }
 
-  function visualCells(row) {
-    var visuals = row.visuals || {};
-    return cell(visuals.krb_rgb || {status: "missing", status_class: "no"}) +
-      cell(visuals.krb_alpha || {status: "missing", status_class: "no"}) +
-      cell(visuals.libdraw_c || {status: "missing", status_class: "no"});
+  function sourceRendererColumns(data) {
+    return data.source_renderers || [
+      {id: "krb_rgb", label: "KRB RGB"},
+      {id: "krb_alpha", label: "KRB Alpha"},
+      {id: "libdraw_c", label: "Libdraw C"}
+    ];
+  }
+
+  function renderSourceHead(data) {
+    if (!sourceHead) {
+      return;
+    }
+    var rendererHeaders = sourceRendererColumns(data).map(function(renderer) {
+      return '<th title="' + escapeText(renderer.scope || "") + '">' + escapeText(renderer.label) + "</th>";
+    }).join("");
+    sourceHead.innerHTML = "<th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2b</th>" +
+      rendererHeaders + "<th>Widgets</th><th>State Evidence</th>";
+  }
+
+  function sourceRendererCells(data, row) {
+    var matrix = row.renderer_matrix || row.visuals || {};
+    return sourceRendererColumns(data).map(function(renderer) {
+      return cell(matrix[renderer.id] || {status: "missing", status_class: "no"});
+    }).join("");
   }
 
   function renderSources(data) {
@@ -114,7 +139,7 @@
       }).join("") : '<span class="matrix-muted">No widget calls detected</span>';
       return "<tr><td><code>" + escapeText(row.path) + "</code><br><span class=\"matrix-muted\">" +
         escapeText(row.label) + "</span></td><td>" + escapeText(row.type) + "</td>" +
-        pipelineCells(row) + visualCells(row) + "<td>" + widgets + "</td><td>" +
+        pipelineCells(row) + sourceRendererCells(data, row) + "<td>" + widgets + "</td><td>" +
         escapeText(row.semantic_evidence) + "</td></tr>";
     }).join("");
   }
@@ -155,6 +180,7 @@
       renderRendererChecks(data);
       renderCheckRows(runtimeCheckBody, data.runtime_checks);
       renderCheckRows(downstreamCheckBody, data.downstream_checks);
+      renderSourceHead(data);
       renderSources(data);
       renderWidgets(data);
       if (search) {

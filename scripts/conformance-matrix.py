@@ -156,6 +156,57 @@ RENDERER_SMOKE_CHECKS = [
     },
 ]
 
+SOURCE_RENDERERS = [
+    {
+        "id": "desktop_raylib",
+        "label": "Desktop raylib",
+        "status": "runtime only",
+        "status_class": "part",
+        "evidence": "make test",
+        "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+    },
+    {
+        "id": "web_raylib_wasm",
+        "label": "Web raylib",
+        "status": "build gated",
+        "status_class": "part",
+        "evidence": "docs-site Web IDE build",
+        "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+    },
+    {
+        "id": "web_canvas_wasm",
+        "label": "Web canvas",
+        "status": "smoke gated",
+        "status_class": "part",
+        "evidence": "make renderer-matrix-check",
+        "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+    },
+    {
+        "id": "krb_native_sw",
+        "label": "KRB native",
+        "status": "byte exact",
+        "status_class": "ok",
+        "evidence": "conformance-matrix-check",
+        "scope": "Per-source native kry_sw output compared with SDL readback.",
+    },
+    {
+        "id": "krb_web_canvas",
+        "label": "KRB web",
+        "status": "byte exact",
+        "status_class": "ok",
+        "evidence": "make krb-web-matrix-check",
+        "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+    },
+    {
+        "id": "desktop_libdraw_c",
+        "label": "Libdraw C",
+        "status": "captured",
+        "status_class": "ok",
+        "evidence": "make libdraw-matrix-check",
+        "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+    },
+]
+
 RUNTIME_PARITY_CHECKS = [
     {
         "id": "generated-go-c",
@@ -316,6 +367,32 @@ def detect_widgets(source: str) -> list[str]:
     return sorted(found & WIDGETS)
 
 
+def source_renderer_status(renderer: dict, alpha_gap: str | None, libdraw_gap: str | None) -> dict:
+    status = {
+        "status": renderer["status"],
+        "status_class": renderer["status_class"],
+        "evidence": renderer["evidence"],
+        "scope": renderer["scope"],
+    }
+    if renderer["id"] == "krb_native_sw" and alpha_gap:
+        status.update(
+            {
+                "status": "RGB exact",
+                "status_class": "part",
+                "evidence": alpha_gap,
+            }
+        )
+    elif renderer["id"] == "desktop_libdraw_c" and libdraw_gap:
+        status.update(
+            {
+                "status": "compile gap",
+                "status_class": "part",
+                "evidence": libdraw_gap,
+            }
+        )
+    return status
+
+
 def source_cases() -> list[dict]:
     parity = parity_fixtures()
     paths = sorted((ROOT / "examples").glob("*.kry"))
@@ -335,6 +412,10 @@ def source_cases() -> list[dict]:
                 "evidence": "conformance-matrix-check",
             }
         alpha_gap = KRB_ALPHA_BYTE_GAPS.get(r)
+        renderer_matrix = {
+            renderer["id"]: source_renderer_status(renderer, alpha_gap, libdraw_gap)
+            for renderer in SOURCE_RENDERERS
+        }
         cases.append(
             {
                 "id": r.removesuffix(".kry").replace("/", "-"),
@@ -366,6 +447,7 @@ def source_cases() -> list[dict]:
                         "evidence": libdraw_gap or "make libdraw-matrix-check",
                     },
                 },
+                "renderer_matrix": renderer_matrix,
             }
         )
     return cases
@@ -395,8 +477,13 @@ def matrix() -> dict:
         for widget, paths in sorted(widget_cases.items())
     ]
     covered_widgets = sum(1 for row in widget_rows if row["source_count"])
+    renderer_cells = [
+        cell
+        for case in cases
+        for cell in case["renderer_matrix"].values()
+    ]
     return {
-        "schema": 1,
+        "schema": 2,
         "source": "scripts/conformance-matrix.py",
         "summary": {
             "source_cases": len(cases),
@@ -408,6 +495,9 @@ def matrix() -> dict:
             "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
             "libdraw_c_visual_cases": len(cases) - len(LIBDRAW_C_VISUAL_GAPS),
             "libdraw_c_visual_gaps": len(LIBDRAW_C_VISUAL_GAPS),
+            "renderer_source_cells": len(renderer_cells),
+            "renderer_source_ok_cells": sum(1 for cell in renderer_cells if cell["status_class"] == "ok"),
+            "renderer_source_partial_cells": sum(1 for cell in renderer_cells if cell["status_class"] == "part"),
             "widgets_declared": len(widget_rows),
             "widgets_detected": covered_widgets,
             "widgets_missing": len(widget_rows) - covered_widgets,
@@ -423,6 +513,14 @@ def matrix() -> dict:
             for item in PIPELINES
         ],
         "renderers": RENDERERS,
+        "source_renderers": [
+            {
+                "id": item["id"],
+                "label": item["label"],
+                "scope": item["scope"],
+            }
+            for item in SOURCE_RENDERERS
+        ],
         "renderer_checks": [
             {
                 "id": item["id"],

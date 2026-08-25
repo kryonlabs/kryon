@@ -53,7 +53,7 @@
     <section>
       <p class="section-eyebrow">Automated</p>
       <h2>Conformance Matrix</h2>
-      <p class="section-lead">Generated from checked-in <code>.kry</code> examples, generated-runtime parity fixtures, and renderer evidence. The JSON backing this view is refreshed by <code>tests/feature_matrix_docs_test.sh</code>; source-pipeline cells are verified by <code>make conformance-matrix-check</code>.</p>
+      <p class="section-lead">Generated from checked-in <code>.kry</code> examples, generated-runtime parity fixtures, and renderer evidence. The JSON backing this view is refreshed by <code>tests/feature_matrix_docs_test.sh</code>; source-pipeline and KRB visual cells are verified by <code>make conformance-matrix-check</code>, with renderer-specific gates listed below.</p>
 
       <div class="matrix-stat-grid" data-conformance-summary>
         <p class="section-lead">Loading generated matrix...</p>
@@ -100,6 +100,7 @@
       </div>
 
       <h3>Source Cases</h3>
+      <p class="section-lead">Each source starts as <code>.kry</code>. Pipeline columns show lowering coverage; renderer columns show the strongest current evidence for that same source on each renderer/platform path.</p>
       <div class="matrix-controls">
         <input type="search" data-conformance-search placeholder="Filter sources or widgets" aria-label="Filter source cases">
         <select data-conformance-type aria-label="Filter source type">
@@ -110,7 +111,7 @@
       </div>
       <div class="table-wrap">
         <table class="matrix-table source-matrix-table">
-          <thead><tr><th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2b</th><th>KRB RGB</th><th>KRB Alpha</th><th>Libdraw C</th><th>Widgets</th><th>State Evidence</th></tr></thead>
+          <thead><tr data-conformance-source-head><th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2b</th><th>Renderers</th><th>Widgets</th><th>State Evidence</th></tr></thead>
           <tbody data-conformance-sources></tbody>
         </table>
       </div>

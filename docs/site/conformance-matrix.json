@@ -26,6 +26,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -79,6 +117,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -130,6 +206,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -190,6 +304,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -242,6 +394,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -297,6 +487,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -348,6 +576,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -405,6 +671,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -455,6 +759,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -508,6 +850,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -566,6 +946,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -619,6 +1037,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -675,6 +1131,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated C still has a Canvas lowering gap.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -726,6 +1220,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -781,6 +1313,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -839,6 +1409,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -889,6 +1497,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -943,6 +1589,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1000,6 +1684,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1053,6 +1775,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1099,6 +1859,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1156,6 +1954,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1202,6 +2038,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1257,6 +2131,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1305,6 +2217,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1351,6 +2301,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1409,6 +2397,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1463,6 +2489,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1509,6 +2573,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1566,6 +2668,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1616,6 +2756,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1671,6 +2849,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
@@ -1722,6 +2938,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -1781,6 +3035,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
@@ -1835,6 +3127,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
@@ -1887,6 +3217,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
@@ -1936,6 +3304,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
@@ -1994,6 +3400,44 @@
           "status_class": "ok"
         }
       },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
@@ -2045,6 +3489,44 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
+          "status_class": "part"
+        },
+        "desktop_raylib": {
+          "evidence": "make test",
+          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+          "status": "runtime only",
+          "status_class": "part"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make renderer-matrix-check",
+          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+          "status": "smoke gated",
+          "status_class": "part"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
         }
       },
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
@@ -2289,8 +3771,40 @@
       "scope": "Lowers parity fixtures through k2g and k2c, drives matching workflows, renders frames, and compares final state JSON."
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "source": "scripts/conformance-matrix.py",
+  "source_renderers": [
+    {
+      "id": "desktop_raylib",
+      "label": "Desktop raylib",
+      "scope": "Default native surface/runtime gate; per-source PNG capture pending."
+    },
+    {
+      "id": "web_raylib_wasm",
+      "label": "Web raylib",
+      "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending."
+    },
+    {
+      "id": "web_canvas_wasm",
+      "label": "Web canvas",
+      "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending."
+    },
+    {
+      "id": "krb_native_sw",
+      "label": "KRB native",
+      "scope": "Per-source native kry_sw output compared with SDL readback."
+    },
+    {
+      "id": "krb_web_canvas",
+      "label": "KRB web",
+      "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw."
+    },
+    {
+      "id": "desktop_libdraw_c",
+      "label": "Libdraw C",
+      "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending."
+    }
+  ],
   "summary": {
     "examples": 33,
     "krb_alpha_byte_exact_cases": 29,
@@ -2299,6 +3813,9 @@
     "libdraw_c_visual_gaps": 8,
     "parity_fixtures": 6,
     "pipeline_cells": 156,
+    "renderer_source_cells": 234,
+    "renderer_source_ok_cells": 99,
+    "renderer_source_partial_cells": 135,
     "semantic_parity_cases": 5,
     "source_cases": 39,
     "widgets_declared": 54,
