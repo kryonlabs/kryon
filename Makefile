@@ -205,6 +205,7 @@ LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
 LIBDRAW_SMOKE_TEST = $(BUILD_DIR)/tests/libdraw_smoke_test
+LIBDRAW_HIERARCHY_TEST = $(BUILD_DIR)/tests/libdraw_hierarchy_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 UI_PRIMARY_SELECTION_TEST = $(BUILD_DIR)/tests/ui_primary_selection_test
 DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
@@ -607,6 +608,12 @@ $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(KRYON_BACKEND_LIBS) |
 $(LIBDRAW_SMOKE_TEST): tests/libdraw_smoke_main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/libdraw_smoke_main.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(LIBDRAW_HIERARCHY_TEST): tests/libdraw_hierarchy_main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/libdraw_hierarchy_main.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 

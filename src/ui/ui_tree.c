@@ -8,6 +8,7 @@
 #define UI_NODE_HOVERED (1U << 28)
 #define UI_NODE_PRESSED (1U << 29)
 #define UI_NODE_OWNS_STATE (1U << 30)
+#define UI_NODE_PAINTED_IMMEDIATE (1U << 27)
 
 typedef struct TextFieldState {
     int cursor;
@@ -1104,6 +1105,8 @@ DrawTree(void)
             DrawRectangleRec(node->bounds, node->data.primitive.color);
             break;
         case UI_WIDGET_TEXT_NODE:
+            if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
+                break;
             ui_draw_text_with_font_token(
                 node->owned_text != NULL ? node->owned_text : "",
                 (int)node->bounds.x, (int)node->bounds.y,
@@ -1447,9 +1450,9 @@ Text(const char *text, int x, int y, int font_size, Color color)
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
         ui_tree_nodes[node].data.primitive.color = color;
     }
-    if(ui_tree_building)
-        return;
     DrawUIText(text, x, y, font_size, color);
+    if(ui_tree_building && node >= 0)
+        ui_tree_nodes[node].flags |= UI_NODE_PAINTED_IMMEDIATE;
 }
 
 void
