@@ -209,6 +209,7 @@ UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 UI_PRIMARY_SELECTION_TEST = $(BUILD_DIR)/tests/ui_primary_selection_test
 DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
 DROPDOWN_THEME_SCREEN_TEST = $(BUILD_DIR)/tests/dropdown_theme_screen_test
+BOTTOM_NAV_ICON_COLOR_TEST = $(BUILD_DIR)/tests/bottom_nav_icon_color_test
 PREVIEW_TEST = $(BUILD_DIR)/tests/preview_test
 PLATFORM_THREAD_TEST = $(BUILD_DIR)/tests/platform_thread_test
 OPEN_URI_TEST = $(BUILD_DIR)/tests/open_uri_test
@@ -333,7 +334,7 @@ conformance-matrix-check: $(K2IR) $(K2C) $(K2G) $(K2B)
 generated-runtime-parity-test: $(K2C) $(K2G) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -369,6 +370,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(UI_PRIMARY_SELECTION_TEST)
 	$(DROPDOWN_LAYOUT_TEST)
 	$(DROPDOWN_THEME_SCREEN_TEST)
+	$(BOTTOM_NAV_ICON_COLOR_TEST)
 	$(PREVIEW_TEST)
 	$(PLATFORM_THREAD_TEST)
 	$(OPEN_URI_TEST)
@@ -621,6 +623,19 @@ $(DROPDOWN_LAYOUT_TEST): tests/dropdown_layout_test.c $(LIB) $(KRYON_BACKEND_LIB
 $(DROPDOWN_THEME_SCREEN_TEST): tests/dropdown_theme_screen_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/dropdown_theme_screen_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(BOTTOM_NAV_ICON_COLOR_TEST): tests/bottom_nav_icon_color_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/bottom_nav_icon_color_test.c \
+		-Wl,--wrap=DrawTexturePro \
+		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=SetMouseCursor \
+		-Wl,--wrap=GetMousePosition \
+		-Wl,--wrap=IsMouseButtonReleased \
+		-Wl,--wrap=IsMouseButtonDown \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
