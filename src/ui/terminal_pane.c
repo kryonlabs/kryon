@@ -206,6 +206,7 @@ DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
     return badge;
 }
 
+#if !defined(KRYON_NATIVE_PLAN9)
 int
 TerminalPaneHandleInput(Terminal *terminal)
 {
@@ -326,3 +327,4 @@ DrawTerminalPane(TerminalPane pane)
 
     return result;
 }
+#endif
