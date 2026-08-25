@@ -65,6 +65,7 @@ void KryonInjectReset(void) { }
 
 int CanOpenURI(const char *uri) { (void)uri; return 0; }
 int OpenURI(const char *uri) { (void)uri; return 0; }
+void OpenURL(const char *url) { (void)OpenURI(url); }
 
 int
 KryNotificationDayKeyNow(void)

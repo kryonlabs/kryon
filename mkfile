@@ -116,7 +116,6 @@ OFILES=\
 	src/kry_std/kry_sha256.$O\
 	src/markdown.$O\
 	src/platform/kry_activity_monitor.$O\
-	src/platform/open_uri.$O\
 	src/platform/plan9/plan9_notification.$O\
 	src/platform/plan9/plan9_os.$O\
 	src/platform/plan9/plan9_runtime_stubs.$O\
