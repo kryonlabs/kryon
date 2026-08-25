@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 
-#define THEME_COUNT 13
+#define THEME_COUNT 14
 
 typedef enum {
     THEME_SKY = 0,
@@ -20,7 +20,8 @@ typedef enum {
     THEME_MONO = 9,
     THEME_MINT = 10,
     THEME_COBALT = 11,
-    THEME_PLAN9 = 12
+    THEME_PLAN9 = 12,
+    THEME_XFCE = 13
 } ThemeId;
 
 typedef struct {
