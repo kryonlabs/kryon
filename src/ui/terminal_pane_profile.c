@@ -105,7 +105,11 @@ ResolveTerminalPaneColor(const TerminalPanePalette *palette, int value,
     if(value >= 0 && value < 256) {
         if(palette != NULL)
             return palette->ansi[value];
-        return GetTerminalPaneDefaultPalette().ansi[value];
+        {
+            TerminalPanePalette default_palette =
+                GetTerminalPaneDefaultPalette();
+            return default_palette.ansi[value];
+        }
     }
     return fallback;
 }
