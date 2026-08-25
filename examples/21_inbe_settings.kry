@@ -13,6 +13,8 @@ state {
     orientation_index: int = 0
     fullscreen: int = 0
     keep_screen_on: int = 1
+    language_options: [5] const char * = {"System", "English", "Portugues", "Espanol", "Deutsch"}
+    orientation_options: [4] const char * = {"System", "Portrait", "Landscape", "Sensor"}
 }
 
 app "Inner Breeze — Settings" {
@@ -26,21 +28,22 @@ App :: () #ui {
         Background(GetThemeSurface())
         Text("Settings", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
         Text("Device", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
-        Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(480), ScaleUIPx(820), &scroll_off)
-        Text("Language", ScaleUIPx(40), ScaleUIPx(120), Text16, GetThemeText())
-        Dropdown(101, ScaleUIPx(40), ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), "System;English;Portugues;Espanol;Deutsch", &language_index)
-        Text("Orientation", ScaleUIPx(40), ScaleUIPx(230), Text16, GetThemeText())
-        Dropdown(103, ScaleUIPx(40), ScaleUIPx(256), ScaleUIPx(340), ScaleUIPx(36), "System;Portrait;Landscape;Sensor", &orientation_index)
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(340), "Fullscreen", &fullscreen)
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(380), "Keep screen on", &keep_screen_on)
+        settings_area: UIScrollArea = {{ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(480)}, ScaleUIPx(820), ScaleUIPx(40), ScaleUIPx(400), &scroll_off, 0, 0}
+        settings_view: UIScrollView = BeginUIScrollContainer(settings_area)
+        Text("Language", settings_view.content_x, settings_view.content_y + ScaleUIPx(10), Text16, GetThemeText())
+        Dropdown(101, settings_view.content_x, settings_view.content_y + ScaleUIPx(36), ScaleUIPx(340), ScaleUIPx(36), language_options, 5, &language_index)
+        Text("Orientation", settings_view.content_x, settings_view.content_y + ScaleUIPx(120), Text16, GetThemeText())
+        Dropdown(103, settings_view.content_x, settings_view.content_y + ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), orientation_options, 4, &orientation_index)
+        Checkbox(0, settings_view.content_x, settings_view.content_y + ScaleUIPx(230), "Fullscreen", &fullscreen)
+        Checkbox(0, settings_view.content_x, settings_view.content_y + ScaleUIPx(270), "Keep screen on", &keep_screen_on)
         if (fullscreen == 1) {
-            Text("Restarts the app to apply", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
+            Text("Restarts the app to apply", settings_view.content_x, settings_view.content_y + ScaleUIPx(310), Text16, GetThemeIcon())
         } else {
-            Text("Uses the display the app started on", ScaleUIPx(40), ScaleUIPx(420), Text16, GetThemeIcon())
+            Text("Uses the display the app started on", settings_view.content_x, settings_view.content_y + ScaleUIPx(310), Text16, GetThemeIcon())
         }
         if (keep_screen_on == 1) {
-            Text("The screen stays awake during sessions", ScaleUIPx(40), ScaleUIPx(460), Text16, GetThemeIcon())
+            Text("The screen stays awake during sessions", settings_view.content_x, settings_view.content_y + ScaleUIPx(350), Text16, GetThemeIcon())
         }
-        EndScroll()
+        EndUIScrollContainer(settings_area, settings_view)
     }
 }

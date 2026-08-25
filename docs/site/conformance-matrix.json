@@ -259,14 +259,14 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Rect calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
-        "Rect",
+        "RectangleShape",
         "Screen",
         "Text"
       ]
@@ -312,14 +312,14 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Rect calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
-        "Rect",
+        "RectangleShape",
         "Screen",
         "Text"
       ]
@@ -365,16 +365,16 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Rect calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
         "Button",
         "Line",
-        "Rect",
+        "RectangleShape",
         "Screen",
         "Text"
       ]
@@ -960,15 +960,15 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still has a Picture props lowering gap.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
         "Picture",
-        "Rect",
+        "RectangleShape",
         "Screen",
         "Stack",
         "Text"
@@ -1015,9 +1015,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Dropdown positional arguments.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1116,9 +1116,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Dropdown/Scroll calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1219,9 +1219,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Scroll calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1368,13 +1368,14 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Dropdown/Scroll calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
+        "Button",
         "Checkbox",
         "Dropdown",
         "Screen",
@@ -1423,9 +1424,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Scroll calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1525,9 +1526,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Spinbox/Button calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1632,14 +1633,14 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Rect calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
         "Background",
-        "Rect",
+        "RectangleShape",
         "Screen",
         "Text"
       ]
@@ -1685,9 +1686,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Button calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1738,9 +1739,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still emits legacy Spinbox/Button calls.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -2098,7 +2099,7 @@
         "Progress",
         "PromptDialog",
         "Radio",
-        "Rect",
+        "RectangleShape",
         "Row",
         "Screen",
         "SelectableText",
@@ -2294,8 +2295,8 @@
     "examples": 33,
     "krb_alpha_byte_exact_cases": 29,
     "krb_rgb_visual_cases": 39,
-    "libdraw_c_visual_cases": 18,
-    "libdraw_c_visual_gaps": 21,
+    "libdraw_c_visual_cases": 31,
+    "libdraw_c_visual_gaps": 8,
     "parity_fixtures": 6,
     "pipeline_cells": 156,
     "semantic_parity_cases": 5,
@@ -2309,7 +2310,7 @@
     "Background": 29,
     "Bevel": 1,
     "BottomNav": 1,
-    "Button": 14,
+    "Button": 15,
     "Canvas": 2,
     "CanvasGrid": 2,
     "Checkbox": 7,
@@ -2337,7 +2338,7 @@
     "Progress": 2,
     "PromptDialog": 2,
     "Radio": 2,
-    "Rect": 6,
+    "RectangleShape": 6,
     "Row": 3,
     "Screen": 34,
     "Scroll": 4,
@@ -2436,7 +2437,7 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 14,
+      "source_count": 15,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -2446,6 +2447,7 @@
         "examples/13_text_editor.kry",
         "examples/16_dialogs.kry",
         "examples/18_accessibility.kry",
+        "examples/23_inbe_app.kry",
         "examples/25_inbe_practice.kry",
         "examples/28_inbe_profile.kry",
         "examples/29_inbe_habit_edit.kry",
@@ -2759,7 +2761,7 @@
       "status_class": "ok"
     },
     {
-      "id": "Rect",
+      "id": "RectangleShape",
       "semantic_sources": [],
       "source_count": 6,
       "sources": [

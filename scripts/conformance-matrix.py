@@ -205,25 +205,12 @@ KRB_ALPHA_BYTE_GAPS = {
 
 LIBDRAW_C_VISUAL_GAPS = {
     "examples/20_scene.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/05_color.kry": "Generated C still emits legacy Rect calls.",
-    "examples/06_scaling.kry": "Generated C still emits legacy Rect calls.",
-    "examples/07_layout.kry": "Generated C still emits legacy Rect calls.",
     "examples/14_canvas.kry": "Generated C still has a Canvas lowering gap.",
-    "examples/19_pictures.kry": "Generated C still has a Picture props lowering gap.",
-    "examples/20_inbe_language.kry": "Generated C still emits legacy Dropdown positional arguments.",
     "examples/21_signals.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/21_inbe_settings.kry": "Generated C still emits legacy Dropdown/Scroll calls.",
     "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/22_inbe_manual.kry": "Generated C still emits legacy Scroll calls.",
     "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/23_inbe_app.kry": "Generated C still emits legacy Dropdown/Scroll calls.",
     "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/24_inbe_habits.kry": "Generated C still emits legacy Scroll calls.",
-    "examples/25_inbe_practice.kry": "Generated C still emits legacy Spinbox/Button calls.",
     "examples/26_inbe_whm_session.kry": "Generated C still emits unsupported TIME/AnimNode references.",
-    "examples/27_inbe_statistics.kry": "Generated C still emits legacy Rect calls.",
-    "examples/28_inbe_profile.kry": "Generated C still emits legacy Button calls.",
-    "examples/29_inbe_habit_edit.kry": "Generated C still emits legacy Spinbox/Button calls.",
     "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
 }
 
@@ -260,7 +247,7 @@ WIDGETS = {
     "Progress",
     "PromptDialog",
     "Radio",
-    "Rect",
+    "RectangleShape",
     "Row",
     "Screen",
     "Scroll",
@@ -321,7 +308,7 @@ def detect_widgets(source: str) -> list[str]:
     found.update(match.group(1) for match in BLOCK_RE.finditer(clean))
     if "BeginCanvas" in found or "EndCanvas" in found:
         found.add("Canvas")
-    if "BeginScrollContainer" in found or "EndScrollContainer" in found:
+    if "BeginUIScrollContainer" in found or "EndUIScrollContainer" in found:
         found.add("Scroll")
     for widget, aliases in WIDGET_ALIASES.items():
         if aliases & found:

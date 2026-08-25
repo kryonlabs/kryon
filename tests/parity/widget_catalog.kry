@@ -63,7 +63,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
             Stack surface_stack: {
                 bounds = {ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(230), ScaleUIPx(60)}
                 key = Key("catalog-stack")
-                Rect(ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(230), ScaleUIPx(60), GetThemeSurface(), GetThemeButton())
+                RectangleShape(ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(230), ScaleUIPx(60), GetThemeSurface(), GetThemeButton())
                 Line(ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(262), ScaleUIPx(230), GetThemeIcon())
                 Bevel(ScaleUIPx(44), ScaleUIPx(184), ScaleUIPx(60), ScaleUIPx(24), GetThemeSurface(), GetThemeButton())
             }

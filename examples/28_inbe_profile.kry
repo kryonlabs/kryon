@@ -33,6 +33,6 @@ App :: () #ui {
         Text("Not configured", ScaleUIPx(200), ScaleUIPx(300), Text12, GetThemeIcon())
         Text("Export data", ScaleUIPx(40), ScaleUIPx(350), Text16, GetThemeText())
         Text("Import data", ScaleUIPx(40), ScaleUIPx(400), Text16, GetThemeText())
-        Button((ButtonProps){"Sign out", (Rectangle){ScaleUIPx(150), ScaleUIPx(460), ScaleUIPx(180), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 1}, "signout")
+        Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(460), ScaleUIPx(180), ScaleUIPx(40)}, .label = "Sign out", .style = ButtonStyleSecondary, .font = Text16, .id = 501, .disabled = 1})
     }
 }

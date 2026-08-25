@@ -16,16 +16,16 @@ App :: () #ui {
         Stack picture_card: {
             bounds = {ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210)}
             key = Key("picture-card")
-            Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
+            RectangleShape(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
                        GetThemeSurface(), GetThemeButton())
-            Picture((PictureProps){"tiles/tile.png",
-                     (Rectangle){ScaleUIPx(52),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
-                     (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-                     PICTURE_FIT_CONTAIN})
-            Picture((PictureProps){"pfp/lotus.png",
-                     (Rectangle){ScaleUIPx(168),ScaleUIPx(104),ScaleUIPx(96),ScaleUIPx(96)},
-                     (Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,
-                     PICTURE_FIT_CONTAIN})
+            Picture((PictureProps){.asset_path = "tiles/tile.png",
+                     .bounds = {ScaleUIPx(52), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},
+                     .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
+                     .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
+            Picture((PictureProps){.asset_path = "pfp/lotus.png",
+                     .bounds = {ScaleUIPx(168), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},
+                     .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
+                     .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
             Text("Pictures keep their node bounds for editing",
                        ScaleUIPx(52), ScaleUIPx(226), Text12, GetThemeIcon())
         }

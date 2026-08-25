@@ -49,14 +49,14 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 the full whitelist onto its `Runtime` interface (except `Canvas`, below), and
 `k2b` lowers a subset of it:
 
-`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
+`Background Text TextInRect Paragraph TextLines RectangleShape Line Bevel IconTexture
 Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox
 Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav
 TopNav Toolbar`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
-`BeginCanvas` directly. `Scroll` lowers to the `Scroll`/`EndScroll` runtime
-pairing, not the C `Begin/EndUIScrollContainer` API.)
+`BeginCanvas` directly. Scroll coverage uses the C `BeginUIScrollContainer` /
+`EndUIScrollContainer` API.)
 
 ## Widget matrix
 
@@ -80,7 +80,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TextInRect | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
 | TextLines | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
-| Rect | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
+| RectangleShape | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | IconTexture (114 embedded icons) | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
@@ -115,7 +115,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|
 | Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ✅ | ◐ via Column | ✅ via Stack | ✅ |
-| Scroll container | ✅ | ✅ | ✅ `Scroll`/`EndScroll` | ✅ `Begin/EndScrollContainer` | ✅ SCROLL node |
+| Scroll container | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✗ | ✗ | ✅ |
 | LabelFrame | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✗ |
 | Notebook (tabs) | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |

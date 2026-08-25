@@ -1,9 +1,9 @@
 #import "kryon.h"
 
 # Inner Breeze as ONE cartridge: three screens (language, settings,
-# manual) with cartridge-owned navigation. NavButton writes the screen
-# id to the `screen` state; each screen's widgets live under an
-# if (screen == N) guard. No host C anywhere.
+# manual) with cartridge-owned navigation. Buttons write the screen id
+# to state; each screen's widgets live under an if (screen == N) guard.
+# No host C anywhere.
 
 state {
     screen: int = 0
@@ -13,6 +13,9 @@ state {
     lang_scroll: int = 0
     set_scroll: int = 0
     man_scroll: int = 0
+    language_options: [5] const char * = {"English", "Portugues", "Espanol", "Deutsch", "Francais"}
+    settings_language_options: [3] const char * = {"System", "English", "Portugues"}
+    orientation_options: [3] const char * = {"System", "Portrait", "Landscape"}
 }
 
 app "Inner Breeze" {
@@ -27,38 +30,44 @@ App :: () #ui {
         if (screen == 0) {
             Text("Language", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
             Text("Choose your language", ScaleUIPx(40), ScaleUIPx(250), Text16, GetThemeIcon())
-            Dropdown(260, ScaleUIPx(40), ScaleUIPx(290), ScaleUIPx(340), ScaleUIPx(36), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
-            if (language_index == 0) {
-                Text("Perfect for a calm start", ScaleUIPx(40), ScaleUIPx(380), Text16, GetThemeIcon())
-            } else {
-                Text("Otimo para um comeco calmo", ScaleUIPx(40), ScaleUIPx(380), Text16, GetThemeIcon())
+            Dropdown(260, ScaleUIPx(40), ScaleUIPx(290), ScaleUIPx(340), ScaleUIPx(36), language_options, 5, &language_index)
+            Text("Ready for a calm start", ScaleUIPx(40), ScaleUIPx(380), Text16, GetThemeIcon())
+            if Button((ButtonProps){.bounds = {ScaleUIPx(190), ScaleUIPx(430), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Next", .style = ButtonStylePrimary, .font = Text16, .id = 201, .disabled = 0}) {
+                screen = 1
             }
-            NavButton("Next", ScaleUIPx(190), ScaleUIPx(430), ScaleUIPx(100), ScaleUIPx(40), &screen, 1)
         } else {
             if (screen == 1) {
                 Text("Settings", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
                 Text("Device", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
-                Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(440), ScaleUIPx(560), &set_scroll)
-                Text("Language", ScaleUIPx(40), ScaleUIPx(120), Text16, GetThemeText())
-                Dropdown(101, ScaleUIPx(40), ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), "System;English;Portugues", &language_index)
-                Text("Orientation", ScaleUIPx(40), ScaleUIPx(230), Text16, GetThemeText())
-                Dropdown(103, ScaleUIPx(40), ScaleUIPx(256), ScaleUIPx(340), ScaleUIPx(36), "System;Portrait;Landscape", &orientation_index)
-                Checkbox(0, ScaleUIPx(40), ScaleUIPx(340), "Fullscreen", &fullscreen)
-                EndScroll()
-                NavButton("Manual", ScaleUIPx(60), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40), &screen, 2)
-                NavButton("Back", ScaleUIPx(320), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40), &screen, 0)
+                settings_area: UIScrollArea = {{ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(440)}, ScaleUIPx(560), ScaleUIPx(40), ScaleUIPx(400), &set_scroll, 0, 0}
+                settings_view: UIScrollView = BeginUIScrollContainer(settings_area)
+                Text("Language", settings_view.content_x, settings_view.content_y + ScaleUIPx(10), Text16, GetThemeText())
+                Dropdown(101, settings_view.content_x, settings_view.content_y + ScaleUIPx(36), ScaleUIPx(340), ScaleUIPx(36), settings_language_options, 3, &language_index)
+                Text("Orientation", settings_view.content_x, settings_view.content_y + ScaleUIPx(120), Text16, GetThemeText())
+                Dropdown(103, settings_view.content_x, settings_view.content_y + ScaleUIPx(146), ScaleUIPx(340), ScaleUIPx(36), orientation_options, 3, &orientation_index)
+                Checkbox(0, settings_view.content_x, settings_view.content_y + ScaleUIPx(230), "Fullscreen", &fullscreen)
+                EndUIScrollContainer(settings_area, settings_view)
+                if Button((ButtonProps){.bounds = {ScaleUIPx(60), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Manual", .style = ButtonStylePrimary, .font = Text16, .id = 202, .disabled = 0}) {
+                    screen = 2
+                }
+                if Button((ButtonProps){.bounds = {ScaleUIPx(320), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Back", .style = ButtonStyleSecondary, .font = Text16, .id = 203, .disabled = 0}) {
+                    screen = 0
+                }
             } else {
                 Text("Manual", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
-                Scroll(ScaleUIPx(24), ScaleUIPx(80), ScaleUIPx(432), ScaleUIPx(470), ScaleUIPx(700), &man_scroll)
-                Text("Welcome to Inner Breeze", ScaleUIPx(24), ScaleUIPx(90), Text16, GetThemeText())
-                Text("Breathing practices with gentle visual and audio cues.", ScaleUIPx(24), ScaleUIPx(120), Text16, GetThemeIcon())
-                Text("Box breathing: four equal phases around a square.", ScaleUIPx(24), ScaleUIPx(190), Text16, GetThemeIcon())
-                DrawCircleV((Vector2){ScaleUIPx(240), ScaleUIPx(330)}, ScaleUIPx(50), (Color){0x2d, 0x4d, 0x7b, 0xff})
-                DrawRing((Vector2){ScaleUIPx(240), ScaleUIPx(330)}, ScaleUIPx(56), ScaleUIPx(64), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
-                Text("Always practice seated and never near water.", ScaleUIPx(24), ScaleUIPx(440), Text16, GetThemeIcon())
-                Text("Habits build streaks; missing one day is fine.", ScaleUIPx(24), ScaleUIPx(510), Text16, GetThemeIcon())
-                EndScroll()
-                NavButton("Back", ScaleUIPx(190), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40), &screen, 1)
+                manual_area: UIScrollArea = {{ScaleUIPx(24), ScaleUIPx(80), ScaleUIPx(432), ScaleUIPx(470)}, ScaleUIPx(700), ScaleUIPx(24), ScaleUIPx(432), &man_scroll, 0, 0}
+                manual_view: UIScrollView = BeginUIScrollContainer(manual_area)
+                Text("Welcome to Inner Breeze", manual_view.content_x, manual_view.content_y + ScaleUIPx(10), Text16, GetThemeText())
+                Text("Breathing practices with gentle visual and audio cues.", manual_view.content_x, manual_view.content_y + ScaleUIPx(40), Text16, GetThemeIcon())
+                Text("Box breathing: four equal phases around a square.", manual_view.content_x, manual_view.content_y + ScaleUIPx(110), Text16, GetThemeIcon())
+                DrawCircleV((Vector2){ScaleUIPx(240), manual_view.content_y + ScaleUIPx(250)}, ScaleUIPx(50), (Color){0x2d, 0x4d, 0x7b, 0xff})
+                DrawRing((Vector2){ScaleUIPx(240), manual_view.content_y + ScaleUIPx(250)}, ScaleUIPx(56), ScaleUIPx(64), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
+                Text("Always practice seated and never near water.", manual_view.content_x, manual_view.content_y + ScaleUIPx(360), Text16, GetThemeIcon())
+                Text("Habits build streaks; missing one day is fine.", manual_view.content_x, manual_view.content_y + ScaleUIPx(430), Text16, GetThemeIcon())
+                EndUIScrollContainer(manual_area, manual_view)
+                if Button((ButtonProps){.bounds = {ScaleUIPx(190), ScaleUIPx(570), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Back", .style = ButtonStyleSecondary, .font = Text16, .id = 204, .disabled = 0}) {
+                    screen = 1
+                }
             }
         }
     }

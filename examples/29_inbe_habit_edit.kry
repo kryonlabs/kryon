@@ -5,7 +5,7 @@
 # dropdown, interval spinbox, save button.
 
 state {
-    name: char[64] = "Meditate"
+    name: [64] char = "Meditate"
     mon: int = 1
     tue: int = 1
     wed: int = 0
@@ -15,6 +15,9 @@ state {
     sun: int = 0
     reminder_index: int = 1
     interval: int = 1
+    name_cursor: int = 8
+    name_focused: int = 0
+    reminder_options: [3] const char * = {"Off", "Morning", "Evening"}
 }
 
 app "Inner Breeze Habit Edit" {
@@ -28,7 +31,7 @@ App :: () #ui {
         Background(GetThemeBackground())
         Text("Edit habit", ScaleUIPx(155), ScaleUIPx(28), Text24, GetThemeText())
         Text("Name", ScaleUIPx(40), ScaleUIPx(90), Text16, GetThemeText())
-        TextField(ScaleUIPx(40), ScaleUIPx(116), ScaleUIPx(340), ScaleUIPx(36), &name)
+        TextField((TextFieldProps){.bounds = {ScaleUIPx(40), ScaleUIPx(116), ScaleUIPx(340), ScaleUIPx(36)}, .text = name, .text_size = sizeof(name), .cursor_position = &name_cursor, .focused = &name_focused, .max_codepoints = 63, .font = Text16, .focus_id = 701})
         Text("Days", ScaleUIPx(40), ScaleUIPx(180), Text16, GetThemeText())
         Checkbox(0, ScaleUIPx(40), ScaleUIPx(206), "Mon", &mon)
         Checkbox(0, ScaleUIPx(140), ScaleUIPx(206), "Tue", &tue)
@@ -43,9 +46,9 @@ App :: () #ui {
             Text("Schedule looks good", ScaleUIPx(40), ScaleUIPx(280), Text12, GetThemeIcon())
         }
         Text("Reminder", ScaleUIPx(40), ScaleUIPx(320), Text16, GetThemeText())
-        Dropdown(9, ScaleUIPx(40), ScaleUIPx(346), ScaleUIPx(340), ScaleUIPx(36), "Off;Morning;Evening", &reminder_index)
+        Dropdown(9, ScaleUIPx(40), ScaleUIPx(346), ScaleUIPx(340), ScaleUIPx(36), reminder_options, 3, &reminder_index)
         Text("Repeat every", ScaleUIPx(40), ScaleUIPx(400), Text16, GetThemeText())
-        Spinbox(4, ScaleUIPx(40), ScaleUIPx(426), ScaleUIPx(160), ScaleUIPx(12), ScaleUIPx(240), 1, 7, 1, &interval)
-        Button((ButtonProps){"Save", (Rectangle){ScaleUIPx(150), ScaleUIPx(500), ScaleUIPx(180), ScaleUIPx(40)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, 0}, "save")
+        Spinbox((SpinboxProps){.bounds = {ScaleUIPx(40), ScaleUIPx(426), ScaleUIPx(160), ScaleUIPx(36)}, .id = 4, .min = 1, .max = 7, .step = 1, .value = &interval, .disabled = 0, .value_text = "", .wrap = 0})
+        Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(500), ScaleUIPx(180), ScaleUIPx(40)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 702, .disabled = 0})
     }
 }

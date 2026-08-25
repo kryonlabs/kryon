@@ -7,6 +7,7 @@
 
 state {
     language_index: int = 0
+    language_options: [5] const char * = {"English", "Portugues", "Espanol", "Deutsch", "Francais"}
 }
 
 app "Inner Breeze — Language" {
@@ -20,7 +21,7 @@ App :: () #ui {
         Background(GetThemeBackground())
         Text("Choose Language", ScaleUIPx(141), ScaleUIPx(28), Text24, GetThemeText())
         Text("Language", ScaleUIPx(40), ScaleUIPx(243), Text16, GetThemeText())
-        Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), "English;Portugues;Espanol;Deutsch;Francais", &language_index)
+        Dropdown(260, ScaleUIPx(39), ScaleUIPx(266), 391, ScaleUIPx(41), language_options, 5, &language_index)
         Text("Next", ScaleUIPx(204), ScaleUIPx(335), Text12, GetThemeText())
     }
 }

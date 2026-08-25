@@ -28,21 +28,22 @@ App :: () #ui {
         Background(GetThemeSurface())
         Text("Habits", ScaleUIPx(70), ScaleUIPx(28), Text24, GetThemeText())
         Text("Today", ScaleUIPx(40), ScaleUIPx(80), Text16, GetThemeIcon())
-        Scroll(ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(490), ScaleUIPx(560), &scroll_off)
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(120), "Breathe 10 min", &breathe_done)
-        TextFormat("Streak: %d days", breathe_streak, ScaleUIPx(250), ScaleUIPx(120), Text16, GetThemeIcon())
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(180), "Stretch", &stretch_done)
-        TextFormat("Streak: %d days", stretch_streak, ScaleUIPx(250), ScaleUIPx(180), Text16, GetThemeIcon())
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(240), "Drink water", &water_done)
-        TextFormat("Streak: %d days", water_streak, ScaleUIPx(250), ScaleUIPx(240), Text16, GetThemeIcon())
-        Checkbox(0, ScaleUIPx(40), ScaleUIPx(300), "Journal", &journal_done)
-        TextFormat("Streak: %d days", journal_streak, ScaleUIPx(250), ScaleUIPx(300), Text16, GetThemeIcon())
+        habits_area: UIScrollArea = {{ScaleUIPx(40), ScaleUIPx(110), ScaleUIPx(400), ScaleUIPx(490)}, ScaleUIPx(560), ScaleUIPx(40), ScaleUIPx(400), &scroll_off, 0, 0}
+        habits_view: UIScrollView = BeginUIScrollContainer(habits_area)
+        Checkbox(0, habits_view.content_x, habits_view.content_y + ScaleUIPx(10), "Breathe 10 min", &breathe_done)
+        TextFormat("Streak: %d days", breathe_streak, ScaleUIPx(250), habits_view.content_y + ScaleUIPx(10), Text16, GetThemeIcon())
+        Checkbox(0, habits_view.content_x, habits_view.content_y + ScaleUIPx(70), "Stretch", &stretch_done)
+        TextFormat("Streak: %d days", stretch_streak, ScaleUIPx(250), habits_view.content_y + ScaleUIPx(70), Text16, GetThemeIcon())
+        Checkbox(0, habits_view.content_x, habits_view.content_y + ScaleUIPx(130), "Drink water", &water_done)
+        TextFormat("Streak: %d days", water_streak, ScaleUIPx(250), habits_view.content_y + ScaleUIPx(130), Text16, GetThemeIcon())
+        Checkbox(0, habits_view.content_x, habits_view.content_y + ScaleUIPx(190), "Journal", &journal_done)
+        TextFormat("Streak: %d days", journal_streak, ScaleUIPx(250), habits_view.content_y + ScaleUIPx(190), Text16, GetThemeIcon())
         if (breathe_done == 1) {
-            Text("Done for today", ScaleUIPx(40), ScaleUIPx(150), Text16, GetThemeIcon())
+            Text("Done for today", habits_view.content_x, habits_view.content_y + ScaleUIPx(40), Text16, GetThemeIcon())
         }
         if (water_streak > 40) {
-            Text("Almost two months strong", ScaleUIPx(40), ScaleUIPx(360), Text16, GetThemeIcon())
+            Text("Almost two months strong", habits_view.content_x, habits_view.content_y + ScaleUIPx(250), Text16, GetThemeIcon())
         }
-        EndScroll()
+        EndUIScrollContainer(habits_area, habits_view)
     }
 }

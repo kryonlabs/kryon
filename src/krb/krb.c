@@ -732,11 +732,12 @@ apply_scroll(KrbImage *img, const KryBackend *b, const KrbNode *n,
 {
     int depth = 0;
     int guard = 0;
+    int parent = n->parent;
 
-    while(n->parent >= 0 && guard++ < 32) {
+    while(parent >= 0 && guard++ < 32) {
         KrbNode sc;
 
-        if(KrbReadNode(img, (unsigned)n->parent, &sc) != 0)
+        if(KrbReadNode(img, (unsigned)parent, &sc) != 0)
             break;
         if(sc.type == KRB_NODE_SCROLL) {
             int off = 0;
@@ -753,7 +754,7 @@ apply_scroll(KrbImage *img, const KryBackend *b, const KrbNode *n,
             depth++;
             *y -= off;
         }
-        n = &sc;
+        parent = sc.parent;
     }
     return depth;
 }
@@ -859,20 +860,12 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         }
         break;
     case KRB_NODE_SCROLL: {
-        /* The container itself: border + wheel-driven offset. Children are
+        /* The container itself is not drawn. Children are clipped and
          * transformed in draw_tree / OP_DRAW_NODE via apply_scroll. */
         int off = 0;
         int mx = 0;
         int my = 0;
         int maxoff = n->font_size - n->h;
-        unsigned border = b->theme_color(KRY_THEME_ICON);
-
-        if(w > 0 && h > 0) {
-            b->rect(x, y, w, 1, border);
-            b->rect(x, y + h - 1, w, 1, border);
-            b->rect(x, y, 1, h, border);
-            b->rect(x + w - 1, y, 1, h, border);
-        }
         b->mouse(&mx, &my);
         if(b->wheel != NULL && my >= y && my < y + h && mx >= x &&
            mx < x + w) {

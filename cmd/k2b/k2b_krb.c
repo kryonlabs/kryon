@@ -129,6 +129,24 @@ typedef struct KrbBuildControl {
     int option_count;
 } KrbBuildControl;
 
+typedef struct KrbScrollAreaDef {
+    char name[KIR_NAME_MAX];
+    int x;
+    int y;
+    int w;
+    int h;
+    int content_h;
+    unsigned flags;
+    char path[KIR_NAME_MAX];
+} KrbScrollAreaDef;
+
+typedef struct KrbScrollViewDef {
+    char name[KIR_NAME_MAX];
+    int content_x;
+    int content_y;
+    int flags;
+} KrbScrollViewDef;
+
 typedef struct KrbBuild {
     KrbBuildNode nodes[KRB_BUILD_NODE_MAX];
     int node_count;
@@ -166,10 +184,16 @@ typedef struct KrbBuild {
     char array_name[8][KIR_NAME_MAX];
     char array_joined[8][KIR_TEXT_MAX];
     int array_count;
+    KrbScrollAreaDef scroll_areas[16];
+    int scroll_area_count;
+    KrbScrollViewDef scroll_views[16];
+    int scroll_view_count;
 } KrbBuild;
 
 static void register_string_array(KrbBuild *b, const char *name,
                                   const char *init);
+static int parse_scroll_area_decl(KrbBuild *b, const char *text);
+static KrbBuild *g_coord_build;
 
 
 static void
@@ -353,6 +377,48 @@ parse_coord(const char *expr, int *value, int *scaled)
 
     *scaled = 0;
     *value = 0;
+    if(g_coord_build != NULL) {
+        int i;
+
+        for(i = 0; i < g_coord_build->scroll_view_count; i++) {
+            KrbScrollViewDef *view = &g_coord_build->scroll_views[i];
+            size_t len = strlen(view->name);
+
+            if(strncmp(p, view->name, len) == 0 && p[len] == '.') {
+                const char *field = p + len + 1;
+                int base = 0;
+                int base_scaled = 0;
+
+                if(strncmp(field, "content_x", 9) == 0) {
+                    base = view->content_x;
+                    base_scaled = (view->flags & KRB_FLAG_SCALE_X) != 0;
+                    p = field + 9;
+                } else if(strncmp(field, "content_y", 9) == 0) {
+                    base = view->content_y;
+                    base_scaled = (view->flags & KRB_FLAG_SCALE_Y) != 0;
+                    p = field + 9;
+                } else {
+                    continue;
+                }
+                p = skip_ws(p);
+                if(*p == '+' || *p == '-') {
+                    int sign = *p == '-' ? -1 : 1;
+                    int add = 0;
+                    int add_scaled = 0;
+
+                    if(parse_coord(p + 1, &add, &add_scaled)) {
+                        *value = base + sign * add;
+                        *scaled = base_scaled || add_scaled;
+                        return 1;
+                    }
+                } else {
+                    *value = base;
+                    *scaled = base_scaled;
+                    return 1;
+                }
+            }
+        }
+    }
     if(strncmp(p, "ScaleUIPx(", 10) == 0) {
         *scaled = 1;
         p += 10;
@@ -1125,6 +1191,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
 
     if(fn == NULL)
         return;
+    g_coord_build = b;
     for(j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
         int before = b->node_count;
@@ -1157,6 +1224,8 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                     aname[nl] = '\0';
                     register_string_array(b, aname, eq + 1);
                 }
+                if(strstr(decl_type, "UIScrollArea") != NULL)
+                    parse_scroll_area_decl(b, st->text);
             }
         }
         if(st->kind == KIR_STMT_BLOCK_CLOSE) {
@@ -1723,6 +1792,140 @@ parse_rect_fields(const char *expr, int *x, int *y, int *w, int *h,
     return 1;
 }
 
+static int
+parse_scroll_area_decl(KrbBuild *b, const char *text)
+{
+    const char *t = skip_ws(text);
+    const char *colon = t != NULL ? strchr(t, ':') : NULL;
+    const char *eq = colon != NULL ? strchr(colon, '=') : NULL;
+    const char *open;
+    const char *close;
+    char body[KIR_TEXT_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    KrbScrollAreaDef *area;
+    size_t len;
+    size_t name_len;
+    int count;
+    int scaled;
+
+    if(t == NULL || colon == NULL || eq == NULL ||
+       strstr(colon, "UIScrollArea") == NULL ||
+       b->scroll_area_count >= 16)
+        return 0;
+    open = strchr(eq, '{');
+    if(open == NULL || open[1] != '{')
+        return 0;
+    close = strrchr(open, '}');
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 5)
+        return 0;
+    area = &b->scroll_areas[b->scroll_area_count];
+    memset(area, 0, sizeof(*area));
+    name_len = (size_t)(colon - t);
+    while(name_len > 0 && isspace((unsigned char)t[name_len - 1]))
+        name_len--;
+    if(name_len >= sizeof(area->name))
+        name_len = sizeof(area->name) - 1;
+    memcpy(area->name, t, name_len);
+    area->name[name_len] = '\0';
+    if(!parse_rect_fields(parts[0], &area->x, &area->y, &area->w, &area->h,
+                          &area->flags))
+        return 0;
+    if(parse_coord(parts[1], &area->content_h, &scaled) && scaled)
+        area->flags |= KRB_FLAG_SCALE_H;
+    strip_amp(parts[4], area->path, sizeof(area->path));
+    if(area->path[0] == '\0')
+        return 0;
+    b->scroll_area_count++;
+    return 1;
+}
+
+static KrbScrollAreaDef *
+find_scroll_area(KrbBuild *b, const char *name)
+{
+    int i;
+
+    for(i = 0; i < b->scroll_area_count; i++) {
+        if(strcmp(b->scroll_areas[i].name, name) == 0)
+            return &b->scroll_areas[i];
+    }
+    return NULL;
+}
+
+static void
+remember_scroll_view(KrbBuild *b, const char *raw, const KrbScrollAreaDef *area)
+{
+    const char *t = skip_ws(raw);
+    const char *colon = t != NULL ? strchr(t, ':') : NULL;
+    const char *eq = t != NULL ? strchr(t, '=') : NULL;
+    KrbScrollViewDef *view;
+    size_t len;
+
+    if(t == NULL || colon == NULL || eq == NULL || colon > eq ||
+       strstr(colon, "UIScrollView") == NULL ||
+       b->scroll_view_count >= 16)
+        return;
+    view = &b->scroll_views[b->scroll_view_count];
+    memset(view, 0, sizeof(*view));
+    len = (size_t)(colon - t);
+    while(len > 0 && isspace((unsigned char)t[len - 1]))
+        len--;
+    if(len >= sizeof(view->name))
+        len = sizeof(view->name) - 1;
+    memcpy(view->name, t, len);
+    view->name[len] = '\0';
+    view->content_x = area->x;
+    view->content_y = area->y;
+    view->flags = area->flags;
+    b->scroll_view_count++;
+}
+
+static int
+parse_begin_scroll_container(KrbBuild *b, const char *raw, const char *call)
+{
+    const char *args = strchr(call, '(');
+    char area_name[KIR_NAME_MAX];
+    char name[32];
+    const char *p;
+    size_t len = 0;
+    KrbScrollAreaDef *area;
+    KrbBuildNode *n;
+
+    if(args == NULL)
+        return 0;
+    p = skip_ws(args + 1);
+    while((isalnum((unsigned char)p[len]) || p[len] == '_') &&
+          len + 1 < sizeof(area_name))
+        len++;
+    if(len == 0)
+        return 0;
+    memcpy(area_name, p, len);
+    area_name[len] = '\0';
+    area = find_scroll_area(b, area_name);
+    if(area == NULL)
+        return 0;
+    snprintf(name, sizeof(name), "scroll%d", b->node_count);
+    n = add_node(b, KRB_NODE_SCROLL, name);
+    if(n == NULL)
+        return 0;
+    n->x = area->x;
+    n->y = area->y;
+    n->w = area->w;
+    n->h = area->h;
+    n->flags = (unsigned)area->flags;
+    n->font_size = area->content_h;
+    snprintf(n->name, sizeof(n->name), "%s", area->path);
+    remember_scroll_view(b, raw, area);
+    return 1;
+}
+
 static KrbBuildControl *
 add_control(KrbBuild *b, int kind)
 {
@@ -1861,10 +2064,11 @@ register_string_array(KrbBuild *b, const char *name, const char *init)
                     q++;
                 q++;
             }
-            if(n + (size_t)(q - p) < KIR_TEXT_MAX - 2) {
-                memcpy(b->array_joined[b->array_count] + n, p,
-                       (size_t)(q - p));
-                n += (size_t)(q - p);
+            if(q > p + 1 &&
+               n + (size_t)(q - p - 1) < KIR_TEXT_MAX - 2) {
+                memcpy(b->array_joined[b->array_count] + n, p + 1,
+                       (size_t)(q - p - 1));
+                n += (size_t)(q - p - 1);
             }
             b->array_joined[b->array_count][n++] = ';';
             p = q;
@@ -2232,6 +2436,7 @@ parse_textfield(KrbBuild *b, const char *call)
     int count;
     int aggregate = 0;
     int ax = 0, ay = 0, aw = 0, ah = 0;
+    unsigned aggregate_flags = 0;
 
     if(args == NULL)
         return 0;
@@ -2243,9 +2448,19 @@ parse_textfield(KrbBuild *b, const char *call)
 
         if(bounds == NULL || text == NULL)
             return 0;
-        bounds = strchr(bounds, '{');
-        if(bounds == NULL ||
-           sscanf(bounds + 1, "%d,%d,%d,%d", &ax, &ay, &aw, &ah) != 4)
+        {
+            KrbBuildNode tmp;
+
+            memset(&tmp, 0, sizeof(tmp));
+            if(!node_rect(&tmp, bounds))
+                return 0;
+            ax = tmp.x;
+            ay = tmp.y;
+            aw = tmp.w;
+            ah = tmp.h;
+            aggregate_flags = tmp.flags;
+        }
+        if(aw <= 0 || ah <= 0)
             return 0;
         p = text + strlen(".text =");
         p = skip_ws(p);
@@ -2273,6 +2488,7 @@ parse_textfield(KrbBuild *b, const char *call)
         n->y = ay;
         n->w = aw;
         n->h = ah;
+        n->flags = aggregate_flags;
         n->font_size = 16;
         return 1;
     }
@@ -2341,6 +2557,16 @@ try_widget(KrbBuild *b, const char *raw)
     call = skip_ws(call);
     /* Retained declaration scopes are represented by the cartridge node
      * table itself; they are semantic no-ops for the KRB renderer. */
+    if(starts_ident(call, "BeginUIScrollContainer"))
+        return parse_begin_scroll_container(b, raw, call);
+    if(starts_ident(call, "EndUIScrollContainer")) {
+        b->scroll_open = -1;
+        return 1;
+    }
+    if(starts_ident(call, "EndScroll")) {
+        b->scroll_open = -1;
+        return 1;
+    }
     if(starts_ident(call, "BeginUI") || starts_ident(call, "Column") ||
        starts_ident(call, "Row") || starts_ident(call, "Stack") ||
        starts_ident(call, "EndUI") || starts_ident(call, "End"))
@@ -2352,7 +2578,7 @@ try_widget(KrbBuild *b, const char *raw)
        !starts_ident(call, "TextField") &&
        !starts_ident(call, "TextArea"))
         return parse_text(b, call);
-    if(starts_ident(call, "Rect"))
+    if(starts_ident(call, "RectangleShape") || starts_ident(call, "Rect"))
         return parse_rect(b, call);
     if(starts_ident(call, "Scroll"))
         return parse_scroll(b, call);
@@ -2368,10 +2594,6 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_text(b, call);
     if(starts_ident(call, "AnimNode"))
         return parse_animnode(b, call);
-    if(starts_ident(call, "EndScroll")) {
-        b->scroll_open = 0;
-        return 1;
-    }
     if(starts_ident(call, "DrawCircleV"))
         return parse_circle(b, call);
     if(starts_ident(call, "DrawRing"))
