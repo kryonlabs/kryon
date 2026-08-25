@@ -8,6 +8,7 @@
 #include "notification.h"
 #include "notification_schedule.h"
 #include "platform.h"
+#include "terminal.h"
 
 int
 KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata)
@@ -26,6 +27,29 @@ void KryMutexLock(KryMutex *mutex) { (void)mutex; }
 void KryMutexUnlock(KryMutex *mutex) { (void)mutex; }
 
 void KryonRaylibBackend_rlDrawRenderBatch(void) { }
+
+int TerminalWrite(Terminal *terminal, const void *data, int bytes)
+{
+    (void)terminal;
+    (void)data;
+    (void)bytes;
+    return 0;
+}
+
+void TerminalResize(Terminal *terminal, int cols, int rows)
+{
+    (void)terminal;
+    (void)cols;
+    (void)rows;
+}
+
+void TerminalLine(const Terminal *terminal, int row, char *dst, int dst_size)
+{
+    (void)terminal;
+    (void)row;
+    if(dst != nil && dst_size > 0)
+        dst[0] = '\0';
+}
 void glReadPixels(int x, int y, int width, int height, unsigned int format,
                   unsigned int type, void *data)
 {
