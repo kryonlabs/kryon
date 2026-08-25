@@ -47,6 +47,8 @@
       ["Pipeline Cells", s.pipeline_cells],
       ["KRB RGB Visual", s.krb_rgb_visual_cases],
       ["KRB Byte Exact", s.krb_alpha_byte_exact_cases],
+      ["Raylib C Capture", s.raylib_c_visual_cases + " / " + s.source_cases],
+      ["Raylib C Gaps", s.raylib_c_visual_gaps],
       ["Libdraw C Capture", s.libdraw_c_visual_cases + " / " + s.source_cases],
       ["Libdraw C Gaps", s.libdraw_c_visual_gaps],
       ["Renderer Cells", s.renderer_source_cells],

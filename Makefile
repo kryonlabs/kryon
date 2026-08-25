@@ -285,6 +285,17 @@ libdraw-test:
 	sh tests/libdraw_backend_test.sh
 	sh tests/libdraw_9c_test.sh
 
+raylib-matrix-check: $(K2C)
+	$(MAKE) --no-print-directory BUILD_DIR=$(BUILD_DIR)-raylib KRYON_BACKEND=raylib raylib-matrix-check-internal
+
+raylib-matrix-check-internal: $(K2C) $(LIB) $(KRYON_BACKEND_LIBS)
+	python3 scripts/conformance-matrix.py --verify-raylib-c-visuals \
+		--k2c "$(K2C)" \
+		--cc "$(CC)" \
+		--cppflags "$(CPPFLAGS)" \
+		--cflags "$(CFLAGS)" \
+		--ldinputs "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_LIBOQS_A) $(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+
 libdraw-matrix-check: $(K2C)
 	$(MAKE) --no-print-directory BUILD_DIR=$(BUILD_DIR)-libdraw KRYON_BACKEND=libdraw libdraw-matrix-check-internal
 

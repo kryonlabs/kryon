@@ -34,10 +34,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -125,10 +125,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -216,10 +216,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -312,10 +312,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -404,10 +404,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -495,10 +495,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -586,10 +586,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -679,10 +679,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -769,10 +769,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -860,10 +860,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -954,10 +954,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1047,10 +1047,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1139,9 +1139,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated C still has a Canvas lowering gap.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -1230,10 +1230,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1323,10 +1323,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1417,10 +1417,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1507,10 +1507,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1599,10 +1599,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1692,10 +1692,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1783,9 +1783,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -1869,10 +1869,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1962,9 +1962,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -2048,10 +2048,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2139,9 +2139,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -2225,9 +2225,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -2311,10 +2311,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2405,10 +2405,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2497,9 +2497,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -2583,10 +2583,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2676,9 +2676,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -2766,10 +2766,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2857,10 +2857,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2948,10 +2948,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -3043,10 +3043,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3135,10 +3135,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3225,10 +3225,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3314,10 +3314,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3408,10 +3408,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
-          "status_class": "part"
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3499,9 +3499,9 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make test",
-          "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
-          "status": "runtime only",
+          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "krb_native_sw": {
@@ -3662,6 +3662,12 @@
       "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link."
     },
     {
+      "command": "make -C . raylib-matrix-check",
+      "id": "raylib-c-source-capture",
+      "label": "Raylib generated-C source capture",
+      "scope": "Lowers every matrix .kry source through k2c, links the generated C app host against raylib, captures a PNG frame, and rejects blank output when Xvfb/display is available."
+    },
+    {
       "command": "make -C . libdraw-matrix-check",
       "id": "libdraw-c-source-capture",
       "label": "Libdraw generated-C source capture",
@@ -3678,16 +3684,17 @@
     {
       "approach": "raylib surface backend",
       "evidence": [
-        "make test",
+        "make raylib-matrix-check",
+        "tests/generated_c_capture_main.c",
         "tests/raylib_compat_test.c"
       ],
       "id": "desktop-raylib",
       "label": "Desktop raylib",
-      "notes": "Default native surface backend.",
+      "notes": "Default native surface backend. Runs when Xvfb/display is available; scripts skip cleanly when unavailable.",
       "platform": "Linux/FreeBSD desktop",
-      "scope": "Surface API and default native runtime gate; per-source PNG matrix not yet implemented.",
-      "status": "gated",
-      "status_class": "ok"
+      "scope": "Per-source .kry -> KIR -> C compile and raylib screenshot capture; cross-renderer pixel diff still pending.",
+      "status": "source-capture-gated",
+      "status_class": "part"
     },
     {
       "approach": "raylib WebGL surface backend",
@@ -3777,7 +3784,7 @@
     {
       "id": "desktop_raylib",
       "label": "Desktop raylib",
-      "scope": "Default native surface/runtime gate; per-source PNG capture pending."
+      "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending."
     },
     {
       "id": "web_raylib_wasm",
@@ -3813,9 +3820,11 @@
     "libdraw_c_visual_gaps": 8,
     "parity_fixtures": 6,
     "pipeline_cells": 156,
+    "raylib_c_visual_cases": 31,
+    "raylib_c_visual_gaps": 8,
     "renderer_source_cells": 234,
-    "renderer_source_ok_cells": 99,
-    "renderer_source_partial_cells": 135,
+    "renderer_source_ok_cells": 130,
+    "renderer_source_partial_cells": 104,
     "semantic_parity_cases": 5,
     "source_cases": 39,
     "widgets_declared": 54,

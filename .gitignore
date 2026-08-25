@@ -2,8 +2,10 @@
 *.o
 *.so
 *.dll
+*.pyc
 *~
 *.tmp
+__pycache__/
 .zcode
 .kryon-ide-state
 

@@ -60,11 +60,11 @@ RENDERERS = [
         "label": "Desktop raylib",
         "platform": "Linux/FreeBSD desktop",
         "approach": "raylib surface backend",
-        "status": "gated",
-        "status_class": "ok",
-        "evidence": ["make test", "tests/raylib_compat_test.c"],
-        "scope": "Surface API and default native runtime gate; per-source PNG matrix not yet implemented.",
-        "notes": "Default native surface backend.",
+        "status": "source-capture-gated",
+        "status_class": "part",
+        "evidence": ["make raylib-matrix-check", "tests/generated_c_capture_main.c", "tests/raylib_compat_test.c"],
+        "scope": "Per-source .kry -> KIR -> C compile and raylib screenshot capture; cross-renderer pixel diff still pending.",
+        "notes": "Default native surface backend. Runs when Xvfb/display is available; scripts skip cleanly when unavailable.",
     },
     {
         "id": "web-raylib-wasm",
@@ -143,6 +143,12 @@ RENDERER_SMOKE_CHECKS = [
         "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link.",
     },
     {
+        "id": "raylib-c-source-capture",
+        "label": "Raylib generated-C source capture",
+        "command": ["make", "-C", ".", "raylib-matrix-check"],
+        "scope": "Lowers every matrix .kry source through k2c, links the generated C app host against raylib, captures a PNG frame, and rejects blank output when Xvfb/display is available.",
+    },
+    {
         "id": "libdraw-c-source-capture",
         "label": "Libdraw generated-C source capture",
         "command": ["make", "-C", ".", "libdraw-matrix-check"],
@@ -160,10 +166,10 @@ SOURCE_RENDERERS = [
     {
         "id": "desktop_raylib",
         "label": "Desktop raylib",
-        "status": "runtime only",
-        "status_class": "part",
-        "evidence": "make test",
-        "scope": "Default native surface/runtime gate; per-source PNG capture pending.",
+        "status": "captured",
+        "status_class": "ok",
+        "evidence": "make raylib-matrix-check",
+        "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
     },
     {
         "id": "web_raylib_wasm",
@@ -254,7 +260,7 @@ KRB_ALPHA_BYTE_GAPS = {
     "tests/parity/long_text.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
 }
 
-LIBDRAW_C_VISUAL_GAPS = {
+GENERATED_C_VISUAL_GAPS = {
     "examples/20_scene.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/14_canvas.kry": "Generated C still has a Canvas lowering gap.",
     "examples/21_signals.kry": "Generated-C app-host route is missing for scene-only source.",
@@ -264,6 +270,8 @@ LIBDRAW_C_VISUAL_GAPS = {
     "examples/26_inbe_whm_session.kry": "Generated C still emits unsupported TIME/AnimNode references.",
     "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
 }
+LIBDRAW_C_VISUAL_GAPS = GENERATED_C_VISUAL_GAPS
+RAYLIB_C_VISUAL_GAPS = GENERATED_C_VISUAL_GAPS
 
 WIDGETS = {
     "ActionModal",
@@ -367,7 +375,12 @@ def detect_widgets(source: str) -> list[str]:
     return sorted(found & WIDGETS)
 
 
-def source_renderer_status(renderer: dict, alpha_gap: str | None, libdraw_gap: str | None) -> dict:
+def source_renderer_status(
+    renderer: dict,
+    alpha_gap: str | None,
+    raylib_gap: str | None,
+    libdraw_gap: str | None,
+) -> dict:
     status = {
         "status": renderer["status"],
         "status_class": renderer["status_class"],
@@ -380,6 +393,14 @@ def source_renderer_status(renderer: dict, alpha_gap: str | None, libdraw_gap: s
                 "status": "RGB exact",
                 "status_class": "part",
                 "evidence": alpha_gap,
+            }
+        )
+    elif renderer["id"] == "desktop_raylib" and raylib_gap:
+        status.update(
+            {
+                "status": "compile gap",
+                "status_class": "part",
+                "evidence": raylib_gap,
             }
         )
     elif renderer["id"] == "desktop_libdraw_c" and libdraw_gap:
@@ -404,6 +425,7 @@ def source_cases() -> list[dict]:
         case_type = "parity fixture" if r.startswith("tests/parity/") else "example"
         semantic_gate = r in parity
         libdraw_gap = LIBDRAW_C_VISUAL_GAPS.get(r)
+        raylib_gap = RAYLIB_C_VISUAL_GAPS.get(r)
         pipelines = {}
         for pipeline in PIPELINES:
             pipelines[pipeline["id"]] = {
@@ -413,7 +435,7 @@ def source_cases() -> list[dict]:
             }
         alpha_gap = KRB_ALPHA_BYTE_GAPS.get(r)
         renderer_matrix = {
-            renderer["id"]: source_renderer_status(renderer, alpha_gap, libdraw_gap)
+            renderer["id"]: source_renderer_status(renderer, alpha_gap, raylib_gap, libdraw_gap)
             for renderer in SOURCE_RENDERERS
         }
         cases.append(
@@ -493,6 +515,8 @@ def matrix() -> dict:
             "semantic_parity_cases": semantic_count,
             "krb_rgb_visual_cases": len(cases),
             "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
+            "raylib_c_visual_cases": len(cases) - len(RAYLIB_C_VISUAL_GAPS),
+            "raylib_c_visual_gaps": len(RAYLIB_C_VISUAL_GAPS),
             "libdraw_c_visual_cases": len(cases) - len(LIBDRAW_C_VISUAL_GAPS),
             "libdraw_c_visual_gaps": len(LIBDRAW_C_VISUAL_GAPS),
             "renderer_source_cells": len(renderer_cells),
@@ -944,6 +968,158 @@ def png_has_content(path: Path) -> bool:
     return False
 
 
+def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
+    xvfb = shutil.which("xvfb-run")
+    if xvfb is None and not os.environ.get("DISPLAY"):
+        print("raylib generated-C matrix skipped: no DISPLAY and xvfb-run not found")
+        return 0
+
+    k2c = Path(args.k2c)
+    if not k2c.exists():
+        print(f"missing tool for raylib generated-C matrix: {k2c}", file=sys.stderr)
+        return 1
+
+    cc = args.cc
+    cppflags = shlex.split(args.cppflags)
+    cflags = shlex.split(args.cflags)
+    ldinputs = shlex.split(args.ldinputs)
+    if not ldinputs:
+        print("raylib generated-C matrix requires --ldinputs from Makefile", file=sys.stderr)
+        return 1
+
+    failures = []
+    observed_gaps = set()
+    with tempfile.TemporaryDirectory(prefix="kryon-raylib-c-matrix.") as tmp:
+        work = Path(tmp)
+        for case in data["cases"]:
+            source = ROOT / case["path"]
+            out_dir = work / "gen" / case["id"]
+            bin_path = work / "bin" / case["id"]
+            png_path = work / "png" / f"{case['id']}.png"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            bin_path.parent.mkdir(parents=True, exist_ok=True)
+            png_path.parent.mkdir(parents=True, exist_ok=True)
+
+            run = subprocess.run(
+                [
+                    str(k2c),
+                    "--no-main",
+                    "--root",
+                    str(ROOT),
+                    "-o",
+                    str(out_dir),
+                    str(source),
+                ],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "k2c", (run.stderr or run.stdout).strip()))
+                continue
+
+            compile_cmd = (
+                [cc]
+                + cppflags
+                + cflags
+                + ["-I", str(out_dir), "-Iexamples", "tests/generated_c_capture_main.c"]
+                + generated_c_sources(out_dir)
+                + ldinputs
+                + ["-o", str(bin_path)]
+            )
+            run = subprocess.run(
+                compile_cmd,
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            if run.returncode != 0:
+                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "compile", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+
+            env = os.environ.copy()
+            env["KRYON_SHOT_ARM"] = "1"
+            capture = [
+                str(bin_path),
+                "--png",
+                str(png_path),
+                "--w",
+                "480",
+                "--h",
+                "640",
+                "--source",
+                case["path"],
+            ]
+            if xvfb is not None:
+                run_cmd = [xvfb, "-a", "env", "KRYON_SHOT_ARM=1"] + capture
+                run_env = os.environ.copy()
+            else:
+                run_cmd = capture
+                run_env = env
+            run = subprocess.run(
+                run_cmd,
+                cwd=ROOT,
+                env=run_env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=30,
+            )
+            if run.returncode != 0:
+                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "capture", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+            if not png_path.exists() or png_path.stat().st_size == 0:
+                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", "capture did not produce a PNG"))
+                continue
+            try:
+                width, height, _pixels = png_rgba(png_path)
+                if width <= 0 or height <= 0:
+                    failures.append((case["path"], "size", f"{width}x{height}"))
+                    continue
+                if not png_has_content(png_path):
+                    if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                        observed_gaps.add(case["path"])
+                    else:
+                        failures.append((case["path"], "blank", "all pixels are identical"))
+            except ValueError as exc:
+                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", str(exc)))
+
+    recovered = sorted(set(RAYLIB_C_VISUAL_GAPS) - observed_gaps)
+    if recovered:
+        for path in recovered:
+            failures.append((path, "known-gap", "listed raylib C visual gap now captures; update the matrix gap list"))
+
+    if failures:
+        for path, phase, detail in failures:
+            print(f"raylib generated-C matrix failed for {path} during {phase}", file=sys.stderr)
+            if detail:
+                print(f"  {detail}", file=sys.stderr)
+        return 1
+    captured = len(data["cases"]) - len(observed_gaps)
+    print(
+        f"raylib generated-C matrix ok: {captured} sources captured through raylib, "
+        f"{len(observed_gaps)} known generated-C gaps"
+    )
+    return 0
+
+
 def verify_libdraw_c_visuals(data: dict, args: argparse.Namespace) -> int:
     plan9 = Path(args.plan9port_dir)
     if not (plan9 / "bin" / "devdraw").exists() or not (plan9 / "include").is_dir():
@@ -1163,11 +1339,13 @@ def main() -> int:
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")
+    parser.add_argument("--verify-raylib-c-visuals", action="store_true", help="compile generated C for every source against raylib and capture one PNG")
     parser.add_argument("--verify-libdraw-c-visuals", action="store_true", help="compile generated C for every source against libdraw and capture one PNG")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
     parser.add_argument("--cc", default="cc", help=argparse.SUPPRESS)
+    parser.add_argument("--k2c", default=str(ROOT / "build" / "linux-x86_64" / "bin" / "k2c"), help=argparse.SUPPRESS)
     parser.add_argument("--cppflags", default="", help=argparse.SUPPRESS)
     parser.add_argument("--cflags", default="", help=argparse.SUPPRESS)
     parser.add_argument("--ldinputs", default="", help=argparse.SUPPRESS)
@@ -1180,7 +1358,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_raylib_c_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -1202,6 +1380,10 @@ def main() -> int:
             return rc
     if args.verify_krb_web_visuals:
         rc = verify_krb_web_visuals(data)
+        if rc:
+            return rc
+    if args.verify_raylib_c_visuals:
+        rc = verify_raylib_c_visuals(data, args)
         if rc:
             return rc
     if args.verify_libdraw_c_visuals:
