@@ -14,6 +14,7 @@ import difflib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import struct
@@ -92,10 +93,10 @@ RENDERERS = [
         "label": "Desktop libdraw",
         "platform": "Unix/X11 with plan9port",
         "approach": "kry_sw to libdraw/devdraw",
-        "status": "smoke-gated",
+        "status": "source-capture-gated",
         "status_class": "part",
-        "evidence": ["make renderer-matrix-check", "tests/libdraw_backend_test.sh", "tests/libdraw_9c_test.sh"],
-        "scope": "Desktop PNG smoke plus clean plan9port 9c/9l link; per-source PNG matrix not yet implemented.",
+        "evidence": ["make libdraw-matrix-check", "tests/generated_c_capture_main.c", "tests/libdraw_backend_test.sh"],
+        "scope": "Per-source .kry -> KIR -> C compile and libdraw screenshot capture; cross-renderer pixel diff still pending.",
         "notes": "Runs when plan9port and a display or xvfb are available; scripts skip cleanly when unavailable.",
     },
     {
@@ -140,6 +141,12 @@ RENDERER_SMOKE_CHECKS = [
         "label": "Libdraw desktop backend",
         "command": ["make", "-C", ".", "libdraw-test"],
         "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link.",
+    },
+    {
+        "id": "libdraw-c-source-capture",
+        "label": "Libdraw generated-C source capture",
+        "command": ["make", "-C", ".", "libdraw-matrix-check"],
+        "scope": "Lowers every matrix .kry source through k2c, links the generated C app host against libdraw, captures a PNG frame, and rejects blank output when plan9port and xvfb/display are available.",
     },
     {
         "id": "krb-web-canvas",
@@ -194,6 +201,30 @@ KRB_ALPHA_BYTE_GAPS = {
     "tests/parity/focus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/generated_form.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/long_text.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+}
+
+LIBDRAW_C_VISUAL_GAPS = {
+    "examples/20_scene.kry": "Generated-C app-host route is missing for scene-only source.",
+    "examples/05_color.kry": "Generated C still emits legacy Rect calls.",
+    "examples/06_scaling.kry": "Generated C still emits legacy Rect calls.",
+    "examples/07_layout.kry": "Generated C still emits legacy Rect calls.",
+    "examples/14_canvas.kry": "Generated C still has a Canvas lowering gap.",
+    "examples/19_pictures.kry": "Generated C still has a Picture props lowering gap.",
+    "examples/20_inbe_language.kry": "Generated C still emits legacy Dropdown positional arguments.",
+    "examples/21_signals.kry": "Generated-C app-host route is missing for scene-only source.",
+    "examples/21_inbe_settings.kry": "Generated C still emits legacy Dropdown/Scroll calls.",
+    "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
+    "examples/22_inbe_manual.kry": "Generated C still emits legacy Scroll calls.",
+    "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
+    "examples/23_inbe_app.kry": "Generated C still emits legacy Dropdown/Scroll calls.",
+    "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
+    "examples/24_inbe_habits.kry": "Generated C still emits legacy Scroll calls.",
+    "examples/25_inbe_practice.kry": "Generated C still emits legacy Spinbox/Button calls.",
+    "examples/26_inbe_whm_session.kry": "Generated C still emits unsupported TIME/AnimNode references.",
+    "examples/27_inbe_statistics.kry": "Generated C still emits legacy Rect calls.",
+    "examples/28_inbe_profile.kry": "Generated C still emits legacy Button calls.",
+    "examples/29_inbe_habit_edit.kry": "Generated C still emits legacy Spinbox/Button calls.",
+    "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
 }
 
 WIDGETS = {
@@ -308,6 +339,7 @@ def source_cases() -> list[dict]:
         r = rel(path)
         case_type = "parity fixture" if r.startswith("tests/parity/") else "example"
         semantic_gate = r in parity
+        libdraw_gap = LIBDRAW_C_VISUAL_GAPS.get(r)
         pipelines = {}
         for pipeline in PIPELINES:
             pipelines[pipeline["id"]] = {
@@ -340,6 +372,11 @@ def source_cases() -> list[dict]:
                         "status": "alpha differs" if alpha_gap else "byte exact",
                         "status_class": "part" if alpha_gap else "ok",
                         "evidence": alpha_gap or "conformance-matrix-check",
+                    },
+                    "libdraw_c": {
+                        "status": "compile gap" if libdraw_gap else "captured",
+                        "status_class": "part" if libdraw_gap else "ok",
+                        "evidence": libdraw_gap or "make libdraw-matrix-check",
                     },
                 },
             }
@@ -382,6 +419,8 @@ def matrix() -> dict:
             "semantic_parity_cases": semantic_count,
             "krb_rgb_visual_cases": len(cases),
             "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
+            "libdraw_c_visual_cases": len(cases) - len(LIBDRAW_C_VISUAL_GAPS),
+            "libdraw_c_visual_gaps": len(LIBDRAW_C_VISUAL_GAPS),
             "widgets_declared": len(widget_rows),
             "widgets_detected": covered_widgets,
             "widgets_missing": len(widget_rows) - covered_widgets,
@@ -797,6 +836,191 @@ def verify_krb_web_visuals(data: dict) -> int:
     return 0
 
 
+def generated_c_sources(out_dir: Path) -> list[str]:
+    sources = [
+        str(path)
+        for path in sorted(out_dir.rglob("*.c"))
+        if path.name != "kryon_project.c"
+    ]
+    project = out_dir / "kryon_project.c"
+    if project.exists():
+        sources.append(str(project))
+    return sources
+
+
+def png_has_content(path: Path) -> bool:
+    width, height, pixels = png_rgba(path)
+    if width <= 0 or height <= 0:
+        return False
+    first = pixels[:4]
+    for i in range(4, len(pixels), 4):
+        if pixels[i:i + 4] != first:
+            return True
+    return False
+
+
+def verify_libdraw_c_visuals(data: dict, args: argparse.Namespace) -> int:
+    plan9 = Path(args.plan9port_dir)
+    if not (plan9 / "bin" / "devdraw").exists() or not (plan9 / "include").is_dir():
+        print(f"libdraw generated-C matrix skipped: plan9port not found at {plan9}")
+        return 0
+    xvfb = shutil.which("xvfb-run")
+    if xvfb is None and not os.environ.get("DISPLAY"):
+        print("libdraw generated-C matrix skipped: no DISPLAY and xvfb-run not found")
+        return 0
+
+    k2c = ROOT / "build" / "linux-x86_64" / "bin" / "k2c"
+    if not k2c.exists():
+        print(f"missing tool for libdraw generated-C matrix: {k2c}", file=sys.stderr)
+        return 1
+
+    cc = args.cc
+    cppflags = shlex.split(args.cppflags)
+    cflags = shlex.split(args.cflags)
+    ldinputs = shlex.split(args.ldinputs)
+    if not ldinputs:
+        print("libdraw generated-C matrix requires --ldinputs from Makefile", file=sys.stderr)
+        return 1
+
+    failures = []
+    observed_gaps = set()
+    with tempfile.TemporaryDirectory(prefix="kryon-libdraw-c-matrix.") as tmp:
+        work = Path(tmp)
+        for case in data["cases"]:
+            source = ROOT / case["path"]
+            out_dir = work / "gen" / case["id"]
+            bin_path = work / "bin" / case["id"]
+            png_path = work / "png" / f"{case['id']}.png"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            bin_path.parent.mkdir(parents=True, exist_ok=True)
+            png_path.parent.mkdir(parents=True, exist_ok=True)
+
+            run = subprocess.run(
+                [
+                    str(k2c),
+                    "--no-main",
+                    "--root",
+                    str(ROOT),
+                    "-o",
+                    str(out_dir),
+                    str(source),
+                ],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "k2c", (run.stderr or run.stdout).strip()))
+                continue
+
+            compile_cmd = (
+                [cc]
+                + cppflags
+                + cflags
+                + ["-I", str(out_dir), "-Iexamples", "tests/generated_c_capture_main.c"]
+                + generated_c_sources(out_dir)
+                + ldinputs
+                + ["-o", str(bin_path)]
+            )
+            run = subprocess.run(
+                compile_cmd,
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            if run.returncode != 0:
+                if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "compile", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+
+            env = os.environ.copy()
+            env["PLAN9"] = str(plan9)
+            env["DEVDRAW"] = str(plan9 / "bin" / "devdraw")
+            env["PATH"] = f"{plan9 / 'bin'}:{env.get('PATH', '')}"
+            capture = [
+                str(bin_path),
+                "--png",
+                str(png_path),
+                "--w",
+                "480",
+                "--h",
+                "640",
+                "--source",
+                case["path"],
+            ]
+            if xvfb is not None:
+                run_cmd = [xvfb, "-a", "env"] + [f"{key}={value}" for key, value in {
+                    "PLAN9": env["PLAN9"],
+                    "DEVDRAW": env["DEVDRAW"],
+                    "PATH": env["PATH"],
+                }.items()] + capture
+                run_env = os.environ.copy()
+            else:
+                run_cmd = capture
+                run_env = env
+            run = subprocess.run(
+                run_cmd,
+                cwd=ROOT,
+                env=run_env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=30,
+            )
+            if run.returncode != 0:
+                if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "capture", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+            if not png_path.exists() or png_path.stat().st_size == 0:
+                if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", "capture did not produce a PNG"))
+                continue
+            try:
+                width, height, _pixels = png_rgba(png_path)
+                if width <= 0 or height <= 0:
+                    failures.append((case["path"], "size", f"{width}x{height}"))
+                    continue
+                if not png_has_content(png_path):
+                    if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                        observed_gaps.add(case["path"])
+                    else:
+                        failures.append((case["path"], "blank", "all pixels are identical"))
+            except ValueError as exc:
+                if case["path"] in LIBDRAW_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", str(exc)))
+
+    recovered = sorted(set(LIBDRAW_C_VISUAL_GAPS) - observed_gaps)
+    if recovered:
+        for path in recovered:
+            failures.append((path, "known-gap", "listed libdraw C visual gap now captures; update the matrix gap list"))
+
+    if failures:
+        for path, phase, detail in failures:
+            print(f"libdraw generated-C matrix failed for {path} during {phase}", file=sys.stderr)
+            if detail:
+                print(f"  {detail}", file=sys.stderr)
+        return 1
+    captured = len(data["cases"]) - len(observed_gaps)
+    print(
+        f"libdraw generated-C matrix ok: {captured} sources captured through libdraw, "
+        f"{len(observed_gaps)} known generated-C gaps"
+    )
+    return 0
+
+
 def resolve_command(command: list[str]) -> list[str]:
     out = list(command)
     for i, arg in enumerate(out):
@@ -854,9 +1078,15 @@ def main() -> int:
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")
+    parser.add_argument("--verify-libdraw-c-visuals", action="store_true", help="compile generated C for every source against libdraw and capture one PNG")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
+    parser.add_argument("--cc", default="cc", help=argparse.SUPPRESS)
+    parser.add_argument("--cppflags", default="", help=argparse.SUPPRESS)
+    parser.add_argument("--cflags", default="", help=argparse.SUPPRESS)
+    parser.add_argument("--ldinputs", default="", help=argparse.SUPPRESS)
+    parser.add_argument("--plan9port-dir", default=os.environ.get("PLAN9PORT_DIR", "/mnt/storage/Projects/plan9port"), help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     data = matrix()
@@ -865,7 +1095,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -887,6 +1117,10 @@ def main() -> int:
             return rc
     if args.verify_krb_web_visuals:
         rc = verify_krb_web_visuals(data)
+        if rc:
+            return rc
+    if args.verify_libdraw_c_visuals:
+        rc = verify_libdraw_c_visuals(data, args)
         if rc:
             return rc
     if args.verify_renderer_smokes:

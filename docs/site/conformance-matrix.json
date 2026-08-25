@@ -39,6 +39,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -87,6 +92,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -134,6 +144,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -188,6 +203,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -237,6 +257,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Rect calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -285,6 +310,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Rect calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -333,6 +363,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Rect calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -383,6 +418,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -429,6 +469,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -477,6 +522,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -529,6 +579,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -579,6 +634,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -628,6 +688,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still has a Canvas lowering gap.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -675,6 +740,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -725,6 +795,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -777,6 +852,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -823,6 +903,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -873,6 +958,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still has a Picture props lowering gap.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -923,6 +1013,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Dropdown positional arguments.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -971,6 +1066,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": []
@@ -1014,6 +1114,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Dropdown/Scroll calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1064,6 +1169,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": []
@@ -1107,6 +1217,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Scroll calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1155,6 +1270,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": []
@@ -1198,6 +1318,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": []
@@ -1241,6 +1366,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Dropdown/Scroll calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1291,6 +1421,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Scroll calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1340,6 +1475,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": []
@@ -1383,6 +1523,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Spinbox/Button calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1433,6 +1578,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1480,6 +1630,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Rect calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1528,6 +1683,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Button calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1576,6 +1736,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still emits legacy Spinbox/Button calls.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1628,6 +1793,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1677,6 +1847,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1724,6 +1899,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1769,6 +1949,11 @@
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
           "status_class": "ok"
         }
       },
@@ -1821,6 +2006,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1869,6 +2059,11 @@
           "evidence": "conformance-matrix-check",
           "status": "RGB exact",
           "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "status": "compile gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1984,6 +2179,12 @@
       "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link."
     },
     {
+      "command": "make -C . libdraw-matrix-check",
+      "id": "libdraw-c-source-capture",
+      "label": "Libdraw generated-C source capture",
+      "scope": "Lowers every matrix .kry source through k2c, links the generated C app host against libdraw, captures a PNG frame, and rejects blank output when plan9port and xvfb/display are available."
+    },
+    {
       "command": "make -C . krb-web-matrix-check",
       "id": "krb-web-canvas",
       "label": "KRB web canvas per-source capture",
@@ -2037,16 +2238,16 @@
     {
       "approach": "kry_sw to libdraw/devdraw",
       "evidence": [
-        "make renderer-matrix-check",
-        "tests/libdraw_backend_test.sh",
-        "tests/libdraw_9c_test.sh"
+        "make libdraw-matrix-check",
+        "tests/generated_c_capture_main.c",
+        "tests/libdraw_backend_test.sh"
       ],
       "id": "desktop-libdraw",
       "label": "Desktop libdraw",
       "notes": "Runs when plan9port and a display or xvfb are available; scripts skip cleanly when unavailable.",
       "platform": "Unix/X11 with plan9port",
-      "scope": "Desktop PNG smoke plus clean plan9port 9c/9l link; per-source PNG matrix not yet implemented.",
-      "status": "smoke-gated",
+      "scope": "Per-source .kry -> KIR -> C compile and libdraw screenshot capture; cross-renderer pixel diff still pending.",
+      "status": "source-capture-gated",
       "status_class": "part"
     },
     {
@@ -2093,6 +2294,8 @@
     "examples": 33,
     "krb_alpha_byte_exact_cases": 29,
     "krb_rgb_visual_cases": 39,
+    "libdraw_c_visual_cases": 18,
+    "libdraw_c_visual_gaps": 21,
     "parity_fixtures": 6,
     "pipeline_cells": 156,
     "semantic_parity_cases": 5,

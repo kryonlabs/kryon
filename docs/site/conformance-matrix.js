@@ -44,6 +44,8 @@
       ["Pipeline Cells", s.pipeline_cells],
       ["KRB RGB Visual", s.krb_rgb_visual_cases],
       ["KRB Byte Exact", s.krb_alpha_byte_exact_cases],
+      ["Libdraw C Capture", s.libdraw_c_visual_cases + " / " + s.source_cases],
+      ["Libdraw C Gaps", s.libdraw_c_visual_gaps],
       ["State Parity", s.semantic_parity_cases],
       ["Widgets Covered", s.widgets_detected + " / " + s.widgets_declared],
       ["Widgets Missing", s.widgets_missing]
@@ -90,7 +92,8 @@
   function visualCells(row) {
     var visuals = row.visuals || {};
     return cell(visuals.krb_rgb || {status: "missing", status_class: "no"}) +
-      cell(visuals.krb_alpha || {status: "missing", status_class: "no"});
+      cell(visuals.krb_alpha || {status: "missing", status_class: "no"}) +
+      cell(visuals.libdraw_c || {status: "missing", status_class: "no"});
   }
 
   function renderSources(data) {
