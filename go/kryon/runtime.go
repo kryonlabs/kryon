@@ -843,6 +843,7 @@ type runtime struct {
 	lastTableClick tableClick
 	tableDrag      tableDrag
 	openMenus      map[int32]int32
+	openDropdowns  map[int32]bool
 	currentThemeID ThemeId
 	themeSource    ThemeSource
 	themeMode      ThemeMode
@@ -928,6 +929,7 @@ func New(config AppConfig) Runtime {
 		mouseReleased:  map[int32]bool{},
 		keyDown:        map[int32]bool{},
 		openMenus:      map[int32]int32{},
+		openDropdowns:  map[int32]bool{},
 		currentThemeID: ThemeMono,
 		themeSource:    ThemeSourceSystem,
 		themeMode:      ThemeModeSystem,
@@ -1124,16 +1126,83 @@ func (r *runtime) Button(props ButtonProps) bool {
 }
 func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
 func (r *runtime) Progress(Rectangle, int32, int32, int32, string)  {}
-func (r *runtime) Checkbox(_ int32, _ int32, _ int32, _ string, value *int32) bool {
+func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) bool {
 	if value == nil {
 		return false
 	}
-	return false
+	theme := r.theme()
+	font := Text16
+	box := float32(22)
+	gap := float32(10)
+	labelW := float32(runtimeTextWidth(label, font))
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: box + gap + labelW, Height: box})
+	pressed := r.consumeTap(bounds)
+	if pressed {
+		if *value == 0 {
+			*value = 1
+		} else {
+			*value = 0
+		}
+	}
+	boxBounds := Rectangle{X: bounds.X, Y: bounds.Y, Width: box, Height: box}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: boxBounds, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: pressed, Selected: *value != 0})
+	if *value != 0 {
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 4, Y: boxBounds.Y + 11, Width: 6, Height: 7}, Color: theme.text, ID: id})
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 10, Y: boxBounds.Y + 18, Width: 8, Height: -14}, Color: theme.text, ID: id})
+	}
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + box + gap, Y: bounds.Y + 3, Width: labelW, Height: bounds.Height}, Text: label, Color: theme.text, FontSize: font, ID: id})
+	return pressed
 }
 func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
-	_, _, _, _, _ = id, x, y, w, h
-	_ = labelsOf(options)
-	return false
+	labels := labelsOf(options)
+	count := int32(len(labels))
+	selected := dropdownSelected(rest...)
+	if len(rest) > 0 {
+		if v, ok := anyInt32(rest[0]); ok && v >= 0 && v < count {
+			count = v
+		}
+	}
+	if int(count) < len(labels) {
+		labels = labels[:count]
+	}
+	if selected != nil && len(labels) > 0 {
+		*selected = clamp32(*selected, 0, int32(len(labels)-1))
+	}
+	theme := r.theme()
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
+	pressed := r.consumeTap(bounds)
+	if pressed {
+		r.openDropdowns[id] = !r.openDropdowns[id]
+	}
+	open := r.openDropdowns[id]
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Text: selectedLabel(labels, selected), Color: theme.surface, BorderColor: theme.border, TextColor: theme.text, ID: id, FontSize: Text16, Pressed: pressed})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - 24, Y: bounds.Y + 5, Width: 16, Height: bounds.Height}, Text: "x", Color: theme.text, FontSize: Text14, ID: id})
+	if !open {
+		return pressed
+	}
+	changed := false
+	itemH := bounds.Height
+	menuY := bounds.Y + bounds.Height + 4
+	panel := Rectangle{X: bounds.X, Y: menuY, Width: bounds.Width, Height: itemH * float32(len(labels))}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border, ID: id})
+	for i, label := range labels {
+		row := Rectangle{X: bounds.X, Y: menuY + float32(i)*itemH, Width: bounds.Width, Height: itemH}
+		selectedRow := selected != nil && int32(i) == *selected
+		if selectedRow {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: mixColor(theme.surface, theme.button, 0.35), ID: id, Row: int32(i), Selected: true})
+		}
+		if selected != nil && r.consumeTap(row) {
+			next := int32(i)
+			if *selected != next {
+				*selected = next
+				changed = true
+			}
+			delete(r.openDropdowns, id)
+			selectedRow = true
+		}
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 12, Y: row.Y + 5, Width: row.Width - 24, Height: row.Height}, Text: label, Color: theme.text, FontSize: Text16, ID: id, Row: int32(i), Selected: selectedRow})
+	}
+	return pressed || changed
 }
 func (r *runtime) Column(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpColumn)
@@ -1270,12 +1339,78 @@ func (r *runtime) IconButton(props IconButtonProps) bool {
 }
 func (r *runtime) Href(HrefProps) bool { return false }
 func (r *runtime) Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool {
-	_, _, _, _, _, _, _, _, _ = id, x, y, w, label, min, max, value, rest
-	return false
+	if value == nil {
+		return false
+	}
+	if max < min {
+		min, max = max, min
+	}
+	theme := r.theme()
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: 56})
+	*value = clamp32(*value, min, max)
+	changed := false
+	if tapX, tapped := r.consumeTapPoint(bounds); tapped {
+		old := *value
+		span := max - min
+		if span > 0 && bounds.Width > 0 {
+			t := (tapX - bounds.X) / bounds.Width
+			if t < 0 {
+				t = 0
+			} else if t > 1 {
+				t = 1
+			}
+			*value = min + int32(t*float32(span)+0.5)
+			*value = clamp32(*value, min, max)
+		}
+		changed = *value != old
+	}
+	font := Text16
+	trackY := bounds.Y + 28
+	track := Rectangle{X: bounds.X, Y: trackY, Width: bounds.Width, Height: 8}
+	valueText := fmt.Sprintf("%d%s", *value, sliderSuffix(rest...))
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: theme.text, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: theme.text, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: track, Color: mixColor(theme.background, theme.button, 0.45), BorderColor: theme.border, ID: id})
+	fillW := float32(0)
+	if max > min {
+		fillW = float32(*value-min) / float32(max-min) * bounds.Width
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: track.X, Y: track.Y, Width: fillW, Height: track.Height}, Color: theme.buttonHover, ID: id, Selected: true})
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: Rectangle{X: bounds.X + fillW - 6, Y: trackY - 7, Width: 12, Height: 22}, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: changed})
+	return changed
 }
 func (r *runtime) Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool {
-	_, _, _, _, _, _, _, _ = id, x, y, w, h, value, offLabel, onLabel
-	return false
+	if value == nil {
+		return false
+	}
+	theme := r.theme()
+	if h < 34 {
+		h = 34
+	}
+	minHalf := maxInt(runtimeTextWidth(offLabel, Text16), runtimeTextWidth(onLabel, Text16)) + 16
+	minW := int32(minHalf*2 + 6)
+	if w < minW {
+		w = minW
+	}
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
+	pressed := r.consumeTap(bounds)
+	if pressed {
+		if *value == 0 {
+			*value = 1
+		} else {
+			*value = 0
+		}
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: theme.border, ID: id})
+	activeW := (bounds.Width - 6) / 2
+	activeX := bounds.X + 3
+	if *value != 0 {
+		activeX = bounds.X + bounds.Width - activeW - 3
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: Rectangle{X: activeX, Y: bounds.Y + 3, Width: activeW, Height: bounds.Height - 6}, Color: theme.button, BorderColor: theme.buttonHover, ID: id, Pressed: pressed, Selected: *value != 0})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: offLabel, Color: theme.text, FontSize: Text16, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width/2, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: onLabel, Color: theme.text, FontSize: Text16, ID: id})
+	return pressed
 }
 func (r *runtime) Modal(title, message, cancelBtn, confirmBtn string) int {
 	_, _, _, _ = title, message, cancelBtn, confirmBtn
@@ -2200,6 +2335,51 @@ func labelsOf(v any) []string {
 		return out
 	}
 	return nil
+}
+
+func anyInt32(v any) (int32, bool) {
+	switch n := v.(type) {
+	case int:
+		return int32(n), true
+	case int32:
+		return n, true
+	case int64:
+		return int32(n), true
+	case uint:
+		return int32(n), true
+	case uint32:
+		return int32(n), true
+	}
+	return 0, false
+}
+
+func dropdownSelected(rest ...any) *int32 {
+	for _, arg := range rest {
+		if p, ok := arg.(*int32); ok {
+			return p
+		}
+	}
+	return nil
+}
+
+func selectedLabel(labels []string, selected *int32) string {
+	if len(labels) == 0 {
+		return ""
+	}
+	index := int32(0)
+	if selected != nil {
+		index = clamp32(*selected, 0, int32(len(labels)-1))
+	}
+	return labels[index]
+}
+
+func sliderSuffix(rest ...any) string {
+	for _, arg := range rest {
+		if s, ok := arg.(string); ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func (r *runtime) registerField(focusID int32) {

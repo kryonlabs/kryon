@@ -53,6 +53,12 @@ RenderButton(ButtonSpec button)
     focused = !button.disabled && button.focus_id > 0 &&
               RegisterUIFocus(button.focus_id, button.bounds);
     draw_bounds = button.bounds;
+    if(!IsWindowReady()) {
+        if(focused)
+            SetUIFocusTextInputActive(0);
+        EndUIWidget(&widget);
+        return clicked || IsUIFocusActivatePressed(button.focus_id);
+    }
 
     if(ui_material_style() && !button.disabled) {
         unsigned int key = 2166136261u;

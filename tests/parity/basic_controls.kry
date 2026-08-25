@@ -1,0 +1,23 @@
+#import "kryon.h"
+
+app "Generated Basic Controls Parity" {
+    size 420 260
+    fps 60
+}
+
+state {
+    slider_value: int = 20
+    toggle_value: int = 0
+    checkbox_value: int = 0
+    selected: int = 0
+    options: [3] const char * = {"Alpha","Beta","Gamma"}
+}
+
+controls_frame :: () #ui {
+    Screen root: {
+        Slider(801, 20, 20, 180, "Slider", 0, 100, &slider_value, "", nil)
+        Toggle(802, 20, 80, 120, 34, &toggle_value, "Off", "On")
+        Checkbox(803, 20, 128, "Check", &checkbox_value)
+        Dropdown(804, 20, 168, 160, 30, options, 3, &selected)
+    }
+}

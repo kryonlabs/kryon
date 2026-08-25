@@ -2547,9 +2547,12 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 if(!go_type(g->type, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", g->type);
                 tx_expr(m, g->init, ginit, sizeof(ginit));
-                if(ginit[0] != '\0')
-                    fprintf(f, "var %s %s = %s\n", gname, gt, ginit);
-                else
+                if(ginit[0] != '\0') {
+                    if(ginit[0] == '{' && strstr(gt, "TODO") == NULL)
+                        fprintf(f, "var %s = %s%s\n", gname, gt, ginit);
+                    else
+                        fprintf(f, "var %s %s = %s\n", gname, gt, ginit);
+                } else
                     fprintf(f, "var %s %s\n", gname, gt);
             }
             /* state struct + instance */
@@ -2583,6 +2586,8 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                             fprintf(f,
                                     "\t%s: func() %s { var v %s; copy(v[:], %s); return v }(),\n",
                                     fname, gt, gt, finit);
+                        else if(finit[0] == '{' && strstr(gt, "TODO") == NULL)
+                            fprintf(f, "\t%s: %s%s,\n", fname, gt, finit);
                         else
                             fprintf(f, "\t%s: %s,\n", fname, finit);
                     }

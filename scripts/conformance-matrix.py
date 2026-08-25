@@ -266,6 +266,7 @@ KRB_ALPHA_BYTE_GAPS = {
     "examples/23_animation.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "examples/24_tilemap.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/buttons_layout.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/basic_controls.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/fields.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/focus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/generated_form.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",

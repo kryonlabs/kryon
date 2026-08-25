@@ -19,6 +19,7 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     int knob_y = track_y - (knob_h - track_h) / 2;
     int min_touch_h = ui_touch_target_min();
     int changed = 0;
+    int can_draw = IsWindowReady();
     char value_text[48];
     Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     float t;
@@ -51,20 +52,24 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
         snprintf(value_text, sizeof(value_text), "%s", value_text_override);
     else
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
-    DrawUIText(label, x, y, label_font, c_text);
-    DrawUIText(value_text, x + w - TextWidth(value_text, value_font),
-               y, value_font, c_text);
+    if(can_draw) {
+        DrawUIText(label, x, y, label_font, c_text);
+        DrawUIText(value_text, x + w - TextWidth(value_text, value_font),
+                   y, value_font, c_text);
+    }
 
     t = (float)(*value - min) / (float)(max - min);
     knob_x = x + (int)(t * (float)w) - knob_w / 2;
 
-    if(!ui_material_style() && ui_modern_style()) {
-        DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
-    } else if(!ui_material_style()) {
-        DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(x, track_y, w, track_h,
-                    DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
+    if(can_draw) {
+        if(!ui_material_style() && ui_modern_style()) {
+            DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
+                                 0.5f, 8, DarkenUIColor(c_bg, 20));
+        } else if(!ui_material_style()) {
+            DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
+            DrawUIBevel(x, track_y, w, track_h,
+                        DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
+        }
     }
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
@@ -104,34 +109,36 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
     t = (float)(*value - min) / (float)(max - min);
     knob_x = x + (int)(t * (float)w) - knob_w / 2;
 
-    if(ui_material_style()) {
-        int active_w = (int)(t * (float)w);
-        Color inactive = ui_material_surface_container();
-        Color outline = ui_material_outline();
+    if(can_draw) {
+        if(ui_material_style()) {
+            int active_w = (int)(t * (float)w);
+            Color inactive = ui_material_surface_container();
+            Color outline = ui_material_outline();
 
-        DrawRectangleRounded((Rectangle){x, track_y, w, ScaleUIPx(4)},
-                             0.5f, 8, inactive);
-        DrawRectangleRounded((Rectangle){x, track_y, active_w, ScaleUIPx(4)},
-                             0.5f, 8, c_circle);
-        if(g_ui_slider_active_id == id)
-            ui_material_state_layer((Rectangle){knob_x - ScaleUIPx(10),
-                                                knob_y - ScaleUIPx(5),
-                                                knob_w + ScaleUIPx(20),
-                                                knob_h + ScaleUIPx(10)},
-                                    c_circle, 0, 0, 1);
-        DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                   (float)ScaleUIPx(10), c_circle);
-        DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                        (float)ScaleUIPx(10), outline);
-    } else if(ui_modern_style()) {
-        DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                   (float)(knob_h / 2), c_button);
-        DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                        (float)(knob_h / 2), LightenUIColor(c_button, 24));
-    } else {
-        DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-        DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
-                    LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
+            DrawRectangleRounded((Rectangle){x, track_y, w, ScaleUIPx(4)},
+                                 0.5f, 8, inactive);
+            DrawRectangleRounded((Rectangle){x, track_y, active_w, ScaleUIPx(4)},
+                                 0.5f, 8, c_circle);
+            if(g_ui_slider_active_id == id)
+                ui_material_state_layer((Rectangle){knob_x - ScaleUIPx(10),
+                                                    knob_y - ScaleUIPx(5),
+                                                    knob_w + ScaleUIPx(20),
+                                                    knob_h + ScaleUIPx(10)},
+                                        c_circle, 0, 0, 1);
+            DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
+                       (float)ScaleUIPx(10), c_circle);
+            DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
+                            (float)ScaleUIPx(10), outline);
+        } else if(ui_modern_style()) {
+            DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
+                       (float)(knob_h / 2), c_button);
+            DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
+                            (float)(knob_h / 2), LightenUIColor(c_button, 24));
+        } else {
+            DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
+            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
+                        LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
+        }
     }
 
     EndUIWidget(&widget);
@@ -391,6 +398,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     int min_touch = ui_touch_target_min();
     int font = GetUIFontSize();
     int material_style = ui_material_style();
+    int can_draw = IsWindowReady();
     int off_w = material_style ? 0 : TextWidth(off_label, font);
     int on_w = material_style ? 0 : TextWidth(on_label, font);
     int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
@@ -433,6 +441,10 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     if(pressed) {
         *value = !(*value);
         UIConsumeRelease();
+    }
+    if(!can_draw) {
+        EndUIWidget(&widget);
+        return pressed;
     }
 
     if(material_style) {
@@ -518,6 +530,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     Color mark_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
     Color label_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
     int pressed;
+    int can_draw = IsWindowReady();
 
     widget = BeginUIWidget("checkbox",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -542,6 +555,10 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     if(pressed) {
         *value = !(*value);
         UIConsumeRelease();
+    }
+    if(!can_draw) {
+        EndUIWidget(&widget);
+        return pressed;
     }
 
     if(ui_material_style()) {

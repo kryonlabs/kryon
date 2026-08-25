@@ -25,6 +25,7 @@ tests/parity/fields.kry
 tests/parity/focus.kry
 tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
+tests/parity/basic_controls.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -105,6 +106,10 @@ type snapshot struct {
 	LongSecondLen      int    `json:"long_second_len"`
 	LongSecondCursor   int32  `json:"long_second_cursor"`
 	LongSecondHash     uint64 `json:"long_second_hash"`
+	ControlsSlider     int32  `json:"controls_slider"`
+	ControlsToggle     int32  `json:"controls_toggle"`
+	ControlsCheckbox   int32  `json:"controls_checkbox"`
+	ControlsSelected   int32  `json:"controls_selected"`
 	Clipboard          string `json:"clipboard"`
 }
 
@@ -146,6 +151,14 @@ func drawLongText() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		LongText_LongTextFrame(LongTextStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawControls() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		BasicControls_ControlsFrame(BasicControlsStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -243,6 +256,7 @@ func main() {
 	focus := FocusStateValue
 	buttons := ButtonsLayoutStateValue
 	longText := LongTextStateValue
+	controls := BasicControlsStateValue
 
 	drawForm()
 	requireFrameOps("form", map[kryon.FrameOpKind]int{
@@ -312,6 +326,7 @@ func main() {
 	drawFocus()
 	driver.QueueText("A")
 	drawFocus()
+	focusAfterFocus := driver.Focus()
 
 	drawButtons()
 	requireFrameOps("buttons", map[kryon.FrameOpKind]int{
@@ -365,6 +380,29 @@ func main() {
 	longFirst := text4096(longText.LongFirst)
 	longSecond := text4096(longText.LongSecond)
 
+	drawControls()
+	requireFrameOps("controls", map[kryon.FrameOpKind]int{
+		kryon.FrameOpRect:   4,
+		kryon.FrameOpText:   6,
+		kryon.FrameOpButton: 3,
+	})
+	requireRenderedFrame("controls", 1200)
+	driver.QueueTap(146, 48)
+	drawControls()
+	driver.QueueTap(30, 92)
+	drawControls()
+	driver.QueueTap(30, 138)
+	drawControls()
+	driver.QueueTap(30, 180)
+	drawControls()
+	driver.QueueTap(30, 247)
+	drawControls()
+	drawControls()
+	if controls.SliderValue != 70 || controls.ToggleValue != 1 || controls.CheckboxValue != 1 || controls.Selected != 1 {
+		panic(fmt.Sprintf("controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1",
+			controls.SliderValue, controls.ToggleValue, controls.CheckboxValue, controls.Selected))
+	}
+
 	out := snapshot{
 		FormFirst:          text64(form.First),
 		FormFirstCursor:    form.FirstCursor,
@@ -382,7 +420,7 @@ func main() {
 		FocusOne:           text32(focus.One),
 		FocusTwo:           text32(focus.Two),
 		FocusThree:         text32(focus.Three),
-		FocusID:            driver.Focus(),
+		FocusID:            focusAfterFocus,
 		ButtonsAction:      buttons.ButtonsAction,
 		LongFirstLen:       len(longFirst),
 		LongFirstCursor:    longText.LongFirstCursor,
@@ -390,6 +428,10 @@ func main() {
 		LongSecondLen:      len(longSecond),
 		LongSecondCursor:   longText.LongSecondCursor,
 		LongSecondHash:     checksum(longSecond),
+		ControlsSlider:     controls.SliderValue,
+		ControlsToggle:     controls.ToggleValue,
+		ControlsCheckbox:   controls.CheckboxValue,
+		ControlsSelected:   controls.Selected,
 		Clipboard:          driver.ClipboardText(),
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil {
@@ -412,6 +454,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/focus.c"
 #include "$work/c/tests/parity/buttons_layout.c"
 #include "$work/c/tests/parity/long_text.c"
+#include "$work/c/tests/parity/basic_controls.c"
 
 static void drain_events(void)
 {
@@ -452,6 +495,11 @@ static void draw_buttons(void)
 static void draw_long_text(void)
 {
     draw_ui(long_text_frame);
+}
+
+static void draw_controls(void)
+{
+    draw_ui(controls_frame);
 }
 
 static unsigned long long checksum(const char *text)
@@ -557,13 +605,17 @@ int main(void)
     KryonInjectText("A");
     KryonInjectPump();
     draw_focus();
+    int focus_after_focus = GetUIFocus();
 
     draw_buttons();
     KryonInjectTap(30, 130);
     KryonInjectPump();
     draw_buttons();
     KryonInjectPump();
+    draw_buttons();
     KryonInjectTap(130, 130);
+    KryonInjectPump();
+    draw_buttons();
     KryonInjectPump();
     draw_buttons();
 
@@ -594,12 +646,47 @@ int main(void)
         require_long_text_node_count(long_text_nodes, "right");
     }
 
-    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"clipboard\":\"%s\"}\n",
+    draw_controls();
+    KryonInjectTap(146, 48);
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectTap(30, 92);
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectTap(30, 138);
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectTap(30, 180);
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectTap(30, 247);
+    KryonInjectPump();
+    draw_controls();
+    KryonInjectPump();
+    draw_controls();
+    draw_controls();
+    if(slider_value != 70 || toggle_value != 1 || checkbox_value != 1 || selected != 1) {
+        fprintf(stderr,
+                "controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1\n",
+                slider_value, toggle_value, checkbox_value, selected);
+        return 1;
+    }
+
+    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
         notes, notes_cursor, form_action, title, title_cursor, body,
-        body_cursor, one, two, three, GetUIFocus(), buttons_action,
+        body_cursor, one, two, three, focus_after_focus, buttons_action,
         (int)strlen(long_first), long_first_cursor, checksum(long_first),
         (int)strlen(long_second), long_second_cursor, checksum(long_second),
+        slider_value, toggle_value, checkbox_value, selected,
         GetUIClipboardTextValue());
     return 0;
 }
@@ -615,4 +702,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry"]}'
