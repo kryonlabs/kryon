@@ -14,7 +14,7 @@ backend_prefix=${KRYON_RAYLIB_BACKEND_PREFIX:-KryonRaylibBackend_}
 # platform callbacks. Backends only provide KryonBackendRaw_<name> hooks -
 # the raylib wrapper file emits forwarders, the null backend emits zero
 # stubs - so a new backend inherits the full input behavior for free.
-input_symbols="IsKeyPressed IsKeyDown IsKeyReleased GetKeyPressed GetCharPressed IsMouseButtonPressed IsMouseButtonDown IsMouseButtonReleased IsMouseButtonUp GetMouseX GetMouseY GetMousePosition GetMouseDelta GetMouseWheelMove GetMouseWheelMoveV"
+input_symbols="IsKeyPressed IsKeyPressedRepeat IsKeyDown IsKeyReleased GetKeyPressed GetCharPressed IsMouseButtonPressed IsMouseButtonDown IsMouseButtonReleased IsMouseButtonUp GetMouseX GetMouseY GetMousePosition GetMouseDelta GetMouseWheelMove GetMouseWheelMoveV"
 
 # Surface symbols defined once for every backend in kryon front-end sources;
 # neither generated file defines them. The pure-math ones live in

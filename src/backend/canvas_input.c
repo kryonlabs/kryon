@@ -47,6 +47,11 @@ bool KryonBackendRaw_IsKeyPressed(int key)
     return js_input_query(1, key) != 0;
 }
 
+bool KryonBackendRaw_IsKeyPressedRepeat(int key)
+{
+    return KryonBackendRaw_IsKeyPressed(key);
+}
+
 bool KryonBackendRaw_IsKeyDown(int key)
 {
     return js_input_query(0, key) != 0;

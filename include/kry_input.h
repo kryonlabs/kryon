@@ -23,6 +23,7 @@
 
 /* Keyboard state. Raw keycodes match the public KeyboardKey constants. */
 bool KryonBackendRaw_IsKeyPressed(int key);
+bool KryonBackendRaw_IsKeyPressedRepeat(int key);
 bool KryonBackendRaw_IsKeyDown(int key);
 bool KryonBackendRaw_IsKeyReleased(int key);
 

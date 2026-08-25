@@ -951,6 +951,11 @@ int GetRenderWidth(void) { return kry_libdraw_width; }
 int GetRenderHeight(void) { return kry_libdraw_height; }
 int GetCurrentMonitor(void) { return 0; }
 int GetMonitorCount(void) { return 1; }
+Vector2 GetMonitorPosition(int monitor)
+{
+    (void)monitor;
+    return (Vector2){0.0f, 0.0f};
+}
 int GetMonitorWidth(int monitor)
 {
     (void)monitor;
@@ -1330,6 +1335,10 @@ void EndMode2D(void) {}
 bool KryonBackendRaw_IsKeyPressed(int key)
 {
     return key >= 0 && key < KRY_LIBDRAW_KEY_CAP && kry_libdraw_key_pressed[key];
+}
+bool KryonBackendRaw_IsKeyPressedRepeat(int key)
+{
+    return KryonBackendRaw_IsKeyPressed(key);
 }
 bool KryonBackendRaw_IsKeyDown(int key)
 {
@@ -1905,6 +1914,19 @@ const char *GetFileName(const char *filePath)
 {
     const char *slash = filePath != NULL ? strrchr(filePath, '/') : NULL;
     return slash != NULL ? slash + 1 : (filePath != NULL ? filePath : "");
+}
+const char *GetFileNameWithoutExt(const char *filePath)
+{
+    static char buf[1024];
+    const char *name;
+    char *dot;
+
+    name = GetFileName(filePath);
+    snprintf(buf, sizeof(buf), "%s", name);
+    dot = strrchr(buf, '.');
+    if(dot != NULL)
+        *dot = '\0';
+    return buf;
 }
 const char *GetFileExtension(const char *fileName)
 {

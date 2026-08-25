@@ -102,6 +102,15 @@ bool IsKeyPressed(int key)
     return pressed != NULL && pressed(key);
 }
 
+bool IsKeyPressedRepeat(int key)
+{
+    if(KryonInjectKeyPressed(key))
+        return true;
+    if(!g_kryon_keyboard_input_enabled)
+        return false;
+    return KryonBackendRaw_IsKeyPressedRepeat(key);
+}
+
 bool IsKeyDown(int key)
 {
     KeyPlatformCallback down = g_kryon_key_down_callback;
