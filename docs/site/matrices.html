@@ -51,6 +51,56 @@
     </section>
 
     <section>
+      <p class="section-eyebrow">Automated</p>
+      <h2>Conformance Matrix</h2>
+      <p class="section-lead">Generated from checked-in <code>.kry</code> examples, generated-runtime parity fixtures, and renderer evidence. The JSON backing this view is refreshed by <code>tests/feature_matrix_docs_test.sh</code>; source-pipeline cells are verified by <code>make conformance-matrix-check</code>.</p>
+
+      <div class="matrix-stat-grid" data-conformance-summary>
+        <p class="section-lead">Loading generated matrix...</p>
+      </div>
+
+      <h3>Pipelines</h3>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Pipeline</th><th>Path</th><th>Status</th><th>Evidence</th></tr></thead>
+          <tbody data-conformance-pipelines></tbody>
+        </table>
+      </div>
+
+      <h3>Renderers and Platforms</h3>
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead><tr><th>Renderer</th><th>Platform</th><th>Approach</th><th>Status</th><th>Evidence</th><th>Notes</th></tr></thead>
+          <tbody data-conformance-renderers></tbody>
+        </table>
+      </div>
+
+      <h3>Source Cases</h3>
+      <div class="matrix-controls">
+        <input type="search" data-conformance-search placeholder="Filter sources or widgets" aria-label="Filter source cases">
+        <select data-conformance-type aria-label="Filter source type">
+          <option value="all">All source types</option>
+          <option value="example">Examples</option>
+          <option value="parity fixture">Parity fixtures</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="matrix-table source-matrix-table">
+          <thead><tr><th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2b</th><th>Widgets</th><th>State/Visual Evidence</th></tr></thead>
+          <tbody data-conformance-sources></tbody>
+        </table>
+      </div>
+
+      <h3>Widget Coverage Count</h3>
+      <div class="table-wrap compact-table-wrap">
+        <table class="matrix-table compact-matrix-table">
+          <thead><tr><th>Widget</th><th>Sources</th></tr></thead>
+          <tbody data-conformance-widgets></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
       <p class="section-eyebrow">Language</p>
       <h2>Pipeline Matrix</h2>
       <div class="table-wrap">
@@ -151,6 +201,7 @@
     </div>
   </footer>
   <script src="highlight.js"></script>
+  <script src="conformance-matrix.js"></script>
   <script>
     (function() {
       var toggle = document.querySelector(".menu-toggle");

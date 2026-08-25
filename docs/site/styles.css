@@ -1140,6 +1140,95 @@ details.faq-item .faq-a p {
   background-color: rgba(47, 111, 134, 0.04);
 }
 
+.matrix-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: 10px;
+  margin: 18px 0 28px;
+}
+
+.matrix-stat {
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  box-shadow: var(--bevel);
+}
+
+.matrix-stat span {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.matrix-stat strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink-strong);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.matrix-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.matrix-controls input,
+.matrix-controls select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.matrix-controls input {
+  width: min(100%, 360px);
+  padding: 0 12px;
+}
+
+.matrix-controls select {
+  padding: 0 34px 0 10px;
+}
+
+.matrix-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin: 0 5px 5px 0;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: rgba(47, 111, 134, 0.07);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.matrix-muted {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.source-matrix-table {
+  min-width: 1180px;
+}
+
+.compact-table-wrap {
+  max-width: 520px;
+}
+
+.compact-matrix-table {
+  min-width: 360px;
+}
+
 .decision-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

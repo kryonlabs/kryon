@@ -42,11 +42,11 @@ li{margin:.25rem 0}
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
 <p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below), and <code>k2b</code> lowers a subset of it:</p>
-<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Column Row Stack End Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
+<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. <code>Scroll</code> lowers to the <code>Scroll</code>/<code>EndScroll</code> runtime pairing, not the C <code>Begin/EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
-<p>Retained-tree caveat that applies to the whole C column: <code>BeginUI/EndUI</code> records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
+<p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
@@ -172,7 +172,7 @@ li{margin:.25rem 0}
 <tr><td class="">Accessibility</td><td class="part">◐ debug focus overlay + a11y node structs; no screen-reader bridge</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
-<tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>Begin/EndUI</code> + <code>NextUIEvent</code></td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
+<tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>#ui</code> functions + retained events</td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
 <tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
 <tr><td class="">Debug tooling</td><td class="ok">✅ widget inspector, node registry + snippets</td><td class="no">✗</td><td class="part">◐ <code>KryBackendRec</code> call-stream recording</td></tr>
 </table>

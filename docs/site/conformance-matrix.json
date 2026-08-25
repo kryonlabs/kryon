@@ -1,0 +1,1494 @@
+{
+  "cases": [
+    {
+      "id": "examples-01_file_dialog",
+      "label": "Kryon File Dialog Example",
+      "path": "examples/01_file_dialog.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-02_buttons",
+      "label": "UI Buttons Example",
+      "path": "examples/02_buttons.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-03_theme",
+      "label": "Kryon Theme Example",
+      "path": "examples/03_theme.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Checkbox",
+        "Dropdown",
+        "Slider",
+        "Text",
+        "TextField",
+        "Toggle"
+      ]
+    },
+    {
+      "id": "examples-04_modal",
+      "label": "Kryon Modal Example",
+      "path": "examples/04_modal.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "ActionModal",
+        "Background",
+        "Button",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-05_color",
+      "label": "Kryon Color Example",
+      "path": "examples/05_color.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Rect",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-06_scaling",
+      "label": "Kryon Scaling Example",
+      "path": "examples/06_scaling.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Rect",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-07_layout",
+      "label": "Kryon Layout Example",
+      "path": "examples/07_layout.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Line",
+        "Rect",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-09_geometry",
+      "label": "Kryon Geometry",
+      "path": "examples/09_geometry.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-10_menus",
+      "label": "Kryon Menus",
+      "path": "examples/10_menus.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "MenuBar",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-11_basic_controls",
+      "label": "Kryon Basic Controls",
+      "path": "examples/11_basic_controls.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Combobox",
+        "Progress",
+        "Radio",
+        "Spinbox",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-12_collections",
+      "label": "Kryon Collections",
+      "path": "examples/12_collections.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "ListBox",
+        "TableView",
+        "Text",
+        "TreeView"
+      ]
+    },
+    {
+      "id": "examples-13_text_editor",
+      "label": "Kryon Text Editor",
+      "path": "examples/13_text_editor.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Text",
+        "TextArea"
+      ]
+    },
+    {
+      "id": "examples-14_canvas",
+      "label": "Kryon Canvas",
+      "path": "examples/14_canvas.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Canvas",
+        "CanvasGrid"
+      ]
+    },
+    {
+      "id": "examples-15_containers",
+      "label": "Kryon Containers",
+      "path": "examples/15_containers.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Collapsible",
+        "PanedView",
+        "TabBar",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-16_dialogs",
+      "label": "Kryon Dialogs",
+      "path": "examples/16_dialogs.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "ColorPicker",
+        "ConfirmDialog",
+        "MessageDialog",
+        "PromptDialog"
+      ]
+    },
+    {
+      "id": "examples-17_keyboard_platform",
+      "label": "Kryon Keyboard Platform",
+      "path": "examples/17_keyboard_platform.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-18_accessibility",
+      "label": "Kryon Accessibility",
+      "path": "examples/18_accessibility.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Checkbox",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-19_pictures",
+      "label": "Kryon Pictures",
+      "path": "examples/19_pictures.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Picture",
+        "Rect",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-20_inbe_language",
+      "label": "Inner Breeze \u2014 Language",
+      "path": "examples/20_inbe_language.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Dropdown",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-20_scene",
+      "label": "Kryon Scene Tree",
+      "path": "examples/20_scene.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": []
+    },
+    {
+      "id": "examples-21_inbe_settings",
+      "label": "Inner Breeze \u2014 Settings",
+      "path": "examples/21_inbe_settings.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Checkbox",
+        "Dropdown",
+        "Scroll",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-21_signals",
+      "label": "Kryon Signals",
+      "path": "examples/21_signals.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": []
+    },
+    {
+      "id": "examples-22_inbe_manual",
+      "label": "Inner Breeze \u2014 Manual",
+      "path": "examples/22_inbe_manual.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Scroll",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-22_physics",
+      "label": "Kryon Physics",
+      "path": "examples/22_physics.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": []
+    },
+    {
+      "id": "examples-23_animation",
+      "label": "Kryon Animation",
+      "path": "examples/23_animation.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": []
+    },
+    {
+      "id": "examples-23_inbe_app",
+      "label": "Inner Breeze",
+      "path": "examples/23_inbe_app.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Checkbox",
+        "Dropdown",
+        "Scroll",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-24_inbe_habits",
+      "label": "Inner Breeze \u2014 Habits",
+      "path": "examples/24_inbe_habits.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Checkbox",
+        "Scroll",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-24_tilemap",
+      "label": "Kryon Tilemap",
+      "path": "examples/24_tilemap.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": []
+    },
+    {
+      "id": "examples-25_inbe_practice",
+      "label": "Inner Breeze \u2014 Practice",
+      "path": "examples/25_inbe_practice.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Slider",
+        "Spinbox",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-26_inbe_whm_session",
+      "label": "Inner Breeze \u2014 WHM Session",
+      "path": "examples/26_inbe_whm_session.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-27_inbe_statistics",
+      "label": "Inner Breeze \u2014 Statistics",
+      "path": "examples/27_inbe_statistics.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Rect",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-28_inbe_profile",
+      "label": "Inner Breeze Profile",
+      "path": "examples/28_inbe_profile.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Text"
+      ]
+    },
+    {
+      "id": "examples-29_inbe_habit_edit",
+      "label": "Inner Breeze Habit Edit",
+      "path": "examples/29_inbe_habit_edit.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "widgets": [
+        "Background",
+        "Button",
+        "Checkbox",
+        "Dropdown",
+        "Spinbox",
+        "Text",
+        "TextField"
+      ]
+    },
+    {
+      "id": "tests-parity-buttons_layout",
+      "label": "Generated Buttons Layout Parity",
+      "path": "tests/parity/buttons_layout.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "widgets": [
+        "Button",
+        "Text"
+      ]
+    },
+    {
+      "id": "tests-parity-fields",
+      "label": "Generated Fields Parity",
+      "path": "tests/parity/fields.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "widgets": [
+        "TextArea",
+        "TextField"
+      ]
+    },
+    {
+      "id": "tests-parity-focus",
+      "label": "Generated Focus Parity",
+      "path": "tests/parity/focus.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "widgets": [
+        "TextField"
+      ]
+    },
+    {
+      "id": "tests-parity-generated_form",
+      "label": "Generated Runtime Parity",
+      "path": "tests/parity/generated_form.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "widgets": [
+        "Button",
+        "Text",
+        "TextArea",
+        "TextField"
+      ]
+    },
+    {
+      "id": "tests-parity-long_text",
+      "label": "Generated Long Text Parity",
+      "path": "tests/parity/long_text.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "widgets": [
+        "Text",
+        "TextField"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "evidence": "tests/k2ir_test.sh plus conformance-matrix-check",
+      "id": "k2ir",
+      "label": ".kry -> KIR",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "evidence": "tests/k2c_syntax_test.sh plus conformance-matrix-check",
+      "id": "k2c",
+      "label": ".kry -> KIR -> C",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "evidence": "tests/k2g_syntax_test.sh plus conformance-matrix-check",
+      "id": "k2g",
+      "label": ".kry -> KIR -> Go",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "evidence": "tests/krb_cartridge_test.sh plus conformance-matrix-check",
+      "id": "k2b",
+      "label": ".kry -> KIR -> KRB",
+      "status": "gated",
+      "status_class": "ok"
+    }
+  ],
+  "renderers": [
+    {
+      "approach": "raylib surface backend",
+      "evidence": [
+        "make test",
+        "tests/raylib_compat_test.c"
+      ],
+      "id": "desktop-raylib",
+      "label": "Desktop raylib",
+      "notes": "Default native surface backend.",
+      "platform": "Linux/FreeBSD desktop",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "approach": "raylib WebGL surface backend",
+      "evidence": [
+        "mk/web.mk",
+        "docs-site Web IDE build"
+      ],
+      "id": "web-raylib-wasm",
+      "label": "Web raylib wasm",
+      "notes": "Shipping web path; visual matrix still needs the same per-source screenshot gate as KRB.",
+      "platform": "Emscripten web",
+      "status": "build-gated",
+      "status_class": "part"
+    },
+    {
+      "approach": "HTML5 Canvas2D surface backend",
+      "evidence": [
+        "make canvas-test",
+        "tests/canvas_backend_test.sh",
+        "tests/canvas_audio_test.sh"
+      ],
+      "id": "web-canvas-wasm",
+      "label": "Web canvas wasm",
+      "notes": "Runs when emcc and node are available.",
+      "platform": "Emscripten web",
+      "status": "conditional gate",
+      "status_class": "part"
+    },
+    {
+      "approach": "kry_sw to libdraw/devdraw",
+      "evidence": [
+        "make libdraw-test",
+        "tests/libdraw_backend_test.sh",
+        "tests/libdraw_9c_test.sh"
+      ],
+      "id": "desktop-libdraw",
+      "label": "Desktop libdraw",
+      "notes": "Runs when plan9port and a display or xvfb are available.",
+      "platform": "Unix/X11 with plan9port",
+      "status": "conditional gate",
+      "status_class": "part"
+    },
+    {
+      "approach": "KryBackend + kry_sw",
+      "evidence": [
+        "tests/krb_engine_test.sh",
+        "tests/kry_sw_test.c"
+      ],
+      "id": "krb-native-sw",
+      "label": "KRB native software",
+      "notes": "Portable cartridge renderer used by preview and exactness checks.",
+      "platform": "Native host",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "approach": "kry_sw wasm blitted to Canvas2D",
+      "evidence": [
+        "cmd/krb-web/main.c",
+        "cmd/krb-web/node-capture.js"
+      ],
+      "id": "krb-web-canvas",
+      "label": "KRB web canvas",
+      "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
+      "platform": "Emscripten web",
+      "status": "partial",
+      "status_class": "part"
+    }
+  ],
+  "schema": 1,
+  "source": "scripts/conformance-matrix.py",
+  "summary": {
+    "examples": 33,
+    "parity_fixtures": 5,
+    "pipeline_cells": 152,
+    "semantic_parity_cases": 5,
+    "source_cases": 38,
+    "widgets_detected": 31
+  },
+  "widget_counts": {
+    "ActionModal": 1,
+    "Background": 28,
+    "Button": 13,
+    "Canvas": 1,
+    "CanvasGrid": 1,
+    "Checkbox": 6,
+    "Collapsible": 1,
+    "ColorPicker": 1,
+    "Combobox": 1,
+    "ConfirmDialog": 1,
+    "Dropdown": 5,
+    "Line": 1,
+    "ListBox": 1,
+    "MenuBar": 1,
+    "MessageDialog": 1,
+    "PanedView": 1,
+    "Picture": 1,
+    "Progress": 1,
+    "PromptDialog": 1,
+    "Radio": 1,
+    "Rect": 5,
+    "Scroll": 4,
+    "Slider": 2,
+    "Spinbox": 3,
+    "TabBar": 1,
+    "TableView": 1,
+    "Text": 29,
+    "TextArea": 3,
+    "TextField": 6,
+    "Toggle": 1,
+    "TreeView": 1
+  }
+}
