@@ -614,6 +614,7 @@ type ComboboxProps struct {
 	Bounds        Rectangle
 	ID            int32
 	Options       []string
+	OptionCount   int32
 	SelectedIndex *int32
 	Disabled      bool
 }
@@ -760,7 +761,7 @@ type Runtime interface {
 	EndScroll()
 	Button(ButtonProps) bool
 	TabBar(Rectangle, []string, *int32, *int32) int32
-	Progress(Rectangle, int32, int32, int32, string)
+	Progress(ProgressBarProps)
 	Checkbox(int32, int32, int32, string, *int32) bool
 	Dropdown(id, x, y, w, h int32, options any, rest ...any) bool
 	Column(ColumnProps)
@@ -1129,7 +1130,42 @@ func (r *runtime) Button(props ButtonProps) bool {
 	return pressed
 }
 func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
-func (r *runtime) Progress(Rectangle, int32, int32, int32, string)  {}
+func (r *runtime) Progress(props ProgressBarProps) {
+	theme := r.theme()
+	bounds := r.layoutRect(props.Bounds)
+	minimum := props.Min
+	maximum := props.Max
+	if maximum <= minimum {
+		maximum = minimum + 1
+	}
+	t := float32(props.Value-minimum) / float32(maximum-minimum)
+	if t < 0 {
+		t = 0
+	} else if t > 1 {
+		t = 1
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: theme.button})
+	if bounds.Width > 0 && bounds.Height > 0 && t > 0 {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * t, Height: bounds.Height}, Color: theme.buttonHover, Selected: true})
+	}
+	if props.Label != "" {
+		font := Text14
+		labelW := float32(runtimeTextWidth(props.Label, font))
+		fillW := bounds.Width * t
+		fillEnd := bounds.X + fillW
+		x := bounds.X + (bounds.Width-labelW)/2
+		textColor := theme.text
+		pad := float32(6)
+		emptyW := bounds.Width - fillW
+		if emptyW >= labelW+pad*2 {
+			x = fillEnd + pad
+		} else if fillW >= labelW+pad*2 {
+			x = fillEnd - labelW - pad
+			textColor = theme.background
+		}
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: x, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, FontSize: font})
+	}
+}
 func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) bool {
 	if value == nil {
 		return false

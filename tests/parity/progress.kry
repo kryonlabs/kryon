@@ -1,0 +1,16 @@
+#import "kryon.h"
+
+app "Generated Progress Parity" {
+    size 360 160
+    fps 60
+}
+
+state {
+    progress_value: int = 42
+}
+
+progress_frame :: () #ui {
+    Screen root: {
+        Progress((ProgressBarProps){.bounds = {20,30,220,28}, .min = 0, .max = 100, .value = progress_value, .label = "Progress"})
+    }
+}

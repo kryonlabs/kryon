@@ -27,6 +27,7 @@ tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
 tests/parity/basic_controls.kry
 tests/parity/list_box.kry
+tests/parity/progress.kry
 tests/parity/table_view.kry
 "
 fixture_args=
@@ -176,6 +177,14 @@ func drawListBox() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		ListBox_ListBoxFrame(ListBoxStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawProgress() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Progress_ProgressFrame(ProgressStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -443,6 +452,13 @@ func main() {
 			listBox.ListSelected, listBox.ListScroll))
 	}
 
+	drawProgress()
+	requireFrameOps("progress", map[kryon.FrameOpKind]int{
+		kryon.FrameOpRect: 2,
+		kryon.FrameOpText: 1,
+	})
+	requireRenderedFrame("progress", 700)
+
 	drawTableView()
 	requireFrameOps("table_view", map[kryon.FrameOpKind]int{
 		kryon.FrameOpTable: 1,
@@ -524,6 +540,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/long_text.c"
 #include "$work/c/tests/parity/basic_controls.c"
 #include "$work/c/tests/parity/list_box.c"
+#include "$work/c/tests/parity/progress.c"
 #include "$work/c/tests/parity/table_view.c"
 
 static void drain_events(void)
@@ -575,6 +592,11 @@ static void draw_controls(void)
 static void draw_list_box(void)
 {
     draw_ui(list_box_frame);
+}
+
+static void draw_progress(void)
+{
+    draw_ui(progress_frame);
 }
 
 static void draw_table_view(void)
@@ -773,6 +795,8 @@ int main(void)
         return 1;
     }
 
+    draw_progress();
+
     draw_table_view();
     KryonInjectTap(116, 62);
     KryonInjectPump();
@@ -826,4 +850,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/table_view.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/progress.kry","tests/parity/table_view.kry"]}'

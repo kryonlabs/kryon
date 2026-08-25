@@ -95,7 +95,7 @@ App :: () #ui {
     TabBar((Rectangle){ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(200), ScaleUIPx(30)}, tab_labels(), &tab, NULL)
     Checkbox(0, ScaleUIPx(4), ScaleUIPx(60), "Check", &check)
     Dropdown(1, ScaleUIPx(4), ScaleUIPx(80), ScaleUIPx(120), ScaleUIPx(30), "a;b;c", &pick)
-    Progress((Rectangle){ScaleUIPx(4), ScaleUIPx(120), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, query_jobs(0, 10), "")
+    Progress((ProgressBarProps){{ScaleUIPx(4), ScaleUIPx(120), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, query_jobs(0, 10), ""})
     Scroll(ScaleUIPx(4), ScaleUIPx(8), ScaleUIPx(200), ScaleUIPx(100), ScaleUIPx(400), &scroll_off)
     DrawCircleV((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
     DrawRing((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(36), ScaleUIPx(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
@@ -157,10 +157,10 @@ App :: () #ui {
     SetThemeDarkMode(1)
     SetCurrentTheme(0, 1)
     Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
-    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, "")
-    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), "")
-    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), "")
-    Progress((Rectangle){ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), "")
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, ""})
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), ""})
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), ""})
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), ""})
     relay_text(field_text)
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
@@ -338,9 +338,9 @@ grep -q 'SelectableText(' "$out"
 grep -q 'ShowToast("toast from kry")' "$out"
 grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
 grep -q 'kryon.TextArea(kryon.TextAreaProps{.*Syntax: kryon.SyntaxNone' "$out"
-grep -q 'kryon.Radio(kryon.RadioButtonProps{' "$out"
-grep -q 'kryon.Spinbox(kryon.SpinboxProps{' "$out"
-grep -q 'kryon.Combobox(kryon.ComboboxProps{' "$out"
+grep -q 'kryon.Radio(kryon.RadioButtonProps{.*Label: "one".*Checked: st.Pick == 1' "$out"
+grep -q 'kryon.Spinbox(kryon.SpinboxProps{.*Value: &st.SliderVal' "$out"
+grep -q 'kryon.Combobox(kryon.ComboboxProps{.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kryon.LabelFrame(kryon.LabelFrameProps{' "$out"
 grep -q 'kryon.Notebook(kryon.NotebookProps{' "$out"
 grep -q 'kryon.ListBox(kryon.ListBoxProps{' "$out"
@@ -350,9 +350,9 @@ grep -q 'SetCurrentTheme(0, 1)' "$out"
 
 # typed declarations, arrays, and goto/labels lower for real now
 grep -q 'var scalar int32 = 5' "$out"
-grep -q 'var nums = \[4\]int32{1, 2, 3, 4}' "$out"
+grep -q 'var nums = \[4\]int32{1,2,3,4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'kryon.Dropdown(11, kryon.ScaleUIPx(4), kryon.ScaleUIPx(210), kryon.ScaleUIPx(120), kryon.ScaleUIPx(24), choices, 3, &st.Pick)' "$out"
+grep -q 'kryon.Dropdown(11, kryon.ScaleUIPx(4), kryon.ScaleUIPx(210), kryon.ScaleUIPx(120), kryon.ScaleUIPx(24), choices\[:\], 3, &st.Pick)' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 

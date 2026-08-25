@@ -643,6 +643,8 @@ DrawUIProgressBar(ProgressBarProps progress)
         t = 0.0f;
     if(t > 1.0f)
         t = 1.0f;
+    if(!IsWindowReady())
+        return;
     fill.width *= t;
     DrawRectangleRec(progress.bounds, ui_panel_color(10));
     DrawRectangleRec(fill, fill_color);

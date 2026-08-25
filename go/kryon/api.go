@@ -170,8 +170,8 @@ func Button(args ...any) bool { return button(args...) }
 func TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
 	return active().TabBar(bounds, labels, selected, hover)
 }
-func Progress(bounds Rectangle, min, max, value int32, suffix string) {
-	active().Progress(bounds, min, max, value, suffix)
+func Progress(props ProgressBarProps) {
+	active().Progress(props)
 }
 func Checkbox(id, x, y int32, label string, value *int32) bool {
 	return active().Checkbox(id, x, y, label, value)
