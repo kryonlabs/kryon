@@ -18,6 +18,7 @@
 
 /* glReadBuffer is GL 1.3+; declared manually so this stays backend-neutral
  * (the raylib rename header renames raylib symbols, not GL entry points). */
+#ifndef KRYON_NATIVE_PLAN9
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
@@ -26,6 +27,7 @@ extern void glReadPixels(int x, int y, int width, int height,
                          void *data);
 #define KR_GL_RGBA 0x1908u
 #define KR_GL_UNSIGNED_BYTE 0x1401u
+#endif
 
 /* The raylib backend symbols these wrappers forward to (the rename header
  * only applies inside raylib sources). Weak: on null/canvas links they
@@ -34,10 +36,12 @@ extern void glReadPixels(int x, int y, int width, int height,
 __attribute__((weak))
 #endif
 extern void KryonRaylibBackend_EndDrawing(void);
+#ifndef KRYON_NATIVE_PLAN9
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
 extern void rlDrawRenderBatchActive(void);
+#endif
 
 /* Non-OpenGL backends can provide this hook so LoadImageFromScreen remains
  * the single public screenshot surface. */
@@ -81,6 +85,7 @@ void EndDrawing(void)
         kry_event_wait_after_frame();
         return;
     }
+#ifndef KRYON_NATIVE_PLAN9
     if(rlDrawRenderBatchActive != NULL)
         rlDrawRenderBatchActive();
     {
@@ -101,6 +106,7 @@ void EndDrawing(void)
             }
         }
     }
+#endif
     KryonRaylibBackend_EndDrawing();
     kry_event_wait_after_frame();
 }
