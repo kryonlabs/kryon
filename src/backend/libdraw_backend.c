@@ -85,17 +85,69 @@ static TraceLogCallback g_trace_log_callback;
 static unsigned g_window_state;
 static int g_exit_key = KEY_ESCAPE;
 
+typedef struct KryLibdrawCursor {
+    struct {
+        int x;
+        int y;
+    } offset;
+    unsigned char clr[2 * 16];
+    unsigned char set[2 * 16];
+} KryLibdrawCursor;
+
+static KryLibdrawCursor g_default_cursor = {
+    {0, 0},
+    {0x00, 0x00, 0x40, 0x00, 0x60, 0x00, 0x70, 0x00,
+     0x78, 0x00, 0x7C, 0x00, 0x7E, 0x00, 0x7F, 0x00,
+     0x7F, 0x80, 0x7C, 0x00, 0x70, 0x00, 0x68, 0x00,
+     0x48, 0x00, 0x08, 0x00, 0x04, 0x00, 0x00, 0x00},
+    {0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
+     0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
+     0x80, 0x00, 0x83, 0xC0, 0x8C, 0x00, 0x94, 0x00,
+     0xA4, 0x00, 0xC4, 0x00, 0x82, 0x00, 0x06, 0x00}
+};
+
+#ifdef KRYON_NATIVE_PLAN9
+static void
+put_be32(unsigned char *out, int value)
+{
+    unsigned v = (unsigned)value;
+
+    out[0] = (unsigned char)(v >> 24);
+    out[1] = (unsigned char)(v >> 16);
+    out[2] = (unsigned char)(v >> 8);
+    out[3] = (unsigned char)v;
+}
+#endif
+
+static void
+set_plan9_cursor(KryLibdrawCursor *cursor)
+{
+#ifdef KRYON_NATIVE_PLAN9
+    unsigned char data[2 * 4 + 2 * 2 * 16];
+    int fd;
+
+    fd = open("/dev/cursor", OWRITE);
+    if(fd < 0)
+        return;
+    if(cursor == NULL) {
+        write(fd, "", 0);
+        close(fd);
+        return;
+    }
+    put_be32(data + 0 * 4, cursor->offset.x);
+    put_be32(data + 1 * 4, cursor->offset.y);
+    memcpy(data + 2 * 4, cursor->clr, 2 * 2 * 16);
+    write(fd, data, sizeof(data));
+    close(fd);
+#else
+    (void)cursor;
+#endif
+}
+
 static void
 reset_default_cursor(void)
 {
-#ifdef KRYON_NATIVE_PLAN9
-    int fd = open("/dev/cursor", OWRITE);
-
-    if(fd >= 0) {
-        write(fd, "", 0);
-        close(fd);
-    }
-#endif
+    set_plan9_cursor(&g_default_cursor);
 }
 
 static double
@@ -1086,7 +1138,11 @@ void *GetWindowHandle(void) { return NULL; }
 void SetConfigFlags(unsigned int flags) { (void)flags; }
 void SetTargetFPS(int fps) { kry_libdraw_target_fps = fps > 0 ? fps : 0; }
 void SetTraceLogLevel(int logLevel) { (void)logLevel; }
-void SetMouseCursor(int cursor) { (void)cursor; }
+void SetMouseCursor(int cursor)
+{
+    (void)cursor;
+    set_plan9_cursor(&g_default_cursor);
+}
 void SetExitKey(int key) { g_exit_key = key; }
 void SetWindowSize(int width, int height)
 {
