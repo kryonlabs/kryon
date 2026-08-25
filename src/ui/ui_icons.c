@@ -47,7 +47,7 @@ load_icon_asset_texture(const UIIconAsset *asset)
     if(asset == NULL || asset->data == NULL || asset->size == 0)
         return texture;
 
-    image = (Image){0};
+    memset(&image, 0, sizeof(image));
     image.data = kry_sw_png_rgba(asset->data, (size_t)asset->size,
                                  &image.width, &image.height);
     if(image.data == NULL)
