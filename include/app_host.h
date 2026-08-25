@@ -3,7 +3,7 @@
 
 #include "kryon_compat.generated.h"
 
-#define APP_HOST_ABI_VERSION 4
+#define APP_HOST_ABI_VERSION 5
 
 typedef struct KryonInputOverride {
     int enabled;
@@ -31,6 +31,8 @@ typedef struct AppHost {
     void (*select_screen)(void *userdata, int index);
     int (*select_source_path)(void *userdata, const char *source_path);
     void (*draw)(void *userdata, Rectangle viewport);
+    void (*resize)(void *userdata, int width, int height);
+    void (*set_focused)(void *userdata, int focused);
 } AppHost;
 
 typedef AppHost *(*CreateAppHostCallback)(int abi_version,
@@ -40,5 +42,7 @@ typedef void (*DestroyAppHostCallback)(AppHost *host);
 void BeginKryonInputOverride(KryonInputOverride input);
 void EndKryonInputOverride(void);
 int IsUIInspectActive(void);
+void ResizeAppHost(AppHost *host, int width, int height);
+void SetAppHostFocused(AppHost *host, int focused);
 
 #endif

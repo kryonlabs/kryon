@@ -130,3 +130,19 @@ DrawAppScreen(AppHost *host, Rectangle viewport)
         return;
     host->draw(host->userdata, viewport);
 }
+
+void
+ResizeAppHost(AppHost *host, int width, int height)
+{
+    if(host == 0 || host->resize == 0)
+        return;
+    host->resize(host->userdata, width, height);
+}
+
+void
+SetAppHostFocused(AppHost *host, int focused)
+{
+    if(host == 0 || host->set_focused == 0)
+        return;
+    host->set_focused(host->userdata, focused);
+}
