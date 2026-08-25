@@ -28,16 +28,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -79,9 +79,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -119,16 +119,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -170,9 +170,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -306,16 +306,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -357,9 +357,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -673,16 +673,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -724,9 +724,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -854,16 +854,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -905,9 +905,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1411,16 +1411,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1462,9 +1462,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1686,16 +1686,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1737,9 +1737,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -1869,10 +1869,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2042,16 +2042,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2093,9 +2093,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -2305,16 +2305,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2356,9 +2356,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -2399,16 +2399,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2450,9 +2450,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -2577,16 +2577,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2628,9 +2628,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -2851,16 +2851,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
+          "evidence": "Libdraw generated-C capture is blank.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -2902,9 +2902,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
+          "evidence": "Libdraw generated-C capture is blank.",
+          "status": "visual gap",
+          "status_class": "part"
         }
       },
       "widgets": [
@@ -3135,10 +3135,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3225,10 +3225,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Raylib generated-C capture is blank.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3816,15 +3816,15 @@
     "examples": 33,
     "krb_alpha_byte_exact_cases": 29,
     "krb_rgb_visual_cases": 39,
-    "libdraw_c_visual_cases": 31,
-    "libdraw_c_visual_gaps": 8,
+    "libdraw_c_visual_cases": 19,
+    "libdraw_c_visual_gaps": 20,
     "parity_fixtures": 6,
     "pipeline_cells": 156,
-    "raylib_c_visual_cases": 31,
-    "raylib_c_visual_gaps": 8,
+    "raylib_c_visual_cases": 16,
+    "raylib_c_visual_gaps": 23,
     "renderer_source_cells": 234,
-    "renderer_source_ok_cells": 130,
-    "renderer_source_partial_cells": 104,
+    "renderer_source_ok_cells": 103,
+    "renderer_source_partial_cells": 131,
     "semantic_parity_cases": 5,
     "source_cases": 39,
     "widgets_declared": 54,

@@ -260,7 +260,7 @@ KRB_ALPHA_BYTE_GAPS = {
     "tests/parity/long_text.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
 }
 
-GENERATED_C_VISUAL_GAPS = {
+GENERATED_C_COMPILE_GAPS = {
     "examples/20_scene.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/14_canvas.kry": "Generated C still has a Canvas lowering gap.",
     "examples/21_signals.kry": "Generated-C app-host route is missing for scene-only source.",
@@ -270,8 +270,48 @@ GENERATED_C_VISUAL_GAPS = {
     "examples/26_inbe_whm_session.kry": "Generated C still emits unsupported TIME/AnimNode references.",
     "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
 }
-LIBDRAW_C_VISUAL_GAPS = GENERATED_C_VISUAL_GAPS
-RAYLIB_C_VISUAL_GAPS = GENERATED_C_VISUAL_GAPS
+
+RAYLIB_C_RENDER_GAPS = {
+    "examples/01_file_dialog.kry": "Raylib generated-C capture is blank.",
+    "examples/02_buttons.kry": "Raylib generated-C capture is blank.",
+    "examples/04_modal.kry": "Raylib generated-C capture is blank.",
+    "examples/09_geometry.kry": "Raylib generated-C capture is blank.",
+    "examples/11_basic_controls.kry": "Raylib generated-C capture is blank.",
+    "examples/17_keyboard_platform.kry": "Raylib generated-C capture is blank.",
+    "examples/20_inbe_language.kry": "Raylib generated-C capture is blank.",
+    "examples/21_inbe_settings.kry": "Raylib generated-C capture is blank.",
+    "examples/22_inbe_manual.kry": "Raylib generated-C capture is blank.",
+    "examples/23_inbe_app.kry": "Raylib generated-C capture is blank.",
+    "examples/24_inbe_habits.kry": "Raylib generated-C capture is blank.",
+    "examples/25_inbe_practice.kry": "Raylib generated-C capture is blank.",
+    "examples/28_inbe_profile.kry": "Raylib generated-C capture is blank.",
+    "tests/parity/fields.kry": "Raylib generated-C capture is blank.",
+    "tests/parity/focus.kry": "Raylib generated-C capture is blank.",
+}
+
+LIBDRAW_C_RENDER_GAPS = {
+    "examples/01_file_dialog.kry": "Libdraw generated-C capture is blank.",
+    "examples/02_buttons.kry": "Libdraw generated-C capture is blank.",
+    "examples/04_modal.kry": "Libdraw generated-C capture is blank.",
+    "examples/09_geometry.kry": "Libdraw generated-C capture is blank.",
+    "examples/11_basic_controls.kry": "Libdraw generated-C capture is blank.",
+    "examples/17_keyboard_platform.kry": "Libdraw generated-C capture is blank.",
+    "examples/20_inbe_language.kry": "Libdraw generated-C capture is blank.",
+    "examples/22_inbe_manual.kry": "Libdraw generated-C capture is blank.",
+    "examples/23_inbe_app.kry": "Libdraw generated-C capture is blank.",
+    "examples/24_inbe_habits.kry": "Libdraw generated-C capture is blank.",
+    "examples/25_inbe_practice.kry": "Libdraw generated-C capture is blank.",
+    "examples/28_inbe_profile.kry": "Libdraw generated-C capture is blank.",
+}
+
+LIBDRAW_C_VISUAL_GAPS = {
+    **GENERATED_C_COMPILE_GAPS,
+    **LIBDRAW_C_RENDER_GAPS,
+}
+RAYLIB_C_VISUAL_GAPS = {
+    **GENERATED_C_COMPILE_GAPS,
+    **RAYLIB_C_RENDER_GAPS,
+}
 
 WIDGETS = {
     "ActionModal",
@@ -377,6 +417,7 @@ def detect_widgets(source: str) -> list[str]:
 
 def source_renderer_status(
     renderer: dict,
+    source_path: str,
     alpha_gap: str | None,
     raylib_gap: str | None,
     libdraw_gap: str | None,
@@ -398,7 +439,7 @@ def source_renderer_status(
     elif renderer["id"] == "desktop_raylib" and raylib_gap:
         status.update(
             {
-                "status": "compile gap",
+                "status": "compile gap" if source_path in GENERATED_C_COMPILE_GAPS else "visual gap",
                 "status_class": "part",
                 "evidence": raylib_gap,
             }
@@ -406,7 +447,7 @@ def source_renderer_status(
     elif renderer["id"] == "desktop_libdraw_c" and libdraw_gap:
         status.update(
             {
-                "status": "compile gap",
+                "status": "compile gap" if source_path in GENERATED_C_COMPILE_GAPS else "visual gap",
                 "status_class": "part",
                 "evidence": libdraw_gap,
             }
@@ -435,7 +476,7 @@ def source_cases() -> list[dict]:
             }
         alpha_gap = KRB_ALPHA_BYTE_GAPS.get(r)
         renderer_matrix = {
-            renderer["id"]: source_renderer_status(renderer, alpha_gap, raylib_gap, libdraw_gap)
+            renderer["id"]: source_renderer_status(renderer, r, alpha_gap, raylib_gap, libdraw_gap)
             for renderer in SOURCE_RENDERERS
         }
         cases.append(
@@ -464,7 +505,11 @@ def source_cases() -> list[dict]:
                         "evidence": alpha_gap or "conformance-matrix-check",
                     },
                     "libdraw_c": {
-                        "status": "compile gap" if libdraw_gap else "captured",
+                        "status": (
+                            "compile gap" if r in GENERATED_C_COMPILE_GAPS
+                            else "visual gap" if libdraw_gap
+                            else "captured"
+                        ),
                         "status_class": "part" if libdraw_gap else "ok",
                         "evidence": libdraw_gap or "make libdraw-matrix-check",
                     },
@@ -1001,7 +1046,11 @@ if [ -z "$win" ]; then
     echo "raylib-window-capture: no generated-C window found" >&2
     exit 1
 fi
-import -window "$win" "$out"
+sleep 1.5
+tmp="${out}.capture.png"
+import -window "$win" "$tmp"
+convert "$tmp" PNG32:"$out"
+rm -f "$tmp"
 test -s "$out"
 """,
         encoding="utf-8",
@@ -1102,13 +1151,15 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 "480",
                 "--h",
                 "640",
+                "--frames",
+                "4",
                 "--source",
                 case["path"],
             ]
             if window_capture:
                 capture += ["--hold-before-capture-ms", "8000"]
                 if xvfb is not None:
-                    run_cmd = [xvfb, "-a", "sh", str(capture_script), str(png_path)] + capture
+                    run_cmd = [xvfb, "-a", "env", "KRYON_SHOT_ARM=1", "sh", str(capture_script), str(png_path)] + capture
                     run_env = os.environ.copy()
                 else:
                     run_cmd = ["sh", str(capture_script), str(png_path)] + capture
@@ -1268,6 +1319,8 @@ def verify_libdraw_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 "480",
                 "--h",
                 "640",
+                "--frames",
+                "4",
                 "--source",
                 case["path"],
             ]
