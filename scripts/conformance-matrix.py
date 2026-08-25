@@ -114,11 +114,11 @@ RENDERERS = [
         "label": "KRB web canvas",
         "platform": "Emscripten web",
         "approach": "kry_sw wasm blitted to Canvas2D",
-        "status": "partial",
-        "status_class": "part",
-        "evidence": ["cmd/krb-web/main.c", "cmd/krb-web/node-capture.js"],
-        "scope": "Node capture path exists; per-source wasm capture matrix not yet implemented.",
-        "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
+        "status": "source-gated",
+        "status_class": "ok",
+        "evidence": ["make krb-web-matrix-check", "cmd/krb-web/node-capture.js"],
+        "scope": "Per-source wasm Canvas2D blit capture byte-compared against native kry_sw output when emcc and node are available.",
+        "notes": "Uses the same checked-in .kry matrix sources as the native KRB renderer.",
     },
 ]
 
@@ -141,6 +141,12 @@ RENDERER_SMOKE_CHECKS = [
         "command": ["make", "-C", ".", "libdraw-test"],
         "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link.",
     },
+    {
+        "id": "krb-web-canvas",
+        "label": "KRB web canvas per-source capture",
+        "command": ["make", "-C", ".", "krb-web-matrix-check"],
+        "scope": "Builds the KRB web wasm host and byte-compares each matrix source against native kry_sw output when emcc and node are available.",
+    },
 ]
 
 RUNTIME_PARITY_CHECKS = [
@@ -161,6 +167,21 @@ DOWNSTREAM_CHECKS = [
         "optional_dir": "../kapsule",
     },
 ]
+
+KRB_WEB_SRCS = [
+    "cmd/krb-web/main.c",
+    "src/krb/krb.c",
+    "src/krb/krb_caps.c",
+    "src/backend/kry_backend.c",
+    "src/backend/kry_sw.c",
+    "src/backend/kry_sw_png.c",
+    "src/backend/kry_backend_rec.c",
+]
+
+KRB_WEB_EXPORTED_FUNCTIONS = (
+    "_krb_web_mouse,_krb_web_button,_krb_web_wheel,_krb_web_text,"
+    "_krb_web_start,_main"
+)
 
 KRB_ALPHA_BYTE_GAPS = {
     "examples/20_scene.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -646,6 +667,136 @@ def verify_widget_coverage(data: dict) -> int:
     return 0
 
 
+def emcc_path() -> str | None:
+    found = shutil.which("emcc")
+    if found:
+        return found
+    fallback = Path.home() / "emsdk" / "upstream" / "emscripten" / "emcc"
+    if fallback.exists():
+        return str(fallback)
+    return None
+
+
+def verify_krb_web_visuals(data: dict) -> int:
+    emcc = emcc_path()
+    node = shutil.which("node")
+    if emcc is None:
+        print("KRB web matrix skipped: emcc not found")
+        return 0
+    if node is None:
+        print("KRB web matrix skipped: node not found")
+        return 0
+    tools = {
+        "k2b": ROOT / "build/linux-x86_64/bin/k2b",
+        "krb-run": ROOT / "build/linux-x86_64/bin/krb-run",
+    }
+    missing = [f"{name}: {path}" for name, path in tools.items() if not path.exists()]
+    if missing:
+        for item in missing:
+            print(f"missing tool for KRB web matrix: {item}", file=sys.stderr)
+        return 1
+
+    failures = []
+    with tempfile.TemporaryDirectory(prefix="kryon-krb-web-matrix.") as tmp:
+        work = Path(tmp)
+        runner = work / "krb-web-capture.js"
+        compile_cmd = [
+            emcc,
+            "-Wall",
+            "-Wextra",
+            "-Os",
+            "-Iinclude",
+            "-DKRB_WEB_ONESHOT",
+            "-sENVIRONMENT=node",
+            "-sEXIT_RUNTIME=1",
+            f"-sEXPORTED_FUNCTIONS={KRB_WEB_EXPORTED_FUNCTIONS}",
+            "-sEXPORTED_RUNTIME_METHODS=FS",
+            "-sALLOW_MEMORY_GROWTH=1",
+            "--pre-js",
+            "cmd/krb-web/node-capture.js",
+            "-o",
+            str(runner),
+        ] + KRB_WEB_SRCS
+        run = subprocess.run(
+            compile_cmd,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if run.returncode != 0:
+            print("KRB web matrix build failed:", file=sys.stderr)
+            for line in run.stdout.strip().splitlines()[-30:]:
+                print(f"  {line}", file=sys.stderr)
+            return 1
+
+        for case in data["cases"]:
+            source = ROOT / case["path"]
+            stem = case["path"].removesuffix(".kry")
+            out_dir = work / "krb"
+            krb = out_dir / f"{stem}.krb"
+            native_png = work / f"{stem}.native.png"
+            native_png.parent.mkdir(parents=True, exist_ok=True)
+
+            run = subprocess.run(
+                [str(tools["k2b"]), "--no-main", "--root", str(ROOT), "-o", str(out_dir), str(source)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "k2b", (run.stderr or run.stdout).strip()))
+                continue
+            run = subprocess.run(
+                [
+                    str(tools["krb-run"]),
+                    "--png",
+                    str(native_png),
+                    "--w",
+                    "800",
+                    "--h",
+                    "600",
+                    str(krb),
+                ],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "krb-run", (run.stderr or run.stdout).strip()))
+                continue
+            run = subprocess.run(
+                [node, str(runner), str(krb)],
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "krb-web", run.stderr.decode("utf-8", "replace").strip()))
+                continue
+            nw, nh, native = png_rgba(native_png)
+            if (nw, nh) != (800, 600):
+                failures.append((case["path"], "native-size", f"{nw}x{nh}"))
+                continue
+            if len(run.stdout) != len(native):
+                failures.append((case["path"], "size", f"web={len(run.stdout)} native={len(native)}"))
+                continue
+            if run.stdout != native:
+                diff = sum(1 for i in range(0, len(native), 4) if run.stdout[i:i + 4] != native[i:i + 4])
+                failures.append((case["path"], "pixels", f"{diff} pixels differ"))
+
+    if failures:
+        for path, phase, detail in failures:
+            print(f"KRB web matrix failed for {path} during {phase}", file=sys.stderr)
+            if detail:
+                print(f"  {detail}", file=sys.stderr)
+        return 1
+    print(f"KRB web matrix ok: {len(data['cases'])} sources byte-identical to native kry_sw")
+    return 0
+
+
 def resolve_command(command: list[str]) -> list[str]:
     out = list(command)
     for i, arg in enumerate(out):
@@ -702,6 +853,7 @@ def main() -> int:
     parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
+    parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
@@ -713,7 +865,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -731,6 +883,10 @@ def main() -> int:
             return rc
     if args.verify_widget_coverage:
         rc = verify_widget_coverage(data)
+        if rc:
+            return rc
+    if args.verify_krb_web_visuals:
+        rc = verify_krb_web_visuals(data)
         if rc:
             return rc
     if args.verify_renderer_smokes:

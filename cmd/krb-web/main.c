@@ -25,10 +25,6 @@ static KrbImage g_img;
 static KrySw g_sw;
 static int g_running;
 
-#ifdef KRB_WEB_ONESHOT
-static int g_frames;
-#endif
-
 static void
 frame(void)
 {
@@ -46,10 +42,6 @@ frame(void)
         Module.krbImg.data.set(HEAPU8.subarray(ptr, ptr + w * h * 4));
         ctx.putImageData(Module.krbImg, 0, 0);
     }, g_sw.pixels, g_sw.w, g_sw.h);
-#ifdef KRB_WEB_ONESHOT
-    if(++g_frames >= 1)
-        emscripten_cancel_main_loop();
-#endif
 }
 
 int
@@ -72,6 +64,7 @@ krb_web_start(void)
     }
     if(KrySwInit(&g_sw, NULL, 800, 600) != 0)
         return 1;
+    KrbAutoMount(&g_img);
     {
         const unsigned char *ad = NULL;
         unsigned al = 0;
@@ -82,9 +75,13 @@ krb_web_start(void)
             KrySwSetAtlas(&g_sw, ad, al);
     }
     KryBackendSelect(KrySwBackend(&g_sw));
+#ifdef KRB_WEB_ONESHOT
+    frame();
+#else
     if(!g_running)
         emscripten_set_main_loop(frame, 0, 1);
     g_running = 1;
+#endif
     return 0;
 }
 

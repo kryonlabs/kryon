@@ -1982,6 +1982,12 @@
       "id": "libdraw-desktop",
       "label": "Libdraw desktop backend",
       "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link."
+    },
+    {
+      "command": "make -C . krb-web-matrix-check",
+      "id": "krb-web-canvas",
+      "label": "KRB web canvas per-source capture",
+      "scope": "Builds the KRB web wasm host and byte-compares each matrix source against native kry_sw output when emcc and node are available."
     }
   ],
   "renderers": [
@@ -2061,16 +2067,16 @@
     {
       "approach": "kry_sw wasm blitted to Canvas2D",
       "evidence": [
-        "cmd/krb-web/main.c",
+        "make krb-web-matrix-check",
         "cmd/krb-web/node-capture.js"
       ],
       "id": "krb-web-canvas",
       "label": "KRB web canvas",
-      "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
+      "notes": "Uses the same checked-in .kry matrix sources as the native KRB renderer.",
       "platform": "Emscripten web",
-      "scope": "Node capture path exists; per-source wasm capture matrix not yet implemented.",
-      "status": "partial",
-      "status_class": "part"
+      "scope": "Per-source wasm Canvas2D blit capture byte-compared against native kry_sw output when emcc and node are available.",
+      "status": "source-gated",
+      "status_class": "ok"
     }
   ],
   "runtime_checks": [

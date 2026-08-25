@@ -3,6 +3,15 @@
  * byte-compared against the native kry_sw frame without a browser. */
 var Module = {
     printErr: function(t) { console.error(t); },
+    preRun: [function() {
+        var path = process.argv[2];
+        if (!path) {
+            console.error('node-capture: missing cartridge path');
+            process.exit(2);
+        }
+        var data = require('fs').readFileSync(path);
+        FS.writeFile('/app.krb', new Uint8Array(data));
+    }],
     canvas: {
         getContext: function() {
             return {
@@ -14,20 +23,21 @@ var Module = {
                     if (globalThis.__krb_frame)
                         return;
                     globalThis.__krb_frame = Buffer.from(img.data);
+                    require('fs').writeSync(1, globalThis.__krb_frame);
+                    process.exit(0);
                 }
             };
         }
     },
     onRuntimeInitialized: function() {
-        var FS = Module.FS;
-        if (FS)
-            console.error('FS root: ' + FS.readdir('/').join(','));
+        var rc = Module._krb_web_start();
+        if (rc)
+            process.exit(rc);
     },
     onExit: function() {
         if (!globalThis.__krb_frame) {
             console.error('node-capture: no frame captured');
             process.exit(1);
         }
-        process.stdout.write(globalThis.__krb_frame);
     }
 };
