@@ -3,12 +3,13 @@
 
 #include "kryon_compat.generated.h"
 
-#define APP_HOST_ABI_VERSION 5
+#define APP_HOST_ABI_VERSION 6
 
 typedef struct KryonInputOverride {
     int enabled;
     int mouse_inside;
     int pass_buttons;
+    int pass_keyboard;
     Vector2 mouse_position;
     Vector2 mouse_delta;
 } KryonInputOverride;

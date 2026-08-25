@@ -39,6 +39,12 @@ static int k_input_override_blocks_buttons(void)
             !g_kryon_input_override.pass_buttons);
 }
 
+static int k_input_override_blocks_keyboard(void)
+{
+    return g_kryon_input_override.enabled &&
+           !g_kryon_input_override.pass_keyboard;
+}
+
 void BeginKryonInputOverride(KryonInputOverride input)
 {
     if(g_kryon_input_override_depth < KRYON_INPUT_OVERRIDE_STACK_CAP)
@@ -91,6 +97,8 @@ bool IsKeyPressed(int key)
 {
     KeyPlatformCallback pressed = g_kryon_key_pressed_callback;
 
+    if(k_input_override_blocks_keyboard())
+        return false;
     if(KryonInjectKeyPressed(key))
         return true;
     if(!g_kryon_keyboard_input_enabled)
@@ -104,6 +112,8 @@ bool IsKeyPressed(int key)
 
 bool IsKeyPressedRepeat(int key)
 {
+    if(k_input_override_blocks_keyboard())
+        return false;
     if(KryonInjectKeyPressed(key))
         return true;
     if(!g_kryon_keyboard_input_enabled)
@@ -115,6 +125,8 @@ bool IsKeyDown(int key)
 {
     KeyPlatformCallback down = g_kryon_key_down_callback;
 
+    if(k_input_override_blocks_keyboard())
+        return false;
     if(KryonInjectKeyDown(key))
         return true;
     if(!g_kryon_keyboard_input_enabled)
@@ -128,6 +140,8 @@ bool IsKeyDown(int key)
 
 bool IsKeyReleased(int key)
 {
+    if(k_input_override_blocks_keyboard())
+        return false;
     if(KryonInjectKeyReleased(key))
         return true;
     return KryonBackendRaw_IsKeyReleased(key);
@@ -135,7 +149,11 @@ bool IsKeyReleased(int key)
 
 int GetKeyPressed(void)
 {
-    int injected = KryonInjectKeyPressedCode();
+    int injected;
+
+    if(k_input_override_blocks_keyboard())
+        return 0;
+    injected = KryonInjectKeyPressedCode();
     if(injected != 0)
         return injected;
     return KryonBackendRaw_GetKeyPressed();
@@ -143,7 +161,11 @@ int GetKeyPressed(void)
 
 int GetCharPressed(void)
 {
-    int injected = KryonInjectCharPressed();
+    int injected;
+
+    if(k_input_override_blocks_keyboard())
+        return 0;
+    injected = KryonInjectCharPressed();
     if(injected != 0)
         return injected;
     return KryonBackendRaw_GetCharPressed();
