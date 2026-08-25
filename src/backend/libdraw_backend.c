@@ -345,21 +345,26 @@ kry_libdraw_color_u32(unsigned rgba)
 {
     static struct {
         unsigned rgba;
+        ulong chan;
         P9Image *image;
     } cache[128];
     static int next;
+    ulong chan;
     int i;
 
     if(display == nil)
         return nil;
+    chan = screen != nil ? screen->chan : RGBA32;
     for(i = 0; i < 128; i++)
-        if(cache[i].image != nil && cache[i].rgba == rgba)
+        if(cache[i].image != nil && cache[i].rgba == rgba &&
+           cache[i].chan == chan)
             return cache[i].image;
     i = next++ % 128;
     if(cache[i].image != nil)
         freeimage(cache[i].image);
     cache[i].rgba = rgba;
-    cache[i].image = allocimage(display, kry_p9_rect(0, 0, 1, 1), RGBA32, 1,
+    cache[i].chan = chan;
+    cache[i].image = allocimage(display, kry_p9_rect(0, 0, 1, 1), chan, 1,
                                 rgba);
     return cache[i].image;
 }
@@ -370,26 +375,16 @@ kry_libdraw_color(Color color)
     return kry_libdraw_color_u32(pack(color));
 }
 
-#ifndef KRYON_NATIVE_PLAN9
 extern int kry_write_png_file(const char *path, const unsigned char *rgba,
                               int w, int h);
 extern unsigned char *kry_decode_image_rgba(const unsigned char *data, int len,
                                             int *width, int *height);
-#endif
 
 int
 kry_libdraw_write_png(const char *path, const unsigned char *rgba, int width,
                       int height)
 {
-#ifdef KRYON_NATIVE_PLAN9
-    (void)path;
-    (void)rgba;
-    (void)width;
-    (void)height;
-    return -1;
-#else
     return kry_write_png_file(path, rgba, width, height);
-#endif
 }
 
 static void
@@ -932,7 +927,8 @@ kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len, int x,
 
     if(text == NULL || text[0] == '\0')
         return;
-    if(draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
+    if(g_active_texture_id != 0 &&
+       draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
         return;
     if(g_text_draw_count >= KRY_LIBDRAW_MAX_TEXT_DRAWS)
         return;
