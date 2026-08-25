@@ -214,10 +214,13 @@ func Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool {
 func Modal(title, message, cancelBtn, confirmBtn string) int {
 	return active().Modal(title, message, cancelBtn, confirmBtn)
 }
-func TitleBar(title string, height int32)                  { active().TitleBar(title, height) }
-func BottomNav(props BottomNavProps)                       { active().BottomNav(props) }
-func TopNav(props TopNavProps)                             { active().TopNav(props) }
-func Toolbar(props ToolbarProps)                           { active().Toolbar(props) }
+func TitleBar(title string, height int32)      { active().TitleBar(title, height) }
+func BottomNav(props BottomNavProps)           { active().BottomNav(props) }
+func TopNav(props TopNavProps)                 { active().TopNav(props) }
+func Toolbar(props ToolbarProps) ToolbarResult { return active().Toolbar(props) }
+func MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult {
+	return active().MenuBar(id, bounds, menus, openIndex)
+}
 func CanvasGrid(bounds Rectangle, step int32, color Color) { active().CanvasGrid(bounds, step, color) }
 func SelectableText(value string, x, y, fontSize int32, color Color) {
 	active().SelectableText(value, x, y, fontSize, color)

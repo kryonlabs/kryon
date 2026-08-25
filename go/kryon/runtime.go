@@ -52,6 +52,7 @@ type ThemeStyle int32
 type ThemeSource int32
 type ThemeMode int32
 type PictureFit int32
+type MenuItemKind int32
 
 const (
 	FlagVsyncHint       uint = 0x00000040
@@ -161,6 +162,138 @@ const (
 	PICTURE_FIT_STRETCH = PictureFitStretch
 	PICTURE_FIT_CONTAIN = PictureFitContain
 	PICTURE_FIT_COVER   = PictureFitCover
+)
+
+const (
+	MenuCommand MenuItemKind = iota
+	MenuCheck
+	MenuRadio
+	MenuSeparator
+	MenuSubmenu
+)
+
+const (
+	UIIconTypeNone = iota
+	UIIconTypeActivity
+	UIIconTypeAmen
+	UIIconTypeBackward
+	UIIconTypeC
+	UIIconTypeCalendar
+	UIIconTypeCheck
+	UIIconTypeEdit
+	UIIconTypeEye
+	UIIconTypeEyeOff
+	UIIconTypeFingerprint
+	UIIconTypeForward
+	UIIconTypeGear
+	UIIconTypeGlobe
+	UIIconTypeHome
+	UIIconTypeJupiter
+	UIIconTypeKryon
+	UIIconTypeLeft
+	UIIconTypeLightoff
+	UIIconTypeLighton
+	UIIconTypeLink
+	UIIconTypeManual
+	UIIconTypeMars
+	UIIconTypeMercury
+	UIIconTypeMoon
+	UIIconTypeMusic
+	UIIconTypeMute
+	UIIconTypePause
+	UIIconTypePencil
+	UIIconTypePet
+	UIIconTypePlay
+	UIIconTypePlus
+	UIIconTypeProfile
+	UIIconTypeReturn
+	UIIconTypeRight
+	UIIconTypeRocket
+	UIIconTypeRoutine
+	UIIconTypeSaturn
+	UIIconTypeSave
+	UIIconTypeSound
+	UIIconTypeSound0
+	UIIconTypeSound1
+	UIIconTypeSound2
+	UIIconTypeSound3
+	UIIconTypeStack
+	UIIconTypeStat
+	UIIconTypeSun
+	UIIconTypeText
+	UIIconTypeTimeline
+	UIIconTypeTodos
+	UIIconTypeTrash
+	UIIconTypeVenus
+	UIIconTypeWeekly
+	UIIconTypeWrench
+	UIIconTypeX
+	UIIconTypeLanguageRay
+	UIIconTypeLanguageTcl
+	UIIconTypeLanguageUxn
+	UIIconTypeLanguageWasm
+	UIIconTypeLanguageWasm4
+	UIIconTypePaymentsBtc
+	UIIconTypePaymentsMonero
+	UIIconTypePaymentsStripe
+	UIIconTypePfpBambus
+	UIIconTypePfpBird
+	UIIconTypePfpBowl
+	UIIconTypePfpBush
+	UIIconTypePfpButterfly
+	UIIconTypePfpCactus
+	UIIconTypePfpCoffee
+	UIIconTypePfpDragonfly
+	UIIconTypePfpFireplace
+	UIIconTypePfpFlower1
+	UIIconTypePfpFlower2
+	UIIconTypePfpFox
+	UIIconTypePfpHeart
+	UIIconTypePfpIncense
+	UIIconTypePfpLotus
+	UIIconTypePfpMountain
+	UIIconTypePfpMushroom
+	UIIconTypePfpPalm
+	UIIconTypePfpPerson1
+	UIIconTypePfpRainbow
+	UIIconTypePfpTent
+	UIIconTypePfpTree1
+	UIIconTypePfpTree2
+	UIIconTypePfpTree3
+	UIIconTypePfpTree4
+	UIIconTypePlatformsAppimage
+	UIIconTypePlatformsBrowser
+	UIIconTypePlatformsChromewebstore
+	UIIconTypePlatformsDebian
+	UIIconTypePlatformsDiscord
+	UIIconTypePlatformsDroid
+	UIIconTypePlatformsEsp32
+	UIIconTypePlatformsFdroid
+	UIIconTypePlatformsFedora
+	UIIconTypePlatformsFlatpak
+	UIIconTypePlatformsFreebsd
+	UIIconTypePlatformsGithub
+	UIIconTypePlatformsGlenda
+	UIIconTypePlatformsIos
+	UIIconTypePlatformsItch
+	UIIconTypePlatformsMacos
+	UIIconTypePlatformsMicrocontroller
+	UIIconTypePlatformsPlaystore
+	UIIconTypePlatformsSnap
+	UIIconTypePlatformsSrht
+	UIIconTypePlatformsTelegram
+	UIIconTypePlatformsTux
+	UIIconTypePlatformsWin
+	UIIconTypeProjInbe
+	UIIconTypeProjKryon
+	UIIconTypeProjWao
+	UIIconTypeTilesTile
+	UIIconTypeTilesTile2
+	UIIconTypeTilesTile3
+	UIIconTypeTilesTile4
+	UIIconTypeWorkbookClearFormatting
+	UIIconTypeWorkbookFillColor
+	UIIconTypeWorkbookTextColor
 )
 
 var (
@@ -413,6 +546,40 @@ type ToolbarProps struct {
 	ActionIconPadding int32
 	ActionGap         int32
 	SidePadding       int32
+	Actions           []ToolbarAction
+	ActionCount       int32
+}
+
+type ToolbarAction struct {
+	Icon     Texture2D
+	IconType int32
+	Disabled bool
+}
+
+type ToolbarResult struct {
+	SelectedMenuItem int32
+	ClickedAction    int32
+}
+
+type MenuItem struct {
+	Kind        MenuItemKind
+	Label       string
+	Accelerator string
+	ID          int32
+	Disabled    bool
+	Checked     bool
+	Submenu     []MenuItem
+}
+
+type Menu struct {
+	Bounds Rectangle
+	Label  string
+	Items  []MenuItem
+}
+
+type MenuBarResult struct {
+	ActivatedID int32
+	OpenIndex   int32
 }
 
 type RadioButtonProps struct {
@@ -612,7 +779,8 @@ type Runtime interface {
 	TitleBar(title string, height int32)
 	BottomNav(props BottomNavProps)
 	TopNav(props TopNavProps)
-	Toolbar(props ToolbarProps)
+	Toolbar(props ToolbarProps) ToolbarResult
+	MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult
 	CanvasGrid(bounds Rectangle, step int32, color Color)
 	SelectableText(value string, x, y, fontSize int32, color Color)
 	ShowToast(message string)
@@ -667,6 +835,7 @@ type runtime struct {
 	layout         []layoutFrame
 	ops            []FrameOp
 	lastTableClick tableClick
+	openMenus      map[int32]int32
 	currentThemeID ThemeId
 	themeSource    ThemeSource
 	themeMode      ThemeMode
@@ -744,6 +913,7 @@ func New(config AppConfig) Runtime {
 		mousePressed:   map[int32]bool{},
 		mouseReleased:  map[int32]bool{},
 		keyDown:        map[int32]bool{},
+		openMenus:      map[int32]int32{},
 		currentThemeID: ThemeMono,
 		themeSource:    ThemeSourceSystem,
 		themeMode:      ThemeModeSystem,
@@ -1009,17 +1179,82 @@ func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lin
 		*y += lineH * count
 	}
 }
-func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color)       {}
-func (r *runtime) IconTexture(int32, int32, int32, int32, int32, Color) {}
-func (r *runtime) Picture(PictureProps)                                 {}
+func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color) {}
+func (r *runtime) IconTexture(id, x, y, size int32, iconType int32, tint Color) {
+	r.record(FrameOp{
+		Kind:     FrameOpIcon,
+		Bounds:   Rectangle{X: float32(x), Y: float32(y), Width: float32(size), Height: float32(size)},
+		Color:    tint,
+		ID:       id,
+		IconType: iconType,
+		IconSize: size,
+	})
+}
+func (r *runtime) Picture(PictureProps) {}
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	_, _ = spec, x
 	if y != nil {
 		*y += spec.Font + spec.LineGap
 	}
 }
-func (r *runtime) IconButton(IconButtonProps) bool { return false }
-func (r *runtime) Href(HrefProps) bool             { return false }
+func (r *runtime) IconButton(props IconButtonProps) bool {
+	theme := r.theme()
+	props.Bounds = r.layoutRect(props.Bounds)
+	padding := props.IconPadding
+	if padding <= 0 {
+		padding = 4
+	}
+	size := props.IconSize
+	if size <= 0 {
+		availableW := int32(props.Bounds.Width) - padding*2
+		availableH := int32(props.Bounds.Height) - padding*2
+		size = availableW
+		if availableH < size {
+			size = availableH
+		}
+		if size < 1 {
+			size = 1
+		}
+	}
+	background := props.Background
+	if background.A == 0 {
+		background = theme.button
+	}
+	hoverBackground := props.HoverBackground
+	if hoverBackground.A == 0 {
+		hoverBackground = theme.buttonHover
+	}
+	border := props.Border
+	if border.A == 0 {
+		border = theme.border
+	}
+	iconColor := props.IconColor
+	if iconColor.A == 0 {
+		iconColor = theme.icon
+	}
+	pressed := false
+	if !props.Disabled {
+		pressed = r.consumeTap(props.Bounds)
+	}
+	fill := background
+	if pressed {
+		fill = hoverBackground
+	}
+	if props.Disabled {
+		fill = mixColor(theme.surface, background, 0.45)
+		iconColor = mixColor(theme.icon, theme.surface, 0.55)
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Color: fill, BorderColor: border, ID: props.FocusID, Disabled: props.Disabled, Pressed: pressed})
+	iconX := int32(props.Bounds.X) + (int32(props.Bounds.Width)-size)/2
+	iconY := int32(props.Bounds.Y) + (int32(props.Bounds.Height)-size)/2
+	iconType := props.IconType
+	if iconType == 0 && props.Icon.ID != 0 {
+		iconType = int32(props.Icon.ID)
+	}
+	r.IconTexture(props.FocusID, iconX, iconY, size, iconType, iconColor)
+	return pressed
+}
+func (r *runtime) Href(HrefProps) bool { return false }
 func (r *runtime) Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool {
 	_, _, _, _, _, _, _, _, _ = id, x, y, w, label, min, max, value, rest
 	return false
@@ -1032,10 +1267,162 @@ func (r *runtime) Modal(title, message, cancelBtn, confirmBtn string) int {
 	_, _, _, _ = title, message, cancelBtn, confirmBtn
 	return 0
 }
-func (r *runtime) TitleBar(string, int32)                            {}
-func (r *runtime) BottomNav(BottomNavProps)                          {}
-func (r *runtime) TopNav(TopNavProps)                                {}
-func (r *runtime) Toolbar(ToolbarProps)                              {}
+func (r *runtime) TitleBar(string, int32)   {}
+func (r *runtime) BottomNav(BottomNavProps) {}
+func (r *runtime) TopNav(TopNavProps)       {}
+func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
+	theme := r.theme()
+	result := ToolbarResult{SelectedMenuItem: -1, ClickedAction: -1}
+	if props.Width <= 0 {
+		props.Width = r.GetScreenWidth() - props.X
+	}
+	if props.Height <= 0 {
+		props.Height = 44
+	}
+	sidePadding := props.SidePadding
+	if sidePadding < 0 {
+		sidePadding = 0
+	} else if sidePadding == 0 {
+		sidePadding = 12
+	}
+	iconSize := props.ActionIconSize
+	if iconSize <= 0 {
+		iconSize = 20
+	}
+	iconPadding := props.ActionIconPadding
+	if iconPadding <= 0 {
+		iconPadding = 6
+	}
+	gap := props.ActionGap
+	if gap <= 0 {
+		gap = 6
+	}
+	bounds := Rectangle{X: float32(props.X), Y: float32(props.Y), Width: float32(props.Width), Height: float32(props.Height)}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.6)})
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
+	actionCount := int(props.ActionCount)
+	if actionCount <= 0 || actionCount > len(props.Actions) {
+		actionCount = len(props.Actions)
+	}
+	actionW := iconSize + iconPadding*2
+	x := props.X + props.Width - sidePadding - actionW
+	y := props.Y + (props.Height-actionW)/2
+	for i := 0; i < actionCount; i++ {
+		action := props.Actions[i]
+		if r.IconButton(IconButtonProps{
+			Bounds:          Rectangle{X: float32(x), Y: float32(y), Width: float32(actionW), Height: float32(actionW)},
+			Icon:            action.Icon,
+			IconType:        action.IconType,
+			IconSize:        iconSize,
+			IconPadding:     iconPadding,
+			FocusID:         props.ID*100 + int32(i) + 1,
+			Disabled:        action.Disabled,
+			Background:      theme.surface,
+			HoverBackground: theme.buttonHover,
+			IconColor:       theme.icon,
+			Border:          theme.border,
+		}) {
+			result.ClickedAction = int32(i)
+		}
+		x -= actionW + gap
+	}
+	return result
+}
+func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult {
+	theme := r.theme()
+	result := MenuBarResult{OpenIndex: -1}
+	if bounds.Width <= 0 {
+		bounds.Width = float32(r.GetScreenWidth()) - bounds.X
+	}
+	if bounds.Height <= 0 {
+		bounds.Height = 30
+	}
+	if openIndex != nil && *openIndex >= 0 && int(*openIndex) < len(menus) {
+		r.openMenus[id] = *openIndex
+	}
+	open := int32(-1)
+	if v, ok := r.openMenus[id]; ok {
+		open = v
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: theme.surface, BorderColor: theme.border})
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
+	x := bounds.X + 4
+	font := Text14
+	for i, menu := range menus {
+		w := float32(maxInt(44, runtimeTextWidth(menu.Label, font)+24))
+		item := Rectangle{X: x, Y: bounds.Y + 3, Width: w, Height: bounds.Height - 6}
+		if r.consumeTap(item) {
+			idx := int32(i)
+			if open == idx {
+				idx = -1
+			}
+			open = idx
+			if open < 0 {
+				delete(r.openMenus, id)
+			} else {
+				r.openMenus[id] = open
+			}
+		}
+		if open == int32(i) {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: item, Color: theme.button})
+		}
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: theme.text, FontSize: font})
+		x += w + 2
+	}
+	if open >= 0 && int(open) < len(menus) {
+		result.OpenIndex = open
+		if openIndex != nil {
+			*openIndex = open
+		}
+		menu := menus[open]
+		menuX := bounds.X + 4
+		for i := 0; i < int(open); i++ {
+			menuX += float32(maxInt(44, runtimeTextWidth(menus[i].Label, font)+24)) + 2
+		}
+		itemH := float32(26)
+		menuW := float32(190)
+		for _, item := range menu.Items {
+			if item.Accelerator != "" {
+				if w := float32(runtimeTextWidth(item.Label, font)+runtimeTextWidth(item.Accelerator, font)) + 52; w > menuW {
+					menuW = w
+				}
+			} else if w := float32(runtimeTextWidth(item.Label, font)) + 34; w > menuW {
+				menuW = w
+			}
+		}
+		panel := Rectangle{X: menuX, Y: bounds.Y + bounds.Height, Width: menuW, Height: itemH * float32(len(menu.Items))}
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border})
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: panel.X, Y: panel.Y, Width: panel.Width, Height: 0}, Color: theme.border})
+		for i, item := range menu.Items {
+			row := Rectangle{X: panel.X, Y: panel.Y + float32(i)*itemH, Width: panel.Width, Height: itemH}
+			if item.Kind == MenuSeparator {
+				r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16, Height: 0}, Color: theme.border})
+				continue
+			}
+			if !item.Disabled && r.consumeTap(row) {
+				result.ActivatedID = item.ID
+				delete(r.openMenus, id)
+				open = -1
+			}
+			textColor := theme.text
+			if item.Disabled {
+				textColor = theme.icon
+			}
+			label := item.Label
+			if item.Kind == MenuCheck && item.Checked {
+				label = "✓ " + label
+			}
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, FontSize: font})
+			if item.Accelerator != "" {
+				r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(runtimeTextWidth(item.Accelerator, font)) - 12, Y: row.Y + 6, Width: 80, Height: row.Height}, Text: item.Accelerator, Color: theme.icon, FontSize: font})
+			}
+		}
+	}
+	if open < 0 && openIndex != nil {
+		*openIndex = -1
+	}
+	return result
+}
 func (r *runtime) CanvasGrid(Rectangle, int32, Color)                {}
 func (r *runtime) SelectableText(string, int32, int32, int32, Color) {}
 func (r *runtime) ShowToast(string)                                  {}
@@ -2303,6 +2690,13 @@ func elideText(text string, maxWidth float32, font int32) string {
 		return ""
 	}
 	return string(runes[:maxRunes-1]) + "…"
+}
+
+func runtimeTextWidth(text string, font int32) int {
+	if text == "" {
+		return 0
+	}
+	return int(MeasureTextEx(Font{}, text, float32(font), 1).X)
 }
 
 func clamp32(v, lo, hi int32) int32 {

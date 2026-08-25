@@ -54,6 +54,80 @@ func TestTextFieldCursorNavigationAndUnicodeInput(t *testing.T) {
 	}
 }
 
+func TestIconButtonToolbarAndMenuBar(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 180}).(*runtime)
+	open := int32(-1)
+	menus := []Menu{{
+		Label: "File",
+		Items: []MenuItem{
+			{Kind: MenuCommand, Label: "Save", Accelerator: "Ctrl+S", ID: 101},
+			{Kind: MenuSeparator},
+			{Kind: MenuCommand, Label: "Quit", ID: 102},
+		},
+	}}
+	actions := []ToolbarAction{
+		{IconType: UIIconTypeSave},
+		{IconType: UIIconTypeWorkbookTextColor},
+	}
+
+	rt.QueueTap(18, 16)
+	res := rt.MenuBar(10, Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, menus, &open)
+	if got, want := res.OpenIndex, int32(0); got != want {
+		t.Fatalf("menu open index = %d, want %d", got, want)
+	}
+	if got, want := open, int32(0); got != want {
+		t.Fatalf("open pointer = %d, want %d", got, want)
+	}
+
+	rt.QueueTap(20, 43)
+	res = rt.MenuBar(10, Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, menus, &open)
+	if got, want := res.ActivatedID, int32(101); got != want {
+		t.Fatalf("activated menu id = %d, want %d", got, want)
+	}
+	if got, want := open, int32(-1); got != want {
+		t.Fatalf("open after activation = %d, want %d", got, want)
+	}
+
+	rt.QueueTap(327, 52)
+	toolbar := rt.Toolbar(ToolbarProps{
+		ID:                20,
+		X:                 0,
+		Y:                 34,
+		Width:             360,
+		Height:            42,
+		Actions:           actions,
+		ActionIconSize:    16,
+		ActionIconPadding: 5,
+	})
+	if got, want := toolbar.ClickedAction, int32(0); got != want {
+		t.Fatalf("clicked toolbar action = %d, want %d", got, want)
+	}
+
+	var sawIcon bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpIcon && op.IconType == UIIconTypeSave {
+			sawIcon = true
+			break
+		}
+	}
+	if !sawIcon {
+		t.Fatalf("toolbar did not record save icon op: %#v", rt.FrameOps())
+	}
+}
+
+func TestIconRenderDrawsTintedPixels(t *testing.T) {
+	img := RenderFrame(48, 48, []FrameOp{{
+		Kind:     FrameOpIcon,
+		Bounds:   Rectangle{X: 8, Y: 8, Width: 24, Height: 24},
+		Color:    Color{R: 210, G: 30, B: 40, A: 255},
+		IconType: UIIconTypeWorkbookFillColor,
+		IconSize: 24,
+	}})
+	if got := countPixels(img, color.RGBA{R: 210, G: 30, B: 40, A: 255}); got < 40 {
+		t.Fatalf("rendered tinted icon pixels = %d, want visible icon", got)
+	}
+}
+
 func TestTextFieldCommitAndDelete(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 	text := make([]byte, 16)
@@ -1332,6 +1406,22 @@ func countPixelsNot(img interface {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			if img.RGBAAt(x, y) != bg {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func countPixels(img interface {
+	Bounds() image.Rectangle
+	RGBAAt(int, int) color.RGBA
+}, target color.RGBA) int {
+	count := 0
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			if img.RGBAAt(x, y) == target {
 				count++
 			}
 		}
