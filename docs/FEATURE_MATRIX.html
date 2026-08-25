@@ -42,7 +42,7 @@ li{margin:.25rem 0}
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
 <p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below), and <code>k2b</code> lowers a subset of it:</p>
-<p>`Background Text TextInRect Paragraph TextLines RectangleShape Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
+<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
@@ -55,7 +55,7 @@ li{margin:.25rem 0}
 <tr><td class="">TextInRect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInRect</code></td><td class="ok">✅</td></tr>
 <tr><td class="">Paragraph (rich text + inline icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Paragraph</code></td><td class="no">✗</td></tr>
 <tr><td class="">TextLines</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextLines</code></td><td class="no">✗</td></tr>
-<tr><td class="">RectangleShape</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
+<tr><td class="">Rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
 <tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
 <tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
 <tr><td class="">IconTexture (114 embedded icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>IconTexture</code></td><td class="no">✗</td></tr>

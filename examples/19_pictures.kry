@@ -16,7 +16,7 @@ App :: () #ui {
         Stack picture_card: {
             bounds = {ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210)}
             key = Key("picture-card")
-            RectangleShape(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
+            Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
                        GetThemeSurface(), GetThemeButton())
             Picture((PictureProps){.asset_path = "tiles/tile.png",
                      .bounds = {ScaleUIPx(52), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},

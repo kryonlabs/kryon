@@ -266,7 +266,7 @@
       },
       "widgets": [
         "Background",
-        "RectangleShape",
+        "Rect",
         "Screen",
         "Text"
       ]
@@ -319,7 +319,7 @@
       },
       "widgets": [
         "Background",
-        "RectangleShape",
+        "Rect",
         "Screen",
         "Text"
       ]
@@ -374,7 +374,7 @@
         "Background",
         "Button",
         "Line",
-        "RectangleShape",
+        "Rect",
         "Screen",
         "Text"
       ]
@@ -968,7 +968,7 @@
       "widgets": [
         "Background",
         "Picture",
-        "RectangleShape",
+        "Rect",
         "Screen",
         "Stack",
         "Text"
@@ -1640,7 +1640,7 @@
       },
       "widgets": [
         "Background",
-        "RectangleShape",
+        "Rect",
         "Screen",
         "Text"
       ]
@@ -2099,7 +2099,7 @@
         "Progress",
         "PromptDialog",
         "Radio",
-        "RectangleShape",
+        "Rect",
         "Row",
         "Screen",
         "SelectableText",
@@ -2338,7 +2338,7 @@
     "Progress": 2,
     "PromptDialog": 2,
     "Radio": 2,
-    "RectangleShape": 6,
+    "Rect": 6,
     "Row": 3,
     "Screen": 34,
     "Scroll": 4,
@@ -2761,7 +2761,7 @@
       "status_class": "ok"
     },
     {
-      "id": "RectangleShape",
+      "id": "Rect",
       "semantic_sources": [],
       "source_count": 6,
       "sources": [

@@ -247,7 +247,7 @@ WIDGETS = {
     "Progress",
     "PromptDialog",
     "Radio",
-    "RectangleShape",
+    "Rect",
     "Row",
     "Screen",
     "Scroll",

@@ -1484,8 +1484,8 @@ TextLines(const char **lines, int count, int x, int *y, int font,
     DrawUITextLines(lines, count, x, y, font, line_h, color);
 }
 
-void
-RectangleShape(int x, int y, int w, int h, Color fill, Color border)
+static void
+rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
 {
     NodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
                                 (Rectangle){x, y, w, h}, NULL);
@@ -1505,9 +1505,15 @@ RectangleShape(int x, int y, int w, int h, Color fill, Color border)
 void
 Rect(int x, int y, int w, int h, Color fill, Color border)
 {
-    RectangleShape(x, y, w, h, fill, border);
+    rect_shape_impl(x, y, w, h, fill, border);
 }
 #endif
+
+void
+RectangleShape(int x, int y, int w, int h, Color fill, Color border)
+{
+    rect_shape_impl(x, y, w, h, fill, border);
+}
 
 void
 Line(int x1, int y1, int x2, int y2, Color color)

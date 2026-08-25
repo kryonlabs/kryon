@@ -49,7 +49,7 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 the full whitelist onto its `Runtime` interface (except `Canvas`, below), and
 `k2b` lowers a subset of it:
 
-`Background Text TextInRect Paragraph TextLines RectangleShape Line Bevel IconTexture
+`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
 Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox
 Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav
 TopNav Toolbar`
@@ -80,7 +80,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TextInRect | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
 | TextLines | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
-| RectangleShape | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
+| Rect | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | IconTexture (114 embedded icons) | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
