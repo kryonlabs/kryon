@@ -44,6 +44,10 @@ type FrameOp struct {
 	Row               int32
 	Column            int32
 	Selected          bool
+	SelectionStartRow int32
+	SelectionStartCol int32
+	SelectionEndRow   int32
+	SelectionEndCol   int32
 	IconType          int32
 	IconSize          int32
 }

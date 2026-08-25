@@ -649,24 +649,28 @@ type UITableRow struct {
 }
 
 type TableViewProps struct {
-	Bounds             Rectangle
-	ID                 int32
-	Columns            []string
-	Rows               []UITableRow
-	ColumnWidths       []int32
-	SelectedRow        *int32
-	SelectedColumn     *int32
-	ActivatedRow       *int32
-	ActivatedColumn    *int32
-	RightClickedRow    *int32
-	RightClickedColumn *int32
-	CopyText           *string
-	PastedText         *string
-	PastedRow          *int32
-	PastedColumn       *int32
-	SortColumn         *int32
-	ScrollOffset       *int32
-	RowHeight          int32
+	Bounds               Rectangle
+	ID                   int32
+	Columns              []string
+	Rows                 []UITableRow
+	ColumnWidths         []int32
+	SelectedRow          *int32
+	SelectedColumn       *int32
+	SelectionStartRow    *int32
+	SelectionStartColumn *int32
+	SelectionEndRow      *int32
+	SelectionEndColumn   *int32
+	ActivatedRow         *int32
+	ActivatedColumn      *int32
+	RightClickedRow      *int32
+	RightClickedColumn   *int32
+	CopyText             *string
+	PastedText           *string
+	PastedRow            *int32
+	PastedColumn         *int32
+	SortColumn           *int32
+	ScrollOffset         *int32
+	RowHeight            int32
 }
 
 type NotebookProps struct {
@@ -837,6 +841,7 @@ type runtime struct {
 	layout         []layoutFrame
 	ops            []FrameOp
 	lastTableClick tableClick
+	tableDrag      tableDrag
 	openMenus      map[int32]int32
 	currentThemeID ThemeId
 	themeSource    ThemeSource
@@ -893,6 +898,13 @@ type tableClick struct {
 	row    int32
 	column int32
 	when   time.Time
+}
+
+type tableDrag struct {
+	active   bool
+	id       int32
+	startRow int32
+	startCol int32
 }
 
 type selection struct {
@@ -1529,14 +1541,8 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	for _, click := range r.consumeMouseButtonEvents(MouseButtonLeft, body) {
 		row, col := tableCellAt(props, body, rowH, click.x, click.y)
 		if row >= 0 && col >= 0 {
-			if props.SelectedRow != nil && *props.SelectedRow != row {
-				*props.SelectedRow = row
-				changed = 1
-			}
-			if props.SelectedColumn != nil && *props.SelectedColumn != col {
-				*props.SelectedColumn = col
-				changed = 1
-			}
+			changed |= setTableSelection(props, row, col, row, col)
+			r.tableDrag = tableDrag{active: true, id: props.ID, startRow: row, startCol: col}
 			if props.ID != 0 {
 				r.setFocus(props.ID)
 			}
@@ -1552,6 +1558,15 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 			}
 			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: click.when}
 		}
+	}
+	if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseDown[MouseButtonLeft] {
+		row, col := tableCellAt(props, body, rowH, r.mousePos.X, r.mousePos.Y)
+		if row >= 0 && col >= 0 {
+			changed |= setTableSelection(props, r.tableDrag.startRow, r.tableDrag.startCol, row, col)
+		}
+	}
+	if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseReleased[MouseButtonLeft] {
+		r.tableDrag = tableDrag{}
 	}
 
 	if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonRight, body); clicked {
@@ -2528,6 +2543,35 @@ func tableClipboardText(props TableViewProps, row, col int32) (string, bool) {
 	return "", false
 }
 
+func setTableSelection(props TableViewProps, startRow, startCol, endRow, endCol int32) int32 {
+	changed := int32(0)
+	if props.SelectedRow != nil && *props.SelectedRow != endRow {
+		*props.SelectedRow = endRow
+		changed = 1
+	}
+	if props.SelectedColumn != nil && *props.SelectedColumn != endCol {
+		*props.SelectedColumn = endCol
+		changed = 1
+	}
+	if props.SelectionStartRow != nil && *props.SelectionStartRow != startRow {
+		*props.SelectionStartRow = startRow
+		changed = 1
+	}
+	if props.SelectionStartColumn != nil && *props.SelectionStartColumn != startCol {
+		*props.SelectionStartColumn = startCol
+		changed = 1
+	}
+	if props.SelectionEndRow != nil && *props.SelectionEndRow != endRow {
+		*props.SelectionEndRow = endRow
+		changed = 1
+	}
+	if props.SelectionEndColumn != nil && *props.SelectionEndColumn != endCol {
+		*props.SelectionEndColumn = endCol
+		changed = 1
+	}
+	return changed
+}
+
 func tableCellText(props TableViewProps, row, col int32) string {
 	if row < 0 || int(row) >= len(props.Rows) || col < 0 {
 		return ""
@@ -2537,6 +2581,32 @@ func tableCellText(props TableViewProps, row, col int32) string {
 		return ""
 	}
 	return cells[col]
+}
+
+func tableSelectionRange(props TableViewProps) (int32, int32, int32, int32, bool) {
+	if props.SelectionStartRow == nil || props.SelectionStartColumn == nil ||
+		props.SelectionEndRow == nil || props.SelectionEndColumn == nil {
+		return 0, 0, 0, 0, false
+	}
+	startRow, startCol := *props.SelectionStartRow, *props.SelectionStartColumn
+	endRow, endCol := *props.SelectionEndRow, *props.SelectionEndColumn
+	if startRow < 0 || startCol < 0 || endRow < 0 || endCol < 0 {
+		return 0, 0, 0, 0, false
+	}
+	if startRow > endRow {
+		startRow, endRow = endRow, startRow
+	}
+	if startCol > endCol {
+		startCol, endCol = endCol, startCol
+	}
+	return startRow, startCol, endRow, endCol, true
+}
+
+func tableCellSelected(props TableViewProps, row, col, selectedRow, selectedCol int32) bool {
+	if startRow, startCol, endRow, endCol, ok := tableSelectionRange(props); ok {
+		return row >= startRow && row <= endRow && col >= startCol && col <= endCol
+	}
+	return row == selectedRow && col == selectedCol || selectedRow < 0 && col == selectedCol
 }
 
 func (r *runtime) scrollTableSelectionIntoView(props TableViewProps) {
@@ -2629,8 +2699,8 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 					cellTextColor = tableRow.TextColors[c]
 				}
 			}
-			if row == selectedRow && col == selectedCol || selectedRow < 0 && col == selectedCol {
-				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.selectedHot, Row: row, Column: col, Selected: true})
+			if tableCellSelected(props, row, col, selectedRow, selectedCol) {
+				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.selectedHot, Row: row, Column: col, Selected: true, SelectionStartRow: valueOr32(props.SelectionStartRow, -1), SelectionStartCol: valueOr32(props.SelectionStartColumn, -1), SelectionEndRow: valueOr32(props.SelectionEndRow, -1), SelectionEndCol: valueOr32(props.SelectionEndColumn, -1)})
 				cellTextColor = theme.selectedText
 			}
 			text := ""
@@ -2723,6 +2793,13 @@ func clamp32(v, lo, hi int32) int32 {
 		return hi
 	}
 	return v
+}
+
+func valueOr32(v *int32, fallback int32) int32 {
+	if v == nil {
+		return fallback
+	}
+	return *v
 }
 
 func mixColor(a, b Color, t float32) Color {

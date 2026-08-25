@@ -757,6 +757,47 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	}
 }
 
+func TestTableViewDragSelectsRange(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 220}).(*runtime)
+	selectedRow, selectedCol := int32(-1), int32(-1)
+	startRow, startCol := int32(-1), int32(-1)
+	endRow, endCol := int32(-1), int32(-1)
+	props := TableViewProps{
+		Bounds:               Rectangle{X: 10, Y: 10, Width: 220, Height: 150},
+		ID:                   42,
+		Columns:              []string{"A", "B", "C"},
+		Rows:                 []UITableRow{{Cells: []string{"1", "2", "3"}}, {Cells: []string{"4", "5", "6"}}, {Cells: []string{"7", "8", "9"}}},
+		ColumnWidths:         []int32{60, 60, 60},
+		SelectedRow:          &selectedRow,
+		SelectedColumn:       &selectedCol,
+		SelectionStartRow:    &startRow,
+		SelectionStartColumn: &startCol,
+		SelectionEndRow:      &endRow,
+		SelectionEndColumn:   &endCol,
+		RowHeight:            28,
+	}
+
+	rt.QueueMouseButtonDown(MouseButtonLeft, 42, 58)
+	rt.TableView(props)
+	rt.QueueMouseMove(152, 113)
+	rt.TableView(props)
+	rt.QueueMouseButtonUp(MouseButtonLeft, 152, 113)
+	rt.TableView(props)
+
+	if startRow != 0 || startCol != 0 || endRow != 2 || endCol != 2 {
+		t.Fatalf("drag selection = start %d,%d end %d,%d; want 0,0 to 2,2", startRow, startCol, endRow, endCol)
+	}
+	selected := 0
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpRect && op.Selected && op.Row >= 0 && op.Column >= 0 {
+			selected++
+		}
+	}
+	if selected < 9 {
+		t.Fatalf("selected cell ops = %d, want full 3x3 range", selected)
+	}
+}
+
 func TestTableViewSelectionPaintsCellNotWholeRow(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
 	selectedRow := int32(0)
