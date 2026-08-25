@@ -62,6 +62,7 @@ RENDERERS = [
         "status": "gated",
         "status_class": "ok",
         "evidence": ["make test", "tests/raylib_compat_test.c"],
+        "scope": "Surface API and default native runtime gate; per-source PNG matrix not yet implemented.",
         "notes": "Default native surface backend.",
     },
     {
@@ -72,6 +73,7 @@ RENDERERS = [
         "status": "build-gated",
         "status_class": "part",
         "evidence": ["mk/web.mk", "docs-site Web IDE build"],
+        "scope": "Build coverage; per-source browser screenshot matrix not yet implemented.",
         "notes": "Shipping web path; visual matrix still needs the same per-source screenshot gate as KRB.",
     },
     {
@@ -79,20 +81,22 @@ RENDERERS = [
         "label": "Web canvas wasm",
         "platform": "Emscripten web",
         "approach": "HTML5 Canvas2D surface backend",
-        "status": "conditional gate",
+        "status": "smoke-gated",
         "status_class": "part",
-        "evidence": ["make canvas-test", "tests/canvas_backend_test.sh", "tests/canvas_audio_test.sh"],
-        "notes": "Runs when emcc and node are available.",
+        "evidence": ["make renderer-matrix-check", "tests/canvas_backend_test.sh", "tests/canvas_audio_test.sh"],
+        "scope": "Wasm+Node Canvas2D command-sequence smoke and WebAudio smoke; per-source PNG matrix not yet implemented.",
+        "notes": "Runs when emcc and node are available; scripts skip cleanly when unavailable.",
     },
     {
         "id": "desktop-libdraw",
         "label": "Desktop libdraw",
         "platform": "Unix/X11 with plan9port",
         "approach": "kry_sw to libdraw/devdraw",
-        "status": "conditional gate",
+        "status": "smoke-gated",
         "status_class": "part",
-        "evidence": ["make libdraw-test", "tests/libdraw_backend_test.sh", "tests/libdraw_9c_test.sh"],
-        "notes": "Runs when plan9port and a display or xvfb are available.",
+        "evidence": ["make renderer-matrix-check", "tests/libdraw_backend_test.sh", "tests/libdraw_9c_test.sh"],
+        "scope": "Desktop PNG smoke plus clean plan9port 9c/9l link; per-source PNG matrix not yet implemented.",
+        "notes": "Runs when plan9port and a display or xvfb are available; scripts skip cleanly when unavailable.",
     },
     {
         "id": "krb-native-sw",
@@ -101,7 +105,8 @@ RENDERERS = [
         "approach": "KryBackend + kry_sw",
         "status": "gated",
         "status_class": "ok",
-        "evidence": ["tests/krb_engine_test.sh", "tests/kry_sw_test.c"],
+        "evidence": ["make conformance-matrix-check", "tests/krb_engine_test.sh", "tests/kry_sw_test.c"],
+        "scope": "Per-source RGB visual matrix against SDL readback for every listed .kry source.",
         "notes": "Portable cartridge renderer used by preview and exactness checks.",
     },
     {
@@ -112,7 +117,29 @@ RENDERERS = [
         "status": "partial",
         "status_class": "part",
         "evidence": ["cmd/krb-web/main.c", "cmd/krb-web/node-capture.js"],
+        "scope": "Node capture path exists; per-source wasm capture matrix not yet implemented.",
         "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
+    },
+]
+
+RENDERER_SMOKE_CHECKS = [
+    {
+        "id": "krb-exact",
+        "label": "KRB renderer exactness",
+        "command": ["sh", "tests/krb_exact_test.sh", "."],
+        "scope": "Curated byte-exact kry_sw vs SDL readback PNG comparison.",
+    },
+    {
+        "id": "canvas-wasm",
+        "label": "Canvas wasm backend",
+        "command": ["make", "-C", ".", "canvas-test"],
+        "scope": "Emscripten Canvas2D command-sequence smoke plus WebAudio smoke.",
+    },
+    {
+        "id": "libdraw-desktop",
+        "label": "Libdraw desktop backend",
+        "command": ["make", "-C", ".", "libdraw-test"],
+        "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link.",
     },
 ]
 
@@ -304,6 +331,15 @@ def matrix() -> dict:
             for item in PIPELINES
         ],
         "renderers": RENDERERS,
+        "renderer_checks": [
+            {
+                "id": item["id"],
+                "label": item["label"],
+                "command": " ".join(item["command"]),
+                "scope": item["scope"],
+            }
+            for item in RENDERER_SMOKE_CHECKS
+        ],
         "widget_counts": dict(sorted(widget_counts.items())),
         "cases": cases,
     }
@@ -531,11 +567,38 @@ def verify_krb_visuals(data: dict) -> int:
     return 0
 
 
+def verify_renderer_smokes() -> int:
+    failures = []
+    for check in RENDERER_SMOKE_CHECKS:
+        command = list(check["command"])
+        if command[2] == ".":
+            command[2] = str(ROOT)
+        run = subprocess.run(
+            command,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if run.returncode != 0:
+            failures.append((check["id"], run.stdout.strip().splitlines()[-20:]))
+        else:
+            print(f"renderer smoke ok: {check['id']}")
+    if failures:
+        for check_id, tail in failures:
+            print(f"renderer smoke failed: {check_id}", file=sys.stderr)
+            for line in tail:
+                print(f"  {line}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
     parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
+    parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     args = parser.parse_args()
 
     data = matrix()
@@ -544,7 +607,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not args.verify_pipelines and not args.verify_krb_visuals:
+    elif not args.verify_pipelines and not args.verify_krb_visuals and not args.verify_renderer_smokes:
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -557,7 +620,11 @@ def main() -> int:
         if rc:
             return rc
     if args.verify_krb_visuals:
-        return verify_krb_visuals(data)
+        rc = verify_krb_visuals(data)
+        if rc:
+            return rc
+    if args.verify_renderer_smokes:
+        return verify_renderer_smokes()
     return 0
 
 

@@ -2,6 +2,7 @@
   var summary = document.querySelector("[data-conformance-summary]");
   var pipelineBody = document.querySelector("[data-conformance-pipelines]");
   var rendererBody = document.querySelector("[data-conformance-renderers]");
+  var rendererCheckBody = document.querySelector("[data-conformance-renderer-checks]");
   var sourceBody = document.querySelector("[data-conformance-sources]");
   var search = document.querySelector("[data-conformance-search]");
   var typeFilter = document.querySelector("[data-conformance-type]");
@@ -59,7 +60,17 @@
     rendererBody.innerHTML = data.renderers.map(function(row) {
       return "<tr><td>" + escapeText(row.label) + "</td><td>" + escapeText(row.platform) + "</td><td>" +
         escapeText(row.approach) + "</td>" + cell(row) + "<td>" + evidence(row.evidence) + "</td><td>" +
-        escapeText(row.notes) + "</td></tr>";
+        escapeText(row.scope || "") + "</td><td>" + escapeText(row.notes) + "</td></tr>";
+    }).join("");
+  }
+
+  function renderRendererChecks(data) {
+    if (!rendererCheckBody) {
+      return;
+    }
+    rendererCheckBody.innerHTML = (data.renderer_checks || []).map(function(row) {
+      return "<tr><td>" + escapeText(row.label) + "</td><td><code>" +
+        escapeText(row.command) + "</code></td><td>" + escapeText(row.scope) + "</td></tr>";
     }).join("");
   }
 
@@ -121,6 +132,7 @@
       renderSummary(data);
       renderPipelines(data);
       renderRenderers(data);
+      renderRendererChecks(data);
       renderSources(data);
       renderWidgets(data);
       if (search) {

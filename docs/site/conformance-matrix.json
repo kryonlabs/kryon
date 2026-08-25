@@ -1822,6 +1822,26 @@
       "status_class": "ok"
     }
   ],
+  "renderer_checks": [
+    {
+      "command": "sh tests/krb_exact_test.sh .",
+      "id": "krb-exact",
+      "label": "KRB renderer exactness",
+      "scope": "Curated byte-exact kry_sw vs SDL readback PNG comparison."
+    },
+    {
+      "command": "make -C . canvas-test",
+      "id": "canvas-wasm",
+      "label": "Canvas wasm backend",
+      "scope": "Emscripten Canvas2D command-sequence smoke plus WebAudio smoke."
+    },
+    {
+      "command": "make -C . libdraw-test",
+      "id": "libdraw-desktop",
+      "label": "Libdraw desktop backend",
+      "scope": "plan9port/devdraw PNG smoke plus clean 9c/9l surface link."
+    }
+  ],
   "renderers": [
     {
       "approach": "raylib surface backend",
@@ -1833,6 +1853,7 @@
       "label": "Desktop raylib",
       "notes": "Default native surface backend.",
       "platform": "Linux/FreeBSD desktop",
+      "scope": "Surface API and default native runtime gate; per-source PNG matrix not yet implemented.",
       "status": "gated",
       "status_class": "ok"
     },
@@ -1846,40 +1867,44 @@
       "label": "Web raylib wasm",
       "notes": "Shipping web path; visual matrix still needs the same per-source screenshot gate as KRB.",
       "platform": "Emscripten web",
+      "scope": "Build coverage; per-source browser screenshot matrix not yet implemented.",
       "status": "build-gated",
       "status_class": "part"
     },
     {
       "approach": "HTML5 Canvas2D surface backend",
       "evidence": [
-        "make canvas-test",
+        "make renderer-matrix-check",
         "tests/canvas_backend_test.sh",
         "tests/canvas_audio_test.sh"
       ],
       "id": "web-canvas-wasm",
       "label": "Web canvas wasm",
-      "notes": "Runs when emcc and node are available.",
+      "notes": "Runs when emcc and node are available; scripts skip cleanly when unavailable.",
       "platform": "Emscripten web",
-      "status": "conditional gate",
+      "scope": "Wasm+Node Canvas2D command-sequence smoke and WebAudio smoke; per-source PNG matrix not yet implemented.",
+      "status": "smoke-gated",
       "status_class": "part"
     },
     {
       "approach": "kry_sw to libdraw/devdraw",
       "evidence": [
-        "make libdraw-test",
+        "make renderer-matrix-check",
         "tests/libdraw_backend_test.sh",
         "tests/libdraw_9c_test.sh"
       ],
       "id": "desktop-libdraw",
       "label": "Desktop libdraw",
-      "notes": "Runs when plan9port and a display or xvfb are available.",
+      "notes": "Runs when plan9port and a display or xvfb are available; scripts skip cleanly when unavailable.",
       "platform": "Unix/X11 with plan9port",
-      "status": "conditional gate",
+      "scope": "Desktop PNG smoke plus clean plan9port 9c/9l link; per-source PNG matrix not yet implemented.",
+      "status": "smoke-gated",
       "status_class": "part"
     },
     {
       "approach": "KryBackend + kry_sw",
       "evidence": [
+        "make conformance-matrix-check",
         "tests/krb_engine_test.sh",
         "tests/kry_sw_test.c"
       ],
@@ -1887,6 +1912,7 @@
       "label": "KRB native software",
       "notes": "Portable cartridge renderer used by preview and exactness checks.",
       "platform": "Native host",
+      "scope": "Per-source RGB visual matrix against SDL readback for every listed .kry source.",
       "status": "gated",
       "status_class": "ok"
     },
@@ -1900,6 +1926,7 @@
       "label": "KRB web canvas",
       "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
       "platform": "Emscripten web",
+      "scope": "Node capture path exists; per-source wasm capture matrix not yet implemented.",
       "status": "partial",
       "status_class": "part"
     }
