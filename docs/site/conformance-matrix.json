@@ -3684,6 +3684,12 @@
       "id": "krb-web-canvas",
       "label": "KRB web canvas per-source capture",
       "scope": "Builds the KRB web wasm host and byte-compares each matrix source against native kry_sw output when emcc and node are available."
+    },
+    {
+      "command": "make -C . visual-comparison-matrix-check",
+      "id": "visual-comparison-matrix",
+      "label": "Visual comparison matrix",
+      "scope": "Verifies the website comparison table separates pixel/byte-equivalent renderer pairs from capture-only and build-only renderer gaps."
     }
   ],
   "renderers": [
@@ -3833,12 +3839,109 @@
     "renderer_source_partial_cells": 117,
     "semantic_parity_cases": 5,
     "source_cases": 39,
+    "visual_comparison_exact_rows": 2,
+    "visual_comparison_pending_rows": 4,
+    "visual_comparison_rows": 6,
     "web_canvas_c_visual_cases": 14,
     "web_canvas_c_visual_gaps": 25,
     "widgets_declared": 54,
     "widgets_detected": 54,
     "widgets_missing": 0
   },
+  "visual_comparisons": [
+    {
+      "compared": 39,
+      "evidence": [
+        "make conformance-matrix-check",
+        "tests/krb_exact_test.sh"
+      ],
+      "gap_cases": 10,
+      "gap_label": "alpha-only gaps",
+      "id": "krb-native-vs-sdl",
+      "label": "KRB native software vs SDL host",
+      "mode": "RGB pixel comparison",
+      "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
+      "source_cases": 39,
+      "status": "RGB exact",
+      "status_class": "ok"
+    },
+    {
+      "compared": 39,
+      "evidence": [
+        "make krb-web-matrix-check",
+        "cmd/krb-web/node-capture.js"
+      ],
+      "gap_cases": 0,
+      "gap_label": "gaps",
+      "id": "krb-native-vs-web-canvas",
+      "label": "KRB native software vs KRB web Canvas",
+      "mode": "RGBA byte comparison",
+      "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
+      "source_cases": 39,
+      "status": "byte exact",
+      "status_class": "ok"
+    },
+    {
+      "compared": 16,
+      "evidence": [
+        "make raylib-matrix-check"
+      ],
+      "gap_cases": 23,
+      "gap_label": "generated-C gaps",
+      "id": "raylib-c-vs-krb-native",
+      "label": "Generated C raylib vs KRB native software",
+      "mode": "capture only",
+      "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
+      "source_cases": 39,
+      "status": "pixel diff pending",
+      "status_class": "part"
+    },
+    {
+      "compared": 19,
+      "evidence": [
+        "make libdraw-matrix-check"
+      ],
+      "gap_cases": 20,
+      "gap_label": "generated-C gaps",
+      "id": "libdraw-c-vs-krb-native",
+      "label": "Generated C libdraw vs KRB native software",
+      "mode": "capture only",
+      "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
+      "source_cases": 39,
+      "status": "pixel diff pending",
+      "status_class": "part"
+    },
+    {
+      "compared": 14,
+      "evidence": [
+        "make web-canvas-matrix-check"
+      ],
+      "gap_cases": 25,
+      "gap_label": "generated-C gaps",
+      "id": "web-canvas-c-vs-krb-native",
+      "label": "Generated C web Canvas vs KRB native software",
+      "mode": "capture only",
+      "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
+      "source_cases": 39,
+      "status": "pixel diff pending",
+      "status_class": "part"
+    },
+    {
+      "compared": 0,
+      "evidence": [
+        "make docs-site"
+      ],
+      "gap_cases": 0,
+      "gap_label": "not screenshot-compared",
+      "id": "web-raylib-vs-native-raylib",
+      "label": "Web raylib wasm vs desktop raylib",
+      "mode": "build only",
+      "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
+      "source_cases": 39,
+      "status": "browser screenshot pending",
+      "status_class": "part"
+    }
+  ],
   "widget_counts": {
     "ActionModal": 2,
     "Background": 29,

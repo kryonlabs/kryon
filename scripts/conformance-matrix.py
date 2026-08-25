@@ -166,6 +166,12 @@ RENDERER_SMOKE_CHECKS = [
         "command": ["make", "-C", ".", "krb-web-matrix-check"],
         "scope": "Builds the KRB web wasm host and byte-compares each matrix source against native kry_sw output when emcc and node are available.",
     },
+    {
+        "id": "visual-comparison-matrix",
+        "label": "Visual comparison matrix",
+        "command": ["make", "-C", ".", "visual-comparison-matrix-check"],
+        "scope": "Verifies the website comparison table separates pixel/byte-equivalent renderer pairs from capture-only and build-only renderer gaps.",
+    },
 ]
 
 SOURCE_RENDERERS = [
@@ -342,6 +348,96 @@ WEB_CANVAS_C_VISUAL_GAPS = {
     **GENERATED_C_COMPILE_GAPS,
     **WEB_CANVAS_C_RENDER_GAPS,
 }
+
+
+def visual_comparisons(source_count: int) -> list[dict]:
+    definitions = [
+        {
+            "id": "krb-native-vs-sdl",
+            "label": "KRB native software vs SDL host",
+            "mode": "RGB pixel comparison",
+            "status": "RGB exact",
+            "status_class": "ok",
+            "evidence": ["make conformance-matrix-check", "tests/krb_exact_test.sh"],
+            "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
+            "gap_set": KRB_ALPHA_BYTE_GAPS,
+            "gap_label": "alpha-only gaps",
+            "compared": source_count,
+        },
+        {
+            "id": "krb-native-vs-web-canvas",
+            "label": "KRB native software vs KRB web Canvas",
+            "mode": "RGBA byte comparison",
+            "status": "byte exact",
+            "status_class": "ok",
+            "evidence": ["make krb-web-matrix-check", "cmd/krb-web/node-capture.js"],
+            "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
+            "gap_set": {},
+            "gap_label": "gaps",
+            "compared": source_count,
+        },
+        {
+            "id": "raylib-c-vs-krb-native",
+            "label": "Generated C raylib vs KRB native software",
+            "mode": "capture only",
+            "status": "pixel diff pending",
+            "status_class": "part",
+            "evidence": ["make raylib-matrix-check"],
+            "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
+            "gap_set": RAYLIB_C_VISUAL_GAPS,
+            "gap_label": "generated-C gaps",
+            "compared": source_count - len(RAYLIB_C_VISUAL_GAPS),
+        },
+        {
+            "id": "libdraw-c-vs-krb-native",
+            "label": "Generated C libdraw vs KRB native software",
+            "mode": "capture only",
+            "status": "pixel diff pending",
+            "status_class": "part",
+            "evidence": ["make libdraw-matrix-check"],
+            "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
+            "gap_set": LIBDRAW_C_VISUAL_GAPS,
+            "gap_label": "generated-C gaps",
+            "compared": source_count - len(LIBDRAW_C_VISUAL_GAPS),
+        },
+        {
+            "id": "web-canvas-c-vs-krb-native",
+            "label": "Generated C web Canvas vs KRB native software",
+            "mode": "capture only",
+            "status": "pixel diff pending",
+            "status_class": "part",
+            "evidence": ["make web-canvas-matrix-check"],
+            "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
+            "gap_set": WEB_CANVAS_C_VISUAL_GAPS,
+            "gap_label": "generated-C gaps",
+            "compared": source_count - len(WEB_CANVAS_C_VISUAL_GAPS),
+        },
+        {
+            "id": "web-raylib-vs-native-raylib",
+            "label": "Web raylib wasm vs desktop raylib",
+            "mode": "build only",
+            "status": "browser screenshot pending",
+            "status_class": "part",
+            "evidence": ["make docs-site"],
+            "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
+            "gap_set": {},
+            "gap_label": "not screenshot-compared",
+            "compared": 0,
+        },
+    ]
+    rows = []
+    for row in definitions:
+        gap_set = row.pop("gap_set")
+        rows.append(
+            {
+                **row,
+                "source_cases": source_count,
+                "gap_cases": len(gap_set),
+                "gap_label": row["gap_label"],
+            }
+        )
+    return rows
+
 
 WIDGETS = {
     "ActionModal",
@@ -562,6 +658,7 @@ def source_cases() -> list[dict]:
 
 def matrix() -> dict:
     cases = source_cases()
+    comparisons = visual_comparisons(len(cases))
     widget_cases: dict[str, list[str]] = {widget: [] for widget in sorted(WIDGETS)}
     semantic_count = 0
     for case in cases:
@@ -606,6 +703,9 @@ def matrix() -> dict:
             "web_canvas_c_visual_gaps": len(WEB_CANVAS_C_VISUAL_GAPS),
             "libdraw_c_visual_cases": len(cases) - len(LIBDRAW_C_VISUAL_GAPS),
             "libdraw_c_visual_gaps": len(LIBDRAW_C_VISUAL_GAPS),
+            "visual_comparison_rows": len(comparisons),
+            "visual_comparison_exact_rows": sum(1 for row in comparisons if row["status_class"] == "ok"),
+            "visual_comparison_pending_rows": sum(1 for row in comparisons if row["status_class"] == "part"),
             "renderer_source_cells": len(renderer_cells),
             "renderer_source_ok_cells": sum(1 for cell in renderer_cells if cell["status_class"] == "ok"),
             "renderer_source_partial_cells": sum(1 for cell in renderer_cells if cell["status_class"] == "part"),
@@ -632,6 +732,7 @@ def matrix() -> dict:
             }
             for item in SOURCE_RENDERERS
         ],
+        "visual_comparisons": comparisons,
         "renderer_checks": [
             {
                 "id": item["id"],
@@ -1671,6 +1772,66 @@ def verify_downstream() -> int:
     return run_checks(DOWNSTREAM_CHECKS, "downstream")
 
 
+def verify_visual_comparison_matrix(data: dict) -> int:
+    rows = data.get("visual_comparisons", [])
+    failures = []
+    required = {
+        "krb-native-vs-sdl",
+        "krb-native-vs-web-canvas",
+        "raylib-c-vs-krb-native",
+        "libdraw-c-vs-krb-native",
+        "web-canvas-c-vs-krb-native",
+        "web-raylib-vs-native-raylib",
+    }
+    ids = {row.get("id") for row in rows}
+    missing = sorted(required - ids)
+    extra = sorted(ids - required)
+    if missing:
+        failures.append(("ids", "missing visual comparison rows: " + ", ".join(missing)))
+    if extra:
+        failures.append(("ids", "unexpected visual comparison rows: " + ", ".join(extra)))
+
+    source_count = data["summary"]["source_cases"]
+    for row in rows:
+        row_id = row.get("id", "<unknown>")
+        compared = row.get("compared", -1)
+        total = row.get("source_cases", -1)
+        status_class = row.get("status_class")
+        status = row.get("status", "")
+        mode = row.get("mode", "")
+        evidence = row.get("evidence", [])
+
+        if total != source_count:
+            failures.append((row_id, f"source_cases={total}, want {source_count}"))
+        if compared < 0 or compared > source_count:
+            failures.append((row_id, f"compared={compared}, outside 0..{source_count}"))
+        if status_class == "ok" and compared != source_count:
+            failures.append((row_id, "exact comparison rows must cover every source"))
+        if status_class == "ok" and ("pending" in status or "pending" in mode):
+            failures.append((row_id, "pending comparison cannot be marked ok"))
+        if status_class != "ok" and ("exact" in status or "exact" in mode):
+            failures.append((row_id, "exact comparison must be marked ok"))
+        if not evidence:
+            failures.append((row_id, "missing evidence"))
+
+    exact = sum(1 for row in rows if row.get("status_class") == "ok")
+    pending = sum(1 for row in rows if row.get("status_class") == "part")
+    summary = data["summary"]
+    if summary.get("visual_comparison_rows") != len(rows):
+        failures.append(("summary", "visual_comparison_rows does not match table length"))
+    if summary.get("visual_comparison_exact_rows") != exact:
+        failures.append(("summary", "visual_comparison_exact_rows does not match table"))
+    if summary.get("visual_comparison_pending_rows") != pending:
+        failures.append(("summary", "visual_comparison_pending_rows does not match table"))
+
+    if failures:
+        for row_id, detail in failures:
+            print(f"visual comparison matrix failed for {row_id}: {detail}", file=sys.stderr)
+        return 1
+    print(f"visual comparison matrix ok: {exact} exact rows, {pending} pending rows")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
@@ -1684,6 +1845,7 @@ def main() -> int:
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
+    parser.add_argument("--verify-visual-comparison-matrix", action="store_true", help="verify visual comparison matrix status accounting")
     parser.add_argument("--cc", default="cc", help=argparse.SUPPRESS)
     parser.add_argument("--k2c", default=str(ROOT / "build" / "linux-x86_64" / "bin" / "k2c"), help=argparse.SUPPRESS)
     parser.add_argument("--cppflags", default="", help=argparse.SUPPRESS)
@@ -1698,7 +1860,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_web_canvas_c_visuals, args.verify_raylib_c_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_web_canvas_c_visuals, args.verify_raylib_c_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream, args.verify_visual_comparison_matrix)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -1743,7 +1905,13 @@ def main() -> int:
         if rc:
             return rc
     if args.verify_downstream:
-        return verify_downstream()
+        rc = verify_downstream()
+        if rc:
+            return rc
+    if args.verify_visual_comparison_matrix:
+        rc = verify_visual_comparison_matrix(data)
+        if rc:
+            return rc
     return 0
 
 

@@ -3,6 +3,7 @@
   var pipelineBody = document.querySelector("[data-conformance-pipelines]");
   var rendererBody = document.querySelector("[data-conformance-renderers]");
   var rendererCheckBody = document.querySelector("[data-conformance-renderer-checks]");
+  var visualComparisonBody = document.querySelector("[data-conformance-visual-comparisons]");
   var runtimeCheckBody = document.querySelector("[data-conformance-runtime-checks]");
   var downstreamCheckBody = document.querySelector("[data-conformance-downstream-checks]");
   var sourceHead = document.querySelector("[data-conformance-source-head]");
@@ -53,6 +54,8 @@
       ["Canvas C Gaps", s.web_canvas_c_visual_gaps],
       ["Libdraw C Capture", s.libdraw_c_visual_cases + " / " + s.source_cases],
       ["Libdraw C Gaps", s.libdraw_c_visual_gaps],
+      ["Exact Comparisons", s.visual_comparison_exact_rows + " / " + s.visual_comparison_rows],
+      ["Pending Comparisons", s.visual_comparison_pending_rows],
       ["Renderer Cells", s.renderer_source_cells],
       ["Renderer OK Cells", s.renderer_source_ok_cells],
       ["Renderer Partial Cells", s.renderer_source_partial_cells],
@@ -81,6 +84,19 @@
 
   function renderRendererChecks(data) {
     renderCheckRows(rendererCheckBody, data.renderer_checks);
+  }
+
+  function renderVisualComparisons(data) {
+    if (!visualComparisonBody) {
+      return;
+    }
+    visualComparisonBody.innerHTML = (data.visual_comparisons || []).map(function(row) {
+      return "<tr><td>" + escapeText(row.label) + "</td><td>" + escapeText(row.mode) +
+        "</td>" + cell(row) + "<td>" + escapeText(row.compared) + " / " +
+        escapeText(row.source_cases) + "</td><td>" + escapeText(row.gap_cases) +
+        " " + escapeText(row.gap_label) + "</td><td>" + evidence(row.evidence) +
+        "</td><td>" + escapeText(row.scope) + "</td></tr>";
+    }).join("");
   }
 
   function renderCheckRows(body, rows) {
@@ -182,6 +198,7 @@
       renderPipelines(data);
       renderRenderers(data);
       renderRendererChecks(data);
+      renderVisualComparisons(data);
       renderCheckRows(runtimeCheckBody, data.runtime_checks);
       renderCheckRows(downstreamCheckBody, data.downstream_checks);
       renderSourceHead(data);
