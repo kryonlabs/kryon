@@ -1485,7 +1485,7 @@ TextLines(const char **lines, int count, int x, int *y, int font,
 }
 
 void
-Rect(int x, int y, int w, int h, Color fill, Color border)
+RectangleShape(int x, int y, int w, int h, Color fill, Color border)
 {
     NodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE,
                                 (Rectangle){x, y, w, h}, NULL);
@@ -1500,6 +1500,14 @@ Rect(int x, int y, int w, int h, Color fill, Color border)
     if(border.a != 0)
         DrawRectangleLinesEx((Rectangle){x, y, w, h}, 1, border);
 }
+
+#ifndef KRYON_BACKEND_LIBDRAW
+void
+Rect(int x, int y, int w, int h, Color fill, Color border)
+{
+    RectangleShape(x, y, w, h, fill, border);
+}
+#endif
 
 void
 Line(int x1, int y1, int x2, int y2, Color color)

@@ -199,7 +199,10 @@ void TextInRect(const char *text, Rectangle rect, int font_size,
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
+void RectangleShape(int x, int y, int w, int h, Color fill, Color border);
+#ifndef KRYON_BACKEND_LIBDRAW
 void Rect(int x, int y, int w, int h, Color fill, Color border);
+#endif
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
 void IconTexture(int id, int x, int y, int size, Texture2D icon,
