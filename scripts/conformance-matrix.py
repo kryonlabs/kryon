@@ -968,6 +968,47 @@ def png_has_content(path: Path) -> bool:
     return False
 
 
+def write_raylib_window_capture_script(path: Path) -> None:
+    path.write_text(
+        """#!/bin/sh
+set -eu
+out=$1
+shift
+"$@" &
+pid=$!
+cleanup() {
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+win=""
+i=0
+while [ "$i" -lt 50 ]; do
+    for id in $(xdotool search --onlyvisible --name "Kryon generated C capture" 2>/dev/null || true); do
+        geom=$(xdotool getwindowgeometry --shell "$id" 2>/dev/null || true)
+        w=$(printf '%s\n' "$geom" | awk -F= '/^WIDTH/{print $2}')
+        h=$(printf '%s\n' "$geom" | awk -F= '/^HEIGHT/{print $2}')
+        if [ -n "$w" ] && [ -n "$h" ] && [ "$w" -gt 0 ] && [ "$h" -gt 0 ]; then
+            win=$id
+            break
+        fi
+    done
+    [ -n "$win" ] && break
+    sleep 0.1
+    i=$((i + 1))
+done
+if [ -z "$win" ]; then
+    echo "raylib-window-capture: no generated-C window found" >&2
+    exit 1
+fi
+import -window "$win" "$out"
+test -s "$out"
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
 def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
     xvfb = shutil.which("xvfb-run")
     if xvfb is None and not os.environ.get("DISPLAY"):
@@ -989,13 +1030,18 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
 
     failures = []
     observed_gaps = set()
+    window_capture = shutil.which("import") is not None and shutil.which("xdotool") is not None
     with tempfile.TemporaryDirectory(prefix="kryon-raylib-c-matrix.") as tmp:
         work = Path(tmp)
+        capture_script = work / "raylib-window-capture.sh"
+        if window_capture:
+            write_raylib_window_capture_script(capture_script)
         for case in data["cases"]:
             source = ROOT / case["path"]
             out_dir = work / "gen" / case["id"]
             bin_path = work / "bin" / case["id"]
             png_path = work / "png" / f"{case['id']}.png"
+            internal_png_path = work / "png" / f"{case['id']}.internal.png"
             out_dir.mkdir(parents=True, exist_ok=True)
             bin_path.parent.mkdir(parents=True, exist_ok=True)
             png_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1047,10 +1093,11 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
 
             env = os.environ.copy()
             env["KRYON_SHOT_ARM"] = "1"
+            app_png_path = internal_png_path if window_capture else png_path
             capture = [
                 str(bin_path),
                 "--png",
-                str(png_path),
+                str(app_png_path),
                 "--w",
                 "480",
                 "--h",
@@ -1058,7 +1105,15 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 "--source",
                 case["path"],
             ]
-            if xvfb is not None:
+            if window_capture:
+                capture += ["--hold-before-capture-ms", "8000"]
+                if xvfb is not None:
+                    run_cmd = [xvfb, "-a", "sh", str(capture_script), str(png_path)] + capture
+                    run_env = os.environ.copy()
+                else:
+                    run_cmd = ["sh", str(capture_script), str(png_path)] + capture
+                    run_env = env
+            elif xvfb is not None:
                 run_cmd = [xvfb, "-a", "env", "KRYON_SHOT_ARM=1"] + capture
                 run_env = os.environ.copy()
             else:

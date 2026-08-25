@@ -42,7 +42,7 @@ usage(void)
 {
     fprintf(stderr,
             "usage: generated-c-capture [--png out.png] [--w W] [--h H] "
-            "[--source path] [--frames N]\n");
+            "[--source path] [--frames N] [--hold-before-capture-ms N]\n");
 }
 
 int
@@ -53,6 +53,7 @@ main(int argc, char **argv)
     int w = 480;
     int h = 640;
     int frames = 2;
+    int hold_before_capture_ms = 0;
     int i;
     AppHost *host;
     Image shot;
@@ -68,6 +69,8 @@ main(int argc, char **argv)
             source_path = argv[++i];
         else if(strcmp(argv[i], "--frames") == 0 && i + 1 < argc)
             frames = atoi(argv[++i]);
+        else if(strcmp(argv[i], "--hold-before-capture-ms") == 0 && i + 1 < argc)
+            hold_before_capture_ms = atoi(argv[++i]);
         else {
             usage();
             return 2;
@@ -119,6 +122,8 @@ main(int argc, char **argv)
         EndFrame();
         EndDrawing();
     }
+    if(hold_before_capture_ms > 0)
+        WaitTime((double)hold_before_capture_ms / 1000.0);
 
     shot = LoadImageFromScreen();
     if(shot.data == NULL) {
