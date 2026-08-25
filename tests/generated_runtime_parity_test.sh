@@ -26,6 +26,7 @@ tests/parity/focus.kry
 tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
 tests/parity/basic_controls.kry
+tests/parity/list_box.kry
 tests/parity/table_view.kry
 "
 fixture_args=
@@ -111,6 +112,8 @@ type snapshot struct {
 	ControlsToggle     int32  `json:"controls_toggle"`
 	ControlsCheckbox   int32  `json:"controls_checkbox"`
 	ControlsSelected   int32  `json:"controls_selected"`
+	ListBoxSelected    int32  `json:"list_box_selected"`
+	ListBoxScroll      int32  `json:"list_box_scroll"`
 	TableSelectedRow   int32  `json:"table_selected_row"`
 	TableSelectedCol   int32  `json:"table_selected_column"`
 	TableActivatedRow  int32  `json:"table_activated_row"`
@@ -165,6 +168,14 @@ func drawControls() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		BasicControls_ControlsFrame(BasicControlsStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawListBox() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ListBox_ListBoxFrame(ListBoxStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -271,6 +282,7 @@ func main() {
 	buttons := ButtonsLayoutStateValue
 	longText := LongTextStateValue
 	controls := BasicControlsStateValue
+	listBox := ListBoxStateValue
 	table := TableViewStateValue
 
 	drawForm()
@@ -418,6 +430,19 @@ func main() {
 			controls.SliderValue, controls.ToggleValue, controls.CheckboxValue, controls.Selected))
 	}
 
+	drawListBox()
+	requireFrameOps("list_box", map[kryon.FrameOpKind]int{
+		kryon.FrameOpRect: 1,
+		kryon.FrameOpText: 4,
+	})
+	requireRenderedFrame("list_box", 1000)
+	driver.QueueTap(36, 78)
+	drawListBox()
+	if listBox.ListSelected != 2 || listBox.ListScroll != 0 {
+		panic(fmt.Sprintf("list_box: got selected=%d scroll=%d, want 2,0",
+			listBox.ListSelected, listBox.ListScroll))
+	}
+
 	drawTableView()
 	requireFrameOps("table_view", map[kryon.FrameOpKind]int{
 		kryon.FrameOpTable: 1,
@@ -468,6 +493,8 @@ func main() {
 		ControlsToggle:     controls.ToggleValue,
 		ControlsCheckbox:   controls.CheckboxValue,
 		ControlsSelected:   controls.Selected,
+		ListBoxSelected:    listBox.ListSelected,
+		ListBoxScroll:      listBox.ListScroll,
 		TableSelectedRow:   table.SelectedRow,
 		TableSelectedCol:   table.SelectedColumn,
 		TableActivatedRow:  tableActivatedRow,
@@ -496,6 +523,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/buttons_layout.c"
 #include "$work/c/tests/parity/long_text.c"
 #include "$work/c/tests/parity/basic_controls.c"
+#include "$work/c/tests/parity/list_box.c"
 #include "$work/c/tests/parity/table_view.c"
 
 static void drain_events(void)
@@ -542,6 +570,11 @@ static void draw_long_text(void)
 static void draw_controls(void)
 {
     draw_ui(controls_frame);
+}
+
+static void draw_list_box(void)
+{
+    draw_ui(list_box_frame);
 }
 
 static void draw_table_view(void)
@@ -727,6 +760,19 @@ int main(void)
         return 1;
     }
 
+    draw_list_box();
+    KryonInjectTap(36, 78);
+    KryonInjectPump();
+    draw_list_box();
+    KryonInjectPump();
+    draw_list_box();
+    if(list_selected != 2 || list_scroll != 0) {
+        fprintf(stderr,
+                "list_box: got selected=%d scroll=%d, want 2,0\n",
+                list_selected, list_scroll);
+        return 1;
+    }
+
     draw_table_view();
     KryonInjectTap(116, 62);
     KryonInjectPump();
@@ -755,13 +801,14 @@ int main(void)
         return 1;
     }
 
-    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
+    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"list_box_selected\":%d,\"list_box_scroll\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
         notes, notes_cursor, form_action, title, title_cursor, body,
         body_cursor, one, two, three, focus_after_focus, buttons_action,
         (int)strlen(long_first), long_first_cursor, checksum(long_first),
         (int)strlen(long_second), long_second_cursor, checksum(long_second),
         slider_value, toggle_value, checkbox_value, selected,
+        list_selected, list_scroll,
         selected_row, selected_column, table_activated_row,
         table_activated_column, sort_column,
         GetUIClipboardTextValue());
@@ -779,4 +826,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/table_view.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/table_view.kry"]}'

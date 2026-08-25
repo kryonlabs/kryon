@@ -898,6 +898,8 @@ props_field_at(const char *type, int index)
                            "LineGap", "FocusID", "Placeholder", "Syntax",
                            "Style", "Filter", "FilterUserData",
                            "ContentVersion", "ReadOnly", "Wrap"}},
+        {"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
+                          "SelectedIndex", "ScrollOffset", "RowHeight"}},
         {"FrameBox", {"Bounds", "PadX", "PadY", "Gap", "CursorX",
                       "CursorY"}},
         {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",

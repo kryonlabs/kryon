@@ -766,6 +766,7 @@ DrawUIImageBox(ImageBoxProps image)
 int
 DrawUIListBox(ListBoxProps list)
 {
+    int paint = IsWindowReady();
     int font = GetUIFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = list.row_height > 0 ? ScaleUIPx(list.row_height) : ScaleUIPx(30);
@@ -781,29 +782,34 @@ DrawUIListBox(ListBoxProps list)
     scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : 0;
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
-    ui_draw_panel(list.bounds);
-    BeginUIClip((int)list.bounds.x, (int)list.bounds.y, (int)list.bounds.width, (int)list.bounds.height);
+    if(paint) {
+        ui_draw_panel(list.bounds);
+        BeginUIClip((int)list.bounds.x, (int)list.bounds.y,
+                    (int)list.bounds.width, (int)list.bounds.height);
+    }
     for(int i = 0; i <= visible && first + i < list.item_count; i++) {
         int index = first + i;
         Rectangle row = {list.bounds.x, list.bounds.y + (float)(i * row_h - y_offset),
                          list.bounds.width, (float)row_h};
         int hot = ui_hot(row);
-        if(index == selected)
+        if(paint && index == selected)
             DrawRectangleRec(row, c_button);
-        else if(hot)
+        else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
             MarkUIClickable();
-        DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
-                   (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, c_text);
+        if(paint)
+            DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
+                       (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             UIConsumeRelease();
             *list.selected_index = index;
             changed = 1;
         }
     }
-    EndUIClip();
-    if(list.scroll_offset != NULL && max_scroll > 0)
+    if(paint)
+        EndUIClip();
+    if(paint && list.scroll_offset != NULL && max_scroll > 0)
         DrawUIScrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
                         list.item_count * row_h, list.scroll_offset, max_scroll);

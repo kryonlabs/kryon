@@ -1,0 +1,18 @@
+#import "kryon.h"
+
+app "Generated List Box Parity" {
+    size 360 220
+    fps 60
+}
+
+state {
+    list_selected: int = -1
+    list_scroll: int = 0
+}
+
+list_box_frame :: () #ui {
+    Screen root: {
+        items: [4] const char * = {"Alpha","Beta","Gamma","Delta"}
+        ListBox((ListBoxProps){.bounds = {20,20,180,96}, .id = 801, .items = items, .item_count = 4, .selected_index = &list_selected, .scroll_offset = &list_scroll, .row_height = 24})
+    }
+}

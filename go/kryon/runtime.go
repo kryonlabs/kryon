@@ -627,6 +627,7 @@ type ListBoxProps struct {
 	Bounds        Rectangle
 	ID            int32
 	Items         []string
+	ItemCount     int32
 	SelectedIndex *int32
 	ScrollOffset  *int32
 	RowHeight     int32
@@ -1597,8 +1598,29 @@ func (r *runtime) LabelFrame(LabelFrameProps)         {}
 func (r *runtime) Notebook(NotebookProps) int32       { return 0 }
 func (r *runtime) PanedView(PanedViewProps) int32     { return 0 }
 func (r *runtime) Collapsible(CollapsibleProps) int32 { return 0 }
-func (r *runtime) ListBox(ListBoxProps) int32         { return 0 }
 func (r *runtime) SourceView(SourceViewProps) int32   { return 0 }
+func (r *runtime) ListBox(props ListBoxProps) int32 {
+	props = normalizeListBoxProps(props)
+	props.Bounds = r.layoutRect(props.Bounds)
+	rowH := props.RowHeight
+	if rowH <= 0 {
+		rowH = 30
+	}
+	maxScroll := max32(0, int32(len(props.Items))*rowH-int32(props.Bounds.Height))
+	if props.ScrollOffset != nil {
+		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+	}
+	changed := int32(0)
+	if pointInRect(r.mousePos.X, r.mousePos.Y, props.Bounds) && props.ScrollOffset != nil && r.mouseWheel != 0 {
+		*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
+		changed = 1
+	}
+	if props.ID != 0 {
+		r.registerField(props.ID)
+	}
+	changed |= r.recordListBoxOps(props, rowH)
+	return changed
+}
 func (r *runtime) TableView(props TableViewProps) int32 {
 	props = normalizeTableViewProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -2566,6 +2588,47 @@ func cellH(grid Grid) float32 {
 	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
 }
 
+func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
+	theme := r.theme()
+	if rowH <= 0 {
+		rowH = 30
+	}
+	changed := int32(0)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface, BorderColor: theme.border, ID: props.ID})
+	scroll := int32(0)
+	if props.ScrollOffset != nil {
+		scroll = *props.ScrollOffset
+	}
+	first := scroll / rowH
+	yOffset := scroll % rowH
+	visible := int32(props.Bounds.Height) / rowH
+	font := Text16
+	for i := int32(0); i <= visible && first+i < int32(len(props.Items)); i++ {
+		index := first + i
+		row := Rectangle{
+			X:      props.Bounds.X,
+			Y:      props.Bounds.Y + float32(i*rowH-yOffset),
+			Width:  props.Bounds.Width,
+			Height: float32(rowH),
+		}
+		if props.SelectedIndex != nil && r.consumeTap(row) {
+			if *props.SelectedIndex != index {
+				*props.SelectedIndex = index
+				changed = 1
+			}
+			if props.ID != 0 {
+				r.setFocus(props.ID)
+			}
+		}
+		selected := props.SelectedIndex != nil && *props.SelectedIndex == index
+		if selected {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.button, ID: props.ID, Row: index, Selected: true})
+		}
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: theme.text, FontSize: font, ID: props.ID, Row: index, Selected: selected})
+	}
+	return changed
+}
+
 func normalizeTableViewProps(props TableViewProps) TableViewProps {
 	if props.ColumnCount > 0 && int(props.ColumnCount) < len(props.Columns) {
 		props.Columns = props.Columns[:props.ColumnCount]
@@ -2580,6 +2643,13 @@ func normalizeTableViewProps(props TableViewProps) TableViewProps {
 		if props.Rows[i].CellCount > 0 && int(props.Rows[i].CellCount) < len(props.Rows[i].Cells) {
 			props.Rows[i].Cells = props.Rows[i].Cells[:props.Rows[i].CellCount]
 		}
+	}
+	return props
+}
+
+func normalizeListBoxProps(props ListBoxProps) ListBoxProps {
+	if props.ItemCount > 0 && int(props.ItemCount) < len(props.Items) {
+		props.Items = props.Items[:props.ItemCount]
 	}
 	return props
 }
