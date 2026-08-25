@@ -23,6 +23,11 @@ typedef struct KryLibdrawQueuedText {
     char *text;
     int x;
     int y;
+    int clip_active;
+    int clip_x;
+    int clip_y;
+    int clip_w;
+    int clip_h;
     Color color;
 } KryLibdrawQueuedText;
 
@@ -142,10 +147,14 @@ clear_text_draws(void)
 static void
 draw_queued_text(void)
 {
+    P9Rectangle old_clipr;
+    int old_repl;
     int i;
 
     if(display == nil || screen == nil)
         goto done;
+    old_clipr = screen->clipr;
+    old_repl = screen->repl;
     for(i = 0; i < g_text_draw_count; i++) {
         KryLibdrawQueuedText *q = &g_text_draws[i];
         KryLibdrawFont *registered = kry_libdraw_font(q->font_id);
@@ -154,12 +163,64 @@ draw_queued_text(void)
 
         if(p9font == nil || color == nil || q->text == NULL)
             continue;
+        if(q->clip_active) {
+            P9Rectangle clip = kry_p9_rect(q->clip_x + screen->r.min.x,
+                                           q->clip_y + screen->r.min.y,
+                                           q->clip_w, q->clip_h);
+            replclipr(screen, 0, clip);
+        } else if(!eqrect(screen->clipr, old_clipr) ||
+                  screen->repl != old_repl) {
+            replclipr(screen, old_repl, old_clipr);
+        }
         string(screen, addpt(screen->r.min, kry_p9_point(q->x, q->y)),
                color, ZP, p9font, q->text);
     }
+    if(!eqrect(screen->clipr, old_clipr) || screen->repl != old_repl)
+        replclipr(screen, old_repl, old_clipr);
 
 done:
     clear_text_draws();
+}
+
+static int
+active_clip_rect(int *x, int *y, int *w, int *h)
+{
+    KrySw *sw = g_active_sw;
+    int cx;
+    int cy;
+    int cw;
+    int ch;
+
+    if(sw == NULL || sw->clip_n <= 0)
+        return 0;
+    cx = 0;
+    cy = 0;
+    cw = sw->w;
+    ch = sw->h;
+    for(int i = 0; i < sw->clip_n; i++) {
+        int nx = cx > sw->clip_x[i] ? cx : sw->clip_x[i];
+        int ny = cy > sw->clip_y[i] ? cy : sw->clip_y[i];
+        int nx2 = cx + cw < sw->clip_x[i] + sw->clip_w[i] ?
+                  cx + cw : sw->clip_x[i] + sw->clip_w[i];
+        int ny2 = cy + ch < sw->clip_y[i] + sw->clip_h[i] ?
+                  cy + ch : sw->clip_y[i] + sw->clip_h[i];
+
+        if(nx2 <= nx || ny2 <= ny)
+            return 0;
+        cx = nx;
+        cy = ny;
+        cw = nx2 - nx;
+        ch = ny2 - ny;
+    }
+    if(x != NULL)
+        *x = cx;
+    if(y != NULL)
+        *y = cy;
+    if(w != NULL)
+        *w = cw;
+    if(h != NULL)
+        *h = ch;
+    return 1;
 }
 
 static int
@@ -792,12 +853,15 @@ kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len, int x,
     if(g_text_draw_count >= KRY_LIBDRAW_MAX_TEXT_DRAWS)
         return;
     q = &g_text_draws[g_text_draw_count];
+    memset(q, 0, sizeof(*q));
     q->text = dup_text_n_bytes(text, byte_len);
     if(q->text == NULL)
         return;
     q->font_id = font_id;
     q->x = x;
     q->y = y;
+    q->clip_active = active_clip_rect(&q->clip_x, &q->clip_y, &q->clip_w,
+                                      &q->clip_h);
     q->color = color;
     g_text_draw_count++;
 }
