@@ -39,6 +39,8 @@
       ["Examples", s.examples],
       ["Parity Fixtures", s.parity_fixtures],
       ["Pipeline Cells", s.pipeline_cells],
+      ["KRB RGB Visual", s.krb_rgb_visual_cases],
+      ["KRB Byte Exact", s.krb_alpha_byte_exact_cases],
       ["State Parity", s.semantic_parity_cases],
       ["Widgets Seen", s.widgets_detected]
     ].map(function(item) {
@@ -67,6 +69,12 @@
     }).join("");
   }
 
+  function visualCells(row) {
+    var visuals = row.visuals || {};
+    return cell(visuals.krb_rgb || {status: "missing", status_class: "no"}) +
+      cell(visuals.krb_alpha || {status: "missing", status_class: "no"});
+  }
+
   function renderSources(data) {
     var q = (search && search.value || "").trim().toLowerCase();
     var type = typeFilter && typeFilter.value || "all";
@@ -85,7 +93,7 @@
       }).join("") : '<span class="matrix-muted">No widget calls detected</span>';
       return "<tr><td><code>" + escapeText(row.path) + "</code><br><span class=\"matrix-muted\">" +
         escapeText(row.label) + "</span></td><td>" + escapeText(row.type) + "</td>" +
-        pipelineCells(row) + "<td>" + widgets + "</td><td>" +
+        pipelineCells(row) + visualCells(row) + "<td>" + widgets + "</td><td>" +
         escapeText(row.semantic_evidence) + "</td></tr>";
     }).join("");
   }

@@ -328,7 +328,7 @@ runtime-parity-check:
 feature-matrix-docs-check:
 	sh tests/feature_matrix_docs_test.sh .
 
-conformance-matrix-check: $(K2IR) $(K2C) $(K2G) $(K2B)
+conformance-matrix-check: $(K2IR) $(K2C) $(K2G) $(K2B) $(KRB_RUN) $(KRB_SDL)
 	sh tests/conformance_matrix_test.sh .
 
 generated-runtime-parity-test: $(K2C) $(K2G) $(LIB) $(KRYON_BACKEND_LIBS)

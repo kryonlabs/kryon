@@ -16,8 +16,10 @@ import os
 import re
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 
@@ -113,6 +115,19 @@ RENDERERS = [
         "notes": "Node capture path exists; full matrix screenshot comparison is not yet applied to every source.",
     },
 ]
+
+KRB_ALPHA_BYTE_GAPS = {
+    "examples/20_scene.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/21_signals.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/22_physics.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/23_animation.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/24_tilemap.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/buttons_layout.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/fields.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/focus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/generated_form.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/long_text.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+}
 
 WIDGETS = {
     "ActionModal",
@@ -225,6 +240,7 @@ def source_cases() -> list[dict]:
                 "status_class": "ok",
                 "evidence": "conformance-matrix-check",
             }
+        alpha_gap = KRB_ALPHA_BYTE_GAPS.get(r)
         cases.append(
             {
                 "id": r.removesuffix(".kry").replace("/", "-"),
@@ -239,6 +255,18 @@ def source_cases() -> list[dict]:
                     if semantic_gate
                     else "lowering-only; no state/visual parity automaton yet"
                 ),
+                "visuals": {
+                    "krb_rgb": {
+                        "status": "RGB exact",
+                        "status_class": "ok",
+                        "evidence": "conformance-matrix-check",
+                    },
+                    "krb_alpha": {
+                        "status": "alpha differs" if alpha_gap else "byte exact",
+                        "status_class": "part" if alpha_gap else "ok",
+                        "evidence": alpha_gap or "conformance-matrix-check",
+                    },
+                },
             }
         )
     return cases
@@ -261,6 +289,8 @@ def matrix() -> dict:
             "parity_fixtures": sum(1 for case in cases if case["type"] == "parity fixture"),
             "pipeline_cells": len(cases) * len(PIPELINES),
             "semantic_parity_cases": semantic_count,
+            "krb_rgb_visual_cases": len(cases),
+            "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
             "widgets_detected": len(widget_counts),
         },
         "pipelines": [
@@ -297,6 +327,86 @@ def check_output(rendered: str) -> int:
     print("docs/site/conformance-matrix.json is stale; run scripts/conformance-matrix.py", file=sys.stderr)
     print("\n".join(diff), file=sys.stderr)
     return 1
+
+
+def png_rgba(path: Path) -> tuple[int, int, bytes]:
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"{path}: not a PNG")
+    pos = 8
+    width = height = None
+    raw = b""
+    while pos < len(data):
+        if pos + 8 > len(data):
+            raise ValueError(f"{path}: truncated PNG chunk")
+        length = struct.unpack(">I", data[pos:pos + 4])[0]
+        chunk_type = data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + length]
+        pos += length + 12
+        if chunk_type == b"IHDR":
+            width, height, bit_depth, color_type, _comp, _filter, interlace = struct.unpack(">IIBBBBB", chunk)
+            if bit_depth != 8 or color_type != 6 or interlace != 0:
+                raise ValueError(f"{path}: expected non-interlaced 8-bit RGBA PNG")
+        elif chunk_type == b"IDAT":
+            raw += chunk
+        elif chunk_type == b"IEND":
+            break
+    if width is None or height is None:
+        raise ValueError(f"{path}: missing PNG header")
+
+    decoded = zlib.decompress(raw)
+    stride = width * 4
+    pixels = bytearray()
+    prev = bytearray(stride)
+    idx = 0
+    for _y in range(height):
+        filt = decoded[idx]
+        idx += 1
+        row = bytearray(decoded[idx:idx + stride])
+        idx += stride
+        for x in range(stride):
+            left = row[x - 4] if x >= 4 else 0
+            up = prev[x]
+            up_left = prev[x - 4] if x >= 4 else 0
+            if filt == 1:
+                row[x] = (row[x] + left) & 0xff
+            elif filt == 2:
+                row[x] = (row[x] + up) & 0xff
+            elif filt == 3:
+                row[x] = (row[x] + ((left + up) // 2)) & 0xff
+            elif filt == 4:
+                p = left + up - up_left
+                pa = abs(p - left)
+                pb = abs(p - up)
+                pc = abs(p - up_left)
+                pred = left if pa <= pb and pa <= pc else (up if pb <= pc else up_left)
+                row[x] = (row[x] + pred) & 0xff
+            elif filt != 0:
+                raise ValueError(f"{path}: unsupported PNG filter {filt}")
+        pixels.extend(row)
+        prev = row
+    return width, height, bytes(pixels)
+
+
+def rgba_diff(a_path: Path, b_path: Path) -> tuple[int, int, int]:
+    aw, ah, ap = png_rgba(a_path)
+    bw, bh, bp = png_rgba(b_path)
+    if aw != bw or ah != bh:
+        raise ValueError(f"image sizes differ: {a_path}={aw}x{ah} {b_path}={bw}x{bh}")
+    pixel_diff = 0
+    rgb_diff = 0
+    alpha_diff = 0
+    for i in range(0, len(ap), 4):
+        aa = ap[i:i + 4]
+        bb = bp[i:i + 4]
+        if aa == bb:
+            continue
+        pixel_diff += 1
+        if aa[:3] != bb[:3]:
+            rgb_diff += 1
+        if aa[3] != bb[3]:
+            alpha_diff += 1
+    return pixel_diff, rgb_diff, alpha_diff
 
 
 def verify_pipelines(data: dict) -> int:
@@ -336,10 +446,96 @@ def verify_pipelines(data: dict) -> int:
     return 0
 
 
+def verify_krb_visuals(data: dict) -> int:
+    tools = {
+        "k2b": ROOT / "build/linux-x86_64/bin/k2b",
+        "krb-run": ROOT / "build/linux-x86_64/bin/krb-run",
+        "krb-sdl": ROOT / "build/linux-x86_64/bin/krb-sdl",
+    }
+    missing = [f"{name}: {path}" for name, path in tools.items() if not path.exists()]
+    if missing:
+        for item in missing:
+            print(f"missing tool for KRB visual check: {item}", file=sys.stderr)
+        return 1
+
+    failures = []
+    alpha_gaps = set()
+    with tempfile.TemporaryDirectory(prefix="kryon-conformance-visual.") as tmp:
+        work = Path(tmp)
+        for case in data["cases"]:
+            source = ROOT / case["path"]
+            stem = case["path"].removesuffix(".kry")
+            out_dir = work / "krb"
+            krb = out_dir / f"{stem}.krb"
+            sw_png = work / f"{stem}.sw.png"
+            sdl_png = work / f"{stem}.sdl.png"
+            sw_png.parent.mkdir(parents=True, exist_ok=True)
+            sdl_png.parent.mkdir(parents=True, exist_ok=True)
+
+            run = subprocess.run(
+                [str(tools["k2b"]), "--no-main", "--root", str(ROOT), "-o", str(out_dir), str(source)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "k2b", (run.stderr or run.stdout).strip()))
+                continue
+            run = subprocess.run(
+                [str(tools["krb-run"]), "--png", str(sw_png), "--w", "480", "--h", "640", str(krb)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "krb-run", (run.stderr or run.stdout).strip()))
+                continue
+            env = os.environ.copy()
+            env["SDL_VIDEODRIVER"] = "dummy"
+            env["SDL_RENDER_DRIVER"] = "software"
+            run = subprocess.run(
+                [str(tools["krb-sdl"]), "--png", str(sdl_png), "--w", "480", "--h", "640", str(krb)],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                failures.append((case["path"], "krb-sdl", (run.stderr or run.stdout).strip()))
+                continue
+            pixel_diff, rgb_diff, alpha_diff = rgba_diff(sw_png, sdl_png)
+            if rgb_diff:
+                failures.append((case["path"], "rgb", f"{rgb_diff} RGB pixels differ ({pixel_diff} RGBA pixels differ)"))
+            elif alpha_diff:
+                alpha_gaps.add(case["path"])
+
+    known = set(KRB_ALPHA_BYTE_GAPS)
+    for path in sorted(alpha_gaps - known):
+        failures.append((path, "alpha", "alpha bytes differ but the matrix does not list this gap"))
+    for path in sorted(known - alpha_gaps):
+        failures.append((path, "alpha", "listed as alpha-different but now byte-exact"))
+
+    if failures:
+        for path, phase, detail in failures:
+            print(f"KRB visual check failed for {path} during {phase}", file=sys.stderr)
+            if detail:
+                print(f"  {detail}", file=sys.stderr)
+        return 1
+    print(
+        f"KRB visual matrix ok: {len(data['cases'])} RGB-exact sources, "
+        f"{len(data['cases']) - len(alpha_gaps)} byte-exact, {len(alpha_gaps)} alpha-only gaps"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
     parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2b")
+    parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     args = parser.parse_args()
 
     data = matrix()
@@ -348,7 +544,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not args.verify_pipelines:
+    elif not args.verify_pipelines and not args.verify_krb_visuals:
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -357,7 +553,11 @@ def main() -> int:
         )
 
     if args.verify_pipelines:
-        return verify_pipelines(data)
+        rc = verify_pipelines(data)
+        if rc:
+            return rc
+    if args.verify_krb_visuals:
+        return verify_krb_visuals(data)
     return 0
 
 

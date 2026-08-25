@@ -29,6 +29,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -64,6 +76,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -99,6 +123,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -139,6 +175,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "ActionModal",
         "Background",
@@ -175,6 +223,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Rect",
@@ -210,6 +270,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Rect",
@@ -245,6 +317,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -282,6 +366,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Text"
@@ -316,6 +412,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "MenuBar",
@@ -351,6 +459,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Combobox",
@@ -389,6 +509,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "ListBox",
@@ -426,6 +558,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -462,6 +606,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Canvas",
@@ -497,6 +653,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Collapsible",
@@ -534,6 +702,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -572,6 +752,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Text"
@@ -606,6 +798,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -642,6 +846,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Picture",
@@ -678,6 +894,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Dropdown",
@@ -713,6 +941,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": []
     },
     {
@@ -744,6 +984,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Checkbox",
@@ -781,6 +1033,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": []
     },
     {
@@ -812,6 +1076,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Scroll",
@@ -847,6 +1123,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": []
     },
     {
@@ -878,6 +1166,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": []
     },
     {
@@ -909,6 +1209,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Checkbox",
@@ -946,6 +1258,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Checkbox",
@@ -982,6 +1306,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": []
     },
     {
@@ -1013,6 +1349,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -1050,6 +1398,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Text"
@@ -1084,6 +1444,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Rect",
@@ -1119,6 +1491,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -1154,6 +1538,18 @@
       "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
       "semantic_parity": false,
       "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Background",
         "Button",
@@ -1193,6 +1589,18 @@
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Button",
         "Text"
@@ -1227,6 +1635,18 @@
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "TextArea",
         "TextField"
@@ -1261,6 +1681,18 @@
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "TextField"
       ]
@@ -1294,6 +1726,18 @@
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Button",
         "Text",
@@ -1330,6 +1774,18 @@
       "semantic_evidence": "tests/generated_runtime_parity_test.sh",
       "semantic_parity": true,
       "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
       "widgets": [
         "Text",
         "TextField"
@@ -1452,6 +1908,8 @@
   "source": "scripts/conformance-matrix.py",
   "summary": {
     "examples": 33,
+    "krb_alpha_byte_exact_cases": 28,
+    "krb_rgb_visual_cases": 38,
     "parity_fixtures": 5,
     "pipeline_cells": 152,
     "semantic_parity_cases": 5,
