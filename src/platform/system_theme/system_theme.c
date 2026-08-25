@@ -1039,6 +1039,42 @@ gtk_css_palette_refresh(void)
 bool
 GetSystemDesktopBackground(char *out, int out_size)
 {
+#if defined(KRYON_PLATFORM_PLAN9)
+    char text[512];
+    char path[512];
+    char *home;
+    char *end;
+
+    if(out == NULL || out_size <= 0)
+        return false;
+    out[0] = '\0';
+
+    home = getenv("home");
+    if(home != NULL && home[0] != '\0') {
+        snprintf(path, sizeof(path), "%s/lib/wallpaper", home);
+        if(read_text_file(path, text, sizeof(text))) {
+            end = text;
+            while(*end != '\0' && *end != '\n' && *end != '\r')
+                end++;
+            *end = '\0';
+            if(text[0] == '/' && path_exists(text)) {
+                copy_path(out, out_size, text, (int)strlen(text));
+                return true;
+            }
+        }
+        snprintf(path, sizeof(path), "%s/lib/wallpaper.png", home);
+        if(path_exists(path)) {
+            copy_path(out, out_size, path, (int)strlen(path));
+            return true;
+        }
+    }
+    if(path_exists("/lib/wallpaper.png")) {
+        copy_path(out, out_size, "/lib/wallpaper.png",
+                  (int)strlen("/lib/wallpaper.png"));
+        return true;
+    }
+    return false;
+#else
     char config_path[512];
     char text[65536];
     const char *cursor;
@@ -1065,6 +1101,7 @@ GetSystemDesktopBackground(char *out, int out_size)
     }
 
     return false;
+#endif
 }
 
 #if defined(KRYON_PLATFORM_PLAN9)

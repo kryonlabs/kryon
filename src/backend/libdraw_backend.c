@@ -85,6 +85,19 @@ static TraceLogCallback g_trace_log_callback;
 static unsigned g_window_state;
 static int g_exit_key = KEY_ESCAPE;
 
+static void
+reset_default_cursor(void)
+{
+#ifdef KRYON_NATIVE_PLAN9
+    int fd = open("/dev/cursor", OWRITE);
+
+    if(fd >= 0) {
+        write(fd, "", 0);
+        close(fd);
+    }
+#endif
+}
+
 static double
 now_seconds(void)
 {
@@ -948,6 +961,7 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
         return;
     }
     einit(Emouse | Ekeyboard);
+    reset_default_cursor();
     if(screen != nil) {
         kry_libdraw_width = Dx(screen->r);
         kry_libdraw_height = Dy(screen->r);
