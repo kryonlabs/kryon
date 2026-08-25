@@ -40,14 +40,12 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, unsigned char alpha)
+ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
 {
     Rectangle src;
-    Color tint = WHITE;
 
     if(icon.id == 0)
         return;
-    tint.a = alpha;
     src.x = 0;
     src.y = 0;
     src.width = (float)icon.width;
@@ -125,6 +123,7 @@ DrawUIBottomNav(BottomNavProps nav)
                                   ? ButtonStyleTabSelected
                                   : ButtonStyleTab;
         unsigned char icon_alpha = item->disabled ? 150 : 255;
+        Color icon_tint = (Color){255, 255, 255, icon_alpha};
 
         if(ui_material_style()) {
             Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
@@ -140,11 +139,14 @@ DrawUIBottomNav(BottomNavProps nav)
                                              scheme.on_surface_variant;
             Color state_tint = item->active ? scheme.on_secondary :
                                               scheme.on_surface_variant;
+            icon_tint = item->active ? scheme.on_secondary :
+                                       scheme.on_surface_variant;
 
             icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
             icon_x = x + (w - icon_size) / 2;
             icon_y = indicator_y + (indicator_h - icon_size) / 2;
             if(item->disabled) {
+                icon_tint = scheme.disabled_content;
                 text_tint = scheme.disabled_content;
                 state_tint = scheme.disabled_content;
             }
@@ -168,7 +170,7 @@ DrawUIBottomNav(BottomNavProps nav)
             dst.height = (float)icon_size;
             ui_draw_material_bottom_nav_icon(item->icon,
                                              dst,
-                                             icon_alpha);
+                                             icon_tint);
             if(item->label != NULL && item->label[0] != '\0') {
                 Rectangle label_rect = {
                     (float)(x + label_pad),
@@ -209,8 +211,7 @@ DrawUIBottomNav(BottomNavProps nav)
             dst.y = (float)icon_y;
             dst.width = (float)icon_size;
             dst.height = (float)icon_size;
-            DrawTexturePro(item->icon, src, dst, kryon_zero_vector2, 0,
-                           (Color){255, 255, 255, icon_alpha});
+            DrawTexturePro(item->icon, src, dst, kryon_zero_vector2, 0, icon_tint);
         }
     }
 

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 static int icon_calls;
+static Color icon_tints[3];
 
 static void
 check_int(const char *name, int got, int want)
@@ -68,10 +69,9 @@ __wrap_DrawTexturePro(Texture2D texture, Rectangle srcrec, Rectangle dstrec,
 
     if(texture.id != 42)
         return;
+    if(icon_calls < 3)
+        icon_tints[icon_calls] = tint;
     icon_calls++;
-    check_int("bottom nav preserves icon red", tint.r, 255);
-    check_int("bottom nav preserves icon green", tint.g, 255);
-    check_int("bottom nav preserves icon blue", tint.b, 255);
     check_int("bottom nav preserves enabled icon alpha", tint.a, 255);
 }
 
@@ -104,5 +104,26 @@ main(void)
     EndUIFrame();
 
     check_int("bottom nav drew all icons", icon_calls, 3);
+    {
+        UIMaterialScheme scheme = GetUIMaterialScheme();
+        check_int("inactive bottom nav icon red", icon_tints[0].r,
+                  scheme.on_surface_variant.r);
+        check_int("inactive bottom nav icon green", icon_tints[0].g,
+                  scheme.on_surface_variant.g);
+        check_int("inactive bottom nav icon blue", icon_tints[0].b,
+                  scheme.on_surface_variant.b);
+        check_int("active bottom nav icon red", icon_tints[1].r,
+                  scheme.on_secondary.r);
+        check_int("active bottom nav icon green", icon_tints[1].g,
+                  scheme.on_secondary.g);
+        check_int("active bottom nav icon blue", icon_tints[1].b,
+                  scheme.on_secondary.b);
+        check_int("second inactive bottom nav icon red", icon_tints[2].r,
+                  scheme.on_surface_variant.r);
+        check_int("second inactive bottom nav icon green", icon_tints[2].g,
+                  scheme.on_surface_variant.g);
+        check_int("second inactive bottom nav icon blue", icon_tints[2].b,
+                  scheme.on_surface_variant.b);
+    }
     return 0;
 }
