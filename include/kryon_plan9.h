@@ -11,14 +11,30 @@
 #define NULL nil
 #endif
 
+#ifndef snprintf
 #define snprintf snprint
+#endif
+#ifndef vsnprintf
 #define vsnprintf vsnprint
+#endif
+#ifndef sqrtf
 #define sqrtf(x) ((float)sqrt((double)(x)))
+#endif
+#ifndef fabsf
 #define fabsf(x) ((float)fabs((double)(x)))
+#endif
+#ifndef floorf
 #define floorf(x) ((float)floor((double)(x)))
+#endif
+#ifndef ceilf
 #define ceilf(x) ((float)ceil((double)(x)))
+#endif
+#ifndef sinf
 #define sinf(x) ((float)sin((double)(x)))
+#endif
+#ifndef cosf
 #define cosf(x) ((float)cos((double)(x)))
+#endif
 
 #include "kryon_compat.generated.h"
 
