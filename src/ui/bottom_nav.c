@@ -40,12 +40,14 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_material_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint)
+ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, unsigned char alpha)
 {
     Rectangle src;
+    Color tint = WHITE;
 
     if(icon.id == 0)
         return;
+    tint.a = alpha;
     src.x = 0;
     src.y = 0;
     src.width = (float)icon.width;
@@ -139,14 +141,12 @@ DrawUIBottomNav(BottomNavProps nav)
                                              scheme.on_surface_variant;
             Color state_tint = item->active ? scheme.on_secondary :
                                               scheme.on_surface_variant;
-            icon_tint = item->active ? scheme.on_secondary :
-                                       scheme.on_surface_variant;
 
             icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
             icon_x = x + (w - icon_size) / 2;
             icon_y = indicator_y + (indicator_h - icon_size) / 2;
             if(item->disabled) {
-                icon_tint = scheme.disabled_content;
+                icon_alpha = scheme.disabled_content.a;
                 text_tint = scheme.disabled_content;
                 state_tint = scheme.disabled_content;
             }
@@ -168,9 +168,7 @@ DrawUIBottomNav(BottomNavProps nav)
             dst.y = (float)icon_y;
             dst.width = (float)icon_size;
             dst.height = (float)icon_size;
-            ui_draw_material_bottom_nav_icon(item->icon,
-                                             dst,
-                                             icon_tint);
+            ui_draw_bottom_nav_icon(item->icon, dst, icon_alpha);
             if(item->label != NULL && item->label[0] != '\0') {
                 Rectangle label_rect = {
                     (float)(x + label_pad),

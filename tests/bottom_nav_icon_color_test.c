@@ -104,26 +104,14 @@ main(void)
     EndUIFrame();
 
     check_int("bottom nav drew all icons", icon_calls, 3);
-    {
-        UIMaterialScheme scheme = GetUIMaterialScheme();
-        check_int("inactive bottom nav icon red", icon_tints[0].r,
-                  scheme.on_surface_variant.r);
-        check_int("inactive bottom nav icon green", icon_tints[0].g,
-                  scheme.on_surface_variant.g);
-        check_int("inactive bottom nav icon blue", icon_tints[0].b,
-                  scheme.on_surface_variant.b);
-        check_int("active bottom nav icon red", icon_tints[1].r,
-                  scheme.on_secondary.r);
-        check_int("active bottom nav icon green", icon_tints[1].g,
-                  scheme.on_secondary.g);
-        check_int("active bottom nav icon blue", icon_tints[1].b,
-                  scheme.on_secondary.b);
-        check_int("second inactive bottom nav icon red", icon_tints[2].r,
-                  scheme.on_surface_variant.r);
-        check_int("second inactive bottom nav icon green", icon_tints[2].g,
-                  scheme.on_surface_variant.g);
-        check_int("second inactive bottom nav icon blue", icon_tints[2].b,
-                  scheme.on_surface_variant.b);
-    }
+    check_int("inactive bottom nav icon red", icon_tints[0].r, WHITE.r);
+    check_int("inactive bottom nav icon green", icon_tints[0].g, WHITE.g);
+    check_int("inactive bottom nav icon blue", icon_tints[0].b, WHITE.b);
+    check_int("active bottom nav icon red", icon_tints[1].r, WHITE.r);
+    check_int("active bottom nav icon green", icon_tints[1].g, WHITE.g);
+    check_int("active bottom nav icon blue", icon_tints[1].b, WHITE.b);
+    check_int("second inactive bottom nav icon red", icon_tints[2].r, WHITE.r);
+    check_int("second inactive bottom nav icon green", icon_tints[2].g, WHITE.g);
+    check_int("second inactive bottom nav icon blue", icon_tints[2].b, WHITE.b);
     return 0;
 }
