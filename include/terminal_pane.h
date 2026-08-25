@@ -2,7 +2,11 @@
 #define TERMINAL_PANE_H
 
 #include "kryon_compat.generated.h"
+#if defined(KRYON_NATIVE_PLAN9)
+#include "/sys/src/kryon/include/terminal.h"
+#else
 #include "terminal.h"
+#endif
 #include "ui_tk.h"
 
 #include <stddef.h>
