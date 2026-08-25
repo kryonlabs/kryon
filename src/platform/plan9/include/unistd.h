@@ -6,6 +6,6 @@
 #include "kryon_plan9_libc.h"
 
 #define unlink(p) remove(p)
-#define usleep(us) sleep((int)((us) / 1000))
+#define usleep(us) sleep((int)(((us) + 999) / 1000))
 
 #endif
