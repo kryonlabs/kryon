@@ -2578,7 +2578,7 @@ try_widget(KrbBuild *b, const char *raw)
        !starts_ident(call, "TextField") &&
        !starts_ident(call, "TextArea"))
         return parse_text(b, call);
-    if(starts_ident(call, "RectangleShape") || starts_ident(call, "Rect"))
+    if(starts_ident(call, "Rect"))
         return parse_rect(b, call);
     if(starts_ident(call, "Scroll"))
         return parse_scroll(b, call);

@@ -52,9 +52,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -143,9 +143,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -234,9 +234,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture traps in wasm.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -330,9 +330,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -422,10 +422,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -513,10 +513,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -604,10 +604,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -697,9 +697,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -787,10 +787,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -878,9 +878,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -972,10 +972,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1065,10 +1065,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1157,9 +1157,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated C still has a Canvas lowering gap.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -1248,10 +1248,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1341,10 +1341,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1435,9 +1435,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -1525,10 +1525,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1617,10 +1617,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1710,9 +1710,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -1801,9 +1801,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -1887,9 +1887,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -1980,9 +1980,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2066,9 +2066,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2157,9 +2157,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2243,9 +2243,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2329,9 +2329,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2423,9 +2423,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2515,9 +2515,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated-C app-host route is missing for scene-only source.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2601,9 +2601,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2694,9 +2694,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2784,10 +2784,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -2875,9 +2875,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -2966,10 +2966,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3061,10 +3061,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3153,9 +3153,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -3243,9 +3243,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -3332,10 +3332,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
-          "status_class": "part"
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3426,9 +3426,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Web Canvas generated-C capture is blank.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "visual gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -3517,9 +3517,9 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make renderer-matrix-check",
-          "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
-          "status": "smoke gated",
+          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "compile gap",
           "status_class": "part"
         },
         "web_raylib_wasm": {
@@ -3656,6 +3656,12 @@
       "scope": "Emscripten Canvas2D command-sequence smoke plus WebAudio smoke."
     },
     {
+      "command": "make -C . web-canvas-matrix-check",
+      "id": "web-canvas-c-source-capture",
+      "label": "Web Canvas generated-C source capture",
+      "scope": "Lowers every matrix .kry source through k2c, links the generated C app host to the wasm Canvas2D backend, captures a PNG frame in Node, and rejects blank output when emcc and node are available."
+    },
+    {
       "command": "make -C . libdraw-test",
       "id": "libdraw-desktop",
       "label": "Libdraw desktop backend",
@@ -3713,16 +3719,16 @@
     {
       "approach": "HTML5 Canvas2D surface backend",
       "evidence": [
-        "make renderer-matrix-check",
-        "tests/canvas_backend_test.sh",
-        "tests/canvas_audio_test.sh"
+        "make web-canvas-matrix-check",
+        "tests/canvas_generated_c_capture_run.js",
+        "tests/canvas_backend_test.sh"
       ],
       "id": "web-canvas-wasm",
       "label": "Web canvas wasm",
       "notes": "Runs when emcc and node are available; scripts skip cleanly when unavailable.",
       "platform": "Emscripten web",
-      "scope": "Wasm+Node Canvas2D command-sequence smoke and WebAudio smoke; per-source PNG matrix not yet implemented.",
-      "status": "smoke-gated",
+      "scope": "Per-source .kry -> KIR -> C -> wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff still pending.",
+      "status": "source-capture-gated",
       "status_class": "part"
     },
     {
@@ -3794,7 +3800,7 @@
     {
       "id": "web_canvas_wasm",
       "label": "Web canvas",
-      "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending."
+      "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending."
     },
     {
       "id": "krb_native_sw",
@@ -3823,10 +3829,12 @@
     "raylib_c_visual_cases": 16,
     "raylib_c_visual_gaps": 23,
     "renderer_source_cells": 234,
-    "renderer_source_ok_cells": 103,
-    "renderer_source_partial_cells": 131,
+    "renderer_source_ok_cells": 117,
+    "renderer_source_partial_cells": 117,
     "semantic_parity_cases": 5,
     "source_cases": 39,
+    "web_canvas_c_visual_cases": 14,
+    "web_canvas_c_visual_gaps": 25,
     "widgets_declared": 54,
     "widgets_detected": 54,
     "widgets_missing": 0

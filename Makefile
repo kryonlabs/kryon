@@ -241,7 +241,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test web-canvas-matrix-check libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -280,6 +280,9 @@ canvas-test:
 
 canvas-audio-test:
 	sh tests/canvas_audio_test.sh
+
+web-canvas-matrix-check: $(K2C) $(EMBED_ASSETS_C)
+	python3 scripts/conformance-matrix.py --verify-web-canvas-c-visuals --k2c "$(K2C)"
 
 libdraw-test:
 	sh tests/libdraw_backend_test.sh

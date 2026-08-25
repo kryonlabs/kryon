@@ -82,10 +82,10 @@ RENDERERS = [
         "label": "Web canvas wasm",
         "platform": "Emscripten web",
         "approach": "HTML5 Canvas2D surface backend",
-        "status": "smoke-gated",
+        "status": "source-capture-gated",
         "status_class": "part",
-        "evidence": ["make renderer-matrix-check", "tests/canvas_backend_test.sh", "tests/canvas_audio_test.sh"],
-        "scope": "Wasm+Node Canvas2D command-sequence smoke and WebAudio smoke; per-source PNG matrix not yet implemented.",
+        "evidence": ["make web-canvas-matrix-check", "tests/canvas_generated_c_capture_run.js", "tests/canvas_backend_test.sh"],
+        "scope": "Per-source .kry -> KIR -> C -> wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff still pending.",
         "notes": "Runs when emcc and node are available; scripts skip cleanly when unavailable.",
     },
     {
@@ -137,6 +137,12 @@ RENDERER_SMOKE_CHECKS = [
         "scope": "Emscripten Canvas2D command-sequence smoke plus WebAudio smoke.",
     },
     {
+        "id": "web-canvas-c-source-capture",
+        "label": "Web Canvas generated-C source capture",
+        "command": ["make", "-C", ".", "web-canvas-matrix-check"],
+        "scope": "Lowers every matrix .kry source through k2c, links the generated C app host to the wasm Canvas2D backend, captures a PNG frame in Node, and rejects blank output when emcc and node are available.",
+    },
+    {
         "id": "libdraw-desktop",
         "label": "Libdraw desktop backend",
         "command": ["make", "-C", ".", "libdraw-test"],
@@ -182,10 +188,10 @@ SOURCE_RENDERERS = [
     {
         "id": "web_canvas_wasm",
         "label": "Web canvas",
-        "status": "smoke gated",
-        "status_class": "part",
-        "evidence": "make renderer-matrix-check",
-        "scope": "Canvas2D/WebAudio smoke coverage; per-source screenshot capture pending.",
+        "status": "captured",
+        "status_class": "ok",
+        "evidence": "make web-canvas-matrix-check",
+        "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
     },
     {
         "id": "krb_native_sw",
@@ -304,6 +310,26 @@ LIBDRAW_C_RENDER_GAPS = {
     "examples/28_inbe_profile.kry": "Libdraw generated-C capture is blank.",
 }
 
+WEB_CANVAS_C_RENDER_GAPS = {
+    "examples/01_file_dialog.kry": "Web Canvas generated-C capture is blank.",
+    "examples/02_buttons.kry": "Web Canvas generated-C capture is blank.",
+    "examples/03_theme.kry": "Web Canvas generated-C capture traps in wasm.",
+    "examples/04_modal.kry": "Web Canvas generated-C capture is blank.",
+    "examples/09_geometry.kry": "Web Canvas generated-C capture is blank.",
+    "examples/11_basic_controls.kry": "Web Canvas generated-C capture is blank.",
+    "examples/17_keyboard_platform.kry": "Web Canvas generated-C capture is blank.",
+    "examples/20_inbe_language.kry": "Web Canvas generated-C capture is blank.",
+    "examples/21_inbe_settings.kry": "Web Canvas generated-C capture is blank.",
+    "examples/22_inbe_manual.kry": "Web Canvas generated-C capture is blank.",
+    "examples/23_inbe_app.kry": "Web Canvas generated-C capture is blank.",
+    "examples/24_inbe_habits.kry": "Web Canvas generated-C capture is blank.",
+    "examples/25_inbe_practice.kry": "Web Canvas generated-C capture is blank.",
+    "examples/28_inbe_profile.kry": "Web Canvas generated-C capture is blank.",
+    "tests/parity/fields.kry": "Web Canvas generated-C capture is blank.",
+    "tests/parity/focus.kry": "Web Canvas generated-C capture is blank.",
+    "tests/parity/long_text.kry": "Web Canvas generated-C capture is blank.",
+}
+
 LIBDRAW_C_VISUAL_GAPS = {
     **GENERATED_C_COMPILE_GAPS,
     **LIBDRAW_C_RENDER_GAPS,
@@ -311,6 +337,10 @@ LIBDRAW_C_VISUAL_GAPS = {
 RAYLIB_C_VISUAL_GAPS = {
     **GENERATED_C_COMPILE_GAPS,
     **RAYLIB_C_RENDER_GAPS,
+}
+WEB_CANVAS_C_VISUAL_GAPS = {
+    **GENERATED_C_COMPILE_GAPS,
+    **WEB_CANVAS_C_RENDER_GAPS,
 }
 
 WIDGETS = {
@@ -421,6 +451,7 @@ def source_renderer_status(
     alpha_gap: str | None,
     raylib_gap: str | None,
     libdraw_gap: str | None,
+    web_canvas_gap: str | None,
 ) -> dict:
     status = {
         "status": renderer["status"],
@@ -452,6 +483,14 @@ def source_renderer_status(
                 "evidence": libdraw_gap,
             }
         )
+    elif renderer["id"] == "web_canvas_wasm" and web_canvas_gap:
+        status.update(
+            {
+                "status": "compile gap" if source_path in GENERATED_C_COMPILE_GAPS else "visual gap",
+                "status_class": "part",
+                "evidence": web_canvas_gap,
+            }
+        )
     return status
 
 
@@ -467,6 +506,7 @@ def source_cases() -> list[dict]:
         semantic_gate = r in parity
         libdraw_gap = LIBDRAW_C_VISUAL_GAPS.get(r)
         raylib_gap = RAYLIB_C_VISUAL_GAPS.get(r)
+        web_canvas_gap = WEB_CANVAS_C_VISUAL_GAPS.get(r)
         pipelines = {}
         for pipeline in PIPELINES:
             pipelines[pipeline["id"]] = {
@@ -476,7 +516,7 @@ def source_cases() -> list[dict]:
             }
         alpha_gap = KRB_ALPHA_BYTE_GAPS.get(r)
         renderer_matrix = {
-            renderer["id"]: source_renderer_status(renderer, r, alpha_gap, raylib_gap, libdraw_gap)
+            renderer["id"]: source_renderer_status(renderer, r, alpha_gap, raylib_gap, libdraw_gap, web_canvas_gap)
             for renderer in SOURCE_RENDERERS
         }
         cases.append(
@@ -562,6 +602,8 @@ def matrix() -> dict:
             "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
             "raylib_c_visual_cases": len(cases) - len(RAYLIB_C_VISUAL_GAPS),
             "raylib_c_visual_gaps": len(RAYLIB_C_VISUAL_GAPS),
+            "web_canvas_c_visual_cases": len(cases) - len(WEB_CANVAS_C_VISUAL_GAPS),
+            "web_canvas_c_visual_gaps": len(WEB_CANVAS_C_VISUAL_GAPS),
             "libdraw_c_visual_cases": len(cases) - len(LIBDRAW_C_VISUAL_GAPS),
             "libdraw_c_visual_gaps": len(LIBDRAW_C_VISUAL_GAPS),
             "renderer_source_cells": len(renderer_cells),
@@ -1002,6 +1044,27 @@ def generated_c_sources(out_dir: Path) -> list[str]:
     return sources
 
 
+def canvas_backend_sources() -> list[str]:
+    sources = []
+    for path in sorted((ROOT / "src").rglob("*.c")):
+        r = rel(path)
+        if "/ksync/" in f"/{r}/":
+            continue
+        if "/platform/plan9/" in f"/{r}/":
+            continue
+        if r in {
+            "src/scene/physics_world.c",
+            "src/scene/node_body2d.c",
+            "src/scene/node_area2d.c",
+            "src/scene/node_collision_shape2d.c",
+        }:
+            continue
+        if path.name.startswith("libdraw_"):
+            continue
+        sources.append(str(path))
+    return sources
+
+
 def png_has_content(path: Path) -> bool:
     width, height, pixels = png_rgba(path)
     if width <= 0 or height <= 0:
@@ -1056,6 +1119,172 @@ test -s "$out"
         encoding="utf-8",
     )
     path.chmod(0o755)
+
+
+def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
+    emcc = emcc_path()
+    node = shutil.which("node")
+    if emcc is None:
+        print("web Canvas generated-C matrix skipped: emcc not found")
+        return 0
+    if node is None:
+        print("web Canvas generated-C matrix skipped: node not found")
+        return 0
+
+    k2c = Path(args.k2c)
+    if not k2c.exists():
+        print(f"missing tool for web Canvas generated-C matrix: {k2c}", file=sys.stderr)
+        return 1
+
+    assets = ROOT / "build" / "linux-x86_64" / "embedded_asset_data.c"
+    if not assets.exists():
+        print(f"missing embedded assets for web Canvas generated-C matrix: {assets}", file=sys.stderr)
+        return 1
+
+    failures = []
+    observed_gaps = set()
+    backend_sources = canvas_backend_sources()
+    with tempfile.TemporaryDirectory(prefix="kryon-web-canvas-c-matrix.") as tmp:
+        work = Path(tmp)
+        for case in data["cases"]:
+            source = ROOT / case["path"]
+            out_dir = work / "gen" / case["id"]
+            js_path = work / "js" / f"{case['id']}.js"
+            png_path = work / "png" / f"{case['id']}.png"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            js_path.parent.mkdir(parents=True, exist_ok=True)
+            png_path.parent.mkdir(parents=True, exist_ok=True)
+
+            run = subprocess.run(
+                [
+                    str(k2c),
+                    "--no-main",
+                    "--root",
+                    str(ROOT),
+                    "-o",
+                    str(out_dir),
+                    str(source),
+                ],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if run.returncode != 0:
+                if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "k2c", (run.stderr or run.stdout).strip()))
+                continue
+
+            compile_cmd = [
+                emcc,
+                "-Iinclude",
+                "-I",
+                str(out_dir),
+                "-Iexamples",
+                "-DKRYON_WITH_PHYSICS=0",
+                "-O1",
+                "-sASYNCIFY",
+                "-sENVIRONMENT=node",
+                "-sINITIAL_MEMORY=128MB",
+                "-sALLOW_MEMORY_GROWTH=1",
+                "-sEXIT_RUNTIME=0",
+                "-sEXPORTED_RUNTIME_METHODS=FS",
+                "--pre-js",
+                "tests/canvas_generated_c_capture_run.js",
+                "-o",
+                str(js_path),
+                "tests/generated_c_capture_main.c",
+            ] + generated_c_sources(out_dir) + backend_sources + [str(assets)]
+            run = subprocess.run(
+                compile_cmd,
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            if run.returncode != 0:
+                if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "compile", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+
+            env = os.environ.copy()
+            env["KRYON_CANVAS_CAPTURE_OUT"] = str(png_path)
+            run = subprocess.run(
+                [
+                    node,
+                    str(js_path),
+                    "--png",
+                    "/canvas-capture.png",
+                    "--w",
+                    "480",
+                    "--h",
+                    "640",
+                    "--frames",
+                    "4",
+                    "--source",
+                    case["path"],
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=45,
+            )
+            if run.returncode != 0:
+                if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "capture", "\n".join(run.stdout.strip().splitlines()[-20:])))
+                continue
+            if not png_path.exists() or png_path.stat().st_size == 0:
+                if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", "capture did not produce a PNG"))
+                continue
+            try:
+                width, height, _pixels = png_rgba(png_path)
+                if width <= 0 or height <= 0:
+                    failures.append((case["path"], "size", f"{width}x{height}"))
+                    continue
+                if not png_has_content(png_path):
+                    if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                        observed_gaps.add(case["path"])
+                    else:
+                        detail = "all pixels are identical"
+                        tail = "\n".join(run.stdout.strip().splitlines()[-20:])
+                        if tail:
+                            detail += "\n" + tail
+                        failures.append((case["path"], "blank", detail))
+            except ValueError as exc:
+                if case["path"] in WEB_CANVAS_C_VISUAL_GAPS:
+                    observed_gaps.add(case["path"])
+                else:
+                    failures.append((case["path"], "png", str(exc)))
+
+    case_paths = {case["path"] for case in data["cases"]}
+    recovered = sorted((set(WEB_CANVAS_C_VISUAL_GAPS) & case_paths) - observed_gaps)
+    if recovered:
+        for path in recovered:
+            failures.append((path, "known-gap", "listed web Canvas C visual gap now captures; update the matrix gap list"))
+
+    if failures:
+        for path, phase, detail in failures:
+            print(f"web Canvas generated-C matrix failed for {path} during {phase}", file=sys.stderr)
+            if detail:
+                print(f"  {detail}", file=sys.stderr)
+        return 1
+    captured = len(data["cases"]) - len(observed_gaps)
+    print(
+        f"web Canvas generated-C matrix ok: {captured} sources captured through wasm Canvas2D, "
+        f"{len(observed_gaps)} known generated-C gaps"
+    )
+    return 0
 
 
 def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
@@ -1207,7 +1436,8 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 else:
                     failures.append((case["path"], "png", str(exc)))
 
-    recovered = sorted(set(RAYLIB_C_VISUAL_GAPS) - observed_gaps)
+    case_paths = {case["path"] for case in data["cases"]}
+    recovered = sorted((set(RAYLIB_C_VISUAL_GAPS) & case_paths) - observed_gaps)
     if recovered:
         for path in recovered:
             failures.append((path, "known-gap", "listed raylib C visual gap now captures; update the matrix gap list"))
@@ -1371,7 +1601,8 @@ def verify_libdraw_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 else:
                     failures.append((case["path"], "png", str(exc)))
 
-    recovered = sorted(set(LIBDRAW_C_VISUAL_GAPS) - observed_gaps)
+    case_paths = {case["path"] for case in data["cases"]}
+    recovered = sorted((set(LIBDRAW_C_VISUAL_GAPS) & case_paths) - observed_gaps)
     if recovered:
         for path in recovered:
             failures.append((path, "known-gap", "listed libdraw C visual gap now captures; update the matrix gap list"))
@@ -1447,6 +1678,7 @@ def main() -> int:
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")
+    parser.add_argument("--verify-web-canvas-c-visuals", action="store_true", help="compile generated C for every source to wasm Canvas2D and capture one PNG")
     parser.add_argument("--verify-raylib-c-visuals", action="store_true", help="compile generated C for every source against raylib and capture one PNG")
     parser.add_argument("--verify-libdraw-c-visuals", action="store_true", help="compile generated C for every source against libdraw and capture one PNG")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
@@ -1466,7 +1698,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_raylib_c_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_krb_web_visuals, args.verify_web_canvas_c_visuals, args.verify_raylib_c_visuals, args.verify_libdraw_c_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -1488,6 +1720,10 @@ def main() -> int:
             return rc
     if args.verify_krb_web_visuals:
         rc = verify_krb_web_visuals(data)
+        if rc:
+            return rc
+    if args.verify_web_canvas_c_visuals:
+        rc = verify_web_canvas_c_visuals(data, args)
         if rc:
             return rc
     if args.verify_raylib_c_visuals:

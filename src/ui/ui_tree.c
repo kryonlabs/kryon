@@ -1518,16 +1518,13 @@ rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
         DrawRectangleLinesEx((Rectangle){x, y, w, h}, 1, border);
 }
 
-#ifndef KRYON_BACKEND_LIBDRAW
+#ifdef KRYON_BACKEND_LIBDRAW
+void
+kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border)
+#else
 void
 Rect(int x, int y, int w, int h, Color fill, Color border)
-{
-    rect_shape_impl(x, y, w, h, fill, border);
-}
 #endif
-
-void
-RectangleShape(int x, int y, int w, int h, Color fill, Color border)
 {
     rect_shape_impl(x, y, w, h, fill, border);
 }

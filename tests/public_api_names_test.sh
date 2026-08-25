@@ -43,6 +43,20 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+rect_matches="$(
+    rg -n '\bRectangleShape\b' \
+        include src cmd docs examples tests \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$rect_matches" ]; then
+    echo "Rect is the canonical rectangle widget; do not reintroduce RectangleShape:"
+    echo "$rect_matches"
+    exit 1
+fi
+
 public_button_matches="$(
     rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
         include/ui_controls.h \

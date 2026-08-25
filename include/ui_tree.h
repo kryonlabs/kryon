@@ -199,9 +199,9 @@ void TextInRect(const char *text, Rectangle rect, int font_size,
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
-void RectangleShape(int x, int y, int w, int h, Color fill, Color border);
 #ifdef KRYON_BACKEND_LIBDRAW
-#define Rect RectangleShape
+void kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border);
+#define Rect kry_ui_rect_shape
 #else
 void Rect(int x, int y, int w, int h, Color fill, Color border);
 #endif

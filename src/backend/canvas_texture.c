@@ -303,6 +303,30 @@ Image GenImageColor(int width, int height, Color color)
     return img;
 }
 
+int kry_backend_capture_screen(Image *image)
+{
+    unsigned char *px;
+    int w;
+    int h;
+
+    if(image == NULL)
+        return -1;
+    memset(image, 0, sizeof(*image));
+    w = GetRenderWidth();
+    h = GetRenderHeight();
+    if(w <= 0 || h <= 0)
+        return -1;
+    px = malloc((size_t)w * h * 4);
+    if(px == NULL)
+        return -1;
+    if(js_texture_read(0, (int)(size_t)px) == 0) {
+        free(px);
+        return -1;
+    }
+    *image = canvas_image_from_rgba(px, w, h);
+    return 0;
+}
+
 /* ExportImage: reuse kry_screenshot.c's internal PNG writer. */
 extern int kry_write_png_file(const char *path, const unsigned char *rgba,
                               int w, int h);
