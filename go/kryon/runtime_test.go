@@ -692,7 +692,7 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 		Bounds:             Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:                 41,
 		Columns:            []string{"section", "label", "units"},
-		Rows:               []UITableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
+		Rows:               []TableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
 		ColumnWidths:       []int32{90, 140, 70},
 		SelectedRow:        &selectedRow,
 		SelectedColumn:     &selectedColumn,
@@ -766,7 +766,7 @@ func TestTableViewDragSelectsRange(t *testing.T) {
 		Bounds:               Rectangle{X: 10, Y: 10, Width: 220, Height: 150},
 		ID:                   42,
 		Columns:              []string{"A", "B", "C"},
-		Rows:                 []UITableRow{{Cells: []string{"1", "2", "3"}}, {Cells: []string{"4", "5", "6"}}, {Cells: []string{"7", "8", "9"}}},
+		Rows:                 []TableRow{{Cells: []string{"1", "2", "3"}}, {Cells: []string{"4", "5", "6"}}, {Cells: []string{"7", "8", "9"}}},
 		ColumnWidths:         []int32{60, 60, 60},
 		SelectedRow:          &selectedRow,
 		SelectedColumn:       &selectedCol,
@@ -807,7 +807,7 @@ func TestTableViewSelectionPaintsCellNotWholeRow(t *testing.T) {
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:             42,
 		Columns:        []string{"section", "label", "units"},
-		Rows:           []UITableRow{{Cells: []string{"banks", "checking", "10"}}},
+		Rows:           []TableRow{{Cells: []string{"banks", "checking", "10"}}},
 		ColumnWidths:   []int32{90, 140, 70},
 		SelectedRow:    &selectedRow,
 		SelectedColumn: &selectedColumn,
@@ -846,7 +846,7 @@ func TestTableViewPaintsFullRowAndColumnSelections(t *testing.T) {
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:             43,
 		Columns:        []string{"#", "A", "B"},
-		Rows:           []UITableRow{{Cells: []string{"1", "cash", "10"}}, {Cells: []string{"2", "bank", "20"}}},
+		Rows:           []TableRow{{Cells: []string{"1", "cash", "10"}}, {Cells: []string{"2", "bank", "20"}}},
 		ColumnWidths:   []int32{40, 140, 120},
 		SelectedRow:    &selectedRow,
 		SelectedColumn: &selectedColumn,
@@ -900,7 +900,7 @@ func TestTableViewClipboardShortcuts(t *testing.T) {
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:             50,
 		Columns:        []string{"section", "label", "units"},
-		Rows:           []UITableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
+		Rows:           []TableRow{{Cells: []string{"banks", "checking", "10"}}, {Cells: []string{"cash", "wallet", "5"}}},
 		ColumnWidths:   []int32{90, 140, 70},
 		SelectedRow:    &selectedRow,
 		SelectedColumn: &selectedColumn,
@@ -1016,9 +1016,9 @@ func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
 	activatedRow := int32(-1)
 	activatedColumn := int32(-1)
 	scroll := int32(0)
-	rows := make([]UITableRow, 20)
+	rows := make([]TableRow, 20)
 	for i := range rows {
-		rows[i] = UITableRow{Cells: []string{"section", fmt.Sprintf("row %d", i), fmt.Sprintf("%d", i)}}
+		rows[i] = TableRow{Cells: []string{"section", fmt.Sprintf("row %d", i), fmt.Sprintf("%d", i)}}
 	}
 	props := TableViewProps{
 		Bounds:          Rectangle{X: 10, Y: 10, Width: 310, Height: 118},
@@ -1086,7 +1086,7 @@ func TestTableViewClickFocusEnablesArrowNavigation(t *testing.T) {
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:             52,
 		Columns:        []string{"A", "B", "C"},
-		Rows:           []UITableRow{{Cells: []string{"a1", "b1", "c1"}}, {Cells: []string{"a2", "b2", "c2"}}},
+		Rows:           []TableRow{{Cells: []string{"a1", "b1", "c1"}}, {Cells: []string{"a2", "b2", "c2"}}},
 		ColumnWidths:   []int32{100, 100, 100},
 		SelectedRow:    &selectedRow,
 		SelectedColumn: &selectedColumn,
@@ -1157,7 +1157,7 @@ func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 180, Height: 80},
 		ID:             61,
 		Columns:        []string{"label"},
-		Rows:           []UITableRow{{Cells: []string{"row"}}},
+		Rows:           []TableRow{{Cells: []string{"row"}}},
 		SelectedRow:    &selectedRow,
 		SelectedColumn: &selectedColumn,
 		RowHeight:      24,

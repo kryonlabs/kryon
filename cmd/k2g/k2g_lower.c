@@ -95,7 +95,7 @@ is_runtime_go_type(const char *type)
         "PictureProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
         "ToolbarProps", "RadioButtonProps", "ProgressBarProps",
         "SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
-        "SourceViewProps", "UITableRow", "TableViewProps", "NotebookProps",
+        "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
         "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
         "ConfirmDialogProps", "PromptDialogProps", "Canvas",
         "CanvasResult", NULL
@@ -902,12 +902,13 @@ props_field_at(const char *type, int index)
                       "CursorY"}},
         {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",
                   "PadY"}},
-        {"TableViewProps", {"Bounds", "ID", "Columns", "Rows",
-                            "ColumnWidths", "SelectedRow",
+        {"TableViewProps", {"Bounds", "ID", "Columns", "ColumnCount",
+                            "Rows", "RowCount", "ColumnWidths", "SelectedRow",
                             "SelectedColumn", "ActivatedRow",
                             "ActivatedColumn", "RightClickedRow",
                             "RightClickedColumn", "SortColumn",
                             "ScrollOffset", "RowHeight"}},
+        {"TableRow", {"Cells", "CellCount"}},
         {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},
     };
     size_t i;
@@ -936,11 +937,13 @@ go_field_name(const char *field, char *dst, size_t dst_size)
         snprintf(dst, dst_size, "FocusID");
 }
 
-/* .kry array variables ('name: [N] const char*' state or local): uses
- * lower to Go slices, so identifier references append '[:]' (valid Go in
- * argument, indexing, and len() positions alike). */
+/* .kry array variables ('name: [N] T' state or local): references used in
+ * slice-typed Go fields append '[:]' so one .kry table/list definition can
+ * feed both generated C arrays and generated Go slices. */
 static char k2g_array_names[24][K2G_NAME_MAX];
 static int k2g_array_count;
+
+static void k2g_trim_ws(char *s);
 
 static void
 k2g_register_arrays_module(const KirModule *m)
@@ -950,8 +953,7 @@ k2g_register_arrays_module(const KirModule *m)
     for(i = 0; i < m->state_count && k2g_array_count < 24; i++) {
         const KirStateField *sf = &m->state_fields[i];
 
-        if(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
-           strchr(sf->type, '*') != NULL) {
+        if(sf->type[0] == '[') {
             snprintf(k2g_array_names[k2g_array_count], KIR_NAME_MAX, "%s",
                      sf->name);
             k2g_array_count++;
@@ -980,7 +982,8 @@ k2g_register_arrays_stmt(const char *text)
             tl = sizeof(decl_type) - 1;
         memcpy(decl_type, colon + 1, tl);
         decl_type[tl] = '\0';
-        if(decl_type[0] != '[' || strstr(decl_type, "char") == NULL)
+        k2g_trim_ws(decl_type);
+        if(decl_type[0] != '[')
             return;
     }
     {
@@ -1026,7 +1029,7 @@ k2g_register_arrays_args(const char *args)
             continue;
         snprintf(atype, sizeof(atype), "%s", colon + 1);
         k2g_trim_ws(atype);
-        if(atype[0] != '[' || strstr(atype, "char") == NULL)
+        if(atype[0] != '[')
             continue;
         while(*name == ' ' || *name == '\t')
             name++;
@@ -1066,6 +1069,99 @@ bool_prop_field(const char *field)
         if(strcmp(names[i], field) == 0)
             return 1;
     return 0;
+}
+
+static int
+k2g_go_array_element_type(const char *gt, char *elem, size_t elem_size)
+{
+    const char *close;
+    const char *base;
+
+    if(gt[0] != '[')
+        return 0;
+    close = strchr(gt, ']');
+    if(close == NULL)
+        return 0;
+    base = close + 1;
+    while(*base == ' ' || *base == '\t')
+        base++;
+    snprintf(elem, elem_size, "%s", base);
+    if(strncmp(elem, K2G_RUNTIME_PKG ".", strlen(K2G_RUNTIME_PKG) + 1) == 0)
+        memmove(elem, elem + strlen(K2G_RUNTIME_PKG) + 1,
+                strlen(elem + strlen(K2G_RUNTIME_PKG) + 1) + 1);
+    return elem[0] != '\0';
+}
+
+static void
+k2g_collapse_duplicate_slices(char *s)
+{
+    char *p;
+
+    while((p = strstr(s, "[:][:]")) != NULL)
+        memmove(p + 3, p + 6, strlen(p + 6) + 1);
+}
+
+static int
+k2g_translate_array_literal(const KirModule *m, const char *gt,
+                            const char *init, char *dst, size_t dst_size)
+{
+    char elem[K2G_NAME_MAX];
+    char raw[K2G_TEXT_MAX];
+    char parts[64][K2G_TEXT_MAX];
+    const char *q;
+    size_t rn = 0;
+    size_t dn = 0;
+    int depth = 1;
+    int count;
+
+    if(!k2g_go_array_element_type(gt, elem, sizeof(elem)))
+        return 0;
+    init = skip_ws(init);
+    if(*init != '{')
+        return 0;
+    q = init + 1;
+    while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
+        if(*q == '"') {
+            raw[rn++] = *q++;
+            while(*q != '\0' && *q != '"' && rn + 1 < sizeof(raw))
+                raw[rn++] = *q++;
+            if(*q == '"')
+                raw[rn++] = *q++;
+            continue;
+        }
+        if(*q == '{')
+            depth++;
+        else if(*q == '}') {
+            depth--;
+            if(depth == 0)
+                break;
+        }
+        raw[rn++] = *q++;
+    }
+    if(depth != 0)
+        return 0;
+    raw[rn] = '\0';
+    count = split_top(raw, parts, 64);
+    dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s{", gt);
+    for(int i = 0; i < count; i++) {
+        const char *part = skip_ws(parts[i]);
+        char value[K2G_TEXT_MAX];
+
+        if(i > 0)
+            dn += (size_t)snprintf(dst + dn, dst_size - dn, ",");
+        if(*part == '{' && elem[0] != '[') {
+            char typed[K2G_TEXT_MAX];
+
+            snprintf(typed, sizeof(typed), "(%s)%s", elem, part);
+            tx_expr(m, typed, value, sizeof(value));
+        } else {
+            tx_expr(m, part, value, sizeof(value));
+        }
+        k2g_collapse_duplicate_slices(value);
+        dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s", value);
+    }
+    snprintf(dst + dn, dst_size - dn, "}");
+    return 1;
 }
 
 static const char *
@@ -1750,6 +1846,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 }
             }
             if(k2g_is_array_name(ident, il)) {
+                if(q[0] == '[' && q[1] == ':' && q[2] == ']') {
+                    if(dn + il + 1 < dst_size) {
+                        memcpy(dst + dn, ident, il);
+                        dn += il;
+                    }
+                    p = q;
+                    continue;
+                }
                 if(dn + il + 4 < dst_size) {
                     memcpy(dst + dn, ident, il);
                     dn += il;
@@ -2217,9 +2321,14 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", tbuf);
                 if(assign != NULL) {
                     const char *init = skip_ws(assign + 2);
+                    char translated[K2G_TEXT_MAX];
 
                     /* Go composite literals carry their type: 'var x = T{...}' */
-                    if(*init == '{' && strstr(gt, "TODO") == NULL)
+                    if(*init == '{' && strstr(gt, "TODO") == NULL &&
+                       k2g_translate_array_literal(m, gt, init, translated,
+                                                   sizeof(translated)))
+                        fprintf(f, "var %s = %s\n", aname, translated);
+                    else if(*init == '{' && strstr(gt, "TODO") == NULL)
                         fprintf(f, "var %s = %s%s\n", aname, gt, init);
                     else
                         fprintf(f, "var %s %s = %s\n", aname, gt, assign + 2);

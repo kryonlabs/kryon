@@ -1332,6 +1332,7 @@ DrawUITableView(TableViewProps table)
     static int last_table_row = -1;
     static int last_table_column = -1;
     static double last_table_click_time = 0.0;
+    int paint = IsWindowReady();
     int font = GetUISmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
     int header_h = ScaleUIPx(30);
@@ -1361,7 +1362,8 @@ DrawUITableView(TableViewProps table)
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
     visible = (int)(table.bounds.height - header_h) / row_h;
-    ui_draw_panel(table.bounds);
+    if(paint)
+        ui_draw_panel(table.bounds);
 
     for(int c = 0; c < table.column_count; c++) {
         int x = (int)table.bounds.x;
@@ -1369,26 +1371,33 @@ DrawUITableView(TableViewProps table)
         for(int prev = 0; prev < c; prev++)
             x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
         Rectangle head = {(float)x, table.bounds.y, (float)col_w, (float)header_h};
-        DrawRectangleRec(head, DarkenUIColor(c_bg, 10));
-        DrawRectangleLinesEx(head, 1.0f, DarkenUIColor(c_bg, 28));
-        DrawUIText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
-                   (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, c_text);
+        if(paint) {
+            DrawRectangleRec(head, DarkenUIColor(c_bg, 10));
+            DrawRectangleLinesEx(head, 1.0f, DarkenUIColor(c_bg, 28));
+            DrawUIText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
+                       (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, c_text);
+        }
         if(ui_clicked(head) && table.sort_column != NULL) {
+            if(table.selected_row != NULL)
+                *table.selected_row = -1;
+            if(table.selected_column != NULL)
+                *table.selected_column = c;
             *table.sort_column = c;
             changed = 1;
         }
     }
 
-    BeginUIClip((int)table.bounds.x, (int)(table.bounds.y + header_h),
-                (int)table.bounds.width, (int)(table.bounds.height - header_h));
+    if(paint)
+        BeginUIClip((int)table.bounds.x, (int)(table.bounds.y + header_h),
+                    (int)table.bounds.width, (int)(table.bounds.height - header_h));
     for(int i = 0; i <= visible && first + i < table.row_count; i++) {
         int r = first + i;
         Rectangle row = {table.bounds.x, table.bounds.y + header_h + (float)(i * row_h - y_offset),
                          table.bounds.width, (float)row_h};
         int hot = ui_hot(row);
-        if(table.selected_row != NULL && *table.selected_row == r)
+        if(paint && table.selected_row != NULL && *table.selected_row == r)
             DrawRectangleRec(row, DarkenUIColor(c_bg, 18));
-        else if(hot)
+        else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
             MarkUIClickable();
@@ -1400,9 +1409,11 @@ DrawUITableView(TableViewProps table)
                 x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
             if(table.rows != NULL && table.rows[r].cells != NULL && c < table.rows[r].cell_count)
                 text = table.rows[r].cells[c] != NULL ? table.rows[r].cells[c] : "";
-            BeginUIClip(x, (int)row.y, col_w, (int)row.height);
-            DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, c_text);
-            EndUIClip();
+            if(paint) {
+                BeginUIClip(x, (int)row.y, col_w, (int)row.height);
+                DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, c_text);
+                EndUIClip();
+            }
         }
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
             int clicked_col = -1;
@@ -1456,8 +1467,9 @@ DrawUITableView(TableViewProps table)
             changed = 1;
         }
     }
-    EndUIClip();
-    if(table.scroll_offset != NULL && max_scroll > 0)
+    if(paint)
+        EndUIClip();
+    if(paint && table.scroll_offset != NULL && max_scroll > 0)
         DrawUIScrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
                         (int)(table.bounds.y + header_h),
                         (int)(table.bounds.height - header_h),

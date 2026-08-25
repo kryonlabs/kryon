@@ -25,7 +25,7 @@ CollectionsExample :: (viewport: Rectangle) #ui {
         cols: [2] const char * = {"Name","Kind"}
         row0: [2] const char * = {"main.kry","Kry source"}
         row1: [2] const char * = {"README.md","Markdown"}
-        rows: [2] UITableRow = {{row0,2},{row1,2}}
+        rows: [2] TableRow = {{row0,2},{row1,2}}
         ListBox((ListBoxProps){{40,60,180,180},301,items,4,&list_sel,&list_scroll,30})
         TreeView((TreeViewProps){{260,60,220,180},302,tree,4,&tree_sel,&tree_scroll,28})
         TableView((TableViewProps){{520,60,320,180},303,cols,2,rows,2,NULL,&row_sel,NULL,NULL,NULL,NULL,NULL,&sort_col,&table_scroll,28})

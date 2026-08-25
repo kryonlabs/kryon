@@ -32,7 +32,7 @@ state {
     columns: [2] const char * = {"Name","Value"}
     cells_a: [2] const char * = {"Alpha","1"}
     cells_b: [2] const char * = {"Beta","2"}
-    rows: [2] UITableRow = {{cells_a,2},{cells_b,2}}
+    rows: [2] TableRow = {{cells_a,2},{cells_b,2}}
     widths: [2] int = {120,80}
     tree_items: [2] UITreeItem = {{"Root",0,1,1,1},{"Child",1,2,0,1}}
     tabs: [2] const Tab = {{"One"},{"Two"}}

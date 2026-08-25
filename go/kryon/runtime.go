@@ -642,8 +642,9 @@ type SourceViewProps struct {
 	ShowLineNumbers bool
 }
 
-type UITableRow struct {
+type TableRow struct {
 	Cells            []string
+	CellCount        int32
 	TextColors       []Color
 	BackgroundColors []Color
 }
@@ -652,7 +653,9 @@ type TableViewProps struct {
 	Bounds               Rectangle
 	ID                   int32
 	Columns              []string
-	Rows                 []UITableRow
+	ColumnCount          int32
+	Rows                 []TableRow
+	RowCount             int32
 	ColumnWidths         []int32
 	SelectedRow          *int32
 	SelectedColumn       *int32
@@ -1597,6 +1600,7 @@ func (r *runtime) Collapsible(CollapsibleProps) int32 { return 0 }
 func (r *runtime) ListBox(ListBoxProps) int32         { return 0 }
 func (r *runtime) SourceView(SourceViewProps) int32   { return 0 }
 func (r *runtime) TableView(props TableViewProps) int32 {
+	props = normalizeTableViewProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	if len(props.Columns) == 0 {
 		return 0
@@ -2562,7 +2566,26 @@ func cellH(grid Grid) float32 {
 	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
 }
 
+func normalizeTableViewProps(props TableViewProps) TableViewProps {
+	if props.ColumnCount > 0 && int(props.ColumnCount) < len(props.Columns) {
+		props.Columns = props.Columns[:props.ColumnCount]
+	}
+	if props.RowCount > 0 && int(props.RowCount) < len(props.Rows) {
+		props.Rows = props.Rows[:props.RowCount]
+	}
+	if len(props.ColumnWidths) > len(props.Columns) {
+		props.ColumnWidths = props.ColumnWidths[:len(props.Columns)]
+	}
+	for i := range props.Rows {
+		if props.Rows[i].CellCount > 0 && int(props.Rows[i].CellCount) < len(props.Rows[i].Cells) {
+			props.Rows[i].Cells = props.Rows[i].Cells[:props.Rows[i].CellCount]
+		}
+	}
+	return props
+}
+
 func TableCellRect(props TableViewProps, row, col int32) Rectangle {
+	props = normalizeTableViewProps(props)
 	if len(props.Columns) == 0 || row < 0 || col < 0 || int(row) >= len(props.Rows) || int(col) >= len(props.Columns) {
 		return Rectangle{}
 	}
@@ -2829,7 +2852,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	}
 	for c := range props.Columns {
 		col := int32(c)
-		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []UITableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
+		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []TableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
 		rect.Y = props.Bounds.Y
 		rect.Height = float32(headerH)
 		fill := theme.button
@@ -2897,6 +2920,7 @@ func tableTextBounds(rect Rectangle) Rectangle {
 }
 
 func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32) (int32, int32) {
+	props = normalizeTableViewProps(props)
 	if rowH <= 0 || len(props.Columns) == 0 {
 		return -1, -1
 	}
@@ -2916,6 +2940,7 @@ func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32)
 }
 
 func tableColumnAtX(props TableViewProps, x float32) int32 {
+	props = normalizeTableViewProps(props)
 	if len(props.Columns) == 0 {
 		return -1
 	}
@@ -2931,6 +2956,7 @@ func tableColumnAtX(props TableViewProps, x float32) int32 {
 }
 
 func tableColumnWidth(props TableViewProps, col int32) int32 {
+	props = normalizeTableViewProps(props)
 	if col < 0 || int(col) >= len(props.Columns) {
 		return 0
 	}

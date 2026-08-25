@@ -202,14 +202,14 @@ typedef struct {
 typedef struct {
     const char **cells;
     int cell_count;
-} UITableRow;
+} TableRow;
 
 typedef struct {
     Rectangle bounds;
     int id;
     const char **columns;
     int column_count;
-    const UITableRow *rows;
+    const TableRow *rows;
     int row_count;
     const int *column_widths;
     int *selected_row;

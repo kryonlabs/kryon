@@ -1,0 +1,26 @@
+#import "kryon.h"
+
+app "Generated Table View Parity" {
+    size 420 220
+    fps 60
+}
+
+state {
+    selected_row: int = -1
+    selected_column: int = -1
+    activated_row: int = -1
+    activated_column: int = -1
+    sort_column: int = -1
+    scroll: int = 0
+}
+
+table_frame :: () #ui {
+    Screen root: {
+        columns: [3] const char * = {"Section","Label","Units"}
+        cells_a: [3] const char * = {"Banks","Checking","10"}
+        cells_b: [3] const char * = {"Cash","Wallet","5"}
+        rows: [2] TableRow = {{.cells = cells_a, .cell_count = 3},{.cells = cells_b, .cell_count = 3}}
+        widths: [3] int = {90,140,70}
+        TableView((TableViewProps){.bounds = {20,20,300,120}, .id = 901, .columns = columns, .column_count = 3, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &selected_row, .selected_column = &selected_column, .activated_row = &activated_row, .activated_column = &activated_column, .sort_column = &sort_column, .scroll_offset = &scroll, .row_height = 24})
+    }
+}

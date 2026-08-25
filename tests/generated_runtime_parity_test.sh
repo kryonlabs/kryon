@@ -26,6 +26,7 @@ tests/parity/focus.kry
 tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
 tests/parity/basic_controls.kry
+tests/parity/table_view.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -110,6 +111,11 @@ type snapshot struct {
 	ControlsToggle     int32  `json:"controls_toggle"`
 	ControlsCheckbox   int32  `json:"controls_checkbox"`
 	ControlsSelected   int32  `json:"controls_selected"`
+	TableSelectedRow   int32  `json:"table_selected_row"`
+	TableSelectedCol   int32  `json:"table_selected_column"`
+	TableActivatedRow  int32  `json:"table_activated_row"`
+	TableActivatedCol  int32  `json:"table_activated_column"`
+	TableSortColumn    int32  `json:"table_sort_column"`
 	Clipboard          string `json:"clipboard"`
 }
 
@@ -159,6 +165,14 @@ func drawControls() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		BasicControls_ControlsFrame(BasicControlsStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawTableView() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		TableView_TableFrame(TableViewStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -257,6 +271,7 @@ func main() {
 	buttons := ButtonsLayoutStateValue
 	longText := LongTextStateValue
 	controls := BasicControlsStateValue
+	table := TableViewStateValue
 
 	drawForm()
 	requireFrameOps("form", map[kryon.FrameOpKind]int{
@@ -403,6 +418,27 @@ func main() {
 			controls.SliderValue, controls.ToggleValue, controls.CheckboxValue, controls.Selected))
 	}
 
+	drawTableView()
+	requireFrameOps("table_view", map[kryon.FrameOpKind]int{
+		kryon.FrameOpTable: 1,
+		kryon.FrameOpText:  9,
+		kryon.FrameOpRect:  1,
+	})
+	requireRenderedFrame("table_view", 1200)
+	driver.QueueTap(116, 62)
+	drawTableView()
+	driver.QueueTap(116, 62)
+	drawTableView()
+	tableActivatedRow := table.ActivatedRow
+	tableActivatedCol := table.ActivatedColumn
+	driver.QueueTap(260, 30)
+	drawTableView()
+	if table.SelectedRow != -1 || table.SelectedColumn != 2 ||
+		tableActivatedRow != 0 || tableActivatedCol != 1 || table.SortColumn != 2 {
+		panic(fmt.Sprintf("table_view: got selected=(%d,%d) activated=(%d,%d) sort=%d, want (-1,2),(0,1),2",
+			table.SelectedRow, table.SelectedColumn, tableActivatedRow, tableActivatedCol, table.SortColumn))
+	}
+
 	out := snapshot{
 		FormFirst:          text64(form.First),
 		FormFirstCursor:    form.FirstCursor,
@@ -432,6 +468,11 @@ func main() {
 		ControlsToggle:     controls.ToggleValue,
 		ControlsCheckbox:   controls.CheckboxValue,
 		ControlsSelected:   controls.Selected,
+		TableSelectedRow:   table.SelectedRow,
+		TableSelectedCol:   table.SelectedColumn,
+		TableActivatedRow:  tableActivatedRow,
+		TableActivatedCol:  tableActivatedCol,
+		TableSortColumn:    table.SortColumn,
 		Clipboard:          driver.ClipboardText(),
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(out); err != nil {
@@ -455,6 +496,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/buttons_layout.c"
 #include "$work/c/tests/parity/long_text.c"
 #include "$work/c/tests/parity/basic_controls.c"
+#include "$work/c/tests/parity/table_view.c"
 
 static void drain_events(void)
 {
@@ -500,6 +542,11 @@ static void draw_long_text(void)
 static void draw_controls(void)
 {
     draw_ui(controls_frame);
+}
+
+static void draw_table_view(void)
+{
+    draw_ui(table_frame);
 }
 
 static unsigned long long checksum(const char *text)
@@ -680,13 +727,43 @@ int main(void)
         return 1;
     }
 
-    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"clipboard\":\"%s\"}\n",
+    draw_table_view();
+    KryonInjectTap(116, 62);
+    KryonInjectPump();
+    draw_table_view();
+    KryonInjectPump();
+    draw_table_view();
+    KryonInjectTap(116, 62);
+    KryonInjectPump();
+    draw_table_view();
+    KryonInjectPump();
+    draw_table_view();
+    int table_activated_row = activated_row;
+    int table_activated_column = activated_column;
+    KryonInjectTap(260, 30);
+    KryonInjectPump();
+    draw_table_view();
+    KryonInjectPump();
+    draw_table_view();
+    if(selected_row != -1 || selected_column != 2 ||
+       table_activated_row != 0 || table_activated_column != 1 ||
+       sort_column != 2) {
+        fprintf(stderr,
+                "table_view: got selected=(%d,%d) activated=(%d,%d) sort=%d, want (-1,2),(0,1),2\n",
+                selected_row, selected_column, table_activated_row,
+                table_activated_column, sort_column);
+        return 1;
+    }
+
+    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
         notes, notes_cursor, form_action, title, title_cursor, body,
         body_cursor, one, two, three, focus_after_focus, buttons_action,
         (int)strlen(long_first), long_first_cursor, checksum(long_first),
         (int)strlen(long_second), long_second_cursor, checksum(long_second),
         slider_value, toggle_value, checkbox_value, selected,
+        selected_row, selected_column, table_activated_row,
+        table_activated_column, sort_column,
         GetUIClipboardTextValue());
     return 0;
 }
@@ -702,4 +779,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/table_view.kry"]}'

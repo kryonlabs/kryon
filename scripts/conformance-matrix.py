@@ -271,6 +271,7 @@ KRB_ALPHA_BYTE_GAPS = {
     "tests/parity/focus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/generated_form.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/long_text.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/table_view.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
 }
 
 GENERATED_C_COMPILE_GAPS = {
