@@ -1,0 +1,116 @@
+#import "kryon.h"
+
+app "Widget Catalog Coverage" {
+    size 800 600
+    fps 60
+    font examples
+}
+
+state {
+    pick: int = 0
+    open: int = 1
+    slider_value: int = 42
+    toggle_value: int = 0
+    checkbox_value: int = 1
+    text_cursor: int = 5
+    area_cursor: int = 4
+    area_scroll: int = 0
+    list_scroll: int = 0
+    tree_selected: int = 1
+    table_selected_row: int = 0
+    table_selected_column: int = 0
+    table_activated_row: int = -1
+    table_activated_column: int = -1
+    table_right_row: int = -1
+    table_right_column: int = -1
+    canvas_scroll_x: int = 0
+    canvas_scroll_y: int = 0
+    canvas_zoom: float = 1.0f
+    text_value: [64] char = "Hello"
+    area_value: [128] char = "Notes"
+    choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    columns: [2] const char * = {"Name","Value"}
+    cells_a: [2] const char * = {"Alpha","1"}
+    cells_b: [2] const char * = {"Beta","2"}
+    rows: [2] UITableRow = {{cells_a,2},{cells_b,2}}
+    widths: [2] int = {120,80}
+    tree_items: [2] UITreeItem = {{"Root",0,1,1,1},{"Child",1,2,0,1}}
+    tabs: [2] const Tab = {{"One"},{"Two"}}
+}
+
+WidgetCatalog :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+
+        TitleBar("Widget Catalog", ScaleUIPx(32))
+        TopNav((TopNavProps){.id = 10, .x = 0, .y = ScaleUIPx(34), .width = ScaleUIPx(360), .height = ScaleUIPx(36), .title = "Top", .options = choices[:], .option_count = 3, .selected_index = &pick})
+        Toolbar((ToolbarProps){.id = 11, .x = ScaleUIPx(370), .y = ScaleUIPx(34), .width = ScaleUIPx(240), .height = ScaleUIPx(36), .draw_menu = 1, .options = choices[:], .option_count = 3, .selected_index = &pick})
+        BottomNav((BottomNavProps){.view_width = ScaleUIPx(640), .view_height = ScaleUIPx(480), .count = 0, .height = ScaleUIPx(56)})
+
+        Column main_column: {
+            bounds = {ScaleUIPx(24), ScaleUIPx(86), ScaleUIPx(300), ScaleUIPx(220)}
+            gap = ScaleUIPx(6)
+            padding = ScaleUIPx(8)
+            Text("Column text", 0, 0, Text16, GetThemeText())
+            Row action_row: {
+                bounds = {0, 0, ScaleUIPx(280), ScaleUIPx(40)}
+                gap = ScaleUIPx(6)
+                Button((ButtonProps){.bounds = {ScaleUIPx(32), ScaleUIPx(128), ScaleUIPx(96), ScaleUIPx(32)}, .label = "Button", .style = ButtonStylePrimary, .font = Text16, .id = 20})
+                IconButton((IconButtonProps){.bounds = {ScaleUIPx(136), ScaleUIPx(128), ScaleUIPx(32), ScaleUIPx(32)}, .icon_type = 1, .focus_id = 21})
+                Href((HrefProps){.bounds = {ScaleUIPx(176), ScaleUIPx(130), ScaleUIPx(80), ScaleUIPx(28)}, .text = "Docs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 22, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+            }
+            Stack surface_stack: {
+                bounds = {ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(230), ScaleUIPx(60)}
+                key = Key("catalog-stack")
+                Rect(ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(230), ScaleUIPx(60), GetThemeSurface(), GetThemeButton())
+                Line(ScaleUIPx(32), ScaleUIPx(170), ScaleUIPx(262), ScaleUIPx(230), GetThemeIcon())
+                Bevel(ScaleUIPx(44), ScaleUIPx(184), ScaleUIPx(60), ScaleUIPx(24), GetThemeSurface(), GetThemeButton())
+            }
+        }
+
+        y: int = ScaleUIPx(320)
+        TextInRect("TextInRect", (Rectangle){ScaleUIPx(24), y, ScaleUIPx(120), ScaleUIPx(24)}, Text16, GetThemeText())
+        TextLines("one;two;three", 3, ScaleUIPx(24), &y, Text16, ScaleUIPx(18), GetThemeText())
+        Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(180), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, ScaleUIPx(24), &y)
+        SelectableText("Selectable", ScaleUIPx(24), y + ScaleUIPx(18), Text16, GetThemeText())
+        ShowToast("Catalog toast")
+
+        TextField((TextFieldProps){.bounds = {ScaleUIPx(350), ScaleUIPx(92), ScaleUIPx(160), ScaleUIPx(28)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
+        TextArea((TextAreaProps){.bounds = {ScaleUIPx(350), ScaleUIPx(128), ScaleUIPx(180), ScaleUIPx(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+        Dropdown(32, ScaleUIPx(350), ScaleUIPx(198), ScaleUIPx(160), ScaleUIPx(28), choices[:], 3, &pick)
+        Slider(33, ScaleUIPx(350), ScaleUIPx(238), ScaleUIPx(160), "Slider", 0, 100, &slider_value, "%", nil)
+        Toggle(34, ScaleUIPx(350), ScaleUIPx(274), ScaleUIPx(120), ScaleUIPx(28), &toggle_value, "Off", "On")
+        Checkbox(35, ScaleUIPx(350), ScaleUIPx(314), "Check", &checkbox_value)
+        Radio((RadioButtonProps){{ScaleUIPx(350), ScaleUIPx(350), ScaleUIPx(120), ScaleUIPx(24)}, "Radio", 1, pick == 1, 0})
+        Spinbox((SpinboxProps){{ScaleUIPx(350), ScaleUIPx(382), ScaleUIPx(120), ScaleUIPx(28)}, 36, 0, 100, 1, &slider_value, 0, ""})
+        Combobox((ComboboxProps){{ScaleUIPx(350), ScaleUIPx(418), ScaleUIPx(160), ScaleUIPx(28)}, 37, choices[:], 3, &pick, 0})
+        Progress((ProgressBarProps){{ScaleUIPx(350), ScaleUIPx(458), ScaleUIPx(160), ScaleUIPx(18)}, 0, 100, slider_value, "Progress"})
+
+        ColorPicker((ColorPickerProps){{ScaleUIPx(540), ScaleUIPx(92), ScaleUIPx(42), ScaleUIPx(42)}, 38, &pick, 0})
+        LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(540), ScaleUIPx(148), ScaleUIPx(140), ScaleUIPx(48)}, .title = "Frame"})
+        ImageBox((ImageBoxProps){.bounds = {ScaleUIPx(690), ScaleUIPx(148), ScaleUIPx(48), ScaleUIPx(48)}, .texture = (Texture2D){0}, .tint = WHITE})
+        IconTexture(39, ScaleUIPx(540), ScaleUIPx(210), ScaleUIPx(24), (Texture2D){0}, WHITE)
+        IconLink(40, ScaleUIPx(580), ScaleUIPx(210), ScaleUIPx(24), (Texture2D){0}, "https://kryonlabs.com")
+        Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(620), ScaleUIPx(206), ScaleUIPx(72), ScaleUIPx(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
+
+        Notebook((NotebookProps){.bounds = {ScaleUIPx(540), ScaleUIPx(270), ScaleUIPx(160), ScaleUIPx(54)}, .tabs = tabs[:], .selected_index = &pick})
+        ListBox((ListBoxProps){.bounds = {ScaleUIPx(540), ScaleUIPx(336), ScaleUIPx(160), ScaleUIPx(70)}, .id = 41, .items = choices[:], .selected_index = &pick, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(22)})
+        TreeView((TreeViewProps){.bounds = {ScaleUIPx(540), ScaleUIPx(418), ScaleUIPx(160), ScaleUIPx(70)}, .id = 42, .items = tree_items[:], .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(22)})
+        SourceView((SourceViewProps){.bounds = {ScaleUIPx(24), ScaleUIPx(470), ScaleUIPx(240), ScaleUIPx(72)}, .text = "fn main()\\n  Text()", .scroll_x = &canvas_scroll_x, .scroll_y = &canvas_scroll_y, .font_size = Text14, .line_height = ScaleUIPx(18), .show_line_numbers = 1})
+        TableView((TableViewProps){.bounds = {ScaleUIPx(276), ScaleUIPx(470), ScaleUIPx(240), ScaleUIPx(72)}, .id = 43, .columns = columns[:], .column_count = 2, .rows = rows[:], .row_count = 2, .column_widths = widths[:], .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
+
+        PanedView((PanedViewProps){{ScaleUIPx(24), ScaleUIPx(552), ScaleUIPx(220), ScaleUIPx(36)}, 44, 1, &slider_value, 80, 120})
+        Collapsible((CollapsibleProps){{ScaleUIPx(260), ScaleUIPx(552), ScaleUIPx(160), ScaleUIPx(36)}, "Collapsible", &open})
+        Modal("Catalog", "Modal coverage", "Cancel", "OK")
+        MessageDialog((MessageDialogProps){"Message", "Dialog", "OK"})
+        ConfirmDialog((ConfirmDialogProps){"Confirm", "Dialog", "Cancel", "OK"})
+        PromptDialog((PromptDialogProps){"Prompt", "Dialog", "Cancel", "OK", text_value, sizeof(text_value)})
+        ActionModal((ActionModalProps){"Action", "Dialog", "Run", "Cancel"})
+
+        canvas_result: CanvasResult = BeginCanvas((Canvas){{ScaleUIPx(520), ScaleUIPx(510), ScaleUIPx(92), ScaleUIPx(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+        CanvasGrid((Rectangle){ScaleUIPx(520), ScaleUIPx(510), ScaleUIPx(92), ScaleUIPx(58)}, 8, GetThemeIcon())
+        DrawCircleV(canvas_result.world, ScaleUIPx(4), GetThemeSurface())
+        EndCanvas((Canvas){{ScaleUIPx(520), ScaleUIPx(510), ScaleUIPx(92), ScaleUIPx(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+    }
+}

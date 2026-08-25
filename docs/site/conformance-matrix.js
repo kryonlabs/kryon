@@ -45,7 +45,8 @@
       ["KRB RGB Visual", s.krb_rgb_visual_cases],
       ["KRB Byte Exact", s.krb_alpha_byte_exact_cases],
       ["State Parity", s.semantic_parity_cases],
-      ["Widgets Seen", s.widgets_detected]
+      ["Widgets Covered", s.widgets_detected + " / " + s.widgets_declared],
+      ["Widgets Missing", s.widgets_missing]
     ].map(function(item) {
       return '<div class="matrix-stat"><span>' + escapeText(item[0]) + "</span><strong>" + escapeText(item[1]) + "</strong></div>";
     }).join("");
@@ -119,11 +120,21 @@
     if (!widgetBody) {
       return;
     }
-    var widgets = Object.keys(data.widget_counts).sort(function(a, b) {
-      return data.widget_counts[b] - data.widget_counts[a] || a.localeCompare(b);
+    var widgets = (data.widget_coverage || []).slice().sort(function(a, b) {
+      return a.status_class.localeCompare(b.status_class) ||
+        b.source_count - a.source_count ||
+        a.id.localeCompare(b.id);
     });
     widgetBody.innerHTML = widgets.map(function(widget) {
-      return "<tr><td>" + escapeText(widget) + "</td><td>" + escapeText(data.widget_counts[widget]) + "</td></tr>";
+      var sources = widget.sources.length ? widget.sources.map(function(source) {
+        return "<code>" + escapeText(source) + "</code>";
+      }).join(", ") : '<span class="matrix-muted">No .kry source</span>';
+      var semantic = widget.semantic_sources.length ? widget.semantic_sources.map(function(source) {
+        return "<code>" + escapeText(source) + "</code>";
+      }).join(", ") : '<span class="matrix-muted">Lowering/visual only</span>';
+      return "<tr><td>" + escapeText(widget.id) + "</td>" + cell(widget) +
+        "<td>" + escapeText(widget.source_count) + "</td><td>" + sources +
+        "</td><td>" + semantic + "</td></tr>";
     }).join("");
   }
 

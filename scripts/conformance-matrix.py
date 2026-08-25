@@ -190,7 +190,6 @@ WIDGETS = {
     "Combobox",
     "ConfirmDialog",
     "Dropdown",
-    "Group",
     "Href",
     "IconButton",
     "IconLink",
@@ -233,7 +232,12 @@ WIDGETS = {
     "TreeView",
 }
 
+WIDGET_ALIASES = {
+    "Toast": {"ShowToast", "ShowToastFor"},
+}
+
 CALL_RE = re.compile(r"\b([A-Z][A-Za-z0-9_]*)\s*\(")
+BLOCK_RE = re.compile(r"\b(Screen|Column|Row|Stack)\s+[A-Za-z_][A-Za-z0-9_]*\s*:")
 STRING_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
 
@@ -262,10 +266,14 @@ def parity_fixtures() -> set[str]:
 def detect_widgets(source: str) -> list[str]:
     clean = STRING_RE.sub('""', source)
     found = {match.group(1) for match in CALL_RE.finditer(clean)}
+    found.update(match.group(1) for match in BLOCK_RE.finditer(clean))
     if "BeginCanvas" in found or "EndCanvas" in found:
         found.add("Canvas")
     if "BeginScrollContainer" in found or "EndScrollContainer" in found:
         found.add("Scroll")
+    for widget, aliases in WIDGET_ALIASES.items():
+        if aliases & found:
+            found.add(widget)
     return sorted(found & WIDGETS)
 
 
@@ -320,12 +328,28 @@ def source_cases() -> list[dict]:
 
 def matrix() -> dict:
     cases = source_cases()
-    widget_counts: dict[str, int] = {}
+    widget_cases: dict[str, list[str]] = {widget: [] for widget in sorted(WIDGETS)}
     semantic_count = 0
     for case in cases:
         semantic_count += int(case["semantic_parity"])
         for widget in case["widgets"]:
-            widget_counts[widget] = widget_counts.get(widget, 0) + 1
+            widget_cases.setdefault(widget, []).append(case["path"])
+    widget_rows = [
+        {
+            "id": widget,
+            "status": "covered" if paths else "missing",
+            "status_class": "ok" if paths else "no",
+            "source_count": len(paths),
+            "sources": paths,
+            "semantic_sources": [
+                case["path"]
+                for case in cases
+                if case["semantic_parity"] and widget in case["widgets"]
+            ],
+        }
+        for widget, paths in sorted(widget_cases.items())
+    ]
+    covered_widgets = sum(1 for row in widget_rows if row["source_count"])
     return {
         "schema": 1,
         "source": "scripts/conformance-matrix.py",
@@ -337,7 +361,9 @@ def matrix() -> dict:
             "semantic_parity_cases": semantic_count,
             "krb_rgb_visual_cases": len(cases),
             "krb_alpha_byte_exact_cases": len(cases) - len(KRB_ALPHA_BYTE_GAPS),
-            "widgets_detected": len(widget_counts),
+            "widgets_declared": len(widget_rows),
+            "widgets_detected": covered_widgets,
+            "widgets_missing": len(widget_rows) - covered_widgets,
         },
         "pipelines": [
             {
@@ -377,7 +403,12 @@ def matrix() -> dict:
             }
             for item in DOWNSTREAM_CHECKS
         ],
-        "widget_counts": dict(sorted(widget_counts.items())),
+        "widget_coverage": widget_rows,
+        "widget_counts": {
+            row["id"]: row["source_count"]
+            for row in widget_rows
+            if row["source_count"]
+        },
         "cases": cases,
     }
 
@@ -604,6 +635,17 @@ def verify_krb_visuals(data: dict) -> int:
     return 0
 
 
+def verify_widget_coverage(data: dict) -> int:
+    missing = [row["id"] for row in data["widget_coverage"] if not row["source_count"]]
+    if missing:
+        print("widget coverage missing .kry source cases:", file=sys.stderr)
+        for widget in missing:
+            print(f"  {widget}", file=sys.stderr)
+        return 1
+    print(f"widget coverage ok: {len(data['widget_coverage'])} widgets covered by .kry matrix sources")
+    return 0
+
+
 def resolve_command(command: list[str]) -> list[str]:
     out = list(command)
     for i, arg in enumerate(out):
@@ -659,6 +701,7 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
     parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
+    parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-renderer-smokes", action="store_true", help="run non-per-source renderer smoke gates")
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
@@ -670,7 +713,7 @@ def main() -> int:
         rc = check_output(rendered)
         if rc:
             return rc
-    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
+    elif not any((args.verify_pipelines, args.verify_krb_visuals, args.verify_widget_coverage, args.verify_renderer_smokes, args.verify_runtime_parity, args.verify_downstream)):
         OUTPUT.write_text(rendered, encoding="utf-8")
         print(
             f"rendered {rel(OUTPUT)}: "
@@ -684,6 +727,10 @@ def main() -> int:
             return rc
     if args.verify_krb_visuals:
         rc = verify_krb_visuals(data)
+        if rc:
+            return rc
+    if args.verify_widget_coverage:
+        rc = verify_widget_coverage(data)
         if rc:
             return rc
     if args.verify_renderer_smokes:

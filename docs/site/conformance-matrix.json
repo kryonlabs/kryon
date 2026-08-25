@@ -44,6 +44,7 @@
       "widgets": [
         "Background",
         "Button",
+        "Screen",
         "Text"
       ]
     },
@@ -91,6 +92,7 @@
       "widgets": [
         "Background",
         "Button",
+        "Screen",
         "Text"
       ]
     },
@@ -140,6 +142,7 @@
         "Button",
         "Checkbox",
         "Dropdown",
+        "Screen",
         "Slider",
         "Text",
         "TextField",
@@ -191,6 +194,7 @@
         "ActionModal",
         "Background",
         "Button",
+        "Screen",
         "Text"
       ]
     },
@@ -238,6 +242,7 @@
       "widgets": [
         "Background",
         "Rect",
+        "Screen",
         "Text"
       ]
     },
@@ -285,6 +290,7 @@
       "widgets": [
         "Background",
         "Rect",
+        "Screen",
         "Text"
       ]
     },
@@ -334,6 +340,7 @@
         "Button",
         "Line",
         "Rect",
+        "Screen",
         "Text"
       ]
     },
@@ -380,6 +387,7 @@
       },
       "widgets": [
         "Background",
+        "Screen",
         "Text"
       ]
     },
@@ -427,6 +435,7 @@
       "widgets": [
         "Background",
         "MenuBar",
+        "Screen",
         "Text"
       ]
     },
@@ -476,6 +485,7 @@
         "Combobox",
         "Progress",
         "Radio",
+        "Screen",
         "Spinbox",
         "Text"
       ]
@@ -524,6 +534,7 @@
       "widgets": [
         "Background",
         "ListBox",
+        "Screen",
         "TableView",
         "Text",
         "TreeView"
@@ -573,6 +584,7 @@
       "widgets": [
         "Background",
         "Button",
+        "Screen",
         "Text",
         "TextArea"
       ]
@@ -621,7 +633,8 @@
       "widgets": [
         "Background",
         "Canvas",
-        "CanvasGrid"
+        "CanvasGrid",
+        "Screen"
       ]
     },
     {
@@ -669,6 +682,7 @@
         "Background",
         "Collapsible",
         "PanedView",
+        "Screen",
         "TabBar",
         "Text"
       ]
@@ -720,7 +734,8 @@
         "ColorPicker",
         "ConfirmDialog",
         "MessageDialog",
-        "PromptDialog"
+        "PromptDialog",
+        "Screen"
       ]
     },
     {
@@ -766,6 +781,7 @@
       },
       "widgets": [
         "Background",
+        "Screen",
         "Text"
       ]
     },
@@ -814,6 +830,7 @@
         "Background",
         "Button",
         "Checkbox",
+        "Screen",
         "Text"
       ]
     },
@@ -862,6 +879,8 @@
         "Background",
         "Picture",
         "Rect",
+        "Screen",
+        "Stack",
         "Text"
       ]
     },
@@ -909,6 +928,7 @@
       "widgets": [
         "Background",
         "Dropdown",
+        "Screen",
         "Text"
       ]
     },
@@ -1000,6 +1020,7 @@
         "Background",
         "Checkbox",
         "Dropdown",
+        "Screen",
         "Scroll",
         "Text"
       ]
@@ -1090,6 +1111,7 @@
       },
       "widgets": [
         "Background",
+        "Screen",
         "Scroll",
         "Text"
       ]
@@ -1225,6 +1247,7 @@
         "Background",
         "Checkbox",
         "Dropdown",
+        "Screen",
         "Scroll",
         "Text"
       ]
@@ -1273,6 +1296,7 @@
       "widgets": [
         "Background",
         "Checkbox",
+        "Screen",
         "Scroll",
         "Text"
       ]
@@ -1364,6 +1388,7 @@
       "widgets": [
         "Background",
         "Button",
+        "Screen",
         "Slider",
         "Spinbox",
         "Text"
@@ -1412,6 +1437,7 @@
       },
       "widgets": [
         "Background",
+        "Screen",
         "Text"
       ]
     },
@@ -1459,6 +1485,7 @@
       "widgets": [
         "Background",
         "Rect",
+        "Screen",
         "Text"
       ]
     },
@@ -1506,6 +1533,7 @@
       "widgets": [
         "Background",
         "Button",
+        "Screen",
         "Text"
       ]
     },
@@ -1555,6 +1583,7 @@
         "Button",
         "Checkbox",
         "Dropdown",
+        "Screen",
         "Spinbox",
         "Text",
         "TextField"
@@ -1603,6 +1632,9 @@
       },
       "widgets": [
         "Button",
+        "Column",
+        "Row",
+        "Screen",
         "Text"
       ]
     },
@@ -1648,6 +1680,7 @@
         }
       },
       "widgets": [
+        "Screen",
         "TextArea",
         "TextField"
       ]
@@ -1694,6 +1727,7 @@
         }
       },
       "widgets": [
+        "Screen",
         "TextField"
       ]
     },
@@ -1740,6 +1774,9 @@
       },
       "widgets": [
         "Button",
+        "Column",
+        "Row",
+        "Screen",
         "Text",
         "TextArea",
         "TextField"
@@ -1787,8 +1824,105 @@
         }
       },
       "widgets": [
+        "Column",
+        "Screen",
         "Text",
         "TextField"
+      ]
+    },
+    {
+      "id": "tests-parity-widget_catalog",
+      "label": "Widget Catalog Coverage",
+      "path": "tests/parity/widget_catalog.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2g": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "ActionModal",
+        "Background",
+        "Bevel",
+        "BottomNav",
+        "Button",
+        "Canvas",
+        "CanvasGrid",
+        "Checkbox",
+        "Collapsible",
+        "ColorPicker",
+        "Column",
+        "Combobox",
+        "ConfirmDialog",
+        "Dropdown",
+        "Href",
+        "IconButton",
+        "IconLink",
+        "IconTexture",
+        "ImageBox",
+        "LabelFrame",
+        "Line",
+        "ListBox",
+        "MessageDialog",
+        "Modal",
+        "Notebook",
+        "PanedView",
+        "Paragraph",
+        "Picture",
+        "Progress",
+        "PromptDialog",
+        "Radio",
+        "Rect",
+        "Row",
+        "Screen",
+        "SelectableText",
+        "Slider",
+        "SourceView",
+        "Spinbox",
+        "Stack",
+        "TableView",
+        "Text",
+        "TextArea",
+        "TextField",
+        "TextInRect",
+        "TextLines",
+        "TitleBar",
+        "Toast",
+        "Toggle",
+        "Toolbar",
+        "TopNav",
+        "TreeView"
       ]
     }
   ],
@@ -1951,45 +2085,800 @@
   "source": "scripts/conformance-matrix.py",
   "summary": {
     "examples": 33,
-    "krb_alpha_byte_exact_cases": 28,
-    "krb_rgb_visual_cases": 38,
-    "parity_fixtures": 5,
-    "pipeline_cells": 152,
+    "krb_alpha_byte_exact_cases": 29,
+    "krb_rgb_visual_cases": 39,
+    "parity_fixtures": 6,
+    "pipeline_cells": 156,
     "semantic_parity_cases": 5,
-    "source_cases": 38,
-    "widgets_detected": 31
+    "source_cases": 39,
+    "widgets_declared": 54,
+    "widgets_detected": 54,
+    "widgets_missing": 0
   },
   "widget_counts": {
-    "ActionModal": 1,
-    "Background": 28,
-    "Button": 13,
-    "Canvas": 1,
-    "CanvasGrid": 1,
-    "Checkbox": 6,
-    "Collapsible": 1,
-    "ColorPicker": 1,
-    "Combobox": 1,
-    "ConfirmDialog": 1,
-    "Dropdown": 5,
-    "Line": 1,
-    "ListBox": 1,
+    "ActionModal": 2,
+    "Background": 29,
+    "Bevel": 1,
+    "BottomNav": 1,
+    "Button": 14,
+    "Canvas": 2,
+    "CanvasGrid": 2,
+    "Checkbox": 7,
+    "Collapsible": 2,
+    "ColorPicker": 2,
+    "Column": 4,
+    "Combobox": 2,
+    "ConfirmDialog": 2,
+    "Dropdown": 6,
+    "Href": 1,
+    "IconButton": 1,
+    "IconLink": 1,
+    "IconTexture": 1,
+    "ImageBox": 1,
+    "LabelFrame": 1,
+    "Line": 2,
+    "ListBox": 2,
     "MenuBar": 1,
-    "MessageDialog": 1,
-    "PanedView": 1,
-    "Picture": 1,
-    "Progress": 1,
-    "PromptDialog": 1,
-    "Radio": 1,
-    "Rect": 5,
+    "MessageDialog": 2,
+    "Modal": 1,
+    "Notebook": 1,
+    "PanedView": 2,
+    "Paragraph": 1,
+    "Picture": 2,
+    "Progress": 2,
+    "PromptDialog": 2,
+    "Radio": 2,
+    "Rect": 6,
+    "Row": 3,
+    "Screen": 34,
     "Scroll": 4,
-    "Slider": 2,
-    "Spinbox": 3,
+    "SelectableText": 1,
+    "Slider": 3,
+    "SourceView": 1,
+    "Spinbox": 4,
+    "Stack": 2,
     "TabBar": 1,
-    "TableView": 1,
-    "Text": 29,
-    "TextArea": 3,
-    "TextField": 6,
-    "Toggle": 1,
-    "TreeView": 1
-  }
+    "TableView": 2,
+    "Text": 30,
+    "TextArea": 4,
+    "TextField": 7,
+    "TextInRect": 1,
+    "TextLines": 1,
+    "TitleBar": 1,
+    "Toast": 1,
+    "Toggle": 2,
+    "Toolbar": 1,
+    "TopNav": 1,
+    "TreeView": 2
+  },
+  "widget_coverage": [
+    {
+      "id": "ActionModal",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/04_modal.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Background",
+      "semantic_sources": [],
+      "source_count": 29,
+      "sources": [
+        "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
+        "examples/03_theme.kry",
+        "examples/04_modal.kry",
+        "examples/05_color.kry",
+        "examples/06_scaling.kry",
+        "examples/07_layout.kry",
+        "examples/09_geometry.kry",
+        "examples/10_menus.kry",
+        "examples/11_basic_controls.kry",
+        "examples/12_collections.kry",
+        "examples/13_text_editor.kry",
+        "examples/14_canvas.kry",
+        "examples/15_containers.kry",
+        "examples/16_dialogs.kry",
+        "examples/17_keyboard_platform.kry",
+        "examples/18_accessibility.kry",
+        "examples/19_pictures.kry",
+        "examples/20_inbe_language.kry",
+        "examples/21_inbe_settings.kry",
+        "examples/22_inbe_manual.kry",
+        "examples/23_inbe_app.kry",
+        "examples/24_inbe_habits.kry",
+        "examples/25_inbe_practice.kry",
+        "examples/26_inbe_whm_session.kry",
+        "examples/27_inbe_statistics.kry",
+        "examples/28_inbe_profile.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Bevel",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "BottomNav",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Button",
+      "semantic_sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry"
+      ],
+      "source_count": 14,
+      "sources": [
+        "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
+        "examples/03_theme.kry",
+        "examples/04_modal.kry",
+        "examples/07_layout.kry",
+        "examples/13_text_editor.kry",
+        "examples/16_dialogs.kry",
+        "examples/18_accessibility.kry",
+        "examples/25_inbe_practice.kry",
+        "examples/28_inbe_profile.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Canvas",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/14_canvas.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "CanvasGrid",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/14_canvas.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Checkbox",
+      "semantic_sources": [],
+      "source_count": 7,
+      "sources": [
+        "examples/03_theme.kry",
+        "examples/18_accessibility.kry",
+        "examples/21_inbe_settings.kry",
+        "examples/23_inbe_app.kry",
+        "examples/24_inbe_habits.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Collapsible",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/15_containers.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "ColorPicker",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/16_dialogs.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Column",
+      "semantic_sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry"
+      ],
+      "source_count": 4,
+      "sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Combobox",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/11_basic_controls.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "ConfirmDialog",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/16_dialogs.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Dropdown",
+      "semantic_sources": [],
+      "source_count": 6,
+      "sources": [
+        "examples/03_theme.kry",
+        "examples/20_inbe_language.kry",
+        "examples/21_inbe_settings.kry",
+        "examples/23_inbe_app.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Href",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "IconButton",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "IconLink",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "IconTexture",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "ImageBox",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "LabelFrame",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Line",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/07_layout.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "ListBox",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/12_collections.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "MenuBar",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "examples/10_menus.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "MessageDialog",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/16_dialogs.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Modal",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Notebook",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "PanedView",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/15_containers.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Paragraph",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Picture",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/19_pictures.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Progress",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/11_basic_controls.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "PromptDialog",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/16_dialogs.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Radio",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/11_basic_controls.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Rect",
+      "semantic_sources": [],
+      "source_count": 6,
+      "sources": [
+        "examples/05_color.kry",
+        "examples/06_scaling.kry",
+        "examples/07_layout.kry",
+        "examples/19_pictures.kry",
+        "examples/27_inbe_statistics.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Row",
+      "semantic_sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry"
+      ],
+      "source_count": 3,
+      "sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Screen",
+      "semantic_sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/fields.kry",
+        "tests/parity/focus.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry"
+      ],
+      "source_count": 34,
+      "sources": [
+        "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
+        "examples/03_theme.kry",
+        "examples/04_modal.kry",
+        "examples/05_color.kry",
+        "examples/06_scaling.kry",
+        "examples/07_layout.kry",
+        "examples/09_geometry.kry",
+        "examples/10_menus.kry",
+        "examples/11_basic_controls.kry",
+        "examples/12_collections.kry",
+        "examples/13_text_editor.kry",
+        "examples/14_canvas.kry",
+        "examples/15_containers.kry",
+        "examples/16_dialogs.kry",
+        "examples/17_keyboard_platform.kry",
+        "examples/18_accessibility.kry",
+        "examples/19_pictures.kry",
+        "examples/20_inbe_language.kry",
+        "examples/21_inbe_settings.kry",
+        "examples/22_inbe_manual.kry",
+        "examples/23_inbe_app.kry",
+        "examples/24_inbe_habits.kry",
+        "examples/25_inbe_practice.kry",
+        "examples/26_inbe_whm_session.kry",
+        "examples/27_inbe_statistics.kry",
+        "examples/28_inbe_profile.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/fields.kry",
+        "tests/parity/focus.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Scroll",
+      "semantic_sources": [],
+      "source_count": 4,
+      "sources": [
+        "examples/21_inbe_settings.kry",
+        "examples/22_inbe_manual.kry",
+        "examples/23_inbe_app.kry",
+        "examples/24_inbe_habits.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "SelectableText",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Slider",
+      "semantic_sources": [],
+      "source_count": 3,
+      "sources": [
+        "examples/03_theme.kry",
+        "examples/25_inbe_practice.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "SourceView",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Spinbox",
+      "semantic_sources": [],
+      "source_count": 4,
+      "sources": [
+        "examples/11_basic_controls.kry",
+        "examples/25_inbe_practice.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Stack",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/19_pictures.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TabBar",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "examples/15_containers.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TableView",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/12_collections.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Text",
+      "semantic_sources": [
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry"
+      ],
+      "source_count": 30,
+      "sources": [
+        "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
+        "examples/03_theme.kry",
+        "examples/04_modal.kry",
+        "examples/05_color.kry",
+        "examples/06_scaling.kry",
+        "examples/07_layout.kry",
+        "examples/09_geometry.kry",
+        "examples/10_menus.kry",
+        "examples/11_basic_controls.kry",
+        "examples/12_collections.kry",
+        "examples/13_text_editor.kry",
+        "examples/15_containers.kry",
+        "examples/17_keyboard_platform.kry",
+        "examples/18_accessibility.kry",
+        "examples/19_pictures.kry",
+        "examples/20_inbe_language.kry",
+        "examples/21_inbe_settings.kry",
+        "examples/22_inbe_manual.kry",
+        "examples/23_inbe_app.kry",
+        "examples/24_inbe_habits.kry",
+        "examples/25_inbe_practice.kry",
+        "examples/26_inbe_whm_session.kry",
+        "examples/27_inbe_statistics.kry",
+        "examples/28_inbe_profile.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/buttons_layout.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TextArea",
+      "semantic_sources": [
+        "tests/parity/fields.kry",
+        "tests/parity/generated_form.kry"
+      ],
+      "source_count": 4,
+      "sources": [
+        "examples/13_text_editor.kry",
+        "tests/parity/fields.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TextField",
+      "semantic_sources": [
+        "tests/parity/fields.kry",
+        "tests/parity/focus.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry"
+      ],
+      "source_count": 7,
+      "sources": [
+        "examples/03_theme.kry",
+        "examples/29_inbe_habit_edit.kry",
+        "tests/parity/fields.kry",
+        "tests/parity/focus.kry",
+        "tests/parity/generated_form.kry",
+        "tests/parity/long_text.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TextInRect",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TextLines",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TitleBar",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Toast",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Toggle",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/03_theme.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Toolbar",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TopNav",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TreeView",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/12_collections.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    }
+  ]
 }
