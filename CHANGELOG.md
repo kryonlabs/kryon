@@ -7,6 +7,11 @@
   biometric/user-authenticated Android Keystore keys.
 - Add a Sweet app palette, with dark colors matched to the Sweet-Dark GTK
   theme, and make it the default Material app palette.
+- Expose the Plan9, Xfce and Sweet palettes in the Go runtime: the bindings
+  previously stopped at Cobalt and clamped every other id to Mono. Also keep
+  the circle/accent catalog bytes, add `GetUIMaterialScheme` with the full
+  Material color roles, and `DefaultThemeForThemeStyle` for pairing a widget
+  style with its default palette.
 - Let scroll containers render a small visual bleed around their viewport so
   control borders, focus rings, and Material state layers are not clipped.
 
