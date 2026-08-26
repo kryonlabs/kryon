@@ -146,6 +146,34 @@ unpack_color(unsigned rgba)
     return c;
 }
 
+static unsigned
+blend_rgba_over(unsigned src, unsigned dst)
+{
+    unsigned sa = src & 0xffu;
+    unsigned inv_a;
+    unsigned sr;
+    unsigned sg;
+    unsigned sb;
+    unsigned dr;
+    unsigned dg;
+    unsigned db;
+
+    if(sa == 0)
+        return dst;
+    if(sa == 255)
+        return src;
+    sr = (src >> 24) & 0xffu;
+    sg = (src >> 16) & 0xffu;
+    sb = (src >> 8) & 0xffu;
+    dr = (dst >> 24) & 0xffu;
+    dg = (dst >> 16) & 0xffu;
+    db = (dst >> 8) & 0xffu;
+    inv_a = 255u - sa;
+    return (((sr * sa + dr * inv_a + 127u) / 255u) << 24) |
+           (((sg * sa + dg * inv_a + 127u) / 255u) << 16) |
+           (((sb * sa + db * inv_a + 127u) / 255u) << 8) | 0xffu;
+}
+
 static double
 now_seconds(void)
 {
@@ -380,6 +408,8 @@ cell_set(int x, int y, const char *text, unsigned fg, unsigned bg,
     cell = &g_cells[cell_index(x, y)];
     if((bg & 0xffu) == 0)
         bg = cell->bg;
+    else if((bg & 0xffu) != 0xffu)
+        bg = blend_rgba_over(bg, cell->bg);
     memset(cell->text, 0, sizeof(cell->text));
     if(text == NULL || text[0] == '\0')
         cell->text[0] = ' ';
