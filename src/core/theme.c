@@ -770,7 +770,7 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
     case THEME_STYLE_RETRO:
         return THEME_MONO;
     case THEME_STYLE_MATERIAL:
-        return THEME_MINT;
+        return THEME_SWEET;
     case THEME_STYLE_SYSTEM:
     default:
         return THEME_MONO;

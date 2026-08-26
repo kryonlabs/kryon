@@ -538,6 +538,7 @@ load_base_locale(void)
         {"theme_cobalt", "Cobalt"},
         {"theme_plan9", "Plan9"},
         {"theme_xfce", "Xfce"},
+        {"theme_sweet", "Sweet"},
     };
 
     for(size_t i = 0; i < sizeof(defaults) / sizeof(defaults[0]); i++)

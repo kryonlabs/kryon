@@ -144,7 +144,7 @@ main(void)
     check_int("out-of-range style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
     check_int("out-of-range effective style", GetEffectiveThemeStyle(),
               GetDefaultPlatformThemeStyle());
-    check_int("theme count", THEME_COUNT, THEME_XFCE + 1);
+    check_int("theme count", THEME_COUNT, THEME_SWEET + 1);
     check_int("out-of-range theme normalizes", NormalizeTheme(THEME_COUNT),
               THEME_MONO);
     /* Theme-section locale keys must resolve to real strings (the
