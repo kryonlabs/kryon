@@ -109,6 +109,9 @@ const (
 	ThemeMono
 	ThemeMint
 	ThemeCobalt
+	ThemePlan9
+	ThemeXfce
+	ThemeSweet
 	ThemeCount
 
 	ThemeStyleSystem ThemeStyle = iota
@@ -157,7 +160,10 @@ const (
 	THEME_MONO     = 9
 	THEME_MINT     = 10
 	THEME_COBALT   = 11
-	THEME_COUNT    = 12
+	THEME_PLAN9    = 12
+	THEME_XFCE     = 13
+	THEME_SWEET    = 14
+	THEME_COUNT    = 15
 
 	PICTURE_FIT_STRETCH = PictureFitStretch
 	PICTURE_FIT_CONTAIN = PictureFitContain
@@ -776,6 +782,7 @@ type Runtime interface {
 	GetThemeButton() Color
 	GetThemeButtonHover() Color
 	GetThemeLink() Color
+	GetUIMaterialScheme() MaterialScheme
 	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
 	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
 	Bevel(x, y, w, h int32, light, dark Color)
@@ -859,6 +866,7 @@ type themePalette struct {
 	background   Color
 	surface      Color
 	text         Color
+	circle       Color
 	button       Color
 	buttonHover  Color
 	icon         Color
@@ -1277,6 +1285,9 @@ func (r *runtime) GetThemeSurface() Color     { return r.theme().surface }
 func (r *runtime) GetThemeButton() Color      { return r.theme().button }
 func (r *runtime) GetThemeButtonHover() Color { return r.theme().buttonHover }
 func (r *runtime) GetThemeLink() Color        { return r.theme().link }
+func (r *runtime) GetUIMaterialScheme() MaterialScheme {
+	return materialScheme(r.theme(), r.effectiveDark())
+}
 func (r *runtime) TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: rect, Text: text, Color: color, FontSize: fontSize})
 }
@@ -1898,8 +1909,27 @@ func themeSettingsThemeLabel(id int32) string {
 		return "Mint"
 	case ThemeCobalt:
 		return "Cobalt"
+	case ThemePlan9:
+		return "Plan9"
+	case ThemeXfce:
+		return "Xfce"
+	case ThemeSweet:
+		return "Sweet"
 	default:
 		return "Mono"
+	}
+}
+
+// DefaultThemeForThemeStyle mirrors GetDefaultThemeForThemeStyle(): the
+// palette an app should pair with a widget style when it has no opinion.
+func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
+	switch style {
+	case ThemeStyleRetro:
+		return ThemeMono
+	case ThemeStyleMaterial:
+		return ThemeSweet
+	default:
+		return ThemeMono
 	}
 }
 
