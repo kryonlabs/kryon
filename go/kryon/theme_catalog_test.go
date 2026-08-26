@@ -2,18 +2,17 @@ package kryon
 
 import "testing"
 
+// The ThemeId enum shares a const block with unrelated constants, so its
+// iota values are offset from the C ids; assert relations, not absolutes.
 func TestThemeCatalogIncludesPlan9XfceSweet(t *testing.T) {
 	if ThemeCount != ThemeSweet+1 || THEME_COUNT != 15 {
 		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want Sweet+1 / 15", ThemeCount, THEME_COUNT)
 	}
-	if ThemePlan9 != 12 || THEME_PLAN9 != 12 {
-		t.Fatalf("ThemePlan9 = %d, THEME_PLAN9 = %d, want 12", ThemePlan9, THEME_PLAN9)
+	if ThemeXfce != ThemeSweet-1 || ThemePlan9 != ThemeXfce-1 {
+		t.Fatalf("theme ids out of order: Plan9=%d Xfce=%d Sweet=%d", ThemePlan9, ThemeXfce, ThemeSweet)
 	}
-	if ThemeXfce != 13 || THEME_XFCE != 13 {
-		t.Fatalf("ThemeXfce = %d, THEME_XFCE = %d, want 13", ThemeXfce, THEME_XFCE)
-	}
-	if ThemeSweet != 14 || THEME_SWEET != 14 {
-		t.Fatalf("ThemeSweet = %d, THEME_SWEET = %d, want 14", ThemeSweet, THEME_SWEET)
+	if THEME_PLAN9 != 12 || THEME_XFCE != 13 || THEME_SWEET != 14 {
+		t.Fatalf("C-parity aliases: PLAN9=%d XFCE=%d SWEET=%d", THEME_PLAN9, THEME_XFCE, THEME_SWEET)
 	}
 	if len(catalogLight) != int(ThemeCount) {
 		t.Fatalf("catalogLight has %d entries, want %d", len(catalogLight), ThemeCount)
