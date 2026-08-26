@@ -104,6 +104,7 @@ grep "$(printf '\033')Pq" "$out" >/dev/null
 grep "Termi backend" "$out" >/dev/null
 grep "Button" "$out" >/dev/null
 grep "Clicked" "$out" >/dev/null
+grep "Bottom" "$out" >/dev/null
 grep "$(printf '\033')\\[?1049l" "$out" >/dev/null
 
 echo "termi backend smoke ok"

@@ -256,9 +256,14 @@ termi_sixel_terminal_advertised(void)
 static int
 termi_sixel_enabled(void)
 {
-    if(env_configured("TERMI_SIXEL"))
+    const char *configured = getenv("TERMI_SIXEL");
+
+    if(configured != NULL && configured[0] != '\0') {
+        if(strcmp(configured, "auto") == 0 || strcmp(configured, "AUTO") == 0)
+            return termi_sixel_terminal_advertised();
         return env_enabled("TERMI_SIXEL", 0);
-    return termi_sixel_terminal_advertised();
+    }
+    return 0;
 }
 
 static void
@@ -1177,8 +1182,16 @@ void SetExitKey(int key) { g_exit_key = key; }
 void SetMouseCursor(int cursor) { (void)cursor; }
 void SetWindowSize(int width, int height)
 {
-    int cols = (width + TERMI_CELL_WIDTH - 1) / TERMI_CELL_WIDTH;
-    int rows = (height + TERMI_CELL_HEIGHT - 1) / TERMI_CELL_HEIGHT;
+    int cols;
+    int rows;
+
+    if(!env_enabled("TERMI_ALLOW_SET_WINDOW_SIZE", 0)) {
+        (void)width;
+        (void)height;
+        return;
+    }
+    cols = (width + TERMI_CELL_WIDTH - 1) / TERMI_CELL_WIDTH;
+    rows = (height + TERMI_CELL_HEIGHT - 1) / TERMI_CELL_HEIGHT;
 
     resize_grid(cols, rows);
 }

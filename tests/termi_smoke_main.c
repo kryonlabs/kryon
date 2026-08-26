@@ -24,6 +24,7 @@ main(void)
 
     SetSingleInstance(0);
     InitWindow(640, 360, "termi smoke");
+    SetWindowSize(320, 160);
     SetTargetFPS(60);
     for(int frame = 0; frame < 120 && !WindowShouldClose(); frame++) {
         BeginDrawing();
@@ -47,6 +48,7 @@ main(void)
         if(frame > 8)
             DrawRectangle(240, 72 + (frame % 2) * 16, 80, 24,
                           (Color){frame % 2 ? 48 : 160, 76, 128, 255});
+        DrawText("Bottom", 24, 320, 16, (Color){255, 255, 255, 255});
         EndUI();
         EndDrawing();
     }
