@@ -200,14 +200,6 @@ env_enabled(const char *name, int fallback)
 }
 
 static int
-env_configured(const char *name)
-{
-    const char *s = getenv(name);
-
-    return s != NULL && s[0] != '\0';
-}
-
-static int
 contains_ci(const char *s, const char *needle)
 {
     size_t needle_len;
