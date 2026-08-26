@@ -1,6 +1,11 @@
 # Changelog
 ## Unreleased
 
+### Added
+
+- Add an Android secure-store helper that saves and unlocks secrets with
+  biometric/user-authenticated Android Keystore keys.
+
 ### Removed
 
 - Drop the unused Clay layout dependency: nothing in Kryon or downstream
