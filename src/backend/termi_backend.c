@@ -934,8 +934,15 @@ termi_clear(unsigned bg_rgba)
     if(g_cells == NULL)
         return;
     for(int y = 0; y < g_rows; y++) {
-        for(int x = 0; x < g_cols; x++)
-            cell_set(x, y, " ", fg, bg_rgba, TERMI_ATTR_NONE);
+        for(int x = 0; x < g_cols; x++) {
+            TermiCell *cell = &g_cells[cell_index(x, y)];
+
+            memset(cell->text, 0, sizeof(cell->text));
+            cell->text[0] = ' ';
+            cell->fg = fg;
+            cell->bg = bg_rgba;
+            cell->attr = TERMI_ATTR_NONE;
+        }
     }
 }
 
@@ -1219,6 +1226,7 @@ BeginDrawing(void)
 {
     detect_size();
     poll_input(1);
+    g_clip_depth = 0;
     g_sixel_count = 0;
 }
 

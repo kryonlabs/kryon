@@ -50,6 +50,8 @@ main(void)
                           (Color){frame % 2 ? 48 : 160, 76, 128, 255});
         DrawText("Bottom", 24, 320, 16, (Color){255, 255, 255, 255});
         EndUI();
+        if(frame == 0)
+            BeginScissorMode(0, 0, 80, 80);
         EndDrawing();
     }
     CloseWindow();
