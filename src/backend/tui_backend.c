@@ -45,7 +45,6 @@ static int g_width = 80;
 static int g_height = 48;
 static int g_term_cols = 80;
 static int g_term_rows = 24;
-static int g_have_tty_size;
 static int g_ready;
 static int g_should_close;
 static int g_target_fps;
@@ -78,8 +77,6 @@ static int g_cells_rows;
 static char *g_clipboard;
 static Font g_default_font;
 static int g_default_ready;
-static int g_trace_log_level = LOG_NONE;
-static TraceLogCallback g_trace_log_callback;
 
 static int g_key_down[KRY_TUI_MAX_KEYS];
 static int g_key_pressed[KRY_TUI_MAX_KEYS];
@@ -169,7 +166,6 @@ query_terminal_size(void)
        ws.ws_col > 0 && ws.ws_row > 0) {
         g_term_cols = ws.ws_col;
         g_term_rows = ws.ws_row;
-        g_have_tty_size = 1;
     }
     if(g_term_cols <= 0)
         g_term_cols = 80;
@@ -177,19 +173,6 @@ query_terminal_size(void)
         g_term_rows = 24;
     g_width = g_term_cols * KRY_TUI_CELL_W;
     g_height = g_term_rows * KRY_TUI_CELL_H;
-}
-
-static void
-set_virtual_size(int width, int height)
-{
-    if(width <= 0)
-        width = 80;
-    if(height <= 0)
-        height = 48;
-    g_width = width;
-    g_height = height;
-    g_term_cols = (width + KRY_TUI_CELL_W - 1) / KRY_TUI_CELL_W;
-    g_term_rows = (height + KRY_TUI_CELL_H - 1) / KRY_TUI_CELL_H;
 }
 
 static void
@@ -613,11 +596,6 @@ process_input_bytes(const unsigned char *buf, int len)
         int used = 1;
         int cp;
 
-        if(buf[i] == 0x03) {
-            g_should_close = 1;
-            i++;
-            continue;
-        }
         if(buf[i] == 0x1b) {
             int n = parse_csi(buf + i, len - i);
 
@@ -692,8 +670,12 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
         g_ready = 0;
         return;
     }
-    if(!g_have_tty_size && width > 0 && height > 0)
-        set_virtual_size(width, height);
+    if(width > 0 && height > 0) {
+        g_width = width;
+        g_height = height;
+        g_term_cols = (width + 1) / 1;
+        g_term_rows = (height + 1) / 2;
+    }
     if(ensure_sw(g_width, g_height) != 0) {
         g_ready = 0;
         return;
@@ -780,7 +762,7 @@ void ToggleFullscreen(void) { g_window_state ^= FLAG_FULLSCREEN_MODE; }
 void MaximizeWindow(void) { g_window_state |= FLAG_WINDOW_MAXIMIZED; }
 void MinimizeWindow(void) { g_window_state |= FLAG_WINDOW_MINIMIZED; }
 void RestoreWindow(void) { g_window_state &= ~(FLAG_WINDOW_MINIMIZED | FLAG_WINDOW_MAXIMIZED); }
-void SetWindowSize(int width, int height) { if(!g_have_tty_size) set_virtual_size(width, height); ensure_sw(g_width, g_height); free_cells(); }
+void SetWindowSize(int width, int height) { g_width = width; g_height = height; ensure_sw(width, height); free_cells(); }
 void *GetWindowHandle(void) { return NULL; }
 int GetScreenWidth(void) { return g_width; }
 int GetScreenHeight(void) { return g_height; }
@@ -797,7 +779,7 @@ double GetTime(void) { return now_seconds(); }
 int GetFPS(void) { return g_fps > 0 ? g_fps : (g_frame_time > 0 ? (int)(1.0f / g_frame_time + 0.5f) : 0); }
 void SetTargetFPS(int fps) { g_target_fps = fps > 0 ? fps : 0; }
 void SetConfigFlags(unsigned int flags) { g_window_state |= flags; }
-void SetTraceLogLevel(int logLevel) { g_trace_log_level = logLevel; }
+void SetTraceLogLevel(int logLevel) { (void)logLevel; }
 void SetMouseCursor(int cursor) { (void)cursor; }
 void SetExitKey(int key) { g_exit_key = key; }
 void WaitTime(double seconds) { if(seconds > 0.0) usleep((useconds_t)(seconds * 1000000.0)); }
@@ -1616,32 +1598,12 @@ int ChangeDirectory(const char *dirPath) { return dirPath != NULL && chdir(dirPa
 void TraceLog(int logLevel, const char *text, ...)
 {
     va_list ap;
-    const char *path;
-    FILE *f;
 
+    (void)logLevel;
     if(text == NULL)
         return;
-    if(logLevel < g_trace_log_level)
-        return;
     va_start(ap, text);
-    if(g_trace_log_callback != NULL) {
-        g_trace_log_callback(logLevel, text, ap);
-        va_end(ap);
-        return;
-    }
-    path = getenv("KRYON_TUI_LOG");
-    if(path != NULL && path[0] != '\0') {
-        f = fopen(path, "a");
-        if(f != NULL) {
-            vfprintf(f, text, ap);
-            fputc('\n', f);
-            fclose(f);
-        }
-    }
+    vfprintf(stderr, text, ap);
+    fputc('\n', stderr);
     va_end(ap);
-}
-
-void SetTraceLogCallback(TraceLogCallback callback)
-{
-    g_trace_log_callback = callback;
 }
