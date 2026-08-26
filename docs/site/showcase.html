@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon Showcase — apps built with Kryon</title>
-  <meta name="description" content="Apps built with Kryon, ranked by stars from public source platforms.">
+  <meta name="description" content="Apps built with Kryon, sorted by stars from public source platforms.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/showcase.html">
   <meta property="og:title" content="Kryon Showcase">
-  <meta property="og:description" content="Apps built with Kryon, ranked by stars from public source platforms.">
+  <meta property="og:description" content="Apps built with Kryon, sorted by stars from public source platforms.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/showcase.html">
   <meta name="twitter:title" content="Kryon Showcase">
-  <meta name="twitter:description" content="Apps built with Kryon, ranked by stars from public source platforms.">
+  <meta name="twitter:description" content="Apps built with Kryon, sorted by stars from public source platforms.">
   <meta name="theme-color" content="#f3f1ea">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
@@ -35,7 +35,6 @@
         <a href="/api">API</a>
         <a href="live-examples.html">Live Examples</a>
         <a href="ide.html">Web IDE</a>
-        <a class="is-external" href="https://krait.kryonlabs.com">Krait ↗</a>
         <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">★ <span class="count">GitHub</span></a>
         <a class="btn btn-primary" href="/#start">Get started</a>
       </nav>
@@ -46,7 +45,7 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Showcase</p>
       <h1>Apps built with Kryon</h1>
-      <p class="section-lead">The top projects are ranked by live stars from public source platforms. Submit your Kryon app through the public metadata repository.</p>
+      <p class="section-lead">Projects are sorted by live stars from public source platforms. Submit your Kryon app through the public metadata repository.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit a project</a>
         <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" target="_blank" rel="noopener">View metadata</a>
@@ -54,8 +53,8 @@
     </section>
 
     <section>
-      <p class="section-eyebrow">Top projects</p>
-      <h2>Top 10 by stars</h2>
+      <p class="section-eyebrow">All projects</p>
+      <h2>All Kryon apps by stars</h2>
       <div class="showcase-grid" id="showcase-projects" data-showcase-projects aria-live="polite"></div>
     </section>
   </main>
@@ -113,7 +112,6 @@
             var starDelta = rankedStars(b) - rankedStars(a);
             return starDelta || a._sourceOrder - b._sourceOrder;
           })
-          .slice(0, 10)
           .map(function(project, index) {
             delete project._sourceOrder;
             project.rank = project.unranked ? null : index + 1;

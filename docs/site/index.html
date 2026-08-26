@@ -16,7 +16,7 @@
   <meta name="twitter:site" content="@kryonlabs">
   <meta name="twitter:creator" content="@kryonlabs">
   <meta name="theme-color" content="#f3f1ea">
-  <meta name="keywords" content="Kryon,declarative UI,native UI,C99,Flutter alternative,Godot alternative,Electron alternative,.kry,raylib-style,Krait,cross-platform,UI runtime,app runtime">
+  <meta name="keywords" content="Kryon,declarative UI,native UI,C99,Flutter alternative,Godot alternative,Electron alternative,.kry,raylib-style,cross-platform,UI runtime,app runtime">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
   <link rel="stylesheet" href="styles.css">
@@ -51,7 +51,6 @@
         <a href="/api">API</a>
         <a href="live-examples.html">Live Examples</a>
         <a href="ide.html">Web IDE</a>
-        <a class="is-external" href="https://krait.kryonlabs.com">Krait ↗</a>
         <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">★ <span class="count">GitHub</span></a>
         <a class="btn btn-primary" href="/#start">Get started</a>
       </nav>
@@ -68,7 +67,7 @@
         <div class="hero-cta">
           <a class="btn btn-primary" href="#start">Get started</a>
           <a class="btn" href="ide.html">Open Web IDE</a>
-          <a class="btn" href="https://krait.kryonlabs.com">Try in Krait →</a>
+          <a class="btn" href="live-examples.html">Live examples →</a>
         </div>
       </div>
 
@@ -95,7 +94,7 @@ AppHome :: (app: InbeApp*) #ui {
 <pre><code>k2ir app.kry
 k2c  app.kir    # native C
 k2b  app.kir    # portable cartridge
-krait app.krb   # inspect and render</code></pre>
+kryon-preview app.krb</code></pre>
           </div>
         </div>
       </div>
@@ -149,10 +148,10 @@ k2b  counter.kir</code></pre>
         </div>
 
         <div class="tabpanel" id="tp-3" role="tabpanel" aria-labelledby="tab-3" hidden>
-          <h3>Live preview in Krait</h3>
-          <p>Edit a <code>.kry</code> file and see the running app update inside the IDE. Krait compiles to an app host, loads it into the embedded viewport, and keeps preview state across reloads.</p>
+          <h3>Runtime-owned live preview</h3>
+          <p>Edit a <code>.kry</code> file and see the running app update through Kryon's own preview host. Preview, capture, and hot-reload behavior stay inside the runtime toolchain.</p>
 <pre><code># edit app.kry, save, watch it reload
-$ krait --dev run my-app</code></pre>
+$ kryon preview my-app</code></pre>
         </div>
 
         <div class="tabpanel" id="tp-4" role="tabpanel" aria-labelledby="tab-4" hidden>
@@ -304,16 +303,6 @@ Greeting.krb  # portable cartridge</code></pre>
       </div>
     </section>
 
-    <section class="callout">
-      <div class="callout-inner">
-        <p class="section-eyebrow">Krait</p>
-        <h2>Build it in Krait</h2>
-        <p>Krait is the standalone first-party Kryon IDE — source editing, KIR inspection, KRB cartridge preview, live native preview, and diagnostics in one loop. It's written in <code>.kry</code>, so the IDE is its own research path.</p>
-        <a class="btn btn-primary" href="https://krait.kryonlabs.com">Visit krait.kryonlabs.com →</a>
-        <a class="btn" href="ide.html">Open Web IDE →</a>
-      </div>
-    </section>
-
     <section id="start">
       <p class="section-eyebrow">Get started</p>
       <h2>Build the runtime and tools</h2>
@@ -338,11 +327,6 @@ AppHome :: (app: InbeApp*) #ui {
         BottomNav(app->bottom_nav)
     }
 }</code></pre>
-      <p>Open a project in Krait:</p>
-<pre><code>git clone https://github.com/kryonlabs/krait.git
-cd krait
-gmake run ARGS=/path/to/project</code></pre>
-
       <h2 id="docs" style="margin-top: 40px;">Documentation</h2>
       <ul class="link-list">
         <li><strong><a href="/api">API reference</a></strong> — runtime, node, and widget surface</li>
@@ -351,7 +335,6 @@ gmake run ARGS=/path/to/project</code></pre>
         <li><strong><a href="renderers.html">Renderer matrices</a></strong> — surface backends, KRB hosts, and native Linux backend direction</li>
         <li><strong><a href="benchmarks.html">Benchmarks</a></strong> — generated text-input and lowering performance summaries</li>
         <li><strong><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Source repository</a></strong> — code, issues, and releases</li>
-        <li><strong><a href="https://github.com/kryonlabs/krait" target="_blank" rel="noopener">Krait repository</a></strong> — first-party IDE</li>
         <li><strong><a href="https://discord.gg/ep7gCWzHJD" target="_blank" rel="noopener">Discord</a></strong> — chat, help, and showcase</li>
         <li><strong><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram</a></strong> — news and announcements</li>
       </ul>
@@ -379,15 +362,11 @@ gmake run ARGS=/path/to/project</code></pre>
         </details>
         <details class="faq-item">
           <summary>Is Kryon free? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Yes — Kryon and Krait are free and open source, developed by Kryon Labs. Clone and build from <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">github.com/kryonlabs/kryon</a>.</p></div>
+          <div class="faq-a"><p>Yes — Kryon is free and open source, developed by Kryon Labs. Clone and build from <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">github.com/kryonlabs/kryon</a>.</p></div>
         </details>
         <details class="faq-item">
           <summary>What platforms does it support? <span class="chev">›</span></summary>
           <div class="faq-a"><p>Linux, Windows, macOS, Android, the browser via WebAssembly, and FreeBSD — including embedded targets. One interface source builds for all of them.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>What is Krait? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Krait is the standalone first-party Kryon IDE — project workspace, <code>.kry</code> source editing, live preview, diagnostics, and source-aware inspection. It's built as a Kryon app. See <a href="https://krait.kryonlabs.com">krait.kryonlabs.com</a>.</p></div>
         </details>
       </div>
     </section>
@@ -415,10 +394,8 @@ gmake run ARGS=/path/to/project</code></pre>
         <div class="footer-col">
           <h4>Ecosystem</h4>
           <ul>
-            <li><a href="https://krait.kryonlabs.com">Krait IDE ↗</a></li>
             <li><a href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit an app ↗</a></li>
             <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub ↗</a></li>
-            <li><a href="https://github.com/kryonlabs/krait" target="_blank" rel="noopener">Krait on GitHub ↗</a></li>
             <li><a href="#start">Get started</a></li>
           </ul>
         </div>
