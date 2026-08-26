@@ -57,6 +57,40 @@ test_menu_bar_switches_while_popup_captures_input(void)
               result.open_index, 1);
 }
 
+static void
+test_circle_click_uses_ui_release_path(void)
+{
+    int hover = 0;
+    int clicked = 0;
+    int second_clicked = 0;
+
+    KryonInjectReset();
+    KryonInjectTap(100.0f, 100.0f);
+    KryonInjectPump();
+    KryonInjectPump();
+
+    BeginUIFrame(640, 480, 1.0f);
+    clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, &hover);
+    second_clicked =
+        UIHandleClick((Rectangle){80.0f, 80.0f, 40.0f, 40.0f}, 0, NULL);
+    EndUIFrame();
+
+    check_int("circle click inside", clicked, 1);
+    check_int("circle click hover", hover, UIHoverEffectsEnabled() ? 1 : 0);
+    check_int("circle click consumes release", second_clicked, 0);
+
+    KryonInjectReset();
+    KryonInjectTap(160.0f, 100.0f);
+    KryonInjectPump();
+    KryonInjectPump();
+
+    BeginUIFrame(640, 480, 1.0f);
+    clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, NULL);
+    EndUIFrame();
+
+    check_int("circle click outside", clicked, 0);
+}
+
 int
 main(void)
 {
@@ -71,6 +105,7 @@ main(void)
     };
 
     SetUIScale(1.0f);
+    test_circle_click_uses_ui_release_path();
 
     SetThemeStyle(THEME_STYLE_RETRO);
     check_int("retro style", GetThemeStyle(), THEME_STYLE_RETRO);

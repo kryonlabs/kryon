@@ -72,6 +72,7 @@ int GetUIMouseCursor(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);
 
 int UIHandleClick(Rectangle bounds, int disabled, int *hover);
+int UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int UIInputCapturesClick(Vector2 point);
 int UIReleaseConsumed(void);
 void UIConsumeRelease(void);

@@ -53,6 +53,7 @@ int UIPointerReleaseConsumed(void);
 void UIConsumePointerRelease(void);
 int UIPointerReleaseAvailable(Vector2 point);
 int UIPointerReleaseOutside(Rectangle bounds);
+int UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
 int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 int ui_dropdown_captures_click(Vector2 point);

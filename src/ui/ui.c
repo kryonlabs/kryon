@@ -638,6 +638,30 @@ UIHandleClick(Rectangle bounds, int disabled, int *hover)
 }
 
 int
+UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
+{
+    Vector2 mouse_world = ui_mouse_world();
+    float dx = mouse_world.x - center.x;
+    float dy = mouse_world.y - center.y;
+    int mouse_inside = dx * dx + dy * dy <= radius * radius;
+    int captured = UIInputCapturesClick(mouse_world);
+    int active = mouse_inside && !captured && !disabled;
+
+    if(hover != NULL)
+        *hover = active && UIHoverEffectsEnabled();
+    if(disabled && mouse_inside && !captured)
+        MarkUIDisabled();
+    if(active)
+        MarkUIClickable();
+    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !UIPointerReleaseConsumed()) {
+        UIConsumeRelease();
+        return 1;
+    }
+    return 0;
+}
+
+int
 UIPointerReleaseOutside(Rectangle bounds)
 {
     Vector2 mouse = ui_mouse_world();
