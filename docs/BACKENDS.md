@@ -70,9 +70,6 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   (`src/backend/tui_*.c` plus the generated weak null stubs). It renders the
   normal Kryon surface through `kry_sw` into RGBA pixels and presents the frame
   as ANSI truecolor upper-half-block cells in the terminal alternate screen.
-  Apps see a scaled virtual framebuffer (`terminal_cols * 8` by
-  `terminal_rows * 16` by default) which is downsampled into terminal cells;
-  set `KRYON_TUI_SCALE=1..32` to trade size/detail for speed.
   The presenter keeps the previous cell buffer and only emits changed cells.
   Input is read from raw/nonblocking stdin and feeds the shared
   `KryonBackendRaw_*` hooks: UTF-8 text, common CSI keys, SGR mouse
