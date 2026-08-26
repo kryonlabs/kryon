@@ -252,6 +252,22 @@ BeginUIScrollContainer(UIScrollArea area)
             screen_bounds.width + visual_bleed * 2,
             screen_bounds.height + visual_bleed * 2
         };
+        if(visual_screen_bounds.x < 0) {
+            visual_screen_bounds.width += visual_screen_bounds.x;
+            visual_screen_bounds.x = 0;
+        }
+        if(visual_screen_bounds.y < 0) {
+            visual_screen_bounds.height += visual_screen_bounds.y;
+            visual_screen_bounds.y = 0;
+        }
+        if(visual_screen_bounds.x + visual_screen_bounds.width > ui_view_width)
+            visual_screen_bounds.width = ui_view_width - visual_screen_bounds.x;
+        if(visual_screen_bounds.y + visual_screen_bounds.height > ui_view_height)
+            visual_screen_bounds.height = ui_view_height - visual_screen_bounds.y;
+        if(visual_screen_bounds.width < 0)
+            visual_screen_bounds.width = 0;
+        if(visual_screen_bounds.height < 0)
+            visual_screen_bounds.height = 0;
 
         PushUIInputClip(clipped_world_bounds);
         BeginUIClip((int)visual_screen_bounds.x, (int)visual_screen_bounds.y,

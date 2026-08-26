@@ -180,6 +180,7 @@ DrawUIActionModal(ModalProps modal)
     capture.height = (float)modal_h;
     SetUIModalCapture(capture);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !UIReleaseConsumed() &&
        !CheckCollisionPointRec(mouse_world, capture)) {
         UIConsumeRelease();
         result = -1;
@@ -374,6 +375,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     capture.height = (float)frame.h;
     SetUIModalCapture(capture);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+       !UIReleaseConsumed() &&
        !CheckCollisionPointRec(mouse_world, capture)) {
         UIConsumeRelease();
         frame.right_clicked = 1;
