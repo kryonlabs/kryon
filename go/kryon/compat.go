@@ -15,6 +15,7 @@ type compatInputRuntime interface {
 	MouseButtonReleased(int32) bool
 	MouseWheelMove() float32
 	KeyPressed(int32) bool
+	KeyDown(int32) bool
 	CharPressed() int32
 }
 
@@ -123,6 +124,13 @@ func GetMouseWheelMove() float32 {
 func IsKeyPressed(key int32) bool {
 	if rt, ok := active().(compatInputRuntime); ok {
 		return rt.KeyPressed(key)
+	}
+	return false
+}
+
+func IsKeyDown(key int32) bool {
+	if rt, ok := active().(compatInputRuntime); ok {
+		return rt.KeyDown(key)
 	}
 	return false
 }

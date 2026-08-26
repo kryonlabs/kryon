@@ -1023,6 +1023,9 @@ func (r *runtime) MouseWheelMove() float32 {
 func (r *runtime) KeyPressed(key int32) bool {
 	return r.keyDown[key]
 }
+func (r *runtime) KeyDown(key int32) bool {
+	return r.keyDown[key]
+}
 func (r *runtime) CharPressed() int32 {
 	if len(r.chars) == 0 {
 		return 0
