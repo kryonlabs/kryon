@@ -1376,10 +1376,88 @@ void DrawLineV(Vector2 start, Vector2 end, Color color)
 {
     DrawLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, color);
 }
+
+static float
+termi_clampf(float value, float min_value, float max_value)
+{
+    if(value < min_value)
+        return min_value;
+    if(value > max_value)
+        return max_value;
+    return value;
+}
+
+static float
+termi_point_line_distance2(float px, float py, Vector2 start, Vector2 end)
+{
+    float vx = end.x - start.x;
+    float vy = end.y - start.y;
+    float len2 = vx * vx + vy * vy;
+    float t;
+    float dx;
+    float dy;
+
+    if(len2 <= 0.0001f) {
+        dx = px - start.x;
+        dy = py - start.y;
+        return dx * dx + dy * dy;
+    }
+    t = ((px - start.x) * vx + (py - start.y) * vy) / len2;
+    t = termi_clampf(t, 0.0f, 1.0f);
+    dx = px - (start.x + vx * t);
+    dy = py - (start.y + vy * t);
+    return dx * dx + dy * dy;
+}
+
+static void
+termi_fill_line(Vector2 start, Vector2 end, float thick, Color color)
+{
+    unsigned bg = pack_color(color);
+    float half_cell_w = (float)TERMI_CELL_WIDTH * 0.5f;
+    float half_cell_h = (float)TERMI_CELL_HEIGHT * 0.5f;
+    float cell_radius = sqrtf(half_cell_w * half_cell_w +
+                              half_cell_h * half_cell_h);
+    float radius;
+    float hit_radius;
+    float min_x;
+    float max_x;
+    float min_y;
+    float max_y;
+    int c0;
+    int c1;
+    int r0;
+    int r1;
+
+    if(((bg) & 0xffu) == 0)
+        return;
+    if(thick < 1.0f)
+        thick = 1.0f;
+    radius = thick * 0.5f;
+    hit_radius = radius + cell_radius;
+    min_x = fminf(start.x, end.x) - hit_radius;
+    max_x = fmaxf(start.x, end.x) + hit_radius;
+    min_y = fminf(start.y, end.y) - hit_radius;
+    max_y = fmaxf(start.y, end.y) + hit_radius;
+    c0 = pixel_to_col((int)floorf(min_x));
+    c1 = pixel_to_col((int)ceilf(max_x + (float)TERMI_CELL_WIDTH - 1.0f));
+    r0 = pixel_to_row((int)floorf(min_y));
+    r1 = pixel_to_row((int)ceilf(max_y + (float)TERMI_CELL_HEIGHT - 1.0f));
+
+    for(int row = r0; row <= r1; row++) {
+        for(int col = c0; col <= c1; col++) {
+            float px = (float)(col * TERMI_CELL_WIDTH) + half_cell_w;
+            float py = (float)(row * TERMI_CELL_HEIGHT) + half_cell_h;
+
+            if(termi_point_line_distance2(px, py, start, end) <=
+               hit_radius * hit_radius)
+                cell_set(col, row, " ", 0xffffffffu, bg, TERMI_ATTR_NONE);
+        }
+    }
+}
+
 void DrawLineEx(Vector2 start, Vector2 end, float thick, Color color)
 {
-    (void)thick;
-    DrawLineV(start, end, color);
+    termi_fill_line(start, end, thick, color);
 }
 
 static float
