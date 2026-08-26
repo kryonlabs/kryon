@@ -4,8 +4,11 @@ int
 main(void)
 {
     unsigned char pixels[16 * 16 * 4];
+    unsigned char picture_pixels[96 * 64 * 4];
     Image icon;
+    Image picture;
     Texture2D icon_texture;
+    Texture2D picture_texture;
     int clicked = 0;
 
     for(int y = 0; y < 16; y++) {
@@ -19,8 +22,21 @@ main(void)
             pixels[i + 3] = active ? 255 : 220;
         }
     }
+    for(int y = 0; y < 64; y++) {
+        for(int x = 0; x < 96; x++) {
+            int i = (y * 96 + x) * 4;
+
+            picture_pixels[i + 0] = (unsigned char)(48 + (x * 3) % 180);
+            picture_pixels[i + 1] = (unsigned char)(40 + (y * 4) % 160);
+            picture_pixels[i + 2] = (unsigned char)(96 + ((x + y) * 2) % 140);
+            picture_pixels[i + 3] = 255;
+        }
+    }
     icon = (Image){pixels, 16, 16, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+    picture = (Image){picture_pixels, 96, 64, 1,
+                      PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     icon_texture = LoadTextureFromImage(icon);
+    picture_texture = LoadTextureFromImage(picture);
 
     SetSingleInstance(0);
     InitWindow(640, 360, "termi smoke");
@@ -45,6 +61,9 @@ main(void)
         DrawTexturePro(icon_texture, (Rectangle){0, 0, 16, 16},
                        (Rectangle){248, 72, 32, 32}, (Vector2){0, 0}, 0.0f,
                        WHITE);
+        DrawTexturePro(picture_texture, (Rectangle){0, 0, 96, 64},
+                       (Rectangle){336, 88, 192, 128}, (Vector2){0, 0}, 0.0f,
+                       WHITE);
         if(frame > 8)
             DrawRectangle(240, 72 + (frame % 2) * 16, 80, 24,
                           (Color){frame % 2 ? 48 : 160, 76, 128, 255});
@@ -55,6 +74,7 @@ main(void)
         EndDrawing();
     }
     CloseWindow();
+    UnloadTexture(picture_texture);
     UnloadTexture(icon_texture);
     return 0;
 }

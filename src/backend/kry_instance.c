@@ -23,7 +23,12 @@ extern void KryonRaylibBackend_InitWindow(int width, int height,
 extern void KryonRaylibBackend_CloseWindow(void);
 extern bool KryonRaylibBackend_WindowShouldClose(void);
 
-static int g_single_instance = 1;
+static int g_single_instance =
+#if defined(KRYON_BACKEND_TERMI)
+    0;
+#else
+    1;
+#endif
 static int g_instance_rejected = 0;
 
 #if !defined(__EMSCRIPTEN__) && !defined(_WIN32) && !defined(__ANDROID__) && \

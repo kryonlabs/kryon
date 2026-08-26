@@ -1824,6 +1824,78 @@ draw_texture_cells(const TermiTexture *tex, Rectangle source, Rectangle dest,
 }
 
 static int
+rect_abs_int(float value)
+{
+    return (int)(value < 0.0f ? -value : value);
+}
+
+static int
+texture_sixel_detail_score(const TermiTexture *tex, Rectangle source,
+                           Rectangle dest, Color tint)
+{
+    Color colors[32];
+    int color_count = 0;
+    int visible = 0;
+    int width = rect_abs_int(dest.width);
+    int height = rect_abs_int(dest.height);
+
+    if(tex == NULL || tex->rgba == NULL || width <= 0 || height <= 0)
+        return 0;
+    for(int y = 0; y < 8; y++) {
+        for(int x = 0; x < 8; x++) {
+            int px = (int)dest.x + (x * width) / 8 + width / 16;
+            int py = (int)dest.y + (y * height) / 8 + height / 16;
+            Color c = texture_sample(tex, source, dest, px, py, tint);
+            int seen = 0;
+
+            if(c.a < 32)
+                continue;
+            visible++;
+            for(int i = 0; i < color_count; i++) {
+                int dr = (int)colors[i].r - (int)c.r;
+                int dg = (int)colors[i].g - (int)c.g;
+                int db = (int)colors[i].b - (int)c.b;
+
+                if(dr * dr + dg * dg + db * db < 64) {
+                    seen = 1;
+                    break;
+                }
+            }
+            if(!seen && color_count < (int)(sizeof(colors) / sizeof(colors[0])))
+                colors[color_count++] = c;
+        }
+    }
+    return visible >= 8 ? color_count : 0;
+}
+
+static int
+texture_allows_sixel(const TermiTexture *tex, Rectangle source, Rectangle dest,
+                     Color tint)
+{
+    int width = rect_abs_int(dest.width);
+    int height = rect_abs_int(dest.height);
+    int source_width = rect_abs_int(source.width);
+    int source_height = rect_abs_int(source.height);
+    int min_width = env_int("TERMI_SIXEL_MIN_WIDTH", 160);
+    int min_height = env_int("TERMI_SIXEL_MIN_HEIGHT", 96);
+    int min_colors = env_int("TERMI_SIXEL_MIN_COLORS", 12);
+
+    if(!termi_sixel_enabled())
+        return 0;
+    if(tex == NULL || tex->rgba == NULL)
+        return 0;
+    if(source_width <= 0)
+        source_width = tex->width;
+    if(source_height <= 0)
+        source_height = tex->height;
+    if(width < min_width || height < min_height)
+        return 0;
+    if(source_width < 32 || source_height < 32)
+        return 0;
+    return texture_sixel_detail_score(tex, source, dest, tint) >= min_colors;
+}
+
+static int
 palette_nearest(TermiPaletteColor *palette, int count, Color c)
 {
     int best = 0;
@@ -2257,7 +2329,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     (void)rotation;
     if(tex != NULL && tex->rgba != NULL) {
         draw_texture_cells(tex, source, dest, tint);
-        queue_sixel(texture.id, source, dest, tint);
+        if(texture_allows_sixel(tex, source, dest, tint))
+            queue_sixel(texture.id, source, dest, tint);
         return;
     }
     DrawRectangleRec(dest, tint);

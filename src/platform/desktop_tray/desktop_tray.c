@@ -1,6 +1,20 @@
 #include "desktop_tray.h"
 
-#if defined(_WIN32)
+#if defined(KRYON_BACKEND_TERMI)
+
+int InitDesktopTray(const DesktopTraySpec *spec) { (void)spec; return 0; }
+void ShutdownDesktopTray(void) {}
+int PollDesktopTrayAction(void) { return 0; }
+void SetDesktopTrayStatus(const char *text) { (void)text; }
+void SetDesktopTrayIcon(const char *icon_path) { (void)icon_path; }
+void SetDesktopTrayMenu(const DesktopTrayMenuItem *items, int count)
+{
+    (void)items;
+    (void)count;
+}
+void SetDesktopTrayActivateAction(int action) { (void)action; }
+
+#elif defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
