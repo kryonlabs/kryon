@@ -23,6 +23,7 @@
 #define TERMI_TEXTURE_CAP 512
 #define TERMI_SIXEL_QUEUE_CAP 64
 #define TERMI_SIXEL_PALETTE_CAP 64
+#define TERMI_OUT_BUF_CAP 262144
 
 typedef struct TermiClip {
     int x;
@@ -257,17 +258,46 @@ termi_sixel_enabled(void)
 }
 
 static void
-term_write(const char *s)
+term_flush(void);
+
+static char g_out_buf[TERMI_OUT_BUF_CAP];
+static size_t g_out_len = 0;
+
+static void
+term_flush(void)
 {
-    if(s != NULL)
-        (void)write(STDOUT_FILENO, s, strlen(s));
+    if(g_out_len > 0) {
+        (void)write(STDOUT_FILENO, g_out_buf, g_out_len);
+        g_out_len = 0;
+    }
 }
 
 static void
 term_write_len(const char *s, size_t len)
 {
-    if(s != NULL && len > 0)
-        (void)write(STDOUT_FILENO, s, len);
+    if(s == NULL || len == 0)
+        return;
+    while(len > 0) {
+        size_t available = sizeof(g_out_buf) - g_out_len;
+        size_t chunk;
+
+        if(available == 0) {
+            term_flush();
+            available = sizeof(g_out_buf);
+        }
+        chunk = len < available ? len : available;
+        memcpy(g_out_buf + g_out_len, s, chunk);
+        g_out_len += chunk;
+        s += chunk;
+        len -= chunk;
+    }
+}
+
+static void
+term_write(const char *s)
+{
+    if(s != NULL)
+        term_write_len(s, strlen(s));
 }
 
 static int
@@ -839,7 +869,7 @@ static int
 termi_effective_fps(void)
 {
     const char *configured = getenv("TERMI_FPS");
-    int default_cap = 20;
+    int default_cap = 12;
 
     if(configured != NULL && configured[0] != '\0')
         return env_int_allow_zero("TERMI_FPS", default_cap);
@@ -958,6 +988,7 @@ termi_present(void)
     term_write("\033[0m\033[?25l");
     count = (size_t)g_cols * (size_t)g_rows;
     (void)count;
+    term_flush();
     fflush(stdout);
 }
 
@@ -1023,6 +1054,7 @@ KryonRaylibBackend_CloseWindow(void)
     if(!g_ready)
         return;
     term_write("\033[0m\033[?1006l\033[?1000l\033[?25h\033[?1049l");
+    term_flush();
     if(g_have_termios) {
         (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_saved_termios);
         g_have_termios = 0;
@@ -1962,6 +1994,8 @@ present_sixel_queue(void)
     if(g_prev_sixel_count > 0)
         memcpy(g_prev_sixel_queue, g_sixel_queue,
                (size_t)g_prev_sixel_count * sizeof(g_prev_sixel_queue[0]));
+    if(g_sixel_count > 0)
+        term_flush();
     if(g_sixel_count > 0)
         fflush(stdout);
 }
