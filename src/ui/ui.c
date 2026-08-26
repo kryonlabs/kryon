@@ -1372,6 +1372,22 @@ ReleaseUITextFocus(int *focused, int focus_id)
     }
 }
 
+void
+ClearTextInputFocus(void)
+{
+    if(g_ui_text_focus_owner != NULL)
+        *g_ui_text_focus_owner = 0;
+    g_ui_text_focus_owner = NULL;
+    g_ui_text_focus_owner_this_frame = NULL;
+    g_ui_text_focus_owner_frame = 0;
+    g_ui_focus_text_input_active = 0;
+    g_ui_text_input_requested = 0;
+    g_ui_text_input_show_requested = 0;
+    ui_text_context_close();
+    ui_clear_text_field_selection();
+    ui_clear_text_area_selection();
+}
+
 static int
 IsUITextFocusOwner(int *focused)
 {

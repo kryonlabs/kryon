@@ -5,6 +5,8 @@
 static int callback_count;
 static int events[8];
 
+void ClearTextInputFocus(void);
+
 static void
 text_input_callback(int active)
 {
@@ -52,12 +54,17 @@ main(void)
     SetUIFocusTextInputActive(1);
     EndUIFrame();
 
-    ok &= callback_count == 3;
-    if(callback_count != 3)
-        fprintf(stderr, "FAIL: callback count got %d want 3\n", callback_count);
+    BeginUIFrame(640, 480, 1.0f);
+    ClearTextInputFocus();
+    EndUIFrame();
+
+    ok &= callback_count == 4;
+    if(callback_count != 4)
+        fprintf(stderr, "FAIL: callback count got %d want 4\n", callback_count);
     ok &= check_event(0, 1);
     ok &= check_event(1, 0);
     ok &= check_event(2, 1);
+    ok &= check_event(3, 0);
 
     SetTextInputPlatformCallback(NULL);
 

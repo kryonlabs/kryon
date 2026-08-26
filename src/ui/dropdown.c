@@ -336,6 +336,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
 
     /* Handle click on button */
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        ClearTextInputFocus();
         UIConsumeRelease();
         state->open = !state->open;
         if(state->open) {
@@ -646,6 +647,7 @@ draw_dropdown_menu(int id)
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened &&
                (!state->touch_drag_active ||
                 state->scroll_offset == state->touch_press_scroll)) {
+                ClearTextInputFocus();
                 UIConsumeRelease();
                 state->selected_index = i;
                 state->pending_index = i;
