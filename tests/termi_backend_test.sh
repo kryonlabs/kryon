@@ -35,6 +35,8 @@ env = os.environ.copy()
 env["TERMI_COLS"] = "80"
 env["TERMI_ROWS"] = "24"
 env["TERMI_SIXEL"] = "1"
+env["TERMI_ANIM_DIRTY_MIN"] = "10"
+env["TERMI_ANIM_DIRTY_PERCENT"] = "1"
 proc = subprocess.Popen([bin_path], stdin=slave, stdout=slave, stderr=slave,
                         close_fds=True, env=env)
 os.close(slave)
@@ -90,6 +92,9 @@ finally:
 
 with open(out_path, "wb") as f:
     f.write(data)
+if data.count(b"\x1bPq") > 4:
+    print("termi test: unchanged sixel image redrew during animation", file=sys.stderr)
+    sys.exit(1)
 sys.exit(proc.returncode if proc.returncode is not None else 1)
 PY
 

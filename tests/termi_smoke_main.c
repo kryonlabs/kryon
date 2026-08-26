@@ -44,6 +44,9 @@ main(void)
         DrawTexturePro(icon_texture, (Rectangle){0, 0, 16, 16},
                        (Rectangle){248, 72, 32, 32}, (Vector2){0, 0}, 0.0f,
                        WHITE);
+        if(frame > 8)
+            DrawRectangle(240, 72 + (frame % 2) * 16, 80, 24,
+                          (Color){frame % 2 ? 48 : 160, 76, 128, 255});
         EndUI();
         EndDrawing();
     }

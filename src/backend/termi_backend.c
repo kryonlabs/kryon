@@ -24,6 +24,7 @@
 #define TERMI_SIXEL_QUEUE_CAP 64
 #define TERMI_SIXEL_PALETTE_CAP 64
 #define TERMI_OUT_BUF_CAP 262144
+#define TERMI_ANIM_SCORE_MAX 8
 
 typedef struct TermiClip {
     int x;
@@ -112,6 +113,9 @@ static int g_dirty_min_x;
 static int g_dirty_min_y;
 static int g_dirty_max_x;
 static int g_dirty_max_y;
+static int g_frame_dirty_count;
+static int g_animation_score;
+static int g_frame_is_animated;
 
 static GlyphInfo g_font_glyphs[96];
 static Rectangle g_font_recs[96];
@@ -423,6 +427,9 @@ resize_grid(int cols, int rows)
     g_dirty = dirty;
     memset(g_prev, 0xff, count * sizeof(TermiCell));
     g_clip_depth = 0;
+    g_animation_score = 0;
+    g_frame_is_animated = 0;
+    g_prev_sixel_count = 0;
 }
 
 static void
@@ -866,6 +873,37 @@ dirty_empty(void)
 }
 
 static int
+termi_animation_dirty_threshold(size_t total_cells)
+{
+    int min_dirty = env_int("TERMI_ANIM_DIRTY_MIN", 96);
+    int percent = env_int("TERMI_ANIM_DIRTY_PERCENT", 8);
+    int threshold;
+
+    if(percent < 0)
+        percent = 0;
+    if(min_dirty < 1)
+        min_dirty = 1;
+    threshold = (int)(total_cells * (size_t)percent / 100u);
+    if(threshold < min_dirty)
+        threshold = min_dirty;
+    return threshold;
+}
+
+static void
+termi_update_frame_class(size_t total_cells)
+{
+    int threshold = termi_animation_dirty_threshold(total_cells);
+
+    if(g_frame_dirty_count >= threshold) {
+        if(g_animation_score < TERMI_ANIM_SCORE_MAX)
+            g_animation_score++;
+    } else if(g_animation_score > 0) {
+        g_animation_score--;
+    }
+    g_frame_is_animated = g_animation_score >= 2;
+}
+
+static int
 termi_effective_fps(void)
 {
     const char *configured = getenv("TERMI_FPS");
@@ -943,6 +981,7 @@ termi_present(void)
     if(g_cells == NULL || g_prev == NULL)
         return;
     dirty_reset();
+    g_frame_dirty_count = 0;
     for(int y = 0; y < g_rows; y++) {
         int x = 0;
 
@@ -981,13 +1020,14 @@ termi_present(void)
                 term_write(cell->text[0] != '\0' ? cell->text : " ");
                 *prev = *cell;
                 dirty_mark(x, y);
+                g_frame_dirty_count++;
                 x++;
             }
         }
     }
     term_write("\033[0m\033[?25l");
     count = (size_t)g_cols * (size_t)g_rows;
-    (void)count;
+    termi_update_frame_class(count);
     term_flush();
     fflush(stdout);
 }
@@ -1958,12 +1998,56 @@ sixel_op_overlaps_dirty_cells(const TermiSixelOp *op)
     return 0;
 }
 
+static void
+sixel_clear_dest(const TermiSixelOp *op)
+{
+    int x0 = pixel_to_col((int)op->dest.x);
+    int y0 = pixel_to_row((int)op->dest.y);
+    int x1 = pixel_to_col((int)(op->dest.x + op->dest.width - 1.0f));
+    int y1 = pixel_to_row((int)(op->dest.y + op->dest.height - 1.0f));
+    char seq[64];
+
+    if(!env_enabled("TERMI_SIXEL_CLEAR", 1))
+        return;
+    if(x0 > x1) {
+        int t = x0;
+        x0 = x1;
+        x1 = t;
+    }
+    if(y0 > y1) {
+        int t = y0;
+        y0 = y1;
+        y1 = t;
+    }
+    if(x0 < 0)
+        x0 = 0;
+    if(y0 < 0)
+        y0 = 0;
+    if(x1 >= g_cols)
+        x1 = g_cols - 1;
+    if(y1 >= g_rows)
+        y1 = g_rows - 1;
+    if(x0 > x1 || y0 > y1)
+        return;
+    term_write("\033[0m");
+    for(int y = y0; y <= y1; y++) {
+        snprintf(seq, sizeof(seq), "\033[%d;%dH", y + 1, x0 + 1);
+        term_write(seq);
+        for(int x = x0; x <= x1; x++)
+            term_write(" ");
+    }
+}
+
 static int
 sixel_op_can_skip(const TermiSixelOp *op)
 {
     if(!env_enabled("TERMI_SIXEL_CACHE", 1))
         return 0;
-    return sixel_op_seen_last_frame(op) && !sixel_op_overlaps_dirty_cells(op);
+    if(!sixel_op_seen_last_frame(op))
+        return 0;
+    if(g_frame_is_animated && env_enabled("TERMI_SIXEL_STABLE_ANIMATION", 1))
+        return 1;
+    return !sixel_op_overlaps_dirty_cells(op);
 }
 
 static void
@@ -1986,9 +2070,11 @@ present_sixel_queue(void)
     for(int i = 0; i < g_sixel_count; i++) {
         TermiSixelOp *op = &g_sixel_queue[i];
 
-        if(!sixel_op_can_skip(op))
+        if(!sixel_op_can_skip(op)) {
+            sixel_clear_dest(op);
             sixel_emit_texture(texture_find(op->texture_id), op->source,
                                op->dest, op->tint);
+        }
     }
     g_prev_sixel_count = g_sixel_count;
     if(g_prev_sixel_count > 0)
