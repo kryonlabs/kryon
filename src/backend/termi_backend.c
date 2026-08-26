@@ -17,6 +17,7 @@
 #define TERMI_KEY_QUEUE_CAP 128
 #define TERMI_CHAR_QUEUE_CAP 256
 #define TERMI_CLIP_STACK_CAP 16
+#define TERMI_MOUSE_QUEUE_CAP 128
 #define TERMI_TEXTURE_CAP 512
 #define TERMI_SIXEL_QUEUE_CAP 64
 #define TERMI_SIXEL_PALETTE_CAP 64
@@ -27,6 +28,14 @@ typedef struct TermiClip {
     int w;
     int h;
 } TermiClip;
+
+typedef struct TermiMouseEvent {
+    int button;
+    int down;
+    int x;
+    int y;
+    int wheel;
+} TermiMouseEvent;
 
 typedef struct TermiTexture {
     unsigned id;
@@ -86,6 +95,9 @@ static int g_mouse_down[3];
 static int g_mouse_pressed[3];
 static int g_mouse_released[3];
 static int g_wheel;
+static TermiMouseEvent g_mouse_queue[TERMI_MOUSE_QUEUE_CAP];
+static int g_mouse_qr;
+static int g_mouse_qw;
 static TermiTexture g_textures[TERMI_TEXTURE_CAP];
 static unsigned g_next_texture_id = 16;
 static TermiSixelOp g_sixel_queue[TERMI_SIXEL_QUEUE_CAP];
@@ -346,6 +358,54 @@ queue_char(int ch)
     g_char_queue[g_char_qw++ % TERMI_CHAR_QUEUE_CAP] = ch;
 }
 
+static void
+queue_mouse_event(int button, int down, int x, int y, int wheel)
+{
+    TermiMouseEvent event;
+
+    if(g_mouse_qw - g_mouse_qr >= TERMI_MOUSE_QUEUE_CAP)
+        g_mouse_qr++;
+    event.button = button;
+    event.down = down;
+    event.x = x;
+    event.y = y;
+    event.wheel = wheel;
+    g_mouse_queue[g_mouse_qw++ % TERMI_MOUSE_QUEUE_CAP] = event;
+}
+
+static void
+apply_next_mouse_event(void)
+{
+    TermiMouseEvent event;
+    int old_x;
+    int old_y;
+
+    if(g_mouse_qr == g_mouse_qw)
+        return;
+    event = g_mouse_queue[g_mouse_qr++ % TERMI_MOUSE_QUEUE_CAP];
+    old_x = g_mouse_x;
+    old_y = g_mouse_y;
+    g_mouse_x = event.x;
+    g_mouse_y = event.y;
+    g_mouse_dx += g_mouse_x - old_x;
+    g_mouse_dy += g_mouse_y - old_y;
+    if(event.wheel != 0) {
+        g_wheel += event.wheel;
+        return;
+    }
+    if(event.button < 0 || event.button >= 3)
+        return;
+    if(event.down) {
+        if(!g_mouse_down[event.button])
+            g_mouse_pressed[event.button] = 1;
+        g_mouse_down[event.button] = 1;
+        return;
+    }
+    if(g_mouse_down[event.button])
+        g_mouse_released[event.button] = 1;
+    g_mouse_down[event.button] = 0;
+}
+
 static int
 key_from_ascii(unsigned char c)
 {
@@ -386,23 +446,17 @@ handle_mouse_sgr(const char *buf, int len)
     int y = 0;
     char kind = 0;
     int button = 0;
-    int old_x;
-    int old_y;
+    int px;
+    int py;
 
     if(len < 6)
         return;
     if(sscanf(buf, "\033[<%d;%d;%d%c", &b, &x, &y, &kind) != 4)
         return;
-    old_x = g_mouse_x;
-    old_y = g_mouse_y;
-    if(x > 0)
-        g_mouse_x = (x - 1) * TERMI_CELL_WIDTH;
-    if(y > 0)
-        g_mouse_y = (y - 1) * TERMI_CELL_HEIGHT;
-    g_mouse_dx += g_mouse_x - old_x;
-    g_mouse_dy += g_mouse_y - old_y;
+    px = x > 0 ? (x - 1) * TERMI_CELL_WIDTH : g_mouse_x;
+    py = y > 0 ? (y - 1) * TERMI_CELL_HEIGHT : g_mouse_y;
     if((b & 64) != 0) {
-        g_wheel += (b & 1) ? -1 : 1;
+        queue_mouse_event(-1, 0, px, py, (b & 1) ? -1 : 1);
         return;
     }
     if((b & 3) == 1)
@@ -413,15 +467,10 @@ handle_mouse_sgr(const char *buf, int len)
         button = MOUSE_BUTTON_LEFT;
     if(button < 0 || button >= 3)
         return;
-    if(kind == 'm') {
-        if(g_mouse_down[button])
-            g_mouse_released[button] = 1;
-        g_mouse_down[button] = 0;
-    } else if(kind == 'M') {
-        if(!g_mouse_down[button])
-            g_mouse_pressed[button] = 1;
-        g_mouse_down[button] = 1;
-    }
+    if(kind == 'm')
+        queue_mouse_event(button, 0, px, py, 0);
+    else if(kind == 'M')
+        queue_mouse_event(button, 1, px, py, 0);
 }
 
 static void
@@ -511,6 +560,8 @@ poll_input(int reset_edges)
                 queue_char((int)c);
         }
     }
+    if(reset_edges)
+        apply_next_mouse_event();
 }
 
 static void

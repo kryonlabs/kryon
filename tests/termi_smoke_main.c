@@ -6,6 +6,7 @@ main(void)
     unsigned char pixels[16 * 16 * 4];
     Image icon;
     Texture2D icon_texture;
+    int clicked = 0;
 
     for(int y = 0; y < 16; y++) {
         for(int x = 0; x < 16; x++) {
@@ -27,18 +28,23 @@ main(void)
     for(int frame = 0; frame < 120 && !WindowShouldClose(); frame++) {
         BeginDrawing();
         ClearBackground((Color){8, 12, 18, 255});
+        BeginUI(10001);
         DrawRectangle(8, 8, 240, 48, (Color){24, 88, 136, 255});
         DrawRectangleLines(8, 8, 240, 48, (Color){230, 235, 240, 255});
         DrawText("Termi backend", 24, 24, 16, (Color){255, 255, 255, 255});
-        Button((ButtonProps){
+        if(Button((ButtonProps){
             .bounds = (Rectangle){24, 88, 180, 44},
             .label = "Button",
             .font = Text16,
             .id = 1001,
-        });
+        }))
+            clicked = 1;
+        if(clicked)
+            DrawText("Clicked", 24, 144, 16, (Color){255, 255, 255, 255});
         DrawTexturePro(icon_texture, (Rectangle){0, 0, 16, 16},
                        (Rectangle){248, 72, 32, 32}, (Vector2){0, 0}, 0.0f,
                        WHITE);
+        EndUI();
         EndDrawing();
     }
     CloseWindow();

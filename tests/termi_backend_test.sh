@@ -38,12 +38,22 @@ proc = subprocess.Popen([bin_path], stdin=slave, stdout=slave, stderr=slave,
                         close_fds=True, env=env)
 os.close(slave)
 data = bytearray()
+sent_click_down = False
+sent_click_up = False
 sent_ctrl_c = False
+start = time.time()
 deadline = time.time() + 5.0
 
 try:
     while time.time() < deadline:
-        if not sent_ctrl_c and time.time() > deadline - 4.0:
+        elapsed = time.time() - start
+        if not sent_click_down and elapsed > 0.30:
+            os.write(master, b"\x1b[<0;6;7M")
+            sent_click_down = True
+        if not sent_click_up and elapsed > 0.55:
+            os.write(master, b"\x1b[<0;6;7m")
+            sent_click_up = True
+        if not sent_ctrl_c and elapsed > 1.25:
             os.write(master, b"\x03")
             sent_ctrl_c = True
         ready, _, _ = select.select([master], [], [], 0.05)
@@ -87,6 +97,7 @@ grep "$(printf '\033')\\[?1049h" "$out" >/dev/null
 grep "$(printf '\033')Pq" "$out" >/dev/null
 grep "Termi backend" "$out" >/dev/null
 grep "Button" "$out" >/dev/null
+grep "Clicked" "$out" >/dev/null
 grep "$(printf '\033')\\[?1049l" "$out" >/dev/null
 
 echo "termi backend smoke ok"
