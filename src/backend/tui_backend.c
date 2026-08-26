@@ -1595,7 +1595,6 @@ const char *GetWorkingDirectory(void) { static char buf[1024]; return getcwd(buf
 const char *GetApplicationDirectory(void) { return GetWorkingDirectory(); }
 int MakeDirectory(const char *dirPath) { return dirPath != NULL && mkdir(dirPath, 0777) == 0 ? 0 : -1; }
 int ChangeDirectory(const char *dirPath) { return dirPath != NULL && chdir(dirPath) == 0 ? 0 : -1; }
-void OpenURL(const char *url) { (void)url; }
 void TraceLog(int logLevel, const char *text, ...)
 {
     va_list ap;
