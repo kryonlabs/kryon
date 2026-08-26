@@ -66,14 +66,29 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   alpha blending, rotated texture blits, render textures, TTF glyph atlas
   coverage, and screenshot export, and compiles/links a clean-surface C app
   through plan9port `9c`/`9l`.
+- `termi` - terminal-cell backend, no raylib (`src/backend/termi_*.c`). It
+  keeps the normal Kryon surface and widget API: apps still call
+  `InitWindow`, `BeginDrawing`, `DrawRectangle`, `Button`, `TextField`, and
+  `DrawUIText`-using widgets. The backend maps Kryon's pixel layout units onto
+  terminal cells (`TERMI_CELL_WIDTH` x `TERMI_CELL_HEIGHT`) and renders native
+  terminal primitives: rectangles become colored cell regions, rectangle
+  outlines become terminal line cells, and UI text goes through the native text
+  hook to real terminal text. It uses the generated weak null stubs for
+  unsupported raylib compatibility areas such as shaders, 3D, and full image
+  blits; textures degrade to colored placeholders. Input is read from the
+  terminal in raw mode, including arrows, basic mouse SGR events, and Ctrl-C as
+  an application close request. `make termi-test` builds a widget smoke app
+  with `KRYON_BACKEND=termi`, runs it in a pseudo-terminal, verifies alternate
+  screen entry/exit and rendered widget text, and confirms Ctrl-C exits.
 
 Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 `KRYON_BACKEND_LIBS`/`KRYON_BACKEND_LDLIBS` carry the backend's own link
 inputs (only raylib needs `libraylib.a` and its SDL/GL system libs). The
 downstream fragments (`mk/common.mk`, `mk/native.mk`, `mk/web.mk`) honor the
 same variable, so `make KRYON_BACKEND=null` produces binaries with no raylib
-in the link graph, and `make KRYON_BACKEND=libdraw
-PLAN9PORT_DIR=/path/to/plan9port` links against plan9port instead. The
+in the link graph, `make KRYON_BACKEND=termi` links a terminal backend, and
+`make KRYON_BACKEND=libdraw PLAN9PORT_DIR=/path/to/plan9port` links against
+plan9port instead. The
 cross-build dist targets (`dist-linux`, `dist-windows`, Android, and `make
 dist-static`, whose pkg-config/cmake manifests hardcode raylib) are raylib-only
 today.

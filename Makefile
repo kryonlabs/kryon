@@ -79,10 +79,12 @@ KRYON_BACKEND_STAMP = $(BUILD_DIR)/.backend-$(KRYON_BACKEND)
 # backend-neutral; the concrete implementation is selected at link time here.
 #   raylib  -> generated raylib forwarders + libraylib.a   (default, unchanged)
 #   canvas  -> src/backend/canvas_*.c (HTML5 Canvas2D; no raylib)
+#   termi   -> src/backend/termi_*.c + generated weak stubs (terminal cells)
 #   null    -> generated zero-return stubs  (no-ops; for headless tests)
 KRYON_BACKEND ?= raylib
 KRYON_CANVAS_SRCS := $(wildcard src/backend/canvas_*.c)
 KRYON_LIBDRAW_SRCS := $(wildcard src/backend/libdraw_*.c)
+KRYON_TERMI_SRCS := $(wildcard src/backend/termi_*.c)
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
 else ifeq ($(KRYON_BACKEND),canvas)
@@ -93,10 +95,14 @@ else ifeq ($(KRYON_BACKEND),libdraw)
   # the libdraw sources live in src/ and arrive via the SRCS find below;
   # appending them here would compile every libdraw TU twice.
   KRYON_BACKEND_SRCS =
+else ifeq ($(KRYON_BACKEND),termi)
+  # termi overrides the terminal-native surface and uses weak stubs for
+  # unsupported raylib compatibility functions.
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, termi, or null))
 endif
 
 # Link inputs for the selected backend: only raylib needs libraylib.a and the
@@ -110,6 +116,10 @@ else ifeq ($(KRYON_BACKEND),libdraw)
   CPPFLAGS += -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include -idirafter $(RAYLIB_DIR)/external
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_LDLIBS ?= -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm
+else ifeq ($(KRYON_BACKEND),termi)
+  CPPFLAGS += -DKRYON_BACKEND_TERMI
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_LDLIBS ?=
 else
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_LDLIBS ?=
@@ -174,6 +184,9 @@ ifneq ($(KRYON_BACKEND),libdraw)
 SRCS := $(filter-out $(KRYON_LIBDRAW_SRCS),$(SRCS))
 SRCS := $(filter-out src/platform/plan9/%.c,$(SRCS))
 endif
+ifneq ($(KRYON_BACKEND),termi)
+SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
+endif
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h)
@@ -204,6 +217,7 @@ DESKTOP_TEST = $(BUILD_DIR)/tests/desktop_test
 LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
+TERMI_SMOKE_TEST = $(BUILD_DIR)/tests/termi_smoke_test
 LIBDRAW_SMOKE_TEST = $(BUILD_DIR)/tests/libdraw_smoke_test
 LIBDRAW_HIERARCHY_TEST = $(BUILD_DIR)/tests/libdraw_hierarchy_test
 UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
@@ -241,7 +255,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test web-canvas-matrix-check libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -283,6 +297,9 @@ canvas-audio-test:
 
 web-canvas-matrix-check: $(K2C) $(EMBED_ASSETS_C)
 	python3 scripts/conformance-matrix.py --verify-web-canvas-c-visuals --k2c "$(K2C)"
+
+termi-test:
+	sh tests/termi_backend_test.sh
 
 libdraw-test:
 	sh tests/libdraw_backend_test.sh
@@ -625,6 +642,12 @@ $(RAYLIB_COMPAT_TEST): tests/raylib_compat_test.c $(LIB) $(KRYON_BACKEND_LIBS) |
 $(LIBDRAW_SMOKE_TEST): tests/libdraw_smoke_main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/libdraw_smoke_main.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(TERMI_SMOKE_TEST): tests/termi_smoke_main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/termi_smoke_main.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
