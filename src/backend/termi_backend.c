@@ -101,7 +101,13 @@ static int g_mouse_qw;
 static TermiTexture g_textures[TERMI_TEXTURE_CAP];
 static unsigned g_next_texture_id = 16;
 static TermiSixelOp g_sixel_queue[TERMI_SIXEL_QUEUE_CAP];
+static TermiSixelOp g_prev_sixel_queue[TERMI_SIXEL_QUEUE_CAP];
 static int g_sixel_count;
+static int g_prev_sixel_count;
+static int g_dirty_min_x;
+static int g_dirty_min_y;
+static int g_dirty_max_x;
+static int g_dirty_max_y;
 
 static GlyphInfo g_font_glyphs[96];
 static Rectangle g_font_recs[96];
@@ -711,6 +717,34 @@ cell_equal(const TermiCell *a, const TermiCell *b)
 }
 
 static void
+dirty_reset(void)
+{
+    g_dirty_min_x = g_cols;
+    g_dirty_min_y = g_rows;
+    g_dirty_max_x = -1;
+    g_dirty_max_y = -1;
+}
+
+static void
+dirty_mark(int x, int y)
+{
+    if(x < g_dirty_min_x)
+        g_dirty_min_x = x;
+    if(y < g_dirty_min_y)
+        g_dirty_min_y = y;
+    if(x > g_dirty_max_x)
+        g_dirty_max_x = x;
+    if(y > g_dirty_max_y)
+        g_dirty_max_y = y;
+}
+
+static int
+dirty_empty(void)
+{
+    return g_dirty_max_x < g_dirty_min_x || g_dirty_max_y < g_dirty_min_y;
+}
+
+static void
 sleep_seconds(double seconds)
 {
     if(seconds <= 0.0)
@@ -774,6 +808,7 @@ termi_present(void)
 
     if(g_cells == NULL || g_prev == NULL)
         return;
+    dirty_reset();
     for(int y = 0; y < g_rows; y++) {
         int x = 0;
 
@@ -811,6 +846,7 @@ termi_present(void)
                 }
                 term_write(cell->text[0] != '\0' ? cell->text : " ");
                 *prev = *cell;
+                dirty_mark(x, y);
                 x++;
             }
         }
@@ -1600,6 +1636,66 @@ sixel_emit_texture(const TermiTexture *tex, Rectangle source, Rectangle dest,
     term_write("\033\\");
 }
 
+static int
+sixel_op_equal(const TermiSixelOp *a, const TermiSixelOp *b)
+{
+    return a->texture_id == b->texture_id &&
+           a->source.x == b->source.x && a->source.y == b->source.y &&
+           a->source.width == b->source.width &&
+           a->source.height == b->source.height &&
+           a->dest.x == b->dest.x && a->dest.y == b->dest.y &&
+           a->dest.width == b->dest.width &&
+           a->dest.height == b->dest.height &&
+           a->tint.r == b->tint.r && a->tint.g == b->tint.g &&
+           a->tint.b == b->tint.b && a->tint.a == b->tint.a;
+}
+
+static int
+sixel_op_seen_last_frame(const TermiSixelOp *op)
+{
+    for(int i = 0; i < g_prev_sixel_count; i++) {
+        if(sixel_op_equal(op, &g_prev_sixel_queue[i]))
+            return 1;
+    }
+    return 0;
+}
+
+static int
+sixel_op_overlaps_dirty_cells(const TermiSixelOp *op)
+{
+    int x0;
+    int y0;
+    int x1;
+    int y1;
+
+    if(dirty_empty())
+        return 0;
+    x0 = pixel_to_col((int)op->dest.x);
+    y0 = pixel_to_row((int)op->dest.y);
+    x1 = pixel_to_col((int)(op->dest.x + op->dest.width - 1.0f));
+    y1 = pixel_to_row((int)(op->dest.y + op->dest.height - 1.0f));
+    if(x0 > x1) {
+        int t = x0;
+        x0 = x1;
+        x1 = t;
+    }
+    if(y0 > y1) {
+        int t = y0;
+        y0 = y1;
+        y1 = t;
+    }
+    return x0 <= g_dirty_max_x && x1 >= g_dirty_min_x &&
+           y0 <= g_dirty_max_y && y1 >= g_dirty_min_y;
+}
+
+static int
+sixel_op_can_skip(const TermiSixelOp *op)
+{
+    if(!env_enabled("TERMI_SIXEL_CACHE", 1))
+        return 0;
+    return sixel_op_seen_last_frame(op) && !sixel_op_overlaps_dirty_cells(op);
+}
+
 static void
 queue_sixel(unsigned texture_id, Rectangle source, Rectangle dest, Color tint)
 {
@@ -1618,9 +1714,14 @@ present_sixel_queue(void)
     for(int i = 0; i < g_sixel_count; i++) {
         TermiSixelOp *op = &g_sixel_queue[i];
 
-        sixel_emit_texture(texture_find(op->texture_id), op->source, op->dest,
-                           op->tint);
+        if(!sixel_op_can_skip(op))
+            sixel_emit_texture(texture_find(op->texture_id), op->source,
+                               op->dest, op->tint);
     }
+    g_prev_sixel_count = g_sixel_count;
+    if(g_prev_sixel_count > 0)
+        memcpy(g_prev_sixel_queue, g_sixel_queue,
+               (size_t)g_prev_sixel_count * sizeof(g_prev_sixel_queue[0]));
     if(g_sixel_count > 0)
         fflush(stdout);
 }
