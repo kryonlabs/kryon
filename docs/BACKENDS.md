@@ -66,30 +66,17 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   alpha blending, rotated texture blits, render textures, TTF glyph atlas
   coverage, and screenshot export, and compiles/links a clean-surface C app
   through plan9port `9c`/`9l`.
-- `tui` - POSIX terminal framebuffer backend, no raylib
-  (`src/backend/tui_*.c` plus the generated weak null stubs). It renders the
-  normal Kryon surface through `kry_sw` into RGBA pixels and presents the frame
-  as ANSI truecolor upper-half-block cells in the terminal alternate screen.
-  The presenter keeps the previous cell buffer and only emits changed cells.
-  Input is read from raw/nonblocking stdin and feeds the shared
-  `KryonBackendRaw_*` hooks: UTF-8 text, common CSI keys, SGR mouse
-  press/release, position, and wheel. `SIGWINCH` resizes the software target.
-  Text uses the built-in bitmap atlas for v1; `LoadFontFromMemory` is accepted
-  but maps to that fallback font. Textures, render textures, screenshots, PNG
-  image decode/export, clipping, and basic 2D shapes are implemented through
-  the software path. Audio, 3D, shaders, VR, gestures, and other non-UI raylib
-  areas fall through to generated null-grade stubs.
 
-Exactly one backend TU family is compiled into `libkryon.a` (root `Makefile`), and
+Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 `KRYON_BACKEND_LIBS`/`KRYON_BACKEND_LDLIBS` carry the backend's own link
 inputs (only raylib needs `libraylib.a` and its SDL/GL system libs). The
 downstream fragments (`mk/common.mk`, `mk/native.mk`, `mk/web.mk`) honor the
 same variable, so `make KRYON_BACKEND=null` produces binaries with no raylib
 in the link graph, and `make KRYON_BACKEND=libdraw
 PLAN9PORT_DIR=/path/to/plan9port` links against plan9port instead. The
-`tui` backend links with no backend-specific system libraries. The cross-build
-dist targets (`dist-linux`, `dist-windows`, Android, and `make dist-static`,
-whose pkg-config/cmake manifests hardcode raylib) are raylib-only today.
+cross-build dist targets (`dist-linux`, `dist-windows`, Android, and `make
+dist-static`, whose pkg-config/cmake manifests hardcode raylib) are raylib-only
+today.
 
 ## The shared input front-end
 
@@ -207,8 +194,5 @@ ui_text_backend.c` is the only place that reads `Font` fields directly
   a public wrapper or `KryonBackendRaw_*` hook.
 - `make libdraw-test` - plan9port/devdraw smoke for the libdraw surface backend
   plus a `9c`/`9l` clean-public-surface compile/link check.
-- `make tui-test` - terminal framebuffer smoke for the TUI surface backend,
-  including ANSI output, software capture, texture/render-texture paths, and
-  raw key/mouse/wheel input parsing.
 - `sh tools/backend-required-symbols.sh` - the live required-subset list a
   backend must cover.
