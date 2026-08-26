@@ -1098,24 +1098,33 @@ void DrawRectangleLinesEx(Rectangle rec, float thick, Color color)
 
     if(t < 1)
         t = 1;
-    (void)t;
     if(cols <= 0 || rows <= 0)
         return;
-    for(int x = 0; x < cols; x++) {
-        cell_set(c0 + x, r0, "-", fg, 0x00000000u, TERMI_ATTR_NONE);
-        cell_set(c0 + x, r0 + rows - 1, "-", fg, 0x00000000u,
-                 TERMI_ATTR_NONE);
+    if(t > cols)
+        t = cols;
+    if(t > rows)
+        t = rows;
+    for(int layer = 0; layer < t; layer++) {
+        int left = c0 + layer;
+        int top = r0 + layer;
+        int right = c0 + cols - 1 - layer;
+        int bottom = r0 + rows - 1 - layer;
+
+        if(left > right || top > bottom)
+            break;
+        for(int x = left; x <= right; x++) {
+            cell_set(x, top, "-", fg, 0x00000000u, TERMI_ATTR_NONE);
+            cell_set(x, bottom, "-", fg, 0x00000000u, TERMI_ATTR_NONE);
+        }
+        for(int y = top; y <= bottom; y++) {
+            cell_set(left, y, "|", fg, 0x00000000u, TERMI_ATTR_NONE);
+            cell_set(right, y, "|", fg, 0x00000000u, TERMI_ATTR_NONE);
+        }
+        cell_set(left, top, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
+        cell_set(right, top, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
+        cell_set(left, bottom, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
+        cell_set(right, bottom, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
     }
-    for(int y = 0; y < rows; y++) {
-        cell_set(c0, r0 + y, "|", fg, 0x00000000u, TERMI_ATTR_NONE);
-        cell_set(c0 + cols - 1, r0 + y, "|", fg, 0x00000000u,
-                 TERMI_ATTR_NONE);
-    }
-    cell_set(c0, r0, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
-    cell_set(c0 + cols - 1, r0, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
-    cell_set(c0, r0 + rows - 1, "+", fg, 0x00000000u, TERMI_ATTR_NONE);
-    cell_set(c0 + cols - 1, r0 + rows - 1, "+", fg, 0x00000000u,
-             TERMI_ATTR_NONE);
 }
 void DrawRectangleRounded(Rectangle rec, float roundness, int segments,
                           Color color)

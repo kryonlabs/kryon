@@ -17,6 +17,35 @@ typedef struct UIButtonAnimState {
 
 static UIButtonAnimState g_ui_button_anim[UI_BUTTON_ANIM_MAX];
 
+static int
+ui_termi_backend(void)
+{
+#if defined(KRYON_BACKEND_TERMI)
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+static void
+ui_draw_termi_button_outline(Rectangle bounds, Color border, int hovered,
+                             int pressed, int disabled)
+{
+    Color outline = border;
+    float thick = hovered || pressed ? 2.0f : 1.0f;
+
+    if(disabled)
+        outline = DarkenUIColor(outline, 45);
+    else if(pressed)
+        outline = WHITE;
+    else if(hovered)
+        outline = LightenUIColor(outline, 72);
+    else
+        outline = LightenUIColor(outline, 36);
+    outline.a = 255;
+    DrawRectangleLinesEx(bounds, thick, outline);
+}
+
 int
 RenderButton(ButtonSpec button)
 {
@@ -38,6 +67,8 @@ RenderButton(ButtonSpec button)
     float hover_amount = 0.0f;
     float press_amount = 0.0f;
     Rectangle draw_bounds;
+    int termi_button = ui_termi_backend();
+    int material_controls = ui_material_style() && !termi_button;
 
     widget = BeginUIWidget("button",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -60,7 +91,7 @@ RenderButton(ButtonSpec button)
         return clicked || IsUIFocusActivatePressed(button.focus_id);
     }
 
-    if(ui_material_style() && !button.disabled) {
+    if(material_controls && !button.disabled) {
         unsigned int key = 2166136261u;
         const char *label = button.label != NULL ? button.label : "";
 
@@ -98,7 +129,7 @@ RenderButton(ButtonSpec button)
         hover_amount = hovered ? 1.0f : 0.0f;
     }
 
-    if(ui_material_style()) {
+    if(material_controls) {
         int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         int ripple_key = button.focus_id != 0 ? button.focus_id :
                          (int)(button.bounds.x * 3 + button.bounds.y * 5 +
@@ -138,10 +169,21 @@ RenderButton(ButtonSpec button)
     draw_background = ColorLerp(background, hover_background, hover_amount);
     draw_border = ColorLerp(border, LightenUIColor(hover_background, cues ? 54 : 40),
                             hover_amount);
+    if(termi_button && !button.disabled && hovered &&
+       IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        draw_background = DarkenUIColor(draw_background, 18);
     if(cues && hovered)
         draw_background = LightenUIColor(draw_background, 6);
+    if(termi_button)
+        draw_border = hovered ? LightenUIColor(hover_background, 78)
+                              : LightenUIColor(background, 58);
 
     ui_draw_control_background(draw_bounds, draw_background, draw_border, radius);
+    if(termi_button)
+        ui_draw_termi_button_outline(draw_bounds, draw_border, hovered,
+                                     hovered &&
+                                         IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                     button.disabled);
     if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
         Color cue = LightenUIColor(draw_background, 42);
         cue.a = cue.a > 170 ? 170 : cue.a;
@@ -180,6 +222,8 @@ DrawUIIconButton(IconButtonProps button)
     int cues = UITransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
+    int termi_button = ui_termi_backend();
+    int material_controls = ui_material_style() && !termi_button;
 
     widget = BeginUIWidget("icon_button",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -202,7 +246,7 @@ DrawUIIconButton(IconButtonProps button)
     if(draw_size < 1)
         draw_size = 1;
 
-    if(ui_material_style()) {
+    if(material_controls) {
         int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         int ripple_key = button.focus_id != 0 ? button.focus_id :
                          (int)(button.bounds.x * 13 + button.bounds.y * 17);
@@ -246,9 +290,20 @@ DrawUIIconButton(IconButtonProps button)
         }
         draw_background = hovered ? hover_background : background;
         draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
+        if(termi_button && !button.disabled &&
+           hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+            draw_background = DarkenUIColor(draw_background, 18);
         if(cues && hovered)
             draw_background = LightenUIColor(draw_background, 6);
+        if(termi_button)
+            draw_border = hovered ? LightenUIColor(hover_background, 78)
+                                  : LightenUIColor(background, 58);
         ui_draw_control_background(button.bounds, draw_background, draw_border, radius);
+        if(termi_button)
+            ui_draw_termi_button_outline(button.bounds, draw_border, hovered,
+                                         hovered &&
+                                             IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                         button.disabled);
         if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
             Color cue = LightenUIColor(draw_background, 42);
             cue.a = cue.a > 170 ? 170 : cue.a;
