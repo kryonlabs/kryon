@@ -2,45 +2,34 @@
   "use strict";
 
   var source = document.querySelector("[data-source]");
+  var sourceTitle = document.querySelector("[data-source-title]");
   var status = document.querySelector("[data-status]");
   var previewStatus = document.querySelector("[data-preview-status]");
   var canvas = document.querySelector("[data-preview]");
   var artifact = document.querySelector("[data-artifact]");
+  var list = document.querySelector("[data-example-list]");
+  var count = document.querySelector("[data-count]");
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
   var compileButton = document.querySelector("[data-action='compile']");
-  var sampleButton = document.querySelector("[data-action='load-sample']");
+  var reloadButton = document.querySelector("[data-action='reload']");
   var menuToggle = document.querySelector(".menu-toggle");
   var headerNav = document.getElementById("header-nav");
-  var k2irMod = null;
-  var k2bMod = null;
-  var k2cMod = null;
-  var k2gMod = null;
-  var krbPlayerMod = null;
-  var krbPlayerInputReady = false;
-  var activeTab = "kry";
-  var last = { kry: "", kir: "", krb: "", c: "", go: "", bytes: null };
+  var activeTab = new URLSearchParams(window.location.search).get("tab") || "kry";
+  var modules = {};
+  var playerMod = null;
+  var playerInputReady = false;
+  var items = [];
+  var current = null;
   var compileTimer = 0;
+  var last = { kry: "", kir: "", c: "", go: "", krb: "", bytes: null };
 
-  var sample = [
-    "#import \"kryon.h\"",
-    "",
-    "app \"Kryon Web IDE\" {",
-    "    size 800 520",
-    "}",
-    "",
-    "App :: () #ui {",
-    "    Screen root: {",
-    "        Background((Color){249, 246, 235, 255})",
-    "        Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})",
-    "        Text(\"Hello from .kry\", 76, 86, Text24, (Color){31, 83, 102, 255})",
-    "        Text(\"This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.\", 76, 134, Text16, (Color){42, 59, 64, 255})",
-    "        Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})",
-    "        Text(\"Portable preview\", 104, 219, Text20, WHITE)",
-    "        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = \"Get started\"})",
-    "    }",
-    "}"
-  ].join("\n");
-  source.value = sample;
+  var fallback = {
+    group: "Examples",
+    title: "Buttons",
+    name: "02_buttons.kry",
+    path: "examples/02_buttons.kry",
+    url: "examples-src/examples/02_buttons.kry"
+  };
 
   if (menuToggle && headerNav) {
     menuToggle.addEventListener("click", function() {
@@ -71,27 +60,42 @@
     }
   }
 
-  function resetFs(mod) {
-    ["/work", "/work/src", "/work/out"].forEach(function(path) {
-      try { mod.FS.rmdir(path); } catch (e) {}
+  function rmTree(mod, path) {
+    var entries;
+    try {
+      entries = mod.FS.readdir(path);
+    } catch (e) {
+      return;
+    }
+    entries.forEach(function(name) {
+      var child;
+      if (name === "." || name === "..") return;
+      child = path + "/" + name;
+      try {
+        if (mod.FS.isDir(mod.FS.stat(child).mode)) {
+          rmTree(mod, child);
+          mod.FS.rmdir(child);
+        } else {
+          mod.FS.unlink(child);
+        }
+      } catch (e) {}
     });
-    ensureDir(mod, "/work/src");
+  }
+
+  function resetFs(mod) {
+    rmTree(mod, "/work");
+    try { mod.FS.rmdir("/work"); } catch (e) {}
+    ensureDir(mod, "/work");
     ensureDir(mod, "/work/out");
   }
 
-  function runTool(mod, args, reader) {
-    var rc;
+  function writeSource(mod, path, text) {
+    var full = "/work/" + path;
+    var slash = full.lastIndexOf("/");
 
-    if (!mod) return { ok: false, text: "Compiler module unavailable." };
-    try {
-      resetFs(mod);
-      mod.FS.writeFile("/work/src/app.kry", source.value);
-      rc = mod.callMain(args);
-      if (rc && rc !== 0) throw new Error("compiler exited with " + rc);
-      return reader(mod);
-    } catch (e) {
-      return { ok: false, text: String(e && e.stack ? e.stack : e) };
-    }
+    if (slash > 0) ensureDir(mod, full.slice(0, slash));
+    mod.FS.writeFile(full, text);
+    return full;
   }
 
   function readMaybe(mod, path, binary) {
@@ -110,6 +114,21 @@
     return binary ? new Uint8Array(0) : "";
   }
 
+  function stem(path) {
+    var name = path.split("/").pop();
+    return name.replace(/\.[^.]+$/, "");
+  }
+
+  function dir(path) {
+    var slash = path.lastIndexOf("/");
+    return slash > 0 ? path.slice(0, slash) : "";
+  }
+
+  function outPath(path, ext) {
+    var d = dir(path);
+    return "/work/out/" + (d ? d + "/" : "") + stem(path) + ext;
+  }
+
   function hex(bytes) {
     var out = [];
     for (var i = 0; i < bytes.length; i += 16) {
@@ -122,17 +141,9 @@
     return out.join("\n");
   }
 
-  function readU16(dv, off) {
-    return dv.getUint16(off, true);
-  }
-
-  function readI16(dv, off) {
-    return dv.getInt16(off, true);
-  }
-
-  function readU32(dv, off) {
-    return dv.getUint32(off, true);
-  }
+  function readU16(dv, off) { return dv.getUint16(off, true); }
+  function readI16(dv, off) { return dv.getInt16(off, true); }
+  function readU32(dv, off) { return dv.getUint32(off, true); }
 
   function cstr(bytes, off, max) {
     var end = off;
@@ -151,16 +162,20 @@
   }
 
   function decodeKrb(bytes) {
-    if (!bytes || bytes.length < 32) throw new Error("KRB is empty");
-    var dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    if (readU32(dv, 0) !== 0x0042524b) throw new Error("KRB magic mismatch");
-    var nodeCount = readU32(dv, 8);
-    var stringBytes = readU32(dv, 12);
+    var dv;
+    var nodeCount;
+    var stringBytes;
     var nodeOff = 32;
-    var strOff = nodeOff + nodeCount * 28;
     var nodes = [];
+
+    if (!bytes || bytes.length < 32) throw new Error("KRB is empty");
+    dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (readU32(dv, 0) !== 0x0042524b) throw new Error("KRB magic mismatch");
+    nodeCount = readU32(dv, 8);
+    stringBytes = readU32(dv, 12);
     for (var i = 0; i < nodeCount; i++) {
       var off = nodeOff + i * 28;
+      var strOff = nodeOff + nodeCount * 28;
       nodes.push({
         id: readU16(dv, off),
         parent: readI16(dv, off + 2),
@@ -200,10 +215,19 @@
     ctx.closePath();
   }
 
-  function attachKrbPlayerInput() {
-    if (krbPlayerInputReady)
+  function sizeFromSource(text) {
+    var m = text.match(/\bsize\s+(\d+)\s+(\d+)/);
+    if (!m) return { w: 800, h: 600 };
+    return {
+      w: Math.max(240, Math.min(1600, parseInt(m[1], 10))),
+      h: Math.max(180, Math.min(1200, parseInt(m[2], 10)))
+    };
+  }
+
+  function attachPlayerInput() {
+    if (playerInputReady)
       return;
-    krbPlayerInputReady = true;
+    playerInputReady = true;
     function pos(e) {
       var r = canvas.getBoundingClientRect();
       return [
@@ -212,41 +236,41 @@
       ];
     }
     window.addEventListener("keydown", function(e) {
-      if (e.key === "Backspace" && krbPlayerMod && krbPlayerMod._krb_web_text) {
+      if (e.key === "Backspace" && playerMod && playerMod._krb_web_text) {
         e.preventDefault();
-        krbPlayerMod._krb_web_text(8);
+        playerMod._krb_web_text(8);
       }
     });
     window.addEventListener("keypress", function(e) {
-      if (krbPlayerMod && krbPlayerMod._krb_web_text && e.charCode > 31)
-        krbPlayerMod._krb_web_text(e.charCode);
+      if (playerMod && playerMod._krb_web_text && e.charCode > 31)
+        playerMod._krb_web_text(e.charCode);
     });
     canvas.addEventListener("wheel", function(e) {
       e.preventDefault();
-      if (krbPlayerMod && krbPlayerMod._krb_web_wheel)
-        krbPlayerMod._krb_web_wheel(Math.round(-e.deltaY / 2));
+      if (playerMod && playerMod._krb_web_wheel)
+        playerMod._krb_web_wheel(Math.round(-e.deltaY / 2));
     }, { passive: false });
     canvas.addEventListener("mousemove", function(e) {
       var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_mouse) {
+      if (playerMod && playerMod._krb_web_mouse) {
         p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
+        playerMod._krb_web_mouse(p[0], p[1]);
       }
     });
     canvas.addEventListener("mousedown", function(e) {
       var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_button) {
+      if (playerMod && playerMod._krb_web_button) {
         p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
-        krbPlayerMod._krb_web_button(0, 1);
+        playerMod._krb_web_mouse(p[0], p[1]);
+        playerMod._krb_web_button(0, 1);
       }
     });
     canvas.addEventListener("mouseup", function(e) {
       var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_button) {
+      if (playerMod && playerMod._krb_web_button) {
         p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
-        krbPlayerMod._krb_web_button(0, 0);
+        playerMod._krb_web_mouse(p[0], p[1]);
+        playerMod._krb_web_button(0, 0);
       }
     });
   }
@@ -254,17 +278,35 @@
   function render(bytes) {
     var rc;
 
-    if (!krbPlayerMod)
+    if (!playerMod)
       throw new Error("KRB web player unavailable");
     canvas.width = 800;
     canvas.height = 600;
-    try { krbPlayerMod.FS.unlink("/app.krb"); } catch (e) {}
-    krbPlayerMod.FS.writeFile("/app.krb", bytes);
-    rc = krbPlayerMod._krb_web_start();
+    try { playerMod.FS.unlink("/app.krb"); } catch (e) {}
+    playerMod.FS.writeFile("/app.krb", bytes);
+    rc = playerMod._krb_web_start();
     if (rc && rc !== 0)
       throw new Error("krb-web exited with " + rc);
-    attachKrbPlayerInput();
+    attachPlayerInput();
     setPreviewStatus("wasm canvas");
+  }
+
+  function runCompiler(key, args, readers) {
+    var mod = modules[key];
+    var full;
+    var rc;
+
+    if (!mod) return { ok: false, text: "Compiler module unavailable." };
+    resetFs(mod);
+    full = writeSource(mod, current.path, source.value);
+    args = args.concat([full]);
+    try {
+      rc = mod.callMain(args);
+      if (rc && rc !== 0) throw new Error(key + " exited with " + rc);
+      return readers(mod);
+    } catch (e) {
+      return { ok: false, text: String(e && e.stack ? e.stack : e) };
+    }
   }
 
   function showArtifact() {
@@ -276,34 +318,36 @@
     var failed = 0;
     var result;
 
-    if (!k2irMod || !k2bMod) return;
+    if (!current) return;
+    window.clearTimeout(compileTimer);
+    last = { kry: source.value, kir: "", c: "", go: "", krb: "", bytes: null };
     setStatus("compiling...");
-    last = { kry: source.value, kir: "", krb: "", c: "", go: "", bytes: null };
+    setPreviewStatus("rendering");
 
-    result = runTool(k2irMod, ["--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
-      return { ok: true, text: readFirst(mod, ["/work/out/app.kir", "/work/out/src/app.kir"], false) };
+    result = runCompiler("kir", ["--root", "/work", "-o", "/work/out"], function(mod) {
+      return { ok: true, text: readFirst(mod, [outPath(current.path, ".kir"), "/work/out/" + stem(current.path) + ".kir"], false) };
     });
     if (result.ok && result.text) { last.kir = result.text; passed++; } else { last.kir = result.text || "KIR output unavailable."; failed++; }
 
-    result = runTool(k2cMod, ["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
+    result = runCompiler("c", ["--no-main", "--root", "/work", "-o", "/work/out"], function(mod) {
       var files = [];
-      var appC = readFirst(mod, ["/work/out/src/app.c", "/work/out/app.c"], false);
-      var appH = readFirst(mod, ["/work/out/src/app.h", "/work/out/app.h"], false);
+      var moduleC = readFirst(mod, [outPath(current.path, ".c"), "/work/out/" + stem(current.path) + ".c"], false);
+      var header = readFirst(mod, [outPath(current.path, ".h"), "/work/out/" + stem(current.path) + ".h"], false);
       var projectC = readMaybe(mod, "/work/out/kryon_project.c", false);
-      if (appC) files.push("/* app.c */\n" + appC);
-      if (appH) files.push("/* app.h */\n" + appH);
+      if (moduleC) files.push("/* " + current.path.replace(/\.kry$/, ".c") + " */\n" + moduleC);
+      if (header) files.push("/* " + current.path.replace(/\.kry$/, ".h") + " */\n" + header);
       if (projectC) files.push("/* kryon_project.c */\n" + projectC);
       return { ok: files.length > 0, text: files.join("\n\n") || "C output unavailable." };
     });
     if (result.ok) { last.c = result.text; passed++; } else { last.c = result.text; failed++; }
 
-    result = runTool(k2gMod, ["--no-main", "--pkg", "kryexample", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
-      return { ok: true, text: readFirst(mod, ["/work/out/app.go", "/work/out/src/app.go"], false) };
+    result = runCompiler("go", ["--no-main", "--pkg", "kryexample", "--root", "/work", "-o", "/work/out"], function(mod) {
+      return { ok: true, text: readFirst(mod, ["/work/out/" + stem(current.path) + ".go", outPath(current.path, ".go")], false) };
     });
     if (result.ok && result.text) { last.go = result.text; passed++; } else { last.go = result.text || "Go output unavailable."; failed++; }
 
-    result = runTool(k2bMod, ["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
-      var bytes = readFirst(mod, ["/work/out/app.krb", "/work/out/src/app.krb"], true);
+    result = runCompiler("krb", ["--no-main", "--root", "/work", "-o", "/work/out"], function(mod) {
+      var bytes = readFirst(mod, [outPath(current.path, ".krb"), "/work/out/" + stem(current.path) + ".krb"], true);
       return { ok: bytes.length > 0, bytes: bytes, text: "KRB bytes: " + bytes.length + "\n\n" + hex(bytes) };
     });
     if (result.ok) {
@@ -321,6 +365,7 @@
       setPreviewStatus("no KRB preview");
       failed++;
     }
+
     showArtifact();
     setStatus(failed ? "compiled " + passed + "/4" : "compiled");
   }
@@ -330,22 +375,59 @@
     compileTimer = window.setTimeout(compile, 260);
   }
 
-  function loadInitialSource() {
-    var params = new URLSearchParams(window.location.search);
-    var src = params.get("src");
-    if (!src) {
-      source.value = sample;
-      return Promise.resolve();
-    }
+  function selectItem(item) {
+    current = item;
+    if (sourceTitle) sourceTitle.textContent = item.path;
+    Array.prototype.slice.call(list.querySelectorAll("button")).forEach(function(btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-path") === item.path);
+    });
     setStatus("fetching source...");
-    return fetch(src).then(function(res) {
-      if (!res.ok) throw new Error("Could not fetch " + src + ": " + res.status);
+    return fetch(item.url).then(function(res) {
+      if (!res.ok) throw new Error("Could not fetch " + item.url + ": " + res.status);
       return res.text();
     }).then(function(text) {
       source.value = text;
+      compile();
     }).catch(function(err) {
-      source.value = sample;
-      artifact.textContent = String(err);
+      source.value = "#import \"kryon.h\"\n\n/* " + String(err) + " */\n";
+      last.kry = source.value;
+      showArtifact();
+      setStatus("source unavailable");
+    });
+  }
+
+  function renderList() {
+    var currentGroup = "";
+    list.innerHTML = "";
+    items.forEach(function(item) {
+      var heading;
+      var btn;
+      if (item.group !== currentGroup) {
+        currentGroup = item.group;
+        heading = document.createElement("div");
+        heading.className = "example-group";
+        heading.textContent = currentGroup;
+        list.appendChild(heading);
+      }
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item.title;
+      btn.setAttribute("data-path", item.path);
+      btn.addEventListener("click", function() { selectItem(item); });
+      list.appendChild(btn);
+    });
+    if (count) count.textContent = String(items.length);
+  }
+
+  function loadManifest() {
+    return fetch("examples-manifest.json").then(function(res) {
+      if (!res.ok) throw new Error("No manifest");
+      return res.json();
+    }).then(function(data) {
+      items = data.items || [];
+      if (!items.length) items = [fallback];
+    }).catch(function() {
+      items = [fallback];
     });
   }
 
@@ -362,17 +444,20 @@
       createK2bModule({ noInitialRun: true }),
       createK2cModule({ noInitialRun: true }),
       createK2gModule({ noInitialRun: true }),
-      createKrbWebModule({ noInitialRun: true, canvas: canvas })
-    ]).then(function(mods) {
-      k2irMod = mods[0];
-      k2bMod = mods[1];
-      k2cMod = mods[2];
-      k2gMod = mods[3];
-      krbPlayerMod = mods[4];
-      return loadInitialSource();
-    }).then(function() {
-      setStatus("ready");
-      compile();
+      createKrbWebModule({ noInitialRun: true, canvas: canvas }),
+      loadManifest()
+    ]).then(function(values) {
+      var query = new URLSearchParams(window.location.search);
+      var wanted = query.get("example");
+      modules.kir = values[0];
+      modules.krb = values[1];
+      modules.c = values[2];
+      modules.go = values[3];
+      playerMod = values[4];
+      renderList();
+      return selectItem(items.filter(function(item) {
+        return item.path === wanted || item.name === wanted;
+      })[0] || items[0]);
     }).catch(function(err) {
       setStatus("error");
       artifact.textContent = String(err && err.stack ? err.stack : err);
@@ -380,6 +465,7 @@
   }
 
   tabButtons.forEach(function(btn) {
+    btn.classList.toggle("is-active", btn.getAttribute("data-tab") === activeTab);
     btn.addEventListener("click", function() {
       activeTab = btn.getAttribute("data-tab");
       tabButtons.forEach(function(b) { b.classList.toggle("is-active", b === btn); });
@@ -388,9 +474,8 @@
   });
   source.addEventListener("input", scheduleCompile);
   compileButton.addEventListener("click", compile);
-  sampleButton.addEventListener("click", function() {
-    source.value = sample;
-    compile();
+  reloadButton.addEventListener("click", function() {
+    if (current) selectItem(current);
   });
   boot();
 })();

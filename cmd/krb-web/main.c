@@ -79,7 +79,7 @@ krb_web_start(void)
     frame();
 #else
     if(!g_running)
-        emscripten_set_main_loop(frame, 0, 1);
+        emscripten_set_main_loop(frame, 0, 0);
     g_running = 1;
 #endif
     return 0;

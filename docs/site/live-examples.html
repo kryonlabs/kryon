@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Web IDE</title>
-  <meta name="description" content="Edit simple .kry files in the browser, compile with Kryon WASM tools, and preview the generated KRB cartridge.">
+  <title>Kryon Live Examples</title>
+  <meta name="description" content="Run Kryon examples and widget catalogs live in the browser, with .kry, KIR, C, Go, KRB, and canvas output side by side.">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -22,60 +22,51 @@
         <a href="language.html">Language</a>
         <a href="matrices.html">Matrices</a>
         <a href="renderers.html">Renderers</a>
-        <a href="api.html">API</a>
+        <a href="/api">API</a>
         <a href="live-examples.html">Live Examples</a>
         <a href="ide.html">Web IDE</a>
-        <a class="is-external" href="https://krait.kryonlabs.com">Krait ↗</a>
-        <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">★ <span class="count">GitHub</span></a>
-        <a class="btn btn-primary" href="/#start">Get started</a>
+        <a class="is-external" href="https://krait.kryonlabs.com">Krait -></a>
+        <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">* <span class="count">GitHub</span></a>
       </nav>
     </div>
   </header>
 
-  <main class="web-ide" data-kryon-web-ide>
+  <main class="web-ide live-examples" data-live-examples>
     <section class="ide-shell">
       <div class="ide-toolbar">
         <div>
-          <p class="section-eyebrow">Kryon Web IDE</p>
-          <h1>Compile .kry in the browser</h1>
+          <p class="section-eyebrow">Live Examples</p>
+          <h1>Source, generated code, and canvas output</h1>
         </div>
         <div class="ide-actions">
-          <button class="btn" type="button" data-action="load-sample">Sample</button>
+          <button class="btn" type="button" data-action="reload">Reload</button>
           <button class="btn btn-primary" type="button" data-action="compile">Run</button>
         </div>
       </div>
 
-      <div class="ide-grid">
+      <div class="live-grid">
+        <aside class="ide-pane example-browser">
+          <div class="pane-title">
+            <span>Examples + widgets</span>
+            <span data-count>loading</span>
+          </div>
+          <div class="example-list" data-example-list></div>
+        </aside>
+
         <div class="ide-pane source-pane">
           <div class="pane-title">
-            <span>app.kry</span>
+            <span data-source-title>source</span>
             <span data-status>Loading compiler...</span>
           </div>
-          <textarea spellcheck="false" data-source>#import "kryon.h"
-
-app "Kryon Web IDE" {
-    size 800 520
-}
-
-App :: () #ui {
-    Screen root: {
-        Background((Color){249, 246, 235, 255})
-        Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})
-        Text("Hello from .kry", 76, 86, Text24, (Color){31, 83, 102, 255})
-        Text("This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.", 76, 134, Text16, (Color){42, 59, 64, 255})
-        Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})
-        Text("Portable preview", 104, 219, Text20, WHITE)
-        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = "Get started"})
-    }
-}</textarea>
+          <textarea spellcheck="false" data-source></textarea>
         </div>
 
         <div class="ide-pane preview-pane">
           <div class="pane-title">
-            <span>Live KRB Preview</span>
+            <span>Live canvas output</span>
             <span data-preview-status>waiting</span>
           </div>
-          <canvas width="800" height="520" data-preview></canvas>
+          <canvas width="800" height="600" data-preview></canvas>
         </div>
 
         <div class="ide-pane artifact-pane">
@@ -97,6 +88,6 @@ App :: () #ui {
   <script src="ide-tools/k2c.js"></script>
   <script src="ide-tools/k2g.js"></script>
   <script src="ide-tools/krb-web.js"></script>
-  <script src="ide.js"></script>
+  <script src="live-examples.js"></script>
 </body>
 </html>

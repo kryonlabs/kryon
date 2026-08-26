@@ -1528,6 +1528,67 @@ body.ide-page::before {
   white-space: pre;
 }
 
+.live-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.42fr) minmax(320px, 0.92fr) minmax(420px, 1.16fr);
+  grid-template-rows: minmax(340px, 0.92fr) minmax(240px, 0.58fr);
+  gap: 12px;
+  min-height: calc(100vh - 150px);
+}
+
+.live-grid .example-browser {
+  grid-row: 1 / span 2;
+}
+
+.live-grid .source-pane {
+  grid-row: 1 / span 2;
+}
+
+.live-grid .artifact-pane {
+  grid-column: 3;
+}
+
+.example-list {
+  height: calc(100% - 36px);
+  overflow: auto;
+  padding: 8px;
+  background-color: #fffef9;
+}
+
+.example-group {
+  padding: 12px 8px 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.example-list button {
+  width: 100%;
+  min-height: 32px;
+  margin: 0 0 4px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-strong);
+  text-align: left;
+  font: 700 12px/1.25 var(--font-main);
+  cursor: url("cursors/hand.png") 6 1, pointer;
+}
+
+.example-list button:hover {
+  border-color: var(--line);
+  background-color: var(--accent-soft);
+}
+
+.example-list button.is-active {
+  border-color: rgba(154, 88, 24, 0.34);
+  background-color: rgba(244, 137, 61, 0.16);
+  color: #8c4511;
+}
+
 /* ---- responsive ---- */
 
 @media (max-width: 860px) {
@@ -1596,9 +1657,16 @@ body.ide-page::before {
     min-height: 0;
   }
 
+  .live-grid {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   .source-pane,
   .preview-pane,
-  .artifact-pane {
+  .artifact-pane,
+  .example-browser {
     min-height: 360px;
   }
 

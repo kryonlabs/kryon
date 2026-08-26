@@ -354,10 +354,13 @@ docs-site:
 	else \
 		python3 scripts/update-showcase.py --output $(SITE_BUILD_DIR)/showcase-data.json --banner-dir $(SITE_BUILD_DIR)/showcase; \
 	fi
-	sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
+	EMCC="$(EMCC)" sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
+	sh scripts/build-site-live-examples.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 	test -f $(SITE_BUILD_DIR)/language.html
+	test -f $(SITE_BUILD_DIR)/live-examples.html
+	test -f $(SITE_BUILD_DIR)/examples-manifest.json
 	test -f $(SITE_BUILD_DIR)/benchmarks.html
 	test -f $(SITE_BUILD_DIR)/matrices.html
 	test -f $(SITE_BUILD_DIR)/renderers.html
