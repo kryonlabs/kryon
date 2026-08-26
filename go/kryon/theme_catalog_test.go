@@ -3,8 +3,8 @@ package kryon
 import "testing"
 
 func TestThemeCatalogIncludesPlan9XfceSweet(t *testing.T) {
-	if ThemeCount != 15 || THEME_COUNT != 15 {
-		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want 15", ThemeCount, THEME_COUNT)
+	if ThemeCount != ThemeSweet+1 || THEME_COUNT != 15 {
+		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want Sweet+1 / 15", ThemeCount, THEME_COUNT)
 	}
 	if ThemePlan9 != 12 || THEME_PLAN9 != 12 {
 		t.Fatalf("ThemePlan9 = %d, THEME_PLAN9 = %d, want 12", ThemePlan9, THEME_PLAN9)
