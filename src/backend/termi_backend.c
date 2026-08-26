@@ -17,6 +17,9 @@
 #define TERMI_KEY_QUEUE_CAP 128
 #define TERMI_CHAR_QUEUE_CAP 256
 #define TERMI_CLIP_STACK_CAP 16
+#define TERMI_TEXTURE_CAP 512
+#define TERMI_SIXEL_QUEUE_CAP 64
+#define TERMI_SIXEL_PALETTE_CAP 64
 
 typedef struct TermiClip {
     int x;
@@ -24,6 +27,27 @@ typedef struct TermiClip {
     int w;
     int h;
 } TermiClip;
+
+typedef struct TermiTexture {
+    unsigned id;
+    unsigned char *rgba;
+    int width;
+    int height;
+    int format;
+} TermiTexture;
+
+typedef struct TermiSixelOp {
+    unsigned texture_id;
+    Rectangle source;
+    Rectangle dest;
+    Color tint;
+} TermiSixelOp;
+
+typedef struct TermiPaletteColor {
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+} TermiPaletteColor;
 
 static TermiCell *g_cells;
 static TermiCell *g_prev;
@@ -62,11 +86,20 @@ static int g_mouse_down[3];
 static int g_mouse_pressed[3];
 static int g_mouse_released[3];
 static int g_wheel;
+static TermiTexture g_textures[TERMI_TEXTURE_CAP];
+static unsigned g_next_texture_id = 16;
+static TermiSixelOp g_sixel_queue[TERMI_SIXEL_QUEUE_CAP];
+static int g_sixel_count;
 
 static GlyphInfo g_font_glyphs[96];
 static Rectangle g_font_recs[96];
 static Font g_default_font;
 static int g_font_ready;
+
+extern unsigned char *kry_decode_image_rgba(const unsigned char *data, int len,
+                                            int *width, int *height);
+
+static void present_sixel_queue(void);
 
 static unsigned
 pack_color(Color c)
@@ -111,11 +144,32 @@ env_int(const char *name, int fallback)
     return (int)v;
 }
 
+static int
+env_enabled(const char *name, int fallback)
+{
+    const char *s = getenv(name);
+
+    if(s == NULL || s[0] == '\0')
+        return fallback;
+    if(strcmp(s, "0") == 0 || strcmp(s, "false") == 0 ||
+       strcmp(s, "FALSE") == 0 || strcmp(s, "no") == 0 ||
+       strcmp(s, "NO") == 0)
+        return 0;
+    return 1;
+}
+
 static void
 term_write(const char *s)
 {
     if(s != NULL)
         (void)write(STDOUT_FILENO, s, strlen(s));
+}
+
+static void
+term_write_len(const char *s, size_t len)
+{
+    if(s != NULL && len > 0)
+        (void)write(STDOUT_FILENO, s, len);
 }
 
 static int
@@ -803,6 +857,7 @@ KryonRaylibBackend_EndDrawing(void)
     double elapsed;
 
     termi_present();
+    present_sixel_queue();
     now = now_seconds();
     if(g_target_fps > 0 && g_last_time > 0.0) {
         double target = 1.0 / (double)g_target_fps;
@@ -886,6 +941,7 @@ BeginDrawing(void)
 {
     detect_size();
     poll_input(1);
+    g_sixel_count = 0;
 }
 
 void ClearBackground(Color color) { termi_clear(pack_color(color)); }
@@ -1247,12 +1303,371 @@ Vector2 MeasureTextEx(Font font, const char *text, float fontSize,
     return (Vector2){(float)(cells * TERMI_CELL_WIDTH), fontSize};
 }
 
+static TermiTexture *
+texture_find(unsigned id)
+{
+    if(id == 0)
+        return NULL;
+    for(int i = 0; i < TERMI_TEXTURE_CAP; i++) {
+        if(g_textures[i].id == id)
+            return &g_textures[i];
+    }
+    return NULL;
+}
+
+static TermiTexture *
+texture_alloc(void)
+{
+    for(int i = 0; i < TERMI_TEXTURE_CAP; i++) {
+        if(g_textures[i].id == 0)
+            return &g_textures[i];
+    }
+    return NULL;
+}
+
+static unsigned char *
+read_file_bytes(const char *path, int *len_out)
+{
+    FILE *f;
+    long len;
+    unsigned char *data;
+
+    if(path == NULL || len_out == NULL)
+        return NULL;
+    f = fopen(path, "rb");
+    if(f == NULL)
+        return NULL;
+    if(fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    len = ftell(f);
+    if(len <= 0) {
+        fclose(f);
+        return NULL;
+    }
+    rewind(f);
+    data = (unsigned char *)malloc((size_t)len);
+    if(data == NULL) {
+        fclose(f);
+        return NULL;
+    }
+    if(fread(data, 1, (size_t)len, f) != (size_t)len) {
+        free(data);
+        fclose(f);
+        return NULL;
+    }
+    fclose(f);
+    *len_out = (int)len;
+    return data;
+}
+
+static Color
+texture_sample(const TermiTexture *tex, Rectangle source, Rectangle dest,
+               int px, int py, Color tint)
+{
+    float u;
+    float v;
+    int sx;
+    int sy;
+    const unsigned char *p;
+    Color c = {0, 0, 0, 0};
+
+    if(tex == NULL || tex->rgba == NULL || tex->width <= 0 ||
+       tex->height <= 0 || dest.width == 0.0f || dest.height == 0.0f)
+        return c;
+    if(source.width == 0.0f)
+        source.width = (float)tex->width;
+    if(source.height == 0.0f)
+        source.height = (float)tex->height;
+    u = ((float)px - dest.x) / dest.width;
+    v = ((float)py - dest.y) / dest.height;
+    if(u < 0.0f)
+        u = 0.0f;
+    if(v < 0.0f)
+        v = 0.0f;
+    if(u > 1.0f)
+        u = 1.0f;
+    if(v > 1.0f)
+        v = 1.0f;
+    sx = (int)(source.x + u * source.width);
+    sy = (int)(source.y + v * source.height);
+    if(sx < 0)
+        sx = 0;
+    if(sy < 0)
+        sy = 0;
+    if(sx >= tex->width)
+        sx = tex->width - 1;
+    if(sy >= tex->height)
+        sy = tex->height - 1;
+    p = &tex->rgba[((size_t)sy * (size_t)tex->width + (size_t)sx) * 4u];
+    c.r = (unsigned char)(((unsigned)p[0] * (unsigned)tint.r) / 255u);
+    c.g = (unsigned char)(((unsigned)p[1] * (unsigned)tint.g) / 255u);
+    c.b = (unsigned char)(((unsigned)p[2] * (unsigned)tint.b) / 255u);
+    c.a = (unsigned char)(((unsigned)p[3] * (unsigned)tint.a) / 255u);
+    return c;
+}
+
+static void
+draw_texture_cells(const TermiTexture *tex, Rectangle source, Rectangle dest,
+                   Color tint)
+{
+    int c0 = pixel_to_col((int)dest.x);
+    int r0 = pixel_to_row((int)dest.y);
+    int cols = pixel_span_to_cols((int)dest.x, (int)dest.width);
+    int rows = pixel_span_to_rows((int)dest.y, (int)dest.height);
+
+    for(int y = 0; y < rows; y++) {
+        for(int x = 0; x < cols; x++) {
+            int px = (c0 + x) * TERMI_CELL_WIDTH + TERMI_CELL_WIDTH / 2;
+            int py = (r0 + y) * TERMI_CELL_HEIGHT + TERMI_CELL_HEIGHT / 2;
+            Color c = texture_sample(tex, source, dest, px, py, tint);
+
+            if(c.a < 24)
+                continue;
+            cell_set(c0 + x, r0 + y, " ", pack_color(WHITE), pack_color(c),
+                     TERMI_ATTR_NONE);
+        }
+    }
+}
+
+static int
+palette_nearest(TermiPaletteColor *palette, int count, Color c)
+{
+    int best = 0;
+    int best_dist = 0x7fffffff;
+
+    for(int i = 0; i < count; i++) {
+        int dr = (int)palette[i].r - (int)c.r;
+        int dg = (int)palette[i].g - (int)c.g;
+        int db = (int)palette[i].b - (int)c.b;
+        int dist = dr * dr + dg * dg + db * db;
+
+        if(dist < best_dist) {
+            best_dist = dist;
+            best = i;
+        }
+    }
+    return best;
+}
+
+static int
+palette_index(TermiPaletteColor *palette, int *count, Color c)
+{
+    for(int i = 0; i < *count; i++) {
+        if(palette[i].r == c.r && palette[i].g == c.g && palette[i].b == c.b)
+            return i;
+    }
+    if(*count < TERMI_SIXEL_PALETTE_CAP) {
+        int index = *count;
+
+        palette[index].r = c.r;
+        palette[index].g = c.g;
+        palette[index].b = c.b;
+        *count = index + 1;
+        return index;
+    }
+    return palette_nearest(palette, *count, c);
+}
+
+static void
+sixel_emit_texture(const TermiTexture *tex, Rectangle source, Rectangle dest,
+                   Color tint)
+{
+    TermiPaletteColor palette[TERMI_SIXEL_PALETTE_CAP];
+    int palette_count = 0;
+    int width = (int)(dest.width < 0.0f ? -dest.width : dest.width);
+    int height = (int)(dest.height < 0.0f ? -dest.height : dest.height);
+    char seq[128];
+    int col;
+    int row;
+
+    if(tex == NULL || tex->rgba == NULL || width <= 0 || height <= 0)
+        return;
+    if(!env_enabled("TERMI_SIXEL", 1))
+        return;
+    if(width > env_int("TERMI_SIXEL_MAX_WIDTH", 960))
+        width = env_int("TERMI_SIXEL_MAX_WIDTH", 960);
+    if(height > env_int("TERMI_SIXEL_MAX_HEIGHT", 480))
+        height = env_int("TERMI_SIXEL_MAX_HEIGHT", 480);
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            Color c = texture_sample(tex, source, dest, (int)dest.x + x,
+                                     (int)dest.y + y, tint);
+
+            if(c.a >= 32)
+                (void)palette_index(palette, &palette_count, c);
+        }
+    }
+    if(palette_count == 0)
+        return;
+    col = pixel_to_col((int)dest.x) + 1;
+    row = pixel_to_row((int)dest.y) + 1;
+    if(col < 1)
+        col = 1;
+    if(row < 1)
+        row = 1;
+    snprintf(seq, sizeof(seq), "\033[%d;%dH\033Pq\"1;1;%d;%d", row, col,
+             width, height);
+    term_write(seq);
+    for(int i = 0; i < palette_count; i++) {
+        snprintf(seq, sizeof(seq), "#%d;2;%d;%d;%d", i,
+                 (int)palette[i].r * 100 / 255,
+                 (int)palette[i].g * 100 / 255,
+                 (int)palette[i].b * 100 / 255);
+        term_write(seq);
+    }
+    for(int band = 0; band < height; band += 6) {
+        for(int pi = 0; pi < palette_count; pi++) {
+            snprintf(seq, sizeof(seq), "#%d", pi);
+            term_write(seq);
+            for(int x = 0; x < width; x++) {
+                int bits = 0;
+
+                for(int bit = 0; bit < 6; bit++) {
+                    int y = band + bit;
+                    Color c;
+                    int ci;
+
+                    if(y >= height)
+                        continue;
+                    c = texture_sample(tex, source, dest, (int)dest.x + x,
+                                       (int)dest.y + y, tint);
+                    if(c.a < 32)
+                        continue;
+                    ci = palette_nearest(palette, palette_count, c);
+                    if(ci == pi)
+                        bits |= 1 << bit;
+                }
+                seq[0] = (char)(63 + bits);
+                term_write_len(seq, 1);
+            }
+            term_write("$");
+        }
+        term_write("-");
+    }
+    term_write("\033\\");
+}
+
+static void
+queue_sixel(unsigned texture_id, Rectangle source, Rectangle dest, Color tint)
+{
+    if(g_sixel_count >= TERMI_SIXEL_QUEUE_CAP)
+        return;
+    if(dest.x >= (float)GetScreenWidth() || dest.y >= (float)GetScreenHeight() ||
+       dest.x + dest.width <= 0.0f || dest.y + dest.height <= 0.0f)
+        return;
+    g_sixel_queue[g_sixel_count++] =
+        (TermiSixelOp){texture_id, source, dest, tint};
+}
+
+static void
+present_sixel_queue(void)
+{
+    for(int i = 0; i < g_sixel_count; i++) {
+        TermiSixelOp *op = &g_sixel_queue[i];
+
+        sixel_emit_texture(texture_find(op->texture_id), op->source, op->dest,
+                           op->tint);
+    }
+    if(g_sixel_count > 0)
+        fflush(stdout);
+}
+
+Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
+                          int dataSize)
+{
+    Image img = {0};
+    int width = 0;
+    int height = 0;
+
+    (void)fileType;
+    img.data = kry_decode_image_rgba(fileData, dataSize, &width, &height);
+    if(img.data != NULL) {
+        img.width = width;
+        img.height = height;
+        img.mipmaps = 1;
+        img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    }
+    return img;
+}
+
+Image LoadImage(const char *fileName)
+{
+    unsigned char *data;
+    int len = 0;
+    Image img = {0};
+
+    data = read_file_bytes(fileName, &len);
+    if(data == NULL)
+        return img;
+    img = LoadImageFromMemory("", data, len);
+    free(data);
+    return img;
+}
+
+bool IsImageValid(Image image)
+{
+    return image.data != NULL && image.width > 0 && image.height > 0;
+}
+
+void UnloadImage(Image image) { free(image.data); }
+
+void ImageFormat(Image *image, int newFormat)
+{
+    if(image != NULL)
+        image->format = newFormat;
+}
+
+Image GenImageColor(int width, int height, Color color)
+{
+    Image img = {0};
+    unsigned char *pixels;
+
+    if(width <= 0 || height <= 0)
+        return img;
+    pixels = (unsigned char *)malloc((size_t)width * (size_t)height * 4u);
+    if(pixels == NULL)
+        return img;
+    for(int i = 0; i < width * height; i++) {
+        pixels[i * 4 + 0] = color.r;
+        pixels[i * 4 + 1] = color.g;
+        pixels[i * 4 + 2] = color.b;
+        pixels[i * 4 + 3] = color.a;
+    }
+    img.data = pixels;
+    img.width = width;
+    img.height = height;
+    img.mipmaps = 1;
+    img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+    return img;
+}
+
 Texture2D LoadTextureFromImage(Image image)
 {
-    static unsigned next_id = 16;
     Texture2D tex = {0};
+    TermiTexture *slot;
+    size_t bytes;
 
-    tex.id = next_id++;
+    if(image.width <= 0 || image.height <= 0)
+        return tex;
+    slot = texture_alloc();
+    if(slot == NULL)
+        return tex;
+    memset(slot, 0, sizeof(*slot));
+    bytes = (size_t)image.width * (size_t)image.height * 4u;
+    if(image.data != NULL && bytes > 0) {
+        slot->rgba = (unsigned char *)malloc(bytes);
+        if(slot->rgba == NULL)
+            return tex;
+        memcpy(slot->rgba, image.data, bytes);
+    }
+    slot->id = g_next_texture_id++;
+    slot->width = image.width;
+    slot->height = image.height;
+    slot->format = image.format;
+
+    tex.id = slot->id;
     tex.width = image.width > 0 ? image.width : TERMI_CELL_WIDTH;
     tex.height = image.height > 0 ? image.height : TERMI_CELL_HEIGHT;
     tex.mipmaps = 1;
@@ -1261,19 +1676,31 @@ Texture2D LoadTextureFromImage(Image image)
 }
 Texture2D LoadTexture(const char *fileName)
 {
-    Image image = {0};
+    Image image;
+    Texture2D tex;
 
-    (void)fileName;
-    image.width = TERMI_CELL_WIDTH;
-    image.height = TERMI_CELL_HEIGHT;
-    image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    return LoadTextureFromImage(image);
+    image = LoadImage(fileName);
+    tex = LoadTextureFromImage(image);
+    UnloadImage(image);
+    return tex;
 }
 bool IsTextureValid(Texture2D texture) { return texture.id != 0; }
-void UnloadTexture(Texture2D texture) { (void)texture; }
+void UnloadTexture(Texture2D texture)
+{
+    TermiTexture *slot = texture_find(texture.id);
+
+    if(slot == NULL)
+        return;
+    free(slot->rgba);
+    memset(slot, 0, sizeof(*slot));
+}
 void DrawTexture(Texture2D texture, int posX, int posY, Color tint)
 {
-    DrawRectangle(posX, posY, texture.width, texture.height, tint);
+    DrawTexturePro(texture, (Rectangle){0, 0, (float)texture.width,
+                                        (float)texture.height},
+                   (Rectangle){(float)posX, (float)posY, (float)texture.width,
+                               (float)texture.height},
+                   (Vector2){0, 0}, 0.0f, tint);
 }
 void DrawTextureV(Texture2D texture, Vector2 position, Color tint)
 {
@@ -1282,25 +1709,32 @@ void DrawTextureV(Texture2D texture, Vector2 position, Color tint)
 void DrawTextureEx(Texture2D texture, Vector2 position, float rotation,
                    float scale, Color tint)
 {
-    (void)rotation;
-    DrawRectangle((int)position.x, (int)position.y,
-                  (int)((float)texture.width * scale),
-                  (int)((float)texture.height * scale), tint);
+    DrawTexturePro(texture, (Rectangle){0, 0, (float)texture.width,
+                                        (float)texture.height},
+                   (Rectangle){position.x, position.y,
+                               (float)texture.width * scale,
+                               (float)texture.height * scale},
+                   (Vector2){0, 0}, rotation, tint);
 }
 void DrawTextureRec(Texture2D texture, Rectangle rec, Vector2 position,
                     Color tint)
 {
-    (void)texture;
-    DrawRectangle((int)position.x, (int)position.y, (int)rec.width,
-                  (int)rec.height, tint);
+    DrawTexturePro(texture, rec,
+                   (Rectangle){position.x, position.y, rec.width, rec.height},
+                   (Vector2){0, 0}, 0.0f, tint);
 }
 void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                     Vector2 origin, float rotation, Color tint)
 {
-    (void)texture;
-    (void)source;
+    TermiTexture *tex = texture_find(texture.id);
+
     (void)origin;
     (void)rotation;
+    if(tex != NULL && tex->rgba != NULL) {
+        draw_texture_cells(tex, source, dest, tint);
+        queue_sixel(texture.id, source, dest, tint);
+        return;
+    }
     DrawRectangleRec(dest, tint);
 }
 

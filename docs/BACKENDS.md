@@ -73,13 +73,15 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   terminal cells (`TERMI_CELL_WIDTH` x `TERMI_CELL_HEIGHT`) and renders native
   terminal primitives: rectangles become colored cell regions, rectangle
   outlines become terminal line cells, and UI text goes through the native text
-  hook to real terminal text. It uses the generated weak null stubs for
-  unsupported raylib compatibility areas such as shaders, 3D, and full image
-  blits; textures degrade to colored placeholders. Input is read from the
-  terminal in raw mode, including arrows, basic mouse SGR events, and Ctrl-C as
-  an application close request. `make termi-test` builds a widget smoke app
-  with `KRYON_BACKEND=termi`, runs it in a pseudo-terminal, verifies alternate
-  screen entry/exit and rendered widget text, and confirms Ctrl-C exits.
+  hook to real terminal text. PNG and other stb-supported images are decoded
+  into Kryon textures; texture draws render as a colored-cell fallback and emit
+  sixel image data by default (`TERMI_SIXEL=0` disables sixel). It uses the
+  generated weak null stubs for unsupported raylib compatibility areas such as
+  shaders and 3D. Input is read from the terminal in raw mode, including arrows,
+  basic mouse SGR events, and Ctrl-C as an application close request. `make
+  termi-test` builds a widget smoke app with `KRYON_BACKEND=termi`, runs it in
+  a pseudo-terminal, verifies alternate screen entry/exit, rendered widget text,
+  sixel texture output, and confirms Ctrl-C exits.
 
 Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 `KRYON_BACKEND_LIBS`/`KRYON_BACKEND_LDLIBS` carry the backend's own link

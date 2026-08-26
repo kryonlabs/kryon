@@ -84,6 +84,7 @@ PY
 
 test -s "$out"
 grep "$(printf '\033')\\[?1049h" "$out" >/dev/null
+grep "$(printf '\033')Pq" "$out" >/dev/null
 grep "Termi backend" "$out" >/dev/null
 grep "Button" "$out" >/dev/null
 grep "$(printf '\033')\\[?1049l" "$out" >/dev/null
