@@ -60,6 +60,7 @@ typedef struct TermiPaletteColor {
 
 static TermiCell *g_cells;
 static TermiCell *g_prev;
+static unsigned char *g_dirty;
 static int g_cols = 80;
 static int g_rows = 24;
 static int g_ready;
@@ -158,6 +159,21 @@ env_int(const char *name, int fallback)
         return fallback;
     v = strtol(s, &end, 10);
     if(end == s || v <= 0 || v > 10000)
+        return fallback;
+    return (int)v;
+}
+
+static int
+env_int_allow_zero(const char *name, int fallback)
+{
+    const char *s = getenv(name);
+    char *end = NULL;
+    long v;
+
+    if(s == NULL || s[0] == '\0')
+        return fallback;
+    v = strtol(s, &end, 10);
+    if(end == s || v < 0 || v > 10000)
         return fallback;
     return (int)v;
 }
@@ -285,6 +301,7 @@ resize_grid(int cols, int rows)
     size_t count;
     TermiCell *cells;
     TermiCell *prev;
+    unsigned char *dirty;
 
     if(cols <= 0)
         cols = 80;
@@ -295,17 +312,21 @@ resize_grid(int cols, int rows)
     count = (size_t)cols * (size_t)rows;
     cells = calloc(count, sizeof(TermiCell));
     prev = calloc(count, sizeof(TermiCell));
-    if(cells == NULL || prev == NULL) {
+    dirty = calloc(count, sizeof(unsigned char));
+    if(cells == NULL || prev == NULL || dirty == NULL) {
         free(cells);
         free(prev);
+        free(dirty);
         return;
     }
     free(g_cells);
     free(g_prev);
+    free(g_dirty);
     g_cols = cols;
     g_rows = rows;
     g_cells = cells;
     g_prev = prev;
+    g_dirty = dirty;
     memset(g_prev, 0xff, count * sizeof(TermiCell));
     g_clip_depth = 0;
 }
@@ -719,6 +740,8 @@ cell_equal(const TermiCell *a, const TermiCell *b)
 static void
 dirty_reset(void)
 {
+    if(g_dirty != NULL)
+        memset(g_dirty, 0, (size_t)g_cols * (size_t)g_rows);
     g_dirty_min_x = g_cols;
     g_dirty_min_y = g_rows;
     g_dirty_max_x = -1;
@@ -736,12 +759,27 @@ dirty_mark(int x, int y)
         g_dirty_max_x = x;
     if(y > g_dirty_max_y)
         g_dirty_max_y = y;
+    if(g_dirty != NULL && x >= 0 && y >= 0 && x < g_cols && y < g_rows)
+        g_dirty[cell_index(x, y)] = 1;
 }
 
 static int
 dirty_empty(void)
 {
     return g_dirty_max_x < g_dirty_min_x || g_dirty_max_y < g_dirty_min_y;
+}
+
+static int
+termi_effective_fps(void)
+{
+    const char *configured = getenv("TERMI_FPS");
+    int default_cap = 20;
+
+    if(configured != NULL && configured[0] != '\0')
+        return env_int_allow_zero("TERMI_FPS", default_cap);
+    if(g_target_fps <= 0)
+        return default_cap;
+    return g_target_fps < default_cap ? g_target_fps : default_cap;
 }
 
 static void
@@ -942,12 +980,15 @@ KryonRaylibBackend_EndDrawing(void)
 {
     double now;
     double elapsed;
+    int effective_fps;
 
     termi_present();
     present_sixel_queue();
     now = now_seconds();
-    if(g_target_fps > 0 && g_last_time > 0.0) {
-        double target = 1.0 / (double)g_target_fps;
+    effective_fps = termi_effective_fps();
+
+    if(effective_fps > 0 && g_last_time > 0.0) {
+        double target = 1.0 / (double)effective_fps;
 
         elapsed = now - g_last_time;
         if(elapsed < target) {
@@ -1020,7 +1061,14 @@ Vector2 GetWindowScaleDPI(void) { return (Vector2){1.0f, 1.0f}; }
 const char *GetMonitorName(int monitor) { (void)monitor; return "terminal"; }
 float GetFrameTime(void) { return g_frame_time; }
 double GetTime(void) { return now_seconds(); }
-int GetFPS(void) { return g_fps > 0 ? g_fps : 60; }
+int GetFPS(void)
+{
+    int effective_fps = termi_effective_fps();
+
+    if(g_fps > 0)
+        return g_fps;
+    return effective_fps > 0 ? effective_fps : 60;
+}
 void WaitTime(double seconds) { sleep_seconds(seconds); }
 
 void
@@ -1693,8 +1741,26 @@ sixel_op_overlaps_dirty_cells(const TermiSixelOp *op)
         y0 = y1;
         y1 = t;
     }
-    return x0 <= g_dirty_max_x && x1 >= g_dirty_min_x &&
-           y0 <= g_dirty_max_y && y1 >= g_dirty_min_y;
+    if(x0 > g_dirty_max_x || x1 < g_dirty_min_x ||
+       y0 > g_dirty_max_y || y1 < g_dirty_min_y)
+        return 0;
+    if(g_dirty == NULL)
+        return 1;
+    if(x0 < 0)
+        x0 = 0;
+    if(y0 < 0)
+        y0 = 0;
+    if(x1 >= g_cols)
+        x1 = g_cols - 1;
+    if(y1 >= g_rows)
+        y1 = g_rows - 1;
+    for(int y = y0; y <= y1; y++) {
+        for(int x = x0; x <= x1; x++) {
+            if(g_dirty[cell_index(x, y)] != 0)
+                return 1;
+        }
+    }
+    return 0;
 }
 
 static int
@@ -1708,6 +1774,8 @@ sixel_op_can_skip(const TermiSixelOp *op)
 static void
 queue_sixel(unsigned texture_id, Rectangle source, Rectangle dest, Color tint)
 {
+    if(!env_enabled("TERMI_SIXEL", 1))
+        return;
     if(g_sixel_count >= TERMI_SIXEL_QUEUE_CAP)
         return;
     if(dest.x >= (float)GetScreenWidth() || dest.y >= (float)GetScreenHeight() ||

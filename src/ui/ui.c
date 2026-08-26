@@ -665,7 +665,11 @@ SetUITransitionCuesEnabled(int enabled)
 int
 UITransitionCuesEnabled(void)
 {
+#if defined(KRYON_BACKEND_TERMI)
+    return 0;
+#else
     return g_ui_transition_cues_enabled;
+#endif
 }
 
 void

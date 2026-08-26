@@ -4,6 +4,7 @@
 static UIStyleTokens g_ui_style_override;
 static int g_ui_style_override_enabled = 0;
 
+#if !defined(KRYON_BACKEND_TERMI)
 typedef struct {
     unsigned int key;
     Vector2 origin;
@@ -15,6 +16,7 @@ typedef struct {
 #define UI_MATERIAL_RIPPLE_MAX 64
 
 static UIMaterialRipple g_material_ripples[UI_MATERIAL_RIPPLE_MAX];
+#endif
 
 UIStyleTokens
 GetUIStyleTokensForThemeStyle(ThemeStyle style)
@@ -300,6 +302,13 @@ ui_material_elevation(Rectangle bounds, float radius, int level)
 void
 ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 {
+#if defined(KRYON_BACKEND_TERMI)
+    (void)bounds;
+    (void)on_color;
+    (void)key;
+    (void)pressed;
+    return;
+#else
     UIMaterialRipple *ripple;
     Vector2 mouse;
     float dt;
@@ -346,6 +355,7 @@ ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
         radius = max_radius;
     color.a = pressed ? 28 : (unsigned char)(28.0f * (1.0f - ripple->age / 0.32f));
     DrawCircleV(ripple->origin, radius, color);
+#endif
 }
 
 void
