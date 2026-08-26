@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1295,13 +1296,111 @@ void DrawLineEx(Vector2 start, Vector2 end, float thick, Color color)
     (void)thick;
     DrawLineV(start, end, color);
 }
+
+static float
+termi_norm_degrees(float angle)
+{
+    angle = fmodf(angle, 360.0f);
+    if(angle < 0.0f)
+        angle += 360.0f;
+    return angle;
+}
+
+static int
+termi_angle_in_sweep(float angle, float start, float end)
+{
+    float sweep = end - start;
+    float rel;
+
+    if(sweep >= 360.0f || sweep <= -360.0f)
+        return 1;
+    angle = termi_norm_degrees(angle);
+    start = termi_norm_degrees(start);
+    if(sweep >= 0.0f) {
+        rel = termi_norm_degrees(angle - start);
+        return rel <= sweep;
+    }
+    rel = termi_norm_degrees(start - angle);
+    return rel <= -sweep;
+}
+
+static void
+termi_fill_disc(Vector2 center, float radius, Color color)
+{
+    int c0;
+    int c1;
+    int r0;
+    int r1;
+    unsigned bg = pack_color(color);
+
+    if(radius <= 0.0f || (((bg) & 0xffu) == 0))
+        return;
+    c0 = pixel_to_col((int)(center.x - radius));
+    c1 = pixel_to_col((int)(center.x + radius + TERMI_CELL_WIDTH - 1));
+    r0 = pixel_to_row((int)(center.y - radius));
+    r1 = pixel_to_row((int)(center.y + radius + TERMI_CELL_HEIGHT - 1));
+    for(int row = r0; row <= r1; row++) {
+        for(int col = c0; col <= c1; col++) {
+            float px = (float)(col * TERMI_CELL_WIDTH) +
+                       (float)TERMI_CELL_WIDTH * 0.5f;
+            float py = (float)(row * TERMI_CELL_HEIGHT) +
+                       (float)TERMI_CELL_HEIGHT * 0.5f;
+            float dx = (px - center.x) / radius;
+            float dy = (py - center.y) / radius;
+
+            if(dx * dx + dy * dy <= 1.0f)
+                cell_set(col, row, " ", 0xffffffffu, bg, TERMI_ATTR_NONE);
+        }
+    }
+}
+
+static void
+termi_fill_ring(Vector2 center, float innerRadius, float outerRadius,
+                float startAngle, float endAngle, Color color)
+{
+    float min_width = (float)TERMI_CELL_WIDTH;
+    int c0;
+    int c1;
+    int r0;
+    int r1;
+    unsigned bg = pack_color(color);
+
+    if(outerRadius <= 0.0f || (((bg) & 0xffu) == 0))
+        return;
+    if(innerRadius < 0.0f)
+        innerRadius = 0.0f;
+    if(innerRadius > outerRadius)
+        innerRadius = outerRadius;
+    if(outerRadius - innerRadius < min_width)
+        innerRadius = outerRadius > min_width ? outerRadius - min_width : 0.0f;
+    c0 = pixel_to_col((int)(center.x - outerRadius));
+    c1 = pixel_to_col((int)(center.x + outerRadius + TERMI_CELL_WIDTH - 1));
+    r0 = pixel_to_row((int)(center.y - outerRadius));
+    r1 = pixel_to_row((int)(center.y + outerRadius + TERMI_CELL_HEIGHT - 1));
+    for(int row = r0; row <= r1; row++) {
+        for(int col = c0; col <= c1; col++) {
+            float px = (float)(col * TERMI_CELL_WIDTH) +
+                       (float)TERMI_CELL_WIDTH * 0.5f;
+            float py = (float)(row * TERMI_CELL_HEIGHT) +
+                       (float)TERMI_CELL_HEIGHT * 0.5f;
+            float dx = px - center.x;
+            float dy = py - center.y;
+            float dist2 = dx * dx + dy * dy;
+            float angle;
+
+            if(dist2 < innerRadius * innerRadius ||
+               dist2 > outerRadius * outerRadius)
+                continue;
+            angle = atan2f(dy, dx) * 57.2957795f;
+            if(termi_angle_in_sweep(angle, startAngle, endAngle))
+                cell_set(col, row, " ", 0xffffffffu, bg, TERMI_ATTR_NONE);
+        }
+    }
+}
+
 void DrawCircle(int centerX, int centerY, float radius, Color color)
 {
-    int x = centerX - (int)radius;
-    int y = centerY - (int)radius;
-    int d = (int)(radius * 2.0f);
-
-    DrawRectangle(x, y, d, d, color);
+    termi_fill_disc((Vector2){(float)centerX, (float)centerY}, radius, color);
 }
 void DrawCircleV(Vector2 center, float radius, Color color)
 {
@@ -1309,8 +1408,8 @@ void DrawCircleV(Vector2 center, float radius, Color color)
 }
 void DrawCircleLines(int centerX, int centerY, float radius, Color color)
 {
-    DrawRectangleLines(centerX - (int)radius, centerY - (int)radius,
-                       (int)(radius * 2.0f), (int)(radius * 2.0f), color);
+    DrawCircleLinesEx((Vector2){(float)centerX, (float)centerY}, radius,
+                      (float)TERMI_CELL_WIDTH, color);
 }
 void DrawCircleLinesV(Vector2 center, float radius, Color color)
 {
@@ -1318,17 +1417,16 @@ void DrawCircleLinesV(Vector2 center, float radius, Color color)
 }
 void DrawCircleLinesEx(Vector2 center, float radius, float thick, Color color)
 {
-    (void)thick;
-    DrawCircleLinesV(center, radius, color);
+    if(thick < (float)TERMI_CELL_WIDTH)
+        thick = (float)TERMI_CELL_WIDTH;
+    termi_fill_ring(center, radius - thick, radius, 0.0f, 360.0f, color);
 }
 void DrawRing(Vector2 center, float innerRadius, float outerRadius,
               float startAngle, float endAngle, int segments, Color color)
 {
-    (void)innerRadius;
-    (void)startAngle;
-    (void)endAngle;
     (void)segments;
-    DrawCircleLinesV(center, outerRadius, color);
+    termi_fill_ring(center, innerRadius, outerRadius, startAngle, endAngle,
+                    color);
 }
 void DrawRingLines(Vector2 center, float innerRadius, float outerRadius,
                    float startAngle, float endAngle, int segments, Color color)
