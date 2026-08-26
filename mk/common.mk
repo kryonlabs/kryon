@@ -21,7 +21,7 @@ KRYON_ICON_ASSETS_C = $(KRYON_DIR)/src/ui/ui_icon_assets.c
 # Graphics/input backend, same meaning as Kryon's own Makefile: selects the
 # backend TU compiled with kryon's sources and its link inputs. Only the
 # raylib backend needs libraylib.a, its window/GL flags, and the SDL
-# pkg-config checks below; null links headless with no raylib at all.
+# pkg-config checks below; tui and null link with no raylib at all.
 KRYON_BACKEND ?= raylib
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
@@ -42,13 +42,18 @@ else ifeq ($(KRYON_BACKEND),libdraw)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS = -DKRYON_BACKEND_LIBDRAW -I$(PLAN9PORT_DIR)/include -idirafter $(KRYON_DIR)/vendor/raylib/src/external
   KRYON_BACKEND_LDLIBS = -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm
+else ifeq ($(KRYON_BACKEND),tui)
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_CFLAGS =
+  KRYON_BACKEND_LDLIBS =
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, tui, or null))
 endif
 KRYON_ALL_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort))
 ifneq ($(KRYON_BACKEND),canvas)
@@ -57,6 +62,9 @@ endif
 ifneq ($(KRYON_BACKEND),libdraw)
 KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/libdraw_%.c,$(KRYON_ALL_SRCS))
 KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/platform/plan9/%.c,$(KRYON_ALL_SRCS))
+endif
+ifneq ($(KRYON_BACKEND),tui)
+KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/tui_%.c,$(KRYON_ALL_SRCS))
 endif
 KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_INCLUDE = -I$(KRYON_DIR)/include
