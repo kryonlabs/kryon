@@ -7,6 +7,8 @@
   biometric/user-authenticated Android Keystore keys.
 - Add a Sweet app palette, with dark colors matched to the Sweet-Dark GTK
   theme, and make it the default Material app palette.
+- Let scroll containers render a small visual bleed around their viewport so
+  control borders, focus rings, and Material state layers are not clipped.
 
 ### Removed
 

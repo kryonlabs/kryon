@@ -227,12 +227,14 @@ BeginUIScrollContainer(UIScrollArea area)
         view.content_y = y;
     }
     {
+        int visual_bleed = ScaleUIPx(8);
         Rectangle screen_bounds = {
             g_ui_camera.offset.x + area.bounds.x * g_ui_camera.zoom,
             g_ui_camera.offset.y + area.bounds.y * g_ui_camera.zoom,
             area.bounds.width * g_ui_camera.zoom,
             area.bounds.height * g_ui_camera.zoom
         };
+        Rectangle visual_screen_bounds;
         Rectangle clipped_screen_bounds = GetUIClipEffective(screen_bounds);
         Rectangle clipped_world_bounds = {
             (clipped_screen_bounds.x - g_ui_camera.offset.x) / g_ui_camera.zoom,
@@ -241,9 +243,20 @@ BeginUIScrollContainer(UIScrollArea area)
             clipped_screen_bounds.height / g_ui_camera.zoom
         };
 
+        visual_bleed = (int)((float)visual_bleed * g_ui_camera.zoom);
+        if(visual_bleed < 1)
+            visual_bleed = 1;
+        visual_screen_bounds = (Rectangle){
+            screen_bounds.x - visual_bleed,
+            screen_bounds.y - visual_bleed,
+            screen_bounds.width + visual_bleed * 2,
+            screen_bounds.height + visual_bleed * 2
+        };
+
         PushUIInputClip(clipped_world_bounds);
-        BeginUIClip((int)screen_bounds.x, (int)screen_bounds.y,
-                         (int)screen_bounds.width, (int)screen_bounds.height);
+        BeginUIClip((int)visual_screen_bounds.x, (int)visual_screen_bounds.y,
+                         (int)visual_screen_bounds.width,
+                         (int)visual_screen_bounds.height);
     }
     return view;
 }
