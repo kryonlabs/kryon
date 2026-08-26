@@ -3,12 +3,12 @@
 
 #include <ctype.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <termios.h>
@@ -75,7 +75,6 @@ static int g_trace_level = LOG_INFO;
 static TraceLogCallback g_trace_callback;
 static struct termios g_saved_termios;
 static int g_have_termios;
-static int g_saved_flags = -1;
 static double g_last_time;
 static float g_frame_time = 1.0f / 60.0f;
 static int g_frame_counter;
@@ -296,7 +295,28 @@ static void
 term_flush(void)
 {
     if(g_out_len > 0) {
-        (void)write(STDOUT_FILENO, g_out_buf, g_out_len);
+        size_t offset = 0;
+
+        while(offset < g_out_len) {
+            ssize_t written =
+                write(STDOUT_FILENO, g_out_buf + offset, g_out_len - offset);
+
+            if(written > 0) {
+                offset += (size_t)written;
+                continue;
+            }
+            if(written < 0 && errno == EINTR)
+                continue;
+            if(written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+                fd_set write_fds;
+
+                FD_ZERO(&write_fds);
+                FD_SET(STDOUT_FILENO, &write_fds);
+                (void)select(STDOUT_FILENO + 1, NULL, &write_fds, NULL, NULL);
+                continue;
+            }
+            break;
+        }
         g_out_len = 0;
     }
 }
@@ -679,8 +699,22 @@ poll_input(int reset_edges)
     if(reset_edges)
         clear_input_edges();
     for(;;) {
+        fd_set read_fds;
+        struct timeval timeout = {0, 0};
+        int ready;
+
+        FD_ZERO(&read_fds);
+        FD_SET(STDIN_FILENO, &read_fds);
+        ready = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
+        if(ready <= 0) {
+            if(ready < 0 && errno == EINTR)
+                continue;
+            break;
+        }
         n = read(STDIN_FILENO, buf, sizeof(buf));
         if(n <= 0) {
+            if(n < 0 && errno == EINTR)
+                continue;
             if(n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
                 g_close_requested = 1;
             break;
@@ -1110,10 +1144,7 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
         if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == 0)
             g_have_termios = 1;
     }
-    g_saved_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    if(g_saved_flags >= 0)
-        (void)fcntl(STDIN_FILENO, F_SETFL, g_saved_flags | O_NONBLOCK);
-    term_write("\033[?1049h\033[?25l\033[?1000h\033[?1006h\033[2J");
+    term_write("\033[?1049h\033[?25l\033[?7l\033[?1000h\033[?1006h\033[2J");
     g_ready = 1;
     g_close_requested = 0;
     g_last_time = now_seconds();
@@ -1127,15 +1158,11 @@ KryonRaylibBackend_CloseWindow(void)
 {
     if(!g_ready)
         return;
-    term_write("\033[0m\033[?1006l\033[?1000l\033[?25h\033[?1049l");
+    term_write("\033[0m\033[?1006l\033[?1000l\033[?7h\033[?25h\033[?1049l");
     term_flush();
     if(g_have_termios) {
         (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_saved_termios);
         g_have_termios = 0;
-    }
-    if(g_saved_flags >= 0) {
-        (void)fcntl(STDIN_FILENO, F_SETFL, g_saved_flags);
-        g_saved_flags = -1;
     }
     g_ready = 0;
 }
