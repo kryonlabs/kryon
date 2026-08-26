@@ -2092,7 +2092,7 @@ sixel_clear_dest(const TermiSixelOp *op)
     int y1 = pixel_to_row((int)(op->dest.y + op->dest.height - 1.0f));
     char seq[64];
 
-    if(!env_enabled("TERMI_SIXEL_CLEAR", 1))
+    if(!env_enabled("TERMI_SIXEL_CLEAR", 0))
         return;
     if(x0 > x1) {
         int t = x0;
