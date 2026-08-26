@@ -409,7 +409,7 @@ main(void)
     }
 
     {
-        const char *lines[] = {"open /tmp/kapsule-test.txt now",
+        const char *lines[] = {"open /tmp/ktrem-test.txt now",
                                "second line",
                                "abcdefghijklmnop",
                                "q"};
@@ -424,16 +424,16 @@ main(void)
         check_int("terminal selection contains first path char",
                   TerminalPaneSelectionContains(&selection, 0, 5), 1);
         check_int("terminal selection contains last path char",
-                  TerminalPaneSelectionContains(&selection, 0, 25), 1);
+                  TerminalPaneSelectionContains(&selection, 0, 23), 1);
         check_int("terminal selection excludes after word",
-                  TerminalPaneSelectionContains(&selection, 0, 26), 0);
+                  TerminalPaneSelectionContains(&selection, 0, 24), 0);
         check_int("terminal word selection text",
                   TerminalPaneSelectionCollectText(
                       &selection, fixture_line_text, fixture_line_wrapped,
                       &fixture, text, (int)sizeof(text)),
                   1);
         check_str("terminal word selection value", text,
-                  "/tmp/kapsule-test.txt");
+                  "/tmp/ktrem-test.txt");
 
         TerminalPaneSelectionSelectLine(&selection, fixture_line_text,
                                         &fixture, 1);
@@ -454,7 +454,7 @@ main(void)
                       &fixture, text, (int)sizeof(text)),
                   1);
         check_str("terminal backward word drag value", text,
-                  "open /tmp/kapsule-test.txt");
+                  "open /tmp/ktrem-test.txt");
 
         TerminalPaneSelectionSetRange(&selection, TERMINAL_PANE_SELECTION_CHAR,
                                       0, 2, 0, 3, 1);
@@ -1679,11 +1679,11 @@ main(void)
         int osc_code;
 
         check_int("osc command parse title",
-                  ParseTerminalPaneOSCCommand("2;Kapsule", &osc_code,
+                  ParseTerminalPaneOSCCommand("2;ktrem", &osc_code,
                                               &osc_payload),
                   1);
         check_int("osc command title code", osc_code, 2);
-        check_str("osc command title payload", osc_payload, "Kapsule");
+        check_str("osc command title payload", osc_payload, "ktrem");
         check_int("osc command parse reset",
                   ParseTerminalPaneOSCCommand("110", &osc_code,
                                               &osc_payload),
@@ -2051,16 +2051,16 @@ main(void)
         check_int("session title path",
                   FormatTerminalPaneSessionTitle(
                       title, (int)sizeof(title),
-                      "/home/wao/Projects/kapsule", "terminal"),
-                  7);
-        check_str("session title path text", title, "kapsule");
+                      "/home/wao/Projects/ktrem", "terminal"),
+                  5);
+        check_str("session title path text", title, "ktrem");
 
         check_int("session title path trailing slash",
                   FormatTerminalPaneSessionTitle(
                       title, (int)sizeof(title),
-                      "/home/wao/Projects/kapsule///", "terminal"),
-                  7);
-        check_str("session title path trailing text", title, "kapsule");
+                      "/home/wao/Projects/ktrem///", "terminal"),
+                  5);
+        check_str("session title path trailing text", title, "ktrem");
 
         check_int("session title host path",
                   FormatTerminalPaneSessionTitle(
@@ -2072,9 +2072,9 @@ main(void)
         check_int("session title host home path",
                   FormatTerminalPaneSessionTitle(
                       title, (int)sizeof(title),
-                      "wao@omega:~/Projects/Kapsule Test", "terminal"),
-                  12);
-        check_str("session title host home text", title, "Kapsule Test");
+                      "wao@omega:~/Projects/ktrem Test", "terminal"),
+                  10);
+        check_str("session title host home text", title, "ktrem Test");
 
         check_int("session title root",
                   FormatTerminalPaneSessionTitle(title, (int)sizeof(title),

@@ -3965,10 +3965,10 @@
   ],
   "downstream_checks": [
     {
-      "command": "make -C ../kapsule test",
-      "id": "kapsule",
-      "label": "Kapsule terminal app",
-      "scope": "Builds and runs Kapsule against this Kryon checkout as a real downstream terminal consumer."
+      "command": "make -C ../ktrem test",
+      "id": "ktrem",
+      "label": "ktrem terminal app",
+      "scope": "Builds and runs ktrem against this Kryon checkout as a real downstream terminal consumer."
     }
   ],
   "pipelines": [

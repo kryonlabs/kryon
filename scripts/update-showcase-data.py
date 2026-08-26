@@ -14,7 +14,7 @@ LOCAL_BANNERS = {
     "inner-breeze": "showcase/inner-breeze.png",
     "krait": "showcase/krait.png",
     "pass": "showcase/pass.png",
-    "kapsule": "showcase/kapsule.png"
+    "ktrem": "showcase/ktrem.png"
 }
 
 

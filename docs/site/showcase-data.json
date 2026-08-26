@@ -67,16 +67,16 @@
       "unranked": false
     },
     {
-      "slug": "kapsule",
-      "name": "Kapsule",
+      "slug": "ktrem",
+      "name": "ktrem",
       "summary": "Native terminal application with sessions, tabs, and focused developer workflows.",
       "author": {
         "name": "kryonlabs",
         "url": "https://kryonlabs.com"
       },
-      "repository": "https://github.com/kryonlabs/kapsule",
-      "homepage": "https://kapsule.kryonlabs.com",
-      "banner": "showcase/kapsule.png",
+      "repository": "https://github.com/kryonlabs/ktrem",
+      "homepage": "https://ktrem.kryonlabs.com",
+      "banner": "showcase/ktrem.png",
       "tags": [
         "terminal",
         "developer-tools",

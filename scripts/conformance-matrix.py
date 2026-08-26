@@ -236,11 +236,11 @@ RUNTIME_PARITY_CHECKS = [
 
 DOWNSTREAM_CHECKS = [
     {
-        "id": "kapsule",
-        "label": "Kapsule terminal app",
-        "command": ["make", "-C", "../kapsule", "test"],
-        "scope": "Builds and runs Kapsule against this Kryon checkout as a real downstream terminal consumer.",
-        "optional_dir": "../kapsule",
+        "id": "ktrem",
+        "label": "ktrem terminal app",
+        "command": ["make", "-C", "../ktrem", "test"],
+        "scope": "Builds and runs ktrem against this Kryon checkout as a real downstream terminal consumer.",
+        "optional_dir": "../ktrem",
     },
 ]
 
