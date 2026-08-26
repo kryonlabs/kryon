@@ -2,17 +2,17 @@ package kryon
 
 import "testing"
 
-// The ThemeId enum shares a const block with unrelated constants, so its
-// iota values are offset from the C ids; assert relations, not absolutes.
+// Absolute ids matter: they match the C THEME_* enum and the THEME_* aliases,
+// and the ThemeSettings picker cycles through them.
 func TestThemeCatalogIncludesPlan9XfceSweet(t *testing.T) {
-	if ThemeCount != ThemeSweet+1 || THEME_COUNT != 15 {
-		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want Sweet+1 / 15", ThemeCount, THEME_COUNT)
+	if ThemeCount != 15 || THEME_COUNT != 15 {
+		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want 15", ThemeCount, THEME_COUNT)
 	}
-	if ThemeXfce != ThemeSweet-1 || ThemePlan9 != ThemeXfce-1 {
-		t.Fatalf("theme ids out of order: Plan9=%d Xfce=%d Sweet=%d", ThemePlan9, ThemeXfce, ThemeSweet)
+	if ThemePlan9 != 12 || ThemeXfce != 13 || ThemeSweet != 14 {
+		t.Fatalf("Plan9=%d Xfce=%d Sweet=%d, want 12/13/14", ThemePlan9, ThemeXfce, ThemeSweet)
 	}
-	if THEME_PLAN9 != 12 || THEME_XFCE != 13 || THEME_SWEET != 14 {
-		t.Fatalf("C-parity aliases: PLAN9=%d XFCE=%d SWEET=%d", THEME_PLAN9, THEME_XFCE, THEME_SWEET)
+	if THEME_PLAN9 != int(ThemePlan9) || THEME_XFCE != int(ThemeXfce) || THEME_SWEET != int(ThemeSweet) {
+		t.Fatalf("C-parity aliases diverge from the enum: %d/%d/%d", THEME_PLAN9, THEME_XFCE, THEME_SWEET)
 	}
 	if len(catalogLight) != int(ThemeCount) {
 		t.Fatalf("catalogLight has %d entries, want %d", len(catalogLight), ThemeCount)

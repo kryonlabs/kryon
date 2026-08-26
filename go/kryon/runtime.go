@@ -96,7 +96,9 @@ const (
 	SyntaxKry  SyntaxMode = 1
 	SyntaxC    SyntaxMode = 2
 	SyntaxMake SyntaxMode = 3
+)
 
+const (
 	ThemeSky ThemeId = iota
 	ThemeOcean
 	ThemeForest
@@ -113,18 +115,26 @@ const (
 	ThemeXfce
 	ThemeSweet
 	ThemeCount
+)
 
+const (
 	ThemeStyleSystem ThemeStyle = iota
 	ThemeStyleRetro
 	ThemeStyleMaterial
+)
 
+const (
 	ThemeSourceApp ThemeSource = iota
 	ThemeSourceSystem
+)
 
+const (
 	ThemeModeSystem ThemeMode = iota
 	ThemeModeLight
 	ThemeModeDark
+)
 
+const (
 	PictureFitStretch PictureFit = iota
 	PictureFitContain
 	PictureFitCover
