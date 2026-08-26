@@ -650,8 +650,10 @@ poll_input(int reset_edges)
                 queue_char((int)c);
         }
     }
-    if(reset_edges)
-        apply_next_mouse_event();
+    if(reset_edges) {
+        while(g_mouse_qr != g_mouse_qw)
+            apply_next_mouse_event();
+    }
 }
 
 static void
