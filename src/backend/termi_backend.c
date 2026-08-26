@@ -1,6 +1,7 @@
 #include "kryon.h"
 #include "termi.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -190,6 +191,68 @@ env_enabled(const char *name, int fallback)
        strcmp(s, "NO") == 0)
         return 0;
     return 1;
+}
+
+static int
+env_configured(const char *name)
+{
+    const char *s = getenv(name);
+
+    return s != NULL && s[0] != '\0';
+}
+
+static int
+contains_ci(const char *s, const char *needle)
+{
+    size_t needle_len;
+
+    if(s == NULL || needle == NULL)
+        return 0;
+    needle_len = strlen(needle);
+    if(needle_len == 0)
+        return 1;
+    for(; *s != '\0'; s++) {
+        size_t i;
+
+        for(i = 0; i < needle_len; i++) {
+            if(s[i] == '\0')
+                return 0;
+            if(tolower((unsigned char)s[i]) !=
+               tolower((unsigned char)needle[i]))
+                break;
+        }
+        if(i == needle_len)
+            return 1;
+    }
+    return 0;
+}
+
+static int
+termi_sixel_terminal_advertised(void)
+{
+    const char *term = getenv("TERM");
+    const char *program = getenv("TERM_PROGRAM");
+
+    if(getenv("KONSOLE_VERSION") != NULL || getenv("WEZTERM_EXECUTABLE") != NULL ||
+       getenv("WEZTERM_PANE") != NULL || getenv("FOOT_VERSION") != NULL ||
+       getenv("MLTERM") != NULL)
+        return 1;
+    if(contains_ci(program, "wezterm"))
+        return 1;
+    if(contains_ci(term, "sixel") || contains_ci(term, "wezterm") ||
+       contains_ci(term, "foot") || contains_ci(term, "mlterm") ||
+       contains_ci(term, "contour") || contains_ci(term, "rio") ||
+       contains_ci(term, "mintty"))
+        return 1;
+    return 0;
+}
+
+static int
+termi_sixel_enabled(void)
+{
+    if(env_configured("TERMI_SIXEL"))
+        return env_enabled("TERMI_SIXEL", 0);
+    return termi_sixel_terminal_advertised();
 }
 
 static void
@@ -1628,7 +1691,7 @@ sixel_emit_texture(const TermiTexture *tex, Rectangle source, Rectangle dest,
 
     if(tex == NULL || tex->rgba == NULL || width <= 0 || height <= 0)
         return;
-    if(!env_enabled("TERMI_SIXEL", 1))
+    if(!termi_sixel_enabled())
         return;
     if(width > env_int("TERMI_SIXEL_MAX_WIDTH", 960))
         width = env_int("TERMI_SIXEL_MAX_WIDTH", 960);
@@ -1774,7 +1837,7 @@ sixel_op_can_skip(const TermiSixelOp *op)
 static void
 queue_sixel(unsigned texture_id, Rectangle source, Rectangle dest, Color tint)
 {
-    if(!env_enabled("TERMI_SIXEL", 1))
+    if(!termi_sixel_enabled())
         return;
     if(g_sixel_count >= TERMI_SIXEL_QUEUE_CAP)
         return;

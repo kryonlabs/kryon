@@ -74,8 +74,9 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   terminal primitives: rectangles become colored cell regions, rectangle
   outlines become terminal line cells, and UI text goes through the native text
   hook to real terminal text. PNG and other stb-supported images are decoded
-  into Kryon textures; texture draws render as a colored-cell fallback and emit
-  sixel image data by default (`TERMI_SIXEL=0` disables sixel). It uses the
+  into Kryon textures; texture draws render as a colored-cell fallback, and
+  sixel image data is emitted only when the terminal advertises sixel support
+  or `TERMI_SIXEL=1` is set (`TERMI_SIXEL=0` disables sixel explicitly). It uses the
   generated weak null stubs for unsupported raylib compatibility areas such as
   shaders and 3D. Input is read from the terminal in raw mode, including arrows,
   basic mouse SGR events, and Ctrl-C as an application close request. `make

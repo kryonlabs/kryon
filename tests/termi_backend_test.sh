@@ -34,6 +34,7 @@ master, slave = pty.openpty()
 env = os.environ.copy()
 env["TERMI_COLS"] = "80"
 env["TERMI_ROWS"] = "24"
+env["TERMI_SIXEL"] = "1"
 proc = subprocess.Popen([bin_path], stdin=slave, stdout=slave, stderr=slave,
                         close_fds=True, env=env)
 os.close(slave)
