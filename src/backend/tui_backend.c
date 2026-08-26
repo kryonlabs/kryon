@@ -24,6 +24,7 @@
 #define KRY_TUI_CHAR_QUEUE 128
 #define KRY_TUI_CELL_W 1
 #define KRY_TUI_CELL_H 2
+#define KRY_TUI_DEFAULT_SCALE 8
 
 typedef struct KryTuiTexture {
     unsigned id;
@@ -45,6 +46,7 @@ static int g_width = 80;
 static int g_height = 48;
 static int g_term_cols = 80;
 static int g_term_rows = 24;
+static int g_tui_scale = KRY_TUI_DEFAULT_SCALE;
 static int g_have_tty_size;
 static int g_ready;
 static int g_should_close;
@@ -175,8 +177,8 @@ query_terminal_size(void)
         g_term_cols = 80;
     if(g_term_rows <= 0)
         g_term_rows = 24;
-    g_width = g_term_cols * KRY_TUI_CELL_W;
-    g_height = g_term_rows * KRY_TUI_CELL_H;
+    g_width = g_term_cols * g_tui_scale;
+    g_height = g_term_rows * KRY_TUI_CELL_H * g_tui_scale;
 }
 
 static void
@@ -188,8 +190,24 @@ set_virtual_size(int width, int height)
         height = 48;
     g_width = width;
     g_height = height;
-    g_term_cols = (width + KRY_TUI_CELL_W - 1) / KRY_TUI_CELL_W;
-    g_term_rows = (height + KRY_TUI_CELL_H - 1) / KRY_TUI_CELL_H;
+    g_term_cols = (width + g_tui_scale - 1) / g_tui_scale;
+    g_term_rows = (height + KRY_TUI_CELL_H * g_tui_scale - 1) /
+                  (KRY_TUI_CELL_H * g_tui_scale);
+}
+
+static void
+load_tui_scale(void)
+{
+    const char *env = getenv("KRYON_TUI_SCALE");
+    char *end = NULL;
+    long scale;
+
+    if(env == NULL || env[0] == '\0')
+        return;
+    scale = strtol(env, &end, 10);
+    if(end == env || scale < 1 || scale > 32)
+        return;
+    g_tui_scale = (int)scale;
 }
 
 static void
@@ -230,6 +248,7 @@ setup_terminal(const char *title)
         if(force == NULL || force[0] == '\0')
             return -1;
     }
+    load_tui_scale();
     query_terminal_size();
     if(tcgetattr(g_raw_fd, &g_saved_termios) == 0) {
         raw = g_saved_termios;
@@ -320,16 +339,41 @@ ensure_cells(int cols, int rows)
 }
 
 static unsigned
-pixel_at(const KrySw *sw, int x, int y)
+average_pixels(const KrySw *sw, int x0, int y0, int x1, int y1)
 {
-    const unsigned char *p;
+    unsigned long r = 0;
+    unsigned long g = 0;
+    unsigned long b = 0;
+    unsigned long a = 0;
+    unsigned long n = 0;
+    int x;
+    int y;
 
-    if(sw == NULL || sw->pixels == NULL || x < 0 || y < 0 ||
-       x >= sw->w || y >= sw->h)
+    if(sw == NULL || sw->pixels == NULL)
         return 0x000000ffu;
-    p = sw->pixels + (size_t)y * sw->stride + (size_t)x * 4;
-    return ((unsigned)p[0] << 24) | ((unsigned)p[1] << 16) |
-           ((unsigned)p[2] << 8) | (unsigned)p[3];
+    x0 = clampi(x0, 0, sw->w);
+    x1 = clampi(x1, 0, sw->w);
+    y0 = clampi(y0, 0, sw->h);
+    y1 = clampi(y1, 0, sw->h);
+    if(x0 >= x1 || y0 >= y1)
+        return 0x000000ffu;
+    for(y = y0; y < y1; y++) {
+        const unsigned char *p = sw->pixels + (size_t)y * sw->stride +
+                                 (size_t)x0 * 4;
+
+        for(x = x0; x < x1; x++) {
+            r += p[0];
+            g += p[1];
+            b += p[2];
+            a += p[3];
+            p += 4;
+            n++;
+        }
+    }
+    if(n == 0)
+        return 0x000000ffu;
+    return (unsigned)((r / n) << 24) | (unsigned)((g / n) << 16) |
+           (unsigned)((b / n) << 8) | (unsigned)(a / n);
 }
 
 static void
@@ -357,14 +401,20 @@ present_sw(void)
 
     if(!g_sw_ready || g_active_sw != &g_sw || g_out_fd < 0)
         return;
-    cols = (g_sw.w + KRY_TUI_CELL_W - 1) / KRY_TUI_CELL_W;
-    rows = (g_sw.h + KRY_TUI_CELL_H - 1) / KRY_TUI_CELL_H;
+    cols = g_term_cols;
+    rows = g_term_rows;
     if(ensure_cells(cols, rows) != 0)
         return;
     for(y = 0; y < rows; y++) {
         for(x = 0; x < cols; x++) {
-            unsigned fg = pixel_at(&g_sw, x, y * 2);
-            unsigned bg = pixel_at(&g_sw, x, y * 2 + 1);
+            int x0 = x * g_tui_scale;
+            int y0 = y * KRY_TUI_CELL_H * g_tui_scale;
+            unsigned fg = average_pixels(&g_sw, x0, y0,
+                                         x0 + g_tui_scale,
+                                         y0 + g_tui_scale);
+            unsigned bg = average_pixels(&g_sw, x0, y0 + g_tui_scale,
+                                         x0 + g_tui_scale,
+                                         y0 + KRY_TUI_CELL_H * g_tui_scale);
             KryTuiCell *cell = &g_cells[(size_t)y * cols + x];
 
             if(cell->fg == fg && cell->bg == bg)
