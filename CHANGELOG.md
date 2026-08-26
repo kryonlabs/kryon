@@ -5,7 +5,8 @@
 
 - Add an Android secure-store helper that saves and unlocks secrets with
   biometric/user-authenticated Android Keystore keys.
-- Add a Sweet app palette and make it the default Material app palette.
+- Add a Sweet app palette, with dark colors matched to the Sweet-Dark GTK
+  theme, and make it the default Material app palette.
 
 ### Removed
 
