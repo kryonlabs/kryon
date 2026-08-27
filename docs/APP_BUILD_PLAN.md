@@ -5,6 +5,10 @@ repositories provide app metadata, native sources, `.kry` sources, and assets.
 Kryon provides the compiler, runtime, dependency builds, packaging helpers,
 Krait preview hooks, and diagnostics through the `kryon` command.
 
+Kryon also owns app-neutral framework primitives that repeatedly appear in
+apps: measured form rows, safe-area content rectangles, route stacks, shell
+layout, platform capability names, and persisted-setting normalization.
+
 ## App Contract
 
 Each app should define one project file, `project.kryon`, with the portable
@@ -67,6 +71,12 @@ Apps own:
 - translations and media assets
 - app metadata values in `project.kryon`
 - optional platform-specific shims that cannot be generalized cleanly
+
+Reusable behavior should move into Kryon only when it is app-neutral. Examples
+that belong in Kryon are route-stack mechanics, form layout cursors,
+safe-area-aware view measurement, capability checks, and setting clamps.
+Product flows such as Inner Breeze practice behavior or Pass password
+generation stay in their app repositories.
 
 ## Migration Phases
 

@@ -1451,6 +1451,80 @@ int UIButtonRowNode(ButtonRow row);
 text inside each button, and wraps into additional rows when the configured
 width cannot hold every action on one line.
 
+#### Form Cursor
+
+```c
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int cursor_y;
+    int gap;
+    Rectangle last_bounds;
+    int focused_rect_valid;
+    Rectangle focused_rect;
+} UIForm;
+
+UIForm UIFormBegin(int x, int y, int width);
+int UIFormY(const UIForm *form);
+Rectangle UIFormTakeRect(UIForm *form, int height);
+int UIFormLabelTextField(UIForm *form, LabelTextFieldProps row);
+int UIFormCheckboxRow(UIForm *form, CheckboxRowProps row);
+int UIFormSpinboxRow(UIForm *form, SpinboxRowProps row);
+int UIFormButtonRow(UIForm *form, ButtonRowProps row);
+int UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin);
+```
+
+`UIForm` is a small immediate-mode cursor for settings and data-entry pages.
+It centralizes row advancement, default row heights, and focused-field
+scrolling so apps do not need parallel `draw_*` and `content_height_*`
+arithmetic for simple forms.
+
+---
+
+## App Framework Helpers
+
+### Route Stack And Shell Layout
+
+```c
+typedef struct KryRouteStack {
+    int *routes;
+    int count;
+    int capacity;
+    int root_route;
+} KryRouteStack;
+
+void KryRouteStackInit(KryRouteStack *stack, int *routes, int capacity,
+                       int root_route);
+int KryRouteStackCurrent(const KryRouteStack *stack);
+int KryRouteStackPush(KryRouteStack *stack, int route);
+int KryRouteStackPop(KryRouteStack *stack);
+void KryRouteStackReset(KryRouteStack *stack, int root_route);
+
+KryAppShellLayout KryAppShellMeasure(KryAppShellLayoutSpec spec);
+```
+
+These helpers cover app-neutral navigation state: a bounded route history and
+a safe-area-aware shell measurement for bottom navigation plus optional
+wide-screen sidebars.
+
+### Capabilities And Settings
+
+```c
+int KryCapabilitiesHas(int capabilities, KryCapability capability);
+const char *KryCapabilityName(KryCapability capability);
+Rectangle KrySafeContentRect(KryViewportSpec spec);
+
+int KryClampInt(int value, int min_value, int max_value);
+int KryNormalizeIntSetting(KryIntSetting setting);
+int KryNormalizeBoolSetting(KryBoolSetting setting);
+```
+
+Capabilities give `.kry` apps a shared vocabulary for platform features such
+as file picking, secure storage, biometrics, notifications, wakelock, and
+clipboard support. Setting helpers normalize common persisted state values
+before an app applies or saves them.
+
 ---
 
 ## Input Handling

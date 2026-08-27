@@ -195,6 +195,196 @@ GetUIButtonRowHeight(ButtonRowProps row)
 }
 
 int
+GetUISpinboxRowHeight(SpinboxRowProps row)
+{
+    return row.row_height > 0 ? row.row_height : ScaleUIPx(54);
+}
+
+UIForm
+UIFormBegin(int x, int y, int width)
+{
+    UIForm form;
+
+    memset(&form, 0, sizeof(form));
+    form.x = x;
+    form.y = y;
+    form.width = width;
+    form.cursor_y = y;
+    form.gap = 0;
+    return form;
+}
+
+int
+UIFormY(const UIForm *form)
+{
+    return form != NULL ? form->cursor_y : 0;
+}
+
+int
+UIFormAdvance(UIForm *form, int height)
+{
+    int y;
+
+    if(form == NULL)
+        return 0;
+    y = form->cursor_y;
+    if(height > 0)
+        form->cursor_y += height;
+    if(form->gap > 0)
+        form->cursor_y += form->gap;
+    return y;
+}
+
+Rectangle
+UIFormTakeRect(UIForm *form, int height)
+{
+    Rectangle bounds = {0};
+
+    if(form == NULL)
+        return bounds;
+    bounds = (Rectangle){(float)form->x, (float)form->cursor_y,
+                         (float)form->width, (float)(height > 0 ? height : 0)};
+    form->last_bounds = bounds;
+    UIFormAdvance(form, height);
+    return bounds;
+}
+
+void
+UIFormNoteFocus(UIForm *form, int focus_id, Rectangle bounds)
+{
+    if(form == NULL || focus_id <= 0)
+        return;
+    if(IsUIFocusActive(focus_id)) {
+        form->focused_rect = bounds;
+        form->focused_rect_valid = 1;
+    }
+}
+
+int
+UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin)
+{
+    if(form == NULL || !form->focused_rect_valid)
+        return 0;
+    EnsureUIScrollRectVisible(area, form->focused_rect, margin);
+    form->focused_rect_valid = 0;
+    return 1;
+}
+
+int
+UIFormSectionLabel(UIForm *form, SectionLabelProps label)
+{
+    int y;
+    int height;
+
+    if(form == NULL)
+        return 0;
+    y = form->cursor_y;
+    height = ui_section_label_height(label);
+    UIFormTakeRect(form, height);
+    return SectionLabel(label, form->x, y);
+}
+
+int
+UIFormLabelTextField(UIForm *form, LabelTextFieldProps row)
+{
+    int y;
+    int height;
+    int result;
+    Rectangle field_bounds;
+
+    if(form == NULL)
+        return 0;
+    y = form->cursor_y;
+    height = ui_label_text_field_height(row);
+    UIFormTakeRect(form, height);
+    result = LabelTextField(row, form->x, y, form->width);
+
+    field_bounds = row.field.bounds;
+    if(field_bounds.width <= 0 || field_bounds.height <= 0) {
+        int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
+        int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
+        int gap = row.gap > 0 ? row.gap : 0;
+        field_bounds = (Rectangle){(float)form->x,
+                                   (float)(y + label_h + gap),
+                                   (float)form->width,
+                                   (float)field_h};
+    }
+    UIFormNoteFocus(form, row.field.focus_id, field_bounds);
+    return result;
+}
+
+int
+UIFormCheckboxRow(UIForm *form, CheckboxRowProps row)
+{
+    int y;
+    int height;
+
+    if(form == NULL)
+        return 0;
+    y = form->cursor_y;
+    height = ui_checkbox_row_height(row);
+    UIFormTakeRect(form, height);
+    return CheckboxRow(row, form->x, y);
+}
+
+int
+UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
+{
+    int y;
+    int height;
+    int label_font;
+    int control_w;
+    int label_w;
+    Color label_color;
+    SpinboxProps spinbox;
+
+    if(form == NULL)
+        return 0;
+    y = form->cursor_y;
+    height = GetUISpinboxRowHeight(row);
+    UIFormTakeRect(form, height);
+
+    label_font = row.label_font > 0 ? row.label_font : GetUIFontSize();
+    control_w = row.control_width > 0 ? row.control_width : ScaleUIPx(156);
+    if(control_w > form->width)
+        control_w = form->width;
+    label_w = row.label_width > 0
+                  ? row.label_width
+                  : form->width - control_w - ScaleUIPx(12);
+    if(label_w < 0)
+        label_w = 0;
+    label_color = row.label_color.a != 0 ? row.label_color : c_text;
+
+    DrawLeftUIControlTextInRect(row.label != NULL ? row.label : "",
+                                (Rectangle){(float)form->x, (float)y,
+                                            (float)label_w, (float)height},
+                                label_font, label_color);
+    spinbox = row.spinbox;
+    if(spinbox.bounds.width <= 0)
+        spinbox.bounds.width = (float)control_w;
+    if(spinbox.bounds.height <= 0)
+        spinbox.bounds.height = (float)(height - ScaleUIPx(14));
+    spinbox.bounds.x = (float)(form->x + form->width - (int)spinbox.bounds.width);
+    spinbox.bounds.y = (float)(y + (height - (int)spinbox.bounds.height) / 2);
+    return Spinbox(spinbox);
+}
+
+int
+UIFormButtonRow(UIForm *form, ButtonRowProps row)
+{
+    int height;
+
+    if(form == NULL)
+        return -1;
+    row.x = form->x;
+    row.y = form->cursor_y;
+    row.width = form->width;
+    height = GetUIButtonRowHeight(row);
+    UIFormTakeRect(form, height);
+    return ButtonRow(row);
+}
+
+int
 DrawUIButtonRow(ButtonRowProps row)
 {
     int clicked = -1;

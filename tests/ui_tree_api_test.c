@@ -22,6 +22,8 @@ main(void)
     SectionLabelProps section = {0};
     CheckboxRowProps checkbox = {0};
     ButtonRowProps row = {.width = 240, .height = 40};
+    UIForm form;
+    Rectangle taken;
     BottomNavProps nav = {0};
     TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
@@ -46,6 +48,15 @@ main(void)
     check_int("button row",
               UIGetNodeHeight(UINodeButtonRow(row)),
               ScaleUIPx(40));
+    form = UIFormBegin(10, 20, 240);
+    taken = UIFormTakeRect(&form, ScaleUIPx(18));
+    check_int("form rect x", (int)taken.x, 10);
+    check_int("form rect y", (int)taken.y, 20);
+    check_int("form rect width", (int)taken.width, 240);
+    check_int("form advances", UIFormY(&form), 20 + ScaleUIPx(18));
+    check_int("spinbox row height",
+              GetUISpinboxRowHeight((SpinboxRowProps){0}),
+              ScaleUIPx(54));
     check_int("bottom nav",
               UIGetNodeHeight(UINodeBottomNav(nav)),
               ScaleUIPx(40));

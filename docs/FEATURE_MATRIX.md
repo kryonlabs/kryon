@@ -122,6 +122,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
 | Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✗ |
+| UIForm cursor (`UIForm*`) | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
 
 ### UI/Collections
@@ -159,16 +160,19 @@ declaration pass (`src/ui/ui_tree.c`).
 | FocusDebugOverlay | ✅ | ✅ | ✗ | ✗ | ✗ |
 | InfoRows / OverlayButton / IconSliderPopup | ✅ | ✅ | ✗ | ✗ | ✗ |
 
-### UI/Composite (app-level, Inbe-flavored)
+### UI/Composite And App Framework
 
 | Widget | C | k2c | k2g | Go | KRB |
 |---|---|---|---|---|---|
 | LabelTextField / SectionLabel | ✅ | ✅ | ✗ | ✗ | ✗ |
-| CheckboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✗ | ✗ | ✗ |
+| CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✗ | ✗ | ✗ |
 | BottomNavConfig | ✅ | ✅ | ✗ | ✗ | ✗ |
 | SidebarAccountHeader / ProfilePicturePicker | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Reorder (drag handle + placeholder) | ✅ | ✅ | ✗ | ✗ | ✗ |
 | ImageBox | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Route stack / shell measurement | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Capabilities / safe content rect | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Setting normalization helpers | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### Game2D (scene tree, `src/scene/`)
 

@@ -99,3 +99,105 @@ KryRouteListFirstUnused(const int *routes, int count,
     }
     return fallback;
 }
+
+void
+KryRouteStackInit(KryRouteStack *stack, int *routes, int capacity,
+                  int root_route)
+{
+    if(stack == 0)
+        return;
+    stack->routes = routes;
+    stack->capacity = capacity;
+    stack->root_route = root_route;
+    stack->count = 0;
+    if(routes != 0 && capacity > 0) {
+        routes[0] = root_route;
+        stack->count = 1;
+    }
+}
+
+int
+KryRouteStackCurrent(const KryRouteStack *stack)
+{
+    if(stack == 0 || stack->routes == 0 || stack->count <= 0)
+        return stack != 0 ? stack->root_route : 0;
+    return stack->routes[stack->count - 1];
+}
+
+int
+KryRouteStackPush(KryRouteStack *stack, int route)
+{
+    if(stack == 0 || stack->routes == 0 || stack->capacity <= 0)
+        return 0;
+    if(stack->count <= 0) {
+        stack->routes[0] = stack->root_route;
+        stack->count = 1;
+    }
+    if(KryRouteStackCurrent(stack) == route)
+        return 1;
+    if(stack->count >= stack->capacity)
+        return 0;
+    stack->routes[stack->count++] = route;
+    return 1;
+}
+
+int
+KryRouteStackPop(KryRouteStack *stack)
+{
+    if(stack == 0 || stack->routes == 0)
+        return 0;
+    if(stack->count <= 1)
+        return KryRouteStackCurrent(stack);
+    stack->count--;
+    return KryRouteStackCurrent(stack);
+}
+
+void
+KryRouteStackReset(KryRouteStack *stack, int root_route)
+{
+    if(stack == 0)
+        return;
+    stack->root_route = root_route;
+    stack->count = 0;
+    if(stack->routes != 0 && stack->capacity > 0) {
+        stack->routes[0] = root_route;
+        stack->count = 1;
+    }
+}
+
+KryAppShellLayout
+KryAppShellMeasure(KryAppShellLayoutSpec spec)
+{
+    KryAppShellLayout layout = {0};
+    int padding = spec.padding >= 0 ? spec.padding : 0;
+    int nav_h = spec.nav_height > 0 ? spec.nav_height : 0;
+    int breakpoint = spec.sidebar_breakpoint > 0 ? spec.sidebar_breakpoint : 480;
+    int side_w = spec.sidebar_width > 0 ? spec.sidebar_width : 0;
+    int available_w;
+
+    layout.compact = spec.view_width <= breakpoint;
+    layout.sidebar_width = layout.compact ? 0 : side_w;
+
+    layout.nav_x = spec.safe_left;
+    layout.nav_y = spec.view_height - spec.safe_bottom - nav_h;
+    layout.nav_width = spec.view_width - spec.safe_left - spec.safe_right;
+    layout.nav_height = nav_h;
+    if(layout.nav_y < spec.safe_top)
+        layout.nav_y = spec.safe_top;
+    if(layout.nav_width < 0)
+        layout.nav_width = 0;
+
+    layout.content_x = spec.safe_left + layout.sidebar_width + padding;
+    layout.content_y = spec.safe_top + padding;
+    available_w = spec.view_width - spec.safe_left - spec.safe_right -
+                  layout.sidebar_width - padding * 2;
+    layout.content_width = available_w;
+    if(spec.max_content_width > 0 && layout.content_width > spec.max_content_width)
+        layout.content_width = spec.max_content_width;
+    if(spec.min_content_width > 0 && layout.content_width < spec.min_content_width)
+        layout.content_width = spec.min_content_width;
+    layout.content_height = layout.nav_y - layout.content_y - padding;
+    if(layout.content_height < 0)
+        layout.content_height = 0;
+    return layout;
+}
