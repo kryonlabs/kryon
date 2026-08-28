@@ -71,6 +71,10 @@ UpdateUIDPI(int view_width, int view_height)
                                    ? (float)view_height / (float)base_height
                                    : 1.0f;
         float real_dpi = viewport_scale;
+#if defined(PLATFORM_ANDROID)
+        if(g_device_density > 0.0f)
+            real_dpi = g_device_density;
+#else
         if(g_device_density > 0.0f && g_device_density > real_dpi)
             real_dpi = g_device_density;
 
@@ -86,6 +90,7 @@ UpdateUIDPI(int view_width, int view_height)
         float window_dpi = (dpi_scale.x > 1.0f) ? dpi_scale.x : dpi_scale.y;
         if(window_dpi > real_dpi)
             real_dpi = window_dpi;
+#endif
 #endif
 
         ui_dpi_state.ui_scale = real_dpi;
