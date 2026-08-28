@@ -1,4 +1,466 @@
 # Changelog
+## v0.1.21 - 2026-08-28
+
+### Changed
+
+- Release: bump version to v0.1.21
+- Treat unknown Unix update installs as source
+- Detect BSD home builds as source installs
+- Make spec test sed portable
+- Fix conformance matrix build directory
+- Add layout-key input and terminal UI primitives
+- Include stdbool in generated compat header
+- Add rich text editor control
+- Fix native linux raylib backend rename
+- Add app framework helpers
+- Expose IsKeyDown in the Go bindings
+- Anchor the Go theme enums at their own const blocks
+- Note the Go runtime theme parity in the changelog
+- Assert theme catalog relations instead of absolute iota ids
+- Focus Kryon site on runtime
+- Keep theme catalog count assertion relative to Sweet
+- Expose Plan9, Xfce and Sweet themes in the Go runtime
+- Hide text input when opening dropdowns
+- Fix modal release handling
+- Allow scroll viewport visual bleed
+- Match Sweet theme colors
+- Add Sweet Material theme palette
+- Add Android secure store helper
+- Fix termi partial frame writes
+- Blend translucent termi cell backgrounds
+- Render thick termi lines as cells
+- Keep termi sixel fallback visible
+- Rename terminal showcase to ktrem
+- Harden termi texture and process defaults
+- Reset termi frame clipping
+- Remove unused termi env helper
+- Respect terminal viewport in termi backend
+- Stabilize termi animated image frames
+- Batch termi frame output
+- Render termi circles as cell arcs
+- Add circle click handling primitive
+- Drain termi mouse events per frame
+- Add live website examples gallery
+- Default termi sixel to capable terminals
+- Reduce termi frame output
+- Clarify termi button states
+- Cache unchanged termi sixel draws
+- Fix termi mouse click delivery
+- Render termi textures with sixel
+- Add termi terminal backend
+- Revert "Add TUI backend"
+- Revert "Avoid TUI OpenURL ownership conflict"
+- Revert "Make TUI backend terminal-safe"
+- Revert "Scale TUI backend framebuffer"
+- Scale TUI backend framebuffer
+- Make TUI backend terminal-safe
+- Avoid TUI OpenURL ownership conflict
+- Add TUI backend
+- Avoid compound literal in icon loader
+- Guard Plan 9 math compatibility macros
+- Use native Plan 9 default cursor
+- Decode embedded icons as RGBA
+- Use raylib scissor for UI clips
+- Preserve BottomNav icon colors
+- Add generated progress parity coverage
+- Prepare monochrome UI icons as masks
+- Restore Material bottom nav icon colors
+- Add generated list box parity coverage
+- Normalize UI icon textures to RGBA
+- Add generated table parity coverage
+- Preserve bottom nav icon colors
+- Remove native Plan 9 terminal stubs
+- Restore Material bottom nav icon tint
+- Add generated controls parity coverage
+- Stub legacy terminal helpers on native Plan 9
+- Fix native Plan 9 terminal pane color resolution
+- Use URI stubs in native Plan 9 archive
+- Build terminal pane helpers for native Plan 9
+- Avoid Plan 9 terminal header collisions
+- Add Xfce theme
+- Add Plan 9 sys types shim
+- Add visual comparison matrix
+- Fix libdraw text and color capture handling
+- Add web Canvas source capture matrix gate
+- Improve native Plan 9 libdraw desktop rendering
+- Track generated C renderer matrix gaps
+- Rebuild objects when switching backends
+- Avoid raylib flush dependency on native Plan 9
+- Preserve button paint order in UI tree
+- Capture raylib generated C windows
+- Add raylib generated C matrix gate
+- Expose renderer source matrix on website
+- Preserve libdraw text hierarchy
+- Use Rect as canonical shape widget
+- Normalize matrix sources to current UI APIs
+- Clip libdraw native text draws
+- Isolate hosted app keyboard input
+- Add libdraw generated-C matrix capture
+- Let libdraw follow system themes on Linux
+- Add KRB web source matrix gate
+- Extend AppHost lifecycle callbacks
+- Gate widget coverage in conformance matrix
+- Add TableView drag range selection
+- Avoid libdraw Rect symbol collision
+- Add runtime and downstream matrix gates
+- Add libdraw compatibility hooks
+- Add Go toolbar menu and workbook icons
+- Add Go toolbar menu and workbook icons
+- Add renderer smoke matrix gate
+- Add KRB visual conformance checks
+- Test bottom nav icon color preservation
+- Add generated Kry conformance matrix
+- Resolve Kry host compiler outside Android toolchain
+- Use host compiler for Kry generation tools
+- Add CMake helper for Kry source generation
+- Remove text input sync diagnostics
+- Add eye visibility icons
+- Coalesce platform text input state per frame
+- Keep platform text input active while focused
+- Honor text input show pulses without active state
+- Log text input platform sync state
+- Request text input platform show on field taps
+- Sync text input platform state at frame end
+- Link only showcase author names
+- Remove showcase ranking note
+- Decode X11 spreadsheet navigation keys
+- Show showcase authors on site
+- Decode X11 escape key
+- Test platform text input reactivation
+- Reset platform text input when deactivated
+- Support horizontal text field panning
+- Normalize fingerprint icon color
+- Use themed text input colors without outer focus box
+- Keep fallback text field focus per input
+- Add no-cgo mouse drag state
+- Render text fields in immediate UI
+- Improve material text field contrast
+- Outline material text fields
+- Allow optional text field focus state
+- Fix modal capture and bottom nav icon colors
+- Use raylib render batch hook for screenshots
+- K2g pass char buffer args to externs
+- K2g fix local helper calls
+- K2g resolve cross-file helper calls
+- K2g support direct Go extern calls
+- Keep Material neutral tones unsaturated
+- Update generated icon assets
+- Revalidate site deploys
+- Expose theme settings in Go runtime
+- Lower theme settings for Go runtime
+- Clean #ui docs site snippets
+- Use generated showcase data on homepage
+- Add clean pane tab wrappers
+- Adopt #ui hierarchy syntax
+- Update k2 syntax tests for retained UI apps
+- Fix canvas backend smoke source filters
+- Track retained UI entry functions in Kir
+- Fix k2g generated app entrypoint
+- Use top-origin canvas font metrics
+- Generate showcase ranking data
+- Add table clipboard shortcuts
+- Fix Android clipped UI after rotation
+- Fix canvas guide paragraph clipping
+- Add Android surface resize sync
+- Restore site icon artifact
+- Update showcase stars and banners
+- Support fixed buffers in k2g extern calls
+- Let native Plan 9 follow the system theme
+- Exclude Plan 9 platform sources from native builds
+- Make icons tree the shared source root
+- Complete native Plan 9 audio streams
+- Implement native Plan 9 audio mixing
+- Fix native Plan 9 libdraw font scaling
+- Improve native Plan 9 libdraw backend
+- Remove the unused Clay layout dependency
+- Skip missing optional compat cleanup helper
+- Add the install target to the plan9 mkfile
+- Keep image decoder stb symbols private
+- Exclude Plan 9 sources from non-libdraw builds
+- Use vendored stb image include
+- Untrack native plan9 build objects
+- Ignore plan9 cpp-stage intermediates
+- Make the plan9 ui globals inert on hosted builds
+- Harden the compound literal rewriter against conditional includes
+- Keep the zero constants outside preprocessor conditionals
+- Fix the ui internals include depth for hosted builds
+- Include the ui internals by relative path for hosted builds
+- Drop line-splicing backslashes left by the comment stripper
+- Port ApplyCurrentUITheme for the plan9 theme core
+- Search src/ui for internal headers in the plan9 build
+- Add plan9 ui globals and empty asset table for the theme core
+- Rename cpp-stage objects to the mkfile object names
+- Assemble UIStyleTokens field-wise for the plan9 compiler
+- Scope the plan9 library to the theme core for now
+- Drop the Box2D-dependent scene layer from the plan9 build
+- Guard the Box2D bridge header behind KRYON_WITH_PHYSICS
+- Skip the fontconfig pipe helpers on plan9
+- Avoid a scalar compound literal in the sha256 length padding
+- Drop the shim offsetof in favor of the libc definition
+- Shim stdio.h so u.h precedes the pANS varargs declarations
+- Provide size_t from the plan9 libc shim
+- Define NULL centrally in the plan9 libc shim
+- Replace short compound literals with zero constants for the plan9 compiler
+- Guard the plan9 assert shim against the libc definition
+- Resolve plan9 shim PI and offsetof redefinitions
+- Fix comment apostrophe stripper to keep line-comment newlines
+- Enable C++ comments in the plan9 cpp pass
+- Use absolute include paths in the plan9 mkfile cpp rule
+- Preprocess the plan9 build through the system cpp and strip comment apostrophes
+- Guard plan9 shim re-includes of the include-once core headers
+- Keep stdarg include unconditional for the plan9 shim build
+- Fix plan9 mkfile source paths
+- Add native Plan 9 libdraw compatibility
+- Preserve libdraw UI icon colors
+- Match libdraw rounded radius semantics
+- Fix libdraw picture masks and audio
+- Handle fractional libdraw texture sources
+- Complete libdraw image compatibility
+- Expose toast draw helper
+- Add libdraw backend and Plan9 theme
+- Use Glenda icon for Plan 9 site card
+- Make table escape clear selection
+- Keep system theme fallback selection neutral
+- Use GTK selected colors in system theme
+- Add native table row and column selection
+- Fix X11 keyboard mapping in Go runtime
+- Add widget conformance for text input focus
+- Fix Go table double-click selection
+- Avoid startup X11 focus errors
+- Request X11 input focus for Go windows
+- Fix native Go text field input
+- Bring Go theme handling to C parity
+- Render registered fonts in Go runtime
+- Follow system theme in Go tables
+- Cover portfolio symbols in Go renderer
+- Write screenshots from Go runtime
+- Add native table cell support to Go runtime
+- Complete Go Kryon window compatibility wrappers
+- Add Go Kryon legacy UI compatibility
+- Fix Go X11 setup parsing
+- Log Go X11 window ids in debug mode
+- Sync mapped Go X11 windows
+- Report native Go window fallback errors
+- Support Xauthority in Go X11 window runtime
+- Install FreeBSD CI test tools
+- Install FreeBSD CI test tools
+- Add native Go X11 window runtime
+- Make site navigation page-based
+- Elide retained UI lifecycle from k2g output
+- Rename retained tree keys
+- Rename retained tree node IDs
+- Rename navigation and profile API
+- Add Kryon app showcase
+- Rename menu and accelerator API
+- Rename geometry and canvas API
+- Rename syntax mode API
+- Rename modal action API
+- Rename paragraph spec API
+- Rename text size API
+- Rename button style API
+- Rename public button spec API
+- Rename internal button render path
+- Rename internal text input render path
+- Check generated feature matrix docs
+- Rename public text helper APIs
+- Remove legacy KRB widget aliases
+- Rename public text input APIs
+- Rename text input platform callback API
+- Rename public text layout API
+- Hide retained tree draw internals
+- Hide text draw internals from public header
+- Hide composite DrawUI APIs from public headers
+- Hide legacy control draw APIs from public header
+- Rename public text input queue API
+- Assert generated long text runtime stability
+- Clean legacy widget names from API docs
+- Remove legacy Go cgo bridge
+- Remove legacy generated C surface names
+- Document clean runtime parity surfaces
+- Remove legacy frame aliases from generated path
+- Remove k2g runtime override
+- Document qualified generated Go runtime
+- Qualify generated Go runtime calls
+- Add generated long text parity
+- Stress native host text input
+- Add native Go host core
+- Add fingerprint UI icon
+- Use OpenURI for UI links
+- Render generated Go parity frames
+- Add native Go frame renderer
+- Block kryc from public surface
+- Fix web URI opener macro
+- Improve scroll focus and native window behavior
+- Assert generated Go frame operations
+- Record native Go frame operations
+- Avoid OpenURL duplicate on Android
+- Add scroll rect visibility helper
+- Prune direct Go field state per frame
+- Add direct native Go widget helpers
+- Add native Go generated layout semantics
+- Expose native Go runtime input helpers
+- Map native Go text size constants
+- Align generated button click parity
+- Expand generated runtime parity coverage
+- Disable single-instance lock on Android
+- Fix URI launcher compatibility generation
+- Add generated runtime parity test
+- Emit bare clean Go runtime calls
+- Guard clean generated runtime surface
+- Emit clean package Go runtime calls
+- Add cross-platform URI opener
+- Clean generated frame runtime surface
+- Expand native Go text input semantics
+- Enforce clean generated runtime output
+- Add native Go k2g runtime
+- Expose toast drawing API
+- Keep read-only text out of edit mode
+- Fix Go text field state handling
+- Add read-only selectable text controls
+- Fix X11 input ungrab status check
+- Clean picture fit API names
+- Rename overlay hook to clean API
+- Update picture props lowering
+- Clean picture API styling
+- Fix screenshot PNG row buffer size
+- Add system locale detection
+- Use neutral path in session title test fixture
+- Add terminal input filtering for Kapsule
+- Simplify window unregister loop exit
+- Add terminal pane glyph grid rendering
+- Add Windows tray menus and registry theme detection
+- Let foreground widgets own the cursor over disabled background
+- Add terminal profile prompt helpers
+- Add terminal search controller
+- Add terminal clipboard actions
+- Add terminal scroll indicator helper
+- Add terminal row reflow helper
+- Add terminal profile settings helpers
+- Add terminal session record helpers
+- Add terminal keyboard input runner
+- Add terminal DCS buffer helper
+- Add terminal sixel decoder
+- Add simple terminal clipboard runner
+- Remove legacy terminal prefix aliases
+- Add terminal mode state transitions
+- Add terminal OSC command parser
+- Add terminal OSC palette parsers
+- Add terminal clipboard controller builder
+- Add terminal OSC color target helpers
+- Add terminal function key mapper
+- Add terminal clipboard scroll reset hook
+- Add terminal search navigation helpers
+- Add terminal clipboard command result helper
+- Add terminal pane clipboard and cursor helpers
+- Add terminal device status report formatter
+- Add terminal mode report formatter
+- Add terminal XTGETTCAP response formatter
+- Add terminal SGR status formatter
+- Add terminal cursor style report helper
+- Add terminal pane clipboard command controller
+- Add terminal pane view color resolver
+- Add terminal pane hyperlink sanitizers
+- Add terminal pane title sanitizer
+- Add terminal pane clipboard selection helpers
+- Add terminal pane theme color resolver
+- Add terminal pane link theme token
+- Add terminal clipboard action dispatcher
+- Add terminal pane color resolver
+- Add terminal pane text escaping helpers
+- Add terminal pane profile color helpers
+- Add terminal pane clipboard and cursor helpers
+- Add terminal pane session title helper
+- Add terminal pane OSC title helpers
+- Add terminal pane OSC color helpers
+- Add terminal pane profile color helpers
+- Add shared terminal mouse and paste helpers
+- Add shared terminal key encoding
+- Add terminal pane clipboard helpers
+- Add shared terminal pane search
+- Add shared terminal pane selection clipboard
+- Add terminal pane content metrics
+- Add shared clipboard source helpers
+- Add shared clipboard paste writer
+- Add terminal pane status theme tokens
+- Add OSC 52 clipboard helper
+- Add ABI version guard for prebuilt libraries
+- Resolve trace env flags once per process
+- Memoize material scheme per theme state
+- Rate-limit automatic system theme refresh
+- Cover clipboard target helpers
+- Add clipboard target helpers
+- Move UI clipboard buffer into Kryon source
+- Add terminal pane default palette
+- Add UI clipboard buffer helpers
+- Expose context menu widget
+- Add terminal pane selection text color
+- Add UI primary selection helpers
+- Expose vsync window flag in Go
+- Enable Go textarea layout caching
+- Use system UI font by default
+- Use system style on desktop
+- Remove Aero style
+- Stop textarea painting past viewport
+- Cache versioned textarea heights
+- Make styled pictures respect UI style
+- Add styled cover picture drawing
+- Fix menu bar switching with open popup capture
+- Fix runtime downloads and text decoding
+- Fix menu close state after popup activation
+- Support sticky UI windows on X11
+- Fix menu bar switching between open menus
+- Allow apps to provide system theme palettes
+- Fix Material bottom nav icon contrast
+- Apply Canvas cursor to document targets
+- Fix material tab bar spacing
+- Consolidate Kry language documentation
+- Document Kry language and publish benchmarks
+- Advance Kry compile-time checks and expression KIR
+- Fix Canvas guide rendering and cursor
+- Draw menu bars as frame overlays
+- Add reusable app runtime helpers
+- Fix Android notification priority signature
+- Implement Canvas WebAudio backend
+- Add reusable terminal pane widget
+- Avoid duplicate badge measurement
+- Add website backend and widget matrices
+- Align installed desktop metadata names
+- Add Linux desktop integration helpers
+- Add themed Go surface widgets
+- Ui_window: baseline the drag at the press position
+- CI: gate on public-HTTPS submodule URLs
+- Ui_window: follow the global pointer during drags, not motion events
+- Ui_window: flush a released drag's final motion
+- Ui_window: capture the mouse during drags and drop per-frame position reads
+- Ui_window: expose StealUICoreWindowClose for direct close polling
+- Ui_window: bridge core-window close and drag on the SDL path
+- Kry_update: arch-aware AppImage appcast key
+- Kryui: Go bindings for kry_update_flow
+- Tray: resolve gtk_status_icon_is_embedded through gtk_dl
+- Kry_std: kry_update_flow — the embeddable self-update lifecycle
+- Tray: ignore XEMBED-handshake activations on the status icon
+- Kry_std: self-update primitives — download, verify, apply
+- Kry_std: add kry_update desktop update-check module
+- Theme: default to the system theme source on every platform
+- Canvas: zero-init LoadFont's failure return
+- Canvas: dedupe the JS glue (ctxNow/col/makeCanvas, rounded radius)
+- Canvas: split the backend into per-concern sources
+- Canvas: frame counter and last-op diagnostics in the JS state
+- Canvas: null-grade the rest of the audio surface
+- Canvas: SaveFileData/Text, ChangeDirectory, GetWorkingDirectory
+- Canvas: IsWindowFocused on the surface (dropdown hover uses it)
+- Locale: detect the system default locale (GetDefaultLocaleCode)
+- Theme picker: route label fallbacks through the locale catalog
+- Dropdown: wobbled and slow clicks must select, not just pixel-perfect taps
+- Canvas: PauseSound and IsMusicStreamPlaying on the surface
+- Krb-run: remove the Linux framebuffer presentation backend
+- Canvas: file-name utils and IsMusicValid on the surface
+- Theme: drop the dedicated Aero palette, keep the style palette-agnostic
+- Canvas: cover the audio-device, wave, and image surface apps drive
+- Dropdown: dismiss popups on Escape and window focus loss
+- Dropdown: flip tall popups above the button when space below runs out
+- Canvas: real rounded rects, annulus rings, full tint, clipboard mirror
+
 ## Unreleased
 
 ### Added
