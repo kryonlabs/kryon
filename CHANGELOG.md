@@ -1,4 +1,14 @@
 # Changelog
+## v0.1.22 - 2026-08-28
+
+### Changed
+
+- Release: bump version to v0.1.22
+- Improve Canvas2D backend parity
+- Add Android prelude activity
+- Fix Ksync crypto web warnings
+- Fix Android UI DPI scaling
+
 ## v0.1.21 - 2026-08-28
 
 ### Changed
