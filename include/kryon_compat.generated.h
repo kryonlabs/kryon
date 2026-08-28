@@ -15,6 +15,8 @@
  * baseline; kryon may evolve this surface independently over time.
  */
 
+#include <stdbool.h>
+
 #ifndef KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
 #define KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
 

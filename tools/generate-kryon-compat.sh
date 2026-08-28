@@ -52,6 +52,8 @@ mkdir -p "$(dirname "$public_header")" "$(dirname "$rename_header")" "$(dirname 
 EOF
     cat <<'EOF'
 
+#include <stdbool.h>
+
 #ifndef KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
 #define KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
 
