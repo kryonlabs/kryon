@@ -66,7 +66,7 @@ linux-aarch64: | $(LINUX_BIN_DIR) $(LINUX_OBJ_DIR)
 		LINUX_RAY_SDL_LDLIBS="$(AARCH64_RAY_SDL_LDLIBS)" \
 		LINUX_RAY_SDL_INCLUDE_DIR="$(AARCH64_RAY_SDL_INCLUDE_DIR)"
 
-build-linux-arch:
+build-linux-arch: $(KRYON_RAYLIB_BACKEND_RENAME_HEADER)
 	@mkdir -p $(LINUX_OBJ_DIR)/$(ARCH_NAME) $(LINUX_OBJ_DIR)/$(ARCH_NAME)/raylib $(LINUX_BIN_DIR)
 	$(MAKE) $(FONT_FILES)
 	$(MAKE) $(EMBEDDED_ASSETS_C)
@@ -85,7 +85,7 @@ build-linux-arch:
 		RAYLIB_MODULE_MODELS=FALSE \
 		SDL_INCLUDE_PATH="$(LINUX_RAY_SDL_INCLUDE_DIR)" \
 		SDL_LIBRARIES="$(LINUX_RAY_SDL_LDLIBS)" \
-		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(LINUX_RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
+		CUSTOM_CFLAGS="$(KRYON_RAYLIB_BACKEND_RENAME_CFLAG) -DUSING_SDL2_PROJECT $(LINUX_RAY_CFLAGS) $(APP_RAYLIB_CONFIG) -Os -ffunction-sections -fdata-sections"
 	@if [ -n "$(strip $(CORE_SRCS))" ]; then \
 		for src in $(CORE_SRCS); do \
 			obj="$(LINUX_OBJ_DIR)/$(ARCH_NAME)/core/$${src%.c}.o"; \
