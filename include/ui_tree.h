@@ -255,6 +255,7 @@ int CascadingTreeView(CascadingTreeViewProps tree);
 int SourceView(SourceViewProps source);
 int TableView(TableViewProps table);
 int TextArea(TextAreaProps area);
+int RichTextEditor(RichTextEditorProps editor);
 void CanvasGrid(Rectangle bounds, int step, Color color);
 int Notebook(NotebookProps notebook);
 int PanedView(PanedViewProps panes);

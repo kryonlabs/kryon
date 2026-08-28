@@ -2932,6 +2932,316 @@ RenderTextArea(TextAreaProps area)
     return changed;
 }
 
+static int
+ui_rich_text_line_start(const char *text, int index)
+{
+    if(text == NULL)
+        return 0;
+    if(index < 0)
+        index = 0;
+    while(index > 0 && text[index - 1] != '\n')
+        index--;
+    return index;
+}
+
+static int
+ui_rich_text_splice(char *text, size_t text_size, int start, int end,
+                    const char *insert, int *cursor_position)
+{
+    int len;
+    int insert_len;
+    int next_len;
+
+    if(text == NULL || text_size == 0 || insert == NULL)
+        return 0;
+    len = (int)strlen(text);
+    start = ui_clampi(start, 0, len);
+    end = ui_clampi(end, 0, len);
+    if(start > end) {
+        int tmp = start;
+
+        start = end;
+        end = tmp;
+    }
+    insert_len = (int)strlen(insert);
+    next_len = len - (end - start) + insert_len;
+    if(next_len < 0 || (size_t)(next_len + 1) > text_size)
+        return 0;
+    memmove(text + start + insert_len, text + end, (size_t)(len - end + 1));
+    memcpy(text + start, insert, (size_t)insert_len);
+    if(cursor_position != NULL)
+        *cursor_position = start + insert_len;
+    return 1;
+}
+
+static int
+ui_rich_text_wrap_selection(RichTextEditorProps editor, const char *prefix,
+                            const char *suffix, const char *placeholder)
+{
+    int start;
+    int end;
+    int had_selection;
+    int selection_len;
+    int prefix_len;
+    int suffix_len;
+    int placeholder_len;
+    int insert_len;
+    char *insert;
+    int changed;
+
+    if(editor.text == NULL || editor.cursor_position == NULL)
+        return 0;
+    had_selection = GetTextAreaSelection(editor.focus_id, &start, &end);
+    if(!had_selection) {
+        start = *editor.cursor_position;
+        end = start;
+    }
+    if(placeholder == NULL)
+        placeholder = "";
+    selection_len = had_selection ? end - start : (int)strlen(placeholder);
+    prefix_len = (int)strlen(prefix);
+    suffix_len = (int)strlen(suffix);
+    placeholder_len = (int)strlen(placeholder);
+    insert_len = prefix_len + selection_len + suffix_len;
+    insert = malloc((size_t)insert_len + 1);
+    if(insert == NULL)
+        return 0;
+    memcpy(insert, prefix, (size_t)prefix_len);
+    if(had_selection)
+        memcpy(insert + prefix_len, editor.text + start, (size_t)selection_len);
+    else
+        memcpy(insert + prefix_len, placeholder, (size_t)placeholder_len);
+    memcpy(insert + prefix_len + selection_len, suffix, (size_t)suffix_len);
+    insert[insert_len] = '\0';
+
+    changed = ui_rich_text_splice(editor.text, editor.text_size, start, end,
+                                  insert, editor.cursor_position);
+    if(changed) {
+        if(had_selection)
+            SetTextAreaSelection(editor.focus_id, *editor.cursor_position,
+                                 *editor.cursor_position);
+        else {
+            int selection_start = start + prefix_len;
+            int selection_end = selection_start + placeholder_len;
+
+            *editor.cursor_position = selection_end;
+            SetTextAreaSelection(editor.focus_id, selection_start, selection_end);
+        }
+    }
+    free(insert);
+    return changed;
+}
+
+static int
+ui_rich_text_prefix_lines(RichTextEditorProps editor, const char *prefix)
+{
+    int start;
+    int end;
+    int had_selection;
+    int len;
+    int prefix_len;
+    int line_count = 1;
+    int insert_len;
+    int out_at = 0;
+    char *insert;
+    int changed;
+
+    if(editor.text == NULL || editor.cursor_position == NULL || prefix == NULL)
+        return 0;
+    len = (int)strlen(editor.text);
+    had_selection = GetTextAreaSelection(editor.focus_id, &start, &end);
+    if(!had_selection) {
+        start = *editor.cursor_position;
+        end = start;
+    }
+    start = ui_rich_text_line_start(editor.text, start);
+    end = ui_clampi(end, start, len);
+    if(end > start && editor.text[end - 1] == '\n')
+        end--;
+    prefix_len = (int)strlen(prefix);
+    for(int i = start; i < end; i++) {
+        if(editor.text[i] == '\n')
+            line_count++;
+    }
+    insert_len = (end - start) + line_count * prefix_len;
+    insert = malloc((size_t)insert_len + 1);
+    if(insert == NULL)
+        return 0;
+
+    memcpy(insert + out_at, prefix, (size_t)prefix_len);
+    out_at += prefix_len;
+    for(int i = start; i < end; i++) {
+        insert[out_at++] = editor.text[i];
+        if(editor.text[i] == '\n' && i + 1 < end) {
+            memcpy(insert + out_at, prefix, (size_t)prefix_len);
+            out_at += prefix_len;
+        }
+    }
+    insert[out_at] = '\0';
+    changed = ui_rich_text_splice(editor.text, editor.text_size, start, end,
+                                  insert, editor.cursor_position);
+    if(changed) {
+        int selection_end = end + line_count * prefix_len;
+
+        SetTextAreaSelection(editor.focus_id, selection_end, selection_end);
+    }
+    free(insert);
+    return changed;
+}
+
+static int
+ui_rich_text_command(RichTextEditorProps editor, RichTextTool tool)
+{
+    switch(tool) {
+    case RichTextToolBold:
+        return ui_rich_text_wrap_selection(editor, "**", "**", "bold text");
+    case RichTextToolItalic:
+        return ui_rich_text_wrap_selection(editor, "_", "_", "italic text");
+    case RichTextToolUnderline:
+        return ui_rich_text_wrap_selection(editor, "<u>", "</u>",
+                                           "underlined text");
+    case RichTextToolHeading:
+        return ui_rich_text_prefix_lines(editor, "## ");
+    case RichTextToolBulletList:
+        return ui_rich_text_prefix_lines(editor, "- ");
+    case RichTextToolNumberedList:
+        return ui_rich_text_prefix_lines(editor, "1. ");
+    case RichTextToolQuote:
+        return ui_rich_text_prefix_lines(editor, "> ");
+    case RichTextToolCode:
+        return ui_rich_text_wrap_selection(editor, "`", "`", "code");
+    case RichTextToolLink:
+        return ui_rich_text_wrap_selection(editor, "[", "](https://)",
+                                           "link text");
+    default:
+        break;
+    }
+    return 0;
+}
+
+static int
+ui_rich_text_draw_tool(int x, int y, int w, int h, const char *label,
+                       int disabled)
+{
+    return RenderStyledButton(x, y, w, h, label, ButtonStyleSecondary,
+                              disabled, NULL);
+}
+
+int
+RichTextEditor(RichTextEditorProps editor)
+{
+    typedef struct {
+        RichTextTool tool;
+        const char *label;
+        int width;
+    } RichTextToolButton;
+    static const RichTextToolButton buttons[] = {
+        {RichTextToolBold, "B", 34},
+        {RichTextToolItalic, "I", 34},
+        {RichTextToolUnderline, "U", 34},
+        {RichTextToolHeading, "H", 34},
+        {RichTextToolBulletList, "-", 34},
+        {RichTextToolNumberedList, "1.", 42},
+        {RichTextToolQuote, "\"", 34},
+        {RichTextToolCode, "<>", 42},
+        {RichTextToolLink, "link", 54},
+    };
+    unsigned int tools = editor.tools != 0 ? editor.tools : RICH_TEXT_TOOLS_DEFAULT;
+    int toolbar_h = ScaleUIPx(38);
+    int gap = ScaleUIPx(6);
+    int pad = ScaleUIPx(6);
+    int x = (int)editor.bounds.x + pad;
+    int y = (int)editor.bounds.y + pad;
+    int h = toolbar_h - pad * 2;
+    int changed = 0;
+    TextAreaProps area;
+
+    if(editor.text == NULL || editor.cursor_position == NULL ||
+       editor.focused == NULL || editor.text_size == 0)
+        return 0;
+    if(editor.bounds.height < (float)(toolbar_h + gap + ScaleUIPx(48))) {
+        area.bounds = editor.bounds;
+        area.text = editor.text;
+        area.text_size = editor.text_size;
+        area.cursor_position = editor.cursor_position;
+        area.focused = editor.focused;
+        area.scroll_y = editor.scroll_y;
+        area.max_codepoints = editor.max_codepoints;
+        area.font = editor.font;
+        area.line_gap = editor.line_gap;
+        area.focus_id = editor.focus_id;
+        area.placeholder = editor.placeholder;
+        area.syntax = SyntaxNone;
+        area.style = editor.style;
+        area.filter = NULL;
+        area.filter_user_data = NULL;
+        area.content_version = editor.content_version;
+        area.read_only = editor.read_only;
+        area.wrap = editor.wrap;
+        return TextArea(area);
+    }
+
+    if(*editor.focused && !editor.read_only && UIKeyboardInputEnabled() &&
+       ui_mod_key_down()) {
+        if(IsKeyPressed(KEY_B))
+            changed |= ui_rich_text_command(editor, RichTextToolBold);
+        if(IsKeyPressed(KEY_I))
+            changed |= ui_rich_text_command(editor, RichTextToolItalic);
+        if(IsKeyPressed(KEY_U))
+            changed |= ui_rich_text_command(editor, RichTextToolUnderline);
+        if(IsKeyPressed(KEY_K))
+            changed |= ui_rich_text_command(editor, RichTextToolLink);
+    }
+
+    ui_draw_box_background((Rectangle){editor.bounds.x, editor.bounds.y,
+                                       editor.bounds.width, (float)toolbar_h},
+                           editor.toolbar_style.radius >= 0.0f
+                               ? editor.toolbar_style.radius
+                               : 0.10f,
+                           editor.toolbar_style.background.a != 0
+                               ? editor.toolbar_style.background
+                               : ui_material_surface_container(),
+                           editor.toolbar_style.border.a != 0
+                               ? editor.toolbar_style.border
+                               : Fade(GetThemeText(), 0.22f));
+    for(size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i++) {
+        int bw;
+
+        if((tools & (unsigned int)buttons[i].tool) == 0)
+            continue;
+        bw = ScaleUIPx(buttons[i].width);
+        if(x + bw > (int)(editor.bounds.x + editor.bounds.width) - pad)
+            break;
+        if(ui_rich_text_draw_tool(x, y, bw, h, buttons[i].label,
+                                  editor.read_only))
+            changed |= ui_rich_text_command(editor, buttons[i].tool);
+        x += bw + ScaleUIPx(4);
+    }
+
+    area.bounds = (Rectangle){editor.bounds.x, editor.bounds.y + toolbar_h + gap,
+                              editor.bounds.width,
+                              editor.bounds.height - toolbar_h - gap};
+    area.text = editor.text;
+    area.text_size = editor.text_size;
+    area.cursor_position = editor.cursor_position;
+    area.focused = editor.focused;
+    area.scroll_y = editor.scroll_y;
+    area.max_codepoints = editor.max_codepoints;
+    area.font = editor.font;
+    area.line_gap = editor.line_gap;
+    area.focus_id = editor.focus_id;
+    area.placeholder = editor.placeholder;
+    area.syntax = SyntaxNone;
+    area.style = editor.style;
+    area.filter = NULL;
+    area.filter_user_data = NULL;
+    area.content_version = editor.content_version + changed;
+    area.read_only = editor.read_only;
+    area.wrap = editor.wrap;
+    changed |= TextArea(area);
+    return changed;
+}
+
 int
 GetTextAreaSelection(int focus_id, int *start, int *end)
 {
