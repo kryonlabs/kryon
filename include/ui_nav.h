@@ -216,6 +216,10 @@ typedef struct {
     int focus_selected;
     int *closed_index;
     int *double_clicked_index;
+    int *reordered_from_index;
+    int *reordered_to_index;
+    Rectangle *selected_tab_bounds;
+    int *middle_clicked_index;
 } TabBarProps;
 
 typedef enum {

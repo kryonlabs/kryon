@@ -99,7 +99,7 @@ step(void)
 {
     UIThemeSettingsResult result;
 
-    KryonInjectPump();
+    InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
     ThemeSettings(theme_props(), &menu_state, &result);
     EndUIFrame();
@@ -109,7 +109,7 @@ step(void)
 static void
 tap(int x, int y)
 {
-    KryonInjectTap((float)x, (float)y);
+    InjectTap((float)x, (float)y);
     step();
     step();
     step();
@@ -133,7 +133,7 @@ popup_covers(int y)
 static void
 close_any(void)
 {
-    KryonInjectKeyTap(KEY_ESCAPE);
+    InjectKeyTap(KEY_ESCAPE);
     step();
     step();
 }
@@ -186,15 +186,15 @@ main(void)
     /* The same Dark press as a wobbled human click. */
     mode_sel = THEME_MODE_SYSTEM;
     tap(450, mode_row);
-    KryonInjectMousePosition(450, mode_row + 94);
-    KryonInjectMouseButton(0, 1);
+    InjectMousePosition(450, mode_row + 94);
+    InjectMouseButton(0, 1);
     step();
-    KryonInjectMousePosition(462, mode_row + 99);
+    InjectMousePosition(462, mode_row + 99);
     step();
-    KryonInjectMousePosition(450, mode_row + 94);
+    InjectMousePosition(450, mode_row + 94);
     step();
-    KryonInjectMousePosition(450, mode_row + 94);
-    KryonInjectMouseButton(0, 0);
+    InjectMousePosition(450, mode_row + 94);
+    InjectMouseButton(0, 0);
     step();
     step();
     check_int("Dark selectable with wobbled click", mode_sel, THEME_MODE_DARK);

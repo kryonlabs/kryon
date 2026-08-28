@@ -109,6 +109,7 @@ endif
 # window/GL system libraries it was built with; null and canvas carry their
 # own (or none), so KRYON_BACKEND=null links headless with no raylib at all.
 ifeq ($(KRYON_BACKEND),raylib)
+  CPPFLAGS += -DKRYON_BACKEND_RAYLIB $(RAY_CFLAGS)
   KRYON_BACKEND_LIBS = $(RAYLIB_A)
   KRYON_BACKEND_LDLIBS ?= $(RAY_LDLIBS)
 else ifeq ($(KRYON_BACKEND),libdraw)

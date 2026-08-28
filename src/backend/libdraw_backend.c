@@ -488,26 +488,64 @@ ensure_present(void)
     }
 }
 
+static int
+ensure_present_pixels_cap(size_t need)
+{
+    if(g_present_pixels_cap < need) {
+        unsigned char *pixels = realloc(g_present_pixels, need);
+
+        if(pixels == NULL) {
+            free(g_present_pixels);
+            g_present_pixels = NULL;
+            g_present_pixels_cap = 0;
+            return 0;
+        }
+        g_present_pixels = pixels;
+        g_present_pixels_cap = need;
+    }
+    return 1;
+}
+
 static const unsigned char *
-present_pixels(int *size)
+present_region_pixels(P9Rectangle rect, int *size)
 {
     int x;
     int y;
+    int w = Dx(rect);
+    int h = Dy(rect);
+    size_t need = (size_t)w * h * 4;
 
     if(size != NULL)
-        *size = g_sw.stride * g_sw.h;
-    if(g_present == nil || g_present->depth != 32)
-        return g_sw.pixels;
-    if(g_present->chan == RGBA32)
-        return g_sw.pixels;
-    if(g_present_pixels == NULL)
+        *size = (int)need;
+    if(w <= 0 || h <= 0)
         return NULL;
-    if(g_present->chan == XRGB32) {
-        for(y = 0; y < g_sw.h; y++) {
-            const unsigned char *src = g_sw.pixels + (size_t)y * g_sw.stride;
-            unsigned char *dst = g_present_pixels + (size_t)y * g_sw.stride;
+    if(g_present == nil || g_present->depth != 32)
+        return rect.min.x == 0 && w == g_sw.w ?
+               g_sw.pixels + (size_t)rect.min.y * g_sw.stride : NULL;
+    if(g_present->chan == RGBA32 && rect.min.x == 0 && w == g_sw.w) {
+        if(size != NULL)
+            *size = g_sw.stride * h;
+        return g_sw.pixels + (size_t)rect.min.y * g_sw.stride;
+    }
+    if(!ensure_present_pixels_cap(need))
+        return NULL;
+    if(g_present->chan == RGBA32) {
+        for(y = 0; y < h; y++) {
+            const unsigned char *src = g_sw.pixels +
+                (size_t)(rect.min.y + y) * g_sw.stride + rect.min.x * 4;
+            unsigned char *dst = g_present_pixels + (size_t)y * w * 4;
 
-            for(x = 0; x < g_sw.w; x++) {
+            memcpy(dst, src, (size_t)w * 4);
+        }
+        return g_present_pixels;
+    }
+    if(g_present->chan == XRGB32) {
+        for(y = 0; y < h; y++) {
+            const unsigned char *src = g_sw.pixels +
+                (size_t)(rect.min.y + y) * g_sw.stride + rect.min.x * 4;
+            unsigned char *dst = g_present_pixels + (size_t)y * w * 4;
+
+            for(x = 0; x < w; x++) {
                 dst[0] = src[2];
                 dst[1] = src[1];
                 dst[2] = src[0];
@@ -519,11 +557,12 @@ present_pixels(int *size)
         return g_present_pixels;
     }
     if(g_present->chan == ARGB32) {
-        for(y = 0; y < g_sw.h; y++) {
-            const unsigned char *src = g_sw.pixels + (size_t)y * g_sw.stride;
-            unsigned char *dst = g_present_pixels + (size_t)y * g_sw.stride;
+        for(y = 0; y < h; y++) {
+            const unsigned char *src = g_sw.pixels +
+                (size_t)(rect.min.y + y) * g_sw.stride + rect.min.x * 4;
+            unsigned char *dst = g_present_pixels + (size_t)y * w * 4;
 
-            for(x = 0; x < g_sw.w; x++) {
+            for(x = 0; x < w; x++) {
                 dst[0] = src[2];
                 dst[1] = src[1];
                 dst[2] = src[0];
@@ -534,7 +573,8 @@ present_pixels(int *size)
         }
         return g_present_pixels;
     }
-    return g_sw.pixels;
+    return rect.min.x == 0 && w == g_sw.w ?
+           g_sw.pixels + (size_t)rect.min.y * g_sw.stride : NULL;
 }
 
 static void
@@ -542,17 +582,41 @@ present_sw(void)
 {
     const unsigned char *pixels;
     int ndata;
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    P9Rectangle src_rect;
+    P9Rectangle dst_rect;
 
     if(display == nil || screen == nil || !g_sw_ready)
         return;
     ensure_present();
     if(g_present == nil)
         return;
-    pixels = present_pixels(&ndata);
+    if(g_text_draw_count > 0) {
+        int dirty_x;
+        int dirty_y;
+        int dirty_w;
+        int dirty_h;
+
+        KrySwDirty(&g_sw, &dirty_x, &dirty_y, &dirty_w, &dirty_h);
+        w = g_sw.w;
+        h = g_sw.h;
+    } else {
+        KrySwDirty(&g_sw, &x, &y, &w, &h);
+    }
+    if(w <= 0 || h <= 0) {
+        draw_queued_text();
+        return;
+    }
+    src_rect = kry_p9_rect(x, y, w, h);
+    dst_rect = rectaddpt(src_rect, screen->r.min);
+    pixels = present_region_pixels(src_rect, &ndata);
     if(pixels == NULL)
         return;
-    loadimage(g_present, g_present->r, (unsigned char *)pixels, ndata);
-    draw(screen, screen->r, g_present, nil, ZP);
+    loadimage(g_present, src_rect, (unsigned char *)pixels, ndata);
+    draw(screen, dst_rect, g_present, nil, src_rect.min);
     draw_queued_text();
     flushimage(display, 1);
 }
@@ -1340,6 +1404,145 @@ tinted_color_from_rgba(const unsigned char *src, Color tint, int mask)
     return color;
 }
 
+static int
+clip_rect_to_sw(KrySw *sw, int *x, int *y, int *w, int *h)
+{
+    int i;
+    int x1;
+    int y1;
+
+    if(sw == NULL || x == NULL || y == NULL || w == NULL || h == NULL ||
+       *w <= 0 || *h <= 0)
+        return 0;
+    x1 = *x + *w;
+    y1 = *y + *h;
+    for(i = 0; i < sw->clip_n; i++) {
+        int nx = *x > sw->clip_x[i] ? *x : sw->clip_x[i];
+        int ny = *y > sw->clip_y[i] ? *y : sw->clip_y[i];
+        int nx2 = x1 < sw->clip_x[i] + sw->clip_w[i] ?
+                  x1 : sw->clip_x[i] + sw->clip_w[i];
+        int ny2 = y1 < sw->clip_y[i] + sw->clip_h[i] ?
+                  y1 : sw->clip_y[i] + sw->clip_h[i];
+
+        if(nx2 <= nx || ny2 <= ny)
+            return 0;
+        *x = nx;
+        *y = ny;
+        x1 = nx2;
+        y1 = ny2;
+    }
+    if(*x < 0)
+        *x = 0;
+    if(*y < 0)
+        *y = 0;
+    if(x1 > sw->w)
+        x1 = sw->w;
+    if(y1 > sw->h)
+        y1 = sw->h;
+    if(x1 <= *x || y1 <= *y)
+        return 0;
+    *w = x1 - *x;
+    *h = y1 - *y;
+    return 1;
+}
+
+static void
+blend_pixel_rgba(unsigned char *dst, Color c)
+{
+    unsigned inv;
+
+    if(dst == NULL || c.a == 0)
+        return;
+    if(c.a == 255) {
+        dst[0] = c.r;
+        dst[1] = c.g;
+        dst[2] = c.b;
+        dst[3] = c.a;
+        return;
+    }
+    inv = 255u - c.a;
+    dst[0] = (unsigned char)(((unsigned)c.r * c.a + dst[0] * inv) / 255u);
+    dst[1] = (unsigned char)(((unsigned)c.g * c.a + dst[1] * inv) / 255u);
+    dst[2] = (unsigned char)(((unsigned)c.b * c.a + dst[2] * inv) / 255u);
+    dst[3] = (unsigned char)(c.a + dst[3] * inv / 255u);
+}
+
+static int
+draw_texture_unrotated_pixels(KryLibdrawTexture *t, Rectangle source,
+                              Rectangle dest, Vector2 origin, Color tint,
+                              int mask)
+{
+    KrySw *sw = g_active_sw;
+    int src_w;
+    int src_h;
+    int dst_x;
+    int dst_y;
+    int dst_w;
+    int dst_h;
+    int clip_x;
+    int clip_y;
+    int clip_w;
+    int clip_h;
+    int flip_x;
+    int flip_y;
+    int y;
+
+    if(sw == NULL || sw->pixels == NULL || t == NULL || t->rgba == NULL)
+        return 0;
+    if(tint.a == 0)
+        return 1;
+    src_w = (int)ceilf(fabsf(source.width));
+    src_h = (int)ceilf(fabsf(source.height));
+    dst_w = abs_int((int)dest.width);
+    dst_h = abs_int((int)dest.height);
+    if(src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0)
+        return 1;
+    dst_x = (int)(dest.x - origin.x);
+    dst_y = (int)(dest.y - origin.y);
+    clip_x = dst_x;
+    clip_y = dst_y;
+    clip_w = dst_w;
+    clip_h = dst_h;
+    if(!clip_rect_to_sw(sw, &clip_x, &clip_y, &clip_w, &clip_h))
+        return 1;
+    KrySwMarkDirty(sw, clip_x, clip_y, clip_w, clip_h);
+    flip_x = source.width < 0.0f;
+    flip_y = source.height < 0.0f;
+    for(y = 0; y < clip_h; y++) {
+        int py = clip_y + y;
+        int rel_y = py - dst_y;
+        int region_y = rel_y * src_h / dst_h;
+        float ty = ((float)region_y + 0.5f) / (float)src_h;
+        float src_yf = flip_y ? source.y - ty * fabsf(source.height)
+                              : source.y + ty * fabsf(source.height);
+        int src_y = (int)floorf(src_yf);
+        unsigned char *dst =
+            sw->pixels + (size_t)py * sw->stride + clip_x * 4;
+        int x;
+
+        if(src_y < 0 || src_y >= t->height) {
+            continue;
+        }
+        for(x = 0; x < clip_w; x++) {
+            int px = clip_x + x;
+            int rel_x = px - dst_x;
+            int region_x = rel_x * src_w / dst_w;
+            float tx = ((float)region_x + 0.5f) / (float)src_w;
+            float src_xf = flip_x ? source.x - tx * fabsf(source.width)
+                                  : source.x + tx * fabsf(source.width);
+            int src_x = (int)floorf(src_xf);
+
+            if(src_x >= 0 && src_x < t->width) {
+                const unsigned char *src =
+                    t->rgba + ((size_t)src_y * t->width + src_x) * 4;
+                blend_pixel_rgba(dst, tinted_color_from_rgba(src, tint, mask));
+            }
+            dst += 4;
+        }
+    }
+    return 1;
+}
+
 static void
 set_active_sw(KrySw *sw, unsigned texture_id)
 {
@@ -1537,74 +1740,74 @@ void EndScissorMode(void) { g_sw_backend->clip_pop(); }
 void BeginMode2D(Camera2D camera) { (void)camera; }
 void EndMode2D(void) {}
 
-bool KryonBackendRaw_IsKeyPressed(int key)
+bool BackendRaw_IsKeyPressed(int key)
 {
     return key >= 0 && key < KRY_LIBDRAW_KEY_CAP && kry_libdraw_key_pressed[key];
 }
-bool KryonBackendRaw_IsKeyPressedRepeat(int key)
+bool BackendRaw_IsKeyPressedRepeat(int key)
 {
-    return KryonBackendRaw_IsKeyPressed(key);
+    return BackendRaw_IsKeyPressed(key);
 }
-bool KryonBackendRaw_IsKeyDown(int key)
+bool BackendRaw_IsKeyDown(int key)
 {
     return key >= 0 && key < KRY_LIBDRAW_KEY_CAP && kry_libdraw_key_down[key];
 }
-bool KryonBackendRaw_IsKeyReleased(int key)
+bool BackendRaw_IsKeyReleased(int key)
 {
     return key >= 0 && key < KRY_LIBDRAW_KEY_CAP && kry_libdraw_key_released[key];
 }
-int KryonBackendRaw_GetKeyPressed(void)
+int BackendRaw_GetKeyPressed(void)
 {
     if(kry_libdraw_key_qr == kry_libdraw_key_qw)
         return 0;
     return kry_libdraw_key_queue[kry_libdraw_key_qr++ % 64];
 }
-int KryonBackendRaw_GetCharPressed(void)
+int BackendRaw_GetCharPressed(void)
 {
     if(kry_libdraw_char_qr == kry_libdraw_char_qw)
         return 0;
     return kry_libdraw_char_queue[kry_libdraw_char_qr++ % 128];
 }
-bool KryonBackendRaw_IsMouseButtonPressed(int button)
+bool BackendRaw_IsMouseButtonPressed(int button)
 {
     return button >= 0 && button < 3 && kry_libdraw_mouse_pressed[button];
 }
-bool KryonBackendRaw_IsMouseButtonDown(int button)
+bool BackendRaw_IsMouseButtonDown(int button)
 {
     return button >= 0 && button < 3 && kry_libdraw_mouse_down[button];
 }
-bool KryonBackendRaw_IsMouseButtonReleased(int button)
+bool BackendRaw_IsMouseButtonReleased(int button)
 {
     return button >= 0 && button < 3 && kry_libdraw_mouse_released[button];
 }
-bool KryonBackendRaw_IsMouseButtonUp(int button)
+bool BackendRaw_IsMouseButtonUp(int button)
 {
-    return !KryonBackendRaw_IsMouseButtonDown(button);
+    return !BackendRaw_IsMouseButtonDown(button);
 }
-int KryonBackendRaw_GetMouseX(void)
+int BackendRaw_GetMouseX(void)
 {
     return kry_libdraw_mouse_x;
 }
-int KryonBackendRaw_GetMouseY(void)
+int BackendRaw_GetMouseY(void)
 {
     return kry_libdraw_mouse_y;
 }
-Vector2 KryonBackendRaw_GetMousePosition(void)
+Vector2 BackendRaw_GetMousePosition(void)
 {
-    return (Vector2){(float)KryonBackendRaw_GetMouseX(),
-                     (float)KryonBackendRaw_GetMouseY()};
+    return (Vector2){(float)BackendRaw_GetMouseX(),
+                     (float)BackendRaw_GetMouseY()};
 }
-Vector2 KryonBackendRaw_GetMouseDelta(void)
+Vector2 BackendRaw_GetMouseDelta(void)
 {
     return (Vector2){(float)kry_libdraw_mouse_dx, (float)kry_libdraw_mouse_dy};
 }
-float KryonBackendRaw_GetMouseWheelMove(void)
+float BackendRaw_GetMouseWheelMove(void)
 {
     return (float)kry_libdraw_wheel;
 }
-Vector2 KryonBackendRaw_GetMouseWheelMoveV(void)
+Vector2 BackendRaw_GetMouseWheelMoveV(void)
 {
-    return (Vector2){0.0f, KryonBackendRaw_GetMouseWheelMove()};
+    return (Vector2){0.0f, BackendRaw_GetMouseWheelMove()};
 }
 
 Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
@@ -1838,6 +2041,10 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     flip_x = source.width < 0.0f;
     flip_y = source.height < 0.0f;
     if(sw <= 0 || sh <= 0 || (int)dest.width == 0 || (int)dest.height == 0)
+        return;
+
+    if(rotation > -0.0001f && rotation < 0.0001f &&
+       draw_texture_unrotated_pixels(t, source, dest, origin, draw_tint, mask))
         return;
 
     region = malloc((size_t)sw * sh * 4);

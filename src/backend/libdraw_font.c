@@ -655,17 +655,43 @@ UnloadFont(Font font)
 int
 GetGlyphIndex(Font font, int codepoint)
 {
+    enum { CACHE_N = 256 };
+    static struct {
+        unsigned texture_id;
+        int glyph_count;
+        int codepoint;
+        int index;
+    } cache[CACHE_N];
     int fallback = 0;
+    unsigned slot;
     int i;
 
     if(font.glyphs == NULL || font.glyphCount <= 0)
         return 0;
+    slot = ((unsigned)font.texture.id * 131u ^ (unsigned)codepoint) %
+           CACHE_N;
+    if(cache[slot].texture_id == font.texture.id &&
+       cache[slot].glyph_count == font.glyphCount &&
+       cache[slot].codepoint == codepoint &&
+       cache[slot].index >= 0 && cache[slot].index < font.glyphCount &&
+       font.glyphs[cache[slot].index].value == codepoint) {
+        return cache[slot].index;
+    }
     for(i = 0; i < font.glyphCount; i++) {
         if(font.glyphs[i].value == '?')
             fallback = i;
-        if(font.glyphs[i].value == codepoint)
+        if(font.glyphs[i].value == codepoint) {
+            cache[slot].texture_id = font.texture.id;
+            cache[slot].glyph_count = font.glyphCount;
+            cache[slot].codepoint = codepoint;
+            cache[slot].index = i;
             return i;
+        }
     }
+    cache[slot].texture_id = font.texture.id;
+    cache[slot].glyph_count = font.glyphCount;
+    cache[slot].codepoint = codepoint;
+    cache[slot].index = fallback;
     return fallback;
 }
 

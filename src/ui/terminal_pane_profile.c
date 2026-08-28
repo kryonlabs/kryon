@@ -63,6 +63,42 @@ profile_setting_in_range(int value, int min_value, int max_value)
 }
 
 static int
+profile_parse_bool(const char *text, int *out)
+{
+    if(text == NULL || out == NULL)
+        return 0;
+    if(strcmp(text, "1") == 0 || strcmp(text, "true") == 0 ||
+       strcmp(text, "yes") == 0 || strcmp(text, "on") == 0 ||
+       strcmp(text, "enabled") == 0) {
+        *out = 1;
+        return 1;
+    }
+    if(strcmp(text, "0") == 0 || strcmp(text, "false") == 0 ||
+       strcmp(text, "no") == 0 || strcmp(text, "off") == 0 ||
+       strcmp(text, "disabled") == 0) {
+        *out = 0;
+        return 1;
+    }
+    return 0;
+}
+
+static int
+profile_parse_percent(const char *text, int *out)
+{
+    char *end = NULL;
+    long value;
+
+    if(text == NULL || text[0] == '\0' || out == NULL)
+        return 0;
+    value = strtol(text, &end, 10);
+    if(end == text || (*end != '\0' && *end != '%') ||
+       (end[0] == '%' && end[1] != '\0') || value < 0 || value > 100)
+        return 0;
+    *out = (int)value;
+    return 1;
+}
+
+static int
 profile_parse_decimal(const char *text, int *out)
 {
     int value = 0;
@@ -206,7 +242,20 @@ InitTerminalPaneProfileSettings(TerminalPaneProfileSettings *settings,
     memset(settings, 0, sizeof(*settings));
     settings->font_size = limits.default_font_size;
     settings->scrollback_limit = limits.default_scrollback_limit;
+    settings->unlimited_scrollback = 0;
     settings->cursor_style = limits.default_cursor_style;
+    settings->dynamic_title_mode = TERMINAL_PANE_TITLE_REPLACE;
+    settings->backspace_binding = TERMINAL_PANE_KEY_BINDING_ASCII_DELETE;
+    settings->delete_binding = TERMINAL_PANE_KEY_BINDING_ESCAPE_SEQUENCE;
+    settings->ambiguous_width_wide = 0;
+    settings->allow_bold = 1;
+    settings->auto_hide_mouse = 0;
+    settings->middle_click_closes_tab = 0;
+    settings->always_show_tabs = 0;
+    settings->disable_menu_mnemonics = 0;
+    settings->disable_menu_shortcut = 0;
+    settings->disable_help_shortcut = 0;
+    settings->background_opacity = 100;
     settings->terminal_foreground = TERMINAL_PANE_COLOR_DEFAULT;
     settings->terminal_background = TERMINAL_PANE_COLOR_DEFAULT;
     settings->terminal_cursor = TERMINAL_PANE_COLOR_DEFAULT;
@@ -241,10 +290,141 @@ ApplyTerminalPaneProfileSetting(TerminalPaneProfileSettings *settings,
         settings->scrollback_limit = parsed;
         return 1;
     }
+    if(profile_setting_name_is(name, "unlimited_scrollback",
+                               "unlimited-scrollback", NULL, NULL, NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->unlimited_scrollback = parsed;
+        return 1;
+    }
     if(profile_setting_name_is(name, "cursor_style", "cursor-style", NULL,
                                NULL, NULL)) {
         settings->cursor_style =
             ParseTerminalPaneCursorStyle(value, settings->cursor_style);
+        return 1;
+    }
+    if(profile_setting_name_is(name, "dynamic_title_mode",
+                               "dynamic-title-mode", "dynamic_title",
+                               "dynamic-title", NULL)) {
+        if(strcmp(value, "replace") == 0 || strcmp(value, "auto") == 0)
+            settings->dynamic_title_mode = TERMINAL_PANE_TITLE_REPLACE;
+        else if(strcmp(value, "prepend") == 0)
+            settings->dynamic_title_mode = TERMINAL_PANE_TITLE_PREPEND;
+        else if(strcmp(value, "append") == 0)
+            settings->dynamic_title_mode = TERMINAL_PANE_TITLE_APPEND;
+        else if(strcmp(value, "ignore") == 0 || strcmp(value, "none") == 0)
+            settings->dynamic_title_mode = TERMINAL_PANE_TITLE_IGNORE;
+        else
+            return 0;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "backspace_binding",
+                               "backspace-binding", "backspace", NULL, NULL)) {
+        if(strcmp(value, "delete") == 0 || strcmp(value, "ascii-delete") == 0 ||
+           strcmp(value, "del") == 0)
+            settings->backspace_binding =
+                TERMINAL_PANE_KEY_BINDING_ASCII_DELETE;
+        else if(strcmp(value, "control-h") == 0 ||
+                strcmp(value, "backspace") == 0 || strcmp(value, "bs") == 0)
+            settings->backspace_binding = TERMINAL_PANE_KEY_BINDING_CONTROL_H;
+        else
+            return 0;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "delete_binding", "delete-binding",
+                               "delete", NULL, NULL)) {
+        if(strcmp(value, "escape-sequence") == 0 ||
+           strcmp(value, "sequence") == 0 || strcmp(value, "esc") == 0)
+            settings->delete_binding =
+                TERMINAL_PANE_KEY_BINDING_ESCAPE_SEQUENCE;
+        else if(strcmp(value, "delete") == 0 ||
+                strcmp(value, "ascii-delete") == 0 ||
+                strcmp(value, "del") == 0)
+            settings->delete_binding =
+                TERMINAL_PANE_KEY_BINDING_ASCII_DELETE;
+        else
+            return 0;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "ambiguous_width_wide",
+                               "ambiguous-width-wide", "ambiguous_width",
+                               "ambiguous-width", NULL)) {
+        if(strcmp(value, "wide") == 0)
+            parsed = 1;
+        else if(strcmp(value, "narrow") == 0)
+            parsed = 0;
+        else if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->ambiguous_width_wide = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "allow_bold", "allow-bold", NULL, NULL,
+                               NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->allow_bold = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "auto_hide_mouse", "auto-hide-mouse",
+                               "auto_hide_pointer", "auto-hide-pointer",
+                               NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->auto_hide_mouse = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "middle_click_closes_tab",
+                               "middle-click-closes-tab",
+                               "middle_click_close_tab",
+                               "middle-click-close-tab", NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->middle_click_closes_tab = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "always_show_tabs", "always-show-tabs",
+                               NULL, NULL, NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->always_show_tabs = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "disable_menu_mnemonics",
+                               "disable-menu-mnemonics",
+                               "disable_menu_access_keys",
+                               "disable-menu-access-keys", NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->disable_menu_mnemonics = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "disable_menu_shortcut",
+                               "disable-menu-shortcut", "disable_f10",
+                               "disable-f10", NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->disable_menu_shortcut = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "disable_help_shortcut",
+                               "disable-help-shortcut", "disable_f1",
+                               "disable-f1", NULL)) {
+        if(!profile_parse_bool(value, &parsed))
+            return 0;
+        settings->disable_help_shortcut = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "background_opacity",
+                               "background-opacity", "opacity", NULL, NULL)) {
+        if(!profile_parse_percent(value, &parsed))
+            return 0;
+        settings->background_opacity = parsed;
+        return 1;
+    }
+    if(profile_setting_name_is(name, "background_image", "background-image",
+                               NULL, NULL, NULL)) {
+        profile_copy_text(settings->background_image,
+                          (int)sizeof(settings->background_image), value);
         return 1;
     }
     if(strcmp(name, "shell") == 0) {
@@ -337,6 +517,34 @@ TerminalPaneProfilePromptTitle(int prompt)
         return "Selection Foreground";
     case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
         return "Selection Background";
+    case TERMINAL_PANE_PROFILE_PROMPT_DYNAMIC_TITLE_MODE:
+        return "Dynamic Title Mode";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKSPACE_BINDING:
+        return "Backspace Key";
+    case TERMINAL_PANE_PROFILE_PROMPT_DELETE_BINDING:
+        return "Delete Key";
+    case TERMINAL_PANE_PROFILE_PROMPT_AMBIGUOUS_WIDTH:
+        return "Ambiguous Width";
+    case TERMINAL_PANE_PROFILE_PROMPT_ALLOW_BOLD:
+        return "Allow Bold Text";
+    case TERMINAL_PANE_PROFILE_PROMPT_UNLIMITED_SCROLLBACK:
+        return "Unlimited Scrollback";
+    case TERMINAL_PANE_PROFILE_PROMPT_AUTO_HIDE_MOUSE:
+        return "Auto-hide Mouse";
+    case TERMINAL_PANE_PROFILE_PROMPT_MIDDLE_CLICK_CLOSE_TAB:
+        return "Middle Click Closes Tab";
+    case TERMINAL_PANE_PROFILE_PROMPT_ALWAYS_SHOW_TABS:
+        return "Always Show Tabs";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_MNEMONICS:
+        return "Disable Menu Access Keys";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_SHORTCUT:
+        return "Disable Menu Shortcut";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_HELP_SHORTCUT:
+        return "Disable Help Shortcut";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_OPACITY:
+        return "Background Opacity";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_IMAGE:
+        return "Background Image";
     default:
         break;
     }
@@ -367,6 +575,34 @@ TerminalPaneProfilePromptSettingName(int prompt)
         return "terminal-selection-foreground";
     case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
         return "terminal-selection-background";
+    case TERMINAL_PANE_PROFILE_PROMPT_DYNAMIC_TITLE_MODE:
+        return "dynamic-title-mode";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKSPACE_BINDING:
+        return "backspace-binding";
+    case TERMINAL_PANE_PROFILE_PROMPT_DELETE_BINDING:
+        return "delete-binding";
+    case TERMINAL_PANE_PROFILE_PROMPT_AMBIGUOUS_WIDTH:
+        return "ambiguous-width";
+    case TERMINAL_PANE_PROFILE_PROMPT_ALLOW_BOLD:
+        return "allow-bold";
+    case TERMINAL_PANE_PROFILE_PROMPT_UNLIMITED_SCROLLBACK:
+        return "unlimited-scrollback";
+    case TERMINAL_PANE_PROFILE_PROMPT_AUTO_HIDE_MOUSE:
+        return "auto-hide-mouse";
+    case TERMINAL_PANE_PROFILE_PROMPT_MIDDLE_CLICK_CLOSE_TAB:
+        return "middle-click-closes-tab";
+    case TERMINAL_PANE_PROFILE_PROMPT_ALWAYS_SHOW_TABS:
+        return "always-show-tabs";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_MNEMONICS:
+        return "disable-menu-mnemonics";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_SHORTCUT:
+        return "disable-menu-shortcut";
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_HELP_SHORTCUT:
+        return "disable-help-shortcut";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_OPACITY:
+        return "background-opacity";
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_IMAGE:
+        return "background-image";
     default:
         break;
     }
@@ -392,7 +628,8 @@ TerminalPaneProfilePromptAffectsFont(int prompt)
 int
 TerminalPaneProfilePromptAffectsScrollback(int prompt)
 {
-    return prompt == TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK;
+    return prompt == TERMINAL_PANE_PROFILE_PROMPT_SCROLLBACK ||
+           prompt == TERMINAL_PANE_PROFILE_PROMPT_UNLIMITED_SCROLLBACK;
 }
 
 static int
@@ -406,6 +643,43 @@ format_profile_prompt_color(char *out, int out_size, int color)
         return (int)strlen(out);
     out[0] = '\0';
     return 0;
+}
+
+static const char *
+profile_bool_name(int value)
+{
+    return value ? "true" : "false";
+}
+
+static const char *
+profile_title_mode_name(int mode)
+{
+    switch(mode) {
+    case TERMINAL_PANE_TITLE_PREPEND:
+        return "prepend";
+    case TERMINAL_PANE_TITLE_APPEND:
+        return "append";
+    case TERMINAL_PANE_TITLE_IGNORE:
+        return "ignore";
+    default:
+        break;
+    }
+    return "replace";
+}
+
+static const char *
+profile_key_binding_name(int binding)
+{
+    switch(binding) {
+    case TERMINAL_PANE_KEY_BINDING_CONTROL_H:
+        return "control-h";
+    case TERMINAL_PANE_KEY_BINDING_ESCAPE_SEQUENCE:
+        return "escape-sequence";
+    case TERMINAL_PANE_KEY_BINDING_ASCII_DELETE:
+    default:
+        break;
+    }
+    return "ascii-delete";
 }
 
 int
@@ -447,6 +721,48 @@ FormatTerminalPaneProfilePromptValue(
     case TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND:
         return format_profile_prompt_color(
             out, out_size, settings->terminal_selection_background);
+    case TERMINAL_PANE_PROFILE_PROMPT_DYNAMIC_TITLE_MODE:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_title_mode_name(settings->dynamic_title_mode));
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKSPACE_BINDING:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_key_binding_name(settings->backspace_binding));
+    case TERMINAL_PANE_PROFILE_PROMPT_DELETE_BINDING:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_key_binding_name(settings->delete_binding));
+    case TERMINAL_PANE_PROFILE_PROMPT_AMBIGUOUS_WIDTH:
+        return snprintf(out, (size_t)out_size, "%s",
+                        settings->ambiguous_width_wide ? "wide" : "narrow");
+    case TERMINAL_PANE_PROFILE_PROMPT_ALLOW_BOLD:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->allow_bold));
+    case TERMINAL_PANE_PROFILE_PROMPT_UNLIMITED_SCROLLBACK:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->unlimited_scrollback));
+    case TERMINAL_PANE_PROFILE_PROMPT_AUTO_HIDE_MOUSE:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->auto_hide_mouse));
+    case TERMINAL_PANE_PROFILE_PROMPT_MIDDLE_CLICK_CLOSE_TAB:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->middle_click_closes_tab));
+    case TERMINAL_PANE_PROFILE_PROMPT_ALWAYS_SHOW_TABS:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->always_show_tabs));
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_MNEMONICS:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->disable_menu_mnemonics));
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_SHORTCUT:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->disable_menu_shortcut));
+    case TERMINAL_PANE_PROFILE_PROMPT_DISABLE_HELP_SHORTCUT:
+        return snprintf(out, (size_t)out_size, "%s",
+                        profile_bool_name(settings->disable_help_shortcut));
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_OPACITY:
+        return snprintf(out, (size_t)out_size, "%d",
+                        settings->background_opacity);
+    case TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_IMAGE:
+        return snprintf(out, (size_t)out_size, "%s",
+                        settings->background_image);
     default:
         break;
     }

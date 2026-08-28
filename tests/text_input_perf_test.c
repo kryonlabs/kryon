@@ -51,7 +51,7 @@ static void reset_fields(void)
 {
     int i;
     static const char *initial[] = { "freelancermap.de", "wao@example.com", "master password", "notes" };
-    KryonInjectReset();
+    InjectReset();
     screen_key++;
     for(i = 0; i < FIELD_COUNT; ++i) {
         snprintf(fields[i].text, sizeof(fields[i].text), "%s", initial[i]);
@@ -84,20 +84,20 @@ static int run_scenario(const char *name)
         focus_field(field);
         start = now_us();
         if(strcmp(name, "typing_burst") == 0) {
-            KryonInjectText("abcdef0123456789"); KryonInjectPump(); frame();
+            InjectText("abcdef0123456789"); InjectPump(); frame();
             wrong += strstr(fields[field].text, "abcdef0123456789") == NULL;
         } else if(strcmp(name, "backspace") == 0) {
             size_t before_length = strlen(fields[field].text);
-            KryonInjectKeyTap(KEY_BACKSPACE); KryonInjectPump(); frame();
+            InjectKeyTap(KEY_BACKSPACE); InjectPump(); frame();
             wrong += strlen(fields[field].text) + 1 != before_length;
         } else if(strcmp(name, "selection_replace") == 0) {
             SetSelection(fields[field].focus_id, 0, fields[field].cursor);
-            KryonInjectText("replacement"); KryonInjectPump(); frame();
+            InjectText("replacement"); InjectPump(); frame();
             wrong += strcmp(fields[field].text, "replacement") != 0;
         } else if(strcmp(name, "tab_traversal") == 0) {
             /* Traversal is resolved at EndUIFocus, then reflected in the
              * next declaration frame just as it is in an application. */
-            KryonInjectKeyTap(KEY_TAB); KryonInjectPump(); frame(); frame();
+            InjectKeyTap(KEY_TAB); InjectPump(); frame(); frame();
             wrong += !fields[(field + 1) % FIELD_COUNT].focused;
         } else { /* an idle retained frame catches unbounded retained growth */
             frame();

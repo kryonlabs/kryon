@@ -165,9 +165,9 @@ main(void)
     nodes = UIGetTreeNodes(&count);
     check_int("stable column keeps computed width", (int)nodes[2].bounds.width, 80);
 
-    KryonInjectReset();
-    KryonInjectTap(25, 25);
-    KryonInjectPump();
+    InjectReset();
+    InjectTap(25, 25);
+    InjectPump();
     BeginUI(44);
     Button((ButtonProps){.bounds = {10, 10, 100, 40},
                          .label = "Save", .id = 9001});
@@ -187,9 +187,9 @@ main(void)
         int saw_text = 0;
         int saw_selection = 0;
 
-        KryonInjectReset();
-        KryonInjectTap(25, 25);
-        KryonInjectPump();
+        InjectReset();
+        InjectTap(25, 25);
+        InjectPump();
         BeginUI(45);
         TextField((TextFieldProps){
             .bounds = {10, 10, 200, 40}, .text = password,
@@ -204,8 +204,8 @@ main(void)
         check_int("textfield selection set",
                   SetSelection(password_key, 0, 6), 1);
         while(NextUIEvent(&event)) { }
-        KryonInjectText("x");
-        KryonInjectPump();
+        InjectText("x");
+        InjectPump();
         UIRouteInput();
         while(NextUIEvent(&event)) {
             if(event.kind == UI_EVENT_TEXT_CHANGED)
@@ -237,25 +237,25 @@ main(void)
         });
         UIReconcileTree();
         UILayoutTree();
-        KryonInjectReset();
-        KryonInjectMousePosition(20, 25);
-        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 1);
-        KryonInjectPump();
+        InjectReset();
+        InjectMousePosition(20, 25);
+        InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+        InjectPump();
         UIRouteInput();
-        KryonInjectMousePosition(220, 25);
-        KryonInjectPump();
+        InjectMousePosition(220, 25);
+        InjectPump();
         UIRouteInput();
-        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 0);
-        KryonInjectPump();
+        InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+        InjectPump();
         UIRouteInput();
-        KryonInjectText("z");
-        KryonInjectPump();
+        InjectText("z");
+        InjectPump();
         UIRouteInput();
         check_int("mouse selection typing replaces text", strcmp(value, "z"), 0);
         check_int("mouse replacement cursor", cursor, 1);
         while(NextUIEvent(&event)) { }
-        KryonInjectKeyTap(KEY_ENTER);
-        KryonInjectPump();
+        InjectKeyTap(KEY_ENTER);
+        InjectPump();
         UIRouteInput();
         while(NextUIEvent(&event)) {
             if(event.kind == UI_EVENT_TEXT_COMMIT && event.key == 78)
@@ -273,29 +273,29 @@ main(void)
         Rectangle second = {10, 50, 100, 30};
         Rectangle third = {10, 90, 100, 30};
 
-        KryonInjectReset();
+        InjectReset();
         SetUIFocus(901);
-        KryonInjectKeyTap(KEY_TAB);
-        KryonInjectPump();
+        InjectKeyTap(KEY_TAB);
+        InjectPump();
         BeginUIFocus();
         RegisterUIFocus(901, first);
         RegisterUIFocus(902, second);
         RegisterUIFocus(903, third);
         EndUIFocus();
         check_int("tab advances focus", IsUIFocusActive(902), 1);
-        KryonInjectPump();
+        InjectPump();
 
-        KryonInjectKey(KEY_LEFT_SHIFT, 1);
-        KryonInjectKeyTap(KEY_TAB);
-        KryonInjectPump();
+        InjectKey(KEY_LEFT_SHIFT, 1);
+        InjectKeyTap(KEY_TAB);
+        InjectPump();
         BeginUIFocus();
         RegisterUIFocus(901, first);
         RegisterUIFocus(902, second);
         RegisterUIFocus(903, third);
         EndUIFocus();
         check_int("shift tab reverses focus", IsUIFocusActive(901), 1);
-        KryonInjectKey(KEY_LEFT_SHIFT, 0);
-        KryonInjectPump();
+        InjectKey(KEY_LEFT_SHIFT, 0);
+        InjectPump();
     }
 
     /* Retained declarations use the same traversal path as generated Kry
@@ -306,10 +306,10 @@ main(void)
         int first_cursor = 3, second_cursor = 0;
         int first_focused = 0, second_focused = 0;
 
-        KryonInjectReset();
-        KryonInjectMousePosition(20, 20);
-        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 1);
-        KryonInjectPump();
+        InjectReset();
+        InjectMousePosition(20, 20);
+        InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+        InjectPump();
         BeginUIFocus();
         BeginUI(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
@@ -322,11 +322,11 @@ main(void)
             .focus_id = 1002, .font = 16 });
         EndUI();
         EndUIFocus();
-        KryonInjectMouseButton(MOUSE_BUTTON_LEFT, 0);
-        KryonInjectPump();
+        InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+        InjectPump();
 
-        KryonInjectKeyTap(KEY_TAB);
-        KryonInjectPump();
+        InjectKeyTap(KEY_TAB);
+        InjectPump();
         BeginUIFocus();
         BeginUI(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
@@ -338,9 +338,9 @@ main(void)
         EndUI();
         EndUIFocus();
 
-        KryonInjectPump();
-        KryonInjectText("x");
-        KryonInjectPump();
+        InjectPump();
+        InjectText("x");
+        InjectPump();
         BeginUIFocus();
         BeginUI(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,

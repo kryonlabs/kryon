@@ -292,6 +292,18 @@ typedef struct {
 } PromptDialogProps;
 
 typedef struct {
+    Rectangle anchor;
+    const char *title;
+    char *text;
+    int text_size;
+    int *cursor_position;
+    int *focused;
+    int id;
+    int width;
+    int max_codepoints;
+} TextPopoverProps;
+
+typedef struct {
     int key;
     int ctrl;
     int shift;

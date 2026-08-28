@@ -81,6 +81,7 @@ void KrySwSetTheme(KrySw *sw, int slot, unsigned rgba);
  * resets the accumulator; hosts present the rect once per frame. Nothing
  * drawn reports x = y = w = h = 0. */
 void KrySwDirty(KrySw *sw, int *x, int *y, int *w, int *h);
+void KrySwMarkDirty(KrySw *sw, int x, int y, int w, int h);
 
 /* Install a KFA1 glyph atlas (cartridge asset kind 1). Text draws from
  * atlas glyphs with proper advances; without one the built-in 8x8 font

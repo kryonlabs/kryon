@@ -1686,62 +1686,62 @@ void EndScissorMode(void)
 void BeginMode2D(Camera2D camera) { (void)camera; }
 void EndMode2D(void) {}
 
-bool KryonBackendRaw_IsKeyPressed(int key)
+bool BackendRaw_IsKeyPressed(int key)
 {
     return key >= 0 && key < TERMI_KEY_CAP && g_key_pressed[key];
 }
-bool KryonBackendRaw_IsKeyPressedRepeat(int key)
+bool BackendRaw_IsKeyPressedRepeat(int key)
 {
-    return KryonBackendRaw_IsKeyPressed(key);
+    return BackendRaw_IsKeyPressed(key);
 }
-bool KryonBackendRaw_IsKeyDown(int key)
+bool BackendRaw_IsKeyDown(int key)
 {
     return key >= 0 && key < TERMI_KEY_CAP && g_key_down[key];
 }
-bool KryonBackendRaw_IsKeyReleased(int key)
+bool BackendRaw_IsKeyReleased(int key)
 {
     return key >= 0 && key < TERMI_KEY_CAP && g_key_released[key];
 }
-int KryonBackendRaw_GetKeyPressed(void)
+int BackendRaw_GetKeyPressed(void)
 {
     if(g_key_qr == g_key_qw)
         return 0;
     return g_key_queue[g_key_qr++ % TERMI_KEY_QUEUE_CAP];
 }
-int KryonBackendRaw_GetCharPressed(void)
+int BackendRaw_GetCharPressed(void)
 {
     if(g_char_qr == g_char_qw)
         return 0;
     return g_char_queue[g_char_qr++ % TERMI_CHAR_QUEUE_CAP];
 }
-bool KryonBackendRaw_IsMouseButtonPressed(int button)
+bool BackendRaw_IsMouseButtonPressed(int button)
 {
     return button >= 0 && button < 3 && g_mouse_pressed[button];
 }
-bool KryonBackendRaw_IsMouseButtonDown(int button)
+bool BackendRaw_IsMouseButtonDown(int button)
 {
     return button >= 0 && button < 3 && g_mouse_down[button];
 }
-bool KryonBackendRaw_IsMouseButtonReleased(int button)
+bool BackendRaw_IsMouseButtonReleased(int button)
 {
     return button >= 0 && button < 3 && g_mouse_released[button];
 }
-bool KryonBackendRaw_IsMouseButtonUp(int button)
+bool BackendRaw_IsMouseButtonUp(int button)
 {
-    return !KryonBackendRaw_IsMouseButtonDown(button);
+    return !BackendRaw_IsMouseButtonDown(button);
 }
-int KryonBackendRaw_GetMouseX(void) { return g_mouse_x; }
-int KryonBackendRaw_GetMouseY(void) { return g_mouse_y; }
-Vector2 KryonBackendRaw_GetMousePosition(void)
+int BackendRaw_GetMouseX(void) { return g_mouse_x; }
+int BackendRaw_GetMouseY(void) { return g_mouse_y; }
+Vector2 BackendRaw_GetMousePosition(void)
 {
     return (Vector2){(float)g_mouse_x, (float)g_mouse_y};
 }
-Vector2 KryonBackendRaw_GetMouseDelta(void)
+Vector2 BackendRaw_GetMouseDelta(void)
 {
     return (Vector2){(float)g_mouse_dx, (float)g_mouse_dy};
 }
-float KryonBackendRaw_GetMouseWheelMove(void) { return (float)g_wheel; }
-Vector2 KryonBackendRaw_GetMouseWheelMoveV(void)
+float BackendRaw_GetMouseWheelMove(void) { return (float)g_wheel; }
+Vector2 BackendRaw_GetMouseWheelMoveV(void)
 {
     return (Vector2){0.0f, (float)g_wheel};
 }

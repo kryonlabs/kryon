@@ -265,6 +265,7 @@ int ActionModal(ModalProps modal);
 int MessageDialog(MessageDialogProps dialog);
 int ConfirmDialog(ConfirmDialogProps dialog);
 int PromptDialog(PromptDialogProps dialog);
+int TextPopover(TextPopoverProps popover);
 int PickerDialog(PickerDialogProps picker);
 void Focus(Rectangle bounds);
 void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);

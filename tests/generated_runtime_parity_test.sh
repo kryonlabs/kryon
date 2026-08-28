@@ -628,19 +628,19 @@ static void require_long_text_node_count(int want, const char *label)
 
 int main(void)
 {
-    KryonInjectReset();
+    InjectReset();
 
     draw_form();
     SetUIFocus(101);
     draw_form();
-    KryonInjectKeyTap(KEY_LEFT);
-    KryonInjectPump();
+    InjectKeyTap(KEY_LEFT);
+    InjectPump();
     draw_form();
-    KryonInjectText("é");
-    KryonInjectPump();
+    InjectText("é");
+    InjectPump();
     draw_form();
-    KryonInjectKeyTap(KEY_BACKSPACE);
-    KryonInjectPump();
+    InjectKeyTap(KEY_BACKSPACE);
+    InjectPump();
     draw_form();
     if(strcmp(first, "alpha") != 0) {
         fprintf(stderr, "form: backspace restored first field to '%s', want alpha\n", first);
@@ -650,75 +650,75 @@ int main(void)
     SetUIFocus(102);
     draw_form();
     SetSelection(102, 0, 4);
-    KryonInjectText("acct");
-    KryonInjectPump();
+    InjectText("acct");
+    InjectPump();
     draw_form();
 
     SetUIFocus(101);
     draw_form();
-    KryonInjectKeyTap(KEY_TAB);
-    KryonInjectPump();
+    InjectKeyTap(KEY_TAB);
+    InjectPump();
     draw_form();
-    KryonInjectText("Z");
-    KryonInjectPump();
+    InjectText("Z");
+    InjectPump();
     draw_form();
 
     SetUIClipboardTextValue("old");
     SetUIFocus(103);
     draw_form();
     SetSelection(103, 0, 6);
-    KryonInjectKey(KEY_LEFT_CONTROL, 1);
-    KryonInjectKeyTap(KEY_C);
-    KryonInjectPump();
+    InjectKey(KEY_LEFT_CONTROL, 1);
+    InjectKeyTap(KEY_C);
+    InjectPump();
     draw_form();
-    KryonInjectKey(KEY_LEFT_CONTROL, 0);
-    KryonInjectPump();
+    InjectKey(KEY_LEFT_CONTROL, 0);
+    InjectPump();
 
     draw_fields();
-    KryonInjectTap(30, 30);
-    KryonInjectPump();
+    InjectTap(30, 30);
+    InjectPump();
     draw_fields();
-    KryonInjectKeyTap(KEY_LEFT);
-    KryonInjectPump();
+    InjectKeyTap(KEY_LEFT);
+    InjectPump();
     draw_fields();
-    KryonInjectText("!");
-    KryonInjectPump();
+    InjectText("!");
+    InjectPump();
     draw_fields();
-    KryonInjectTap(30, 86);
-    KryonInjectPump();
+    InjectTap(30, 86);
+    InjectPump();
     draw_fields();
-    KryonInjectText(" body");
-    KryonInjectPump();
+    InjectText(" body");
+    InjectPump();
     draw_fields();
 
     draw_focus();
-    KryonInjectTap(30, 75);
-    KryonInjectPump();
+    InjectTap(30, 75);
+    InjectPump();
     draw_focus();
-    KryonInjectText("Z");
-    KryonInjectPump();
+    InjectText("Z");
+    InjectPump();
     draw_focus();
-    KryonInjectKey(KEY_LEFT_SHIFT, 1);
-    KryonInjectKeyTap(KEY_TAB);
-    KryonInjectPump();
+    InjectKey(KEY_LEFT_SHIFT, 1);
+    InjectKeyTap(KEY_TAB);
+    InjectPump();
     draw_focus();
-    KryonInjectKey(KEY_LEFT_SHIFT, 0);
-    KryonInjectPump();
-    KryonInjectText("A");
-    KryonInjectPump();
+    InjectKey(KEY_LEFT_SHIFT, 0);
+    InjectPump();
+    InjectText("A");
+    InjectPump();
     draw_focus();
     int focus_after_focus = GetUIFocus();
 
     draw_buttons();
-    KryonInjectTap(30, 130);
-    KryonInjectPump();
+    InjectTap(30, 130);
+    InjectPump();
     draw_buttons();
-    KryonInjectPump();
+    InjectPump();
     draw_buttons();
-    KryonInjectTap(130, 130);
-    KryonInjectPump();
+    InjectTap(130, 130);
+    InjectPump();
     draw_buttons();
-    KryonInjectPump();
+    InjectPump();
     draw_buttons();
 
     draw_long_text();
@@ -729,50 +729,50 @@ int main(void)
     require_long_text_node_count(long_text_nodes, "focus");
     for(int i = 0; i < 2048; i++) {
         if(i > 0 && i % 256 == 0) {
-            KryonInjectKeyTap(KEY_TAB);
-            KryonInjectPump();
+            InjectKeyTap(KEY_TAB);
+            InjectPump();
             draw_long_text();
             require_long_text_node_count(long_text_nodes, "tab");
         }
-        KryonInjectText("x");
-        KryonInjectPump();
+        InjectText("x");
+        InjectPump();
         draw_long_text();
         require_long_text_node_count(long_text_nodes, "text");
-        KryonInjectKeyTap(KEY_LEFT);
-        KryonInjectPump();
+        InjectKeyTap(KEY_LEFT);
+        InjectPump();
         draw_long_text();
         require_long_text_node_count(long_text_nodes, "left");
-        KryonInjectKeyTap(KEY_RIGHT);
-        KryonInjectPump();
+        InjectKeyTap(KEY_RIGHT);
+        InjectPump();
         draw_long_text();
         require_long_text_node_count(long_text_nodes, "right");
     }
 
     draw_controls();
-    KryonInjectTap(146, 48);
-    KryonInjectPump();
+    InjectTap(146, 48);
+    InjectPump();
     draw_controls();
-    KryonInjectPump();
+    InjectPump();
     draw_controls();
-    KryonInjectTap(30, 92);
-    KryonInjectPump();
+    InjectTap(30, 92);
+    InjectPump();
     draw_controls();
-    KryonInjectPump();
+    InjectPump();
     draw_controls();
-    KryonInjectTap(30, 138);
-    KryonInjectPump();
+    InjectTap(30, 138);
+    InjectPump();
     draw_controls();
-    KryonInjectPump();
+    InjectPump();
     draw_controls();
-    KryonInjectTap(30, 180);
-    KryonInjectPump();
+    InjectTap(30, 180);
+    InjectPump();
     draw_controls();
-    KryonInjectPump();
+    InjectPump();
     draw_controls();
-    KryonInjectTap(30, 247);
-    KryonInjectPump();
+    InjectTap(30, 247);
+    InjectPump();
     draw_controls();
-    KryonInjectPump();
+    InjectPump();
     draw_controls();
     draw_controls();
     if(slider_value != 70 || toggle_value != 1 || checkbox_value != 1 || selected != 1) {
@@ -783,10 +783,10 @@ int main(void)
     }
 
     draw_list_box();
-    KryonInjectTap(36, 78);
-    KryonInjectPump();
+    InjectTap(36, 78);
+    InjectPump();
     draw_list_box();
-    KryonInjectPump();
+    InjectPump();
     draw_list_box();
     if(list_selected != 2 || list_scroll != 0) {
         fprintf(stderr,
@@ -798,22 +798,22 @@ int main(void)
     draw_progress();
 
     draw_table_view();
-    KryonInjectTap(116, 62);
-    KryonInjectPump();
+    InjectTap(116, 62);
+    InjectPump();
     draw_table_view();
-    KryonInjectPump();
+    InjectPump();
     draw_table_view();
-    KryonInjectTap(116, 62);
-    KryonInjectPump();
+    InjectTap(116, 62);
+    InjectPump();
     draw_table_view();
-    KryonInjectPump();
+    InjectPump();
     draw_table_view();
     int table_activated_row = activated_row;
     int table_activated_column = activated_column;
-    KryonInjectTap(260, 30);
-    KryonInjectPump();
+    InjectTap(260, 30);
+    InjectPump();
     draw_table_view();
-    KryonInjectPump();
+    InjectPump();
     draw_table_view();
     if(selected_row != -1 || selected_column != 2 ||
        table_activated_row != 0 || table_activated_column != 1 ||

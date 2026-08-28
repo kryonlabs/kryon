@@ -52,6 +52,84 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 }
 
 static int
+ui_tab_bar_total_width(TabBarProps bar, int min_tab_w, int max_tab_w,
+                       int icon_tab_w, int tab_gap)
+{
+    int total = tab_gap * (bar.count - 1);
+
+    if(total < 0)
+        total = 0;
+    for(int i = 0; i < bar.count; i++)
+        total += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
+                                      icon_tab_w);
+    return total;
+}
+
+static Rectangle
+ui_tab_bar_rect_at(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
+                   int icon_tab_w, int tab_gap, int scroll, int equal_tabs)
+{
+    int bar_x = (int)bar.bounds.x;
+    int bar_y = (int)bar.bounds.y;
+    int bar_w = (int)bar.bounds.width;
+    int bar_h = (int)bar.bounds.height;
+    int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - scroll;
+    int tab_w = min_tab_w;
+
+    for(int i = 0; i <= index && i < bar.count; i++) {
+        tab_w = equal_tabs ? bar_w / bar.count :
+                ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
+                                     icon_tab_w);
+        if(equal_tabs && i == bar.count - 1)
+            tab_w = bar_x + bar_w - tab_x;
+        if(i == index)
+            return (Rectangle){(float)tab_x, (float)bar_y,
+                               (float)tab_w, (float)bar_h};
+        tab_x += tab_w + tab_gap;
+    }
+    return (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
+}
+
+static int
+ui_tab_bar_reorder_target(TabBarProps bar, int active_index, int min_tab_w,
+                          int max_tab_w, int icon_tab_w, int tab_gap,
+                          int scroll, int equal_tabs, int pointer_x)
+{
+    int target = 0;
+
+    if(active_index < 0 || active_index >= bar.count)
+        return -1;
+    for(int i = 0; i < bar.count; i++) {
+        Rectangle rect;
+        int center_x;
+
+        if(i == active_index)
+            continue;
+        rect = ui_tab_bar_rect_at(bar, i, min_tab_w, max_tab_w, icon_tab_w,
+                                  tab_gap, scroll, equal_tabs);
+        center_x = (int)(rect.x + rect.width / 2.0f);
+        if(pointer_x > center_x)
+            target++;
+    }
+    return ui_clampi(target, 0, bar.count - 1);
+}
+
+static void
+ui_draw_tab_shape(int x, int y, int w, int h, int selected, Color fill,
+                  Color border_light, Color border_dark)
+{
+    int top_y = selected ? y : y + ScaleUIPx(4);
+    int bottom_y = y + h - 2;
+
+    DrawRectangle(x, top_y, w, bottom_y - top_y + 1, fill);
+    DrawLine(x, top_y, x + w - 1, top_y, border_light);
+    DrawLine(x, top_y, x, bottom_y, border_light);
+    DrawLine(x + w - 1, top_y, x + w - 1, bottom_y, border_dark);
+    if(!selected)
+        DrawLine(x, bottom_y, x + w - 1, bottom_y, border_dark);
+}
+
+static int
 ui_pane_tab_bar_tab_width(PaneTabBar bar, int index, int min_tab_w,
                           int max_tab_w, int icon_tab_w)
 {
@@ -89,7 +167,7 @@ DrawUITabBar(TabBarProps bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ScaleUIPx(4);
+    int tab_gap = ui_material_style() ? ScaleUIPx(6) : 0;
     int default_min_tab_w = ui_material_style() ? ScaleUIPx(72) : ScaleUIPx(120);
     int default_max_tab_w = ui_material_style() ? ScaleUIPx(168) : default_min_tab_w;
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
@@ -101,6 +179,9 @@ DrawUITabBar(TabBarProps bar)
     static int is_dragging = 0;
     static int last_clicked_tab = -1;
     static double last_click_time = 0.0;
+    static Vector2 press_pos = {0};
+    static int press_index = -1;
+    static int drag_active = 0;
     int *scroll_offset = bar.scroll_offset != NULL ? bar.scroll_offset
                                                    : &default_scroll_offset;
 
@@ -108,6 +189,14 @@ DrawUITabBar(TabBarProps bar)
         *bar.closed_index = -1;
     if(bar.double_clicked_index != NULL)
         *bar.double_clicked_index = -1;
+    if(bar.reordered_from_index != NULL)
+        *bar.reordered_from_index = -1;
+    if(bar.reordered_to_index != NULL)
+        *bar.reordered_to_index = -1;
+    if(bar.selected_tab_bounds != NULL)
+        *bar.selected_tab_bounds = (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
+    if(bar.middle_clicked_index != NULL)
+        *bar.middle_clicked_index = -1;
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
@@ -118,6 +207,8 @@ DrawUITabBar(TabBarProps bar)
     else {
         DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
         DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
+        DrawLine(bar_x, bar_y + bar_h - 1, bar_x + bar_w,
+                 bar_y + bar_h - 1, c_link);
     }
 
     if(max_tab_w < min_tab_w)
@@ -125,16 +216,11 @@ DrawUITabBar(TabBarProps bar)
     if(icon_tab_w > max_tab_w)
         icon_tab_w = max_tab_w;
 
-    if(ui_material_style())
-        tab_gap = ScaleUIPx(6);
-
     // Calculate if scrolling is needed
-    int total_gap_w = tab_gap * (bar.count - 1);
-    int total_tabs_w = total_gap_w;
-    for(int i = 0; i < bar.count; i++)
-        total_tabs_w += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
+    int total_tabs_w = ui_tab_bar_total_width(bar, min_tab_w, max_tab_w,
+                                              icon_tab_w, tab_gap);
     int needs_scroll = total_tabs_w > bar_w;
-    int equal_tabs = 0;
+    int equal_tabs = !needs_scroll;
 
     // Set scroll offset
     if(*scroll_offset < 0)
@@ -144,6 +230,9 @@ DrawUITabBar(TabBarProps bar)
         max_scroll = 0;
     if(*scroll_offset > max_scroll)
         *scroll_offset = max_scroll;
+
+    if(equal_tabs)
+        *scroll_offset = 0;
 
     if(needs_scroll && bar.focus_selected &&
        bar.selected_index >= 0 && bar.selected_index < bar.count) {
@@ -168,6 +257,31 @@ DrawUITabBar(TabBarProps bar)
 
     // Material top tabs are distributed equally across the full app bar.
     int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
+    int reorder_enabled = bar.reordered_from_index != NULL &&
+                          bar.reordered_to_index != NULL;
+    int drag_target = -1;
+
+    if(reorder_enabled && press_index >= 0 && press_index < bar.count &&
+       IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        int dx = (int)(mouse_world.x - press_pos.x);
+        int dy = (int)(mouse_world.y - press_pos.y);
+        int abs_dx = dx < 0 ? -dx : dx;
+        int abs_dy = dy < 0 ? -dy : dy;
+        int threshold = ScaleUIPx(6);
+
+        if(!drag_active && abs_dx >= threshold && abs_dx >= abs_dy) {
+            drag_active = 1;
+            g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
+        }
+        if(drag_active) {
+            drag_target = ui_tab_bar_reorder_target(
+                bar, press_index, min_tab_w, max_tab_w, icon_tab_w, tab_gap,
+                *scroll_offset, equal_tabs, (int)mouse_world.x);
+            PushUIInputCapture((Rectangle){0.0f, 0.0f,
+                                           (float)ui_view_width,
+                                           (float)ui_view_height}, 0);
+        }
+    }
 
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
@@ -181,6 +295,9 @@ DrawUITabBar(TabBarProps bar)
         int is_hovered = is_active && UIHoverEffectsEnabled();
         int is_selected = i == bar.selected_index;
         int is_disabled = tab->disabled;
+
+        if(is_selected && bar.selected_tab_bounds != NULL)
+            *bar.selected_tab_bounds = tab_rect;
 
         Color tab_fill;
         if(ui_material_style()) {
@@ -210,50 +327,44 @@ DrawUITabBar(TabBarProps bar)
             }
         } else {
             if(is_disabled) {
-                tab_fill = DarkenUIColor(c_bg, 18);
-            } else if(is_selected) {
-                tab_fill = c_button;
-            } else if(is_hovered) {
-                tab_fill = DarkenUIColor(c_button_hover, cues ? 2 : 8);
-            } else {
                 tab_fill = DarkenUIColor(c_bg, 10);
+            } else if(is_selected) {
+                tab_fill = LightenUIColor(c_bg, 4);
+            } else if(is_hovered) {
+                tab_fill = LightenUIColor(c_bg, cues ? 6 : 4);
+            } else {
+                tab_fill = DarkenUIColor(c_bg, 4);
             }
-            DrawRectangleRounded(tab_rect, 0.15f, 4, tab_fill);
+            ui_draw_tab_shape(tab_x, bar_y, tab_w, bar_h, is_selected,
+                              tab_fill, LightenUIColor(tab_fill, 18),
+                              DarkenUIColor(tab_fill, 18));
         }
 
         if(!ui_material_style() && is_selected) {
-            // Strong bevel for selected tab (appears raised)
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
-                         LightenUIColor(tab_fill, 50),
-                         DarkenUIColor(tab_fill, 30));
-            if(cues && tab_w > ScaleUIPx(18)) {
-                int cue_h = ScaleUIPx(2);
-                if(cue_h < 1)
-                    cue_h = 1;
-                DrawRectangle(tab_x + ScaleUIPx(9), bar_y + bar_h - cue_h,
-                              tab_w - ScaleUIPx(18), cue_h,
-                              LightenUIColor(c_button_hover, 18));
-            }
+            DrawLine(tab_x, bar_y + bar_h - 1, tab_x + tab_w - 1,
+                     bar_y + bar_h - 1, c_link);
         } else if(!ui_material_style() && is_hovered && !is_disabled) {
-            // Enhanced bevel for hovered tab
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
-                         LightenUIColor(tab_fill, cues ? 42 : 30),
-                         DarkenUIColor(tab_fill, 20));
-            if(cues && tab_w > ScaleUIPx(8)) {
-                Color cue = LightenUIColor(tab_fill, 40);
-                cue.a = cue.a > 150 ? 150 : cue.a;
-                DrawRectangle(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(1),
-                              tab_w - ScaleUIPx(8), ScaleUIPx(1), cue);
-            }
+            (void)cues;
+            DrawLine(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(5),
+                     tab_x + tab_w - ScaleUIPx(5), bar_y + ScaleUIPx(5),
+                     LightenUIColor(tab_fill, 10));
         } else if(!ui_material_style() && !is_disabled) {
-            // Subtle bevel for normal tab
-            DrawUIBevel(tab_x, bar_y, tab_w, bar_h,
-                         LightenUIColor(tab_fill, 20),
-                         DarkenUIColor(tab_fill, 15));
+            DrawLine(tab_x + tab_w - 1, bar_y + ScaleUIPx(8),
+                     tab_x + tab_w - 1, bar_y + bar_h - ScaleUIPx(4),
+                     DarkenUIColor(c_bg, 14));
+        }
+
+        if(!ui_material_style() && drag_active && drag_target == i) {
+            int marker_x = tab_x;
+
+            if(drag_target > press_index)
+                marker_x = tab_x + tab_w;
+            DrawRectangle(marker_x - ScaleUIPx(1), bar_y + ScaleUIPx(4),
+                          ScaleUIPx(2), bar_h - ScaleUIPx(8), c_link);
         }
 
         // Draw tab text and icon
-        int text_pad = ScaleUIPx(8);
+        int text_pad = ui_material_style() ? ScaleUIPx(8) : ScaleUIPx(12);
         int icon_size = tab->icon_size > 0 ? tab->icon_size : ScaleUIPx(16);
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
@@ -365,14 +476,28 @@ DrawUITabBar(TabBarProps bar)
             else
                 MarkUIClickable();
 
-            if(close_active && released) {
+            if(!is_disabled && IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
+                clicked_tab = -1;
+                if(bar.middle_clicked_index != NULL)
+                    *bar.middle_clicked_index = i;
+            }
+
+            if(!is_disabled && !close_active &&
+               IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                press_index = i;
+                press_pos = mouse_world;
+                drag_active = 0;
+            }
+
+            if(close_active && released && !drag_active) {
                 clicked_tab = -1;
                 if(bar.closed_index != NULL)
                     *bar.closed_index = i;
                 last_clicked_tab = -1;
                 last_click_time = 0.0;
                 UIConsumeRelease();
-            } else if(!close_active && released) {
+            } else if(!close_active && released && !drag_active &&
+                      (press_index < 0 || press_index == i)) {
                 double now = GetTime();
 
                 if(bar.double_clicked_index != NULL && last_clicked_tab == i &&
@@ -387,7 +512,29 @@ DrawUITabBar(TabBarProps bar)
         tab_x += tab_w + tab_gap;
     }
 
-    if(needs_scroll) {
+    if(reorder_enabled && drag_active && released &&
+       press_index >= 0 && press_index < bar.count) {
+        int target = drag_target;
+
+        if(target < 0)
+            target = ui_tab_bar_reorder_target(
+                bar, press_index, min_tab_w, max_tab_w, icon_tab_w, tab_gap,
+                *scroll_offset, equal_tabs, (int)mouse_world.x);
+        if(target >= 0 && target < bar.count && target != press_index) {
+            *bar.reordered_from_index = press_index;
+            *bar.reordered_to_index = target;
+        }
+        clicked_tab = -1;
+        UIConsumeRelease();
+    }
+    if(released || !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        press_index = -1;
+        drag_active = 0;
+        if(g_ui_pointer_owner == UI_POINTER_OWNER_REORDER)
+            g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+    }
+
+    if(needs_scroll && !(reorder_enabled && drag_active)) {
         // Handle manual drag scrolling
         Vector2 current_pos = mouse_world;
         int is_mouse_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);

@@ -32,7 +32,7 @@ KryTTap(const char *selector)
 
     if(!KryTFind(selector, &node))
         return 0;
-    KryonInjectTap(node.bounds.x + node.bounds.width / 2.0f,
+    InjectTap(node.bounds.x + node.bounds.width / 2.0f,
                    node.bounds.y + node.bounds.height / 2.0f);
     return 1;
 }
@@ -43,7 +43,7 @@ KryTType(const char *text)
     kryt_copy(g_kryt_last_text, sizeof(g_kryt_last_text), text);
     if(text == NULL || text[0] == '\0')
         return 0;
-    KryonInjectText(text);
+    InjectText(text);
     return 1;
 }
 

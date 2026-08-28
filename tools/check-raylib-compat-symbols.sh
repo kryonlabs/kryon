@@ -42,7 +42,7 @@ for symbol in $symbols; do
         status=1
     fi
     defined=0
-    if grep -Eq "[[:space:]\*]($symbol|KryonBackendRaw_$symbol)\\(" "$wrapper_source"; then
+    if grep -Eq "[[:space:]\*]($symbol|BackendRaw_$symbol)\\(" "$wrapper_source"; then
         defined=1
     fi
     for frontend in $frontend_sources; do

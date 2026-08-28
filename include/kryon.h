@@ -2,7 +2,7 @@
 #define KRYON_H
 
 #include "kryon_version.h"
-/* Kryons owned raylib-style graphics/input surface. The concrete backend is
+/* Owned raylib-style graphics/input surface. The concrete backend is
  * selected at link time via KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
 #include "kryon_frame.h"
@@ -83,7 +83,7 @@
  * layout or a public function changes signature; KryonAbiVersion() is
  * compiled into libkryon.a, while the macro is read from the current
  * headers — a mismatch means the archive is stale and must be rebuilt. */
-#define KRYON_ABI_VERSION 1
+#define KRYON_ABI_VERSION 4
 int KryonAbiVersion(void);
 
 #endif /* KRYON_H */

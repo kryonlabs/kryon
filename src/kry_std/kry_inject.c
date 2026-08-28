@@ -24,7 +24,7 @@ typedef struct {
     int key;
     int down;
     int delay;
-} KryInjectKeyEvent;
+} InjectKeyEvent;
 
 static int g_inject_have_mouse;
 static int g_inject_pos_frames;   /* pumps the position was requested for */
@@ -48,6 +48,13 @@ static unsigned char g_inject_key_prev[KRY_INJECT_KEY_MAX];
 static unsigned char g_inject_key_pressed[KRY_INJECT_KEY_MAX];
 static unsigned char g_inject_key_released[KRY_INJECT_KEY_MAX];
 
+static int g_inject_layout_codes[KRY_INJECT_CHAR_QUEUE];
+static unsigned char g_inject_layout_down[KRY_INJECT_CHAR_QUEUE];
+static unsigned char g_inject_layout_prev[KRY_INJECT_CHAR_QUEUE];
+static unsigned char g_inject_layout_pressed[KRY_INJECT_CHAR_QUEUE];
+static unsigned char g_inject_layout_released[KRY_INJECT_CHAR_QUEUE];
+static int g_inject_layout_count;
+
 static int g_inject_chars[KRY_INJECT_CHAR_QUEUE];
 static int g_inject_char_count;
 static int g_inject_key_queue[KRY_INJECT_CHAR_QUEUE];
@@ -55,8 +62,18 @@ static int g_inject_key_queue_count;
 
 static KryInjectMouseEvent g_inject_mouse_events[16];
 static int g_inject_mouse_event_count;
-static KryInjectKeyEvent g_inject_key_events[16];
+static InjectKeyEvent g_inject_key_events[16];
 static int g_inject_key_event_count;
+static InjectKeyEvent g_inject_layout_events[16];
+static int g_inject_layout_event_count;
+
+static int
+inject_layout_codepoint(int codepoint)
+{
+    if(codepoint >= 'A' && codepoint <= 'Z')
+        return codepoint - 'A' + 'a';
+    return codepoint;
+}
 
 static void
 kry_inject_queue_mouse_event(int button, int down, int delay)
@@ -82,8 +99,53 @@ kry_inject_queue_key_event(int key, int down, int delay)
     g_inject_key_event_count++;
 }
 
+static void
+inject_queue_layout_event(int codepoint, int down, int delay)
+{
+    if(g_inject_layout_event_count >=
+       (int)(sizeof(g_inject_layout_events) /
+             sizeof(g_inject_layout_events[0])))
+        return;
+    g_inject_layout_events[g_inject_layout_event_count].key = codepoint;
+    g_inject_layout_events[g_inject_layout_event_count].down = down;
+    g_inject_layout_events[g_inject_layout_event_count].delay = delay;
+    g_inject_layout_event_count++;
+}
+
+static int
+inject_layout_index(int codepoint)
+{
+    int normalized = inject_layout_codepoint(codepoint);
+
+    for(int i = 0; i < g_inject_layout_count; i++) {
+        if(g_inject_layout_codes[i] == normalized)
+            return i;
+    }
+    return -1;
+}
+
+static int
+inject_layout_slot(int codepoint)
+{
+    int index;
+
+    codepoint = inject_layout_codepoint(codepoint);
+    index = inject_layout_index(codepoint);
+    if(index >= 0)
+        return index;
+    if(codepoint <= 0 || g_inject_layout_count >= KRY_INJECT_CHAR_QUEUE)
+        return -1;
+    index = g_inject_layout_count++;
+    g_inject_layout_codes[index] = codepoint;
+    g_inject_layout_down[index] = 0;
+    g_inject_layout_prev[index] = 0;
+    g_inject_layout_pressed[index] = 0;
+    g_inject_layout_released[index] = 0;
+    return index;
+}
+
 void
-KryonInjectMousePosition(float x, float y)
+InjectMousePosition(float x, float y)
 {
     g_inject_have_mouse = 1;
     if(g_inject_pos_frames < 1)
@@ -93,7 +155,7 @@ KryonInjectMousePosition(float x, float y)
 }
 
 void
-KryonInjectMouseButton(int button, int down)
+InjectMouseButton(int button, int down)
 {
     if(button < 0 || button >= KRY_INJECT_MAX_BUTTONS)
         return;
@@ -102,7 +164,7 @@ KryonInjectMouseButton(int button, int down)
 }
 
 void
-KryonInjectKey(int key, int down)
+InjectKey(int key, int down)
 {
     if(key <= 0 || key >= KRY_INJECT_KEY_MAX)
         return;
@@ -113,14 +175,31 @@ KryonInjectKey(int key, int down)
 }
 
 void
-KryonInjectKeyTap(int key)
+InjectKeyTap(int key)
 {
-    KryonInjectKey(key, 1);
+    InjectKey(key, 1);
     kry_inject_queue_key_event(key, 0, 1);   /* release next pump */
 }
 
 void
-KryonInjectText(const char *text)
+InjectLayoutKey(int codepoint, int down)
+{
+    int index = inject_layout_slot(codepoint);
+
+    if(index < 0)
+        return;
+    g_inject_layout_down[index] = down != 0;
+}
+
+void
+InjectLayoutKeyTap(int codepoint)
+{
+    InjectLayoutKey(codepoint, 1);
+    inject_queue_layout_event(codepoint, 0, 1);
+}
+
+void
+InjectText(const char *text)
 {
     const unsigned char *p = (const unsigned char *)text;
 
@@ -161,23 +240,23 @@ KryonInjectText(const char *text)
 }
 
 void
-KryonInjectWheel(float move)
+InjectWheel(float move)
 {
     g_inject_have_mouse = 1;
     g_inject_wheel += move;
 }
 
 void
-KryonInjectTap(float x, float y)
+InjectTap(float x, float y)
 {
-    KryonInjectMousePosition(x, y);
+    InjectMousePosition(x, y);
     g_inject_pos_frames = 2;   /* press frame + release frame */
-    KryonInjectMouseButton(0, 1);
+    InjectMouseButton(0, 1);
     kry_inject_queue_mouse_event(0, 0, 1);   /* release next pump */
 }
 
 void
-KryonInjectPump(void)
+InjectPump(void)
 {
     int i;
 
@@ -188,7 +267,7 @@ KryonInjectPump(void)
             i++;
             continue;
         }
-        KryonInjectMouseButton(g_inject_mouse_events[i].button,
+        InjectMouseButton(g_inject_mouse_events[i].button,
                                g_inject_mouse_events[i].down);
         g_inject_mouse_event_count--;
         memmove(&g_inject_mouse_events[i],
@@ -202,13 +281,27 @@ KryonInjectPump(void)
             i++;
             continue;
         }
-        KryonInjectKey(g_inject_key_events[i].key,
+        InjectKey(g_inject_key_events[i].key,
                        g_inject_key_events[i].down);
         g_inject_key_event_count--;
         memmove(&g_inject_key_events[i],
                 &g_inject_key_events[i + 1],
                 (size_t)(g_inject_key_event_count - i) *
                     sizeof(g_inject_key_events[0]));
+    }
+    for(i = 0; i < g_inject_layout_event_count; ) {
+        if(g_inject_layout_events[i].delay > 0) {
+            g_inject_layout_events[i].delay--;
+            i++;
+            continue;
+        }
+        InjectLayoutKey(g_inject_layout_events[i].key,
+                        g_inject_layout_events[i].down);
+        g_inject_layout_event_count--;
+        memmove(&g_inject_layout_events[i],
+                &g_inject_layout_events[i + 1],
+                (size_t)(g_inject_layout_event_count - i) *
+                    sizeof(g_inject_layout_events[0]));
     }
     /* derive this frame's edges from down-state changes */
     for(i = 0; i < KRY_INJECT_MAX_BUTTONS; i++) {
@@ -223,6 +316,13 @@ KryonInjectPump(void)
         g_inject_key_released[i] =
             !g_inject_key_down[i] && g_inject_key_prev[i];
         g_inject_key_prev[i] = g_inject_key_down[i];
+    }
+    for(i = 0; i < g_inject_layout_count; i++) {
+        g_inject_layout_pressed[i] =
+            g_inject_layout_down[i] && !g_inject_layout_prev[i];
+        g_inject_layout_released[i] =
+            !g_inject_layout_down[i] && g_inject_layout_prev[i];
+        g_inject_layout_prev[i] = g_inject_layout_down[i];
     }
     g_inject_delta_x = g_inject_mouse_x - g_inject_prev_x;
     g_inject_delta_y = g_inject_mouse_y - g_inject_prev_y;
@@ -240,43 +340,43 @@ KryonInjectPump(void)
 }
 
 int
-KryonInjectMouseActive(void)
+InjectMouseActive(void)
 {
     return g_inject_have_mouse && g_inject_pos_serving;
 }
 
 float
-KryonInjectMouseX(void)
+InjectMouseX(void)
 {
     return g_inject_mouse_x;
 }
 
 float
-KryonInjectMouseY(void)
+InjectMouseY(void)
 {
     return g_inject_mouse_y;
 }
 
 float
-KryonInjectMouseDeltaX(void)
+InjectMouseDeltaX(void)
 {
     return g_inject_delta_x;
 }
 
 float
-KryonInjectMouseDeltaY(void)
+InjectMouseDeltaY(void)
 {
     return g_inject_delta_y;
 }
 
 float
-KryonInjectWheelValue(void)
+InjectWheelValue(void)
 {
     return g_inject_wheel_frame;
 }
 
 int
-KryonInjectMousePressed(int button)
+InjectMousePressed(int button)
 {
     if(button < 0 || button >= KRY_INJECT_MAX_BUTTONS)
         return 0;
@@ -284,7 +384,7 @@ KryonInjectMousePressed(int button)
 }
 
 int
-KryonInjectMouseReleased(int button)
+InjectMouseReleased(int button)
 {
     if(button < 0 || button >= KRY_INJECT_MAX_BUTTONS)
         return 0;
@@ -292,7 +392,7 @@ KryonInjectMouseReleased(int button)
 }
 
 int
-KryonInjectMouseButtonDown(int button)
+InjectMouseButtonDown(int button)
 {
     if(button < 0 || button >= KRY_INJECT_MAX_BUTTONS)
         return 0;
@@ -300,13 +400,13 @@ KryonInjectMouseButtonDown(int button)
 }
 
 int
-KryonInjectMouseButtonUp(int button)
+InjectMouseButtonUp(int button)
 {
-    return !KryonInjectMouseButtonDown(button);
+    return !InjectMouseButtonDown(button);
 }
 
 int
-KryonInjectKeyPressed(int key)
+InjectKeyPressed(int key)
 {
     if(key <= 0 || key >= KRY_INJECT_KEY_MAX)
         return 0;
@@ -314,7 +414,7 @@ KryonInjectKeyPressed(int key)
 }
 
 int
-KryonInjectKeyReleased(int key)
+InjectKeyReleased(int key)
 {
     if(key <= 0 || key >= KRY_INJECT_KEY_MAX)
         return 0;
@@ -322,7 +422,7 @@ KryonInjectKeyReleased(int key)
 }
 
 int
-KryonInjectKeyDown(int key)
+InjectKeyDown(int key)
 {
     if(key <= 0 || key >= KRY_INJECT_KEY_MAX)
         return 0;
@@ -330,7 +430,37 @@ KryonInjectKeyDown(int key)
 }
 
 int
-KryonInjectCharPressed(void)
+InjectLayoutKeyPressed(int codepoint)
+{
+    int index = inject_layout_index(codepoint);
+
+    if(index < 0)
+        return 0;
+    return g_inject_layout_pressed[index];
+}
+
+int
+InjectLayoutKeyReleased(int codepoint)
+{
+    int index = inject_layout_index(codepoint);
+
+    if(index < 0)
+        return 0;
+    return g_inject_layout_released[index];
+}
+
+int
+InjectLayoutKeyDown(int codepoint)
+{
+    int index = inject_layout_index(codepoint);
+
+    if(index < 0)
+        return 0;
+    return g_inject_layout_down[index];
+}
+
+int
+InjectCharPressed(void)
 {
     int i;
 
@@ -347,7 +477,7 @@ KryonInjectCharPressed(void)
 }
 
 int
-KryonInjectKeyPressedCode(void)
+InjectKeyPressedCode(void)
 {
     int i;
 
@@ -364,7 +494,7 @@ KryonInjectKeyPressedCode(void)
 }
 
 void
-KryonInjectReset(void)
+InjectReset(void)
 {
     g_inject_have_mouse = 0;
     g_inject_pos_frames = 0;
@@ -385,8 +515,15 @@ KryonInjectReset(void)
     memset(g_inject_key_prev, 0, sizeof(g_inject_key_prev));
     memset(g_inject_key_pressed, 0, sizeof(g_inject_key_pressed));
     memset(g_inject_key_released, 0, sizeof(g_inject_key_released));
+    memset(g_inject_layout_codes, 0, sizeof(g_inject_layout_codes));
+    memset(g_inject_layout_down, 0, sizeof(g_inject_layout_down));
+    memset(g_inject_layout_prev, 0, sizeof(g_inject_layout_prev));
+    memset(g_inject_layout_pressed, 0, sizeof(g_inject_layout_pressed));
+    memset(g_inject_layout_released, 0, sizeof(g_inject_layout_released));
+    g_inject_layout_count = 0;
     g_inject_char_count = 0;
     g_inject_key_queue_count = 0;
     g_inject_mouse_event_count = 0;
     g_inject_key_event_count = 0;
+    g_inject_layout_event_count = 0;
 }

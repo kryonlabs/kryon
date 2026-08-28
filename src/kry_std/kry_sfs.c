@@ -356,11 +356,11 @@ KrySfsRead(const char *path, char *buf, size_t size)
     if(n >= 2 && strcmp(seg[0], "input") == 0) {
         if(strcmp(seg[1], "mouse") == 0 && n == 3) {
             if(strcmp(seg[2], "x") == 0) {
-                snprintf(buf, size, "%d\n", (int)KryonInjectMouseX());
+                snprintf(buf, size, "%d\n", (int)InjectMouseX());
                 return (int)strlen(buf);
             }
             if(strcmp(seg[2], "y") == 0) {
-                snprintf(buf, size, "%d\n", (int)KryonInjectMouseY());
+                snprintf(buf, size, "%d\n", (int)InjectMouseY());
                 return (int)strlen(buf);
             }
         }
@@ -372,7 +372,7 @@ KrySfsRead(const char *path, char *buf, size_t size)
             if(end != NULL && *end == '\0' && button >= 0 &&
                button < KRY_INJECT_MAX_BUTTONS) {
                 snprintf(buf, size, "%s\n",
-                         KryonInjectMouseButtonDown((int)button) ? "down"
+                         InjectMouseButtonDown((int)button) ? "down"
                                                                  : "up");
                 return (int)strlen(buf);
             }
@@ -382,12 +382,12 @@ KrySfsRead(const char *path, char *buf, size_t size)
 
             if(key > 0) {
                 snprintf(buf, size, "%s\n",
-                         KryonInjectKeyDown(key) ? "down" : "up");
+                         InjectKeyDown(key) ? "down" : "up");
                 return (int)strlen(buf);
             }
         }
         if(strcmp(seg[1], "wheel") == 0 && n == 2) {
-            snprintf(buf, size, "%f\n", KryonInjectWheelValue());
+            snprintf(buf, size, "%f\n", InjectWheelValue());
             return (int)strlen(buf);
         }
         return KRY_SFS_ENOENT;
@@ -465,9 +465,9 @@ KrySfsWrite(const char *path, const char *value)
         if(end == NULL || *end != '\0')
             return KRY_SFS_EINVAL;
         if(strcmp(seg[2], "x") == 0)
-            KryonInjectMousePosition((float)v, KryonInjectMouseY());
+            InjectMousePosition((float)v, InjectMouseY());
         else
-            KryonInjectMousePosition(KryonInjectMouseX(), (float)v);
+            InjectMousePosition(InjectMouseX(), (float)v);
         return 1;
     }
     if(n == 4 && strcmp(seg[0], "input") == 0 &&
@@ -479,11 +479,11 @@ KrySfsWrite(const char *path, const char *value)
            button >= KRY_INJECT_MAX_BUTTONS)
             return KRY_SFS_ENOENT;
         if(is_down || is_press)
-            KryonInjectMouseButton((int)button, 1);
+            InjectMouseButton((int)button, 1);
         else if(is_up || is_release)
-            KryonInjectMouseButton((int)button, 0);
+            InjectMouseButton((int)button, 0);
         else if(is_tap)
-            KryonInjectTap(KryonInjectMouseX(), KryonInjectMouseY());
+            InjectTap(InjectMouseX(), InjectMouseY());
         else
             return KRY_SFS_EINVAL;
         return 1;
@@ -495,18 +495,18 @@ KrySfsWrite(const char *path, const char *value)
         if(key <= 0)
             return KRY_SFS_ENOENT;
         if(is_down)
-            KryonInjectKey(key, 1);
+            InjectKey(key, 1);
         else if(is_up)
-            KryonInjectKey(key, 0);
+            InjectKey(key, 0);
         else if(is_tap || is_press)
-            KryonInjectKeyTap(key);
+            InjectKeyTap(key);
         else
             return KRY_SFS_EINVAL;
         return 1;
     }
     if(n == 2 && strcmp(seg[0], "input") == 0 &&
        strcmp(seg[1], "text") == 0) {
-        KryonInjectText(value);
+        InjectText(value);
         return 1;
     }
     if(n == 2 && strcmp(seg[0], "input") == 0 &&
@@ -516,7 +516,7 @@ KrySfsWrite(const char *path, const char *value)
 
         if(end == NULL || *end != '\0')
             return KRY_SFS_EINVAL;
-        KryonInjectWheel((float)v);
+        InjectWheel((float)v);
         return 1;
     }
     if(n == 3 && strcmp(seg[0], "widgets") == 0 &&
@@ -527,7 +527,7 @@ KrySfsWrite(const char *path, const char *value)
 
         if(!kry_sfs_widget_at(seg[1], &node))
             return KRY_SFS_ENOENT;
-        KryonInjectTap(node.bounds.x + node.bounds.width / 2.0f,
+        InjectTap(node.bounds.x + node.bounds.width / 2.0f,
                        node.bounds.y + node.bounds.height / 2.0f);
         return 1;
     }

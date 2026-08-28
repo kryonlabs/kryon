@@ -15,10 +15,10 @@
  * baseline; kryon may evolve this surface independently over time.
  */
 
-#include <stdbool.h>
+#ifndef KEY_PLATFORM_CALLBACKS_DEFINED
+#define KEY_PLATFORM_CALLBACKS_DEFINED
 
-#ifndef KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
-#define KRYON_KEY_PLATFORM_CALLBACKS_DEFINED
+#include <stdbool.h>
 
 typedef void (*KeyInputPlatformCallback)(void);
 typedef int (*KeyPlatformCallback)(int key);
@@ -29,6 +29,11 @@ void SetKeyPlatformCallbacks(KeyInputPlatformCallback update,
                              KeyPlatformCallback key_pressed,
                              KeyPlatformCallback key_down);
 void UpdateKeyPlatformState(void);
+int GetLayoutKeyCodepoint(int key);
+bool IsLayoutKeyPressed(int codepoint);
+bool IsLayoutKeyPressedRepeat(int codepoint);
+bool IsLayoutKeyDown(int codepoint);
+bool IsLayoutKeyReleased(int codepoint);
 
 #endif
 

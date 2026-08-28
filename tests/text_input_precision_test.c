@@ -70,7 +70,7 @@ static void drain_events(void) { UIEvent event; while(NextUIEvent(&event)) {} }
 static void reset_fields(int long_text)
 {
     static const char *short_seeds[] = { "user@host", "notes", "search", "abc" };
-    KryonInjectReset();
+    InjectReset();
     screen_key++;
     for(int i = 0; i < FIELD_COUNT; ++i) {
         if(long_text) {
@@ -101,9 +101,9 @@ static int focus_random_field(int *index_out)
         index = (int)(rng() % FIELD_COUNT);
     /* A real app drains its event queue every frame; drop anything left
      * over from the previous keystroke so the tap is the only event. */
-    KryonInjectReset();
-    KryonInjectTap(20.0f + 40.0f, fields[index].y + FIELD_H / 2.0f);
-    KryonInjectPump();
+    InjectReset();
+    InjectTap(20.0f + 40.0f, fields[index].y + FIELD_H / 2.0f);
+    InjectPump();
     frame();
     drain_events();
     if(!fields[index].focused)
@@ -175,8 +175,8 @@ static int run_typing(const char *name, int long_text, double char_budget_p99_us
             memcpy(expected, fields[index].text, before_len + 1);
             expected[before_len - 1] = '\0';
             start = now_us();
-            KryonInjectKeyTap(KEY_BACKSPACE);
-            KryonInjectPump();
+            InjectKeyTap(KEY_BACKSPACE);
+            InjectPump();
             frame();
             elapsed = now_us() - start;
             run.backspaces++;
@@ -190,8 +190,8 @@ static int run_typing(const char *name, int long_text, double char_budget_p99_us
             expected[before_len] = ch;
             expected[before_len + 1] = '\0';
             start = now_us();
-            KryonInjectText((char[]){ch, '\0'});
-            KryonInjectPump();
+            InjectText((char[]){ch, '\0'});
+            InjectPump();
             frame();
             elapsed = now_us() - start;
             run.chars_typed++;

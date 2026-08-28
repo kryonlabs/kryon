@@ -36,16 +36,16 @@ test_menu_bar_switches_while_popup_captures_input(void)
     int edit_x;
     MenuBarResult result;
 
-    KryonInjectReset();
+    InjectReset();
     BeginUIFrame(640, 480, 1.0f);
     font = GetUIFontSize();
     edit_x = ScaleUIPx(4) + TextWidth("File", font) + ScaleUIPx(24) +
              ScaleUIPx(2) + ScaleUIPx(8);
     EndUIFrame();
 
-    KryonInjectTap((float)edit_x, 14.0f);
-    KryonInjectPump();
-    KryonInjectPump();
+    InjectTap((float)edit_x, 14.0f);
+    InjectPump();
+    InjectPump();
 
     BeginUIFrame(640, 480, 1.0f);
     PushUIInputCapture((Rectangle){0, 28, 180, 64}, 1);
@@ -64,10 +64,10 @@ test_circle_click_uses_ui_release_path(void)
     int clicked = 0;
     int second_clicked = 0;
 
-    KryonInjectReset();
-    KryonInjectTap(100.0f, 100.0f);
-    KryonInjectPump();
-    KryonInjectPump();
+    InjectReset();
+    InjectTap(100.0f, 100.0f);
+    InjectPump();
+    InjectPump();
 
     BeginUIFrame(640, 480, 1.0f);
     clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, &hover);
@@ -79,10 +79,10 @@ test_circle_click_uses_ui_release_path(void)
     check_int("circle click hover", hover, UIHoverEffectsEnabled() ? 1 : 0);
     check_int("circle click consumes release", second_clicked, 0);
 
-    KryonInjectReset();
-    KryonInjectTap(160.0f, 100.0f);
-    KryonInjectPump();
-    KryonInjectPump();
+    InjectReset();
+    InjectTap(160.0f, 100.0f);
+    InjectPump();
+    InjectPump();
 
     BeginUIFrame(640, 480, 1.0f);
     clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, NULL);

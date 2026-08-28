@@ -726,7 +726,8 @@ PumpTerminalPaneKeyboardInputFiltered(TerminalPaneInput input,
             i++) {
             int control_key = terminal_pane_control_keys[i].key;
             int down =
-                terminal_pane_input_key_down_or_queued(control_key, queued);
+                terminal_pane_input_key_down_or_queued(control_key, queued) ||
+                IsLayoutKeyDown((int)terminal_pane_control_keys[i].codepoint);
 
             if(down && !input.state->last_control_keys[control_key]) {
                 if(SendTerminalPaneControlInput(input, control_key, mods))

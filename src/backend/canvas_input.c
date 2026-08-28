@@ -3,7 +3,7 @@
  *
  * Part of the Tier A HTML5 Canvas2D backend; see canvas_internal.h.
  * kry_input.h routes the kryon input layer through these
- * KryonBackendRaw_* hooks; js_input_query both reads and (for the
+ * BackendRaw_* hooks; js_input_query both reads and (for the
  * clear-opcodes) resets the one-frame edges.
  */
 
@@ -42,84 +42,84 @@ EM_JS(int, js_input_query, (int which, int code), {
     return 0;
 });
 
-bool KryonBackendRaw_IsKeyPressed(int key)
+bool BackendRaw_IsKeyPressed(int key)
 {
     return js_input_query(1, key) != 0;
 }
 
-bool KryonBackendRaw_IsKeyPressedRepeat(int key)
+bool BackendRaw_IsKeyPressedRepeat(int key)
 {
-    return KryonBackendRaw_IsKeyPressed(key);
+    return BackendRaw_IsKeyPressed(key);
 }
 
-bool KryonBackendRaw_IsKeyDown(int key)
+bool BackendRaw_IsKeyDown(int key)
 {
     return js_input_query(0, key) != 0;
 }
 
-bool KryonBackendRaw_IsKeyReleased(int key)
+bool BackendRaw_IsKeyReleased(int key)
 {
     return js_input_query(2, key) != 0;
 }
 
-int KryonBackendRaw_GetKeyPressed(void)
+int BackendRaw_GetKeyPressed(void)
 {
     return js_input_query(3, 0);
 }
 
-int KryonBackendRaw_GetCharPressed(void)
+int BackendRaw_GetCharPressed(void)
 {
     return js_input_query(4, 0);
 }
 
-bool KryonBackendRaw_IsMouseButtonPressed(int button)
+bool BackendRaw_IsMouseButtonPressed(int button)
 {
     return js_input_query(6, button) != 0;
 }
 
-bool KryonBackendRaw_IsMouseButtonDown(int button)
+bool BackendRaw_IsMouseButtonDown(int button)
 {
     return js_input_query(5, button) != 0;
 }
 
-bool KryonBackendRaw_IsMouseButtonReleased(int button)
+bool BackendRaw_IsMouseButtonReleased(int button)
 {
     return js_input_query(7, button) != 0;
 }
 
-bool KryonBackendRaw_IsMouseButtonUp(int button)
+bool BackendRaw_IsMouseButtonUp(int button)
 {
     return js_input_query(5, button) == 0;
 }
 
-int KryonBackendRaw_GetMouseX(void)
+int BackendRaw_GetMouseX(void)
 {
     return js_input_query(8, 0);
 }
 
-int KryonBackendRaw_GetMouseY(void)
+int BackendRaw_GetMouseY(void)
 {
     return js_input_query(9, 0);
 }
 
-Vector2 KryonBackendRaw_GetMousePosition(void)
+Vector2 BackendRaw_GetMousePosition(void)
 {
     return (Vector2){(float)js_input_query(8, 0),
                      (float)js_input_query(9, 0)};
 }
 
-Vector2 KryonBackendRaw_GetMouseDelta(void)
+Vector2 BackendRaw_GetMouseDelta(void)
 {
     return (Vector2){(float)js_input_query(10, 0),
                      (float)js_input_query(11, 0)};
 }
 
-float KryonBackendRaw_GetMouseWheelMove(void)
+float BackendRaw_GetMouseWheelMove(void)
 {
     return (float)js_input_query(12, 0);
 }
 
-Vector2 KryonBackendRaw_GetMouseWheelMoveV(void)
+Vector2 BackendRaw_GetMouseWheelMoveV(void)
 {
     return (Vector2){0.0f, (float)js_input_query(12, 0)};
 }

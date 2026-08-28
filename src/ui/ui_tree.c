@@ -1944,6 +1944,13 @@ PromptDialog(PromptDialogProps dialog)
 }
 
 int
+TextPopover(TextPopoverProps popover)
+{
+    ui_tree_add(popover.id, UI_WIDGET_CUSTOM_NODE, popover.anchor, &popover);
+    return DrawUITextPopover(popover);
+}
+
+int
 PickerDialog(PickerDialogProps picker)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &picker);

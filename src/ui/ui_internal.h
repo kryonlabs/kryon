@@ -219,6 +219,7 @@ int DrawUICollapsible(CollapsibleProps section);
 int DrawUIMessageDialog(MessageDialogProps dialog);
 int DrawUIConfirmDialog(ConfirmDialogProps dialog);
 int DrawUIPromptDialog(PromptDialogProps dialog);
+int DrawUITextPopover(TextPopoverProps popover);
 int DrawUIPickerDialog(PickerDialogProps picker);
 int DrawUIColorPicker(Rectangle bounds, Color *color);
 void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);

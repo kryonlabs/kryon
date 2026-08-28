@@ -92,29 +92,29 @@ test_input_mouse(void)
 
     /* button edges follow raylib semantics: derived at each pump */
     KrySfsWrite("/input/mouse/button/0", "down");
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsMouseButtonDown(MOUSE_BUTTON_LEFT));
     CHECK(IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
     check_str("button down", "/input/mouse/button/0", "down");
-    KryonInjectPump();
+    InjectPump();
     CHECK(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT));   /* edge expired */
     CHECK(IsMouseButtonDown(MOUSE_BUTTON_LEFT));
 
     KrySfsWrite("/input/mouse/button/0", "up");
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
     CHECK(!IsMouseButtonDown(MOUSE_BUTTON_LEFT));
     check_str("button up", "/input/mouse/button/0", "up");
 
     /* position writes reach the app-level mouse query */
-    KryonInjectMousePosition(150, 200);
-    KryonInjectPump();
+    InjectMousePosition(150, 200);
+    InjectPump();
     CHECK((int)GetMousePosition().x == 150);
     CHECK((int)GetMousePosition().y == 200);
 
     /* after the hold lapses, injected position stops overriding */
-    KryonInjectPump();
-    CHECK(KryonInjectMouseActive() == 0);
+    InjectPump();
+    CHECK(InjectMouseActive() == 0);
 
     rc = KrySfsWrite("/input/mouse/button/9", "down");
     CHECK(rc == KRY_SFS_ENOENT);
@@ -126,29 +126,29 @@ static void
 test_input_keys_and_text(void)
 {
     KrySfsWrite("/input/keys/KEY_A", "down");
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsKeyPressed(KEY_A));
     CHECK(IsKeyDown(KEY_A));
     check_str("key down", "/input/keys/KEY_A", "down");
-    KryonInjectPump();
+    InjectPump();
     CHECK(!IsKeyPressed(KEY_A));
     CHECK(IsKeyDown(KEY_A));
     KrySfsWrite("/input/keys/KEY_A", "up");
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsKeyReleased(KEY_A));
 
     CHECK(KrySfsWrite("/input/keys/KEY_NOPE", "down") == KRY_SFS_ENOENT);
 
     KrySfsWrite("/input/text", "hi");
-    KryonInjectPump();
+    InjectPump();
     CHECK(GetCharPressed() == 'h');
     CHECK(GetCharPressed() == 'i');
     CHECK(GetCharPressed() == 0);
 
     KrySfsWrite("/input/wheel", "2.5");
-    KryonInjectPump();
+    InjectPump();
     CHECK(GetMouseWheelMove() > 2.0f && GetMouseWheelMove() < 3.0f);
-    KryonInjectPump();
+    InjectPump();
     CHECK(GetMouseWheelMove() == 0.0f);
 }
 
@@ -182,9 +182,9 @@ test_widgets(void)
      * the second pump, which is when UIHandleClick fires */
     snprintf(buf, sizeof(buf), "/widgets/%d/tap", n - 1);
     CHECK(KrySfsWrite(buf, "1") == 1);
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
-    KryonInjectPump();
+    InjectPump();
     CHECK(UIHandleClick((Rectangle){100, 50, 80, 24}, 0, NULL));
     CHECK((int)GetMousePosition().x == 140);
     CHECK((int)GetMousePosition().y == 62);
@@ -195,7 +195,7 @@ test_kryt_helpers(void)
 {
     UIWidget widget;
 
-    KryonInjectReset();
+    InjectReset();
     KrySfsIsDir("/");
     BeginUIFrame(800, 600, 1.0f);
     BeginUIInspectFrame(NULL);
@@ -206,29 +206,29 @@ test_kryt_helpers(void)
     EndUIInspectFrame();
 
     CHECK(KryTTap("sfs-test:save"));
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
-    KryonInjectPump();
+    InjectPump();
     CHECK(UIHandleClick((Rectangle){0, 0, 40, 20}, 0, NULL));
     CHECK(KryTKey("ENTER"));
-    KryonInjectPump();
+    InjectPump();
     CHECK(IsKeyPressed(KEY_ENTER));
     CHECK(KryTType("abc"));
-    KryonInjectPump();
+    InjectPump();
     CHECK(GetCharPressed() == 'a');
 }
 
 int
 main(void)
 {
-    KryonInjectReset();
+    InjectReset();
     test_root_and_info();
     test_theme();
     test_input_mouse();
     test_input_keys_and_text();
-    KryonInjectReset();
+    InjectReset();
     test_widgets();
-    KryonInjectReset();
+    InjectReset();
     test_kryt_helpers();
     if(failures == 0)
         printf("sfs tests passed\n");

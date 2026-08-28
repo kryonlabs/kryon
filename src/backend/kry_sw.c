@@ -316,6 +316,57 @@ sw_mark_dirty(KrySw *sw, int x, int y, int w, int h)
     }
 }
 
+void
+KrySwMarkDirty(KrySw *sw, int x, int y, int w, int h)
+{
+    sw_mark_dirty(sw, x, y, w, h);
+}
+
+static void
+fill_opaque_row(unsigned char *p, int w, unsigned char r, unsigned char g,
+                unsigned char b, unsigned char a)
+{
+    size_t filled;
+    size_t total;
+
+    if(p == NULL || w <= 0)
+        return;
+    p[0] = r;
+    p[1] = g;
+    p[2] = b;
+    p[3] = a;
+    filled = 4;
+    total = (size_t)w * 4;
+    while(filled < total) {
+        size_t n = filled < total - filled ? filled : total - filled;
+
+        memcpy(p + filled, p, n);
+        filled += n;
+    }
+}
+
+static void
+blend_pixel(unsigned char *p, unsigned char r, unsigned char g,
+            unsigned char b, unsigned char a)
+{
+    unsigned inv;
+
+    if(a == 0)
+        return;
+    if(a == 255) {
+        p[0] = r;
+        p[1] = g;
+        p[2] = b;
+        p[3] = a;
+        return;
+    }
+    inv = 255u - a;
+    p[0] = (unsigned char)(((unsigned)r * a + p[0] * inv) / 255u);
+    p[1] = (unsigned char)(((unsigned)g * a + p[1] * inv) / 255u);
+    p[2] = (unsigned char)(((unsigned)b * a + p[2] * inv) / 255u);
+    p[3] = (unsigned char)(a + p[3] * inv / 255u);
+}
+
 static void
 fill_rect(KrySw *sw, int x, int y, int w, int h, unsigned color)
 {
@@ -334,20 +385,10 @@ fill_rect(KrySw *sw, int x, int y, int w, int h, unsigned color)
         unsigned char *p = sw->pixels + (size_t)row * sw->stride + x * 4;
         int col;
         if(a == 255) {
-            for(col = 0; col < w; col++) {
-                *p++ = r;
-                *p++ = g;
-                *p++ = b;
-                *p++ = a;
-            }
+            fill_opaque_row(p, w, r, g, b, a);
         } else {
             for(col = 0; col < w; col++) {
-                unsigned inv = 255u - a;
-
-                p[0] = (unsigned char)(((unsigned)r * a + p[0] * inv) / 255u);
-                p[1] = (unsigned char)(((unsigned)g * a + p[1] * inv) / 255u);
-                p[2] = (unsigned char)(((unsigned)b * a + p[2] * inv) / 255u);
-                p[3] = (unsigned char)(a + p[3] * inv / 255u);
+                blend_pixel(p, r, g, b, a);
                 p += 4;
             }
         }
@@ -476,14 +517,38 @@ atlas_size_for(const KrySw *sw, int px)
 static const unsigned char *
 atlas_glyph(const KrySw *sw, const KrySwAtlasSize *as, unsigned cp)
 {
+    enum { CACHE_N = 256 };
+    static struct {
+        const KrySw *sw;
+        const KrySwAtlasSize *as;
+        unsigned cp;
+        const unsigned char *glyph;
+    } cache[CACHE_N];
+    unsigned slot;
     int i;
 
+    if(sw == NULL || as == NULL)
+        return NULL;
+    slot = ((unsigned)((size_t)sw >> 4) ^ (unsigned)((size_t)as >> 4) ^
+            cp * 131u) % CACHE_N;
+    if(cache[slot].sw == sw && cache[slot].as == as &&
+       cache[slot].cp == cp)
+        return cache[slot].glyph;
     for(i = 0; i < as->glyphs; i++) {
         const unsigned char *g = sw->atlas + as->table_off + (unsigned)i * 18;
 
-        if(atlas_rd_u32(g) == cp)
+        if(atlas_rd_u32(g) == cp) {
+            cache[slot].sw = sw;
+            cache[slot].as = as;
+            cache[slot].cp = cp;
+            cache[slot].glyph = g;
             return g;
+        }
     }
+    cache[slot].sw = sw;
+    cache[slot].as = as;
+    cache[slot].cp = cp;
+    cache[slot].glyph = NULL;
     return NULL;
 }
 
@@ -807,23 +872,53 @@ b_texture_rgba(const unsigned char *rgba, int sw, int sh, int x, int y,
     int tg = (int)((tint >> 16) & 0xff);
     int tb = (int)((tint >> 8) & 0xff);
     int ta = (int)(tint & 0xff);
-    int dx;
+    int cx;
+    int cy;
+    int cw;
+    int ch;
     int dy;
 
     if(s == NULL || rgba == NULL || sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0)
         return;
-    for(dy = 0; dy < dh; dy++) {
-        int sy = dy * sh / dh;
+    if(ta == 0)
+        return;
+    cx = x;
+    cy = y;
+    cw = dw;
+    ch = dh;
+    if(!clip_active(s, &cx, &cy, &cw, &ch))
+        return;
+    sw_mark_dirty(s, cx, cy, cw, ch);
+    for(dy = 0; dy < ch; dy++) {
+        int dst_y = cy + dy;
+        int dst_rel_y = dst_y - y;
+        int sy = dst_rel_y * sh / dh;
+        unsigned char *dst =
+            s->pixels + (size_t)dst_y * s->stride + cx * 4;
+        int dx;
 
-        for(dx = 0; dx < dw; dx++) {
-            int sx = dx * sw / dw;
-            const unsigned char *src = rgba + ((size_t)sy * sw + sx) * 4;
-            unsigned out = ((unsigned)((src[0] * tr) / 255) << 24) |
-                           ((unsigned)((src[1] * tg) / 255) << 16) |
-                           ((unsigned)((src[2] * tb) / 255) << 8) |
-                           (unsigned)((src[3] * ta) / 255);
+        if(sy < 0)
+            sy = 0;
+        else if(sy >= sh)
+            sy = sh - 1;
+        for(dx = 0; dx < cw; dx++) {
+            int dst_x = cx + dx;
+            int dst_rel_x = dst_x - x;
+            int sx = dst_rel_x * sw / dw;
+            const unsigned char *src;
+            unsigned char a;
 
-            fill_rect(s, x + dx, y + dy, 1, 1, out);
+            if(sx < 0)
+                sx = 0;
+            else if(sx >= sw)
+                sx = sw - 1;
+            src = rgba + ((size_t)sy * sw + sx) * 4;
+            a = (unsigned char)((src[3] * ta) / 255);
+            blend_pixel(dst,
+                        (unsigned char)((src[0] * tr) / 255),
+                        (unsigned char)((src[1] * tg) / 255),
+                        (unsigned char)((src[2] * tb) / 255), a);
+            dst += 4;
         }
     }
 }

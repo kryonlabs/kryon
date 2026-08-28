@@ -46,6 +46,20 @@ typedef enum TerminalPaneCursorStyle {
     TERMINAL_PANE_CURSOR_BAR = 3
 } TerminalPaneCursorStyle;
 
+typedef enum TerminalPaneKeyBinding {
+    TERMINAL_PANE_KEY_BINDING_AUTO = 0,
+    TERMINAL_PANE_KEY_BINDING_ASCII_DELETE = 1,
+    TERMINAL_PANE_KEY_BINDING_CONTROL_H = 2,
+    TERMINAL_PANE_KEY_BINDING_ESCAPE_SEQUENCE = 3
+} TerminalPaneKeyBinding;
+
+typedef enum TerminalPaneTitleMode {
+    TERMINAL_PANE_TITLE_REPLACE = 0,
+    TERMINAL_PANE_TITLE_PREPEND = 1,
+    TERMINAL_PANE_TITLE_APPEND = 2,
+    TERMINAL_PANE_TITLE_IGNORE = 3
+} TerminalPaneTitleMode;
+
 typedef enum TerminalPaneSGRStyle {
     TERMINAL_PANE_SGR_BOLD = 1,
     TERMINAL_PANE_SGR_ITALIC = 2,
@@ -86,7 +100,20 @@ typedef struct TerminalPaneProfileLimits {
 typedef struct TerminalPaneProfileSettings {
     int font_size;
     int scrollback_limit;
+    int unlimited_scrollback;
     int cursor_style;
+    int dynamic_title_mode;
+    int backspace_binding;
+    int delete_binding;
+    int ambiguous_width_wide;
+    int allow_bold;
+    int auto_hide_mouse;
+    int middle_click_closes_tab;
+    int always_show_tabs;
+    int disable_menu_mnemonics;
+    int disable_menu_shortcut;
+    int disable_help_shortcut;
+    int background_opacity;
     int terminal_foreground;
     int terminal_background;
     int terminal_cursor;
@@ -96,6 +123,7 @@ typedef struct TerminalPaneProfileSettings {
     char working_directory[1024];
     char command[1024];
     char terminal_font[1024];
+    char background_image[1024];
 } TerminalPaneProfileSettings;
 
 typedef enum TerminalPaneProfilePrompt {
@@ -109,7 +137,21 @@ typedef enum TerminalPaneProfilePrompt {
     TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND,
     TERMINAL_PANE_PROFILE_PROMPT_CURSOR_COLOR,
     TERMINAL_PANE_PROFILE_PROMPT_SELECTION_FOREGROUND,
-    TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND
+    TERMINAL_PANE_PROFILE_PROMPT_SELECTION_BACKGROUND,
+    TERMINAL_PANE_PROFILE_PROMPT_DYNAMIC_TITLE_MODE,
+    TERMINAL_PANE_PROFILE_PROMPT_BACKSPACE_BINDING,
+    TERMINAL_PANE_PROFILE_PROMPT_DELETE_BINDING,
+    TERMINAL_PANE_PROFILE_PROMPT_AMBIGUOUS_WIDTH,
+    TERMINAL_PANE_PROFILE_PROMPT_ALLOW_BOLD,
+    TERMINAL_PANE_PROFILE_PROMPT_UNLIMITED_SCROLLBACK,
+    TERMINAL_PANE_PROFILE_PROMPT_AUTO_HIDE_MOUSE,
+    TERMINAL_PANE_PROFILE_PROMPT_MIDDLE_CLICK_CLOSE_TAB,
+    TERMINAL_PANE_PROFILE_PROMPT_ALWAYS_SHOW_TABS,
+    TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_MNEMONICS,
+    TERMINAL_PANE_PROFILE_PROMPT_DISABLE_MENU_SHORTCUT,
+    TERMINAL_PANE_PROFILE_PROMPT_DISABLE_HELP_SHORTCUT,
+    TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_OPACITY,
+    TERMINAL_PANE_PROFILE_PROMPT_BACKGROUND_IMAGE
 } TerminalPaneProfilePrompt;
 
 typedef struct TerminalPaneViewColors {

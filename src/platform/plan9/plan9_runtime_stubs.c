@@ -39,30 +39,35 @@ void glReadPixels(int x, int y, int width, int height, unsigned int format,
     (void)data;
 }
 
-void KryonInjectMousePosition(float x, float y) { (void)x; (void)y; }
-void KryonInjectMouseButton(int button, int down) { (void)button; (void)down; }
-void KryonInjectKey(int key, int down) { (void)key; (void)down; }
-void KryonInjectKeyTap(int key) { (void)key; }
-void KryonInjectText(const char *text) { (void)text; }
-void KryonInjectWheel(float move) { (void)move; }
-void KryonInjectTap(float x, float y) { (void)x; (void)y; }
-void KryonInjectPump(void) { }
-int KryonInjectMouseActive(void) { return 0; }
-float KryonInjectMouseX(void) { return 0.0f; }
-float KryonInjectMouseY(void) { return 0.0f; }
-float KryonInjectMouseDeltaX(void) { return 0.0f; }
-float KryonInjectMouseDeltaY(void) { return 0.0f; }
-float KryonInjectWheelValue(void) { return 0.0f; }
-int KryonInjectMousePressed(int button) { (void)button; return 0; }
-int KryonInjectMouseReleased(int button) { (void)button; return 0; }
-int KryonInjectMouseButtonDown(int button) { (void)button; return 0; }
-int KryonInjectMouseButtonUp(int button) { (void)button; return 1; }
-int KryonInjectKeyPressed(int key) { (void)key; return 0; }
-int KryonInjectKeyReleased(int key) { (void)key; return 0; }
-int KryonInjectKeyDown(int key) { (void)key; return 0; }
-int KryonInjectCharPressed(void) { return 0; }
-int KryonInjectKeyPressedCode(void) { return 0; }
-void KryonInjectReset(void) { }
+void InjectMousePosition(float x, float y) { (void)x; (void)y; }
+void InjectMouseButton(int button, int down) { (void)button; (void)down; }
+void InjectKey(int key, int down) { (void)key; (void)down; }
+void InjectKeyTap(int key) { (void)key; }
+void InjectLayoutKey(int codepoint, int down) { (void)codepoint; (void)down; }
+void InjectLayoutKeyTap(int codepoint) { (void)codepoint; }
+void InjectText(const char *text) { (void)text; }
+void InjectWheel(float move) { (void)move; }
+void InjectTap(float x, float y) { (void)x; (void)y; }
+void InjectPump(void) { }
+int InjectMouseActive(void) { return 0; }
+float InjectMouseX(void) { return 0.0f; }
+float InjectMouseY(void) { return 0.0f; }
+float InjectMouseDeltaX(void) { return 0.0f; }
+float InjectMouseDeltaY(void) { return 0.0f; }
+float InjectWheelValue(void) { return 0.0f; }
+int InjectMousePressed(int button) { (void)button; return 0; }
+int InjectMouseReleased(int button) { (void)button; return 0; }
+int InjectMouseButtonDown(int button) { (void)button; return 0; }
+int InjectMouseButtonUp(int button) { (void)button; return 1; }
+int InjectKeyPressed(int key) { (void)key; return 0; }
+int InjectKeyReleased(int key) { (void)key; return 0; }
+int InjectKeyDown(int key) { (void)key; return 0; }
+int InjectLayoutKeyPressed(int codepoint) { (void)codepoint; return 0; }
+int InjectLayoutKeyReleased(int codepoint) { (void)codepoint; return 0; }
+int InjectLayoutKeyDown(int codepoint) { (void)codepoint; return 0; }
+int InjectCharPressed(void) { return 0; }
+int InjectKeyPressedCode(void) { return 0; }
+void InjectReset(void) { }
 
 int CanOpenURI(const char *uri) { (void)uri; return 0; }
 int OpenURI(const char *uri) { (void)uri; return 0; }

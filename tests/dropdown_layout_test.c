@@ -41,7 +41,7 @@ check_int(const char *name, int got, int want)
 static void
 step(void)
 {
-    KryonInjectPump();
+    InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
     Dropdown(DD_ID, 100, 560, 400, 44,
              g_options, OPT_COUNT, &g_selected);
@@ -61,11 +61,11 @@ popup_open(void)
 static void
 reset_state(void)
 {
-    KryonInjectReset();
-    KryonInjectKeyTap(KEY_ESCAPE);
+    InjectReset();
+    InjectKeyTap(KEY_ESCAPE);
     step();
     step();
-    KryonInjectReset();
+    InjectReset();
     step();
 }
 
@@ -73,7 +73,7 @@ static void
 open_dropdown(void)
 {
     reset_state();
-    KryonInjectTap(300, 582);
+    InjectTap(300, 582);
     step();   /* press */
     step();   /* release: opens */
     step();   /* just_opened clears */
@@ -82,7 +82,7 @@ open_dropdown(void)
 static void
 tap(int y)
 {
-    KryonInjectTap(300, y);
+    InjectTap(300, y);
     step();
     step();
     step();
@@ -93,15 +93,15 @@ tap(int y)
 static void
 wobble_tap(int y, int wobble)
 {
-    KryonInjectMousePosition(300, y);
-    KryonInjectMouseButton(0, 1);
+    InjectMousePosition(300, y);
+    InjectMouseButton(0, 1);
     step();
-    KryonInjectMousePosition(300 + wobble, y + wobble / 2);
+    InjectMousePosition(300 + wobble, y + wobble / 2);
     step();
-    KryonInjectMousePosition(300, y);
+    InjectMousePosition(300, y);
     step();
-    KryonInjectMousePosition(300, y);
-    KryonInjectMouseButton(0, 0);
+    InjectMousePosition(300, y);
+    InjectMouseButton(0, 0);
     step();
     step();
 }
@@ -110,15 +110,15 @@ wobble_tap(int y, int wobble)
 static void
 slow_tap(int y)
 {
-    KryonInjectMousePosition(300, y);
-    KryonInjectMouseButton(0, 1);
+    InjectMousePosition(300, y);
+    InjectMouseButton(0, 1);
     step();
     for(int hold = 0; hold < 6; hold++) {
-        KryonInjectMousePosition(300, y);
+        InjectMousePosition(300, y);
         step();
     }
-    KryonInjectMousePosition(300, y);
-    KryonInjectMouseButton(0, 0);
+    InjectMousePosition(300, y);
+    InjectMouseButton(0, 0);
     step();
     step();
 }
@@ -129,15 +129,15 @@ drag(int from_y, int to_y)
 {
     int dir = to_y >= from_y ? 10 : -10;
 
-    KryonInjectMousePosition(300, from_y);
-    KryonInjectMouseButton(0, 1);
+    InjectMousePosition(300, from_y);
+    InjectMouseButton(0, 1);
     step();
     for(int y = from_y + dir; dir > 0 ? y <= to_y : y >= to_y; y += dir) {
-        KryonInjectMousePosition(300, y);
+        InjectMousePosition(300, y);
         step();
     }
-    KryonInjectMousePosition(300, to_y);
-    KryonInjectMouseButton(0, 0);
+    InjectMousePosition(300, to_y);
+    InjectMouseButton(0, 0);
     step();
     step();
 }
@@ -216,7 +216,7 @@ main(void)
     check_int("selection closes the popup", popup_open(), 0);
 
     open_dropdown();
-    KryonInjectKeyTap(KEY_ESCAPE);
+    InjectKeyTap(KEY_ESCAPE);
     step();
     check_int("escape closes the popup", popup_open(), 0);
 
@@ -224,8 +224,8 @@ main(void)
      * pointer hovers the popup. */
     open_dropdown();
     for(int i = 0; i < 8; i++) {
-        KryonInjectMousePosition(300, 300);
-        KryonInjectWheel(-1.0f);
+        InjectMousePosition(300, 300);
+        InjectWheel(-1.0f);
         step();
     }
     tap(582);
@@ -233,8 +233,8 @@ main(void)
 
     open_dropdown();
     for(int i = 0; i < 8; i++) {
-        KryonInjectMousePosition(300, 300);
-        KryonInjectWheel(-1.0f);
+        InjectMousePosition(300, 300);
+        InjectWheel(-1.0f);
         step();
     }
     g_selected = -1;

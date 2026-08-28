@@ -1747,6 +1747,156 @@ DrawUIPromptDialog(PromptDialogProps dialog)
 }
 
 int
+DrawUITextPopover(TextPopoverProps popover)
+{
+    int result = 0;
+    int font = GetUIFontSize();
+    int small_font = GetUISmallFontSize();
+    int pad = ScaleUIPx(10);
+    int gap = ScaleUIPx(8);
+    int close_size = ScaleUIPx(22);
+    int field_h = ScaleUIPx(34);
+    int popover_w = popover.width > 0 ? ScaleUIPx(popover.width) : ScaleUIPx(300);
+    int popover_h = pad * 2 + field_h;
+    int screen_pad = ScaleUIPx(6);
+    int label_w;
+    int field_x;
+    int field_w;
+    int popover_x;
+    int popover_y;
+    int anchor_center;
+    int commit_pressed = 0;
+    int focused_before;
+    Rectangle panel;
+    Rectangle field_bounds;
+    Rectangle close_bounds;
+    Vector2 mouse = ui_mouse_world();
+    TextFieldProps field;
+    TextInputStyle field_style;
+    Color surface = ui_modern_style() ? c_surface : ui_panel_color(14);
+    Color border = c_link;
+    Color shadow = Fade(GetThemeText(), 0.14f);
+
+    if(popover.text == NULL || popover.text_size <= 0 ||
+       popover.cursor_position == NULL || popover.focused == NULL)
+        return 1;
+
+    if(popover_w < ScaleUIPx(220))
+        popover_w = ScaleUIPx(220);
+    if(popover_w > ui_view_width - screen_pad * 2)
+        popover_w = ui_view_width - screen_pad * 2;
+
+    anchor_center = (int)(popover.anchor.x + popover.anchor.width / 2.0f);
+    popover_x = anchor_center - popover_w / 2;
+    popover_x = ui_clampi(popover_x, screen_pad,
+                          ui_view_width - screen_pad - popover_w);
+    popover_y = (int)(popover.anchor.y + popover.anchor.height) + ScaleUIPx(6);
+    if(popover_y + popover_h > ui_view_height - screen_pad)
+        popover_y = (int)popover.anchor.y - popover_h - ScaleUIPx(6);
+    popover_y = ui_clampi(popover_y, screen_pad,
+                          ui_view_height - screen_pad - popover_h);
+
+    panel = (Rectangle){(float)popover_x, (float)popover_y,
+                        (float)popover_w, (float)popover_h};
+    SetUIModalCapture(panel);
+    if((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
+       !CheckCollisionPointRec(mouse, panel)) {
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+            UIConsumeRelease();
+        return 1;
+    }
+
+    DrawRectangleRec((Rectangle){panel.x + 2.0f, panel.y + 2.0f,
+                                 panel.width, panel.height}, shadow);
+    DrawRectangleRec(panel, surface);
+    DrawRectangleLinesEx(panel, 1.0f, border);
+    if(anchor_center >= popover_x + ScaleUIPx(8) &&
+       anchor_center <= popover_x + popover_w - ScaleUIPx(8)) {
+        Vector2 tip = {(float)anchor_center, panel.y - (float)ScaleUIPx(6)};
+        Vector2 left = {(float)(anchor_center - ScaleUIPx(7)), panel.y};
+        Vector2 right = {(float)(anchor_center + ScaleUIPx(7)), panel.y};
+
+        DrawTriangle(tip, left, right, surface);
+        DrawLine((int)tip.x, (int)tip.y, (int)left.x, (int)left.y, border);
+        DrawLine((int)tip.x, (int)tip.y, (int)right.x, (int)right.y, border);
+    }
+
+    label_w = TextWidth(popover.title != NULL ? popover.title : "", small_font);
+    if(label_w > 0) {
+        DrawUIText(popover.title, popover_x + pad,
+                   TextBaselineY(popover.title, popover_y + pad, field_h,
+                                 small_font),
+                   small_font, c_text);
+        label_w += gap;
+    }
+
+    close_bounds = (Rectangle){
+        (float)(popover_x + popover_w - pad - close_size),
+        (float)(popover_y + pad + (field_h - close_size) / 2),
+        (float)close_size,
+        (float)close_size
+    };
+    field_x = popover_x + pad + label_w;
+    field_w = (int)close_bounds.x - gap - field_x;
+    if(field_w < ScaleUIPx(80))
+        field_w = ScaleUIPx(80);
+    field_bounds = (Rectangle){(float)field_x, (float)(popover_y + pad),
+                               (float)field_w, (float)field_h};
+
+    memset(&field_style, 0, sizeof(field_style));
+    field_style.background = c_bg;
+    field_style.border = c_button_hover;
+    field_style.focus_border = c_link;
+    field_style.text = c_text;
+    field_style.cursor = c_link;
+    field_style.radius = 0.03f;
+    field_style.padding_x = ScaleUIPx(8);
+    field_style.padding_y = ScaleUIPx(6);
+
+    if(*popover.focused)
+        SetUIFocus(popover.id > 0 ? popover.id : 8401);
+
+    focused_before = *popover.focused;
+    memset(&field, 0, sizeof(field));
+    field.bounds = field_bounds;
+    field.text = popover.text;
+    field.text_size = (size_t)popover.text_size;
+    field.cursor_position = popover.cursor_position;
+    field.focused = popover.focused;
+    field.max_codepoints = popover.max_codepoints > 0
+                               ? popover.max_codepoints
+                               : popover.text_size - 1;
+    field.font = font;
+    field.focus_id = popover.id > 0 ? popover.id : 8401;
+    field.style = field_style;
+    field.commit_pressed = &commit_pressed;
+    RenderTextField(field);
+
+    if(DrawUIPaddedIconBtn((int)close_bounds.x, (int)close_bounds.y,
+                           ScaleUIPx(14), ScaleUIPx(4), g_ui_x_icon, NULL))
+        result = 1;
+    if(g_ui_x_icon.id == 0) {
+        int hover = 0;
+        if(UIHandleClick(close_bounds, 0, &hover))
+            result = 1;
+        DrawUIText("x",
+                   (int)(close_bounds.x + (close_bounds.width -
+                                           (float)TextWidth("x", small_font)) *
+                                      0.5f),
+                   TextBaselineY("x", (int)close_bounds.y,
+                                 (int)close_bounds.height, small_font),
+                   small_font, hover ? c_link : c_text);
+    }
+
+    if(result == 0 && commit_pressed)
+        result = 2;
+    if(result == 0 && focused_before && !*popover.focused)
+        result = 1;
+    return result;
+}
+
+int
 DrawUIPickerDialog(PickerDialogProps picker)
 {
     int pad = ScaleUIPx(14);

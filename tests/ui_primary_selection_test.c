@@ -2328,43 +2328,68 @@ main(void)
         TerminalPaneInput input =
             MakeTerminalPaneInput(mode, capture_paste_write, out, &state);
 
-        KryonInjectReset();
-        KryonInjectText("ab");
-        KryonInjectPump();
+        InjectReset();
+        InjectText("ab");
+        InjectPump();
         check_int("terminal input text wrote",
                   PumpTerminalPaneKeyboardInput(input), 1);
         check_str("terminal input text", out, "ab");
 
+        InjectReset();
+        InjectLayoutKeyTap('T');
+        InjectPump();
+        check_int("layout key pressed normalizes uppercase",
+                  IsLayoutKeyPressed('t'), 1);
+        InjectPump();
+        check_int("layout key released normalizes uppercase",
+                  IsLayoutKeyReleased('t'), 1);
+
         out[0] = '\0';
-        KryonInjectReset();
-        KryonInjectKeyTap(KEY_F5);
-        KryonInjectPump();
+        InjectReset();
+        InjectKeyTap(KEY_F5);
+        InjectPump();
         check_int("terminal input function wrote",
                   PumpTerminalPaneKeyboardInput(input), 1);
         check_str("terminal input function", out, "\x1b[15~");
 
         out[0] = '\0';
-        KryonInjectReset();
-        KryonInjectKey(KEY_LEFT_CONTROL, 1);
-        KryonInjectKeyTap(KEY_C);
-        KryonInjectPump();
+        InjectReset();
+        InjectKey(KEY_LEFT_CONTROL, 1);
+        InjectKeyTap(KEY_C);
+        InjectPump();
         check_int("terminal input ctrl c wrote",
                   PumpTerminalPaneKeyboardInput(input), 1);
         check_bytes("terminal input ctrl c", out, (int)strlen(out), "\x03",
                     1);
-        KryonInjectPump();
+        InjectPump();
         check_int("terminal input ctrl c repeats once",
                   PumpTerminalPaneKeyboardInput(input), 0);
-        KryonInjectKey(KEY_LEFT_CONTROL, 0);
-        KryonInjectPump();
+        InjectKey(KEY_LEFT_CONTROL, 0);
+        InjectPump();
+        (void)PumpTerminalPaneKeyboardInput(input);
+
+        out[0] = '\0';
+        InjectReset();
+        InjectKey(KEY_LEFT_CONTROL, 1);
+        InjectLayoutKeyTap('C');
+        InjectPump();
+        check_int("terminal input layout ctrl c wrote",
+                  PumpTerminalPaneKeyboardInput(input), 1);
+        check_bytes("terminal input layout ctrl c", out, (int)strlen(out),
+                    "\x03", 1);
+        InjectPump();
+        check_int("terminal input layout ctrl c repeats once",
+                  PumpTerminalPaneKeyboardInput(input), 0);
+        InjectKey(KEY_LEFT_CONTROL, 0);
+        InjectPump();
         (void)PumpTerminalPaneKeyboardInput(input);
 
         out[0] = '\0';
         mode.application_keypad = 1;
         input = MakeTerminalPaneInput(mode, capture_paste_write, out, &state);
-        KryonInjectReset();
-        KryonInjectKeyTap(KEY_KP_7);
-        KryonInjectPump();
+        InjectReset();
+        InjectKeyTap(KEY_KP_7);
+        InjectPump();
         check_int("terminal input keypad wrote",
                   PumpTerminalPaneKeyboardInput(input), 1);
         check_str("terminal input keypad", out, "\x1bOw");
