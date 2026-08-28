@@ -227,7 +227,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | `raylib` windows RGFW rule | GL 1.1 immediate mode | Windows | ✗ opt-in make rule | `KRYON_RAYLIB_WINDOWS_RULE` |
 | `raylib` android | GLES via NDK `NativeActivity` | Android (downstream Gradle) | ✗ downstream apps | `mk/android.mk` |
 | `null` | none (zero-return stubs) | all | ✗ (used by local headless tests) | Injected input still works |
-| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test` (node graphics + audio smoke gates) | No raylib; glyphs rasterized from FontFace data; real rounded rects/rings/tinting; WebAudio sound/music, PCM streams, callbacks/processors |
+| `canvas` | HTML5 Canvas2D via `EM_JS` (ASYNCIFY loop) | Emscripten | ✅ `make canvas-test`, `make canvas2d-parity-check`, `make web-canvas-matrix-check` | No raylib/WebGL; HiDPI Canvas2D, 2D raylib aliases, touch/gamepad/drop-file hooks, glyph atlases, textures/render textures/tinting, WebAudio, and weak stubs for non-2D raylib areas |
 | `libdraw` | `kry_sw` RGBA8 presented through plan9port libdraw/devdraw | plan9port on Unix/X11 | ✅ `make libdraw-test` (devdraw smoke + `9c`/`9l` clean-surface check) | No libraylib; widgets/drawing/screenshots through software backend; TTF/TrueType-outline glyph atlases via `stb_truetype`; rounded controls, alpha/tint texture blits, rotation, render textures, plan9port input/resize; non-UI raylib areas use weak null stubs |
 
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)

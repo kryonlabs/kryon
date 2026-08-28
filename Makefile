@@ -88,9 +88,9 @@ KRYON_TERMI_SRCS := $(wildcard src/backend/termi_*.c)
 ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_SRCS = $(KRYON_RAYLIB_WRAPPERS_C)
 else ifeq ($(KRYON_BACKEND),canvas)
-  # the canvas sources live in src/ and arrive via the SRCS find below;
-  # appending them here would compile every canvas TU twice.
-  KRYON_BACKEND_SRCS =
+  # Canvas owns the 2D/web surface and lets the generated weak null backend
+  # absorb unsupported raylib areas such as 3D, shaders, VR, and rlgl.
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else ifeq ($(KRYON_BACKEND),libdraw)
   # the libdraw sources live in src/ and arrive via the SRCS find below;
   # appending them here would compile every libdraw TU twice.
@@ -257,7 +257,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -290,14 +290,17 @@ $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 		cmd/krb-sdl/main.c cmd/krb-run/png_write.c $(KRY_SW_SRCS) \
 		$(KRB_SDL_LDLIBS) -lm
 
-canvas-test:
+canvas-test: $(KRYON_NULL_BACKEND_C) $(EMBED_ASSETS_C)
 	sh tests/canvas_backend_test.sh
 	sh tests/canvas_audio_test.sh
 
 canvas-audio-test:
 	sh tests/canvas_audio_test.sh
 
-web-canvas-matrix-check: $(K2C) $(EMBED_ASSETS_C)
+canvas2d-parity-check:
+	sh tools/check-canvas2d-parity.sh .
+
+web-canvas-matrix-check: $(K2C) $(EMBED_ASSETS_C) $(KRYON_NULL_BACKEND_C)
 	python3 scripts/conformance-matrix.py --verify-web-canvas-c-visuals --k2c "$(K2C)"
 
 termi-test:

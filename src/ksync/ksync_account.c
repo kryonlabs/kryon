@@ -15,13 +15,32 @@
 #define KSYNC_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
 #define KSYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
 #define KSYNC_LEGACY_INBE_KEY_HEADER "inbe-sync-key-v1"
+#define KSYNC_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
+
+static char g_ksync_account_last_error[192];
+
+static void
+set_account_error(const char *message)
+{
+    if(message == NULL)
+        message = "unknown account key error";
+    snprintf(g_ksync_account_last_error, sizeof(g_ksync_account_last_error),
+             "%s", message);
+}
+
+const char *
+GetKsyncAccountLastError(void)
+{
+    return g_ksync_account_last_error[0] != '\0' ?
+        g_ksync_account_last_error : "unknown account key error";
+}
 
 static int
-hex_string_valid(const char *hex, size_t expected_len)
+hex_chars_valid(const char *hex)
 {
-    if(hex == NULL || strlen(hex) != expected_len)
+    if(hex == NULL || hex[0] == '\0')
         return 0;
-    for(size_t i = 0; i < expected_len; i++) {
+    for(size_t i = 0; hex[i] != '\0'; i++) {
         char c = hex[i];
         if(!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
              (c >= 'A' && c <= 'F')))
@@ -190,21 +209,58 @@ ValidateKsyncAccount(KsyncAccount *account)
     uint8_t public_key[1312];
     char expected_public_id[KSYNC_PUBLIC_ID_HEX_SIZE];
 
-    if(account == NULL)
+    if(account == NULL) {
+        set_account_error("no account object was provided");
         return 0;
-    if(!hex_string_valid(account->public_key_hex, 2624) ||
-       !hex_string_valid(account->private_key_hex, 5120))
+    }
+    if(account->public_key_hex[0] == '\0') {
+        set_account_error("missing public_key");
         return 0;
-    if(!KsyncCryptoHexToBytes(account->public_key_hex, public_key, sizeof(public_key)))
+    }
+    if(strlen(account->public_key_hex) != 2624) {
+        set_account_error("public_key has the wrong length");
         return 0;
+    }
+    if(!hex_chars_valid(account->public_key_hex)) {
+        set_account_error("public_key is not valid hex");
+        return 0;
+    }
+    if(account->private_key_hex[0] == '\0') {
+        set_account_error("missing private_key");
+        return 0;
+    }
+    if(strlen(account->private_key_hex) != 5120) {
+        set_account_error("private_key has the wrong length");
+        return 0;
+    }
+    if(!hex_chars_valid(account->private_key_hex)) {
+        set_account_error("private_key is not valid hex");
+        return 0;
+    }
+    if(!KsyncCryptoHexToBytes(account->public_key_hex, public_key, sizeof(public_key))) {
+        set_account_error("public_key could not be decoded");
+        return 0;
+    }
     KsyncSha256Hex(public_key, sizeof(public_key), expected_public_id);
     if(account->public_id[0] == '\0') {
         snprintf(account->public_id, sizeof(account->public_id), "%s", expected_public_id);
+        g_ksync_account_last_error[0] = '\0';
         return 1;
     }
-    if(!hex_string_valid(account->public_id, 64))
+    if(strlen(account->public_id) != 64) {
+        set_account_error("public_id has the wrong length");
         return 0;
-    return strcmp(account->public_id, expected_public_id) == 0;
+    }
+    if(!hex_chars_valid(account->public_id)) {
+        set_account_error("public_id is not valid hex");
+        return 0;
+    }
+    if(strcmp(account->public_id, expected_public_id) != 0) {
+        set_account_error("public_id does not match public_key");
+        return 0;
+    }
+    g_ksync_account_last_error[0] = '\0';
+    return 1;
 }
 
 int
@@ -214,8 +270,10 @@ ParseKsyncAccountText(const char *text, KsyncAccount *account)
     const char *next;
     char exported_key[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
 
-    if(text == NULL || account == NULL)
+    if(text == NULL || account == NULL) {
+        set_account_error("no account key text was provided");
         return 0;
+    }
     if(extract_json_string_field(text, "exported_key", exported_key, sizeof(exported_key)))
         text = exported_key;
 
@@ -224,6 +282,18 @@ ParseKsyncAccountText(const char *text, KsyncAccount *account)
     if((unsigned char)line[0] == 0xef && (unsigned char)line[1] == 0xbb &&
        (unsigned char)line[2] == 0xbf)
         line += 3;
+    if(line[0] == '\0') {
+        set_account_error("account key file is empty");
+        return 0;
+    }
+    if(strstr(line, KSYNC_ACCOUNT_KEY_V2_HEADER) == line) {
+        set_account_error("account key is encrypted and needs a passphrase");
+        return 0;
+    }
+    if(line[0] == '{' && exported_key[0] == '\0') {
+        set_account_error("JSON account key is missing exported_key");
+        return 0;
+    }
     while(*line != '\0') {
         next = strchr(line, '\n');
         if(next == NULL) {
@@ -256,8 +326,14 @@ ImportKsyncAccountFile(const char *filename, KsyncAccount *account)
     char *body = read_file_text(filename);
     int ok;
 
-    if(body == NULL)
+    if(filename == NULL || filename[0] == '\0') {
+        set_account_error("no account key file was selected");
         return 0;
+    }
+    if(body == NULL) {
+        set_account_error("could not read selected account key file");
+        return 0;
+    }
     ok = ParseKsyncAccountText(body, account);
     free(body);
     return ok;
@@ -354,7 +430,6 @@ SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
 /* Passphrase-protected export (v2)                                    */
 /* ------------------------------------------------------------------ */
 
-#define KSYNC_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
 #define KSYNC_ACCOUNT_SALT_BYTES 16
 
 static int

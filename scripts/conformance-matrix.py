@@ -1174,6 +1174,8 @@ def canvas_backend_sources() -> list[str]:
             continue
         if path.name.startswith("libdraw_"):
             continue
+        if path.name.startswith("termi_"):
+            continue
         sources.append(str(path))
     return sources
 
@@ -1257,6 +1259,9 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
     failures = []
     observed_gaps = set()
     backend_sources = canvas_backend_sources()
+    null_backend = ROOT / "build" / "generated" / "kryon_null_backend.c"
+    if null_backend.exists():
+        backend_sources.append(str(null_backend))
     with tempfile.TemporaryDirectory(prefix="kryon-web-canvas-c-matrix.") as tmp:
         work = Path(tmp)
         for case in data["cases"]:

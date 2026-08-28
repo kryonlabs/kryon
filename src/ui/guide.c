@@ -1,6 +1,16 @@
 #include "ui_internal.h"
 #include <stdio.h>
 
+static UIGuideOverlayDebug g_ui_guide_debug;
+
+int
+GetUIGuideOverlayDebug(UIGuideOverlayDebug *out)
+{
+    if(out != NULL)
+        *out = g_ui_guide_debug;
+    return g_ui_guide_debug.valid;
+}
+
 static void
 guide_draw_arrow(Rectangle tip, Rectangle anchor)
 {
@@ -128,12 +138,16 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
     int text_gap = ScaleUIPx(8);
     int controls_gap = ScaleUIPx(12);
+    int text_guard = ScaleUIPx(8);
     int max_tip_h;
     char page_text[32];
     ParagraphSpec paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
+    Rectangle close_button = {0};
+    Rectangle back_button = {0};
+    Rectangle next_button = {0};
     int y;
     int text_clip_h;
     int controls_y;
@@ -141,6 +155,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     Color scrim;
     IconButtonProps icon_props;
 
+    g_ui_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
 
@@ -180,7 +195,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     paragraph.font = guide.paragraph_font;
     paragraph.line_gap = line_gap;
     paragraph_h = ui_paragraph_height(paragraph);
-    tip_h = pad + close_size + text_gap + paragraph_h + controls_gap +
+    tip_h = pad + close_size + text_gap + paragraph_h + text_guard + controls_gap +
             button_size + pad;
     if(tip_h < ScaleUIPx(112))
         tip_h = ScaleUIPx(112);
@@ -207,10 +222,11 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
     memset(&icon_props, 0, sizeof(icon_props));
-    icon_props.bounds.x = tip.x + tip.width - pad - close_size;
-    icon_props.bounds.y = tip.y + pad;
-    icon_props.bounds.width = (float)close_size;
-    icon_props.bounds.height = (float)close_size;
+    close_button.x = tip.x + tip.width - pad - close_size;
+    close_button.y = tip.y + pad;
+    close_button.width = (float)close_size;
+    close_button.height = (float)close_size;
+    icon_props.bounds = close_button;
     icon_props.icon = guide.close_icon;
     icon_props.icon_size = ScaleUIPx(16);
     icon_props.icon_padding = ScaleUIPx(6);
@@ -222,10 +238,26 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     y = (int)tip.y + pad + close_size + text_gap;
     controls_y = (int)tip.y + (int)tip.height - pad - button_size;
     text_clip_h = controls_y - controls_gap - y;
+    g_ui_guide_debug.valid = 1;
+    g_ui_guide_debug.step = step;
+    g_ui_guide_debug.count = guide.count;
+    g_ui_guide_debug.paragraph_height = paragraph_h;
+    g_ui_guide_debug.text_clip_height = text_clip_h;
+    g_ui_guide_debug.text_clipped = text_clip_h < paragraph_h + text_guard;
+    g_ui_guide_debug.tip = tip;
+    g_ui_guide_debug.text = (Rectangle){(float)((int)tip.x + pad),
+                                        (float)y,
+                                        (float)paragraph.width,
+                                        (float)text_clip_h};
+    g_ui_guide_debug.close_button = close_button;
+    g_ui_guide_debug.back_button = back_button;
     if(text_clip_h > 0) {
-        BeginUIClip((int)tip.x + pad, y, paragraph.width, text_clip_h);
+        if(text_clip_h < paragraph_h + text_guard)
+            BeginUIClip((int)tip.x + pad, y - text_guard / 2,
+                        paragraph.width, text_clip_h + text_guard);
         Paragraph(paragraph, (int)tip.x + pad, &y);
-        EndUIClip();
+        if(text_clip_h < paragraph_h + text_guard)
+            EndUIClip();
     }
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
@@ -236,10 +268,12 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     finish = step >= guide.count - 1;
     if(step > 0) {
         memset(&icon_props, 0, sizeof(icon_props));
-        icon_props.bounds.x = tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8);
-        icon_props.bounds.y = (float)controls_y;
-        icon_props.bounds.width = (float)button_size;
-        icon_props.bounds.height = (float)button_size;
+        back_button.x = tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8);
+        back_button.y = (float)controls_y;
+        back_button.width = (float)button_size;
+        back_button.height = (float)button_size;
+        icon_props.bounds = back_button;
+        g_ui_guide_debug.back_button = back_button;
         icon_props.icon = guide.back_icon;
         icon_props.icon_size = ScaleUIPx(19);
         icon_props.icon_padding = ScaleUIPx(7);
@@ -250,10 +284,12 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
         }
     }
     memset(&icon_props, 0, sizeof(icon_props));
-    icon_props.bounds.x = tip.x + tip.width - pad - button_size;
-    icon_props.bounds.y = (float)controls_y;
-    icon_props.bounds.width = (float)button_size;
-    icon_props.bounds.height = (float)button_size;
+    next_button.x = tip.x + tip.width - pad - button_size;
+    next_button.y = (float)controls_y;
+    next_button.width = (float)button_size;
+    next_button.height = (float)button_size;
+    icon_props.bounds = next_button;
+    g_ui_guide_debug.next_button = next_button;
     icon_props.icon = finish ? guide.done_icon : guide.next_icon;
     icon_props.icon_size = ScaleUIPx(19);
     icon_props.icon_padding = ScaleUIPx(7);

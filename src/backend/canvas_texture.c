@@ -24,6 +24,11 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
     var ctx = K.ctxNow();
     var tex = K.textures[id];
     if (!ctx || !tex) return;
+    var flipX = false, flipY = false;
+    if (sw < 0) { sx += sw; sw = -sw; flipX = true; }
+    if (sh < 0) { sy += sh; sh = -sh; flipY = true; }
+    if (dw < 0) { dw = -dw; flipX = !flipX; }
+    if (dh < 0) { dh = -dh; flipY = !flipY; }
     var white = (r === 255 && gg === 255 && bb === 255 && aa === 255);
     if (!white) {
         /* tinted copies are cached per (texture, tint): multiply the RGB
@@ -49,7 +54,11 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
     if (aa < 255) ctx.globalAlpha = aa / 255.0;
     ctx.translate(dx + ox, dy + oy);
     if (rot !== 0.0) ctx.rotate(rot * Math.PI / 180.0);
-    ctx.drawImage(tex, sx, sy, sw, sh, -ox, -oy, dw, dh);
+    if (flipX || flipY) ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+    ctx.drawImage(tex, sx, sy, sw, sh,
+                  flipX ? ox - dw : -ox,
+                  flipY ? oy - dh : -oy,
+                  dw, dh);
     ctx.restore();
 });
 
@@ -227,6 +236,16 @@ void SetTextureFilter(Texture2D texture, int filter)
     (void)filter;
 }
 
+bool IsTextureValid(Texture2D texture)
+{
+    return texture.id != 0 && texture.width > 0 && texture.height > 0;
+}
+
+bool IsRenderTextureValid(RenderTexture2D target)
+{
+    return target.id != 0 && IsTextureValid(target.texture);
+}
+
 RenderTexture2D LoadRenderTexture(int width, int height)
 {
     RenderTexture2D rt;
@@ -250,6 +269,7 @@ void UnloadRenderTexture(RenderTexture2D target)
 void BeginTextureMode(RenderTexture2D target)
 {
     js_target_select((int)target.id);
+    js_ctx_call(13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void EndTextureMode(void)
@@ -264,6 +284,33 @@ void DrawTexture(Texture2D texture, int posX, int posY, Color tint)
                                (float)texture.height},
                    (Rectangle){(float)posX, (float)posY,
                                (float)texture.width, (float)texture.height},
+                   (Vector2){0, 0}, 0.0f, tint);
+}
+
+void DrawTextureV(Texture2D texture, Vector2 position, Color tint)
+{
+    DrawTexture(texture, (int)position.x, (int)position.y, tint);
+}
+
+void DrawTextureEx(Texture2D texture, Vector2 position, float rotation,
+                   float scale, Color tint)
+{
+    DrawTexturePro(texture,
+                   (Rectangle){0, 0, (float)texture.width,
+                               (float)texture.height},
+                   (Rectangle){position.x, position.y,
+                               texture.width * scale,
+                               texture.height * scale},
+                   (Vector2){0, 0}, rotation, tint);
+}
+
+void DrawTextureRec(Texture2D texture, Rectangle rec, Vector2 position,
+                    Color tint)
+{
+    DrawTexturePro(texture, rec,
+                   (Rectangle){position.x, position.y,
+                               rec.width < 0 ? -rec.width : rec.width,
+                               rec.height < 0 ? -rec.height : rec.height},
                    (Vector2){0, 0}, 0.0f, tint);
 }
 
@@ -301,6 +348,20 @@ Image GenImageColor(int width, int height, Color color)
     img.mipmaps = 1;
     img.format = 1;
     return img;
+}
+
+bool IsImageValid(Image image)
+{
+    return image.data != NULL && image.width > 0 && image.height > 0 &&
+           image.mipmaps > 0 && image.format > 0;
+}
+
+void ImageFormat(Image *image, int newFormat)
+{
+    if(image == NULL || image->data == NULL)
+        return;
+    if(newFormat == PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
+        image->format = newFormat;
 }
 
 int kry_backend_capture_screen(Image *image)

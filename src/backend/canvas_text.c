@@ -229,26 +229,6 @@ Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData,
     return font;
 }
 
-GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize,
-                        int fontSize, const int *codepoints,
-                        int codepointCount, int type, int *glyphCount)
-{
-    Font font;
-
-    (void)type;
-    if(glyphCount != NULL)
-        *glyphCount = 0;
-    font = LoadFontFromMemory(".ttf", fileData, dataSize, fontSize,
-                              codepoints, codepointCount);
-    if(font.glyphs == NULL)
-        return NULL;
-    if(glyphCount != NULL)
-        *glyphCount = font.glyphCount;
-    /* caller owns the array; the transient Font's atlas is kept alive by
-     * its texture id in JS (intentionally not unloaded) */
-    return font.glyphs;
-}
-
 Font LoadFont(const char *fileName)
 {
     int len = 0;
@@ -263,6 +243,22 @@ Font LoadFont(const char *fileName)
     return font;
 }
 
+Font LoadFontEx(const char *fileName, int fontSize, const int *codepoints,
+                int codepointCount)
+{
+    int len = 0;
+    unsigned char *data = LoadFileData(fileName, &len);
+    Font font;
+
+    memset(&font, 0, sizeof(font));
+    if(data == NULL)
+        return font;
+    font = LoadFontFromMemory(".ttf", data, len, fontSize, codepoints,
+                              codepointCount);
+    free(data);
+    return font;
+}
+
 void UnloadFont(Font font)
 {
     if(font.glyphs != NULL)
@@ -273,16 +269,27 @@ void UnloadFont(Font font)
         js_texture_free((int)font.texture.id);
 }
 
+bool IsFontValid(Font font)
+{
+    return font.baseSize > 0 && font.glyphCount > 0 &&
+           font.glyphs != NULL && font.recs != NULL &&
+           font.texture.id != 0;
+}
+
 static int canvas_glyph_index(const Font *font, int codepoint)
 {
     int i;
+    int question = -1;
 
     if(font == NULL || font->glyphs == NULL)
         return 0;
-    for(i = 0; i < font->glyphCount; i++)
+    for(i = 0; i < font->glyphCount; i++) {
         if(font->glyphs[i].value == codepoint)
             return i;
-    return 0;
+        if(font->glyphs[i].value == '?')
+            question = i;
+    }
+    return question >= 0 ? question : 0;
 }
 
 int GetGlyphIndex(Font font, int codepoint)
@@ -294,54 +301,223 @@ GlyphInfo GetGlyphInfo(Font font, int codepoint)
 {
     int i = canvas_glyph_index(&font, codepoint);
 
-    if(font.glyphs == NULL)
+    if(!IsFontValid(font))
         return (GlyphInfo){0};
     return font.glyphs[i];
+}
+
+Rectangle GetGlyphAtlasRec(Font font, int codepoint)
+{
+    int i = canvas_glyph_index(&font, codepoint);
+
+    if(!IsFontValid(font))
+        return (Rectangle){0};
+    return font.recs[i];
+}
+
+GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize,
+                        int fontSize, const int *codepoints,
+                        int codepointCount, int type, int *glyphCount)
+{
+    Font font;
+    GlyphInfo *copy;
+
+    (void)type;
+    if(glyphCount != NULL)
+        *glyphCount = 0;
+    font = LoadFontFromMemory(".ttf", fileData, dataSize, fontSize,
+                              codepoints, codepointCount);
+    if(!IsFontValid(font))
+        return NULL;
+    copy = malloc((size_t)font.glyphCount * sizeof(*copy));
+    if(copy != NULL) {
+        memcpy(copy, font.glyphs, (size_t)font.glyphCount * sizeof(*copy));
+        if(glyphCount != NULL)
+            *glyphCount = font.glyphCount;
+    }
+    UnloadFont(font);
+    return copy;
+}
+
+void UnloadFontData(GlyphInfo *glyphs, int glyphCount)
+{
+    (void)glyphCount;
+    free(glyphs);
+}
+
+void DrawTextCodepoint(Font font, int codepoint, Vector2 position,
+                       float fontSize, Color tint)
+{
+    GlyphInfo glyph;
+    Rectangle src;
+    float scale;
+    Rectangle dst;
+
+    if(!IsFontValid(font))
+        font = GetFontDefault();
+    if(!IsFontValid(font))
+        return;
+    glyph = GetGlyphInfo(font, codepoint);
+    src = GetGlyphAtlasRec(font, codepoint);
+    if(src.width <= 0.0f || src.height <= 0.0f)
+        return;
+    scale = font.baseSize > 0 ? fontSize / (float)font.baseSize : 1.0f;
+    dst = (Rectangle){position.x + (float)glyph.offsetX * scale,
+                      position.y + (float)glyph.offsetY * scale,
+                      src.width * scale, src.height * scale};
+    DrawTexturePro(font.texture, src, dst, (Vector2){0, 0}, 0.0f, tint);
+}
+
+void DrawTextCodepoints(Font font, const int *codepoints, int codepointCount,
+                        Vector2 position, float fontSize, float spacing,
+                        Color tint)
+{
+    int i;
+    Vector2 pen = position;
+    float scale;
+
+    if(!IsFontValid(font))
+        font = GetFontDefault();
+    if(!IsFontValid(font) || codepoints == NULL || codepointCount <= 0)
+        return;
+    scale = fontSize > 0 ? (float)fontSize / (float)font.baseSize : 1.0f;
+    for(i = 0; i < codepointCount; i++) {
+        GlyphInfo glyph = GetGlyphInfo(font, codepoints[i]);
+
+        DrawTextCodepoint(font, codepoints[i], pen, fontSize, tint);
+        pen.x += (float)glyph.advanceX * scale + spacing;
+    }
+}
+
+void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize,
+                float spacing, Color tint)
+{
+    const char *p = text;
+    Vector2 pen = position;
+    float scale;
+
+    if(!IsFontValid(font))
+        font = GetFontDefault();
+    if(!IsFontValid(font) || text == NULL)
+        return;
+    scale = fontSize > 0 ? fontSize / (float)font.baseSize : 1.0f;
+    while(*p != '\0') {
+        int bytes = 0;
+        int cp = GetCodepointNext(p, &bytes);
+        GlyphInfo glyph;
+
+        if(bytes <= 0)
+            bytes = 1;
+        if(cp == '\n') {
+            pen.x = position.x;
+            pen.y += fontSize;
+            p += bytes;
+            continue;
+        }
+        glyph = GetGlyphInfo(font, cp);
+        DrawTextCodepoint(font, cp, pen, fontSize, tint);
+        pen.x += (float)glyph.advanceX * scale + spacing;
+        p += bytes;
+    }
+}
+
+EM_JS(void, js_text_transform, (int begin, double x, double y, double ox,
+                                double oy, double rotation), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.ctxNow();
+    if (!ctx) return;
+    if (begin) {
+        ctx.save();
+        ctx.translate(x, y);
+        if (rotation !== 0.0) ctx.rotate(rotation * Math.PI / 180.0);
+        ctx.translate(-ox, -oy);
+    } else {
+        ctx.restore();
+    }
+});
+
+void DrawTextPro(Font font, const char *text, Vector2 position,
+                 Vector2 origin, float rotation, float fontSize,
+                 float spacing, Color tint)
+{
+    js_text_transform(1, position.x, position.y, origin.x, origin.y,
+                      rotation);
+    DrawTextEx(font, text, (Vector2){0, 0}, fontSize, spacing, tint);
+    js_text_transform(0, 0, 0, 0, 0, 0);
 }
 
 void DrawText(const char *text, int posX, int posY, int fontSize,
               Color color)
 {
-    Font font = GetFontDefault();
+    DrawTextEx(GetFontDefault(), text, (Vector2){(float)posX, (float)posY},
+               (float)fontSize, 0.0f, color);
+}
+
+Vector2 MeasureTextEx(Font font, const char *text, float fontSize,
+                      float spacing)
+{
+    const char *p = text;
     float scale;
-    float x;
+    float x = 0.0f;
+    float max_x = 0.0f;
+    float lines = 1.0f;
+
+    if(!IsFontValid(font))
+        font = GetFontDefault();
+    if(!IsFontValid(font) || text == NULL)
+        return (Vector2){0, fontSize};
+    scale = fontSize > 0 ? fontSize / (float)font.baseSize : 1.0f;
+    while(*p != '\0') {
+        int bytes = 0;
+        int cp = GetCodepointNext(p, &bytes);
+        GlyphInfo glyph;
+
+        if(bytes <= 0)
+            bytes = 1;
+        if(cp == '\n') {
+            if(x > max_x)
+                max_x = x;
+            x = 0.0f;
+            lines += 1.0f;
+            p += bytes;
+            continue;
+        } else {
+            glyph = GetGlyphInfo(font, cp);
+            x += (float)glyph.advanceX * scale + spacing;
+            p += bytes;
+        }
+    }
+    if(x > max_x)
+        max_x = x;
+    return (Vector2){max_x, fontSize * lines};
+}
+
+int MeasureText(const char *text, int fontSize)
+{
+    Vector2 size = MeasureTextEx(GetFontDefault(), text, (float)fontSize,
+                                 0.0f);
+
+    return (int)(size.x + 0.5f);
+}
+
+Vector2 MeasureTextCodepoints(Font font, const int *codepoints, int length,
+                              float fontSize, float spacing)
+{
+    float width = 0.0f;
+    float scale;
     int i;
 
-    if(text == NULL || font.glyphs == NULL || font.recs == NULL)
-        return;
-    scale = fontSize > 0 ? (float)fontSize / (float)font.baseSize : 1.0f;
-    x = (float)posX;
-    for(i = 0; text[i] != '\0'; ) {
-        unsigned cp = 0;
-        int gi;
+    if(!IsFontValid(font))
+        font = GetFontDefault();
+    if(!IsFontValid(font) || codepoints == NULL || length <= 0)
+        return (Vector2){0, fontSize};
+    scale = fontSize > 0 ? fontSize / (float)font.baseSize : 1.0f;
+    for(i = 0; i < length; i++) {
+        GlyphInfo glyph = GetGlyphInfo(font, codepoints[i]);
 
-        if((text[i] & 0x80) == 0) {
-            cp = (unsigned char)text[i];
-            i++;
-        } else if((text[i] & 0xe0) == 0xc0 && text[i + 1] != '\0') {
-            cp = ((unsigned char)text[i] & 0x1f) << 6 |
-                 ((unsigned char)text[i + 1] & 0x3f);
-            i += 2;
-        } else if((text[i] & 0xf0) == 0xe0 && text[i + 1] != '\0' &&
-                  text[i + 2] != '\0') {
-            cp = ((unsigned char)text[i] & 0x0f) << 12 |
-                 ((unsigned char)text[i + 1] & 0x3f) << 6 |
-                 ((unsigned char)text[i + 2] & 0x3f);
-            i += 3;
-        } else {
-            i++;
-            continue;
-        }
-        gi = canvas_glyph_index(&font, (int)cp);
-        DrawTexturePro(font.texture, font.recs[gi],
-                       (Rectangle){x + font.glyphs[gi].offsetX * scale,
-                                   (float)posY +
-                                       font.glyphs[gi].offsetY * scale,
-                                   font.recs[gi].width * scale,
-                                   font.recs[gi].height * scale},
-                       (Vector2){0, 0}, 0.0f, color);
-        x += font.glyphs[gi].advanceX * scale;
+        width += (float)glyph.advanceX * scale + spacing;
     }
+    return (Vector2){width, fontSize};
 }
 
 #else /* !__EMSCRIPTEN__ */

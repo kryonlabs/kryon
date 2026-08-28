@@ -46,8 +46,11 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   (copy/paste round-trips in-app; the browser write is attempted
   fire-and-forget — cross-app paste stays out of reach of the sync API).
   `make canvas-test` builds a full app with this backend under emcc and
-  verifies the draw-call sequence in node (skips when emcc is absent); the
-  rendering has additionally been pixel-verified in a real browser page.
+  verifies the draw-call sequence in node (skips when emcc is absent); `make
+  canvas2d-parity-check` guards the no-WebGL 2D/browser subset, and `make
+  web-canvas-matrix-check` captures generated-C visual fixtures through the
+  same backend. `docs/CANVAS2D_PARITY.md` is the Canvas2D parity ledger.
+  The rendering has additionally been pixel-verified in a real browser page.
 - `libdraw` - plan9port libdraw/devdraw backend, no raylib
   (`src/backend/libdraw_*.c`). It keeps the same public surface as the other
   backends: C apps still include `kryon.h` and call `InitWindow`,

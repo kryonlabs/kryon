@@ -15,18 +15,25 @@
 /* JS side: canvas, event queues, draw dispatcher                     */
 /* ------------------------------------------------------------------ */
 
-EM_JS(void, js_canvas_boot, (int w, int h), {
+EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
     var g = globalThis;
     var K = g.__kryCanvas = {
-        w: w, h: h,
+        w: w, h: h, renderW: w, renderH: h, dpi: 1,
         canvas: null, ctx: null,
         textures: {}, nextTex: 1,
         target: [],               /* render-target stack: {canvas,ctx} */
         saved: 0,                 /* outstanding ctx.save() pairs */
-        keysDown: {}, keysPressed: [], keysReleased: [], chars: [],
+        keysDown: {}, keysPressed: [], keysReleased: [], keysRepeated: [],
+        chars: [],
         mouseX: 0, mouseY: 0, mouseDeltaX: 0, mouseDeltaY: 0,
+        mouseOffsetX: 0, mouseOffsetY: 0, mouseScaleX: 1, mouseScaleY: 1,
         buttonsDown: {}, buttonsPressed: [], buttonsReleased: [],
-        wheel: 0, frames: 0, lastOp: 'boot'
+        wheelX: 0, wheelY: 0,
+        touches: [], dropped: [], droppedPending: 0, focused: 1, resized: 0,
+        clipboard: "", clipboardGestureUntil: 0,
+        gamepadPrev: [], gamepadNow: [], gamepadPressed: [],
+        gamepadReleased: [], lastGamepadButton: -1,
+        frames: 0, lastOp: 'boot'
     };
     K.ctxNow = function () {
         return K.target.length ? K.target[K.target.length - 1].ctx
@@ -44,6 +51,26 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
         }
         return null;
     };
+    K.resizeMainCanvas = function (nw, nh) {
+        var dpr = Math.max(1, g.devicePixelRatio || 1);
+        K.w = Math.max(1, nw | 0);
+        K.h = Math.max(1, nh | 0);
+        K.dpi = dpr;
+        K.renderW = Math.max(1, Math.round(K.w * dpr));
+        K.renderH = Math.max(1, Math.round(K.h * dpr));
+        if (K.canvas) {
+            if (K.canvas.width !== K.renderW || K.canvas.height !== K.renderH)
+                K.resized = 1;
+            K.canvas.width = K.renderW;
+            K.canvas.height = K.renderH;
+            if (K.canvas.style) {
+                K.canvas.style.width = K.w + 'px';
+                K.canvas.style.height = K.h + 'px';
+                K.canvas.style.touchAction = 'none';
+            }
+            K.ctx = K.canvas.getContext('2d');
+        }
+    };
     var doc = (typeof document !== 'undefined') ? document : null;
     if (doc) {
         K.canvas = doc.getElementById('canvas');
@@ -54,10 +81,8 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
     } else if (g.__kryTestCanvas) {
         K.canvas = g.__kryTestCanvas;    /* node test harness */
     }
-    if (K.canvas) {
-        K.canvas.width = w; K.canvas.height = h;
-        K.ctx = K.canvas.getContext('2d');
-    }
+    if (K.canvas) K.resizeMainCanvas(w, h);
+    if (doc && doc.title !== undefined) doc.title = title ? UTF8ToString(title) : "";
     var KEYMAP = {
         Space: 32, Escape: 256, Enter: 257, NumpadEnter: 257, Tab: 258,
         Backspace: 259, Insert: 260, Delete: 261, ArrowRight: 262,
@@ -91,34 +116,82 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
         }
         return KEYMAP[code] !== undefined ? KEYMAP[code] : 0;
     };
+    var localPoint = function (e) {
+        var r = K.canvas && K.canvas.getBoundingClientRect
+              ? K.canvas.getBoundingClientRect() : {left: 0, top: 0};
+        return {x: (e.clientX - r.left - K.mouseOffsetX) * K.mouseScaleX,
+                y: (e.clientY - r.top - K.mouseOffsetY) * K.mouseScaleY};
+    };
+    var setMouse = function (x, y) {
+        K.mouseDeltaX += x - K.mouseX;
+        K.mouseDeltaY += y - K.mouseY;
+        K.mouseX = x; K.mouseY = y;
+    };
+    var syncTouches = function (list) {
+        var hadTouches = K.touches.length > 0;
+        K.touches = [];
+        for (var i = 0; i < list.length && i < 8; i++) {
+            var t = list[i];
+            var p = localPoint(t);
+            K.touches.push({id: t.identifier | 0, x: p.x, y: p.y});
+        }
+        if (K.touches.length > 0) setMouse(K.touches[0].x, K.touches[0].y);
+        if (!hadTouches && K.touches.length > 0) {
+            K.buttonsDown[0] = 1;
+            K.buttonsPressed.push(0);
+        } else if (hadTouches && K.touches.length === 0) {
+            delete K.buttonsDown[0];
+            K.buttonsReleased.push(0);
+        }
+    };
     var hook = function (target) {
         if (!target || target.__kryHooked || !target.addEventListener)
             return;
         target.__kryHooked = 1;
         target.addEventListener('mousemove', function (e) {
-            var r = K.canvas ? K.canvas.getBoundingClientRect()
-                            : {left: 0, top: 0};
-            var nx = e.clientX - r.left, ny = e.clientY - r.top;
-            K.mouseDeltaX += nx - K.mouseX;
-            K.mouseDeltaY += ny - K.mouseY;
-            K.mouseX = nx; K.mouseY = ny;
+            var p = localPoint(e);
+            setMouse(p.x, p.y);
         });
         target.addEventListener('mousedown', function (e) {
+            var p = localPoint(e);
+            setMouse(p.x, p.y);
+            if (K.canvas && K.canvas.focus) {
+                try { K.canvas.focus({preventScroll: true}); } catch (_) {
+                    try { K.canvas.focus(); } catch (_) {}
+                }
+            }
             K.buttonsDown[e.button] = 1;
             K.buttonsPressed.push(e.button);
+            if (K.canvas && K.canvas.setPointerCapture &&
+                e.pointerId !== undefined) {
+                try { K.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+            }
         });
         target.addEventListener('mouseup', function (e) {
+            var p = localPoint(e);
+            setMouse(p.x, p.y);
             delete K.buttonsDown[e.button];
             K.buttonsReleased.push(e.button);
         });
         target.addEventListener('wheel', function (e) {
-            K.wheel += e.deltaY > 0 ? -1.0 : 1.0;
+            var unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? K.h : 120);
+            K.wheelX += -e.deltaX / unit;
+            K.wheelY += -e.deltaY / unit;
+            if (e.cancelable) e.preventDefault();
         });
         target.addEventListener('keydown', function (e) {
             var k = keyOf(e.code || "", e.key || "");
             if (k) {
-                if (!K.keysDown[k]) K.keysPressed.push(k);
+                if (K.keysDown[k] && e.repeat) K.keysRepeated.push(k);
+                else if (!K.keysDown[k]) K.keysPressed.push(k);
                 K.keysDown[k] = 1;
+                if ((e.ctrlKey || e.metaKey) &&
+                    (k === 65 || k === 67 || k === 86 || k === 88)) {
+                    var nowMs = (typeof performance !== 'undefined' &&
+                        performance.now) ? performance.now() : Date.now();
+                    K.clipboardGestureUntil = nowMs + 1000;
+                    if (e.cancelable) e.preventDefault();
+                }
                 if (k === 32 || (k >= 256 && k <= 269))
                     e.preventDefault();
             }
@@ -136,15 +209,119 @@ EM_JS(void, js_canvas_boot, (int w, int h), {
             if (e.key && e.key.length === 1)
                 K.chars.push(e.key.charCodeAt(0));
         });
+        target.addEventListener('touchstart', function (e) {
+            syncTouches(e.touches || []);
+            if (e.cancelable) e.preventDefault();
+        }, {passive: false});
+        target.addEventListener('touchmove', function (e) {
+            syncTouches(e.touches || []);
+            if (e.cancelable) e.preventDefault();
+        }, {passive: false});
+        target.addEventListener('touchend', function (e) {
+            syncTouches(e.touches || []);
+            if (e.cancelable) e.preventDefault();
+        }, {passive: false});
+        target.addEventListener('touchcancel', function (e) {
+            syncTouches(e.touches || []);
+            if (e.cancelable) e.preventDefault();
+        }, {passive: false});
+    };
+    var hookDrop = function (target) {
+        if (!target || target.__kryDropHooked || !target.addEventListener)
+            return;
+        target.__kryDropHooked = 1;
+        target.addEventListener('dragover', function (e) {
+            if (e.preventDefault) e.preventDefault();
+        });
+        target.addEventListener('drop', function (e) {
+            if (e.preventDefault) e.preventDefault();
+            var files = e.dataTransfer && e.dataTransfer.files
+                      ? e.dataTransfer.files : [];
+            K.dropped = [];
+            K.droppedPending = files.length | 0;
+            Array.prototype.forEach.call(files, function (file) {
+                var name = (file.name || 'dropped-file')
+                    .replace(new RegExp('[\\\\/]', 'g'), '_');
+                var path = '/dropped/' + name;
+                if (typeof FS !== 'undefined' && FS.mkdir) {
+                    try { FS.mkdir('/dropped'); } catch (_) {}
+                }
+                if (file.arrayBuffer) {
+                    file.arrayBuffer().then(function (buf) {
+                        if (typeof FS !== 'undefined' && FS.writeFile)
+                            FS.writeFile(path, new Uint8Array(buf));
+                        K.dropped.push(path);
+                    }).finally(function () {
+                        K.droppedPending = Math.max(0, K.droppedPending - 1);
+                    });
+                } else {
+                    K.droppedPending = Math.max(0, K.droppedPending - 1);
+                }
+            });
+        });
     };
     if (doc) hook(doc);
     hook(g);
+    hookDrop(K.canvas);
+    hookDrop(doc);
+    if (g.addEventListener) {
+        g.addEventListener('focus', function () { K.focused = 1; });
+        g.addEventListener('blur', function () { K.focused = 0; });
+        g.addEventListener('paste', function (e) {
+            var data = e.clipboardData || (g.clipboardData || null);
+            var text = data && data.getData ? data.getData('text') : "";
+            if (text) K.clipboard = text;
+        });
+        g.addEventListener('copy', function (e) {
+            if (!K.clipboard) return;
+            var data = e.clipboardData || (g.clipboardData || null);
+            if (data && data.setData) {
+                data.setData('text/plain', K.clipboard);
+                if (e.preventDefault) e.preventDefault();
+            }
+        });
+        g.addEventListener('cut', function (e) {
+            if (!K.clipboard) return;
+            var data = e.clipboardData || (g.clipboardData || null);
+            if (data && data.setData) {
+                data.setData('text/plain', K.clipboard);
+                if (e.preventDefault) e.preventDefault();
+            }
+        });
+    }
+    if (K.canvas && g.ResizeObserver) {
+        K.ro = new ResizeObserver(function (entries) {
+            var cr = entries && entries[0] && entries[0].contentRect;
+            if (cr && cr.width > 0 && cr.height > 0 &&
+                (Math.round(cr.width) !== K.w || Math.round(cr.height) !== K.h))
+                K.resizeMainCanvas(Math.round(cr.width), Math.round(cr.height));
+        });
+        try { K.ro.observe(K.canvas); } catch (_) {}
+    }
 });
 
 EM_JS(void, js_canvas_resize, (int w, int h), {
     var K = globalThis.__kryCanvas;
-    K.w = w; K.h = h;
-    if (K.canvas) { K.canvas.width = w; K.canvas.height = h; }
+    if (K && K.resizeMainCanvas) K.resizeMainCanvas(w, h);
+});
+
+EM_JS(int, js_canvas_dim, (int which), {
+    var K = globalThis.__kryCanvas;
+    if (!K) return 0;
+    switch (which) {
+    case 0: return K.w | 0;
+    case 1: return K.h | 0;
+    case 2: return K.renderW | 0;
+    case 3: return K.renderH | 0;
+    case 4: { var r = K.resized ? 1 : 0; K.resized = 0; return r; }
+    case 5: return K.focused ? 1 : 0;
+    }
+    return 0;
+});
+
+EM_JS(double, js_canvas_dpi, (void), {
+    var K = globalThis.__kryCanvas;
+    return K ? K.dpi : 1.0;
 });
 
 EM_JS(void, js_canvas_set_cursor, (int cursor), {
@@ -178,6 +355,33 @@ EM_JS(void, js_canvas_set_cursor, (int cursor), {
     }
 });
 
+EM_JS(void, js_canvas_set_title, (const char *title), {
+    if (typeof document !== 'undefined' && document.title !== undefined)
+        document.title = title ? UTF8ToString(title) : "";
+});
+
+EM_JS(void, js_canvas_focus, (void), {
+    var K = globalThis.__kryCanvas;
+    if (K && K.canvas && K.canvas.focus) K.canvas.focus();
+});
+
+EM_JS(void, js_canvas_fullscreen, (int enable), {
+    var K = globalThis.__kryCanvas;
+    if (typeof document === 'undefined' || !K || !K.canvas) return;
+    if (enable) {
+        if (!document.fullscreenElement && K.canvas.requestFullscreen)
+            K.canvas.requestFullscreen().catch(function () {});
+    } else {
+        if (document.fullscreenElement && document.exitFullscreen)
+            document.exitFullscreen().catch(function () {});
+    }
+});
+
+EM_JS(int, js_canvas_fullscreen_state, (void), {
+    if (typeof document === 'undefined') return 0;
+    return document.fullscreenElement ? 1 : 0;
+});
+
 EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
                           double e, double f, double g2,
                           int r, int gg, int bb, int aa),
@@ -188,8 +392,11 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     if (!ctx) return;
     var col = K.col(r, gg, bb, aa);
     switch (op) {
-    case 0: /* clear */ ctx.fillStyle = col;
-            ctx.fillRect(0, 0, K.w, K.h); break;
+    case 0: { /* clear */
+            var tw = K.target.length ? K.target[K.target.length - 1].canvas.width : K.w;
+            var th = K.target.length ? K.target[K.target.length - 1].canvas.height : K.h;
+            ctx.fillStyle = col;
+            ctx.fillRect(0, 0, tw, th); break; }
     case 1: /* fill rect */ ctx.fillStyle = col;
             ctx.fillRect(a, b, c, d); break;
     case 2: /* stroke rect */ ctx.strokeStyle = col; ctx.lineWidth = 1;
@@ -222,9 +429,10 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
              ctx.translate(-e, -f);        /* -target */
              break;
     case 12: /* mode2d pop */ ctx.restore(); break;
-    case 13: /* frame reset: identity transform */
+    case 13: /* frame reset: logical screen coords over HiDPI backing */
              while (K.saved > 0) { ctx.restore(); K.saved--; }
-             ctx.setTransform(1, 0, 0, 1, 0, 0);
+             ctx.setTransform(K.target.length ? 1 : K.dpi, 0, 0,
+                              K.target.length ? 1 : K.dpi, 0, 0);
              K.saved = 0;
              break;
     }
@@ -236,6 +444,8 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
 
 static int g_win_w, g_win_h;
 static int g_win_ready;
+static int g_exit_key = KEY_ESCAPE;
+static unsigned int g_window_state;
 static double g_last_frame;
 static float g_frame_time;
 
@@ -247,10 +457,9 @@ static float g_frame_time;
  * and forwards to the backend seam below. */
 void KryonRaylibBackend_InitWindow(int width, int height, const char *title)
 {
-    (void)title;
     g_win_w = width;
     g_win_h = height;
-    js_canvas_boot(width, height);
+    js_canvas_boot(width, height, title);
     g_win_ready = 1;
     g_last_frame = emscripten_get_now() / 1000.0;
 }
@@ -262,7 +471,7 @@ void KryonRaylibBackend_CloseWindow(void)
 
 bool KryonRaylibBackend_WindowShouldClose(void)
 {
-    return false;
+    return g_exit_key != 0 && js_input_query(1, g_exit_key) != 0;
 }
 
 bool IsWindowReady(void)
@@ -272,12 +481,92 @@ bool IsWindowReady(void)
 
 bool IsWindowFocused(void)
 {
-    return g_win_ready != 0;
+    return g_win_ready != 0 && js_canvas_dim(5) != 0;
+}
+
+bool IsWindowFullscreen(void)
+{
+    return ((g_window_state & FLAG_FULLSCREEN_MODE) != 0) ||
+           js_canvas_fullscreen_state() != 0;
+}
+
+bool IsWindowHidden(void)
+{
+    return (g_window_state & FLAG_WINDOW_HIDDEN) != 0;
+}
+
+bool IsWindowMinimized(void)
+{
+    return (g_window_state & FLAG_WINDOW_MINIMIZED) != 0;
+}
+
+bool IsWindowMaximized(void)
+{
+    return (g_window_state & FLAG_WINDOW_MAXIMIZED) != 0;
+}
+
+bool IsWindowResized(void)
+{
+    return js_canvas_dim(4) != 0;
+}
+
+bool IsWindowState(unsigned int flag)
+{
+    return (g_window_state & flag) != 0;
 }
 
 void SetConfigFlags(unsigned int flags)
 {
-    (void)flags;
+    g_window_state |= flags;
+}
+
+void SetWindowState(unsigned int flags)
+{
+    g_window_state |= flags;
+    if((flags & FLAG_FULLSCREEN_MODE) != 0)
+        js_canvas_fullscreen(1);
+}
+
+void ClearWindowState(unsigned int flags)
+{
+    g_window_state &= ~flags;
+    if((flags & FLAG_FULLSCREEN_MODE) != 0)
+        js_canvas_fullscreen(0);
+}
+
+void ToggleFullscreen(void)
+{
+    if(IsWindowFullscreen()) {
+        g_window_state &= ~FLAG_FULLSCREEN_MODE;
+        js_canvas_fullscreen(0);
+    } else {
+        g_window_state |= FLAG_FULLSCREEN_MODE;
+        js_canvas_fullscreen(1);
+    }
+}
+
+void ToggleBorderlessWindowed(void)
+{
+    g_window_state ^= FLAG_BORDERLESS_WINDOWED_MODE;
+}
+
+void MaximizeWindow(void)
+{
+    g_window_state |= FLAG_WINDOW_MAXIMIZED;
+    g_window_state &= ~FLAG_WINDOW_MINIMIZED;
+}
+
+void MinimizeWindow(void)
+{
+    g_window_state |= FLAG_WINDOW_MINIMIZED;
+    g_window_state &= ~FLAG_WINDOW_MAXIMIZED;
+}
+
+void RestoreWindow(void)
+{
+    g_window_state &= ~(FLAG_WINDOW_MINIMIZED | FLAG_WINDOW_MAXIMIZED |
+                        FLAG_FULLSCREEN_MODE |
+                        FLAG_BORDERLESS_WINDOWED_MODE);
 }
 
 void SetTargetFPS(int fps)
@@ -315,6 +604,8 @@ void KryonRaylibBackend_EndDrawing(void)
     (void)js_input_query(16, 0);
     (void)js_input_query(17, 0);
     (void)js_input_query(18, 0);
+    (void)js_input_query(20, 0);
+    js_input_end_frame();
     /* yield so the browser presents and pumps events */
     emscripten_sleep(1);
 }
@@ -331,27 +622,37 @@ float GetFrameTime(void)
 
 int GetScreenWidth(void)
 {
-    return g_win_w;
+    int w = js_canvas_dim(0);
+
+    return w > 0 ? w : g_win_w;
 }
 
 int GetScreenHeight(void)
 {
-    return g_win_h;
+    int h = js_canvas_dim(1);
+
+    return h > 0 ? h : g_win_h;
 }
 
 int GetRenderWidth(void)
 {
-    return g_win_w;
+    int w = js_canvas_dim(2);
+
+    return w > 0 ? w : GetScreenWidth();
 }
 
 int GetRenderHeight(void)
 {
-    return g_win_h;
+    int h = js_canvas_dim(3);
+
+    return h > 0 ? h : GetScreenHeight();
 }
 
 Vector2 GetWindowScaleDPI(void)
 {
-    return (Vector2){1.0f, 1.0f};
+    float dpr = (float)js_canvas_dpi();
+
+    return (Vector2){dpr, dpr};
 }
 
 void SetMouseCursor(int cursor)
@@ -359,9 +660,125 @@ void SetMouseCursor(int cursor)
     js_canvas_set_cursor(cursor);
 }
 
+void SetWindowTitle(const char *title)
+{
+    js_canvas_set_title(title);
+}
+
+void SetWindowFocused(void)
+{
+    js_canvas_focus();
+}
+
+void SetWindowIcon(Image image)
+{
+    (void)image;
+}
+
+void SetWindowIcons(Image *images, int count)
+{
+    (void)images;
+    (void)count;
+}
+
+void SetWindowPosition(int x, int y)
+{
+    (void)x;
+    (void)y;
+}
+
+void SetWindowMonitor(int monitor)
+{
+    (void)monitor;
+}
+
+void SetWindowMinSize(int width, int height)
+{
+    (void)width;
+    (void)height;
+}
+
+void SetWindowMaxSize(int width, int height)
+{
+    (void)width;
+    (void)height;
+}
+
+void SetWindowOpacity(float opacity)
+{
+    (void)opacity;
+}
+
+void *GetWindowHandle(void)
+{
+    return NULL;
+}
+
+int GetMonitorCount(void)
+{
+    return 1;
+}
+
+int GetCurrentMonitor(void)
+{
+    return 0;
+}
+
+Vector2 GetMonitorPosition(int monitor)
+{
+    (void)monitor;
+    return (Vector2){0.0f, 0.0f};
+}
+
+int GetMonitorWidth(int monitor)
+{
+    (void)monitor;
+    return GetScreenWidth();
+}
+
+int GetMonitorHeight(int monitor)
+{
+    (void)monitor;
+    return GetScreenHeight();
+}
+
+int GetMonitorPhysicalWidth(int monitor)
+{
+    (void)monitor;
+    return 0;
+}
+
+int GetMonitorPhysicalHeight(int monitor)
+{
+    (void)monitor;
+    return 0;
+}
+
+int GetMonitorRefreshRate(int monitor)
+{
+    (void)monitor;
+    return 60;
+}
+
+Vector2 GetWindowPosition(void)
+{
+    return (Vector2){0.0f, 0.0f};
+}
+
+const char *GetMonitorName(int monitor)
+{
+    (void)monitor;
+    return "HTML5 Canvas";
+}
+
 void SetTraceLogLevel(int logLevel)
 {
     (void)logLevel;
+}
+
+void SetExitKey(int key)
+{
+    g_exit_key = key;
 }
 
 void WaitTime(double seconds)

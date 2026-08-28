@@ -16,6 +16,18 @@ check_true(const char *label, int value)
 }
 
 static void
+check_last_error(const char *label, const char *want)
+{
+    const char *got = GetKsyncAccountLastError();
+
+    if(got != NULL && want != NULL && strcmp(got, want) == 0)
+        return;
+    fprintf(stderr, "FAIL: %s got \"%s\" want \"%s\"\n", label,
+            got != NULL ? got : "(null)", want != NULL ? want : "(null)");
+    failures++;
+}
+
+static void
 bytes_to_hex_local(const unsigned char *bytes, size_t len, char *out, size_t out_size)
 {
     static const char hex[] = "0123456789abcdef";
@@ -107,6 +119,29 @@ test_reject_mismatch(void)
              "ksync-account-key-v1\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
              account.public_id, account.public_key_hex, account.private_key_hex);
     check_true("reject mismatched public id", !ParseKsyncAccountText(text, &account));
+    check_last_error("mismatched public id error", "public_id does not match public_key");
+}
+
+static void
+test_reject_diagnostics(void)
+{
+    KsyncAccount account;
+
+    check_true("reject empty text", !ParseKsyncAccountText("", &account));
+    check_last_error("empty text error", "account key file is empty");
+    check_true("reject encrypted text",
+               !ParseKsyncAccountText("ksync-account-key-v2\nciphertext=00\n",
+                                      &account));
+    check_last_error("encrypted text error",
+                     "account key is encrypted and needs a passphrase");
+    check_true("reject missing exported key",
+               !ParseKsyncAccountText("{\"wrong\":\"field\"}", &account));
+    check_last_error("missing exported_key error",
+                     "JSON account key is missing exported_key");
+    check_true("reject missing public key",
+               !ParseKsyncAccountText("ksync-account-key-v1\nprivate_key=aa\n",
+                                      &account));
+    check_last_error("missing public_key error", "missing public_key");
 }
 
 static void
@@ -135,6 +170,7 @@ main(void)
     test_export_parse_roundtrip();
     test_old_imports();
     test_reject_mismatch();
+    test_reject_diagnostics();
     test_encrypted_roundtrip();
     if(failures != 0)
         return 1;

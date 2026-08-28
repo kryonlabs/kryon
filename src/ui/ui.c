@@ -2144,41 +2144,19 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap,
 }
 
 static int
-ui_text_area_word_char(char c)
-{
-    unsigned char u = (unsigned char)c;
-
-    return isalnum(u) || c == '_' || c == '-';
-}
-
-static int
-ui_text_area_select_word(const char *text, int cursor, int *start, int *end)
+ui_text_area_select_line(const char *text, int cursor, int *start, int *end)
 {
     int len;
-    int left;
-    int right;
 
     if(text == NULL || start == NULL || end == NULL)
         return 0;
     len = (int)strlen(text);
     cursor = ui_clampi(cursor, 0, len);
-    if(cursor > 0 && (cursor == len ||
-                      !ui_text_area_word_char(text[cursor])))
+    if(cursor > 0 && (cursor == len || text[cursor] == '\n'))
         cursor--;
-    if(cursor < 0 || cursor >= len ||
-       !ui_text_area_word_char(text[cursor]))
-        return 0;
-    left = cursor;
-    right = cursor + 1;
-    while(left > 0 && ui_text_area_word_char(text[left - 1]))
-        left--;
-    while(right < len && ui_text_area_word_char(text[right]))
-        right++;
-    if(right <= left)
-        return 0;
-    *start = left;
-    *end = right;
-    return 1;
+    *start = ui_text_line_start(text, cursor);
+    *end = ui_text_line_end(text, cursor);
+    return *end >= *start;
 }
 
 static int
@@ -2622,15 +2600,15 @@ RenderTextArea(TextAreaProps area)
                click_dx <= double_click_slop &&
                click_dy >= -double_click_slop &&
                click_dy <= double_click_slop) {
-                int word_start;
-                int word_end;
+                int line_start;
+                int line_end;
 
-                if(ui_text_area_select_word(area.text, clicked_cursor,
-                                            &word_start, &word_end)) {
+                if(ui_text_area_select_line(area.text, clicked_cursor,
+                                            &line_start, &line_end)) {
                     ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                          area.focused, word_start, word_end,
+                                          area.focused, line_start, line_end,
                                           0);
-                    *area.cursor_position = word_end;
+                    *area.cursor_position = line_end;
                     double_clicked = 1;
                     g_ui_text_area_drag_id = 0;
                     g_ui_text_area_drag_owner = NULL;

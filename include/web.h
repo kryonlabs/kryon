@@ -16,9 +16,20 @@ void SetWebOrientationMode(int mode);
  * keep the window size synced to the browser viewport. Native builds return 0.
  */
 unsigned int GetWebWindowFlags(void);
+
+typedef struct WebStorageSyncState {
+    int mounted;
+    int syncing;
+    int pending;
+    int last_ok;
+    int has_error;
+} WebStorageSyncState;
+
 int IsWebStorageSyncPending(void);
 void ScheduleWebStorageSync(int delay_ms, int log_success);
 void FlushWebStorageSync(int log_success);
+int FlushWebStorageSyncBlocking(int timeout_ms, int log_success);
+int GetWebStorageSyncState(WebStorageSyncState *out);
 
 /*
  * Resize raylibs window to the current browser viewport when it changes.

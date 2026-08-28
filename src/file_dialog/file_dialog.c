@@ -52,7 +52,7 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
 
     EM_ASM({
         const key = String($0);
-        const resultPath = UTF8ToString($1);
+        const resultBasePath = UTF8ToString($1);
         const rawAccept = $2 ? UTF8ToString($2) : "";
         const results = Module.__kryonFileDialogResults = Module.__kryonFileDialogResults || {};
         results[key] = {status: 0};
@@ -83,11 +83,20 @@ begin_web_load_dialog(FileDialog *dlg, const char *title, const char *filter)
                     finish(2);
                     return;
                 }
-                const bytes = new Uint8Array(await input.files[0].arrayBuffer());
+                const file = input.files[0];
+                const name = (file.name || "selected-file")
+                    .replace(new RegExp('[\\\\/]', 'g'), '_');
+                const safeName = (name.slice(0, 180) || "selected-file");
+                const resultPath = resultBasePath + "-" + safeName;
+                const bytes = new Uint8Array(await file.arrayBuffer());
                 try { FS.mkdirTree("/tmp"); } catch(e) {}
                 try { FS.unlink(resultPath); } catch(e) {}
                 FS.writeFile(resultPath, bytes);
-                finish(1);
+                results[key] = {};
+                results[key].status = 1;
+                results[key].path = resultPath;
+                settled = true;
+                input.remove();
             } catch(e) {
                 console.error("Kryon web file dialog failed:", e);
                 finish(3);
@@ -211,6 +220,12 @@ UpdateFileDialog(FileDialog *dlg)
     dlg->active = 0;
     if(status == 1) {
         dlg->confirmed = 1;
+        EM_ASM({
+            const results = Module.__kryonFileDialogResults || {};
+            const result = results[String($0)];
+            if(result && result.path)
+                stringToUTF8(String(result.path), $1, $2);
+        }, dlg, dlg->result_path, (int)sizeof(dlg->result_path));
         web_clear_dialog_result(dlg);
         return 1;
     }

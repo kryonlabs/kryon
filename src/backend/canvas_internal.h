@@ -32,12 +32,13 @@
 #include <unistd.h>
 
 /* EM_JS glue shared across the canvas_*.c sources. */
-void js_canvas_boot(int w, int h);
+void js_canvas_boot(int w, int h, const char *title);
 void js_canvas_resize(int w, int h);
 void js_ctx_call(int op, double a, double b, double c, double d,
                  double e, double f, double g2,
                  int r, int gg, int bb, int aa);
 int js_input_query(int which, int code);
+void js_input_end_frame(void);
 int js_texture_from_rgba(int ptr, int w, int h);
 void js_texture_free(int id);
 

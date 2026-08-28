@@ -29,10 +29,9 @@ ifeq ($(KRYON_BACKEND),raylib)
   KRYON_BACKEND_CFLAGS = $(RAY_CFLAGS)
   KRYON_BACKEND_LDLIBS = $(RAY_LDLIBS)
 else ifeq ($(KRYON_BACKEND),canvas)
-  # the canvas sources live in $(KRYON_DIR)/src and arrive via the find
-  # in KRYON_SRCS below; appending them here would compile every canvas
-  # TU twice.
-  KRYON_BACKEND_SRCS =
+  # Canvas owns the 2D/web surface and lets the generated weak null backend
+  # absorb unsupported raylib areas such as 3D, shaders, VR, and rlgl.
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =

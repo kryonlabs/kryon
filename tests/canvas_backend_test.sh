@@ -36,6 +36,11 @@ if [ -z "$assets" ]; then
     echo "canvas test: no embedded_asset_data.c (run 'make' once first) — skipping" >&2
     exit 0
 fi
+null_backend="$root/build/generated/kryon_null_backend.c"
+if [ ! -f "$null_backend" ]; then
+    echo "canvas test: no generated null backend (run 'make' once first) — skipping" >&2
+    exit 0
+fi
 
 srcs=$(find "$root/src" -name '*.c' \
     ! -path '*/ksync/*' \
@@ -45,11 +50,13 @@ srcs=$(find "$root/src" -name '*.c' \
     ! -path '*/scene/node_area2d.c' \
     ! -path '*/scene/node_collision_shape2d.c' \
     ! -name 'libdraw_*.c' \
+    ! -name 'termi_*.c' \
     | sort | tr '\n' ' ')
 
 emcc -I"$root/include" -DKRYON_WITH_PHYSICS=0 -O1 \
     -sASYNCIFY -sENVIRONMENT=node,web -sINITIAL_MEMORY=64MB \
-    -o "$work/canvas_smoke.js" "$work/main.c" $srcs "$assets"
+    -o "$work/canvas_smoke.js" "$work/main.c" $srcs "$assets" \
+    "$null_backend"
 
 (cd "$work" && node run.js)
 echo "canvas backend test ok"

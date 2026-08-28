@@ -33,6 +33,22 @@ typedef struct {
 } UIGuideResult;
 
 typedef struct {
+    int valid;
+    int step;
+    int count;
+    int paragraph_height;
+    int text_clip_height;
+    int text_clipped;
+    Rectangle tip;
+    Rectangle text;
+    Rectangle close_button;
+    Rectangle back_button;
+    Rectangle next_button;
+} UIGuideOverlayDebug;
+
+int GetUIGuideOverlayDebug(UIGuideOverlayDebug *out);
+
+typedef struct {
     int draw_source_menu;
     int draw_mode_menu;
     int draw_palette_menu;

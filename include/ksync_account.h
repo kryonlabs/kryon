@@ -26,6 +26,7 @@ int IsKsyncAccountAvailable(void);
 int HasKsyncAccountValues(const KsyncAccount *account);
 int CreateKsyncAccount(KsyncAccount *account);
 int ValidateKsyncAccount(KsyncAccount *account);
+const char *GetKsyncAccountLastError(void);
 int ParseKsyncAccountText(const char *text, KsyncAccount *account);
 int ExportKsyncAccountText(const KsyncAccount *account, char *out, size_t out_size);
 int ImportKsyncAccountFile(const char *filename, KsyncAccount *account);

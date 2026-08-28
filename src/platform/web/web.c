@@ -8,7 +8,56 @@
 #include <emscripten.h>
 #endif
 
+#include <string.h>
+
 static int g_web_orientation_mode = 0;
+
+#if defined(PLATFORM_WEB)
+EM_ASYNC_JS(int, js_web_storage_flush_blocking,
+            (int timeout_ms, int log_success), {
+    var M = Module || {};
+    var timeout = timeout_ms > 0 ? timeout_ms : 5000;
+    var flush = typeof M.__kryonFlushStorageSync === 'function'
+        ? M.__kryonFlushStorageSync
+        : null;
+
+    if (!flush && typeof M.__kryonScheduleStorageSync === 'function') {
+        M.__kryonScheduleStorageSync(0, !!log_success);
+        flush = typeof M.__kryonFlushStorageSync === 'function'
+            ? M.__kryonFlushStorageSync
+            : null;
+    }
+    if (!flush)
+        return 0;
+
+    try {
+        var promise = flush(!!log_success);
+        if (!promise || typeof promise.then !== 'function')
+            return M.__kryonStorageSyncLastOk === false ? 0 : 1;
+        var timed_out = false;
+        var result = await Promise.race([
+            promise,
+            new Promise(function(resolve) {
+                setTimeout(function() {
+                    timed_out = true;
+                    resolve(false);
+                }, timeout);
+            })
+        ]);
+        if (timed_out) {
+            M.__kryonStorageSyncLastOk = false;
+            M.__kryonStorageSyncLastError = 'timeout';
+            return 0;
+        }
+        return result ? 1 : 0;
+    } catch (e) {
+        M.__kryonStorageSyncLastOk = false;
+        M.__kryonStorageSyncLastError =
+            e && e.message ? e.message : String(e);
+        return 0;
+    }
+});
+#endif
 
 static void
 ApplyWebOrientationSize(int *width, int *height)
@@ -110,6 +159,39 @@ IsWebStorageSyncPending(void)
 #endif
 }
 
+int
+GetWebStorageSyncState(WebStorageSyncState *out)
+{
+    WebStorageSyncState state;
+
+    memset(&state, 0, sizeof(state));
+#if defined(PLATFORM_WEB)
+    {
+        int bits = EM_ASM_INT({
+            var M = Module || {};
+            var bits = 0;
+
+            if (M.__kryonStorageMounted) bits |= 1;
+            if (M.__kryonStorageSyncing) bits |= 2;
+            if (M.__kryonStorageSyncPending) bits |= 4;
+            if (M.__kryonStorageSyncLastOk) bits |= 8;
+            if (M.__kryonStorageSyncLastError) bits |= 16;
+            return bits;
+        });
+
+        state.mounted = (bits & 1) != 0;
+        state.syncing = (bits & 2) != 0;
+        state.pending = (bits & 4) != 0;
+        state.last_ok = (bits & 8) != 0;
+        state.has_error = (bits & 16) != 0;
+    }
+#endif
+    if(out != NULL)
+        *out = state;
+    return state.mounted || state.syncing || state.pending ||
+           state.last_ok || state.has_error;
+}
+
 void
 ScheduleWebStorageSync(int delay_ms, int log_success)
 {
@@ -136,6 +218,18 @@ FlushWebStorageSync(int log_success)
     }, log_success);
 #else
     (void)log_success;
+#endif
+}
+
+int
+FlushWebStorageSyncBlocking(int timeout_ms, int log_success)
+{
+#if defined(PLATFORM_WEB)
+    return js_web_storage_flush_blocking(timeout_ms, log_success);
+#else
+    (void)timeout_ms;
+    (void)log_success;
+    return 1;
 #endif
 }
 
