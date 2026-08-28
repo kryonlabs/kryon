@@ -62,7 +62,9 @@ kry_update_detect_channel(void)
          * PATH tricks and cwd changes; neither exists on macOS yet. */
         if(kry_fs_realpath("/proc/self/exe", path, sizeof(path)) ||
            kry_fs_realpath("/proc/self/file", path, sizeof(path))) {
-            if(strncmp(path, "/usr/", 5) == 0 || strncmp(path, "/opt/", 5) == 0)
+            if(strncmp(path, "/usr/bin/", 9) == 0 ||
+               strncmp(path, "/usr/local/", 11) == 0 ||
+               strncmp(path, "/opt/", 5) == 0)
                 return KRY_UPDATE_CHANNEL_PACKAGE;
             return KRY_UPDATE_CHANNEL_SOURCE;
         }
