@@ -874,11 +874,19 @@ def rgba_diff(a_path: Path, b_path: Path) -> tuple[int, int, int]:
     return pixel_diff, rgb_diff, alpha_diff
 
 
-def verify_pipelines(data: dict) -> int:
-    missing = [p for p in PIPELINES if not (ROOT / p["tool"]).exists()]
+def build_path(args: argparse.Namespace, *parts: str) -> Path:
+    build_dir = Path(args.build_dir)
+    if not build_dir.is_absolute():
+        build_dir = ROOT / build_dir
+    return build_dir.joinpath(*parts)
+
+
+def verify_pipelines(data: dict, args: argparse.Namespace) -> int:
+    tools = {p["id"]: build_path(args, "bin", p["id"]) for p in PIPELINES}
+    missing = [p for p in PIPELINES if not tools[p["id"]].exists()]
     if missing:
         for pipeline in missing:
-            print(f"missing tool for {pipeline['id']}: {pipeline['tool']}", file=sys.stderr)
+            print(f"missing tool for {pipeline['id']}: {tools[pipeline['id']]}", file=sys.stderr)
         return 1
 
     failures = []
@@ -891,7 +899,7 @@ def verify_pipelines(data: dict) -> int:
                 if out.exists():
                     shutil.rmtree(out)
                 out.mkdir(parents=True)
-                cmd = [str(ROOT / pipeline["tool"]), "--root", str(ROOT), "-o", str(out), str(source)]
+                cmd = [str(tools[pipeline["id"]]), "--root", str(ROOT), "-o", str(out), str(source)]
                 run = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if run.returncode != 0:
                     failures.append(
@@ -911,11 +919,11 @@ def verify_pipelines(data: dict) -> int:
     return 0
 
 
-def verify_krb_visuals(data: dict) -> int:
+def verify_krb_visuals(data: dict, args: argparse.Namespace) -> int:
     tools = {
-        "k2b": ROOT / "build/linux-x86_64/bin/k2b",
-        "krb-run": ROOT / "build/linux-x86_64/bin/krb-run",
-        "krb-sdl": ROOT / "build/linux-x86_64/bin/krb-sdl",
+        "k2b": build_path(args, "bin", "k2b"),
+        "krb-run": build_path(args, "bin", "krb-run"),
+        "krb-sdl": build_path(args, "bin", "krb-sdl"),
     }
     missing = [f"{name}: {path}" for name, path in tools.items() if not path.exists()]
     if missing:
@@ -1017,7 +1025,7 @@ def emcc_path() -> str | None:
     return None
 
 
-def verify_krb_web_visuals(data: dict) -> int:
+def verify_krb_web_visuals(data: dict, args: argparse.Namespace) -> int:
     emcc = emcc_path()
     node = shutil.which("node")
     if emcc is None:
@@ -1027,8 +1035,8 @@ def verify_krb_web_visuals(data: dict) -> int:
         print("KRB web matrix skipped: node not found")
         return 0
     tools = {
-        "k2b": ROOT / "build/linux-x86_64/bin/k2b",
-        "krb-run": ROOT / "build/linux-x86_64/bin/krb-run",
+        "k2b": build_path(args, "bin", "k2b"),
+        "krb-run": build_path(args, "bin", "krb-run"),
     }
     missing = [f"{name}: {path}" for name, path in tools.items() if not path.exists()]
     if missing:
@@ -1850,6 +1858,7 @@ def main() -> int:
     parser.add_argument("--verify-runtime-parity", action="store_true", help="run runtime-level parity gates")
     parser.add_argument("--verify-downstream", action="store_true", help="run downstream consumer gates when available")
     parser.add_argument("--verify-visual-comparison-matrix", action="store_true", help="verify visual comparison matrix status accounting")
+    parser.add_argument("--build-dir", default=str(ROOT / "build" / "linux-x86_64"), help=argparse.SUPPRESS)
     parser.add_argument("--cc", default="cc", help=argparse.SUPPRESS)
     parser.add_argument("--k2c", default=str(ROOT / "build" / "linux-x86_64" / "bin" / "k2c"), help=argparse.SUPPRESS)
     parser.add_argument("--cppflags", default="", help=argparse.SUPPRESS)
@@ -1873,11 +1882,11 @@ def main() -> int:
         )
 
     if args.verify_pipelines:
-        rc = verify_pipelines(data)
+        rc = verify_pipelines(data, args)
         if rc:
             return rc
     if args.verify_krb_visuals:
-        rc = verify_krb_visuals(data)
+        rc = verify_krb_visuals(data, args)
         if rc:
             return rc
     if args.verify_widget_coverage:
@@ -1885,7 +1894,7 @@ def main() -> int:
         if rc:
             return rc
     if args.verify_krb_web_visuals:
-        rc = verify_krb_web_visuals(data)
+        rc = verify_krb_web_visuals(data, args)
         if rc:
             return rc
     if args.verify_web_canvas_c_visuals:
