@@ -1157,23 +1157,19 @@ ui_control_cursor_height(int font, int box_h)
 static int
 ui_text_next_smaller_size(int font_size)
 {
-    if(font_size > Text16)
-        return Text16;
-    if(font_size > Text12)
-        return Text12;
+    if(font_size > Text8)
+        return font_size - 1;
     return Text8;
 }
 
 static int
 ui_text_normalize_size(int font_size)
 {
-    if(font_size <= Text8)
+    if(font_size <= 0)
+        return GetUIFontSize();
+    if(font_size < Text8)
         return Text8;
-    if(font_size <= Text12)
-        return Text12;
-    if(font_size <= Text16)
-        return Text16;
-    return Text24;
+    return font_size;
 }
 
 void
@@ -1477,25 +1473,28 @@ DrawUIFocus(Rectangle bounds)
 int
 GetUIFontSize(void)
 {
-    return Text16;
+    return ScaleUIPx(Text16);
 }
 
 int
 GetUISmallFontSize(void)
 {
-    return Text12;
+    return ScaleUIPx(Text12);
 }
 
 int
 GetUITitleFontSize(const char *title, int max_width)
 {
     const char *value = title != NULL ? title : "";
+    int title_font = ScaleUIPx(Text24);
+    int body_font = GetUIFontSize();
+    int small_font = GetUISmallFontSize();
 
-    if(max_width <= 0 || TextWidth(value, Text24) <= max_width)
-        return Text24;
-    if(TextWidth(value, Text16) <= max_width)
-        return Text16;
-    return Text12;
+    if(max_width <= 0 || TextWidth(value, title_font) <= max_width)
+        return title_font;
+    if(TextWidth(value, body_font) <= max_width)
+        return body_font;
+    return small_font;
 }
 
 int
