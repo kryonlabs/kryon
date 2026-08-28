@@ -37,7 +37,9 @@ sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 go_file=$(find "$work/go" -name "*.go" | head -1)
 test -f "$go_file"
 cp "$go_file" "$work/go-check/language_contract.go"
-sed -i '/^func main()/,$d' "$work/go-check/language_contract.go"
+sed '/^func main()/,$d' "$work/go-check/language_contract.go" \
+    > "$work/go-check/language_contract.go.tmp"
+mv "$work/go-check/language_contract.go.tmp" "$work/go-check/language_contract.go"
 {
     printf '%s\n' 'module kryon-spec-test'
     printf '\n'
