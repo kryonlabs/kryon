@@ -414,7 +414,7 @@ ExportKsyncAccountTextEncrypted(const KsyncAccount *account, const char *passphr
     uint8_t salt[KSYNC_ACCOUNT_SALT_BYTES];
     uint8_t nonce[12];
     uint8_t key[32];
-    uint8_t *sealed;
+    uint8_t *sealed = NULL;
     char salt_hex[KSYNC_ACCOUNT_SALT_BYTES * 2 + 1];
     char nonce_hex[12 * 2 + 1];
     size_t sealed_len;
@@ -473,7 +473,7 @@ ParseKsyncAccountTextEncrypted(const char *text, const char *passphrase,
     uint8_t salt[KSYNC_ACCOUNT_SALT_BYTES];
     uint8_t nonce[12];
     uint8_t key[32];
-    uint8_t *sealed;
+    uint8_t *sealed = NULL;
     unsigned long iterations;
     size_t sealed_len;
     int ok = 0;

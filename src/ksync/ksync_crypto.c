@@ -278,14 +278,17 @@ static void
 chacha20_block(const uint8_t key[32], const uint8_t nonce[12], uint32_t counter,
                uint8_t out[64])
 {
-    static const char constants[16] = "expand 32-byte k";
+    static const uint8_t constants[16] = {
+        'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
+        '2', '-', 'b', 'y', 't', 'e', ' ', 'k'
+    };
     uint32_t s[16];
     uint32_t x[16];
 
-    s[0] = load_le32((const uint8_t *)constants);
-    s[1] = load_le32((const uint8_t *)constants + 4);
-    s[2] = load_le32((const uint8_t *)constants + 8);
-    s[3] = load_le32((const uint8_t *)constants + 12);
+    s[0] = load_le32(constants);
+    s[1] = load_le32(constants + 4);
+    s[2] = load_le32(constants + 8);
+    s[3] = load_le32(constants + 12);
     for(int i = 0; i < 8; i++)
         s[4 + i] = load_le32(key + i * 4);
     s[12] = counter;
