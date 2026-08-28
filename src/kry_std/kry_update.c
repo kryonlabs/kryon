@@ -58,8 +58,8 @@ kry_update_detect_channel(void)
     {
         char path[1024];
 
-        /* /proc/self/exe (Linux) and /proc/self/file (FreeBSD) survive
-         * PATH tricks and cwd changes; neither exists on macOS yet. */
+        /* /proc/self/exe (Linux) and /proc/self/file (FreeBSD when procfs is
+         * mounted) survive PATH tricks and cwd changes. */
         if(kry_fs_realpath("/proc/self/exe", path, sizeof(path)) ||
            kry_fs_realpath("/proc/self/file", path, sizeof(path))) {
             if(strncmp(path, "/usr/bin/", 9) == 0 ||
@@ -69,7 +69,10 @@ kry_update_detect_channel(void)
             return KRY_UPDATE_CHANNEL_SOURCE;
         }
     }
-    return KRY_UPDATE_CHANNEL_UNKNOWN;
+    /* Some Unix targets do not expose a stable self-executable path without
+     * extra platform APIs. Treat those as source builds so self-update stays
+     * disabled unless a definitive package/runtime signal exists. */
+    return KRY_UPDATE_CHANNEL_SOURCE;
 #endif
 }
 
