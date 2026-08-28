@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.23 - 2026-08-28
+
+### Changed
+
+- Release: bump version to v0.1.23
+- Use detected Android UI scale
+- Scale default UI fonts
+
 ## v0.1.22 - 2026-08-28
 
 ### Changed
