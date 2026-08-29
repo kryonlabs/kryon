@@ -18,9 +18,22 @@
 #include <unistd.h>
 #endif
 
+/* Weak so headless links (KRYON_BACKEND=null) stay resolvable and dormant:
+ * every windowed backend defines these three strongly, and the call sites
+ * below check the addresses before calling, matching the weak raylib-only
+ * extern pattern used by the screenshot front-end. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
 extern void KryonRaylibBackend_InitWindow(int width, int height,
                                           const char *title);
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
 extern void KryonRaylibBackend_CloseWindow(void);
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
 extern bool KryonRaylibBackend_WindowShouldClose(void);
 
 static int g_single_instance =
@@ -129,17 +142,22 @@ void InitWindow(int width, int height, const char *title)
         g_instance_rejected = 1;
         return;
     }
-    KryonRaylibBackend_InitWindow(width, height, title);
+    if(KryonRaylibBackend_InitWindow != 0)
+        KryonRaylibBackend_InitWindow(width, height, title);
 }
 
 void CloseWindow(void)
 {
-    if(!g_instance_rejected)
+    if(!g_instance_rejected && KryonRaylibBackend_CloseWindow != 0)
         KryonRaylibBackend_CloseWindow();
     release_instance();
 }
 
 bool WindowShouldClose(void)
 {
-    return g_instance_rejected || KryonRaylibBackend_WindowShouldClose();
+    if(g_instance_rejected)
+        return true;
+    if(KryonRaylibBackend_WindowShouldClose == 0)
+        return false;
+    return KryonRaylibBackend_WindowShouldClose();
 }
