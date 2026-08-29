@@ -1,4 +1,19 @@
 # Changelog
+## v0.1.24 - 2026-08-29
+
+### Changed
+
+- Add Android window inset API
+- Release: bump version to v0.1.24
+- Install ripgrep in Linux CI
+- Degrade gracefully when instance lock is unavailable
+- Select retained text fields on double click
+- Add release and sanitizer check targets
+- Track backend capabilities in preflight
+- Harden Kryon boundaries and preflight checks
+- Fix Android surface resize cache
+- Sync frame size for platform UI
+
 ## v0.1.23 - 2026-08-28
 
 ### Changed
