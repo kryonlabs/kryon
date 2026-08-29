@@ -12,8 +12,10 @@ backend_prefix=${KRYON_RAYLIB_BACKEND_PREFIX:-KryonRaylibBackend_}
 # Vendored inputs behind the extra surface sections below. They stay
 # implementation details of the raylib backend; only the curated names in
 # rlgl_symbols and the raymath static-inline copy join the public surface.
-rlgl_header=${KRYON_RLGL_HEADER:-vendor/raylib/src/rlgl.h}
-raymath_header=${KRYON_RAYMATH_HEADER:-vendor/raylib/src/raymath.h}
+# Resolved next to the raylib header so app builds (which pass an explicit
+# raylib.h path) work from any working directory.
+rlgl_header=${KRYON_RLGL_HEADER:-$(dirname "$raylib_header")/rlgl.h}
+raymath_header=${KRYON_RAYMATH_HEADER:-$(dirname "$raylib_header")/raymath.h}
 
 # Curated rlgl tier: the low-level mesh/shader/matrix entry points exposed
 # for custom 3D rendering pipelines (voxel meshers and similar code that
