@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "source": "docs/BACKEND_CAPABILITIES.json",
+  "backends": [
+    {
+      "id": "raylib",
+      "label": "Desktop raylib",
+      "tier": "default",
+      "platforms": ["Linux", "FreeBSD", "macOS", "Windows"],
+      "surface": "full raylib compatibility through Kryon wrapper symbols",
+      "status": "default",
+      "checks": ["make kryon-compat-check", "make raylib-matrix-check", "build/linux-x86_64/tests/raylib_compat_test"]
+    },
+    {
+      "id": "null",
+      "label": "Null headless",
+      "tier": "headless",
+      "platforms": ["hosted C"],
+      "surface": "generated zero-return stubs plus Kryon input injection",
+      "status": "test backend",
+      "checks": ["make KRYON_BACKEND=null all"]
+    },
+    {
+      "id": "canvas",
+      "label": "Web Canvas2D",
+      "tier": "web",
+      "platforms": ["Emscripten web"],
+      "surface": "Canvas2D and WebAudio implementation with null stubs for unsupported surface areas",
+      "status": "source-capture gated",
+      "checks": ["make canvas-test", "make canvas2d-parity-check", "make web-canvas-matrix-check"]
+    },
+    {
+      "id": "libdraw",
+      "label": "Plan 9 libdraw",
+      "tier": "desktop",
+      "platforms": ["plan9port/devdraw"],
+      "surface": "kry_sw software renderer presented through libdraw",
+      "status": "source-capture gated",
+      "checks": ["make libdraw-test", "make libdraw-matrix-check"]
+    },
+    {
+      "id": "termi",
+      "label": "Terminal cells",
+      "tier": "terminal",
+      "platforms": ["ANSI terminal"],
+      "surface": "terminal-cell drawing, raw terminal input, and null stubs for unsupported surface areas",
+      "status": "smoke gated",
+      "checks": ["make termi-test"]
+    }
+  ]
+}

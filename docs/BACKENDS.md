@@ -1,9 +1,10 @@
 # Kryon Backends
 
 How the graphics/input backend is selected, what a backend must implement, and
-how to add a new one. For the operational guide see `docs/AGENTS.md`; for the
-public API see `docs/API.md`; for what runs where see
-`docs/FEATURE_MATRIX.md`.
+how to add a new one. For the machine-readable backend inventory see
+`docs/BACKEND_CAPABILITIES.json`; for the operational guide see
+`docs/AGENTS.md`; for the public API see `docs/API.md`; for what runs where
+see `docs/FEATURE_MATRIX.md`.
 
 ## The surface and how selection works
 

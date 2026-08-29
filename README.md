@@ -171,6 +171,8 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 - `docs/FEATURE_MATRIX.md` maps widget and feature support across the C, Go,
   and KRB targets and every renderer backend.
 - `docs/BACKENDS.md` documents the backend architecture and selection.
+- `docs/BACKEND_CAPABILITIES.json` is the checked backend inventory used by
+  backend drift checks.
 - `docs/ARCHITECTURE.md` maps the main Kryon subsystems and ownership lines.
 - `docs/BOUNDARIES.md` defines what belongs in Kryon and what stays in
   downstream applications.

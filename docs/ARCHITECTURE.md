@@ -26,7 +26,8 @@ downstream application demonstrably needs the behavior.
 Backend selection is controlled by `KRYON_BACKEND`. The default native backend
 uses raylib through Kryon's compatibility surface. Other backends are expected
 to implement Kryon behavior through the same public/runtime contracts, with
-their support documented in `docs/BACKENDS.md` and `docs/FEATURE_MATRIX.md`.
+their support documented in `docs/BACKEND_CAPABILITIES.json`,
+`docs/BACKENDS.md`, and `docs/FEATURE_MATRIX.md`.
 
 ## Formats And Tools
 
@@ -49,6 +50,7 @@ Kryon uses several test layers:
 - public API snapshot checks for app-facing identifier drift
 - public header compile checks for app-facing include hygiene
 - examples manifest checks for example inventory and exactness fixtures
+- backend capability checks for backend inventory drift
 - generated-file checks for docs, compatibility headers, icons, and matrices
 - parser, runtime, sync, update, platform, and widget tests
 - conformance and visual matrix checks across renderers and runtime paths
