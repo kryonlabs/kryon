@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.33 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.33
+- Skip rendering unchanged frames and reuse the present-path buffers
+- Add rlActiveTextureSlot to the curated rlgl tier
+- Build app sources and vendor deps before the linux arch compile
+
 ## v0.1.32 - 2026-08-29
 
 ### Changed
