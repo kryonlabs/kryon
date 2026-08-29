@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.28 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.28
+- Add custom-header variants to kry_http
+
 ## v0.1.27 - 2026-08-29
 
 ### Changed
