@@ -72,7 +72,7 @@ static int acquire_instance(const char *title)
         long pid = 0;
 
         if(fd < 0)
-            return 0;
+            return -1;
         if(flock(fd, LOCK_EX | LOCK_NB) == 0) {
             int size = snprintf(pid_text, sizeof(pid_text), "%ld\n",
                                 (long)getpid());
@@ -81,6 +81,10 @@ static int acquire_instance(const char *title)
             (void)write(fd, pid_text, (size_t)size);
             g_instance_fd = fd;
             return 1;
+        }
+        if(errno != EWOULDBLOCK && errno != EAGAIN) {
+            close(fd);
+            return -1;
         }
         lseek(fd, 0, SEEK_SET);
         bytes = read(fd, pid_text, sizeof(pid_text) - 1);
@@ -116,8 +120,12 @@ int SingleInstanceEnabled(void) { return g_single_instance; }
 
 void InitWindow(int width, int height, const char *title)
 {
+    int instance_status = 1;
+
     g_instance_rejected = 0;
-    if(g_single_instance && !acquire_instance(title)) {
+    if(g_single_instance)
+        instance_status = acquire_instance(title);
+    if(instance_status == 0) {
         g_instance_rejected = 1;
         return;
     }
