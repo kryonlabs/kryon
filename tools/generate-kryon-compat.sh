@@ -394,6 +394,11 @@ BEGIN {
 
 /^\/\/ Audio Loading and Playing Functions/ { in_audio_section = 1 }
 
+# raylib.h ends inside the audio section; reset the flag per input file so
+# the curated rlgl declarations processed after it are not misread as audio
+# and dropped from the wrappers when KRYON_COMPAT_AUDIO=0.
+FNR == 1 { in_audio_section = 0 }
+
 /^[[:space:]]*(RLAPI|RMAPI)[[:space:]]/ {
     line = $0
     sub(/\/\/.*$/, "", line)
