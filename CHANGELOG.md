@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.25 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.25
+- Install ripgrep in release workflow
+
 ## v0.1.24 - 2026-08-29
 
 ### Changed
