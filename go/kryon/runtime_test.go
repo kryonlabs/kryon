@@ -1473,3 +1473,53 @@ func countPixels(img interface {
 func rgbaTest(c Color) color.RGBA {
 	return color.RGBA{R: c.R, G: c.G, B: c.B, A: c.A}
 }
+
+func TestTabBarRecordsOpsAndSelectsOnClick(t *testing.T) {
+	r := New(AppConfig{Width: 400, Height: 100}).(*runtime)
+	defer SetRuntime(nil)
+	SetRuntime(r)
+	labels := []string{"Alpha", "Beta", "Gamma"}
+	sel, hov := int32(1), int32(-1)
+
+	BeginFrame()
+	EndFrame()
+	// Hover over the third tab (each 400/3 wide), click it.
+	r.QueueMouseMove(350, 10)
+	r.QueueMouseButton(MouseButtonLeft, 350, 10)
+	BeginFrame() // the queued input lands on the next frame's state
+	clicked := TabBar(NewRectangle(0, 0, 400, 30), labels, &sel, &hov)
+	ops := FrameOps()
+	buttons := 0
+	var active *FrameOp
+	for i, op := range ops {
+		if op.Kind == FrameOpButton {
+			buttons++
+			active = &ops[i]
+		}
+	}
+	if buttons != len(labels) {
+		t.Fatalf("recorded %d tab buttons, want %d", buttons, len(labels))
+	}
+	if clicked != 2 || sel != 2 {
+		t.Fatalf("click selected %d (sel=%d), want 2", clicked, sel)
+	}
+	if hov != 2 {
+		t.Fatalf("hover = %d, want 2", hov)
+	}
+	if active == nil || active.Text != "Gamma" || !active.Pressed {
+		t.Fatalf("last tab op = %+v, want active Gamma", active)
+	}
+	EndFrame()
+}
+
+func TestTabBarEmptyLabels(t *testing.T) {
+	r := New(AppConfig{Width: 100, Height: 30}).(*runtime)
+	defer SetRuntime(nil)
+	SetRuntime(r)
+	sel := int32(0)
+	BeginFrame()
+	if got := TabBar(NewRectangle(0, 0, 100, 30), nil, &sel, nil); got != -1 {
+		t.Fatalf("TabBar with no labels = %d, want -1", got)
+	}
+	EndFrame()
+}

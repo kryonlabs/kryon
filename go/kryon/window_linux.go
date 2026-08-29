@@ -65,6 +65,22 @@ func (r *windowRuntime) EndFrame() {
 	if fr, ok := r.Runtime.(frameOpController); ok {
 		ops = fr.FrameOps()
 	}
+	if os.Getenv("KRYON_OPS_DEBUG") != "" {
+		n := len(ops)
+		if n > 80 {
+			n = 80
+		}
+		for i := 0; i < n; i++ {
+			op := ops[i]
+			txt := op.Text
+			if len(txt) > 24 {
+				txt = txt[:24]
+			}
+			fmt.Fprintf(os.Stderr, "kryon: op[%d] kind=%v bounds=%v fontSize=%d fontID=%d text=%q\n",
+				i, op.Kind, op.Bounds, op.FontSize, op.FontID, txt)
+		}
+		fmt.Fprintf(os.Stderr, "kryon: total ops=%d\n", len(ops))
+	}
 	img := RenderFrame(int(r.GetScreenWidth()), int(r.GetScreenHeight()), ops)
 	if err := r.window.present(img); err != nil {
 		r.closed = true

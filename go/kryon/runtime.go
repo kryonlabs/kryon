@@ -1150,7 +1150,83 @@ func (r *runtime) Button(props ButtonProps) bool {
 	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: theme.text, ID: props.ID, FontSize: props.Font, Pressed: pressed})
 	return pressed
 }
-func (r *runtime) TabBar(Rectangle, []string, *int32, *int32) int32 { return -1 }
+
+// TabBar renders a horizontal strip of equal-width tabs and returns the
+// index clicked this frame (-1 = none). The selected tab (through *selected)
+// carries the highlighted styling; *hover tracks the tab under the pointer.
+func (r *runtime) TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
+	if len(labels) == 0 || selected == nil {
+		return -1
+	}
+	theme := r.theme()
+	b := r.layoutRect(bounds)
+	if b.Width <= 0 || b.Height <= 0 {
+		return -1
+	}
+	sel := *selected
+	if sel < 0 || sel >= int32(len(labels)) {
+		sel = 0
+		*selected = 0
+	}
+	mouse := r.MousePosition()
+	tw := b.Width / float32(len(labels))
+	fontSize := int32(14)
+	if b.Height > 12 && fontSize > int32(b.Height)-6 {
+		fontSize = int32(b.Height) - 6
+	}
+	clicked := int32(-1)
+	if hover != nil {
+		*hover = -1
+	}
+	for i, label := range labels {
+		tab := Rectangle{X: b.X + float32(i)*tw, Y: b.Y, Width: tw, Height: b.Height}
+		inside := mouse.X >= tab.X && mouse.X < tab.X+tab.Width &&
+			mouse.Y >= tab.Y && mouse.Y < tab.Y+tab.Height
+		press := r.consumeTap(tab)
+		active := int32(i) == sel
+		fill, border, text := theme.surface, theme.button, theme.icon
+		if active {
+			fill, border, text = theme.buttonHover, theme.buttonHover, theme.text
+		} else if inside {
+			fill, text = theme.button, theme.text
+		}
+		if hover != nil && inside {
+			*hover = int32(i)
+		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: tab, Text: fitTabLabel(label, tab.Width-12, fontSize),
+			Color: fill, BorderColor: border, TextColor: text, FontSize: fontSize, Pressed: active || press})
+		if press {
+			*selected = int32(i)
+			clicked = int32(i)
+		}
+	}
+	return clicked
+}
+
+// fitTabLabel truncates with an ellipsis until the label measures within
+// maxWidth (rune-safe; measurement falls back to a width estimate when no
+// font face is loaded, e.g. headless tests).
+func fitTabLabel(label string, maxWidth float32, fontSize int32) string {
+	if maxWidth <= 8 {
+		return ""
+	}
+	runes := []rune(label)
+	for len(runes) > 1 {
+		s := string(runes)
+		if w, ok := measureFontText(s, fontSize, 0); ok {
+			if w.X <= maxWidth {
+				return s
+			}
+		} else if float32(len(runes))*float32(fontSize)*0.6 <= maxWidth {
+			return s
+		}
+		runes = runes[:len(runes)-1]
+		if w, ok := measureFontText(string(runes)+"\u2026", fontSize, 0); ok && w.X <= maxWidth {
+			return string(runes) + "\u2026"
+		}
+	}
+	return string(runes)
+}
 func (r *runtime) Progress(props ProgressBarProps) {
 	theme := r.theme()
 	bounds := r.layoutRect(props.Bounds)
