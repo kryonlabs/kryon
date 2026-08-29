@@ -65,7 +65,7 @@ $(WEB_WORK_TARGET): $(BUILD_MAKEFILES) $(SRC) $(WEB_KRYON_SRCS) $(CORE_SRCS) $(W
 		$(WEB_BACKEND_LIBS) \
 		$(WEB_LDFLAGS)
 	cache_buster=$$(find $(WEB_BUILD_DIR) -maxdepth 1 \( -name 'index.js' -o -name 'index.data' -o -name 'index.wasm' \) -type f -print | sort | xargs cksum | cksum | cut -d ' ' -f 1); \
-		sed -i "s#src=\"index.js\"#src=\"index.js?v=$$cache_buster\"#; s#WEB_CACHE_BUSTER#$$cache_buster#g" $(WEB_WORK_TARGET)
+		sed -i "s#src=\"index.js\"#src=\"index.js?v=$$cache_buster\"#; s#src=index.js#src=\"index.js?v=$$cache_buster\"#; s#WEB_CACHE_BUSTER#$$cache_buster#g" $(WEB_WORK_TARGET)
 	@if [ -d web-assets ]; then rsync -a web-assets/ $(WEB_BUILD_DIR)/web-assets/; fi
 	@if [ -f manifest.json ]; then cp manifest.json $(WEB_BUILD_DIR)/; fi
 
