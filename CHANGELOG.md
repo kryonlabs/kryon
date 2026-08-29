@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.32 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.32
+- Deliver full clicks from the X11 backend so Button widgets respond
+
 ## v0.1.31 - 2026-08-29
 
 ### Changed
