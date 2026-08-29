@@ -85,7 +85,7 @@ Every successful CI run on `master` automatically advances the patch version,
 commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
 The workflow validates the version, creates an annotated tag, builds and tests
 Kryon, and publishes both the static SDK and a checksummed native tools bundle.
-The tools bundle contains `k2c`, `k2g`, `k2ir`, `k2b`, `kt`, `kryon`,
+The tools bundle contains `k2c`, `k2g`, `k2js`, `k2ir`, `k2b`, `kt`, `kryon`,
 `kryon-preview`, `krb-run`, and `krb-sdl`. The renderer workflow also attaches
 the Linux, Windows, and macOS `krb-run` builds plus the web player to the same
 release.
@@ -240,7 +240,7 @@ generated Go/C parity tests drive both runtimes through the same scripted input.
 This is an executable compatibility gate, not only a textual generated-source
 check.
 
-`k2c` and `k2b` accept either `.kry` or `.kir`; when given source, they run the
-KIR frontend internally. Native platform, storage, and performance-sensitive C
-code remains first-class through the C backend and through explicit KRB
-capabilities or host imports.
+`k2c`, `k2js`, and `k2b` accept `.kry` source and run the KIR frontend
+internally. Native platform, storage, and performance-sensitive C code remains
+first-class through the C backend and through explicit KRB capabilities or host
+imports.

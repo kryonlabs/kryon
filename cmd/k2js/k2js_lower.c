@@ -37,7 +37,7 @@ static int g_extern_count;
 static void
 mkdir_parent(const char *path)
 {
-    char tmp[1024];
+    char tmp[KIR_PATH_MAX * 2];
     size_t i;
 
     snprintf(tmp, sizeof(tmp), "%s", path);
@@ -470,7 +470,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         char q[K2JS_TEXT_MAX];
 
         js_string_buf(src, q, sizeof(q));
-        snprintf(dst, dst_size, "kryon.expr(%s)", q);
+        snprintf(dst, dst_size, "kryon.expr(");
+        strncat(dst, q, dst_size - strlen(dst) - 1);
+        strncat(dst, ")", dst_size - strlen(dst) - 1);
         return;
     }
     while(*p != '\0' && dn + 16 < dst_size) {
@@ -907,7 +909,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
            const char *root, const char *out_dir,
            const char *runtime_import, int no_main)
 {
-    char path[1024];
+    char path[KIR_PATH_MAX * 2];
 
     (void)root;
     build_global_functions(progs, prog_count);

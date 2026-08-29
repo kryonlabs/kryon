@@ -93,6 +93,7 @@ AppHome :: (app: AppState*) #ui {
             <div class="pane-label">portable pipeline</div>
 <pre><code>k2ir app.kry
 k2c  app.kir    # native C
+k2js app.kry    # browser ESM
 k2b  app.kir    # portable cartridge
 kryon-preview app.krb</code></pre>
           </div>
@@ -140,10 +141,11 @@ Counter :: (state: *CounterState) {
         </div>
 
         <div class="tabpanel" id="tp-2" role="tabpanel" aria-labelledby="tab-2" hidden>
-          <h3>One KIR, two outputs</h3>
-          <p>The frontend resolves <code>.kry</code> into KIR once. <code>k2c</code> emits readable C for native apps; <code>k2b</code> emits portable KRB cartridges for renderers.</p>
+          <h3>One KIR, multiple outputs</h3>
+          <p>The frontend resolves <code>.kry</code> into KIR once. <code>k2c</code> emits readable C for native apps; <code>k2js</code> emits browser-loadable ESM; <code>k2b</code> emits portable KRB cartridges for renderers.</p>
 <pre><code>k2ir counter.kry
 k2c  counter.kir
+k2js counter.kry
 k2b  counter.kir</code></pre>
         </div>
 
@@ -315,6 +317,7 @@ make install</code></pre>
       <p>The clean compiler tool direction:</p>
 <pre><code>k2ir app.kry
 k2c  app.kry    # or app.kir
+k2js app.kry
 k2b  app.kry    # or app.kir</code></pre>
       <p>A simple <code>.kry</code> shape:</p>
 <pre><code>#import "kryon.h"

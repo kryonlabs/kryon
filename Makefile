@@ -378,6 +378,7 @@ docs-site:
 		python3 scripts/update-showcase.py --output $(SITE_BUILD_DIR)/showcase-data.json --banner-dir $(SITE_BUILD_DIR)/showcase; \
 	fi
 	EMCC="$(EMCC)" sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
+	cp web/kryon-runtime.js web/kryon-runtime.d.ts $(SITE_BUILD_DIR)/ide-tools/
 	sh scripts/build-site-live-examples.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
@@ -839,11 +840,11 @@ $(TEXT_INPUT_PRECISION_TEST): tests/text_input_precision_test.c $(LIB) $(KRYON_B
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-perf-text-input: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
+perf-text-input: $(K2IR) $(K2C) $(K2G) $(K2JS) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
 	sh tests/text_input_perf.sh . $(BUILD_DIR)
 	$(TEXT_INPUT_PRECISION_TEST)
 
-perf-text-input-site: $(K2IR) $(K2C) $(K2G) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
+perf-text-input-site: $(K2IR) $(K2C) $(K2G) $(K2JS) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
 	mkdir -p $(BUILD_DIR)
 	{ sh tests/text_input_perf.sh . $(BUILD_DIR); $(TEXT_INPUT_PRECISION_TEST); } | tee $(BUILD_DIR)/text-input-perf.jsonl
 	python3 scripts/render_benchmarks.py docs/site/benchmarks.json $(BUILD_DIR)/text-input-perf.jsonl

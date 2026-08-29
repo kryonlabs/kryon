@@ -170,8 +170,8 @@ It is not a general compile-time function system.
 
 `#assert CONDITION, "message"` records a KIR assertion. If the assertion is
 unguarded, fully known, and false, the frontend fails immediately. C lowers
-assertions to `#if` and `#error`. Go and KRB currently accept only known-true
-assertions and reject guarded or unresolved assertions.
+assertions to `#if` and `#error`. Go, JS, and KRB currently accept only
+known-true assertions and reject guarded or unresolved assertions.
 
 ## Diagnostics
 

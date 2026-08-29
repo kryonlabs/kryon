@@ -12,7 +12,7 @@ any scenario has p99 latency at or above 1 ms or changes the retained node
 count. Results are JSON Lines so CI can retain and compare them without
 parsing human output.
 
-The generated KIR, C, Go, and KRB artifacts are validated before the native
+The generated KIR, C, Go, JS, and KRB artifacts are validated before the native
 retained-core runtime measurement. The report names that runtime explicitly;
 it never mislabels one native run as execution of every lowering. OS compositor
 and display latency are deliberately outside this deterministic gate. For a

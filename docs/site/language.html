@@ -59,7 +59,7 @@
             <tr><td>C-close expressions</td><td>Types, pointer expressions, calls, field access, and raw C escape lines stay familiar to C programmers.</td></tr>
             <tr><td>Declarative UI shape</td><td><code>#ui</code> functions declare named node hierarchies; the runtime owns reconciliation, layout, input routing, focus, and update order.</td></tr>
             <tr><td>Inspectable lowering</td><td><code>k2ir</code> prints imports, state, functions, statements, assertions, and simple structured expression trees for tooling.</td></tr>
-            <tr><td>Honest subsets</td><td>C is the full path. Go and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics.</td></tr>
+            <tr><td>Honest subsets</td><td>C is the full path. Go, JS, and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics.</td></tr>
           </tbody>
         </table>
       </div>
@@ -131,7 +131,7 @@ Counter :: (viewport: Rectangle, app: App*) #ui {
           <tbody>
             <tr><td><code>#defined(SYMBOL)</code></td><td class="ok">Available</td><td>Expands to a C preprocessor-style condition for guards and generated C.</td></tr>
             <tr><td><code>NAME :: #run INTEGER_EXPR</code></td><td class="ok">Available</td><td>Evaluated by the Kry frontend as a small integer constant. It is not a general compile-time function system.</td></tr>
-            <tr><td><code>#assert CONDITION, "message"</code></td><td class="ok">Available</td><td>Ungarded constant-false assertions fail during Kry parsing. C emits <code>#if/#error</code>. Go and KRB require known true assertions.</td></tr>
+            <tr><td><code>#assert CONDITION, "message"</code></td><td class="ok">Available</td><td>Ungarded constant-false assertions fail during Kry parsing. C emits <code>#if/#error</code>. Go, JS, and KRB require known true assertions.</td></tr>
             <tr><td><code>#if</code>, <code>#else</code>, <code>#endif</code></td><td class="ok">Available</td><td>Retained in KIR as expanded guards so backends know the active platform conditions.</td></tr>
           </tbody>
         </table>
