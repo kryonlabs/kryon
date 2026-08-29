@@ -20,6 +20,17 @@ func RenderFrame(width, height int, ops []FrameOp) *image.RGBA {
 		height = 1
 	}
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	RenderFrameInto(img, ops)
+	return img
+}
+
+// RenderFrameInto renders into an existing image (cleared first). Hosts that
+// present every frame pass the same image back in instead of allocating ~4MB
+// per frame; the image is only replaced when the window is resized.
+func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
+	if img == nil || img.Bounds().Dx() <= 0 || img.Bounds().Dy() <= 0 {
+		return
+	}
 	fillImage(img, RAYWHITE)
 	for _, op := range ops {
 		switch op.Kind {
@@ -45,7 +56,7 @@ func RenderFrame(width, height int, ops []FrameOp) *image.RGBA {
 			strokeRect(img, op.Bounds, Color{220, 224, 229, 255})
 		}
 	}
-	return img
+
 }
 
 // RenderCurrentFrame paints the active runtime's latest frame operation stream.

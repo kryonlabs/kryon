@@ -24,6 +24,14 @@ type windowRuntime struct {
 	fps    int
 	last   time.Time
 	closed bool
+
+	// frame *image.RGBA     reused target image (reallocation only on resize)
+	// prevOps/nextOps       double buffer for change detection
+	// dirty                 force a present even when ops compare equal
+	frame   *image.RGBA
+	prevOps []FrameOp
+	nextOps []FrameOp
+	dirty   bool
 }
 
 type legacyPointerController interface {
@@ -81,10 +89,25 @@ func (r *windowRuntime) EndFrame() {
 		}
 		fmt.Fprintf(os.Stderr, "kryon: total ops=%d\n", len(ops))
 	}
-	img := RenderFrame(int(r.GetScreenWidth()), int(r.GetScreenHeight()), ops)
-	if err := r.window.present(img); err != nil {
-		r.closed = true
-		return
+	// Present only what changed: the op stream is compared against the last
+	// presented frame, and untouched frames skip rasterization and the X11
+	// upload entirely. Exposure marks the window dirty (the server asks for a
+	// repaint after occlusion), as do resizes.
+	w, h := int(r.GetScreenWidth()), int(r.GetScreenHeight())
+	if r.frame == nil || r.frame.Bounds().Dx() != w || r.frame.Bounds().Dy() != h {
+		r.frame = image.NewRGBA(image.Rect(0, 0, w, h))
+		r.dirty = true
+	}
+	r.nextOps = append(r.nextOps[:0], ops...)
+	same := !r.dirty && frameOpsEqual(r.prevOps, r.nextOps)
+	r.prevOps, r.nextOps = r.nextOps, r.prevOps
+	r.dirty = false
+	if !same {
+		RenderFrameInto(r.frame, ops)
+		if err := r.window.present(r.frame); err != nil {
+			r.closed = true
+			return
+		}
 	}
 	if r.fps > 0 {
 		frame := time.Second / time.Duration(r.fps)
@@ -127,6 +150,9 @@ func (r *windowRuntime) pumpEvents() {
 		case x11EventResize:
 			r.window.width = ev.x
 			r.window.height = ev.y
+			r.dirty = true
+		case x11EventExposeKind:
+			r.dirty = true // server asks for a repaint after occlusion
 		case x11EventTap:
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
@@ -300,8 +326,9 @@ const (
 )
 
 type x11Window struct {
-	conn net.Conn
-	seq  uint16
+	conn   net.Conn
+	seq    uint16
+	reqBuf []byte
 
 	resourceBase uint32
 	resourceMask uint32
@@ -344,6 +371,7 @@ const (
 	x11EventRelease
 	x11EventWheel
 	x11EventKey
+	x11EventExposeKind
 )
 
 type x11Event struct {
@@ -801,7 +829,10 @@ func (w *x11Window) present(img *image.RGBA) error {
 			rows = b.Dy() - y
 		}
 		chunk := data[y*stride : (y+rows)*stride]
-		req := make([]byte, 24+len(chunk))
+		if cap(w.reqBuf) < 24+len(chunk) {
+			w.reqBuf = make([]byte, 24+len(chunk))
+		}
+		req := w.reqBuf[:24+len(chunk)]
 		req[0] = 72
 		req[1] = x11ZPixmap
 		put16(req[2:], uint16(len(req)/4))
@@ -1098,3 +1129,16 @@ func lowBit(mask uint32) uint {
 // Compile-time guard: windowRuntime must satisfy the compat input surface or
 // every compat input read silently fails (see KeyDown above).
 var _ compatInputRuntime = (*windowRuntime)(nil)
+
+// frameOpsEqual reports whether two frame-op streams paint identical frames.
+func frameOpsEqual(a, b []FrameOp) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
