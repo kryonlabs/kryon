@@ -19,6 +19,7 @@ build_failed()
         "$tool_dir/k2b.js" "$tool_dir/k2b.wasm" \
         "$tool_dir/k2c.js" "$tool_dir/k2c.wasm" \
         "$tool_dir/k2g.js" "$tool_dir/k2g.wasm" \
+        "$tool_dir/k2js.js" "$tool_dir/k2js.wasm" \
         "$tool_dir/krb-web.js" "$tool_dir/krb-web.wasm"
     exit 0
 }
@@ -77,6 +78,20 @@ build_failed()
     cmd/k2g/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c \
     -o "$tool_dir/k2g.js" || build_failed
+
+"$EMCC" -O0 \
+    -sMODULARIZE=1 \
+    -sEXPORT_NAME=createK2jsModule \
+    -sINVOKE_RUN=0 \
+    -sEXIT_RUNTIME=0 \
+    -sSTACK_SIZE=5242880 \
+    -sALLOW_MEMORY_GROWTH=1 \
+    -sENVIRONMENT=web,worker \
+    -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
+    -Icmd/k2js -Icmd/kir \
+    cmd/k2js/*.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c \
+    -o "$tool_dir/k2js.js" || build_failed
 
 "$EMCC" -Wall -Wextra -Os -Iinclude \
     -sMODULARIZE=1 \

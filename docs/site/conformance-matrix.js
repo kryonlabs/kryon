@@ -110,9 +110,16 @@
   }
 
   function pipelineCells(row) {
-    return ["k2ir", "k2c", "k2g", "k2b"].map(function(id) {
+    return pipelineColumns(window.__kryonConformanceData || null).map(function(pipeline) {
+      var id = pipeline.id || pipeline;
       return cell(row.pipelines[id] || {status: "missing", status_class: "no"});
     }).join("");
+  }
+
+  function pipelineColumns(data) {
+    return data && data.pipelines
+      ? data.pipelines
+      : [{id: "k2ir"}, {id: "k2c"}, {id: "k2g"}, {id: "k2js"}, {id: "k2b"}];
   }
 
   function sourceRendererColumns(data) {
@@ -130,7 +137,11 @@
     var rendererHeaders = sourceRendererColumns(data).map(function(renderer) {
       return '<th title="' + escapeText(renderer.scope || "") + '">' + escapeText(renderer.label) + "</th>";
     }).join("");
-    sourceHead.innerHTML = "<th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2b</th>" +
+    var pipelineHeaders = pipelineColumns(data).map(function(pipeline) {
+      return "<th>" + escapeText(pipeline.id || pipeline) + "</th>";
+    }).join("");
+    window.__kryonConformanceData = data;
+    sourceHead.innerHTML = "<th>Source</th><th>Type</th>" + pipelineHeaders +
       rendererHeaders + "<th>Widgets</th><th>State Evidence</th>";
   }
 

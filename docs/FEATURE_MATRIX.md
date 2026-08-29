@@ -21,6 +21,7 @@ the columns diverge.
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
    ├── k2g  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
+   ├── k2js -> .js (web runtime calls)      -> browser/Node ESM   -> Web app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
    └── k2ir -> .kir (text IR dump; debugging, tests, Krait)
 ```
@@ -29,6 +30,7 @@ the columns diverge.
 |---|---|---|---|
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
 | Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
+| JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Initial web-native target; syntax and Node smoke gated |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |
 
@@ -46,7 +48,8 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 `parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 30 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2g` lowers
-the full whitelist onto its `Runtime` interface (except `Canvas`, below), and
+the full whitelist onto its `Runtime` interface (except `Canvas`, below);
+`k2js` records whitelisted widgets as browser-loadable runtime operations; and
 `k2b` lowers a subset of it:
 
 `Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture

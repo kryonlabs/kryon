@@ -342,6 +342,17 @@ KirImportKindName(KirImportKind kind)
 }
 
 const char *
+KirExternKindName(KirExternKind kind)
+{
+    switch(kind) {
+    case KIR_EXTERN_HOST: return "host";
+    case KIR_EXTERN_GO: return "go";
+    case KIR_EXTERN_C: return "c";
+    default: return "none";
+    }
+}
+
+const char *
 KirExprKindName(KirExprKind kind)
 {
     switch(kind) {
@@ -443,8 +454,13 @@ KirProgramDump(const KirProgram *program, FILE *out)
         for(j = 0; j < m->import_count; j++) {
             const KirImport *imp = &m->imports[j];
 
-            fprintf(out, "  import %s %s target %s required %d signature %s span ",
-                    KirImportKindName(imp->kind), imp->name, imp->target,
+            fprintf(out, "  import %s %s target %s",
+                    KirImportKindName(imp->kind), imp->name, imp->target);
+            if(imp->kind == KIR_IMPORT_EXTERN)
+                fprintf(out, " extern_kind %s extern_symbol %s",
+                        KirExternKindName(imp->extern_kind),
+                        imp->extern_symbol);
+            fprintf(out, " required %d signature %s span ",
                     imp->required, imp->signature);
             kir_dump_span(out, imp->span);
             fprintf(out, "\n");

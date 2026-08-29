@@ -28,6 +28,7 @@ tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
 direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
 direct_queue_text :: (value: const char*) #extern "github.com/waozixyz/kryon/go/kryon.QueueText"
+c_abs :: (value: int) -> int #extern "c.abs"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -160,7 +161,8 @@ App :: () #ui {
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), ""})
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), ""})
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, c_abs(-8), ""})
+    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(266), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), ""})
     relay_text(field_text)
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     attempts: int = 0
@@ -204,10 +206,12 @@ EOF
 "$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/helper.kry"
 "$k2g" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
+cgo="$work/out/valid_cgo.go"
 helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
+[ -f "$cgo" ] || { echo "k2g produced no cgo output" >&2; exit 1; }
 [ -f "$helper" ] || { echo "k2g produced no helper output" >&2; exit 1; }
 [ -f "$hier" ] || { echo "k2g produced no hierarchy output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
@@ -261,10 +265,15 @@ if grep -q 'ScaleUIPx(Value int32)' "$out"; then
     echo "k2g placed a direct Go extern in the host interface" >&2
     exit 1
 fi
+grep -q 'import "C"' "$cgo"
+grep -q 'extern int abs(int value);' "$cgo"
+grep -q 'func k2gCValidCAbs(value int32) int32' "$cgo"
+grep -q 'return int32(C.abs(C.int(value)))' "$cgo"
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
+grep -q 'k2gCValidCAbs(int32(-8))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
 grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"

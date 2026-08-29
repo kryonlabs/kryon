@@ -20,7 +20,7 @@ stale_kryui='go/''kryui'
 dot_import='import \. "github.com/waozixyz/kryon/go/kryon"'
 
 matches="$(
-    rg -n "${stale_draw}|${stale_text}|${stale_input}|${stale_render}|${stale_node}|${stale_key}|${stale_begin}|${stale_end}|${stale_frame}|${stale_canvas}|${stale_menu}|${stale_nav}|${stale_runtime}|rt\\.|import \"C\"|${dot_import}|${stale_kryui}" "$target" \
+    rg -n "${stale_draw}|${stale_text}|${stale_input}|${stale_render}|${stale_node}|${stale_key}|${stale_begin}|${stale_end}|${stale_frame}|${stale_canvas}|${stale_menu}|${stale_nav}|${stale_runtime}|rt\\.|${dot_import}|${stale_kryui}" "$target" \
         --glob '*.go' \
         --glob '*.c' \
         --glob '*.h' || true

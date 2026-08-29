@@ -13,6 +13,7 @@ The required pipeline is:
 ```text
 .kry -> KIR -> C
 .kry -> KIR -> Go
+.kry -> KIR -> JS
 .kry -> KIR -> KRB
 ```
 

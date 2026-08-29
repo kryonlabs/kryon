@@ -15,10 +15,11 @@
   var k2bMod = null;
   var k2cMod = null;
   var k2gMod = null;
+  var k2jsMod = null;
   var krbPlayerMod = null;
   var krbPlayerInputReady = false;
   var activeTab = "kry";
-  var last = { kry: "", kir: "", krb: "", c: "", go: "", bytes: null };
+  var last = { kry: "", kir: "", krb: "", c: "", go: "", js: "", bytes: null };
   var compileTimer = 0;
 
   var sample = [
@@ -278,7 +279,7 @@
 
     if (!k2irMod || !k2bMod) return;
     setStatus("compiling...");
-    last = { kry: source.value, kir: "", krb: "", c: "", go: "", bytes: null };
+    last = { kry: source.value, kir: "", krb: "", c: "", go: "", js: "", bytes: null };
 
     result = runTool(k2irMod, ["--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
       return { ok: true, text: readFirst(mod, ["/work/out/app.kir", "/work/out/src/app.kir"], false) };
@@ -302,6 +303,11 @@
     });
     if (result.ok && result.text) { last.go = result.text; passed++; } else { last.go = result.text || "Go output unavailable."; failed++; }
 
+    result = runTool(k2jsMod, ["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
+      return { ok: true, text: readFirst(mod, ["/work/out/app.js", "/work/out/src/app.js"], false) };
+    });
+    if (result.ok && result.text) { last.js = result.text; passed++; } else { last.js = result.text || "JS output unavailable."; failed++; }
+
     result = runTool(k2bMod, ["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
       var bytes = readFirst(mod, ["/work/out/app.krb", "/work/out/src/app.krb"], true);
       return { ok: bytes.length > 0, bytes: bytes, text: "KRB bytes: " + bytes.length + "\n\n" + hex(bytes) };
@@ -322,7 +328,7 @@
       failed++;
     }
     showArtifact();
-    setStatus(failed ? "compiled " + passed + "/4" : "compiled");
+    setStatus(failed ? "compiled " + passed + "/5" : "compiled");
   }
 
   function scheduleCompile() {
@@ -352,6 +358,7 @@
   function boot() {
     if (typeof createK2irModule !== "function" || typeof createK2bModule !== "function" ||
         typeof createK2cModule !== "function" || typeof createK2gModule !== "function" ||
+        typeof createK2jsModule !== "function" ||
         typeof createKrbWebModule !== "function") {
       setStatus("compiler unavailable");
       artifact.textContent = "The web compiler assets were not built.";
@@ -362,13 +369,15 @@
       createK2bModule({ noInitialRun: true }),
       createK2cModule({ noInitialRun: true }),
       createK2gModule({ noInitialRun: true }),
+      createK2jsModule({ noInitialRun: true }),
       createKrbWebModule({ noInitialRun: true, canvas: canvas })
     ]).then(function(mods) {
       k2irMod = mods[0];
       k2bMod = mods[1];
       k2cMod = mods[2];
       k2gMod = mods[3];
-      krbPlayerMod = mods[4];
+      k2jsMod = mods[4];
+      krbPlayerMod = mods[5];
       return loadInitialSource();
     }).then(function() {
       setStatus("ready");

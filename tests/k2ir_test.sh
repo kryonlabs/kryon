@@ -28,6 +28,7 @@ ANSWER :: #run 6 * 7
 #assert ANSWER == 42, "fixture #run assertion should pass"
 #assert ALWAYS, "fixture assertion should pass"
 platform_ping :: (value: int, tag: const char*) -> int #extern
+native_abs :: (value: int) -> int #extern "c.abs"
 
 state {
     click_count: int = 0
@@ -50,6 +51,7 @@ grep -Fq 'module demo.app source src/app.kry span src/app.kry:1:1' "$kir"
 grep -Fq 'import header kryon.h target kryon.h' "$kir"
 grep -Fq 'import module ui target src/ui/panel' "$kir"
 grep -Fq 'import extern platform_ping target platform_ping' "$kir"
+grep -Fq 'import extern native_abs target c.abs extern_kind c extern_symbol abs' "$kir"
 grep -Fq 'signature platform_ping :: (value: int, tag: const char*) -> int #extern' "$kir"
 grep -Fq 'assert condition (42) == 42 known 1 value 1 message "fixture #run assertion should pass"' "$kir"
 grep -Fq 'assert condition (1) known 1 value 1 message "fixture assertion should pass"' "$kir"
@@ -80,5 +82,16 @@ if "$k2ir" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/as
     exit 1
 fi
 grep -Fq 'constant assertion failed' "$work/assert_fail.err"
+
+cat > "$work/src/bad_c_extern.kry" <<'EOF'
+#import "kryon.h"
+bad :: (value: int) -> int #extern "c.1bad"
+EOF
+
+if "$k2ir" --root "$work" -o "$work/out" "$work/src/bad_c_extern.kry" 2>"$work/bad_c_extern.err"; then
+    echo "invalid C extern target did not fail during Kry parsing" >&2
+    exit 1
+fi
+grep -Fq 'C extern target must be c.<symbol>' "$work/bad_c_extern.err"
 
 echo "k2ir ok"

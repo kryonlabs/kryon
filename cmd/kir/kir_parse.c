@@ -169,6 +169,43 @@ parse_angled(const char *s, char *out, size_t out_size)
     return *q == '>';
 }
 
+static int
+is_c_ident(const char *s)
+{
+    if(s == NULL || s[0] == '\0')
+        return 0;
+    if(!(isalpha((unsigned char)s[0]) || s[0] == '_'))
+        return 0;
+    for(const char *p = s + 1; *p != '\0'; p++) {
+        if(!(isalnum((unsigned char)*p) || *p == '_'))
+            return 0;
+    }
+    return 1;
+}
+
+static KirExternKind
+classify_extern_target(const char *target, char *symbol, size_t symbol_size,
+                       const char *path, int line_no)
+{
+    const char *dot;
+    const char *slash;
+
+    symbol[0] = '\0';
+    if(target == NULL || target[0] == '\0')
+        return KIR_EXTERN_HOST;
+    if(strncmp(target, "c.", 2) == 0) {
+        if(!is_c_ident(target + 2))
+            die("%s:%d: C extern target must be c.<symbol>", path, line_no);
+        snprintf(symbol, symbol_size, "%s", target + 2);
+        return KIR_EXTERN_C;
+    }
+    dot = strrchr(target, '.');
+    slash = strrchr(target, '/');
+    if(dot != NULL && slash != NULL && slash < dot)
+        return KIR_EXTERN_GO;
+    return KIR_EXTERN_HOST;
+}
+
 /* Net block braces: only '{'/'}' at paren/bracket depth 0 open/close
  * blocks. Braces inside parens (compound literals like (Props){...}) are
  * expression braces, not blocks. */
@@ -1115,12 +1152,18 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
                   const char *line)
 {
     char name[KIR_NAME_MAX];
+    char target[KIR_PATH_MAX];
+    char symbol[KIR_NAME_MAX];
+    KirImport *imp;
+    KirExternKind extern_kind;
     const char *intrinsic = strstr(line, "#intrinsic");
 
     if(intrinsic == NULL && strstr(line, "#extern") == NULL)
         return 0;
     if(!parse_symbol_before_colons(line, name, sizeof(name)))
         return 0;
+    target[0] = '\0';
+    symbol[0] = '\0';
     if(intrinsic != NULL) {
         /* 'name :: (args) -> int #intrinsic "web"' — lowered by k2c to a
          * static EM_ASM wrapper on web builds. Only the two known web
@@ -1160,13 +1203,28 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
             die("%s:%d: web intrinsic '%s' must return int", path, line_no,
                 name);
         if(strcmp(name, "web_download_file") != 0 &&
-           strcmp(name, "web_context_click_in_bounds") != 0)
+            strcmp(name, "web_context_click_in_bounds") != 0)
             die("%s:%d: unknown web intrinsic '%s'", path, line_no, name);
+    } else {
+        const char *dir = strstr(line, "#extern");
+
+        if(dir != NULL)
+            parse_quoted(dir + 7, target, sizeof(target));
     }
-    KirModuleAddImport(module,
-                       intrinsic != NULL ? KIR_IMPORT_INTRINSIC
-                                         : KIR_IMPORT_EXTERN,
-                       name, name, line, 1, KirSpan(path, line_no, 1));
+    extern_kind = intrinsic != NULL
+                      ? KIR_EXTERN_NONE
+                      : classify_extern_target(target, symbol, sizeof(symbol),
+                                               path, line_no);
+    imp = KirModuleAddImport(module,
+                             intrinsic != NULL ? KIR_IMPORT_INTRINSIC
+                                               : KIR_IMPORT_EXTERN,
+                             name, target[0] ? target : name, line, 1,
+                             KirSpan(path, line_no, 1));
+    if(imp != NULL) {
+        imp->extern_kind = extern_kind;
+        snprintf(imp->extern_symbol, sizeof(imp->extern_symbol), "%s",
+                 symbol);
+    }
     return 1;
 }
 
@@ -2304,6 +2362,9 @@ kir_parse_file(const char *path, const char *root)
                             fn->extern_target[n] = '\0';
                         }
                     }
+                    fn->extern_kind = classify_extern_target(
+                        fn->extern_target, fn->extern_symbol,
+                        sizeof(fn->extern_symbol), rel, line_no);
                 }
                 fn->is_colon = strstr(t, "::") != NULL;
                 fn->is_ui = is_ui;

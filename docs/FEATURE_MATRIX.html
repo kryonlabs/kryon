@@ -24,12 +24,14 @@ li{margin:.25rem 0}
    │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
    ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
    ├── k2g  -&gt; .go (kryon.&lt;Widget&gt; calls)  -&gt; go build + go/kryon -&gt; Go app
+   ├── k2js -&gt; .js (web runtime calls)      -&gt; browser/Node ESM   -&gt; Web app
    ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
    └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
 <table>
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
 <tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use</td></tr>
 <tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
+<tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class=""><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="">Initial web-native target; syntax and Node smoke gated</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
 <tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
 </table>
@@ -43,7 +45,7 @@ li{margin:.25rem 0}
 </ul>
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
-<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below), and <code>k2b</code> lowers a subset of it:</p>
+<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted widgets as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>

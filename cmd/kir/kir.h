@@ -25,6 +25,13 @@ typedef enum KirImportKind {
     KIR_IMPORT_HOST
 } KirImportKind;
 
+typedef enum KirExternKind {
+    KIR_EXTERN_NONE = 0,
+    KIR_EXTERN_HOST,
+    KIR_EXTERN_GO,
+    KIR_EXTERN_C
+} KirExternKind;
+
 typedef enum KirStmtKind {
     KIR_STMT_UNKNOWN = 0,
     KIR_STMT_BLOCK_OPEN,
@@ -73,8 +80,10 @@ typedef struct KirStateField {
 
 typedef struct KirImport {
     KirImportKind kind;
+    KirExternKind extern_kind;
     char name[KIR_NAME_MAX];
     char target[KIR_PATH_MAX];
+    char extern_symbol[KIR_NAME_MAX];
     char signature[KIR_TEXT_MAX];
     int required;
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
@@ -108,10 +117,12 @@ typedef struct KirFunction {
     char return_type[KIR_NAME_MAX];
     int exported;
     int is_extern;
+    KirExternKind extern_kind;
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
     int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
     int is_public;  /* exported function or project route */
     char extern_target[KIR_NAME_MAX];   /* '#extern "pkg.Fn"' quoted symbol */
+    char extern_symbol[KIR_NAME_MAX];   /* stripped C symbol for c.* externs */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
     KirStmt *stmts;

@@ -24,6 +24,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -115,6 +120,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -203,6 +213,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -302,6 +317,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -391,6 +411,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -485,6 +510,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -573,6 +603,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -669,6 +704,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -756,6 +796,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -847,6 +892,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -944,6 +994,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -1034,6 +1089,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1129,6 +1189,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -1217,6 +1282,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1310,6 +1380,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1407,6 +1482,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -1494,6 +1574,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1586,6 +1671,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1682,6 +1772,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -1765,6 +1860,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1859,6 +1959,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -1942,6 +2047,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2031,6 +2141,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2117,6 +2232,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2200,6 +2320,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2295,6 +2420,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2384,6 +2514,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2477,6 +2612,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2563,6 +2703,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2660,6 +2805,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2746,6 +2896,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2840,6 +2995,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -2929,6 +3089,11 @@
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
         }
       },
       "renderer_matrix": {
@@ -3015,6 +3180,11 @@
           "status_class": "ok"
         },
         "k2ir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -3160,6 +3330,13 @@
       "evidence": "tests/k2g_syntax_test.sh plus conformance-matrix-check",
       "id": "k2g",
       "label": ".kry -> KIR -> Go",
+      "status": "gated",
+      "status_class": "ok"
+    },
+    {
+      "evidence": "tests/k2js_syntax_test.sh plus conformance-matrix-check",
+      "id": "k2js",
+      "label": ".kry -> KIR -> JS",
       "status": "gated",
       "status_class": "ok"
     },
@@ -3360,7 +3537,7 @@
     "libdraw_c_visual_cases": 21,
     "libdraw_c_visual_gaps": 13,
     "parity_fixtures": 10,
-    "pipeline_cells": 136,
+    "pipeline_cells": 170,
     "raylib_c_visual_cases": 19,
     "raylib_c_visual_gaps": 15,
     "renderer_source_cells": 204,

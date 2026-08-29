@@ -9,8 +9,9 @@ tar -tzf "$archive" > "$listing"
 root=$(sed -n '1s,/.*,,p' "$listing")
 test -n "$root"
 
-for file in VERSION manifest.json bin/k2c bin/k2g bin/k2ir bin/k2b bin/kt \
-            bin/kryon bin/kryon-preview bin/krb-run bin/krb-sdl; do
+for file in VERSION manifest.json bin/k2c bin/k2g bin/k2js bin/k2ir bin/k2b bin/kt \
+            bin/kryon bin/kryon-preview bin/krb-run bin/krb-sdl \
+            web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts; do
     grep -qx "$root/$file" "$listing"
 done
 

@@ -1132,6 +1132,119 @@ emit_web_intrinsic_wrapper(FILE *c, const KirModule *m, const KirImport *imp)
     fprintf(c, "}\n#endif\n");
 }
 
+static int
+c_extern_symbol(const KirImport *imp, char *dst, size_t dst_size)
+{
+    if(imp == NULL || strncmp(imp->target, "c.", 2) != 0 ||
+       imp->target[2] == '\0')
+        return 0;
+    snprintf(dst, dst_size, "%s", imp->target + 2);
+    return 1;
+}
+
+static void
+extract_extern_signature(const KirImport *imp, char *ret, size_t ret_size,
+                         char *args, size_t args_size)
+{
+    const char *sig = imp->signature;
+    const char *op = strchr(sig, '(');
+    const char *cl = op != NULL ? strchr(op, ')') : NULL;
+    const char *arrow = cl != NULL ? strstr(cl, "->") : NULL;
+
+    snprintf(ret, ret_size, "void");
+    if(arrow != NULL) {
+        const char *r = arrow + 2;
+        size_t rn = 0;
+
+        while(*r == ' ' || *r == '\t')
+            r++;
+        while(*r != '\0' && *r != '#' && rn + 1 < ret_size)
+            ret[rn++] = *r++;
+        while(rn > 0 && (ret[rn - 1] == ' ' || ret[rn - 1] == '\t'))
+            rn--;
+        ret[rn] = '\0';
+    }
+    if(op != NULL && cl != NULL && cl > op)
+        snprintf(args, args_size, "%.*s", (int)(cl - op - 1), op + 1);
+    else
+        snprintf(args, args_size, "void");
+}
+
+static void
+extern_call_args(const char *args, char *dst, size_t dst_size)
+{
+    const char *p = args;
+    const char *start = args;
+    int depth = 0;
+    int first = 1;
+    size_t n = 0;
+
+    dst[0] = '\0';
+    if(args == NULL || args[0] == '\0' || strcmp(args, "void") == 0)
+        return;
+    while(1) {
+        if(*p == '(' || *p == '[' || *p == '{')
+            depth++;
+        else if(*p == ')' || *p == ']' || *p == '}')
+            depth--;
+        if((*p == ',' && depth == 0) || *p == '\0') {
+            const char *colon = start;
+            const char *name_start = start;
+            const char *name_end;
+
+            while(*name_start == ' ' || *name_start == '\t')
+                name_start++;
+            while(colon < p && *colon != ':')
+                colon++;
+            name_end = colon;
+            while(name_end > name_start &&
+                  (name_end[-1] == ' ' || name_end[-1] == '\t'))
+                name_end--;
+            if(colon < p && name_end > name_start) {
+                n += (size_t)snprintf(dst + n, dst_size > n ? dst_size - n : 0,
+                                      "%s%.*s", first ? "" : ", ",
+                                      (int)(name_end - name_start), name_start);
+                first = 0;
+            }
+            if(*p == '\0')
+                break;
+            start = p + 1;
+        }
+        p++;
+    }
+}
+
+static void
+emit_extern_prototype(FILE *c, const KirModule *m, const KirImport *imp)
+{
+    char ret[LOWER_NAME_MAX];
+    char cargs[LOWER_TEXT_MAX];
+    char conv[LOWER_TEXT_MAX];
+    char symbol[LOWER_NAME_MAX];
+    const char *cname = imp->name;
+
+    extract_extern_signature(imp, ret, sizeof(ret), cargs, sizeof(cargs));
+    convert_args(m, cargs, conv, sizeof(conv));
+    if(c_extern_symbol(imp, symbol, sizeof(symbol))) {
+        cname = symbol;
+        fprintf(c, "%s %s(%s);\n", ret[0] ? ret : "void", cname, conv);
+        if(strcmp(symbol, imp->name) != 0) {
+            char call[LOWER_TEXT_MAX];
+
+            extern_call_args(cargs, call, sizeof(call));
+            fprintf(c, "static %s\n%s(%s)\n{\n",
+                    ret[0] ? ret : "void", imp->name, conv);
+            if(ret[0] != '\0' && strcmp(ret, "void") != 0)
+                fprintf(c, "    return %s(%s);\n", symbol, call);
+            else
+                fprintf(c, "    %s(%s);\n", symbol, call);
+            fprintf(c, "}\n");
+        }
+    } else {
+        fprintf(c, "%s %s(%s);\n", ret[0] ? ret : "void", cname, conv);
+    }
+}
+
 static void
 lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, const char *out_dir)
 {
@@ -1408,41 +1521,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
         if(imp->kind != KIR_IMPORT_EXTERN || imp->signature[0] == '\0')
             continue;
-        {
-            const char *sig = imp->signature;
-            const char *op = strchr(sig, '(');
-            const char *cl = op != NULL ? strchr(op, ')') : NULL;
-            const char *arrow = cl != NULL ? strstr(cl, "->") : NULL;
-            char ret[LOWER_NAME_MAX];
-            char cargs[LOWER_TEXT_MAX];
-
-            if(arrow != NULL) {
-                const char *r = arrow + 2;
-                size_t rn = 0;
-
-                while(*r == ' ' || *r == '\t')
-                    r++;
-                while(*r != '\0' && *r != '#' && rn + 1 < sizeof(ret))
-                    ret[rn++] = *r++;
-                while(rn > 0 && (ret[rn - 1] == ' ' || ret[rn - 1] == '\t'))
-                    rn--;
-                ret[rn] = '\0';
-            } else {
-                snprintf(ret, sizeof(ret), "void");
-            }
-            if(op != NULL && cl != NULL && cl > op)
-                snprintf(cargs, sizeof(cargs), "%.*s",
-                         (int)(cl - op - 1), op + 1);
-            else
-                snprintf(cargs, sizeof(cargs), "void");
-            {
-                char conv[LOWER_TEXT_MAX];
-
-                convert_args(m, cargs, conv, sizeof(conv));
-                fprintf(c, "%s %s(%s);\n",
-                        ret[0] ? ret : "void", imp->name, conv);
-            }
-        }
+        emit_extern_prototype(c, m, imp);
     }
     /* Forward prototypes for private functions: initializers and earlier
      * definitions may reference them before their definition. */

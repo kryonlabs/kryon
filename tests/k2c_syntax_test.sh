@@ -25,6 +25,8 @@ cat > "$work/src/valid.kry" <<'EOF'
     FixtureLimit = 12
 }
 
+c_abs :: (value: int) -> int #extern "c.abs"
+
 state {
     count: int = FixtureCount
     label: [64] char = "hello"
@@ -73,6 +75,7 @@ Valid :: (viewport: Rectangle) #ui {
         }
         tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
         count = TabBar((TabBarProps){.bounds = {0, ScaleUIPx(32), ScaleUIPx(120), ScaleUIPx(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
+        count = c_abs(-3)
         value := count + 1
         unused value
         if count == nil {
@@ -176,6 +179,10 @@ grep -Fq 'FixtureLimit = 12,' "$h"
 # source: preamble
 grep -Fq '#include "src/valid.h"' "$c"
 grep -Fq '#include "ui_inspect.h"' "$c"
+grep -Fq 'int abs(int value);' "$c"
+grep -Fq 'static int' "$c"
+grep -Fq 'c_abs(int value)' "$c"
+grep -Fq 'return abs(value);' "$c"
 
 # state fields (array type converts to C declarator order)
 grep -Fq 'static int count = FixtureCount;' "$c"
@@ -210,6 +217,7 @@ grep -Fq 'BottomNavItem nav_items[1]' "$c"
 grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar((TabBarProps)' "$c"
+grep -Fq 'count = c_abs(-3);' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
 # inferred decl
