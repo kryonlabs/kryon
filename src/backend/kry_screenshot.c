@@ -55,8 +55,8 @@ extern int kry_backend_capture_screen(Image *image);
  * has already been collected for the next application update. */
 extern void kry_event_wait_after_frame(void);
 
-/* When KRYON_SHOT_ARM (or the older INBE_SHOT_ARM name) is set, every
- * EndDrawing captures the completed back buffer BEFORE the swap (the only
+/* When KRYON_SHOT_ARM is set, every EndDrawing captures the completed back
+ * buffer BEFORE the swap (the only
  * readback point OpenGL ES 2 guarantees: no glReadBuffer, and post-swap
  * reads return undefined/cleared data on Mesas software drivers). The last
  * captured frame is what LoadImageFromScreen returns. */
@@ -71,8 +71,7 @@ static int
 kry_shot_armed(void)
 {
     if(g_shot_armed < 0)
-        g_shot_armed = getenv("KRYON_SHOT_ARM") != NULL ||
-                       getenv("INBE_SHOT_ARM") != NULL;
+        g_shot_armed = getenv("KRYON_SHOT_ARM") != NULL;
     return g_shot_armed;
 }
 

@@ -30,4 +30,21 @@ if [ -n "$legacy_api_matches" ]; then
     status=1
 fi
 
+forbidden_app_pattern='(^|[^[:alnum:]])inbe([^[:alnum:]]|$)|inner[ -]breeze'
+app_specific_matches=$(
+    rg -n -i "$forbidden_app_pattern" "$root" \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!dist/**' \
+        --glob '!.git/**' \
+        --glob '!tools/check-kryon-boundaries.sh' \
+        2>/dev/null || true
+)
+if [ -n "$app_specific_matches" ]; then
+    echo "Forbidden downstream app material found in Kryon; keep product code, fixtures, assets, and docs in the app repository:" >&2
+    echo "Current forbidden terms: Inbe, Inner Breeze" >&2
+    echo "$app_specific_matches" >&2
+    status=1
+fi
+
 exit "$status"

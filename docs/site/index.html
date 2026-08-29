@@ -81,10 +81,10 @@
             <div class="pane-label">app.kry</div>
 <pre><code>#import "kryon.h"
 
-AppHome :: (app: InbeApp*) #ui {
+AppHome :: (app: AppState*) #ui {
     Screen root: {
         y: int = ScaleUIPx(24)
-        Text("Inner Breeze", ScaleUIPx(20), y, ScaleUIPx(24))
+        Text("Sample App", ScaleUIPx(20), y, ScaleUIPx(24))
         BottomNav(app->bottom_nav)
     }
 }</code></pre>
@@ -159,7 +159,7 @@ $ kryon preview my-app</code></pre>
           <p>Preview widgets carry source metadata, so an inspection click selects the generated UI element and opens the exact <code>.kry</code> line. The tree <em>is</em> the inspector.</p>
 <pre><code>// click a node in preview → jump to source
 AppHome: app.kry:7
-  Text("Inner Breeze")  app.kry:9
+  Text("Sample App")    app.kry:9
   BottomNav(...)        app.kry:10</code></pre>
         </div>
       </div>
@@ -319,11 +319,11 @@ k2b  app.kry    # or app.kir</code></pre>
       <p>A simple <code>.kry</code> shape:</p>
 <pre><code>#import "kryon.h"
 
-AppHome :: (app: InbeApp*) #ui {
+AppHome :: (app: AppState*) #ui {
     Screen root: {
         y: int = ScaleUIPx(24)
 
-        Text("Inner Breeze", ScaleUIPx(20), y, ScaleUIPx(24))
+        Text("Sample App", ScaleUIPx(20), y, ScaleUIPx(24))
         BottomNav(app->bottom_nav)
     }
 }</code></pre>

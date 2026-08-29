@@ -27,7 +27,7 @@ the columns diverge.
 
 | Target | Producer | Runtime | Status |
 |---|---|---|---|
-| C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use (inbe) |
+| C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
 | Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |

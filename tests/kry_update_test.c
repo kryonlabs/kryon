@@ -29,11 +29,11 @@ static const char *NEWER_APPCAST =
     "  \"version\": \"1.9.5\",\n"
     "  \"date\": \"2026-08-19\",\n"
     "  \"notes\": \"Breath pattern fixes.\",\n"
-    "  \"notes_url\": \"https://github.com/waozixyz/inbe/releases/tag/v1.9.5\",\n"
+    "  \"notes_url\": \"https://example.com/releases/tag/v1.9.5\",\n"
     "  \"channels\": {\n"
-    "    \"appimage-amd64\": {\"url\": \"https://x/inbe.AppImage\", \"sha256\": \"aa\", \"size\": 123},\n"
-    "    \"windows\": {\"url\": \"https://x/inbe.zip\", \"sha256\": \"bb\"},\n"
-    "    \"deb\": {\"url\": \"https://x/inbe.deb\"}\n"
+    "    \"appimage-amd64\": {\"url\": \"https://x/sample.AppImage\", \"sha256\": \"aa\", \"size\": 123},\n"
+    "    \"windows\": {\"url\": \"https://x/sample.zip\", \"sha256\": \"bb\"},\n"
+    "    \"deb\": {\"url\": \"https://x/sample.deb\"}\n"
     "  }\n"
     "}\n";
 
@@ -95,13 +95,13 @@ test_appcast_parse(void)
     CHECK(strcmp(info.version, "1.9.5") == 0);
     CHECK(strcmp(info.date, "2026-08-19") == 0);
     CHECK(strstr(info.notes, "Breath") != NULL);
-    CHECK(strncmp(info.notes_url, "https://github.com/waozixyz/inbe", 31) == 0);
+    CHECK(strncmp(info.notes_url, "https://example.com/releases", 28) == 0);
     CHECK(info.channel_count == 3);
 
     ch = kry_update_find_channel(&info, "appimage-amd64");
     CHECK(ch != NULL);
     if(ch != NULL) {
-        CHECK(strcmp(ch->url, "https://x/inbe.AppImage") == 0);
+        CHECK(strcmp(ch->url, "https://x/sample.AppImage") == 0);
         CHECK(strcmp(ch->sha256, "aa") == 0);
         CHECK(ch->size == 123);
     }
@@ -131,19 +131,19 @@ test_channel_detect(void)
     unsetenv("SNAP");
     unsetenv("FLATPAK_ID");
 
-    setenv("APPIMAGE", "/tmp/inbe.AppImage", 1);
+    setenv("APPIMAGE", "/tmp/sample.AppImage", 1);
     got = kry_update_detect_channel();
     CHECK(got == KRY_UPDATE_CHANNEL_APPIMAGE);
     CHECK(strcmp(kry_update_channel_name(got), "AppImage") == 0);
     CHECK(strcmp(kry_update_channel_key(got), "appimage-amd64") == 0);
 
     unsetenv("APPIMAGE");
-    setenv("SNAP", "/snap/inbe/123", 1);
+    setenv("SNAP", "/snap/sample/123", 1);
     CHECK(kry_update_detect_channel() == KRY_UPDATE_CHANNEL_SNAP);
     CHECK(kry_update_channel_key(KRY_UPDATE_CHANNEL_SNAP) == NULL);
 
     unsetenv("SNAP");
-    setenv("FLATPAK_ID", "xyz.inbe", 1);
+    setenv("FLATPAK_ID", "xyz.sample", 1);
     CHECK(kry_update_detect_channel() == KRY_UPDATE_CHANNEL_FLATPAK);
 
     unsetenv("FLATPAK_ID");
@@ -264,8 +264,8 @@ test_download_dir(void)
 
     snprintf(root, sizeof(root), "/tmp/kry_update_dl.%d", (int)getpid());
     setenv("XDG_DATA_HOME", root, 1);
-    CHECK(kry_update_download_dir("inbe", dir, sizeof(dir)) == 1);
-    CHECK(strstr(dir, "/inbe/updates") != NULL);
+    CHECK(kry_update_download_dir("sample", dir, sizeof(dir)) == 1);
+    CHECK(strstr(dir, "/sample/updates") != NULL);
     CHECK(stat(dir, &st) == 0 && S_ISDIR(st.st_mode));
     CHECK(kry_update_download_dir(NULL, dir, sizeof(dir)) == 0);
     unsetenv("XDG_DATA_HOME");
@@ -362,8 +362,8 @@ test_appimage_stage(void)
 
     snprintf(root, sizeof(root), "/tmp/kry_update_stage.%d", (int)getpid());
     mkdir(root, 0755);
-    snprintf(new_file, sizeof(new_file), "%s/inbe-9.9.9.AppImage", root);
-    snprintf(appimage, sizeof(appimage), "%s/inbe-old.AppImage", root);
+    snprintf(new_file, sizeof(new_file), "%s/sample-9.9.9.AppImage", root);
+    snprintf(appimage, sizeof(appimage), "%s/sample-old.AppImage", root);
     write_tmp(new_file, sizeof(new_file), "stage", "#!/bin/sh\nexit 0\n");
     write_tmp(appimage, sizeof(appimage), "old", "old content");
 
@@ -382,7 +382,7 @@ test_appimage_stage(void)
     CHECK(stat(appimage, &st) == 0 && (st.st_mode & 0100) != 0);
 
     /* no leftover staging file next to the target */
-    snprintf(probe, sizeof(probe), "%s/.inbe-old.AppImage.new", root);
+    snprintf(probe, sizeof(probe), "%s/.sample-old.AppImage.new", root);
     CHECK(stat(probe, &st) != 0);
 
     /* missing inputs fail cleanly */

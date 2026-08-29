@@ -1,8 +1,8 @@
 # Kryon Agent Guide
 
-This document is for agents and maintainers using Kryon inside applications such as
-Inbe. It describes the behavior Kryon owns, what application code should keep, and
-how to update downstream projects without editing vendored copies by hand.
+This document is for agents and maintainers using Kryon inside applications. It
+describes the behavior Kryon owns, what application code should keep, and how to
+update downstream projects without editing vendored copies by hand.
 
 ## Role
 
@@ -12,8 +12,12 @@ raylib directly. Applications should use Kryon for shared UI behavior instead
 of duplicating pointer capture, modal backdrop, button, tab, scroll, text input,
 theme, and DPI logic in each project.
 
+See `docs/BOUNDARIES.md` for the architectural line between reusable Kryon
+runtime behavior and downstream application behavior. See `docs/ARCHITECTURE.md`
+for the current subsystem map.
+
 Do not add compatibility wrappers or alias layers when the app API changes. Migrate
-Kryon itself first, then update downstream apps such as Inbe and Krait to the
+Kryon itself first, then update downstream apps to the
 canonical names directly. Generated app code must use clean names such as
 `BeginFrame`, `EndFrame`, `Background`, `Text`, `Rect`, `Button`, `TextField`,
 `TextArea`, `Row`, `Column`, and `Picture`. Do not reintroduce duplicate public
@@ -199,5 +203,7 @@ This keeps Kryon reusable and prevents project-local vendor edits from diverging
 ## Documentation Rules
 
 Keep `docs/API.md` as the public API reference. Keep this guide as the operational
-guidance for agents and maintainers. Documentation in Kryon should describe current
-APIs, current behavior, and the expected downstream workflow.
+guidance for agents and maintainers. Keep `docs/BOUNDARIES.md` current with the
+repo guardrails, and keep `docs/ARCHITECTURE.md` current when subsystems move.
+Documentation in Kryon should describe current APIs, current behavior, and the
+expected downstream workflow.

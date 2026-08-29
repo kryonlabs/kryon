@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = ROOT.parent / "showcase" / "projects"
 DEFAULT_OUTPUT = ROOT / "docs" / "site" / "showcase-data.json"
 LOCAL_BANNERS = {
-    "inner-breeze": "showcase/inner-breeze.png",
     "krait": "showcase/krait.png",
     "pass": "showcase/pass.png",
     "ktrem": "showcase/ktrem.png"

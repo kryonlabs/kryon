@@ -73,7 +73,7 @@ static int
 ui_text_trace_enabled(void)
 {
     if(g_ui_text_trace < 0)
-        g_ui_text_trace = getenv("INBE_TEXT_TRACE") != NULL;
+        g_ui_text_trace = getenv("KRYON_TEXT_TRACE") != NULL;
     return g_ui_text_trace;
 }
 

@@ -86,7 +86,7 @@ test_old_imports(void)
 
     make_account(&account);
     snprintf(text, sizeof(text),
-             "inbe-sync-key-v1\nalgorithm=ML-DSA-44\npublic_key=%s\nsecret_key=%s\n",
+             "account-key-v1\nalgorithm=ML-DSA-44\npublic_key=%s\nsecret_key=%s\n",
              account.public_key_hex, account.private_key_hex);
     check_true("old secret_key import", ParseKsyncAccountText(text, &parsed));
     check_true("old derived public id", strcmp(parsed.public_id, account.public_id) == 0);

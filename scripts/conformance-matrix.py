@@ -283,7 +283,6 @@ GENERATED_C_COMPILE_GAPS = {
     "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
-    "examples/26_inbe_whm_session.kry": "Generated C still emits unsupported TIME/AnimNode references.",
     "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
 }
 
@@ -294,13 +293,6 @@ RAYLIB_C_RENDER_GAPS = {
     "examples/09_geometry.kry": "Raylib generated-C capture is blank.",
     "examples/11_basic_controls.kry": "Raylib generated-C capture is blank.",
     "examples/17_keyboard_platform.kry": "Raylib generated-C capture is blank.",
-    "examples/20_inbe_language.kry": "Raylib generated-C capture is blank.",
-    "examples/21_inbe_settings.kry": "Raylib generated-C capture is blank.",
-    "examples/22_inbe_manual.kry": "Raylib generated-C capture is blank.",
-    "examples/23_inbe_app.kry": "Raylib generated-C capture is blank.",
-    "examples/24_inbe_habits.kry": "Raylib generated-C capture is blank.",
-    "examples/25_inbe_practice.kry": "Raylib generated-C capture is blank.",
-    "examples/28_inbe_profile.kry": "Raylib generated-C capture is blank.",
     "tests/parity/fields.kry": "Raylib generated-C capture is blank.",
     "tests/parity/focus.kry": "Raylib generated-C capture is blank.",
 }
@@ -312,12 +304,6 @@ LIBDRAW_C_RENDER_GAPS = {
     "examples/09_geometry.kry": "Libdraw generated-C capture is blank.",
     "examples/11_basic_controls.kry": "Libdraw generated-C capture is blank.",
     "examples/17_keyboard_platform.kry": "Libdraw generated-C capture is blank.",
-    "examples/20_inbe_language.kry": "Libdraw generated-C capture is blank.",
-    "examples/22_inbe_manual.kry": "Libdraw generated-C capture is blank.",
-    "examples/23_inbe_app.kry": "Libdraw generated-C capture is blank.",
-    "examples/24_inbe_habits.kry": "Libdraw generated-C capture is blank.",
-    "examples/25_inbe_practice.kry": "Libdraw generated-C capture is blank.",
-    "examples/28_inbe_profile.kry": "Libdraw generated-C capture is blank.",
 }
 
 WEB_CANVAS_C_RENDER_GAPS = {
@@ -328,13 +314,6 @@ WEB_CANVAS_C_RENDER_GAPS = {
     "examples/09_geometry.kry": "Web Canvas generated-C capture is blank.",
     "examples/11_basic_controls.kry": "Web Canvas generated-C capture is blank.",
     "examples/17_keyboard_platform.kry": "Web Canvas generated-C capture is blank.",
-    "examples/20_inbe_language.kry": "Web Canvas generated-C capture is blank.",
-    "examples/21_inbe_settings.kry": "Web Canvas generated-C capture is blank.",
-    "examples/22_inbe_manual.kry": "Web Canvas generated-C capture is blank.",
-    "examples/23_inbe_app.kry": "Web Canvas generated-C capture is blank.",
-    "examples/24_inbe_habits.kry": "Web Canvas generated-C capture is blank.",
-    "examples/25_inbe_practice.kry": "Web Canvas generated-C capture is blank.",
-    "examples/28_inbe_profile.kry": "Web Canvas generated-C capture is blank.",
     "tests/parity/fields.kry": "Web Canvas generated-C capture is blank.",
     "tests/parity/focus.kry": "Web Canvas generated-C capture is blank.",
     "tests/parity/long_text.kry": "Web Canvas generated-C capture is blank.",

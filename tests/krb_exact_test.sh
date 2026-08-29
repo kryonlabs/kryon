@@ -4,8 +4,6 @@
 # the SDL software renderer (krb-sdl readback), and the wasm web engine
 # (node oneshot capture). Any pixel difference is a failure.
 #
-# Stage 2 (krb_exact_native_test.sh, needs the inbe C build) compares a
-# cartridge against the direct C/raylib screenshot of the same screen.
 set -eu
 
 root=${1:-.}
@@ -24,8 +22,21 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$work"
 
+fixtures=$(python3 - "$root/examples/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for entry in manifest.get("examples", []):
+    if entry.get("krb_exact"):
+        print(entry["path"])
+PY
+)
+
 fails=0
-for kry in "$root"/examples/20_inbe_language.kry "$root"/examples/21_inbe_settings.kry "$root"/examples/22_inbe_manual.kry "$root"/examples/23_inbe_app.kry "$root"/examples/24_inbe_habits.kry "$root"/examples/25_inbe_practice.kry "$root"/examples/26_inbe_whm_session.kry "$root"/examples/27_inbe_statistics.kry "$root"/examples/28_inbe_profile.kry "$root"/examples/29_inbe_habit_edit.kry "$root"/examples/02_buttons.kry; do
+for rel_kry in $fixtures; do
+    kry="$root/$rel_kry"
     name=$(basename "$kry" .kry)
 
     "$k2b" --no-main --root "$root/examples" -o "$work" "$kry" >/dev/null 2>&1

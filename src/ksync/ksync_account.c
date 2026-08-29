@@ -14,7 +14,6 @@
 
 #define KSYNC_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
 #define KSYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
-#define KSYNC_LEGACY_INBE_KEY_HEADER "inbe-sync-key-v1"
 #define KSYNC_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
 
 static char g_ksync_account_last_error[192];

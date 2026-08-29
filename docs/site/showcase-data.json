@@ -7,26 +7,6 @@
   ],
   "projects": [
     {
-      "slug": "inner-breeze",
-      "name": "Inner Breeze",
-      "summary": "Breathing, meditation, and habit practice flows across mobile and web.",
-      "author": {
-        "name": "waozixyz",
-        "url": "https://waozi.xyz"
-      },
-      "repository": "https://github.com/waozixyz/inbe",
-      "homepage": "https://inbe.waozi.xyz",
-      "banner": "showcase/inner-breeze.png",
-      "tags": [
-        "wellness",
-        "habits",
-        "mobile",
-        "web"
-      ],
-      "featured": true,
-      "unranked": false
-    },
-    {
       "slug": "krait",
       "name": "Krait",
       "summary": "Standalone Kryon IDE for editing, previewing, inspecting, and building Kryon projects.",

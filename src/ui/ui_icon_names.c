@@ -114,7 +114,6 @@ const char *ui_icon_names[] = {
     "platforms_telegram.png",  /* UI_ICON_TYPE_PLATFORMS_TELEGRAM */
     "platforms_tux.png",  /* UI_ICON_TYPE_PLATFORMS_TUX */
     "platforms_win.png",  /* UI_ICON_TYPE_PLATFORMS_WIN */
-    "proj_inbe.png",  /* UI_ICON_TYPE_PROJ_INBE */
     "proj_kryon.png",  /* UI_ICON_TYPE_PROJ_KRYON */
     "proj_wao.png",  /* UI_ICON_TYPE_PROJ_WAO */
     "tiles_tile.png",  /* UI_ICON_TYPE_TILES_TILE */

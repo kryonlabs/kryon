@@ -1,0 +1,27 @@
+#import "kryon.h"
+
+app "Kryon Scroll" {
+    size 480 360
+    fps 60
+}
+
+state {
+    scroll_off: int = 0
+}
+
+ScrollExample :: () #ui {
+    Screen root: {
+        ClearBackground(GetThemeBackground())
+        Background(GetThemeSurface())
+        Text("Scroll", ScaleUIPx(40), ScaleUIPx(28), Text24, GetThemeText())
+        area: UIScrollArea = {{ScaleUIPx(40), ScaleUIPx(76), ScaleUIPx(360), ScaleUIPx(220)}, ScaleUIPx(520), ScaleUIPx(40), ScaleUIPx(360), &scroll_off, 0, 0}
+        view: UIScrollView = BeginUIScrollContainer(area)
+        Text("First row", view.content_x, view.content_y + ScaleUIPx(12), Text16, GetThemeText())
+        Text("Second row", view.content_x, view.content_y + ScaleUIPx(82), Text16, GetThemeText())
+        Text("Third row", view.content_x, view.content_y + ScaleUIPx(152), Text16, GetThemeText())
+        Text("Fourth row", view.content_x, view.content_y + ScaleUIPx(222), Text16, GetThemeText())
+        Text("Fifth row", view.content_x, view.content_y + ScaleUIPx(292), Text16, GetThemeText())
+        Text("Sixth row", view.content_x, view.content_y + ScaleUIPx(362), Text16, GetThemeText())
+        EndUIScrollContainer(area, view)
+    }
+}

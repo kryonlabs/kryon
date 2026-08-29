@@ -1659,97 +1659,6 @@
       ]
     },
     {
-      "id": "examples-20_inbe_language",
-      "label": "Inner Breeze \u2014 Language",
-      "path": "examples/20_inbe_language.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Dropdown",
-        "Screen",
-        "Text"
-      ]
-    },
-    {
       "id": "examples-20_scene",
       "label": "Kryon Scene Tree",
       "path": "examples/20_scene.kry",
@@ -1836,9 +1745,9 @@
       "widgets": []
     },
     {
-      "id": "examples-21_inbe_settings",
-      "label": "Inner Breeze \u2014 Settings",
-      "path": "examples/21_inbe_settings.kry",
+      "id": "examples-20_scroll",
+      "label": "Kryon Scroll",
+      "path": "examples/20_scroll.kry",
       "pipelines": {
         "k2b": {
           "evidence": "conformance-matrix-check",
@@ -1869,10 +1778,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1887,10 +1796,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1921,8 +1830,6 @@
       },
       "widgets": [
         "Background",
-        "Checkbox",
-        "Dropdown",
         "Screen",
         "Scroll",
         "Text"
@@ -2013,97 +1920,6 @@
         }
       },
       "widgets": []
-    },
-    {
-      "id": "examples-22_inbe_manual",
-      "label": "Inner Breeze \u2014 Manual",
-      "path": "examples/22_inbe_manual.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Screen",
-        "Scroll",
-        "Text"
-      ]
     },
     {
       "id": "examples-22_physics",
@@ -2278,192 +2094,6 @@
       "widgets": []
     },
     {
-      "id": "examples-23_inbe_app",
-      "label": "Inner Breeze",
-      "path": "examples/23_inbe_app.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Button",
-        "Checkbox",
-        "Dropdown",
-        "Screen",
-        "Scroll",
-        "Text"
-      ]
-    },
-    {
-      "id": "examples-24_inbe_habits",
-      "label": "Inner Breeze \u2014 Habits",
-      "path": "examples/24_inbe_habits.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Checkbox",
-        "Screen",
-        "Scroll",
-        "Text"
-      ]
-    },
-    {
       "id": "examples-24_tilemap",
       "label": "Kryon Tilemap",
       "path": "examples/24_tilemap.kry",
@@ -2548,466 +2178,6 @@
         }
       },
       "widgets": []
-    },
-    {
-      "id": "examples-25_inbe_practice",
-      "label": "Inner Breeze \u2014 Practice",
-      "path": "examples/25_inbe_practice.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Button",
-        "Screen",
-        "Slider",
-        "Spinbox",
-        "Text"
-      ]
-    },
-    {
-      "id": "examples-26_inbe_whm_session",
-      "label": "Inner Breeze \u2014 WHM Session",
-      "path": "examples/26_inbe_whm_session.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Generated C still emits unsupported TIME/AnimNode references.",
-          "status": "compile gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Screen",
-        "Text"
-      ]
-    },
-    {
-      "id": "examples-27_inbe_statistics",
-      "label": "Inner Breeze \u2014 Statistics",
-      "path": "examples/27_inbe_statistics.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "make web-canvas-matrix-check",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Rect",
-        "Screen",
-        "Text"
-      ]
-    },
-    {
-      "id": "examples-28_inbe_profile",
-      "label": "Inner Breeze Profile",
-      "path": "examples/28_inbe_profile.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Libdraw generated-C capture is blank.",
-          "status": "visual gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Button",
-        "Screen",
-        "Text"
-      ]
-    },
-    {
-      "id": "examples-29_inbe_habit_edit",
-      "label": "Inner Breeze Habit Edit",
-      "path": "examples/29_inbe_habit_edit.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2g": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2ir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "make web-canvas-matrix-check",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "make libdraw-matrix-check",
-          "status": "captured",
-          "status_class": "ok"
-        }
-      },
-      "widgets": [
-        "Background",
-        "Button",
-        "Checkbox",
-        "Dropdown",
-        "Screen",
-        "Spinbox",
-        "Text",
-        "TextField"
-      ]
     },
     {
       "id": "tests-parity-basic_controls",
@@ -4184,32 +3354,32 @@
     }
   ],
   "summary": {
-    "examples": 33,
-    "krb_alpha_byte_exact_cases": 29,
-    "krb_rgb_visual_cases": 43,
-    "libdraw_c_visual_cases": 23,
-    "libdraw_c_visual_gaps": 20,
+    "examples": 24,
+    "krb_alpha_byte_exact_cases": 20,
+    "krb_rgb_visual_cases": 34,
+    "libdraw_c_visual_cases": 21,
+    "libdraw_c_visual_gaps": 13,
     "parity_fixtures": 10,
-    "pipeline_cells": 172,
-    "raylib_c_visual_cases": 20,
-    "raylib_c_visual_gaps": 23,
-    "renderer_source_cells": 258,
-    "renderer_source_ok_cells": 133,
-    "renderer_source_partial_cells": 125,
+    "pipeline_cells": 136,
+    "raylib_c_visual_cases": 19,
+    "raylib_c_visual_gaps": 15,
+    "renderer_source_cells": 204,
+    "renderer_source_ok_cells": 111,
+    "renderer_source_partial_cells": 93,
     "semantic_parity_cases": 9,
-    "source_cases": 43,
+    "source_cases": 34,
     "visual_comparison_exact_rows": 2,
     "visual_comparison_pending_rows": 4,
     "visual_comparison_rows": 6,
-    "web_canvas_c_visual_cases": 18,
-    "web_canvas_c_visual_gaps": 25,
+    "web_canvas_c_visual_cases": 17,
+    "web_canvas_c_visual_gaps": 17,
     "widgets_declared": 54,
     "widgets_detected": 54,
     "widgets_missing": 0
   },
   "visual_comparisons": [
     {
-      "compared": 43,
+      "compared": 34,
       "evidence": [
         "make conformance-matrix-check",
         "tests/krb_exact_test.sh"
@@ -4220,12 +3390,12 @@
       "label": "KRB native software vs SDL host",
       "mode": "RGB pixel comparison",
       "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "RGB exact",
       "status_class": "ok"
     },
     {
-      "compared": 43,
+      "compared": 34,
       "evidence": [
         "make krb-web-matrix-check",
         "cmd/krb-web/node-capture.js"
@@ -4236,52 +3406,52 @@
       "label": "KRB native software vs KRB web Canvas",
       "mode": "RGBA byte comparison",
       "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "byte exact",
       "status_class": "ok"
     },
     {
-      "compared": 20,
+      "compared": 19,
       "evidence": [
         "make raylib-matrix-check"
       ],
-      "gap_cases": 23,
+      "gap_cases": 15,
       "gap_label": "generated-C gaps",
       "id": "raylib-c-vs-krb-native",
       "label": "Generated C raylib vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 23,
+      "compared": 21,
       "evidence": [
         "make libdraw-matrix-check"
       ],
-      "gap_cases": 20,
+      "gap_cases": 13,
       "gap_label": "generated-C gaps",
       "id": "libdraw-c-vs-krb-native",
       "label": "Generated C libdraw vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 18,
+      "compared": 17,
       "evidence": [
         "make web-canvas-matrix-check"
       ],
-      "gap_cases": 25,
+      "gap_cases": 17,
       "gap_label": "generated-C gaps",
       "id": "web-canvas-c-vs-krb-native",
       "label": "Generated C web Canvas vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "pixel diff pending",
       "status_class": "part"
     },
@@ -4296,26 +3466,26 @@
       "label": "Web raylib wasm vs desktop raylib",
       "mode": "build only",
       "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
-      "source_cases": 43,
+      "source_cases": 34,
       "status": "browser screenshot pending",
       "status_class": "part"
     }
   ],
   "widget_counts": {
     "ActionModal": 2,
-    "Background": 29,
+    "Background": 20,
     "Bevel": 1,
     "BottomNav": 1,
-    "Button": 15,
+    "Button": 11,
     "Canvas": 2,
     "CanvasGrid": 2,
-    "Checkbox": 8,
+    "Checkbox": 4,
     "Collapsible": 2,
     "ColorPicker": 2,
     "Column": 4,
     "Combobox": 2,
     "ConfirmDialog": 2,
-    "Dropdown": 7,
+    "Dropdown": 3,
     "Href": 1,
     "IconButton": 1,
     "IconLink": 1,
@@ -4334,20 +3504,20 @@
     "Progress": 3,
     "PromptDialog": 2,
     "Radio": 2,
-    "Rect": 6,
+    "Rect": 5,
     "Row": 3,
-    "Screen": 38,
-    "Scroll": 4,
+    "Screen": 29,
+    "Scroll": 1,
     "SelectableText": 1,
-    "Slider": 4,
+    "Slider": 3,
     "SourceView": 1,
-    "Spinbox": 4,
+    "Spinbox": 2,
     "Stack": 2,
     "TabBar": 1,
     "TableView": 3,
-    "Text": 30,
+    "Text": 21,
     "TextArea": 4,
-    "TextField": 7,
+    "TextField": 6,
     "TextInRect": 1,
     "TextLines": 1,
     "TitleBar": 1,
@@ -4372,7 +3542,7 @@
     {
       "id": "Background",
       "semantic_sources": [],
-      "source_count": 29,
+      "source_count": 20,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4392,16 +3562,7 @@
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
-        "examples/20_inbe_language.kry",
-        "examples/21_inbe_settings.kry",
-        "examples/22_inbe_manual.kry",
-        "examples/23_inbe_app.kry",
-        "examples/24_inbe_habits.kry",
-        "examples/25_inbe_practice.kry",
-        "examples/26_inbe_whm_session.kry",
-        "examples/27_inbe_statistics.kry",
-        "examples/28_inbe_profile.kry",
-        "examples/29_inbe_habit_edit.kry",
+        "examples/20_scroll.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4433,7 +3594,7 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 15,
+      "source_count": 11,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4443,10 +3604,6 @@
         "examples/13_text_editor.kry",
         "examples/16_dialogs.kry",
         "examples/18_accessibility.kry",
-        "examples/23_inbe_app.kry",
-        "examples/25_inbe_practice.kry",
-        "examples/28_inbe_profile.kry",
-        "examples/29_inbe_habit_edit.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/widget_catalog.kry"
@@ -4481,14 +3638,10 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 8,
+      "source_count": 4,
       "sources": [
         "examples/03_theme.kry",
         "examples/18_accessibility.kry",
-        "examples/21_inbe_settings.kry",
-        "examples/23_inbe_app.kry",
-        "examples/24_inbe_habits.kry",
-        "examples/29_inbe_habit_edit.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4561,13 +3714,9 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 7,
+      "source_count": 3,
       "sources": [
         "examples/03_theme.kry",
-        "examples/20_inbe_language.kry",
-        "examples/21_inbe_settings.kry",
-        "examples/23_inbe_app.kry",
-        "examples/29_inbe_habit_edit.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4771,13 +3920,12 @@
     {
       "id": "Rect",
       "semantic_sources": [],
-      "source_count": 6,
+      "source_count": 5,
       "sources": [
         "examples/05_color.kry",
         "examples/06_scaling.kry",
         "examples/07_layout.kry",
         "examples/19_pictures.kry",
-        "examples/27_inbe_statistics.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4811,7 +3959,7 @@
         "tests/parity/progress.kry",
         "tests/parity/table_view.kry"
       ],
-      "source_count": 38,
+      "source_count": 29,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4831,16 +3979,7 @@
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
-        "examples/20_inbe_language.kry",
-        "examples/21_inbe_settings.kry",
-        "examples/22_inbe_manual.kry",
-        "examples/23_inbe_app.kry",
-        "examples/24_inbe_habits.kry",
-        "examples/25_inbe_practice.kry",
-        "examples/26_inbe_whm_session.kry",
-        "examples/27_inbe_statistics.kry",
-        "examples/28_inbe_profile.kry",
-        "examples/29_inbe_habit_edit.kry",
+        "examples/20_scroll.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/fields.kry",
@@ -4858,12 +3997,9 @@
     {
       "id": "Scroll",
       "semantic_sources": [],
-      "source_count": 4,
+      "source_count": 1,
       "sources": [
-        "examples/21_inbe_settings.kry",
-        "examples/22_inbe_manual.kry",
-        "examples/23_inbe_app.kry",
-        "examples/24_inbe_habits.kry"
+        "examples/20_scroll.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -4883,10 +4019,9 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 4,
+      "source_count": 3,
       "sources": [
         "examples/03_theme.kry",
-        "examples/25_inbe_practice.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4906,11 +4041,9 @@
     {
       "id": "Spinbox",
       "semantic_sources": [],
-      "source_count": 4,
+      "source_count": 2,
       "sources": [
         "examples/11_basic_controls.kry",
-        "examples/25_inbe_practice.kry",
-        "examples/29_inbe_habit_edit.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4958,7 +4091,7 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 30,
+      "source_count": 21,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4976,16 +4109,7 @@
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
-        "examples/20_inbe_language.kry",
-        "examples/21_inbe_settings.kry",
-        "examples/22_inbe_manual.kry",
-        "examples/23_inbe_app.kry",
-        "examples/24_inbe_habits.kry",
-        "examples/25_inbe_practice.kry",
-        "examples/26_inbe_whm_session.kry",
-        "examples/27_inbe_statistics.kry",
-        "examples/28_inbe_profile.kry",
-        "examples/29_inbe_habit_edit.kry",
+        "examples/20_scroll.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
@@ -5018,10 +4142,9 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 7,
+      "source_count": 6,
       "sources": [
         "examples/03_theme.kry",
-        "examples/29_inbe_habit_edit.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",
         "tests/parity/generated_form.kry",

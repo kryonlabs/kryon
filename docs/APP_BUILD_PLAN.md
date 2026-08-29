@@ -75,7 +75,7 @@ Apps own:
 Reusable behavior should move into Kryon only when it is app-neutral. Examples
 that belong in Kryon are route-stack mechanics, form layout cursors,
 safe-area-aware view measurement, capability checks, and setting clamps.
-Product flows such as Inner Breeze practice behavior or Pass password
+Product flows such as breathing-session behavior or password
 generation stay in their app repositories.
 
 ## Migration Phases
@@ -84,7 +84,7 @@ generation stay in their app repositories.
    `vendor/kryon` is the only runtime submodule path.
 2. Keep app Makefiles working, but make them use `KRYON_DIR` and Kryon-owned
    `mk/*.mk` includes exclusively.
-3. Move repeated Makefile logic from Inbe into Kryon `mk/app.mk`,
+3. Move repeated app Makefile logic into Kryon `mk/app.mk`,
    `mk/android.mk`, `mk/web.mk`, and `mk/package-linux.mk`.
 4. Add a Kryon CLI wrapper that reads `project.kryon` and invokes the shared
    make fragments with normalized variables.

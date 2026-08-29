@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Theme-screen dropdown interaction, mirroring inbe's settings layout:
+/* Theme-screen dropdown interaction for a stacked settings layout:
  * stacked dropdowns (mode, palette, style) whose popups open over the
  * fields below them. Regression for "want to press Dark and nothing
  * happens": selecting from a popup that covers the other dropdown fields

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "source": "examples/manifest.json",
+  "examples": [
+    {"id": "file-dialog", "path": "examples/01_file_dialog.kry", "title": "File Dialog"},
+    {"id": "buttons", "path": "examples/02_buttons.kry", "title": "Buttons", "krb_exact": true},
+    {"id": "theme", "path": "examples/03_theme.kry", "title": "Theme", "krb_exact": true},
+    {"id": "modal", "path": "examples/04_modal.kry", "title": "Modal"},
+    {"id": "color", "path": "examples/05_color.kry", "title": "Color"},
+    {"id": "scaling", "path": "examples/06_scaling.kry", "title": "Scaling"},
+    {"id": "layout", "path": "examples/07_layout.kry", "title": "Layout"},
+    {"id": "geometry", "path": "examples/09_geometry.kry", "title": "Geometry"},
+    {"id": "menus", "path": "examples/10_menus.kry", "title": "Menus"},
+    {"id": "basic-controls", "path": "examples/11_basic_controls.kry", "title": "Basic Controls", "krb_exact": true},
+    {"id": "collections", "path": "examples/12_collections.kry", "title": "Collections"},
+    {"id": "text-editor", "path": "examples/13_text_editor.kry", "title": "Text Editor"},
+    {"id": "canvas", "path": "examples/14_canvas.kry", "title": "Canvas"},
+    {"id": "containers", "path": "examples/15_containers.kry", "title": "Containers"},
+    {"id": "dialogs", "path": "examples/16_dialogs.kry", "title": "Dialogs"},
+    {"id": "keyboard-platform", "path": "examples/17_keyboard_platform.kry", "title": "Keyboard Platform"},
+    {"id": "accessibility", "path": "examples/18_accessibility.kry", "title": "Accessibility"},
+    {"id": "pictures", "path": "examples/19_pictures.kry", "title": "Pictures"},
+    {"id": "scene", "path": "examples/20_scene.kry", "title": "Scene"},
+    {"id": "scroll", "path": "examples/20_scroll.kry", "title": "Scroll", "krb_exact": true},
+    {"id": "signals", "path": "examples/21_signals.kry", "title": "Signals"},
+    {"id": "physics", "path": "examples/22_physics.kry", "title": "Physics"},
+    {"id": "animation", "path": "examples/23_animation.kry", "title": "Animation"},
+    {"id": "tilemap", "path": "examples/24_tilemap.kry", "title": "Tilemap"}
+  ]
+}

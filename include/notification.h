@@ -30,7 +30,7 @@ typedef enum {
 } NotificationPriority;
 
 /* Daemon-side application name shown by desktop notifications and used to
- * resolve the icon (desktop-entry name, e.g. "inbe"). Default: "kryon". */
+ * resolve the icon (desktop-entry name, e.g. "sample-app"). Default: "kryon". */
 void SetNotificationAppName(const char *name);
 
 /* 1 when a backend is compiled in and reachable. */
