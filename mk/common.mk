@@ -245,14 +245,20 @@ $(NATIVE_BIN_DIR): | $(BUILD_BIN_DIR)
 $(NATIVE_DIST_DIR): | $(BUILD_DIST_DIR)
 	mkdir -p $@
 
+ifneq ($(LINUX_OBJ_DIR),$(NATIVE_OBJ_DIR))
 $(LINUX_OBJ_DIR): | $(BUILD_OBJ_DIR)
 	mkdir -p $@
+endif
 
+ifneq ($(LINUX_BIN_DIR),$(NATIVE_BIN_DIR))
 $(LINUX_BIN_DIR): | $(BUILD_BIN_DIR)
 	mkdir -p $@
+endif
 
+ifneq ($(LINUX_DIST_DIR),$(NATIVE_DIST_DIR))
 $(LINUX_DIST_DIR): | $(BUILD_DIST_DIR)
 	mkdir -p $@
+endif
 
 $(WINDOWS_OBJ_DIR): | $(BUILD_OBJ_DIR)
 	mkdir -p $@
