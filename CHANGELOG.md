@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.29 - 2026-08-29
+
+### Changed
+
+- Fix the X11 window runtime dropping all compat input reads
+- Keep rlgl wrappers when audio is compiled out
+- Resolve rlgl and raymath inputs next to raylib.h in the compat generator
+- Release: bump version to v0.1.29
+- Add the 3D tier to the kryon surface
+- Let headless links resolve the instance window hooks
+
 ## v0.1.28 - 2026-08-29
 
 ### Changed
