@@ -35,6 +35,13 @@ else ifeq ($(KRYON_BACKEND),canvas)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =
+else ifeq ($(KRYON_BACKEND),dom)
+  # DOM owns the HTML/CSS web UI surface and lets the generated weak null
+  # backend absorb unsupported raylib areas.
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_CFLAGS =
+  KRYON_BACKEND_LDLIBS =
 else ifeq ($(KRYON_BACKEND),libdraw)
   PLAN9PORT_DIR ?= /mnt/storage/Projects/plan9port
   KRYON_BACKEND_SRCS =
@@ -52,11 +59,14 @@ else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_CFLAGS =
   KRYON_BACKEND_LDLIBS =
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, termi, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, dom, libdraw, termi, or null))
 endif
 KRYON_ALL_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort))
 ifneq ($(KRYON_BACKEND),canvas)
 KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/canvas_%.c,$(KRYON_ALL_SRCS))
+endif
+ifneq ($(KRYON_BACKEND),dom)
+KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/dom_%.c,$(KRYON_ALL_SRCS))
 endif
 ifneq ($(KRYON_BACKEND),libdraw)
 KRYON_ALL_SRCS := $(filter-out $(KRYON_DIR)/src/backend/libdraw_%.c,$(KRYON_ALL_SRCS))

@@ -30,6 +30,15 @@
       "checks": ["make canvas-test", "make canvas2d-parity-check", "make web-canvas-matrix-check"]
     },
     {
+      "id": "dom",
+      "label": "Web DOM",
+      "tier": "web",
+      "platforms": ["Emscripten web"],
+      "surface": "HTML/CSS DOM UI presentation with RGBA image-node textures and null stubs for unsupported surface areas",
+      "status": "smoke gated",
+      "checks": ["make dom-test"]
+    },
+    {
       "id": "libdraw",
       "label": "Plan 9 libdraw",
       "tier": "desktop",

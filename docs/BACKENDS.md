@@ -52,6 +52,18 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   web-canvas-matrix-check` captures generated-C visual fixtures through the
   same backend. `docs/CANVAS2D_PARITY.md` is the Canvas2D parity ledger.
   The rendering has additionally been pixel-verified in a real browser page.
+- `dom` - HTML/CSS DOM backend, no raylib (`src/backend/dom_*.c`). Web-only
+  and intended for app-style Kryon UI rather than games or pixel-perfect
+  drawing. Kryon/app logic still runs as WASM; the backend presents
+  UI-oriented draw calls as absolutely positioned DOM nodes with CSS colors,
+  borders, rounded corners, clipping, transforms, cursor state, and browser
+  text. The existing Kryon UI runtime remains responsible for hit-testing,
+  focus, text editing, dropdowns, scrolling, selection, and widget state.
+  Textures uploaded from RGBA pixels are presented as DOM image nodes; render
+  targets and unsupported raylib areas use conservative null-grade behavior.
+  `make dom-test` builds a small Emscripten app and verifies DOM node output,
+  texture image nodes, and an injected widget click in Node against a minimal
+  DOM shim.
 - `libdraw` - plan9port libdraw/devdraw backend, no raylib
   (`src/backend/libdraw_*.c`). It keeps the same public surface as the other
   backends: C apps still include `kryon.h` and call `InitWindow`,
@@ -93,7 +105,8 @@ Exactly one backend TU is compiled into `libkryon.a` (root `Makefile`), and
 inputs (only raylib needs `libraylib.a` and its SDL/GL system libs). The
 downstream fragments (`mk/common.mk`, `mk/native.mk`, `mk/web.mk`) honor the
 same variable, so `make KRYON_BACKEND=null` produces binaries with no raylib
-in the link graph, `make KRYON_BACKEND=termi` links a terminal backend, and
+in the link graph, `make KRYON_BACKEND=dom web` builds the DOM web backend,
+`make KRYON_BACKEND=termi` links a terminal backend, and
 `make KRYON_BACKEND=libdraw PLAN9PORT_DIR=/path/to/plan9port` links against
 plan9port instead. The
 cross-build dist targets (`dist-linux`, `dist-windows`, Android, and `make
@@ -192,7 +205,8 @@ ui_text_backend.c` is the only place that reads `Font` fields directly
 
 ## Adding a backend
 
-1. Create `src/backend/<name>_backend.c` implementing the required subset
+1. Create `src/backend/<name>_backend.c` or `src/backend/<name>_*.c`
+   implementing the required subset
    above under the surface's public names, plus the `KryonBackendRaw_*` hooks.
    Everything not implemented should match the null backend's zero-return
    behavior so the library still links.

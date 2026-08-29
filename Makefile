@@ -79,10 +79,12 @@ KRYON_BACKEND_STAMP = $(BUILD_DIR)/.backend-$(KRYON_BACKEND)
 # backend-neutral; the concrete implementation is selected at link time here.
 #   raylib  -> generated raylib forwarders + libraylib.a   (default, unchanged)
 #   canvas  -> src/backend/canvas_*.c (HTML5 Canvas2D; no raylib)
+#   dom     -> src/backend/dom_*.c (HTML/CSS DOM; no raylib)
 #   termi   -> src/backend/termi_*.c + generated weak stubs (terminal cells)
 #   null    -> generated zero-return stubs  (no-ops; for headless tests)
 KRYON_BACKEND ?= raylib
 KRYON_CANVAS_SRCS := $(wildcard src/backend/canvas_*.c)
+KRYON_DOM_SRCS := $(wildcard src/backend/dom_*.c)
 KRYON_LIBDRAW_SRCS := $(wildcard src/backend/libdraw_*.c)
 KRYON_TERMI_SRCS := $(wildcard src/backend/termi_*.c)
 ifeq ($(KRYON_BACKEND),raylib)
@@ -90,6 +92,10 @@ ifeq ($(KRYON_BACKEND),raylib)
 else ifeq ($(KRYON_BACKEND),canvas)
   # Canvas owns the 2D/web surface and lets the generated weak null backend
   # absorb unsupported raylib areas such as 3D, shaders, VR, and rlgl.
+  KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
+else ifeq ($(KRYON_BACKEND),dom)
+  # DOM owns the web UI surface and uses weak null stubs for unsupported
+  # raylib compatibility functions.
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else ifeq ($(KRYON_BACKEND),libdraw)
   # the libdraw sources live in src/ and arrive via the SRCS find below;
@@ -102,7 +108,7 @@ else ifeq ($(KRYON_BACKEND),termi)
 else ifeq ($(KRYON_BACKEND),null)
   KRYON_BACKEND_SRCS = $(KRYON_NULL_BACKEND_C)
 else
-  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, libdraw, termi, or null))
+  $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, dom, libdraw, termi, or null))
 endif
 
 # Link inputs for the selected backend: only raylib needs libraylib.a and the
@@ -119,6 +125,9 @@ else ifeq ($(KRYON_BACKEND),libdraw)
   KRYON_BACKEND_LDLIBS ?= -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm
 else ifeq ($(KRYON_BACKEND),termi)
   CPPFLAGS += -DKRYON_BACKEND_TERMI
+  KRYON_BACKEND_LIBS =
+  KRYON_BACKEND_LDLIBS ?=
+else ifeq ($(KRYON_BACKEND),dom)
   KRYON_BACKEND_LIBS =
   KRYON_BACKEND_LDLIBS ?=
 else
@@ -174,12 +183,14 @@ LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
 
-# The Canvas2D backend is emcc-only (its sources compile to empty
-# translation units under native compilers) and only links when
-# KRYON_BACKEND=canvas; keep the find from dragging it into the other
-# backends' builds when the files happen to be present.
+# Browser-only backend sources compile to empty translation units under native
+# compilers and only link when their backend is selected; keep the find from
+# dragging them into other backends' builds when the files happen to be present.
 ifneq ($(KRYON_BACKEND),canvas)
 SRCS := $(filter-out $(KRYON_CANVAS_SRCS),$(SRCS))
+endif
+ifneq ($(KRYON_BACKEND),dom)
+SRCS := $(filter-out $(KRYON_DOM_SRCS),$(SRCS))
 endif
 ifneq ($(KRYON_BACKEND),libdraw)
 SRCS := $(filter-out $(KRYON_LIBDRAW_SRCS),$(SRCS))
@@ -259,7 +270,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -295,6 +306,9 @@ $(KRB_SDL): cmd/krb-sdl/main.c cmd/krb-run/png_write.c cmd/krb-run/png_write.h $
 canvas-test: $(KRYON_NULL_BACKEND_C) $(EMBED_ASSETS_C)
 	sh tests/canvas_backend_test.sh
 	sh tests/canvas_audio_test.sh
+
+dom-test: $(KRYON_NULL_BACKEND_C) $(EMBED_ASSETS_C)
+	sh tests/dom_backend_test.sh
 
 canvas-audio-test:
 	sh tests/canvas_audio_test.sh
@@ -408,7 +422,7 @@ generated-runtime-parity-test: $(K2C) $(K2G) $(LIB) $(KRYON_BACKEND_LIBS)
 preflight: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check generated-runtime-parity-test
 	git diff --check
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(APP_FRAMEWORK_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2G) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(APP_FRAMEWORK_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)

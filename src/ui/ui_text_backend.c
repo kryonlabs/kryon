@@ -17,6 +17,13 @@ ui_text_pack_color(Color color)
 }
 #endif
 
+#if defined(KRYON_BACKEND_DOM)
+int kry_dom_font_height(unsigned id);
+int kry_dom_font_text_width(unsigned id, const char *text, int byte_len);
+void kry_dom_queue_text(unsigned font_id, const char *text, int byte_len,
+                        int x, int y, int font_size, Color color);
+#endif
+
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
@@ -152,6 +159,8 @@ UIFontHasNativeText(Font font)
     return kry_libdraw_font_height(font.texture.id) > 0;
 #elif defined(KRYON_BACKEND_TERMI)
     return termi_font_height(font.texture.id) > 0;
+#elif defined(KRYON_BACKEND_DOM)
+    return kry_dom_font_height(font.texture.id) > 0;
 #else
     (void)font;
     return 0;
@@ -165,6 +174,8 @@ UIFontNativeTextWidth(Font font, const char *text, int byte_len)
     return kry_libdraw_font_text_width(font.texture.id, text, byte_len);
 #elif defined(KRYON_BACKEND_TERMI)
     return termi_text_width(font.texture.id, text, byte_len);
+#elif defined(KRYON_BACKEND_DOM)
+    return kry_dom_font_text_width(font.texture.id, text, byte_len);
 #else
     (void)font;
     (void)text;
@@ -180,6 +191,8 @@ UIFontNativeTextHeight(Font font)
     return kry_libdraw_font_height(font.texture.id);
 #elif defined(KRYON_BACKEND_TERMI)
     return termi_font_height(font.texture.id);
+#elif defined(KRYON_BACKEND_DOM)
+    return kry_dom_font_height(font.texture.id);
 #else
     (void)font;
     return 0;
@@ -201,6 +214,12 @@ UIFontDrawNativeText(Font font, const char *text, int byte_len, int x, int y,
         return 0;
     termi_queue_text(font.texture.id, text, byte_len, x, y, font_size,
                      ui_text_pack_color(color));
+    return 1;
+#elif defined(KRYON_BACKEND_DOM)
+    if(kry_dom_font_height(font.texture.id) <= 0)
+        return 0;
+    kry_dom_queue_text(font.texture.id, text, byte_len, x, y, font_size,
+                       color);
     return 1;
 #else
     (void)font;

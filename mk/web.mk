@@ -4,8 +4,8 @@ WEB_WORK_TARGET = $(WEB_BUILD_DIR)/index.html
 WEB_TARGET = $(WEB_DIST_DIR)/index.html
 WEB_RAYLIB_BUILD_DIR = $(WEB_BUILD_DIR)/raylib
 WEB_RAYLIB_A = $(WEB_RAYLIB_BUILD_DIR)/libraylib.web.a
-# Web link inputs per backend: raylib ships libraylib.web.a; the canvas
-# backend draws over HTML5 Canvas2D and needs no raylib library.
+# Web link inputs per backend: raylib ships libraylib.web.a; canvas and dom
+# own browser-native renderers and need no raylib library.
 ifeq ($(KRYON_BACKEND),raylib)
   WEB_BACKEND_LIBS = $(WEB_RAYLIB_A)
 else
@@ -18,6 +18,10 @@ WEB_SHELL = src/web_shell.html
 WEB_PUBLIC_FILES = $(wildcard manifest.json) $(shell find web-assets -type f 2>/dev/null)
 WEB_LDFLAGS = -sUSE_GLFW=3 -sFETCH=1 -sALLOW_MEMORY_GROWTH=1 -lidbfs.js --shell-file $(WEB_SHELL)
 ifeq ($(KRYON_BACKEND),canvas)
+  WEB_LDFLAGS += -sASYNCIFY
+endif
+ifeq ($(KRYON_BACKEND),dom)
+  WEB_CFLAGS += -DKRYON_BACKEND_DOM
   WEB_LDFLAGS += -sASYNCIFY
 endif
 
