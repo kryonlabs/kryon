@@ -223,7 +223,8 @@ must not require a second source-language path around KIR.
 - Go is a declarative app subset. Tagged extern targets that contain a full Go
   import path, such as `github.com/example/app.Generate`, are imported and
   called directly by generated Go; short targets such as `app.Generate` remain
-  host-interface methods.
+  host-interface methods. Explicit C targets use the `c.symbol` form, such as
+  `#extern "c.abs"`; only those declarations generate an isolated cgo bridge.
 - KRB is a portable cartridge subset with explicit host/capability boundaries.
 - `defer` is currently a C-oriented compile-time transform.
 - Raw C lines are not portable.

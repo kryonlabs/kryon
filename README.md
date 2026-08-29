@@ -215,9 +215,11 @@ k2b  app.kry|app.kir
 Generated Go imports `github.com/waozixyz/kryon/go/kryon` as `kryon` and uses
 clean qualified widget names such as `kryon.Button`, `kryon.TextField`,
 `kryon.Text`, `kryon.Row`, `kryon.Column`, `kryon.BeginFrame`, and
-`kryon.EndFrame`. It must not use `import "C"`, the removed bridge package,
-injected runtime objects, dot-imported runtime names, or generated calls to
-stale prefixed C APIs.
+`kryon.EndFrame`. Pure Kry and Go-native externs must not use `import "C"`,
+the removed bridge package, injected runtime objects, dot-imported runtime
+names, or generated calls to stale prefixed C APIs. Explicit C externs with a
+`c.` target, such as `#extern "c.abs"`, are the opt-in exception: `k2g` emits
+their `import "C"` bridge in a separate generated `*_cgo.go` file.
 
 Handwritten Go can use the same package directly. Generated code keeps the
 explicit props form (`kryon.Button(kryon.ButtonProps{...})`,

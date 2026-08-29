@@ -14,7 +14,7 @@ if [ ! -f "$k2g" ]; then
     exit 1
 fi
 
-mkdir -p "$work/src" "$work/out" "$work/hierarchy-out"
+mkdir -p "$work/src" "$work/out" "$work/hierarchy-out" "$work/pure-out"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
@@ -205,17 +205,25 @@ EOF
 
 "$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/helper.kry"
 "$k2g" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
+"$k2g" --root "$work" -o "$work/pure-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
 cgo="$work/out/valid_cgo.go"
 helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
+pure="$work/pure-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
 [ -f "$cgo" ] || { echo "k2g produced no cgo output" >&2; exit 1; }
 [ -f "$helper" ] || { echo "k2g produced no helper output" >&2; exit 1; }
 [ -f "$hier" ] || { echo "k2g produced no hierarchy output" >&2; exit 1; }
+[ -f "$pure" ] || { echo "k2g produced no pure output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 sh "$root/tests/check_clean_generated_output.sh" "$work/hierarchy-out"
+sh "$root/tests/check_clean_generated_output.sh" "$work/pure-out"
+if [ -e "$work/pure-out/hierarchy_cgo.go" ] || grep -q 'import "C"' "$pure"; then
+    echo "pure generated Go unexpectedly imports cgo" >&2
+    exit 1
+fi
 
 if "$k2g" --runtime github.com/waozixyz/kryon/go/kryui \
     --root "$work" -o "$work/out" "$work/src/valid.kry" \
