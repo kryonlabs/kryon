@@ -56,7 +56,9 @@ Kryon uses several test layers:
 - conformance and visual matrix checks across renderers and runtime paths
 
 Use `make preflight` before committing focused Kryon changes. Use `make test`
-for the broader local regression suite.
+for the broader local regression suite. Use `make test-asan` or
+`make test-ubsan` for sanitizer-backed regression runs, and
+`make release-preflight` before publishing release artifacts.
 
 ## Downstream Integration
 

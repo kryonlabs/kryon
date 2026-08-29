@@ -257,7 +257,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g canvas-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -455,6 +455,12 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(KIR_TEST)
 	@cat $(K2IR_TEST)
 
+test-asan:
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)-asan CFLAGS="$(CFLAGS) -O1 -g -fsanitize=address -fno-omit-frame-pointer" LDLIBS="$(LDLIBS) -fsanitize=address" test
+
+test-ubsan:
+	$(MAKE) BUILD_DIR=$(BUILD_DIR)-ubsan CFLAGS="$(CFLAGS) -O1 -g -fsanitize=undefined -fno-omit-frame-pointer" LDLIBS="$(LDLIBS) -fsanitize=undefined" test
+
 bsd-check:
 	$(MAKE) clean
 	$(MAKE) all
@@ -543,6 +549,8 @@ version:
 release-check:
 	@test -n '$(VERSION)'
 	@grep -q '^## $(VERSION) ' CHANGELOG.md
+
+release-preflight: preflight check-static-package check-tools-package
 
 dist-static: release-check $(STATIC_DIST_ARCHIVE)
 

@@ -68,6 +68,12 @@ manifest, and the submodule revisions used to build it. Validate it with:
 make check-static-package
 ```
 
+Run the full release readiness gate with:
+
+```bash
+make release-preflight
+```
+
 `libkryon.a` stays focused on Kryon object files. Companion libraries are shipped
 beside it and linked through `lib/pkgconfig/kryon.pc`. OpenSSL is still treated
 as an external system/toolchain dependency unless explicit OpenSSL static library
