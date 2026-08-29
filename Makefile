@@ -69,10 +69,12 @@ KRYON_COMPAT_GENERATOR = tools/generate-kryon-compat.sh
 KRYON_BOUNDARY_CHECK = tools/check-kryon-boundaries.sh
 KRYON_COMPAT_SYMBOL_CHECK = tools/check-raylib-compat-symbols.sh
 KRYON_COMPAT_HEADER = include/kryon_compat.generated.h
+KRYON_MATH3D_HEADER = include/kry_math3d.generated.h
 KRYON_BACKEND_RENAME_HEADER = $(BUILD_DIR)/generated/raylib_backend_rename.h
 KRYON_RAYLIB_WRAPPERS_C = $(BUILD_DIR)/generated/kryon_raylib_wrappers.c
 KRYON_NULL_BACKEND_C = $(BUILD_DIR)/generated/kryon_null_backend.c
 KRYON_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(KRYON_COMPAT_HEADER)
+KRYON_RAYLIB_MATH3D_HEADER ?= $(KRYON_MATH3D_HEADER)
 KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_BACKEND_RENAME_HEADER)
 KRYON_BACKEND_STAMP = $(BUILD_DIR)/.backend-$(KRYON_BACKEND)
 
@@ -486,17 +488,21 @@ bsd-check:
 	$(MAKE) all
 	$(MAKE) test
 
-kryon-compat: $(KRYON_COMPAT_HEADER) $(KRYON_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_WRAPPERS_C)
+kryon-compat: $(KRYON_COMPAT_HEADER) $(KRYON_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_WRAPPERS_C) $(KRYON_MATH3D_HEADER)
 
 submodule-urls-check:
 	sh scripts/check-submodule-urls.sh
 
-kryon-compat-check: | $(BUILD_DIR)
+kryon-compat-check: $(KRYON_NULL_BACKEND_C) $(KRYON_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_WRAPPERS_C) | $(BUILD_DIR)
 	sh $(KRYON_COMPAT_GENERATOR) vendor/raylib/src/raylib.h \
 		$(BUILD_DIR)/check/kryon_compat.generated.h \
 		$(BUILD_DIR)/check/raylib_backend_rename.h \
-		$(BUILD_DIR)/check/kryon_raylib_wrappers.c
+		$(BUILD_DIR)/check/kryon_raylib_wrappers.c \
+		$(BUILD_DIR)/check/kryon_null_backend.c \
+		$(BUILD_DIR)/check/kry_math3d.generated.h
 	cmp $(KRYON_COMPAT_HEADER) $(BUILD_DIR)/check/kryon_compat.generated.h
+	cmp $(KRYON_MATH3D_HEADER) $(BUILD_DIR)/check/kry_math3d.generated.h
+	cmp $(KRYON_NULL_BACKEND_C) $(BUILD_DIR)/check/kryon_null_backend.c
 	sh $(KRYON_COMPAT_SYMBOL_CHECK) vendor/raylib/src/raylib.h \
 		$(BUILD_DIR)/check/raylib_backend_rename.h \
 		$(BUILD_DIR)/check/kryon_raylib_wrappers.c

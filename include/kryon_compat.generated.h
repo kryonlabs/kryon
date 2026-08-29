@@ -1795,3 +1795,88 @@ RLAPI void DetachAudioMixedProcessor(AudioCallback processor); // Detach audio s
 #endif
 
 #endif // RAYLIB_H
+
+//----------------------------------------------------------------------------------
+// rlgl tier (curated): low-level 3D mesh and shader entry points
+//----------------------------------------------------------------------------------
+// For custom 3D pipelines that upload their own vertex data and drive their
+// own shaders (voxel meshers and similar). These names behave like the rest
+// of the surface: the raylib backend forwards them, other backends provide
+// zero-return stubs. Custom shaders must target GLSL 100 / OpenGL ES 2 to
+// run on every backend configuration.
+//----------------------------------------------------------------------------------
+
+#ifndef KRYON_RLGL_TIER_DEFINED
+#define KRYON_RLGL_TIER_DEFINED
+
+// GL equivalent data types
+#define RL_UNSIGNED_BYTE                        0x1401      // GL_UNSIGNED_BYTE
+#define RL_FLOAT                                0x1406      // GL_FLOAT
+
+// GL buffer usage hint
+#define RL_STREAM_DRAW                          0x88E0      // GL_STREAM_DRAW
+#define RL_STREAM_READ                          0x88E1      // GL_STREAM_READ
+#define RL_STREAM_COPY                          0x88E2      // GL_STREAM_COPY
+#define RL_STATIC_DRAW                          0x88E4      // GL_STATIC_DRAW
+#define RL_STATIC_READ                          0x88E5      // GL_STATIC_READ
+#define RL_STATIC_COPY                          0x88E6      // GL_STATIC_COPY
+#define RL_DYNAMIC_DRAW                         0x88E8      // GL_DYNAMIC_DRAW
+#define RL_DYNAMIC_READ                         0x88E9      // GL_DYNAMIC_READ
+#define RL_DYNAMIC_COPY                         0x88EA      // GL_DYNAMIC_COPY
+
+// Shader uniform data type (rlgl tier)
+typedef enum {
+    RL_SHADER_UNIFORM_FLOAT = 0,        // Shader uniform type: float
+    RL_SHADER_UNIFORM_VEC2,             // Shader uniform type: vec2 (2 float)
+    RL_SHADER_UNIFORM_VEC3,             // Shader uniform type: vec3 (3 float)
+    RL_SHADER_UNIFORM_VEC4,             // Shader uniform type: vec4 (4 float)
+    RL_SHADER_UNIFORM_INT,              // Shader uniform type: int
+    RL_SHADER_UNIFORM_IVEC2,            // Shader uniform type: ivec2 (2 int)
+    RL_SHADER_UNIFORM_IVEC3,            // Shader uniform type: ivec3 (3 int)
+    RL_SHADER_UNIFORM_IVEC4,            // Shader uniform type: ivec4 (4 int)
+    RL_SHADER_UNIFORM_SAMPLER2D         // Shader uniform type: sampler2d
+} rlShaderUniformDataType;
+
+// Shader attribute data type (rlgl tier)
+typedef enum {
+    RL_SHADER_ATTRIB_FLOAT = 0,         // Shader attribute type: float
+    RL_SHADER_ATTRIB_VEC2,              // Shader attribute type: vec2 (2 float)
+    RL_SHADER_ATTRIB_VEC3,              // Shader attribute type: vec3 (3 float)
+    RL_SHADER_ATTRIB_VEC4               // Shader attribute type: vec4 (4 float)
+} rlShaderAttributeDataType;
+RLAPI unsigned int rlLoadVertexArray(void);             // Load vertex array (vao) if supported
+RLAPI bool rlEnableVertexArray(unsigned int vaoId);     // Enable vertex array (VAO, if supported)
+RLAPI void rlDisableVertexArray(void);                  // Disable vertex array (VAO, if supported)
+RLAPI void rlUnloadVertexArray(unsigned int vaoId);     // Unload vertex array (vao)
+RLAPI unsigned int rlLoadVertexBuffer(const void *buffer, int size, bool dynamic); // Load a vertex buffer object
+RLAPI unsigned int rlLoadVertexBufferElement(const void *buffer, int size, bool dynamic); // Load vertex buffer elements object
+RLAPI void rlUpdateVertexBuffer(unsigned int bufferId, const void *data, int dataSize, int offset); // Update vertex buffer object data on GPU buffer
+RLAPI void rlEnableVertexBuffer(unsigned int id);       // Enable vertex buffer (VBO)
+RLAPI void rlEnableVertexBufferElement(unsigned int id); // Enable vertex buffer element (VBO element)
+RLAPI void rlDisableVertexBuffer(void);                 // Disable vertex buffer (VBO)
+RLAPI void rlDisableVertexBufferElement(void);          // Disable vertex buffer element (VBO element)
+RLAPI void rlUnloadVertexBuffer(unsigned int vboId);    // Unload vertex buffer object
+RLAPI void rlSetVertexAttribute(unsigned int index, int compSize, int type, bool normalized, int stride, int offset); // Set vertex attribute data configuration
+RLAPI void rlEnableVertexAttribute(unsigned int index); // Enable vertex attribute index
+RLAPI void rlDisableVertexAttribute(unsigned int index); // Disable vertex attribute index
+RLAPI void rlDrawVertexArray(int offset, int count);    // Draw vertex array (currently active vao)
+RLAPI void rlDrawVertexArrayElements(int offset, int count, const void *buffer); // Draw vertex array elements
+RLAPI void rlDrawVertexArrayInstanced(int offset, int count, int instances); // Draw vertex array (currently active vao) with instancing
+RLAPI void rlEnableShader(unsigned int id);             // Enable shader program
+RLAPI void rlDisableShader(void);                       // Disable shader program
+RLAPI void rlEnableTexture(unsigned int id);            // Enable texture
+RLAPI void rlDisableTexture(void);                      // Disable texture
+RLAPI void rlSetUniform(int locIndex, const void *value, int uniformType, int count); // Set shader value uniform
+RLAPI int rlGetLocationUniform(unsigned int id, const char *uniformName);       // Get shader location uniform, requires shader program id
+RLAPI void rlSetUniformMatrix(int locIndex, Matrix mat);                        // Set shader value matrix
+RLAPI Matrix rlGetMatrixModelview(void);                                  // Get internal modelview matrix
+RLAPI Matrix rlGetMatrixProjection(void);                                 // Get internal projection matrix
+RLAPI Matrix rlGetMatrixTransform(void);                                  // Get internal accumulated transform matrix
+RLAPI void rlSetMatrixModelview(Matrix view);                             // Set a custom modelview matrix (replaces internal modelview matrix)
+RLAPI void rlSetMatrixProjection(Matrix proj);                            // Set a custom projection matrix (replaces internal projection matrix)
+RLAPI void rlEnableBackfaceCulling(void);               // Enable backface culling
+RLAPI void rlDisableBackfaceCulling(void);              // Disable backface culling
+RLAPI void rlEnableDepthTest(void);                     // Enable depth test
+RLAPI void rlDisableDepthTest(void);                    // Disable depth test
+
+#endif // KRYON_RLGL_TIER_DEFINED

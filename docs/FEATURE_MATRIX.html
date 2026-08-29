@@ -180,6 +180,7 @@ li{margin:.25rem 0}
 <tr><td class="">Accessibility</td><td class="part">◐ debug focus overlay + a11y node structs; no screen-reader bridge</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
+<tr><td class="">3D rendering</td><td class="ok">✅ camera + mesh/shader tier incl. curated rlgl entry points and raymath-style math3d (GLSL 100); raylib backend implements it, others stub it</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">State/data binding</td><td class="ok">✅ retained event queue; scene signals</td><td class="ok">✅ <code>#ui</code> functions + retained events</td><td class="ok">✅ field mounts (<code>KrbMount*</code>) + bytecode</td></tr>
 <tr><td class="">Dialogs/platform</td><td class="ok">✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux)</td><td class="ok">✅ tray + notify polling</td><td class="part">◐ host capability imports (storage/http/audio/notify)</td></tr>
 <tr><td class="">Debug tooling</td><td class="ok">✅ widget inspector, node registry + snippets</td><td class="no">✗</td><td class="part">◐ <code>KryBackendRec</code> call-stream recording</td></tr>
@@ -188,7 +189,7 @@ li{margin:.25rem 0}
 <h3>Tier A — surface backends (link-time, <code>KRYON_BACKEND</code>)</h3>
 <table>
 <tr><th>Backend</th><th>Graphics API</th><th>Platforms</th><th>CI</th><th>Notes</th></tr>
-<tr><td class=""><code>raylib</code> (default)</td><td class="">OpenGL ES 2.0 over SDL2</td><td class="">Linux, FreeBSD</td><td class="ok">✅ <code>ci.yml</code> (Linux + FreeBSD)</td><td class="">Default everywhere; dist/static SDK targets</td></tr>
+<tr><td class=""><code>raylib</code> (default)</td><td class="">OpenGL ES 2.0 over SDL2</td><td class="">Linux, FreeBSD</td><td class="ok">✅ <code>ci.yml</code> (Linux + FreeBSD)</td><td class="">Default everywhere; dist/static SDK targets; implements the full 3D tier (camera/mesh/shader + rlgl entry points)</td></tr>
 <tr><td class=""><code>raylib</code> web</td><td class="">WebGL (ES2) over GLFW3</td><td class="">Emscripten</td><td class="ok">✅ netlify/app builds</td><td class=""><code>mk/web.mk</code>; present shim for WebKitGTK</td></tr>
 <tr><td class=""><code>raylib</code> windows <code>opengl</code></td><td class="">OpenGL 2.1</td><td class="">Windows (mingw)</td><td class="ok">✅ release builds</td><td class="">Default Windows flavor</td></tr>
 <tr><td class=""><code>raylib</code> windows <code>rlsw</code></td><td class="">raylib software renderer (no GPU)</td><td class="">Windows</td><td class="ok">✅ release builds</td><td class=""><code>WINDOWS_RENDERERS</code> second flavor</td></tr>

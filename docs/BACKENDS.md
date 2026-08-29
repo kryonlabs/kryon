@@ -188,8 +188,43 @@ sites (~100 symbols); keep it in sync when adding surface usage. Grouped:
   backends): `LoadSound`/`UnloadSound`/`PlaySound`, `SetSoundVolume/Pitch/Pan`,
   music stream functions, and raw `AudioStream` update/playback functions.
 
-Everything else on the surface (3D, shaders, gestures, VR, ...) can be a
-zero-return stub exactly like the generated null backend.
+Everything else on the surface (gestures, VR, ...) can be a zero-return
+stub exactly like the generated null backend.
+
+### 3D tier (camera, meshes, shaders, rlgl, math3d)
+
+The surface carries a 3D tier for custom 3D pipelines such as voxel
+renderers:
+
+- **Camera and drawing**: `Camera3D` with `UpdateCamera(CAMERA_CUSTOM)`,
+  `BeginMode3D`/`EndMode3D`, `DrawCube*`, and the mesh path
+  `UploadMesh`/`DrawMesh`/`DrawMeshInstanced`/`UnloadMesh` with the raylib
+  `Mesh`/`Material` layouts, `LoadMaterialDefault`,
+  `SetMaterialTexture`, `UnloadMaterial`.
+- **Custom shaders**: `LoadShader`/`LoadShaderFromMemory`,
+  `GetShaderLocation`, `SetShaderValue*`, `UnloadShader`, and the
+  `SHADER_LOC_*` constants.
+- **Curated rlgl entry points** (`kryon_compat.generated.h` ends with
+  them): vertex array and vertex buffer upload/bind/draw
+  (`rlLoadVertexArray`, `rlLoadVertexBuffer(Element)`,
+  `rlUpdateVertexBuffer`, `rlSetVertexAttribute`,
+  `rlDrawVertexArray*`, the enable/disable family), shader uniforms
+  (`rlSetUniform`, `rlGetLocationUniform`, `rlSetUniformMatrix`),
+  matrix state (`rlGet/SetMatrixModelview/Projection/Transform`), and
+  cull/depth toggles, plus the `RL_*` GL constants they take. `RL_CALLOC`
+  and `RL_FREE` are not on the surface; use `MemAlloc`/`MemFree`.
+- **Math3d**: `include/kry_math3d.generated.h` (included by `kryon.h`
+  right after the compat surface) provides raymath-style
+  `Vector2/3/4`, `Matrix`, and `Quaternion` arithmetic as static-inline
+  functions. Pure math with no state, so every backend gets it for free;
+  nothing to implement or stub.
+
+The raylib backend implements the whole tier for real (rlgl is compiled
+in, `RAYLIB_MODULE_MODELS=TRUE`, symbols renamed like the rest). Every
+other backend provides the generated zero-return stubs, so 3D content
+simply does not appear there; UI-only apps must not depend on it. Custom
+shaders must target GLSL 100 / OpenGL ES 2 - the desktop raylib backend
+runs GLES2, so `#version 330` desktop shaders do not compile.
 
 ## Struct-layout obligations
 

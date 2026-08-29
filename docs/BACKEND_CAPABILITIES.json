@@ -7,7 +7,7 @@
       "label": "Desktop raylib",
       "tier": "default",
       "platforms": ["Linux", "FreeBSD", "macOS", "Windows"],
-      "surface": "full raylib compatibility through Kryon wrapper symbols",
+      "surface": "full raylib compatibility through Kryon wrapper symbols, including the 3D tier (camera, meshes, custom shaders, curated rlgl entry points) and the static-inline math3d surface",
       "status": "default",
       "checks": ["make kryon-compat-check", "make raylib-matrix-check", "build/linux-x86_64/tests/raylib_compat_test"]
     },

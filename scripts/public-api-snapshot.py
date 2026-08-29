@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = ROOT / "docs" / "PUBLIC_API_SNAPSHOT.txt"
-EXCLUDED_HEADERS = {"kryon_compat.generated.h", "kryon_plan9.h"}
+EXCLUDED_HEADERS = {"kryon_compat.generated.h", "kry_math3d.generated.h", "kryon_plan9.h"}
 
 
 def strip_comments(text: str) -> str:
