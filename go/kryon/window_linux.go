@@ -138,8 +138,11 @@ func (r *windowRuntime) pumpEvents() {
 				c.QueueMouseMove(float32(ev.x), float32(ev.y))
 			}
 		case x11EventRelease:
+			// A full click (press+release) feeds the widget layer: consumeTap
+			// reads the tap/click queues, which only QueueMouseButton fills —
+			// bare Up events left every Button widget click-dead under X11.
 			if c, ok := r.Runtime.(mouseController); ok {
-				c.QueueMouseButtonUp(ev.button, float32(ev.x), float32(ev.y))
+				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventWheel:
 			if c, ok := r.Runtime.(legacyPointerController); ok {
