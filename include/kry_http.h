@@ -35,6 +35,22 @@ KryHttpRequest *kry_http_post_json(const char *url, const char *authorization,
  * offline-safe). Returns NULL when unavailable. */
 KryHttpRequest *kry_http_get(const char *url, int timeout_s);
 
+/* GET a URL with extra request headers. Each headers[i] is a full header
+ * line ("Name: value"); header_count entries are read (none when NULL or
+ * count <= 0). The strings are copied, so the caller's storage may go away
+ * as soon as these return. */
+KryHttpRequest *kry_http_get_with_headers(const char *url, int timeout_s,
+                                          const char *const *headers,
+                                          int header_count);
+
+/* POST a JSON body with extra request headers (same format as above). */
+KryHttpRequest *kry_http_post_json_with_headers(const char *url,
+                                                const char *authorization,
+                                                const char *json_body,
+                                                int timeout_s,
+                                                const char *const *headers,
+                                                int header_count);
+
 /* Current state. Cheap; call every frame. Terminal states never change. */
 KryHttpStatus kry_http_poll(KryHttpRequest *request);
 

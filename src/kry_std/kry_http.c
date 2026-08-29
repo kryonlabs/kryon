@@ -23,6 +23,8 @@ struct KryHttpRequest {
     char *url;
     char *authorization;
     char *body;
+    char **extra_headers;
+    int extra_header_count;
     long timeout_s;
     /* written by the worker under mutex */
     KryHttpStatus state;
@@ -84,6 +86,10 @@ worker(void *userdata)
                  r->authorization);
         headers = curl_slist_append(headers, auth);
     }
+    for(int i = 0; i < r->extra_header_count; i++) {
+        if(r->extra_headers[i] != NULL && r->extra_headers[i][0] != '\0')
+            headers = curl_slist_append(headers, r->extra_headers[i]);
+    }
     curl_easy_setopt(curl, CURLOPT_URL, r->url);
     if(headers != NULL)
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -129,9 +135,11 @@ worker(void *userdata)
 
 static KryHttpRequest *
 request_new(const char *url, const char *authorization, const char *body,
-            long timeout_s)
+            long timeout_s, const char *const *extra_headers,
+            int header_count)
 {
     KryHttpRequest *r = calloc(1, sizeof(*r));
+    int i;
 
     if(r == NULL)
         return NULL;
@@ -144,6 +152,20 @@ request_new(const char *url, const char *authorization, const char *body,
         r->authorization = strdup(authorization);
     if(body != NULL)
         r->body = strdup(body);
+    if(extra_headers != NULL && header_count > 0) {
+        r->extra_headers = calloc((size_t)header_count, sizeof(char *));
+        if(r->extra_headers != NULL) {
+            for(i = 0; i < header_count; i++) {
+                if(extra_headers[i] == NULL)
+                    continue;
+                r->extra_headers[r->extra_header_count] =
+                    strdup(extra_headers[i]);
+                if(r->extra_headers[r->extra_header_count] == NULL)
+                    break;
+                r->extra_header_count++;
+            }
+        }
+    }
     r->timeout_s = timeout_s > 0 ? timeout_s : 60;
     r->state = KRY_HTTP_PENDING;
     KryMutexInit(&r->mutex);
@@ -151,6 +173,9 @@ request_new(const char *url, const char *authorization, const char *body,
         free(r->url);
         free(r->authorization);
         free(r->body);
+        for(i = 0; i < r->extra_header_count; i++)
+            free(r->extra_headers[i]);
+        free(r->extra_headers);
         free(r);
         return NULL;
     }
@@ -164,7 +189,7 @@ kry_http_post_json(const char *url, const char *authorization,
 {
     if(url == NULL || json_body == NULL)
         return NULL;
-    return request_new(url, authorization, json_body, timeout_s);
+    return request_new(url, authorization, json_body, timeout_s, NULL, 0);
 }
 
 KryHttpRequest *
@@ -172,7 +197,27 @@ kry_http_get(const char *url, int timeout_s)
 {
     if(url == NULL)
         return NULL;
-    return request_new(url, NULL, NULL, timeout_s);
+    return request_new(url, NULL, NULL, timeout_s, NULL, 0);
+}
+
+KryHttpRequest *
+kry_http_get_with_headers(const char *url, int timeout_s,
+                          const char *const *headers, int header_count)
+{
+    if(url == NULL)
+        return NULL;
+    return request_new(url, NULL, NULL, timeout_s, headers, header_count);
+}
+
+KryHttpRequest *
+kry_http_post_json_with_headers(const char *url, const char *authorization,
+                                const char *json_body, int timeout_s,
+                                const char *const *headers, int header_count)
+{
+    if(url == NULL || json_body == NULL)
+        return NULL;
+    return request_new(url, authorization, json_body, timeout_s, headers,
+                       header_count);
 }
 
 KryHttpStatus
@@ -242,6 +287,8 @@ kry_http_partial(KryHttpRequest *r, char *buf, size_t size)
 void
 kry_http_free(KryHttpRequest *r)
 {
+    int i;
+
     if(r == NULL)
         return;
     if(r->started)
@@ -249,6 +296,9 @@ kry_http_free(KryHttpRequest *r)
     free(r->url);
     free(r->authorization);
     free(r->body);
+    for(i = 0; i < r->extra_header_count; i++)
+        free(r->extra_headers[i]);
+    free(r->extra_headers);
     free(r->response);
     free(r);
 }
@@ -487,6 +537,26 @@ KryHttpRequest *kry_http_post_json(const char *url, const char *authorization,
 KryHttpRequest *kry_http_get(const char *url, int timeout_s)
 {
     (void)url; (void)timeout_s;
+    return NULL;
+}
+
+KryHttpRequest *kry_http_get_with_headers(const char *url, int timeout_s,
+                                          const char *const *headers,
+                                          int header_count)
+{
+    (void)url; (void)timeout_s; (void)headers; (void)header_count;
+    return NULL;
+}
+
+KryHttpRequest *kry_http_post_json_with_headers(const char *url,
+                                                const char *authorization,
+                                                const char *json_body,
+                                                int timeout_s,
+                                                const char *const *headers,
+                                                int header_count)
+{
+    (void)url; (void)authorization; (void)json_body; (void)timeout_s;
+    (void)headers; (void)header_count;
     return NULL;
 }
 

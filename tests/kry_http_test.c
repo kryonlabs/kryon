@@ -78,6 +78,45 @@ test_file_get(void)
 }
 
 static void
+test_get_with_headers_file(void)
+{
+    char path[256];
+    char url[300];
+    char token_buf[64];
+    const char *headers[2];
+    FILE *f;
+    KryHttpRequest *r;
+    KryHttpStatus s;
+
+    snprintf(path, sizeof(path), "/tmp/kry_http_test.%d.hdr.txt", (int)getpid());
+    f = fopen(path, "wb");
+    if(f == NULL)
+        return;
+    fprintf(f, "with headers");
+    fclose(f);
+    snprintf(url, sizeof(url), "file://%s", path);
+
+    snprintf(token_buf, sizeof(token_buf), "X-Test-Token: abc123");
+    headers[0] = token_buf;
+    headers[1] = NULL;
+    r = kry_http_get_with_headers(url, 10, headers, 1);
+    if(r == NULL) {
+        printf("kry_http unavailable (no libcurl); skipping header test\n");
+        remove(path);
+        return;
+    }
+    /* Scribble the caller's storage: the request must own its own copies
+     * before the worker thread reads them. */
+    memset(token_buf, 'x', sizeof(token_buf));
+    s = poll_until_terminal(r, 500);
+    CHECK(s == KRY_HTTP_DONE);
+    if(kry_http_response(r) != NULL)
+        CHECK(strcmp(kry_http_response(r), "with headers") == 0);
+    kry_http_free(r);
+    remove(path);
+}
+
+static void
 test_bad_url_fails(void)
 {
     KryHttpRequest *r = kry_http_get("not-a-url", 5);
@@ -116,6 +155,7 @@ int
 main(void)
 {
     test_file_get();
+    test_get_with_headers_file();
     test_bad_url_fails();
     test_live_gated();
     if(failures == 0)
