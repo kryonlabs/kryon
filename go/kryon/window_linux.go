@@ -235,6 +235,16 @@ func (r *windowRuntime) KeyPressed(key int32) bool {
 	return false
 }
 
+// KeyDown completes compatInputRuntime: without it every compat input read
+// (mouse position, buttons, keys) fails its interface assertion against
+// windowRuntime and the whole mouse UI goes dead.
+func (r *windowRuntime) KeyDown(key int32) bool {
+	if c, ok := r.Runtime.(compatInputRuntime); ok {
+		return c.KeyDown(key)
+	}
+	return false
+}
+
 func (r *windowRuntime) CharPressed() int32 {
 	if c, ok := r.Runtime.(compatInputRuntime); ok {
 		return c.CharPressed()
@@ -531,6 +541,10 @@ func (w *x11Window) handshake() error {
 	if w.redMask == 0 {
 		w.redMask, w.greenMask, w.blueMask = 0xff0000, 0x00ff00, 0x0000ff
 		w.redShift, w.greenShift, w.blueShift = 16, 8, 0
+	}
+	if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "kryon: x11 visual=%#x depth=%d bpp=%d scanPad=%d byteOrder=%d maxRequest=%d masks=%#x/%#x/%#x\n",
+			w.visual, w.depth, w.bpp, w.scanPad, w.byteOrder, w.maxRequest, w.redMask, w.greenMask, w.blueMask)
 	}
 	return nil
 }
@@ -1061,3 +1075,7 @@ func lowBit(mask uint32) uint {
 	}
 	return 0
 }
+
+// Compile-time guard: windowRuntime must satisfy the compat input surface or
+// every compat input read silently fails (see KeyDown above).
+var _ compatInputRuntime = (*windowRuntime)(nil)
