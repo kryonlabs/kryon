@@ -18,6 +18,48 @@ check_int(const char *name, int got, int want)
 }
 
 static void
+check_color(const char *name, Color got, Color want)
+{
+    if(got.r == want.r && got.g == want.g && got.b == want.b &&
+       got.a == want.a)
+        return;
+    fprintf(stderr, "%s: got #%02X%02X%02X%02X want #%02X%02X%02X%02X\n",
+            name, got.r, got.g, got.b, got.a,
+            want.r, want.g, want.b, want.a);
+    exit(1);
+}
+
+static void
+test_theme_surface_helpers(void)
+{
+    Color mixed = MixThemeColor((Color){0, 0, 0, 255},
+                                (Color){100, 50, 200, 127}, 0.5f);
+
+    check_color("theme mix", mixed, (Color){50, 25, 100, 191});
+    check_color("theme mix clamps low",
+                MixThemeColor(BLACK, WHITE, -1.0f), BLACK);
+    check_color("theme mix clamps high",
+                MixThemeColor(BLACK, WHITE, 2.0f), WHITE);
+    check_int("black luminance", GetThemeColorLuminance(BLACK), 0);
+    check_int("white luminance", GetThemeColorLuminance(WHITE), 255);
+    check_int("dark color", IsThemeColorDark((Color){12, 12, 12, 255}), 1);
+    check_int("light color", IsThemeColorDark((Color){240, 240, 240, 255}), 0);
+    check_color("readable on dark",
+                GetThemeReadableText((Color){20, 20, 20, 255}), RAYWHITE);
+    check_color("readable on light",
+                GetThemeReadableText((Color){240, 240, 240, 255}), BLACK);
+
+    SetThemeSource(THEME_SOURCE_APP);
+    SetCurrentTheme(THEME_MONO, 0);
+    check_int("surface alt alpha", GetThemeSurfaceAlt().a, 255);
+    check_int("theme border alpha", GetThemeBorder().a, 255);
+    check_int("muted text alpha", GetThemeMutedText().a, 255);
+    check_int("selection alpha", GetThemeSelection().a, 255);
+    check_color("button text", GetThemeButtonText(),
+                GetThemeReadableText(GetThemeButton()));
+}
+
+static void
 test_menu_bar_switches_while_popup_captures_input(void)
 {
     static const MenuItem file_items[] = {
@@ -105,6 +147,7 @@ main(void)
     };
 
     SetUIScale(1.0f);
+    test_theme_surface_helpers();
     test_circle_click_uses_ui_release_path();
 
     SetThemeStyle(THEME_STYLE_RETRO);

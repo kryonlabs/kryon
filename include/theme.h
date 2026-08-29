@@ -119,5 +119,14 @@ Color GetThemeButton(void);
 Color GetThemeButtonHover(void);
 Color GetThemeIcon(void);
 Color GetThemeLink(void);
+Color MixThemeColor(Color from, Color to, float amount);
+int GetThemeColorLuminance(Color color);
+bool IsThemeColorDark(Color color);
+Color GetThemeReadableText(Color background);
+Color GetThemeSurfaceAlt(void);
+Color GetThemeBorder(void);
+Color GetThemeMutedText(void);
+Color GetThemeSelection(void);
+Color GetThemeButtonText(void);
 
 #endif

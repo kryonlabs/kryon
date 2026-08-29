@@ -844,6 +844,52 @@ theme_luminance(Color color)
     return ((int)color.r * 299 + (int)color.g * 587 + (int)color.b * 114) / 1000;
 }
 
+static unsigned char
+theme_mix_channel(unsigned char from, unsigned char to, float amount)
+{
+    float value;
+
+    if(amount < 0.0f)
+        amount = 0.0f;
+    if(amount > 1.0f)
+        amount = 1.0f;
+    value = (float)from + ((float)to - (float)from) * amount;
+    if(value < 0.0f)
+        value = 0.0f;
+    if(value > 255.0f)
+        value = 255.0f;
+    return (unsigned char)(value + 0.5f);
+}
+
+Color
+MixThemeColor(Color from, Color to, float amount)
+{
+    return (Color){
+        theme_mix_channel(from.r, to.r, amount),
+        theme_mix_channel(from.g, to.g, amount),
+        theme_mix_channel(from.b, to.b, amount),
+        theme_mix_channel(from.a, to.a, amount)
+    };
+}
+
+int
+GetThemeColorLuminance(Color color)
+{
+    return theme_luminance(color);
+}
+
+bool
+IsThemeColorDark(Color color)
+{
+    return theme_luminance(color) < 128;
+}
+
+Color
+GetThemeReadableText(Color background)
+{
+    return IsThemeColorDark(background) ? RAYWHITE : BLACK;
+}
+
 static Color
 theme_readable_semantic_color(const char *key, const char *surface_key)
 {
@@ -869,3 +915,37 @@ Color GetThemeButton(void) { return GetCurrentThemeColor("button"); }
 Color GetThemeButtonHover(void) { return GetCurrentThemeColor("button_hover"); }
 Color GetThemeIcon(void) { return theme_readable_semantic_color("icon", "surface"); }
 Color GetThemeLink(void) { return GetCurrentThemeColor("link"); }
+
+Color
+GetThemeSurfaceAlt(void)
+{
+    return MixThemeColor(GetThemeSurface(), GetThemeBackground(),
+                         IsThemeColorDark(GetThemeBackground()) ? 0.20f : 0.42f);
+}
+
+Color
+GetThemeBorder(void)
+{
+    return MixThemeColor(GetThemeText(), GetThemeSurface(),
+                         IsThemeColorDark(GetThemeBackground()) ? 0.70f : 0.80f);
+}
+
+Color
+GetThemeMutedText(void)
+{
+    return MixThemeColor(GetThemeText(), GetThemeSurface(),
+                         IsThemeColorDark(GetThemeBackground()) ? 0.36f : 0.48f);
+}
+
+Color
+GetThemeSelection(void)
+{
+    return MixThemeColor(GetThemeSurface(), GetThemeButton(),
+                         IsThemeColorDark(GetThemeBackground()) ? 0.26f : 0.16f);
+}
+
+Color
+GetThemeButtonText(void)
+{
+    return GetThemeReadableText(GetThemeButton());
+}
