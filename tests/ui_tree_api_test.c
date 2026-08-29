@@ -265,6 +265,48 @@ main(void)
         check_int("textfield commit event", saw_commit, 1);
     }
 
+    {
+        char value[32] = "hello world";
+        int cursor = 0;
+        int focused = 0;
+        int saw_selection = 0;
+
+        BeginUI(47);
+        TextField((TextFieldProps){
+            .bounds = {10, 10, 220, 40}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .focused = &focused, .focus_id = 79, .font = 16
+        });
+        UIReconcileTree();
+        UILayoutTree();
+        InjectReset();
+        InjectTap(50, 25);
+        InjectPump();
+        UIRouteInput();
+        InjectPump();
+        UIRouteInput();
+        while(NextUIEvent(&event)) { }
+        InjectTap(50, 25);
+        InjectPump();
+        UIRouteInput();
+        while(NextUIEvent(&event)) {
+            if(event.kind == UI_EVENT_SELECTION_CHANGED &&
+               event.data.selection.start == 0 &&
+               event.data.selection.end == 11)
+                saw_selection = 1;
+        }
+        check_int("double click selects text", saw_selection, 1);
+        check_int("double click cursor at end", cursor, 11);
+        InjectPump();
+        UIRouteInput();
+        InjectText("x");
+        InjectPump();
+        UIRouteInput();
+        check_int("double click selection typing replaces text",
+                  strcmp(value, "x"), 0);
+        check_int("double click replacement cursor", cursor, 1);
+    }
+
     /* Keyboard focus is a core traversal contract: every focusable widget
      * registers in visual declaration order, and Tab / Shift+Tab move through
      * that one shared order. */

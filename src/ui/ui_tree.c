@@ -36,6 +36,10 @@ static UIEvent *ui_event_queue = NULL;
 static int ui_event_capacity = 0;
 static int ui_event_head = 0;
 static int ui_event_count = 0;
+static KeyID ui_tree_text_last_click_key = 0;
+static int ui_tree_text_last_click_x = 0;
+static int ui_tree_text_last_click_y = 0;
+static double ui_tree_text_last_click_time = 0.0;
 
 typedef struct UIWidgetOps {
     int (*measure_height)(UIWidgetNode node);
@@ -913,12 +917,32 @@ UIRouteInput(void)
                 int font = field->font > 0 ? field->font : GetUIFontSize();
                 int padding = field->style.padding_x > 0
                     ? field->style.padding_x : ScaleUIPx(10);
+                double now = GetTime();
+                KeyID click_key = field->focus_id > 0
+                    ? (KeyID)field->focus_id : node->key;
+                int click_dx = (int)mouse.x - ui_tree_text_last_click_x;
+                int click_dy = (int)mouse.y - ui_tree_text_last_click_y;
+                int double_click = ui_tree_text_last_click_key == click_key &&
+                    now - ui_tree_text_last_click_time <= 0.45 &&
+                    abs(click_dx) <= ScaleUIPx(6) &&
+                    abs(click_dy) <= ScaleUIPx(6);
 
-                state->cursor = ui_text_cursor_at_x(
-                    field->text, font, (int)node->bounds.x + padding,
-                    (int)mouse.x);
-                state->anchor = state->cursor;
-                state->dragging = 1;
+                if(double_click) {
+                    state->anchor = 0;
+                    state->cursor = field->text != NULL
+                        ? (int)strlen(field->text) : 0;
+                    state->dragging = 0;
+                } else {
+                    state->cursor = ui_text_cursor_at_x(
+                        field->text, font, (int)node->bounds.x + padding,
+                        (int)mouse.x);
+                    state->anchor = state->cursor;
+                    state->dragging = 1;
+                }
+                ui_tree_text_last_click_key = click_key;
+                ui_tree_text_last_click_x = (int)mouse.x;
+                ui_tree_text_last_click_y = (int)mouse.y;
+                ui_tree_text_last_click_time = now;
                 ui_text_field_event(node, UI_EVENT_SELECTION_CHANGED,
                                     GetTime());
             } else {
