@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.30 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.30
+- Make cursor-locked SDL mouse behave like GLFW disabled-cursor mode
+
 ## v0.1.29 - 2026-08-29
 
 ### Changed
