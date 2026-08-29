@@ -1864,6 +1864,7 @@ RLAPI void rlDrawVertexArrayElements(int offset, int count, const void *buffer);
 RLAPI void rlDrawVertexArrayInstanced(int offset, int count, int instances); // Draw vertex array (currently active vao) with instancing
 RLAPI void rlEnableShader(unsigned int id);             // Enable shader program
 RLAPI void rlDisableShader(void);                       // Disable shader program
+RLAPI void rlActiveTextureSlot(int slot);               // Select and active a texture slot
 RLAPI void rlEnableTexture(unsigned int id);            // Enable texture
 RLAPI void rlDisableTexture(void);                      // Disable texture
 RLAPI void rlSetUniform(int locIndex, const void *value, int uniformType, int count); // Set shader value uniform
