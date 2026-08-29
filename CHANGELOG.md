@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.26 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.26
+- Add DOM web backend smoke coverage
+
 ## v0.1.25 - 2026-08-29
 
 ### Changed
