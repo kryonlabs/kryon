@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.31 - 2026-08-29
+
+### Changed
+
+- Release: bump version to v0.1.31
+- Implement TabBar in the pure-Go runtime
+
 ## v0.1.30 - 2026-08-29
 
 ### Changed
