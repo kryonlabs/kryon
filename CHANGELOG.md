@@ -1,4 +1,16 @@
 # Changelog
+## v0.1.27 - 2026-08-29
+
+### Changed
+
+- Document explicit C extern handling
+- Release: bump version to v0.1.27
+- Polish JavaScript lowering integration
+- Add derived theme color helpers
+- Add JavaScript lowering pipeline
+- Handle unquoted web script cache busting
+- Avoid duplicate Linux directory rules
+
 ## v0.1.26 - 2026-08-29
 
 ### Changed
