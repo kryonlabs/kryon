@@ -105,6 +105,7 @@ static int canvas_font_build(Font *out, int face_id, int baseSize,
                              const int *codepoints, int count)
 {
     unsigned char *pixels;
+    unsigned char *gbuf;
     int atlas_w = CANVAS_ATLAS_START_W;
     int atlas_h = CANVAS_ATLAS_START_H;
     int x = 1;
@@ -119,12 +120,16 @@ static int canvas_font_build(Font *out, int face_id, int baseSize,
     out->glyphs = calloc((size_t)count, sizeof(GlyphInfo));
     out->recs = calloc((size_t)count, sizeof(Rectangle));
     pixels = malloc((size_t)atlas_w * atlas_h * 4);
-    if(out->glyphs == NULL || out->recs == NULL || pixels == NULL)
+    /* The glyph scratch must live on the heap: a 256 KiB stack frame
+     * silently overflows the small wasm stacks web builds default to
+     * (linear memory has no guard page below the stack). */
+    gbuf = malloc((size_t)256 * 256 * 4);
+    if(out->glyphs == NULL || out->recs == NULL || pixels == NULL ||
+       gbuf == NULL)
         goto fail;
     memset(pixels, 0, (size_t)atlas_w * atlas_h * 4);
     for(i = 0; i < count; i++) {
         int adv = 0, gw = 0, gh = 0, offx = 0, offy = 0;
-        unsigned char gbuf[256 * 256 * 4];
 
         if(codepoints[i] < 32)
             continue;
@@ -178,6 +183,7 @@ static int canvas_font_build(Font *out, int face_id, int baseSize,
     out->texture.format = 1;
     ok = out->texture.id != 0;
 fail:
+    free(gbuf);
     free(pixels);
     if(!ok) {
         free(out->glyphs);
