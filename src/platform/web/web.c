@@ -15,6 +15,9 @@
 #include <string.h>
 
 static int g_web_orientation_mode = 0;
+static int g_web_storage_after_frame_pending = 0;
+static int g_web_storage_after_frame_delay_ms = 0;
+static int g_web_storage_after_frame_log_success = 0;
 
 #if defined(KRYON_WEB_JS)
 EM_ASYNC_JS(int, js_web_storage_flush_blocking,
@@ -300,6 +303,41 @@ ScheduleWebStorageSync(int delay_ms, int log_success)
         if(typeof Module.__kryonScheduleStorageSync === 'function')
             Module.__kryonScheduleStorageSync($0, !!$1);
     }, delay_ms, log_success);
+#else
+    (void)delay_ms;
+    (void)log_success;
+#endif
+}
+
+static void
+WebStorageSyncAfterFrame(void *userdata)
+{
+    int delay_ms = g_web_storage_after_frame_delay_ms;
+    int log_success = g_web_storage_after_frame_log_success;
+
+    (void)userdata;
+    g_web_storage_after_frame_pending = 0;
+    g_web_storage_after_frame_delay_ms = 0;
+    g_web_storage_after_frame_log_success = 0;
+    ScheduleWebStorageSync(delay_ms, log_success);
+}
+
+void
+ScheduleWebStorageSyncAfterFrame(int delay_ms, int log_success)
+{
+#if defined(PLATFORM_WEB)
+    if(g_web_storage_after_frame_pending) {
+        if(delay_ms < g_web_storage_after_frame_delay_ms)
+            g_web_storage_after_frame_delay_ms = delay_ms;
+        if(log_success)
+            g_web_storage_after_frame_log_success = 1;
+        return;
+    }
+    g_web_storage_after_frame_pending = 1;
+    g_web_storage_after_frame_delay_ms = delay_ms;
+    g_web_storage_after_frame_log_success = log_success ? 1 : 0;
+    if(!SchedulePostFrameCallback(WebStorageSyncAfterFrame, NULL))
+        WebStorageSyncAfterFrame(NULL);
 #else
     (void)delay_ms;
     (void)log_success;

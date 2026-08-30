@@ -8,4 +8,8 @@ int GetFrameWidth(void);
 int GetFrameHeight(void);
 float GetFrameScale(void);
 
+typedef void (*KryonPostFrameCallback)(void *userdata);
+
+int SchedulePostFrameCallback(KryonPostFrameCallback callback, void *userdata);
+
 #endif /* KRYON_FRAME_H */

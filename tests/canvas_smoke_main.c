@@ -2,6 +2,15 @@
 
 #include <string.h>
 
+static int post_frame_count;
+
+static void
+post_frame_count_once(void *userdata)
+{
+    (void)userdata;
+    post_frame_count++;
+}
+
 int main(void)
 {
     int frames = 0;
@@ -109,7 +118,11 @@ int main(void)
 
     while(!WindowShouldClose() && frames < 3) {
         frames++;
+        if(frames == 1 && !SchedulePostFrameCallback(post_frame_count_once, NULL))
+            return 30;
         BeginDrawing();
+        if(frames == 1 && post_frame_count != 0)
+            return 31;
         ClearBackground((Color){16, 16, 20, 255});
         DrawPixel(2, 2, WHITE);
         DrawPixelV((Vector2){3, 2}, WHITE);
@@ -170,6 +183,8 @@ int main(void)
                     -8.0f, 16, 1.0f, WHITE);
         SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
         EndDrawing();
+        if(frames == 1 && post_frame_count != 1)
+            return 32;
     }
     {
         Image shot = LoadImageFromScreen();

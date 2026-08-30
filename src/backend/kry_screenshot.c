@@ -54,6 +54,7 @@ extern int kry_backend_capture_screen(Image *image);
  * EnableEventWaiting().  Keep it after the backend frame completes so input
  * has already been collected for the next application update. */
 extern void kry_event_wait_after_frame(void);
+extern void kryon_run_post_frame_callbacks(void);
 
 /* When KRYON_SHOT_ARM is set, every EndDrawing captures the completed back
  * buffer BEFORE the swap (the only
@@ -81,6 +82,7 @@ void EndDrawing(void)
         return; /* non-raylib link: nothing to swap */
     if(!kry_shot_armed()) {
         KryonRaylibBackend_EndDrawing();
+        kryon_run_post_frame_callbacks();
         kry_event_wait_after_frame();
         return;
     }
@@ -107,6 +109,7 @@ void EndDrawing(void)
     }
 #endif
     KryonRaylibBackend_EndDrawing();
+    kryon_run_post_frame_callbacks();
     kry_event_wait_after_frame();
 }
 

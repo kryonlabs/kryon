@@ -27,6 +27,7 @@ typedef struct WebStorageSyncState {
 
 int IsWebStorageSyncPending(void);
 void ScheduleWebStorageSync(int delay_ms, int log_success);
+void ScheduleWebStorageSyncAfterFrame(int delay_ms, int log_success);
 void FlushWebStorageSync(int log_success);
 int FlushWebStorageSyncBlocking(int timeout_ms, int log_success);
 int GetWebStorageSyncState(WebStorageSyncState *out);

@@ -21,8 +21,12 @@ include/app_runtime.h function BindAppHost
 include/app_runtime.h function DrawAppScreen
 include/app_runtime.h function GetAppScreen
 include/app_runtime.h function GetAppScreenCount
+include/app_runtime.h function PushAppScreenRoute
+include/app_runtime.h function ReplaceAppScreenRoute
 include/app_runtime.h function SetAppScreen
+include/app_runtime.h function SetAppScreenById
 include/app_runtime.h function SetAppScreenBySourcePath
+include/app_runtime.h function SetAppScreenFromRoute
 include/app_runtime.h typedef AppScreen
 include/app_shell.h function KryAppShellMeasure
 include/app_shell.h function KryRouteAllowedInSet
@@ -453,7 +457,9 @@ include/kryon_frame.h function EndFrame
 include/kryon_frame.h function GetFrameHeight
 include/kryon_frame.h function GetFrameScale
 include/kryon_frame.h function GetFrameWidth
+include/kryon_frame.h function SchedulePostFrameCallback
 include/kryon_frame.h function SyncFrame
+include/kryon_frame.h typedef KryonPostFrameCallback
 include/kryon_mem.h function KryonMemDebugEnabled
 include/kryon_mem.h function KryonMemReport
 include/kryon_node.h enum KRYON_NODE_FLAG_DELETABLE
@@ -1774,5 +1780,6 @@ include/web.h function GetWebViewportWidth
 include/web.h function GetWebWindowFlags
 include/web.h function IsWebStorageSyncPending
 include/web.h function ScheduleWebStorageSync
+include/web.h function ScheduleWebStorageSyncAfterFrame
 include/web.h function SetWebOrientationMode
 include/web.h function SyncWebWindowSize
