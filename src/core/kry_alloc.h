@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-static int
+static inline int
 kry_size_add(size_t a, size_t b, size_t *out)
 {
     if(a > SIZE_MAX - b)
@@ -14,7 +14,7 @@ kry_size_add(size_t a, size_t b, size_t *out)
     return 1;
 }
 
-static int
+static inline int
 kry_size_mul(size_t a, size_t b, size_t *out)
 {
     if(a != 0 && b > SIZE_MAX / a)
@@ -23,7 +23,7 @@ kry_size_mul(size_t a, size_t b, size_t *out)
     return 1;
 }
 
-static int
+static inline int
 kry_size_grow_max(size_t current, size_t needed, size_t initial, size_t max,
                   size_t *out)
 {
@@ -48,7 +48,7 @@ kry_size_grow_max(size_t current, size_t needed, size_t initial, size_t max,
     return 1;
 }
 
-static void *
+static inline void *
 kry_realloc_array(void *ptr, size_t count, size_t elem_size)
 {
     size_t bytes;
@@ -58,7 +58,7 @@ kry_realloc_array(void *ptr, size_t count, size_t elem_size)
     return realloc(ptr, bytes);
 }
 
-static int
+static inline int
 kry_reserve_bytes_max(void **ptr, size_t *cap, size_t needed, size_t initial,
                       size_t max)
 {

@@ -1,4 +1,5 @@
 #include "krb.h"
+#include "../core/kry_alloc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +34,20 @@ static int
 in_range(const KrbImage *img, const void *ptr, size_t n)
 {
     const unsigned char *p = (const unsigned char *)ptr;
+    const unsigned char *end;
 
-    return p >= img->bytes && p + n <= img->bytes + img->len;
+    if(img == NULL || img->bytes == NULL)
+        return 0;
+    end = img->bytes + img->len;
+    return p >= img->bytes && p <= end && n <= (size_t)(end - p);
+}
+
+static int
+range_offset(size_t len, size_t off, size_t n)
+{
+    size_t end;
+
+    return off <= len && kry_size_add(off, n, &end) && end <= len;
 }
 
 static void
@@ -52,7 +65,14 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     uint32_t prog_bytes;
     uint32_t import_count;
     uint32_t control_count;
+    uint32_t asset_bytes;
+    size_t node_bytes;
+    size_t import_bytes;
+    size_t control_bytes;
+    size_t section_bytes;
     size_t need;
+    const unsigned char *asset_base;
+    unsigned i;
 
     if(img == NULL || bytes == NULL)
         return -1;
@@ -70,9 +90,19 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     prog_bytes = rd_u32(bytes + 16);
     import_count = rd_u32(bytes + 20);
     control_count = rd_u32(bytes + 24);
-    need = 32 + (size_t)node_count * KRB_NODE_SIZE + string_bytes +
-           prog_bytes + (size_t)import_count * 4 +
-           (size_t)control_count * KRB_CONTROL_SIZE;
+    asset_bytes = rd_u32(bytes + 28);
+    if(!kry_size_mul((size_t)node_count, KRB_NODE_SIZE, &node_bytes) ||
+       !kry_size_mul((size_t)import_count, 4, &import_bytes) ||
+       !kry_size_mul((size_t)control_count, KRB_CONTROL_SIZE, &control_bytes))
+        return -1;
+    need = 32;
+    if(!kry_size_add(need, node_bytes, &need) ||
+       !kry_size_add(need, (size_t)string_bytes, &need) ||
+       !kry_size_add(need, (size_t)prog_bytes, &need) ||
+       !kry_size_add(need, import_bytes, &need) ||
+       !kry_size_add(need, control_bytes, &need) ||
+       !kry_size_add(need, (size_t)asset_bytes, &need))
+        return -1;
     if(len < need)
         return -1;
     p = bytes + 32;
@@ -85,16 +115,35 @@ KrbLoad(KrbImage *img, const unsigned char *bytes, size_t len)
     img->prog = p;
     p += prog_bytes;
     img->imports = (const uint32_t *)p;
-    p += (size_t)import_count * 4;
+    p += import_bytes;
     img->controls = p;
+    asset_base = p + control_bytes;
     img->dropdown_open = -1;
-    img->asset_count = rd_u32(bytes + 28) > 0
-        ? rd_u32(p + (size_t)control_count * KRB_CONTROL_SIZE) : 0;
-    img->assets = img->asset_count > 0
-        ? p + (size_t)control_count * KRB_CONTROL_SIZE + 4 : NULL;
     img->header = (const KrbHeader *)bytes;
     if(string_bytes == 0 || img->strings[0] != '\0')
         return -1;
+    img->asset_count = 0;
+    img->assets = NULL;
+    if(asset_bytes > 0) {
+        if(asset_bytes < 4)
+            return -1;
+        img->asset_count = rd_u32(asset_base);
+        if(!kry_size_mul((size_t)img->asset_count, 20, &section_bytes) ||
+           !kry_size_add(4, section_bytes, &section_bytes) ||
+           section_bytes > (size_t)asset_bytes)
+            return -1;
+        img->assets = img->asset_count > 0 ? asset_base + 4 : NULL;
+        for(i = 0; i < img->asset_count; i++) {
+            const unsigned char *entry = img->assets + (size_t)i * 20;
+            uint32_t path_off = rd_u32(entry);
+            uint32_t data_off = rd_u32(entry + 4);
+            uint32_t data_len = rd_u32(entry + 8);
+
+            if(path_off >= string_bytes ||
+               !range_offset(len, (size_t)data_off, (size_t)data_len))
+                return -1;
+        }
+    }
     (void)import_count;
     return 0;
 }
@@ -1412,8 +1461,10 @@ exec_logic(KrbImage *img, unsigned char op, const unsigned char **pp,
         if(nidx >= KrbNodeCount(img) || field > 3)
             return -1;
         if(img->nodes_mut == NULL) {
-            unsigned nb = KrbNodeCount(img) * KRB_NODE_SIZE;
+            size_t nb;
 
+            if(!kry_size_mul((size_t)KrbNodeCount(img), KRB_NODE_SIZE, &nb))
+                return -1;
             img->nodes_mut = malloc(nb);
             if(img->nodes_mut == NULL)
                 return -1;

@@ -39,6 +39,49 @@ wr32(unsigned char *p, unsigned long v)
     p[3] = (unsigned char)(v >> 24);
 }
 
+static void
+write_minimal_header(unsigned char *buf, unsigned asset_bytes)
+{
+    wr32(buf + 0, KRB_MAGIC);
+    wr16(buf + 4, 2);
+    wr32(buf + 8, 0);  /* node_count */
+    wr32(buf + 12, 1); /* string_bytes: root NUL only */
+    wr32(buf + 16, 0); /* prog_bytes */
+    wr32(buf + 20, 0); /* import_count */
+    wr32(buf + 24, 0); /* control_count */
+    wr32(buf + 28, asset_bytes);
+    buf[32] = '\0';
+}
+
+static int
+test_malformed_asset_sections(void)
+{
+    unsigned char buf[128];
+    KrbImage img;
+
+    memset(buf, 0, sizeof(buf));
+    write_minimal_header(buf, 3);
+    if(KrbLoad(&img, buf, 36) == 0)
+        return fail("accepted short asset count");
+
+    memset(buf, 0, sizeof(buf));
+    write_minimal_header(buf, 4);
+    wr32(buf + 33, 1);
+    if(KrbLoad(&img, buf, 37) == 0)
+        return fail("accepted truncated asset directory");
+
+    memset(buf, 0, sizeof(buf));
+    write_minimal_header(buf, 24);
+    wr32(buf + 33, 1);       /* asset_count */
+    wr32(buf + 33 + 4, 0);   /* path_off */
+    wr32(buf + 33 + 8, 120); /* data_off */
+    wr32(buf + 33 + 12, 16); /* size */
+    if(KrbLoad(&img, buf, sizeof(buf)) == 0)
+        return fail("accepted asset data past end");
+
+    return 0;
+}
+
 int
 main(void)
 {
@@ -60,6 +103,9 @@ main(void)
     KrySw sw;
     const unsigned char *found = NULL;
     unsigned flen = 0, fkind = 99, fw = 0, fh = 0;
+
+    if(test_malformed_asset_sections() != 0)
+        return 1;
 
     memset(buf, 0, sizeof(buf));
     memcpy(strings + 1, "tex", 3);
