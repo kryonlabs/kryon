@@ -1,4 +1,43 @@
 # Changelog
+## v0.1.37 - 2026-08-30
+
+### Changed
+
+- Release: bump version to v0.1.37
+- Keep UI tree API test headless
+- Lock the canvas-space input contract with tests
+- Compress encrypted ksync payload envelopes
+- Revert X11 pointer translation: the canvas is window-sized
+- X11: translate pointer events by the window's root position
+- Runtime: log queued taps under the debug gate
+- Runtime: log tap consumption under the debug gate
+- Runtime: env-gated checkbox tap debug line
+- Tray: log registration and (debug-gated) connection death
+- Tray: path-scoped DBus serving and the dbusmenu property surface
+- Size the web canvas backing store from its CSS layout box
+- Add reusable app storage API
+- Add reusable Android host services
+- Include KIR text helpers in CMake codegen
+- Allocate the canvas font glyph scratch on the heap
+- Add post-frame callback scheduling
+- Fix render-target blits and autoplay-blocked audio decode in the canvas backend
+- Add web app screen routing
+- Cache bust showcase banner assets
+- Go runtime: Primary/OnPrimary/SurfaceVariant theme getters
+- Drop unused import
+- Tray test: expect path-style registration
+- Fix showcase project directory loading
+- Tray: register with the object path (XFCE host requirement)
+- Tray: serve the SNI surface before registering with the watcher
+- DBus: fall back to the XDG_RUNTIME_DIR session bus socket
+- Render context menus in overlay pass
+- DBus auth: send the hex of the decimal uid string
+- Pure-Go DBus: session client, action notifications, SNI tray
+- Refactor compiler text helpers
+- Fall back to warp-based relative mouse mode when raw mode fails
+- Expand Kryon matrix parity coverage
+- Add reusable screen and form helpers
+
 ## v0.1.36 - 2026-08-30
 
 ### Changed
