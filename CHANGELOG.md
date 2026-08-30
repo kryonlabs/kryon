@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.34 - 2026-08-30
+
+### Changed
+
+- Release: bump version to v0.1.34
+- Serialize the cmark-gfm vendor rule with a grouped target
+- Add page semantics and DOM route API
+
 ## v0.1.33 - 2026-08-29
 
 ### Changed
