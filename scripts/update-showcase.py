@@ -52,10 +52,15 @@ def fetch_banner_bytes(url):
 
 
 def load_local_projects(projects_dir):
-    return [
-        json.loads(path.read_text(encoding="utf-8"))
-        for path in sorted(projects_dir.glob("*.json"))
-    ]
+    paths = sorted(projects_dir.glob("*.json"))
+    paths += sorted(projects_dir.glob("*/project.json"))
+    projects = []
+    for path in paths:
+        project = json.loads(path.read_text(encoding="utf-8"))
+        if path.name == "project.json":
+            project["_project_dir"] = str(path.parent)
+        projects.append(project)
+    return projects
 
 
 def load_github_projects(repo, ref):
@@ -67,9 +72,18 @@ def load_github_projects(repo, ref):
     entries = fetch_json(listing_url)
     projects = []
     for entry in sorted(entries, key=lambda item: item["name"]):
-        if entry.get("type") != "file" or not entry["name"].endswith(".json"):
+        if entry.get("type") == "file" and entry["name"].endswith(".json"):
+            data = fetch_bytes(entry["download_url"])
+        elif entry.get("type") == "dir":
+            project_url = (
+                f"https://api.github.com/repos/{owner}/{name}/contents/projects/"
+                f"{urllib.parse.quote(entry['name'])}/project.json"
+                f"?ref={urllib.parse.quote(ref)}"
+            )
+            project_entry = fetch_json(project_url)
+            data = fetch_bytes(project_entry["download_url"])
+        else:
             continue
-        data = fetch_bytes(entry["download_url"])
         projects.append(json.loads(data.decode("utf-8")))
     return projects
 
@@ -96,6 +110,12 @@ def download_banner(project, banner_dir):
     banner_dir.mkdir(parents=True, exist_ok=True)
     name = banner_name(project)
     path = banner_dir / name
+    project_dir = project.get("_project_dir")
+    if project_dir:
+        local_path = Path(project_dir) / Path(urllib.parse.urlparse(project["banner"]["url"]).path).name
+        if local_path.is_file():
+            path.write_bytes(local_path.read_bytes())
+            return f"showcase/{name}"
     path.write_bytes(fetch_banner_bytes(project["banner"]["url"]))
     return f"showcase/{name}"
 
