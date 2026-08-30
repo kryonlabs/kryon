@@ -470,6 +470,11 @@ func TestDesktopTrayEndToEnd(t *testing.T) {
 		t.Fatal("never registered with the watcher")
 	}
 
+	// Hosts probe the menu's properties before building a client — Version
+	// must answer as dbusmenu, not as the SNI property set.
+	fb.call(t, menuObjectPath, "org.freedesktop.DBus.Properties", "Get", "ss",
+		[]any{"com.canonical.dbusmenu", "Version"}, "v")
+
 	// The tray host opens the menu: GetLayout on /MenuBar.
 	fb.call(t, menuObjectPath, menuIface, "GetLayout", "iias",
 		[]any{int32(0), int32(-1), []string{}}, "u(ia{sv}av)")

@@ -291,12 +291,14 @@ func (t *trayRuntime) serveSNI(conn *dbusConn) {
 			return dbusVariant{Sig: "(iiay)", Val: dbusStruct{
 				Sig: "(iiay)", Val: []any{int32(0), int32(0), []byte{}}}}
 		},
-		"ToolTip":    func() dbusVariant { return dbusVariant{Sig: "(sx(siiay))", Val: t.tooltip()} },
-		"Menu":       func() dbusVariant { return dbusVariant{Sig: "o", Val: menuObjectPath} },
-		"ItemIsMenu": func() dbusVariant { return dbusVariant{Sig: "b", Val: false} },
+		"ToolTip":       func() dbusVariant { return dbusVariant{Sig: "(sx(siiay))", Val: t.tooltip()} },
+		"Menu":          func() dbusVariant { return dbusVariant{Sig: "o", Val: menuObjectPath} },
+		"ItemIsMenu":    func() dbusVariant { return dbusVariant{Sig: "b", Val: false} },
+		"WindowId":      func() dbusVariant { return dbusVariant{Sig: "i", Val: int32(0)} },
+		"IconThemePath": func() dbusVariant { return dbusVariant{Sig: "s", Val: ""} },
 	}
 
-	conn.serve("org.freedesktop.DBus.Properties", "Get", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(sniObjectPath, "org.freedesktop.DBus.Properties", "Get", func(m *dbusMessage) (string, []any, *dbusError) {
 		vals, err := dbusDecodeAll("ss", m.body)
 		if err != nil {
 			return "", nil, &dbusError{"org.freedesktop.DBus.Error.InvalidArgs", err.Error()}
@@ -308,14 +310,14 @@ func (t *trayRuntime) serveSNI(conn *dbusConn) {
 		}
 		return "v", []any{fn()}, nil
 	})
-	conn.serve("org.freedesktop.DBus.Properties", "GetAll", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(sniObjectPath, "org.freedesktop.DBus.Properties", "GetAll", func(m *dbusMessage) (string, []any, *dbusError) {
 		out := map[string]any{}
 		for name, fn := range props {
 			out[name] = fn()
 		}
 		return "a{sv}", []any{out}, nil
 	})
-	conn.serve("org.freedesktop.DBus.Properties", "Set", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(sniObjectPath, "org.freedesktop.DBus.Properties", "Set", func(m *dbusMessage) (string, []any, *dbusError) {
 		return "", nil, &dbusError{"org.freedesktop.DBus.Error.PropertyReadOnly", "read-only"}
 	})
 
@@ -326,16 +328,39 @@ func (t *trayRuntime) serveSNI(conn *dbusConn) {
 		t.queue(action)
 		return "", nil, nil
 	}
-	conn.serve(sniIface, "Activate", activate)
-	conn.serve(sniIface, "SecondaryActivate", activate)
-	conn.serve(sniIface, "Scroll", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(sniObjectPath, sniIface, "Activate", activate)
+	conn.serve(sniObjectPath, sniIface, "SecondaryActivate", activate)
+	conn.serve(sniObjectPath, sniIface, "Scroll", func(m *dbusMessage) (string, []any, *dbusError) {
 		return "", nil, nil
 	})
 }
 
 // serveMenu answers the flat/nested com.canonical.dbusmenu surface.
 func (t *trayRuntime) serveMenu(conn *dbusConn) {
-	conn.serve(menuIface, "GetLayout", func(m *dbusMessage) (string, []any, *dbusError) {
+	// dbusmenu property surface: hosts probe Version/Status on /MenuBar
+	// through org.freedesktop.DBus.Properties and refuse the whole item
+	// when the answer is not the menu's.
+	conn.serve(menuObjectPath, "org.freedesktop.DBus.Properties", "Get", func(m *dbusMessage) (string, []any, *dbusError) {
+		vals, err := dbusDecodeAll("ss", m.body)
+		if err != nil || len(vals) != 2 {
+			return "", nil, &dbusError{"org.freedesktop.DBus.Error.InvalidArgs", "bad menu property read"}
+		}
+		switch vals[1].(string) {
+		case "Version":
+			return "v", []any{dbusVariant{Sig: "u", Val: uint32(3)}}, nil
+		case "Status":
+			return "v", []any{dbusVariant{Sig: "s", Val: "normal"}}, nil
+		}
+		return "", nil, &dbusError{"org.freedesktop.DBus.Error.InvalidArgs", "unknown menu property"}
+	})
+	conn.serve(menuObjectPath, "org.freedesktop.DBus.Properties", "GetAll", func(m *dbusMessage) (string, []any, *dbusError) {
+		return "a{sv}", []any{map[string]any{
+			"Version": dbusVariant{Sig: "u", Val: uint32(3)},
+			"Status":  dbusVariant{Sig: "s", Val: "normal"},
+		}}, nil
+	})
+
+	conn.serve(menuObjectPath, menuIface, "GetLayout", func(m *dbusMessage) (string, []any, *dbusError) {
 		vals, err := dbusDecodeAll("iias", m.body)
 		if err != nil {
 			return "", nil, &dbusError{"org.freedesktop.DBus.Error.InvalidArgs", err.Error()}
@@ -351,13 +376,13 @@ func (t *trayRuntime) serveMenu(conn *dbusConn) {
 		layout := trayBuildLayout(items, new(int32))
 		return "u(ia{sv}av)", []any{rev, layout}, nil
 	})
-	conn.serve(menuIface, "GetGroupProperties", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(menuObjectPath, menuIface, "GetGroupProperties", func(m *dbusMessage) (string, []any, *dbusError) {
 		return "a(ia{sv})", []any{[]dbusStruct{}}, nil
 	})
-	conn.serve(menuIface, "AboutToShow", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(menuObjectPath, menuIface, "AboutToShow", func(m *dbusMessage) (string, []any, *dbusError) {
 		return "b", []any{true}, nil
 	})
-	conn.serve(menuIface, "Event", func(m *dbusMessage) (string, []any, *dbusError) {
+	conn.serve(menuObjectPath, menuIface, "Event", func(m *dbusMessage) (string, []any, *dbusError) {
 		vals, err := dbusDecodeAll("isvu", m.body)
 		if err != nil {
 			return "", nil, nil // events are fire-and-forget

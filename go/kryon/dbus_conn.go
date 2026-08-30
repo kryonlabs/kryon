@@ -63,7 +63,7 @@ type dbusConn struct {
 	pending   map[uint32]chan *dbusMessage
 
 	handlerMu sync.Mutex
-	handlers  map[string]dbusHandlerFunc // "interface.member"
+	handlers  map[string]dbusHandlerFunc // "path\x00interface.member"
 
 	signalMu sync.Mutex
 	signals  []func(*dbusMessage)
@@ -320,10 +320,11 @@ func (d *dbusConn) renderBody(sig string, args []any) ([]byte, error) {
 	return e.buf, nil
 }
 
-// serve registers a handler for incoming method calls on interface.member.
-func (d *dbusConn) serve(iface, member string, fn dbusHandlerFunc) {
+// serve registers a handler for incoming method calls on path, interface,
+// member. An empty path matches any object path (legacy behavior).
+func (d *dbusConn) serve(path, iface, member string, fn dbusHandlerFunc) {
 	d.handlerMu.Lock()
-	d.handlers[iface+"."+member] = fn
+	d.handlers[path+"\x00"+iface+"."+member] = fn
 	d.handlerMu.Unlock()
 }
 
@@ -498,7 +499,10 @@ func (d *dbusConn) readLoop() {
 
 func (d *dbusConn) dispatchCall(m *dbusMessage) {
 	d.handlerMu.Lock()
-	fn := d.handlers[m.iface+"."+m.member]
+	fn := d.handlers[m.path+"\x00"+m.iface+"."+m.member]
+	if fn == nil {
+		fn = d.handlers["\x00"+m.iface+"."+m.member] // any-path fallback
+	}
 	d.handlerMu.Unlock()
 	if fn == nil {
 		if m.member == "Introspect" {
