@@ -9,6 +9,18 @@ static int failures;
 static void
 check_int(const char *name, int got, int want);
 
+void __wrap_DrawRectangle(int posX, int posY, int width, int height,
+                          Color color);
+void __wrap_DrawRectangleRec(Rectangle rec, Color color);
+void __wrap_DrawRectangleLinesEx(Rectangle rec, float lineThick,
+                                 Color color);
+void __wrap_DrawRectangleRounded(Rectangle rec, float roundness, int segments,
+                                 Color color);
+void __wrap_DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
+                     Color color);
+void __wrap_BeginScissorMode(int x, int y, int width, int height);
+void __wrap_EndScissorMode(void);
+
 typedef struct ScaffoldFixture {
     int seen_w;
     int closed;
@@ -31,7 +43,6 @@ scaffold_title(const char *title, int height, void *user_data)
 
     check_int("scaffold title text", strcmp(title, "Settings"), 0);
     check_int("scaffold title height", height, ScaleUIPx(36));
-    TitleBar(title, height);
     return fixture != NULL ? fixture->closed : 0;
 }
 
@@ -507,4 +518,64 @@ main(void)
     }
 
     return failures == 0 ? 0 : 1;
+}
+
+void
+__wrap_DrawRectangle(int posX, int posY, int width, int height, Color color)
+{
+    (void)posX;
+    (void)posY;
+    (void)width;
+    (void)height;
+    (void)color;
+}
+
+void
+__wrap_DrawRectangleRec(Rectangle rec, Color color)
+{
+    (void)rec;
+    (void)color;
+}
+
+void
+__wrap_DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color)
+{
+    (void)rec;
+    (void)lineThick;
+    (void)color;
+}
+
+void
+__wrap_DrawRectangleRounded(Rectangle rec, float roundness, int segments,
+                            Color color)
+{
+    (void)rec;
+    (void)roundness;
+    (void)segments;
+    (void)color;
+}
+
+void
+__wrap_DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
+                Color color)
+{
+    (void)startPosX;
+    (void)startPosY;
+    (void)endPosX;
+    (void)endPosY;
+    (void)color;
+}
+
+void
+__wrap_BeginScissorMode(int x, int y, int width, int height)
+{
+    (void)x;
+    (void)y;
+    (void)width;
+    (void)height;
+}
+
+void
+__wrap_EndScissorMode(void)
+{
 }

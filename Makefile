@@ -818,6 +818,13 @@ $(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kr
 $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tree_api_test.c \
+		-Wl,--wrap=DrawRectangle \
+		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleLinesEx \
+		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=DrawLine \
+		-Wl,--wrap=BeginScissorMode \
+		-Wl,--wrap=EndScissorMode \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
