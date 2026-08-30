@@ -79,7 +79,12 @@ KRYON_MARKDOWN_DEPS ?= $(KRYON_CMARK_GFM_A) $(KRYON_CMARK_GFM_EXTENSIONS_A)
 KRYON_MARKDOWN_CFLAGS ?= -DKRYON_HAS_CMARK_GFM=1 $(KRYON_CMARK_GFM_INCLUDE)
 KRYON_MARKDOWN_LDLIBS ?= $(KRYON_CMARK_GFM_EXTENSIONS_A) $(KRYON_CMARK_GFM_A)
 
-$(KRYON_CMARK_GFM_A) $(KRYON_CMARK_GFM_EXTENSIONS_A): $(KRYON_CMARK_GFM_DIR)/CMakeLists.txt | $(KRYON_VENDOR_ORDER_ONLY)
+# Grouped target (GNU make 4.3+ &:): one cmake invocation produces both
+# archives. A plain multi-target rule lets parallel make run the recipe
+# twice concurrently in the same build dir, and the racing configures
+# corrupt each other (seen as configure_file "No such file or directory"
+# on fresh -j builds).
+$(KRYON_CMARK_GFM_A) $(KRYON_CMARK_GFM_EXTENSIONS_A) &: $(KRYON_CMARK_GFM_DIR)/CMakeLists.txt | $(KRYON_VENDOR_ORDER_ONLY)
 	@if [ -f "$(KRYON_CMARK_GFM_BUILD_DIR)/CMakeCache.txt" ] && ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$(abspath $(KRYON_CMARK_GFM_DIR))" "$(KRYON_CMARK_GFM_BUILD_DIR)/CMakeCache.txt"; then \
 		rm -rf "$(KRYON_CMARK_GFM_BUILD_DIR)"; \
 	fi
