@@ -35,12 +35,14 @@ for fixture in $fixtures; do
     fixture_args="$fixture_args $root/$fixture"
 done
 
-mkdir -p "$work/go" "$work/c" "$work/go-run" "$work/bin"
+mkdir -p "$work/go" "$work/c" "$work/js" "$work/go-run" "$work/bin"
 
 # shellcheck disable=SC2086
 "$build/bin/k2g" --pkg main --no-main --root "$root" -o "$work/go" $fixture_args
 # shellcheck disable=SC2086
 "$build/bin/k2c" --root "$root" -o "$work/c" $fixture_args
+# shellcheck disable=SC2086
+"$build/bin/k2js" --root "$root" -o "$work/js" $fixture_args
 sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 sh "$root/tests/check_clean_generated_output.sh" "$work/c"
 
@@ -850,4 +852,209 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/progress.kry","tests/parity/table_view.kry"]}'
+if command -v node >/dev/null 2>&1; then
+    cp "$root/web/kryon-runtime.js" "$work/js/kryon-runtime.js"
+    printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
+    cat > "$work/js_runner.mjs" <<'EOF'
+import * as formMod from "./js/tests/parity/generated_form.js";
+import * as fieldsMod from "./js/tests/parity/fields.js";
+import * as focusMod from "./js/tests/parity/focus.js";
+import * as buttonsMod from "./js/tests/parity/buttons_layout.js";
+import * as longTextMod from "./js/tests/parity/long_text.js";
+import * as controlsMod from "./js/tests/parity/basic_controls.js";
+import * as listBoxMod from "./js/tests/parity/list_box.js";
+import * as progressMod from "./js/tests/parity/progress.js";
+import * as tableMod from "./js/tests/parity/table_view.js";
+import * as kryon from "./js/kryon-runtime.js";
+
+const rt = kryon.createRuntime();
+const form = formMod.createState();
+const fields = fieldsMod.createState();
+const focus = focusMod.createState();
+const buttons = buttonsMod.createState();
+const longText = longTextMod.createState();
+const controls = controlsMod.createState();
+const listBox = listBoxMod.createState();
+const table = tableMod.createState();
+
+const drawForm = () => formMod.frame(rt, form);
+const drawFields = () => fieldsMod.frame(rt, fields);
+const drawFocus = () => focusMod.frame(rt, focus);
+const drawButtons = () => buttonsMod.frame(rt, buttons);
+const drawLongText = () => longTextMod.frame(rt, longText);
+const drawControls = () => controlsMod.frame(rt, controls);
+const drawListBox = () => listBoxMod.frame(rt, listBox);
+const drawProgress = () => progressMod.frame(rt, progressMod.createState());
+const drawTableView = () => tableMod.frame(rt, table);
+
+drawForm();
+rt.SetFocus(101);
+drawForm();
+rt.QueueKey(kryon.KeyLeft);
+drawForm();
+rt.QueueText("é");
+drawForm();
+rt.QueueKey(kryon.KeyBackspace);
+drawForm();
+if (form.first !== "alpha")
+  throw new Error(`form: backspace restored first field to ${form.first}, want alpha`);
+
+rt.SetFocus(102);
+drawForm();
+rt.SetSelection(102, 0, 4);
+rt.QueueText("acct");
+drawForm();
+
+rt.SetFocus(101);
+drawForm();
+rt.QueueKey(kryon.KeyTab);
+drawForm();
+rt.QueueText("Z");
+drawForm();
+
+rt.SetClipboardText("old");
+rt.SetFocus(103);
+drawForm();
+rt.SetSelection(103, 0, 6);
+rt.QueueShortcut(kryon.KeyC);
+drawForm();
+
+drawFields();
+rt.QueueTap(30, 30);
+drawFields();
+rt.QueueKey(kryon.KeyLeft);
+drawFields();
+rt.QueueText("!");
+drawFields();
+rt.QueueTap(30, 86);
+drawFields();
+rt.QueueText(" body");
+drawFields();
+
+drawFocus();
+rt.QueueTap(30, 75);
+drawFocus();
+rt.QueueText("Z");
+drawFocus();
+rt.QueueShiftKey(kryon.KeyTab);
+drawFocus();
+rt.QueueText("A");
+drawFocus();
+const focusAfterFocus = rt.Focus();
+
+drawButtons();
+rt.QueueTap(30, 130);
+drawButtons();
+rt.QueueTap(130, 130);
+drawButtons();
+
+drawLongText();
+const initialLongOps = rt.frame.length;
+rt.SetFocus(701);
+drawLongText();
+if (rt.frame.length !== initialLongOps)
+  throw new Error(`long_text: frame operation count changed after focus, got ${rt.frame.length} want ${initialLongOps}`);
+for (let i = 0; i < 2048; i++) {
+  if (i > 0 && i % 256 === 0) {
+    rt.QueueKey(kryon.KeyTab);
+    drawLongText();
+    if (rt.frame.length !== initialLongOps)
+      throw new Error(`long_text: frame operation count changed after tab at ${i}`);
+  }
+  rt.QueueText("x");
+  drawLongText();
+  if (rt.frame.length !== initialLongOps)
+    throw new Error(`long_text: frame operation count changed after text at ${i}`);
+  rt.QueueKey(kryon.KeyLeft);
+  drawLongText();
+  if (rt.frame.length !== initialLongOps)
+    throw new Error(`long_text: frame operation count changed after left at ${i}`);
+  rt.QueueKey(kryon.KeyRight);
+  drawLongText();
+  if (rt.frame.length !== initialLongOps)
+    throw new Error(`long_text: frame operation count changed after right at ${i}`);
+}
+
+drawControls();
+rt.QueueTap(146, 48);
+drawControls();
+rt.QueueTap(30, 92);
+drawControls();
+rt.QueueTap(30, 138);
+drawControls();
+rt.QueueTap(30, 180);
+drawControls();
+rt.QueueTap(30, 247);
+drawControls();
+drawControls();
+if (controls.slider_value !== 70 || controls.toggle_value !== 1 ||
+    controls.checkbox_value !== 1 || controls.selected !== 1) {
+  throw new Error(`controls: got slider=${controls.slider_value} toggle=${controls.toggle_value} checkbox=${controls.checkbox_value} selected=${controls.selected}, want 70,1,1,1`);
+}
+
+drawListBox();
+rt.QueueTap(36, 78);
+drawListBox();
+if (listBox.list_selected !== 2 || listBox.list_scroll !== 0)
+  throw new Error(`list_box: got selected=${listBox.list_selected} scroll=${listBox.list_scroll}, want 2,0`);
+
+drawProgress();
+
+drawTableView();
+rt.QueueTap(116, 62);
+drawTableView();
+rt.QueueTap(116, 62);
+drawTableView();
+const tableActivatedRow = table.activated_row;
+const tableActivatedCol = table.activated_column;
+rt.QueueTap(260, 30);
+drawTableView();
+if (table.selected_row !== -1 || table.selected_column !== 2 ||
+    tableActivatedRow !== 0 || tableActivatedCol !== 1 || table.sort_column !== 2) {
+  throw new Error(`table_view: got selected=(${table.selected_row},${table.selected_column}) activated=(${tableActivatedRow},${tableActivatedCol}) sort=${table.sort_column}, want (-1,2),(0,1),2`);
+}
+
+function checksum(text) {
+  let hash = 1469598103934665603n;
+  for (const byte of Buffer.from(String(text), "utf8")) {
+    hash ^= BigInt(byte);
+    hash = (hash * 1099511628211n) & 0xffffffffffffffffn;
+  }
+  return hash.toString();
+}
+
+const longFirstHash = checksum(longText.long_first);
+const longSecondHash = checksum(longText.long_second);
+const out =
+  `{"form_first":${JSON.stringify(form.first)},"form_first_cursor":${form.first_cursor},` +
+  `"form_second":${JSON.stringify(form.second)},"form_second_cursor":${form.second_cursor},` +
+  `"form_password":${JSON.stringify(form.password)},"form_password_cursor":${form.password_cursor},` +
+  `"form_notes":${JSON.stringify(form.notes)},"form_notes_cursor":${form.notes_cursor},` +
+  `"form_action":${form.form_action},` +
+  `"fields_title":${JSON.stringify(fields.title)},"fields_title_cursor":${fields.title_cursor},` +
+  `"fields_body":${JSON.stringify(fields.body)},"fields_body_cursor":${fields.body_cursor},` +
+  `"focus_one":${JSON.stringify(focus.one)},"focus_two":${JSON.stringify(focus.two)},` +
+  `"focus_three":${JSON.stringify(focus.three)},"focus_id":${focusAfterFocus},` +
+  `"buttons_action":${buttons.buttons_action},` +
+  `"long_first_len":${longText.long_first.length},"long_first_cursor":${longText.long_first_cursor},` +
+  `"long_first_hash":${longFirstHash},` +
+  `"long_second_len":${longText.long_second.length},"long_second_cursor":${longText.long_second_cursor},` +
+  `"long_second_hash":${longSecondHash},` +
+  `"controls_slider":${controls.slider_value},"controls_toggle":${controls.toggle_value},` +
+  `"controls_checkbox":${controls.checkbox_value},"controls_selected":${controls.selected},` +
+  `"list_box_selected":${listBox.list_selected},"list_box_scroll":${listBox.list_scroll},` +
+  `"table_selected_row":${table.selected_row},"table_selected_column":${table.selected_column},` +
+  `"table_activated_row":${tableActivatedRow},"table_activated_column":${tableActivatedCol},` +
+  `"table_sort_column":${table.sort_column},"clipboard":${JSON.stringify(rt.ClipboardText())}}`;
+console.log(out);
+EOF
+    (cd "$work" && node js_runner.mjs > "$work/js.json")
+    if ! diff -u "$work/go.json" "$work/js.json"; then
+        echo "generated Go/C/JS runtime parity mismatch" >&2
+        exit 1
+    fi
+else
+    echo "generated JS runtime parity skipped: node not found"
+fi
+
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/progress.kry","tests/parity/table_view.kry"]}'

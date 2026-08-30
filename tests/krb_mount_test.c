@@ -41,6 +41,8 @@ on_click(void *ud)
 }
 
 static char g_last_text[128];
+static int g_progress_fill_seen;
+static int g_radio_fill_seen;
 
 static void
 cap_text(const char *s, int x, int y, int size, unsigned color)
@@ -50,6 +52,26 @@ cap_text(const char *s, int x, int y, int size, unsigned color)
     (void)size;
     (void)color;
     snprintf(g_last_text, sizeof(g_last_text), "%s", s);
+}
+
+static void
+cap_rect(int x, int y, int w, int h, unsigned color)
+{
+    (void)x;
+    (void)y;
+    (void)color;
+    if(w == 40 && h == 10)
+        g_progress_fill_seen = 1;
+}
+
+static void
+cap_circle(int cx, int cy, int r, unsigned color)
+{
+    (void)cx;
+    (void)cy;
+    (void)color;
+    if(r > 0)
+        g_radio_fill_seen = 1;
 }
 
 /* Mouse capture for the checkbox click-toggle test. */
@@ -417,6 +439,144 @@ main(void)
         KrbDraw(&img, 0, 0, 200, 80);
         if(sv != 80)
             return fail("slider moved without drag");
+    }
+
+    /* PROGRESS read/render through a bound integer field. */
+    {
+        static const char pstr[] = "\0pv\0Load\0";  /* 0="" 1="pv" 4="Load" */
+        unsigned char *p = buf;
+        KryBackend cap;
+        int pv;
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(pstr));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 1);                       /* control_count */
+        p = wr_u32(p, 0);                       /* pad to 32 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, (unsigned)-1);
+        p = wr_u16(p, 1);                       /* name_off "pv" */
+        *p++ = KRB_NODE_CONTROL;
+        *p++ = 0;
+        p = wr_u16(p, 0);                       /* bind_slot = control 0 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 100);                     /* w */
+        p = wr_u16(p, 10);                      /* h */
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 10);
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, pstr, sizeof(pstr));
+        p += sizeof(pstr);
+        *p++ = KRB_OP_DRAW_TREE;
+        *p++ = KRB_CTRL_PROGRESS;
+        *p++ = 0;
+        p = wr_u16(p, 1);
+        p = wr_u32(p, 0);                       /* min */
+        p = wr_u32(p, 100);                     /* max */
+        p = wr_u32(p, 1);                       /* step */
+        p = wr_u16(p, 1);                       /* value_off "pv" */
+        p = wr_u16(p, 4);                       /* label_off "Load" */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        len = (size_t)(p - buf);
+
+        KrbFree(&img);
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load progress image");
+        pv = 40;
+        if(KrbBindMem(&img, "pv", &pv, KRB_I32, 4) != 0)
+            return fail("bind progress");
+        cap = KryBackendNull;
+        cap.rect = cap_rect;
+        cap.text = cap_text;
+        KryBackendSelect(&cap);
+        g_progress_fill_seen = 0;
+        g_last_text[0] = '\0';
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(!g_progress_fill_seen)
+            return fail("progress did not draw expected fill");
+        if(strcmp(g_last_text, "Load") != 0)
+            return fail("progress did not draw label");
+    }
+
+    /* RADIO click writes its id into the mounted selected value, and the next
+     * frame draws the selected fill. */
+    {
+        static const char rstr[] = "\0rv\0Pick\0";  /* 0="" 1="rv" 4="Pick" */
+        unsigned char *p = buf;
+        KryBackend cap;
+        int rv;
+
+        p = wr_u32(p, KRB_MAGIC);
+        p = wr_u16(p, KRB_VERSION);
+        p = wr_u16(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u32(p, (unsigned)sizeof(rstr));
+        p = wr_u32(p, 1);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 1);                       /* control_count */
+        p = wr_u32(p, 0);                       /* pad to 32 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, (unsigned)-1);
+        p = wr_u16(p, 1);                       /* name_off "rv" */
+        *p++ = KRB_NODE_CONTROL;
+        *p++ = 0;
+        p = wr_u16(p, 0);                       /* bind_slot = control 0 */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 100);                     /* w */
+        p = wr_u16(p, 20);                      /* h */
+        p = wr_u32(p, KRB_COLOR_THEME | KRY_THEME_TEXT);
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 16);
+        *p++ = 0;
+        *p++ = 0;
+        memcpy(p, rstr, sizeof(rstr));
+        p += sizeof(rstr);
+        *p++ = KRB_OP_DRAW_TREE;
+        *p++ = KRB_CTRL_RADIO;
+        *p++ = 0;
+        p = wr_u16(p, 2);                       /* id */
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 0);
+        p = wr_u32(p, 1);
+        p = wr_u16(p, 1);                       /* value_off "rv" */
+        p = wr_u16(p, 4);                       /* label_off "Pick" */
+        p = wr_u16(p, 0);
+        p = wr_u16(p, 0);
+        len = (size_t)(p - buf);
+
+        KrbFree(&img);
+        memset(&img, 0, sizeof(img));
+        if(KrbLoad(&img, buf, len) != 0)
+            return fail("load radio image");
+        rv = 1;
+        if(KrbBindMem(&img, "rv", &rv, KRB_I32, 4) != 0)
+            return fail("bind radio");
+        cap = KryBackendNull;
+        cap.mouse = cap_mouse;
+        cap.mouse_pressed = cap_pressed;
+        cap.circle = cap_circle;
+        KryBackendSelect(&cap);
+        g_cap_mx = 5;
+        g_cap_my = 5;
+        g_cap_pressed = 1;
+        g_radio_fill_seen = 0;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(rv != 2)
+            return fail("radio did not write selected id");
+        g_cap_pressed = 0;
+        KrbDraw(&img, 0, 0, 200, 80);
+        if(!g_radio_fill_seen)
+            return fail("radio did not draw selected fill");
     }
 
     /* TEXTINPUT must encode astral codepoints as 4-byte UTF-8. */

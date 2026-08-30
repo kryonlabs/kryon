@@ -136,8 +136,8 @@ Referenced by a CONTROL node's `bind_slot`.
 
 | Offset | Size | Field | Type | Meaning |
 |---|---|---|---|---|
-| 0 | 1 | kind | u8 | 1 slider, 2 vslider, 3 spinbox (4/5 reserved) |
-| 1 | 1 | option_count | u8 | reserved for dropdown options, 0 |
+| 0 | 1 | kind | u8 | 1 slider, 2 vslider, 3 spinbox, 4 dropdown, 5 combobox, 6 progress, 7 radio |
+| 1 | 1 | option_count | u8 | dropdown/combobox option count, 0 otherwise |
 | 2 | 2 | id | u16 | widget id |
 | 4 | 4 | min | i32 | range minimum |
 | 8 | 4 | max | i32 | range maximum |
@@ -149,10 +149,13 @@ Referenced by a CONTROL node's `bind_slot`.
 
 Slider: held-drag maps the pointer position across the track to
 `[min, max]`. Spinbox: click left/right half decrements/increments by
-`step`, clamped to `[min, max]`. Dropdown (`kind 4`): `options_off`
-points at `option_count` consecutive NUL-terminated option strings;
-the bound `int` holds the selected index. Click toggles the popup;
-clicking a row writes the index and closes.
+`step`, clamped to `[min, max]`. Dropdown (`kind 4`) and combobox (`kind 5`):
+`options_off` points at `option_count` consecutive NUL-terminated option
+strings; the bound `int` holds the selected index. Click toggles the popup;
+clicking a row writes the index and closes. Progress (`kind 6`) reads the
+bound `int`, clamps it to `[min, max]`, and draws a noninteractive filled bar
+with optional `label_off` text. Radio (`kind 7`) reads the bound `int`, draws
+selected when it equals `id`, and writes `id` on click.
 
 ## 8. Program and execution semantics
 

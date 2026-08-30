@@ -67,6 +67,13 @@ kry_dir_entry_cmp(const void *a, const void *b)
 int
 kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
 {
+    return kry_fs_list_dir_ex(dir, out, cap, 0);
+}
+
+int
+kry_fs_list_dir_ex(const char *dir, KryDirEntry *out, int cap,
+                   int include_hidden)
+{
     int fd;
     Dir *db;
     long n;
@@ -84,13 +91,19 @@ kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
     for(long i = 0; i < n && count < cap; i++) {
         size_t len;
 
-        if(db[i].name[0] == '.')
+        if(!include_hidden && db[i].name[0] == '.')
             continue;   /* skip dot files, including . and .. */
+        if(strcmp(db[i].name, ".") == 0 || strcmp(db[i].name, "..") == 0)
+            continue;
         len = strlen(db[i].name);
         if(len >= KRY_FS_NAME_MAX)
             continue;
         memcpy(out[count].name, db[i].name, len + 1);
         out[count].is_dir = (db[i].mode & DMDIR) != 0;
+        out[count].mtime = (long)db[i].mtime;
+        out[count].size = (unsigned long long)db[i].length;
+        out[count].readable = 1;
+        out[count].hidden = db[i].name[0] == '.';
         count++;
     }
     free(db);
@@ -108,12 +121,16 @@ kry_fs_stat(const char *path, KryFileStat *out)
     out->exists = 0;
     out->is_dir = 0;
     out->mtime = -1;
+    out->size = 0;
+    out->readable = 0;
     d = dirstat(path);
     if(d == NULL)
         return 1;   /* probe succeeded; path just doesnt exist */
     out->exists = 1;
     out->is_dir = (d->mode & DMDIR) != 0;
     out->mtime = (long)d->mtime;
+    out->size = (unsigned long long)d->length;
+    out->readable = 1;
     free(d);
     return 1;
 }
@@ -235,9 +252,60 @@ kry_fs_exists(const char *path)
     return exists;
 }
 
+int
+kry_fs_create_file(const char *path)
+{
+    int fd;
+
+    if(path == NULL)
+        return -1;
+    fd = create((char *)path, OWRITE, 0666);
+    if(fd < 0)
+        return -1;
+    close(fd);
+    return 0;
+}
+
+int
+kry_fs_create_dir(const char *path)
+{
+    int fd;
+
+    if(path == NULL)
+        return -1;
+    fd = create((char *)path, OREAD, DMDIR | 0777);
+    if(fd < 0)
+        return -1;
+    close(fd);
+    return 0;
+}
+
+int kry_fs_copy_recursive(const char *src, const char *dst)
+{
+    (void)src; (void)dst; return -1;
+}
+
+int kry_fs_move(const char *src, const char *dst)
+{
+    if(src == NULL || dst == NULL)
+        return -1;
+    return rename(src, dst);
+}
+
+int kry_fs_remove_recursive(const char *path)
+{
+    return path != NULL && remove(path) == 0 ? 0 : -1;
+}
+
+int kry_fs_symlink(const char *target, const char *link_path)
+{
+    (void)target; (void)link_path; return -1;
+}
+
 #elif !defined(_WIN32)
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -283,6 +351,13 @@ kry_dir_entry_cmp(const void *a, const void *b)
 int
 kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
 {
+    return kry_fs_list_dir_ex(dir, out, cap, 0);
+}
+
+int
+kry_fs_list_dir_ex(const char *dir, KryDirEntry *out, int cap,
+                   int include_hidden)
+{
     DIR *d;
     struct dirent *e;
     int count = 0;
@@ -298,7 +373,7 @@ kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
 
         if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
             continue;
-        if(name[0] == '.')
+        if(!include_hidden && name[0] == '.')
             continue;   /* skip hidden entries */
         if(count >= cap)
             break;
@@ -319,6 +394,18 @@ kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
             snprintf(full, sizeof(full), "%s/%s", dir, name);
             out[count].is_dir = (stat(full, &st) == 0 && S_ISDIR(st.st_mode));
         }
+        {
+            char full[4096];
+            struct stat st;
+
+            snprintf(full, sizeof(full), "%s/%s", dir, name);
+            if(stat(full, &st) == 0) {
+                out[count].mtime = (long)st.st_mtime;
+                out[count].size = (unsigned long long)st.st_size;
+                out[count].readable = access(full, R_OK) == 0;
+            }
+        }
+        out[count].hidden = name[0] == '.';
         count++;
     }
     closedir(d);
@@ -336,11 +423,15 @@ kry_fs_stat(const char *path, KryFileStat *out)
     out->exists = 0;
     out->is_dir = 0;
     out->mtime = -1;
+    out->size = 0;
+    out->readable = 0;
     if(stat(path, &st) != 0)
         return 1;   /* stat-able call; path just doesnt exist */
     out->exists = 1;
     out->is_dir = S_ISDIR(st.st_mode);
     out->mtime = (long)st.st_mtime;
+    out->size = (unsigned long long)st.st_size;
+    out->readable = access(path, R_OK) == 0;
     return 1;
 }
 
@@ -440,11 +531,181 @@ kry_fs_exists(const char *path)
     return stat(path, &st) == 0;
 }
 
+int
+kry_fs_create_file(const char *path)
+{
+    int fd;
+
+    if(path == NULL)
+        return -1;
+    fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if(fd < 0)
+        return -1;
+    return close(fd) == 0 ? 0 : -1;
+}
+
+int
+kry_fs_create_dir(const char *path)
+{
+    if(path == NULL)
+        return -1;
+    return mkdir(path, 0755) == 0 ? 0 : -1;
+}
+
+static int
+kry_fs_copy_file_bytes(const char *src, const char *dst, mode_t mode)
+{
+    int in_fd;
+    int out_fd;
+    char buf[65536];
+    ssize_t n;
+    int ok = 1;
+
+    in_fd = open(src, O_RDONLY);
+    if(in_fd < 0)
+        return -1;
+    out_fd = open(dst, O_WRONLY | O_CREAT | O_EXCL, mode & 0777);
+    if(out_fd < 0) {
+        close(in_fd);
+        return -1;
+    }
+    while((n = read(in_fd, buf, sizeof(buf))) > 0) {
+        char *p = buf;
+
+        while(n > 0) {
+            ssize_t written = write(out_fd, p, (size_t)n);
+
+            if(written < 0) {
+                ok = 0;
+                break;
+            }
+            p += written;
+            n -= written;
+        }
+        if(!ok)
+            break;
+    }
+    if(n < 0)
+        ok = 0;
+    if(close(out_fd) != 0)
+        ok = 0;
+    close(in_fd);
+    if(!ok) {
+        unlink(dst);
+        return -1;
+    }
+    return 0;
+}
+
+int
+kry_fs_copy_recursive(const char *src, const char *dst)
+{
+    struct stat st;
+
+    if(src == NULL || dst == NULL || lstat(src, &st) != 0)
+        return -1;
+    if(S_ISDIR(st.st_mode)) {
+        DIR *dir;
+        struct dirent *de;
+
+        if(mkdir(dst, st.st_mode & 0777) != 0)
+            return -1;
+        dir = opendir(src);
+        if(dir == NULL)
+            return -1;
+        while((de = readdir(dir)) != NULL) {
+            char child_src[4096];
+            char child_dst[4096];
+
+            if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+                continue;
+            snprintf(child_src, sizeof(child_src), "%s/%s", src, de->d_name);
+            snprintf(child_dst, sizeof(child_dst), "%s/%s", dst, de->d_name);
+            if(kry_fs_copy_recursive(child_src, child_dst) != 0) {
+                closedir(dir);
+                return -1;
+            }
+        }
+        closedir(dir);
+        return 0;
+    }
+    if(S_ISLNK(st.st_mode)) {
+        char target[4096];
+        ssize_t len = readlink(src, target, sizeof(target) - 1);
+
+        if(len < 0)
+            return -1;
+        target[len] = '\0';
+        return symlink(target, dst) == 0 ? 0 : -1;
+    }
+    if(S_ISREG(st.st_mode))
+        return kry_fs_copy_file_bytes(src, dst, st.st_mode);
+    errno = ENOTSUP;
+    return -1;
+}
+
+int
+kry_fs_remove_recursive(const char *path)
+{
+    struct stat st;
+
+    if(path == NULL || lstat(path, &st) != 0)
+        return -1;
+    if(S_ISDIR(st.st_mode)) {
+        DIR *dir = opendir(path);
+        struct dirent *de;
+
+        if(dir == NULL)
+            return -1;
+        while((de = readdir(dir)) != NULL) {
+            char child[4096];
+
+            if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0)
+                continue;
+            snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
+            if(kry_fs_remove_recursive(child) != 0) {
+                closedir(dir);
+                return -1;
+            }
+        }
+        closedir(dir);
+        return rmdir(path) == 0 ? 0 : -1;
+    }
+    return unlink(path) == 0 ? 0 : -1;
+}
+
+int
+kry_fs_move(const char *src, const char *dst)
+{
+    if(src == NULL || dst == NULL)
+        return -1;
+    if(rename(src, dst) == 0)
+        return 0;
+    if(errno != EXDEV)
+        return -1;
+    if(kry_fs_copy_recursive(src, dst) != 0)
+        return -1;
+    return kry_fs_remove_recursive(src);
+}
+
+int
+kry_fs_symlink(const char *target, const char *link_path)
+{
+    if(target == NULL || link_path == NULL)
+        return -1;
+    return symlink(target, link_path) == 0 ? 0 : -1;
+}
+
 #else  /* _WIN32 */
 
 int kry_fs_list_dir(const char *dir, KryDirEntry *out, int cap)
 {
     (void)dir; (void)out; (void)cap; return 0;
+}
+int kry_fs_list_dir_ex(const char *dir, KryDirEntry *out, int cap,
+                       int include_hidden)
+{
+    (void)dir; (void)out; (void)cap; (void)include_hidden; return 0;
 }
 int kry_fs_stat(const char *path, KryFileStat *out)
 {
@@ -465,5 +726,20 @@ int kry_fs_write_file(const char *path, const char *text, int len)
     (void)path; (void)text; (void)len; return -1;
 }
 int kry_fs_exists(const char *path) { (void)path; return 0; }
+int kry_fs_create_file(const char *path) { (void)path; return -1; }
+int kry_fs_create_dir(const char *path) { (void)path; return -1; }
+int kry_fs_copy_recursive(const char *src, const char *dst)
+{
+    (void)src; (void)dst; return -1;
+}
+int kry_fs_move(const char *src, const char *dst)
+{
+    (void)src; (void)dst; return -1;
+}
+int kry_fs_remove_recursive(const char *path) { (void)path; return -1; }
+int kry_fs_symlink(const char *target, const char *link_path)
+{
+    (void)target; (void)link_path; return -1;
+}
 
 #endif /* _WIN32 */

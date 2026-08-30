@@ -772,6 +772,81 @@ ctrl_spinbox(KrbImage *img, const KryBackend *b, const KrbControl *c,
     }
 }
 
+static void
+ctrl_progress(const KrbImage *img, const KryBackend *b, const KrbControl *c,
+              int x, int y, int w, int h, int val, int font)
+{
+    int min = c->min;
+    int max = c->max;
+    int range;
+    int fill_w;
+    unsigned surface = b->theme_color(KRY_THEME_SURFACE);
+    unsigned button = b->theme_color(KRY_THEME_BUTTON);
+    unsigned border = b->theme_color(KRY_THEME_ICON);
+    unsigned text = b->theme_color(KRY_THEME_TEXT);
+    const char *label = KrbString(img, c->label_off);
+
+    if(max <= min)
+        max = min + 1;
+    range = max - min;
+    val = clampi(val, min, max);
+    fill_w = (w > 0 && range > 0) ? (int)((long)(val - min) * w / range) : 0;
+    b->rect(x, y, w, h, surface);
+    if(fill_w > 0)
+        b->rect(x, y, fill_w, h, button);
+    b->rect(x, y, w, 1, border);
+    b->rect(x, y + h - 1, w, 1, border);
+    b->rect(x, y, 1, h, border);
+    b->rect(x + w - 1, y, 1, h, border);
+    if(label[0] != '\0') {
+        int pad = b->scale_px(6);
+        int tw = b->measure_text(label, font);
+        int tx = x + (w - tw) / 2;
+        int ty = y + (h - font) / 2;
+
+        if(w - fill_w >= tw + pad * 2)
+            tx = x + fill_w + pad;
+        else if(fill_w >= tw + pad * 2)
+            tx = x + fill_w - tw - pad;
+        b->text(label, tx, ty, font, text);
+    }
+}
+
+static void
+ctrl_radio(KrbImage *img, const KryBackend *b, const KrbControl *c,
+           const char *path, int x, int y, int w, int h, int val, int font)
+{
+    int diameter = b->scale_px(20);
+    int outer = diameter / 2;
+    int inner = outer > b->scale_px(3) ? outer - b->scale_px(3) : outer;
+    int cx = x + outer;
+    int cy = y + h / 2;
+    unsigned ring = b->theme_color(KRY_THEME_ICON);
+    unsigned fill = b->theme_color(KRY_THEME_TEXT);
+    const char *label = KrbString(img, c->label_off);
+    int mx = 0;
+    int my = 0;
+
+    if(b->ring != NULL)
+        b->ring(cx, cy, inner, outer, ring);
+    else {
+        b->rect(x, cy - outer, diameter, 1, ring);
+        b->rect(x, cy + outer - 1, diameter, 1, ring);
+        b->rect(x, cy - outer, 1, diameter, ring);
+        b->rect(x + diameter - 1, cy - outer, 1, diameter, ring);
+    }
+    if(val == (int)c->id && b->circle != NULL)
+        b->circle(cx, cy, inner > b->scale_px(3) ? inner - b->scale_px(3) : inner,
+                  fill);
+    if(label[0] != '\0')
+        b->text(label, x + diameter + b->scale_px(8), y + (h - font) / 2,
+                font, fill);
+    b->mouse(&mx, &my);
+    if(b->mouse_pressed(KRY_MOUSE_LEFT) && mx >= x && my >= y &&
+       mx < x + w && my < y + h && val != (int)c->id)
+        KrbWriteI32(img, path, (int)c->id);
+}
+
 /* Apply ancestor SCROLL containers: translate the origin by each
  * container's mounted offset and clip to its viewport. Returns the number
  * of clips pushed (pop that many after drawing). */
@@ -1104,6 +1179,14 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
              * cartridge runtime */
             ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
                           val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
+            break;
+        case KRB_CTRL_PROGRESS:
+            ctrl_progress(img, b, &c, x, y, w, h, val,
+                          b->scale_px(n->font_size > 0 ? n->font_size : 16));
+            break;
+        case KRB_CTRL_RADIO:
+            ctrl_radio(img, b, &c, path, x, y, w, h, val,
+                       b->scale_px(n->font_size > 0 ? n->font_size : 16));
             break;
         default:
             break;

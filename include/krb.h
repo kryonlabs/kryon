@@ -45,7 +45,9 @@ enum {
     KRB_CTRL_VSLIDER = 2,
     KRB_CTRL_SPINBOX = 3,
     KRB_CTRL_DROPDOWN = 4,
-    KRB_CTRL_COMBOBOX = 5
+    KRB_CTRL_COMBOBOX = 5,
+    KRB_CTRL_PROGRESS = 6,
+    KRB_CTRL_RADIO = 7
 };
 
 enum {

@@ -407,10 +407,14 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     static const char *const widgets[] = {
         "Background", "Text", "TextInRect", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "IconTexture", "Picture", "Button",
-        "IconButton", "Href", "TextField", "Dropdown", "Slider",
-        "Toggle", "Checkbox", "Progress", "Screen", "Column", "Row", "Stack",
-        "End", "Scroll", "Canvas", "Modal", "TitleBar", "TabBar",
-        "BottomNav", "TopNav", "Toolbar"
+        "IconButton", "Href", "TextField", "TextArea", "Dropdown", "Slider",
+        "Toggle", "Checkbox", "Radio", "Progress", "Spinbox", "Combobox",
+        "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
+        "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
+        "PromptDialog", "TitleBar", "TabBar", "BottomNav", "TopNav",
+        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
+        "PanedView", "Collapsible", "ListBox", "SourceView", "TableView",
+        "CanvasGrid", "SelectableText"
     };
     const char *p = text;
     const char *open;

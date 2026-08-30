@@ -233,10 +233,16 @@ SOURCE_RENDERERS = [
 
 RUNTIME_PARITY_CHECKS = [
     {
-        "id": "generated-go-c",
-        "label": "Generated Go/C runtime parity",
+        "id": "generated-go-c-js",
+        "label": "Generated Go/C/JS runtime parity",
         "command": ["make", "-C", ".", "generated-runtime-parity-test"],
-        "scope": "Lowers parity fixtures through k2g and k2c, drives matching workflows, renders frames, and compares final state JSON.",
+        "scope": "Lowers parity fixtures through k2g, k2c, and k2js, drives matching text/input/control workflows, renders Go/C frames where applicable, and compares final state JSON.",
+    },
+    {
+        "id": "generated-js-recorder",
+        "label": "Generated JS recorder snapshots",
+        "command": ["make", "-C", ".", "k2js-runtime-snapshot-test"],
+        "scope": "Lowers every conformance source through k2js, imports the generated ESM in Node, runs frame(), and compares the recorded widget stream.",
     },
 ]
 

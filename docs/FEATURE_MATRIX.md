@@ -30,7 +30,7 @@ the columns diverge.
 |---|---|---|---|
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
 | Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
-| JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Initial web-native target; syntax and Node smoke gated |
+| JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Syntax, Node recorder snapshots, and generated runtime state parity gated |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |
 
@@ -46,16 +46,18 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 30 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 51 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2g` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
-`k2js` records whitelisted widgets as browser-loadable runtime operations; and
-`k2b` lowers a subset of it:
+`k2js` records whitelisted standalone widget calls as browser-loadable runtime
+operations; and `k2b` lowers a subset of it:
 
 `Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
-Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox
-Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav
-TopNav Toolbar`
+Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle
+Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
+Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar
+TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
+PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
 `BeginCanvas` directly. Scroll coverage uses the C `BeginUIScrollContainer` /
@@ -106,8 +108,8 @@ declaration pass (`src/ui/ui_tree.c`).
 | Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Slider` in generated Go | ✗ generated Go uses `kryon.Slider` | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
-| Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✗ |
-| Progress | ✅ | ✅ | ✅ | ✅ `Progress` | ✗ |
+| Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
+| Progress | ✅ | ✅ | ✅ | ✅ `Progress` | ✅ `KRB_CTRL_PROGRESS` |
 | Spinbox | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
 | Combobox | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
 | ColorPicker (RGB sliders) | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -120,7 +122,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Group | ✅ (lowers to Stack) | ✅ | ◐ via Column | ✅ via Stack | ✅ |
 | Scroll container | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✗ | ✗ | ✅ |
-| LabelFrame | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✗ |
+| LabelFrame | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
 | Notebook (tabs) | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
@@ -271,10 +273,21 @@ declaration pass (`src/ui/ui_tree.c`).
   compile error, `DropdownEx`'s rich option arrays are not expressible from
   `.kry`, and C pointer/`Texture2D` values cannot be written (icons pass by
   `UIIconType`, option lists as joined strings or `[N]string`).
+- `k2js` emits ESM for the web recorder runtime. `make
+  k2js-runtime-snapshot-test` lowers every conformance source, imports the
+  generated ESM in Node, runs `frame()`, and compares the recorded widget
+  streams. `make generated-runtime-parity-test` also drives generated JS
+  through the same state/input workflows as generated Go and C, then diffs the
+  final state JSON. This is runtime state parity for the recorder surface, not
+  browser pixel comparison.
 - `k2b` drops unsupported widget calls and reports them per file; the
   cartridge widget set remains smaller than the C catalog (see matrix).
   `Combobox` lowers to a `KRB_CTRL_COMBOBOX` control that renders like the
-  dropdown, matching the C widget.
+  dropdown, matching the C widget. `Progress` lowers to a read-only
+  `KRB_CTRL_PROGRESS` control bound to an integer state field. `Radio` lowers
+  to `KRB_CTRL_RADIO` for the common `selected == id` pattern and writes `id`
+  into the mounted selection field on click. `LabelFrame` lowers to border
+  rectangles plus title background/text nodes.
 - Retained tree paints 7 node kinds and routes input for 3 (see caveat
   above the widget matrix).
 - No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;

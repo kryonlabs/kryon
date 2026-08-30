@@ -31,7 +31,7 @@ li{margin:.25rem 0}
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
 <tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use</td></tr>
 <tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
-<tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class=""><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="">Initial web-native target; syntax and Node smoke gated</td></tr>
+<tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class=""><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="">Syntax, Node recorder snapshots, and generated runtime state parity gated</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
 <tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
 </table>
@@ -45,8 +45,8 @@ li{margin:.25rem 0}
 </ul>
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
-<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 30 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted widgets as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
-<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField Dropdown Slider Toggle Checkbox Progress Screen Column Row Stack Scroll Canvas Modal TitleBar TabBar BottomNav TopNav Toolbar`</p>
+<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
+<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
@@ -81,8 +81,8 @@ li{margin:.25rem 0}
 <tr><td class="">Vertical sliders</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Slider</code> in generated Go</td><td class="no">✗ generated Go uses <code>kryon.Slider</code></td><td class="ok">✅ VSLIDER control</td></tr>
 <tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="no">✗</td></tr>
-<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="no">✗</td></tr>
+<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="ok">✅ <code>KRB_CTRL_RADIO</code></td></tr>
+<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="ok">✅ <code>KRB_CTRL_PROGRESS</code></td></tr>
 <tr><td class="">Spinbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Spinbox</code></td><td class="ok">✅ SPINBOX control</td></tr>
 <tr><td class="">Combobox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Combobox</code></td><td class="ok">✅ COMBOBOX control (renders like the dropdown, mirroring the C widget)</td></tr>
 <tr><td class="">ColorPicker (RGB sliders)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
@@ -94,7 +94,7 @@ li{margin:.25rem 0}
 <tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
 <tr><td class="">Scroll container</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ SCROLL node</td></tr>
 <tr><td class="">Separator</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✅</td></tr>
-<tr><td class="">LabelFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>LabelFrame</code></td><td class="no">✗</td></tr>
+<tr><td class="">LabelFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>LabelFrame</code></td><td class="ok">✅ rect/text lowering</td></tr>
 <tr><td class="">Notebook (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Notebook</code></td><td class="no">✗</td></tr>
 <tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
 <tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
@@ -224,9 +224,13 @@ li{margin:.25rem 0}
 </ul>
 <p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownEx</code>&#x27;s rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
 <ul>
+<li><code>k2js</code> emits ESM for the web recorder runtime. `make</li>
+</ul>
+<p>k2js-runtime-snapshot-test` lowers every conformance source, imports the generated ESM in Node, runs <code>frame()</code>, and compares the recorded widget streams. <code>make generated-runtime-parity-test</code> also drives generated JS through the same state/input workflows as generated Go and C, then diffs the final state JSON. This is runtime state parity for the recorder surface, not browser pixel comparison.</p>
+<ul>
 <li><code>k2b</code> drops unsupported widget calls and reports them per file; the</li>
 </ul>
-<p>cartridge widget set remains smaller than the C catalog (see matrix). <code>Combobox</code> lowers to a <code>KRB_CTRL_COMBOBOX</code> control that renders like the dropdown, matching the C widget.</p>
+<p>cartridge widget set remains smaller than the C catalog (see matrix). <code>Combobox</code> lowers to a <code>KRB_CTRL_COMBOBOX</code> control that renders like the dropdown, matching the C widget. <code>Progress</code> lowers to a read-only <code>KRB_CTRL_PROGRESS</code> control bound to an integer state field. <code>Radio</code> lowers to <code>KRB_CTRL_RADIO</code> for the common <code>selected == id</code> pattern and writes <code>id</code> into the mounted selection field on click. <code>LabelFrame</code> lowers to border rectangles plus title background/text nodes.</p>
 <ul>
 <li>Retained tree paints 7 node kinds and routes input for 3 (see caveat</li>
 </ul>

@@ -111,6 +111,8 @@ include/krb.h enum KRB_COLOR_THEME
 include/krb.h enum KRB_CSTR
 include/krb.h enum KRB_CTRL_COMBOBOX
 include/krb.h enum KRB_CTRL_DROPDOWN
+include/krb.h enum KRB_CTRL_PROGRESS
+include/krb.h enum KRB_CTRL_RADIO
 include/krb.h enum KRB_CTRL_SLIDER
 include/krb.h enum KRB_CTRL_SPINBOX
 include/krb.h enum KRB_CTRL_VSLIDER

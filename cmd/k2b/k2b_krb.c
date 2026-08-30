@@ -2039,6 +2039,366 @@ parse_spinbox(KrbBuild *b, const char *call)
                             atoi(skip_ws(parts[3])), atoi(skip_ws(parts[4])), "");
 }
 
+static int
+copy_text(char *dst, size_t dst_size, const char *src)
+{
+    size_t n;
+
+    if(dst_size == 0)
+        return 0;
+    if(src == NULL)
+        src = "";
+    n = strlen(src);
+    if(n >= dst_size)
+        n = dst_size - 1;
+    memcpy(dst, src, n);
+    dst[n] = '\0';
+    return 1;
+}
+
+static int
+path_expr(const char *expr, char *dst, size_t dst_size)
+{
+    const char *p = skip_ws(expr);
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return 0;
+    while(n + 1 < dst_size &&
+          (isalnum((unsigned char)p[n]) || p[n] == '_' || p[n] == '.'))
+        n++;
+    if(n == 0 || isdigit((unsigned char)p[0])) {
+        dst[0] = '\0';
+        return 0;
+    }
+    if(*skip_ws(p + n) != '\0') {
+        dst[0] = '\0';
+        return 0;
+    }
+    memcpy(dst, p, n);
+    dst[n] = '\0';
+    return 1;
+}
+
+static void
+trim_copy(char *dst, size_t dst_size, const char *start, size_t len)
+{
+    if(dst_size == 0)
+        return;
+    while(len > 0 && isspace((unsigned char)*start)) {
+        start++;
+        len--;
+    }
+    while(len > 0 && isspace((unsigned char)start[len - 1]))
+        len--;
+    if(len >= dst_size)
+        len = dst_size - 1;
+    memcpy(dst, start, len);
+    dst[len] = '\0';
+}
+
+static int
+path_from_eq_value(const char *expr, int value, char *dst, size_t dst_size)
+{
+    const char *eq = strstr(expr, "==");
+    char left[KIR_TEXT_MAX];
+    char right[KIR_TEXT_MAX];
+    char candidate[KIR_NAME_MAX];
+
+    if(eq == NULL)
+        return 0;
+    trim_copy(left, sizeof(left), expr, (size_t)(eq - expr));
+    trim_copy(right, sizeof(right), eq + 2, strlen(eq + 2));
+    if(path_expr(left, candidate, sizeof(candidate)) &&
+       atoi(skip_ws(right)) == value) {
+        copy_text(dst, dst_size, candidate);
+        return 1;
+    }
+    if(path_expr(right, candidate, sizeof(candidate)) &&
+       atoi(skip_ws(left)) == value) {
+        copy_text(dst, dst_size, candidate);
+        return 1;
+    }
+    return 0;
+}
+
+/* Radio((RadioButtonProps){bounds,label,id,selected == id,disabled}) ->
+ * read/write CONTROL node. On click the runtime writes id into the selected
+ * state path recovered from the checked expression. */
+static int
+parse_radio(KrbBuild *b, const char *call)
+{
+    const char *p = strstr(call, "RadioButtonProps");
+    const char *open;
+    const char *close;
+    char body[KIR_TEXT_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    char f_bounds[KIR_TEXT_MAX] = "";
+    char f_label[KIR_TEXT_MAX] = "";
+    char f_id[KIR_TEXT_MAX] = "";
+    char f_checked[KIR_TEXT_MAX] = "";
+    char path[KIR_NAME_MAX];
+    char label[KIR_TEXT_MAX];
+    int x = 0, y = 0, w = 0, h = 0, count;
+    int id;
+    unsigned flags = 0;
+    size_t len;
+    int i;
+
+    if(p == NULL)
+        return 0;
+    open = strchr(p, '{');
+    if(open == NULL)
+        return 0;
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 4)
+        return 0;
+    for(i = 0; i < count && i < 5; i++) {
+        const char *part = skip_ws(parts[i]);
+
+        if(*part == '.') {
+            const char *eq = strchr(part, '=');
+
+            if(eq == NULL)
+                continue;
+            if(strncmp(part, ".bounds", 7) == 0)
+                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+            else if(strncmp(part, ".label", 6) == 0)
+                copy_text(f_label, sizeof(f_label), skip_ws(eq + 1));
+            else if(strncmp(part, ".id", 3) == 0)
+                copy_text(f_id, sizeof(f_id), skip_ws(eq + 1));
+            else if(strncmp(part, ".checked", 8) == 0)
+                copy_text(f_checked, sizeof(f_checked), skip_ws(eq + 1));
+        } else {
+            switch(i) {
+            case 0: copy_text(f_bounds, sizeof(f_bounds), part); break;
+            case 1: copy_text(f_label, sizeof(f_label), part); break;
+            case 2: copy_text(f_id, sizeof(f_id), part); break;
+            case 3: copy_text(f_checked, sizeof(f_checked), part); break;
+            default: break;
+            }
+        }
+    }
+    if(f_id[0] == '\0')
+        return 0;
+    id = atoi(skip_ws(f_id));
+    if(!path_from_eq_value(f_checked, id, path, sizeof(path)))
+        return 0;
+    label[0] = '\0';
+    extract_string(f_label, label, sizeof(label));
+    if(!parse_rect_fields(f_bounds, &x, &y, &w, &h, &flags))
+        return 0;
+    return add_control_node(b, KRB_CTRL_RADIO, path, x, y, w, h, flags, id,
+                            0, 0, 1, label);
+}
+
+/* Progress((ProgressBarProps){bounds,min,max,value,label}) -> read-only
+ * CONTROL node. The value field is a mounted state path, matching the KRB
+ * control table used by sliders and spinboxes. */
+static int
+parse_progress(KrbBuild *b, const char *call)
+{
+    const char *p = strstr(call, "ProgressBarProps");
+    const char *open;
+    const char *close;
+    char body[KIR_TEXT_MAX];
+    char parts[8][KIR_TEXT_MAX];
+    char f_bounds[KIR_TEXT_MAX] = "";
+    char f_min[KIR_TEXT_MAX] = "";
+    char f_max[KIR_TEXT_MAX] = "";
+    char f_value[KIR_TEXT_MAX] = "";
+    char f_label[KIR_TEXT_MAX] = "";
+    char path[KIR_NAME_MAX];
+    char label[KIR_TEXT_MAX];
+    int x = 0, y = 0, w = 0, h = 0, count;
+    unsigned flags = 0;
+    size_t len;
+    int i;
+
+    if(p == NULL)
+        return 0;
+    open = strchr(p, '{');
+    if(open == NULL)
+        return 0;
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 4)
+        return 0;
+    for(i = 0; i < count && i < 5; i++) {
+        const char *part = skip_ws(parts[i]);
+
+        if(*part == '.') {
+            const char *eq = strchr(part, '=');
+
+            if(eq == NULL)
+                continue;
+            if(strncmp(part, ".bounds", 7) == 0)
+                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+            else if(strncmp(part, ".min", 4) == 0)
+                copy_text(f_min, sizeof(f_min), skip_ws(eq + 1));
+            else if(strncmp(part, ".max", 4) == 0)
+                copy_text(f_max, sizeof(f_max), skip_ws(eq + 1));
+            else if(strncmp(part, ".value", 6) == 0)
+                copy_text(f_value, sizeof(f_value), skip_ws(eq + 1));
+            else if(strncmp(part, ".label", 6) == 0)
+                copy_text(f_label, sizeof(f_label), skip_ws(eq + 1));
+        } else {
+            switch(i) {
+            case 0: copy_text(f_bounds, sizeof(f_bounds), part); break;
+            case 1: copy_text(f_min, sizeof(f_min), part); break;
+            case 2: copy_text(f_max, sizeof(f_max), part); break;
+            case 3: copy_text(f_value, sizeof(f_value), part); break;
+            case 4: copy_text(f_label, sizeof(f_label), part); break;
+            default: break;
+            }
+        }
+    }
+    if(!path_expr(f_value, path, sizeof(path)))
+        return 0;
+    label[0] = '\0';
+    if(f_label[0] != '\0')
+        extract_string(f_label, label, sizeof(label));
+    if(!parse_rect_fields(f_bounds, &x, &y, &w, &h, &flags))
+        return 0;
+    return add_control_node(b, KRB_CTRL_PROGRESS, path, x, y, w, h, flags,
+                            (int)b->control_count, atoi(skip_ws(f_min)),
+                            atoi(skip_ws(f_max)), 1, label);
+}
+
+static int
+add_rect_node(KrbBuild *b, const char *prefix, int x, int y, int w, int h,
+              unsigned flags, unsigned color)
+{
+    KrbBuildNode *n;
+    char name[32];
+
+    snprintf(name, sizeof(name), "%s%d", prefix, b->node_count);
+    n = add_node(b, KRB_NODE_RECT, name);
+    if(n == NULL)
+        return 0;
+    n->x = x;
+    n->y = y;
+    n->w = w;
+    n->h = h;
+    n->flags = flags;
+    n->color = color;
+    return 1;
+}
+
+static int
+parse_labelframe(KrbBuild *b, const char *call)
+{
+    const char *p = strstr(call, "LabelFrameProps");
+    const char *open;
+    const char *close;
+    char body[KIR_TEXT_MAX];
+    char parts[4][KIR_TEXT_MAX];
+    char f_bounds[KIR_TEXT_MAX] = "";
+    char f_title[KIR_TEXT_MAX] = "";
+    char title[KIR_TEXT_MAX];
+    size_t len;
+    int count;
+    int i;
+    int x = 0, y = 0, w = 0, h = 0;
+    unsigned flags = 0;
+    unsigned xflag;
+    unsigned yflag;
+    unsigned wflag;
+    unsigned hflag;
+    unsigned border = KRB_COLOR_THEME | KRY_THEME_BUTTON;
+
+    if(p == NULL)
+        return 0;
+    open = strchr(p, '{');
+    if(open == NULL)
+        return 0;
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 4);
+    if(count < 1)
+        return 0;
+    for(i = 0; i < count && i < 2; i++) {
+        const char *part = skip_ws(parts[i]);
+
+        if(*part == '.') {
+            const char *eq = strchr(part, '=');
+
+            if(eq == NULL)
+                continue;
+            if(strncmp(part, ".bounds", 7) == 0)
+                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+            else if(strncmp(part, ".title", 6) == 0)
+                copy_text(f_title, sizeof(f_title), skip_ws(eq + 1));
+        } else {
+            if(i == 0)
+                copy_text(f_bounds, sizeof(f_bounds), part);
+            else if(i == 1)
+                copy_text(f_title, sizeof(f_title), part);
+        }
+    }
+    if(!parse_rect_fields(f_bounds, &x, &y, &w, &h, &flags))
+        return 0;
+    xflag = flags & KRB_FLAG_SCALE_X;
+    yflag = flags & KRB_FLAG_SCALE_Y;
+    wflag = flags & KRB_FLAG_SCALE_W;
+    hflag = flags & KRB_FLAG_SCALE_H;
+    if(!add_rect_node(b, "lf_top", x, y, w, 1, xflag | yflag | wflag,
+                      border) ||
+       !add_rect_node(b, "lf_bottom", x, y + h - 1, w, 1,
+                      xflag | yflag | hflag | wflag, border) ||
+       !add_rect_node(b, "lf_left", x, y, 1, h, xflag | yflag | hflag,
+                      border) ||
+       !add_rect_node(b, "lf_right", x + w - 1, y, 1, h,
+                      xflag | wflag | yflag | hflag, border))
+        return 0;
+    title[0] = '\0';
+    if(f_title[0] != '\0')
+        extract_string(f_title, title, sizeof(title));
+    if(title[0] != '\0') {
+        KrbBuildNode *n;
+        char name[32];
+        int bg_w = (int)strlen(title) * 7 + 16;
+
+        if(!add_rect_node(b, "lf_title_bg", x + 8, y - 8, bg_w, 18,
+                          xflag | yflag | KRB_FLAG_SCALE_W |
+                          KRB_FLAG_SCALE_H,
+                          KRB_COLOR_THEME | KRY_THEME_BACKGROUND))
+            return 0;
+        snprintf(name, sizeof(name), "lf_title%d", b->node_count);
+        n = add_node(b, KRB_NODE_TEXT, name);
+        if(n == NULL)
+            return 0;
+        n->x = x + 16;
+        n->y = y - 9;
+        n->flags = xflag | yflag;
+        n->font_size = 14;
+        n->color = KRB_COLOR_THEME | KRY_THEME_TEXT;
+        copy_text(n->text, sizeof(n->text), title);
+    }
+    return 1;
+}
+
 /* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
  * range; EndScroll() closes it. Widgets between get parent = the scroll. */
 /* TextField(x, y, w, h, &state.field) -> TEXTINPUT node. */
@@ -2612,12 +2972,18 @@ try_widget(KrbBuild *b, const char *raw)
         return parse_picture(b, call);
     if(starts_ident(call, "Checkbox"))
         return parse_checkbox(b, call);
+    if(starts_ident(call, "Radio"))
+        return parse_radio(b, call);
     if(starts_ident(call, "Toggle"))
         return parse_toggle(b, call);
     if(starts_ident(call, "Slider"))
         return parse_slider(b, call);
     if(starts_ident(call, "Spinbox"))
         return parse_spinbox(b, call);
+    if(starts_ident(call, "Progress"))
+        return parse_progress(b, call);
+    if(starts_ident(call, "LabelFrame"))
+        return parse_labelframe(b, call);
     {
         char name[64];
         const char *p = call;

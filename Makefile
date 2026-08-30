@@ -273,7 +273,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g k2js canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2g k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
 
 k2c: $(K2C)
 k2g: $(K2G)
@@ -421,10 +421,13 @@ runtime-matrix-check:
 downstream-matrix-check:
 	python3 scripts/conformance-matrix.py --verify-downstream
 
-generated-runtime-parity-test: $(K2C) $(K2G) $(LIB) $(KRYON_BACKEND_LIBS)
+k2js-runtime-snapshot-test: $(K2JS)
+	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
+
+generated-runtime-parity-test: $(K2C) $(K2G) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
-preflight: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check generated-runtime-parity-test
+preflight: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
 	git diff --check
 
 test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(APP_FRAMEWORK_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
@@ -432,6 +435,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
 	sh tests/k2js_syntax_test.sh $(K2JS)
+	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .

@@ -8,8 +8,9 @@ apps. Each widget family should have the same coverage shape:
    focus, selection, and frame rendering. They catch native Go runtime bugs.
 
 2. Generated runtime parity in `tests/generated_runtime_parity_test.sh`.
-   Fixtures in `tests/parity/*.kry` are lowered to Go and C, driven through the
-   same workflow, rendered, and compared by final state JSON.
+   Fixtures in `tests/parity/*.kry` are lowered to Go, C, and JS, driven
+   through the same workflow, rendered where the target has a renderer in the
+   harness, and compared by final state JSON.
 
 3. Backend or platform translation tests.
    Backend event adapters must translate native events into the same public

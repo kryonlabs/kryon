@@ -400,6 +400,20 @@ contains_top_level_compound(const char *s)
     return 0;
 }
 
+static void
+strip_block_brace(char *s)
+{
+    size_t n = strlen(s);
+
+    while(n > 0 && isspace((unsigned char)s[n - 1]))
+        s[--n] = '\0';
+    if(n > 0 && s[n - 1] == '{') {
+        s[--n] = '\0';
+        while(n > 0 && isspace((unsigned char)s[n - 1]))
+            s[--n] = '\0';
+    }
+}
+
 static void tx_expr(const KirModule *m, const char *src,
                     char *dst, size_t dst_size);
 
@@ -493,6 +507,26 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 dst[dn++] = *p++;
             continue;
         }
+        if(isdigit((unsigned char)*p) ||
+           (*p == '.' && isdigit((unsigned char)p[1]))) {
+            const char *q = p;
+
+            while(isdigit((unsigned char)*q) || *q == '.')
+                q++;
+            if(*q == 'e' || *q == 'E') {
+                q++;
+                if(*q == '+' || *q == '-')
+                    q++;
+                while(isdigit((unsigned char)*q))
+                    q++;
+            }
+            while(p < q && dn + 1 < dst_size)
+                dst[dn++] = *p++;
+            if((*q == 'f' || *q == 'F') &&
+               !is_ident_char((unsigned char)q[1]))
+                p = q + 1;
+            continue;
+        }
         if(*p == '&') {
             const char *q = p + 1;
             char ident[K2JS_NAME_MAX];
@@ -507,6 +541,11 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 js_string_buf(ident, qs, sizeof(qs));
                 dn += (size_t)snprintf(dst + dn, dst_size - dn,
                                        "kryon.ref(state, %s)", qs);
+                p = q;
+                continue;
+            }
+            if(il > 0) {
+                dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s", ident);
                 p = q;
                 continue;
             }
@@ -688,6 +727,110 @@ emit_assign(FILE *f, const KirModule *m, const char *raw, int indent)
     }
 }
 
+static int
+split_direct_call(const char *src, char *name, size_t name_size,
+                  char *args, size_t args_size)
+{
+    const char *p = skip_ws(src);
+    const char *q = p;
+    size_t nl;
+    char raw[K2JS_TEXT_MAX];
+
+    if(!(isalpha((unsigned char)*q) || *q == '_'))
+        return 0;
+    while(is_ident_char((unsigned char)*q))
+        q++;
+    nl = (size_t)(q - p);
+    if(nl == 0 || nl >= name_size)
+        return 0;
+    q = skip_ws(q);
+    if(*q != '(')
+        return 0;
+    q = consume_group(q + 1, raw, sizeof(raw));
+    if(*skip_ws(q) != '\0')
+        return 0;
+    memcpy(name, p, nl);
+    name[nl] = '\0';
+    snprintf(args, args_size, "%s", raw);
+    return 1;
+}
+
+static int
+condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
+                         char *args, size_t args_size)
+{
+    static const char *const widgets[] = {
+        "Button", "IconButton", "Checkbox", "Dropdown", "ListBox",
+        "Radio", "Slider", "TableView", "TextField", "Toggle"
+    };
+    char name[K2JS_NAME_MAX];
+
+    if(!split_direct_call(cond, name, sizeof(name), args, args_size))
+        return 0;
+    for(size_t i = 0; i < sizeof(widgets) / sizeof(widgets[0]); i++) {
+        if(strcmp(name, widgets[i]) == 0) {
+            snprintf(widget, widget_size, "%s", name);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void
+emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
+{
+    char cond[K2JS_TEXT_MAX];
+    char out[K2JS_TEXT_MAX];
+    char widget[K2JS_NAME_MAX];
+    char args[K2JS_TEXT_MAX];
+
+    *chained = 0;
+    snprintf(cond, sizeof(cond), "%s", raw);
+    strip_block_brace(cond);
+    if(strncmp(cond, "guard ", 6) == 0)
+        memmove(cond, cond + 6, strlen(cond + 6) + 1);
+    if(strncmp(cond, "else if ", 8) == 0) {
+        *chained = 1;
+        memmove(cond, cond + 8, strlen(cond + 8) + 1);
+        trim(cond);
+        emit_indent(f, indent);
+        if(condition_is_widget_call(cond, widget, sizeof(widget), args,
+                                    sizeof(args))) {
+            fprintf(f, "} else if (kryon.widget(rt, ");
+            js_string(f, widget);
+            fprintf(f, ", ");
+            js_string(f, args);
+            fprintf(f, ", state)) {\n");
+        } else {
+            tx_expr(m, cond, out, sizeof(out));
+            fprintf(f, "} else if (%s) {\n", out);
+        }
+        return;
+    }
+    if(strncmp(cond, "else", 4) == 0 &&
+       (cond[4] == '\0' || isspace((unsigned char)cond[4]))) {
+        *chained = 1;
+        emit_indent(f, indent);
+        fprintf(f, "} else {\n");
+        return;
+    }
+    if(strncmp(cond, "if ", 3) == 0)
+        memmove(cond, cond + 3, strlen(cond + 3) + 1);
+    trim(cond);
+    emit_indent(f, indent);
+    if(condition_is_widget_call(cond, widget, sizeof(widget), args,
+                                sizeof(args))) {
+        fprintf(f, "if (kryon.widget(rt, ");
+        js_string(f, widget);
+        fprintf(f, ", ");
+        js_string(f, args);
+        fprintf(f, ", state)) {\n");
+    } else {
+        tx_expr(m, cond, out, sizeof(out));
+        fprintf(f, "if (%s) {\n", out);
+    }
+}
+
 static void
 emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
 {
@@ -732,6 +875,9 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     char fname[K2JS_NAME_MAX];
     char parts[K2JS_PARAM_MAX][K2JS_TEXT_MAX];
     int n;
+    int indent = 1;
+    int block_stack[128];
+    int block_top = 0;
 
     camel(fn->name, fname, sizeof(fname));
     fprintf(f, "export function %s_%s(rt, state = moduleState, host = moduleHost",
@@ -767,21 +913,56 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         if(raw[0] == '\0')
             continue;
         switch(st->kind) {
+        case KIR_STMT_BLOCK_OPEN:
+            emit_indent(f, indent);
+            fprintf(f, "{\n");
+            if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 1;
+            indent++;
+            break;
+        case KIR_STMT_BLOCK_CLOSE: {
+            int emitted = block_top > 0 ? block_stack[--block_top] : 1;
+
+            if(j + 1 < fn->stmt_count &&
+               fn->stmts[j + 1].kind == KIR_STMT_IF &&
+               strncmp(fn->stmts[j + 1].text, "else", 4) == 0) {
+                if(emitted && --indent < 1)
+                    indent = 1;
+                break;
+            }
+            if(!emitted)
+                break;
+            if(--indent < 1)
+                indent = 1;
+            emit_indent(f, indent);
+            fprintf(f, "}\n");
+            break;
+        }
+        case KIR_STMT_IF: {
+            int chained = 0;
+
+            emit_if(f, m, raw, indent, &chained);
+            (void)chained;
+            if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 1;
+            indent++;
+            break;
+        }
         case KIR_STMT_WIDGET:
             if(strcmp(st->widget, "End") == 0)
                 break;
-            emit_indent(f, 1);
+            emit_indent(f, indent);
             fprintf(f, "kryon.widget(rt, ");
             js_string(f, st->widget[0] ? st->widget : raw);
             fprintf(f, ", ");
             js_string(f, st->args[0] ? st->args : raw);
-            fprintf(f, ");\n");
+            fprintf(f, ", state);\n");
             break;
         case KIR_STMT_DECL:
-            emit_decl(f, m, raw, 1);
+            emit_decl(f, m, raw, indent);
             break;
         case KIR_STMT_ASSIGN:
-            emit_assign(f, m, raw, 1);
+            emit_assign(f, m, raw, indent);
             break;
         case KIR_STMT_RETURN: {
             char *expr = raw;
@@ -790,7 +971,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             if(strncmp(expr, "return", 6) == 0)
                 expr += 6;
             trim(expr);
-            emit_indent(f, 1);
+            emit_indent(f, indent);
             if(expr[0] == '\0') {
                 fprintf(f, "return kryon.snapshot(rt);\n");
             } else {
@@ -803,11 +984,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             if(strncmp(raw, "BeginUI", 7) == 0 ||
                strncmp(raw, "EndUI", 5) == 0)
                 break;
-            emit_statement_record(f, 1, raw);
+            emit_statement_record(f, indent, raw);
             break;
-        case KIR_STMT_BLOCK_OPEN:
-        case KIR_STMT_BLOCK_CLOSE:
-        case KIR_STMT_IF:
         case KIR_STMT_WHILE:
         case KIR_STMT_FOR:
         case KIR_STMT_SWITCH:
@@ -820,7 +998,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_UNUSED:
         case KIR_STMT_RAW:
         default:
-            emit_statement_record(f, 1, raw);
+            emit_statement_record(f, indent, raw);
+            if((st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR ||
+                st->kind == KIR_STMT_SWITCH) && raw[strlen(raw) ? strlen(raw) - 1 : 0] == '{' &&
+               block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 0;
             break;
         }
     }

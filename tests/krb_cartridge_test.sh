@@ -64,6 +64,8 @@ state {
     cb_flag: int = 0
     combo_sel: int = 0
     dd_sel: int = 0
+    progress_value: int = 42
+    radio_sel: int = 0
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
 }
 
@@ -79,6 +81,9 @@ App :: () #ui {
         Text("hi", ScaleUIPx(4), ScaleUIPx(4), Text16, GetThemeText())
         Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
         Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
+        Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(56), ScaleUIPx(80), ScaleUIPx(20)}, "Pick", 0, radio_sel == 0, 0})
+        Progress((ProgressBarProps){.bounds = {ScaleUIPx(30), ScaleUIPx(42), ScaleUIPx(60), ScaleUIPx(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
+        LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(28), ScaleUIPx(56), ScaleUIPx(64), ScaleUIPx(20)}, .title = "PanelTitle"})
         Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
         Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
     }
@@ -91,6 +96,18 @@ if [ ! -f "$work/frame.krb" ]; then
 fi
 if echo "$frame_out" | grep -q 'Combobox'; then
     echo "k2b dropped the Combobox call: $frame_out" >&2
+    exit 1
+fi
+if echo "$frame_out" | grep -q 'Progress'; then
+    echo "k2b dropped the Progress call: $frame_out" >&2
+    exit 1
+fi
+if echo "$frame_out" | grep -q 'Radio'; then
+    echo "k2b dropped the Radio call: $frame_out" >&2
+    exit 1
+fi
+if echo "$frame_out" | grep -q 'LabelFrame'; then
+    echo "k2b dropped the LabelFrame call: $frame_out" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "Gamma"; then
@@ -107,6 +124,26 @@ if ! strings "$work/frame.krb" | grep -q "Alpha"; then
 fi
 if ! strings "$work/frame.krb" | grep -q "combo_sel"; then
     echo "frame cartridge missing Combobox selected-index path" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "progress_value"; then
+    echo "frame cartridge missing Progress value path" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "Load"; then
+    echo "frame cartridge missing Progress label" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "radio_sel"; then
+    echo "frame cartridge missing Radio selected path" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "Pick"; then
+    echo "frame cartridge missing Radio label" >&2
+    exit 1
+fi
+if ! strings "$work/frame.krb" | grep -q "PanelTitle"; then
+    echo "frame cartridge missing LabelFrame title" >&2
     exit 1
 fi
 
