@@ -1,36 +1,39 @@
-/* Kryon site theme — refined modern-retro
-   Warm paper, monospace, pixel-dither grain, beveled cards, pixel cursors.
-   The visual identity stays; this layer adds a real marketing structure
-   (sticky header, hero, pill bar, feature tabs, code showcase, FAQ). */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:ital,wght@0,300;0,400;0,600;1,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap');
+
+/* Kryon site theme — aligned with waozi.xyz: warm paper, restrained panels,
+   serif product headings, and direct monospace details. */
 
 :root {
   /* surfaces */
-  --bg: #f3f1ea;            /* warm off-white page */
-  --surface: #fdfcf8;       /* panel */
-  --control: #eae6da;       /* button base */
+  --bg: #f7ede2;            /* warm paper */
+  --surface: #fffcf7;       /* panel */
+  --control: #f4e6d6;       /* button base */
   --control-hi: #ffffff;    /* bevel highlight */
 
   /* ink */
-  --ink-strong: #2a3b40;    /* near-slate headings/body */
-  --ink-soft: #5d6f74;      /* muted secondary text */
+  --ink-strong: #4a4038;    /* warm ink */
+  --ink-soft: #9b8b7c;      /* muted secondary text */
 
   /* lines */
-  --line: rgba(42, 59, 64, 0.20);
-  --line-strong: rgba(42, 59, 64, 0.30);
+  --line: rgba(180, 106, 90, 0.22);
+  --line-strong: rgba(180, 106, 90, 0.35);
 
   /* accent */
-  --accent: #23657d;        /* teal links/headings pop */
-  --accent-deep: #123d4f;   /* teal hover */
+  --accent: #04655f;        /* waozi teal */
+  --accent-deep: #034d49;   /* teal hover */
   --accent-ink: #ffffff;
-  --accent-soft: rgba(47, 111, 134, 0.10);
-  --hero-bg: #fffef9;
+  --accent-soft: rgba(4, 101, 95, 0.10);
+  --warm: #b46a5a;
+  --warm-deep: #9a5343;
+  --hero-bg: #fffcf7;
 
   /* cards */
-  --card-bg: #f7f4ec;
-  --card-hover-bg: #fbf9f2;
-  --card-active-bg: #efeadd;
+  --card-bg: #fffcf7;
+  --card-hover-bg: #fffefb;
+  --card-active-bg: #f7ede2;
 
-  --font-main: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-main: "Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-display: "Cormorant Garamond", Georgia, serif;
   --radius: 10px;
   --radius-sm: 6px;
 
@@ -74,7 +77,8 @@ body {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  background-color: var(--bg);
+  background:
+    linear-gradient(180deg, var(--bg) 0%, #f2e2d0 60%, var(--bg) 100%);
   color: var(--ink-strong);
   font-family: var(--font-main);
   font-size: 15px;
@@ -161,7 +165,13 @@ pre code {
 
 h1, h2, h3, h4 {
   color: var(--ink-strong);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
 }
 
 p {
@@ -179,7 +189,7 @@ p:last-child {
   position: sticky;
   top: 0;
   z-index: 50;
-  background-color: rgba(243, 241, 234, 0.92);
+  background-color: rgba(247, 237, 226, 0.90);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
@@ -330,14 +340,14 @@ p:last-child {
 main {
   position: relative;
   z-index: 1;
-  background-color: rgba(253, 252, 248, 0.96);
+  background: transparent;
 }
 
 section {
   max-width: var(--maxw);
   margin: 0 auto;
   padding: var(--space-xl) 20px;
-  background-color: rgba(253, 252, 248, 0.98);
+  background: transparent;
 }
 
 section + section {
@@ -357,7 +367,7 @@ h2 {
   margin: 0 0 8px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
-  font-size: 22px;
+  font-size: 34px;
   line-height: 1.18;
 }
 
@@ -378,17 +388,15 @@ h3 {
 
 .hero {
   text-align: center;
-  padding: var(--space-xl) 20px var(--space-lg);
+  padding: 72px 20px var(--space-lg);
   position: relative;
   z-index: 1;
-  background:
-    linear-gradient(180deg, rgba(255, 254, 249, 0.98), rgba(249, 246, 235, 0.96)),
-    var(--hero-bg);
-  border-bottom: 1px solid rgba(42, 59, 64, 0.10);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
 }
 
 .hero-inner {
-  max-width: 880px;
+  max-width: 720px;
   margin: 0 auto;
   position: relative;
   z-index: 1;
@@ -401,11 +409,10 @@ h3 {
 }
 
 .hero h1 {
-  margin: 8px 0;
+  margin: 12px 0 8px;
   color: var(--ink-strong);
-  font-size: 40px;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: clamp(64px, 11vw, 112px);
+  line-height: 0.94;
 }
 
 .hero h1 .accent {
@@ -417,6 +424,7 @@ h3 {
   max-width: 60ch;
   color: var(--ink-soft);
   font-size: 16px;
+  line-height: 1.75;
 }
 
 .hero-cta {
@@ -434,20 +442,23 @@ h3 {
   gap: 8px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent-deep);
-  background-color: var(--accent-soft);
-  border: 1px solid var(--line);
-  padding: 4px 12px;
-  border-radius: 999px;
+  color: var(--warm);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
   margin-bottom: 14px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hero-eyebrow .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--warm-deep);
+  border-radius: 2px;
+  background: var(--warm);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.12);
 }
 
 /* beveled preview panel under the hero */
@@ -549,7 +560,7 @@ h3 {
   gap: 6px;
   padding: 5px 12px;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--warm);
   background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
