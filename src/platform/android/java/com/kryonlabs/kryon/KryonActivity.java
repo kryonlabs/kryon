@@ -1,6 +1,7 @@
 package com.kryonlabs.kryon;
 
 import android.app.NativeActivity;
+import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -22,11 +23,14 @@ public class KryonActivity extends NativeActivity {
         "com.kryonlabs.kryon.SECURE_PREFERENCES";
     public static final String META_SECURE_DEFAULT_KEY_PREFIX =
         "com.kryonlabs.kryon.SECURE_DEFAULT_KEY_PREFIX";
+    public static final String META_APP_PREFERENCES =
+        "com.kryonlabs.kryon.APP_PREFERENCES";
 
     private final Map<String, SecureStore> secureStores = new HashMap<>();
     private TextInputBridge textInputBridge;
     private String securePreferencesName = "";
     private String secureDefaultKeyPrefix = "";
+    private String appPreferencesName = "";
 
     private native void nativeSetInsets(int left, int top, int right, int bottom,
         int ime, int cutoutLeft, int cutoutTop, int cutoutRight, int cutoutBottom);
@@ -73,11 +77,15 @@ public class KryonActivity extends NativeActivity {
             }
             String prefs = info.metaData.getString(META_SECURE_PREFERENCES);
             String defaultPrefix = info.metaData.getString(META_SECURE_DEFAULT_KEY_PREFIX);
+            String appPrefs = info.metaData.getString(META_APP_PREFERENCES);
             if (prefs != null) {
                 securePreferencesName = prefs;
             }
             if (defaultPrefix != null) {
                 secureDefaultKeyPrefix = defaultPrefix;
+            }
+            if (appPrefs != null) {
+                appPreferencesName = appPrefs;
             }
         } catch (PackageManager.NameNotFoundException ignored) {
         }
@@ -190,6 +198,34 @@ public class KryonActivity extends NativeActivity {
             secureStores.put(safeKey, store);
         }
         return store;
+    }
+
+    public String kryonAppStorageGetString(String scope, String key, String fallback) {
+        String safeKey = sanitizeKey(key);
+        String defaultValue = fallback == null ? "" : fallback;
+        return appPreferences(scope).getString(safeKey, defaultValue);
+    }
+
+    public boolean kryonAppStorageHasKey(String scope, String key) {
+        return appPreferences(scope).contains(sanitizeKey(key));
+    }
+
+    public boolean kryonAppStorageSetString(String scope, String key, String value) {
+        String safeKey = sanitizeKey(key);
+        String storedValue = value == null ? "" : value;
+        appPreferences(scope).edit().putString(safeKey, storedValue).apply();
+        return true;
+    }
+
+    private SharedPreferences appPreferences(String scope) {
+        String base = appPreferencesName.length() == 0
+            ? getPackageName() + "_preferences"
+            : appPreferencesName;
+        String safeScope = sanitizeKey(scope);
+        if ("default".equals(safeScope)) {
+            return getSharedPreferences(base, MODE_PRIVATE);
+        }
+        return getSharedPreferences(base + "_" + safeScope, MODE_PRIVATE);
     }
 
     private static String sanitizeKey(String key) {

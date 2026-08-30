@@ -61,6 +61,10 @@ include/app_shell.h function KryRouteStackPop
 include/app_shell.h function KryRouteStackPush
 include/app_shell.h function KryRouteStackReset
 include/app_shell.h typedef KryRouteAllowedFn
+include/app_storage.h function KryAppStorageGetInt
+include/app_storage.h function KryAppStorageGetString
+include/app_storage.h function KryAppStorageSetInt
+include/app_storage.h function KryAppStorageSetString
 include/audio_library.h enum KRY_AUDIO_IMPORT_COPY_FAILED
 include/audio_library.h enum KRY_AUDIO_IMPORT_FILE_NOT_FOUND
 include/audio_library.h enum KRY_AUDIO_IMPORT_FULL

@@ -44,6 +44,7 @@ OFILES=\
 	src/core/app_host.$O\
 	src/core/app_runtime.$O\
 	src/core/app_shell.$O\
+	src/core/app_storage.$O\
 	src/core/device_preferences.$O\
 	src/core/embedded_assets.$O\
 	src/core/kryon_abi.$O\
