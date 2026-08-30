@@ -464,8 +464,8 @@ func TestDesktopTrayEndToEnd(t *testing.T) {
 	defer ShutdownDesktopTray()
 	select {
 	case name := <-registered:
-		if !strings.HasPrefix(name, "org.kde.StatusNotifierItem-") {
-			t.Fatalf("registered as %q", name)
+		if name != "/StatusNotifierItem" {
+			t.Fatalf("registered as %q, want the object path", name)
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("never registered with the watcher")
