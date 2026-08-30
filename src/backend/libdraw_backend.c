@@ -1768,6 +1768,39 @@ int BackendRaw_GetCharPressed(void)
         return 0;
     return kry_libdraw_char_queue[kry_libdraw_char_qr++ % 128];
 }
+const char *GetKeyName(int key)
+{
+    static char name[16];
+
+    if(key >= 32 && key <= 126) {
+        name[0] = (char)key;
+        name[1] = '\0';
+        return name;
+    }
+    switch(key) {
+    case KEY_SPACE: return "space";
+    case KEY_ESCAPE: return "escape";
+    case KEY_ENTER: return "enter";
+    case KEY_TAB: return "tab";
+    case KEY_BACKSPACE: return "backspace";
+    case KEY_INSERT: return "insert";
+    case KEY_DELETE: return "delete";
+    case KEY_RIGHT: return "right";
+    case KEY_LEFT: return "left";
+    case KEY_DOWN: return "down";
+    case KEY_UP: return "up";
+    case KEY_PAGE_UP: return "page up";
+    case KEY_PAGE_DOWN: return "page down";
+    case KEY_HOME: return "home";
+    case KEY_END: return "end";
+    default:
+        if(key >= KEY_F1 && key <= KEY_F12) {
+            snprintf(name, sizeof(name), "f%d", key - KEY_F1 + 1);
+            return name;
+        }
+        return "";
+    }
+}
 bool BackendRaw_IsMouseButtonPressed(int button)
 {
     return button >= 0 && button < 3 && kry_libdraw_mouse_pressed[button];
