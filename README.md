@@ -2,15 +2,6 @@
   <img src="assets/app/readme-banner.png" alt="Kryon" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://kryonlabs.com">
-    <img src="assets/app/badge-website.svg" alt="Open kryonlabs.com" height="56">
-  </a>
-  <a href="https://github.com/kryonlabs/kryon">
-    <img src="assets/app/badge-github.svg" alt="Open Kryon on GitHub" height="56">
-  </a>
-</p>
-
 # Kryon
 
 Kryon is a small C support library for raylib-style applications. It keeps a
