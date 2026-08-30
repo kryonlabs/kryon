@@ -1,6 +1,12 @@
 #include "app_runtime.h"
 
+#include <stdio.h>
 #include <string.h>
+
+const char *GetRoutePath(void);
+const char *GetRouteHash(void);
+void PushRoute(const char *path);
+void ReplaceRoute(const char *path);
 
 static int
 app_screen_count(void *userdata)
@@ -116,11 +122,119 @@ SetAppScreen(AppHost *host, int index)
 }
 
 int
+SetAppScreenById(AppHost *host, const char *id)
+{
+    int count;
+
+    if(host == 0 || id == 0 || id[0] == '\0')
+        return 0;
+    count = GetAppScreenCount(host);
+    for(int i = 0; i < count; i++) {
+        AppScreenInfo screen = GetAppScreen(host, i);
+
+        if(screen.id != 0 && strcmp(screen.id, id) == 0) {
+            SetAppScreen(host, i);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int
 SetAppScreenBySourcePath(AppHost *host, const char *source_path)
 {
     if(host == 0 || host->select_source_path == 0)
         return 0;
     return host->select_source_path(host->userdata, source_path);
+}
+
+static void
+app_route_copy_id(char *dst, size_t dst_size, const char *src)
+{
+    size_t n = 0;
+
+    if(dst == 0 || dst_size == 0)
+        return;
+    dst[0] = '\0';
+    if(src == 0)
+        return;
+    while(*src == ' ' || *src == '\t' || *src == '#')
+        src++;
+    if(*src == '/')
+        src++;
+    while(src[n] != '\0' && src[n] != '/' && src[n] != '?' &&
+          src[n] != '&' && n + 1 < dst_size) {
+        dst[n] = src[n];
+        n++;
+    }
+    dst[n] = '\0';
+}
+
+static int
+app_route_current_id(char *dst, size_t dst_size)
+{
+    const char *hash;
+
+    if(dst == 0 || dst_size == 0)
+        return 0;
+    dst[0] = '\0';
+    hash = GetRouteHash();
+    if(hash == 0 || hash[0] == '\0')
+        return 0;
+    app_route_copy_id(dst, dst_size, hash);
+    return dst[0] != '\0';
+}
+
+int
+SetAppScreenFromRoute(AppHost *host)
+{
+    char id[256];
+    int count;
+
+    if(host == 0)
+        return 0;
+    count = GetAppScreenCount(host);
+    if(count <= 0)
+        return 0;
+    if(app_route_current_id(id, sizeof(id)) && SetAppScreenById(host, id))
+        return 1;
+    SetAppScreen(host, 0);
+    return 0;
+}
+
+static void
+app_set_screen_route(AppHost *host, int index, int replace)
+{
+    AppScreenInfo screen;
+    char route[320];
+    const char *path;
+
+    if(host == 0 || index < 0 || index >= GetAppScreenCount(host))
+        return;
+    screen = GetAppScreen(host, index);
+    if(screen.id == 0 || screen.id[0] == '\0')
+        return;
+    path = GetRoutePath();
+    if(path == 0 || path[0] == '\0')
+        path = "/";
+    snprintf(route, sizeof(route), "%s#/%s", path, screen.id);
+    if(replace)
+        ReplaceRoute(route);
+    else
+        PushRoute(route);
+    SetAppScreen(host, index);
+}
+
+void
+PushAppScreenRoute(AppHost *host, int index)
+{
+    app_set_screen_route(host, index, 0);
+}
+
+void
+ReplaceAppScreenRoute(AppHost *host, int index)
+{
+    app_set_screen_route(host, index, 1);
 }
 
 void

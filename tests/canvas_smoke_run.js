@@ -43,14 +43,37 @@ globalThis.__kryTestCanvas = {
     getContext: () => ctx,
     getBoundingClientRect: () => ({left: 0, top: 0})
 };
+globalThis.location = { pathname: '/', hash: '' };
+globalThis.history = {
+    pushState(_state, _title, value) {
+        applyLocation(value);
+    },
+    replaceState(_state, _title, value) {
+        applyLocation(value);
+    }
+};
 
-require('./canvas_smoke.js');
+function applyLocation(value) {
+    const text = String(value || '');
+    const hashIndex = text.indexOf('#');
+    if (hashIndex >= 0) {
+        globalThis.location.pathname = text.slice(0, hashIndex) || '/';
+        globalThis.location.hash = text.slice(hashIndex);
+    } else {
+        globalThis.location.pathname = text || '/';
+        globalThis.location.hash = '';
+    }
+}
+
+const Module = require('./canvas_smoke.js');
 
 setTimeout(() => {
     const kinds = {};
     for (const c of calls) kinds[c] = (kinds[c] || 0) + 1;
     console.log('recorded calls:', calls.length, JSON.stringify(kinds));
     const fail = [];
+    if (Module && Module.EXITSTATUS)
+        fail.push('program exit status ' + Module.EXITSTATUS);
     if (!kinds.fillRect || kinds.fillRect < 6) fail.push('fillRect (background/rect per frame)');
     if ((kinds.strokeRect || 0) < 6) fail.push('strokeRect (rectangle outlines)');
     if (!kinds.arc) fail.push('arc (DrawCircle)');

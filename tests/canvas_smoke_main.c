@@ -43,6 +43,17 @@ int main(void)
     SetClipboardText("canvas clipboard");
     if(strcmp(GetClipboardText(), "canvas clipboard") != 0)
         return 17;
+    ReplaceRoute("/canvas-smoke#/ready");
+    if(strcmp(GetRoutePath(), "/canvas-smoke") != 0 ||
+       strcmp(GetRouteHash(), "#/ready") != 0 ||
+       GetRouteVersion() != 1)
+        return 27;
+    ReplaceRoute("/canvas-smoke#/ready");
+    if(GetRouteVersion() != 1)
+        return 28;
+    PushRoute("/canvas-smoke#/done");
+    if(strcmp(GetRouteHash(), "#/done") != 0 || GetRouteVersion() != 2)
+        return 29;
     if(MakeDirectory("canvas_tmp/a/b") != 0)
         return 18;
     if(!DirectoryExists("canvas_tmp/a/b"))

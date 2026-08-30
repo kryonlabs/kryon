@@ -23,6 +23,38 @@ check_str(const char *name, const char *got, const char *want)
     failures++;
 }
 
+typedef struct RouteFixture {
+    AppScreenInfo screens[3];
+    int selected;
+} RouteFixture;
+
+static int
+route_fixture_screen_count(void *userdata)
+{
+    (void)userdata;
+    return 3;
+}
+
+static AppScreenInfo
+route_fixture_screen(void *userdata, int index)
+{
+    RouteFixture *fixture = userdata;
+    AppScreenInfo empty = {0};
+
+    if(fixture == 0 || index < 0 || index >= 3)
+        return empty;
+    return fixture->screens[index];
+}
+
+static void
+route_fixture_select_screen(void *userdata, int index)
+{
+    RouteFixture *fixture = userdata;
+
+    if(fixture != 0)
+        fixture->selected = index;
+}
+
 int
 main(void)
 {
@@ -30,6 +62,8 @@ main(void)
     KryRouteStack stack;
     KryAppShellLayout layout;
     Rectangle content;
+    RouteFixture route_fixture;
+    AppHost route_host;
     int volume = 500;
     int enabled = 42;
 
@@ -85,6 +119,30 @@ main(void)
               KryCapabilitiesHas(KRY_CAP_CLIPBOARD, KRY_CAP_SHARE), 0);
     check_str("cap name", KryCapabilityName(KRY_CAP_SECURE_STORE),
               "secure-store");
+
+    memset(&route_fixture, 0, sizeof(route_fixture));
+    route_fixture.screens[0].id = "home";
+    route_fixture.screens[1].id = "settings";
+    route_fixture.screens[2].id = "account";
+    route_fixture.selected = -1;
+    memset(&route_host, 0, sizeof(route_host));
+    route_host.userdata = &route_fixture;
+    route_host.screen_count = route_fixture_screen_count;
+    route_host.screen = route_fixture_screen;
+    route_host.select_screen = route_fixture_select_screen;
+    check_int("app route by id",
+              SetAppScreenById(&route_host, "settings"), 1);
+    check_int("app route selected", route_fixture.selected, 1);
+    check_int("app route unknown",
+              SetAppScreenById(&route_host, "missing"), 0);
+    check_int("app route unknown preserves selected",
+              route_fixture.selected, 1);
+    route_fixture.selected = 2;
+    check_int("app route empty url",
+              SetAppScreenFromRoute(&route_host), 0);
+    check_int("app route empty url selects first", route_fixture.selected, 0);
+    PushAppScreenRoute(&route_host, 2);
+    check_int("app route push selects", route_fixture.selected, 2);
 
     content = KrySafeContentRect((KryViewportSpec){
         .width = 400,

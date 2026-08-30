@@ -299,6 +299,12 @@ grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Mai
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
 grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
+grep -Fq 'AppHost *host;' "$project"
+grep -Fq 'host = CreateAppHost(APP_HOST_ABI_VERSION, ".");' "$project"
+grep -Fq 'if(!SetAppScreenFromRoute(host))' "$project"
+grep -Fq 'ReplaceAppScreenRoute(host, 0);' "$project"
+grep -Fq 'DrawAppScreen(host, (Rectangle){0, 0, (float)GetFrameWidth(), (float)GetFrameHeight()});' "$project"
+grep -Fq 'DestroyAppHost(host);' "$project"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"

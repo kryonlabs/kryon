@@ -280,11 +280,15 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
     fprintf(out, "static AppHost kryon_project_host;\n\n");
     fprintf(out, "AppHost *\nCreateAppHost(int abi_version, const char *project_path)\n{\n");
     fprintf(out, "    void *app = 0;\n");
-    fprintf(out, "    if(abi_version != APP_HOST_ABI_VERSION || CreateApp == 0)\n");
+    fprintf(out, "    if(abi_version != APP_HOST_ABI_VERSION)\n");
     fprintf(out, "        return 0;\n");
-    fprintf(out, "    app = CreateApp(project_path);\n");
-    fprintf(out, "    if(app == 0)\n");
-    fprintf(out, "        return 0;\n");
+    fprintf(out, "    if(CreateApp != 0) {\n");
+    fprintf(out, "        app = CreateApp(project_path);\n");
+    fprintf(out, "        if(app == 0)\n");
+    fprintf(out, "            return 0;\n");
+    fprintf(out, "    } else {\n");
+    fprintf(out, "        (void)project_path;\n");
+    fprintf(out, "    }\n");
     fprintf(out, "    kryon_project_runtime.app = app;\n");
     fprintf(out, "    kryon_project_runtime.routes = kryon_project_routes;\n");
     fprintf(out, "    kryon_project_runtime.route_count = (int)(sizeof(kryon_project_routes) / sizeof(kryon_project_routes[0]));\n");
@@ -311,10 +315,15 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
         int width = appmod->app.width > 0 ? appmod->app.width : 800;
         int height = appmod->app.height > 0 ? appmod->app.height : 600;
         int fps = appmod->app.fps > 0 ? appmod->app.fps : 60;
+        int route_host_main = appmod->app.frame[0] == '\0' && count > 0;
         char title[KIR_NAME_MAX * 2];
 
         c_str(title, sizeof(title), appmod->app.title);
         fprintf(out, "\nint\nmain(void)\n{\n");
+        if(route_host_main) {
+            fprintf(out, "    AppHost *host;\n");
+            fprintf(out, "    int route_version = -1;\n");
+        }
         fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
         fprintf(out, "    SetTargetFPS(%d);\n", fps);
         if(appmod->app.font_examples)
@@ -336,6 +345,13 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             }
             fprintf(out, "    %s();\n",
                     found ? hook : appmod->app.init);
+        }
+        if(route_host_main) {
+            fprintf(out, "    host = CreateAppHost(APP_HOST_ABI_VERSION, \".\");\n");
+            fprintf(out, "    if(host == 0) {\n");
+            fprintf(out, "        CloseWindow();\n");
+            fprintf(out, "        return 1;\n");
+            fprintf(out, "    }\n");
         }
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         if(appmod->app.frame[0] != '\0') {
@@ -370,22 +386,19 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                 fprintf(out, "        %s();\n",
                         found ? hook : appmod->app.frame);
             }
-        } else if(count > 0) {
-            char cname[KIR_NAME_MAX * 3];
-
-            k2c_function_c_name(routes[0].m, routes[0].fn, cname,
-                                sizeof(cname));
+        } else if(route_host_main) {
+            fprintf(out, "        int next_route_version = GetRouteVersion();\n");
+            fprintf(out, "        if(next_route_version != route_version) {\n");
+            fprintf(out, "            if(!SetAppScreenFromRoute(host))\n");
+            fprintf(out, "                ReplaceAppScreenRoute(host, 0);\n");
+            fprintf(out, "            route_version = GetRouteVersion();\n");
+            fprintf(out, "        }\n");
             fprintf(out, "        BeginFrame();\n");
             fprintf(out, "        BeginUIFrame(GetFrameWidth(), "
                          "GetFrameHeight(), GetFrameScale());\n");
-            fprintf(out, "        BeginUI(Key(\"%s\"));\n", cname);
-            if(strstr(routes[0].fn->args, "Rectangle") != NULL) {
-                fprintf(out, "        %s((Rectangle){0, 0, "
-                             "(float)GetFrameWidth(), (float)GetFrameHeight()});\n",
-                        cname);
-            } else {
-                fprintf(out, "        %s();\n", cname);
-            }
+            fprintf(out, "        BeginUI(Key(\"kryon_project\"));\n");
+            fprintf(out, "        DrawAppScreen(host, (Rectangle){0, 0, "
+                         "(float)GetFrameWidth(), (float)GetFrameHeight()});\n");
             fprintf(out, "        EndUI();\n");
             fprintf(out, "        EndUIFrame();\n");
             fprintf(out, "        EndFrame();\n");
@@ -407,6 +420,8 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "    %s();\n",
                     found ? hook : appmod->app.shutdown);
         }
+        if(route_host_main)
+            fprintf(out, "    DestroyAppHost(host);\n");
         if(appmod->app.font_examples)
             fprintf(out, "    UnloadExampleUIFont();\n");
         fprintf(out, "    CloseWindow();\n");

@@ -18,6 +18,11 @@ KRY_WEAK extern const char *kry_dom_get_route_hash(void);
 KRY_WEAK extern int kry_dom_get_route_version(void);
 KRY_WEAK extern void kry_dom_push_route(const char *path);
 KRY_WEAK extern void kry_dom_replace_route(const char *path);
+KRY_WEAK extern const char *kry_web_get_route_path(void);
+KRY_WEAK extern const char *kry_web_get_route_hash(void);
+KRY_WEAK extern int kry_web_get_route_version(void);
+KRY_WEAK extern void kry_web_push_route(const char *path);
+KRY_WEAK extern void kry_web_replace_route(const char *path);
 KRY_WEAK extern void kry_dom_semantic_box(int kind, Rectangle bounds,
                                           const char *label);
 KRY_WEAK extern void kry_dom_semantic_next(int kind, const char *label,
@@ -90,39 +95,73 @@ SetPageThemeColor(Color color)
 const char *
 GetRoutePath(void)
 {
+#if (defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)) && !defined(KRYON_BACKEND_DOM)
+    if(kry_web_get_route_path != NULL)
+        return kry_web_get_route_path();
+#endif
     if(kry_dom_get_route_path != NULL)
         return kry_dom_get_route_path();
+    if(kry_web_get_route_path != NULL)
+        return kry_web_get_route_path();
     return kry_route_root;
 }
 
 const char *
 GetRouteHash(void)
 {
+#if (defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)) && !defined(KRYON_BACKEND_DOM)
+    if(kry_web_get_route_hash != NULL)
+        return kry_web_get_route_hash();
+#endif
     if(kry_dom_get_route_hash != NULL)
         return kry_dom_get_route_hash();
+    if(kry_web_get_route_hash != NULL)
+        return kry_web_get_route_hash();
     return kry_route_empty;
 }
 
 int
 GetRouteVersion(void)
 {
+#if (defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)) && !defined(KRYON_BACKEND_DOM)
+    if(kry_web_get_route_version != NULL)
+        return kry_web_get_route_version();
+#endif
     if(kry_dom_get_route_version != NULL)
         return kry_dom_get_route_version();
+    if(kry_web_get_route_version != NULL)
+        return kry_web_get_route_version();
     return 0;
 }
 
 void
 PushRoute(const char *path)
 {
+#if (defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)) && !defined(KRYON_BACKEND_DOM)
+    if(kry_web_push_route != NULL) {
+        kry_web_push_route(path);
+        return;
+    }
+#endif
     if(kry_dom_push_route != NULL)
         kry_dom_push_route(path);
+    else if(kry_web_push_route != NULL)
+        kry_web_push_route(path);
 }
 
 void
 ReplaceRoute(const char *path)
 {
+#if (defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)) && !defined(KRYON_BACKEND_DOM)
+    if(kry_web_replace_route != NULL) {
+        kry_web_replace_route(path);
+        return;
+    }
+#endif
     if(kry_dom_replace_route != NULL)
         kry_dom_replace_route(path);
+    else if(kry_web_replace_route != NULL)
+        kry_web_replace_route(path);
 }
 
 NodeId

@@ -4,7 +4,11 @@
 #include "ui_layout.h"
 #include "kryon.h"
 
-#if defined(PLATFORM_WEB)
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+#define KRYON_WEB_JS 1
+#endif
+
+#if defined(KRYON_WEB_JS)
 #include <emscripten.h>
 #endif
 
@@ -12,7 +16,7 @@
 
 static int g_web_orientation_mode = 0;
 
-#if defined(PLATFORM_WEB)
+#if defined(KRYON_WEB_JS)
 EM_ASYNC_JS(int, js_web_storage_flush_blocking,
             (int timeout_ms, int log_success), {
     var M = Module || {};
@@ -56,6 +60,102 @@ EM_ASYNC_JS(int, js_web_storage_flush_blocking,
             e && e.message ? e.message : String(e);
         return 0;
     }
+});
+
+EM_JS(void, js_web_route_set, (int replace, const char *path), {
+    var g = globalThis;
+    var value = path ? UTF8ToString(path) : "";
+    var ensure = function () {
+        var R = g.__kryRoute;
+        if (!R) {
+            R = g.__kryRoute = { route: "", routeVersion: 0, listening: false };
+        }
+        if (!R.text) {
+            R.text = function () {
+                var loc = typeof location !== 'undefined' ? location : null;
+                if (!loc) return '/';
+                return (loc.pathname || '/') + (loc.hash || "");
+            };
+        }
+        if (!R.note) {
+            R.note = function () {
+                var next = R.text();
+                if (next !== R.route) {
+                    R.route = next;
+                    R.routeVersion++;
+                }
+                return R.routeVersion | 0;
+            };
+        }
+        if (!R.listening && g.addEventListener) {
+            g.addEventListener('popstate', R.note);
+            g.addEventListener('hashchange', R.note);
+            R.listening = true;
+        }
+        if (!R.route) R.route = R.text();
+        return R;
+    };
+    var R = ensure();
+    if (!value || typeof history === 'undefined') return;
+    try {
+        if (replace) history.replaceState({}, "", value);
+        else history.pushState({}, "", value);
+        if (R && R.note) R.note();
+    } catch (_) {}
+});
+
+EM_JS(void, js_web_route_get, (int which, char *dst, int cap), {
+    if (!dst || cap <= 0) return;
+    var g = globalThis;
+    var loc = typeof location !== 'undefined' ? location : null;
+    var text = "";
+    if (loc) text = which === 0 ? (loc.pathname || "/") : (loc.hash || "");
+    stringToUTF8(text, dst, cap);
+});
+
+EM_JS(int, js_web_route_version, (void), {
+    var g = globalThis;
+    var R = g.__kryRoute;
+    if (!R) {
+        R = g.__kryRoute = { route: "", routeVersion: 0, listening: false };
+        R.text = function () {
+            var loc = typeof location !== 'undefined' ? location : null;
+            if (!loc) return '/';
+            return (loc.pathname || '/') + (loc.hash || "");
+        };
+        R.note = function () {
+            var next = R.text();
+            if (next !== R.route) {
+                R.route = next;
+                R.routeVersion++;
+            }
+            return R.routeVersion | 0;
+        };
+    }
+    if (!R.text) {
+        R.text = function () {
+            var loc = typeof location !== 'undefined' ? location : null;
+            if (!loc) return '/';
+            return (loc.pathname || '/') + (loc.hash || "");
+        };
+    }
+    if (!R.note) {
+        R.note = function () {
+            var next = R.text();
+            if (next !== R.route) {
+                R.route = next;
+                R.routeVersion++;
+            }
+            return R.routeVersion | 0;
+        };
+    }
+    if (!R.listening && g.addEventListener) {
+        g.addEventListener('popstate', R.note);
+        g.addEventListener('hashchange', R.note);
+        R.listening = true;
+    }
+    if (!R.route) R.route = R.text();
+    return R.note();
 });
 #endif
 
@@ -230,6 +330,62 @@ FlushWebStorageSyncBlocking(int timeout_ms, int log_success)
     (void)timeout_ms;
     (void)log_success;
     return 1;
+#endif
+}
+
+const char *
+kry_web_get_route_path(void)
+{
+#if defined(KRYON_WEB_JS)
+    static char path[1024];
+
+    js_web_route_get(0, path, (int)sizeof(path));
+    return path[0] != '\0' ? path : "/";
+#else
+    return "/";
+#endif
+}
+
+const char *
+kry_web_get_route_hash(void)
+{
+#if defined(KRYON_WEB_JS)
+    static char hash[1024];
+
+    js_web_route_get(1, hash, (int)sizeof(hash));
+    return hash;
+#else
+    return "";
+#endif
+}
+
+int
+kry_web_get_route_version(void)
+{
+#if defined(KRYON_WEB_JS)
+    return js_web_route_version();
+#else
+    return 0;
+#endif
+}
+
+void
+kry_web_push_route(const char *path)
+{
+#if defined(KRYON_WEB_JS)
+    js_web_route_set(0, path);
+#else
+    (void)path;
+#endif
+}
+
+void
+kry_web_replace_route(const char *path)
+{
+#if defined(KRYON_WEB_JS)
+    js_web_route_set(1, path);
+#else
+    (void)path;
 #endif
 }
 
