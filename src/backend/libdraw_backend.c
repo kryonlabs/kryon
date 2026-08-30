@@ -148,6 +148,10 @@ static void
 reset_default_cursor(void)
 {
     set_plan9_cursor(&g_default_cursor);
+#ifndef KRYON_NATIVE_PLAN9
+    if(display != nil)
+        _displaycursor(display, nil, nil);
+#endif
 }
 
 static double
