@@ -502,21 +502,45 @@ ui_draw_menu_overlays(void)
 {
     int activated;
 
-    if(!g_menu_overlay.active || g_menu_open_id == 0)
-        return;
-
-    g_menu_panel_valid = 0;
-    activated = draw_menu_items(g_menu_overlay.menu_id,
-                                g_menu_overlay.x,
-                                g_menu_overlay.y,
-                                g_menu_overlay.items,
-                                g_menu_overlay.item_count);
-    if(activated != 0) {
-        g_menu_pending_bar_id = g_menu_overlay.bar_id;
-        g_menu_pending_activated = activated;
-        g_menu_pending_closed_bar_id = g_menu_overlay.bar_id;
+    if(g_menu_overlay.active && g_menu_open_id != 0) {
+        g_menu_panel_valid = 0;
+        activated = draw_menu_items(g_menu_overlay.menu_id,
+                                    g_menu_overlay.x,
+                                    g_menu_overlay.y,
+                                    g_menu_overlay.items,
+                                    g_menu_overlay.item_count);
+        if(activated != 0) {
+            g_menu_pending_bar_id = g_menu_overlay.bar_id;
+            g_menu_pending_activated = activated;
+            g_menu_pending_closed_bar_id = g_menu_overlay.bar_id;
+        }
     }
     g_menu_overlay.active = 0;
+
+    if(g_context_menu_overlay.active &&
+       g_context_menu_open_id == g_context_menu_overlay.id) {
+        Vector2 mouse = ui_mouse_world();
+
+        g_menu_panel_valid = 0;
+        activated = draw_menu_items(g_context_menu_overlay.id,
+                                    g_context_menu_overlay.x,
+                                    g_context_menu_overlay.y,
+                                    g_context_menu_overlay.items,
+                                    g_context_menu_overlay.item_count);
+        if(activated != 0) {
+            g_context_menu_pending_id = g_context_menu_overlay.id;
+            g_context_menu_pending_activated = activated;
+            g_context_menu_open_id = 0;
+        } else if(!g_context_menu_overlay.suppress_close &&
+                  IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+                  (!g_menu_panel_valid ||
+                   !ui_contains(g_menu_panel_bounds, mouse))) {
+            UIConsumeRelease();
+            g_context_menu_pending_closed_id = g_context_menu_overlay.id;
+            g_context_menu_open_id = 0;
+        }
+    }
+    g_context_menu_overlay.active = 0;
 }
 
 int
@@ -532,7 +556,8 @@ DrawUIContextMenu(ContextMenuProps menu)
     int open_local = 0;
     int x_local = 0;
     int y_local = 0;
-    int activated;
+    Rectangle panel;
+    int suppress_close = 0;
 
     if(menu.open == NULL)
         menu.open = &open_local;
@@ -540,27 +565,44 @@ DrawUIContextMenu(ContextMenuProps menu)
         menu.x = &x_local;
     if(menu.y == NULL)
         menu.y = &y_local;
+    if(g_context_menu_pending_id == menu.id) {
+        int activated = g_context_menu_pending_activated;
+
+        g_context_menu_pending_id = 0;
+        g_context_menu_pending_activated = 0;
+        *menu.open = 0;
+        return activated;
+    }
+    if(g_context_menu_pending_closed_id == menu.id) {
+        g_context_menu_pending_closed_id = 0;
+        *menu.open = 0;
+        return 0;
+    }
     if(ui_contains(menu.trigger, mouse) &&
        !UIInputCapturesClick(mouse) &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         *menu.open = 1;
         *menu.x = (int)mouse.x;
         *menu.y = (int)mouse.y;
+        suppress_close = 1;
     }
-    if(!*menu.open)
+    if(!*menu.open) {
+        if(g_context_menu_open_id == menu.id)
+            g_context_menu_open_id = 0;
         return 0;
+    }
 
-    activated = draw_menu_items(menu.id, *menu.x, *menu.y,
-                                menu.items, menu.item_count);
-    if(activated != 0) {
-        *menu.open = 0;
-        return activated;
-    }
-    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       (!g_menu_panel_valid || !ui_contains(g_menu_panel_bounds, mouse))) {
-        UIConsumeRelease();
-        *menu.open = 0;
-    }
+    if(ui_contains(menu.trigger, mouse) &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        suppress_close = 1;
+    g_context_menu_open_id = menu.id;
+    panel = menu_items_panel_bounds(*menu.x, *menu.y,
+                                    menu.items, menu.item_count);
+    ui_menu_track_panel(panel);
+    PushUIInputCapture(panel, 1);
+    if(ui_contains(panel, mouse))
+        MarkUICursor(MOUSE_CURSOR_DEFAULT);
+    queue_context_menu_overlay(menu, suppress_close);
     return 0;
 }
 
