@@ -19,6 +19,16 @@ if [ -f "$sdl_core" ] && ! grep -q 'Kryon: derive SDL2 scale from drawable pixel
     perl -0pi -e 's@    // NOTE: SDL_GetWindowDisplayScale not available on SDL2\n    // TODO: Implement the window scale factor calculation manually\n    TRACELOG\(LOG_WARNING, "GetWindowScaleDPI\(\) not implemented on target platform"\);@    // Kryon: derive SDL2 scale from drawable pixels instead of guessing from monitor DPI.\n    int window_width = 0, window_height = 0;\n    int drawable_width = 0, drawable_height = 0;\n    SDL_GetWindowSize(platform.window, \&window_width, \&window_height);\n    SDL_GL_GetDrawableSize(platform.window, \&drawable_width, \&drawable_height);\n    if (window_width > 0 \&\& window_height > 0 \&\&\n        drawable_width > 0 \&\& drawable_height > 0)\n    \{\n        scale.x = (float)drawable_width/(float)window_width;\n        scale.y = (float)drawable_height/(float)window_height;\n    \}@' "$sdl_core"
 fi
 
+if [ -f "$sdl_core" ] && ! grep -q 'Kryon: relative-mode fallback' "$sdl_core"; then
+    # DisableCursor ignored whether relative mode actually engaged: when the
+    # driver refuses raw relative mode the cursor is only hidden, still
+    # clamps at the screen edges, and captured look dies there. Detect the
+    # failure, retry through SDL's warp-based relative emulation, and log
+    # which mode ended up active so logs from the field say what happened.
+    perl -0pi -e 's@void DisableCursor\(void\)\n\{\n    SDL_SetRelativeMouseMode\(SDL_TRUE\);\n\n    HideCursor\(\);\n    CORE\.Input\.Mouse\.cursorLocked = true;\n\}@void DisableCursor(void)\n\{\n    // Kryon: relative-mode fallback. If raw relative mode is unsupported\n    // (some drivers\/setups), retry with SDL warp emulation so deltas stay\n    // unclamped; if even that fails, say so loudly instead of silently\n    // leaving a hidden-but-clamped cursor.\n    if (SDL_SetRelativeMouseMode(SDL_TRUE) < 0)\n    \{\n        SDL_SetHint("SDL_MOUSE_RELATIVE_MODE_WARP", "1");\n        if (SDL_SetRelativeMouseMode(SDL_TRUE) < 0)\n        \{\n            TRACELOG(LOG_WARNING, "Kryon: relative-mode fallback: mouse relative mode unavailable; cursor will clamp at edges");\n        \}\n        else\n        \{\n            TRACELOG(LOG_INFO, "Kryon: relative-mode fallback: using warp-based relative mouse mode");\n        \}\n    \}\n\n    HideCursor();\n    CORE.Input.Mouse.cursorLocked = true;\n\}@' "$sdl_core"
+    perl -0pi -e 's@void EnableCursor\(void\)\n\{\n    SDL_SetRelativeMouseMode\(SDL_FALSE\);\n@void EnableCursor(void)\n\{\n    SDL_SetHint("SDL_MOUSE_RELATIVE_MODE_WARP", "0");\n    SDL_SetRelativeMouseMode(SDL_FALSE);\n@' "$sdl_core"
+fi
+
 if [ -f "$sdl_core" ] && ! grep -q 'Kryon: accumulate relative mouse motion' "$sdl_core"; then
     # Cursor-locked mouse must behave like the GLFW cursor-disabled mode
     # apps are written against: an unclamped virtual absolute position that
