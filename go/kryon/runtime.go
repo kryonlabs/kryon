@@ -1104,6 +1104,9 @@ func (r *runtime) QueueMouseButtonDown(button int32, x, y float32) {
 	r.mousePressed[button] = true
 	r.clicks = append(r.clicks, mouseClickEvent{button: button, x: x, y: y, when: time.Now()})
 	if button == MouseButtonLeft {
+		if os.Getenv("KRYON_DEBUG_TAPS") != "" {
+			log.Printf("tap queued at (%.0f,%.0f)", x, y)
+		}
 		r.taps = append(r.taps, tapEvent{x: x, y: y})
 	}
 }
