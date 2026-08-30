@@ -8,6 +8,7 @@ static const Vector2 kryon_zero_vector2;
 
 
 #define UI_TK_MENU_MAX 8
+#define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
 static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;
@@ -23,10 +24,25 @@ typedef struct UIMenuOverlayState {
     int item_count;
 } UIMenuOverlayState;
 
+typedef struct UIContextMenuOverlayState {
+    int active;
+    int id;
+    int x;
+    int y;
+    int item_count;
+    int suppress_close;
+    MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
+} UIContextMenuOverlayState;
+
 static UIMenuOverlayState g_menu_overlay = {0};
+static UIContextMenuOverlayState g_context_menu_overlay = {0};
 static int g_menu_pending_bar_id = 0;
 static int g_menu_pending_activated = 0;
 static int g_menu_pending_closed_bar_id = 0;
+static int g_context_menu_open_id = 0;
+static int g_context_menu_pending_id = 0;
+static int g_context_menu_pending_activated = 0;
+static int g_context_menu_pending_closed_id = 0;
 static int g_canvas_depth = 0;
 static int g_canvas_mode_depth = 0;
 
@@ -343,6 +359,50 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
     }
 
     return activated;
+}
+
+static Rectangle
+menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
+{
+    int font = GetUIFontSize();
+    int row_h = ScaleUIPx(30);
+    int pad = ScaleUIPx(12);
+    int accel_w = ScaleUIPx(88);
+    int w = ScaleUIPx(180);
+
+    if(items == NULL || item_count <= 0)
+        return (Rectangle){(float)x, (float)y, 0.0f, 0.0f};
+
+    for(int i = 0; i < item_count; i++) {
+        int text_w = items[i].label != NULL ? TextWidth(items[i].label, font) : 0;
+        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) + accel_w : 0;
+        if(text_w + accel + pad * 2 > w)
+            w = text_w + accel + pad * 2;
+    }
+    return (Rectangle){(float)x, (float)y, (float)w,
+                       (float)(row_h * item_count + ScaleUIPx(8))};
+}
+
+static void
+queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
+{
+    int count = menu.item_count;
+
+    if(menu.items == NULL || count <= 0) {
+        g_context_menu_overlay.active = 0;
+        return;
+    }
+    if(count > UI_TK_CONTEXT_MENU_MAX_ITEMS)
+        count = UI_TK_CONTEXT_MENU_MAX_ITEMS;
+
+    g_context_menu_overlay.active = 1;
+    g_context_menu_overlay.id = menu.id;
+    g_context_menu_overlay.x = menu.x != NULL ? *menu.x : 0;
+    g_context_menu_overlay.y = menu.y != NULL ? *menu.y : 0;
+    g_context_menu_overlay.item_count = count;
+    g_context_menu_overlay.suppress_close = suppress_close;
+    for(int i = 0; i < count; i++)
+        g_context_menu_overlay.items[i] = menu.items[i];
 }
 
 MenuBarResult

@@ -15,6 +15,25 @@ extern "C" {
 /* A directory entry. `name` is the bare entry name (no path); the caller joins
  * it with the directory path. Capacity is KRY_FS_NAME_MAX. */
 #define KRY_FS_NAME_MAX 256
+#define KRY_FS_PATH_MAX 4096
+
+typedef enum {
+    KRY_USER_DIR_HOME,
+    KRY_USER_DIR_DESKTOP,
+    KRY_USER_DIR_DOCUMENTS,
+    KRY_USER_DIR_DOWNLOAD,
+    KRY_USER_DIR_MUSIC,
+    KRY_USER_DIR_PICTURES,
+    KRY_USER_DIR_VIDEOS,
+    KRY_USER_DIR_TEMPLATES,
+    KRY_USER_DIR_PUBLIC_SHARE
+} KryUserDir;
+
+typedef enum {
+    KRY_TRASH_DIR_ROOT,
+    KRY_TRASH_DIR_FILES,
+    KRY_TRASH_DIR_INFO
+} KryTrashDir;
 
 typedef struct {
     char name[KRY_FS_NAME_MAX];
@@ -76,6 +95,18 @@ int kry_fs_copy_recursive(const char *src, const char *dst);
 int kry_fs_move(const char *src, const char *dst);
 int kry_fs_remove_recursive(const char *path);
 int kry_fs_symlink(const char *target, const char *link_path);
+
+/* Path and Linux desktop-location helpers. Functions write a NUL-terminated
+ * path/name into `out` and return 1 on success, 0 when unavailable. */
+int kry_fs_join_path(char *out, int cap, const char *base, const char *name);
+const char *kry_fs_base_name(const char *path);
+int kry_fs_parent_path(char *out, int cap, const char *path);
+int kry_fs_home_dir(char *out, int cap);
+int kry_fs_data_home_dir(char *out, int cap);
+int kry_fs_user_dir(KryUserDir dir, char *out, int cap);
+int kry_fs_trash_dir(KryTrashDir dir, char *out, int cap);
+int kry_fs_icon_theme(char *out, int cap);
+int kry_fs_find_icon(const char *name, int size, char *out, int cap);
 
 #ifdef __cplusplus
 }
