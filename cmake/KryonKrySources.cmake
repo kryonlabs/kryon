@@ -25,7 +25,8 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
     file(GLOB KRYGEN_K2C_SOURCES CONFIGURE_DEPENDS "${KRYGEN_KRYON_DIR}/cmd/k2c/*.c")
     list(APPEND KRYGEN_K2C_SOURCES
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_parse.c")
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_parse.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_text.c")
     if(KRYON_HOST_CC)
         set(KRYGEN_HOST_CC "${KRYON_HOST_CC}")
     else()
