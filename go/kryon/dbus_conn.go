@@ -77,7 +77,15 @@ type dbusConn struct {
 func dbusSession() (*dbusConn, error) {
 	addr := os.Getenv("DBUS_SESSION_BUS_ADDRESS")
 	if addr == "" {
-		return nil, errors.New("dbus: DBUS_SESSION_BUS_ADDRESS not set")
+		// Services started outside the graphical session (systemd user
+		// units) often lack the variable; the well-known socket is the
+		// documented default.
+		if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
+			addr = "unix:path=" + xdg + "/bus"
+		}
+	}
+	if addr == "" {
+		return nil, errors.New("dbus: no session bus address")
 	}
 	transport, rest, ok := strings.Cut(addr, ":")
 	if !ok {
