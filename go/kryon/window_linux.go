@@ -151,19 +151,26 @@ func (r *windowRuntime) pumpEvents() {
 			r.window.width = ev.x
 			r.window.height = ev.y
 			r.dirty = true
+
 		case x11EventExposeKind:
 			r.dirty = true // server asks for a repaint after occlusion
 		case x11EventTap:
+			ev.x += r.window.posX
+			ev.y += r.window.posY
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
 			} else if c, ok := r.Runtime.(legacyPointerController); ok {
 				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventMotion:
+			ev.x += r.window.posX
+			ev.y += r.window.posY
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseMove(float32(ev.x), float32(ev.y))
 			}
 		case x11EventRelease:
+			ev.x += r.window.posX
+			ev.y += r.window.posY
 			// A full click (press+release) feeds the widget layer: consumeTap
 			// reads the tap/click queues, which only QueueMouseButton fills —
 			// bare Up events left every Button widget click-dead under X11.
@@ -329,6 +336,9 @@ type x11Window struct {
 	conn   net.Conn
 	seq    uint16
 	reqBuf []byte
+
+	posX int // window position on the root (input translation)
+	posY int
 
 	resourceBase uint32
 	resourceMask uint32
@@ -968,6 +978,11 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 		y := int(int16(get16(buf[26:])))
 		return x11Event{kind: x11EventMotion, x: x, y: y}, true
 	case x11EventConfigureNotify:
+		// x/y at 16/18 are the window's position on the root; pointer events
+		// arrive relative to the window while the widget canvas is laid out
+		// in root space, so input needs the translation added back.
+		w.posX = int(int16(get16(buf[16:])))
+		w.posY = int(int16(get16(buf[18:])))
 		return x11Event{kind: x11EventResize, x: int(get16(buf[20:])), y: int(get16(buf[22:]))}, true
 	case x11EventClientMessage:
 		if get32(buf[8:]) == w.wmProtocols && get32(buf[12:]) == w.wmDeleteWindow {
