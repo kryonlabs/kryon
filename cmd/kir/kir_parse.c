@@ -4,6 +4,7 @@
  */
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_text.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -11,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 enum {
     K2IR_PATH_MAX = 1024,
@@ -29,20 +29,6 @@ die(const char *fmt, ...)
     fputc('\n', stderr);
     va_end(ap);
     exit(1);
-}
-
-static char *
-trim(char *s)
-{
-    char *e;
-
-    while(*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
-        s++;
-    e = s + strlen(s);
-    while(e > s && (e[-1] == ' ' || e[-1] == '\t' ||
-                    e[-1] == '\r' || e[-1] == '\n'))
-        *--e = '\0';
-    return s;
 }
 
 static int
@@ -79,34 +65,6 @@ parse_symbol_before_colons(const char *s, char *out, size_t out_size)
     return out[0] != '\0' && q == p;
 }
 
-static void
-path_join(char *dst, size_t dst_size, const char *a, const char *b)
-{
-    if(a == NULL || a[0] == '\0')
-        snprintf(dst, dst_size, "%s", b);
-    else if(a[strlen(a) - 1] == '/')
-        snprintf(dst, dst_size, "%s%s", a, b);
-    else
-        snprintf(dst, dst_size, "%s/%s", a, b);
-}
-
-static void
-mkdir_parent(const char *path)
-{
-    char tmp[K2IR_PATH_MAX];
-    size_t i;
-
-    snprintf(tmp, sizeof(tmp), "%s", path);
-    for(i = 1; i < strlen(tmp); i++) {
-        if(tmp[i] != '/')
-            continue;
-        tmp[i] = '\0';
-        if(mkdir(tmp, 0755) != 0 && errno != EEXIST)
-            die("%s: mkdir failed: %s", tmp, strerror(errno));
-        tmp[i] = '/';
-    }
-}
-
 static const char *
 relative_path(const char *root, const char *path)
 {
@@ -121,20 +79,6 @@ relative_path(const char *root, const char *path)
         return path + n;
     }
     return path;
-}
-
-static void
-strip_source_ext(char *dst, size_t dst_size, const char *path)
-{
-    size_t len;
-
-    len = strlen(path);
-    if(len > 4 && strcmp(path + len - 4, ".kry") == 0)
-        len -= 4;
-    if(len >= dst_size)
-        len = dst_size - 1;
-    memcpy(dst, path, len);
-    dst[len] = '\0';
 }
 
 static int
@@ -549,8 +493,8 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
        strstr(text, "<=") != NULL || strstr(text, ">=") != NULL)
         return 0;
     *eq = '\0';
-    name = trim(text);
-    expr = trim(eq + 1);
+    name = kir_trim(text);
+    expr = kir_trim(eq + 1);
     if(name[0] == '\0' || expr[0] == '\0')
         return 0;
     for(const char *p = name; *p != '\0'; p++)
@@ -559,7 +503,7 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
     n = strlen(expr);
     if(n > 0 && expr[n - 1] == ';') {
         expr[n - 1] = '\0';
-        expr = trim(expr);
+        expr = kir_trim(expr);
     }
     snprintf(field, field_size, "%s", name);
     snprintf(value, value_size, "%s", expr);
@@ -617,7 +561,7 @@ copy_trim_expr(char *dst, size_t dst_size, const char *src)
     char *t;
 
     snprintf(tmp, sizeof(tmp), "%s", src != NULL ? src : "");
-    t = trim(tmp);
+    t = kir_trim(tmp);
     snprintf(dst, dst_size, "%s", t);
 }
 
@@ -862,7 +806,7 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
                                     int child;
 
                                     *p = '\0';
-                                    if(trim(start)[0] != '\0') {
+                                    if(kir_trim(start)[0] != '\0') {
                                         child = parse_expr_to_kir(fn, start, span);
                                         append_call_arg(fn, idx, child);
                                     }
@@ -946,7 +890,7 @@ stmt_expr_source(KirStmtKind kind, const char *text)
 
         snprintf(buf, sizeof(buf), "%s", text);
         strip_expr_block_brace(buf);
-        b = trim(buf);
+        b = kir_trim(buf);
         if(strncmp(b, "else if ", 8) == 0)
             return b + 8;
         if(strncmp(b, "if ", 3) == 0)
@@ -1076,15 +1020,15 @@ parse_state_field(KirModule *module, const char *path, int line_no, char *line)
     if(colon == NULL)
         return;
     *colon = '\0';
-    name = trim(line);
-    type = trim(colon + 1);
+    name = kir_trim(line);
+    type = kir_trim(colon + 1);
     init = "";
     eq = strchr(type, '=');
     if(eq != NULL) {
         *eq = '\0';
-        init = trim(eq + 1);
+        init = kir_trim(eq + 1);
     }
-    KirModuleAddStateField(module, name, trim(type), init,
+    KirModuleAddStateField(module, name, kir_trim(type), init,
                            KirSpan(path, line_no, 1));
 }
 
@@ -1262,7 +1206,7 @@ looks_like_function_header(const char *line)
     if(p == NULL)
         return 0;
     snprintf(tmp, sizeof(tmp), "%s", p + 2);
-    body = trim(tmp);
+    body = kir_trim(tmp);
     if(starts_word(body, "#import") || starts_word(body, "#defined") ||
        starts_word(body, "#define") || starts_word(body, "struct") ||
        starts_word(body, "enum"))
@@ -1324,12 +1268,12 @@ parse_cond_start(char *line, char **condition)
     } else {
         return 0;
     }
-    q = trim(q);
+    q = kir_trim(q);
     n = strlen(q);
     if(n == 0 || q[n - 1] != '{')
         return 0;
     q[n - 1] = '\0';
-    q = trim(q);
+    q = kir_trim(q);
     if(q[0] == '\0')
         return 0;
     *condition = q;
@@ -1744,7 +1688,7 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
 
     if(strncmp(line, "#assert", 7) == 0 &&
        (line[7] == '\0' || isspace((unsigned char)line[7]))) {
-        char *body = trim(line + 7);
+        char *body = kir_trim(line + 7);
         char *comma;
 
         if(body[0] == '\0')
@@ -1752,13 +1696,13 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
         comma = find_top_comma(body);
         if(comma != NULL) {
             *comma = '\0';
-            snprintf(msg, sizeof(msg), "%s", trim(comma + 1));
+            snprintf(msg, sizeof(msg), "%s", kir_trim(comma + 1));
             if(msg[0] == '\0')
                 snprintf(msg, sizeof(msg), "\"Kry #assert failed\"");
         } else {
             snprintf(msg, sizeof(msg), "\"Kry #assert failed\"");
         }
-        expand_compile_expr(cond, sizeof(cond), consts, trim(body));
+        expand_compile_expr(cond, sizeof(cond), consts, kir_trim(body));
         {
             long value = 0;
             int known = eval_const_condition(cond, &value);
@@ -1776,7 +1720,7 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
     }
     if(strncmp(line, "#error", 6) == 0 &&
        (line[6] == '\0' || isspace((unsigned char)line[6]))) {
-        char *body = trim(line + 6);
+        char *body = kir_trim(line + 6);
 
         if(body[0] == '\0')
             die("%s:%d: #error needs a message", path, line_no);
@@ -1943,9 +1887,6 @@ kir_parse_file(const char *path, const char *root)
     char line[K2IR_LINE_MAX];
     char module_name[KIR_NAME_MAX] = "main";
     char rel[K2IR_PATH_MAX];
-    char stem[K2IR_PATH_MAX];
-    char out_rel[K2IR_PATH_MAX];
-    char out_path[K2IR_PATH_MAX];
     int line_no = 0;
     enum { TOP, APP, STATE, ROUTE, TYPE, ENUM, FUNCTION } mode = TOP;
     int enum_return = TOP;
@@ -2011,7 +1952,7 @@ kir_parse_file(const char *path, const char *root)
         strip_block_comments(line, &in_block_comment);
         snprintf(raw, sizeof(raw), "%s", line);
         {
-            char *trimmed = trim(raw);
+            char *trimmed = kir_trim(raw);
 
             if(trimmed[0] == '\0' || strncmp(trimmed, "//", 2) == 0) {
                 if(pending_len == 0)
@@ -2201,7 +2142,7 @@ kir_parse_file(const char *path, const char *root)
                         /* trim in place: the lookahead is appended verbatim,
                          * and a raw fgets line would carry its '\n' into the
                          * joined statement text. */
-                        lt = trim(la);
+                        lt = kir_trim(la);
                         if(lt[0] == '\0') {
                             line_no++;   /* blank lookaheads still count */
                             continue;
@@ -2596,7 +2537,7 @@ kir_parse_file(const char *path, const char *root)
                     KirDefine *def;
 
                     snprintf(value, sizeof(value), "%s", expr + 7);
-                    def = KirModuleAddDefine(module, cname, trim(value),
+                    def = KirModuleAddDefine(module, cname, kir_trim(value),
                                              KirSpan(rel, line_no, 1));
                     if(def != NULL)
                         snprintf(def->guard, sizeof(def->guard), "%s",
@@ -2612,7 +2553,7 @@ kir_parse_file(const char *path, const char *root)
                         long value = 0;
 
                         expand_compile_expr(expanded, sizeof(expanded),
-                                            &consts, trim((char *)(expr + 4)));
+                                            &consts, kir_trim((char *)(expr + 4)));
                         if(!eval_const_condition(expanded, &value))
                             die("%s:%d: #run expression is not a constant: %s",
                                 rel, line_no, expanded);

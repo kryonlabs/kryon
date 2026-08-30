@@ -2,6 +2,7 @@
  * k2g_lower.c - Kir -> Go backend. See k2g_lower.h for scope.
  */
 #include "k2g_lower.h"
+#include "kir_text.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -49,37 +50,6 @@ stem_from_source(const char *src, char *dst, size_t dst_size)
         n = dst_size - 1;
     memcpy(dst, base, n);
     dst[n] = '\0';
-}
-
-/* "some/path-part" -> "SomePathPart": CamelCase Go identifier */
-static void
-camel(const char *s, char *dst, size_t dst_size)
-{
-    size_t n = 0;
-    int up = 1;
-
-    for(const char *p = s; *p && n + 1 < dst_size; p++) {
-        if(isalnum((unsigned char)*p)) {
-            dst[n++] = up ? (char)toupper((unsigned char)*p) : *p;
-            up = 0;
-        } else {
-            up = 1;
-        }
-    }
-    if(n == 0 && dst_size > 1)
-        dst[n++] = 'X';
-    if(isdigit((unsigned char)dst[0]) && dst_size > 2) {
-        memmove(dst + 1, dst, n + 1);
-        dst[0] = 'M';
-        n++;
-    }
-    dst[n] = '\0';
-}
-
-static int
-is_ident_char(int c)
-{
-    return isalnum(c) || c == '_';
 }
 
 static int
@@ -233,7 +203,7 @@ go_type(const char *type, char *dst, size_t dst_size)
             int identish = base[0] != '\0';
 
             for(char *c = base; *c != '\0'; c++)
-                if(!is_ident_char((unsigned char)*c))
+                if(!kir_is_ident_char((unsigned char)*c))
                     identish = 0;
             if(identish) {
                 char qualified[K2G_NAME_MAX * 2];
@@ -250,7 +220,7 @@ go_type(const char *type, char *dst, size_t dst_size)
         int identish = t[0] != '\0';
 
         for(char *c = t; *c != '\0'; c++)
-            if(!is_ident_char((unsigned char)*c))
+            if(!kir_is_ident_char((unsigned char)*c))
                 identish = 0;
         if(identish) {
             qualify_runtime_go_type(t, dst, dst_size);
@@ -321,14 +291,14 @@ k2g_build_global_functions(const KirProgram *const *progs, int prog_count)
             char guard[K2G_NAME_MAX];
 
             stem_from_source(m->source_path, stem, sizeof(stem));
-            camel(stem, guard, sizeof(guard));
+            kir_camel_ident(stem, guard, sizeof(guard));
             for(int fi = 0; fi < m->function_count; fi++) {
                 const KirFunction *fn = &m->functions[fi];
                 char fname[K2G_NAME_MAX];
 
                 if(fn->is_extern || g_function_count >= 512)
                     continue;
-                camel(fn->name, fname, sizeof(fname));
+                kir_camel_ident(fn->name, fname, sizeof(fname));
                 snprintf(g_functions[g_function_count].kry,
                          sizeof(g_functions[0].kry), "%s", fn->name);
                 snprintf(g_functions[g_function_count].guard,
@@ -345,16 +315,15 @@ k2g_build_global_functions(const KirProgram *const *progs, int prog_count)
 /* ------------------------------------------------ module lowering context */
 
 static int split_top(const char *s, char parts[][K2G_TEXT_MAX], int max);
-static const char *skip_ws(const char *p);
 
 static int
 k2g_is_go_elided_lifecycle(const char *text)
 {
-    const char *p = skip_ws(text);
+    const char *p = kir_skip_ws(text);
 
-    return strncmp(p, "BeginUI", 7) == 0 && skip_ws(p + 7)[0] == '('
+    return strncmp(p, "BeginUI", 7) == 0 && kir_skip_ws(p + 7)[0] == '('
         ? 1
-        : (strncmp(p, "EndUI", 5) == 0 && skip_ws(p + 5)[0] == '(');
+        : (strncmp(p, "EndUI", 5) == 0 && kir_skip_ws(p + 5)[0] == '(');
 }
 
 /* One '#extern' declaration bridged to a Go host method. */
@@ -462,10 +431,10 @@ extern_go_name(const char *target, const char *kry, char *dst, size_t dst_size)
     if(base[0] != '\0') {
         snprintf(dst, dst_size, "%s", base);
         for(char *c = dst; *c != '\0'; c++)
-            if(!is_ident_char((unsigned char)*c))
+            if(!kir_is_ident_char((unsigned char)*c))
                 *c = '_';
     } else {
-        camel(kry, dst, dst_size);
+        kir_camel_ident(kry, dst, dst_size);
     }
 }
 
@@ -538,7 +507,7 @@ add_extern(const char *kry, const char *args, const char *ret,
     split_params(args, ex);
     if(extern_c_target(target, ex->c_symbol, sizeof(ex->c_symbol))) {
         ex->cgo = 1;
-        camel(kry, fname, sizeof(fname));
+        kir_camel_ident(kry, fname, sizeof(fname));
         snprintf(ex->go, sizeof(ex->go), "k2gC%s%s", g_guard, fname);
     } else {
         extern_go_name(target, kry, ex->go, sizeof(ex->go));
@@ -619,8 +588,8 @@ parse_enum(const KirType *t)
     } else {
         e = &g_enums[g_enum_count++];
         memset(e, 0, sizeof(*e));
-        camel(t->name, e->go_type, sizeof(e->go_type));
-        camel(t->name, e->prefix, sizeof(e->prefix));
+        kir_camel_ident(t->name, e->go_type, sizeof(e->go_type));
+        kir_camel_ident(t->name, e->prefix, sizeof(e->prefix));
     }
     while(*p != '\0') {
         char line[K2G_TEXT_MAX];
@@ -673,7 +642,7 @@ parse_enum(const KirType *t)
         if(e->prefix[0] != '\0')
             snprintf(m->go, sizeof(m->go), "%s%s", e->prefix, m->kry);
         else
-            camel(m->kry, m->go, sizeof(m->go));
+            kir_camel_ident(m->kry, m->go, sizeof(m->go));
         if(val != NULL)
             snprintf(m->val, sizeof(m->val), "%s", val);
         if(g_const_count < 512)
@@ -747,7 +716,7 @@ k2g_expr_is_state_char_buffer(const char *expr)
            strstr(g_mod->state_fields[i].type, "char") == NULL ||
            strchr(g_mod->state_fields[i].type, '*') != NULL)
             continue;
-        camel(g_mod->state_fields[i].name, name, sizeof(name));
+        kir_camel_ident(g_mod->state_fields[i].name, name, sizeof(name));
         if(strcmp(expr + 3, name) == 0)
             return 1;
     }
@@ -801,15 +770,6 @@ conv_arg(const char *kry_type, const char *expr)
     else
         snprintf(buf, sizeof(buf), "%s", expr);
     return buf;
-}
-
-/* skip spaces from *pp */
-static const char *
-skip_ws(const char *p)
-{
-    while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
-        p++;
-    return p;
 }
 
 /* ------------------------------------------------------- expression pass */
@@ -971,7 +931,7 @@ props_field_at(const char *type, int index)
 static void
 go_field_name(const char *field, char *dst, size_t dst_size)
 {
-    camel(field, dst, dst_size);
+    kir_camel_ident(field, dst, dst_size);
     if(strcmp(dst, "Id") == 0)
         snprintf(dst, dst_size, "ID");
     else if(strcmp(dst, "FocusId") == 0)
@@ -1159,7 +1119,7 @@ k2g_translate_array_literal(const KirModule *m, const char *gt,
 
     if(!k2g_go_array_element_type(gt, elem, sizeof(elem)))
         return 0;
-    init = skip_ws(init);
+    init = kir_skip_ws(init);
     if(*init != '{')
         return 0;
     q = init + 1;
@@ -1187,7 +1147,7 @@ k2g_translate_array_literal(const KirModule *m, const char *gt,
     count = split_top(raw, parts, 64);
     dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s{", gt);
     for(int i = 0; i < count; i++) {
-        const char *part = skip_ws(parts[i]);
+        const char *part = kir_skip_ws(parts[i]);
         char value[K2G_TEXT_MAX];
 
         if(i > 0)
@@ -1272,7 +1232,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             for(i = 0; i < n; i++) {
                 char arg[K2G_TEXT_MAX];
 
-                tx_expr(m, skip_ws(parts[i]), arg, sizeof(arg));
+                tx_expr(m, kir_skip_ws(parts[i]), arg, sizeof(arg));
                 if(i > 0) {
                     out[on++] = ',';
                     out[on++] = ' ';
@@ -1327,7 +1287,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 static const char *fields[4] = {"R", "G", "B", "A"};
 
                 for(int i = 0; i < 4; i++)
-                    tx_expr(m, skip_ws(parts[i]), args[i], sizeof(args[i]));
+                    tx_expr(m, kir_skip_ws(parts[i]), args[i], sizeof(args[i]));
                 if(*dn + 4096 < K2G_TEXT_MAX) {
                     *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
                         "%s.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
@@ -1364,7 +1324,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
             *dn += (size_t)snprintf(dst + *dn, K2G_TEXT_MAX - *dn,
                                     "%s{", qtype);
             for(int i = 0, emitted = 0, positional = 0; i < count; i++) {
-                char *part = (char *)skip_ws(parts[i]);
+                char *part = (char *)kir_skip_ws(parts[i]);
                 char *eq;
                 char field[K2G_NAME_MAX];
                 char value[K2G_TEXT_MAX];
@@ -1378,10 +1338,10 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     snprintf(field, sizeof(field), "%s", mapped);
                     if(*part == '\0')
                         continue;
-                    if(strcmp(field, "Bounds") == 0 && *skip_ws(part) == '{') {
+                    if(strcmp(field, "Bounds") == 0 && *kir_skip_ws(part) == '{') {
                         char rect[K2G_TEXT_MAX];
 
-                        snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(part));
+                        snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(part));
                         tx_expr(m, rect, value, sizeof(value));
                     } else {
                         tx_expr(m, part, value, sizeof(value));
@@ -1394,12 +1354,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     go_field_name(part + 1, field, sizeof(field));
                     if(strcmp(field, "TextSize") == 0)
                         continue;
-                    if(strcmp(field, "Bounds") == 0 && *skip_ws(eq + 1) == '{') {
+                    if(strcmp(field, "Bounds") == 0 && *kir_skip_ws(eq + 1) == '{') {
                         char rect[K2G_TEXT_MAX];
-                        snprintf(rect, sizeof(rect), "(Rectangle)%s", skip_ws(eq + 1));
+                        snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));
                         tx_expr(m, rect, value, sizeof(value));
                     } else {
-                        tx_expr(m, skip_ws(eq + 1), value, sizeof(value));
+                        tx_expr(m, kir_skip_ws(eq + 1), value, sizeof(value));
                     }
                 }
                 if((strcmp(type, "TextFieldProps") == 0 ||
@@ -1485,7 +1445,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             if(!isalpha((unsigned char)*q) && *q != '_')
                 q = p; /* numeric or expression: not a cast */
             else
-                while(is_ident_char((unsigned char)*q) || *q == ' ' || *q == '*')
+                while(kir_is_ident_char((unsigned char)*q) || *q == ' ' || *q == '*')
                     q++;
             tl = (size_t)(q - (p + 1));
             if(*q == ')' && tl > 0 && tl < sizeof(char) * K2G_NAME_MAX) {
@@ -1495,7 +1455,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 memcpy(maybe, p + 1, tl < K2G_NAME_MAX - 1 ? tl : K2G_NAME_MAX - 1);
                 maybe[tl < K2G_NAME_MAX - 1 ? tl : K2G_NAME_MAX - 1] = '\0';
                 for(char *c = maybe; *c != '\0'; c++)
-                    if(!is_ident_char((unsigned char)*c) && *c != ' ' && *c != '*')
+                    if(!kir_is_ident_char((unsigned char)*c) && *c != ' ' && *c != '*')
                         identish = 0;
                 if(identish) {
                     p = tx_compound(m, p + 1, dst, &dn);
@@ -1505,7 +1465,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                      * form: emit operand inside parens manually */
                     if(*(p - 1) == ')' && strchr(maybe, '{') == NULL) {
                         /* scalar cast: consume one primary operand */
-                        const char *op = skip_ws(p);
+                        const char *op = kir_skip_ws(p);
                         char primary[K2G_TEXT_MAX];
                         size_t pn = 0;
 
@@ -1519,8 +1479,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                             if(dn + 1 < dst_size)
                                 dst[dn++] = ')';
                             p = after;
-                        } else if(is_ident_char((unsigned char)*op)) {
-                            while(is_ident_char((unsigned char)*op) &&
+                        } else if(kir_is_ident_char((unsigned char)*op)) {
+                            while(kir_is_ident_char((unsigned char)*op) &&
                                   pn + 1 < sizeof(primary))
                                 primary[pn++] = *op++;
                             primary[pn] = '\0';
@@ -1556,7 +1516,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             continue;
         }
         /* NULL -> nil */
-        if(strncmp(p, "NULL", 4) == 0 && !is_ident_char((unsigned char)p[4])) {
+        if(strncmp(p, "NULL", 4) == 0 && !kir_is_ident_char((unsigned char)p[4])) {
             const char *r = "nil";
             if(dn + 4 < dst_size) {
                 memcpy(dst + dn, r, 3);
@@ -1593,14 +1553,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             p = q;
             continue;
         }
-        if(is_ident_char((unsigned char)*p) || *p == '&') {
+        if(kir_is_ident_char((unsigned char)*p) || *p == '&') {
             int addr = *p == '&';
             const char *q = addr ? p + 1 : p;
             char ident[K2G_NAME_MAX];
             size_t il = 0;
             int sfi, fni;
 
-            while(is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
+            while(kir_is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
                 ident[il++] = *q++;
             ident[il] = '\0';
             if(il == 0) {
@@ -1612,7 +1572,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 char camel_name[K2G_NAME_MAX];
                 size_t cl;
 
-                camel(m->state_fields[sfi].name, camel_name, sizeof(camel_name));
+                kir_camel_ident(m->state_fields[sfi].name, camel_name, sizeof(camel_name));
                 cl = strlen(camel_name);
                 if(addr && dn + cl + 5 < dst_size) {
                     dst[dn++] = '&';
@@ -1641,9 +1601,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             {
                 int xi = k2g_extern_index(ident, il);
 
-                if(xi >= 0 && *skip_ws(q) == '(') {
+                if(xi >= 0 && *kir_skip_ws(q) == '(') {
                     char raw[K2G_TEXT_MAX];
-                    const char *ap = skip_ws(q) + 1;
+                    const char *ap = kir_skip_ws(q) + 1;
                     const char *ae = ap;
                     int depth = 1;
                     size_t rn = 0;
@@ -1694,7 +1654,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                         for(int i = 0; i < n; i++) {
                             char arg[K2G_TEXT_MAX];
 
-                            tx_expr(m, skip_ws(parts[i]), arg, sizeof(arg));
+                            tx_expr(m, kir_skip_ws(parts[i]), arg, sizeof(arg));
                             if(i > 0)
                                 dn += (size_t)snprintf(dst + dn,
                                                        K2G_TEXT_MAX - dn, ", ");
@@ -1715,14 +1675,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 }
             }
             fni = module_fn_index(m, ident, il);
-            if(fni >= 0 && *skip_ws(q) == '(') {
+            if(fni >= 0 && *kir_skip_ws(q) == '(') {
                 char fname[K2G_NAME_MAX * 2];
                 size_t fl;
 
                 {
                     char local[K2G_NAME_MAX];
 
-                    camel(m->functions[fni].name, local, sizeof(local));
+                    kir_camel_ident(m->functions[fni].name, local, sizeof(local));
                     snprintf(fname, sizeof(fname), "%s_%s", g_guard, local);
                 }
                 fl = strlen(fname);
@@ -1731,9 +1691,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     dn += fl;
                     dst[dn++] = '(';
                 }
-                p = skip_ws(q) + 1;
+                p = kir_skip_ws(q) + 1;
                 /* empty arg list? */
-                if(*skip_ws(p) == ')') {
+                if(*kir_skip_ws(p) == ')') {
                     if(m->state_count > 0 && dn + 3 < dst_size) {
                         memcpy(dst + dn, "st", 2);
                         dn += 2;
@@ -1744,7 +1704,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 }
                 continue;
             }
-            if(*skip_ws(q) == '(') {
+            if(*kir_skip_ws(q) == '(') {
                 int gfi = k2g_global_function_index(ident, il);
 
                 if(gfi >= 0 && strcmp(g_functions[gfi].guard, g_guard) != 0) {
@@ -1755,8 +1715,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                         dn += fl;
                         dst[dn++] = '(';
                     }
-                    p = skip_ws(q) + 1;
-                    if(*skip_ws(p) == ')') {
+                    p = kir_skip_ws(q) + 1;
+                    if(*kir_skip_ws(p) == ')') {
                         if(g_functions[gfi].state_count > 0 &&
                            dn + strlen(g_functions[gfi].guard) + 16 < dst_size) {
                             dn += (size_t)snprintf(
@@ -1910,7 +1870,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 continue;
             }
             /* runtime call? Capitalized identifiers route to the package API. */
-            if(isupper((unsigned char)ident[0]) && *skip_ws(q) == '(' &&
+            if(isupper((unsigned char)ident[0]) && *kir_skip_ws(q) == '(' &&
                sfi < 0) {
                 {
                     int written = snprintf(dst + dn, dst_size - dn,
@@ -1941,7 +1901,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             char field[K2G_NAME_MAX], mapped[K2G_NAME_MAX];
             size_t fl = 0;
 
-            while(is_ident_char((unsigned char)*q) && fl + 1 < sizeof(field))
+            while(kir_is_ident_char((unsigned char)*q) && fl + 1 < sizeof(field))
                 field[fl++] = *q++;
             field[fl] = '\0';
             go_field_name(field, mapped, sizeof(mapped));
@@ -1957,21 +1917,6 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
     }
     dst[dn] = '\0';
     (void)out;
-}
-
-/* strip trailing '{' and whitespace from a control header */
-static void
-strip_block_brace(char *s)
-{
-    size_t n = strlen(s);
-
-    while(n > 0 && isspace((unsigned char)s[n - 1]))
-        n--;
-    if(n > 0 && s[n - 1] == '{')
-        n--;
-    while(n > 0 && isspace((unsigned char)s[n - 1]))
-        n--;
-    s[n] = '\0';
 }
 
 /* -------------------------------------------------------- module lowering */
@@ -2056,7 +2001,7 @@ lower_for_header(const KirModule *m, char *head, size_t head_size)
                   (name_end[-1] == ' ' || name_end[-1] == '\t'))
                 name_end--;
             name_start = name_end;
-            while(name_start > src2 && is_ident_char((unsigned char)name_start[-1]))
+            while(name_start > src2 && kir_is_ident_char((unsigned char)name_start[-1]))
                 name_start--;
             if(name_start < name_end) {
                 char before[K2G_NAME_MAX];
@@ -2088,7 +2033,7 @@ lower_for_header(const KirModule *m, char *head, size_t head_size)
                                      before[cn - 1] == '\t'))
                         cn--;
                     for(size_t k = 0; k < cn; k++) {
-                        if(is_ident_char((unsigned char)before[k])) {
+                        if(kir_is_ident_char((unsigned char)before[k])) {
                             if(wordstart < 0)
                                 wordstart = (int)k;
                         } else if(wordstart >= 0) {
@@ -2130,7 +2075,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int indent = 1;
     int saved_array_count = k2g_array_count;
 
-    camel(fn->name, fname, sizeof(fname));
+    kir_camel_ident(fn->name, fname, sizeof(fname));
     /* signature: (st *State, <converted args>) */
     {
         char parts[32][K2G_TEXT_MAX];
@@ -2181,7 +2126,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         snprintf(raw, sizeof(raw), "%s", st->text);
         if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE ||
            st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
-            strip_block_brace(raw);
+            kir_strip_block_brace(raw);
         if(st->kind == KIR_STMT_EXPR && k2g_is_go_elided_lifecycle(raw)) {
             rw[0] = '\0';
         } else {
@@ -2202,7 +2147,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 char peek[K2G_TEXT_MAX];
 
                 snprintf(peek, sizeof(peek), "%s", fn->stmts[j + 1].text);
-                strip_block_brace(peek);
+                kir_strip_block_brace(peek);
                 if(strncmp(peek, "else", 4) == 0 &&
                    (peek[4] == '\0' || peek[4] == ' '))
                     break;
@@ -2217,7 +2162,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             int chained = 0;
 
             snprintf(cond, sizeof(cond), "%s", rw);
-            strip_block_brace(cond);
+            kir_strip_block_brace(cond);
             /* 'guard cond' lowers to a plain if: the body is the exit path
              * and must return by itself (k2c fires defers + returns; on the
              * Go path defer runs at function exit anyway). */
@@ -2244,7 +2189,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             char cond[K2G_TEXT_MAX];
 
             snprintf(cond, sizeof(cond), "%s", rw);
-            strip_block_brace(cond);
+            kir_strip_block_brace(cond);
             if(strncmp(cond, "while ", 6) == 0)
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
             emit_indent(f, indent);
@@ -2271,7 +2216,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             char head[K2G_TEXT_MAX];
 
             snprintf(head, sizeof(head), "%s", rw);
-            strip_block_brace(head);
+            kir_strip_block_brace(head);
             emit_indent(f, indent);
             if(strncmp(head, "switch", 6) == 0 &&
                 (head[6] == '\0' || head[6] == ' '))
@@ -2365,7 +2310,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 if(!go_type(tbuf, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", tbuf);
                 if(assign != NULL) {
-                    const char *init = skip_ws(assign + 2);
+                    const char *init = kir_skip_ws(assign + 2);
                     char translated[K2G_TEXT_MAX];
 
                     /* Go composite literals carry their type: 'var x = T{...}' */
@@ -2390,7 +2335,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             char wname[K2G_NAME_MAX];
             char wargs[K2G_TEXT_MAX];
 
-            camel(st->widget, wname, sizeof(wname));
+            kir_camel_ident(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
             fprintf(f, "%s.%s(%s)\n", K2G_RUNTIME_PKG, wname, wargs);
@@ -2398,11 +2343,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         }
         case KIR_STMT_RETURN:
         {
-            const char *value = skip_ws(rw);
+            const char *value = kir_skip_ws(rw);
 
             if(strncmp(value, "return", 6) == 0 &&
-               !is_ident_char((unsigned char)value[6]))
-                value = skip_ws(value + 6);
+               !kir_is_ident_char((unsigned char)value[6]))
+                value = kir_skip_ws(value + 6);
             emit_indent(f, indent);
             if(value[0] != '\0')
                 fprintf(f, "return %s\n", value);
@@ -2663,7 +2608,7 @@ cgo_param_name(const K2gExtern *ex, int index, char *dst, size_t dst_size)
     else
         snprintf(dst, dst_size, "arg%d", index);
     for(char *p = dst; *p != '\0'; p++) {
-        if(!is_ident_char((unsigned char)*p))
+        if(!kir_is_ident_char((unsigned char)*p))
             *p = '_';
     }
     if(!(isalpha((unsigned char)dst[0]) || dst[0] == '_')) {
@@ -2853,7 +2798,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
             if(seen_count < 64)
                 snprintf(seen_stems[seen_count++], sizeof(seen_stems[0]),
                          "%s", stem);
-            camel(stem, guard, sizeof(guard));
+            kir_camel_ident(stem, guard, sizeof(guard));
             k2g_array_count = 0;
             k2g_register_arrays_module(m);
             snprintf(path, sizeof(path), "%s/%s.go", out_dir, stem);
@@ -2926,7 +2871,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     for(int a = 0; a < ex->pcount; a++) {
                         char aname[K2G_NAME_MAX];
 
-                        camel(ex->pnames[a], aname, sizeof(aname));
+                        kir_camel_ident(ex->pnames[a], aname, sizeof(aname));
                         if(!go_type(ex->ptypes[a], gt, sizeof(gt)))
                             snprintf(gt, sizeof(gt), "any");
                         fprintf(f, "%s%s %s", a > 0 ? ", " : "", aname, gt);
@@ -3020,7 +2965,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                                 char fname[K2G_NAME_MAX], gt[K2G_NAME_MAX];
                                 size_t fl = (size_t)(colon - line);
 
-                                camel(line, fname, sizeof(fname));
+                                kir_camel_ident(line, fname, sizeof(fname));
                                 if(!go_type(colon + 1, gt, sizeof(gt)))
                                     snprintf(gt, sizeof(gt),
                                              "/* TODO %s */ any", colon + 1);
@@ -3037,7 +2982,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 char cname[K2G_NAME_MAX];
                 char cval[K2G_TEXT_MAX];
 
-                camel(m->defines[i].name, cname, sizeof(cname));
+                kir_camel_ident(m->defines[i].name, cname, sizeof(cname));
                 tx_expr(m, m->defines[i].value, cval, sizeof(cval));
                 fprintf(f, "const %s = %s\n", cname, cval);
             }
@@ -3046,7 +2991,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                 const KirGlobal *g = &m->globals[i];
                 char gname[K2G_NAME_MAX], gt[K2G_NAME_MAX], ginit[K2G_TEXT_MAX];
 
-                camel(g->name, gname, sizeof(gname));
+                kir_camel_ident(g->name, gname, sizeof(gname));
                 if(!go_type(g->type, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", g->type);
                 tx_expr(m, g->init, ginit, sizeof(ginit));
@@ -3065,7 +3010,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     const KirStateField *sf = &m->state_fields[i];
                     char fname[K2G_NAME_MAX], gt[K2G_NAME_MAX];
 
-                    camel(sf->name, fname, sizeof(fname));
+                    kir_camel_ident(sf->name, fname, sizeof(fname));
                     if(!go_type(sf->type, gt, sizeof(gt)))
                         snprintf(gt, sizeof(gt), "/* TODO %s */ any", sf->type);
                     fprintf(f, "\t%s %s\n", fname, gt);
@@ -3077,7 +3022,7 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     char fname[K2G_NAME_MAX], finit[K2G_TEXT_MAX];
                     char gt[K2G_NAME_MAX];
 
-                    camel(sf->name, fname, sizeof(fname));
+                    kir_camel_ident(sf->name, fname, sizeof(fname));
                     if(!go_type(sf->type, gt, sizeof(gt)))
                         snprintf(gt, sizeof(gt), "any");
                     tx_expr(m, sf->init, finit, sizeof(finit));
@@ -3127,9 +3072,9 @@ k2g_lower(const KirProgram *const *progs, int prog_count,
                     }
                 }
                 if(entry != NULL)
-                    camel(entry->name, frame, sizeof(frame));
+                    kir_camel_ident(entry->name, frame, sizeof(frame));
                 else
-                    camel(m->app.frame, frame, sizeof(frame));
+                    kir_camel_ident(m->app.frame, frame, sizeof(frame));
                 fprintf(f, "func main() {\n");
                 fprintf(f, "\t%s.Open(%s.AppConfig{\n", K2G_RUNTIME_PKG,
                         K2G_RUNTIME_PKG);

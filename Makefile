@@ -540,26 +540,29 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
-K2C_HDRS := cmd/k2c/k2c_lower.h cmd/kir/kir.h cmd/kir/kir_parse.h
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c
+KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h
+
+K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
+K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
 
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
 
-K2G_SRCS := $(sort $(wildcard cmd/k2g/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
-$(K2G): $(K2G_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
+K2G_SRCS := $(sort $(wildcard cmd/k2g/*.c)) $(KIR_SRCS)
+$(K2G): $(K2G_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2G_SRCS)
 
-K2JS_SRCS := $(sort $(wildcard cmd/k2js/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
-$(K2JS): $(K2JS_SRCS) cmd/k2js/k2js_lower.h cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
+K2JS_SRCS := $(sort $(wildcard cmd/k2js/*.c)) $(KIR_SRCS)
+$(K2JS): $(K2JS_SRCS) cmd/k2js/k2js_lower.h $(KIR_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/k2js -Icmd/kir -o $@ $(K2JS_SRCS)
 
-K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
-$(K2IR): $(K2IR_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
+K2IR_SRCS := $(sort $(wildcard cmd/k2ir/*.c)) $(KIR_SRCS)
+$(K2IR): $(K2IR_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2IR_SRCS)
 
-K2B_SRCS := $(sort $(wildcard cmd/k2b/*.c)) cmd/kir/kir.c cmd/kir/kir_parse.c
-$(K2B): $(K2B_SRCS) cmd/kir/kir.h cmd/kir/kir_parse.h | $(BUILD_DIR)/bin
+K2B_SRCS := $(sort $(wildcard cmd/k2b/*.c)) $(KIR_SRCS)
+$(K2B): $(K2B_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2B_SRCS) -lm
 
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin

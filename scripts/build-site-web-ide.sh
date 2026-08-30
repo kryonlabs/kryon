@@ -34,7 +34,7 @@ build_failed()
     -sENVIRONMENT=web,worker \
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/kir \
-    cmd/k2ir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c \
+    cmd/k2ir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
     -o "$tool_dir/k2ir.js" || build_failed
 
 "$EMCC" -O0 \
@@ -48,7 +48,7 @@ build_failed()
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Iinclude -Icmd/k2b -Icmd/kir \
     cmd/k2b/*.c \
-    cmd/kir/kir.c cmd/kir/kir_parse.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
     -o "$tool_dir/k2b.js" || build_failed
 
 "$EMCC" -O0 \
@@ -62,7 +62,7 @@ build_failed()
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/k2c -Icmd/kir \
     cmd/k2c/*.c \
-    cmd/kir/kir.c cmd/kir/kir_parse.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
     -o "$tool_dir/k2c.js" || build_failed
 
 "$EMCC" -O0 \
@@ -76,7 +76,7 @@ build_failed()
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/k2g -Icmd/kir \
     cmd/k2g/*.c \
-    cmd/kir/kir.c cmd/kir/kir_parse.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
     -o "$tool_dir/k2g.js" || build_failed
 
 "$EMCC" -O0 \
@@ -90,7 +90,7 @@ build_failed()
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/k2js -Icmd/kir \
     cmd/k2js/*.c \
-    cmd/kir/kir.c cmd/kir/kir_parse.c \
+    cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
     -o "$tool_dir/k2js.js" || build_failed
 
 "$EMCC" -Wall -Wextra -Os -Iinclude \

@@ -2,6 +2,7 @@
  * k2js_lower.c - Kir -> browser-loadable JavaScript backend.
  */
 #include "k2js_lower.h"
+#include "kir_text.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -79,36 +80,6 @@ base_from_source(const char *src, char *dst, size_t dst_size)
     dst[n] = '\0';
 }
 
-static int
-is_ident_char(int c)
-{
-    return isalnum(c) || c == '_';
-}
-
-static void
-camel(const char *s, char *dst, size_t dst_size)
-{
-    size_t n = 0;
-    int up = 1;
-
-    for(const char *p = s; *p != '\0' && n + 1 < dst_size; p++) {
-        if(isalnum((unsigned char)*p)) {
-            dst[n++] = up ? (char)toupper((unsigned char)*p) : *p;
-            up = 0;
-        } else {
-            up = 1;
-        }
-    }
-    if(n == 0 && dst_size > 1)
-        dst[n++] = 'X';
-    if(isdigit((unsigned char)dst[0]) && n + 1 < dst_size) {
-        memmove(dst + 1, dst, n + 1);
-        dst[0] = 'M';
-        n++;
-    }
-    dst[n] = '\0';
-}
-
 static void
 js_ident(const char *s, char *dst, size_t dst_size)
 {
@@ -118,7 +89,7 @@ js_ident(const char *s, char *dst, size_t dst_size)
         return;
     for(const char *p = s; *p != '\0' && n + 1 < dst_size; p++) {
         if((n == 0 && (isalpha((unsigned char)*p) || *p == '_')) ||
-           (n > 0 && is_ident_char((unsigned char)*p))) {
+           (n > 0 && kir_is_ident_char((unsigned char)*p))) {
             dst[n++] = *p;
         } else if(n > 0) {
             dst[n++] = '_';
@@ -127,29 +98,6 @@ js_ident(const char *s, char *dst, size_t dst_size)
     if(n == 0)
         dst[n++] = '_';
     dst[n] = '\0';
-}
-
-static const char *
-skip_ws(const char *p)
-{
-    while(*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
-        p++;
-    return p;
-}
-
-static void
-trim(char *s)
-{
-    size_t n;
-    char *p = s;
-
-    while(*p == ' ' || *p == '\t')
-        p++;
-    if(p != s)
-        memmove(s, p, strlen(p) + 1);
-    n = strlen(s);
-    while(n > 0 && isspace((unsigned char)s[n - 1]))
-        s[--n] = '\0';
 }
 
 static void
@@ -202,43 +150,6 @@ js_string_buf(const char *s, char *dst, size_t dst_size)
     if(n + 1 < dst_size)
         dst[n++] = '"';
     dst[n] = '\0';
-}
-
-static int
-split_top(const char *s, char parts[][K2JS_TEXT_MAX], int max)
-{
-    int depth = 0, n = 0;
-    const char *start = s;
-
-    for(const char *p = s; ; p++) {
-        if(*p == '"' || *p == '\'') {
-            char q = *p++;
-
-            while(*p != '\0' && *p != q) {
-                if(*p == '\\' && p[1] != '\0')
-                    p++;
-                p++;
-            }
-        } else if(*p == '\0' || (*p == ',' && depth == 0)) {
-            size_t len = (size_t)(p - start);
-
-            if(n < max && len < K2JS_TEXT_MAX) {
-                memcpy(parts[n], start, len);
-                parts[n][len] = '\0';
-                trim(parts[n]);
-                n++;
-            }
-            if(*p == '\0')
-                break;
-            start = p + 1;
-        } else if(*p == '(' || *p == '[' || *p == '{') {
-            depth++;
-        } else if(*p == ')' || *p == ']' || *p == '}') {
-            if(depth > 0)
-                depth--;
-        }
-    }
-    return n;
 }
 
 static int
@@ -297,7 +208,7 @@ method_name_from_target(const char *target, const char *fallback,
     const char *base;
 
     if(target == NULL || target[0] == '\0') {
-        camel(fallback, dst, dst_size);
+        kir_camel_ident(fallback, dst, dst_size);
         return;
     }
     if(strncmp(target, "js.", 3) == 0)
@@ -307,7 +218,7 @@ method_name_from_target(const char *target, const char *fallback,
 
         base = dot != NULL ? dot + 1 : target;
     }
-    camel(base[0] != '\0' ? base : fallback, dst, dst_size);
+    kir_camel_ident(base[0] != '\0' ? base : fallback, dst, dst_size);
 }
 
 static void
@@ -355,14 +266,14 @@ build_global_functions(const KirProgram *const *progs, int prog_count)
             char guard[K2JS_NAME_MAX];
 
             base_from_source(m->source_path, base, sizeof(base));
-            camel(base, guard, sizeof(guard));
+            kir_camel_ident(base, guard, sizeof(guard));
             for(int fi = 0; fi < m->function_count; fi++) {
                 const KirFunction *fn = &m->functions[fi];
                 char fname[K2JS_NAME_MAX];
 
                 if(fn->is_extern || g_function_count >= 512)
                     continue;
-                camel(fn->name, fname, sizeof(fname));
+                kir_camel_ident(fn->name, fname, sizeof(fname));
                 snprintf(g_functions[g_function_count].kry,
                          sizeof(g_functions[0].kry), "%s", fn->name);
                 snprintf(g_functions[g_function_count].guard,
@@ -400,20 +311,6 @@ contains_top_level_compound(const char *s)
     return 0;
 }
 
-static void
-strip_block_brace(char *s)
-{
-    size_t n = strlen(s);
-
-    while(n > 0 && isspace((unsigned char)s[n - 1]))
-        s[--n] = '\0';
-    if(n > 0 && s[n - 1] == '{') {
-        s[--n] = '\0';
-        while(n > 0 && isspace((unsigned char)s[n - 1]))
-            s[--n] = '\0';
-    }
-}
-
 static void tx_expr(const KirModule *m, const char *src,
                     char *dst, size_t dst_size);
 
@@ -421,7 +318,7 @@ static void
 tx_args(const KirModule *m, const char *raw, char *dst, size_t dst_size)
 {
     char parts[K2JS_PARAM_MAX][K2JS_TEXT_MAX];
-    int n = split_top(raw, parts, K2JS_PARAM_MAX);
+    int n = kir_split_top(raw, parts[0], K2JS_PARAM_MAX, sizeof(parts[0]));
     size_t dn = 0;
 
     dst[0] = '\0';
@@ -523,7 +420,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             while(p < q && dn + 1 < dst_size)
                 dst[dn++] = *p++;
             if((*q == 'f' || *q == 'F') &&
-               !is_ident_char((unsigned char)q[1]))
+               !kir_is_ident_char((unsigned char)q[1]))
                 p = q + 1;
             continue;
         }
@@ -532,7 +429,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             char ident[K2JS_NAME_MAX];
             size_t il = 0;
 
-            while(is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
+            while(kir_is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
                 ident[il++] = *q++;
             ident[il] = '\0';
             if(il > 0 && state_field_index(m, ident, il) >= 0) {
@@ -556,11 +453,11 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             size_t il = 0;
             int sfi, fni, xi;
 
-            while(is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
+            while(kir_is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
                 ident[il++] = *q++;
             ident[il] = '\0';
             if((strcmp(ident, "NULL") == 0 || strcmp(ident, "nil") == 0) &&
-               !is_ident_char((unsigned char)*q)) {
+               !kir_is_ident_char((unsigned char)*q)) {
                 dn += (size_t)snprintf(dst + dn, dst_size - dn, "null");
                 p = q;
                 continue;
@@ -578,11 +475,11 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 continue;
             }
             xi = extern_index(ident, il);
-            if(xi >= 0 && *skip_ws(q) == '(') {
+            if(xi >= 0 && *kir_skip_ws(q) == '(') {
                 char raw[K2JS_TEXT_MAX];
                 char args[K2JS_TEXT_MAX];
 
-                q = consume_group(skip_ws(q) + 1, raw, sizeof(raw));
+                q = consume_group(kir_skip_ws(q) + 1, raw, sizeof(raw));
                 tx_args(m, raw, args, sizeof(args));
                 dn += (size_t)snprintf(dst + dn, dst_size - dn,
                                        "kryon.hostCall(host || moduleHost, \"%s\", [%s])",
@@ -591,13 +488,13 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 continue;
             }
             fni = module_fn_index(m, ident, il);
-            if(fni >= 0 && *skip_ws(q) == '(') {
+            if(fni >= 0 && *kir_skip_ws(q) == '(') {
                 char raw[K2JS_TEXT_MAX];
                 char args[K2JS_TEXT_MAX];
                 char fname[K2JS_NAME_MAX];
 
-                camel(m->functions[fni].name, fname, sizeof(fname));
-                q = consume_group(skip_ws(q) + 1, raw, sizeof(raw));
+                kir_camel_ident(m->functions[fni].name, fname, sizeof(fname));
+                q = consume_group(kir_skip_ws(q) + 1, raw, sizeof(raw));
                 tx_args(m, raw, args, sizeof(args));
                 dn += (size_t)snprintf(dst + dn, dst_size - dn,
                                        "%s_%s(rt, state, host%s%s)",
@@ -606,14 +503,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 p = q;
                 continue;
             }
-            if(*skip_ws(q) == '(') {
+            if(*kir_skip_ws(q) == '(') {
                 int gfi = global_fn_index(ident, il);
 
                 if(gfi >= 0 && strcmp(g_functions[gfi].guard, g_guard) != 0) {
                     char raw[K2JS_TEXT_MAX];
                     char args[K2JS_TEXT_MAX];
 
-                    q = consume_group(skip_ws(q) + 1, raw, sizeof(raw));
+                    q = consume_group(kir_skip_ws(q) + 1, raw, sizeof(raw));
                     tx_args(m, raw, args, sizeof(args));
                     dn += (size_t)snprintf(dst + dn, dst_size - dn,
                                            "%s(rt, %s, host%s%s)",
@@ -718,8 +615,8 @@ emit_assign(FILE *f, const KirModule *m, const char *raw, int indent)
         memcpy(lhs, raw, ll);
         lhs[ll] = '\0';
         snprintf(rhs, sizeof(rhs), "%s", pos + strlen(op));
-        trim(lhs);
-        trim(rhs);
+        kir_trim_in_place(lhs);
+        kir_trim_in_place(rhs);
         tx_expr(m, lhs, out_lhs, sizeof(out_lhs));
         tx_expr(m, rhs, out_rhs, sizeof(out_rhs));
         emit_indent(f, indent);
@@ -731,23 +628,23 @@ static int
 split_direct_call(const char *src, char *name, size_t name_size,
                   char *args, size_t args_size)
 {
-    const char *p = skip_ws(src);
+    const char *p = kir_skip_ws(src);
     const char *q = p;
     size_t nl;
     char raw[K2JS_TEXT_MAX];
 
     if(!(isalpha((unsigned char)*q) || *q == '_'))
         return 0;
-    while(is_ident_char((unsigned char)*q))
+    while(kir_is_ident_char((unsigned char)*q))
         q++;
     nl = (size_t)(q - p);
     if(nl == 0 || nl >= name_size)
         return 0;
-    q = skip_ws(q);
+    q = kir_skip_ws(q);
     if(*q != '(')
         return 0;
     q = consume_group(q + 1, raw, sizeof(raw));
-    if(*skip_ws(q) != '\0')
+    if(*kir_skip_ws(q) != '\0')
         return 0;
     memcpy(name, p, nl);
     name[nl] = '\0';
@@ -786,13 +683,13 @@ emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
 
     *chained = 0;
     snprintf(cond, sizeof(cond), "%s", raw);
-    strip_block_brace(cond);
+    kir_strip_block_brace(cond);
     if(strncmp(cond, "guard ", 6) == 0)
         memmove(cond, cond + 6, strlen(cond + 6) + 1);
     if(strncmp(cond, "else if ", 8) == 0) {
         *chained = 1;
         memmove(cond, cond + 8, strlen(cond + 8) + 1);
-        trim(cond);
+        kir_trim_in_place(cond);
         emit_indent(f, indent);
         if(condition_is_widget_call(cond, widget, sizeof(widget), args,
                                     sizeof(args))) {
@@ -816,7 +713,7 @@ emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
     }
     if(strncmp(cond, "if ", 3) == 0)
         memmove(cond, cond + 3, strlen(cond + 3) + 1);
-    trim(cond);
+    kir_trim_in_place(cond);
     emit_indent(f, indent);
     if(condition_is_widget_call(cond, widget, sizeof(widget), args,
                                 sizeof(args))) {
@@ -854,11 +751,11 @@ emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
             nl = sizeof(name) - 1;
         memcpy(name, raw, nl);
         name[nl] = '\0';
-        trim(name);
+        kir_trim_in_place(name);
         js_ident(name, safe, sizeof(safe));
         if(eq != NULL) {
             snprintf(rhs, sizeof(rhs), "%s", eq + 1);
-            trim(rhs);
+            kir_trim_in_place(rhs);
             tx_expr(m, rhs, val, sizeof(val));
         } else {
             snprintf(val, sizeof(val), "null");
@@ -879,10 +776,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int block_stack[128];
     int block_top = 0;
 
-    camel(fn->name, fname, sizeof(fname));
+    kir_camel_ident(fn->name, fname, sizeof(fname));
     fprintf(f, "export function %s_%s(rt, state = moduleState, host = moduleHost",
             guard, fname);
-    n = split_top(fn->args, parts, K2JS_PARAM_MAX);
+    n = kir_split_top(fn->args, parts[0], K2JS_PARAM_MAX, sizeof(parts[0]));
     for(int i = 0; i < n; i++) {
         char *colon = strchr(parts[i], ':');
         char name[K2JS_NAME_MAX], safe[K2JS_NAME_MAX];
@@ -897,7 +794,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             nl = sizeof(name) - 1;
         memcpy(name, parts[i], nl);
         name[nl] = '\0';
-        trim(name);
+        kir_trim_in_place(name);
         js_ident(name, safe, sizeof(safe));
         fprintf(f, ", %s", safe);
     }
@@ -909,7 +806,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         char raw[K2JS_TEXT_MAX];
 
         snprintf(raw, sizeof(raw), "%s", st->text);
-        trim(raw);
+        kir_trim_in_place(raw);
         if(raw[0] == '\0')
             continue;
         switch(st->kind) {
@@ -970,7 +867,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
 
             if(strncmp(expr, "return", 6) == 0)
                 expr += 6;
-            trim(expr);
+            kir_trim_in_place(expr);
             emit_indent(f, indent);
             if(expr[0] == '\0') {
                 fprintf(f, "return kryon.snapshot(rt);\n");
@@ -1109,7 +1006,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
 
             stem_from_source(m->source_path, stem, sizeof(stem));
             base_from_source(m->source_path, base, sizeof(base));
-            camel(base, guard, sizeof(guard));
+            kir_camel_ident(base, guard, sizeof(guard));
             if(!validate_asserts(m))
                 return 1;
             set_module(m, guard);
@@ -1153,7 +1050,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
             if(frame_fn != NULL) {
                 char fname[K2JS_NAME_MAX];
 
-                camel(frame_fn->name, fname, sizeof(fname));
+                kir_camel_ident(frame_fn->name, fname, sizeof(fname));
                 fprintf(f, "  kryon.beginFrame(rt);\n");
                 fprintf(f, "  const result = %s_%s(rt, state, host);\n",
                         guard, fname);

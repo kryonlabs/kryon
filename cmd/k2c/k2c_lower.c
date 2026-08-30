@@ -4,6 +4,7 @@
  */
 #include "k2c_lower.h"
 #include "kir.h"
+#include "kir_text.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -63,22 +64,6 @@ guard_from_stem(const char *stem, char *dst, size_t dst_size)
     dst[n++] = '_';
     dst[n++] = 'H';
     dst[n] = '\0';
-}
-
-/* Strip a trailing '{' (and whitespace) from a control header's condition. */
-static void
-strip_block_brace(char *s)
-{
-    size_t n = strlen(s);
-
-    while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' ||
-                    s[n - 1] == '\r' || s[n - 1] == '\n'))
-        s[--n] = '\0';
-    if(n > 0 && s[n - 1] == '{') {
-        s[--n] = '\0';
-        while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t'))
-            s[--n] = '\0';
-    }
 }
 
 /* Convert a .kry type like "[64] char" or "[2][3] int" to C declarator
@@ -708,7 +693,7 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
             char cond[LOWER_TEXT_MAX];
 
             snprintf(cond, sizeof(cond), "%s", rw);
-            strip_block_brace(cond);
+            kir_strip_block_brace(cond);
             if(strncmp(cond, "guard ", 6) == 0) {
                 /* 'guard cond' -> if(cond) { fire defers; return; } */
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
@@ -748,7 +733,7 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
             char cond[LOWER_TEXT_MAX];
 
             snprintf(cond, sizeof(cond), "%s", rw);
-            strip_block_brace(cond);
+            kir_strip_block_brace(cond);
             if(strncmp(cond, "while ", 6) == 0)
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
             emit_indent(c, indent);
@@ -764,7 +749,7 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
             const char *kw = (st->kind == KIR_STMT_FOR) ? "for" : "switch";
 
             snprintf(head, sizeof(head), "%s", rw);
-            strip_block_brace(head);
+            kir_strip_block_brace(head);
             if(strncmp(head, kw, strlen(kw)) == 0 && head[strlen(kw)] == ' ')
                 memmove(head, head + strlen(kw) + 1,
                         strlen(head + strlen(kw) + 1) + 1);

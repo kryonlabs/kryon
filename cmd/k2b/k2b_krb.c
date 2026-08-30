@@ -1,6 +1,7 @@
 /* Emit a krb cartridge from Kir widget calls. Lowers a KirModule (shared
  * kir_parse.c frontend) to a .krb binary + C host. */
 #include "kir.h"
+#include "kir_text.h"
 #include "krb.h"
 #include "k2b_stb.h"
 #include "k2b_atlas.h"
@@ -220,14 +221,6 @@ wr_u32(unsigned char **p, unsigned v)
     *p += 4;
 }
 
-static const char *
-skip_ws(const char *s)
-{
-    while(s != NULL && (*s == ' ' || *s == '\t'))
-        s++;
-    return s;
-}
-
 static int
 starts_ident(const char *s, const char *word)
 {
@@ -326,7 +319,7 @@ parse_color(const char *expr)
     size_t i;
     size_t nlen;
 
-    expr = skip_ws(expr);
+    expr = kir_skip_inline_ws(expr);
     /* Theme getters (matched as substrings, so they also resolve inside
      * DarkenUIColor/LightenUIColor wrappers). */
     if(strstr(expr, "GetThemeBackground") != NULL)
@@ -373,7 +366,7 @@ parse_color(const char *expr)
 static int
 parse_coord(const char *expr, int *value, int *scaled)
 {
-    const char *p = skip_ws(expr);
+    const char *p = kir_skip_inline_ws(expr);
 
     *scaled = 0;
     *value = 0;
@@ -400,7 +393,7 @@ parse_coord(const char *expr, int *value, int *scaled)
                 } else {
                     continue;
                 }
-                p = skip_ws(p);
+                p = kir_skip_inline_ws(p);
                 if(*p == '+' || *p == '-') {
                     int sign = *p == '-' ? -1 : 1;
                     int add = 0;
@@ -433,7 +426,7 @@ parse_coord(const char *expr, int *value, int *scaled)
 static int
 font_size_of(const char *expr)
 {
-    const char *p = skip_ws(expr);
+    const char *p = kir_skip_inline_ws(expr);
 
     if(strstr(p, "Text24") != NULL)
         return 24;
@@ -552,18 +545,18 @@ add_node(KrbBuild *b, int type, const char *name)
 static const char *
 call_after_eq(const char *text)
 {
-    const char *p = skip_ws(text);
+    const char *p = kir_skip_inline_ws(text);
 
     /* Strip leading control keywords so 'if Button(...)' / 'else if ...' reach
      * the call, and 'x := Widget(...)' / 'x = Widget(...)' skip past the lhs by
      * locating the first identifier immediately followed by '('. */
     for(;;) {
         if(strncmp(p, "if", 2) == 0 && (p[2] == ' ' || p[2] == '\t')) {
-            p = skip_ws(p + 2);
+            p = kir_skip_inline_ws(p + 2);
             continue;
         }
         if(strncmp(p, "else", 4) == 0 && (p[4] == ' ' || p[4] == '\t')) {
-            p = skip_ws(p + 4);
+            p = kir_skip_inline_ws(p + 4);
             continue;
         }
         break;
@@ -587,7 +580,7 @@ parse_background(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
     KrbBuildNode *n;
-    char name[32];
+    char name[KIR_NAME_MAX];
 
     if(args == NULL)
         return 0;
@@ -606,7 +599,7 @@ parse_text(KrbBuild *b, const char *call)
     char parts[8][KIR_TEXT_MAX];
     int count;
     KrbBuildNode *n;
-    char name[32];
+    char name[KIR_NAME_MAX];
     int scaled;
 
     if(args == NULL)
@@ -620,7 +613,7 @@ parse_text(KrbBuild *b, const char *call)
          * format string in parts[0] and the bound value in parts[1] —
          * everything shifts one slot relative to plain Text. */
         char ident[KIR_NAME_MAX];
-        const char *q = skip_ws(parts[1]);
+        const char *q = kir_skip_inline_ws(parts[1]);
         size_t nident = 0;
 
         while((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') ||
@@ -630,16 +623,18 @@ parse_text(KrbBuild *b, const char *call)
             q++;
         }
         ident[nident] = '\0';
-        snprintf(name, sizeof(name),
-                 ident[0] != '\0' ? "%s" : "text%d", ident[0] != '\0' ? ident : "");
+        if(ident[0] != '\0')
+            snprintf(name, sizeof(name), "%s", ident);
+        else
+            snprintf(name, sizeof(name), "text%d", b->node_count);
         n = add_node(b, 2, name);
         if(n == NULL)
             return 0;
         extract_string(parts[0], n->text, sizeof(n->text));
-    } else if(parts[0][0] != '"' && is_ident_text(skip_ws(parts[0]))) {
+    } else if(parts[0][0] != '"' && is_ident_text(kir_skip_inline_ws(parts[0]))) {
         char ident[KIR_NAME_MAX];
 
-        snprintf(ident, sizeof(ident), "%s", skip_ws(parts[0]));
+        snprintf(ident, sizeof(ident), "%s", kir_skip_inline_ws(parts[0]));
         {
             char *cut = ident;
             while((*cut >= 'a' && *cut <= 'z') || (*cut >= 'A' && *cut <= 'Z') ||
@@ -682,7 +677,7 @@ parse_text(KrbBuild *b, const char *call)
 static int
 parse_color_ctor(const char *expr, unsigned *out)
 {
-    const char *p = skip_ws(expr);
+    const char *p = kir_skip_inline_ws(expr);
     unsigned comps[4];
     int i;
 
@@ -690,7 +685,7 @@ parse_color_ctor(const char *expr, unsigned *out)
         return 0;
     p += 8;
     for(i = 0; i < 4; i++) {
-        comps[i] = (unsigned)strtol(skip_ws(p), NULL, 0);
+        comps[i] = (unsigned)strtol(kir_skip_inline_ws(p), NULL, 0);
         p = strchr(p, ',');
         if(p != NULL)
             p++;
@@ -722,7 +717,7 @@ parse_circle(KrbBuild *b, const char *call)
         return 0;
     if(split_args(args + 1, parts, 10) < 3)
         return 0;
-    inner = skip_ws(parts[0]);
+    inner = kir_skip_inline_ws(parts[0]);
     if(strncmp(inner, "(Vector2){", 10) != 0)
         return 0;
     inner += 10;
@@ -776,7 +771,7 @@ parse_ring(KrbBuild *b, const char *call)
     if(n == NULL)
         return 0;
     {
-        const char *inner = skip_ws(parts[0]);
+        const char *inner = kir_skip_inline_ws(parts[0]);
         char center[KIR_TEXT_MAX];
         char *comma;
         size_t ilen;
@@ -896,7 +891,7 @@ static int try_widget(KrbBuild *b, const char *raw);
 static void
 add_handler_line(KrbHandler *h, const char *raw)
 {
-    const char *t = skip_ws(raw);
+    const char *t = kir_skip_inline_ws(raw);
 
     if(t[0] == '\0' || t[0] == '{' || t[0] == '}')
         return;
@@ -1035,7 +1030,7 @@ int emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
 static int
 parse_update(const char *text, char *path, int *kind, int *val)
 {
-    const char *p = skip_ws(text);
+    const char *p = kir_skip_inline_ws(text);
     const char *q;
     size_t plen;
 
@@ -1048,7 +1043,7 @@ parse_update(const char *text, char *path, int *kind, int *val)
         return 0;
     memcpy(path, p, plen);
     path[plen] = '\0';
-    q = skip_ws(q);
+    q = kir_skip_inline_ws(q);
     if(strncmp(q, "++;", 3) == 0) {
         *kind = 1;
         *val = 1;
@@ -1061,11 +1056,11 @@ parse_update(const char *text, char *path, int *kind, int *val)
     }
     if(strncmp(q, "+=", 2) == 0 || strncmp(q, "-=", 2) == 0) {
         *kind = q[0] == '+' ? 1 : 2;
-        *val = atoi(skip_ws(q + 2));
+        *val = atoi(kir_skip_inline_ws(q + 2));
         return 1;
     }
     if(*q == '=' && q[1] != '=') {
-        const char *r = skip_ws(q + 1);
+        const char *r = kir_skip_inline_ws(q + 1);
         KrbUpdate dummy;
         int used;
 
@@ -1125,14 +1120,14 @@ parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
 
     if(used == 0)
         return 0;
-    q = skip_ws(p + used);
+    q = kir_skip_inline_ws(p + used);
     *n = 1;
     *aop = 0;
     if(*q == '+' || *q == '-' || *q == '*' || *q == '/' || *q == '%') {
         int u2;
         int kind = *q;
 
-        q = skip_ws(q + 1);
+        q = kir_skip_inline_ws(q + 1);
         u2 = parse_term(q, &t[1]);
         if(u2 == 0)
             return 0;
@@ -1140,7 +1135,7 @@ parse_side(const char *p, KrbTerm t[2], int *n, int *aop)
         *aop = kind == '+' ? KRB_OP_ADD : kind == '-' ? KRB_OP_SUB :
                kind == '*' ? KRB_OP_MUL : kind == '%' ? KRB_OP_MOD :
                KRB_OP_DIV;
-        q = skip_ws(q + u2);
+        q = kir_skip_inline_ws(q + u2);
     }
     return (int)(q - p);
 }
@@ -1154,16 +1149,16 @@ parse_cond(const char *text, KrbGuard *g)
     int used;
     int oplen = 0;
 
-    if(p == NULL || p != skip_ws(text))
+    if(p == NULL || p != kir_skip_inline_ws(text))
         return 0;
-    p = skip_ws(p + 2);
+    p = kir_skip_inline_ws(p + 2);
     if(*p != '(')
         return 0;
-    p = skip_ws(p + 1);
+    p = kir_skip_inline_ws(p + 1);
     used = parse_side(p, g->l, &g->ln, &g->lop);
     if(used == 0)
         return 0;
-    cmp = skip_ws(p + used);
+    cmp = kir_skip_inline_ws(p + used);
     if(strncmp(cmp, "==", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "!=", 2) == 0) oplen = 2;
     else if(strncmp(cmp, "<=", 2) == 0) oplen = 2;
@@ -1174,7 +1169,7 @@ parse_cond(const char *text, KrbGuard *g)
     g->op = cmp[0] == '=' ? KRB_OP_EQ : cmp[0] == '!' ? KRB_OP_NE :
             cmp[0] == '<' ? (oplen == 2 ? KRB_OP_LE : KRB_OP_LT) :
                             (oplen == 2 ? KRB_OP_GE : KRB_OP_GT);
-    p = skip_ws(cmp + oplen);
+    p = kir_skip_inline_ws(cmp + oplen);
     used = parse_side(p, g->r, &g->rn, &g->rop);
     if(used == 0)
         return 0;
@@ -1201,7 +1196,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
         /* string-array locals ('opts: [3] const char* = {...}') become
          * option-list sources for Dropdown/Combobox lowering */
         {
-            const char *t = skip_ws(st->text);
+            const char *t = kir_skip_inline_ws(st->text);
             const char *colon = t != NULL ? strchr(t, ':') : NULL;
             const char *eq = colon != NULL ? strchr(colon, '=') : NULL;
 
@@ -1235,7 +1230,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
 
                 if(!g->has_else && j + 1 < fn->stmt_count &&
                    fn->stmts[j + 1].kind == KIR_STMT_IF &&
-                   strncmp(skip_ws(fn->stmts[j + 1].text), "else", 4) == 0) {
+                   strncmp(kir_skip_inline_ws(fn->stmts[j + 1].text), "else", 4) == 0) {
                     /* '} else {': marker item; guard stays open */
                     g->else_start = b->item_count;
                     g->has_else = 1;
@@ -1274,7 +1269,6 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
 
             {
                 char upath2[KIR_NAME_MAX];
-                KrbUpdate probe;
                 int rc2 = parse_update(st->text, upath2, &ukind, &uval);
 
                 if(rc2 == 2 || rc2 == 3) {
@@ -1292,7 +1286,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                         int un;
                         int uop;
 
-                        parse_side(skip_ws(strchr(st->text, '=') + 1),
+                        parse_side(kir_skip_inline_ws(strchr(st->text, '=') + 1),
                                    u->rhs, &un, &uop);
                         u->rhs_n = un;
                         u->rhs_op = uop;
@@ -1671,10 +1665,10 @@ strip_amp(const char *expr, char *dst, size_t dst_size)
 
     if(dst_size == 0)
         return;
-    expr = skip_ws(expr);
+    expr = kir_skip_inline_ws(expr);
     if(*expr == '&')
         expr++;
-    expr = skip_ws(expr);
+    expr = kir_skip_inline_ws(expr);
     while(n + 1 < dst_size && ((*expr >= 'a' && *expr <= 'z') ||
            (*expr >= 'A' && *expr <= 'Z') || (*expr >= '0' && *expr <= '9') ||
            *expr == '_'))
@@ -1710,7 +1704,7 @@ parse_checkbox(KrbBuild *b, const char *call)
     n->h = 16;
     n->flags |= KRB_FLAG_SCALE_W | KRB_FLAG_SCALE_H;
     extract_string(parts[3], n->text, sizeof(n->text));
-    n->bind_slot = atoi(skip_ws(parts[0]));
+    n->bind_slot = atoi(kir_skip_inline_ws(parts[0]));
     n->color = KRB_COLOR_THEME | KRY_THEME_TEXT;
     return 1;
 }
@@ -1742,7 +1736,7 @@ parse_toggle(KrbBuild *b, const char *call)
     if(parse_coord(parts[4], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
     if(count > 6)
         extract_string(parts[6], n->text, sizeof(n->text));
-    n->bind_slot = atoi(skip_ws(parts[0]));
+    n->bind_slot = atoi(kir_skip_inline_ws(parts[0]));
     n->color = KRB_COLOR_THEME | KRY_THEME_SURFACE;
     return 1;
 }
@@ -1795,7 +1789,7 @@ parse_rect_fields(const char *expr, int *x, int *y, int *w, int *h,
 static int
 parse_scroll_area_decl(KrbBuild *b, const char *text)
 {
-    const char *t = skip_ws(text);
+    const char *t = kir_skip_inline_ws(text);
     const char *colon = t != NULL ? strchr(t, ':') : NULL;
     const char *eq = colon != NULL ? strchr(colon, '=') : NULL;
     const char *open;
@@ -1862,7 +1856,7 @@ find_scroll_area(KrbBuild *b, const char *name)
 static void
 remember_scroll_view(KrbBuild *b, const char *raw, const KrbScrollAreaDef *area)
 {
-    const char *t = skip_ws(raw);
+    const char *t = kir_skip_inline_ws(raw);
     const char *colon = t != NULL ? strchr(t, ':') : NULL;
     const char *eq = t != NULL ? strchr(t, '=') : NULL;
     KrbScrollViewDef *view;
@@ -1900,7 +1894,7 @@ parse_begin_scroll_container(KrbBuild *b, const char *raw, const char *call)
 
     if(args == NULL)
         return 0;
-    p = skip_ws(args + 1);
+    p = kir_skip_inline_ws(args + 1);
     while((isalnum((unsigned char)p[len]) || p[len] == '_') &&
           len + 1 < sizeof(area_name))
         len++;
@@ -1996,8 +1990,8 @@ parse_slider(KrbBuild *b, const char *call)
     coord_flag(parts[2], &y, &flags, KRB_FLAG_SCALE_Y);
     coord_flag(parts[3], &w, &flags, KRB_FLAG_SCALE_W);
     return add_control_node(b, KRB_CTRL_SLIDER, path, x, y, w, 16, flags,
-                            atoi(skip_ws(parts[0])), atoi(skip_ws(parts[5])),
-                            atoi(skip_ws(parts[6])), 1, label);
+                            atoi(kir_skip_inline_ws(parts[0])), atoi(kir_skip_inline_ws(parts[5])),
+                            atoi(kir_skip_inline_ws(parts[6])), 1, label);
 }
 
 /* Spinbox((SpinboxProps){bounds,id,min,max,step,&val,disabled}) -> step control. */
@@ -2035,8 +2029,8 @@ parse_spinbox(KrbBuild *b, const char *call)
         return 0;
     parse_rect_fields(parts[0], &x, &y, &w, &h, &flags);
     return add_control_node(b, KRB_CTRL_SPINBOX, path, x, y, w, h, flags,
-                            atoi(skip_ws(parts[1])), atoi(skip_ws(parts[2])),
-                            atoi(skip_ws(parts[3])), atoi(skip_ws(parts[4])), "");
+                            atoi(kir_skip_inline_ws(parts[1])), atoi(kir_skip_inline_ws(parts[2])),
+                            atoi(kir_skip_inline_ws(parts[3])), atoi(kir_skip_inline_ws(parts[4])), "");
 }
 
 static int
@@ -2059,7 +2053,7 @@ copy_text(char *dst, size_t dst_size, const char *src)
 static int
 path_expr(const char *expr, char *dst, size_t dst_size)
 {
-    const char *p = skip_ws(expr);
+    const char *p = kir_skip_inline_ws(expr);
     size_t n = 0;
 
     if(dst_size == 0)
@@ -2071,7 +2065,7 @@ path_expr(const char *expr, char *dst, size_t dst_size)
         dst[0] = '\0';
         return 0;
     }
-    if(*skip_ws(p + n) != '\0') {
+    if(*kir_skip_inline_ws(p + n) != '\0') {
         dst[0] = '\0';
         return 0;
     }
@@ -2110,12 +2104,12 @@ path_from_eq_value(const char *expr, int value, char *dst, size_t dst_size)
     trim_copy(left, sizeof(left), expr, (size_t)(eq - expr));
     trim_copy(right, sizeof(right), eq + 2, strlen(eq + 2));
     if(path_expr(left, candidate, sizeof(candidate)) &&
-       atoi(skip_ws(right)) == value) {
+       atoi(kir_skip_inline_ws(right)) == value) {
         copy_text(dst, dst_size, candidate);
         return 1;
     }
     if(path_expr(right, candidate, sizeof(candidate)) &&
-       atoi(skip_ws(left)) == value) {
+       atoi(kir_skip_inline_ws(left)) == value) {
         copy_text(dst, dst_size, candidate);
         return 1;
     }
@@ -2162,7 +2156,7 @@ parse_radio(KrbBuild *b, const char *call)
     if(count < 4)
         return 0;
     for(i = 0; i < count && i < 5; i++) {
-        const char *part = skip_ws(parts[i]);
+        const char *part = kir_skip_inline_ws(parts[i]);
 
         if(*part == '.') {
             const char *eq = strchr(part, '=');
@@ -2170,13 +2164,13 @@ parse_radio(KrbBuild *b, const char *call)
             if(eq == NULL)
                 continue;
             if(strncmp(part, ".bounds", 7) == 0)
-                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+                copy_text(f_bounds, sizeof(f_bounds), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".label", 6) == 0)
-                copy_text(f_label, sizeof(f_label), skip_ws(eq + 1));
+                copy_text(f_label, sizeof(f_label), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".id", 3) == 0)
-                copy_text(f_id, sizeof(f_id), skip_ws(eq + 1));
+                copy_text(f_id, sizeof(f_id), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".checked", 8) == 0)
-                copy_text(f_checked, sizeof(f_checked), skip_ws(eq + 1));
+                copy_text(f_checked, sizeof(f_checked), kir_skip_inline_ws(eq + 1));
         } else {
             switch(i) {
             case 0: copy_text(f_bounds, sizeof(f_bounds), part); break;
@@ -2189,7 +2183,7 @@ parse_radio(KrbBuild *b, const char *call)
     }
     if(f_id[0] == '\0')
         return 0;
-    id = atoi(skip_ws(f_id));
+    id = atoi(kir_skip_inline_ws(f_id));
     if(!path_from_eq_value(f_checked, id, path, sizeof(path)))
         return 0;
     label[0] = '\0';
@@ -2240,7 +2234,7 @@ parse_progress(KrbBuild *b, const char *call)
     if(count < 4)
         return 0;
     for(i = 0; i < count && i < 5; i++) {
-        const char *part = skip_ws(parts[i]);
+        const char *part = kir_skip_inline_ws(parts[i]);
 
         if(*part == '.') {
             const char *eq = strchr(part, '=');
@@ -2248,15 +2242,15 @@ parse_progress(KrbBuild *b, const char *call)
             if(eq == NULL)
                 continue;
             if(strncmp(part, ".bounds", 7) == 0)
-                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+                copy_text(f_bounds, sizeof(f_bounds), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".min", 4) == 0)
-                copy_text(f_min, sizeof(f_min), skip_ws(eq + 1));
+                copy_text(f_min, sizeof(f_min), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".max", 4) == 0)
-                copy_text(f_max, sizeof(f_max), skip_ws(eq + 1));
+                copy_text(f_max, sizeof(f_max), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".value", 6) == 0)
-                copy_text(f_value, sizeof(f_value), skip_ws(eq + 1));
+                copy_text(f_value, sizeof(f_value), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".label", 6) == 0)
-                copy_text(f_label, sizeof(f_label), skip_ws(eq + 1));
+                copy_text(f_label, sizeof(f_label), kir_skip_inline_ws(eq + 1));
         } else {
             switch(i) {
             case 0: copy_text(f_bounds, sizeof(f_bounds), part); break;
@@ -2276,8 +2270,8 @@ parse_progress(KrbBuild *b, const char *call)
     if(!parse_rect_fields(f_bounds, &x, &y, &w, &h, &flags))
         return 0;
     return add_control_node(b, KRB_CTRL_PROGRESS, path, x, y, w, h, flags,
-                            (int)b->control_count, atoi(skip_ws(f_min)),
-                            atoi(skip_ws(f_max)), 1, label);
+                            (int)b->control_count, atoi(kir_skip_inline_ws(f_min)),
+                            atoi(kir_skip_inline_ws(f_max)), 1, label);
 }
 
 static int
@@ -2339,7 +2333,7 @@ parse_labelframe(KrbBuild *b, const char *call)
     if(count < 1)
         return 0;
     for(i = 0; i < count && i < 2; i++) {
-        const char *part = skip_ws(parts[i]);
+        const char *part = kir_skip_inline_ws(parts[i]);
 
         if(*part == '.') {
             const char *eq = strchr(part, '=');
@@ -2347,9 +2341,9 @@ parse_labelframe(KrbBuild *b, const char *call)
             if(eq == NULL)
                 continue;
             if(strncmp(part, ".bounds", 7) == 0)
-                copy_text(f_bounds, sizeof(f_bounds), skip_ws(eq + 1));
+                copy_text(f_bounds, sizeof(f_bounds), kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".title", 6) == 0)
-                copy_text(f_title, sizeof(f_title), skip_ws(eq + 1));
+                copy_text(f_title, sizeof(f_title), kir_skip_inline_ws(eq + 1));
         } else {
             if(i == 0)
                 copy_text(f_bounds, sizeof(f_bounds), part);
@@ -2406,7 +2400,7 @@ parse_labelframe(KrbBuild *b, const char *call)
 static void
 register_string_array(KrbBuild *b, const char *name, const char *init)
 {
-    const char *p = skip_ws(init);
+    const char *p = kir_skip_inline_ws(init);
     size_t n = 0;
 
     if(p == NULL || *p != '{' || name == NULL || name[0] == '\0')
@@ -2460,7 +2454,7 @@ collect_string_arrays(KrbBuild *b, const KirModule *m)
 static int
 resolve_options(KrbBuild *b, const char *expr, char *dst, size_t dst_size)
 {
-    const char *p = skip_ws(expr);
+    const char *p = kir_skip_inline_ws(expr);
     int i;
 
     if(p == NULL)
@@ -2534,7 +2528,7 @@ parse_combobox(KrbBuild *b, const char *call)
         return 0;
     /* positional: bounds, id, options, option_count, &selected, disabled */
     for(i = 0; i < count && i < 6; i++) {
-        const char *part = skip_ws(parts[i]);
+        const char *part = kir_skip_inline_ws(parts[i]);
 
         if(*part == '.') {
             const char *eq = strchr(part, '=');
@@ -2542,13 +2536,13 @@ parse_combobox(KrbBuild *b, const char *call)
             if(eq == NULL)
                 continue;
             if(strncmp(part, ".bounds", 7) == 0)
-                snprintf(f_bounds, sizeof(f_bounds), "%s", skip_ws(eq + 1));
+                snprintf(f_bounds, sizeof(f_bounds), "%s", kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".options", 8) == 0)
-                snprintf(f_opts, sizeof(f_opts), "%s", skip_ws(eq + 1));
+                snprintf(f_opts, sizeof(f_opts), "%s", kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".option_count", 13) == 0)
-                snprintf(f_count, sizeof(f_count), "%s", skip_ws(eq + 1));
+                snprintf(f_count, sizeof(f_count), "%s", kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".selected_index", 16) == 0)
-                snprintf(f_sel, sizeof(f_sel), "%s", skip_ws(eq + 1));
+                snprintf(f_sel, sizeof(f_sel), "%s", kir_skip_inline_ws(eq + 1));
         } else {
             switch(i) {
             case 0: snprintf(f_bounds, sizeof(f_bounds), "%s", part); break;
@@ -2778,7 +2772,7 @@ parse_navbutton(KrbBuild *b, const char *call)
         n->flags |= KRB_FLAG_SCALE_W;
     if(parse_coord(parts[4], &n->h, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_H;
-    n->font_size = (unsigned short)atoi(skip_ws(parts[6]));
+    n->font_size = (unsigned short)atoi(kir_skip_inline_ws(parts[6]));
     n->bind_slot = -1;
     n->color = 0x80000004u;
     return 1;
@@ -2823,7 +2817,7 @@ parse_textfield(KrbBuild *b, const char *call)
         if(aw <= 0 || ah <= 0)
             return 0;
         p = text + strlen(".text =");
-        p = skip_ws(p);
+        p = kir_skip_inline_ws(p);
         {
             size_t len = 0;
             while((isalnum((unsigned char)p[len]) || p[len] == '_' ||
@@ -2904,17 +2898,74 @@ parse_scroll(KrbBuild *b, const char *call)
     return 1;
 }
 
+typedef int (*KrbWidgetParser)(KrbBuild *b, const char *call);
+
+typedef struct KrbWidgetParserEntry {
+    const char *name;
+    KrbWidgetParser parse;
+} KrbWidgetParserEntry;
+
+static int
+is_krb_layout_call(const char *call)
+{
+    static const char *const names[] = {
+        "BeginUI", "Column", "Row", "Stack", "EndUI", "End", NULL
+    };
+
+    for(int i = 0; names[i] != NULL; i++)
+        if(starts_ident(call, names[i]))
+            return 1;
+    return 0;
+}
+
+static int
+parse_widget_from_table(KrbBuild *b, const char *call)
+{
+    static const KrbWidgetParserEntry entries[] = {
+        { "Background", parse_background },
+        { "Rect", parse_rect },
+        { "Scroll", parse_scroll },
+        { "TextField", parse_textfield },
+        { "Dropdown", parse_dropdown },
+        { "Combobox", parse_combobox },
+        { "NavButton", parse_navbutton },
+        { "TextFormat", parse_text },
+        { "AnimNode", parse_animnode },
+        { "DrawCircleV", parse_circle },
+        { "DrawRing", parse_ring },
+        { "Separator", parse_separator },
+        { "Line", parse_line },
+        { "Bevel", parse_bevel },
+        { "TextInRect", parse_textinrect },
+        { "Picture", parse_picture },
+        { "Checkbox", parse_checkbox },
+        { "Radio", parse_radio },
+        { "Toggle", parse_toggle },
+        { "Slider", parse_slider },
+        { "Spinbox", parse_spinbox },
+        { "Progress", parse_progress },
+        { "LabelFrame", parse_labelframe },
+        { NULL, NULL }
+    };
+
+    for(int i = 0; entries[i].name != NULL; i++)
+        if(starts_ident(call, entries[i].name))
+            return entries[i].parse(b, call);
+    return -1;
+}
+
 static int
 try_widget(KrbBuild *b, const char *raw)
 {
-    const char *text = skip_ws(raw);
+    const char *text = kir_skip_inline_ws(raw);
     const char *call;
+    int parsed;
 
     if(strncmp(text, "PushUIInspectSource(", 20) == 0 ||
        strncmp(text, "PopUIInspectSource();", 21) == 0)
         return 0;
     call = call_after_eq(text);
-    call = skip_ws(call);
+    call = kir_skip_inline_ws(call);
     /* Retained declaration scopes are represented by the cartridge node
      * table itself; they are semantic no-ops for the KRB renderer. */
     if(starts_ident(call, "BeginUIScrollContainer"))
@@ -2927,63 +2978,18 @@ try_widget(KrbBuild *b, const char *raw)
         b->scroll_open = -1;
         return 1;
     }
-    if(starts_ident(call, "BeginUI") || starts_ident(call, "Column") ||
-       starts_ident(call, "Row") || starts_ident(call, "Stack") ||
-       starts_ident(call, "EndUI") || starts_ident(call, "End"))
+    if(is_krb_layout_call(call))
         return 1;
-    if(starts_ident(call, "Background"))
-        return parse_background(b, call);
     if(starts_ident(call, "Text") && !starts_ident(call, "TextFormat") &&
        !starts_ident(call, "TextInRect") && !starts_ident(call, "TextLines") &&
        !starts_ident(call, "TextField") &&
        !starts_ident(call, "TextArea"))
         return parse_text(b, call);
-    if(starts_ident(call, "Rect"))
-        return parse_rect(b, call);
-    if(starts_ident(call, "Scroll"))
-        return parse_scroll(b, call);
-    if(starts_ident(call, "TextField"))
-        return parse_textfield(b, call);
-    if(starts_ident(call, "Dropdown"))
-        return parse_dropdown(b, call);
-    if(starts_ident(call, "Combobox"))
-        return parse_combobox(b, call);
-    if(starts_ident(call, "NavButton"))
-        return parse_navbutton(b, call);
-    if(starts_ident(call, "TextFormat"))
-        return parse_text(b, call);
-    if(starts_ident(call, "AnimNode"))
-        return parse_animnode(b, call);
-    if(starts_ident(call, "DrawCircleV"))
-        return parse_circle(b, call);
-    if(starts_ident(call, "DrawRing"))
-        return parse_ring(b, call);
     if(strstr(call, "Button((") != NULL || strstr(call, "ButtonProps") != NULL)
         return parse_button(b, call);
-    if(starts_ident(call, "Separator"))
-        return parse_separator(b, call);
-    if(starts_ident(call, "Line"))
-        return parse_line(b, call);
-    if(starts_ident(call, "Bevel"))
-        return parse_bevel(b, call);
-    if(starts_ident(call, "TextInRect"))
-        return parse_textinrect(b, call);
-    if(starts_ident(call, "Picture"))
-        return parse_picture(b, call);
-    if(starts_ident(call, "Checkbox"))
-        return parse_checkbox(b, call);
-    if(starts_ident(call, "Radio"))
-        return parse_radio(b, call);
-    if(starts_ident(call, "Toggle"))
-        return parse_toggle(b, call);
-    if(starts_ident(call, "Slider"))
-        return parse_slider(b, call);
-    if(starts_ident(call, "Spinbox"))
-        return parse_spinbox(b, call);
-    if(starts_ident(call, "Progress"))
-        return parse_progress(b, call);
-    if(starts_ident(call, "LabelFrame"))
-        return parse_labelframe(b, call);
+    parsed = parse_widget_from_table(b, call);
+    if(parsed >= 0)
+        return parsed;
     {
         char name[64];
         const char *p = call;
@@ -3018,7 +3024,6 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
     int i;
     int jz_patch = -1;
     int jmp_patch = -1;
-    int in_true = 0;
 
 #define EMIT1(v) do { if(q - dst >= cap) return -1; *q++ = (unsigned char)(v); } while(0)
 #define EMIT2(v) do { if(q - dst + 2 > cap) return -1; wr_u16(&q, (unsigned)v); } while(0)
@@ -3026,6 +3031,7 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
 #define PATCH(off) do { unsigned char *pp = dst + (off); wr_u32(&pp, \
                           (unsigned long)(q - dst)); } while(0)
 
+    (void)gpath_off;
     if(b->update_count == 0 && b->guard_count == 0 && b->anim_count == 0) {
         EMIT1(KRB_OP_DRAW_TREE);
         return (int)(q - dst);
@@ -3076,7 +3082,6 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
             EMIT1(KRB_OP_JZ);
             jz_patch = (int)(q - dst);
             EMIT4(0);
-            in_true = 1;
         } else if(it->kind == 3) {
             /* else: end of true branch; jump over the false branch */
             EMIT1(KRB_OP_JMP);
@@ -3086,7 +3091,6 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
                 PATCH(jz_patch);
                 jz_patch = -1;
             }
-            in_true = 0;
         } else if(it->kind == 4) {
             /* guard close: land here after either branch */
             if(jz_patch >= 0) {
@@ -3097,7 +3101,6 @@ emit_prog(KrbBuild *b, const unsigned char *dst, int cap,
                 PATCH(jmp_patch);
                 jmp_patch = -1;
             }
-            in_true = 0;
         } else if(it->kind == 0) {
             const KrbUpdate *u = &b->updates[it->idx];
 
