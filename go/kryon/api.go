@@ -211,6 +211,9 @@ func GetThemeSurface() Color                         { return active().GetThemeS
 func GetThemeButton() Color                          { return active().GetThemeButton() }
 func GetThemeButtonHover() Color                     { return active().GetThemeButtonHover() }
 func GetThemeLink() Color                            { return active().GetThemeLink() }
+func GetThemePrimary() Color                         { return active().GetThemePrimary() }
+func GetThemeOnPrimary() Color                       { return active().GetThemeOnPrimary() }
+func GetThemeSurfaceVariant() Color                  { return active().GetThemeSurfaceVariant() }
 func TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
 	active().TextInRect(text, rect, fontSize, color)
 }

@@ -890,6 +890,9 @@ type Runtime interface {
 	GetThemeButton() Color
 	GetThemeButtonHover() Color
 	GetThemeLink() Color
+	GetThemePrimary() Color
+	GetThemeOnPrimary() Color
+	GetThemeSurfaceVariant() Color
 	GetUIMaterialScheme() MaterialScheme
 	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
 	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
@@ -1611,6 +1614,15 @@ func (r *runtime) GetThemeSurface() Color     { return r.theme().surface }
 func (r *runtime) GetThemeButton() Color      { return r.theme().button }
 func (r *runtime) GetThemeButtonHover() Color { return r.theme().buttonHover }
 func (r *runtime) GetThemeLink() Color        { return r.theme().link }
+
+// The primary trio mirrors the Material mapping in theme_runtime.go: the
+// palette's circle color is Primary, its contrast color OnPrimary, and a
+// background tone serves as SurfaceVariant.
+func (r *runtime) GetThemePrimary() Color   { return r.theme().circle }
+func (r *runtime) GetThemeOnPrimary() Color { return materialOnColor(r.theme().circle) }
+func (r *runtime) GetThemeSurfaceVariant() Color {
+	return materialTone(r.theme().background, 10, 18, r.effectiveDark())
+}
 func (r *runtime) GetUIMaterialScheme() MaterialScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
 }
