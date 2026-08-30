@@ -1,3 +1,16 @@
+<p align="center">
+  <img src="assets/app/readme-banner.png" alt="Kryon" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://kryonlabs.com">
+    <img src="assets/app/badge-website.svg" alt="Open kryonlabs.com" height="56">
+  </a>
+  <a href="https://github.com/kryonlabs/kryon">
+    <img src="assets/app/badge-github.svg" alt="Open Kryon on GitHub" height="56">
+  </a>
+</p>
+
 # Kryon
 
 Kryon is a small C support library for raylib-style applications. It keeps a
@@ -31,27 +44,26 @@ Kryon builds with the repository Makefile:
 make
 ```
 
-On FreeBSD, use the repository `makefile` entrypoint. It delegates to the GNU
-Make build while keeping `make` as the command downstream apps can run:
-
-```bash
-make bsd-check
-```
-
 Run the focused tests with:
 
 ```bash
 make test
 ```
 
-Backend selection is link-time via `KRYON_BACKEND`. The default is `raylib`;
-`canvas`, `null`, and `libdraw` are also available for their target
-environments. The plan9port path is:
+Backend selection is link-time via `KRYON_BACKEND`. Supported backends are:
 
-```bash
-make KRYON_BACKEND=libdraw PLAN9PORT_DIR=/mnt/storage/Projects/plan9port
-make libdraw-test
-```
+- [`raylib`](https://github.com/raysan5/raylib) - the default desktop,
+  Android, Windows, and WebGL path, with SDL2/OpenGL integration in the build
+  rules.
+- [`canvas`](docs/CANVAS2D_PARITY.md) - the HTML5 Canvas2D/WebAudio backend
+  for Emscripten web builds.
+- [`dom`](src/backend/dom_backend.c) - the browser DOM/CSS backend for web UI
+  surfaces.
+- [`libdraw`](https://9fans.github.io/plan9port/man/man3/draw.html) - the
+  plan9port libdraw/devdraw backend.
+- [`termi`](src/backend/termi_backend.c) - the terminal-cell backend.
+- `null` - generated no-op stubs for headless tests and unsupported surface
+  areas.
 
 Build a distributable static-library archive with:
 
