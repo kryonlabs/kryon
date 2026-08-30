@@ -71,10 +71,10 @@ UpdateUIDPI(int view_width, int view_height)
                                    ? (float)view_height / (float)base_height
                                    : 1.0f;
         float real_dpi = viewport_scale;
-        if(g_device_density > 0.0f && g_device_density > real_dpi)
+        if(g_device_density > 0.0f)
             real_dpi = g_device_density;
 
-#if !defined(PLATFORM_WEB)
+#if !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID) && !defined(__ANDROID__)
         /* Native windows are sized in physical pixels, so the monitor scale
          * factor is a legitimate additional scaling input. The web is
          * different: the viewport IS CSS pixels (density-independent by
