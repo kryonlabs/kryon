@@ -74,6 +74,11 @@ func InitDesktopTray(spec DesktopTraySpec) bool {
 	trayRT.mu.Unlock()
 	trayRT.loadPixmap(spec.IconPaths)
 
+	// The host probes the item the instant registration returns, so the
+	// method surfaces must be served before the first Register call.
+	trayRT.serveSNI(conn)
+	trayRT.serveMenu(conn)
+
 	// Register with the host; tolerate a not-yet-running watcher by watching
 	// for it to appear (the panel may start after the app).
 	register := func() {
@@ -103,9 +108,6 @@ func InitDesktopTray(spec DesktopTraySpec) bool {
 				register()
 			}
 		})
-
-	trayRT.serveSNI(conn)
-	trayRT.serveMenu(conn)
 
 	trayRT.mu.Lock()
 	trayRT.ready = true
