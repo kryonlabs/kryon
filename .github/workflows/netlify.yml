@@ -55,6 +55,8 @@ jobs:
           test -f build/site/icons/kryon.png
           test -f build/site/icons/c.png
           test ! -f build/site/API.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload Site Artifact
         uses: actions/upload-artifact@v7

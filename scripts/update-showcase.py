@@ -2,6 +2,7 @@
 import argparse
 import base64
 import datetime as dt
+import hashlib
 import json
 import os
 import sys
@@ -109,14 +110,21 @@ def banner_name(project):
 def download_banner(project, banner_dir):
     banner_dir.mkdir(parents=True, exist_ok=True)
     name = banner_name(project)
-    path = banner_dir / name
     project_dir = project.get("_project_dir")
     if project_dir:
         local_path = Path(project_dir) / Path(urllib.parse.urlparse(project["banner"]["url"]).path).name
         if local_path.is_file():
-            path.write_bytes(local_path.read_bytes())
-            return f"showcase/{name}"
-    path.write_bytes(fetch_banner_bytes(project["banner"]["url"]))
+            data = local_path.read_bytes()
+        else:
+            data = fetch_banner_bytes(project["banner"]["url"])
+    else:
+        data = fetch_banner_bytes(project["banner"]["url"])
+    stem = Path(name).stem
+    suffix = Path(name).suffix
+    digest = hashlib.sha256(data).hexdigest()[:12]
+    name = f"{stem}-{digest}{suffix}"
+    path = banner_dir / name
+    path.write_bytes(data)
     return f"showcase/{name}"
 
 
