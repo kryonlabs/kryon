@@ -53,22 +53,40 @@ EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
     };
     K.resizeMainCanvas = function (nw, nh) {
         var dpr = Math.max(1, g.devicePixelRatio || 1);
-        K.w = Math.max(1, nw | 0);
-        K.h = Math.max(1, nh | 0);
+        var c = K.canvas;
+        /* Shells may lay the canvas out inside a card instead of filling
+         * the viewport. The element's CSS layout box is the real drawable:
+         * a backing store sized to the window would be CSS-stretched into
+         * that box and distort the render. Ask for nw/nh, then let the
+         * laid-out box win when CSS sizes the element. */
+        if (c && c.style) {
+            c.style.width = Math.max(1, nw | 0) + 'px';
+            c.style.height = Math.max(1, nh | 0) + 'px';
+            c.style.touchAction = 'none';
+        }
+        if (c && c.clientWidth > 0 && c.clientHeight > 0) {
+            nw = c.clientWidth;
+            nh = c.clientHeight;
+        }
+        nw = Math.max(1, nw | 0);
+        nh = Math.max(1, nh | 0);
+        if (K.ctx && nw === K.w && nh === K.h &&
+            c && c.width === K.renderW && c.height === K.renderH)
+            return;
+        K.w = nw;
+        K.h = nh;
         K.dpi = dpr;
         K.renderW = Math.max(1, Math.round(K.w * dpr));
         K.renderH = Math.max(1, Math.round(K.h * dpr));
-        if (K.canvas) {
-            if (K.canvas.width !== K.renderW || K.canvas.height !== K.renderH)
+        if (c) {
+            /* Assigning the width/height attributes clears the bitmap, so
+             * only touch them when the size actually changed. */
+            if (c.width !== K.renderW || c.height !== K.renderH) {
                 K.resized = 1;
-            K.canvas.width = K.renderW;
-            K.canvas.height = K.renderH;
-            if (K.canvas.style) {
-                K.canvas.style.width = K.w + 'px';
-                K.canvas.style.height = K.h + 'px';
-                K.canvas.style.touchAction = 'none';
+                c.width = K.renderW;
+                c.height = K.renderH;
             }
-            K.ctx = K.canvas.getContext('2d');
+            K.ctx = c.getContext('2d');
         }
     };
     var doc = (typeof document !== 'undefined') ? document : null;
