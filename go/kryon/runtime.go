@@ -3,6 +3,8 @@ package kryon
 import (
 	"fmt"
 	"hash/fnv"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -1385,6 +1387,9 @@ func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) boo
 	labelW := float32(runtimeTextWidth(label, font))
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: box + gap + labelW, Height: box})
 	pressed := r.consumeTap(bounds)
+	if dbg := r.tapDebug(bounds, pressed, label); dbg != "" {
+		log.Print(dbg)
+	}
 	if pressed {
 		if *value == 0 {
 			*value = 1
@@ -3624,4 +3629,19 @@ func max32(a, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+// tapDebug formats one debug line for a widget's tap test (empty when the
+// env gate is off).
+func (r *runtime) tapDebug(bounds Rectangle, pressed bool, label string) string {
+	if os.Getenv("KRYON_DEBUG_TAPS") == "" {
+		return ""
+	}
+	var taps []string
+	for i := range r.taps {
+		if !r.taps[i].consumed {
+			taps = append(taps, fmt.Sprintf("(%.0f,%.0f)", r.taps[i].x, r.taps[i].y))
+		}
+	}
+	return fmt.Sprintf("checkbox %q bounds=%v pressed=%v taps=%v", label, bounds, pressed, taps)
 }
