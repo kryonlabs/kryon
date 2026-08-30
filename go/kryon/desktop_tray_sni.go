@@ -96,7 +96,9 @@ func InitDesktopTray(spec DesktopTraySpec) bool {
 			"s", []any{sniObjectPath}, 8*time.Second)
 		if err != nil {
 			log.Printf("kryon tray: no watcher yet (%v)", err)
+			return
 		}
+		log.Printf("kryon tray: registered as %s", trayRT.busName)
 	}
 	register()
 	_ = conn.onSignal("type='signal',sender='org.freedesktop.DBus',interface='org.freedesktop.DBus',member='NameOwnerChanged'",
