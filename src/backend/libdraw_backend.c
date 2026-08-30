@@ -1953,6 +1953,43 @@ void UnloadTexture(Texture2D texture)
 {
     kry_libdraw_texture_unregister(texture.id);
 }
+void UpdateTexture(Texture2D texture, const void *pixels)
+{
+    KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
+
+    if(t == NULL || t->rgba == NULL || pixels == NULL ||
+       t->width <= 0 || t->height <= 0)
+        return;
+    memcpy(t->rgba, pixels, (size_t)t->width * t->height * 4);
+    t->mask = !t->render_target &&
+              texture_pixels_are_mask(t->rgba, t->width, t->height);
+}
+void UpdateTextureRec(Texture2D texture, Rectangle rec, const void *pixels)
+{
+    KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
+    const unsigned char *src = pixels;
+    int x;
+    int y;
+    int w;
+    int h;
+
+    if(t == NULL || t->rgba == NULL || src == NULL ||
+       t->width <= 0 || t->height <= 0)
+        return;
+    x = (int)rec.x;
+    y = (int)rec.y;
+    w = (int)rec.width;
+    h = (int)rec.height;
+    if(x < 0 || y < 0 || w <= 0 || h <= 0 ||
+       x + w > t->width || y + h > t->height)
+        return;
+    for(int row = 0; row < h; row++) {
+        memcpy(t->rgba + ((size_t)(y + row) * t->width + x) * 4,
+               src + (size_t)row * w * 4, (size_t)w * 4);
+    }
+    t->mask = !t->render_target &&
+              texture_pixels_are_mask(t->rgba, t->width, t->height);
+}
 RenderTexture2D LoadRenderTexture(int width, int height)
 {
     RenderTexture2D rt = {0};
