@@ -88,9 +88,12 @@ func InitDesktopTray(spec DesktopTraySpec) bool {
 		if c == nil {
 			return
 		}
+		// The argument is the item's object path, not its bus name: the
+		// spec allows both, but XFCE's host only understands paths (steam
+		// and blueman register the same way).
 		_, err := c.call("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher",
 			"org.kde.StatusNotifierWatcher", "RegisterStatusNotifierItem",
-			"s", []any{trayRT.busName}, 8*time.Second)
+			"s", []any{sniObjectPath}, 8*time.Second)
 		if err != nil {
 			log.Printf("kryon tray: no watcher yet (%v)", err)
 		}
