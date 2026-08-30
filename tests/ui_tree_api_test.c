@@ -30,6 +30,11 @@ main(void)
     const UIWidgetNode *node;
     NodeId group;
     NodeId nested;
+    NodeId page;
+    NodeId page_section;
+    NodeId page_grid;
+    NodeId grid_first;
+    NodeId grid_second;
     KeyID stable_key;
     UIEvent event;
     int count = 0;
@@ -164,6 +169,55 @@ main(void)
     EndUI();
     nodes = UIGetTreeNodes(&count);
     check_int("stable column keeps computed width", (int)nodes[2].bounds.width, 80);
+
+    check_int("route fallback path", strcmp(GetRoutePath(), "/"), 0);
+    check_int("route fallback hash", strcmp(GetRouteHash(), ""), 0);
+    check_int("route fallback version", GetRouteVersion(), 0);
+
+    SetUIViewSize(320, 240);
+    BeginUI(38);
+    page = Page((PageProps){.title = "Docs",
+                            .bounds = {0, 0, 0, 0},
+                            .gap = 6,
+                            .padding = 8,
+                            .key = 380});
+    page_section = Section((SectionProps){.label = "Intro",
+                                          .bounds = {0, 0, 0, 0},
+                                          .gap = 2,
+                                          .padding = 3,
+                                          .key = 382});
+    Flow((FlowProps){.bounds = {0, 0, 100, 24}, .gap = 4, .key = 383});
+    Stack((ColumnProps){.bounds = {0, 0, 20, 12}, .key = 384}); End();
+    Stack((ColumnProps){.bounds = {0, 0, 20, 12}, .key = 385}); End();
+    End();
+    End();
+    page_grid = PageGrid((GridProps){.bounds = {0, 0, 100, 40},
+                                     .columns = 2,
+                                     .gap = 4,
+                                     .padding = 4,
+                                     .key = 386});
+    Stack((ColumnProps){.bounds = {0, 0, 0, 10}, .key = 387}); End();
+    Stack((ColumnProps){.bounds = {0, 0, 0, 12}, .key = 388}); End();
+    End();
+    End();
+    EndUI();
+    nodes = UIGetTreeNodes(&count);
+    check_int("page fallback node kind", nodes[page].kind, UI_WIDGET_COLUMN_NODE);
+    check_int("page fallback width", (int)nodes[page].bounds.width, 320);
+    check_int("page fallback height", (int)nodes[page].bounds.height, 240);
+    check_int("page section node kind", nodes[page_section].kind, UI_WIDGET_COLUMN_NODE);
+    check_int("page grid kind", nodes[page_grid].kind, UI_WIDGET_GRID_NODE);
+    grid_first = nodes[page_grid].first_child;
+    grid_second = nodes[grid_first].next_sibling;
+    check_int("page grid first x", (int)nodes[grid_first].bounds.x,
+              (int)nodes[page_grid].bounds.x + 4);
+    check_int("page grid first y", (int)nodes[grid_first].bounds.y,
+              (int)nodes[page_grid].bounds.y + 4);
+    check_int("page grid first width", (int)nodes[grid_first].bounds.width, 44);
+    check_int("page grid second x", (int)nodes[grid_second].bounds.x,
+              (int)nodes[page_grid].bounds.x + 52);
+    check_int("page grid second y", (int)nodes[grid_second].bounds.y,
+              (int)nodes[page_grid].bounds.y + 4);
 
     InjectReset();
     InjectTap(25, 25);

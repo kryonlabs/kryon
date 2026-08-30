@@ -53,17 +53,23 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   same backend. `docs/CANVAS2D_PARITY.md` is the Canvas2D parity ledger.
   The rendering has additionally been pixel-verified in a real browser page.
 - `dom` - HTML/CSS DOM backend, no raylib (`src/backend/dom_*.c`). Web-only
-  and intended for app-style Kryon UI rather than games or pixel-perfect
-  drawing. Kryon/app logic still runs as WASM; the backend presents
-  UI-oriented draw calls as absolutely positioned DOM nodes with CSS colors,
-  borders, rounded corners, clipping, transforms, cursor state, and browser
-  text. The existing Kryon UI runtime remains responsible for hit-testing,
-  focus, text editing, dropdowns, scrolling, selection, and widget state.
-  Textures uploaded from RGBA pixels are presented as DOM image nodes; render
-  targets and unsupported raylib areas use conservative null-grade behavior.
-  `make dom-test` builds a small Emscripten app and verifies DOM node output,
-  texture image nodes, and an injected widget click in Node against a minimal
-  DOM shim.
+  and intended for app-style Kryon UI and Kryon-authored page surfaces rather
+  than games or pixel-perfect drawing. Kryon/app logic still runs as WASM; the
+  backend presents UI-oriented draw calls as absolutely positioned DOM nodes
+  with CSS colors, gradients, borders, rounded corners, clipping, transforms,
+  cursor state, and browser text. Page helpers attach semantic metadata so
+  headings can become `h1`-`h6`, links can become `a[href]`, pictures can
+  carry `alt`, page/section regions can become `main`/`section`, and document
+  title/description/canonical/theme-color plus browser routes can be controlled
+  from Kryon. Browser `popstate`/`hashchange` changes increment the route
+  version visible through `GetRouteVersion()`. The existing Kryon UI runtime remains responsible for
+  hit-testing, focus, text editing, dropdowns, scrolling, selection, and widget
+  state. Textures uploaded from RGBA pixels are presented as DOM image nodes;
+  render targets and unsupported raylib areas use conservative null-grade
+  behavior. `make dom-test` builds a small Emscripten app and verifies DOM node
+  output, semantic page metadata, texture image nodes, CSS gradients, browser
+  route helpers, and an injected widget click in Node against a minimal DOM
+  shim.
 - `libdraw` - plan9port libdraw/devdraw backend, no raylib
   (`src/backend/libdraw_*.c`). It keeps the same public surface as the other
   backends: C apps still include `kryon.h` and call `InitWindow`,

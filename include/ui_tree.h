@@ -74,6 +74,7 @@ typedef enum UIWidgetKind {
     UI_WIDGET_COLUMN_NODE,
     UI_WIDGET_ROW_NODE,
     UI_WIDGET_STACK_NODE,
+    UI_WIDGET_GRID_NODE,
     UI_WIDGET_PICTURE_NODE,
     UI_WIDGET_CUSTOM_NODE
 } UIWidgetKind;
@@ -82,6 +83,7 @@ typedef union UIWidgetData {
     struct {
         int gap;
         int padding;
+        int columns;
     } layout;
     ParagraphSpec paragraph;
     ReadonlyTextBoxProps readonly_text_box;
@@ -331,8 +333,17 @@ typedef struct {
     KeyID key;
 } RowProps;
 
+typedef struct {
+    Rectangle bounds;
+    int columns;
+    int gap;
+    int padding;
+    KeyID key;
+} GridLayoutProps;
+
 NodeId Column(ColumnProps props);
 NodeId Row(RowProps props);
+NodeId GridLayout(GridLayoutProps props);
 NodeId Stack(ColumnProps props);
 NodeId Screen(ColumnProps props);
 

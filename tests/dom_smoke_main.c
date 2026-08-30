@@ -31,7 +31,44 @@ int main(void)
         }
         BeginDrawing();
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), 1.0f);
+        SetPageTitle("DOM smoke title");
+        SetPageDescription("DOM smoke description");
+        SetPageCanonicalURL("/dom-smoke");
+        SetPageThemeColor((Color){18, 20, 24, 255});
+        ReplaceRoute("/dom-smoke#ready");
         ClearBackground((Color){18, 20, 24, 255});
+        DrawRectangleGradientV(250, 18, 52, 24,
+                               (Color){20, 70, 180, 255},
+                               (Color){70, 180, 90, 255});
+        BeginUI(Key("dom-page"));
+        Page((PageProps){
+            .bounds = {0, 0, 320, 240},
+            .title = "DOM smoke title",
+            .description = "DOM smoke description",
+            .canonical_url = "/dom-smoke",
+            .theme_color = {18, 20, 24, 255},
+            .gap = 8,
+            .padding = 0,
+            .key = Key("page")
+        });
+        Heading((HeadingProps){
+            .bounds = {12, 6, 150, 28},
+            .text = "DOM Page",
+            .level = 1,
+            .font = 20,
+            .color = {245, 245, 245, 255},
+            .key = Key("heading")
+        });
+        Link((LinkProps){
+            .bounds = {210, 192, 84, 24},
+            .text = "Docs",
+            .href = "/docs",
+            .font = 16,
+            .focus_id = 302,
+            .color = {140, 190, 255, 255}
+        });
+        End();
+        EndUI();
         DrawRectangle(10, 10, 120, 34, (Color){45, 77, 123, 255});
         DrawRectangleRounded((Rectangle){10, 54, 120, 34}, 0.35f, 8,
                              (Color){130, 82, 190, 255});
@@ -48,6 +85,9 @@ int main(void)
             clicked = 1;
         if(clicked)
             DrawText("clicked", 24, 194, 16, (Color){255, 255, 255, 255});
+        if(GetRouteVersion() == 1)
+            DrawText("route version", 146, 104, 16,
+                     (Color){255, 255, 255, 255});
         SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
         EndUIFrame();
         EndDrawing();

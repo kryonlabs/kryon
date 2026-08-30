@@ -35,6 +35,8 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         w: w, h: h, renderW: w, renderH: h,
         dpi: Math.max(1, g.devicePixelRatio || 1),
         root: null, host: null, nodes: [], op: 0, frame: 0,
+        nextSemantic: null,
+        route: "", routeVersion: 0,
         clips: [], transforms: [""],
         textures: {}, nextTex: 1,
         fonts: {1: {family: 'Arial, sans-serif', size: 16}},
@@ -100,6 +102,87 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         }
         K.resized = 1;
     };
+    K.semanticName = function (kind) {
+        switch (kind | 0) {
+        case 1: return 'page';
+        case 2: return 'section';
+        case 3: return 'heading';
+        case 4: return 'paragraph';
+        case 5: return 'link';
+        case 6: return 'picture';
+        case 7: return 'button';
+        default: return "";
+        }
+    };
+    K.takeSemantic = function () {
+        var meta = K.nextSemantic;
+        K.nextSemantic = null;
+        return meta;
+    };
+    K.applySemantic = function (n, meta) {
+        if (!n) return;
+        n.removeAttribute('role');
+        n.removeAttribute('aria-label');
+        n.removeAttribute('href');
+        n.removeAttribute('target');
+        n.removeAttribute('rel');
+        n.removeAttribute('alt');
+        if (!meta) {
+            n.dataset.krySemantic = "";
+            return;
+        }
+        var name = K.semanticName(meta.kind);
+        n.dataset.krySemantic = name;
+        if (meta.label) n.setAttribute('aria-label', meta.label);
+        if (meta.role) n.setAttribute('role', meta.role);
+        if (meta.kind === 3) n.setAttribute('role', 'heading');
+        if (meta.kind === 5 && meta.href) {
+            n.setAttribute('href', meta.href);
+            if (meta.href.indexOf('://') >= 0) {
+                n.setAttribute('target', '_blank');
+                n.setAttribute('rel', 'noopener noreferrer');
+            }
+        }
+        if (meta.kind === 6 && meta.label) n.setAttribute('alt', meta.label);
+        if (meta.tabIndex >= 0) n.tabIndex = meta.tabIndex;
+    };
+    K.textTag = function (meta) {
+        if (!meta) return 'div';
+        if (meta.kind === 3) {
+            var level = Math.max(1, Math.min(6, meta.level | 0));
+            return 'h' + level;
+        }
+        if (meta.kind === 4) return 'p';
+        if (meta.kind === 5) return 'a';
+        return 'div';
+    };
+    K.ensureMeta = function (name) {
+        if (!doc) return null;
+        var selector = name === 'canonical'
+            ? 'link[rel="canonical"]'
+            : 'meta[name="' + name + '"]';
+        var el = doc.querySelector ? doc.querySelector(selector) : null;
+        if (!el) {
+            el = doc.createElement(name === 'canonical' ? 'link' : 'meta');
+            if (name === 'canonical') el.setAttribute('rel', 'canonical');
+            else el.setAttribute('name', name);
+            (doc.head || doc.documentElement || doc.body).appendChild(el);
+        }
+        return el;
+    };
+    K.routeText = function () {
+        var loc = typeof location !== 'undefined' ? location : null;
+        if (!loc) return '/';
+        return (loc.pathname || '/') + (loc.hash || "");
+    };
+    K.noteRouteChange = function () {
+        var next = K.routeText();
+        if (next !== K.route) {
+            K.route = next;
+            K.routeVersion++;
+        }
+        return K.routeVersion;
+    };
     K.node = function (tag, kind) {
         var i = K.op++;
         var n = K.nodes[i];
@@ -121,6 +204,12 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         n.style.opacity = "";
         n.textContent = "";
         n.removeAttribute('aria-hidden');
+        n.removeAttribute('role');
+        n.removeAttribute('aria-label');
+        n.removeAttribute('href');
+        n.removeAttribute('target');
+        n.removeAttribute('rel');
+        n.removeAttribute('alt');
         return n;
     };
     K.begin = function () {
@@ -180,6 +269,11 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         return Math.ceil((text || "").length * size * 0.56);
     };
     K.ensureRoot();
+    K.route = K.routeText();
+    if (g.addEventListener) {
+        g.addEventListener('popstate', K.noteRouteChange);
+        g.addEventListener('hashchange', K.noteRouteChange);
+    }
     if (doc && doc.title !== undefined) doc.title = title ? UTF8ToString(title) : "";
     var KEYMAP = {
         Space: 32, Escape: 256, Enter: 257, NumpadEnter: 257, Tab: 258,
@@ -375,6 +469,32 @@ EM_JS(void, js_dom_rect, (int outline, double x, double y, double w, double h,
     }
 });
 
+EM_JS(void, js_dom_gradient_rect, (int mode, double x, double y,
+                                   double w, double h,
+                                   int r1, int g1, int b1, int a1,
+                                   int r2, int g2, int b2, int a2,
+                                   int r3, int g3, int b3, int a3,
+                                   int r4, int g4, int b4, int a4), {
+    var K = globalThis.__kryDom;
+    var n = K && K.node ? K.node('div', 'rect-gradient') : null;
+    if (!n) return;
+    K.baseStyle(n, x, y, w, h);
+    if (mode === 1) {
+        n.style.background = 'linear-gradient(to bottom, ' +
+            K.col(r1, g1, b1, a1) + ', ' + K.col(r2, g2, b2, a2) + ')';
+    } else if (mode === 2) {
+        n.style.background = 'linear-gradient(to right, ' +
+            K.col(r1, g1, b1, a1) + ', ' + K.col(r2, g2, b2, a2) + ')';
+    } else {
+        n.style.background = 'linear-gradient(135deg, ' +
+            K.col(r1, g1, b1, a1) + ' 0%, ' +
+            K.col(r2, g2, b2, a2) + ' 33%, ' +
+            K.col(r3, g3, b3, a3) + ' 66%, ' +
+            K.col(r4, g4, b4, a4) + ' 100%)';
+    }
+});
+
+
 EM_JS(void, js_dom_line, (double x1, double y1, double x2, double y2,
                           double thick, int r, int gg, int b, int a), {
     var K = globalThis.__kryDom;
@@ -407,12 +527,14 @@ EM_JS(void, js_dom_text, (int font_id, const char *ptr, int byte_len,
                           double x, double y, double size,
                           int r, int gg, int b, int a), {
     var K = globalThis.__kryDom;
-    var n = K && K.node ? K.node('div', 'text') : null;
+    var meta = K && K.takeSemantic ? K.takeSemantic() : null;
+    var n = K && K.node ? K.node(K.textTag(meta), 'text') : null;
     if (!n) return;
     var text = ptr ? UTF8ToString(ptr, byte_len >= 0 ? byte_len : undefined) : "";
     var f = K.fonts[font_id] || K.fonts[1];
     var width = K.textWidth(font_id, text, size);
     K.baseStyle(n, x, y, width, Math.ceil(size * 1.25));
+    K.applySemantic(n, meta);
     n.style.color = K.col(r, gg, b, a);
     n.style.fontFamily = f.family;
     n.style.fontSize = size + 'px';
@@ -590,12 +712,14 @@ EM_JS(void, js_dom_texture_draw, (int id, double x, double y, double w,
                                   int r, int gg, int b, int a), {
     var K = globalThis.__kryDom;
     var tex = K && K.textures ? K.textures[id] : null;
+    var meta = K && K.takeSemantic ? K.takeSemantic() : null;
     var n = K && K.node ? K.node(tex && tex.url ? 'img' : 'div', 'texture') : null;
     if (!n || !tex) return;
     K.baseStyle(n, x, y, w, h);
+    K.applySemantic(n, meta);
     if (tex.url) {
         if (n.src !== tex.url) n.src = tex.url;
-        n.alt = "";
+        n.alt = meta && meta.label ? meta.label : "";
         n.style.objectFit = 'fill';
         n.style.background = 'transparent';
     } else {
@@ -606,6 +730,150 @@ EM_JS(void, js_dom_texture_draw, (int id, double x, double y, double w,
         ' translate(' + ox + 'px,' + oy + 'px) rotate(' + rot + 'deg)' +
         ' translate(' + (-ox) + 'px,' + (-oy) + 'px)';
 });
+
+EM_JS(void, js_dom_semantic_next, (int kind, const char *label,
+                                   const char *href, const char *role,
+                                   int level, int tab_index), {
+    var K = globalThis.__kryDom;
+    if (!K) return;
+    K.nextSemantic = {
+        kind: kind | 0,
+        label: label ? UTF8ToString(label) : "",
+        href: href ? UTF8ToString(href) : "",
+        role: role ? UTF8ToString(role) : "",
+        level: level | 0,
+        tabIndex: tab_index | 0
+    };
+});
+
+EM_JS(void, js_dom_semantic_box, (int kind, double x, double y, double w,
+                                  double h, const char *label), {
+    var K = globalThis.__kryDom;
+    if (!K || !K.node) return;
+    var tag = kind === 1 ? 'main' : (kind === 2 ? 'section' : 'div');
+    var n = K.node(tag, K.semanticName(kind) || 'semantic');
+    if (!n) return;
+    K.baseStyle(n, x, y, w, h);
+    K.applySemantic(n, {
+        kind: kind | 0,
+        label: label ? UTF8ToString(label) : "",
+        href: "",
+        role: kind === 1 ? "main" : (kind === 2 ? "region" : ""),
+        level: 0,
+        tabIndex: -1
+    });
+    n.style.background = 'transparent';
+    n.style.pointerEvents = 'none';
+});
+
+EM_JS(void, js_dom_page_meta, (int which, const char *value,
+                               int r, int gg, int b, int a), {
+    var K = globalThis.__kryDom;
+    var doc = typeof document !== 'undefined' ? document : null;
+    if (!K || !doc) return;
+    var text = value ? UTF8ToString(value) : "";
+    if (which === 0) {
+        doc.title = text;
+    } else if (which === 1) {
+        var desc = K.ensureMeta('description');
+        if (desc) desc.setAttribute('content', text);
+    } else if (which === 2) {
+        var canonical = K.ensureMeta('canonical');
+        if (canonical) canonical.setAttribute('href', text);
+    } else if (which === 3) {
+        var theme = K.ensureMeta('theme-color');
+        var hex = '#' + [r, gg, b].map(function (v) {
+            return Math.max(0, Math.min(255, v | 0)).toString(16).padStart(2, '0');
+        }).join("");
+        if (theme) theme.setAttribute('content', a > 0 ? hex : "");
+    }
+});
+
+EM_JS(void, js_dom_route_set, (int replace, const char *path), {
+    var K = globalThis.__kryDom;
+    var value = path ? UTF8ToString(path) : "";
+    if (!value || typeof history === 'undefined') return;
+    try {
+        if (replace) history.replaceState({}, "", value);
+        else history.pushState({}, "", value);
+        if (K && K.noteRouteChange) K.noteRouteChange();
+    } catch (_) {}
+});
+
+EM_JS(void, js_dom_route_get, (int which, char *dst, int cap), {
+    if (!dst || cap <= 0) return;
+    var loc = typeof location !== 'undefined' ? location : null;
+    var text = "";
+    if (loc) text = which === 0 ? (loc.pathname || "/") : (loc.hash || "");
+    stringToUTF8(text, dst, cap);
+});
+
+EM_JS(int, js_dom_route_version, (void), {
+    var K = globalThis.__kryDom;
+    if (!K) return 0;
+    if (K.noteRouteChange) K.noteRouteChange();
+    return K.routeVersion | 0;
+});
+
+void kry_dom_semantic_next(int kind, const char *label, const char *href,
+                           const char *role, int level, int tab_index)
+{
+    js_dom_semantic_next(kind, label, href, role, level, tab_index);
+}
+
+void kry_dom_semantic_box(int kind, Rectangle bounds, const char *label)
+{
+    js_dom_semantic_box(kind, bounds.x, bounds.y, bounds.width, bounds.height,
+                        label);
+}
+
+void kry_dom_set_page_title(const char *title)
+{
+    js_dom_page_meta(0, title, 0, 0, 0, 0);
+}
+
+void kry_dom_set_page_description(const char *description)
+{
+    js_dom_page_meta(1, description, 0, 0, 0, 0);
+}
+
+void kry_dom_set_page_canonical_url(const char *url)
+{
+    js_dom_page_meta(2, url, 0, 0, 0, 0);
+}
+
+void kry_dom_set_page_theme_color(Color color)
+{
+    js_dom_page_meta(3, NULL, color.r, color.g, color.b, color.a);
+}
+
+const char *kry_dom_get_route_path(void)
+{
+    static char path[1024];
+
+    js_dom_route_get(0, path, (int)sizeof(path));
+    return path[0] != '\0' ? path : "/";
+}
+
+const char *kry_dom_get_route_hash(void)
+{
+    static char hash[1024];
+
+    js_dom_route_get(1, hash, (int)sizeof(hash));
+    return hash;
+}
+
+int kry_dom_get_route_version(void) { return js_dom_route_version(); }
+
+void kry_dom_push_route(const char *path)
+{
+    js_dom_route_set(0, path);
+}
+
+void kry_dom_replace_route(const char *path)
+{
+    js_dom_route_set(1, path);
+}
 
 EM_JS(int, js_dom_input_query, (int which, int code), {
     var K = globalThis.__kryDom;
@@ -956,22 +1224,27 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments,
 void DrawRectangleGradientV(int posX, int posY, int width, int height,
                             Color top, Color bottom)
 {
-    (void)bottom;
-    DrawRectangle(posX, posY, width, height, top);
+    js_dom_gradient_rect(1, posX, posY, width, height,
+                         top.r, top.g, top.b, top.a,
+                         bottom.r, bottom.g, bottom.b, bottom.a,
+                         0, 0, 0, 0, 0, 0, 0, 0);
 }
 void DrawRectangleGradientH(int posX, int posY, int width, int height,
                             Color left, Color right)
 {
-    (void)right;
-    DrawRectangle(posX, posY, width, height, left);
+    js_dom_gradient_rect(2, posX, posY, width, height,
+                         left.r, left.g, left.b, left.a,
+                         right.r, right.g, right.b, right.a,
+                         0, 0, 0, 0, 0, 0, 0, 0);
 }
 void DrawRectangleGradientEx(Rectangle rec, Color col1, Color col2,
                              Color col3, Color col4)
 {
-    (void)col2;
-    (void)col3;
-    (void)col4;
-    DrawRectangleRec(rec, col1);
+    js_dom_gradient_rect(3, rec.x, rec.y, rec.width, rec.height,
+                         col1.r, col1.g, col1.b, col1.a,
+                         col2.r, col2.g, col2.b, col2.a,
+                         col3.r, col3.g, col3.b, col3.a,
+                         col4.r, col4.g, col4.b, col4.a);
 }
 void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
               Color color)

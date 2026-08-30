@@ -194,6 +194,42 @@ right target. See `docs/KRB_FORMAT.md`.
 
 ## Core Modules
 
+### Page
+
+Kryon page helpers layer browser-facing semantics over the normal UI runtime.
+On the DOM backend they set document metadata, route state, and semantic DOM
+annotations; on other backends they render through the same Kryon UI widgets
+and ignore web-only metadata.
+
+```c
+SetPageTitle("Kryon");
+SetPageDescription("Native-feeling apps across desktop and web.");
+ReplaceRoute("/docs#getting-started");
+int route_version = GetRouteVersion();
+
+Page((PageProps){
+    .bounds = {0, 0, GetUIViewWidth(), GetUIViewHeight()},
+    .title = "Kryon",
+    .description = "Native-feeling apps across desktop and web.",
+    .gap = ScaleUIPx(16),
+    .padding = GetUIPageSidePadding(),
+    .key = Key("home")
+});
+Heading((HeadingProps){{40, 40, 520, 40}, "Kryon", 1, Text32, GetThemeText(), 0});
+Link((LinkProps){{40, 96, 160, 28}, "Docs", "/docs", Text16, 101, 0, GetThemeLink(), {0}});
+End();
+```
+
+Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `PagePicture`,
+`Flow`, and `PageGrid` for Kryon-authored website surfaces. `PagePicture` is
+named separately because `Image` is already the decoded-image type in the
+raylib compatibility surface; `PageGrid` avoids the existing `Grid` type name.
+The Go runtime mirrors these helpers and records semantic `FrameOp` metadata,
+so `.kry` files lowered through `k2g` can use the same page API.
+`GetRouteVersion()` increments when the browser route changes through
+`PushRoute`, `ReplaceRoute`, `popstate`, or `hashchange`; non-DOM backends
+return `0`.
+
 ### Color
 
 #### `LightenUIColor`

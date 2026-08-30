@@ -109,6 +109,29 @@ App :: () #ui {
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(200), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, ScaleUIPx(4), &lines_y)
     IconButton((IconButtonProps){.bounds = {ScaleUIPx(210), ScaleUIPx(60), ScaleUIPx(36), ScaleUIPx(36)}, .icon_type = 2, .focus_id = 3})
     Href((HrefProps){.bounds = {ScaleUIPx(210), ScaleUIPx(110), ScaleUIPx(90), ScaleUIPx(24)}, .text = "docs", .href = "https://example.com", .font = Text16, .color = GetThemeLink()})
+    SetPageTitle("Kryon Page")
+    SetPageDescription("Generated page")
+    SetPageCanonicalURL("https://example.com/page")
+    SetPageThemeColor((Color){0x11, 0x22, 0x33, 0xff})
+    ReplaceRoute("/page#top")
+    route_version: int = GetRouteVersion()
+    Progress((ProgressBarProps){{ScaleUIPx(188), ScaleUIPx(204), ScaleUIPx(60), ScaleUIPx(10)}, 0, 10, route_version, ""})
+    Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page", .theme_color = (Color){0x11, 0x22, 0x33, 0xff}, .background = GetThemeBackground(), .gap = ScaleUIPx(6), .padding = ScaleUIPx(8)})
+    Heading((HeadingProps){.text = "Welcome", .level = 1, .font = Text24, .color = GetThemeText()})
+    ParagraphText((ParagraphTextProps){.bounds = {0, 0, ScaleUIPx(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = ScaleUIPx(4)})
+    Link((LinkProps){.bounds = {0, 0, ScaleUIPx(90), ScaleUIPx(24)}, .text = "More", .href = "/more", .font = Text16, .color = GetThemeLink()})
+    PagePicture((PictureProps){"hero.png", (Rectangle){0, 0, ScaleUIPx(96), ScaleUIPx(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_COVER}, "Hero")
+    End()
+    Section((SectionProps){.label = "Details", .gap = ScaleUIPx(4), .padding = ScaleUIPx(4)})
+    Heading((HeadingProps){.text = "Details", .level = 2})
+    End()
+    Flow((FlowProps){.bounds = {ScaleUIPx(4), ScaleUIPx(176), ScaleUIPx(180), ScaleUIPx(24)}, .gap = ScaleUIPx(4)})
+    Text("flow", 0, 0, Text16, GetThemeText())
+    End()
+    PageGrid((GridProps){.bounds = {ScaleUIPx(4), ScaleUIPx(204), ScaleUIPx(180), ScaleUIPx(40)}, .columns = 2, .gap = ScaleUIPx(4), .padding = ScaleUIPx(4)})
+    Text("g1", 0, 0, Text16, GetThemeText())
+    Text("g2", 0, 0, Text16, GetThemeText())
+    End()
     Slider(9, ScaleUIPx(4), ScaleUIPx(170), ScaleUIPx(180), "S", 0, 100, &slider_val, "%", nil)
     Toggle(10, ScaleUIPx(200), ScaleUIPx(170), ScaleUIPx(120), ScaleUIPx(32), &toggle_val, "Off", "On")
     Stack smoke_stack: {
@@ -327,6 +350,18 @@ grep -q 'kryon.Paragraph(kryon.ParagraphSpec{Text: "Rich text"' "$out"
 grep -q 'kryon.IconButton(kryon.IconButtonProps{' "$out"
 grep -q 'FocusID: 3' "$out"
 grep -q 'kryon.Href(kryon.HrefProps{' "$out"
+grep -q 'kryon.SetPageTitle("Kryon Page")' "$out"
+grep -q 'kryon.ReplaceRoute("/page#top")' "$out"
+grep -q 'var route_version int32 = kryon.GetRouteVersion()' "$out"
+grep -q 'kryon.Page(kryon.PageProps{' "$out"
+grep -q 'CanonicalURL: "https://example.com/page"' "$out"
+grep -q 'kryon.Heading(kryon.HeadingProps{' "$out"
+grep -q 'kryon.ParagraphText(kryon.ParagraphTextProps{' "$out"
+grep -q 'kryon.Link(kryon.LinkProps{' "$out"
+grep -q 'kryon.PagePicture(kryon.PictureProps{AssetPath: "hero.png"' "$out"
+grep -q 'kryon.Section(kryon.SectionProps{' "$out"
+grep -q 'kryon.Flow(kryon.FlowProps{' "$out"
+grep -q 'kryon.PageGrid(kryon.GridProps{' "$out"
 grep -q 'Slider(9,' "$out"
 grep -q 'Toggle(10,' "$out"
 grep -q 'kryon.Stack(kryon.ColumnProps{' "$out"

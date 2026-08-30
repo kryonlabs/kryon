@@ -21,6 +21,7 @@
 #include "ui_toast.h"
 #include "ui_widget.h"
 #include "ui_tree.h"
+#include "ui_page.h"
 #include "terminal_pane.h"
 
 #endif

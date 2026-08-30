@@ -89,10 +89,12 @@ is_runtime_go_type(const char *type)
         "Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
         "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "UIThemeSettingsState", "ThemeSettingsProps",
-        "UIThemeSettingsResult", "PictureFit", "TextInputStyle", "ButtonProps",
-        "IconButtonProps", "HrefProps", "TextFieldProps", "TextAreaProps",
-        "ColumnProps", "RowProps", "FrameBox", "Grid", "ParagraphSpec",
-        "PictureProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
+        "UIThemeSettingsResult", "PictureFit", "UISemanticKind",
+        "TextInputStyle", "ButtonProps", "IconButtonProps", "HrefProps",
+        "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
+        "FrameBox", "Grid", "ParagraphSpec", "PictureProps", "PageProps",
+        "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
+        "FlowProps", "GridProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
         "ToolbarProps", "RadioButtonProps", "ProgressBarProps",
         "SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
         "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
@@ -897,6 +899,16 @@ props_field_at(const char *type, int index)
         const char *fields[20];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
+        {"FlowProps", {"Bounds", "Gap", "Padding", "Key"}},
+        {"GridProps", {"Bounds", "Columns", "Gap", "Padding", "Key"}},
+        {"PageProps", {"Bounds", "Title", "Description", "CanonicalURL",
+                       "ThemeColor", "Background", "Gap", "Padding", "Key"}},
+        {"SectionProps", {"Bounds", "Label", "Gap", "Padding", "Key"}},
+        {"HeadingProps", {"Bounds", "Text", "Level", "Font", "Color", "Key"}},
+        {"ParagraphTextProps", {"Bounds", "Text", "Font", "Color",
+                                "LineGap", "Key"}},
+        {"LinkProps", {"Bounds", "Text", "Href", "Font", "FocusID",
+                       "Disabled", "Color", "HoverColor"}},
         {"PictureProps", {"AssetPath", "Bounds", "Source", "Origin",
                           "Rotation", "Tint", "Fit", "Style"}},
         {"IconButtonProps", {"Bounds", "Icon", "IconType", "IconSize",
@@ -964,6 +976,8 @@ go_field_name(const char *field, char *dst, size_t dst_size)
         snprintf(dst, dst_size, "ID");
     else if(strcmp(dst, "FocusId") == 0)
         snprintf(dst, dst_size, "FocusID");
+    else if(strcmp(dst, "CanonicalUrl") == 0)
+        snprintf(dst, dst_size, "CanonicalURL");
 }
 
 /* .kry array variables ('name: [N] T' state or local): references used in
@@ -1377,11 +1391,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     if(eq == NULL)
                         continue;
                     *eq = '\0';
-                    camel(part + 1, field, sizeof(field));
-                    if(strcmp(field, "FocusId") == 0)
-                        snprintf(field, sizeof(field), "FocusID");
-                    if(strcmp(field, "Id") == 0)
-                        snprintf(field, sizeof(field), "ID");
+                    go_field_name(part + 1, field, sizeof(field));
                     if(strcmp(field, "TextSize") == 0)
                         continue;
                     if(strcmp(field, "Bounds") == 0 && *skip_ws(eq + 1) == '{') {

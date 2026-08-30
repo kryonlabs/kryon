@@ -179,16 +179,38 @@ func Checkbox(id, x, y int32, label string, value *int32) bool {
 func Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
 	return active().Dropdown(id, x, y, w, h, options, rest...)
 }
-func Column(props ColumnProps)          { active().Column(props) }
-func Row(props ColumnProps)             { active().Row(props) }
-func Stack(props ColumnProps)           { active().Stack(props) }
-func Screen(props ColumnProps)          { active().Screen(props) }
-func End()                              { active().End() }
-func Fade(c Color, alpha float32) Color { return active().Fade(c, alpha) }
-func GetThemeSurface() Color            { return active().GetThemeSurface() }
-func GetThemeButton() Color             { return active().GetThemeButton() }
-func GetThemeButtonHover() Color        { return active().GetThemeButtonHover() }
-func GetThemeLink() Color               { return active().GetThemeLink() }
+func Column(props ColumnProps)   { active().Column(props) }
+func Row(props ColumnProps)      { active().Row(props) }
+func Stack(props ColumnProps)    { active().Stack(props) }
+func Screen(props ColumnProps)   { active().Screen(props) }
+func GridLayout(props GridProps) { active().GridLayout(props) }
+func End()                       { active().End() }
+func SetPageTitle(title string)  { active().SetPageTitle(title) }
+func SetPageDescription(description string) {
+	active().SetPageDescription(description)
+}
+func SetPageCanonicalURL(url string) { active().SetPageCanonicalURL(url) }
+func SetPageThemeColor(color Color)  { active().SetPageThemeColor(color) }
+func GetRoutePath() string           { return active().GetRoutePath() }
+func GetRouteHash() string           { return active().GetRouteHash() }
+func GetRouteVersion() int32         { return active().GetRouteVersion() }
+func PushRoute(path string)          { active().PushRoute(path) }
+func ReplaceRoute(path string)       { active().ReplaceRoute(path) }
+func Page(props PageProps)           { active().Page(props) }
+func Section(props SectionProps)     { active().Section(props) }
+func Heading(props HeadingProps)     { active().Heading(props) }
+func ParagraphText(props ParagraphTextProps) {
+	active().ParagraphText(props)
+}
+func Link(props LinkProps) bool                      { return active().Link(props) }
+func PagePicture(props PictureProps, altText string) { active().PagePicture(props, altText) }
+func Flow(props FlowProps)                           { active().Flow(props) }
+func PageGrid(props GridProps)                       { active().PageGrid(props) }
+func Fade(c Color, alpha float32) Color              { return active().Fade(c, alpha) }
+func GetThemeSurface() Color                         { return active().GetThemeSurface() }
+func GetThemeButton() Color                          { return active().GetThemeButton() }
+func GetThemeButtonHover() Color                     { return active().GetThemeButtonHover() }
+func GetThemeLink() Color                            { return active().GetThemeLink() }
 func TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
 	active().TextInRect(text, rect, fontSize, color)
 }

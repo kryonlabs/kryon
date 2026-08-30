@@ -16,6 +16,10 @@ const (
 	FrameOpRow        FrameOpKind = "row"
 	FrameOpStack      FrameOpKind = "stack"
 	FrameOpScreen     FrameOpKind = "screen"
+	FrameOpGrid       FrameOpKind = "grid"
+	FrameOpPage       FrameOpKind = "page"
+	FrameOpSection    FrameOpKind = "section"
+	FrameOpPicture    FrameOpKind = "picture"
 	FrameOpEnd        FrameOpKind = "end"
 )
 
@@ -50,6 +54,12 @@ type FrameOp struct {
 	SelectionEndCol   int32
 	IconType          int32
 	IconSize          int32
+	Semantic          UISemanticKind
+	Href              string
+	Role              string
+	AltText           string
+	Level             int32
+	Columns           int32
 }
 
 type frameOpController interface {

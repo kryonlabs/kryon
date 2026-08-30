@@ -444,6 +444,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_COLUMN_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_ROW_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_STACK_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_GRID_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_PICTURE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_CUSTOM_NODE] = {ui_measure_bounds_height},
 };
@@ -741,7 +742,8 @@ UILayoutTree(void)
 
         if(parent->kind != UI_WIDGET_COLUMN_NODE &&
            parent->kind != UI_WIDGET_ROW_NODE &&
-           parent->kind != UI_WIDGET_STACK_NODE)
+           parent->kind != UI_WIDGET_STACK_NODE &&
+           parent->kind != UI_WIDGET_GRID_NODE)
             continue;
         content_x = parent->bounds.x + parent->data.layout.padding;
         content_y = parent->bounds.y + parent->data.layout.padding;
@@ -752,6 +754,39 @@ UILayoutTree(void)
         if(content_h < 0)
             content_h = 0;
         cursor = parent->kind == UI_WIDGET_ROW_NODE ? content_x : content_y;
+        if(parent->kind == UI_WIDGET_GRID_NODE) {
+            int columns = parent->data.layout.columns > 0
+                ? parent->data.layout.columns : 1;
+            int index = 0;
+            float row_y = content_y;
+            float row_h = 0;
+            float cell_w = columns > 0
+                ? (content_w - parent->data.layout.gap * (columns - 1)) /
+                    columns
+                : content_w;
+
+            if(cell_w < 0)
+                cell_w = 0;
+            for(child = parent->first_child; child >= 0;
+                child = ui_committed_nodes[child].next_sibling) {
+                UIWidgetNode *node = &ui_committed_nodes[child];
+                int col = index % columns;
+
+                if(index > 0 && col == 0) {
+                    row_y += row_h + parent->data.layout.gap;
+                    row_h = 0;
+                }
+                node->bounds.x = content_x + col *
+                    (cell_w + parent->data.layout.gap);
+                node->bounds.y = row_y;
+                if(node->bounds.width <= 0 || node->bounds.width > cell_w)
+                    node->bounds.width = cell_w;
+                if(node->bounds.height > row_h)
+                    row_h = node->bounds.height;
+                index++;
+            }
+            continue;
+        }
         for(child = parent->first_child; child >= 0;
             child = ui_committed_nodes[child].next_sibling) {
             UIWidgetNode *node = &ui_committed_nodes[child];
@@ -2325,6 +2360,7 @@ ui_begin_layout_node(UIWidgetKind kind, KeyID key, Rectangle bounds,
         ui_tree_nodes[node].key = key;
         ui_tree_nodes[node].data.layout.gap = gap;
         ui_tree_nodes[node].data.layout.padding = padding;
+        ui_tree_nodes[node].data.layout.columns = 1;
         if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
             ui_tree_stack[ui_tree_stack_depth++] = node;
     }
@@ -2343,6 +2379,19 @@ Row(RowProps props)
 {
     return ui_begin_layout_node(UI_WIDGET_ROW_NODE, props.key, props.bounds,
                                 props.gap, props.padding);
+}
+
+NodeId
+GridLayout(GridLayoutProps props)
+{
+    NodeId node = ui_begin_layout_node(UI_WIDGET_GRID_NODE, props.key,
+                                       props.bounds, props.gap,
+                                       props.padding);
+
+    if(node >= 0)
+        ui_tree_nodes[node].data.layout.columns =
+            props.columns > 0 ? props.columns : 1;
+    return node;
 }
 
 NodeId

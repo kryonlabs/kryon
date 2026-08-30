@@ -275,7 +275,7 @@ declaration pass (`src/ui/ui_tree.c`).
   cartridge widget set remains smaller than the C catalog (see matrix).
   `Combobox` lowers to a `KRB_CTRL_COMBOBOX` control that renders like the
   dropdown, matching the C widget.
-- Retained tree paints only 5 node kinds and routes input for 2 (see caveat
+- Retained tree paints 7 node kinds and routes input for 3 (see caveat
   above the widget matrix).
 - No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;
   no IME/preedit; no gamepad UI navigation.

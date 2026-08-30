@@ -32,9 +32,9 @@
     {
       "id": "dom",
       "label": "Web DOM",
-      "tier": "web",
+      "tier": "dom-page",
       "platforms": ["Emscripten web"],
-      "surface": "HTML/CSS DOM UI presentation with RGBA image-node textures and null stubs for unsupported surface areas",
+      "surface": "HTML/CSS DOM UI presentation with semantic page metadata, native heading/link/image annotations, CSS gradients, RGBA image-node textures, browser route helpers with route-change versioning, and null stubs for unsupported surface areas",
       "status": "smoke gated",
       "checks": ["make dom-test"]
     },

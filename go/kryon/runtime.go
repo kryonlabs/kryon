@@ -53,6 +53,7 @@ type ThemeSource int32
 type ThemeMode int32
 type PictureFit int32
 type MenuItemKind int32
+type UISemanticKind int32
 
 const (
 	FlagVsyncHint       uint = 0x00000040
@@ -178,6 +179,26 @@ const (
 	PICTURE_FIT_STRETCH = PictureFitStretch
 	PICTURE_FIT_CONTAIN = PictureFitContain
 	PICTURE_FIT_COVER   = PictureFitCover
+)
+
+const (
+	UISemanticNone UISemanticKind = iota
+	UISemanticPage
+	UISemanticSection
+	UISemanticHeading
+	UISemanticParagraph
+	UISemanticLink
+	UISemanticPicture
+	UISemanticButton
+
+	UI_SEMANTIC_NONE      = UISemanticNone
+	UI_SEMANTIC_PAGE      = UISemanticPage
+	UI_SEMANTIC_SECTION   = UISemanticSection
+	UI_SEMANTIC_HEADING   = UISemanticHeading
+	UI_SEMANTIC_PARAGRAPH = UISemanticParagraph
+	UI_SEMANTIC_LINK      = UISemanticLink
+	UI_SEMANTIC_PICTURE   = UISemanticPicture
+	UI_SEMANTIC_BUTTON    = UISemanticButton
 )
 
 const (
@@ -509,6 +530,65 @@ type PictureProps struct {
 	Fit       PictureFit
 }
 
+type PageProps struct {
+	Bounds       Rectangle
+	Title        string
+	Description  string
+	CanonicalURL string
+	ThemeColor   Color
+	Background   Color
+	Gap          int32
+	Padding      int32
+	Key          KeyID
+}
+
+type SectionProps struct {
+	Bounds  Rectangle
+	Label   string
+	Gap     int32
+	Padding int32
+	Key     KeyID
+}
+
+type HeadingProps struct {
+	Bounds Rectangle
+	Text   string
+	Level  int32
+	Font   int32
+	Color  Color
+	Key    KeyID
+}
+
+type ParagraphTextProps struct {
+	Bounds  Rectangle
+	Text    string
+	Font    int32
+	Color   Color
+	LineGap int32
+	Key     KeyID
+}
+
+type LinkProps struct {
+	Bounds     Rectangle
+	Text       string
+	Href       string
+	Font       int32
+	FocusID    int32
+	Disabled   bool
+	Color      Color
+	HoverColor Color
+}
+
+type FlowProps = ColumnProps
+
+type GridProps struct {
+	Bounds  Rectangle
+	Columns int32
+	Gap     int32
+	Padding int32
+	Key     KeyID
+}
+
 type BottomNavItem struct {
 	Route    int32
 	Label    string
@@ -784,7 +864,25 @@ type Runtime interface {
 	Row(ColumnProps)
 	Stack(ColumnProps)
 	Screen(ColumnProps)
+	GridLayout(GridProps)
 	End()
+	SetPageTitle(string)
+	SetPageDescription(string)
+	SetPageCanonicalURL(string)
+	SetPageThemeColor(Color)
+	GetRoutePath() string
+	GetRouteHash() string
+	GetRouteVersion() int32
+	PushRoute(string)
+	ReplaceRoute(string)
+	Page(PageProps)
+	Section(SectionProps)
+	Heading(HeadingProps)
+	ParagraphText(ParagraphTextProps)
+	Link(LinkProps) bool
+	PagePicture(PictureProps, string)
+	Flow(FlowProps)
+	PageGrid(GridProps)
 	TextField(TextFieldProps)
 	Key(text string) KeyID
 	Fade(Color, float32) Color
@@ -841,35 +939,42 @@ type Runtime interface {
 }
 
 type runtime struct {
-	config         AppConfig
-	closed         bool
-	frames         int
-	focusID        int32
-	clipboard      string
-	inputEvents    []inputEvent
-	taps           []tapEvent
-	clicks         []mouseClickEvent
-	mousePos       Vector2
-	mouseWheel     float32
-	mouseDown      map[int32]bool
-	mousePressed   map[int32]bool
-	mouseReleased  map[int32]bool
-	keyDown        map[int32]bool
-	chars          []rune
-	fieldOrder     []int32
-	prevOrder      []int32
-	focusRefs      map[int32]*bool
-	selection      map[int32]selection
-	layout         []layoutFrame
-	ops            []FrameOp
-	lastTableClick tableClick
-	tableDrag      tableDrag
-	openMenus      map[int32]int32
-	openDropdowns  map[int32]bool
-	currentThemeID ThemeId
-	themeSource    ThemeSource
-	themeMode      ThemeMode
-	themeStyle     ThemeStyle
+	config           AppConfig
+	closed           bool
+	frames           int
+	focusID          int32
+	clipboard        string
+	inputEvents      []inputEvent
+	taps             []tapEvent
+	clicks           []mouseClickEvent
+	mousePos         Vector2
+	mouseWheel       float32
+	mouseDown        map[int32]bool
+	mousePressed     map[int32]bool
+	mouseReleased    map[int32]bool
+	keyDown          map[int32]bool
+	chars            []rune
+	fieldOrder       []int32
+	prevOrder        []int32
+	focusRefs        map[int32]*bool
+	selection        map[int32]selection
+	layout           []layoutFrame
+	ops              []FrameOp
+	pageTitle        string
+	pageDescription  string
+	pageCanonicalURL string
+	pageThemeColor   Color
+	routePath        string
+	routeHash        string
+	routeVersion     int32
+	lastTableClick   tableClick
+	tableDrag        tableDrag
+	openMenus        map[int32]int32
+	openDropdowns    map[int32]bool
+	currentThemeID   ThemeId
+	themeSource      ThemeSource
+	themeMode        ThemeMode
+	themeStyle       ThemeStyle
 }
 
 type themePalette struct {
@@ -895,6 +1000,9 @@ type layoutFrame struct {
 	gap        float32
 	padding    float32
 	horizontal bool
+	columns    int32
+	cellIndex  int32
+	rowHeight  float32
 	noLayout   bool
 }
 
@@ -1353,6 +1461,135 @@ func (r *runtime) Stack(props ColumnProps) {
 func (r *runtime) Screen(props ColumnProps) {
 	r.pushGroup(props, FrameOpScreen)
 }
+func (r *runtime) GridLayout(props GridProps) {
+	r.pushGrid(props)
+}
+func (r *runtime) SetPageTitle(title string) {
+	r.pageTitle = title
+}
+func (r *runtime) SetPageDescription(description string) {
+	r.pageDescription = description
+}
+func (r *runtime) SetPageCanonicalURL(url string) {
+	r.pageCanonicalURL = url
+}
+func (r *runtime) SetPageThemeColor(color Color) {
+	r.pageThemeColor = color
+}
+func (r *runtime) GetRoutePath() string {
+	if r.routePath == "" {
+		return "/"
+	}
+	return r.routePath
+}
+func (r *runtime) GetRouteHash() string {
+	return r.routeHash
+}
+func (r *runtime) GetRouteVersion() int32 {
+	return r.routeVersion
+}
+func (r *runtime) PushRoute(path string) {
+	r.setRoute(path)
+}
+func (r *runtime) ReplaceRoute(path string) {
+	r.setRoute(path)
+}
+func (r *runtime) Page(props PageProps) {
+	bounds := pageBoundsOrView(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
+	key := props.Key
+	if key == 0 {
+		key = Key(props.Title)
+	}
+	if props.Title != "" {
+		r.SetPageTitle(props.Title)
+	}
+	if props.Description != "" {
+		r.SetPageDescription(props.Description)
+	}
+	if props.CanonicalURL != "" {
+		r.SetPageCanonicalURL(props.CanonicalURL)
+	}
+	if props.ThemeColor.A != 0 {
+		r.SetPageThemeColor(props.ThemeColor)
+	}
+	if props.Background.A != 0 {
+		r.Background(props.Background)
+	}
+	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: UISemanticPage})
+	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
+}
+func (r *runtime) Section(props SectionProps) {
+	bounds := pageBoundsOrView(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
+	key := props.Key
+	if key == 0 {
+		key = Key(props.Label)
+	}
+	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: UISemanticSection})
+	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
+}
+func (r *runtime) Heading(props HeadingProps) {
+	level := props.Level
+	if level < 1 {
+		level = 1
+	} else if level > 6 {
+		level = 6
+	}
+	font := props.Font
+	if font <= 0 {
+		font = Text24
+	}
+	color := props.Color
+	if color.A == 0 {
+		color = r.theme().text
+	}
+	bounds := props.Bounds
+	if bounds.Width <= 0 {
+		bounds.Width = float32(runtimeTextWidth(props.Text, font))
+	}
+	if bounds.Height <= 0 {
+		bounds.Height = float32(font)
+	}
+	bounds = r.layoutRect(bounds)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: UISemanticHeading, Level: level})
+}
+func (r *runtime) ParagraphText(props ParagraphTextProps) {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	color := props.Color
+	if color.A == 0 {
+		color = r.theme().text
+	}
+	width := int32(props.Bounds.Width)
+	if width <= 0 {
+		width = r.GetScreenWidth() - int32(props.Bounds.X)
+	}
+	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + props.LineGap)})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: UISemanticParagraph})
+}
+func (r *runtime) Link(props LinkProps) bool {
+	return r.Href(HrefProps{
+		Bounds:     props.Bounds,
+		Text:       props.Text,
+		Href:       props.Href,
+		Font:       props.Font,
+		FocusID:    props.FocusID,
+		Disabled:   props.Disabled,
+		Color:      props.Color,
+		HoverColor: props.HoverColor,
+	})
+}
+func (r *runtime) PagePicture(props PictureProps, altText string) {
+	props.Bounds = r.layoutRect(props.Bounds)
+	r.record(FrameOp{Kind: FrameOpPicture, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: UISemanticPicture, Role: "img", AltText: altText})
+}
+func (r *runtime) Flow(props FlowProps) {
+	r.Row(ColumnProps(props))
+}
+func (r *runtime) PageGrid(props GridProps) {
+	r.GridLayout(props)
+}
 func (r *runtime) End() {
 	if len(r.layout) > 0 {
 		r.layout = r.layout[:len(r.layout)-1]
@@ -1413,11 +1650,32 @@ func (r *runtime) IconTexture(id, x, y, size int32, iconType int32, tint Color) 
 		IconSize: size,
 	})
 }
-func (r *runtime) Picture(PictureProps) {}
+func (r *runtime) Picture(props PictureProps) {
+	props.Bounds = r.layoutRect(props.Bounds)
+	r.record(FrameOp{Kind: FrameOpPicture, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint})
+}
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
-	_, _ = spec, x
+	font := spec.Font
+	if font <= 0 {
+		font = Text16
+	}
+	lineGap := spec.LineGap
+	color := spec.Color
+	if color.A == 0 {
+		color = r.theme().text
+	}
+	textY := int32(0)
 	if y != nil {
-		*y += spec.Font + spec.LineGap
+		textY = *y
+	}
+	width := spec.Width
+	if width <= 0 {
+		width = int32(r.config.Width) - x
+	}
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY), Width: float32(width), Height: float32(font + lineGap)})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: font})
+	if y != nil {
+		*y += font + lineGap
 	}
 }
 func (r *runtime) IconButton(props IconButtonProps) bool {
@@ -1477,7 +1735,29 @@ func (r *runtime) IconButton(props IconButtonProps) bool {
 	r.IconTexture(props.FocusID, iconX, iconY, size, iconType, iconColor)
 	return pressed
 }
-func (r *runtime) Href(HrefProps) bool { return false }
+func (r *runtime) Href(props HrefProps) bool {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	color := props.Color
+	if color.A == 0 {
+		color = r.theme().link
+	}
+	bounds := r.layoutRect(props.Bounds)
+	if bounds.Width <= 0 {
+		bounds.Width = float32(runtimeTextWidth(props.Text, font))
+	}
+	if bounds.Height <= 0 {
+		bounds.Height = float32(font + 4)
+	}
+	pressed := false
+	if !props.Disabled {
+		pressed = r.consumeTap(bounds)
+	}
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: UISemanticLink, Href: props.Href, Role: "link"})
+	return pressed
+}
 func (r *runtime) Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool {
 	if value == nil {
 		return false
@@ -2236,6 +2516,24 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKin
 	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
 }
 
+func (r *runtime) pushGrid(props GridProps) {
+	bounds := r.layoutRect(props.Bounds)
+	padding := float32(props.Padding)
+	columns := props.Columns
+	if columns < 1 {
+		columns = 1
+	}
+	r.layout = append(r.layout, layoutFrame{
+		bounds:  bounds,
+		cursorX: bounds.X + padding,
+		cursorY: bounds.Y + padding,
+		gap:     float32(props.Gap),
+		padding: padding,
+		columns: columns,
+	})
+	r.record(FrameOp{Kind: FrameOpGrid, Bounds: bounds, ID: int32(props.Key), Columns: columns})
+}
+
 func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
 	bounds := props.Bounds
 	r.layout = append(r.layout, layoutFrame{
@@ -2253,6 +2551,36 @@ func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 	if frame.noLayout {
 		return bounds
 	}
+	if frame.columns > 0 {
+		out := bounds
+		columns := frame.columns
+		innerW := frame.bounds.Width - frame.padding*2
+		cellW := innerW
+		if columns > 1 {
+			cellW = (innerW - frame.gap*float32(columns-1)) / float32(columns)
+		}
+		if cellW < 0 {
+			cellW = 0
+		}
+		col := frame.cellIndex % columns
+		out.X = frame.cursorX + float32(col)*(cellW+frame.gap)
+		out.Y = frame.cursorY
+		if out.Width <= 0 {
+			out.Width = cellW
+		}
+		if out.Height <= 0 {
+			out.Height = frame.bounds.Height - frame.padding*2
+		}
+		if out.Height > frame.rowHeight {
+			frame.rowHeight = out.Height
+		}
+		frame.cellIndex++
+		if frame.cellIndex%columns == 0 {
+			frame.cursorY += frame.rowHeight + frame.gap
+			frame.rowHeight = 0
+		}
+		return out
+	}
 	out := bounds
 	out.X = frame.cursorX
 	out.Y = frame.cursorY
@@ -2268,6 +2596,37 @@ func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 		frame.cursorY += out.Height + frame.gap
 	}
 	return out
+}
+
+func (r *runtime) setRoute(path string) {
+	oldPath := r.GetRoutePath()
+	oldHash := r.GetRouteHash()
+	if path == "" {
+		r.routePath = "/"
+		r.routeHash = ""
+	} else if idx := strings.Index(path, "#"); idx >= 0 {
+		r.routePath = path[:idx]
+		r.routeHash = path[idx:]
+	} else {
+		r.routePath = path
+		r.routeHash = ""
+	}
+	if r.routePath == "" {
+		r.routePath = "/"
+	}
+	if r.routePath != oldPath || r.routeHash != oldHash {
+		r.routeVersion++
+	}
+}
+
+func pageBoundsOrView(bounds Rectangle, viewWidth, viewHeight int32) Rectangle {
+	if bounds.Width <= 0 {
+		bounds.Width = float32(viewWidth)
+	}
+	if bounds.Height <= 0 {
+		bounds.Height = float32(viewHeight)
+	}
+	return bounds
 }
 
 func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {

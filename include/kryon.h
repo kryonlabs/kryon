@@ -30,6 +30,7 @@
 #include "ui_text.h"
 #include "ui_toast.h"
 #include "ui.h"
+#include "ui_page.h"
 #include "ui_window.h"
 #include "kry_math.h"
 #include "scene_tree.h"
@@ -86,7 +87,7 @@
  * layout or a public function changes signature; KryonAbiVersion() is
  * compiled into libkryon.a, while the macro is read from the current
  * headers — a mismatch means the archive is stale and must be rebuilt. */
-#define KRYON_ABI_VERSION 4
+#define KRYON_ABI_VERSION 5
 int KryonAbiVersion(void);
 
 #endif /* KRYON_H */

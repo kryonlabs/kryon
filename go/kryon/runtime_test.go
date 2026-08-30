@@ -659,6 +659,71 @@ func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 	}
 }
 
+func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+
+	rt.ReplaceRoute("/docs#install")
+	rt.BeginFrame()
+	rt.Page(PageProps{
+		Title:        "Docs",
+		Description:  "Kryon docs",
+		CanonicalURL: "https://example.test/docs",
+		ThemeColor:   Color{R: 1, G: 2, B: 3, A: 255},
+		Background:   WHITE,
+		Gap:          8,
+		Padding:      12,
+	})
+	rt.Heading(HeadingProps{Text: "Install", Level: 2})
+	rt.Link(LinkProps{Text: "Read more", Href: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
+	rt.PagePicture(PictureProps{AssetPath: "hero.png", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE}, "Hero")
+	rt.End()
+	rt.PageGrid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
+	rt.Text("A", 0, 0, Text16, BLACK)
+	rt.Text("B", 0, 0, Text16, BLACK)
+	rt.End()
+	rt.EndFrame()
+
+	if rt.pageTitle != "Docs" || rt.pageDescription != "Kryon docs" || rt.pageCanonicalURL != "https://example.test/docs" {
+		t.Fatalf("page metadata = title %q description %q canonical %q", rt.pageTitle, rt.pageDescription, rt.pageCanonicalURL)
+	}
+	if rt.pageThemeColor != (Color{R: 1, G: 2, B: 3, A: 255}) {
+		t.Fatalf("theme color = %#v", rt.pageThemeColor)
+	}
+	if rt.GetRoutePath() != "/docs" || rt.GetRouteHash() != "#install" {
+		t.Fatalf("route = %q %q", rt.GetRoutePath(), rt.GetRouteHash())
+	}
+	if rt.GetRouteVersion() != 1 {
+		t.Fatalf("route version = %d, want 1", rt.GetRouteVersion())
+	}
+	rt.ReplaceRoute("/docs#install")
+	if rt.GetRouteVersion() != 1 {
+		t.Fatalf("same route version = %d, want 1", rt.GetRouteVersion())
+	}
+	rt.PushRoute("/docs#usage")
+	if rt.GetRouteVersion() != 2 {
+		t.Fatalf("changed route version = %d, want 2", rt.GetRouteVersion())
+	}
+
+	var sawPage, sawHeading, sawLink, sawPicture, sawGrid bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpPage && op.Semantic == UISemanticPage && op.Bounds.Width == 320:
+			sawPage = true
+		case op.Kind == FrameOpText && op.Semantic == UISemanticHeading && op.Level == 2 && op.Text == "Install":
+			sawHeading = true
+		case op.Kind == FrameOpText && op.Semantic == UISemanticLink && op.Href == "/more":
+			sawLink = true
+		case op.Kind == FrameOpPicture && op.Semantic == UISemanticPicture && op.AltText == "Hero":
+			sawPicture = true
+		case op.Kind == FrameOpGrid && op.Columns == 2:
+			sawGrid = true
+		}
+	}
+	if !sawPage || !sawHeading || !sawLink || !sawPicture || !sawGrid {
+		t.Fatalf("missing semantic ops: page=%v heading=%v link=%v picture=%v grid=%v ops=%#v", sawPage, sawHeading, sawLink, sawPicture, sawGrid, rt.FrameOps())
+	}
+}
+
 func TestFrameOpsResetEachFrame(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 
