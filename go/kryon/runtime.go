@@ -2808,6 +2808,9 @@ func (r *runtime) consumeTap(bounds Rectangle) bool {
 		}
 		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
 			r.taps[i].consumed = true
+			if os.Getenv("KRYON_DEBUG_TAPS") != "" {
+				log.Printf("tap (%.0f,%.0f) consumed by bounds=%v", r.taps[i].x, r.taps[i].y, bounds)
+			}
 			return true
 		}
 	}
