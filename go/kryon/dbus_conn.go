@@ -9,6 +9,7 @@ package kryon
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -138,8 +139,10 @@ func dbusSession() (*dbusConn, error) {
 }
 
 func (d *dbusConn) auth() error {
-	// The leading NUL byte starts the protocol; EXTERNAL carries the uid.
-	hexUID := strconv.FormatInt(int64(os.Getuid()), 16)
+	// The leading NUL byte starts the protocol; EXTERNAL carries the
+	// hexadecimal encoding of the decimal uid string (libdbus and GDBus
+	// both send "31303030" for uid 1000, not hex(1000)).
+	hexUID := hex.EncodeToString([]byte(strconv.Itoa(os.Getuid())))
 	d.wmu.Lock()
 	_, err := d.c.Write([]byte("\x00AUTH EXTERNAL " + hexUID + "\r\n"))
 	d.wmu.Unlock()
