@@ -25,8 +25,18 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
     var tex = K.textures[id];
     if (!ctx || !tex) return;
     var flipX = false, flipY = false;
+    /* Raylib re-anchors a negative source extent at the far corner and
+     * mirrors it. Canvas textures are stored upright, so sprites mirror
+     * via the flip transform below. Render targets are the exception:
+     * raylib stores them bottom-up and the {0,0,w,-h} idiom exists to
+     * draw them upright — on this backend that is a plain in-bounds copy
+     * of |sh| rows starting at sy, with no mirror. */
+    var isTarget = !!(K.targets && K.targets[id]);
     if (sw < 0) { sx += sw; sw = -sw; flipX = true; }
-    if (sh < 0) { sy += sh; sh = -sh; flipY = true; }
+    if (sh < 0) {
+        sh = -sh;
+        if (!isTarget) { sy -= sh; flipY = true; }
+    }
     if (dw < 0) { dw = -dw; flipX = !flipX; }
     if (dh < 0) { dh = -dh; flipY = !flipY; }
     var white = (r === 255 && gg === 255 && bb === 255 && aa === 255);
@@ -76,17 +86,23 @@ EM_JS(int, js_texture_from_rgba, (int ptr, int w, int h), {
 });
 
 EM_JS(void, js_texture_free, (int id), {
-    delete globalThis.__kryCanvas.textures[id];
+    var K = globalThis.__kryCanvas;
+    delete K.textures[id];
+    if (K.targets) delete K.targets[id];
 });
 
 /* Create an offscreen canvas, register it as a texture, do NOT push it as
- * the draw target — BeginTextureMode selects it. */
+ * the draw target — BeginTextureMode selects it. Ids registered here are
+ * flagged in K.targets so js_draw_texture_pro can apply raylib's
+ * render-target orientation semantics to them. */
 EM_JS(int, js_render_target, (int w, int h), {
     var K = globalThis.__kryCanvas;
     var cv = K.makeCanvas(w, h);
     if (!cv) return 0;
     var id = K.nextTex++;
     K.textures[id] = cv;
+    if (!K.targets) K.targets = {};
+    K.targets[id] = 1;
     return id;
 });
 

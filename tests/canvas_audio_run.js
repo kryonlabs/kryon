@@ -72,6 +72,9 @@ class FakeAudioContext {
 }
 
 globalThis.AudioContext = FakeAudioContext;
+// decodeBytes decodes on an OfflineAudioContext so autoplay-suspended
+// browsers cannot park the Asyncify stack on a pending decode.
+globalThis.OfflineAudioContext = FakeAudioContext;
 globalThis.document = {
     addEventListener() {}
 };

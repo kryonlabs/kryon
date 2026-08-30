@@ -10,7 +10,17 @@ const ctxState = {
     clearRect: rec('clearRect'), beginPath: rec('beginPath'),
     arc: rec('arc'), fill: rec('fill'), stroke: rec('stroke'),
     moveTo: rec('moveTo'), lineTo: rec('lineTo'), closePath: rec('closePath'),
-    drawImage: rec('drawImage'), save: rec('save'), restore: rec('restore'),
+    drawImage: function (img, sx, sy, sw, sh) {
+        calls.push('drawImage');
+        // 9-arg form: reject out-of-bounds source rects — the browser
+        // clips them to nothing, which silently blanks the frame.
+        if (arguments.length >= 9 && img && img.width !== undefined) {
+            if (sx < 0 || sy < 0 || sx + sw > img.width || sy + sh > img.height)
+                throw new Error('drawImage source rect out of bounds: ' +
+                    [sx, sy, sw, sh].join(',') + ' vs ' + img.width + 'x' + img.height);
+        }
+    },
+    save: rec('save'), restore: rec('restore'),
     clip: rec('clip'), rect: rec('rect'),
     translate: rec('translate'), rotate: rec('rotate'), scale: rec('scale'),
     setTransform: rec('setTransform'),

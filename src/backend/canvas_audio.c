@@ -71,8 +71,27 @@ EM_JS(void, js_audio_init, (void), {
         }
         throw new Error('no audio file source');
     };
-    A.decodeBytes = async function (bytes) {
+    A.decoder = function () {
+        /* decodeAudioData on an autoplay-suspended AudioContext never
+         * settles in some browsers (Firefox parks the promise until a
+         * gesture), and an Asyncify build blocks its whole C stack on
+         * the await. Decoding on a plain OfflineAudioContext has no such
+         * gate; build it at the main context's rate so buffers play
+         * untransposed. Falls back to the main context when offline
+         * contexts are unavailable. */
+        if (A.decodeCtx) return A.decodeCtx;
         var ctx = A.ensure();
+        var OC = g.OfflineAudioContext || g.webkitOfflineAudioContext;
+        if (OC && ctx) {
+            try {
+                A.decodeCtx = new OC(1, 1, ctx.sampleRate || 44100);
+                return A.decodeCtx;
+            } catch (e) {}
+        }
+        return ctx;
+    };
+    A.decodeBytes = async function (bytes) {
+        var ctx = A.decoder();
         if (!ctx || !ctx.decodeAudioData) return 0;
         A.resume();
         var copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);

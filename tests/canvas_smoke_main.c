@@ -155,6 +155,12 @@ int main(void)
                        (Rectangle){0, 0, 32, 32},
                        (Rectangle){280, 204, 32, 32},
                        (Vector2){16, 16}, 10.0f, WHITE);
+        /* raylib's render-target idiom: negative source height must draw
+         * the target upright, not mirror it out of bounds */
+        DrawTexturePro(target.texture,
+                       (Rectangle){0, 0, 32, -32},
+                       (Rectangle){240, 204, 32, 32},
+                       (Vector2){0, 0}, 0.0f, WHITE);
         DrawText("hello canvas", 12, 200, 16, (Color){240, 240, 242, 255});
         DrawTextEx(font, "ex", (Vector2){120, 200}, 16, 1.0f, WHITE);
         DrawTextCodepoint(font, '!', (Vector2){150, 200}, 16, WHITE);
