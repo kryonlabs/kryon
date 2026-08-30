@@ -47,6 +47,38 @@ typedef struct {
     int content_h;
 } UIScrollPage;
 
+typedef int (*UIScreenScaffoldTitleFn)(const char *title, int height,
+                                       void *user_data);
+
+typedef struct {
+    const char *title;
+    int title_height;
+    int top_gap;
+    int bottom_reserved;
+    int max_content_width;
+    int min_content_width;
+    int side_padding;
+    int *scroll_offset;
+    int wheel_step;
+    int scrollbar_x;
+    int measure_passes;
+    UIScrollPageHeightFn content_height;
+    void *user_data;
+    UIScreenScaffoldTitleFn draw_title;
+    void *title_user_data;
+} UIScreenScaffoldSpec;
+
+typedef struct {
+    int closed;
+    int title_height;
+    int content_y;
+    int content_h;
+    UIScrollPage page;
+    int content_x;
+    int content_w;
+    int y;
+} UIScreenScaffold;
+
 int GetUIScrollbarReservedWidth(int max_scroll);
 int GetUIScrollbarContentWidth(int content_width, int max_scroll);
 int GetUIScrollbarSafeContentWidth(int content_x, int content_width,
@@ -57,5 +89,7 @@ void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
 void EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin);
 UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
 void EndUIScrollPage(UIScrollPage page);
+UIScreenScaffold BeginUIScreenScaffold(UIScreenScaffoldSpec spec);
+void EndUIScreenScaffold(UIScreenScaffold scaffold);
 
 #endif

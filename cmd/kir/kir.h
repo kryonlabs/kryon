@@ -184,6 +184,15 @@ typedef struct KirAppMeta {
     char shutdown[KIR_NAME_MAX];
 } KirAppMeta;
 
+typedef struct KirRoute {
+    char id[KIR_NAME_MAX];
+    char title[KIR_NAME_MAX];
+    char group[KIR_NAME_MAX];
+    char page[KIR_NAME_MAX];
+    char guard[KIR_TEXT_MAX];
+    KirSourceSpan span;
+} KirRoute;
+
 typedef struct KirModule {
     char name[KIR_NAME_MAX];
     char source_path[KIR_PATH_MAX];
@@ -207,6 +216,9 @@ typedef struct KirModule {
     KirImport *imports;
     int import_count;
     int import_cap;
+    KirRoute *routes;
+    int route_count;
+    int route_cap;
     KirFunction *functions;
     int function_count;
     int function_cap;
@@ -243,6 +255,8 @@ KirAssert *KirModuleAddAssert(KirModule *module, const char *condition,
                               const char *message, KirSourceSpan span);
 KirType *KirModuleAddType(KirModule *module, const char *name,
                           KirSourceSpan span);
+KirRoute *KirModuleAddRoute(KirModule *module, const char *id,
+                            KirSourceSpan span);
 KirStmt *KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind,
                             const char *text, const char *widget,
                             KirSourceSpan span);

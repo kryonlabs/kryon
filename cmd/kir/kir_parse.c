@@ -154,6 +154,25 @@ parse_quoted(const char *s, char *out, size_t out_size)
 }
 
 static int
+parse_route_header(const char *s, char *out, size_t out_size)
+{
+    const char *p;
+    size_t n = 0;
+
+    if(!starts_word(s, "route"))
+        return 0;
+    p = s + 5;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    while((isalnum((unsigned char)*p) || *p == '_') && n + 1 < out_size)
+        out[n++] = *p++;
+    out[n] = '\0';
+    while(*p == ' ' || *p == '\t')
+        p++;
+    return out[0] != '\0' && strchr(p, '{') != NULL;
+}
+
+static int
 parse_angled(const char *s, char *out, size_t out_size)
 {
     const char *q;
@@ -1916,6 +1935,7 @@ kir_parse_file(const char *path, const char *root)
     KirProgram *program;
     KirModule *module;
     KirFunction *fn = NULL;
+    KirRoute *route = NULL;
     char line[K2IR_LINE_MAX];
     char module_name[KIR_NAME_MAX] = "main";
     char rel[K2IR_PATH_MAX];
@@ -1923,7 +1943,7 @@ kir_parse_file(const char *path, const char *root)
     char out_rel[K2IR_PATH_MAX];
     char out_path[K2IR_PATH_MAX];
     int line_no = 0;
-    enum { TOP, APP, STATE, TYPE, ENUM, FUNCTION } mode = TOP;
+    enum { TOP, APP, STATE, ROUTE, TYPE, ENUM, FUNCTION } mode = TOP;
     int enum_return = TOP;
     int depth = 0;
     char pending[K2IR_LINE_MAX * 4];
@@ -2048,6 +2068,7 @@ kir_parse_file(const char *path, const char *root)
                           strcmp(w0, "struct") == 0 ||
                           strcmp(w0, "enum") == 0 ||
                           strcmp(w0, "state") == 0 ||
+                          strcmp(w0, "route") == 0 ||
                           strcmp(w0, "app") == 0));
                 }
                 /* K&R "} else {" / "} else if (...) {": the leading '}' closes
@@ -2289,6 +2310,33 @@ kir_parse_file(const char *path, const char *root)
                     snprintf(module->state_fields[module->state_count - 1].guard,
                              sizeof(module->state_fields[0].guard), "%s",
                              cur_guard);
+            }
+        } else if(mode == TOP && starts_word(t, "route") &&
+                  strchr(t, '{') != NULL) {
+            char route_id[KIR_NAME_MAX];
+
+            if(!parse_route_header(t, route_id, sizeof(route_id)))
+                die("%s:%d: route block must be `route name {`", rel, line_no);
+            route = KirModuleAddRoute(module, route_id, KirSpan(rel, line_no, 1));
+            if(route != NULL)
+                snprintf(route->guard, sizeof(route->guard), "%s", cur_guard);
+            mode = ROUTE;
+        } else if(mode == ROUTE) {
+            if(t[0] == '}') {
+                route = NULL;
+                mode = TOP;
+                cond_frame_settle(tframes, tframe_count);
+            } else if(route != NULL && starts_word(t, "title")) {
+                parse_quoted(t, route->title, sizeof(route->title));
+            } else if(route != NULL && starts_word(t, "group")) {
+                parse_quoted(t, route->group, sizeof(route->group));
+            } else if(route != NULL && starts_word(t, "page")) {
+                char page[KIR_NAME_MAX];
+
+                page[0] = '\0';
+                sscanf(t, "page %127s", page);
+                if(page[0] != '\0')
+                    snprintf(route->page, sizeof(route->page), "%s", page);
             }
         } else if(mode == TOP && starts_word(t, "app") &&
                   strchr(t, '{') != NULL) {

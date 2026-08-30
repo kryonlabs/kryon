@@ -58,6 +58,7 @@ KirProgramFree(KirProgram *program)
         free(m->defines);
         free(m->asserts);
         free(m->types);
+        free(m->routes);
     }
     free(program->modules);
     free(program);
@@ -266,6 +267,29 @@ KirModuleAddType(KirModule *module, const char *name, KirSourceSpan span)
     return &module->types[module->type_count++];
 }
 
+KirRoute *
+KirModuleAddRoute(KirModule *module, const char *id, KirSourceSpan span)
+{
+    KirRoute *routes;
+    KirRoute *route;
+
+    if(module == NULL)
+        return NULL;
+    routes = kir_realloc_array(module->routes, &module->route_cap,
+                               module->route_count, sizeof(KirRoute));
+    if(routes == NULL)
+        return NULL;
+    module->routes = routes;
+    route = &module->routes[module->route_count++];
+    memset(route, 0, sizeof(*route));
+    kir_copy(route->id, sizeof(route->id), id);
+    kir_copy(route->title, sizeof(route->title), id);
+    kir_copy(route->group, sizeof(route->group), "Project");
+    kir_copy(route->page, sizeof(route->page), id);
+    route->span = span;
+    return route;
+}
+
 KirStmt *
 KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind, const char *text,
                    const char *widget, KirSourceSpan span)
@@ -471,6 +495,14 @@ KirProgramDump(const KirProgram *program, FILE *out)
             fprintf(out, "  state %s type %s init %s span ",
                     f->name, f->type, f->init);
             kir_dump_span(out, f->span);
+            fprintf(out, "\n");
+        }
+        for(j = 0; j < m->route_count; j++) {
+            const KirRoute *route = &m->routes[j];
+
+            fprintf(out, "  route %s title %s group %s page %s span ",
+                    route->id, route->title, route->group, route->page);
+            kir_dump_span(out, route->span);
             fprintf(out, "\n");
         }
         for(j = 0; j < m->assert_count; j++) {

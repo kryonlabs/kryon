@@ -385,6 +385,93 @@ UIFormButtonRow(UIForm *form, ButtonRowProps row)
 }
 
 int
+UIFormSection(UIForm *form, const char *label)
+{
+    return UIFormSectionLabel(form, (SectionLabelProps){.label = label});
+}
+
+int
+UIFormSectionEx(UIForm *form, SectionLabelProps label)
+{
+    return UIFormSectionLabel(form, label);
+}
+
+int
+UIFormTextField(UIForm *form, const char *label, char *text,
+                size_t text_size, int *cursor_position, int *focused,
+                int focus_id)
+{
+    return UIFormLabelTextField(form, (LabelTextFieldProps){
+        .label = label,
+        .field = {
+            .text = text,
+            .text_size = text_size,
+            .cursor_position = cursor_position,
+            .focused = focused,
+            .focus_id = focus_id
+        }
+    });
+}
+
+int
+UIFormTextFieldEx(UIForm *form, LabelTextFieldProps row)
+{
+    return UIFormLabelTextField(form, row);
+}
+
+int
+UIFormCheckbox(UIForm *form, const char *label, int *value)
+{
+    return UIFormCheckboxRow(form, (CheckboxRowProps){
+        .label = label,
+        .value = value
+    });
+}
+
+int
+UIFormCheckboxEx(UIForm *form, CheckboxRowProps row)
+{
+    return UIFormCheckboxRow(form, row);
+}
+
+int
+UIFormSpinbox(UIForm *form, const char *label, int id, int min, int max,
+              int step, int *value)
+{
+    return UIFormSpinboxRow(form, (SpinboxRowProps){
+        .label = label,
+        .spinbox = {
+            .id = id,
+            .min = min,
+            .max = max,
+            .step = step,
+            .value = value
+        }
+    });
+}
+
+int
+UIFormSpinboxEx(UIForm *form, SpinboxRowProps row)
+{
+    return UIFormSpinboxRow(form, row);
+}
+
+int
+UIFormButtons(UIForm *form, const UIButtonRowItem *items, int count)
+{
+    return UIFormButtonRow(form, (ButtonRowProps){
+        .items = items,
+        .count = count
+    });
+}
+
+int
+UIFormButtonsEx(UIForm *form, ButtonRowProps row)
+{
+    return UIFormButtonRow(form, row);
+}
+
+int
 DrawUIButtonRow(ButtonRowProps row)
 {
     int clicked = -1;

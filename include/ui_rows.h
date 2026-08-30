@@ -116,5 +116,18 @@ int UIFormLabelTextField(UIForm *form, LabelTextFieldProps row);
 int UIFormCheckboxRow(UIForm *form, CheckboxRowProps row);
 int UIFormSpinboxRow(UIForm *form, SpinboxRowProps row);
 int UIFormButtonRow(UIForm *form, ButtonRowProps row);
+int UIFormSection(UIForm *form, const char *label);
+int UIFormSectionEx(UIForm *form, SectionLabelProps label);
+int UIFormTextField(UIForm *form, const char *label, char *text,
+                    size_t text_size, int *cursor_position, int *focused,
+                    int focus_id);
+int UIFormTextFieldEx(UIForm *form, LabelTextFieldProps row);
+int UIFormCheckbox(UIForm *form, const char *label, int *value);
+int UIFormCheckboxEx(UIForm *form, CheckboxRowProps row);
+int UIFormSpinbox(UIForm *form, const char *label, int id, int min, int max,
+                  int step, int *value);
+int UIFormSpinboxEx(UIForm *form, SpinboxRowProps row);
+int UIFormButtons(UIForm *form, const UIButtonRowItem *items, int count);
+int UIFormButtonsEx(UIForm *form, ButtonRowProps row);
 
 #endif

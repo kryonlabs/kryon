@@ -161,6 +161,12 @@ Main :: (viewport: Rectangle) #ui {
         }
     }
 }
+
+route home {
+    title "Home"
+    group "App"
+    page Main
+}
 EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/hierarchy.kry"
@@ -292,7 +298,7 @@ grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.h"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
 grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
-grep -Fq '{"Main", "Project", "Main", "src/hierarchy.kry"' "$project"
+grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"

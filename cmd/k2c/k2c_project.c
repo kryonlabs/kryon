@@ -2,7 +2,8 @@
  * k2c_project.c — emit kryon_project.h/.c after all files lower. The
  * app-host ABI (CreateAppHost/DestroyAppHost + route table) consumed by
  * the preview tool and IDE host builds. Routes auto-collect from #ui
- * functions; explicit route{} blocks are not captured by Kir yet.
+ * functions. Explicit route{} blocks supply route id/title/group metadata
+ * when present.
  */
 #include "k2c_lower.h"
 #include "kir.h"
@@ -21,6 +22,32 @@ typedef struct K2cRoute {
 } K2cRoute;
 
 #define K2C_ROUTE_MAX 512
+
+static const KirFunction *
+find_ui_function(const KirModule *mod, const char *name)
+{
+    if(mod == NULL || name == NULL || name[0] == '\0')
+        return NULL;
+    for(int i = 0; i < mod->function_count; i++) {
+        const KirFunction *fn = &mod->functions[i];
+
+        if(fn->is_public && fn->is_ui && strcmp(fn->name, name) == 0)
+            return fn;
+    }
+    return NULL;
+}
+
+static int
+function_has_explicit_route(const KirModule *mod, const KirFunction *fn)
+{
+    if(mod == NULL || fn == NULL)
+        return 0;
+    for(int i = 0; i < mod->route_count; i++) {
+        if(strcmp(mod->routes[i].page, fn->name) == 0)
+            return 1;
+    }
+    return 0;
+}
 
 static void
 mkdir_parent_local(const char *path)
@@ -75,10 +102,37 @@ collect_routes(KirProgram *const *progs, int prog_count,
         for(int m = 0; m < prog->module_count; m++) {
             const KirModule *mod = &prog->modules[m];
 
+            for(int j = 0; j < mod->route_count; j++) {
+                const KirRoute *route = &mod->routes[j];
+                const KirFunction *fn = find_ui_function(mod, route->page);
+
+                if(fn == NULL) {
+                    fprintf(stderr, "%s:%d: route `%s` references missing #ui page `%s`\n",
+                            route->span.path, route->span.line,
+                            route->id, route->page);
+                    continue;
+                }
+                if(count >= max_routes)
+                    return count;
+                snprintf(routes[count].id, sizeof(routes[0].id), "%s",
+                         route->id);
+                snprintf(routes[count].title, sizeof(routes[0].title), "%s",
+                         route->title[0] != '\0' ? route->title : route->id);
+                snprintf(routes[count].group, sizeof(routes[0].group), "%s",
+                         route->group[0] != '\0' ? route->group : "Project");
+                snprintf(routes[count].source_path,
+                         sizeof(routes[0].source_path), "%s",
+                         mod->source_path);
+                routes[count].m = mod;
+                routes[count].fn = fn;
+                count++;
+            }
             for(int j = 0; j < mod->function_count; j++) {
                 const KirFunction *fn = &mod->functions[j];
 
                 if(!fn->is_public || !fn->is_ui || fn->name[0] == '\0')
+                    continue;
+                if(function_has_explicit_route(mod, fn))
                     continue;
                 if(count >= max_routes)
                     return count;

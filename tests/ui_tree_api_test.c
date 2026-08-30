@@ -7,6 +7,35 @@
 static int failures;
 
 static void
+check_int(const char *name, int got, int want);
+
+typedef struct ScaffoldFixture {
+    int seen_w;
+    int closed;
+} ScaffoldFixture;
+
+static int
+scaffold_height(int content_w, void *user_data)
+{
+    ScaffoldFixture *fixture = user_data;
+
+    if(fixture != NULL)
+        fixture->seen_w = content_w;
+    return 180;
+}
+
+static int
+scaffold_title(const char *title, int height, void *user_data)
+{
+    ScaffoldFixture *fixture = user_data;
+
+    check_int("scaffold title text", strcmp(title, "Settings"), 0);
+    check_int("scaffold title height", height, ScaleUIPx(36));
+    TitleBar(title, height);
+    return fixture != NULL ? fixture->closed : 0;
+}
+
+static void
 check_int(const char *name, int got, int want)
 {
     if(got == want)
@@ -24,6 +53,7 @@ main(void)
     ButtonRowProps row = {.width = 240, .height = 40};
     UIForm form;
     Rectangle taken;
+    UIScreenScaffold scaffold;
     BottomNavProps nav = {0};
     TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
@@ -38,6 +68,7 @@ main(void)
     KeyID stable_key;
     UIEvent event;
     int count = 0;
+    ScaffoldFixture scaffold_fixture = {.closed = 1};
 
     SetThemeStyle(THEME_STYLE_RETRO);
 
@@ -59,6 +90,11 @@ main(void)
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
     check_int("form advances", UIFormY(&form), 20 + ScaleUIPx(18));
+    BeginUI(6);
+    UIFormSection(&form, "Account");
+    EndUI();
+    check_int("form section helper advances", UIFormY(&form),
+              20 + ScaleUIPx(18) + ScaleUIPx(24));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
               ScaleUIPx(54));
@@ -175,6 +211,26 @@ main(void)
     check_int("route fallback version", GetRouteVersion(), 0);
 
     SetUIViewSize(320, 240);
+    SetThemeStyle(THEME_STYLE_RETRO);
+    BeginUI(37);
+    scaffold = BeginUIScreenScaffold((UIScreenScaffoldSpec){
+        .title = "Settings",
+        .bottom_reserved = 12,
+        .max_content_width = 220,
+        .min_content_width = 120,
+        .content_height = scaffold_height,
+        .user_data = &scaffold_fixture,
+        .draw_title = scaffold_title
+    });
+    check_int("scaffold closed", scaffold.closed, 1);
+    check_int("scaffold content y", scaffold.content_y, ScaleUIPx(36));
+    check_int("scaffold content h", scaffold.content_h,
+              240 - ScaleUIPx(36) - 12);
+    check_int("scaffold content w", scaffold.content_w,
+              scaffold_fixture.seen_w);
+    EndUIScreenScaffold(scaffold);
+    EndUI();
+
     BeginUI(38);
     page = Page((PageProps){.title = "Docs",
                             .bounds = {0, 0, 0, 0},
