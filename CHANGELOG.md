@@ -1,4 +1,16 @@
 # Changelog
+## v0.1.35 - 2026-08-30
+
+### Changed
+
+- Remove README link badges
+- Release: bump version to v0.1.35
+- Refresh Kryon README header
+- Harden KRB asset section loading
+- Use host arrow cursor for libdraw windows
+- Add checked JSON allocation helpers
+- Add libdraw key name lookup
+
 ## v0.1.34 - 2026-08-30
 
 ### Changed
