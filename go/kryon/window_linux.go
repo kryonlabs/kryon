@@ -670,6 +670,9 @@ func (w *x11Window) mapWindow() error {
 }
 
 func (w *x11Window) setInputFocus() error {
+	if w.conn == nil {
+		return nil // not attached to a display (decode tests)
+	}
 	req := make([]byte, 12)
 	req[0] = 42
 	req[1] = 1

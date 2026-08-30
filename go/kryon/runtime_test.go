@@ -1588,3 +1588,48 @@ func TestTabBarEmptyLabels(t *testing.T) {
 	}
 	EndFrame()
 }
+
+// TestCanvasSpaceInputInvariant locks the coordinate contract: the widget
+// canvas is the configured window size, pointer events arrive in
+// window-relative coordinates, and widgets consume taps exactly at their
+// drawn bounds. A change that translates events by the window's root
+// position (a past regression) fails this test.
+func TestCanvasSpaceInputInvariant(t *testing.T) {
+	rt := New(AppConfig{Width: 1280, Height: 800}).(*runtime)
+	v := int32(0)
+	draw := func() bool {
+		rt.BeginFrame()
+		pressed := rt.Checkbox(7, 16, 88, "enable", &v)
+		rt.EndFrame()
+		return pressed
+	}
+
+	// A tap inside the drawn bounds flips the value.
+	rt.QueueMouseButtonDown(MouseButtonLeft, 27, 99)
+	if !draw() {
+		t.Fatal("tap inside bounds not consumed")
+	}
+	if v != 1 {
+		t.Fatalf("value = %d, want 1 after inside tap", v)
+	}
+
+	// A tap far outside leaves it alone.
+	rt.QueueMouseButtonDown(MouseButtonLeft, 600, 500)
+	if draw() {
+		t.Fatal("tap outside bounds consumed")
+	}
+	if v != 1 {
+		t.Fatalf("value = %d, outside tap must not flip", v)
+	}
+
+	// The invariant: events are already canvas-relative. Feeding
+	// bounds+offset (what a bogus root-position translation would do)
+	// must NOT hit the widget.
+	rt.QueueMouseButtonDown(MouseButtonLeft, 27+4, 99+310)
+	if draw() {
+		t.Fatal("offset tap consumed — input is being translated somewhere")
+	}
+	if v != 1 {
+		t.Fatalf("value = %d, translated tap must not flip", v)
+	}
+}

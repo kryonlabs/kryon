@@ -344,3 +344,25 @@ func xauthAppend(out, data []byte) []byte {
 	out = binary.BigEndian.AppendUint16(out, uint16(len(data)))
 	return append(out, data...)
 }
+
+// TestX11ButtonPressCoordinates pins the wire layout: pointer coordinates
+// live at offsets 24/26 as little-endian int16, window-relative, with no
+// translation applied on decode.
+func TestX11ButtonPressCoordinates(t *testing.T) {
+	w := &x11Window{}
+	mk := func(x, y int16) []byte {
+		buf := make([]byte, 32)
+		buf[0] = x11EventButtonPress
+		buf[1] = 1 // left button
+		put16(buf[24:], uint16(x))
+		put16(buf[26:], uint16(y))
+		return buf
+	}
+	ev, ok := w.decodeEvent(mk(23, -47))
+	if !ok || ev.kind != x11EventTap {
+		t.Fatalf("decode: %+v ok=%v", ev, ok)
+	}
+	if ev.x != 23 || ev.y != -47 {
+		t.Fatalf("coords = (%d,%d), want (23,-47) untranslated", ev.x, ev.y)
+	}
+}
