@@ -93,10 +93,11 @@ KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
                                                    char *out,
                                                    size_t out_size);
 KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg);
-/* Opt-in end-to-end payload encryption: envelope JSON
- * {"v":1,"nonce":"hex","ciphertext":"hex"} sealed with ChaCha20-Poly1305
- * under a key derived from the account private key. Unwrap returns 0 for
- * input that is not an envelope. Caller frees *out. */
+/* Opt-in end-to-end payload encryption. v1 envelopes seal plaintext JSON.
+ * v2 envelopes compress plaintext first when that reduces size, then seal
+ * the compressed bytes. Both versions use ChaCha20-Poly1305 under a key
+ * derived from the account private key. Unwrap returns 0 for input that is
+ * not an envelope. Caller frees *out. */
 int WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **out);
 int UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, char **out);
 int KsyncDefaultHttpRequest(const char *method, const char *url,

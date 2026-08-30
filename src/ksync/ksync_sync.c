@@ -19,6 +19,7 @@
 #define KSYNC_SYNC_SIGNATURE_CONTEXT "ksync-sync-v1"
 #define KSYNC_SYNC_USER_HEADER "X-Ksync-User"
 #define KSYNC_SYNC_SIGNATURE_HEADER "X-Ksync-Signature"
+#define KSYNC_SYNC_PAYLOAD_COMPRESSION "lzss1"
 
 const char *
 GetKsyncSyncResultName(KsyncSyncResult result)
@@ -1006,56 +1007,284 @@ sync_payload_key(const KsyncAccount *account, uint8_t out[32])
     return 1;
 }
 
+static unsigned
+sync_lzss_hash(const uint8_t *data)
+{
+    return ((unsigned)data[0] * 251u + (unsigned)data[1] * 31u +
+            (unsigned)data[2]) & 4095u;
+}
+
+static void
+sync_lzss_insert(const uint8_t *data, size_t len, size_t pos,
+                 int *head, int *prev)
+{
+    unsigned h;
+
+    if(pos + 2 >= len)
+        return;
+    h = sync_lzss_hash(data + pos);
+    prev[pos] = head[h];
+    head[h] = (int)pos;
+}
+
+static int
+sync_lzss_find(const uint8_t *data, size_t len, size_t pos,
+               const int *head, const int *prev,
+               size_t *offset_out, size_t *length_out)
+{
+    size_t best_len = 0;
+    size_t best_offset = 0;
+    int candidate;
+    int scans = 0;
+
+    if(pos + 2 >= len)
+        return 0;
+    candidate = head[sync_lzss_hash(data + pos)];
+    while(candidate >= 0 && scans++ < 64) {
+        size_t cpos = (size_t)candidate;
+        size_t offset;
+        size_t match_len = 0;
+
+        if(cpos >= pos)
+            break;
+        offset = pos - cpos;
+        if(offset > 4096)
+            break;
+        while(match_len < 18 && pos + match_len < len &&
+              data[cpos + match_len] == data[pos + match_len])
+            match_len++;
+        if(match_len >= 3 && match_len > best_len) {
+            best_len = match_len;
+            best_offset = offset;
+            if(match_len == 18)
+                break;
+        }
+        candidate = prev[cpos];
+    }
+    if(best_len < 3)
+        return 0;
+    *offset_out = best_offset;
+    *length_out = best_len;
+    return 1;
+}
+
+static int
+sync_lzss_compress(const uint8_t *data, size_t len,
+                   uint8_t **out, size_t *out_len)
+{
+    uint8_t *compressed;
+    int *head = NULL;
+    int *prev = NULL;
+    size_t cap;
+    size_t pos = 0;
+    size_t write_pos = 0;
+
+    if(out == NULL || out_len == NULL)
+        return 0;
+    *out = NULL;
+    *out_len = 0;
+    if(data == NULL || len == 0 || len > 0x7fffffffu)
+        return 0;
+    cap = len + len / 8 + 16;
+    compressed = (uint8_t *)malloc(cap);
+    head = (int *)malloc(4096 * sizeof(int));
+    prev = (int *)malloc(len * sizeof(int));
+    if(compressed == NULL || head == NULL || prev == NULL) {
+        free(compressed);
+        free(head);
+        free(prev);
+        return 0;
+    }
+    for(size_t i = 0; i < 4096; i++)
+        head[i] = -1;
+    for(size_t i = 0; i < len; i++)
+        prev[i] = -1;
+
+    while(pos < len) {
+        size_t control_pos = write_pos++;
+        unsigned char control = 0;
+
+        if(write_pos >= cap)
+            goto fail;
+        for(int bit = 0; bit < 8 && pos < len; bit++) {
+            size_t offset = 0;
+            size_t length = 0;
+
+            if(sync_lzss_find(data, len, pos, head, prev, &offset, &length)) {
+                size_t code_offset = offset - 1;
+
+                if(write_pos + 2 > cap)
+                    goto fail;
+                control |= (unsigned char)(1u << bit);
+                compressed[write_pos++] = (uint8_t)((code_offset >> 4) & 0xffu);
+                compressed[write_pos++] =
+                    (uint8_t)(((code_offset & 0x0fu) << 4) | (length - 3));
+                for(size_t i = 0; i < length; i++)
+                    sync_lzss_insert(data, len, pos + i, head, prev);
+                pos += length;
+            } else {
+                if(write_pos + 1 > cap)
+                    goto fail;
+                compressed[write_pos++] = data[pos];
+                sync_lzss_insert(data, len, pos, head, prev);
+                pos++;
+            }
+        }
+        compressed[control_pos] = control;
+    }
+
+    if(write_pos >= len)
+        goto fail;
+    free(head);
+    free(prev);
+    *out = compressed;
+    *out_len = write_pos;
+    return 1;
+
+fail:
+    free(compressed);
+    free(head);
+    free(prev);
+    return 0;
+}
+
+static int
+sync_lzss_decompress(const uint8_t *data, size_t len, size_t plain_len,
+                     char **out)
+{
+    char *plain;
+    size_t read_pos = 0;
+    size_t write_pos = 0;
+
+    if(data == NULL || out == NULL || plain_len > 0x7fffffffu)
+        return 0;
+    *out = NULL;
+    plain = (char *)malloc(plain_len + 1);
+    if(plain == NULL)
+        return 0;
+    while(read_pos < len && write_pos < plain_len) {
+        unsigned char control = data[read_pos++];
+
+        for(int bit = 0; bit < 8 && write_pos < plain_len; bit++) {
+            if((control & (1u << bit)) != 0) {
+                size_t code;
+                size_t offset;
+                size_t length;
+
+                if(read_pos + 2 > len)
+                    goto fail;
+                code = ((size_t)data[read_pos] << 4) |
+                       ((size_t)data[read_pos + 1] >> 4);
+                offset = code + 1;
+                length = (data[read_pos + 1] & 0x0f) + 3;
+                read_pos += 2;
+                if(offset > write_pos || write_pos + length > plain_len)
+                    goto fail;
+                for(size_t i = 0; i < length; i++) {
+                    plain[write_pos] = plain[write_pos - offset];
+                    write_pos++;
+                }
+            } else {
+                if(read_pos >= len)
+                    goto fail;
+                plain[write_pos++] = (char)data[read_pos++];
+            }
+        }
+    }
+    if(write_pos != plain_len)
+        goto fail;
+    plain[plain_len] = '\0';
+    *out = plain;
+    return 1;
+
+fail:
+    free(plain);
+    return 0;
+}
+
 int
 WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **out)
 {
     uint8_t key[32];
     uint8_t nonce[12];
     uint8_t *sealed;
+    uint8_t *compressed = NULL;
+    const uint8_t *plain;
     char nonce_hex[25];
     char *sealed_hex;
     size_t payload_len;
+    size_t plain_len;
+    size_t compressed_len = 0;
     size_t sealed_len;
     KsyncSyncBuffer envelope = {0};
     int ok;
+    int compressed_payload = 0;
 
     if(account == NULL || payload == NULL || out == NULL)
         return 0;
     *out = NULL;
     payload_len = strlen(payload);
-    sealed_len = payload_len + 16;
+    plain = (const uint8_t *)payload;
+    plain_len = payload_len;
+    if(sync_lzss_compress((const uint8_t *)payload, payload_len,
+                          &compressed, &compressed_len)) {
+        if(compressed_len + 32 < payload_len) {
+            plain = compressed;
+            plain_len = compressed_len;
+            compressed_payload = 1;
+        }
+    }
+    sealed_len = plain_len + 16;
     sealed = (uint8_t *)malloc(sealed_len);
     sealed_hex = (char *)malloc(sealed_len * 2 + 1);
     if(sealed == NULL || sealed_hex == NULL) {
         free(sealed);
         free(sealed_hex);
+        free(compressed);
         return 0;
     }
     if(!sync_payload_key(account, key))
         goto fail;
     KsyncCryptoRandom(nonce, sizeof(nonce));
-    if(!KsyncCryptoChaCha20Poly1305Seal(key, nonce, (const uint8_t *)payload,
-                                        payload_len, NULL, 0, sealed))
+    if(!KsyncCryptoChaCha20Poly1305Seal(key, nonce, plain, plain_len,
+                                        NULL, 0, sealed))
         goto fail;
     if(!KsyncCryptoBytesToHex(sealed, sealed_len, sealed_hex, sealed_len * 2 + 1) ||
        !KsyncCryptoBytesToHex(nonce, sizeof(nonce), nonce_hex, sizeof(nonce_hex)))
         goto fail;
-    ok = AppendKsyncSyncBuffer(&envelope, "{\"v\":1,\"nonce\":", strlen("{\"v\":1,\"nonce\":")) &&
-         AppendKsyncSyncBufferJSONString(&envelope, nonce_hex) &&
-         AppendKsyncSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
-         AppendKsyncSyncBufferJSONString(&envelope, sealed_hex) &&
-         AppendKsyncSyncBuffer(&envelope, "}", 1);
+    if(compressed_payload) {
+        char size_text[32];
+
+        snprintf(size_text, sizeof(size_text), "%zu", payload_len);
+        ok = AppendKsyncSyncBuffer(&envelope, "{\"v\":2,\"compression\":", strlen("{\"v\":2,\"compression\":")) &&
+             AppendKsyncSyncBufferJSONString(&envelope, KSYNC_SYNC_PAYLOAD_COMPRESSION) &&
+             AppendKsyncSyncBuffer(&envelope, ",\"plain_size\":", strlen(",\"plain_size\":")) &&
+             AppendKsyncSyncBuffer(&envelope, size_text, strlen(size_text)) &&
+             AppendKsyncSyncBuffer(&envelope, ",\"nonce\":", strlen(",\"nonce\":")) &&
+             AppendKsyncSyncBufferJSONString(&envelope, nonce_hex) &&
+             AppendKsyncSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
+             AppendKsyncSyncBufferJSONString(&envelope, sealed_hex) &&
+             AppendKsyncSyncBuffer(&envelope, "}", 1);
+    } else {
+        ok = AppendKsyncSyncBuffer(&envelope, "{\"v\":1,\"nonce\":", strlen("{\"v\":1,\"nonce\":")) &&
+             AppendKsyncSyncBufferJSONString(&envelope, nonce_hex) &&
+             AppendKsyncSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
+             AppendKsyncSyncBufferJSONString(&envelope, sealed_hex) &&
+             AppendKsyncSyncBuffer(&envelope, "}", 1);
+    }
     if(!ok) {
         FreeKsyncSyncBuffer(&envelope);
         goto fail;
     }
     free(sealed);
     free(sealed_hex);
+    free(compressed);
     *out = envelope.data; /* ownership moves to caller */
     return 1;
 fail:
     free(sealed);
     free(sealed_hex);
+    free(compressed);
     return 0;
 }
 
@@ -1069,6 +1298,9 @@ UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, c
     static const size_t hex_cap = 4 * 1024 * 1024;
     char *ciphertext_hex;
     char *plain = NULL;
+    char compression[16];
+    long long version;
+    long long plain_size;
     size_t sealed_len;
     int ok = 0;
 
@@ -1078,10 +1310,21 @@ UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, c
     ciphertext_hex = (char *)malloc(hex_cap);
     if(ciphertext_hex == NULL)
         return 0;
-    if(FindKsyncSyncJSONInt64(envelope_json, "v", 0) != 1 ||
+    version = FindKsyncSyncJSONInt64(envelope_json, "v", 0);
+    if((version != 1 && version != 2) ||
        !FindKsyncSyncJSONString(envelope_json, "nonce", nonce_hex, sizeof(nonce_hex)) ||
        !FindKsyncSyncJSONString(envelope_json, "ciphertext", ciphertext_hex, hex_cap))
         goto done; /* not an envelope */
+    compression[0] = '\0';
+    plain_size = 0;
+    if(version == 2) {
+        plain_size = FindKsyncSyncJSONInt64(envelope_json, "plain_size", -1);
+        if(plain_size < 0 || plain_size > 0x7fffffff ||
+           !FindKsyncSyncJSONString(envelope_json, "compression",
+                                    compression, sizeof(compression)) ||
+           strcmp(compression, KSYNC_SYNC_PAYLOAD_COMPRESSION) != 0)
+            goto done;
+    }
     if(!sync_payload_key(account, key) ||
        !KsyncCryptoHexToBytes(nonce_hex, nonce, sizeof(nonce)))
         goto done;
@@ -1097,9 +1340,18 @@ UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, c
     if(!KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, sealed_len,
                                         NULL, 0, (uint8_t *)plain))
         goto done;
-    plain[sealed_len - 16] = '\0';
-    *out = plain;
-    plain = NULL;
+    if(version == 2) {
+        char *decompressed = NULL;
+
+        if(!sync_lzss_decompress((const uint8_t *)plain, sealed_len - 16,
+                                 (size_t)plain_size, &decompressed))
+            goto done;
+        *out = decompressed;
+    } else {
+        plain[sealed_len - 16] = '\0';
+        *out = plain;
+        plain = NULL;
+    }
     ok = 1;
 done:
     free(ciphertext_hex);

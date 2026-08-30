@@ -293,6 +293,8 @@ test_payload_encryption(void)
     KsyncAccount account;
     char *wrapped = NULL;
     char *unwrapped = NULL;
+    char large_payload[2048];
+    size_t off = 0;
 
     /* payload encryption derives its key from the real private key, so a
      * genuine keypair is required */
@@ -303,7 +305,7 @@ test_payload_encryption(void)
     check(WrapKsyncSyncPayload(&account, "{\"sessions\":[1,2,3]}", &wrapped),
           "payload wrap ok");
     check(wrapped != NULL && strncmp(wrapped, "{\"v\":1", 6) == 0,
-          "payload wrap envelope shape");
+          "small payload keeps v1 envelope");
     check(strstr(wrapped, "sessions") == NULL,
           "payload wrap hides plaintext");
     check(UnwrapKsyncSyncPayload(&account, wrapped, &unwrapped) &&
@@ -314,6 +316,31 @@ test_payload_encryption(void)
     free(unwrapped);
     check(!UnwrapKsyncSyncPayload(&account, "{\"v\":1,\"oops\":1}", &unwrapped),
           "payload unwrap rejects malformed envelope");
+
+    wrapped = NULL;
+    unwrapped = NULL;
+    off += snprintf(large_payload + off, sizeof(large_payload) - off,
+                    "{\"changes\":[");
+    for(int i = 0; i < 42 && off + 80 < sizeof(large_payload); i++) {
+        off += snprintf(large_payload + off, sizeof(large_payload) - off,
+                        "%s{\"type\":\"session\",\"state\":\"synced\",\"title\":\"same-title\"}",
+                        i == 0 ? "" : ",");
+    }
+    snprintf(large_payload + off, sizeof(large_payload) - off, "]}");
+    check(WrapKsyncSyncPayload(&account, large_payload, &wrapped),
+          "large payload wrap ok");
+    check(wrapped != NULL && strncmp(wrapped, "{\"v\":2", 6) == 0,
+          "large payload uses compressed v2 envelope");
+    check(strstr(wrapped, "\"compression\":\"lzss1\"") != NULL,
+          "compressed envelope marks codec");
+    check(strstr(wrapped, "same-title") == NULL,
+          "compressed envelope hides plaintext");
+    check(UnwrapKsyncSyncPayload(&account, wrapped, &unwrapped) &&
+              unwrapped != NULL &&
+              strcmp(unwrapped, large_payload) == 0,
+          "compressed payload unwrap roundtrip");
+    free(wrapped);
+    free(unwrapped);
 }
 
 int
