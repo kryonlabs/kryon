@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.36 - 2026-08-30
+
+### Changed
+
+- Release: bump version to v0.1.36
+- Unify Kryon site playground entry
+
 ## v0.1.35 - 2026-08-30
 
 ### Changed
