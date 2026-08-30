@@ -6,7 +6,9 @@
  * nesting depth is capped to keep hostile input off the C stack.
  */
 #include "kry_json.h"
+#include "../core/kry_alloc.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -99,11 +101,16 @@ parse_string_lit(const char **pp)
     const char *p = *pp + 1;
     /* A decoded string is never longer than the raw literal (escapes only
      * shrink it; \uXXXX yields at most 4 bytes from 6). */
-    char *out = malloc(strlen(p) + 1);
-    char *d = out;
+    size_t out_cap;
+    char *out;
+    char *d;
 
+    if(!kry_size_add(strlen(p), 1, &out_cap))
+        return NULL;
+    out = malloc(out_cap);
     if(out == NULL)
         return NULL;
+    d = out;
     while(*p != '"') {
         if(*p == '\0' || (unsigned char)*p < 0x20)
             goto fail;
@@ -170,14 +177,20 @@ fail:
 static int
 list_push(KryJson *v, char *key, KryJson *item)
 {
-    KryJson **items = realloc(v->items, (size_t)(v->count + 1) * sizeof(*items));
+    size_t next_count;
+    KryJson **items;
     char **keys = v->keys;
 
+    if(v->count < 0 ||
+       !kry_size_add((size_t)v->count, 1, &next_count) ||
+       next_count > (size_t)INT_MAX)
+        return 0;
+    items = kry_realloc_array(v->items, next_count, sizeof(*items));
     if(items == NULL)
         return 0;
     v->items = items;
     if(v->type == KRY_JSON_OBJECT) {
-        keys = realloc(v->keys, (size_t)(v->count + 1) * sizeof(*keys));
+        keys = kry_realloc_array(v->keys, next_count, sizeof(*keys));
         if(keys == NULL)
             return 0;
         v->keys = keys;
@@ -426,17 +439,19 @@ kry_json_count(const KryJson *v)
 static int
 buf_reserve(KryJsonBuf *b, unsigned long need)
 {
-    unsigned long want = b->len + need + 1;
-    char *next;
+    size_t want;
+    size_t cap;
+    void *buf;
 
-    if(want <= b->cap)
-        return 1;
-    while(b->cap < want)
-        b->cap = b->cap == 0 ? 128 : b->cap * 2;
-    next = realloc(b->buf, b->cap);
-    if(next == NULL)
+    if(!kry_size_add((size_t)b->len, (size_t)need, &want) ||
+       !kry_size_add(want, 1, &want))
         return 0;
-    b->buf = next;
+    cap = (size_t)b->cap;
+    buf = b->buf;
+    if(!kry_reserve_bytes_max(&buf, &cap, want, 128, (size_t)ULONG_MAX))
+        return 0;
+    b->buf = (char *)buf;
+    b->cap = (unsigned long)cap;
     return 1;
 }
 
@@ -455,8 +470,14 @@ void
 kry_json_buf_str(KryJsonBuf *b, const char *text)
 {
     const char *p;
+    size_t len;
+    size_t escaped_cap;
 
-    if(!buf_reserve(b, strlen(text) * 6 + 2))
+    len = strlen(text);
+    if(!kry_size_mul(len, 6, &escaped_cap) ||
+       !kry_size_add(escaped_cap, 2, &escaped_cap) ||
+       escaped_cap > ULONG_MAX ||
+       !buf_reserve(b, (unsigned long)escaped_cap))
         return;
     b->buf[b->len++] = '"';
     for(p = text; *p != '\0'; p++) {

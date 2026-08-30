@@ -3,6 +3,7 @@
  */
 #include "kry_json.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -103,6 +104,20 @@ test_emit(void)
 }
 
 static void
+test_emit_overflow_guard(void)
+{
+    KryJsonBuf b = {0};
+
+    b.len = ULONG_MAX - 1;
+    b.cap = ULONG_MAX - 1;
+    kry_json_buf_raw(&b, "x");
+    CHECK(b.buf == NULL);
+    CHECK(b.len == ULONG_MAX - 1);
+    CHECK(b.cap == ULONG_MAX - 1);
+    kry_json_buf_free(&b);
+}
+
+static void
 test_depth_cap(void)
 {
     char hostile[512];
@@ -121,6 +136,7 @@ main(void)
     test_string_escapes();
     test_reject_malformed();
     test_emit();
+    test_emit_overflow_guard();
     test_depth_cap();
     if(failures == 0)
         printf("kry_json tests passed\n");
