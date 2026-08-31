@@ -2529,3 +2529,29 @@ void kry_dom_replace_route(const char *path)
 {
     (void)path;
 }
+
+/* Web-only routing hooks; the native backend reports a static root. */
+const char *kry_web_get_route_path(void)
+{
+    return "/";
+}
+
+const char *kry_web_get_route_hash(void)
+{
+    return "";
+}
+
+int kry_web_get_route_version(void)
+{
+    return 0;
+}
+
+void kry_web_push_route(const char *path)
+{
+    (void)path;
+}
+
+void kry_web_replace_route(const char *path)
+{
+    (void)path;
+}
