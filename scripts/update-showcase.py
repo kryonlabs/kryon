@@ -90,11 +90,20 @@ def load_github_projects(repo, ref):
 
 
 def github_stars(repository):
+    if not repository:
+        return None
     if repository.get("platform") != "github":
+        return None
+    if repository.get("private") or not repository.get("owner") or not repository.get("name"):
         return None
     owner = repository["owner"]
     name = repository["name"]
-    repo = fetch_json(f"https://api.github.com/repos/{owner}/{name}")
+    try:
+        repo = fetch_json(f"https://api.github.com/repos/{owner}/{name}")
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403, 404):
+            return None
+        raise
     stars = repo.get("stargazers_count")
     return stars if isinstance(stars, int) else None
 
@@ -129,46 +138,48 @@ def download_banner(project, banner_dir):
 
 
 def site_project(project, banner_path, stars):
-    repository = project["repository"]
+    repository = project.get("repository") or {}
     author = project.get("author") or {}
-    unranked = bool(project.get("unranked")) or stars is None
-    return {
+    repository_url = repository.get("url")
+    homepage = project.get("homepage") or repository_url or "#"
+    author_name = author.get("name") or repository.get("owner") or project["name"]
+    author_url = author.get("url") or repository_url or homepage
+    data = {
         "slug": project["slug"],
         "name": project["name"],
         "summary": project["summary"],
         "author": {
-            "name": author.get("name", repository["owner"]),
-            "url": author.get("url", repository["url"]),
+            "name": author_name,
+            "url": author_url,
         },
-        "repository": repository["url"],
-        "homepage": project.get("homepage", repository["url"]),
+        "homepage": homepage,
         "banner": banner_path,
         "bannerAlt": project.get("banner", {}).get("alt", f"{project['name']} app banner"),
-        "stars": stars,
         "tags": project["tags"],
         "featured": bool(project.get("featured")),
-        "unranked": unranked,
     }
+    if repository_url and not repository.get("private"):
+        data["repository"] = repository_url
+    if isinstance(stars, int):
+        data["stars"] = stars
+    return data
 
 
 def ranked_stars(project):
-    return project["stars"] if isinstance(project.get("stars"), int) and not project.get("unranked") else -1
+    return project["stars"] if isinstance(project.get("stars"), int) else -1
 
 
 def rank_projects(projects, limit):
     ranked = sorted(
         projects,
         key=lambda project: (
-            bool(project.get("unranked")),
             -ranked_stars(project),
             project["name"].lower(),
         ),
     )[:limit]
     rank = 1
     for project in ranked:
-        if project.get("unranked"):
-            project["rank"] = None
-        else:
+        if isinstance(project.get("stars"), int):
             project["rank"] = rank
             rank += 1
     return ranked
@@ -194,7 +205,7 @@ def main():
     site_projects = []
     for project in projects:
         try:
-            stars = None if project.get("unranked") else github_stars(project["repository"])
+            stars = github_stars(project.get("repository"))
         except (KeyError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             print(f"showcase: could not count {project.get('slug', '<unknown>')}: {exc}", file=sys.stderr)
             stars = None

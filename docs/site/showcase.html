@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Showcase — apps built with Kryon</title>
-  <meta name="description" content="Apps built with Kryon, sorted by stars from public source platforms.">
+  <title>Kryon Showcase</title>
+  <meta name="description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/showcase.html">
   <meta property="og:title" content="Kryon Showcase">
-  <meta property="og:description" content="Apps built with Kryon, sorted by stars from public source platforms.">
+  <meta property="og:description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/showcase.html">
   <meta name="twitter:title" content="Kryon Showcase">
-  <meta name="twitter:description" content="Apps built with Kryon, sorted by stars from public source platforms.">
+  <meta name="twitter:description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
   <meta name="theme-color" content="#f3f1ea">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
@@ -28,14 +28,13 @@
       <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
       <nav class="header-nav" id="header-nav" aria-label="Primary">
         <a href="/">Home</a>
-        <a href="showcase.html">Showcase</a>
+        <a href="docs.html">Docs</a>
         <a href="language.html">Language</a>
-        <a href="matrices.html">Matrices</a>
         <a href="renderers.html">Renderers</a>
+        <a href="showcase.html">Showcase</a>
         <a href="/api">API</a>
         <a href="ide.html">Playground</a>
-        <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">★ <span class="count">GitHub</span></a>
-        <a class="btn btn-primary" href="/#start">Get started</a>
+        <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit PR</a>
       </nav>
     </div>
   </header>
@@ -44,23 +43,52 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Showcase</p>
       <h1>Apps built with Kryon</h1>
-      <p class="section-lead">Projects are sorted by live stars from public source platforms. Submit your Kryon app through the public metadata repository.</p>
+      <p class="section-lead">Browse featured, first-party, and community projects built with Kryon. Cards use real screenshots and GitHub stars when a public repository exposes them.</p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit a project</a>
+        <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit a project</a>
         <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" target="_blank" rel="noopener">View metadata</a>
       </div>
     </section>
 
     <section>
-      <p class="section-eyebrow">All projects</p>
-      <h2>All Kryon apps by stars</h2>
-      <div class="showcase-grid" id="showcase-projects" data-showcase-projects aria-live="polite"></div>
+      <div class="tabs showcase-tabs" data-showcase-tabs>
+        <div class="tablist" role="tablist" aria-label="Showcase sections">
+          <button type="button" role="tab" id="showcase-tab-featured" aria-selected="true" aria-controls="showcase-panel-featured" data-showcase-filter="featured">Featured</button>
+          <button type="button" role="tab" id="showcase-tab-first-party" aria-selected="false" aria-controls="showcase-panel-first-party" data-showcase-filter="first-party" tabindex="-1">First-party</button>
+          <button type="button" role="tab" id="showcase-tab-community" aria-selected="false" aria-controls="showcase-panel-community" data-showcase-filter="community" tabindex="-1">Community</button>
+        </div>
+
+        <div class="tabpanel is-active" id="showcase-panel-featured" role="tabpanel" aria-labelledby="showcase-tab-featured">
+          <div class="showcase-panel-head">
+            <h2>Featured</h2>
+            <p>Public Kryon projects highlighted by the showcase metadata.</p>
+          </div>
+          <div class="showcase-grid" data-showcase-grid="featured" aria-live="polite"></div>
+        </div>
+
+        <div class="tabpanel" id="showcase-panel-first-party" role="tabpanel" aria-labelledby="showcase-tab-first-party" hidden>
+          <div class="showcase-panel-head">
+            <h2>First-party</h2>
+            <p>Projects maintained under the Kryon Labs umbrella or built as core ecosystem pieces.</p>
+          </div>
+          <div class="showcase-grid" data-showcase-grid="first-party" aria-live="polite"></div>
+        </div>
+
+        <div class="tabpanel" id="showcase-panel-community" role="tabpanel" aria-labelledby="showcase-tab-community" hidden>
+          <div class="showcase-panel-head">
+            <h2>Community</h2>
+            <p>Public submissions ranked by stars when a public source repository exposes that data.</p>
+          </div>
+          <div class="showcase-grid" data-showcase-grid="community" aria-live="polite"></div>
+        </div>
+
+      </div>
     </section>
   </main>
 
   <footer>
     <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit a Kryon app</a></p>
+      <p>&copy; 2026 Kryon Labs &middot; <a href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit a Kryon app</a></p>
     </div>
   </footer>
 
@@ -75,12 +103,136 @@
         });
       }
 
-      var grid = document.querySelector("[data-showcase-projects]");
+      var grids = {};
+      document.querySelectorAll("[data-showcase-grid]").forEach(function(grid) {
+        grids[grid.getAttribute("data-showcase-grid")] = grid;
+      });
+
+      var firstPartySlugs = {
+        krait: true,
+        ktrem: true,
+        kryon: true,
+        daochi: true,
+        taijios: true,
+        kapsule: true
+      };
+
+      var builtInProjects = [
+        {
+          slug: "kryon",
+          name: "Kryon",
+          summary: "Native declarative UI and app runtime with .kry source, KIR, C output, KRB cartridges, and browser tooling.",
+          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
+          repository: "https://github.com/kryonlabs/kryon",
+          homepage: "https://kryonlabs.com/language.html",
+          banner: "project-shots/kryon.png",
+          bannerAlt: "Kryon documentation screenshot",
+          tags: ["runtime", "kry", "c", "embedded", "desktop"],
+          featured: true
+        },
+        {
+          slug: "daochi",
+          name: "Daochi",
+          summary: "Mesh-native sync network for app-owned data, signed identity, encrypted records, and remote events.",
+          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
+          repository: "https://github.com/kryonlabs/ksync",
+          homepage: "https://daochi.net",
+          banner: "project-shots/daochi.png",
+          bannerAlt: "Daochi website screenshot",
+          tags: ["sync", "protocol", "native", "mesh"],
+          featured: true
+        },
+        {
+          slug: "krait",
+          name: "Krait",
+          summary: "Kryon IDE and development environment for editing, previewing, and shipping Kryon apps.",
+          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
+          repository: "https://github.com/kryonlabs/krait",
+          homepage: "https://krait.kryonlabs.com",
+          banner: "project-shots/krait.png",
+          bannerAlt: "Krait IDE screenshot",
+          tags: ["ide", "kry", "developer-tools"],
+          featured: true
+        },
+        {
+          slug: "taijios",
+          name: "TaijiOS",
+          summary: "Plan 9-based desktop OS with a Kryon app stack and browser boot path.",
+          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
+          repository: "https://github.com/kryonlabs/taiji",
+          homepage: "https://taijios.net",
+          banner: "project-shots/taijios.png",
+          bannerAlt: "TaijiOS desktop screenshot",
+          tags: ["os", "plan9", "desktop"],
+          featured: true
+        },
+        {
+          slug: "kasaival",
+          name: "Kasaival",
+          summary: "2D fire-spirit action game built in Kry for desktop, web, and Android.",
+          author: {name: "waozixyz", url: "https://waozi.xyz"},
+          homepage: "https://kasai.waozi.xyz",
+          banner: "project-shots/kasaival.png",
+          bannerAlt: "Kasaival gameplay screenshot",
+          tags: ["game", "kry", "desktop", "android"],
+          featured: true
+        },
+        {
+          slug: "katalis",
+          name: "Katalis",
+          summary: "Voxel sandbox built on Kryon with local singleplayer worlds and Luanti-style mod compatibility.",
+          author: {name: "waozixyz", url: "https://waozi.xyz"},
+          homepage: "https://katalis.waozi.xyz",
+          banner: "project-shots/katalis.png",
+          bannerAlt: "Katalis gameplay screenshot",
+          tags: ["game", "c", "kryon", "desktop", "mods"],
+          featured: true
+        },
+        {
+          slug: "inbe",
+          name: "Inner Breeze",
+          summary: "Breathing, meditation, and habits app with a Kryon interface and app-owned local data.",
+          author: {name: "waozixyz", url: "https://waozi.xyz"},
+          repository: "https://github.com/waozixyz/inbe",
+          homepage: "https://inbe.waozi.xyz",
+          banner: "project-shots/inbe.png",
+          bannerAlt: "Inner Breeze habits screenshot",
+          tags: ["wellbeing", "kryon", "desktop", "android"]
+        },
+        {
+          slug: "kapsule",
+          name: "Kapsule",
+          summary: "Terminal application using Kryon for terminal-native workflows and app UI.",
+          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
+          repository: "https://github.com/kryonlabs/kapsule",
+          homepage: "https://github.com/kryonlabs/kapsule",
+          banner: "project-shots/kapsule.png",
+          bannerAlt: "Kapsule terminal screenshot",
+          tags: ["terminal", "kryon", "desktop"]
+        },
+        {
+          slug: "uku",
+          name: "Uku",
+          summary: "Local password manager with Kryon UI, QR handoff flows, and app-owned storage.",
+          author: {name: "waozixyz", url: "https://waozi.xyz"},
+          repository: "https://github.com/waozixyz/uku",
+          homepage: "https://github.com/waozixyz/uku",
+          banner: "project-shots/uku.png",
+          bannerAlt: "Uku vault screenshot",
+          tags: ["security", "kryon", "desktop", "android"]
+        }
+      ];
+
       function text(value) {
         return String(value == null ? "" : value);
       }
+      function escapeHtml(value) {
+        return text(value).replace(/[&<>"']/g, function(ch) {
+          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"}[ch];
+        });
+      }
       function starLabel(stars) {
-        if (stars == null) return "unranked";
+        if (stars == null) return "";
         return stars === 1 ? "1 star" : stars + " stars";
       }
       function repositorySlug(project) {
@@ -88,7 +240,7 @@
         return match ? match[1] + "/" + match[2].replace(/\.git$/, "") : "";
       }
       function rankedStars(project) {
-        return typeof project.stars === "number" && !project.unranked ? project.stars : -1;
+        return typeof project.stars === "number" ? project.stars : -1;
       }
       function authorHtml(project) {
         var author = project.author || {};
@@ -98,48 +250,66 @@
         if (!url) return '<span class="app-byline">By <span class="app-author">' + escapeHtml(name) + '</span></span>';
         return '<span class="app-byline">By <a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(name) + '</a></span>';
       }
+      function normalizeProject(project) {
+        var copy = {};
+        Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
+        copy.tags = Array.isArray(copy.tags) ? copy.tags : [];
+        copy.firstParty = !!firstPartySlugs[copy.slug] || /github\.com\/kryonlabs\//.test(text(copy.repository));
+        return copy;
+      }
+      function mergeProjects(projects) {
+        var bySlug = {};
+        builtInProjects.concat(projects || []).forEach(function(project) {
+          if (!project || !project.slug) return;
+          bySlug[project.slug] = normalizeProject(Object.assign({}, bySlug[project.slug] || {}, project));
+        });
+        return Object.keys(bySlug).map(function(slug) { return bySlug[slug]; });
+      }
       function rerankProjects(projects) {
         return projects
           .map(function(project, index) {
-            var copy = {};
-            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
+            var copy = normalizeProject(project);
             copy._sourceOrder = index;
             return copy;
           })
           .sort(function(a, b) {
-            if (!!a.unranked !== !!b.unranked) return a.unranked ? 1 : -1;
             var starDelta = rankedStars(b) - rankedStars(a);
             return starDelta || a._sourceOrder - b._sourceOrder;
           })
           .map(function(project, index) {
             delete project._sourceOrder;
-            project.rank = project.unranked ? null : index + 1;
+            project.rank = typeof project.stars === "number" ? index + 1 : null;
             return project;
           });
       }
-      function escapeHtml(value) {
-        return text(value).replace(/[&<>"']/g, function(ch) {
-          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"}[ch];
-        });
-      }
       function renderProject(project) {
-        var rank = project.rank ? "#" + project.rank + " · " : "";
+        var stars = starLabel(project.stars);
+        var rank = project.rank && stars ? "#" + project.rank + " - " : "";
+        var rankHtml = stars ? '<span class="showcase-rank">' + escapeHtml(rank + stars) + '</span>' : "";
         var tags = (project.tags || []).join(" · ");
-        var homepage = project.homepage || project.repository;
+        var homepage = project.homepage || project.repository || "#";
+        var image = project.banner || "icons/proj/kryon.png";
+        var source = project.repository ? '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' : "";
         return '<article class="app-card">' +
-          '<img class="app-card-image" src="' + escapeHtml(project.banner) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
+          '<img class="app-card-image" src="' + escapeHtml(image) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
           '<div class="app-card-body">' +
-          '<span class="showcase-rank">' + escapeHtml(rank + starLabel(project.stars)) + '</span>' +
+          rankHtml +
           '<span class="app-kicker">' + escapeHtml(tags) + '</span>' +
           '<h3>' + escapeHtml(project.name) + '</h3>' +
           authorHtml(project) +
           '<p>' + escapeHtml(project.summary) + '</p>' +
           '<div class="app-actions">' +
           '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open</a>' +
-          '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' +
+          source +
           '</div>' +
           '</div>' +
           '</article>';
+      }
+      function renderAll(projects) {
+        var ranked = rerankProjects(projects);
+        grids.featured.innerHTML = ranked.filter(function(project) { return project.featured; }).map(renderProject).join("");
+        grids["first-party"].innerHTML = ranked.filter(function(project) { return project.firstParty; }).map(renderProject).join("");
+        grids.community.innerHTML = ranked.filter(function(project) { return !project.firstParty; }).map(renderProject).join("");
       }
       function refreshStars(projects) {
         var requests = projects.map(function(project, index) {
@@ -158,8 +328,7 @@
         return Promise.all(requests).then(function(results) {
           var changed = false;
           var next = projects.map(function(project) {
-            var copy = {};
-            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
+            var copy = normalizeProject(project);
             return copy;
           });
           results.forEach(function(result) {
@@ -168,26 +337,46 @@
               changed = true;
             }
           });
-          return changed ? rerankProjects(next) : projects;
+          return changed ? next : projects;
         });
       }
-      if (grid && window.fetch) {
+
+      document.querySelectorAll("[data-showcase-tabs]").forEach(function(group) {
+        var tabs = group.querySelectorAll("[role=tab]");
+        tabs.forEach(function(tab) {
+          tab.addEventListener("click", function() {
+            tabs.forEach(function(t) {
+              var selected = t === tab;
+              t.setAttribute("aria-selected", selected ? "true" : "false");
+              t.tabIndex = selected ? 0 : -1;
+            });
+            group.querySelectorAll(".tabpanel").forEach(function(panel) {
+              var active = panel.id === tab.getAttribute("aria-controls");
+              panel.classList.toggle("is-active", active);
+              if (active) panel.removeAttribute("hidden");
+              else panel.setAttribute("hidden", "");
+            });
+          });
+          tab.addEventListener("keydown", function(e) {
+            var list = Array.prototype.slice.call(tabs);
+            var index = list.indexOf(tab);
+            if (e.key === "ArrowRight") { list[(index + 1) % list.length].focus(); e.preventDefault(); }
+            if (e.key === "ArrowLeft") { list[(index - 1 + list.length) % list.length].focus(); e.preventDefault(); }
+          });
+        });
+      });
+
+      if (window.fetch) {
         fetch("showcase-data.json")
           .then(function(response) { return response.ok ? response.json() : null; })
           .then(function(data) {
-            if (!data || !Array.isArray(data.projects) || !data.projects.length) return;
-            var projects = rerankProjects(data.projects);
-            var hasGeneratedStars = projects.some(function(project) {
-              return typeof project.stars === "number";
-            });
-            if (hasGeneratedStars) {
-              grid.innerHTML = projects.map(renderProject).join("");
-            }
-            refreshStars(projects).then(function(liveProjects) {
-              grid.innerHTML = liveProjects.map(renderProject).join("");
-            });
+            var projects = mergeProjects(data && Array.isArray(data.projects) ? data.projects : []);
+            renderAll(projects);
+            refreshStars(projects).then(renderAll);
           })
-          .catch(function() {});
+          .catch(function() { renderAll(mergeProjects([])); });
+      } else {
+        renderAll(mergeProjects([]));
       }
     })();
   </script>

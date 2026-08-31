@@ -41,34 +41,44 @@ def github_stars(owner, repo):
 
 
 def ranked_entry(project, offline):
-    repo = project["repository"]
+    repo = project.get("repository") or {}
     author = project.get("author") or {}
     stars = None
     unranked = bool(project.get("unranked"))
-    if not offline and not unranked and repo.get("platform") == "github":
-        stars = github_stars(repo["owner"], repo["name"])
+    if (not offline and not unranked and repo.get("platform") == "github" and
+            not repo.get("private") and repo.get("owner") and repo.get("name")):
+        try:
+            stars = github_stars(repo["owner"], repo["name"])
+        except Exception:
+            stars = None
     elif not unranked and "stars" in project:
         stars = int(project["stars"])
     else:
         unranked = True
+    repo_url = repo.get("url")
+    homepage = project.get("homepage") or repo_url or "#"
+    author_name = author.get("name") or repo.get("owner") or project["name"]
+    author_url = author.get("url") or repo_url or homepage
 
-    return {
+    entry = {
         "rank": None,
         "slug": project["slug"],
         "name": project["name"],
         "summary": project["summary"],
         "author": {
-            "name": author.get("name", repo["owner"]),
-            "url": author.get("url", repo["url"])
+            "name": author_name,
+            "url": author_url
         },
-        "repository": repo["url"],
-        "homepage": project.get("homepage", repo["url"]),
+        "homepage": homepage,
         "banner": LOCAL_BANNERS.get(project["slug"], project["banner"]["url"]),
         "stars": stars,
         "tags": project["tags"],
         "featured": bool(project.get("featured")),
         "unranked": unranked
     }
+    if repo_url and not repo.get("private"):
+        entry["repository"] = repo_url
+    return entry
 
 
 def main():

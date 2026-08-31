@@ -1,3 +1,0 @@
-[build]
-  command = "make docs-site SITE_BUILD_DIR=build/site"
-  publish = "build/site"

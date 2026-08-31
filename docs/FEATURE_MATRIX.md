@@ -227,7 +227,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Backend | Graphics API | Platforms | CI | Notes |
 |---|---|---|---|---|
 | `raylib` (default) | OpenGL ES 2.0 over SDL2 | Linux, FreeBSD | ✅ `ci.yml` (Linux + FreeBSD) | Default everywhere; dist/static SDK targets; implements the full 3D tier (camera/mesh/shader + rlgl entry points) |
-| `raylib` web | WebGL (ES2) over GLFW3 | Emscripten | ✅ netlify/app builds | `mk/web.mk`; present shim for WebKitGTK |
+| `raylib` web | WebGL (ES2) over GLFW3 | Emscripten | ✅ web/app builds | `mk/web.mk`; present shim for WebKitGTK |
 | `raylib` windows `opengl` | OpenGL 2.1 | Windows (mingw) | ✅ release builds | Default Windows flavor |
 | `raylib` windows `rlsw` | raylib software renderer (no GPU) | Windows | ✅ release builds | `WINDOWS_RENDERERS` second flavor |
 | `raylib` windows RGFW rule | GL 1.1 immediate mode | Windows | ✗ opt-in make rule | `KRYON_RAYLIB_WINDOWS_RULE` |

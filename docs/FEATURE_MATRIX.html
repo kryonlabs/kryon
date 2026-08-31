@@ -190,7 +190,7 @@ li{margin:.25rem 0}
 <table>
 <tr><th>Backend</th><th>Graphics API</th><th>Platforms</th><th>CI</th><th>Notes</th></tr>
 <tr><td class=""><code>raylib</code> (default)</td><td class="">OpenGL ES 2.0 over SDL2</td><td class="">Linux, FreeBSD</td><td class="ok">✅ <code>ci.yml</code> (Linux + FreeBSD)</td><td class="">Default everywhere; dist/static SDK targets; implements the full 3D tier (camera/mesh/shader + rlgl entry points)</td></tr>
-<tr><td class=""><code>raylib</code> web</td><td class="">WebGL (ES2) over GLFW3</td><td class="">Emscripten</td><td class="ok">✅ netlify/app builds</td><td class=""><code>mk/web.mk</code>; present shim for WebKitGTK</td></tr>
+<tr><td class=""><code>raylib</code> web</td><td class="">WebGL (ES2) over GLFW3</td><td class="">Emscripten</td><td class="ok">✅ web/app builds</td><td class=""><code>mk/web.mk</code>; present shim for WebKitGTK</td></tr>
 <tr><td class=""><code>raylib</code> windows <code>opengl</code></td><td class="">OpenGL 2.1</td><td class="">Windows (mingw)</td><td class="ok">✅ release builds</td><td class="">Default Windows flavor</td></tr>
 <tr><td class=""><code>raylib</code> windows <code>rlsw</code></td><td class="">raylib software renderer (no GPU)</td><td class="">Windows</td><td class="ok">✅ release builds</td><td class=""><code>WINDOWS_RENDERERS</code> second flavor</td></tr>
 <tr><td class=""><code>raylib</code> windows RGFW rule</td><td class="">GL 1.1 immediate mode</td><td class="">Windows</td><td class="no">✗ opt-in make rule</td><td class=""><code>KRYON_RAYLIB_WINDOWS_RULE</code></td></tr>
