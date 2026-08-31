@@ -92,7 +92,7 @@ KryAutomationGetOption(const char *key, const char *fallback,
 
     make_env_key(env_key, sizeof(env_key), key);
     value = getenv(env_key);
-    if(value != NULL) {
+    if(value != NULL && value[0] != '\0') {
         copy_option(out, out_size, value);
         return 1;
     }

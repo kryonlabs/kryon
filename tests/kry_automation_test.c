@@ -38,6 +38,11 @@ main(void)
                                                        out, sizeof(out)), 0);
     check_str("missing fallback", out, "off");
 
+    setenv("KRYON_AUTOMATION_AUTOPLAY", "", 1);
+    check_int("empty env option", KryAutomationGetOption("autoplay", "off",
+                                                        out, sizeof(out)), 0);
+    check_str("empty env fallback", out, "off");
+
     setenv("KRYON_AUTOMATION_AUTOPLAY", "stage1", 1);
     check_int("env option", KryAutomationGetOption("autoplay", "off",
                                                    out, sizeof(out)), 1);
