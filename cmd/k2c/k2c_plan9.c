@@ -251,6 +251,20 @@ proto_line_parse(const char *line, char *name, size_t name_size,
     type[n] = '\0';
     if(strcmp(type, "void") == 0 || strcmp(type, "static") == 0)
         return 0;
+    /* statement heads from inline bodies ("return fn(...)", "if (...)",
+     * ...) parse like prototypes with a keyword where the type sits */
+    {
+        static const char * const keywords[] = {
+            "return", "if", "for", "while", "switch", "case", "default",
+            "goto", "do", "else", "sizeof", "break", "continue", "typedef",
+        };
+        size_t k;
+
+        for(k = 0; k < sizeof(keywords) / sizeof(keywords[0]); k++) {
+            if(strcmp(type, keywords[k]) == 0)
+                return 0;
+        }
+    }
     /* the return type must read like one: identifiers, qualifiers,
      * struct/enum tags, stars. Anything else means the line was
      * expression text from an inline body (raymath-style headers). */
