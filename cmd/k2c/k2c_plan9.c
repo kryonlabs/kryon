@@ -854,8 +854,13 @@ find_cast_literal(const char *line, int cursor, int *cast_start, int *cast_end,
                 int ok = 1;
                 for(k = 0; k < (int)n; k++) {
                     char ch = line[tstart + k];
+                    if(ch == '[') {
+                        while(k < (int)n && line[tstart + k] != ']')
+                            k++;
+                        continue;
+                    }
                     if(!(isalnum((unsigned char)ch) || ch == '_' || ch == ' '
-                         || ch == '\t' || ch == '*')) {
+                         || ch == '\t' || ch == '*' || ch == '+')) {
                         ok = 0;
                         break;
                     }
