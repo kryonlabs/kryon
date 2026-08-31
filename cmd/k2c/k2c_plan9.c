@@ -170,6 +170,9 @@ proto_line_parse(const char *line, char *name, size_t name_size,
         skipped = skip_head_word(p, "static");
     if(skipped != 0)
         p += skipped;
+    skipped = skip_head_word(p, "inline");
+    if(skipped != 0)
+        p += skipped;
     if(skipped > 7) {
         /* RLAPI/KRYAPI carry no meaning for variables */
     }
@@ -1284,6 +1287,25 @@ rewrite_autotype(const char *line, char *out, size_t out_size)
     init = p + 1;
     if(!autotype_type_for_init(init, type, sizeof(type)))
         return 0;
+    {
+        const char *bracket = strchr(type, '[');
+
+        if(bracket != NULL) {
+            char base[PLAN9_TYPE_MAX];
+            size_t n = (size_t)(bracket - type);
+
+            if(n == 0 || n >= sizeof(base))
+                return 0;
+            memcpy(base, type, n);
+            base[n] = '\0';
+            if(snprintf(out, out_size, "%.*s%s %s%s = %s",
+                        (int)(name_start - line - 12), line, base, name,
+                        bracket, init)
+               >= (int)out_size)
+                return 0;
+            return 1;
+        }
+    }
     if(snprintf(out, out_size, "%.*s%s %s = %s",
                 (int)(name_start - line - 12), line, type, name, init)
        >= (int)out_size)
