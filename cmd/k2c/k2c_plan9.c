@@ -387,9 +387,9 @@ proto_add_file(const char *path, int allow_c)
             if(snprintf(joined, sizeof(joined), "%s%s", pending_text, line)
                >= (int)sizeof(joined))
                 continue;
-            if(strchr(joined, '{') != NULL)
-                continue;
-            if(strchr(joined, ';') == NULL) {
+            /* a '{' after the arguments is a definition header: the
+             * parser cuts at it */
+            if(strchr(joined, ';') == NULL && strchr(joined, '{') == NULL) {
                 if(strlen(joined) + 1 < sizeof(pending))
                     snprintf(pending, sizeof(pending), "%s", joined);
                 continue;
