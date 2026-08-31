@@ -387,7 +387,11 @@ UIFormButtonRow(UIForm *form, ButtonRowProps row)
 int
 UIFormSection(UIForm *form, const char *label)
 {
-    return UIFormSectionLabel(form, (SectionLabelProps){.label = label});
+    SectionLabelProps section;
+
+    memset(&section, 0, sizeof(section));
+    section.label = label;
+    return UIFormSectionLabel(form, section);
 }
 
 int
