@@ -24,6 +24,14 @@ typedef struct KryPropertyTable {
 
 static KryPropertyTable g_property_tables[KRY_PROPERTY_KIND_MAX];
 
+static PropertyValue
+PropertyAssetPathValue(const char *value)
+{
+    PropertyValue prop = PropertyString(value);
+    prop.kind = PROPERTY_ASSET_PATH;
+    return prop;
+}
+
 /*
  * Register an application-defined node kind (id beyond the builtins, from
  * NodeRegisterCustomKind) together with its property spec table and
@@ -49,8 +57,10 @@ void
 SceneRegisterProperties(NodeKind kind, const PropertySpec *specs,
                            int count)
 {
-    if(kind < 0 || kind >= NodeKindCount() ||
-       kind >= KRY_PROPERTY_KIND_MAX)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= NodeKindCount() ||
+       kind_id >= KRY_PROPERTY_KIND_MAX)
         return;
     g_property_tables[kind].specs = specs;
     g_property_tables[kind].count = count;
@@ -59,8 +69,10 @@ SceneRegisterProperties(NodeKind kind, const PropertySpec *specs,
 const PropertySpec *
 ScenePropertySpecs(NodeKind kind, int *out_count)
 {
-    if(kind < 0 || kind >= NodeKindCount() ||
-       kind >= KRY_PROPERTY_KIND_MAX)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= NodeKindCount() ||
+       kind_id >= KRY_PROPERTY_KIND_MAX)
         return NULL;
     if(out_count != NULL)
         *out_count = g_property_tables[kind].count;
@@ -139,7 +151,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
     if(n->kind == NODE_SPRITE2D && n->props != NULL) {
         Sprite2DProps *p = (Sprite2DProps *)n->props;
         if(index == 3)
-            return PropertyString(p->asset_path != NULL ? p->asset_path : "");
+            return PropertyAssetPathValue(p->asset_path != NULL ? p->asset_path : "");
         if(index == 4)
             return PropertyVector2(p->size);
         if(index == 5)

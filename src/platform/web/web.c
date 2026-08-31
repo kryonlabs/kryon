@@ -15,9 +15,11 @@
 #include <string.h>
 
 static int g_web_orientation_mode = 0;
+#if defined(PLATFORM_WEB)
 static int g_web_storage_after_frame_pending = 0;
 static int g_web_storage_after_frame_delay_ms = 0;
 static int g_web_storage_after_frame_log_success = 0;
+#endif
 
 #if defined(KRYON_WEB_JS)
 EM_ASYNC_JS(int, js_web_storage_flush_blocking,
@@ -309,6 +311,7 @@ ScheduleWebStorageSync(int delay_ms, int log_success)
 #endif
 }
 
+#if defined(PLATFORM_WEB)
 static void
 WebStorageSyncAfterFrame(void *userdata)
 {
@@ -321,6 +324,7 @@ WebStorageSyncAfterFrame(void *userdata)
     g_web_storage_after_frame_log_success = 0;
     ScheduleWebStorageSync(delay_ms, log_success);
 }
+#endif
 
 void
 ScheduleWebStorageSyncAfterFrame(int delay_ms, int log_success)

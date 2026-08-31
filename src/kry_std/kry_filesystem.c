@@ -54,6 +54,33 @@ kry_fs_join_path(char *out, int cap, const char *base, const char *name)
     return 1;
 }
 
+static int
+join_path_checked(char *out, int cap, const char *base, const char *name)
+{
+    size_t base_len;
+    size_t name_len;
+    size_t required_len;
+
+    if(out == NULL || cap <= 0 || name == NULL)
+        return 0;
+    name_len = strlen(name);
+    if(base == NULL || base[0] == '\0' || strcmp(base, "/") == 0) {
+        required_len = 1 + name_len;
+    } else {
+        base_len = strlen(base);
+        while(base_len > 1 && base[base_len - 1] == '/')
+            base_len--;
+        required_len = base_len + 1 + name_len;
+    }
+    if(required_len >= (size_t)cap) {
+        out[0] = '\0';
+        return 0;
+    }
+    if(!kry_fs_join_path(out, cap, base, name))
+        return 0;
+    return out[0] != '\0';
+}
+
 const char *
 kry_fs_base_name(const char *path)
 {
@@ -172,8 +199,7 @@ config_home(char *out, int cap)
     }
     if(!kry_fs_home_dir(home, sizeof(home)))
         return 0;
-    snprintf(out, (size_t)cap, "%s/.config", home);
-    return 1;
+    return join_path_checked(out, cap, home, ".config");
 }
 
 static int
@@ -219,7 +245,8 @@ read_xdg_user_dir(KryUserDir dir, char *out, int cap)
 
     if(key[0] == '\0' || !config_home(config, sizeof(config)))
         return 0;
-    snprintf(path, sizeof(path), "%s/user-dirs.dirs", config);
+    if(!join_path_checked(path, sizeof(path), config, "user-dirs.dirs"))
+        return 0;
     if(kry_fs_read_file(path, text, sizeof(text)) < 0)
         return 0;
     line = strstr(text, key);
@@ -280,7 +307,8 @@ kry_fs_trash_dir(KryTrashDir dir, char *out, int cap)
         return 0;
     if(!kry_fs_data_home_dir(data_home, sizeof(data_home)))
         return 0;
-    snprintf(root, sizeof(root), "%s/Trash", data_home);
+    if(!join_path_checked(root, sizeof(root), data_home, "Trash"))
+        return 0;
     if(dir == KRY_TRASH_DIR_ROOT) {
         copy_text(out, cap, root);
         return 1;
@@ -332,8 +360,9 @@ read_xfce_icon_theme(char *out, int cap)
 
     if(!config_home(config, sizeof(config)))
         return 0;
-    snprintf(path, sizeof(path),
-             "%s/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml", config);
+    if(!join_path_checked(path, sizeof(path), config,
+                          "xfce4/xfconf/xfce-perchannel-xml/xsettings.xml"))
+        return 0;
     if(kry_fs_read_file(path, text, sizeof(text)) < 0)
         return 0;
     p = strstr(text, "IconThemeName");
@@ -366,10 +395,12 @@ kry_fs_icon_theme(char *out, int cap)
         return 1;
     }
     if(config_home(config, sizeof(config))) {
-        snprintf(path, sizeof(path), "%s/gtk-3.0/settings.ini", config);
+        if(!join_path_checked(path, sizeof(path), config, "gtk-3.0/settings.ini"))
+            return 0;
         if(read_line_value(out, cap, path, "gtk-icon-theme-name"))
             return 1;
-        snprintf(path, sizeof(path), "%s/gtk-4.0/settings.ini", config);
+        if(!join_path_checked(path, sizeof(path), config, "gtk-4.0/settings.ini"))
+            return 0;
         if(read_line_value(out, cap, path, "gtk-icon-theme-name"))
             return 1;
     }

@@ -178,20 +178,6 @@ kry_sfs_key_from_name(const char *name)
     return -1;
 }
 
-static void
-kry_sfs_key_name(int key, char *dst, size_t dst_size)
-{
-    int i;
-
-    for(i = 0; i < KRY_SFS_KEY_COUNT; i++) {
-        if(kry_sfs_keys[i].key == key) {
-            snprintf(dst, dst_size, "%s", kry_sfs_keys[i].name);
-            return;
-        }
-    }
-    snprintf(dst, dst_size, "KEY_%d", key);
-}
-
 /* The inspect tree records only when enabled; the SFS is a consumer, so
  * touching /widgets turns recording on (once per process). */
 static void

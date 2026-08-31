@@ -421,6 +421,50 @@ path_exists(const char *path)
 }
 
 static int
+join_path_literal(char *out, int out_size, const char *base, const char *suffix)
+{
+    size_t base_len;
+    size_t suffix_len;
+
+    if(out == NULL || out_size <= 0 || base == NULL || suffix == NULL)
+        return 0;
+    base_len = strlen(base);
+    suffix_len = strlen(suffix);
+    if(base_len + suffix_len >= (size_t)out_size) {
+        out[0] = '\0';
+        return 0;
+    }
+    memcpy(out, base, base_len);
+    memcpy(out + base_len, suffix, suffix_len + 1);
+    return 1;
+}
+
+static int
+join_gtk_theme_css_path(char *out, int out_size, const char *root,
+                        const char *theme)
+{
+    const char *middle = "/gtk-3.0/gtk.css";
+    size_t root_len;
+    size_t theme_len;
+    size_t middle_len;
+
+    if(out == NULL || out_size <= 0 || root == NULL || theme == NULL)
+        return 0;
+    root_len = strlen(root);
+    theme_len = strlen(theme);
+    middle_len = strlen(middle);
+    if(root_len + 1 + theme_len + middle_len >= (size_t)out_size) {
+        out[0] = '\0';
+        return 0;
+    }
+    memcpy(out, root, root_len);
+    out[root_len] = '/';
+    memcpy(out + root_len + 1, theme, theme_len);
+    memcpy(out + root_len + 1 + theme_len, middle, middle_len + 1);
+    return 1;
+}
+
+static int
 read_text_file(const char *path, char *out, int out_size)
 {
     FILE *file;
@@ -965,16 +1009,17 @@ gtk_css_theme_file(const char *theme, char *out, int out_size)
         if(strcmp(roots[i], "home-themes") == 0) {
             if(home == NULL || home[0] == '\0')
                 continue;
-            snprintf(prefix, sizeof(prefix), "%s/.themes", home);
+            if(!join_path_literal(prefix, sizeof(prefix), home, "/.themes"))
+                continue;
         } else if(strcmp(roots[i], "xdg-themes") == 0) {
             if(xdg == NULL || xdg[0] == '\0')
                 continue;
-            snprintf(prefix, sizeof(prefix), "%s/themes", xdg);
+            if(!join_path_literal(prefix, sizeof(prefix), xdg, "/themes"))
+                continue;
         } else {
-            snprintf(prefix, sizeof(prefix), "%s", roots[i]);
+            copy_path(prefix, sizeof(prefix), roots[i], (int)strlen(roots[i]));
         }
-        snprintf(out, (size_t)out_size, "%s/%s/gtk-3.0/gtk.css", prefix, theme);
-        if(path_exists(out))
+        if(join_gtk_theme_css_path(out, out_size, prefix, theme) && path_exists(out))
             return 1;
     }
     return 0;
@@ -1027,7 +1072,7 @@ gtk_css_palette_refresh(void)
     palette.supports_mode = 0;
     palette.prefers_dark =
         palette_luminance(palette.text) > palette_luminance(palette.background);
-    snprintf(palette.name, sizeof(palette.name), "%s", theme);
+    copy_path(palette.name, sizeof(palette.name), theme, (int)strlen(theme));
 
     system_palette = palette;
     system_light_palette = palette;

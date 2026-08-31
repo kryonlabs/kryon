@@ -27,28 +27,6 @@ ui_rect(float x, float y, float width, float height)
     return rect;
 }
 
-static Vector2
-ui_vec2(float x, float y)
-{
-    Vector2 vec;
-
-    vec.x = x;
-    vec.y = y;
-    return vec;
-}
-
-static Color
-ui_rgba(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
-{
-    Color color;
-
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    color.a = a;
-    return color;
-}
-
 #if defined(PLATFORM_WEB)
 #include <emscripten.h>
 #endif
@@ -1986,13 +1964,6 @@ ui_text_area_line_font(const char *text, int start, int end, int base_font)
             return Text24;
     }
     return base_font;
-}
-
-static int
-ui_text_area_line_height(const char *text, int start, int end, int base_font, int line_gap)
-{
-    int line_font = ui_text_area_line_font(text, start, end, base_font);
-    return TextLineHeight(line_font) + line_gap;
 }
 
 static int

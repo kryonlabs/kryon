@@ -177,7 +177,7 @@ draw_text_key(void)
 {
     int c = GetCharPressed();
 
-    return c > 0 && c < 0x110000u ? (unsigned)c : 0;
+    return c > 0 && (unsigned)c < 0x110000u ? (unsigned)c : 0;
 }
 
 static int

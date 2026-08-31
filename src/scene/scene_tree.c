@@ -37,7 +37,9 @@ NodeKindCount(void)
 const char *
 NodeKindName(NodeKind kind)
 {
-    if(kind < 0 || kind >= g_kry_kind_count)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= g_kry_kind_count)
         return NULL;
     return g_kry_kind_names[kind];
 }
@@ -291,7 +293,9 @@ NodeSetProps(Scene *scene, NodeId node, void *props)
 void
 NodeRegisterOps(NodeKind kind, const NodeOps *ops)
 {
-    if(kind < 0 || kind >= g_kry_kind_count)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= g_kry_kind_count)
         return;
     if(ops != NULL)
         g_kry_node_ops[kind] = *ops;
@@ -302,7 +306,9 @@ NodeRegisterOps(NodeKind kind, const NodeOps *ops)
 const NodeOps *
 NodeOpsFor(NodeKind kind)
 {
-    if(kind < 0 || kind >= g_kry_kind_count)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= g_kry_kind_count)
         return NULL;
     return &g_kry_node_ops[kind];
 }
@@ -310,7 +316,9 @@ NodeOpsFor(NodeKind kind)
 void
 NodeRegisterDestroy(NodeKind kind, NodeDestroyFn destroy)
 {
-    if(kind < 0 || kind >= g_kry_kind_count)
+    int kind_id = (int)kind;
+
+    if(kind_id < 0 || kind_id >= g_kry_kind_count)
         return;
     g_kry_node_destroy[kind] = destroy;
 }
@@ -416,11 +424,17 @@ SceneDraw(Scene *scene)
     const NodeOps *ops;
     Camera2D camera;
     int used_camera = 0;
+    int screen_width;
+    int screen_height;
     Vector2 screen_size;
 
     if(scene == NULL || scene->root < 0)
         return;
-    screen_size = (Vector2){(float)GetScreenWidth(), (float)GetScreenHeight()};
+    screen_width = GetScreenWidth();
+    screen_height = GetScreenHeight();
+    if(screen_width <= 0 || screen_height <= 0)
+        return;
+    screen_size = (Vector2){(float)screen_width, (float)screen_height};
 
     if(scene->active_camera >= 0 && scene->active_camera < scene->count) {
         n = &scene->nodes[scene->active_camera];

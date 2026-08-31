@@ -83,7 +83,6 @@ test_theme(void)
 static void
 test_input_mouse(void)
 {
-    char buf[64];
     int rc;
 
     CHECK(KrySfsWrite("/input/mouse/x", "150") == 1);

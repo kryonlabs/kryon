@@ -4,6 +4,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int
+copy_dialog_path(char *dst, size_t dst_size, const char *path)
+{
+    size_t len;
+
+    if(dst == NULL || dst_size == 0 || path == NULL)
+        return 0;
+    len = strlen(path);
+    if(len >= dst_size) {
+        dst[0] = '\0';
+        return 0;
+    }
+    memcpy(dst, path, len + 1);
+    return 1;
+}
+
 #if defined(PLATFORM_WEB)
 
 #include <emscripten.h>
@@ -909,7 +925,10 @@ run_gtk_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
         return 0;
     }
 
-    snprintf(dlg->result_path, sizeof(dlg->result_path), "%s", path);
+    if(!copy_dialog_path(dlg->result_path, sizeof(dlg->result_path), path)) {
+        g_free(path);
+        return 0;
+    }
     dlg->confirmed = 1;
     update_current_dir_from_path(internal, path);
     g_free(path);
