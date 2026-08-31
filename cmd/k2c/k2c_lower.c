@@ -3,6 +3,7 @@
  * This is the only .kry→C pipeline: the legacy kc line-matcher is gone.
  */
 #include "k2c_lower.h"
+#include "k2c_plan9.h"
 #include "kir.h"
 #include "kir_text.h"
 
@@ -1604,6 +1605,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         emit_guard_close(c, fn->guard);
     }
     fclose(c);
+    k2c_plan9_rewrite_file(cpath, 0);
 }
 
 void

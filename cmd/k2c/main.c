@@ -6,6 +6,7 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "k2c_lower.h"
+#include "k2c_plan9.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,8 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2c [--no-main] --root DIR -o DIR file.kry ...\n");
+            "usage: k2c [--no-main] [--plan9] [--include-dir DIR] "
+            "--root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -24,6 +26,8 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     int no_main = 0;
+    int plan9 = 0;
+    int unresolved = 0;
     KirProgram **progs;
     K2cModuleSyms *syms;
     int file_count;
@@ -37,6 +41,10 @@ main(int argc, char **argv)
             out_dir = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
+        } else if(strcmp(argv[i], "--plan9") == 0) {
+            plan9 = 1;
+        } else if(strcmp(argv[i], "--include-dir") == 0 && i + 1 < argc) {
+            k2c_plan9_add_include_dir(argv[++i]);
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -56,6 +64,7 @@ main(int argc, char **argv)
         fprintf(stderr, "k2c: out of memory\n");
         return 1;
     }
+    k2c_plan9_set_enabled(plan9);
     /* Pass 1: parse every file, build the cross-module symbol table. */
     for(i = 0; i < file_count; i++) {
         progs[i] = kir_parse_file(argv[first_file + i], root);
@@ -74,5 +83,13 @@ main(int argc, char **argv)
         KirProgramFree(progs[i]);
     free(progs);
     free(syms);
+    unresolved = k2c_plan9_unresolved();
+    if(plan9 && unresolved > 0) {
+        fprintf(stderr,
+                "k2c: --plan9 left %d __auto_type declarations unresolved; "
+                "add --include-dir with the headers that declare them\n",
+                unresolved);
+        return 1;
+    }
     return 0;
 }
