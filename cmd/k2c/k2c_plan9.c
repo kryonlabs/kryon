@@ -1089,6 +1089,12 @@ expr_type(const char *expr, size_t len, char *type, size_t type_size)
                 i = k + 1;
                 continue;
             }
+            /* the base identifier: a macro constant or an int local */
+            if(!head_type(expr + i, j - i, one, sizeof(one)))
+                snprintf(one, sizeof(one), "int");
+            if(!merge_type(acc, &have, one))
+                return 0;
+
             /* member chains resolve through the field table */
             while(j < len && (expr[j] == '.'
                               || (expr[j] == '-' && expr[j + 1] == '>'))) {
@@ -1123,22 +1129,6 @@ expr_type(const char *expr, size_t len, char *type, size_t type_size)
                         return 0;
                     j = q + 1;
                 }
-            }
-            if(j > i && (expr[j] == ' ' || expr[j] == '+' || expr[j] == '-'
-                         || expr[j] == '*' || expr[j] == '/' || expr[j] == ';'
-                         || j == len)) {
-                i = j;
-                continue; /* chain already merged */
-            }
-            /* bare identifier: a macro constant or an int local */
-            if(!head_type(expr + i, j - i, one, sizeof(one))) {
-                snprintf(one, sizeof(one), "int");
-                have = have; /* int locals are the lowering's default */
-                if(!merge_type(acc, &have, one))
-                    return 0;
-            } else {
-                if(!merge_type(acc, &have, one))
-                    return 0;
             }
             i = j;
             continue;
