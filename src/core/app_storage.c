@@ -1,4 +1,5 @@
 #include "app_storage.h"
+#include "kry_filesystem.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -245,6 +246,55 @@ storage_path(char *dst, size_t dst_size, const char *scope, const char *key)
     sanitize_token(safe_key, sizeof(safe_key), key, "value");
     snprintf(dst, dst_size, ".kryon_%s_%s.txt", safe_scope, safe_key);
 }
+#endif
+
+const char *
+KryAppDataRoot(const char *app_id)
+{
+    static char root[512];
+    const char *home;
+    const char *xdg;
+    char safe[64];
+    size_t i;
+
+    if(root[0] != '\0')
+        return root;
+    sanitize_token(safe, sizeof(safe), app_id, "app");
+#if defined(_WIN32)
+    {
+        const char *local = getenv("LOCALAPPDATA");
+
+        if(local != NULL && local[0] != '\0')
+            snprintf(root, sizeof(root), "%s/%s", local, safe);
+        else
+            snprintf(root, sizeof(root), "%s", safe);
+    }
+#elif defined(KRYON_PLATFORM_PLAN9)
+    home = getenv("home");
+    if(home == NULL || home[0] == '\0')
+        home = getenv("HOME");
+    if(home != NULL && home[0] != '\0')
+        snprintf(root, sizeof(root), "%s/.local/share/%s", home, safe);
+    else
+        snprintf(root, sizeof(root), ".local/%s", safe);
+#else
+    xdg = getenv("XDG_DATA_HOME");
+    home = getenv("HOME");
+    if(xdg != NULL && xdg[0] != '\0')
+        snprintf(root, sizeof(root), "%s/%s", xdg, safe);
+    else if(home != NULL && home[0] != '\0')
+        snprintf(root, sizeof(root), "%s/.local/share/%s", home, safe);
+    else
+        snprintf(root, sizeof(root), ".local/%s", safe);
+#endif
+    for(i = 0; root[i] != '\0'; i++) {
+        if(root[i] == '\\')
+            root[i] = '/';
+    }
+    if(kry_fs_mkdir_p(root) != 0)
+        root[0] = '\0';
+    return root;
+}
 
 int
 KryAppStorageGetString(const char *scope, const char *key,
@@ -291,7 +341,6 @@ KryAppStorageSetString(const char *scope, const char *key, const char *value)
     }
     return fclose(f) == 0;
 }
-#endif
 
 int
 KryAppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
