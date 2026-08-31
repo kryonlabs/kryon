@@ -195,12 +195,8 @@ int
 GetWebViewportWidth(int fallback_width)
 {
 #if defined(PLATFORM_WEB)
-    int width = EM_ASM_INT({
-        const viewport = window.visualViewport;
-        const width = viewport && viewport.width ? viewport.width :
-            (window.innerWidth || document.documentElement.clientWidth || $0);
-        return Math.max(1, Math.round(width));
-    }, fallback_width);
+    int width = 0;
+    GetWebViewportSize(fallback_width, 1, &width, 0);
     return width > 0 ? width : fallback_width;
 #else
     return fallback_width;
@@ -211,12 +207,8 @@ int
 GetWebViewportHeight(int fallback_height)
 {
 #if defined(PLATFORM_WEB)
-    int height = EM_ASM_INT({
-        const viewport = window.visualViewport;
-        const height = viewport && viewport.height ? viewport.height :
-            (window.innerHeight || document.documentElement.clientHeight || $0);
-        return Math.max(1, Math.round(height));
-    }, fallback_height);
+    int height = 0;
+    GetWebViewportSize(1, fallback_height, 0, &height);
     return height > 0 ? height : fallback_height;
 #else
     return fallback_height;
@@ -227,10 +219,72 @@ void
 GetWebViewportSize(int fallback_width, int fallback_height,
                         int *width, int *height)
 {
+#if defined(PLATFORM_WEB)
+    int measured_width = 0;
+    int measured_height = 0;
+
+    EM_ASM({
+        var out = $0;
+        var fallbackW = $1;
+        var fallbackH = $2;
+        var doc = typeof document !== 'undefined' ? document : null;
+        var winW = fallbackW;
+        var winH = fallbackH;
+        var viewport = typeof visualViewport !== 'undefined' ? visualViewport : null;
+        if (viewport && viewport.width > 0 && viewport.height > 0) {
+            winW = viewport.width;
+            winH = viewport.height;
+        } else if (typeof window !== 'undefined') {
+            winW = window.innerWidth ||
+                (doc && doc.documentElement && doc.documentElement.clientWidth) ||
+                fallbackW;
+            winH = window.innerHeight ||
+                (doc && doc.documentElement && doc.documentElement.clientHeight) ||
+                fallbackH;
+        }
+
+        var bestW = winW;
+        var bestH = winH;
+        var canvas = null;
+        if (typeof Module !== 'undefined' && Module && Module.canvas)
+            canvas = Module.canvas;
+        if (!canvas && doc)
+            canvas = doc.getElementById('canvas');
+        var candidates = [];
+        if (doc) {
+            var frame = doc.getElementById('canvas-frame');
+            if (frame) candidates.push(frame);
+        }
+        if (canvas && canvas.parentElement)
+            candidates.push(canvas.parentElement);
+        if (canvas)
+            candidates.push(canvas);
+
+        for (var i = 0; i < candidates.length; i++) {
+            var el = candidates[i];
+            if (!el || !el.getBoundingClientRect) continue;
+            var r = el.getBoundingClientRect();
+            if (!(r.width > 0 && r.height > 0)) continue;
+            bestW = Math.min(bestW, r.width);
+            bestH = Math.min(bestH, r.height);
+            break;
+        }
+        if (!(bestW > 0)) bestW = fallbackW;
+        if (!(bestH > 0)) bestH = fallbackH;
+        HEAP32[out >> 2] = Math.max(1, Math.round(bestW)) | 0;
+        HEAP32[(out + 4) >> 2] = Math.max(1, Math.round(bestH)) | 0;
+    }, &measured_width, fallback_width, fallback_height);
+
     if(width != 0)
-        *width = GetWebViewportWidth(fallback_width);
+        *width = measured_width > 0 ? measured_width : fallback_width;
     if(height != 0)
-        *height = GetWebViewportHeight(fallback_height);
+        *height = measured_height > 0 ? measured_height : fallback_height;
+#else
+    if(width != 0)
+        *width = fallback_width;
+    if(height != 0)
+        *height = fallback_height;
+#endif
     ApplyWebOrientationSize(width, height);
 }
 
@@ -479,15 +533,6 @@ SyncWebWindowSize(void)
     if(stable_frames < 2 || IsMouseButtonDown(MOUSE_BUTTON_LEFT))
         return 0;
 
-#if defined(PLATFORM_WEB)
-    EM_ASM({
-        const frame = document.getElementById("canvas-frame");
-        if(frame && (frame.style.width !== ($0 + "px") || frame.style.height !== ($1 + "px"))) {
-            frame.style.width = $0 + "px";
-            frame.style.height = $1 + "px";
-        }
-    }, width, height);
-#endif
     SetWindowSize(width, height);
     SetUIViewSize(width, height);
     UpdateUIDPI(width, height);

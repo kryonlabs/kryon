@@ -51,20 +51,46 @@ EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
         }
         return null;
     };
+    K.layoutBox = function () {
+        var doc = (typeof document !== 'undefined') ? document : null;
+        var frame = doc ? doc.getElementById('canvas-frame') : null;
+        var parent = K.canvas && K.canvas.parentElement ? K.canvas.parentElement : null;
+        return frame || parent || K.canvas || null;
+    };
+    K.measureLayout = function (fallbackW, fallbackH) {
+        var w = fallbackW;
+        var h = fallbackH;
+        var box = K.layoutBox();
+        if (box && box.getBoundingClientRect) {
+            var r = box.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                w = r.width;
+                h = r.height;
+            }
+        }
+        return {
+            w: Math.max(1, Math.round(w || fallbackW || K.w || 1)),
+            h: Math.max(1, Math.round(h || fallbackH || K.h || 1)),
+            fluid: box && box !== K.canvas
+        };
+    };
     K.resizeMainCanvas = function (nw, nh) {
         var dpr = Math.max(1, g.devicePixelRatio || 1);
         var c = K.canvas;
-        /* Shells may lay the canvas out inside a card instead of filling
-         * the viewport. The element's CSS layout box is the real drawable:
-         * a backing store sized to the window would be CSS-stretched into
-         * that box and distort the render. Ask for nw/nh, then let the
-         * laid-out box win when CSS sizes the element. */
+        var layout = K.measureLayout(nw, nh);
+        nw = layout.w;
+        nh = layout.h;
         if (c && c.style) {
-            c.style.width = Math.max(1, nw | 0) + 'px';
-            c.style.height = Math.max(1, nh | 0) + 'px';
+            if (layout.fluid) {
+                c.style.width = '100%';
+                c.style.height = '100%';
+            } else {
+                c.style.width = Math.max(1, nw | 0) + 'px';
+                c.style.height = Math.max(1, nh | 0) + 'px';
+            }
             c.style.touchAction = 'none';
         }
-        if (c && c.clientWidth > 0 && c.clientHeight > 0) {
+        if (!layout.fluid && c && c.clientWidth > 0 && c.clientHeight > 0) {
             nw = c.clientWidth;
             nh = c.clientHeight;
         }
@@ -314,7 +340,19 @@ EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
                 (Math.round(cr.width) !== K.w || Math.round(cr.height) !== K.h))
                 K.resizeMainCanvas(Math.round(cr.width), Math.round(cr.height));
         });
-        try { K.ro.observe(K.canvas); } catch (_) {}
+        try { K.ro.observe(K.layoutBox()); } catch (_) {}
+    }
+    if (g.addEventListener) {
+        var scheduleResize = function () {
+            if (K.resizeTimer) return;
+            K.resizeTimer = setTimeout(function () {
+                K.resizeTimer = 0;
+                K.resizeMainCanvas(K.w, K.h);
+            }, 0);
+        };
+        g.addEventListener('resize', scheduleResize);
+        if (g.visualViewport)
+            g.visualViewport.addEventListener('resize', scheduleResize);
     }
 });
 
