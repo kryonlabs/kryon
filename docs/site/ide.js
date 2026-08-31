@@ -16,8 +16,6 @@
   var k2cMod = null;
   var k2gMod = null;
   var k2jsMod = null;
-  var krbPlayerMod = null;
-  var krbPlayerInputReady = false;
   var activeTab = "kry";
   var last = { kry: "", kir: "", krb: "", c: "", go: "", js: "", bytes: null };
   var compileTimer = 0;
@@ -142,13 +140,25 @@
   }
 
   function rgba(u32) {
-    if ((u32 & 0x80000000) !== 0) {
+    if ((u32 & 0xffffff00) === 0x80000000) {
       var slot = u32 & 0xff;
+      if (slot === 0) return "rgb(247,244,236)";
       if (slot === 1) return "rgb(42,59,64)";
-      if (slot === 4) return "rgb(13,63,85)";
+      if (slot === 2) return "rgb(31,83,102)";
+      if (slot === 3) return "rgb(255,254,249)";
+      if (slot === 4) return "rgb(35,101,125)";
       return "rgb(247,244,236)";
     }
-    return "rgba(" + (u32 & 255) + "," + ((u32 >> 8) & 255) + "," + ((u32 >> 16) & 255) + "," + (((u32 >> 24) & 255) / 255).toFixed(3) + ")";
+    return "rgba(" + ((u32 >> 24) & 255) + "," + ((u32 >> 16) & 255) + "," + ((u32 >> 8) & 255) + "," + ((u32 & 255) / 255).toFixed(3) + ")";
+  }
+
+  function appSize() {
+    var m = source.value.match(/\bapp\b[\s\S]*?\{[\s\S]*?\bsize\s+([0-9]+)\s+([0-9]+)/);
+    var w = m ? parseInt(m[1], 10) : 800;
+    var h = m ? parseInt(m[2], 10) : 520;
+    if (!isFinite(w) || w <= 0) w = 800;
+    if (!isFinite(h) || h <= 0) h = 520;
+    return { width: Math.min(w, 4096), height: Math.min(h, 4096) };
   }
 
   function decodeKrb(bytes) {
@@ -201,71 +211,97 @@
     ctx.closePath();
   }
 
-  function attachKrbPlayerInput() {
-    if (krbPlayerInputReady)
-      return;
-    krbPlayerInputReady = true;
-    function pos(e) {
-      var r = canvas.getBoundingClientRect();
-      return [
-        Math.round((e.clientX - r.left) * canvas.width / r.width),
-        Math.round((e.clientY - r.top) * canvas.height / r.height)
-      ];
-    }
-    window.addEventListener("keydown", function(e) {
-      if (e.key === "Backspace" && krbPlayerMod && krbPlayerMod._krb_web_text) {
-        e.preventDefault();
-        krbPlayerMod._krb_web_text(8);
-      }
-    });
-    window.addEventListener("keypress", function(e) {
-      if (krbPlayerMod && krbPlayerMod._krb_web_text && e.charCode > 31)
-        krbPlayerMod._krb_web_text(e.charCode);
-    });
-    canvas.addEventListener("wheel", function(e) {
-      e.preventDefault();
-      if (krbPlayerMod && krbPlayerMod._krb_web_wheel)
-        krbPlayerMod._krb_web_wheel(Math.round(-e.deltaY / 2));
-    }, { passive: false });
-    canvas.addEventListener("mousemove", function(e) {
-      var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_mouse) {
-        p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
-      }
-    });
-    canvas.addEventListener("mousedown", function(e) {
-      var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_button) {
-        p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
-        krbPlayerMod._krb_web_button(0, 1);
-      }
-    });
-    canvas.addEventListener("mouseup", function(e) {
-      var p;
-      if (krbPlayerMod && krbPlayerMod._krb_web_button) {
-        p = pos(e);
-        krbPlayerMod._krb_web_mouse(p[0], p[1]);
-        krbPlayerMod._krb_web_button(0, 0);
-      }
-    });
+  function fitCanvas(size) {
+    if (canvas.width !== size.width) canvas.width = size.width;
+    if (canvas.height !== size.height) canvas.height = size.height;
+    canvas.style.aspectRatio = size.width + " / " + size.height;
+    canvas.style.setProperty("--preview-aspect", String(size.width / size.height));
+  }
+
+  function drawText(ctx, text, x, y, font, color) {
+    ctx.fillStyle = color;
+    ctx.font = "600 " + Math.max(8, font) + "px system-ui, -apple-system, sans-serif";
+    ctx.textBaseline = "top";
+    ctx.fillText(text || "", x, y);
+  }
+
+  function drawButton(ctx, n, x, y, w, h) {
+    var fill = n.style === 2 ? "rgb(184,59,59)" : (n.style === 0 ? "rgb(35,101,125)" : "rgb(255,254,249)");
+    var label = n.style === 0 || n.style === 2 ? "rgb(255,255,255)" : "rgb(42,59,64)";
+    ctx.fillStyle = fill;
+    drawRound(ctx, x, y, w, h, 4);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(31,83,102,0.55)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = "700 " + Math.max(8, n.font || 16) + "px system-ui, -apple-system, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillStyle = label;
+    ctx.fillText(n.text || n.name || "Button", x + w / 2, y + h / 2);
+    ctx.textAlign = "start";
+    ctx.textBaseline = "top";
   }
 
   function render(bytes) {
-    var rc;
+    var size = appSize();
+    var nodes = decodeKrb(bytes);
+    var ctx = canvas.getContext("2d");
 
-    if (!krbPlayerMod)
-      throw new Error("KRB web player unavailable");
-    canvas.width = 800;
-    canvas.height = 600;
-    try { krbPlayerMod.FS.unlink("/app.krb"); } catch (e) {}
-    krbPlayerMod.FS.writeFile("/app.krb", bytes);
-    rc = krbPlayerMod._krb_web_start();
-    if (rc && rc !== 0)
-      throw new Error("krb-web exited with " + rc);
-    attachKrbPlayerInput();
-    setPreviewStatus("wasm canvas");
+    fitCanvas(size);
+    ctx.clearRect(0, 0, size.width, size.height);
+    ctx.fillStyle = "#f3f1ea";
+    ctx.fillRect(0, 0, size.width, size.height);
+    nodes.forEach(function(n) {
+      var x = coord(n.x, size.width, n.flags & 4);
+      var y = coord(n.y, size.height, n.flags & 8);
+      var w = coord(n.w, size.width, n.flags & 16);
+      var h = coord(n.h, size.height, n.flags & 32);
+      var color = rgba(n.color);
+
+      switch (n.type) {
+      case 1:
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, w || size.width, h || size.height);
+        break;
+      case 2:
+        drawText(ctx, n.text, x, y, n.font || 16, color);
+        break;
+      case 3:
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+        break;
+      case 4:
+        drawButton(ctx, n, x, y, w, h);
+        break;
+      case 7:
+      case 8:
+      case 13:
+        ctx.fillStyle = "rgb(255,254,249)";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = "rgba(31,83,102,0.55)";
+        ctx.strokeRect(x, y, w, h);
+        if (n.text) drawText(ctx, n.text, x + w + 6, y, n.font || 16, color);
+        break;
+      case 10:
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0, w), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 11:
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1, w - Math.max(0, h));
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0, (w + h) / 2), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        break;
+      default:
+        break;
+      }
+    });
+    setPreviewStatus("canvas backend");
   }
 
   function showArtifact() {
@@ -358,8 +394,7 @@
   function boot() {
     if (typeof createK2irModule !== "function" || typeof createK2bModule !== "function" ||
         typeof createK2cModule !== "function" || typeof createK2gModule !== "function" ||
-        typeof createK2jsModule !== "function" ||
-        typeof createKrbWebModule !== "function") {
+        typeof createK2jsModule !== "function") {
       setStatus("compiler unavailable");
       artifact.textContent = "The web compiler assets were not built.";
       return;
@@ -369,15 +404,13 @@
       createK2bModule({ noInitialRun: true }),
       createK2cModule({ noInitialRun: true }),
       createK2gModule({ noInitialRun: true }),
-      createK2jsModule({ noInitialRun: true }),
-      createKrbWebModule({ noInitialRun: true, canvas: canvas })
+      createK2jsModule({ noInitialRun: true })
     ]).then(function(mods) {
       k2irMod = mods[0];
       k2bMod = mods[1];
       k2cMod = mods[2];
       k2gMod = mods[3];
       k2jsMod = mods[4];
-      krbPlayerMod = mods[5];
       return loadInitialSource();
     }).then(function() {
       setStatus("ready");

@@ -1442,10 +1442,13 @@ body.ide-page::before {
   grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.15fr);
   grid-template-rows: minmax(360px, 1fr) minmax(220px, 0.48fr);
   gap: 12px;
+  height: calc(100vh - 150px);
   min-height: calc(100vh - 150px);
 }
 
 .ide-pane {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--line);
@@ -1464,7 +1467,7 @@ body.ide-page::before {
 }
 
 .pane-title {
-  height: 36px;
+  flex: 0 0 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1482,8 +1485,11 @@ body.ide-page::before {
 }
 
 .source-pane textarea {
+  flex: 1 1 0;
   width: 100%;
-  height: calc(100% - 36px);
+  height: 0;
+  min-height: 0;
+  overflow: auto;
   resize: none;
   display: block;
   border: 0;
@@ -1497,14 +1503,18 @@ body.ide-page::before {
 
 .preview-pane canvas {
   display: block;
-  width: 100%;
-  height: calc(100% - 36px);
+  width: min(100%, calc((100% - 36px) * var(--preview-aspect, 1.5385)));
+  height: auto;
+  max-height: calc(100% - 36px);
+  margin: 0 auto;
+  aspect-ratio: var(--preview-aspect, 1.5385);
   background-color: #f3f1ea;
   image-rendering: auto;
+  object-fit: contain;
 }
 
 .artifact-tabs {
-  height: 36px;
+  flex: 0 0 36px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1531,12 +1541,15 @@ body.ide-page::before {
 }
 
 .artifact-output {
-  height: calc(100% - 36px);
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
   margin: 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;
   background-color: #fffef9;
+  overflow: auto;
 }
 
 .artifact-output code {
@@ -1670,12 +1683,14 @@ body.ide-page::before {
   .ide-grid {
     display: flex;
     flex-direction: column;
+    height: auto;
     min-height: 0;
   }
 
   .live-grid {
     display: flex;
     flex-direction: column;
+    height: auto;
     min-height: 0;
   }
 
@@ -1683,6 +1698,8 @@ body.ide-page::before {
   .preview-pane,
   .artifact-pane,
   .example-browser {
+    flex: 0 0 auto;
+    height: 360px;
     min-height: 360px;
   }
 
