@@ -1126,12 +1126,19 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
     if(init[i] == '(') {
         tstart = i + 1;
         tend = tstart;
-        while(init[tend] != '\0' && (isalnum((unsigned char)init[tend])
-                                     || init[tend] == '_' || init[tend] == ' '
-                                     || init[tend] == '*'
-                                     || init[tend] == '['
-                                     || init[tend] == ']'))
+        while(init[tend] != '\0') {
+            if(init[tend] == '[') {
+                while(init[tend] != '\0' && init[tend] != ']')
+                    tend++;
+                if(init[tend] == ']')
+                    tend++;
+                continue;
+            }
+            if(!(isalnum((unsigned char)init[tend]) || init[tend] == '_'
+                 || init[tend] == ' ' || init[tend] == '*'))
+                break;
             tend++;
+        }
         n = tend - tstart;
         if(n > 0 && init[tend] == ')' && n < type_size
            && (isalpha((unsigned char)init[tstart])
@@ -1143,7 +1150,7 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
                 char ch = init[tstart + k];
                 if(!(isalnum((unsigned char)ch) || ch == '_' || ch == ' '
                      || ch == '\t' || ch == '*' || ch == '['
-                     || ch == ']')) {
+                     || ch == ']' || ch == '+')) {
                     ok = 0;
                     break;
                 }
