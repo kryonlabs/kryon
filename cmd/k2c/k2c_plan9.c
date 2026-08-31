@@ -940,10 +940,38 @@ expr_type(const char *expr, size_t len, char *type, size_t type_size)
         i++;
     if(i >= len)
         return 0;
-    if(expr[i] == '&' || expr[i] == '*' || expr[i] == '(')
-        return 0; /* pointers and casts handled by the caller */
+    if(expr[i] == '&' || expr[i] == '*')
+        return 0; /* pointers handled by the caller */
 
     while(i < len) {
+        if(expr[i] == '(') {
+            size_t depth = 0;
+            size_t k = i;
+            char inner[PLAN9_LINE_MAX];
+            char inner_type[PLAN9_TYPE_MAX];
+
+            while(k < len) {
+                if(expr[k] == '(')
+                    depth++;
+                else if(expr[k] == ')') {
+                    depth--;
+                    if(depth == 0)
+                        break;
+                }
+                k++;
+            }
+            if(k >= len || k - i - 1 >= sizeof(inner))
+                return 0;
+            memcpy(inner, expr + i + 1, k - i - 1);
+            inner[k - i - 1] = '\0';
+            if(!expr_type(inner, strlen(inner), inner_type,
+                          sizeof(inner_type)))
+                return 0;
+            if(!merge_type(acc, &have, inner_type))
+                return 0;
+            i = k + 1;
+            continue;
+        }
         if(isdigit((unsigned char)expr[i])) {
             size_t j = i;
 
@@ -1104,7 +1132,7 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
             snprintf(type, type_size, "int");
             return 1;
         }
-        if(strchr(head, '&') == NULL && head[0] != '*') {
+        if(head[0] != '*') {
             /* expression over literals, macros, locals, and calls */
             if(expr_type(head, strlen(head), type, type_size))
                 return 1;
