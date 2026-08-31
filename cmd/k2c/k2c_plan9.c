@@ -403,24 +403,26 @@ proto_add_file(const char *path, int allow_c)
     while(fgets(line, sizeof(line), f) != NULL) {
         /* inside a struct body, record member declarations */
         if(struct_depth > 0) {
-            const char *brace;
-
-            if(strstr(line, "typedef") == NULL
-               && strstr(line, "struct") == NULL)
-                field_add(line);
-            brace = strchr(line, '{');
-            if(brace != NULL)
+            if(strchr(line, '{') != NULL)
                 struct_depth++;
-            if(strchr(line, '}') != NULL)
+            if(strchr(line, '}') != NULL) {
                 struct_depth--;
+            } else if(strchr(line, '(') == NULL
+                      && strstr(line, "typedef") == NULL
+                      && strstr(line, "struct") == NULL) {
+                field_add(line);
+            }
             continue;
         }
-        if((strstr(line, "typedef struct") != NULL
-            || strstr(line, "struct ") != NULL
-            || strstr(line, "} ") != NULL)
-           && strchr(line, '{') != NULL) {
-            struct_depth = 1;
-            continue;
+        {
+            const char *q = line + strspn(line, " \t");
+
+            if((strncmp(q, "typedef struct", 14) == 0
+                || strncmp(q, "struct ", 7) == 0)
+               && strchr(line, '{') != NULL && strchr(line, '}') == NULL) {
+                struct_depth = 1;
+                continue;
+            }
         }
         char joined[16384];
         char name[PLAN9_NAME_MAX];
