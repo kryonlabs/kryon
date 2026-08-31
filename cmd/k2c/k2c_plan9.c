@@ -210,6 +210,13 @@ proto_line_parse(const char *line, char *name, size_t name_size,
     type[n] = '\0';
     if(strcmp(type, "void") == 0 || strcmp(type, "static") == 0)
         return 0;
+    /* the return type must read like one: identifiers, qualifiers,
+     * struct/enum tags, stars. Anything else means the line was
+     * expression text from an inline body (raymath-style headers). */
+    if(strpbrk(type, "=().,+-*/%<>!&|[]") != NULL)
+        return 0;
+    if(!(isalpha((unsigned char)type[0]) || type[0] == '_'))
+        return 0;
     return 1;
 }
 
@@ -322,12 +329,17 @@ proto_add_file(const char *path, int allow_c)
         char type[PLAN9_TYPE_MAX];
         int i;
 
-        if(!allow_c)
+        if(!allow_c) {
             proto_add_macro(line);
-        if(allow_c && strncmp(line, "static ", 7) != 0
-           && strncmp(line + strspn(line, " \t"), "static ",
-                      7) != 0)
-            continue; /* in .c files only static headers are recorded */
+        } else {
+            /* in .c files only static definition headers are recorded,
+             * before any continuation joining so body lines never
+             * accumulate into a candidate */
+            const char *nospace = line + strspn(line, " \t");
+
+            if(strncmp(nospace, "static ", 7) != 0)
+                continue;
+        }
         if(pending[0] != '\0') {
             snprintf(pending_text, sizeof(pending_text), "%s", pending);
             pending[0] = '\0';
