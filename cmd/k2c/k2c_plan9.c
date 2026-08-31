@@ -970,6 +970,12 @@ merge_type(char *acc, int *have, const char *next)
         snprintf(acc, PLAN9_TYPE_MAX, "float");
         return 1;
     }
+    if(strcmp(acc, "void *") == 0 && strchr(next, '*') != NULL) {
+        snprintf(acc, PLAN9_TYPE_MAX, "%s", next);
+        return 1;
+    }
+    if(strcmp(next, "void *") == 0 && strchr(acc, '*') != NULL)
+        return 1;
     return 0;
 }
 
