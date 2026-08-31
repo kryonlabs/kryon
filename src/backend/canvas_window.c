@@ -466,6 +466,7 @@ static int g_exit_key = KEY_ESCAPE;
 static unsigned int g_window_state;
 static double g_last_frame;
 static float g_frame_time;
+static int g_target_fps;
 
 /* ------------------------------------------------------------------ */
 /* Window/frame                                                       */
@@ -589,7 +590,7 @@ void RestoreWindow(void)
 
 void SetTargetFPS(int fps)
 {
-    (void)fps;
+    g_target_fps = fps > 0 ? fps : 0;
 }
 
 void SetWindowSize(int width, int height)
@@ -608,10 +609,13 @@ void BeginDrawing(void)
 void KryonRaylibBackend_EndDrawing(void)
 {
     double now = emscripten_get_now() / 1000.0;
+    double elapsed;
+    unsigned int sleep_ms = 1;
 
     EM_ASM({ if (globalThis.__kryCanvas) globalThis.__kryCanvas.frames++; });
 
-    g_frame_time = (float)(now - g_last_frame);
+    elapsed = now - g_last_frame;
+    g_frame_time = (float)elapsed;
     if(g_frame_time <= 0.0f)
         g_frame_time = 1.0f / 60.0f;
     g_last_frame = now;
@@ -624,8 +628,17 @@ void KryonRaylibBackend_EndDrawing(void)
     (void)js_input_query(18, 0);
     (void)js_input_query(20, 0);
     js_input_end_frame();
-    /* yield so the browser presents and pumps events */
-    emscripten_sleep(1);
+    /* yield so the browser presents and pumps events, respecting SetTargetFPS */
+    if(g_target_fps > 0) {
+        double target = 1.0 / (double)g_target_fps;
+
+        if(elapsed < target) {
+            double wait = (target - elapsed) * 1000.0;
+
+            sleep_ms = wait > 1.0 ? (unsigned int)wait : 1;
+        }
+    }
+    emscripten_sleep(sleep_ms);
 }
 
 double GetTime(void)
