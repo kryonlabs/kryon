@@ -68,6 +68,20 @@ android_max_nonnegative(int first, int second)
     return first > second ? first : second;
 }
 
+static int
+android_clamp_content_size(int size, int leading_inset, int trailing_inset,
+                           int min_size)
+{
+    int content_size = size - leading_inset - trailing_inset;
+
+    if(content_size <= 0)
+        return size;
+    if(min_size > 0 && content_size < min_size)
+        return size;
+
+    return content_size;
+}
+
 int
 GetAndroidSurfaceSize(int *width, int *height)
 {
@@ -115,18 +129,114 @@ GetAndroidWindowInsets(AndroidWindowInsets *out)
     return ready;
 }
 
+static AndroidSafeArea
+android_safe_area_for_policy(AndroidWindowInsets insets,
+                             AndroidViewportPolicy policy)
+{
+    AndroidSafeArea area = {0};
+
+    if((policy.insets & ANDROID_VIEWPORT_INSET_SYSTEM_BARS) != 0) {
+        area.left = android_max_nonnegative(area.left, insets.system_left);
+        area.top = android_max_nonnegative(area.top, insets.system_top);
+        area.right = android_max_nonnegative(area.right, insets.system_right);
+        area.bottom = android_max_nonnegative(area.bottom, insets.system_bottom);
+    }
+    if((policy.insets & ANDROID_VIEWPORT_INSET_CUTOUT) != 0) {
+        area.left = android_max_nonnegative(area.left, insets.cutout_left);
+        area.top = android_max_nonnegative(area.top, insets.cutout_top);
+        area.right = android_max_nonnegative(area.right, insets.cutout_right);
+        area.bottom = android_max_nonnegative(area.bottom, insets.cutout_bottom);
+    }
+    if((policy.insets & ANDROID_VIEWPORT_INSET_IME) != 0)
+        area.bottom = android_max_nonnegative(area.bottom, insets.ime_bottom);
+    return area;
+}
+
+AndroidSafeArea
+GetAndroidSafeAreaInsets(void)
+{
+    AndroidWindowInsets insets;
+
+    GetAndroidWindowInsets(&insets);
+    return android_safe_area_for_policy(insets, AndroidViewportPolicySafeArea());
+}
+
+AndroidViewportPolicy
+AndroidViewportPolicyFull(void)
+{
+    AndroidViewportPolicy policy = {0};
+
+    policy.insets = ANDROID_VIEWPORT_INSET_NONE;
+    return policy;
+}
+
+AndroidViewportPolicy
+AndroidViewportPolicySafeArea(void)
+{
+    AndroidViewportPolicy policy = {0};
+
+    policy.insets = ANDROID_VIEWPORT_INSET_SAFE_AREA;
+    return policy;
+}
+
+AndroidViewportPolicy
+AndroidViewportPolicyResizeForIme(void)
+{
+    AndroidViewportPolicy policy = {0};
+
+    policy.insets = ANDROID_VIEWPORT_INSET_SAFE_AREA |
+                    ANDROID_VIEWPORT_INSET_IME;
+    return policy;
+}
+
+int
+ResolveAndroidViewport(int width, int height, AndroidViewportPolicy policy,
+                       AndroidViewport *out)
+{
+    AndroidWindowInsets insets = {0};
+    AndroidSafeArea area;
+    AndroidViewport viewport;
+    int ready;
+
+    ready = GetAndroidWindowInsets(&insets);
+    area = android_safe_area_for_policy(insets, policy);
+    viewport.x = area.left;
+    viewport.y = area.top;
+    viewport.width = android_clamp_content_size(width, area.left, area.right,
+                                                policy.min_width);
+    viewport.height = android_clamp_content_size(height, area.top, area.bottom,
+                                                 policy.min_height);
+    if(viewport.width == width && area.left + area.right > 0)
+        viewport.x = 0;
+    if(viewport.height == height && area.top + area.bottom > 0)
+        viewport.y = 0;
+    viewport.insets = area;
+    viewport.ready = ready;
+
+    if(viewport.width <= 0) {
+        viewport.x = 0;
+        viewport.width = width;
+    }
+    if(viewport.height <= 0) {
+        viewport.y = 0;
+        viewport.height = height;
+    }
+
+    if(out != NULL)
+        *out = viewport;
+    return ready;
+}
+
 KrySafeArea
 GetAndroidSafeArea(void)
 {
-    AndroidWindowInsets insets;
+    AndroidSafeArea safe = GetAndroidSafeAreaInsets();
     KrySafeArea area;
 
-    GetAndroidWindowInsets(&insets);
-    area.left = android_max_nonnegative(insets.system_left, insets.cutout_left);
-    area.top = android_max_nonnegative(insets.system_top, insets.cutout_top);
-    area.right = android_max_nonnegative(insets.system_right, insets.cutout_right);
-    area.bottom = android_max_nonnegative(insets.system_bottom,
-                                          insets.cutout_bottom);
+    area.left = safe.left;
+    area.top = safe.top;
+    area.right = safe.right;
+    area.bottom = safe.bottom;
     return area;
 }
 
