@@ -542,6 +542,156 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     return clicked;
 }
 
+static int
+segmented_item_width(const SegmentOption *option, int font,
+                     int min_item_width, int max_item_width)
+{
+    int label_w = TextWidth(option != NULL && option->label != NULL
+                                ? option->label
+                                : "",
+                            font);
+    int item_w = label_w + ScaleUIPx(20);
+
+    if(min_item_width <= 0)
+        min_item_width = ScaleUIPx(72);
+    if(max_item_width <= 0)
+        max_item_width = ScaleUIPx(180);
+    if(item_w < min_item_width)
+        item_w = min_item_width;
+    if(max_item_width > 0 && item_w > max_item_width)
+        item_w = max_item_width;
+    return item_w;
+}
+
+int
+GetSegmentedControlHeight(SegmentedControlProps control)
+{
+    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
+    int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
+    int row_w = 0;
+    int rows = 1;
+
+    if(control.options == NULL || control.option_count <= 0 || row_h <= 0)
+        return 0;
+    if(control.bounds.width <= 0)
+        return row_h;
+    if(!control.wrap)
+        return row_h;
+
+    for(int i = 0; i < control.option_count; i++) {
+        int item_w = segmented_item_width(&control.options[i], font,
+                                          control.min_item_width,
+                                          control.max_item_width);
+        int next_w = row_w > 0 ? row_w + gap + item_w : item_w;
+
+        if(row_w > 0 && next_w > (int)control.bounds.width) {
+            rows++;
+            row_w = item_w;
+        } else {
+            row_w = next_w;
+        }
+    }
+
+    return rows * row_h + (rows - 1) * gap;
+}
+
+SegmentedControlResult
+SegmentedControl(SegmentedControlProps control)
+{
+    SegmentedControlResult result;
+    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
+    int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
+    int row_start = 0;
+    int row_w = 0;
+    int row_count = 0;
+    int y = (int)control.bounds.y;
+    int selected = control.selected_index != NULL ? *control.selected_index : -1;
+
+    memset(&result, 0, sizeof(result));
+    result.selected_index = selected;
+    result.clicked_index = -1;
+    result.height = GetSegmentedControlHeight(control);
+
+    if(control.options == NULL || control.option_count <= 0 ||
+       control.bounds.width <= 0 || row_h <= 0)
+        return result;
+
+    for(int i = 0; i <= control.option_count; i++) {
+        int end_row = i == control.option_count;
+        int item_w = 0;
+        int next_w;
+
+        if(!end_row)
+            item_w = segmented_item_width(&control.options[i], font,
+                                          control.min_item_width,
+                                          control.max_item_width);
+        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
+
+        if(!end_row &&
+           (!control.wrap || row_w == 0 || next_w <= (int)control.bounds.width)) {
+            row_w = next_w;
+            row_count++;
+            continue;
+        }
+
+        if(row_count > 0) {
+            int available_w = (int)control.bounds.width;
+            int button_w = control.wrap
+                               ? (available_w - gap * (row_count - 1)) / row_count
+                               : row_w / row_count;
+            int x = (int)control.bounds.x;
+
+            if(control.wrap)
+                x += (available_w -
+                      (button_w * row_count + gap * (row_count - 1))) / 2;
+            for(int j = 0; j < row_count; j++) {
+                int item_index = row_start + j;
+                const SegmentOption *option = &control.options[item_index];
+                int hover = 0;
+                ButtonStyle style = item_index == selected
+                                        ? ButtonStyleTabSelected
+                                        : ButtonStyleSecondary;
+                int focus_id = control.id > 0 ? control.id * 100 + item_index + 1
+                                              : 0;
+                ButtonSpec button;
+
+                memset(&button, 0, sizeof(button));
+                button.bounds = (Rectangle){(float)x, (float)y,
+                                            (float)button_w, (float)row_h};
+                button.label = option->label;
+                button.font = font;
+                button.focus_id = focus_id;
+                button.disabled = option->disabled;
+                ui_button_style_colors(style, &button.background,
+                                       &button.hover_background,
+                                       &button.text);
+                button.border = LightenUIColor(button.background, 32);
+                button.radius = 0.08f;
+                if(RenderButton(button)) {
+                    result.clicked_index = item_index;
+                    if(control.selected_index != NULL &&
+                       *control.selected_index != item_index) {
+                        *control.selected_index = item_index;
+                        result.changed = 1;
+                    }
+                    result.selected_index = item_index;
+                }
+                (void)hover;
+                x += button_w + gap;
+            }
+            y += row_h + gap;
+        }
+
+        row_start = i;
+        row_w = item_w;
+        row_count = end_row ? 0 : 1;
+    }
+
+    return result;
+}
+
 int
 DrawUIInfoButton(int center_x, int center_y, int diameter)
 {

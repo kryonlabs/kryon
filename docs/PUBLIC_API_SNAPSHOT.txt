@@ -1178,6 +1178,7 @@ include/ui_controls.h enum UI_ICON_SIZE_SMALL
 include/ui_controls.h enum UI_ICON_SIZE_TINY
 include/ui_controls.h function ClearUIStyleTokensOverride
 include/ui_controls.h function EditText
+include/ui_controls.h function GetSegmentedControlHeight
 include/ui_controls.h function GetTextAreaSelection
 include/ui_controls.h function GetUIIconButtonPadding
 include/ui_controls.h function GetUIIconButtonSize
@@ -1189,6 +1190,7 @@ include/ui_controls.h function QueueTextInputCodepoint
 include/ui_controls.h function QueueTextInputEnter
 include/ui_controls.h function RenderButton
 include/ui_controls.h function RenderStyledButton
+include/ui_controls.h function SegmentedControl
 include/ui_controls.h function SetTextAreaSelection
 include/ui_controls.h function SetUIDropdownClipBottom
 include/ui_controls.h function SetUIDropdownClipTop

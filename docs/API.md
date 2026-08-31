@@ -1252,6 +1252,32 @@ int Dropdown(int id, int x, int y, int w, int h,
 void Overlays(void);
 ```
 
+#### Segmented Control
+
+Responsive choice control for mutually exclusive compact options. It measures
+and draws through the same input, focus, text, and button primitives as other
+Kryon controls, so it works across backends and can wrap onto multiple rows on
+narrow screens.
+
+```c
+typedef struct {
+    const char *label;
+    int disabled;
+} SegmentOption;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const SegmentOption *options;
+    int option_count;
+    int *selected_index;
+    int wrap;
+} SegmentedControlProps;
+
+int GetSegmentedControlHeight(SegmentedControlProps control);
+SegmentedControlResult SegmentedControl(SegmentedControlProps control);
+```
+
 ---
 
 ### Modals

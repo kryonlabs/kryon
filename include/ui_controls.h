@@ -227,6 +227,32 @@ typedef struct {
     const char *font_name;
 } UIDropdownOption;
 
+typedef struct {
+    const char *label;
+    int disabled;
+} SegmentOption;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const SegmentOption *options;
+    int option_count;
+    int *selected_index;
+    int font;
+    int gap;
+    int height;
+    int min_item_width;
+    int max_item_width;
+    int wrap;
+} SegmentedControlProps;
+
+typedef struct {
+    int selected_index;
+    int clicked_index;
+    int changed;
+    int height;
+} SegmentedControlResult;
+
 UIStyleTokens GetUIStyleTokens(void);
 UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
 UIMaterialScheme GetUIMaterialScheme(void);
@@ -246,6 +272,8 @@ int GetUIIconButtonPadding(UIIconSize size);
 int RenderButton(ButtonSpec button);
 int RenderStyledButton(int x, int y, int w, int h, const char *label,
                        ButtonStyle style, int disabled, int *hover);
+int GetSegmentedControlHeight(SegmentedControlProps control);
+SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);
