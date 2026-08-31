@@ -6,6 +6,18 @@
 
 #if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
 #include <emscripten.h>
+
+#define AUTOMATION_CACHE_SLOTS 16
+#define AUTOMATION_CACHE_KEY_SIZE 64
+#define AUTOMATION_CACHE_VALUE_SIZE 128
+
+typedef struct KryAutomationCacheEntry {
+    int used;
+    char key[AUTOMATION_CACHE_KEY_SIZE];
+    char value[AUTOMATION_CACHE_VALUE_SIZE];
+} KryAutomationCacheEntry;
+
+static KryAutomationCacheEntry automation_cache[AUTOMATION_CACHE_SLOTS];
 #endif
 
 static void
@@ -50,6 +62,45 @@ make_env_key(char *dst, size_t dst_size, const char *key)
 }
 
 #if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
+static int
+automation_cache_get(const char *key, char *out, int out_size)
+{
+    int i;
+
+    for(i = 0; i < AUTOMATION_CACHE_SLOTS; i++) {
+        if(automation_cache[i].used && strcmp(automation_cache[i].key, key) == 0) {
+            copy_option(out, out_size, automation_cache[i].value);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void
+automation_cache_put(const char *key, const char *value)
+{
+    int i;
+    int target = -1;
+
+    if(key == NULL || key[0] == '\0' || value == NULL || value[0] == '\0')
+        return;
+
+    for(i = 0; i < AUTOMATION_CACHE_SLOTS; i++) {
+        if(automation_cache[i].used && strcmp(automation_cache[i].key, key) == 0) {
+            target = i;
+            break;
+        }
+        if(!automation_cache[i].used && target < 0)
+            target = i;
+    }
+    if(target < 0)
+        return;
+
+    automation_cache[target].used = 1;
+    copy_option(automation_cache[target].key, sizeof(automation_cache[target].key), key);
+    copy_option(automation_cache[target].value, sizeof(automation_cache[target].value), value);
+}
+
 EM_JS(int, js_kry_automation_query_option,
       (const char *key_ptr, char *out, int out_size), {
     if (!key_ptr || !out || out_size <= 0) return 0;
@@ -98,7 +149,11 @@ KryAutomationGetOption(const char *key, const char *fallback,
     }
 
 #if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
-    if(js_kry_automation_query_option(key, out, out_size))
+    if(js_kry_automation_query_option(key, out, out_size)) {
+        automation_cache_put(key, out);
+        return 1;
+    }
+    if(automation_cache_get(key, out, out_size))
         return 1;
 #endif
 
