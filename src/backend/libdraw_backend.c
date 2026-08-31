@@ -2463,3 +2463,69 @@ void SetClipboardText(const char *text)
     free(g_clipboard);
     g_clipboard = dup_text_bytes(text);
 }
+
+/* DOM metadata and routing hooks only carry meaning for the web backend;
+ * native libdraw apps get inert defaults for the page surface so the
+ * shared page helpers link. */
+void kry_dom_semantic_next(int kind, const char *label, const char *href,
+                           const char *role, int level, int tab_index)
+{
+    (void)kind;
+    (void)label;
+    (void)href;
+    (void)role;
+    (void)level;
+    (void)tab_index;
+}
+
+void kry_dom_semantic_box(int kind, Rectangle bounds, const char *label)
+{
+    (void)kind;
+    (void)bounds;
+    (void)label;
+}
+
+void kry_dom_set_page_title(const char *title)
+{
+    (void)title;
+}
+
+void kry_dom_set_page_description(const char *description)
+{
+    (void)description;
+}
+
+void kry_dom_set_page_canonical_url(const char *url)
+{
+    (void)url;
+}
+
+void kry_dom_set_page_theme_color(Color color)
+{
+    (void)color;
+}
+
+const char *kry_dom_get_route_path(void)
+{
+    return "/";
+}
+
+const char *kry_dom_get_route_hash(void)
+{
+    return "";
+}
+
+int kry_dom_get_route_version(void)
+{
+    return 0;
+}
+
+void kry_dom_push_route(const char *path)
+{
+    (void)path;
+}
+
+void kry_dom_replace_route(const char *path)
+{
+    (void)path;
+}

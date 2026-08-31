@@ -120,6 +120,7 @@ OFILES=\
 	src/kry_std/kry_sha256.$O\
 	src/markdown.$O\
 	src/platform/kry_activity_monitor.$O\
+	src/platform/android_host.$O\
 	src/platform/plan9/plan9_notification.$O\
 	src/platform/plan9/plan9_os.$O\
 	src/platform/plan9/plan9_runtime_stubs.$O\
@@ -127,7 +128,7 @@ OFILES=\
 	src/platform/system_theme/system_theme.$O\
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/platform/*/*.$O \
-	src/ui/*.$O *.$O src/*/*.i src/*.i
+	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i
 
 all:V: $LIB
 
@@ -176,3 +177,6 @@ src/markdown.$O: src/markdown.c
 
 src/platform/kry_activity_monitor.$O: src/platform/kry_activity_monitor.c
 	cd src/platform && cpp -+ $CPPFLAGS kry_activity_monitor.c > kry_activity_monitor.i && $CC $CFLAGS -c kry_activity_monitor.i && mv kry_activity_monitor.i.$O kry_activity_monitor.$O && rm -f kry_activity_monitor.i
+
+src/platform/android_host.$O: src/platform/android_host.c
+	cd src/platform && cpp -+ $CPPFLAGS android_host.c > android_host.i && $CC $CFLAGS -c android_host.i && mv android_host.i.$O android_host.$O && rm -f android_host.i
