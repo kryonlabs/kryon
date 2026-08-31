@@ -66,8 +66,11 @@ AndroidSafeArea GetAndroidSafeAreaInsets(void);
 AndroidViewportPolicy AndroidViewportPolicyFull(void);
 AndroidViewportPolicy AndroidViewportPolicySafeArea(void);
 AndroidViewportPolicy AndroidViewportPolicyResizeForIme(void);
+void SetAndroidViewportPolicy(AndroidViewportPolicy policy);
+AndroidViewportPolicy GetAndroidViewportPolicy(void);
 int ResolveAndroidViewport(int width, int height, AndroidViewportPolicy policy,
                            AndroidViewport *out);
+int SyncAndroidViewport(AndroidViewport *out);
 KrySafeArea GetAndroidSafeArea(void);
 
 #endif /* KRYON_ANDROID_SURFACE_H */

@@ -53,6 +53,8 @@ static int g_android_surface_h;
 static KryMutex g_android_window_insets_mutex = KRY_MUTEX_INIT;
 static AndroidWindowInsets g_android_window_insets;
 static int g_android_window_insets_ready;
+static AndroidViewportPolicy g_android_viewport_policy;
+static int g_android_viewport_policy_set;
 
 static int
 android_nonnegative(int value)
@@ -189,6 +191,21 @@ AndroidViewportPolicyResizeForIme(void)
     return policy;
 }
 
+void
+SetAndroidViewportPolicy(AndroidViewportPolicy policy)
+{
+    g_android_viewport_policy = policy;
+    g_android_viewport_policy_set = 1;
+}
+
+AndroidViewportPolicy
+GetAndroidViewportPolicy(void)
+{
+    if(!g_android_viewport_policy_set)
+        g_android_viewport_policy = AndroidViewportPolicySafeArea();
+    return g_android_viewport_policy;
+}
+
 int
 ResolveAndroidViewport(int width, int height, AndroidViewportPolicy policy,
                        AndroidViewport *out)
@@ -238,6 +255,22 @@ GetAndroidSafeArea(void)
     area.right = safe.right;
     area.bottom = safe.bottom;
     return area;
+}
+
+int
+SyncAndroidViewport(AndroidViewport *out)
+{
+    AndroidViewport viewport;
+    int width = GetScreenWidth();
+    int height = GetScreenHeight();
+    int ready;
+
+    SyncAndroidSurfaceSize(&width, &height);
+    ready = ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(),
+                                   &viewport);
+    if(out != NULL)
+        *out = viewport;
+    return ready;
 }
 
 int

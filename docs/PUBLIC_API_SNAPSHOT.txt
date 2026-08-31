@@ -32,10 +32,13 @@ include/android_surface.h function AndroidViewportPolicySafeArea
 include/android_surface.h function GetAndroidSafeArea
 include/android_surface.h function GetAndroidSafeAreaInsets
 include/android_surface.h function GetAndroidSurfaceSize
+include/android_surface.h function GetAndroidViewportPolicy
 include/android_surface.h function GetAndroidWindowInsets
 include/android_surface.h function ResolveAndroidViewport
+include/android_surface.h function SetAndroidViewportPolicy
 include/android_surface.h function SetAndroidWindowInsets
 include/android_surface.h function SyncAndroidSurfaceSize
+include/android_surface.h function SyncAndroidViewport
 include/app_host.h function BeginKryonInputOverride
 include/app_host.h function EndKryonInputOverride
 include/app_host.h function IsUIInspectActive

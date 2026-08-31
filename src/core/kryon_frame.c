@@ -22,7 +22,15 @@ void SyncFrame(void)
     int height = GetScreenHeight();
 
 #if defined(PLATFORM_ANDROID) || defined(__ANDROID__)
-    SyncAndroidSurfaceSize(&width, &height);
+    {
+        AndroidViewport viewport = {0};
+
+        SyncAndroidViewport(&viewport);
+        if(viewport.width > 0)
+            width = viewport.width;
+        if(viewport.height > 0)
+            height = viewport.height;
+    }
 #endif
 #if defined(PLATFORM_WEB)
     SyncWebWindowSize();

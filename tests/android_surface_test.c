@@ -84,6 +84,22 @@ main(void)
     check_int("ime viewport bottom uses ime", viewport.insets.bottom, 120);
     check_int("ime viewport height", viewport.height, 380);
 
+    policy = GetAndroidViewportPolicy();
+    check_int("default policy uses safe area",
+              policy.insets & ANDROID_VIEWPORT_INSET_SAFE_AREA,
+              ANDROID_VIEWPORT_INSET_SAFE_AREA);
+    check_int("synced safe viewport ready", SyncAndroidViewport(&viewport), 1);
+    check_int("synced safe viewport x", viewport.x, 4);
+    check_int("synced safe viewport height", viewport.height, 476);
+
+    SetAndroidViewportPolicy(AndroidViewportPolicyFull());
+    policy = GetAndroidViewportPolicy();
+    check_int("set policy full", policy.insets, ANDROID_VIEWPORT_INSET_NONE);
+    check_int("synced full viewport ready", SyncAndroidViewport(&viewport), 1);
+    check_int("synced full viewport x", viewport.x, 0);
+    check_int("synced full viewport height", viewport.height, 560);
+    SetAndroidViewportPolicy(AndroidViewportPolicySafeArea());
+
     policy = AndroidViewportPolicySafeArea();
     policy.min_width = 260;
     check_int("min width fallback ready",
