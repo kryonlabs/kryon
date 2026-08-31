@@ -144,6 +144,32 @@ set_plan9_cursor(KryLibdrawCursor *cursor)
 #endif
 }
 
+#ifdef KRYON_NATIVE_PLAN9
+/* Apps hide the pointer while the user is typing; rio honors the
+ * mousectl cursor on/off switches for that. */
+static void
+write_mousectl(const char *command)
+{
+    int fd;
+
+    fd = open("/dev/mousectl", OWRITE);
+    if(fd < 0)
+        return;
+    write(fd, command, (long)strlen(command));
+    close(fd);
+}
+
+void ShowCursor(void)
+{
+    write_mousectl("cursor on");
+}
+
+void HideCursor(void)
+{
+    write_mousectl("cursor off");
+}
+#endif
+
 static void
 reset_default_cursor(void)
 {
