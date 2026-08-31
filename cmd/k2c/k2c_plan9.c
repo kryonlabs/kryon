@@ -396,9 +396,11 @@ proto_add_file(const char *path, int allow_c)
             }
         } else {
             snprintf(joined, sizeof(joined), "%s", line);
-            if(strchr(joined, '(') != NULL && strchr(joined, ';') == NULL
-               && strchr(joined, '{') == NULL
-               && strlen(joined) + 1 < sizeof(pending)) {
+            if(strchr(joined, ';') == NULL && strchr(joined, '{') == NULL
+               && strlen(joined) + 1 < sizeof(pending)
+               && (strchr(joined, '(') != NULL
+                   || strncmp(joined + strspn(joined, " \t"),
+                              "static ", 7) == 0)) {
                 snprintf(pending, sizeof(pending), "%s", joined);
                 continue;
             }
