@@ -401,16 +401,16 @@ UIFormTextField(UIForm *form, const char *label, char *text,
                 size_t text_size, int *cursor_position, int *focused,
                 int focus_id)
 {
-    return UIFormLabelTextField(form, (LabelTextFieldProps){
-        .label = label,
-        .field = {
-            .text = text,
-            .text_size = text_size,
-            .cursor_position = cursor_position,
-            .focused = focused,
-            .focus_id = focus_id
-        }
-    });
+    LabelTextFieldProps row;
+
+    memset(&row, 0, sizeof(row));
+    row.label = label;
+    row.field.text = text;
+    row.field.text_size = text_size;
+    row.field.cursor_position = cursor_position;
+    row.field.focused = focused;
+    row.field.focus_id = focus_id;
+    return UIFormLabelTextField(form, row);
 }
 
 int
@@ -438,16 +438,16 @@ int
 UIFormSpinbox(UIForm *form, const char *label, int id, int min, int max,
               int step, int *value)
 {
-    return UIFormSpinboxRow(form, (SpinboxRowProps){
-        .label = label,
-        .spinbox = {
-            .id = id,
-            .min = min,
-            .max = max,
-            .step = step,
-            .value = value
-        }
-    });
+    SpinboxRowProps row;
+
+    memset(&row, 0, sizeof(row));
+    row.label = label;
+    row.spinbox.id = id;
+    row.spinbox.min = min;
+    row.spinbox.max = max;
+    row.spinbox.step = step;
+    row.spinbox.value = value;
+    return UIFormSpinboxRow(form, row);
 }
 
 int
