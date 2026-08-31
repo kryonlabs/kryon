@@ -1234,6 +1234,20 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
     ret = proto_return_type(name);
     if(ret == NULL || strlen(ret) >= type_size)
         return 0;
+    /* a member selection on the result needs the field's type, which
+     * is not tracked: refuse rather than type it as the call's return */
+    {
+        const char *close = strchr(call_end, ')');
+
+        if(close != NULL) {
+            const char *after = close + 1;
+
+            while(*after == ' ')
+                after++;
+            if(*after == '.' || (*after == '-' && after[1] == '>'))
+                return 0;
+        }
+    }
     snprintf(type, type_size, "%s", ret);
     return 1;
 }
