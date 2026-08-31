@@ -17,9 +17,4 @@
 #define ULONG_MAX 4294967295UL
 #define PATH_MAX 4096
 
-#include "kryon_plan9_libc.h"
-#ifndef SIZE_MAX
-#define SIZE_MAX ((size_t)-1)
-#endif
-
 #endif

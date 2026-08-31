@@ -44,6 +44,11 @@ typedef long time_t;
 #define __attribute__(x)
 #endif
 
+/* Hosted <stdint.h>/<limits.h> provide SIZE_MAX; native does not. */
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
+
 /* Native libc has no rename(2); the runtime stubs implement it as a
  * same-directory name wstat. */
 int rename(const char *oldpath, const char *newpath);
