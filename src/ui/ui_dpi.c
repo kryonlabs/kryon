@@ -1,6 +1,6 @@
 #include "ui_dpi.h"
 
-#if defined(__FreeBSD__) && !defined(PLATFORM_WEB)
+#if defined(__FreeBSD__) && !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID)
 #define GL_FRAMEBUFFER_SRGB 0x8DB9
 extern void glDisable(unsigned int cap);
 #endif
@@ -25,7 +25,7 @@ InitUIDPI(void)
 void
 FixUIDPIFramebufferColor(void)
 {
-#if defined(__FreeBSD__) && !defined(PLATFORM_WEB)
+#if defined(__FreeBSD__) && !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID)
     if(IsWindowReady()) {
         glDisable(GL_FRAMEBUFFER_SRGB);
     }
