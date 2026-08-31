@@ -1409,6 +1409,7 @@ include/ui_node_registry.h function KryonNodeTypeCount
 include/ui_node_registry.h function KryonNodeTypeFlagsAt
 include/ui_node_registry.h function KryonNodeTypeInsertable
 include/ui_node_registry.h function KryonNodeTypeSnippet
+include/ui_overlay.h function DismissibleOverlay
 include/ui_overlay.h function GetUIGuideOverlayDebug
 include/ui_page.h enum UI_SEMANTIC_BUTTON
 include/ui_page.h enum UI_SEMANTIC_HEADING
