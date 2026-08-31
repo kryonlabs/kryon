@@ -493,6 +493,8 @@ static unsigned int g_window_state;
 static double g_last_frame;
 static float g_frame_time;
 static int g_target_fps;
+static unsigned int g_random_seed = 1;
+static int g_random_seeded;
 
 /* ------------------------------------------------------------------ */
 /* Window/frame                                                       */
@@ -617,6 +619,31 @@ void RestoreWindow(void)
 void SetTargetFPS(int fps)
 {
     g_target_fps = fps > 0 ? fps : 0;
+}
+
+void SetRandomSeed(unsigned int seed)
+{
+    g_random_seed = seed != 0 ? seed : 1;
+    g_random_seeded = 1;
+}
+
+int GetRandomValue(int min, int max)
+{
+    unsigned int span;
+
+    if(max <= min)
+        return min;
+    if(!g_random_seeded) {
+        double now = emscripten_get_now();
+
+        g_random_seed = (unsigned int)now ^ 0x9e3779b9u;
+        if(g_random_seed == 0)
+            g_random_seed = 1;
+        g_random_seeded = 1;
+    }
+    g_random_seed = g_random_seed * 1664525u + 1013904223u;
+    span = (unsigned int)(max - min + 1);
+    return min + (int)(g_random_seed % span);
 }
 
 void SetWindowSize(int width, int height)

@@ -250,6 +250,9 @@ include/kry_animation.h macro KRY_ANIM_TRACKS_MAX
 include/kry_archive.h function KryArchiveEntryNameSafe
 include/kry_archive.h function KryArchiveExtractZip
 include/kry_archive.h function KryArchiveMkdirP
+include/kry_automation.h function KryAutomationGetInt
+include/kry_automation.h function KryAutomationGetOption
+include/kry_automation.h function KryAutomationGetSeed
 include/kry_backend.h enum KRY_MOUSE_LEFT
 include/kry_backend.h enum KRY_MOUSE_MIDDLE
 include/kry_backend.h enum KRY_MOUSE_RIGHT

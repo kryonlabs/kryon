@@ -89,6 +89,11 @@ int main(void)
     if(strcmp(GetPrevDirectoryPath("canvas_tmp/a/b"), "canvas_tmp/a") != 0)
         return 26;
     SetTargetFPS(60);
+    SetRandomSeed(7);
+    if(GetRandomValue(10, 20) != 14)
+        return 33;
+    if(GetRandomValue(10, 20) != 16)
+        return 34;
     solid = GenImageColor(16, 16, (Color){255, 255, 255, 255});
     if(!IsImageValid(solid))
         return 7;
