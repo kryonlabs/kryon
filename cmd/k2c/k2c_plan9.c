@@ -1553,25 +1553,29 @@ char *k2c_plan9_rewrite_once(const char *text);
 char *
 k2c_plan9_rewrite(const char *text)
 {
-    const char *current = text;
+    char *current;
     char *next;
     int pass;
 
+    /* the result is always freshly allocated: callers free it */
+    current = k2c_plan9_rewrite_once(text);
+    if(current == NULL)
+        return NULL;
+
     /* literals can nest inside call arguments inside positional bodies;
      * iterate until the output stabilizes */
-    for(pass = 0; pass < 4; pass++) {
+    for(pass = 1; pass < 4; pass++) {
         next = k2c_plan9_rewrite_once(current);
         if(next == NULL)
-            return pass == 0 ? NULL : (char *)current;
+            return current;
         if(strcmp(next, current) == 0) {
             free(next);
-            return (char *)current;
+            return current;
         }
-        if(current != text)
-            free((void *)current);
+        free(current);
         current = next;
     }
-    return (char *)current;
+    return current;
 }
 
 char *
