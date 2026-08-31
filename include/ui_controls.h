@@ -243,6 +243,10 @@ void SetTextAreaSelection(int focus_id, int anchor, int cursor);
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 
+int RenderButton(ButtonSpec button);
+int RenderStyledButton(int x, int y, int w, int h, const char *label,
+                       ButtonStyle style, int disabled, int *hover);
+
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);
 

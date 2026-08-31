@@ -1184,6 +1184,8 @@ include/ui_controls.h function GetUIStyleTokensForThemeStyle
 include/ui_controls.h function QueueTextInputBackspace
 include/ui_controls.h function QueueTextInputCodepoint
 include/ui_controls.h function QueueTextInputEnter
+include/ui_controls.h function RenderButton
+include/ui_controls.h function RenderStyledButton
 include/ui_controls.h function SetTextAreaSelection
 include/ui_controls.h function SetUIDropdownClipBottom
 include/ui_controls.h function SetUIDropdownClipTop
