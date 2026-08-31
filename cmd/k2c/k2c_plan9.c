@@ -832,12 +832,20 @@ find_cast_literal(const char *line, int cursor, int *cast_start, int *cast_end,
         if(line[i] == '(') {
             tstart = i + 1;
             tend = tstart;
-            while(line[tend] != '\0'
-                  && (isalnum((unsigned char)line[tend]) || line[tend] == '_'
-                      || line[tend] == ' ' || line[tend] == '\t'
-                      || line[tend] == '*' || line[tend] == '['
-                      || line[tend] == ']'))
+            while(line[tend] != '\0') {
+                if(line[tend] == '[') {
+                    while(line[tend] != '\0' && line[tend] != ']')
+                        tend++;
+                    if(line[tend] == ']')
+                        tend++;
+                    continue;
+                }
+                if(!(isalnum((unsigned char)line[tend]) || line[tend] == '_'
+                     || line[tend] == ' ' || line[tend] == '\t'
+                     || line[tend] == '*'))
+                    break;
                 tend++;
+            }
             n = (size_t)(tend - tstart);
             if(n > 0 && n < type_size && line[tend] == ')'
                && line[tend + 1] == '{'
