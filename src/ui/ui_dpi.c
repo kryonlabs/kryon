@@ -71,7 +71,7 @@ UpdateUIDPI(int view_width, int view_height)
                                    ? (float)view_height / (float)base_height
                                    : 1.0f;
         float real_dpi = viewport_scale;
-        if(g_device_density > 0.0f)
+        if(g_device_density > real_dpi)
             real_dpi = g_device_density;
 
 #if !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID) && !defined(__ANDROID__)
