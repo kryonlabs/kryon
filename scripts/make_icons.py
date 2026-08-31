@@ -191,25 +191,31 @@ def rounded_rect(pixels, width, height, x0, y0, x1, y1, radius, color):
 
 
 def make_debian():
-    w = h = 16
-    px = canvas(w, h)
-    red = (190, 0, 58, 255)
-    dark_red = (140, 0, 46, 255)
+    rows = [
+        "................",
+        "....RRRRRR......",
+        "..RRRRRRRRR.....",
+        ".RRRR...RRRR....",
+        ".RR......RRR....",
+        "RRR......RRR....",
+        "RRR.....RRR.....",
+        ".RRR...RRR......",
+        "..RRRRRRD.......",
+        "...RRRDD........",
+        ".....DDRR.......",
+        ".....DRR........",
+        "....RRR.........",
+        "..RRR...........",
+        ".RR.............",
+        "................",
+    ]
+    palette = {
+        "R": (190, 0, 58, 255),
+        "D": (130, 0, 44, 255),
+    }
 
-    cx, cy = 8, 7
-    pts = []
-    for i in range(68):
-        t = 0.05 + i / 67.0 * 4.7 * math.pi
-        r = 7.0 - 5.6 * i / 67.0
-        pts.append((int(round(cx + math.cos(t) * r)),
-                    int(round(cy + math.sin(t) * r * 0.86))))
-    for i in range(len(pts) - 1):
-        thickness = 2 if i < 40 else 1
-        line(px, w, h, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1],
-             red if i < 44 else dark_red, thickness)
-    line(px, w, h, 4, 2, 1, 6, red, 1)
-    put(px, w, h, 12, 2, red)
-    return px, w, h
+    grid_rows, width = grid(rows)
+    return render(grid_rows, palette), width, len(grid_rows)
 
 
 def make_c():
