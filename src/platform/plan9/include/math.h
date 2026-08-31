@@ -30,6 +30,31 @@
 #define fmodf fmod
 #define hypotf hypot
 
+/* Native libc has no fmax/fmin, so the float spellings are provided
+ * inline with C99 NaN semantics (raymath clamps rely on them). */
+static float
+kryon_plan9_fmaxf(float a, float b)
+{
+    if(a != a)
+        return b;
+    if(b != b)
+        return a;
+    return a > b ? a : b;
+}
+
+static float
+kryon_plan9_fminf(float a, float b)
+{
+    if(a != a)
+        return b;
+    if(b != b)
+        return a;
+    return a < b ? a : b;
+}
+
+#define fmaxf kryon_plan9_fmaxf
+#define fminf kryon_plan9_fminf
+
 #ifndef PI
 #define PI 3.14159265358979323846
 #endif
