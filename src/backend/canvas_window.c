@@ -456,6 +456,32 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     }
 });
 
+EM_ASYNC_JS(void, js_canvas_wait_frame, (double min_delay_ms, int target_fps), {
+    var K = globalThis.__kryCanvas;
+    if (K) {
+        K.targetFps = target_fps | 0;
+        K.lastFrameDelayMs = min_delay_ms;
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+        var earliest = (typeof performance !== 'undefined' && performance.now)
+            ? performance.now() + Math.max(0, min_delay_ms)
+            : 0;
+        await new Promise(function (resolve) {
+            function step(t) {
+                if (t + 0.25 >= earliest) resolve();
+                else requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        });
+        return;
+    }
+
+    await new Promise(function (resolve) {
+        setTimeout(resolve, Math.max(1, min_delay_ms | 0));
+    });
+});
+
 /* ------------------------------------------------------------------ */
 /* C state                                                            */
 /* ------------------------------------------------------------------ */
@@ -610,7 +636,7 @@ void KryonRaylibBackend_EndDrawing(void)
 {
     double now = emscripten_get_now() / 1000.0;
     double elapsed;
-    unsigned int sleep_ms = 1;
+    double wait_ms = 1.0;
 
     EM_ASM({ if (globalThis.__kryCanvas) globalThis.__kryCanvas.frames++; });
 
@@ -628,17 +654,17 @@ void KryonRaylibBackend_EndDrawing(void)
     (void)js_input_query(18, 0);
     (void)js_input_query(20, 0);
     js_input_end_frame();
-    /* yield so the browser presents and pumps events, respecting SetTargetFPS */
+    /* Yield so the browser presents and pumps events, respecting SetTargetFPS. */
     if(g_target_fps > 0) {
         double target = 1.0 / (double)g_target_fps;
 
         if(elapsed < target) {
             double wait = (target - elapsed) * 1000.0;
 
-            sleep_ms = wait > 1.0 ? (unsigned int)wait : 1;
+            wait_ms = wait > 0.0 ? wait : 0.0;
         }
     }
-    emscripten_sleep(sleep_ms);
+    js_canvas_wait_frame(wait_ms, g_target_fps);
 }
 
 double GetTime(void)
