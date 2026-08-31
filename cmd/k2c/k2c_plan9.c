@@ -844,6 +844,135 @@ rewrite_line_compound(Buf *out, const char *line, int lineno, int *rewrote)
 /* ------------------------------------------------------------------ */
 
 
+/* Classify an initializer expression by resolving every identifier and
+ * call head in it: uniform int stays int, any float makes float, a
+ * single non-int resolved type wins, mixed types fail. */
+static int
+expr_type(const char *expr, size_t len, char *type, size_t type_size);
+
+static int
+head_type(const char *head, size_t len, char *type, size_t type_size)
+{
+    char name[PLAN9_NAME_MAX];
+    const char *ret;
+
+    if(len == 0 || len >= sizeof(name))
+        return 0;
+    memcpy(name, head, len);
+    name[len] = '\0';
+    if(init_is_int_literal(name)) {
+        snprintf(type, type_size, "int");
+        return 1;
+    }
+    ret = proto_return_type(name);
+    if(ret == NULL || strlen(ret) >= type_size)
+        return 0;
+    snprintf(type, type_size, "%s", ret);
+    return 1;
+}
+
+static int
+merge_type(char *acc, int *have, const char *next)
+{
+    if(!*have) {
+        snprintf(acc, PLAN9_TYPE_MAX, "%s", next);
+        *have = 1;
+        return 1;
+    }
+    if(strcmp(acc, next) == 0)
+        return 1;
+    if((strcmp(acc, "int") == 0 && strcmp(next, "float") == 0)
+       || (strcmp(acc, "float") == 0 && strcmp(next, "int") == 0)) {
+        snprintf(acc, PLAN9_TYPE_MAX, "float");
+        return 1;
+    }
+    return 0;
+}
+
+static int
+expr_type(const char *expr, size_t len, char *type, size_t type_size)
+{
+    char acc[PLAN9_TYPE_MAX];
+    char one[PLAN9_TYPE_MAX];
+    int have = 0;
+    size_t i = 0;
+
+    while(i < len && (expr[i] == ' ' || expr[i] == '\t'))
+        i++;
+    if(i >= len)
+        return 0;
+    if(expr[i] == '&' || expr[i] == '*' || expr[i] == '(')
+        return 0; /* pointers and casts handled by the caller */
+
+    while(i < len) {
+        if(isdigit((unsigned char)expr[i])) {
+            size_t j = i;
+
+            while(j < len && (isdigit((unsigned char)expr[j])
+                              || expr[j] == '.' || expr[j] == 'u'
+                              || expr[j] == 'U' || expr[j] == 'l'
+                              || expr[j] == 'L' || expr[j] == 'f'
+                              || expr[j] == 'F'))
+                j++;
+            if(!head_type(expr + i, j - i, one, sizeof(one)))
+                return 0;
+            if(!merge_type(acc, &have, one))
+                return 0;
+            i = j;
+            continue;
+        }
+        if(isalpha((unsigned char)expr[i]) || expr[i] == '_') {
+            size_t j = i;
+
+            while(j < len && (isalnum((unsigned char)expr[j])
+                              || expr[j] == '_'))
+                j++;
+            if(j < len && expr[j] == '(') {
+                size_t depth = 0;
+                size_t k = j;
+
+                while(k < len) {
+                    if(expr[k] == '(')
+                        depth++;
+                    else if(expr[k] == ')') {
+                        depth--;
+                        if(depth == 0)
+                            break;
+                    }
+                    k++;
+                }
+                if(k >= len)
+                    return 0;
+                if(!head_type(expr + i, j - i, one, sizeof(one)))
+                    return 0;
+                if(!merge_type(acc, &have, one))
+                    return 0;
+                i = k + 1;
+                continue;
+            }
+            /* bare identifier: a macro constant or an int local */
+            if(!head_type(expr + i, j - i, one, sizeof(one))) {
+                snprintf(one, sizeof(one), "int");
+                have = have; /* int locals are the lowering's default */
+                if(!merge_type(acc, &have, one))
+                    return 0;
+            } else {
+                if(!merge_type(acc, &have, one))
+                    return 0;
+            }
+            i = j;
+            continue;
+        }
+        i++;
+    }
+    if(!have)
+        return 0;
+    if(strlen(acc) >= type_size)
+        return 0;
+    snprintf(type, type_size, "%s", acc);
+    return 1;
+}
+
 static int
 autotype_type_for_init(const char *init, char *type, size_t type_size)
 {
@@ -916,47 +1045,15 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
             snprintf(type, type_size, "int");
             return 1;
         }
-        if(strchr(head, '(') == NULL && strchr(head, '&') == NULL
-           && head[0] != '*') {
-            const char *p;
-            int arith_only = 1;
-
-            for(p = head; *p != '\0'; p++) {
-                if(!(isalnum((unsigned char)*p) || *p == '_' || *p == ' '
-                     || *p == '\t' || *p == '+' || *p == '-' || *p == '*'
-                     || *p == '/' || *p == '%' || *p == '.' || *p == '<'
-                     || *p == '>' || *p == '!' || *p == '~')) {
-                    arith_only = 0;
-                    break;
-                }
-            }
-            if(arith_only) {
-                size_t hl = 0;
-
-                if(expr_looks_float(head)) {
-                    if(type_size < 6)
-                        return 0;
-                    snprintf(type, type_size, "float");
-                    return 1;
-                }
-                while(head[hl] != '\0' && (isalnum((unsigned char)head[hl])
-                                            || head[hl] == '_'))
-                    hl++;
-                if(hl > 0 && hl < sizeof(name)) {
-                    memcpy(name, head, hl);
-                    name[hl] = '\0';
-                    ret = proto_return_type(name);
-                    if(ret != NULL && strlen(ret) < type_size) {
-                        snprintf(type, type_size, "%s", ret);
-                        return 1;
-                    }
-                }
-                if(type_size < 4)
-                    return 0;
-                snprintf(type, type_size, "int");
+        if(strchr(head, '&') == NULL && head[0] != '*'
+           && strchr(head, '=') == NULL && strstr(head, "==") == NULL
+           && strstr(head, "!=") == NULL) {
+            /* expression over literals, macros, locals, and calls */
+            if(expr_type(head, strlen(head), type, type_size))
                 return 1;
-            }
         }
+        (void)name;
+        (void)ret;
     }
 
     /* function call: resolve the return type from the prototype map */
