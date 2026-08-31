@@ -90,9 +90,9 @@ int main(void)
         return 26;
     SetTargetFPS(60);
     SetRandomSeed(7);
-    if(GetRandomValue(10, 20) != 14)
+    if(GetRandomValue(10, 20) != 17)
         return 33;
-    if(GetRandomValue(10, 20) != 16)
+    if(GetRandomValue(10, 20) != 19)
         return 34;
     solid = GenImageColor(16, 16, (Color){255, 255, 255, 255});
     if(!IsImageValid(solid))
