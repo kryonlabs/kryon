@@ -779,6 +779,54 @@ emit_compound_temp(Buf *out, const char *indent, const char *type,
         if(copy_trimmed(body, i, stop, value, sizeof(value)) < 0)
             return -1;
 
+        /* a field value that is itself a cast literal needs its own
+         * temporary before the assignment */
+        if(value[0] == '(' ) {
+            char itype[PLAN9_TYPE_MAX];
+            size_t it = 1;
+            size_t vn = strlen(value);
+            size_t ob;
+            int cb;
+            int valid = 0;
+
+            while(it < vn && (isalnum((unsigned char)value[it])
+                              || value[it] == '_' || value[it] == ' '
+                              || value[it] == '*'))
+                it++;
+            if(it > 1 && it < sizeof(itype) && value[it] == ')'
+               && value[it + 1] == '{'
+               && (isalpha((unsigned char)value[1]) || value[1] == '_')) {
+                memcpy(itype, value + 1, it - 1);
+                itype[it - 1] = '\0';
+                ob = it + 1;
+                cb = find_matching_brace(value, (int)ob);
+                if(cb > 0 && (value[cb + 1] == '\0'))
+                    valid = 1;
+            }
+            if(valid) {
+                char itemp[PLAN9_NAME_MAX];
+                static int inner_seq = 0;
+                char ibody[PLAN9_LINE_MAX];
+                size_t ibn = (size_t)cb - ob;
+
+                snprintf(itemp, sizeof(itemp), "__k2c_p9i%d", inner_seq++);
+                if(ibn >= sizeof(ibody))
+                    return -1;
+                memcpy(ibody, value + ob, ibn);
+                ibody[ibn] = '\0';
+                if(emit_compound_temp(out, indent, itype, ibody,
+                                      (int)ibn, itemp) < 0)
+                    return -1;
+                if(buf_printf(out, "%s%s.%s = %s;\n",
+                              indent, temp, field, itemp) < 0)
+                    return -1;
+                if(comma < 0)
+                    break;
+                pos = comma + 1;
+                continue;
+            }
+        }
+
         nested = nested_field_type(field);
         if(nested != NULL && value[0] == '{' && value[strlen(value) - 1] == '}') {
             char inner[PLAN9_LINE_MAX];
