@@ -25,11 +25,30 @@ source_dir=$2
 name_prefix=$3
 shift 3
 
-pyftsubset=${PYFTSUBSET:-pyftsubset}
-command -v "$pyftsubset" >/dev/null 2>&1 || {
-    echo "pyftsubset is required. Install fonttools or set PYFTSUBSET." >&2
+pyftsubset=${PYFTSUBSET:-}
+if [ -n "$pyftsubset" ]; then
+    command -v "$pyftsubset" >/dev/null 2>&1 || {
+        echo "PYFTSUBSET points to a missing executable: $pyftsubset" >&2
+        exit 1
+    }
+    run_pyftsubset()
+    {
+        "$pyftsubset" "$@"
+    }
+elif command -v pyftsubset >/dev/null 2>&1; then
+    run_pyftsubset()
+    {
+        pyftsubset "$@"
+    }
+elif python3 -m fontTools.subset --help >/dev/null 2>&1; then
+    run_pyftsubset()
+    {
+        python3 -m fontTools.subset "$@"
+    }
+else
+    echo "fonttools subsetter is required. Install fonttools or set PYFTSUBSET." >&2
     exit 1
-}
+fi
 
 tmp=${TMPDIR:-/tmp}/kryon-font-corpus.$$
 cleanup()
@@ -73,7 +92,7 @@ subset_font()
         exit 1
     fi
 
-    "$pyftsubset" "$src" \
+    run_pyftsubset "$src" \
         --output-file="$out" \
         --text-file="$tmp" \
         --layout-features='*' \
