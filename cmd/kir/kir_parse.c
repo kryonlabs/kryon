@@ -984,7 +984,12 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
         if(expr == NULL)
             return -1;
         idx = fn->expr_count - 1;
-        fn->exprs[idx].right = parse_expr_to_kir(fn, body, span);
+        {
+            int right_idx = parse_expr_to_kir(fn, body, span);
+
+            if(idx >= 0 && idx < fn->expr_count)
+                fn->exprs[idx].right = right_idx;
+        }
         return idx;
     }
     if(s[0] == '!' || s[0] == '~' ||
@@ -997,7 +1002,12 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
             return -1;
         idx = fn->expr_count - 1;
         snprintf(expr->op, sizeof(expr->op), "%c", s[0]);
-        fn->exprs[idx].right = parse_expr_to_kir(fn, s + 1, span);
+        {
+            int right_idx = parse_expr_to_kir(fn, s + 1, span);
+
+            if(idx >= 0 && idx < fn->expr_count)
+                fn->exprs[idx].right = right_idx;
+        }
         return idx;
     }
     {
@@ -1019,8 +1029,15 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
                 if(expr == NULL)
                     return -1;
                 idx = fn->expr_count - 1;
-                fn->exprs[idx].left = parse_expr_to_kir(fn, left, span);
-                fn->exprs[idx].right = parse_expr_to_kir(fn, right, span);
+                {
+                    int left_idx = parse_expr_to_kir(fn, left, span);
+                    int right_idx = parse_expr_to_kir(fn, right, span);
+
+                    if(idx >= 0 && idx < fn->expr_count) {
+                        fn->exprs[idx].left = left_idx;
+                        fn->exprs[idx].right = right_idx;
+                    }
+                }
                 return idx;
             }
         }
@@ -1048,7 +1065,12 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
                 idx = fn->expr_count - 1;
                 snprintf(expr->name, sizeof(expr->name), "%s", right);
                 snprintf(expr->op, sizeof(expr->op), "%s", member_op);
-                fn->exprs[idx].left = parse_expr_to_kir(fn, left, span);
+                {
+                    int left_idx = parse_expr_to_kir(fn, left, span);
+
+                    if(idx >= 0 && idx < fn->expr_count)
+                        fn->exprs[idx].left = left_idx;
+                }
                 return idx;
             }
         }
