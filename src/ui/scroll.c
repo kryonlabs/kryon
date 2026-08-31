@@ -145,6 +145,7 @@ UIScreenScaffold
 BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
 {
     UIScreenScaffold scaffold;
+    UIScrollPageSpec page_spec;
     int title_h = spec.title_height;
     int top_gap = spec.top_gap > 0 ? spec.top_gap : 0;
     int content_y;
@@ -171,19 +172,19 @@ BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
 
     scaffold.content_y = content_y;
     scaffold.content_h = content_h;
-    scaffold.page = BeginUIScrollPage((UIScrollPageSpec){
-        .y = content_y,
-        .height = content_h,
-        .max_content_width = spec.max_content_width,
-        .min_content_width = spec.min_content_width,
-        .side_padding = spec.side_padding,
-        .scroll_offset = spec.scroll_offset,
-        .wheel_step = spec.wheel_step,
-        .scrollbar_x = spec.scrollbar_x,
-        .measure_passes = spec.measure_passes,
-        .content_height = spec.content_height,
-        .user_data = spec.user_data
-    });
+    memset(&page_spec, 0, sizeof(page_spec));
+    page_spec.y = content_y;
+    page_spec.height = content_h;
+    page_spec.max_content_width = spec.max_content_width;
+    page_spec.min_content_width = spec.min_content_width;
+    page_spec.side_padding = spec.side_padding;
+    page_spec.scroll_offset = spec.scroll_offset;
+    page_spec.wheel_step = spec.wheel_step;
+    page_spec.scrollbar_x = spec.scrollbar_x;
+    page_spec.measure_passes = spec.measure_passes;
+    page_spec.content_height = spec.content_height;
+    page_spec.user_data = spec.user_data;
+    scaffold.page = BeginUIScrollPage(page_spec);
     scaffold.content_x = scaffold.page.content_x;
     scaffold.content_w = scaffold.page.content_w;
     scaffold.y = scaffold.page.content_y;

@@ -422,10 +422,12 @@ UIFormTextFieldEx(UIForm *form, LabelTextFieldProps row)
 int
 UIFormCheckbox(UIForm *form, const char *label, int *value)
 {
-    return UIFormCheckboxRow(form, (CheckboxRowProps){
-        .label = label,
-        .value = value
-    });
+    CheckboxRowProps row;
+
+    memset(&row, 0, sizeof(row));
+    row.label = label;
+    row.value = value;
+    return UIFormCheckboxRow(form, row);
 }
 
 int
@@ -459,10 +461,12 @@ UIFormSpinboxEx(UIForm *form, SpinboxRowProps row)
 int
 UIFormButtons(UIForm *form, const UIButtonRowItem *items, int count)
 {
-    return UIFormButtonRow(form, (ButtonRowProps){
-        .items = items,
-        .count = count
-    });
+    ButtonRowProps row;
+
+    memset(&row, 0, sizeof(row));
+    row.items = items;
+    row.count = count;
+    return UIFormButtonRow(form, row);
 }
 
 int

@@ -161,12 +161,11 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
     tex = LoadPictureTexture(asset_path);
     if(tex.id == 0)
         return;
-    pic = (PictureProps){
-        .asset_path = asset_path,
-        .bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h},
-        .tint = unpack_color(tint),
-        .fit = (PictureFit)fit,
-    };
+    memset(&pic, 0, sizeof(pic));
+    pic.asset_path = asset_path;
+    pic.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    pic.tint = unpack_color(tint);
+    pic.fit = (PictureFit)fit;
     DrawTexturePro(tex,
                    (Rectangle){0, 0, (float)tex.width, (float)tex.height},
                    PictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
