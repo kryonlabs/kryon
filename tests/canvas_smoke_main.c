@@ -95,6 +95,7 @@ int main(void)
     tex = LoadTextureFromImage(solid);
     if(!IsTextureValid(tex))
         return 8;
+    SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
     target = LoadRenderTexture(32, 32);
     if(!IsRenderTextureValid(target))
         return 9;
@@ -162,6 +163,7 @@ int main(void)
                                (Color){30, 30, 60, 255},
                                (Color){120, 30, 30, 255});
         DrawTexture(tex, 172, 12, WHITE);
+        SetTextureFilter(tex, TEXTURE_FILTER_POINT);
         DrawTextureV(tex, (Vector2){190, 12}, (Color){255, 255, 255, 180});
         DrawTextureEx(tex, (Vector2){210, 12}, 30.0f, 1.25f, WHITE);
         DrawTexturePro(target.texture,

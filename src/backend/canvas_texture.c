@@ -18,7 +18,8 @@
 EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
                                   double sh, double dx, double dy,
                                   double dw, double dh, double ox, double oy,
-                                  double rot, int r, int gg, int bb, int aa),
+                                  double rot, int r, int gg, int bb, int aa,
+                                  int filter),
 {
     var K = globalThis.__kryCanvas;
     var ctx = K.ctxNow();
@@ -60,7 +61,7 @@ EM_JS(void, js_draw_texture_pro, (int id, double sx, double sy, double sw,
         tex = K.tints[key];
     }
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = filter !== 0;
     if (aa < 255) ctx.globalAlpha = aa / 255.0;
     ctx.translate(dx + ox, dy + oy);
     if (rot !== 0.0) ctx.rotate(rot * Math.PI / 180.0);
@@ -88,7 +89,21 @@ EM_JS(int, js_texture_from_rgba, (int ptr, int w, int h), {
 EM_JS(void, js_texture_free, (int id), {
     var K = globalThis.__kryCanvas;
     delete K.textures[id];
+    if (K.filters) delete K.filters[id];
     if (K.targets) delete K.targets[id];
+});
+
+EM_JS(void, js_texture_filter, (int id, int filter), {
+    var K = globalThis.__kryCanvas;
+    if (!K || !K.textures[id]) return;
+    if (!K.filters) K.filters = {};
+    K.filters[id] = filter | 0;
+});
+
+EM_JS(int, js_texture_filter_for, (int id), {
+    var K = globalThis.__kryCanvas;
+    if (!K || !K.filters || K.filters[id] === undefined) return 0;
+    return K.filters[id] | 0;
 });
 
 /* Create an offscreen canvas, register it as a texture, do NOT push it as
@@ -248,8 +263,8 @@ void UnloadTexture(Texture2D texture)
 
 void SetTextureFilter(Texture2D texture, int filter)
 {
-    (void)texture;
-    (void)filter;
+    if(texture.id != 0)
+        js_texture_filter((int)texture.id, filter);
 }
 
 bool IsTextureValid(Texture2D texture)
@@ -336,7 +351,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
     js_draw_texture_pro((int)texture.id, source.x, source.y,
                         source.width, source.height, dest.x, dest.y,
                         dest.width, dest.height, origin.x, origin.y,
-                        rotation, tint.r, tint.g, tint.b, tint.a);
+                        rotation, tint.r, tint.g, tint.b, tint.a,
+                        js_texture_filter_for((int)texture.id));
 }
 
 /* Image generation: one plain color (the surface subset apps use). */

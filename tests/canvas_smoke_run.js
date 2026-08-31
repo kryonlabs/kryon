@@ -92,6 +92,8 @@ setTimeout(() => {
     if (!kinds.roundRect) fail.push('roundRect (DrawRectangleRounded)');
     if (!kinds.addColorStop) fail.push('addColorStop (gradient with both colors)');
     if ((kinds.arc || 0) < 6) fail.push('arc (circle + annulus ring)');
+    if (!kinds['imageSmoothingEnabled=true'])
+        fail.push('imageSmoothingEnabled=true (bilinear texture scaling)');
     if (!kinds['imageSmoothingEnabled=false'])
         fail.push('imageSmoothingEnabled=false (nearest texture scaling)');
     if (globalThis.__kryTestCanvas.style.cursor !== 'pointer')
