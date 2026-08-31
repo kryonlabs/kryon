@@ -151,6 +151,8 @@ proto_line_parse(const char *line, char *name, size_t name_size,
     const char *name_start;
     const char *name_end;
     const char *type_end;
+    const char *brace;
+    int is_extern_var = 0;
     size_t n;
     int skipped;
 
@@ -158,8 +160,6 @@ proto_line_parse(const char *line, char *name, size_t name_size,
         p++;
     if(*p == '\0' || *p == '#' || *p == '/' || *p == '*')
         return 0;
-    /* cut at a body opener: covers "RET name(args) {" headers and
-     * one-line inline definitions alike */
 
     skipped = skip_head_word(p, "RLAPI");
     if(skipped == 0)
@@ -170,17 +170,58 @@ proto_line_parse(const char *line, char *name, size_t name_size,
         skipped = skip_head_word(p, "static");
     if(skipped != 0)
         p += skipped;
-
-    semi = strchr(p, ';');
-    {
-        const char *brace = strchr(p, '{');
-
-        if(brace != NULL && (semi == NULL || brace < semi))
-            semi = brace;
+    if(skipped > 7) {
+        /* RLAPI/KRYAPI carry no meaning for variables */
     }
+
+    /* cut at a body opener: covers "RET name(args) {" headers and
+     * one-line inline definitions alike */
+    semi = strchr(p, ';');
+    brace = strchr(p, '{');
+    if(brace != NULL && (semi == NULL || brace < semi))
+        semi = brace;
     if(semi == NULL)
         return 0;
     args = strchr(p, '(');
+    if((args == NULL || args > semi) && (semi - line) >= 1) {
+        /* extern variable declaration: extern Type name; */
+        const char *q = line;
+
+        while(*q == ' ' || *q == '\t')
+            q++;
+        if(strncmp(q, "extern ", 7) != 0)
+            return 0;
+        is_extern_var = 1;
+        args = NULL;
+        name_end = semi;
+        while(name_end > p && (name_end[-1] == ' ' || name_end[-1] == '\t'))
+            name_end--;
+        name_start = name_end;
+        while(name_start > p && (isalnum((unsigned char)name_start[-1])
+                                 || name_start[-1] == '_'))
+            name_start--;
+        if(name_start == name_end)
+            return 0;
+        n = (size_t)(name_end - name_start);
+        if(n >= name_size)
+            return 0;
+        memcpy(name, name_start, n);
+        name[n] = '\0';
+        type_end = name_start;
+        while(type_end > p && (type_end[-1] == ' ' || type_end[-1] == '\t'))
+            type_end--;
+        n = (size_t)(type_end - p);
+        if(n == 0 || n >= type_size)
+            return 0;
+        memcpy(type, p, n);
+        type[n] = '\0';
+        if(strpbrk(type, "=().,+/%<>!&|[]") != NULL)
+            return 0;
+        if(!(isalpha((unsigned char)type[0]) || type[0] == '_'))
+            return 0;
+        return 1;
+    }
+    (void)is_extern_var;
     if(args == NULL || args > semi || args == p)
         return 0;
 
@@ -903,6 +944,10 @@ head_type(const char *head, size_t len, char *type, size_t type_size)
         snprintf(type, type_size, "int");
         return 1;
     }
+    if(expr_looks_float(name)) {
+        snprintf(type, type_size, "float");
+        return 1;
+    }
     ret = proto_return_type(name);
     if(ret == NULL || strlen(ret) >= type_size)
         return 0;
@@ -1025,6 +1070,11 @@ expr_type(const char *expr, size_t len, char *type, size_t type_size)
 
             i = j;
             continue;
+        }
+        if(expr[i] == '?') {
+            /* ternary: the condition's contribution does not type the
+             * result; the branches do */
+            have = 0;
         }
         i++;
     }
