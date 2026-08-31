@@ -1169,7 +1169,7 @@ parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
     if(is_simple_ident(s)) {
         expr = KirFunctionAddExpr(fn, KIR_EXPR_IDENT, s, span);
         if(expr != NULL)
-            snprintf(expr->name, sizeof(expr->name), "%s", s);
+            kir_copy(expr->name, sizeof(expr->name), s);
         return expr != NULL ? fn->expr_count - 1 : -1;
     }
     expr = KirFunctionAddExpr(fn, KIR_EXPR_UNKNOWN, s, span);
@@ -1438,7 +1438,7 @@ parse_import_line(KirModule *module, const char *path, int line_no,
     if(parse_symbol_before_colons(line, name, sizeof(name)))
         kind = KIR_IMPORT_MODULE;
     else {
-        snprintf(name, sizeof(name), "%s", target);
+        kir_copy(name, sizeof(name), target);
         kind = KIR_IMPORT_HEADER;
     }
     /* Signature records the bracket style so backends can keep angled
@@ -2072,6 +2072,63 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
 }
 
 static void
+text_append(char *dst, size_t dst_size, const char *part)
+{
+    size_t used;
+    size_t remaining;
+
+    if(dst == NULL || dst_size == 0 || part == NULL)
+        return;
+    used = strlen(dst);
+    if(used >= dst_size - 1)
+        return;
+    remaining = dst_size - used - 1;
+    if(strlen(part) < remaining)
+        remaining = strlen(part);
+    memcpy(dst + used, part, remaining);
+    dst[used + remaining] = '\0';
+}
+
+static void
+format_else_if_guard(char *dst, size_t dst_size, const char *excluded,
+                     const char *expanded)
+{
+    kir_copy(dst, dst_size, "!(");
+    text_append(dst, dst_size, excluded);
+    text_append(dst, dst_size, ") && (");
+    text_append(dst, dst_size, expanded);
+    text_append(dst, dst_size, ")");
+}
+
+static void
+format_else_guard(char *dst, size_t dst_size, const char *excluded)
+{
+    kir_copy(dst, dst_size, "!(");
+    text_append(dst, dst_size, excluded);
+    text_append(dst, dst_size, ")");
+}
+
+static void
+format_excluded_guard(char *dst, size_t dst_size, const char *previous,
+                      const char *expanded)
+{
+    kir_copy(dst, dst_size, "(");
+    text_append(dst, dst_size, previous);
+    text_append(dst, dst_size, ") || (");
+    text_append(dst, dst_size, expanded);
+    text_append(dst, dst_size, ")");
+}
+
+static void
+format_preprocessor_cond(char *dst, size_t dst_size, const char *directive,
+                         const char *expanded)
+{
+    kir_copy(dst, dst_size, directive);
+    text_append(dst, dst_size, " ");
+    text_append(dst, dst_size, expanded);
+}
+
+static void
 combine_active_guard(char *dst, size_t dst_size, const KirCondFrame *frames,
                      int count)
 {
@@ -2108,8 +2165,8 @@ cond_top_step(char *line, KirCondFrame *frames, int *count, char *guard,
             die("%s:%d: too many nested #if blocks", path, line_no);
         expand_compile_expr(expanded, sizeof(expanded), consts, cnd);
         fr = &frames[(*count)++];
-        snprintf(fr->cond, sizeof(fr->cond), "%s", expanded);
-        snprintf(fr->excluded, sizeof(fr->excluded), "%s", expanded);
+        kir_copy(fr->cond, sizeof(fr->cond), expanded);
+        kir_copy(fr->excluded, sizeof(fr->excluded), expanded);
         fr->braces = 1;
         combine_active_guard(guard, guard_size, frames, *count);
         return 1;
@@ -2122,16 +2179,16 @@ cond_top_step(char *line, KirCondFrame *frames, int *count, char *guard,
         char next[KIR_TEXT_MAX * 2];
 
         expand_compile_expr(expanded, sizeof(expanded), consts, cnd);
-        snprintf(fr->cond, sizeof(fr->cond), "!(%s) && (%s)",
-                 fr->excluded, expanded);
-        snprintf(next, sizeof(next), "(%s) || (%s)", fr->excluded, expanded);
-        snprintf(fr->excluded, sizeof(fr->excluded), "%s", next);
+        format_else_if_guard(fr->cond, sizeof(fr->cond), fr->excluded,
+                             expanded);
+        format_excluded_guard(next, sizeof(next), fr->excluded, expanded);
+        kir_copy(fr->excluded, sizeof(fr->excluded), next);
         fr->braces = 1;
         combine_active_guard(guard, guard_size, frames, *count);
         return 1;
     }
     if(line_is_hash_else(line)) {
-        snprintf(fr->cond, sizeof(fr->cond), "!(%s)", fr->excluded);
+        format_else_guard(fr->cond, sizeof(fr->cond), fr->excluded);
         fr->braces = 1;
         combine_active_guard(guard, guard_size, frames, *count);
         return 1;
@@ -2275,7 +2332,7 @@ kir_parse_file(const char *path, const char *root)
          * queue drains. */
         from_queue = onelineq_count > 0;
         if(onelineq_count > 0) {
-            snprintf(line, sizeof(line), "%s", onelineq[0]);
+            kir_copy(line, sizeof(line), onelineq[0]);
             memmove(onelineq[0], onelineq[1],
                     sizeof(onelineq[0]) * (size_t)(onelineq_count - 1));
             onelineq_count--;
@@ -3000,11 +3057,13 @@ kir_parse_file(const char *path, const char *root)
                     body_mdepth[body_mcount++] = depth;
                     expand_compile_expr(expanded, sizeof(expanded), &consts,
                                         bcnd);
-                    snprintf(raw, sizeof(raw), "#if %s", expanded);
+                    format_preprocessor_cond(raw, sizeof(raw), "#if",
+                                             expanded);
                 } else {
                     expand_compile_expr(expanded, sizeof(expanded), &consts,
                                         bcnd);
-                    snprintf(raw, sizeof(raw), "#elif %s", expanded);
+                    format_preprocessor_cond(raw, sizeof(raw), "#elif",
+                                             expanded);
                 }
                 KirFunctionAddStmt(fn, KIR_STMT_RAW, raw, "",
                                    KirSpan(rel, line_no, 1));
@@ -3104,7 +3163,7 @@ kir_parse_file(const char *path, const char *root)
                     continue;
                 }
 
-                snprintf(prop_line, sizeof(prop_line), "%s", t);
+                kir_copy(prop_line, sizeof(prop_line), t);
                 if(ui_block_count > 0 &&
                    !ui_blocks[ui_block_count - 1].opened &&
                    depth == ui_blocks[ui_block_count - 1].close_depth &&

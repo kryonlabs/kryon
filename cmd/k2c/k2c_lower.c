@@ -1098,11 +1098,14 @@ emit_web_intrinsic_wrapper(FILE *c, const KirModule *m, const KirImport *imp)
         body = web_context_click_body;
     else
         body = NULL;
-    if(imp->guard[0] != '\0')
-        snprintf(guard, sizeof(guard), "(%s) && (defined(PLATFORM_WEB))",
-                 imp->guard);
-    else
+    if(imp->guard[0] != '\0') {
+        snprintf(guard, sizeof(guard), "(");
+        strncat(guard, imp->guard, sizeof(guard) - strlen(guard) - 1);
+        strncat(guard, ") && (defined(PLATFORM_WEB))",
+                sizeof(guard) - strlen(guard) - 1);
+    } else {
         snprintf(guard, sizeof(guard), "defined(PLATFORM_WEB)");
+    }
     fprintf(c, "\n#if %s\n", guard);
     fprintf(c, "static int\n%s(%s)\n{\n", imp->name,
             conv[0] ? conv : "void");
@@ -1608,6 +1611,7 @@ k2c_lower(const KirProgram *program, const char *root, const char *out_dir, cons
 {
     int i;
 
+    (void)root;
     if(program == NULL)
         return;
     for(i = 0; i < program->module_count; i++)

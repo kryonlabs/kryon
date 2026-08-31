@@ -164,6 +164,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
     FILE *out;
     int count;
 
+    (void)root;
     if(progs == NULL || prog_count <= 0)
         return;
     count = collect_routes(progs, prog_count, routes, K2C_ROUTE_MAX);

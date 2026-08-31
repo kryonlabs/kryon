@@ -240,6 +240,7 @@ typedef struct KirProgram {
 
 KirProgram *KirProgramNew(void);
 void KirProgramFree(KirProgram *program);
+void kir_copy(char *dst, size_t dst_size, const char *src);
 KirSourceSpan KirSpan(const char *path, int line, int column);
 KirModule *KirProgramAddModule(KirProgram *program, const char *name,
                                const char *source_path, KirSourceSpan span);

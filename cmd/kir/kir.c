@@ -21,7 +21,7 @@ kir_realloc_array(void *ptr, int *cap, int count, size_t elem_size)
     return next;
 }
 
-static void
+void
 kir_copy(char *dst, size_t dst_size, const char *src)
 {
     if(dst_size == 0)

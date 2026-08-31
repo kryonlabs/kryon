@@ -927,6 +927,9 @@ run_gtk_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
 
     if(!copy_dialog_path(dlg->result_path, sizeof(dlg->result_path), path)) {
         g_free(path);
+        gtk_widget_destroy(dialog);
+        while(gtk_events_pending())
+            gtk_main_iteration();
         return 0;
     }
     dlg->confirmed = 1;
@@ -1020,7 +1023,8 @@ run_external_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
 
     if(!run_helper(argv, path, sizeof(path)))
         return 0;
-    snprintf(dlg->result_path, sizeof(dlg->result_path), "%s", path);
+    if(!copy_dialog_path(dlg->result_path, sizeof(dlg->result_path), path))
+        return 0;
     dlg->confirmed = 1;
     update_current_dir_from_path(internal, path);
     return 1;
