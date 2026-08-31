@@ -1587,12 +1587,81 @@ k2c_plan9_rewrite(const char *text)
         /* 3. compound literals in the statement */
         if(!emitted) {
             int rewrote = 0;
-            if(strstr(current, "){") != NULL
+
+            /* "Type name[N] = (Type[N]){0};" is an array declaration:
+             * zero the named array instead of assigning through a temp */
+            {
+                const char *eq = strchr(current, '=');
+                const char *assign = NULL;
+                const char *scan_eq;
+                const char *cut = NULL;
+
+                for(scan_eq = eq; scan_eq != NULL;
+                    scan_eq = strchr(scan_eq + 1, '=')) {
+                    const char *after = scan_eq + 1;
+
+                    while(*after == ' ' || *after == '\t')
+                        after++;
+                    if(*after == '(' && after[-1] != '=' && after[-1] != '!'
+                       && after[-1] != '<' && after[-1] != '>') {
+                        assign = after;
+                        cut = scan_eq;
+                        break;
+                    }
+                }
+
+                if(assign != NULL && strchr(current, '[') != NULL) {
+                    const char *close = strchr(assign + 1, ')');
+                    const char *brace_p = close != NULL ? strchr(close, '{')
+                                                        : NULL;
+                    const char *close_b = brace_p != NULL
+                        ? strchr(brace_p + 1, '}') : NULL;
+                    const char *tail = close_b != NULL ? close_b + 1 : NULL;
+
+                    if(tail != NULL && (*tail == ';' || *tail == '\n'
+                                        || *tail == '\0')
+                       && assign > current
+                       && memchr(current, ']', (size_t)(assign - current))
+                          != NULL
+                       && memchr(current, '(', (size_t)(assign - current))
+                          == NULL) {
+                        char name[PLAN9_NAME_MAX];
+                        const char *bracket = memchr(current, '[',
+                            (size_t)(assign - current));
+                        const char *name_end = bracket;
+                        const char *name_start;
+                        size_t nlen;
+
+                        while(name_end > current
+                              && (name_end[-1] == ' ' || name_end[-1] == '\t'))
+                            name_end--;
+                        name_start = name_end;
+                        while(name_start > current
+                              && (isalnum((unsigned char)name_start[-1])
+                                  || name_start[-1] == '_'))
+                            name_start--;
+                        nlen = (size_t)(name_end - name_start);
+                        if(nlen > 0 && nlen < sizeof(name)) {
+                            memcpy(name, name_start, nlen);
+                            name[nlen] = '\0';
+                            if(buf_append(&out, current,
+                                          (size_t)(cut - current)) < 0
+                               || buf_puts(&out, ";\n") < 0
+                               || buf_printf(&out,
+                                             "%smemset(%s, 0, sizeof(%s));\n",
+                                             indent, name, name) < 0)
+                                goto fail;
+                            emitted = 2;
+                        }
+                    }
+                }
+            }
+            if(!emitted && strstr(current, "){") != NULL
                && strchr(current, '(') != NULL) {
                 if(rewrite_line_compound(&out, current, lineno, &rewrote) < 0)
                     goto fail;
             }
-            if(rewrote == 0) {
+            if(rewrote == 0 && emitted == 0) {
                 if(buf_puts(&out, current) < 0)
                     goto fail;
             }
