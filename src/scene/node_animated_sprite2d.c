@@ -7,6 +7,7 @@
 
 #include "scene_tree.h"
 #include "node2d_props.h"
+#include "spritesheet.h"
 #include "ui_picture.h"
 #include "../ui/ui_picture_internal.h"
 #include <stdlib.h>
@@ -31,10 +32,9 @@ kry_animated_sprite2d_draw(Scene *scene, NodeId node)
     AnimatedSprite2DProps *props;
     Texture2D texture;
     int frame;
-    int col, row;
-    Rectangle source;
     Rectangle dst;
     Color tint;
+    SpriteSheet sheet;
 
     if(n == NULL)
         return;
@@ -49,19 +49,18 @@ kry_animated_sprite2d_draw(Scene *scene, NodeId node)
     frame = (int)(props->time * props->fps) % props->frame_count;
     if(frame < 0)
         frame += props->frame_count;
-    col = frame % props->frames_per_row;
-    row = frame / props->frames_per_row;
-    source.x = (float)(col * props->frame_w);
-    source.y = (float)(row * props->frame_h);
-    source.width = (float)props->frame_w;
-    source.height = (float)props->frame_h;
     dst.x = n->world.position.x - props->size.x * 0.5f;
     dst.y = n->world.position.y - props->size.y * 0.5f;
     dst.width = props->size.x;
     dst.height = props->size.y;
     tint = props->tint.a == 0 ? WHITE : props->tint;
-    DrawTexturePro(texture, source, dst, (Vector2){0, 0},
-                   n->world.rotation * 57.2957795f, tint);
+    sheet = SpriteSheetGrid(props->asset_path, props->frame_w, props->frame_h,
+                            props->frames_per_row,
+                            (props->frame_count + props->frames_per_row - 1) /
+                                props->frames_per_row);
+    sheet.frame_count = props->frame_count;
+    DrawSpriteSheetFrame(texture, sheet, frame, dst, (Vector2){0, 0},
+                         n->world.rotation * 57.2957795f, tint);
 }
 
 static void

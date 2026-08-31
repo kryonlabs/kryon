@@ -32,6 +32,7 @@
 #include "ui.h"
 #include "ui_page.h"
 #include "ui_window.h"
+#include "spritesheet.h"
 #include "kry_math.h"
 #include "scene_tree.h"
 #include "node2d_props.h"

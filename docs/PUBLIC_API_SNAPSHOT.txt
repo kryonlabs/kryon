@@ -761,6 +761,14 @@ include/scene_tree.h typedef NodeDestroyFn
 include/scene_tree.h typedef NodeId
 include/scene_tree.h typedef Scene
 include/scene_tree.h typedef ready
+include/spritesheet.h function DrawSpriteSheetFrame
+include/spritesheet.h function DrawSpriteSheetFrameEx
+include/spritesheet.h function DrawSpriteSheetFrameFromPath
+include/spritesheet.h function DrawSpriteSheetFrameFromPathEx
+include/spritesheet.h function SpriteSheetFrameCount
+include/spritesheet.h function SpriteSheetFrameSource
+include/spritesheet.h function SpriteSheetGrid
+include/spritesheet.h function SpriteSheetNormalizeFrame
 include/termi.h enum TERMI_ATTR_BOLD
 include/termi.h enum TERMI_ATTR_DIM
 include/termi.h enum TERMI_ATTR_NONE
