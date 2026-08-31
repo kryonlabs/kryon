@@ -416,6 +416,8 @@ void ResetUIClip(void);
 Font GetUIFont(void);
 int RegisterUIFont(const char *name, Font font);
 int RegisterUISmallFont(const char *name, Font font);
+int RegisterUIFontSourceForText(const char *name, const char *file_type, const unsigned char *font_data, unsigned int font_size, const char *text);
+int RegisterUIFontFileSourceForText(const char *name, const char *path, const char *text);
 int UseUIFont(const char *name);
 int UIFontHasGlyph(Font font, int codepoint);
 ```
@@ -440,6 +442,9 @@ tiers. Their atlas coverage is immutable after registration: drawing or
 typing text never reallocates a font texture. Supply every codepoint the
 source is expected to render; omitting the list selects Kryon's standard UI
 coverage. `RegisterUIFixedFontSource` is an equivalent explicit name.
+Use `RegisterUIFontSourceForText` or `RegisterUIFontFileSourceForText` when
+the font should include Kryon's standard UI coverage plus the unique
+codepoints found in a UTF-8 corpus, such as localized strings.
 
 #### Text Measurement
 

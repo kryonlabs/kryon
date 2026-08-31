@@ -37,12 +37,18 @@ int RegisterUISmallFont(const char *name, Font font);
 int RegisterUIFontSource(const char *name, const char *file_type,
                          const unsigned char *font_data, unsigned int font_size,
                          const int *codepoints, int codepoint_count);
+int RegisterUIFontSourceForText(const char *name, const char *file_type,
+                                const unsigned char *font_data,
+                                unsigned int font_size,
+                                const char *text);
 int RegisterUIFixedFontSource(const char *name, const char *file_type,
                               const unsigned char *font_data,
                               unsigned int font_size,
                               const int *codepoints, int codepoint_count);
 int RegisterUIFontFileSource(const char *name, const char *path,
                              const int *codepoints, int codepoint_count);
+int RegisterUIFontFileSourceForText(const char *name, const char *path,
+                                    const char *text);
 int UseUIFont(const char *name);
 int PushUIFont(const char *name);
 void PopUIFont(int token);

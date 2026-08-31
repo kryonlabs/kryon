@@ -1538,7 +1538,9 @@ include/ui_text.h function PushUIFont
 include/ui_text.h function RegisterUIFixedFontSource
 include/ui_text.h function RegisterUIFont
 include/ui_text.h function RegisterUIFontFileSource
+include/ui_text.h function RegisterUIFontFileSourceForText
 include/ui_text.h function RegisterUIFontSource
+include/ui_text.h function RegisterUIFontSourceForText
 include/ui_text.h function RegisterUISmallFont
 include/ui_text.h function ScaledTextBaselineY
 include/ui_text.h function ScaledTextWidth

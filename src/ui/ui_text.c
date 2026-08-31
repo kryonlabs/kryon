@@ -543,6 +543,7 @@ RegisterUISmallFont(const char *name, Font font)
 }
 
 static int *ui_font_codepoints(int *out_count);
+static int *ui_font_codepoints_for_text(const char *text, int *out_count);
 
 static int
 register_ui_font_source(const char *name, const char *file_type,
@@ -617,6 +618,23 @@ RegisterUIFontSource(const char *name, const char *file_type,
 }
 
 int
+RegisterUIFontSourceForText(const char *name, const char *file_type,
+                            const unsigned char *font_data,
+                            unsigned int font_size, const char *text)
+{
+    int codepoint_count = 0;
+    int *codepoints = ui_font_codepoints_for_text(text, &codepoint_count);
+    int ok;
+
+    if(codepoints == NULL || codepoint_count <= 0)
+        return 0;
+    ok = register_ui_font_source(name, file_type, font_data, font_size,
+                                 codepoints, codepoint_count);
+    free(codepoints);
+    return ok;
+}
+
+int
 RegisterUIFixedFontSource(const char *name, const char *file_type,
                           const unsigned char *font_data,
                           unsigned int font_size,
@@ -688,6 +706,21 @@ RegisterUIFontFileSource(const char *name, const char *path,
     g_ui_fonts[index].file_type = g_ui_fonts[index].file_type_buf;
     g_ui_fonts[index].owns_font_data = owns_data;
     return 1;
+}
+
+int
+RegisterUIFontFileSourceForText(const char *name, const char *path,
+                                const char *text)
+{
+    int codepoint_count = 0;
+    int *codepoints = ui_font_codepoints_for_text(text, &codepoint_count);
+    int ok;
+
+    if(codepoints == NULL || codepoint_count <= 0)
+        return 0;
+    ok = RegisterUIFontFileSource(name, path, codepoints, codepoint_count);
+    free(codepoints);
+    return ok;
 }
 
 int
@@ -775,6 +808,68 @@ ui_font_codepoints(int *out_count)
     count = append_codepoint_range(codepoints, count, 0x0370, 0x03FF);
     count = append_codepoint_range(codepoints, count, 0x0400, 0x04FF);
     *out_count = count;
+    return codepoints;
+}
+
+static int
+ui_font_codepoint_contains(const int *codepoints, int count, int codepoint)
+{
+    for(int i = 0; i < count; i++) {
+        if(codepoints[i] == codepoint)
+            return 1;
+    }
+    return 0;
+}
+
+static int
+ui_font_codepoint_append_unique(int **codepoints, int *count, int *cap,
+                                int codepoint)
+{
+    int *next;
+
+    if(codepoint <= 0)
+        return 1;
+    if(ui_font_codepoint_contains(*codepoints, *count, codepoint))
+        return 1;
+    if(*count >= *cap) {
+        int next_cap = *cap > 0 ? *cap * 2 : 64;
+        next = realloc(*codepoints, (size_t)next_cap * sizeof(**codepoints));
+        if(next == NULL)
+            return 0;
+        *codepoints = next;
+        *cap = next_cap;
+    }
+    (*codepoints)[(*count)++] = codepoint;
+    return 1;
+}
+
+static int *
+ui_font_codepoints_for_text(const char *text, int *out_count)
+{
+    int count = 0;
+    int cap = 0;
+    int *codepoints = ui_font_codepoints(&count);
+
+    if(out_count != NULL)
+        *out_count = 0;
+    if(codepoints == NULL || count <= 0)
+        return NULL;
+    cap = count;
+
+    for(int offset = 0; text != NULL && text[offset] != '\0';) {
+        int bytes = 0;
+        int codepoint = GetCodepointNext(text + offset, &bytes);
+        if(bytes <= 0)
+            bytes = 1;
+        if(!ui_font_codepoint_append_unique(&codepoints, &count, &cap, codepoint)) {
+            free(codepoints);
+            return NULL;
+        }
+        offset += bytes;
+    }
+
+    if(out_count != NULL)
+        *out_count = count;
     return codepoints;
 }
 
