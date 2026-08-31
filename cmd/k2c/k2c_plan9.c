@@ -798,7 +798,7 @@ emit_compound_temp(Buf *out, const char *indent, const char *type,
                && (isalpha((unsigned char)value[1]) || value[1] == '_')) {
                 memcpy(itype, value + 1, it - 1);
                 itype[it - 1] = '\0';
-                ob = it + 1;
+                ob = it + 2;
                 cb = find_matching_brace(value, (int)ob);
                 if(cb > 0 && (value[cb + 1] == '\0'))
                     valid = 1;
@@ -1548,8 +1548,34 @@ k2c_plan9_rewrite_project(const char *text)
     return out;
 }
 
+char *k2c_plan9_rewrite_once(const char *text);
+
 char *
 k2c_plan9_rewrite(const char *text)
+{
+    const char *current = text;
+    char *next;
+    int pass;
+
+    /* literals can nest inside call arguments inside positional bodies;
+     * iterate until the output stabilizes */
+    for(pass = 0; pass < 4; pass++) {
+        next = k2c_plan9_rewrite_once(current);
+        if(next == NULL)
+            return pass == 0 ? NULL : (char *)current;
+        if(strcmp(next, current) == 0) {
+            free(next);
+            return (char *)current;
+        }
+        if(current != text)
+            free((void *)current);
+        current = next;
+    }
+    return (char *)current;
+}
+
+char *
+k2c_plan9_rewrite_once(const char *text)
 {
     Buf out;
     char *line;
