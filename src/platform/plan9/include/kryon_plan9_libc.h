@@ -44,4 +44,8 @@ typedef long time_t;
 #define __attribute__(x)
 #endif
 
+/* Native libc has no rename(2); the runtime stubs implement it as a
+ * same-directory name wstat. */
+int rename(const char *oldpath, const char *newpath);
+
 #endif

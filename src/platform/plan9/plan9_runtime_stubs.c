@@ -526,4 +526,36 @@ int kry_update_flow_exec_pending(KryUpdateFlow *flow)
 }
 void kry_update_flow_free(KryUpdateFlow *flow) { (void)flow; }
 
+/* Plan 9 has no rename(2); renaming within a directory is a name wstat.
+ * Cross-directory moves fail, which still covers the atomic-save pattern
+ * (write temp file, rename over target) kry_fs_move is used for. */
+int
+rename(const char *oldpath, const char *newpath)
+{
+    Dir dir;
+    char *oldslash;
+    char *newslash;
+    char *base;
+
+    if(oldpath == nil || newpath == nil)
+        return -1;
+    oldslash = strrchr(oldpath, '/');
+    newslash = strrchr(newpath, '/');
+    base = newslash != nil ? newslash + 1 : (char *)newpath;
+    if(base[0] == '\0')
+        return -1;
+    if((oldslash == nil) != (newslash == nil))
+        return -1;
+    if(oldslash != nil &&
+       (oldslash - oldpath != newslash - newpath ||
+        strncmp(oldpath, newpath, oldslash - oldpath) != 0))
+        return -1;
+
+    memset(&dir, 0, sizeof(dir));
+    dir.name = base;
+    if(dirwstat(oldpath, &dir) < 0)
+        return -1;
+    return 0;
+}
+
 #endif
