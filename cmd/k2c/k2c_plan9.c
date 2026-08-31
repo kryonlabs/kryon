@@ -213,7 +213,7 @@ proto_line_parse(const char *line, char *name, size_t name_size,
     /* the return type must read like one: identifiers, qualifiers,
      * struct/enum tags, stars. Anything else means the line was
      * expression text from an inline body (raymath-style headers). */
-    if(strpbrk(type, "=().,+-*/%<>!&|[]") != NULL)
+    if(strpbrk(type, "=().,+/%<>!&|[]") != NULL)
         return 0;
     if(!(isalpha((unsigned char)type[0]) || type[0] == '_'))
         return 0;
