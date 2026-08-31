@@ -158,18 +158,32 @@ proto_line_parse(const char *line, char *name, size_t name_size,
         p++;
     if(*p == '\0' || *p == '#' || *p == '/' || *p == '*')
         return 0;
-    if(strchr(line, '{') != NULL)
-        return 0; /* definition body, not a prototype */
+    {
+        /* a static definition header ends with "...) {" - parse the
+         * declaration part and ignore the body opener */
+        const char *brace = strchr(line, '{');
+
+        if(brace != NULL && strchr(brace, '}') != NULL)
+            return 0; /* a body, not a definition header */
+    }
 
     skipped = skip_head_word(p, "RLAPI");
     if(skipped == 0)
         skipped = skip_head_word(p, "KRYAPI");
     if(skipped == 0)
         skipped = skip_head_word(p, "extern");
+    if(skipped == 0)
+        skipped = skip_head_word(p, "static");
     if(skipped != 0)
         p += skipped;
 
     semi = strchr(p, ';');
+    {
+        const char *brace = strchr(p, '{');
+
+        if(brace != NULL && (semi == NULL || brace < semi))
+            semi = brace;
+    }
     if(semi == NULL)
         return 0;
     args = strchr(p, '(');
@@ -205,8 +219,99 @@ proto_line_parse(const char *line, char *name, size_t name_size,
     return 1;
 }
 
+/* Literal classification for an initializer expression. */
+static int
+init_is_int_literal(const char *s)
+{
+    int digits = 0;
+
+    if(*s == '+' || *s == '-')
+        s++;
+    while(isdigit((unsigned char)*s)) {
+        s++;
+        digits++;
+    }
+    if(digits == 0)
+        return 0;
+    if(*s == 'u' || *s == 'U')
+        s++;
+    if(*s == 'l' || *s == 'L')
+        s++;
+    return *s == '\0' || *s == ';' || *s == ' ' || *s == '\t';
+}
+
+static int
+expr_looks_float(const char *s)
+{
+    const char *p;
+
+    for(p = s; *p != '\0' && *p != ';'; p++) {
+        if(isdigit((unsigned char)p[0]) && p[1] == '.')
+            return 1;
+        if(isdigit((unsigned char)p[0]) && (p[1] == 'f' || p[1] == 'F')
+           && !isalnum((unsigned char)p[2]) && p[2] != '_')
+            return 1;
+    }
+    return 0;
+}
+
 static void
-proto_add_file(const char *path)
+proto_add_macro(const char *line)
+{
+    /* #define NAME 123  (object-like, numeric) */
+    const char *p = line;
+    const char *name_start;
+    const char *name_end;
+    char name[PLAN9_NAME_MAX];
+    char value[64];
+    size_t n;
+    int i;
+
+    if(strncmp(p, "#define ", 8) != 0)
+        return;
+    p += 8;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    name_start = p;
+    while(*p != '\0' && (isalnum((unsigned char)*p) || *p == '_'))
+        p++;
+    if(*p != '(') {
+        name_end = p;
+        n = (size_t)(name_end - name_start);
+        if(n == 0 || n >= sizeof(name))
+            return;
+        memcpy(name, name_start, n);
+        name[n] = '\0';
+        while(*p == ' ' || *p == '\t')
+            p++;
+        for(i = 0; p[i] != '\0' && p[i] != '\n' && i < (int)sizeof(value) - 1;
+            i++)
+            value[i] = p[i];
+        value[i] = '\0';
+        if(init_is_int_literal(value) || expr_looks_float(value)) {
+            int j;
+            int taken = 0;
+
+            for(j = 0; j < proto_count; j++) {
+                if(strcmp(protos[j].name, name) == 0) {
+                    taken = 1;
+                    break;
+                }
+            }
+            if(!taken && proto_count < PLAN9_MAX_PROTOS) {
+                snprintf(protos[proto_count].name,
+                         sizeof(protos[0].name), "%s", name);
+                snprintf(protos[proto_count].type,
+                         sizeof(protos[0].type), "%s",
+                         expr_looks_float(value) ? "float" : "int");
+                proto_count++;
+            }
+        }
+    }
+}
+
+static void
+proto_add_file(const char *path, int allow_c)
 {
     FILE *f;
     char pending[16384];
@@ -223,8 +328,12 @@ proto_add_file(const char *path)
         char type[PLAN9_TYPE_MAX];
         int i;
 
-        /* prototypes may wrap: hold lines that opened a prototype but
-         * have not reached the terminating semicolon yet */
+        if(!allow_c)
+            proto_add_macro(line);
+        if(allow_c && strncmp(line, "static ", 7) != 0
+           && strncmp(line + strspn(line, " \t"), "static ",
+                      7) != 0)
+            continue; /* in .c files only static headers are recorded */
         if(pending[0] != '\0') {
             snprintf(pending_text, sizeof(pending_text), "%s", pending);
             pending[0] = '\0';
@@ -286,7 +395,9 @@ proto_scan_dir(const char *path, int depth)
             continue;
         dot = strrchr(ent->d_name, '.');
         if(dot != NULL && strcmp(dot, ".h") == 0)
-            proto_add_file(child);
+            proto_add_file(child, 0);
+        else if(dot != NULL && strcmp(dot, ".c") == 0)
+            proto_add_file(child, 1);
         else if(dot == NULL)
             proto_scan_dir(child, depth + 1);
     }
@@ -732,6 +843,7 @@ rewrite_line_compound(Buf *out, const char *line, int lineno, int *rewrote)
 /* __auto_type resolution                                            */
 /* ------------------------------------------------------------------ */
 
+
 static int
 autotype_type_for_init(const char *init, char *type, size_t type_size)
 {
@@ -746,6 +858,8 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
 
     while(init[i] == ' ' || init[i] == '\t')
         i++;
+
+    /* cast expression, compound literal or not: the type is spelled */
     if(init[i] == '(') {
         tstart = i + 1;
         tend = tstart;
@@ -754,13 +868,98 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
                                      || init[tend] == '*'))
             tend++;
         n = tend - tstart;
-        if(n > 0 && init[tend] == ')' && init[tend + 1] == '{'
-           && n < type_size) {
-            memcpy(type, init + tstart, n);
-            type[n] = '\0';
-            return 1;
+        if(n > 0 && init[tend] == ')' && n < type_size
+           && (isalpha((unsigned char)init[tstart])
+               || init[tstart] == '_')) {
+            size_t k;
+            int ok = 1;
+
+            for(k = 0; k < n; k++) {
+                char ch = init[tstart + k];
+                if(!(isalnum((unsigned char)ch) || ch == '_' || ch == ' '
+                     || ch == '\t' || ch == '*')) {
+                    ok = 0;
+                    break;
+                }
+            }
+            if(ok) {
+                memcpy(type, init + tstart, n);
+                type[n] = '\0';
+                return 1;
+            }
         }
     }
+
+    /* string literal */
+    if(init[i] == '"') {
+        if(type_size < 12)
+            return 0;
+        snprintf(type, type_size, "const char *");
+        return 1;
+    }
+
+    /* numeric literal or constant expression over numbers and macros */
+    {
+        char head[256];
+        size_t len = strlen(init + i);
+        const char *semi = strchr(init + i, ';');
+
+        if(semi != NULL)
+            len = (size_t)(semi - (init + i));
+        if(len == 0 || len >= sizeof(head))
+            len = sizeof(head) - 1;
+        memcpy(head, init + i, len);
+        head[len] = '\0';
+        if(init_is_int_literal(head)) {
+            if(type_size < 4)
+                return 0;
+            snprintf(type, type_size, "int");
+            return 1;
+        }
+        if(strchr(head, '(') == NULL && strchr(head, '&') == NULL
+           && head[0] != '*') {
+            const char *p;
+            int arith_only = 1;
+
+            for(p = head; *p != '\0'; p++) {
+                if(!(isalnum((unsigned char)*p) || *p == '_' || *p == ' '
+                     || *p == '\t' || *p == '+' || *p == '-' || *p == '*'
+                     || *p == '/' || *p == '%' || *p == '.' || *p == '<'
+                     || *p == '>' || *p == '!' || *p == '~')) {
+                    arith_only = 0;
+                    break;
+                }
+            }
+            if(arith_only) {
+                size_t hl = 0;
+
+                if(expr_looks_float(head)) {
+                    if(type_size < 6)
+                        return 0;
+                    snprintf(type, type_size, "float");
+                    return 1;
+                }
+                while(head[hl] != '\0' && (isalnum((unsigned char)head[hl])
+                                            || head[hl] == '_'))
+                    hl++;
+                if(hl > 0 && hl < sizeof(name)) {
+                    memcpy(name, head, hl);
+                    name[hl] = '\0';
+                    ret = proto_return_type(name);
+                    if(ret != NULL && strlen(ret) < type_size) {
+                        snprintf(type, type_size, "%s", ret);
+                        return 1;
+                    }
+                }
+                if(type_size < 4)
+                    return 0;
+                snprintf(type, type_size, "int");
+                return 1;
+            }
+        }
+    }
+
+    /* function call: resolve the return type from the prototype map */
     call = init + i;
     call_end = call;
     while(*call_end != '\0' && (isalnum((unsigned char)*call_end)
