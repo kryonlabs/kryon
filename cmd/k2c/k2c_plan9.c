@@ -256,81 +256,6 @@ expr_looks_float(const char *s)
     return 0;
 }
 
-/* Record a struct field declaration (Type name; / Type name[N];) from
- * a generated or application header. Field names repeat across structs
- * only for like-typed members in practice, which is enough for the
- * initializer typing the plan9 pass needs. */
-static int
-field_decl_parse(const char *line, char *name, size_t name_size,
-                 char *type, size_t type_size)
-{
-    const char *p = line;
-    const char *semi;
-    const char *name_end;
-    const char *name_start;
-    const char *type_end;
-    size_t n;
-
-    while(*p == ' ' || *p == '\t')
-        p++;
-    if(!isalpha((unsigned char)*p) && *p != '_')
-        return 0;
-    semi = strchr(p, ';');
-    if(semi == NULL)
-        return 0;
-    name_end = semi;
-    while(name_end > p && (name_end[-1] == ' ' || name_end[-1] == '\t'))
-        name_end--;
-    if(name_end == p)
-        return 0;
-    name_start = name_end;
-    while(name_start > p && (isalnum((unsigned char)name_start[-1])
-                             || name_start[-1] == '_'))
-        name_start--;
-    n = (size_t)(name_end - name_start);
-    if(n == 0 || n >= name_size)
-        return 0;
-    memcpy(name, name_start, n);
-    name[n] = '\0';
-    type_end = name_start;
-    while(type_end > p && (type_end[-1] == ' ' || type_end[-1] == '\t'))
-        type_end--;
-    n = (size_t)(type_end - p);
-    if(n == 0 || n >= type_size)
-        return 0;
-    memcpy(type, p, n);
-    type[n] = '\0';
-    if(strpbrk(type, "=().,+/%<>!&|[]") != NULL)
-        return 0; /* array suffix or expression: element type not needed */
-    if(strncmp(type, "typedef", 7) == 0 || strncmp(type, "struct", 6) == 0
-       || strncmp(type, "enum", 4) == 0 || strncmp(type, "union", 5) == 0
-       || strncmp(type, "}", 1) == 0)
-        return 0;
-    return 1;
-}
-
-static void
-field_add(const char *line)
-{
-    char name[PLAN9_NAME_MAX];
-    char type[PLAN9_TYPE_MAX];
-    int i;
-
-    if(!field_decl_parse(line, name, sizeof(name), type, sizeof(type)))
-        return;
-    for(i = 0; i < proto_count; i++) {
-        if(strcmp(protos[i].name, name) == 0) {
-            /* prefer the first (kryon header) typing */
-            return;
-        }
-    }
-    if(proto_count >= PLAN9_MAX_PROTOS)
-        return;
-    snprintf(protos[proto_count].name, sizeof(protos[0].name), "%s", name);
-    snprintf(protos[proto_count].type, sizeof(protos[0].type), "%s", type);
-    proto_count++;
-}
-
 static void
 proto_add_macro(const char *line)
 {
@@ -394,36 +319,11 @@ proto_add_file(const char *path, int allow_c)
     char pending_text[16384];
     char line[8192];
 
-    int struct_depth = 0;
-
     pending[0] = '\0';
     f = fopen(path, "r");
     if(f == NULL)
         return;
     while(fgets(line, sizeof(line), f) != NULL) {
-        /* inside a struct body, record member declarations */
-        if(struct_depth > 0) {
-            if(strchr(line, '{') != NULL)
-                struct_depth++;
-            if(strchr(line, '}') != NULL) {
-                struct_depth--;
-            } else if(strchr(line, '(') == NULL
-                      && strstr(line, "typedef") == NULL
-                      && strstr(line, "struct") == NULL) {
-                field_add(line);
-            }
-            continue;
-        }
-        {
-            const char *q = line + strspn(line, " \t");
-
-            if((strncmp(q, "typedef struct", 14) == 0
-                || strncmp(q, "struct ", 7) == 0)
-               && strchr(line, '{') != NULL && strchr(line, '}') == NULL) {
-                struct_depth = 1;
-                continue;
-            }
-        }
         char joined[16384];
         char name[PLAN9_NAME_MAX];
         char type[PLAN9_TYPE_MAX];
@@ -1095,41 +995,6 @@ expr_type(const char *expr, size_t len, char *type, size_t type_size)
             if(!merge_type(acc, &have, one))
                 return 0;
 
-            /* member chains resolve through the field table */
-            while(j < len && (expr[j] == '.'
-                              || (expr[j] == '-' && expr[j + 1] == '>'))) {
-                size_t k = expr[j] == '.' ? j + 1 : j + 2;
-                size_t m = k;
-
-                while(m < len && (isalnum((unsigned char)expr[m])
-                                  || expr[m] == '_'))
-                    m++;
-                if(m == k)
-                    return 0;
-                if(!head_type(expr + k, m - k, one, sizeof(one)))
-                    return 0;
-                if(!merge_type(acc, &have, one))
-                    return 0;
-                j = m;
-                while(j < len && expr[j] == '[') {
-                    size_t depth2 = 0;
-                    size_t q = j;
-
-                    while(q < len) {
-                        if(expr[q] == '[')
-                            depth2++;
-                        else if(expr[q] == ']') {
-                            depth2--;
-                            if(depth2 == 0)
-                                break;
-                        }
-                        q++;
-                    }
-                    if(q >= len)
-                        return 0;
-                    j = q + 1;
-                }
-            }
             i = j;
             continue;
         }
@@ -1157,44 +1022,6 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
 
     while(init[i] == ' ' || init[i] == '\t')
         i++;
-
-    /* &obj->field / &obj.field / &obj->field[i]: pointer to the field's
-     * type; the member chain ends at the last named field */
-    if(init[i] == '&') {
-        const char *s = init + i + 1;
-        const char *last = NULL;
-        char field[PLAN9_NAME_MAX];
-        const char *ret2;
-        size_t fl = 0;
-
-        while(*s != '\0' && *s != ';') {
-            if(*s == '-' && s[1] == '>')
-                s += 2;
-            else if(*s == '.')
-                s += 1;
-            else {
-                s++;
-                continue;
-            }
-            while(*s == ' ')
-                s++;
-            last = s;
-            while(*s != '\0' && (isalnum((unsigned char)*s) || *s == '_'))
-                s++;
-            fl = (size_t)(s - last);
-        }
-        if(last != NULL && fl > 0 && fl < sizeof(field)) {
-            memcpy(field, last, fl);
-            field[fl] = '\0';
-            ret2 = proto_return_type(field);
-            if(ret2 != NULL
-               && strlen(ret2) + 2 < type_size) {
-                snprintf(type, type_size, "%s *", ret2);
-                return 1;
-            }
-        }
-        return 0;
-    }
 
     /* single dereference: layout pointers are int in the lowered UI
      * code; anything more complex stays unresolved */
