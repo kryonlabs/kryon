@@ -305,6 +305,12 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         K.mouseDeltaY += y - K.mouseY;
         K.mouseX = x; K.mouseY = y;
     };
+    var claimEvent = function (e, name) {
+        var key = '__kryDomHandled_' + name;
+        if (!e || e[key]) return false;
+        try { e[key] = 1; } catch (_) {}
+        return true;
+    };
     var syncTouches = function (list) {
         var had = K.touches.length > 0;
         K.touches = [];
@@ -326,9 +332,11 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
             return;
         target.__kryDomHooked = 1;
         target.addEventListener('mousemove', function (e) {
+            if (!claimEvent(e, 'mousemove')) return;
             var p = localPoint(e); setMouse(p.x, p.y);
         });
         target.addEventListener('mousedown', function (e) {
+            if (!claimEvent(e, 'mousedown')) return;
             var p = localPoint(e); setMouse(p.x, p.y);
             if (K.root && K.root.focus) {
                 try { K.root.focus({preventScroll: true}); } catch (_) {
@@ -339,17 +347,20 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
             K.buttonsPressed.push(e.button);
         });
         target.addEventListener('mouseup', function (e) {
+            if (!claimEvent(e, 'mouseup')) return;
             var p = localPoint(e); setMouse(p.x, p.y);
             delete K.buttonsDown[e.button];
             K.buttonsReleased.push(e.button);
         });
         target.addEventListener('wheel', function (e) {
+            if (!claimEvent(e, 'wheel')) return;
             var unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? K.h : 120);
             K.wheelX += -e.deltaX / unit;
             K.wheelY += -e.deltaY / unit;
             if (e.cancelable) e.preventDefault();
         });
         target.addEventListener('keydown', function (e) {
+            if (!claimEvent(e, 'keydown')) return;
             var k = keyOf(e.code || "", e.key || "");
             if (k) {
                 if (K.keysDown[k] && e.repeat) K.keysRepeated.push(k);
@@ -365,6 +376,7 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
             }
         });
         target.addEventListener('keyup', function (e) {
+            if (!claimEvent(e, 'keyup')) return;
             var k = keyOf(e.code || "", e.key || "");
             if (k) {
                 delete K.keysDown[k];
@@ -372,21 +384,26 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
             }
         });
         target.addEventListener('keypress', function (e) {
+            if (!claimEvent(e, 'keypress')) return;
             if (e.key && e.key.length === 1) K.chars.push(e.key.charCodeAt(0));
         });
         target.addEventListener('touchstart', function (e) {
+            if (!claimEvent(e, 'touchstart')) return;
             syncTouches(e.touches || []);
             if (e.cancelable) e.preventDefault();
         }, {passive: false});
         target.addEventListener('touchmove', function (e) {
+            if (!claimEvent(e, 'touchmove')) return;
             syncTouches(e.touches || []);
             if (e.cancelable) e.preventDefault();
         }, {passive: false});
         target.addEventListener('touchend', function (e) {
+            if (!claimEvent(e, 'touchend')) return;
             syncTouches(e.touches || []);
             if (e.cancelable) e.preventDefault();
         }, {passive: false});
         target.addEventListener('touchcancel', function (e) {
+            if (!claimEvent(e, 'touchcancel')) return;
             syncTouches(e.touches || []);
             if (e.cancelable) e.preventDefault();
         }, {passive: false});
