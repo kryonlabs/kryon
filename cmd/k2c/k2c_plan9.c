@@ -1641,7 +1641,9 @@ k2c_plan9_rewrite(const char *text)
                                   || name_start[-1] == '_'))
                             name_start--;
                         nlen = (size_t)(name_end - name_start);
-                        if(nlen > 0 && nlen < sizeof(name)) {
+                        if(nlen > 0 && nlen < sizeof(name)
+                           && name_start > current + ilen
+                           && memchr(current, '.', (size_t)(name_start - current)) == NULL) {
                             memcpy(name, name_start, nlen);
                             name[nlen] = '\0';
                             if(buf_append(&out, current,
