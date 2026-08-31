@@ -566,8 +566,16 @@ ApplyDesktopTrayIcon(gpointer user_data)
 
             if(icon_path != NULL)
                 gtk_status_icon_set_from_file(TrayStatusIcon, icon_path);
-            else
+            else {
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
                 gtk_status_icon_set_from_icon_name(TrayStatusIcon, TrayIconName);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+            }
         }
     }
 #endif
