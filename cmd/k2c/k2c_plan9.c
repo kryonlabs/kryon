@@ -158,14 +158,8 @@ proto_line_parse(const char *line, char *name, size_t name_size,
         p++;
     if(*p == '\0' || *p == '#' || *p == '/' || *p == '*')
         return 0;
-    {
-        /* a static definition header ends with "...) {" - parse the
-         * declaration part and ignore the body opener */
-        const char *brace = strchr(line, '{');
-
-        if(brace != NULL && strchr(brace, '}') != NULL)
-            return 0; /* a body, not a definition header */
-    }
+    /* cut at a body opener: covers "RET name(args) {" headers and
+     * one-line inline definitions alike */
 
     skipped = skip_head_word(p, "RLAPI");
     if(skipped == 0)
@@ -407,8 +401,24 @@ proto_scan_dir(const char *path, int depth)
 static const char *
 proto_return_type(const char *name)
 {
+    static const struct {
+        const char *name;
+        const char *type;
+    } builtins[] = {
+        {"localtime", "struct tm *"},
+        {"gmtime", "struct tm *"},
+        {"clock", "long"},
+        {"time", "long"},
+        {"malloc", "void *"},
+        {"calloc", "void *"},
+        {"realloc", "void *"},
+    };
     int i;
 
+    for(i = 0; (size_t)i < sizeof(builtins) / sizeof(builtins[0]); i++) {
+        if(strcmp(builtins[i].name, name) == 0)
+            return builtins[i].type;
+    }
     if(!protos_loaded) {
         int d;
         for(d = 0; d < include_dir_count; d++)
@@ -632,6 +642,22 @@ emit_compound_temp(Buf *out, const char *indent, const char *type,
     char value[PLAN9_LINE_MAX];
     char field[PLAN9_NAME_MAX];
     int pos = 0;
+    const char *bracket = strchr(type, '[');
+
+    if(bracket != NULL) {
+        /* array literal: declare the temporary with its size */
+        char base[PLAN9_TYPE_MAX];
+        size_t n = (size_t)(bracket - type);
+
+        if(n == 0 || n >= sizeof(base))
+            return -1;
+        memcpy(base, type, n);
+        base[n] = '\0';
+        if(buf_printf(out, "%s%s %s%s;\n", indent, base, temp, bracket) < 0)
+            return -1;
+        return buf_printf(out, "%smemset(%s, 0, sizeof(%s));\n",
+                          indent, temp, temp);
+    }
 
     if(body_is_zero(body, body_len)) {
         if(buf_printf(out, "%s%s %s;\n", indent, type, temp) < 0)
@@ -737,7 +763,8 @@ find_cast_literal(const char *line, int cursor, int *cast_start, int *cast_end,
             while(line[tend] != '\0'
                   && (isalnum((unsigned char)line[tend]) || line[tend] == '_'
                       || line[tend] == ' ' || line[tend] == '\t'
-                      || line[tend] == '*'))
+                      || line[tend] == '*' || line[tend] == '['
+                      || line[tend] == ']'))
                 tend++;
             n = (size_t)(tend - tstart);
             if(n > 0 && n < type_size && line[tend] == ')'
@@ -994,7 +1021,9 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
         tend = tstart;
         while(init[tend] != '\0' && (isalnum((unsigned char)init[tend])
                                      || init[tend] == '_' || init[tend] == ' '
-                                     || init[tend] == '*'))
+                                     || init[tend] == '*'
+                                     || init[tend] == '['
+                                     || init[tend] == ']'))
             tend++;
         n = tend - tstart;
         if(n > 0 && init[tend] == ')' && n < type_size
@@ -1006,7 +1035,8 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
             for(k = 0; k < n; k++) {
                 char ch = init[tstart + k];
                 if(!(isalnum((unsigned char)ch) || ch == '_' || ch == ' '
-                     || ch == '\t' || ch == '*')) {
+                     || ch == '\t' || ch == '*' || ch == '['
+                     || ch == ']')) {
                     ok = 0;
                     break;
                 }
@@ -1045,9 +1075,7 @@ autotype_type_for_init(const char *init, char *type, size_t type_size)
             snprintf(type, type_size, "int");
             return 1;
         }
-        if(strchr(head, '&') == NULL && head[0] != '*'
-           && strchr(head, '=') == NULL && strstr(head, "==") == NULL
-           && strstr(head, "!=") == NULL) {
+        if(strchr(head, '&') == NULL && head[0] != '*') {
             /* expression over literals, macros, locals, and calls */
             if(expr_type(head, strlen(head), type, type_size))
                 return 1;

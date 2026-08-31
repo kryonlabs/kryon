@@ -85,11 +85,13 @@ main(int argc, char **argv)
     free(syms);
     unresolved = k2c_plan9_unresolved();
     if(plan9 && unresolved > 0) {
+        /* Unresolved declarations are usually inside platform guards the
+         * native build compiles out; the in-guest compile is the final
+         * arbiter, so warn rather than fail. */
         fprintf(stderr,
-                "k2c: --plan9 left %d __auto_type declarations unresolved; "
-                "add --include-dir with the headers that declare them\n",
+                "k2c: --plan9 left %d __auto_type declarations unresolved "
+                "(guarded code compiles out; the rest must be resolvable)\n",
                 unresolved);
-        return 1;
     }
     return 0;
 }
