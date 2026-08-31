@@ -37,6 +37,8 @@ K2B = $(BUILD_DIR)/bin/k2b
 KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
+KRY_FMT = $(BUILD_DIR)/bin/kry-fmt.sh
+KRY_LOCALE_CHECK = $(BUILD_DIR)/bin/kry-locale-check.sh
 KRB_RUN = $(BUILD_DIR)/bin/krb-run
 KRB_SDL = $(BUILD_DIR)/bin/krb-sdl
 KRY_SW_TEST = $(BUILD_DIR)/tests/kry_sw_test
@@ -263,6 +265,7 @@ SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
 KIR_TEST = $(BUILD_DIR)/tests/kir_test
 K2IR_TEST = $(BUILD_DIR)/tests/k2ir.ok
+KRY_TOOLS_TEST = $(BUILD_DIR)/tests/kry_tools.ok
 KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
@@ -282,14 +285,16 @@ k2c: $(K2C)
 k2g: $(K2G)
 k2js: $(K2JS)
 
-all: $(LIB) $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD)
+all: $(LIB) $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK)
 
-tools: $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN) $(KRB_SDL)
+tools: $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
 
-install: $(KT) $(KRYON_CMD)
+install: $(KT) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(KT) $(DESTDIR)$(BINDIR)/kt
 	$(INSTALL) -m 755 $(KRYON_CMD) $(DESTDIR)$(BINDIR)/kryon
+	$(INSTALL) -m 755 $(KRY_FMT) $(DESTDIR)$(BINDIR)/kry-fmt.sh
+	$(INSTALL) -m 755 $(KRY_LOCALE_CHECK) $(DESTDIR)$(BINDIR)/kry-locale-check.sh
 
 examples-run:
 	@$(MAKE) -C examples run
@@ -433,7 +438,7 @@ generated-runtime-parity-test: $(K2C) $(K2G) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS
 preflight: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
 	git diff --check
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(UI_DPI_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(UI_DPI_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2IR_TEST) $(KRB_WALK_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2g_syntax_test.sh $(K2G)
@@ -543,8 +548,8 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c
-KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c
+KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
@@ -581,6 +586,14 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUIL
 
 $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 	cp scripts/kryon.sh $@
+	chmod 755 $@
+
+$(KRY_FMT): scripts/kry-fmt.sh | $(BUILD_DIR)/bin
+	cp scripts/kry-fmt.sh $@
+	chmod 755 $@
+
+$(KRY_LOCALE_CHECK): scripts/kry-locale-check.sh | $(BUILD_DIR)/bin
+	cp scripts/kry-locale-check.sh $@
 	chmod 755 $@
 
 version:
@@ -653,10 +666,10 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(K
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts
+$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	rm -rf $(TOOLS_DIST_ROOT)
 	mkdir -p $(TOOLS_DIST_ROOT)/bin $(TOOLS_DIST_ROOT)/web $(DIST_DIR)
-	cp $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
+	cp $(K2C) $(K2G) $(K2JS) $(K2IR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
 	chmod 755 $(TOOLS_DIST_ROOT)/bin/*
 	printf '%s\n' '$(VERSION)' > $(TOOLS_DIST_ROOT)/VERSION
 	cp README.md LICENSE THIRD_PARTY_NOTICES.md $(TOOLS_DIST_ROOT)/
@@ -666,7 +679,7 @@ $(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/ch
 		'  "name": "kryon-tools",' \
 		'  "version": "$(VERSION)",' \
 		'  "target": "$(KRYON_PLATFORM)-$(KRYON_ARCH)",' \
-		'  "binaries": ["k2c", "k2g", "k2js", "k2ir", "k2b", "kt", "kryon", "kryon-preview", "krb-run", "krb-sdl"],' \
+		'  "binaries": ["k2c", "k2g", "k2js", "k2ir", "k2b", "kt", "kryon", "kry-fmt.sh", "kry-locale-check.sh", "kryon-preview", "krb-run", "krb-sdl"],' \
 		'  "web_runtime": "web/kryon-runtime.js"' \
 		'}' > $(TOOLS_DIST_ROOT)/manifest.json
 	tar -C $(BUILD_DIR)/dist -czf $@ $(notdir $(TOOLS_DIST_ROOT))
@@ -915,6 +928,10 @@ $(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir.h | $(BUILD_DIR)
 $(K2IR_TEST): tests/k2ir_test.sh $(K2IR) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	TMPDIR=$(BUILD_DIR) sh tests/k2ir_test.sh $(K2IR) . > $@
+
+$(KRY_TOOLS_TEST): tests/kry_tools_test.sh scripts/kry-fmt.sh scripts/kry-locale-check.sh | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	TMPDIR=$(BUILD_DIR) sh tests/kry_tools_test.sh . > $@
 
 $(KRB_WALK_TEST): tests/krb_walk_test.c src/krb/krb.c src/backend/kry_backend.c include/krb.h include/kry_backend.h src/core/kry_alloc.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

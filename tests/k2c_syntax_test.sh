@@ -158,6 +158,13 @@ Main :: (viewport: Rectangle) #ui {
         Column body: {
             gap = 4
             Text("Hello", 0, 0, Text16, GetThemeText())
+            Button {
+                bounds = {8, 40, 96, 28}
+                label = "Block"
+                style = ButtonStyleSecondary
+                font = Text16
+                id = 77
+            }
         }
     }
 }
@@ -298,6 +305,7 @@ grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.h"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
 grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
+grep -Fq 'Button((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .style = ButtonStyleSecondary, .font = Text16, .id = 77, });' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
 grep -Fq 'host = CreateAppHost(APP_HOST_ABI_VERSION, ".");' "$project"

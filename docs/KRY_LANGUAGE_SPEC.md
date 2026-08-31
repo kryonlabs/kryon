@@ -1,6 +1,6 @@
 # Kry Language Specification
 
-Kry language version: `0.1`
+Kry language version: `0.2`
 KIR version: `0.1`
 
 This is the stable public contract for `.kry` source accepted by Kryon tools.
@@ -135,8 +135,11 @@ local-decl      = identifier , ":=" , expr-text
 assignment      = expr-text , assignment-op , expr-text ;
 assignment-op   = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" ;
 call-statement  = identifier , "(" , [ expr-text ] , ")" ;
-ui-node         = identifier , identifier , [ ":" ] , "{" ,
+ui-node         = layout-node | widget-props-node ;
+layout-node     = layout-widget , identifier , [ ":" ] , "{" ,
                   { ui-prop | statement } , "}" ;
+widget-props-node = props-widget , [ identifier ] , [ ":" ] , "{" ,
+                    { ui-prop } , "}" ;
 ui-prop         = identifier , "=" , expr-text ;
 if-statement    = "if" , expr-text , block ,
                   { "else" , "if" , expr-text , block } ,
@@ -156,7 +159,21 @@ unused-statement= "unused" , expr-text ;
 ```
 
 Plain call statements are UI declarations when they call Kryon widget/runtime
-functions. The frontend does not need widget-specific keywords.
+functions. Property-block widgets lower to the existing `WidgetProps` C-style
+call shape, so `Button { label = "Save" ... }` is equivalent to
+`Button((ButtonProps){.label = "Save", ...})`. Layout nodes (`Screen`,
+`Column`, `Row`, `Stack`) still open retained UI scopes and therefore emit a
+matching `End()`.
+
+## Tooling
+
+`kryon fmt [--check] file.kry...` formats Kry source with stable indentation
+and simple spacing cleanup. `--check` exits non-zero when a file would change.
+
+`kryon locale-check source.kry... -- locales/*.txt` validates `t("key")`
+references against locale files that use `[key]` blocks. It reports missing
+keys, unused keys, duplicate locale keys, and non-English locale entries that
+copy the English text exactly.
 
 ## Compile-Time Forms
 
@@ -190,9 +207,16 @@ the normalized raw source text. Expression records currently cover:
 |---|---|
 | `ident` | Simple identifier. |
 | `int` | Integer literal text. |
+| `float` | Floating-point literal text. |
 | `string` | String literal text. |
 | `call` | Simple `Name(args...)` call with child expressions for arguments. |
 | `binary` | Top-level binary expression with operator, left child, and right child. |
+| `unary` | Prefix unary expression with operator and right child. |
+| `member` | `base.field` access with base expression and field name. |
+| `pointer_member` | `base->field` access with base expression and field name. |
+| `index` | `base[index]` access with base and index children. |
+| `compound` | C-style compound literal text preserved as one expression. |
+| `sizeof` | `sizeof(...)` expression metadata. |
 | `unknown` | Preserved expression text that the frontend did not structure yet. |
 
 Backends may use raw statement text while structured expression KIR grows. They

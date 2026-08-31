@@ -16,6 +16,9 @@ Commands:
                           output
   test                    run the app test target
   clean [TARGET]          clean all or a target-specific build tree
+  fmt [--check] FILE...   format .kry source files
+  locale-check SRC... -- LOCALE...
+                          check t("key") source references against locales
   dev-backend             run a local Ksync sync server for this project
                           (locates the server at $KSYNC_DIR or ../ksync; prints
                           the sync URL to point your app at)
@@ -122,6 +125,18 @@ package)
     ;;
 test)
     run_make test
+    ;;
+fmt)
+    script_dir=$(cd "$(dirname "$0" 2>/dev/null || printf '.')" 2>/dev/null && pwd)
+    shift
+    "$script_dir/kry-fmt.sh" "$@"
+    exit $?
+    ;;
+locale-check)
+    script_dir=$(cd "$(dirname "$0" 2>/dev/null || printf '.')" 2>/dev/null && pwd)
+    shift
+    "$script_dir/kry-locale-check.sh" "$@"
+    exit $?
     ;;
 dev-backend)
     # Run a local Ksync sync server for development. Locates the server source

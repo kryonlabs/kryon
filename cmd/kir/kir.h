@@ -59,9 +59,17 @@ typedef enum KirExprKind {
     KIR_EXPR_UNKNOWN = 0,
     KIR_EXPR_IDENT,
     KIR_EXPR_INT,
+    KIR_EXPR_FLOAT,
     KIR_EXPR_STRING,
     KIR_EXPR_CALL,
-    KIR_EXPR_BINARY
+    KIR_EXPR_BINARY,
+    KIR_EXPR_UNARY,
+    KIR_EXPR_MEMBER,
+    KIR_EXPR_POINTER_MEMBER,
+    KIR_EXPR_INDEX,
+    KIR_EXPR_CAST,
+    KIR_EXPR_COMPOUND,
+    KIR_EXPR_SIZEOF
 } KirExprKind;
 
 typedef struct KirSourceSpan {

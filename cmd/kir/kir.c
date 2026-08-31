@@ -382,9 +382,17 @@ KirExprKindName(KirExprKind kind)
     switch(kind) {
     case KIR_EXPR_IDENT: return "ident";
     case KIR_EXPR_INT: return "int";
+    case KIR_EXPR_FLOAT: return "float";
     case KIR_EXPR_STRING: return "string";
     case KIR_EXPR_CALL: return "call";
     case KIR_EXPR_BINARY: return "binary";
+    case KIR_EXPR_UNARY: return "unary";
+    case KIR_EXPR_MEMBER: return "member";
+    case KIR_EXPR_POINTER_MEMBER: return "pointer_member";
+    case KIR_EXPR_INDEX: return "index";
+    case KIR_EXPR_CAST: return "cast";
+    case KIR_EXPR_COMPOUND: return "compound";
+    case KIR_EXPR_SIZEOF: return "sizeof";
     default: return "unknown";
     }
 }

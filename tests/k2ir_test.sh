@@ -32,6 +32,7 @@ native_abs :: (value: int) -> int #extern "c.abs"
 
 state {
     click_count: int = 0
+    label: [32] char = "hello"
 }
 
 Counter :: (app: App*) {
@@ -40,6 +41,12 @@ Counter :: (app: App*) {
         app->click_count += 1
     }
     value := click_count + 1
+    field_value := app->click_count
+    index_value := label[0]
+    neg_value := -index_value
+    float_value := 1.5
+    size_value := sizeof(label)
+    compound_value := (Rectangle){0,0,1,1}
 }
 EOF
 
@@ -67,6 +74,12 @@ grep -Fq 'expr int text 1 name  op' "$kir"
 grep -Fq 'stmt decl widget  args  text value := click_count + 1' "$kir"
 grep -Fq 'expr binary text click_count + 1 name  op +' "$kir"
 grep -Fq 'expr ident text click_count name click_count op' "$kir"
+grep -Fq 'expr pointer_member text app->click_count name click_count op ->' "$kir"
+grep -Fq 'expr index text label[0] name  op' "$kir"
+grep -Fq 'expr unary text -index_value name  op -' "$kir"
+grep -Fq 'expr float text 1.5 name  op' "$kir"
+grep -Fq 'expr sizeof text sizeof(label) name  op' "$kir"
+grep -Fq 'expr compound text (Rectangle){0,0,1,1} name  op' "$kir"
 if grep -Fq 'function WEB' "$kir"; then
     echo "top-level #defined binding was emitted as a function" >&2
     exit 1
