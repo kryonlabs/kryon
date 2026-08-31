@@ -61,10 +61,12 @@ OFILES=\
 	src/ui/guide.$O\
 	src/ui/icon_controls.$O\
 	src/ui/modal.$O\
+	src/ui/overlay.$O\
 	src/ui/profile_header.$O\
 	src/ui/reorder.$O\
 	src/ui/rows.$O\
 	src/ui/scroll.$O\
+	src/ui/spritesheet.$O\
 	src/ui/tab_bar.$O\
 	src/ui/terminal_pane.$O\
 	src/ui/terminal_pane_clipboard.$O\
@@ -97,6 +99,7 @@ OFILES=\
 	src/ui/ui_icons.$O\
 	src/ui/ui_inspect.$O\
 	src/ui/ui_layout.$O\
+	src/ui/ui_page.$O\
 	src/ui/ui_node_registry.$O\
 	src/ui/ui_picture_cache.$O\
 	src/ui/ui_scaling.$O\

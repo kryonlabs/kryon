@@ -168,6 +168,11 @@ void HideCursor(void)
 {
     write_mousectl("cursor off");
 }
+
+bool IsTextureValid(Texture2D texture)
+{
+    return texture.id != 0;
+}
 #endif
 
 static void
