@@ -60,7 +60,59 @@ sync_url_host_boundary(char ch)
 }
 
 static int
-sync_loopback_authority_valid(const char *authority)
+sync_parse_ipv4_host(const char *authority, int octets[4], size_t *host_len)
+{
+    size_t pos = 0;
+
+    if(authority == NULL || octets == NULL || host_len == NULL)
+        return 0;
+    for(int part = 0; part < 4; part++) {
+        int value = 0;
+        int digits = 0;
+
+        while(authority[pos] >= '0' && authority[pos] <= '9') {
+            value = value * 10 + (authority[pos] - '0');
+            if(value > 255 || ++digits > 3)
+                return 0;
+            pos++;
+        }
+        if(digits == 0)
+            return 0;
+        octets[part] = value;
+        if(part < 3) {
+            if(authority[pos] != '.')
+                return 0;
+            pos++;
+        }
+    }
+    if(!sync_url_host_boundary(authority[pos]))
+        return 0;
+    *host_len = pos;
+    return 1;
+}
+
+static int
+sync_private_ipv4_authority_valid(const char *authority)
+{
+    int octets[4];
+    size_t host_len;
+
+    if(!sync_parse_ipv4_host(authority, octets, &host_len))
+        return 0;
+    (void)host_len;
+    if(octets[0] == 10)
+        return 1;
+    if(octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+        return 1;
+    if(octets[0] == 192 && octets[1] == 168)
+        return 1;
+    if(octets[0] == 169 && octets[1] == 254)
+        return 1;
+    return 0;
+}
+
+static int
+sync_local_authority_valid(const char *authority)
 {
     static const char *const hosts[] = {"localhost", "127.0.0.1", "10.0.2.2"};
 
@@ -72,7 +124,7 @@ sync_loopback_authority_valid(const char *authority)
            sync_url_host_boundary(authority[len]))
             return 1;
     }
-    return 0;
+    return sync_private_ipv4_authority_valid(authority);
 }
 
 int
@@ -83,8 +135,8 @@ IsKsyncSyncURLValid(const char *url)
     if(sync_has_prefix(url, "https://"))
         return url[8] != '\0';
     if(sync_has_prefix(url, "http://"))
-        return sync_loopback_authority_valid(url + 7);
-    return sync_loopback_authority_valid(url);
+        return sync_local_authority_valid(url + 7);
+    return sync_local_authority_valid(url);
 }
 
 int

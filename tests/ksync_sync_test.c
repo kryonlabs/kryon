@@ -129,10 +129,21 @@ test_url_helpers(void)
 
     check(IsKsyncSyncURLValid("https://api.example.test"), "https url valid");
     check(IsKsyncSyncURLValid("localhost:8080"), "localhost shorthand valid");
+    check(IsKsyncSyncURLValid("192.168.100.97:18080"), "private lan shorthand valid");
+    check(IsKsyncSyncURLValid("http://10.1.2.3:18080"), "private 10/8 http valid");
+    check(IsKsyncSyncURLValid("http://172.16.0.1:18080"), "private 172.16/12 lower valid");
+    check(IsKsyncSyncURLValid("http://172.31.255.254:18080"), "private 172.16/12 upper valid");
     check(!IsKsyncSyncURLValid("http://example.test"), "plain remote http rejected");
+    check(!IsKsyncSyncURLValid("http://192.168.100.97.evil.test"),
+          "private-looking http hostname rejected");
+    check(!IsKsyncSyncURLValid("http://172.32.0.1:18080"),
+          "public 172 range http rejected");
     check(NormalizeKsyncSyncURL("localhost:8080", out, sizeof(out)) &&
               strcmp(out, "http://localhost:8080") == 0,
           "normalize localhost");
+    check(NormalizeKsyncSyncURL("192.168.100.97:18080", out, sizeof(out)) &&
+              strcmp(out, "http://192.168.100.97:18080") == 0,
+          "normalize private lan");
     check(JoinKsyncSyncURL(out, sizeof(out), "https://api.example.test/",
                                    "/api/v1/sync") &&
               strcmp(out, "https://api.example.test/api/v1/sync") == 0,
