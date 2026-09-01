@@ -296,6 +296,7 @@ KryAppDataRoot(const char *app_id)
     return root;
 }
 
+#if !ANDROID_BUILD
 int
 KryAppStorageGetString(const char *scope, const char *key,
                        const char *fallback, char *out, int out_size)
@@ -341,6 +342,7 @@ KryAppStorageSetString(const char *scope, const char *key, const char *value)
     }
     return fclose(f) == 0;
 }
+#endif
 
 int
 KryAppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
