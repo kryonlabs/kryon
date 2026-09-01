@@ -18,7 +18,10 @@ typedef struct SignalPool {
 } SignalPool;
 
 static SignalPool g_signal_pools[SIGNAL_POOLS_MAX];
-static SignalHandlerFn g_signal_handlers[NODE_CUSTOM + 1];
+/* Must cover application kinds from NodeRegisterCustomKind; mirrors the
+ * KRY_KIND_MAX cap in scene_tree.c. */
+#define KRY_SIGNAL_KINDS_MAX 64
+static SignalHandlerFn g_signal_handlers[KRY_SIGNAL_KINDS_MAX];
 
 static SignalPool *
 kry_signal_pool(Scene *scene)
@@ -41,7 +44,7 @@ kry_signal_pool(Scene *scene)
 void
 NodeKindRegisterSignalHandler(NodeKind kind, SignalHandlerFn fn)
 {
-    if(kind < 0 || kind > NODE_CUSTOM)
+    if(kind < 0 || (int)kind >= KRY_SIGNAL_KINDS_MAX)
         return;
     g_signal_handlers[kind] = fn;
 }

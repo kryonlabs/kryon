@@ -11,6 +11,20 @@
 
 static int failures;
 
+/* Signal handler for the custom-kind dispatch test below. */
+static int g_sig_probe_fired;
+
+static void
+sig_probe_handler(Scene *scene, NodeId target, NodeId emitter,
+                    const char *handler, PropertyValue arg)
+{
+    (void)scene;
+    (void)target;
+    (void)emitter;
+    (void)handler;
+    g_sig_probe_fired = arg.as.int_value;
+}
+
 /* Captures a node's world position when its ready hook fires, mirroring
  * Body2D which creates its b2 body at n->world during ready. */
 static Vector2 g_ready_probe_world;
@@ -193,6 +207,26 @@ main(void)
             n = NodeGet(&scene, faller);
             check_float("steered body moved right",
                         n->local.position.x > 20.0f, 1.0f, 0.0f);
+        }
+    }
+
+    /* signal handlers must work for application-defined kinds: custom
+     * kind ids sit beyond the builtins in the handler table */
+    {
+        NodeKind k = NodeRegisterCustomKind("sig_target");
+        NodeId emitter = NodeCreate(&scene, root, NODE_NODE2D, "emitter2");
+        NodeId target;
+
+        check_int("sig custom kind registered", k >= 0, 1);
+        if(k >= 0 && emitter >= 0) {
+            target = NodeCreate(&scene, root, k, "target2");
+            NodeKindRegisterSignalHandler(k, sig_probe_handler);
+            check_int("sig connect", SignalConnect(&scene, emitter, "ping",
+                                                   target, "on_ping"), 1);
+            g_sig_probe_fired = 0;
+            check_int("sig emit fires handler",
+                      SignalEmit(&scene, emitter, "ping", PropertyInt(42)), 1);
+            check_int("sig handler ran", g_sig_probe_fired, 42);
         }
     }
 
