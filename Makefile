@@ -871,10 +871,10 @@ $(APP_FRAMEWORK_TEST): tests/app_framework_test.c $(LIB) $(KRYON_BACKEND_LIBS) |
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(APP_STORAGE_TEST): tests/app_storage_test.c src/core/app_storage.c include/app_storage.h | $(BUILD_DIR)
+$(APP_STORAGE_TEST): tests/app_storage_test.c src/core/app_storage.c src/kry_std/kry_filesystem.c include/app_storage.h include/kry_filesystem.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_storage_test.c \
-		src/core/app_storage.c -o $@
+		src/core/app_storage.c src/kry_std/kry_filesystem.c -o $@
 
 $(KRY_AUTOMATION_TEST): tests/kry_automation_test.c src/core/kry_automation.c include/kry_automation.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
