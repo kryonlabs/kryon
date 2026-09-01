@@ -139,6 +139,48 @@ main(void)
         }
     }
 
+    /* Area2D sensor events: a monitoring area with a sensor shape records
+     * the dynamic body that enters it (the sensor event drain in the
+     * physics step emits body_enter signals). A sensor shape attaches to
+     * the nearest Body2D ancestor, so the area rides a static body. */
+    {
+        NodeId anchor = NodeCreate(&scene, root, NODE_BODY2D, "anchor");
+        NodeId area = NodeCreate(&scene, anchor, NODE_AREA2D, "trigger");
+        NodeId area_shape;
+        NodeId faller = NodeCreate(&scene, root, NODE_BODY2D, "faller");
+        NodeId faller_shape;
+        Area2DProps *ap;
+        Body2DProps *bp;
+        CollisionShape2DProps *sp;
+        int i;
+
+        bp = KryBody2DPropsAlloc(KRY_BODY2D_STATIC);
+        NodeSetProps(&scene, anchor, bp);
+        NodeSetPosition(&scene, anchor, 0.0f, 60.0f); /* +Y is down */
+        ap = KryArea2DPropsAlloc();
+        ap->monitoring = 1;
+        NodeSetProps(&scene, area, ap);
+        area_shape = NodeCreate(&scene, area, NODE_COLLISION_SHAPE2D, "s1");
+        sp = KryCollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 40.0f, 40.0f);
+        sp->is_sensor = 1;
+        NodeSetProps(&scene, area_shape, sp);
+
+        bp = KryBody2DPropsAlloc(KRY_BODY2D_DYNAMIC);
+        NodeSetProps(&scene, faller, bp);
+        faller_shape = NodeCreate(&scene, faller, NODE_COLLISION_SHAPE2D, "s2");
+        NodeSetProps(&scene, faller_shape, KryCollisionShape2DPropsAlloc(
+                         KRY_SHAPE2D_BOX, 10.0f, 10.0f));
+        NodeSetPosition(&scene, faller, 0.0f, 0.0f);
+
+        check_int("physics world", ScenePhysicsCreate(&scene, 0.0f, 200.0f), 1);
+        SceneTick(&scene, 0.0f); /* ready hooks create the bodies */
+        for(i = 0; i < 120; i++) {
+            ScenePhysicsTick(&scene, 1.0f / 60.0f);
+            SceneTick(&scene, 1.0f / 60.0f);
+        }
+        check_int("sensor enter recorded", ap->last_enter_body, faller);
+    }
+
     /* tick/draw on a scene with no window should not crash */
     SceneTick(&scene, 0.016f);
     ScenePhysicsTick(&scene, 0.016f);

@@ -11,7 +11,9 @@
 
 #include "scene_tree.h"
 #include "node2d_props.h"
+#include "kry_signal.h"
 #include <box2d/box2d.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -95,6 +97,7 @@ kry_body2d_create(Scene *scene, NodeId node, Body2DProps *props)
     bd.rotation = b2MakeRot(n->world.rotation);
     bd.fixedRotation = props->fixed_rotation != 0;
     bd.gravityScale = props->gravity_scale != 0.0f ? props->gravity_scale : 1.0f;
+    bd.userData = (void *)(intptr_t)node;
     bid = b2CreateBody(scene_world_id(scene), &bd);
     props->body_id_index = bid.index1;
     props->body_id_world = bid.world0;
@@ -148,6 +151,10 @@ kry_collision_shape2d_attach(Scene *scene, NodeId node,
         return;
     sd = b2DefaultShapeDef();
     sd.isSensor = props->is_sensor != 0;
+    /* Box2D disables sensor events on every shape by default (even
+     * sensors); without this flag no overlap events are ever reported. */
+    sd.enableSensorEvents = true;
+    sd.userData = (void *)(intptr_t)node;
     if(props->shape_kind == KRY_SHAPE2D_CIRCLE) {
         b2Circle circle;
         circle.center.x = 0.0f;
@@ -194,6 +201,74 @@ KryArea2DPropsAlloc(void)
 
 extern void (*kry_scene_physics_step_fn)(Scene *scene, float dt);
 
+/* The sensor shape's CollisionShape2D node walks up to its Area2D; the
+ * visitor shape's node walks up to its Body2D. Returns -1 when the chain
+ * does not lead to the wanted kind. */
+static NodeId
+kry_sensor_owner(Scene *scene, b2ShapeId shape, NodeKind wanted)
+{
+    Node *n;
+
+    if(!b2Shape_IsValid(shape))
+        return -1;
+    n = NodeGet(scene, (NodeId)(intptr_t)b2Shape_GetUserData(shape));
+    while(n != NULL && (n->flags & NODE_FLAG_ALIVE) != 0) {
+        if(n->kind == wanted)
+            return n->id;
+        if(n->parent < 0)
+            break;
+        n = &scene->nodes[n->parent];
+    }
+    return -1;
+}
+
+static void
+kry_sensor_signal(Scene *scene, b2ShapeId sensor_shape, b2ShapeId visitor_shape,
+                  int begin)
+{
+    NodeId area = kry_sensor_owner(scene, sensor_shape, NODE_AREA2D);
+    NodeId body = kry_sensor_owner(scene, visitor_shape, NODE_BODY2D);
+    Node *area_node;
+    Area2DProps *props;
+
+    if(area < 0 || body < 0)
+        return;
+    area_node = NodeGet(scene, area);
+    if(area_node == NULL)
+        return;
+    props = (Area2DProps *)area_node->props;
+    if(props == NULL || !props->monitoring)
+        return;
+    if(begin) {
+        props->last_enter_body = body;
+        SignalEmit(scene, area, "body_enter", PropertyInt(body));
+    } else {
+        props->last_exit_body = body;
+        SignalEmit(scene, area, "body_exit", PropertyInt(body));
+    }
+}
+
+/* Drain Box2D sensor overlap events accumulated by the last step and
+ * surface them as Area2D body_enter/body_exit signals. */
+static void
+kry_scene_drain_sensor_events(Scene *scene)
+{
+    b2SensorEvents events;
+    int i;
+
+    events = b2World_GetSensorEvents(scene_world_id(scene));
+    for(i = 0; i < events.beginCount; i++) {
+        kry_sensor_signal(scene, events.beginEvents[i].sensorShapeId,
+                          events.beginEvents[i].visitorShapeId, 1);
+    }
+    for(i = 0; i < events.endCount; i++) {
+        /* End events may reference shapes destroyed this step; the signal
+         * only fires when both nodes are still resolvable. */
+        kry_sensor_signal(scene, events.endEvents[i].sensorShapeId,
+                          events.endEvents[i].visitorShapeId, 0);
+    }
+}
+
 static void
 kry_scene_physics_step(Scene *scene, float dt)
 {
@@ -201,6 +276,7 @@ kry_scene_physics_step(Scene *scene, float dt)
         return;
     /* fixed-substep integration; 4 sub-steps is Box2Ds recommended default */
     b2World_Step(scene_world_id(scene), dt, 4);
+    kry_scene_drain_sensor_events(scene);
 }
 
 void
