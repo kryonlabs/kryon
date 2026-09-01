@@ -692,6 +692,161 @@ SegmentedControl(SegmentedControlProps control)
     return result;
 }
 
+static void
+score_label(char *buffer, size_t buffer_size, int value)
+{
+    if(buffer == NULL || buffer_size == 0)
+        return;
+    if(value > 0)
+        snprintf(buffer, buffer_size, "+%d", value);
+    else
+        snprintf(buffer, buffer_size, "%d", value);
+}
+
+static int
+score_control_count(ScoreControlProps control)
+{
+    int min_value = control.min_value;
+    int max_value = control.max_value;
+
+    if(min_value == 0 && max_value == 0) {
+        min_value = -3;
+        max_value = 3;
+    }
+    if(max_value < min_value)
+        return 0;
+    return max_value - min_value + 1;
+}
+
+int
+GetScoreControlHeight(ScoreControlProps control)
+{
+    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
+    int row_h = control.height > 0 ? control.height : ScaleUIPx(34);
+    int item_w = control.min_item_width > 0
+                     ? control.min_item_width
+                     : ScaleUIPx(42);
+    int count = score_control_count(control);
+    int per_row;
+    int rows;
+
+    if(count <= 0 || row_h <= 0)
+        return 0;
+    if(control.bounds.width <= 0 || !control.wrap)
+        return row_h;
+    per_row = ((int)control.bounds.width + gap) / (item_w + gap);
+    if(per_row < 1)
+        per_row = 1;
+    rows = (count + per_row - 1) / per_row;
+    return rows * row_h + (rows - 1) * gap;
+}
+
+ScoreControlResult
+ScoreControl(ScoreControlProps control)
+{
+    ScoreControlResult result;
+    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
+    int row_h = control.height > 0 ? control.height : ScaleUIPx(34);
+    int item_w = control.min_item_width > 0
+                     ? control.min_item_width
+                     : ScaleUIPx(42);
+    int min_value = control.min_value;
+    int max_value = control.max_value;
+    int count;
+    int per_row;
+    int selected = control.value != NULL ? *control.value : 0;
+
+    memset(&result, 0, sizeof(result));
+    result.value = selected;
+    result.clicked_value = selected;
+    result.height = GetScoreControlHeight(control);
+
+    if(min_value == 0 && max_value == 0) {
+        min_value = -3;
+        max_value = 3;
+    }
+    count = max_value - min_value + 1;
+    if(count <= 0 || control.bounds.width <= 0 || row_h <= 0)
+        return result;
+
+    per_row = count;
+    if(control.wrap) {
+        per_row = ((int)control.bounds.width + gap) / (item_w + gap);
+        if(per_row < 1)
+            per_row = 1;
+        if(per_row > count)
+            per_row = count;
+    }
+
+    for(int row_start = 0, row_index = 0; row_start < count;
+        row_start += per_row, row_index++) {
+        int row_count = count - row_start;
+        int x;
+        int y = (int)control.bounds.y + row_index * (row_h + gap);
+        int button_w;
+
+        if(row_count > per_row)
+            row_count = per_row;
+        button_w = control.wrap
+                       ? ((int)control.bounds.width - gap * (row_count - 1)) /
+                             row_count
+                       : item_w;
+        if(button_w < 1)
+            button_w = 1;
+        x = (int)control.bounds.x;
+        if(control.wrap)
+            x += ((int)control.bounds.width -
+                  (button_w * row_count + gap * (row_count - 1))) /
+                 2;
+
+        for(int i = 0; i < row_count; i++) {
+            int value = min_value + row_start + i;
+            int focus_id = control.id > 0 ? control.id * 100 + row_start + i + 1
+                                          : 0;
+            int selected_value = value == selected;
+            char label[16];
+            ButtonSpec button;
+
+            score_label(label, sizeof(label), value);
+            memset(&button, 0, sizeof(button));
+            button.bounds = (Rectangle){(float)x, (float)y,
+                                        (float)button_w, (float)row_h};
+            button.label = label;
+            button.font = font;
+            button.focus_id = focus_id;
+            ui_button_style_colors(selected_value ? ButtonStyleTabSelected
+                                                  : ButtonStyleSecondary,
+                                   &button.background,
+                                   &button.hover_background,
+                                   &button.text);
+            if(value < 0 && !selected_value) {
+                button.background = DarkenUIColor(c_bg, 10);
+                button.hover_background = DarkenUIColor(c_bg, 4);
+                button.text = Fade(c_text, 0.78f);
+            } else if(value > 0 && !selected_value) {
+                button.background = c_surface;
+                button.hover_background = LightenUIColor(c_surface, 8);
+                button.text = c_text;
+            }
+            button.border = selected_value ? c_button : Fade(c_text, 0.30f);
+            button.radius = 0.08f;
+            if(RenderButton(button)) {
+                result.clicked = 1;
+                result.clicked_value = value;
+                if(control.value != NULL && *control.value != value) {
+                    *control.value = value;
+                    result.changed = 1;
+                }
+                result.value = value;
+            }
+            x += button_w + gap;
+        }
+    }
+
+    return result;
+}
+
 int
 DrawUIInfoButton(int center_x, int center_y, int diameter)
 {

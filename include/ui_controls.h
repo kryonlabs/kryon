@@ -253,6 +253,27 @@ typedef struct {
     int height;
 } SegmentedControlResult;
 
+typedef struct {
+    Rectangle bounds;
+    int id;
+    int min_value;
+    int max_value;
+    int *value;
+    int font;
+    int gap;
+    int height;
+    int min_item_width;
+    int wrap;
+} ScoreControlProps;
+
+typedef struct {
+    int value;
+    int clicked;
+    int clicked_value;
+    int changed;
+    int height;
+} ScoreControlResult;
+
 UIStyleTokens GetUIStyleTokens(void);
 UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
 UIMaterialScheme GetUIMaterialScheme(void);
@@ -274,6 +295,8 @@ int RenderStyledButton(int x, int y, int w, int h, const char *label,
                        ButtonStyle style, int disabled, int *hover);
 int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
+int GetScoreControlHeight(ScoreControlProps control);
+ScoreControlResult ScoreControl(ScoreControlProps control);
 
 void SetUIDropdownClipTop(int top);
 void SetUIDropdownClipBottom(int bottom);

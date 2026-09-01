@@ -1278,6 +1278,38 @@ int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 ```
 
+#### Score Control
+
+Responsive signed score selector for compact voting, rating, and priority
+inputs. It uses Kryon button, focus, text, and wrapping layout primitives, and
+stores the selected integer through the supplied value pointer.
+
+```c
+typedef struct {
+    Rectangle bounds;
+    int id;
+    int min_value;
+    int max_value;
+    int *value;
+    int font;
+    int gap;
+    int height;
+    int min_item_width;
+    int wrap;
+} ScoreControlProps;
+
+typedef struct {
+    int value;
+    int clicked;
+    int clicked_value;
+    int changed;
+    int height;
+} ScoreControlResult;
+
+int GetScoreControlHeight(ScoreControlProps control);
+ScoreControlResult ScoreControl(ScoreControlProps control);
+```
+
 ---
 
 ### Modals
