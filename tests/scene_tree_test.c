@@ -11,6 +11,22 @@
 
 static int failures;
 
+/* Captures a node's world position when its ready hook fires, mirroring
+ * Body2D which creates its b2 body at n->world during ready. */
+static Vector2 g_ready_probe_world;
+static int g_ready_probe_fired;
+
+static void
+ready_probe_ready(Scene *scene, NodeId node)
+{
+    Node *n = NodeGet(scene, node);
+
+    g_ready_probe_fired = 1;
+    if(n != NULL)
+        g_ready_probe_world = n->world.position;
+}
+
+
 static void
 check_int(const char *name, int got, int want)
 {
@@ -92,6 +108,35 @@ main(void)
         NodeSetProps(&scene, cam, props);
         SceneTick(&scene, 0.016f); /* fires ready on cam -> claims active_camera */
         check_int("active camera set", scene.active_camera, cam);
+    }
+
+    /* ready hooks must see computed world transforms (Body2D creates its
+     * b2 body at n->world during ready, so a stale identity transform put
+     * every body at the origin) */
+    {
+        static const NodeOps probe_ops = {
+            ready_probe_ready, NULL, NULL, NULL
+        };
+        NodeKind custom = NodeRegisterCustomKind("ready_world_probe");
+        NodeId parent2 = NodeCreate(&scene, root, NODE_NODE2D, "p2");
+        NodeId probe;
+
+        check_int("custom kind registered", custom >= 0, 1);
+        check_int("probe parent created", parent2 >= 0, 1);
+        if(custom >= 0) {
+            NodeRegisterOps(custom, &probe_ops);
+            probe = NodeCreate(&scene, parent2, custom, "probe");
+            check_int("probe created", probe >= 0, 1);
+            NodeSetPosition(&scene, parent2, 100.0f, 100.0f);
+            NodeSetPosition(&scene, probe, 10.0f, 20.0f);
+            g_ready_probe_fired = 0;
+            SceneTick(&scene, 0.0f);
+            check_int("probe ready fired", g_ready_probe_fired, 1);
+            check_float("ready sees composed world x",
+                        g_ready_probe_world.x, 110.0f, 0.001f);
+            check_float("ready sees composed world y",
+                        g_ready_probe_world.y, 120.0f, 0.001f);
+        }
     }
 
     /* tick/draw on a scene with no window should not crash */

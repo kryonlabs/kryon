@@ -374,8 +374,20 @@ SceneTick(Scene *scene, float dt)
 
     if(scene == NULL || scene->root < 0)
         return;
-    kry_node_fire_ready(scene, scene->root);
+    /* World transforms are computed BEFORE ready hooks fire: ready hooks
+     * like Body2D body creation and Camera2D activation read n->world, and
+     * a freshly created node's world is still identity at this point. */
     kry_node_update_world(scene, scene->root);
+    kry_node_fire_ready(scene, scene->root);
+    /* A ready hook may mutate local transforms (marking them dirty); fold
+     * those into this tick's world state before process hooks run. */
+    for(i = 0; i < scene->count; i++) {
+        if((scene->nodes[i].flags & NODE_FLAG_ALIVE) &&
+           (scene->nodes[i].flags & NODE_FLAG_DIRTY)) {
+            kry_node_update_world(scene, scene->root);
+            break;
+        }
+    }
 
     scaled_dt = dt * scene->time_scale;
     for(i = 0; i < scene->count; i++) {
