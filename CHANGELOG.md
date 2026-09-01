@@ -1,4 +1,86 @@
 # Changelog
+## v0.1.38 - 2026-09-01
+
+### Changed
+
+- Release: bump version to v0.1.38
+- Build KRB mount test before running it
+- Link app storage test filesystem helper
+- Allow local network sync URLs
+- Guard file app storage on Android
+- Add responsive score control
+- Add responsive segmented control
+- Fallback to fonttools module for subsets
+- Add UI font registration from text corpus
+- Deduplicate bubbled web input events
+- Add shared native Plan 9 application build rules
+- Add KryAppDataRoot for per-user app data
+- Keep the plan9 rewrite result heap owned
+- Iterate the plan9 rewrite for nested literals
+- Flatten cast literals nested in field values
+- Restrict array literal zeroing to declarations
+- Zero arrays declared from matching array literals
+- Accept size expressions in array cast validation
+- Flatten bracketed array compound literals
+- Split array cast types and strip inline in plan9 declarations
+- Fix FreeBSD Android DPI test link
+- Remove Inbe from Kryon showcase page
+- Update showcase and Pages deployment
+- Make web embeds resize to their host frame
+- Refuse member selections on call results in plan9 typing
+- Reject statement keywords as plan9 prototype types
+- Parse split static headers that open their body inline
+- Join split static prototype prefixes in the plan9 header scan
+- Unify void pointers in plan9 expression typing
+- Type array casts with size expressions and libc comparisons in the plan9 pass
+- Finish plan9 initializer typing: floats, ternaries, externs, arrays
+- Type parenthesized and logical initializer expressions in the plan9 pass
+- Drop the struct field table from the plan9 pass
+- Keep the base identifier typing under member chains
+- Restrict struct-body detection in the plan9 field scan
+- Type struct fields and member chains in the k2c plan9 pass
+- Allow pointer stars in plan9 prototype return types
+- Reject expression text in the k2c plan9 prototype map
+- Broaden the k2c plan9 type resolution
+- Type initializer expressions in the k2c plan9 pass
+- Resolve more initializer shapes in the k2c plan9 pass
+- Add a plan9-safe output mode to k2c
+- Match Canvas2D random values to raylib
+- Cache web automation query options
+- Ignore empty automation env options
+- Add automation options for test runs
+- Pace Canvas2D frames with browser vsync
+- Respect target FPS on Canvas2D
+- Render docs IDE previews directly on canvas
+- Build the ksync crypto primitives for Plan 9
+- Honor Canvas2D texture filters
+- Add web routing stubs to the libdraw backend
+- Add android_host and DOM page stubs to the Plan 9 library
+- Add the page, overlay, and spritesheet objects and IsTextureValid to the Plan 9 build
+- Provide ShowCursor and HideCursor on the native Plan 9 backend
+- Improve Debian platform icon
+- Define SIZE_MAX in the Plan 9 libc shim umbrella
+- Define SIZE_MAX in the Plan 9 limits shim
+- Implement rename for the native Plan 9 runtime
+- Flatten the remaining form section label compound literal for 8c
+- Avoid multi-field designated compound literals in 8c sources
+- Export immediate button controls
+- Flatten nested designated initializers in form row helpers
+- Guard GTK tray fallback deprecation
+- Fix KIR parser recursion and tool warnings
+- Provide fmaxf/fminf in the Plan 9 math shim
+- Add native spritesheet helpers
+- Fix recursive KIR expression parsing
+- Clean up Kryon build warnings
+- Improve Kry language tooling
+- Test dismissible overlay input capture
+- Add dismissible overlay helper
+- Use viewport scale as Android DPI floor
+- Stabilize Android viewport scaling
+- Add Android viewport policy resolver
+- Fix Android UI density scaling
+- Implement libdraw texture updates
+
 ## v0.1.37 - 2026-08-30
 
 ### Changed
