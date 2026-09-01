@@ -170,6 +170,13 @@ NodeKind NodeRegisterCustomKind(const char *name);
 int ScenePhysicsCreate(Scene *scene, float gravity_x, float gravity_y);
 void ScenePhysicsDestroy(Scene *scene);
 
+/* --- direct Body2D control (players, kinematic platforms) --- */
+/* Teleport a body; the node transform follows on the next tick. */
+void KryBody2DSetTransform(Scene *scene, NodeId node, float x, float y);
+/* Set/read linear velocity in scene units per second. */
+void KryBody2DSetVelocity(Scene *scene, NodeId node, float vx, float vy);
+void KryBody2DGetVelocity(Scene *scene, NodeId node, float *vx, float *vy);
+
 /* Optional per-kind teardown hook for freeing props/state allocations. */
 typedef void (*NodeDestroyFn)(Scene *scene, Node *node);
 void NodeRegisterDestroy(NodeKind kind, NodeDestroyFn destroy);

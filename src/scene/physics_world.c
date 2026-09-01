@@ -197,6 +197,73 @@ KryArea2DPropsAlloc(void)
     return p;
 }
 
+/* Direct body control for kinematic/dynamic steering (players, platforms).
+ * The transform setter also marks the node dirty so the next tick
+ * recomputes its world transform. */
+void
+KryBody2DSetTransform(Scene *scene, NodeId node, float x, float y)
+{
+    Node *n = NodeGet(scene, node);
+    Body2DProps *props;
+    b2BodyId bid;
+
+    if(n == NULL || n->kind != NODE_BODY2D)
+        return;
+    props = (Body2DProps *)n->props;
+    if(props == NULL || props->body_id_index == 0)
+        return;
+    bid = body2d_id(props);
+    if(!b2Body_IsValid(bid))
+        return;
+    b2Body_SetTransform(bid, (b2Vec2){x, y}, b2Body_GetRotation(bid));
+    n->flags |= NODE_FLAG_DIRTY;
+}
+
+void
+KryBody2DSetVelocity(Scene *scene, NodeId node, float vx, float vy)
+{
+    Node *n = NodeGet(scene, node);
+    Body2DProps *props;
+    b2BodyId bid;
+
+    if(n == NULL || n->kind != NODE_BODY2D)
+        return;
+    props = (Body2DProps *)n->props;
+    if(props == NULL || props->body_id_index == 0)
+        return;
+    bid = body2d_id(props);
+    if(!b2Body_IsValid(bid))
+        return;
+    b2Body_SetLinearVelocity(bid, (b2Vec2){vx, vy});
+}
+
+void
+KryBody2DGetVelocity(Scene *scene, NodeId node, float *vx, float *vy)
+{
+    Node *n = NodeGet(scene, node);
+    Body2DProps *props;
+    b2BodyId bid;
+    b2Vec2 v;
+
+    if(vx != NULL)
+        *vx = 0.0f;
+    if(vy != NULL)
+        *vy = 0.0f;
+    if(n == NULL || n->kind != NODE_BODY2D)
+        return;
+    props = (Body2DProps *)n->props;
+    if(props == NULL || props->body_id_index == 0)
+        return;
+    bid = body2d_id(props);
+    if(!b2Body_IsValid(bid))
+        return;
+    v = b2Body_GetLinearVelocity(bid);
+    if(vx != NULL)
+        *vx = v.x;
+    if(vy != NULL)
+        *vy = v.y;
+}
+
 /* --- world stepping --- */
 
 extern void (*kry_scene_physics_step_fn)(Scene *scene, float dt);

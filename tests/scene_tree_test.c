@@ -179,6 +179,21 @@ main(void)
             SceneTick(&scene, 1.0f / 60.0f);
         }
         check_int("sensor enter recorded", ap->last_enter_body, faller);
+
+        /* direct body control: velocity steering moves the body */
+        {
+            float fx, fy;
+
+            KryBody2DGetVelocity(&scene, faller, &fx, &fy);
+            KryBody2DSetVelocity(&scene, faller, 50.0f, 0.0f);
+            for(i = 0; i < 30; i++)
+                ScenePhysicsTick(&scene, 1.0f / 60.0f);
+            KryBody2DGetVelocity(&scene, faller, &fx, &fy);
+            check_float("velocity read back", fx, 50.0f, 0.01f);
+            n = NodeGet(&scene, faller);
+            check_float("steered body moved right",
+                        n->local.position.x > 20.0f, 1.0f, 0.0f);
+        }
     }
 
     /* tick/draw on a scene with no window should not crash */
