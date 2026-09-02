@@ -93,6 +93,19 @@ EM_JS(void, js_texture_free, (int id), {
     if (K.targets) delete K.targets[id];
 });
 
+EM_JS(void, js_texture_update_rgba,
+      (int id, int ptr, int x, int y, int w, int h), {
+    var K = globalThis.__kryCanvas;
+    var cv = K && K.textures ? K.textures[id] : null;
+    if (!cv || !cv.getContext || !ptr || w <= 0 || h <= 0) return;
+    var c2 = cv.getContext('2d');
+    var img = c2.createImageData(w, h);
+    img.data.set(HEAPU8.subarray(ptr, ptr + w * h * 4));
+    c2.putImageData(img, x, y);
+    /* Tint copies contain pixels from the previous texture contents. */
+    if (K.tints) K.tints = {};
+});
+
 EM_JS(void, js_texture_filter, (int id, int filter), {
     var K = globalThis.__kryCanvas;
     if (!K || !K.textures[id]) return;
@@ -259,6 +272,28 @@ void UnloadTexture(Texture2D texture)
 {
     if(texture.id != 0)
         js_texture_free((int)texture.id);
+}
+
+void UpdateTexture(Texture2D texture, const void *pixels)
+{
+    if(texture.id == 0 || pixels == NULL || texture.width <= 0 ||
+       texture.height <= 0)
+        return;
+    js_texture_update_rgba((int)texture.id, (int)(size_t)pixels, 0, 0,
+                           texture.width, texture.height);
+}
+
+void UpdateTextureRec(Texture2D texture, Rectangle rec, const void *pixels)
+{
+    int x = (int)rec.x;
+    int y = (int)rec.y;
+    int width = (int)rec.width;
+    int height = (int)rec.height;
+
+    if(texture.id == 0 || pixels == NULL || width <= 0 || height <= 0)
+        return;
+    js_texture_update_rgba((int)texture.id, (int)(size_t)pixels,
+                           x, y, width, height);
 }
 
 void SetTextureFilter(Texture2D texture, int filter)
