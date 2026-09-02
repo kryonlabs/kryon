@@ -35,6 +35,16 @@ typedef struct Sprite2DProps {
 Camera2DProps *KryCamera2DPropsAlloc(float zoom, int active);
 Sprite2DProps *KrySprite2DPropsAlloc(const char *asset_path, float w, float h);
 
+/* Light2D: a soft, additive point light rendered in world space. */
+typedef struct Light2DProps {
+    float radius;       /* world-space falloff radius */
+    Color color;        /* emitted color; alpha participates in energy */
+    float energy;       /* 0 disables visible output; 1 is full strength */
+    int enabled;
+} Light2DProps;
+
+Light2DProps *KryLight2DPropsAlloc(float radius, Color color, float energy);
+
 typedef enum KryBody2DType {
     KRY_BODY2D_STATIC,
     KRY_BODY2D_KINEMATIC,

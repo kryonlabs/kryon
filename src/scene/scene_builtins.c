@@ -29,6 +29,7 @@ void kry_register_animation_player(void);
 void kry_register_animated_sprite2d(void);
 void kry_register_tilemap(void);
 void kry_register_audio_source(void);
+void kry_register_light2d(void);
 
 /* installed by physics_world.c; declared in scene_tree.c. The pointer itself
  * lives in scene_tree.c (always linked) and stays NULL when physics is off. */
@@ -52,6 +53,7 @@ SceneRegisterBuiltins(void)
     kry_register_animated_sprite2d();
     kry_register_tilemap();
     kry_register_audio_source();
+    kry_register_light2d();
     SceneRegisterBuiltinProperties();
 #if KRYON_WITH_PHYSICS
     kry_physics_step_install();
@@ -82,6 +84,19 @@ KrySprite2DPropsAlloc(const char *asset_path, float w, float h)
     if(p != NULL) {
         p->asset_path = asset_path;
         p->size = (Vector2){w, h};
+    }
+    return p;
+}
+
+Light2DProps *
+KryLight2DPropsAlloc(float radius, Color color, float energy)
+{
+    Light2DProps *p = calloc(1, sizeof(*p));
+    if(p != NULL) {
+        p->radius = radius;
+        p->color = color;
+        p->energy = energy;
+        p->enabled = 1;
     }
     return p;
 }

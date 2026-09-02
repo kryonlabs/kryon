@@ -117,6 +117,7 @@ builtin_kind_name(int kind)
     case NODE_BODY2D: return "Body2D";
     case NODE_TIMER: return "Timer";
     case NODE_AUDIO_SOURCE: return "AudioSource";
+    case NODE_LIGHT2D: return "Light2D";
     case NODE_CUSTOM: return "Custom";
     default: return NULL;
     }

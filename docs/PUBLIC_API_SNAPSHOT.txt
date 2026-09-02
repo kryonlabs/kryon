@@ -48,6 +48,7 @@ include/app_host.h macro APP_HOST_ABI_VERSION
 include/app_host.h typedef AppScreenInfo
 include/app_host.h typedef CreateAppHostCallback
 include/app_host.h typedef DestroyAppHostCallback
+include/app_instance.h function InstanceRejected
 include/app_instance.h function SetSingleInstance
 include/app_instance.h function SingleInstanceEnabled
 include/app_runtime.h function BindAppHost
@@ -733,11 +734,15 @@ include/scene_tree.h enum NODE_CUSTOM
 include/scene_tree.h enum NODE_FLAG_ALIVE
 include/scene_tree.h enum NODE_FLAG_DIRTY
 include/scene_tree.h enum NODE_FLAG_READY
+include/scene_tree.h enum NODE_LIGHT2D
 include/scene_tree.h enum NODE_NODE2D
 include/scene_tree.h enum NODE_ROOT
 include/scene_tree.h enum NODE_SPRITE2D
 include/scene_tree.h enum NODE_TILEMAP
 include/scene_tree.h enum NODE_TIMER
+include/scene_tree.h function KryBody2DGetVelocity
+include/scene_tree.h function KryBody2DSetTransform
+include/scene_tree.h function KryBody2DSetVelocity
 include/scene_tree.h function NodeCreate
 include/scene_tree.h function NodeFindChild
 include/scene_tree.h function NodeKindCount

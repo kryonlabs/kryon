@@ -36,6 +36,7 @@ typedef enum NodeKind {
     NODE_BODY2D,
     NODE_TIMER,
     NODE_AUDIO_SOURCE,
+    NODE_LIGHT2D,
     NODE_CUSTOM
 } NodeKind;
 

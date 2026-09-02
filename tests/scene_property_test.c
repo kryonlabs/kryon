@@ -53,6 +53,7 @@ main(void)
     NodeId node_a;
     NodeId node_b;
     NodeId sprite;
+    NodeId light;
     PropertyValue v;
     const PropertySpec *specs;
     int spec_count;
@@ -93,6 +94,19 @@ main(void)
     v = SceneNodeGetPropertyByName(&scene, sprite, "asset_path");
     check_int("asset_path property kind", v.kind, PROPERTY_ASSET_PATH);
     check_int("asset_path value", strcmp(v.as.string_value, "tiles/tile.png"), 0);
+
+    /* --- property model: Light2D rendering props --- */
+    light = NodeCreate(&scene, scene.root, NODE_LIGHT2D, "lamp");
+    NodeSetProps(&scene, light,
+                 KryLight2DPropsAlloc(96.0f, (Color){120, 80, 220, 180}, 0.75f));
+    specs = ScenePropertySpecs(NODE_LIGHT2D, &spec_count);
+    check_int("Light2D property count", spec_count, 7);
+    v = SceneNodeGetPropertyByName(&scene, light, "radius");
+    check_float("Light2D radius", v.as.float_value, 96.0f, 0.001f);
+    check_int("set Light2D enabled", SceneNodeSetPropertyByName(
+                  &scene, light, "enabled", PropertyBool(0)), 1);
+    v = SceneNodeGetPropertyByName(&scene, light, "enabled");
+    check_int("Light2D enabled round-trips", v.as.bool_value, 0);
 
     /* --- signals: connect + emit + dispatch --- */
     node_b = NodeCreate(&scene, scene.root, NODE_NODE2D, "b");

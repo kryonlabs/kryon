@@ -145,6 +145,11 @@ int main(void)
         DrawRectangleGradientEx((Rectangle){240, 176, 60, 18},
                                 RED, GREEN, BLUE, WHITE);
         DrawCircle(200, 120, 30, (Color){0, 228, 48, 255});
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawCircleGradient((Vector2){200, 120}, 42,
+                           (Color){100, 80, 255, 180},
+                           (Color){100, 80, 255, 0});
+        EndBlendMode();
         DrawCircleLinesV((Vector2){200, 120}, 34, WHITE);
         DrawCircleLinesEx((Vector2){200, 120}, 38, 3.0f,
                           (Color){40, 180, 240, 255});

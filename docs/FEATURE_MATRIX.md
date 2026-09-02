@@ -184,7 +184,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Node | C | ✅ | k2g | Go | KRB |
 |---|---|---|---|---|---|
 | Scene / Node2D / Camera2D | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Sprite2D / AnimatedSprite2D / TileMap / TileLayer | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D | ✅ | ✅ | ✗ | ✗ | ✗ |
 | CollisionShape2D / Area2D / Body2D (box2d) | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Timer / AudioSource / AnimationPlayer | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Signals (`KrySignal`) / keyframe animation | ✅ | ✅ | ✗ | ✗ | ✗ |

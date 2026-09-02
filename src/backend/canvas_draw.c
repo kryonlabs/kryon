@@ -44,6 +44,32 @@ EM_JS(void, js_draw_gradient_h, (double x, double y, double w, double h,
     ctx.fillRect(x, y, w, h);
 });
 
+EM_JS(void, js_draw_circle_gradient, (double x, double y, double radius,
+                                      int ir, int ig, int ib, int ia,
+                                      int or_, int og, int ob, int oa), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.ctxNow();
+    if (!ctx || radius <= 0) return;
+    var gr = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gr.addColorStop(0, K.col(ir, ig, ib, ia));
+    gr.addColorStop(1, K.col(or_, og, ob, oa));
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2, false);
+    ctx.fill();
+});
+
+EM_JS(void, js_blend_mode, (int mode, int begin), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K.ctxNow();
+    if (!ctx) return;
+    if (!begin) { ctx.restore(); return; }
+    ctx.save();
+    if (mode === 1) ctx.globalCompositeOperation = 'lighter';
+    else if (mode === 2) ctx.globalCompositeOperation = 'multiply';
+    else ctx.globalCompositeOperation = 'source-over';
+});
+
 EM_JS(void, js_draw_gradient_ex, (double x, double y, double w, double h,
                                   int c1r, int c1g, int c1b, int c1a,
                                   int c2r, int c2g, int c2b, int c2a,
@@ -349,6 +375,23 @@ void DrawCircleV(Vector2 center, float radius, Color color)
 {
     js_ctx_call(3, center.x, center.y, radius, 0, 0, 0, 0,
                 color.r, color.g, color.b, color.a);
+}
+
+void DrawCircleGradient(Vector2 center, float radius, Color inner, Color outer)
+{
+    js_draw_circle_gradient(center.x, center.y, radius,
+                            inner.r, inner.g, inner.b, inner.a,
+                            outer.r, outer.g, outer.b, outer.a);
+}
+
+void BeginBlendMode(int mode)
+{
+    js_blend_mode(mode, 1);
+}
+
+void EndBlendMode(void)
+{
+    js_blend_mode(0, 0);
 }
 
 void DrawCircleLines(int centerX, int centerY, float radius, Color color)

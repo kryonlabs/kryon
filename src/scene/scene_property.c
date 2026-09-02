@@ -128,6 +128,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
     case NODE_NODE2D:
     case NODE_CAMERA2D:
     case NODE_SPRITE2D:
+    case NODE_LIGHT2D:
         /* indices 0..2 are shared transform fields on every Node2D-base kind */
         if(index == 0)
             return PropertyVector2(n->local.position);
@@ -156,6 +157,18 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
             return PropertyVector2(p->size);
         if(index == 5)
             return PropertyColor(p->tint);
+    }
+
+    if(n->kind == NODE_LIGHT2D && n->props != NULL) {
+        Light2DProps *p = (Light2DProps *)n->props;
+        if(index == 3)
+            return PropertyFloat(p->radius);
+        if(index == 4)
+            return PropertyColor(p->color);
+        if(index == 5)
+            return PropertyFloat(p->energy);
+        if(index == 6)
+            return PropertyBool(p->enabled);
     }
 
     return out;
@@ -209,6 +222,7 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
     case NODE_NODE2D:
     case NODE_CAMERA2D:
     case NODE_SPRITE2D:
+    case NODE_LIGHT2D:
         if(index == 0) {
             n->local.position = value.as.vector2_value;
             n->flags |= NODE_FLAG_DIRTY;
@@ -255,6 +269,26 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
         }
         if(index == 5) {
             p->tint = value.as.color_value;
+            return 1;
+        }
+    }
+
+    if(n->kind == NODE_LIGHT2D && n->props != NULL) {
+        Light2DProps *p = (Light2DProps *)n->props;
+        if(index == 3) {
+            p->radius = value.as.float_value;
+            return 1;
+        }
+        if(index == 4) {
+            p->color = value.as.color_value;
+            return 1;
+        }
+        if(index == 5) {
+            p->energy = value.as.float_value;
+            return 1;
+        }
+        if(index == 6) {
+            p->enabled = value.as.bool_value;
             return 1;
         }
     }
@@ -319,6 +353,16 @@ static const PropertySpec kry_sprite2d_props[] = {
     {"tint", "Tint", "Sprite", PROPERTY_COLOR, 0, 0, 0, 1, 0, {0}},
 };
 
+static const PropertySpec kry_light2d_props[] = {
+    {"position", "Position", "Transform", PROPERTY_VECTOR2, 0, 0, 0, 1, 0, {0}},
+    {"rotation", "Rotation", "Transform", PROPERTY_FLOAT, 0, -6.2832f, 6.2832f, 0.01f, 0, {0}},
+    {"scale", "Scale", "Transform", PROPERTY_VECTOR2, 0, 0, 0, 1, 0, {0}},
+    {"radius", "Radius", "Light", PROPERTY_FLOAT, 0, 0, 4096.0f, 1, 0, {0}},
+    {"color", "Color", "Light", PROPERTY_COLOR, 0, 0, 0, 1, 0, {0}},
+    {"energy", "Energy", "Light", PROPERTY_FLOAT, 0, 0, 4.0f, 0.05f, 0, {0}},
+    {"enabled", "Enabled", "Light", PROPERTY_BOOL, 0, 0, 0, 1, 0, {0}},
+};
+
 void
 SceneRegisterBuiltinProperties(void)
 {
@@ -328,4 +372,6 @@ SceneRegisterBuiltinProperties(void)
                                (int)(sizeof(kry_camera2d_props) / sizeof(kry_camera2d_props[0])));
     SceneRegisterProperties(NODE_SPRITE2D, kry_sprite2d_props,
                                (int)(sizeof(kry_sprite2d_props) / sizeof(kry_sprite2d_props[0])));
+    SceneRegisterProperties(NODE_LIGHT2D, kry_light2d_props,
+                               (int)(sizeof(kry_light2d_props) / sizeof(kry_light2d_props[0])));
 }
