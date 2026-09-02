@@ -179,6 +179,21 @@ main(void)
         sp->is_sensor = 1;
         NodeSetProps(&scene, area_shape, sp);
 
+        /* static decoration resting inside the sensor must not count as
+         * a body_enter (Box2D reports static-static sensor overlaps) */
+        {
+            NodeId deco = NodeCreate(&scene, root, NODE_BODY2D, "deco");
+            NodeId deco_shape;
+
+            bp = KryBody2DPropsAlloc(KRY_BODY2D_STATIC);
+            NodeSetProps(&scene, deco, bp);
+            NodeSetPosition(&scene, deco, 15.0f, 60.0f); /* inside the sensor,
+                                                             off the faller column */
+            deco_shape = NodeCreate(&scene, deco, NODE_COLLISION_SHAPE2D, "s0");
+            NodeSetProps(&scene, deco_shape, KryCollisionShape2DPropsAlloc(
+                             KRY_SHAPE2D_BOX, 8.0f, 8.0f));
+        }
+
         bp = KryBody2DPropsAlloc(KRY_BODY2D_DYNAMIC);
         NodeSetProps(&scene, faller, bp);
         faller_shape = NodeCreate(&scene, faller, NODE_COLLISION_SHAPE2D, "s2");

@@ -296,9 +296,20 @@ kry_sensor_signal(Scene *scene, b2ShapeId sensor_shape, b2ShapeId visitor_shape,
     NodeId area = kry_sensor_owner(scene, sensor_shape, NODE_AREA2D);
     NodeId body = kry_sensor_owner(scene, visitor_shape, NODE_BODY2D);
     Node *area_node;
+    Node *body_node;
     Area2DProps *props;
+    Body2DProps *body_props;
 
     if(area < 0 || body < 0)
+        return;
+    /* Static geometry does not "enter" an area: Box2D reports static-static
+     * sensor overlaps too (e.g. a trigger resting on the level floor), but
+     * body_enter/body_exit describe moving bodies arriving and leaving. */
+    body_node = NodeGet(scene, body);
+    if(body_node == NULL)
+        return;
+    body_props = (Body2DProps *)body_node->props;
+    if(body_props == NULL || body_props->body_type == KRY_BODY2D_STATIC)
         return;
     area_node = NodeGet(scene, area);
     if(area_node == NULL)
