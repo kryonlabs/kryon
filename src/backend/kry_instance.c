@@ -130,6 +130,7 @@ static void release_instance(void) { }
 
 void SetSingleInstance(int enabled) { g_single_instance = enabled != 0; }
 int SingleInstanceEnabled(void) { return g_single_instance; }
+int InstanceRejected(void) { return g_instance_rejected; }
 
 void InitWindow(int width, int height, const char *title)
 {

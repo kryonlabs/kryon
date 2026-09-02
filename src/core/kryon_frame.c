@@ -55,6 +55,8 @@ void SyncFrame(void)
 
 void BeginFrame(void)
 {
+    if(InstanceRejected())
+        return;   /* no window exists: a second instance was rejected */
     SyncFrame();
     BeginDrawing();
     SyncFrame();
@@ -62,6 +64,8 @@ void BeginFrame(void)
 
 void EndFrame(void)
 {
+    if(InstanceRejected())
+        return;
     EndDrawing();
 }
 
