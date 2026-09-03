@@ -29,6 +29,15 @@ if [ -f "$sdl_core" ] && ! grep -q 'Kryon: relative-mode fallback' "$sdl_core"; 
     perl -0pi -e 's@void EnableCursor\(void\)\n\{\n    SDL_SetRelativeMouseMode\(SDL_FALSE\);\n@void EnableCursor(void)\n\{\n    SDL_SetHint("SDL_MOUSE_RELATIVE_MODE_WARP", "0");\n    SDL_SetRelativeMouseMode(SDL_FALSE);\n@' "$sdl_core"
 fi
 
+if [ -f "$sdl_core" ] && ! grep -q 'Kryon: re-arm relative mouse mode' "$sdl_core"; then
+    # SDL drops relative mouse mode when the window loses focus (alt-tab,
+    # WM grabs); raylib only toggles its UNFOCUSED flag back on gain, so
+    # cursor-locked apps silently lose mouse look until DisableCursor()
+    # is called again. Re-arm the mode whenever focus returns while the
+    # cursor is locked.
+    perl -0pi -e 's@(case SDL_WINDOWEVENT_FOCUS_GAINED:\n                    \{\n                        if \(FLAG_IS_SET\(CORE\.Window\.flags, FLAG_WINDOW_UNFOCUSED\)\) FLAG_CLEAR\(CORE\.Window\.flags, FLAG_WINDOW_UNFOCUSED\);)(\n                    \} break;)@$1\n                        // Kryon: re-arm relative mouse mode on focus gain.\n                        if (CORE.Input.Mouse.cursorLocked) SDL_SetRelativeMouseMode(SDL_TRUE);$2@' "$sdl_core"
+fi
+
 if [ -f "$sdl_core" ] && ! grep -q 'Kryon: accumulate relative mouse motion' "$sdl_core"; then
     # Cursor-locked mouse must behave like the GLFW cursor-disabled mode
     # apps are written against: an unclamped virtual absolute position that

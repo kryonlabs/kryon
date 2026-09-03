@@ -49,6 +49,38 @@ static int g_instance_rejected = 0;
 static int g_instance_fd = -1;
 static char g_instance_path[512];
 
+/* SDL latches SIGTERM into an event that windowed apps only observe
+ * through the frame loop, so a SIGTERM arriving while the loop is busy
+ * (or an event pump that never surfaces it) leaves an unkillable
+ * process holding the instance lock. Own the signal instead: drop the
+ * lock (close+unlink are async-signal-safe) and exit immediately.
+ * The kernel releases the flock even if the unlink races. */
+static void instance_terminate_signal(int sig)
+{
+    int fd = g_instance_fd;
+    (void)sig;
+    if(fd >= 0) {
+        g_instance_fd = -1;
+        (void)flock(fd, LOCK_UN);
+        (void)close(fd);
+    }
+    if(g_instance_path[0] != '\0')
+        (void)unlink(g_instance_path);
+    _exit(0);
+}
+
+static void install_terminate_handlers(void)
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = instance_terminate_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESETHAND;   /* second signal takes default path */
+    (void)sigaction(SIGTERM, &sa, NULL);
+    (void)sigaction(SIGINT, &sa, NULL);
+}
+
 static void instance_key(const char *title, char *out, size_t out_size)
 {
     size_t n = 0;
@@ -128,6 +160,7 @@ static int acquire_instance(const char *title)
             lseek(fd, 0, SEEK_SET);
             (void)write(fd, pid_text, (size_t)size);
             g_instance_fd = fd;
+            install_terminate_handlers();
             return 1;
         }
         if(errno != EWOULDBLOCK && errno != EAGAIN) {
