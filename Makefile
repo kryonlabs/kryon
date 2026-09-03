@@ -948,9 +948,9 @@ $(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -Icmd/kir tests/kir_test.c cmd/kir/kir.c -o $@
 
-$(K2KIR_TEST): tests/k2ir_test.sh $(K2KIR) | $(BUILD_DIR)
+$(K2KIR_TEST): tests/k2kir_test.sh $(K2KIR) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	TMPDIR=$(BUILD_DIR) sh tests/k2ir_test.sh $(K2KIR) . > $@
+	TMPDIR=$(BUILD_DIR) sh tests/k2kir_test.sh $(K2KIR) . > $@
 
 $(KRY_TOOLS_TEST): tests/kry_tools_test.sh scripts/kry-fmt.sh scripts/kry-locale-check.sh | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

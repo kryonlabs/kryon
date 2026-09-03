@@ -236,7 +236,7 @@ func render(native, cleanC methodSet) (string, bool) {
 			name, display(ng, nok), display(cs, cok), status))
 	}
 	b.WriteString("\n## Generated Runtime Semantics\n\n")
-	b.WriteString("`tests/generated_runtime_parity_test.sh` transpiles the fixtures in `tests/parity/` through k2g, k2c, and k2js, rejects blocked generated output, drives all three generated runtimes through text editing, click-to-focus, focus traversal, selection replacement, secure clipboard copy, buttons, rows, columns, text areas, controls, list boxes, tables, and long-running text input with per-character cursor movement and Tab traversal, asserts generated Go emits renderable native frame operations without leaking secure text, renders those operations into visible pure-Go images, then diffs the final state JSON.\n")
+	b.WriteString("`tests/generated_runtime_parity_test.sh` transpiles the fixtures in `tests/parity/` through k2go, k2c, and k2js, rejects blocked generated output, drives all three generated runtimes through text editing, click-to-focus, focus traversal, selection replacement, secure clipboard copy, buttons, rows, columns, text areas, controls, list boxes, tables, and long-running text input with per-character cursor movement and Tab traversal, asserts generated Go emits renderable native frame operations without leaking secure text, renders those operations into visible pure-Go images, then diffs the final state JSON.\n")
 	b.WriteString("\n## Native Host Text Input\n\n")
 	b.WriteString("`go/kryon` tests run the native `Host` through thousands of text-input frames with cursor navigation on every typed character, Tab traversal between fields, stable frame operation counts, and bounded focus/selection bookkeeping.\n")
 	return b.String(), ok
