@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.40 - 2026-09-03
+
+### Changed
+
+- Release: bump version to v0.1.40
+- Polish the icon set
+
 ## v0.1.39 - 2026-09-03
 
 ### Changed
