@@ -48,8 +48,8 @@ jobs:
           test -f build/site/api.html
           test -f build/site/ide.html
           test -f build/site/ide.js
-          test -f build/site/ide-tools/k2ir.js
-          test -f build/site/ide-tools/k2ir.wasm
+          test -f build/site/ide-tools/k2kir.js
+          test -f build/site/ide-tools/k2kir.wasm
           test -f build/site/ide-tools/k2b.js
           test -f build/site/ide-tools/k2b.wasm
           test -f build/site/icons/kryon.png

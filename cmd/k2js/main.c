@@ -1,5 +1,5 @@
 /*
- * k2js - .kry -> JavaScript compiler. Shares the Kir frontend with k2c/k2g/k2b:
+ * k2js - .kry -> JavaScript compiler. Shares the Kir frontend with k2c/k2go/k2b:
  * every .kry parses into a KirProgram (kir_parse.c), then lowers to ESM that
  * calls the web Kryon runtime.
  *

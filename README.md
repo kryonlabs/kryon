@@ -88,7 +88,7 @@ Every successful CI run on `master` automatically advances the patch version,
 commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
 The workflow validates the version, creates an annotated tag, builds and tests
 Kryon, and publishes both the static SDK and a checksummed native tools bundle.
-The tools bundle contains `k2c`, `k2g`, `k2js`, `k2ir`, `k2b`, `kt`, `kryon`,
+The tools bundle contains `k2c`, `k2go`, `k2js`, `k2kir`, `k2b`, `kt`, `kryon`,
 `kryon-preview`, `krb-run`, and `krb-sdl`. The renderer workflow also attaches
 the Linux, Windows, and macOS `krb-run` builds plus the web player to the same
 release.
@@ -203,15 +203,15 @@ feature family.
 
 `docs/KRY_LANGUAGE_SPEC.md` is the canonical Kry language contract. Kry source
 lowers into KIR, a debuggable intermediate representation with source spans.
-From there `k2c` emits readable C for native apps, `k2g` emits pure Go source
+From there `k2c` emits readable C for native apps, `k2go` emits pure Go source
 against the native Go runtime, while `k2b` emits a portable `.krb` cartridge
 (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime contract.
 The intended tool set is Unix-shaped:
 
 ```text
-k2ir app.kry        # .kry -> .kir
+k2kir app.kry        # .kry -> .kir
 k2c  app.kry|app.kir
-k2g  app.kry        # .kry -> Go (native Go runtime, no cgo)
+k2go  app.kry        # .kry -> Go (native Go runtime, no cgo)
 k2b  app.kry|app.kir
 ```
 
@@ -221,7 +221,7 @@ clean qualified widget names such as `kryon.Button`, `kryon.TextField`,
 `kryon.EndFrame`. Pure Kry and Go-native externs must not use `import "C"`,
 the removed bridge package, injected runtime objects, dot-imported runtime
 names, or generated calls to stale prefixed C APIs. Explicit C externs with a
-`c.` target, such as `#extern "c.abs"`, are the opt-in exception: `k2g` emits
+`c.` target, such as `#extern "c.abs"`, are the opt-in exception: `k2go` emits
 their `import "C"` bridge in a separate generated `*_cgo.go` file.
 
 Handwritten Go can use the same package directly. Generated code keeps the
@@ -240,7 +240,7 @@ renderer that turns those operations into an `image.RGBA`.
 frame functions, queues input, exposes frame operations, and renders frames
 without cgo.
 
-`k2g` output is compiled against that native runtime by the test suite, and the
+`k2go` output is compiled against that native runtime by the test suite, and the
 generated Go/C parity tests drive both runtimes through the same scripted input.
 This is an executable compatibility gate, not only a textual generated-source
 check.

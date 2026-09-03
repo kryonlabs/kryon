@@ -1,6 +1,6 @@
 /*
  * kir_parse.c - shared Kir frontend: parse .kry source into a KirProgram.
- * Linked by k2ir (dump tool), k2c (C backend), and k2b (krb backend).
+ * Linked by k2kir (dump tool), k2c (C backend), and k2b (krb backend).
  */
 #include "kir.h"
 #include "kir_parse.h"
@@ -14,8 +14,8 @@
 #include <string.h>
 
 enum {
-    K2IR_PATH_MAX = 1024,
-    K2IR_LINE_MAX = 1024
+    K2KIR_PATH_MAX = 1024,
+    K2KIR_LINE_MAX = 1024
 };
 
 static void
@@ -24,7 +24,7 @@ die(const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    fprintf(stderr, "k2ir: ");
+    fprintf(stderr, "k2kir: ");
     vfprintf(stderr, fmt, ap);
     fputc('\n', stderr);
     va_end(ap);
@@ -1422,7 +1422,7 @@ parse_import_line(KirModule *module, const char *path, int line_no,
                   const char *line)
 {
     const char *directive;
-    char target[K2IR_PATH_MAX];
+    char target[K2KIR_PATH_MAX];
     char name[KIR_NAME_MAX];
     KirImportKind kind;
     int quoted;
@@ -1534,7 +1534,7 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
 static int
 looks_like_function_header(const char *line)
 {
-    char tmp[K2IR_LINE_MAX];
+    char tmp[K2KIR_LINE_MAX];
     char *p;
     char *body;
 
@@ -2277,21 +2277,21 @@ kir_parse_file(const char *path, const char *root)
     KirModule *module;
     KirFunction *fn = NULL;
     KirRoute *route = NULL;
-    char line[K2IR_LINE_MAX];
+    char line[K2KIR_LINE_MAX];
     char module_name[KIR_NAME_MAX] = "main";
-    char rel[K2IR_PATH_MAX];
+    char rel[K2KIR_PATH_MAX];
     int line_no = 0;
     enum { TOP, APP, STATE, ROUTE, TYPE, ENUM, FUNCTION } mode = TOP;
     int enum_return = TOP;
     int depth = 0;
-    char pending[K2IR_LINE_MAX * 4];
+    char pending[K2KIR_LINE_MAX * 4];
     pending[0] = '\0';
-    char lookahead[K2IR_LINE_MAX];
+    char lookahead[K2KIR_LINE_MAX];
     int have_look = 0;
     /* One-line control blocks ('if cond { body }') are split into header /
      * body / '}' logical lines; the body and closer re-enter the main loop
      * through this FIFO so they flow through the normal join machinery. */
-    char onelineq[16][K2IR_LINE_MAX * 2];
+    char onelineq[16][K2KIR_LINE_MAX * 2];
     int onelineq_count = 0;
     int from_queue = 0;
     int pending_len = 0;
@@ -2324,7 +2324,7 @@ kir_parse_file(const char *path, const char *root)
         die("out of memory");
 
     while(have_look || onelineq_count > 0 || fgets(line, sizeof(line), in) != NULL) {
-        char raw[K2IR_LINE_MAX];
+        char raw[K2KIR_LINE_MAX];
         char *t;
 
         /* Queued one-liner parts outrank the stashed lookahead: they belong
@@ -2507,7 +2507,7 @@ kir_parse_file(const char *path, const char *root)
                  * not the next physical source line, and reading ahead here
                  * would overwrite/lose the stashed one. */
                 if(!from_queue && !have_look) {
-                    char la[K2IR_LINE_MAX];
+                    char la[K2KIR_LINE_MAX];
                     int pend_str;
 
                     /* C adjacent-literal concatenation: a statement whose
@@ -2582,7 +2582,7 @@ kir_parse_file(const char *path, const char *root)
         }
         t = pending;
         {
-            static char logical[K2IR_LINE_MAX * 4];
+            static char logical[K2KIR_LINE_MAX * 4];
 
             snprintf(logical, sizeof(logical), "%s", pending);
             t = logical;
@@ -2590,8 +2590,8 @@ kir_parse_file(const char *path, const char *root)
              * and queue the body + closer for the next iterations (nested
              * one-liners split again when their body is finalized). */
             if(mode != TOP) {
-                char head[K2IR_LINE_MAX * 2];
-                char body[K2IR_LINE_MAX * 2];
+                char head[K2KIR_LINE_MAX * 2];
+                char body[K2KIR_LINE_MAX * 2];
 
                 if(split_oneline_block(t, head, sizeof(head),
                                        body, sizeof(body))) {
@@ -3124,7 +3124,7 @@ kir_parse_file(const char *path, const char *root)
                 char block_name[KIR_NAME_MAX];
                 char prop_field[KIR_NAME_MAX];
                 char prop_value[KIR_TEXT_MAX];
-                char prop_line[K2IR_LINE_MAX];
+                char prop_line[K2KIR_LINE_MAX];
 
                 if(parse_ui_block_header(t, block_widget,
                                          sizeof(block_widget),

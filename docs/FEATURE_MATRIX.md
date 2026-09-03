@@ -20,19 +20,19 @@ the columns diverge.
 .kry source
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
-   ├── k2g  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
+   ├── k2go  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
    ├── k2js -> .js (web runtime calls)      -> browser/Node ESM   -> Web app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
-   └── k2ir -> .kir (text IR dump; debugging, tests, Krait)
+   └── k2kir -> .kir (text IR dump; debugging, tests, Krait)
 ```
 
 | Target | Producer | Runtime | Status |
 |---|---|---|---|
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
-| Go | `k2g` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
+| Go | `k2go` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
 | JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Syntax, Node recorder snapshots, and generated runtime state parity gated |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
-| KIR | `k2ir` | — (inspection artifact) | Debugging/tooling only |
+| KIR | `k2kir` | — (inspection artifact) | Debugging/tooling only |
 
 Two backend tiers exist (see `docs/BACKENDS.md`):
 
@@ -47,7 +47,7 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 ## Widget statement whitelist (`.kry` frontend)
 
 `parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 51 widget names.
-`k2c` compiles any library call regardless (plain call statement); `k2g` lowers
+`k2c` compiles any library call regardless (plain call statement); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
@@ -65,7 +65,7 @@ PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`
 
 ## Widget matrix
 
-Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2g** = `.kry`→Go codegen
+Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2go** = `.kry`→Go codegen
 (pure Go importing `go/kryon` as `kryon` and calling `kryon.<Widget>`) · **Go** =
 hand-written Go via the `go/kryon` package API · **KRB** = lowered into a
 cartridge by `k2b`.
@@ -78,7 +78,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Display
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | Background | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
 | Text | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
@@ -93,7 +93,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Input
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
@@ -116,7 +116,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Layout
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ✅ | ◐ via Column | ✅ via Stack | ✅ |
@@ -132,7 +132,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Collections
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | ListBox | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
 | TreeView / CascadingTreeView | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -143,7 +143,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Navigation
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
@@ -154,7 +154,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Overlays
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
 | MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✗ |
@@ -167,7 +167,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Composite And App Framework
 
-| Widget | C | k2c | k2g | Go | KRB |
+| Widget | C | k2c | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | LabelTextField / SectionLabel | ✅ | ✅ | ✗ | ✗ | ✗ |
 | CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -181,7 +181,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### Game2D (scene tree, `src/scene/`)
 
-| Node | C | ✅ | k2g | Go | KRB |
+| Node | C | ✅ | k2go | Go | KRB |
 |---|---|---|---|---|---|
 | Scene / Node2D / Camera2D | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -265,7 +265,7 @@ declaration pass (`src/ui/ui_tree.c`).
   rotation, render textures, TTF/TrueType-outline glyph-atlas text,
   screenshots, files, and clipboard mirror are covered. Advanced raylib areas
   outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.
-- `k2g` targets native Go: the `Runtime` interface covers the widget
+- `k2go` targets native Go: the `Runtime` interface covers the widget
   whitelist plus the generated-code widget families in `go/kryon` (controls,
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control),
   with `.kry` array declarations lowering to Go slices at the use site.

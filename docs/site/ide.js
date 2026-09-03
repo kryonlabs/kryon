@@ -11,10 +11,10 @@
   var sampleButton = document.querySelector("[data-action='load-sample']");
   var menuToggle = document.querySelector(".menu-toggle");
   var headerNav = document.getElementById("header-nav");
-  var k2irMod = null;
+  var k2kirMod = null;
   var k2bMod = null;
   var k2cMod = null;
-  var k2gMod = null;
+  var k2goMod = null;
   var k2jsMod = null;
   var activeTab = "kry";
   var last = { kry: "", kir: "", krb: "", c: "", go: "", js: "", bytes: null };
@@ -32,7 +32,7 @@
     "        Background((Color){249, 246, 235, 255})",
     "        Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})",
     "        Text(\"Hello from .kry\", 76, 86, Text24, (Color){31, 83, 102, 255})",
-    "        Text(\"This page runs k2ir and k2b as WebAssembly, then renders the KRB cartridge.\", 76, 134, Text16, (Color){42, 59, 64, 255})",
+    "        Text(\"This page runs k2kir and k2b as WebAssembly, then renders the KRB cartridge.\", 76, 134, Text16, (Color){42, 59, 64, 255})",
     "        Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})",
     "        Text(\"Portable preview\", 104, 219, Text20, WHITE)",
     "        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = \"Get started\"})",
@@ -313,11 +313,11 @@
     var failed = 0;
     var result;
 
-    if (!k2irMod || !k2bMod) return;
+    if (!k2kirMod || !k2bMod) return;
     setStatus("compiling...");
     last = { kry: source.value, kir: "", krb: "", c: "", go: "", js: "", bytes: null };
 
-    result = runTool(k2irMod, ["--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
+    result = runTool(k2kirMod, ["--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
       return { ok: true, text: readFirst(mod, ["/work/out/app.kir", "/work/out/src/app.kir"], false) };
     });
     if (result.ok && result.text) { last.kir = result.text; passed++; } else { last.kir = result.text || "KIR output unavailable."; failed++; }
@@ -334,7 +334,7 @@
     });
     if (result.ok) { last.c = result.text; passed++; } else { last.c = result.text; failed++; }
 
-    result = runTool(k2gMod, ["--no-main", "--pkg", "kryexample", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
+    result = runTool(k2goMod, ["--no-main", "--pkg", "kryexample", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
       return { ok: true, text: readFirst(mod, ["/work/out/app.go", "/work/out/src/app.go"], false) };
     });
     if (result.ok && result.text) { last.go = result.text; passed++; } else { last.go = result.text || "Go output unavailable."; failed++; }
@@ -406,10 +406,10 @@
       createK2gModule({ noInitialRun: true }),
       createK2jsModule({ noInitialRun: true })
     ]).then(function(mods) {
-      k2irMod = mods[0];
+      k2kirMod = mods[0];
       k2bMod = mods[1];
       k2cMod = mods[2];
-      k2gMod = mods[3];
+      k2goMod = mods[3];
       k2jsMod = mods[4];
       return loadInitialSource();
     }).then(function() {

@@ -31,7 +31,7 @@ fi
 
 generated_matches="$(
     rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITopNavAction|UITopNavResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
-        go/kryon include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2g_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
+        go/kryon include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
@@ -82,12 +82,12 @@ button_style_matches="$(
         include \
         src/ui \
         go/kryon \
-        cmd/k2g \
+        cmd/k2go \
         cmd/k2b \
         docs/API.md \
         examples \
         tests/k2c_syntax_test.sh \
-        tests/k2g_syntax_test.sh \
+        tests/k2go_syntax_test.sh \
         tests/parity \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -104,12 +104,12 @@ text_size_matches="$(
         include \
         src \
         go/kryon \
-        cmd/k2g \
+        cmd/k2go \
         cmd/k2b \
         docs/API.md \
         examples \
         tests/k2c_syntax_test.sh \
-        tests/k2g_syntax_test.sh \
+        tests/k2go_syntax_test.sh \
         tests/krb_cartridge_test.sh \
         tests/parity \
         tests/perf \
@@ -193,7 +193,7 @@ public_composite_draw_matches="$(
         include/ui_nav.h \
         include/ui_tk.h \
         go/kryon \
-        tests/k2g_syntax_test.sh \
+        tests/k2go_syntax_test.sh \
         docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
@@ -265,7 +265,7 @@ fi
 public_text_input_matches="$(
     rg -n '\b(UITextInputStyle|UITextInputFilter|UITextEdit|EditUIText|GetUITextAreaSelection|SetUITextAreaSelection|UITextInput|UISyntaxMode|UISyntax[A-Za-z0-9_]*|UI_SYNTAX_[A-Z_]+)\b' \
         go/kryon \
-        cmd/k2g \
+        cmd/k2go \
         include/ui_controls.h \
         docs/API.md \
         examples \
@@ -356,7 +356,7 @@ kryc_tool_matches="$(
 )"
 
 if [ -n "$kryc_tool_matches" ]; then
-    echo "Do not add a kryc tool. Kryon uses k2g for Go and k2c for C:"
+    echo "Do not add a kryc tool. Kryon uses k2go for Go and k2c for C:"
     echo "$kryc_tool_matches"
     exit 1
 fi
@@ -370,7 +370,7 @@ kryc_text_matches="$(
 )"
 
 if [ -n "$kryc_text_matches" ]; then
-    echo "Do not document or reference kryc in user-facing/runtime surfaces; use k2g and k2c:"
+    echo "Do not document or reference kryc in user-facing/runtime surfaces; use k2go and k2c:"
     echo "$kryc_text_matches"
     exit 1
 fi

@@ -8,7 +8,7 @@ type FrameFunc func()
 // Host owns a native Go runtime and renders frames without cgo.
 //
 // It is the standard-library host core used by tests, generated-code smoke
-// runs, and future platform windows. Frame functions may be generated k2g
+// runs, and future platform windows. Frame functions may be generated k2go
 // functions or handwritten Go that calls BeginFrame, widgets, and EndFrame.
 type Host struct {
 	runtime Runtime

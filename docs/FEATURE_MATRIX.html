@@ -23,17 +23,17 @@ li{margin:.25rem 0}
 <pre>.kry source
    │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
    ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
-   ├── k2g  -&gt; .go (kryon.&lt;Widget&gt; calls)  -&gt; go build + go/kryon -&gt; Go app
+   ├── k2go  -&gt; .go (kryon.&lt;Widget&gt; calls)  -&gt; go build + go/kryon -&gt; Go app
    ├── k2js -&gt; .js (web runtime calls)      -&gt; browser/Node ESM   -&gt; Web app
    ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
-   └── k2ir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
+   └── k2kir -&gt; .kir (text IR dump; debugging, tests, Krait)</pre>
 <table>
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
 <tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use</td></tr>
-<tr><td class="">Go</td><td class=""><code>k2g</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
+<tr><td class="">Go</td><td class=""><code>k2go</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
 <tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class=""><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="">Syntax, Node recorder snapshots, and generated runtime state parity gated</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
-<tr><td class="">KIR</td><td class=""><code>k2ir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
+<tr><td class="">KIR</td><td class=""><code>k2kir</code></td><td class="">— (inspection artifact)</td><td class="">Debugging/tooling only</td></tr>
 </table>
 <p>Two backend tiers exist (see <code>docs/BACKENDS.md</code>):</p>
 <ul>
@@ -45,15 +45,15 @@ li{margin:.25rem 0}
 </ul>
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
-<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2g</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
+<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2go</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
-<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2g</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
+<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">Text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">TextInRect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInRect</code></td><td class="ok">✅</td></tr>
@@ -67,7 +67,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Input</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Button(kryon.ButtonProps)</code> / <code>kryon.Button(&quot;Save&quot;)</code></td><td class="ok">✅ node</td></tr>
 <tr><td class="">Legacy positional buttons</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Button(kryon.ButtonProps)</code></td><td class="no">✗ generated Go uses <code>kryon.Button</code></td><td class="part">◐ BUTTON style byte</td></tr>
 <tr><td class="">IconButton / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
@@ -89,7 +89,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Layout</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
 <tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
 <tr><td class="">Scroll container</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ SCROLL node</td></tr>
@@ -104,7 +104,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Collections</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">ListBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
 <tr><td class="">TreeView / CascadingTreeView</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">SourceView (code + line numbers)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SourceView</code></td><td class="no">✗</td></tr>
@@ -114,7 +114,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Navigation</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">MenuBar / PopupMenu / ContextMenu</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">TabBar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
 <tr><td class="">SubtabBar / PaneTabBar (dock zones)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
@@ -124,7 +124,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Overlays</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">ActionModal / Modal / Modal3Button / ModalFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Modal</code> only</td><td class="part">◐ <code>Modal</code> only</td><td class="no">✗</td></tr>
 <tr><td class="">MessageDialog / ConfirmDialog / PromptDialog</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
 <tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="no">✗</td></tr>
@@ -136,7 +136,7 @@ li{margin:.25rem 0}
 </table>
 <h3>UI/Composite And App Framework</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">LabelTextField / SectionLabel</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">BottomNavConfig</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
@@ -149,7 +149,7 @@ li{margin:.25rem 0}
 </table>
 <h3>Game2D (scene tree, <code>src/scene/</code>)</h3>
 <table>
-<tr><th>Node</th><th>C</th><th>✅</th><th>k2g</th><th>Go</th><th>KRB</th></tr>
+<tr><th>Node</th><th>C</th><th>✅</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Scene / Node2D / Camera2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">CollisionShape2D / Area2D / Body2D (box2d)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
@@ -220,7 +220,7 @@ li{margin:.25rem 0}
 </ul>
 <p><code>9c</code>/<code>9l</code> clean-surface compile/link check. It is intended for C UI apps: windowing, input, resize, software drawing, widgets, rounded controls, thick lines, image loading, alpha/tint and source-rectangle texture blits, picture rotation, render textures, TTF/TrueType-outline glyph-atlas text, screenshots, files, and clipboard mirror are covered. Advanced raylib areas outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.</p>
 <ul>
-<li><code>k2g</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
+<li><code>k2go</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
 </ul>
 <p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownEx</code>&#x27;s rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
 <ul>

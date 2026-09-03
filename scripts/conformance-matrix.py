@@ -3,8 +3,8 @@
 
 The matrix is intentionally mechanical: it scans the checked-in .kry examples
 and generated-runtime parity fixtures, records which widget families each file
-exercises, and can verify that every listed source lowers through k2ir, k2c,
-k2g, k2js, and k2b.
+exercises, and can verify that every listed source lowers through k2kir, k2c,
+k2go, k2js, and k2b.
 """
 
 from __future__ import annotations
@@ -29,10 +29,10 @@ OUTPUT = ROOT / "docs" / "site" / "conformance-matrix.json"
 
 PIPELINES = [
     {
-        "id": "k2ir",
+        "id": "k2kir",
         "label": ".kry -> KIR",
-        "tool": "build/linux-x86_64/bin/k2ir",
-        "evidence": "tests/k2ir_test.sh plus conformance-matrix-check",
+        "tool": "build/linux-x86_64/bin/k2kir",
+        "evidence": "tests/k2kir_test.sh plus conformance-matrix-check",
     },
     {
         "id": "k2c",
@@ -41,10 +41,10 @@ PIPELINES = [
         "evidence": "tests/k2c_syntax_test.sh plus conformance-matrix-check",
     },
     {
-        "id": "k2g",
+        "id": "k2go",
         "label": ".kry -> KIR -> Go",
-        "tool": "build/linux-x86_64/bin/k2g",
-        "evidence": "tests/k2g_syntax_test.sh plus conformance-matrix-check",
+        "tool": "build/linux-x86_64/bin/k2go",
+        "evidence": "tests/k2go_syntax_test.sh plus conformance-matrix-check",
     },
     {
         "id": "k2js",
@@ -236,7 +236,7 @@ RUNTIME_PARITY_CHECKS = [
         "id": "generated-go-c-js",
         "label": "Generated Go/C/JS runtime parity",
         "command": ["make", "-C", ".", "generated-runtime-parity-test"],
-        "scope": "Lowers parity fixtures through k2g, k2c, and k2js, drives matching text/input/control workflows, renders Go/C frames where applicable, and compares final state JSON.",
+        "scope": "Lowers parity fixtures through k2go, k2c, and k2js, drives matching text/input/control workflows, renders Go/C frames where applicable, and compares final state JSON.",
     },
     {
         "id": "generated-js-recorder",
@@ -1843,7 +1843,7 @@ def verify_visual_comparison_matrix(data: dict) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
-    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2ir/k2c/k2g/k2js/k2b")
+    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2kir/k2c/k2go/k2js/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")

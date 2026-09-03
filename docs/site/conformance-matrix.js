@@ -119,7 +119,7 @@
   function pipelineColumns(data) {
     return data && data.pipelines
       ? data.pipelines
-      : [{id: "k2ir"}, {id: "k2c"}, {id: "k2g"}, {id: "k2js"}, {id: "k2b"}];
+      : [{id: "k2kir"}, {id: "k2c"}, {id: "k2go"}, {id: "k2js"}, {id: "k2b"}];
   }
 
   function sourceRendererColumns(data) {

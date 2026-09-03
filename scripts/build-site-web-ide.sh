@@ -15,10 +15,10 @@ fi
 build_failed()
 {
     printf '%s\n' '{"error":"emcc failed; web IDE compiler modules were not built"}' > "$tool_dir/unavailable.json"
-    rm -f "$tool_dir/k2ir.js" "$tool_dir/k2ir.wasm" \
+    rm -f "$tool_dir/k2kir.js" "$tool_dir/k2kir.wasm" \
         "$tool_dir/k2b.js" "$tool_dir/k2b.wasm" \
         "$tool_dir/k2c.js" "$tool_dir/k2c.wasm" \
-        "$tool_dir/k2g.js" "$tool_dir/k2g.wasm" \
+        "$tool_dir/k2go.js" "$tool_dir/k2go.wasm" \
         "$tool_dir/k2js.js" "$tool_dir/k2js.wasm" \
         "$tool_dir/krb-web.js" "$tool_dir/krb-web.wasm"
     exit 0
@@ -34,8 +34,8 @@ build_failed()
     -sENVIRONMENT=web,worker \
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/kir \
-    cmd/k2ir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    -o "$tool_dir/k2ir.js" || build_failed
+    cmd/k2kir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
+    -o "$tool_dir/k2kir.js" || build_failed
 
 "$EMCC" -O0 \
     -sMODULARIZE=1 \
@@ -74,10 +74,10 @@ build_failed()
     -sALLOW_MEMORY_GROWTH=1 \
     -sENVIRONMENT=web,worker \
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
-    -Icmd/k2g -Icmd/kir \
-    cmd/k2g/*.c \
+    -Icmd/k2go -Icmd/kir \
+    cmd/k2go/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    -o "$tool_dir/k2g.js" || build_failed
+    -o "$tool_dir/k2go.js" || build_failed
 
 "$EMCC" -O0 \
     -sMODULARIZE=1 \

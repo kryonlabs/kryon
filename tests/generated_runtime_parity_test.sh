@@ -38,7 +38,7 @@ done
 mkdir -p "$work/go" "$work/c" "$work/js" "$work/go-run" "$work/bin"
 
 # shellcheck disable=SC2086
-"$build/bin/k2g" --pkg main --no-main --root "$root" -o "$work/go" $fixture_args
+"$build/bin/k2go" --pkg main --no-main --root "$root" -o "$work/go" $fixture_args
 # shellcheck disable=SC2086
 "$build/bin/k2c" --root "$root" -o "$work/c" $fixture_args
 # shellcheck disable=SC2086

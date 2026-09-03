@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 
-k2ir=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2ir build/*/bin/k2ir 2>/dev/null | head -1)}
+k2kir=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2kir build/*/bin/k2kir 2>/dev/null | head -1)}
 root=${2:-.}
-work=${TMPDIR:-build}/kryon-k2ir-test.$$
+work=${TMPDIR:-build}/kryon-k2kir-test.$$
 
 cleanup()
 {
@@ -11,8 +11,8 @@ cleanup()
 }
 trap cleanup EXIT INT TERM
 
-if [ ! -f "$k2ir" ]; then
-    echo "k2ir not found: $k2ir" >&2
+if [ ! -f "$k2kir" ]; then
+    echo "k2kir not found: $k2kir" >&2
     exit 1
 fi
 
@@ -50,7 +50,7 @@ Counter :: (app: App*) {
 }
 EOF
 
-"$k2ir" --root "$work" -o "$work/out" "$work/src/app.kry"
+"$k2kir" --root "$work" -o "$work/out" "$work/src/app.kry"
 kir=$work/out/src/app.kir
 test -f "$kir"
 grep -Fq 'kir 1' "$kir"
@@ -90,7 +90,7 @@ cat > "$work/src/assert_fail.kry" <<'EOF'
 #assert 1 + 1 == 3, "constant assertion failed"
 EOF
 
-if "$k2ir" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
+if "$k2kir" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
     echo "false constant #assert did not fail during Kry parsing" >&2
     exit 1
 fi
@@ -101,10 +101,10 @@ cat > "$work/src/bad_c_extern.kry" <<'EOF'
 bad :: (value: int) -> int #extern "c.1bad"
 EOF
 
-if "$k2ir" --root "$work" -o "$work/out" "$work/src/bad_c_extern.kry" 2>"$work/bad_c_extern.err"; then
+if "$k2kir" --root "$work" -o "$work/out" "$work/src/bad_c_extern.kry" 2>"$work/bad_c_extern.err"; then
     echo "invalid C extern target did not fail during Kry parsing" >&2
     exit 1
 fi
 grep -Fq 'C extern target must be c.<symbol>' "$work/bad_c_extern.err"
 
-echo "k2ir ok"
+echo "k2kir ok"

@@ -1,16 +1,16 @@
 #!/bin/sh
-# k2g syntax test — verifies the Kir-based .kry->Go pipeline output.
+# k2go syntax test — verifies the Kir-based .kry->Go pipeline output.
 set -eu
 
-k2g=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2g build/*/bin/k2g 2>/dev/null | head -1)}
-work=${TMPDIR:-/tmp}/kryon-k2g-syntax-test.$$
+k2go=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2go build/*/bin/k2go 2>/dev/null | head -1)}
+work=${TMPDIR:-/tmp}/kryon-k2go-syntax-test.$$
 root=$(pwd)
 
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM
 
-if [ ! -f "$k2g" ]; then
-    echo "k2g not found: $k2g" >&2
+if [ ! -f "$k2go" ]; then
+    echo "k2go not found: $k2go" >&2
     exit 1
 fi
 
@@ -20,8 +20,8 @@ cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 
 ANSWER :: #run 21 * 2
-#assert ANSWER == 42, "k2g #run assertion failed"
-#assert 1 + 1 == 2, "k2g fixture assertion failed"
+#assert ANSWER == 42, "k2go #run assertion failed"
+#assert 1 + 1 == 2, "k2go fixture assertion failed"
 query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
 label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
@@ -226,20 +226,20 @@ helper_value :: () -> int {
 }
 EOF
 
-"$k2g" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/helper.kry"
-"$k2g" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
-"$k2g" --root "$work" -o "$work/pure-out" "$work/src/hierarchy.kry"
+"$k2go" --root "$work" -o "$work/out" "$work/src/valid.kry" "$work/src/helper.kry"
+"$k2go" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
+"$k2go" --root "$work" -o "$work/pure-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
 cgo="$work/out/valid_cgo.go"
 helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
 pure="$work/pure-out/hierarchy.go"
 
-[ -f "$out" ] || { echo "k2g produced no output" >&2; exit 1; }
-[ -f "$cgo" ] || { echo "k2g produced no cgo output" >&2; exit 1; }
-[ -f "$helper" ] || { echo "k2g produced no helper output" >&2; exit 1; }
-[ -f "$hier" ] || { echo "k2g produced no hierarchy output" >&2; exit 1; }
-[ -f "$pure" ] || { echo "k2g produced no pure output" >&2; exit 1; }
+[ -f "$out" ] || { echo "k2go produced no output" >&2; exit 1; }
+[ -f "$cgo" ] || { echo "k2go produced no cgo output" >&2; exit 1; }
+[ -f "$helper" ] || { echo "k2go produced no helper output" >&2; exit 1; }
+[ -f "$hier" ] || { echo "k2go produced no hierarchy output" >&2; exit 1; }
+[ -f "$pure" ] || { echo "k2go produced no pure output" >&2; exit 1; }
 sh "$root/tests/check_clean_generated_output.sh" "$work/out"
 sh "$root/tests/check_clean_generated_output.sh" "$work/hierarchy-out"
 sh "$root/tests/check_clean_generated_output.sh" "$work/pure-out"
@@ -248,13 +248,13 @@ if [ -e "$work/pure-out/hierarchy_cgo.go" ] || grep -q 'import "C"' "$pure"; the
     exit 1
 fi
 
-if "$k2g" --runtime github.com/waozixyz/kryon/go/kryui \
+if "$k2go" --runtime github.com/waozixyz/kryon/go/kryui \
     --root "$work" -o "$work/out" "$work/src/valid.kry" \
     2>"$work/runtime_override.err"; then
-    echo "k2g accepted --runtime override; generated Go must target the native kryon runtime" >&2
+    echo "k2go accepted --runtime override; generated Go must target the native kryon runtime" >&2
     exit 1
 fi
-grep -q 'usage: k2g' "$work/runtime_override.err"
+grep -q 'usage: k2go' "$work/runtime_override.err"
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
@@ -268,19 +268,19 @@ grep -q 'kryon.NewVector2(float32(kryon.ScaleUIPx(120)), float32(kryon.ScaleUIPx
 grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
-    echo "k2g left a C float suffix in Go output" >&2
+    echo "k2go left a C float suffix in Go output" >&2
     exit 1
 fi
-if grep -q 'TODO k2g' "$out"; then
-    echo "k2g left a TODO lowering in Go output:" >&2
-    grep 'TODO k2g' "$out" >&2
+if grep -q 'TODO k2go' "$out"; then
+    echo "k2go left a TODO lowering in Go output:" >&2
+    grep 'TODO k2go' "$out" >&2
     exit 1
 fi
 unqualified_runtime_calls="$(
     rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Rect|Scroll|EndScroll|Open|Close)\(' "$out" || true
 )"
 if [ -n "$unqualified_runtime_calls" ]; then
-    echo "k2g emitted unqualified runtime calls; generated Go must use kryon.<Name>:" >&2
+    echo "k2go emitted unqualified runtime calls; generated Go must use kryon.<Name>:" >&2
     echo "$unqualified_runtime_calls" >&2
     exit 1
 fi
@@ -293,18 +293,18 @@ grep -q 'LabelText(I int32) string' "$out"
 grep -q 'TabLabels() \[\]string' "$out"
 grep -q 'StoreSecret(Secret string, Site string, Login string, A int32, B int32, C int32, D int32, E int32, F int32, Exclude string) int32' "$out"
 if grep -q 'ScaleUIPx(Value int32)' "$out"; then
-    echo "k2g placed a direct Go extern in the host interface" >&2
+    echo "k2go placed a direct Go extern in the host interface" >&2
     exit 1
 fi
 grep -q 'import "C"' "$cgo"
 grep -q 'extern int abs(int value);' "$cgo"
-grep -q 'func k2gCValidCAbs(value int32) int32' "$cgo"
+grep -q 'func k2goCValidCAbs(value int32) int32' "$cgo"
 grep -q 'return int32(C.abs(C.int(value)))' "$cgo"
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
-grep -q 'k2gCValidCAbs(int32(-8))' "$out"
+grep -q 'k2goCValidCAbs(int32(-8))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
 grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"
@@ -428,25 +428,25 @@ cp "$root/go/kryon/go.sum" "$work/out/go.sum"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"
-#assert 2 * 2 == 5, "k2g constant assertion failed"
+#assert 2 * 2 == 5, "k2go constant assertion failed"
 EOF
 
-if "$k2g" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
-    echo "false constant #assert did not fail during k2g parsing" >&2
+if "$k2go" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/assert_fail.err"; then
+    echo "false constant #assert did not fail during k2go parsing" >&2
     exit 1
 fi
-grep -q 'k2g constant assertion failed' "$work/assert_fail.err"
+grep -q 'k2go constant assertion failed' "$work/assert_fail.err"
 
 cat > "$work/src/assert_unknown.kry" <<'EOF'
 #import "kryon.h"
 WEB :: #defined(PLATFORM_WEB)
-#assert WEB, "k2g unresolved assertion"
+#assert WEB, "k2go unresolved assertion"
 EOF
 
-if "$k2g" --root "$work" -o "$work/out" "$work/src/assert_unknown.kry" 2>"$work/assert_unknown.err"; then
-    echo "unresolved #assert did not fail in k2g" >&2
+if "$k2go" --root "$work" -o "$work/out" "$work/src/assert_unknown.kry" 2>"$work/assert_unknown.err"; then
+    echo "unresolved #assert did not fail in k2go" >&2
     exit 1
 fi
 grep -q 'unresolved #assert is not supported by the Go backend' "$work/assert_unknown.err"
 
-echo "k2g syntax ok"
+echo "k2go syntax ok"

@@ -7,9 +7,9 @@ work=${TMPDIR:-/tmp}/kryon-text-input-perf.$$
 trap 'rm -rf "$work"' EXIT INT TERM
 mkdir -p "$work/ir" "$work/c" "$work/go" "$work/js" "$work/krb" "$work/go-check"
 source_file=tests/perf/text_input.kry
-"$build/bin/k2ir" --root "$root" -o "$work/ir" "$source_file"
+"$build/bin/k2kir" --root "$root" -o "$work/ir" "$source_file"
 "$build/bin/k2c" --root "$root" -o "$work/c" "$source_file"
-"$build/bin/k2g" --root "$root" -o "$work/go" "$source_file"
+"$build/bin/k2go" --root "$root" -o "$work/go" "$source_file"
 "$build/bin/k2js" --root "$root" -o "$work/js" "$source_file"
 "$build/bin/k2b" --root "$root" -o "$work/krb" "$source_file"
 sh "$root/tests/check_clean_generated_output.sh" "$work/c"

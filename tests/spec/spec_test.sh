@@ -8,9 +8,9 @@ case "$build_arg" in
     *) build=$root/$build_arg ;;
 esac
 
-k2ir=$build/bin/k2ir
+k2kir=$build/bin/k2kir
 k2c=$build/bin/k2c
-k2g=$build/bin/k2g
+k2go=$build/bin/k2go
 k2js=$build/bin/k2js
 k2b=$build/bin/k2b
 case_file=tests/spec/language_contract.kry
@@ -24,7 +24,7 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$work/ir" "$work/c" "$work/go" "$work/js" "$work/krb" "$work/go-check"
 
-"$k2ir" --root "$root" -o "$work/ir" "$root/$case_file"
+"$k2kir" --root "$root" -o "$work/ir" "$root/$case_file"
 kir=$work/ir/tests/spec/language_contract.kir
 grep -Fq 'assert condition (42) == 42 known 1 value 1' "$kir"
 grep -Fq 'expr binary text count + 1 name  op +' "$kir"
@@ -33,7 +33,7 @@ grep -Fq 'expr binary text count + 1 name  op +' "$kir"
 sh "$root/tests/check_clean_generated_output.sh" "$work/c"
 cc -fsyntax-only -I"$root/include" -I"$work/c" "$work/c/tests/spec/language_contract.c"
 
-"$k2g" --root "$root" -o "$work/go" "$root/$case_file"
+"$k2go" --root "$root" -o "$work/go" "$root/$case_file"
 sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 go_file=$(find "$work/go" -name "*.go" | head -1)
 test -f "$go_file"
@@ -69,14 +69,14 @@ fi
 test -s "$work/krb/tests/spec/krb_contract.krb"
 strings "$work/krb/tests/spec/krb_contract.krb" | grep -Fq "KRB Spec Contract"
 
-if "$k2ir" --root "$root" -o "$work/ir" "$root/tests/spec/assert_fail.kry" 2>"$work/assert_fail.err"; then
-    echo "spec false #assert did not fail in k2ir" >&2
+if "$k2kir" --root "$root" -o "$work/ir" "$root/tests/spec/assert_fail.kry" 2>"$work/assert_fail.err"; then
+    echo "spec false #assert did not fail in k2kir" >&2
     exit 1
 fi
 grep -Fq "spec intentional assertion failure" "$work/assert_fail.err"
 
-if "$k2g" --root "$root" -o "$work/go" "$root/tests/spec/assert_unresolved.kry" 2>"$work/assert_unresolved_go.err"; then
-    echo "spec unresolved #assert did not fail in k2g" >&2
+if "$k2go" --root "$root" -o "$work/go" "$root/tests/spec/assert_unresolved.kry" 2>"$work/assert_unresolved_go.err"; then
+    echo "spec unresolved #assert did not fail in k2go" >&2
     exit 1
 fi
 grep -Fq "unresolved #assert is not supported by the Go backend" "$work/assert_unresolved_go.err"

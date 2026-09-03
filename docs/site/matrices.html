@@ -119,7 +119,7 @@
       </div>
       <div class="table-wrap">
         <table class="matrix-table source-matrix-table">
-          <thead><tr data-conformance-source-head><th>Source</th><th>Type</th><th>k2ir</th><th>k2c</th><th>k2g</th><th>k2js</th><th>k2b</th><th>Renderers</th><th>Widgets</th><th>State Evidence</th></tr></thead>
+          <thead><tr data-conformance-source-head><th>Source</th><th>Type</th><th>k2kir</th><th>k2c</th><th>k2go</th><th>k2js</th><th>k2b</th><th>Renderers</th><th>Widgets</th><th>State Evidence</th></tr></thead>
           <tbody data-conformance-sources></tbody>
         </table>
       </div>
@@ -141,10 +141,10 @@
           <thead><tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr></thead>
           <tbody>
             <tr><td>C</td><td><code>k2c</code></td><td><code>cc</code> + <code>libkryon.a</code></td><td class="ok">Production path; most complete</td></tr>
-            <tr><td>Go</td><td><code>k2g</code></td><td><code>go/kryon</code> native Go package</td><td class="ok">Declarative subset with executable CI gate</td></tr>
+            <tr><td>Go</td><td><code>k2go</code></td><td><code>go/kryon</code> native Go package</td><td class="ok">Declarative subset with executable CI gate</td></tr>
             <tr><td>JS/Web</td><td><code>k2js</code></td><td><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="ok">Syntax, Node recorder snapshots, and generated runtime state parity gated</td></tr>
             <tr><td>KRB cartridge</td><td><code>k2b</code></td><td><code>KrbLoad</code>/<code>KrbExec</code> on a <code>KryBackend</code></td><td class="part">Portable widget subset; byte-exact renderer tests</td></tr>
-            <tr><td>KIR</td><td><code>k2ir</code></td><td>Inspection artifact</td><td class="na">Debugging and tooling only</td></tr>
+            <tr><td>KIR</td><td><code>k2kir</code></td><td>Inspection artifact</td><td class="na">Debugging and tooling only</td></tr>
           </tbody>
         </table>
       </div>
@@ -167,12 +167,12 @@
     <section>
       <p class="section-eyebrow">Widgets</p>
       <h2>Widget Matrix</h2>
-      <p class="section-lead">Columns: C is the public runtime API. <code>k2c</code> follows C because library calls compile as C-close statements. <code>k2g</code>, <code>k2js</code>, and KRB deliberately cover smaller subsets.</p>
+      <p class="section-lead">Columns: C is the public runtime API. <code>k2c</code> follows C because library calls compile as C-close statements. <code>k2go</code>, <code>k2js</code>, and KRB deliberately cover smaller subsets.</p>
 
       <h3>Display</h3>
       <div class="table-wrap">
         <table class="matrix-table">
-          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
             <tr><td>Background, Text, TextInRect</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Nodes</td></tr>
             <tr><td>Paragraph, TextLines</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
@@ -186,7 +186,7 @@
       <h3>Input</h3>
       <div class="table-wrap">
         <table class="matrix-table">
-          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
             <tr><td>Button</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">ButtonProps</td><td class="ok">Yes</td><td class="ok">Button control</td></tr>
             <tr><td>IconButton</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">IconButton subset</td><td class="part">Subset</td><td class="no">Not lowered</td></tr>
@@ -203,7 +203,7 @@
       <h3>Layout, Collections, Navigation</h3>
       <div class="table-wrap">
         <table class="matrix-table">
-          <thead><tr><th>Family</th><th>C</th><th>k2c</th><th>k2g</th><th>Go</th><th>KRB</th></tr></thead>
+          <thead><tr><th>Family</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
             <tr><td>Column, Row, Stack</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Structural nodes</td></tr>
             <tr><td>Scroll container</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Scroll/EndScroll</td><td class="ok">Yes</td><td class="ok">Scroll node</td></tr>

@@ -1,5 +1,5 @@
 /*
- * k2ir - emit a debuggable KIR text artifact from .kry source.
+ * k2kir - emit a debuggable KIR text artifact from .kry source.
  * Thin wrapper around the shared kir_parse_file frontend.
  */
 #include "kir.h"
@@ -13,7 +13,7 @@
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: k2ir --root DIR -o DIR file.kry ...\n");
+    fprintf(stderr, "usage: k2kir --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -75,7 +75,7 @@ main(int argc, char **argv)
             }
             out = fopen(out_path, "wb");
             if(out == NULL) {
-                fprintf(stderr, "k2ir: %s: open failed\n", out_path);
+                fprintf(stderr, "k2kir: %s: open failed\n", out_path);
                 KirProgramFree(program);
                 return 1;
             }

@@ -1,14 +1,14 @@
 /*
- * k2g - .kry -> Go compiler. Shares the Kir frontend with k2c/k2b: every
+ * k2go - .kry -> Go compiler. Shares the Kir frontend with k2c/k2b: every
  * .kry parses into a KirProgram (kir_parse.c), then lowers to Go source
- * (k2g_lower.c) that calls the native Go Kryon runtime. One frontend, three
+ * (k2go_lower.c) that calls the native Go Kryon runtime. One frontend, three
  * backends.
  *
- * usage: k2g [--no-main] [--pkg NAME] --root DIR -o DIR file.kry ...
+ * usage: k2go [--no-main] [--pkg NAME] --root DIR -o DIR file.kry ...
  */
 #include "kir.h"
 #include "kir_parse.h"
-#include "k2g_lower.h"
+#include "k2go_lower.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2g [--no-main] [--pkg NAME] "
+            "usage: k2go [--no-main] [--pkg NAME] "
             "--root DIR -o DIR file.kry ...\n");
 }
 
@@ -59,17 +59,17 @@ main(int argc, char **argv)
     file_count = argc - first_file;
     progs = calloc((size_t)file_count, sizeof(*progs));
     if(progs == NULL) {
-        fprintf(stderr, "k2g: out of memory\n");
+        fprintf(stderr, "k2go: out of memory\n");
         return 1;
     }
     for(i = 0; i < file_count; i++) {
         progs[i] = kir_parse_file(argv[first_file + i], root);
         if(progs[i] == NULL) {
-            fprintf(stderr, "k2g: failed to parse %s\n", argv[first_file + i]);
+            fprintf(stderr, "k2go: failed to parse %s\n", argv[first_file + i]);
             return 1;
         }
     }
-    if(k2g_lower((const KirProgram *const *)progs, file_count, root, out_dir,
+    if(k2go_lower((const KirProgram *const *)progs, file_count, root, out_dir,
                  pkg, no_main) != 0) {
         for(i = 0; i < file_count; i++)
             KirProgramFree(progs[i]);
