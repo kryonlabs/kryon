@@ -1,4 +1,35 @@
 # Changelog
+## v0.1.39 - 2026-09-03
+
+### Changed
+
+- Release: bump version to v0.1.39
+- Fix image front-end duplicates and canvas radial gradient shim
+- Make Daochi/ksync optional and refresh the Labs site showcase
+- Drop --plan9 from k2cpp
+- Ship k2cpp in the tools distribution archive
+- Verify k2cpp in the packaged tools bundle
+- Fix k2go syntax test filename in make test recipe
+- Finish k2g/k2ir rename in runtime parity doc generator and k2kir test rule
+- Add k2cpp backend with full k2c parity
+- Rename k2g to k2go and k2ir to k2kir
+- Decode images in shared front-end for all backends
+- Implement Canvas texture updates
+- Add Light2D scene nodes
+- Modernize the Kryon platform icons
+- Add light and dark themes to Kryon Labs
+- Give Kryon its crayon color system
+- Give Kryon its crayon color system
+- Redesign the Kryon Labs website
+- Redesign the Kryon Labs website
+- Make rejected single-instance launches safe instead of crashing
+- Ignore static visitors in Area2D body_enter/body_exit signals
+- Read back armed shots through glad when glReadPixels is unresolved
+- Fix signal handler dispatch for application-defined kinds
+- Add direct Body2D control: transform, velocity set/get
+- Emit Area2D body_enter/body_exit signals from Box2D sensor events
+- Compute world transforms before ready hooks in SceneTick
+
 ## v0.1.38 - 2026-09-01
 
 ### Changed
