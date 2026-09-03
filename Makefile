@@ -681,7 +681,7 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_LIBOQS_A) $(KRYON_CURL_A) $(K
 $(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	rm -rf $(TOOLS_DIST_ROOT)
 	mkdir -p $(TOOLS_DIST_ROOT)/bin $(TOOLS_DIST_ROOT)/web $(DIST_DIR)
-	cp $(K2C) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
+	cp $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
 	chmod 755 $(TOOLS_DIST_ROOT)/bin/*
 	printf '%s\n' '$(VERSION)' > $(TOOLS_DIST_ROOT)/VERSION
 	cp README.md LICENSE THIRD_PARTY_NOTICES.md $(TOOLS_DIST_ROOT)/
