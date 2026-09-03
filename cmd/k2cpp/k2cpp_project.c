@@ -8,7 +8,6 @@
  * when present.
  */
 #include "k2cpp_lower.h"
-#include "k2cpp_plan9.h"
 #include "kir.h"
 
 #include <stdio.h>
@@ -309,7 +308,6 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
     fprintf(out, "    kryon_project_runtime = (App){0};\n");
     fprintf(out, "    kryon_project_host = (AppHost){0};\n}\n");
     fclose(out);
-    k2cpp_plan9_rewrite_file(path, 1);
 
     /* --- main() (hook-driven, from KirAppMeta) --- */
     if(no_main || appmod == NULL)
@@ -440,5 +438,4 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
         fprintf(out, "    return 0;\n}\n");
     }
     fclose(out);
-    k2cpp_plan9_rewrite_file(path, 1);
 }

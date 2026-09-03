@@ -9,7 +9,6 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "k2cpp_lower.h"
-#include "k2cpp_plan9.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2cpp [--no-main] [--plan9] [--include-dir DIR] "
+            "usage: k2cpp [--no-main] "
             "--root DIR -o DIR file.kry ...\n");
 }
 
@@ -29,8 +28,6 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     int no_main = 0;
-    int plan9 = 0;
-    int unresolved = 0;
     KirProgram **progs;
     K2cppModuleSyms *syms;
     int file_count;
@@ -44,10 +41,6 @@ main(int argc, char **argv)
             out_dir = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
-        } else if(strcmp(argv[i], "--plan9") == 0) {
-            plan9 = 1;
-        } else if(strcmp(argv[i], "--include-dir") == 0 && i + 1 < argc) {
-            k2cpp_plan9_add_include_dir(argv[++i]);
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -67,7 +60,6 @@ main(int argc, char **argv)
         fprintf(stderr, "k2cpp: out of memory\n");
         return 1;
     }
-    k2cpp_plan9_set_enabled(plan9);
     /* Pass 1: parse every file, build the cross-module symbol table. */
     for(i = 0; i < file_count; i++) {
         progs[i] = kir_parse_file(argv[first_file + i], root);
@@ -86,15 +78,5 @@ main(int argc, char **argv)
         KirProgramFree(progs[i]);
     free(progs);
     free(syms);
-    unresolved = k2cpp_plan9_unresolved();
-    if(plan9 && unresolved > 0) {
-        /* Unresolved declarations are usually inside platform guards the
-         * native build compiles out; the in-guest compile is the final
-         * arbiter, so warn rather than fail. */
-        fprintf(stderr,
-                "k2cpp: --plan9 left %d __auto_type declarations unresolved "
-                "(guarded code compiles out; the rest must be resolvable)\n",
-                unresolved);
-    }
     return 0;
 }

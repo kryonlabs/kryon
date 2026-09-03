@@ -5,7 +5,6 @@
  * plain-C kryon_project files.
  */
 #include "k2cpp_lower.h"
-#include "k2cpp_plan9.h"
 #include "kir.h"
 #include "kir_text.h"
 
@@ -1612,7 +1611,6 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     }
     fprintf(c, "\n#ifdef __cplusplus\n}\n#endif\n");
     fclose(c);
-    k2cpp_plan9_rewrite_file(cpath, 0);
 }
 
 void

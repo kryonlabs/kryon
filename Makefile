@@ -595,7 +595,7 @@ $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 	chmod 755 $@
 
 K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
-K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h cmd/k2cpp/k2cpp_plan9.h $(KIR_HDRS)
+K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)
 
 $(K2CPP): $(K2CPP_SRCS) $(K2CPP_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2CPP_SRCS)
