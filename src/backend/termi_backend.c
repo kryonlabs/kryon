@@ -2306,24 +2306,6 @@ present_sixel_queue(void)
         fflush(stdout);
 }
 
-Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
-                          int dataSize)
-{
-    Image img = {0};
-    int width = 0;
-    int height = 0;
-
-    (void)fileType;
-    img.data = kry_decode_image_rgba(fileData, dataSize, &width, &height);
-    if(img.data != NULL) {
-        img.width = width;
-        img.height = height;
-        img.mipmaps = 1;
-        img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    }
-    return img;
-}
-
 Image LoadImage(const char *fileName)
 {
     unsigned char *data;
@@ -2337,13 +2319,6 @@ Image LoadImage(const char *fileName)
     free(data);
     return img;
 }
-
-bool IsImageValid(Image image)
-{
-    return image.data != NULL && image.width > 0 && image.height > 0;
-}
-
-void UnloadImage(Image image) { free(image.data); }
 
 void ImageFormat(Image *image, int newFormat)
 {

@@ -38,6 +38,9 @@ app_specific_matches=$(
         --glob '!dist/**' \
         --glob '!.git/**' \
         --glob '!tools/check-kryon-boundaries.sh' \
+        --glob '!CHANGELOG.md' \
+        --glob '!docs/site/showcase-data.json' \
+        --glob '!docs/site/showcase/**' \
         2>/dev/null || true
 )
 if [ -n "$app_specific_matches" ]; then

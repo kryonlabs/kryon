@@ -25,6 +25,7 @@ const ctxState = {
     translate: rec('translate'), rotate: rec('rotate'), scale: rec('scale'),
     setTransform: rec('setTransform'),
     createLinearGradient: () => grad,
+    createRadialGradient: () => grad,
     fillText: rec('fillText'),
     measureText: (t) => ({
         width: t.length * 8,

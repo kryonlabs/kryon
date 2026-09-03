@@ -1878,24 +1878,6 @@ Vector2 BackendRaw_GetMouseWheelMoveV(void)
     return (Vector2){0.0f, BackendRaw_GetMouseWheelMove()};
 }
 
-Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
-                          int dataSize)
-{
-    Image img = {0};
-
-    (void)fileType;
-    img.data = kry_libdraw_png_rgba(fileData, dataSize, &img.width, &img.height);
-#ifndef KRYON_NATIVE_PLAN9
-    if(img.data == NULL)
-        img.data = kry_decode_image_rgba(fileData, dataSize, &img.width,
-                                         &img.height);
-#endif
-    if(img.data != NULL) {
-        img.mipmaps = 1;
-        img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    }
-    return img;
-}
 Image LoadImage(const char *fileName)
 {
     int len = 0;
@@ -1929,25 +1911,11 @@ Image GenImageColor(int width, int height, Color color)
     img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
     return img;
 }
-void UnloadImage(Image image) { free(image.data); }
 void ImageFormat(Image *image, int newFormat)
 {
     if(image != NULL)
         image->format = newFormat;
 }
-void ImageFlipVertical(Image *image)
-{
-    int y;
-    unsigned char *tmp;
-
-    if(image == NULL || image->data == NULL || image->height <= 1)
-        return;
-    tmp = malloc((size_t)image->width * 4);
-    if(tmp == NULL)
-        return;
-    for(y = 0; y < image->height / 2; y++) {
-        unsigned char *a = (unsigned char *)image->data + (size_t)y * image->width * 4;
-        unsigned char *b = (unsigned char *)image->data +
                            (size_t)(image->height - 1 - y) * image->width * 4;
         memcpy(tmp, a, (size_t)image->width * 4);
         memcpy(a, b, (size_t)image->width * 4);

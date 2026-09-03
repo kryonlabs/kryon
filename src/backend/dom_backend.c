@@ -1688,22 +1688,10 @@ Image GenImageColor(int width, int height, Color color)
     }
     return dom_image_from_rgba(px, width, height);
 }
-bool IsImageValid(Image image)
-{
-    return image.data != NULL && image.width > 0 && image.height > 0;
-}
 void ImageFormat(Image *image, int newFormat)
 {
     if(image != NULL)
         image->format = newFormat;
-}
-void ImageFlipVertical(Image *image)
-{
-    (void)image;
-}
-void UnloadImage(Image image)
-{
-    free(image.data);
 }
 Texture2D LoadTextureFromImage(Image image)
 {
@@ -1744,21 +1732,6 @@ void SetTextureFilter(Texture2D texture, int filter)
 {
     (void)texture;
     (void)filter;
-}
-Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
-                          int dataSize)
-{
-    int w = 0;
-    int h = 0;
-    unsigned char *rgba;
-
-    (void)fileType;
-    if(fileData == NULL || dataSize <= 0)
-        return (Image){0};
-    rgba = kry_decode_image_rgba(fileData, dataSize, &w, &h);
-    if(rgba == NULL)
-        return (Image){0};
-    return dom_image_from_rgba(rgba, w, h);
 }
 Image LoadImage(const char *fileName)
 {

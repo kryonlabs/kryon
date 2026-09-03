@@ -171,20 +171,6 @@ static Image canvas_image_from_rgba(unsigned char *rgba, int w, int h)
     return img;
 }
 
-Image LoadImageFromMemory(const char *fileType, const unsigned char *fileData,
-                          int dataSize)
-{
-    int w = 0;
-    int h = 0;
-    unsigned char *rgba;
-
-    (void)fileType;
-    if(fileData == NULL || dataSize <= 0)
-        return canvas_image_from_rgba(NULL, 0, 0);
-    rgba = kry_sw_png_rgba(fileData, (size_t)dataSize, &w, &h);
-    return canvas_image_from_rgba(rgba, w, h);
-}
-
 Image LoadImage(const char *fileName)
 {
     int len = 0;
@@ -196,11 +182,6 @@ Image LoadImage(const char *fileName)
     img = LoadImageFromMemory(".png", data, len);
     free(data);
     return img;
-}
-
-void UnloadImage(Image image)
-{
-    free(image.data);
 }
 
 Image LoadImageFromTexture(Texture2D texture)
@@ -219,29 +200,6 @@ Image LoadImageFromTexture(Texture2D texture)
     return canvas_image_from_rgba(px, texture.width, texture.height);
 }
 
-void ImageFlipVertical(Image *image)
-{
-    int w, h, y;
-    unsigned char *row;
-
-    if(image == NULL || image->data == NULL)
-        return;
-    w = image->width;
-    h = image->height;
-    row = malloc((size_t)w * 4);
-    if(row == NULL)
-        return;
-    for(y = 0; y < h / 2; y++) {
-        unsigned char *top = (unsigned char *)image->data + (size_t)y * w * 4;
-        unsigned char *bot = (unsigned char *)image->data +
-            (size_t)(h - 1 - y) * w * 4;
-
-        memcpy(row, top, (size_t)w * 4);
-        memcpy(top, bot, (size_t)w * 4);
-        memcpy(bot, row, (size_t)w * 4);
-    }
-    free(row);
-}
 
 Texture2D LoadTextureFromImage(Image image)
 {
@@ -415,12 +373,6 @@ Image GenImageColor(int width, int height, Color color)
     img.mipmaps = 1;
     img.format = 1;
     return img;
-}
-
-bool IsImageValid(Image image)
-{
-    return image.data != NULL && image.width > 0 && image.height > 0 &&
-           image.mipmaps > 0 && image.format > 0;
 }
 
 void ImageFormat(Image *image, int newFormat)
