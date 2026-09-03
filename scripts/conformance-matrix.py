@@ -4,7 +4,7 @@
 The matrix is intentionally mechanical: it scans the checked-in .kry examples
 and generated-runtime parity fixtures, records which widget families each file
 exercises, and can verify that every listed source lowers through k2kir, k2c,
-k2go, k2js, and k2b.
+k2cpp, k2go, k2js, and k2b.
 """
 
 from __future__ import annotations
@@ -39,6 +39,12 @@ PIPELINES = [
         "label": ".kry -> KIR -> C",
         "tool": "build/linux-x86_64/bin/k2c",
         "evidence": "tests/k2c_syntax_test.sh plus conformance-matrix-check",
+    },
+    {
+        "id": "k2cpp",
+        "label": ".kry -> KIR -> C++",
+        "tool": "build/linux-x86_64/bin/k2cpp",
+        "evidence": "tests/k2cpp_syntax_test.sh plus conformance-matrix-check",
     },
     {
         "id": "k2go",
@@ -1843,7 +1849,7 @@ def verify_visual_comparison_matrix(data: dict) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
-    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2kir/k2c/k2go/k2js/k2b")
+    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2kir/k2c/k2cpp/k2go/k2js/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")

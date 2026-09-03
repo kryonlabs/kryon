@@ -18,8 +18,8 @@ surface:
 - `Row`
 - `Column`
 
-Do not add `kryc`. The supported transpilers are `k2go` for native Go and `k2c`
-for native C.
+Do not add `kryc`. The supported transpilers are `k2go` for native Go, `k2c`
+for native C, and `k2cpp` for native C++ (C++ codegen over the C runtime).
 
 Generated Go must be native Go and must not use cgo, `go/kryui`, `kryruntime`,
 or an injected `rt` runtime object. Generated C must not call stale prefixed UI
@@ -32,7 +32,7 @@ it.
 
 ## Test Rule
 
-Any change to k2go, k2c, the Go runtime, or the C runtime surface must keep the
+Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must keep the
 generated-output scanners and runtime parity tests passing. If a new widget or
 semantic is added, add it to both generated runtimes and to parity coverage in
 the same change.

@@ -88,7 +88,7 @@ Every successful CI run on `master` automatically advances the patch version,
 commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
 The workflow validates the version, creates an annotated tag, builds and tests
 Kryon, and publishes both the static SDK and a checksummed native tools bundle.
-The tools bundle contains `k2c`, `k2go`, `k2js`, `k2kir`, `k2b`, `kt`, `kryon`,
+The tools bundle contains `k2c`, `k2cpp`, `k2go`, `k2js`, `k2kir`, `k2b`, `kt`, `kryon`,
 `kryon-preview`, `krb-run`, and `krb-sdl`. The renderer workflow also attaches
 the Linux, Windows, and macOS `krb-run` builds plus the web player to the same
 release.
@@ -203,7 +203,8 @@ feature family.
 
 `docs/KRY_LANGUAGE_SPEC.md` is the canonical Kry language contract. Kry source
 lowers into KIR, a debuggable intermediate representation with source spans.
-From there `k2c` emits readable C for native apps, `k2go` emits pure Go source
+From there `k2c` emits readable C for native apps, `k2cpp` emits C++ with C
+linkage against the same C runtime, `k2go` emits pure Go source
 against the native Go runtime, while `k2b` emits a portable `.krb` cartridge
 (`docs/KRB_FORMAT.md`) for renderers that implement the Kryon runtime contract.
 The intended tool set is Unix-shaped:
@@ -211,6 +212,7 @@ The intended tool set is Unix-shaped:
 ```text
 k2kir app.kry        # .kry -> .kir
 k2c  app.kry|app.kir
+k2cpp app.kry        # .kry -> C++ (extern "C" decls over the C runtime)
 k2go  app.kry        # .kry -> Go (native Go runtime, no cgo)
 k2b  app.kry|app.kir
 ```

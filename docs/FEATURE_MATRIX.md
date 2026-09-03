@@ -20,6 +20,7 @@ the columns diverge.
 .kry source
    │   shared frontend: cmd/kir/kir_parse.c -> KirProgram
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
+   ├── k2cpp -> .cpp/.hpp + kryon_project.c/.h (extern "C" decls; same lowering as k2c)
    ├── k2go  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
    ├── k2js -> .js (web runtime calls)      -> browser/Node ESM   -> Web app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
@@ -29,6 +30,7 @@ the columns diverge.
 | Target | Producer | Runtime | Status |
 |---|---|---|---|
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
+| C++ | `k2cpp` | `c++` + `libkryon.a`; C++ codegen with C linkage, same lowering as `k2c` | Parity port of the `k2c` backend |
 | Go | `k2go` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
 | JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Syntax, Node recorder snapshots, and generated runtime state parity gated |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
@@ -47,7 +49,7 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 ## Widget statement whitelist (`.kry` frontend)
 
 `parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 51 widget names.
-`k2c` compiles any library call regardless (plain call statement); `k2go` lowers
+`k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
@@ -65,7 +67,7 @@ PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`
 
 ## Widget matrix
 
-Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2go** = `.kry`→Go codegen
+Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2cpp** = `.kry`→C++ codegen (mirrors `k2c`) · **k2go** = `.kry`→Go codegen
 (pure Go importing `go/kryon` as `kryon` and calling `kryon.<Widget>`) · **Go** =
 hand-written Go via the `go/kryon` package API · **KRB** = lowered into a
 cartridge by `k2b`.
@@ -78,121 +80,121 @@ declaration pass (`src/ui/ui_tree.c`).
 
 ### UI/Display
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| Background | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
-| Text | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
-| TextInRect | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
-| Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
-| TextLines | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
-| Rect | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
-| Line | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
-| Bevel | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
-| IconTexture (114 embedded icons) | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
-| Image/Picture | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| Background | ✅ | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
+| Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
+| TextInRect | ✅ | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
+| Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
+| TextLines | ✅ | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
+| Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
+| Line | ✅ | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
+| Bevel | ✅ | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
+| IconTexture (114 embedded icons) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
+| Image/Picture | ✅ | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
 
 ### UI/Input
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
-| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
-| IconButton / PaddedIconBtn | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
-| InfoButton | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Href (hyperlink) / IconLink | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
-| TextField | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
-| Read-only text | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
-| TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
-| Dropdown / DropdownEx | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
-| Slider | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✗ use `kryon.Slider` in generated Go | ✗ generated Go uses `kryon.Slider` | ✅ VSLIDER control |
-| Toggle (switch) | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
-| Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
-| Radio | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
-| Progress | ✅ | ✅ | ✅ | ✅ `Progress` | ✅ `KRB_CTRL_PROGRESS` |
-| Spinbox | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
-| Combobox | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
-| ColorPicker (RGB sliders) | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
+| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
+| IconButton / PaddedIconBtn | ✅ | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
+| InfoButton | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Href (hyperlink) / IconLink | ✅ | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
+| TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
+| Read-only text | ✅ | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
+| TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
+| Dropdown / DropdownEx | ✅ | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
+| Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
+| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Slider` in generated Go | ✗ generated Go uses `kryon.Slider` | ✅ VSLIDER control |
+| Toggle (switch) | ✅ | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
+| Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
+| Radio | ✅ | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
+| Progress | ✅ | ✅ | ✅ | ✅ | ✅ `Progress` | ✅ `KRB_CTRL_PROGRESS` |
+| Spinbox | ✅ | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
+| Combobox | ✅ | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
+| ColorPicker (RGB sliders) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### UI/Layout
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
-| Group | ✅ (lowers to Stack) | ✅ | ◐ via Column | ✅ via Stack | ✅ |
-| Scroll container | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
-| Separator | ✅ | ✅ | ✗ | ✗ | ✅ |
-| LabelFrame | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
-| Notebook (tabs) | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
-| PanedView (splitter) | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
-| Collapsible | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
-| Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✗ |
-| UIForm cursor (`UIForm*`) | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
+| Group | ✅ (lowers to Stack) | ✅ | ✅ | ◐ via Column | ✅ via Stack | ✅ |
+| Scroll container | ✅ | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
+| Separator | ✅ | ✅ | ✅ | ✗ | ✗ | ✅ |
+| LabelFrame | ✅ | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
+| Notebook (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
+| PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
+| Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
+| Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| UIForm cursor (`UIForm*`) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
 
 ### UI/Collections
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| ListBox | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
-| TreeView / CascadingTreeView | ✅ | ✅ | ✗ | ✗ | ✗ |
-| SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
-| TableView (sortable) | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
-| CanvasGrid | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
-| SelectableText | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| ListBox | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
+| TreeView / CascadingTreeView | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
+| TableView (sortable) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
+| CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
+| SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
 
 ### UI/Navigation
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✗ | ✗ | ✗ |
-| TabBar | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
-| SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✗ | ✗ | ✗ |
-| BottomNav (+ config modal) | ✅ | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |
-| TopNav / Toolbar / ToolbarHeader | ✅ | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |
-| TitleBar family | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
+| SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| BottomNav (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |
+| TopNav / Toolbar / ToolbarHeader | ✅ | ✅ | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |
+| TitleBar family | ✅ | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
 
 ### UI/Overlays
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
-| MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Toast | ✅ | ✅ | ✅ `ShowToast(For)` | ✅ `ShowToast(For)` | ✗ |
-| GuideOverlay / TutorialImage(Placeholder) | ✅ | ✅ | ✗ | ✗ | ✗ |
-| TransitionFade / Focus ring | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
-| ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ◐ theme-control methods only | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |
-| FocusDebugOverlay | ✅ | ✅ | ✗ | ✗ | ✗ |
-| InfoRows / OverlayButton / IconSliderPopup | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
+| MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Toast | ✅ | ✅ | ✅ | ✅ `ShowToast(For)` | ✅ `ShowToast(For)` | ✗ |
+| GuideOverlay / TutorialImage(Placeholder) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| TransitionFade / Focus ring | ✅ | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
+| ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ✅ | ◐ theme-control methods only | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |
+| FocusDebugOverlay | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| InfoRows / OverlayButton / IconSliderPopup | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### UI/Composite And App Framework
 
-| Widget | C | k2c | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| LabelTextField / SectionLabel | ✅ | ✅ | ✗ | ✗ | ✗ |
-| CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✗ | ✗ | ✗ |
-| BottomNavConfig | ✅ | ✅ | ✗ | ✗ | ✗ |
-| SidebarAccountHeader / ProfilePicturePicker | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Reorder (drag handle + placeholder) | ✅ | ✅ | ✗ | ✗ | ✗ |
-| ImageBox | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Route stack / shell measurement | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Capabilities / safe content rect | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Setting normalization helpers | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Widget | C | k2c | k2cpp | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| LabelTextField / SectionLabel | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| BottomNavConfig | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| SidebarAccountHeader / ProfilePicturePicker | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Reorder (drag handle + placeholder) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| ImageBox | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Route stack / shell measurement | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Capabilities / safe content rect | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Setting normalization helpers | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### Game2D (scene tree, `src/scene/`)
 
-| Node | C | ✅ | k2go | Go | KRB |
-|---|---|---|---|---|---|
-| Scene / Node2D / Camera2D | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D | ✅ | ✅ | ✗ | ✗ | ✗ |
-| CollisionShape2D / Area2D / Body2D (box2d) | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Timer / AudioSource / AnimationPlayer | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Signals (`KrySignal`) / keyframe animation | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Node | C | ✅ | ✅ | k2go | Go | KRB |
+|---|---|---|---|---|---|---|
+| Scene / Node2D / Camera2D | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| CollisionShape2D / Area2D / Body2D (box2d) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Timer / AudioSource / AnimationPlayer | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Signals (`KrySignal`) / keyframe animation | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### KRB cartridge vocabulary (no C widget equivalent)
 
 | Item | Notes |
-|---|---|
+|---|---|---|
 | DATA node | state-field mount read/written by bytecode |
 | CIRCLE / RING nodes | lowered from `DrawCircleV` / `DrawRing` calls |
 | `NavButton` | `k2b`-only lowering; becomes a BUTTON with `KRB_FLAG_NAV` |
@@ -203,7 +205,7 @@ declaration pass (`src/ui/ui_tree.c`).
 ## Cross-cutting features
 
 | Feature | C | Go | KRB |
-|---|---|---|---|
+|---|---|---|---|---|
 | Theming | ✅ 6 palettes × light/dark INI, scopes, vars, runtime loader | ✅ `SetCurrentTheme`/`SetThemeDarkMode`/`GetTheme*` | ◐ theme color slots (`KrySwSetTheme`); light/dark env knobs on hosts |
 | Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetUIStyleTokens` | ✗ |
 | Animation | ✅ transitions (smoothstep), ripple, keyframe scene anims | ✗ | ◐ `AnimNode` + `TIME` opcode |
@@ -225,7 +227,7 @@ declaration pass (`src/ui/ui_tree.c`).
 ### Tier A — surface backends (link-time, `KRYON_BACKEND`)
 
 | Backend | Graphics API | Platforms | CI | Notes |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | `raylib` (default) | OpenGL ES 2.0 over SDL2 | Linux, FreeBSD | ✅ `ci.yml` (Linux + FreeBSD) | Default everywhere; dist/static SDK targets; implements the full 3D tier (camera/mesh/shader + rlgl entry points) |
 | `raylib` web | WebGL (ES2) over GLFW3 | Emscripten | ✅ web/app builds | `mk/web.mk`; present shim for WebKitGTK |
 | `raylib` windows `opengl` | OpenGL 2.1 | Windows (mingw) | ✅ release builds | Default Windows flavor |
@@ -239,7 +241,7 @@ declaration pass (`src/ui/ui_tree.c`).
 ### Tier B — cartridge hosts (`KryBackend` vtable, runtime selection)
 
 | Host | Rendering | Input | Textures | Text | CI | Notes |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|
 | `KryBackendDraw` | raylib surface | raylib | ✅ | full font stack | ✅ | Auto-installed via constructor; hooks cartridge audio; runs inside raylib apps and `kryon-preview` |
 | `kry_sw` | software RGBA8 rasterizer | injected (`KrySwMouse` etc.) | ✅ + PNG decode | font8x8 or KFA1 atlas | ✅ | No GPU/libc deps; `KrySwToRGB565` for embedded panels; one-shot dirty-rect tracking |
 | `krb-run` | `kry_sw` headless | injected | ✅ | via `kry_sw` | ✅ linux/windows/macos | PNG dump + `KryBackendRec` call log; conformance host |

@@ -23,6 +23,7 @@ li{margin:.25rem 0}
 <pre>.kry source
    │   shared frontend: cmd/kir/kir_parse.c -&gt; KirProgram
    ├── k2c  -&gt; .c/.h + kryon_project.c/.h  -&gt; cc + libkryon.a    -&gt; native C app
+   ├── k2cpp -&gt; .cpp/.hpp + kryon_project.c/.h (extern &quot;C&quot; decls; same lowering as k2c)
    ├── k2go  -&gt; .go (kryon.&lt;Widget&gt; calls)  -&gt; go build + go/kryon -&gt; Go app
    ├── k2js -&gt; .js (web runtime calls)      -&gt; browser/Node ESM   -&gt; Web app
    ├── k2b  -&gt; .krb (+ .krb.c/.krb host)   -&gt; KrbLoad/KrbExec on any KryBackend
@@ -30,6 +31,7 @@ li{margin:.25rem 0}
 <table>
 <tr><th>Target</th><th>Producer</th><th>Runtime</th><th>Status</th></tr>
 <tr><td class="">C</td><td class=""><code>k2c</code></td><td class=""><code>cc</code> + <code>libkryon.a</code> (raylib/null/canvas/libdraw surface backend)</td><td class="">Most complete path; production use</td></tr>
+<tr><td class="">C++</td><td class=""><code>k2cpp</code></td><td class=""><code>c++</code> + <code>libkryon.a</code>; C++ codegen with C linkage, same lowering as <code>k2c</code></td><td class="">Parity port of the <code>k2c</code> backend</td></tr>
 <tr><td class="">Go</td><td class=""><code>k2go</code></td><td class=""><code>go/kryon</code> native Go package, no cgo</td><td class="">Declarative subset; executable CI gate</td></tr>
 <tr><td class="">JS/Web</td><td class=""><code>k2js</code></td><td class=""><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="">Syntax, Node recorder snapshots, and generated runtime state parity gated</td></tr>
 <tr><td class="">KRB cartridge</td><td class=""><code>k2b</code></td><td class=""><code>src/krb/krb.c</code> via the <code>KryBackend</code> vtable</td><td class="">Format v2; byte-exact across engines; CI-gated</td></tr>
@@ -45,116 +47,116 @@ li{margin:.25rem 0}
 </ul>
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
-<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2go</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
+<p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2cpp</code> shares that lowering (C++ output, C linkage); <code>k2go</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
 <p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
-<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
+<p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2cpp</b> = <code>.kry</code>→C++ codegen (mirrors <code>k2c</code>) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">TextInRect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInRect</code></td><td class="ok">✅</td></tr>
-<tr><td class="">Paragraph (rich text + inline icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Paragraph</code></td><td class="no">✗</td></tr>
-<tr><td class="">TextLines</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextLines</code></td><td class="no">✗</td></tr>
-<tr><td class="">Rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
-<tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
-<tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
-<tr><td class="">IconTexture (114 embedded icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>IconTexture</code></td><td class="no">✗</td></tr>
-<tr><td class="">Image/Picture</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Picture(kryon.PictureProps)</code></td><td class="ok">✅ <code>kryon.Picture</code></td><td class="ok">✅ node (embedded asset or PNG)</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Text</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">TextInRect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextInRect</code></td><td class="ok">✅</td></tr>
+<tr><td class="">Paragraph (rich text + inline icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Paragraph</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextLines</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TextLines</code></td><td class="no">✗</td></tr>
+<tr><td class="">Rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
+<tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
+<tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
+<tr><td class="">IconTexture (114 embedded icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>IconTexture</code></td><td class="no">✗</td></tr>
+<tr><td class="">Image/Picture</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Picture(kryon.PictureProps)</code></td><td class="ok">✅ <code>kryon.Picture</code></td><td class="ok">✅ node (embedded asset or PNG)</td></tr>
 </table>
 <h3>UI/Input</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Button(kryon.ButtonProps)</code> / <code>kryon.Button(&quot;Save&quot;)</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Legacy positional buttons</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Button(kryon.ButtonProps)</code></td><td class="no">✗ generated Go uses <code>kryon.Button</code></td><td class="part">◐ BUTTON style byte</td></tr>
-<tr><td class="">IconButton / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.TextField(kryon.TextFieldProps)</code> / <code>kryon.TextField(&quot;Name&quot;, &amp;value)</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
-<tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code>/<code>TextInRect</code></td><td class="ok">✅ <code>Text</code>/<code>TextInRect</code></td><td class="no">✗</td></tr>
-<tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
-<tr><td class="">Dropdown / DropdownEx</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code> (Ex needs rich option arrays)</td><td class="ok">✅ <code>Dropdown(Ex)</code></td><td class="ok">✅ DROPDOWN control</td></tr>
-<tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider</code>/<code>Slider</code></td><td class="ok">✅ SLIDER control</td></tr>
-<tr><td class="">Vertical sliders</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Slider</code> in generated Go</td><td class="no">✗ generated Go uses <code>kryon.Slider</code></td><td class="ok">✅ VSLIDER control</td></tr>
-<tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
-<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="ok">✅ <code>KRB_CTRL_RADIO</code></td></tr>
-<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="ok">✅ <code>KRB_CTRL_PROGRESS</code></td></tr>
-<tr><td class="">Spinbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Spinbox</code></td><td class="ok">✅ SPINBOX control</td></tr>
-<tr><td class="">Combobox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Combobox</code></td><td class="ok">✅ COMBOBOX control (renders like the dropdown, mirroring the C widget)</td></tr>
-<tr><td class="">ColorPicker (RGB sliders)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Button(kryon.ButtonProps)</code> / <code>kryon.Button(&quot;Save&quot;)</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Legacy positional buttons</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Button(kryon.ButtonProps)</code></td><td class="no">✗ generated Go uses <code>kryon.Button</code></td><td class="part">◐ BUTTON style byte</td></tr>
+<tr><td class="">IconButton / PaddedIconBtn</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>IconButton</code> only</td><td class="part">◐ <code>IconButton</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">InfoButton</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Href (hyperlink) / IconLink</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Href</code> only</td><td class="part">◐ <code>Href</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.TextField(kryon.TextFieldProps)</code> / <code>kryon.TextField(&quot;Name&quot;, &amp;value)</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
+<tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code>/<code>TextInRect</code></td><td class="ok">✅ <code>Text</code>/<code>TextInRect</code></td><td class="no">✗</td></tr>
+<tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
+<tr><td class="">Dropdown / DropdownEx</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code> (Ex needs rich option arrays)</td><td class="ok">✅ <code>Dropdown(Ex)</code></td><td class="ok">✅ DROPDOWN control</td></tr>
+<tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider</code>/<code>Slider</code></td><td class="ok">✅ SLIDER control</td></tr>
+<tr><td class="">Vertical sliders</td><td class="ok">✅ low-level only</td><td class="ok">✅ only for existing C callers</td><td class="ok">✅ only for existing C callers</td><td class="no">✗ use <code>kryon.Slider</code> in generated Go</td><td class="no">✗ generated Go uses <code>kryon.Slider</code></td><td class="ok">✅ VSLIDER control</td></tr>
+<tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Checkbox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Checkbox</code></td><td class="ok">✅ node</td></tr>
+<tr><td class="">Radio</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Radio</code></td><td class="ok">✅ <code>KRB_CTRL_RADIO</code></td></tr>
+<tr><td class="">Progress</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Progress</code></td><td class="ok">✅ <code>KRB_CTRL_PROGRESS</code></td></tr>
+<tr><td class="">Spinbox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Spinbox</code></td><td class="ok">✅ SPINBOX control</td></tr>
+<tr><td class="">Combobox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Combobox</code></td><td class="ok">✅ COMBOBOX control (renders like the dropdown, mirroring the C widget)</td></tr>
+<tr><td class="">ColorPicker (RGB sliders)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Layout</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
-<tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
-<tr><td class="">Scroll container</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ SCROLL node</td></tr>
-<tr><td class="">Separator</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✅</td></tr>
-<tr><td class="">LabelFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>LabelFrame</code></td><td class="ok">✅ rect/text lowering</td></tr>
-<tr><td class="">Notebook (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Notebook</code></td><td class="no">✗</td></tr>
-<tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
-<tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
-<tr><td class="">Tk pack/grid helpers (<code>FramePack</code>, <code>GridCell</code>, <code>Place</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">UIForm cursor (<code>UIForm*</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Begin/EndCanvas</code></td><td class="ok">✅ <code>Begin/EndCanvas</code>+hit-test</td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
+<tr><td class="">Group</td><td class="ok">✅ (lowers to Stack)</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ via Column</td><td class="ok">✅ via Stack</td><td class="ok">✅</td></tr>
+<tr><td class="">Scroll container</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ <code>BeginUIScrollContainer</code>/<code>EndUIScrollContainer</code></td><td class="ok">✅ SCROLL node</td></tr>
+<tr><td class="">Separator</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="ok">✅</td></tr>
+<tr><td class="">LabelFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>LabelFrame</code></td><td class="ok">✅ rect/text lowering</td></tr>
+<tr><td class="">Notebook (tabs)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Notebook</code></td><td class="no">✗</td></tr>
+<tr><td class="">PanedView (splitter)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>PanedView</code></td><td class="no">✗</td></tr>
+<tr><td class="">Collapsible</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Collapsible</code></td><td class="no">✗</td></tr>
+<tr><td class="">Tk pack/grid helpers (<code>FramePack</code>, <code>GridCell</code>, <code>Place</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
+<tr><td class="">UIForm cursor (<code>UIForm*</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Begin/EndCanvas</code></td><td class="ok">✅ <code>Begin/EndCanvas</code>+hit-test</td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Collections</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">ListBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
-<tr><td class="">TreeView / CascadingTreeView</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">SourceView (code + line numbers)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SourceView</code></td><td class="no">✗</td></tr>
-<tr><td class="">TableView (sortable)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TableView</code></td><td class="no">✗</td></tr>
-<tr><td class="">CanvasGrid</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>CanvasGrid</code></td><td class="no">✗</td></tr>
-<tr><td class="">SelectableText</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SelectableText</code></td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">ListBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
+<tr><td class="">TreeView / CascadingTreeView</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">SourceView (code + line numbers)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SourceView</code></td><td class="no">✗</td></tr>
+<tr><td class="">TableView (sortable)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TableView</code></td><td class="no">✗</td></tr>
+<tr><td class="">CanvasGrid</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>CanvasGrid</code></td><td class="no">✗</td></tr>
+<tr><td class="">SelectableText</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>SelectableText</code></td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Navigation</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">MenuBar / PopupMenu / ContextMenu</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">TabBar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
-<tr><td class="">SubtabBar / PaneTabBar (dock zones)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">BottomNav (+ config modal)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BottomNav</code></td><td class="part">◐ <code>NavButton</code> lowers to a BUTTON</td></tr>
-<tr><td class="">TopNav / Toolbar / ToolbarHeader</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TopNav</code>/<code>Toolbar</code> only</td><td class="ok">✅ <code>TopNav</code>/<code>Toolbar</code></td><td class="no">✗</td></tr>
-<tr><td class="">TitleBar family</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TitleBar</code> only</td><td class="ok">✅ <code>TitleBar</code></td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">MenuBar / PopupMenu / ContextMenu</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">TabBar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>TabBar</code></td><td class="no">✗</td></tr>
+<tr><td class="">SubtabBar / PaneTabBar (dock zones)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">BottomNav (+ config modal)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>BottomNav</code></td><td class="part">◐ <code>NavButton</code> lowers to a BUTTON</td></tr>
+<tr><td class="">TopNav / Toolbar / ToolbarHeader</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TopNav</code>/<code>Toolbar</code> only</td><td class="ok">✅ <code>TopNav</code>/<code>Toolbar</code></td><td class="no">✗</td></tr>
+<tr><td class="">TitleBar family</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TitleBar</code> only</td><td class="ok">✅ <code>TitleBar</code></td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Overlays</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">ActionModal / Modal / Modal3Button / ModalFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Modal</code> only</td><td class="part">◐ <code>Modal</code> only</td><td class="no">✗</td></tr>
-<tr><td class="">MessageDialog / ConfirmDialog / PromptDialog</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
-<tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="no">✗</td></tr>
-<tr><td class="">GuideOverlay / TutorialImage(Placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">TransitionFade / Focus ring</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode drive animation</td></tr>
-<tr><td class="">ThemeSettings / ThemeSwitcher / ThemePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ theme-control methods only</td><td class="part">◐ <code>SetCurrentTheme</code>/<code>SetThemeStyle</code> (control only)</td><td class="no">✗</td></tr>
-<tr><td class="">FocusDebugOverlay</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">InfoRows / OverlayButton / IconSliderPopup</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">ActionModal / Modal / Modal3Button / ModalFrame</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Modal</code> only</td><td class="part">◐ <code>Modal</code> only</td><td class="no">✗</td></tr>
+<tr><td class="">MessageDialog / ConfirmDialog / PromptDialog</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
+<tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="ok">✅ <code>ShowToast(For)</code></td><td class="no">✗</td></tr>
+<tr><td class="">GuideOverlay / TutorialImage(Placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">TransitionFade / Focus ring</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode drive animation</td></tr>
+<tr><td class="">ThemeSettings / ThemeSwitcher / ThemePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ theme-control methods only</td><td class="part">◐ <code>SetCurrentTheme</code>/<code>SetThemeStyle</code> (control only)</td><td class="no">✗</td></tr>
+<tr><td class="">FocusDebugOverlay</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">InfoRows / OverlayButton / IconSliderPopup</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 </table>
 <h3>UI/Composite And App Framework</h3>
 <table>
-<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">LabelTextField / SectionLabel</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">BottomNavConfig</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">SidebarAccountHeader / ProfilePicturePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Reorder (drag handle + placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">ImageBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Route stack / shell measurement</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Capabilities / safe content rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Setting normalization helpers</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">LabelTextField / SectionLabel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">BottomNavConfig</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">SidebarAccountHeader / ProfilePicturePicker</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Reorder (drag handle + placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">ImageBox</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Route stack / shell measurement</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Capabilities / safe content rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Setting normalization helpers</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 </table>
 <h3>Game2D (scene tree, <code>src/scene/</code>)</h3>
 <table>
-<tr><th>Node</th><th>C</th><th>✅</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
-<tr><td class="">Scene / Node2D / Camera2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">CollisionShape2D / Area2D / Body2D (box2d)</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Timer / AudioSource / AnimationPlayer</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-<tr><td class="">Signals (<code>KrySignal</code>) / keyframe animation</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><th>Node</th><th>C</th><th>✅</th><th>✅</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
+<tr><td class="">Scene / Node2D / Camera2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Sprite2D / AnimatedSprite2D / TileMap / TileLayer / Light2D</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">CollisionShape2D / Area2D / Body2D (box2d)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Timer / AudioSource / AnimationPlayer</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Signals (<code>KrySignal</code>) / keyframe animation</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
 </table>
 <h3>KRB cartridge vocabulary (no C widget equivalent)</h3>
 <table>
