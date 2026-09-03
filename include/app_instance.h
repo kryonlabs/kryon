@@ -11,4 +11,10 @@ int SingleInstanceEnabled(void);
  * InitWindow and exit (or forward to the running instance). */
 int InstanceRejected(void);
 
+/* Drop the single-instance lock immediately (idempotent). Apps with a
+ * slow shutdown path call this right when their main loop ends so a
+ * freshly launched instance does not have to steal the lock from a
+ * process that is merely cleaning up. CloseWindow releases it too. */
+void KryonReleaseInstanceLock(void);
+
 #endif

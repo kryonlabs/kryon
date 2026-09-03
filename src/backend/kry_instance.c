@@ -67,6 +67,36 @@ static void instance_key(const char *title, char *out, size_t out_size)
     out[n] = '\0';
 }
 
+/* pid-reuse guard: only signal pids that still belong to the same
+ * application (same process name) as ourselves */
+static int same_application(pid_t pid)
+{
+    char theirs[128];
+    char mine[128];
+    char path[64];
+    FILE *f;
+    size_t n;
+
+    snprintf(path, sizeof(path), "/proc/%d/comm", (int)pid);
+    f = fopen(path, "r");
+    if(f == NULL)
+        return 0;
+    n = fread(theirs, 1, sizeof(theirs) - 1, f);
+    fclose(f);
+    theirs[n] = '\0';
+    theirs[strcspn(theirs, "\n")] = '\0';
+
+    f = fopen("/proc/self/comm", "r");
+    if(f == NULL)
+        return 0;
+    n = fread(mine, 1, sizeof(mine) - 1, f);
+    fclose(f);
+    mine[n] = '\0';
+    mine[strcspn(mine, "\n")] = '\0';
+
+    return strcmp(theirs, mine) == 0;
+}
+
 static int acquire_instance(const char *title)
 {
     char key[128];
@@ -78,7 +108,12 @@ static int acquire_instance(const char *title)
     snprintf(g_instance_path, sizeof(g_instance_path), "%s/kryon-%s.lock",
              runtime, key);
 
-    for(int attempt = 0; attempt < 100; attempt++) {
+    /* Steal budget: SIGTERM nudge for the first 1.5 s (a closing app
+     * releases the lock after its cleanup), then a single SIGKILL — but
+     * only when the pid still names the same application, so a recycled
+     * pid never takes the hit — then a final grace second. Total worst
+     * case 3.5 s instead of the old 2 s that raced slow shutdowns. */
+    for(int attempt = 0; attempt < 175; attempt++) {
         char pid_text[32];
         int fd = open(g_instance_path, O_RDWR | O_CREAT, 0600);
         ssize_t bytes;
@@ -106,8 +141,15 @@ static int acquire_instance(const char *title)
             pid = strtol(pid_text, NULL, 10);
         }
         close(fd);
-        if(pid > 1 && pid != (long)getpid())
-            (void)kill((pid_t)pid, SIGTERM);
+        if(pid > 1 && pid != (long)getpid()) {
+            if(attempt < 75) {
+                (void)kill((pid_t)pid, SIGTERM);
+            } else if(attempt == 75) {
+                if(!same_application((pid_t)pid))
+                    break;   /* pid was recycled: never kill a stranger */
+                (void)kill((pid_t)pid, SIGKILL);
+            }
+        }
         usleep(20000);
     }
     return 0;
@@ -127,6 +169,11 @@ static void release_instance(void)
 static int acquire_instance(const char *title) { (void)title; return 1; }
 static void release_instance(void) { }
 #endif
+
+void KryonReleaseInstanceLock(void)
+{
+    release_instance();
+}
 
 void SetSingleInstance(int enabled) { g_single_instance = enabled != 0; }
 int SingleInstanceEnabled(void) { return g_single_instance; }
