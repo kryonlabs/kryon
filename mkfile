@@ -36,6 +36,7 @@ OFILES=\
 	src/backend/kry_instance.$O\
 	src/backend/kry_screenshot.$O\
 	src/backend/kry_surface_math.$O\
+	src/backend/kry_image.$O\
 	src/backend/kry_sw.$O\
 	src/backend/kry_sw_png.$O\
 	src/backend/libdraw_audio.$O\
