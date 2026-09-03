@@ -13,7 +13,7 @@ else
 endif
 WEB_KRYON_SRCS = $(filter-out $(KRYON_DIR)/src/file_dialog/file_dialog.c,$(KRYON_SRCS))
 WEB_RAYLIB_OBJS = $(KRYON_RAYLIB_WEB_OBJS)
-WEB_CFLAGS = -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1
+WEB_CFLAGS = -Wall -Wextra -std=gnu99 -Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 $(KRYON_DAOCHI_CFLAGS) $(KRYON_WEB_DAOCHI_CFLAGS)
 WEB_SHELL = src/web_shell.html
 WEB_PUBLIC_FILES = $(wildcard manifest.json) $(shell find web-assets -type f 2>/dev/null)
 WEB_LDFLAGS = -sUSE_GLFW=3 -sFETCH=1 -sALLOW_MEMORY_GROWTH=1 -lidbfs.js --shell-file $(WEB_SHELL)
@@ -53,7 +53,7 @@ $(WEB_RAYLIB_BUILD_DIR)/%.o: $(RAYLIB_DIR)/%.c $(KRYON_RAYLIB_BACKEND_RENAME_HEA
 $(WEB_RAYLIB_A): kryon-raylib-check $(RAYLIB_SOURCES) $(WEB_RAYLIB_OBJS)
 	$(WEB_AR) rcs $@ $(WEB_RAYLIB_OBJS)
 
-$(WEB_WORK_TARGET): $(BUILD_MAKEFILES) $(SRC) $(WEB_KRYON_SRCS) $(CORE_SRCS) $(WEB_SHELL) $(WEB_BACKEND_LIBS) $(WEB_PUBLIC_FILES) | $(WEB_BUILD_DIR)
+$(WEB_WORK_TARGET): $(BUILD_MAKEFILES) $(SRC) $(WEB_KRYON_SRCS) $(CORE_SRCS) $(WEB_SHELL) $(WEB_BACKEND_LIBS) $(KRYON_WEB_DAOCHI_DEPS) $(WEB_PUBLIC_FILES) | $(WEB_BUILD_DIR)
 	$(WEB_CC) $(WEB_CFLAGS) \
 		$(APP_INCLUDE) \
 		$(KRYON_INCLUDE) \
@@ -63,6 +63,7 @@ $(WEB_WORK_TARGET): $(BUILD_MAKEFILES) $(SRC) $(WEB_KRYON_SRCS) $(CORE_SRCS) $(W
 		$(WEB_KRYON_SRCS) \
 		$(CORE_SRCS) \
 		$(WEB_BACKEND_LIBS) \
+		$(KRYON_WEB_DAOCHI_LIBS) \
 		$(WEB_LDFLAGS)
 	cache_buster=$$(find $(WEB_BUILD_DIR) -maxdepth 1 \( -name 'index.js' -o -name 'index.data' -o -name 'index.wasm' \) -type f -print | sort | xargs cksum | cksum | cut -d ' ' -f 1); \
 		sed -i "s#src=\"index.js\"#src=\"index.js?v=$$cache_buster\"#; s#src=index.js#src=\"index.js?v=$$cache_buster\"#; s#WEB_CACHE_BUSTER#$$cache_buster#g" $(WEB_WORK_TARGET)

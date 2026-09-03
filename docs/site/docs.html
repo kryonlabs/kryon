@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Docs</title>
+  <meta name="description" content="Kryon documentation organized by language, framework, runtime, renderer, and target surface.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kryonlabs.com/docs.html">
+  <meta property="og:title" content="Kryon Docs">
+  <meta property="og:description" content="Documentation organized by language, framework, runtime, renderer, and target surface.">
+  <meta name="theme-color" content="#f3f1ea">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
+  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="/">
+        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
+        <span>KRYON</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
+      <nav class="header-nav" id="header-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="docs.html">Docs</a>
+        <a href="language.html">Language</a>
+        <a href="renderers.html">Renderers</a>
+        <a href="showcase.html">Showcase</a>
+        <a href="/api">API</a>
+        <a href="ide.html">Playground</a>
+        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="doc-hero">
+      <p class="section-eyebrow">Documentation</p>
+      <h1>Kryon docs by language and framework</h1>
+      <p class="section-lead">A focused map for the Kryon stack: source language, generated C, Go-facing helpers, KRB cartridges, renderer backends, and target surfaces.</p>
+    </section>
+
+    <section>
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="Kryon documentation sections">
+          <button type="button" role="tab" id="docs-tab-language" aria-selected="true" aria-controls="docs-panel-language">.kry language</button>
+          <button type="button" role="tab" id="docs-tab-c" aria-selected="false" aria-controls="docs-panel-c" tabindex="-1">C runtime</button>
+          <button type="button" role="tab" id="docs-tab-web" aria-selected="false" aria-controls="docs-panel-web" tabindex="-1">KRB artifacts</button>
+          <button type="button" role="tab" id="docs-tab-renderers" aria-selected="false" aria-controls="docs-panel-renderers" tabindex="-1">Renderers</button>
+          <button type="button" role="tab" id="docs-tab-platforms" aria-selected="false" aria-controls="docs-panel-platforms" tabindex="-1">Targets</button>
+        </div>
+
+        <div class="tabpanel is-active" id="docs-panel-language" role="tabpanel" aria-labelledby="docs-tab-language">
+          <h3>.kry language</h3>
+          <p>Source syntax, typed declarations, UI functions, KIR lowering, compile-time checks, and source-aware diagnostics.</p>
+          <ul class="link-list">
+            <li><strong><a href="language.html">Language reference</a></strong> — the primary .kry language documentation</li>
+            <li><strong><a href="live-examples.html">Live examples</a></strong> — browser-rendered example coverage</li>
+          </ul>
+        </div>
+
+        <div class="tabpanel" id="docs-panel-c" role="tabpanel" aria-labelledby="docs-tab-c" hidden>
+          <h3>C runtime</h3>
+          <p>Generated C, exported runtime symbols, widget APIs, app shell behavior, and source/runtime boundaries.</p>
+          <ul class="link-list">
+            <li><strong><a href="/api">API reference</a></strong> — generated API documentation from `docs/API.md`</li>
+            <li><strong><a href="matrices.html">Widget and compiler matrices</a></strong> — coverage status for UI and compiler surfaces</li>
+          </ul>
+        </div>
+
+        <div class="tabpanel" id="docs-panel-web" role="tabpanel" aria-labelledby="docs-tab-web" hidden>
+          <h3>KRB artifacts</h3>
+          <p>Portable KRB cartridges, preview tools, and runtime artifacts used by hosted builds.</p>
+          <ul class="link-list">
+            <li><strong><a href="ide.html">Playground</a></strong> — edit .kry and inspect browser output</li>
+            <li><strong><a href="benchmarks.html">Benchmarks</a></strong> — lowering and generated text-input performance data</li>
+          </ul>
+        </div>
+
+        <div class="tabpanel" id="docs-panel-renderers" role="tabpanel" aria-labelledby="docs-tab-renderers" hidden>
+          <h3>Renderers</h3>
+          <p>Backend capability coverage for native, browser, terminal, libdraw, KRB, and constrained host work.</p>
+          <ul class="link-list">
+            <li><strong><a href="renderers.html">Renderer matrices</a></strong> — current backend and host capability coverage</li>
+            <li><strong><a href="matrices.html">Feature matrices</a></strong> — language, widget, and runtime coverage</li>
+          </ul>
+        </div>
+
+        <div class="tabpanel" id="docs-panel-platforms" role="tabpanel" aria-labelledby="docs-tab-platforms" hidden>
+          <h3>Targets</h3>
+          <p>Desktop, mobile, FreeBSD, Plan 9, embedded, and microcontroller-facing runtime notes.</p>
+          <ul class="link-list">
+            <li><strong><a href="renderers.html">Renderer matrices</a></strong> — platform-specific backend capabilities</li>
+            <li><strong><a href="showcase.html">Showcase</a></strong> — real projects using Kryon</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Kryon Labs &middot; <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Kryon source</a></p>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      var toggle = document.querySelector(".menu-toggle");
+      var nav = document.getElementById("header-nav");
+      if (toggle && nav) {
+        toggle.addEventListener("click", function() {
+          var open = nav.classList.toggle("is-open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      }
+
+      document.querySelectorAll("[data-tabs]").forEach(function(group) {
+        var tabs = group.querySelectorAll("[role=tab]");
+        tabs.forEach(function(tab) {
+          tab.addEventListener("click", function() {
+            tabs.forEach(function(t) {
+              var selected = t === tab;
+              t.setAttribute("aria-selected", selected ? "true" : "false");
+              t.tabIndex = selected ? 0 : -1;
+            });
+            group.querySelectorAll(".tabpanel").forEach(function(panel) {
+              var active = panel.id === tab.getAttribute("aria-controls");
+              panel.classList.toggle("is-active", active);
+              if (active) panel.removeAttribute("hidden");
+              else panel.setAttribute("hidden", "");
+            });
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

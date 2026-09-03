@@ -3,36 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon — native UI runtime</title>
-  <meta name="description" content="Kryon is a native declarative UI and app runtime. Write .kry, lower to debuggable KIR, and ship readable C99 or portable KRB cartridges.">
+  <title>Kryon</title>
+  <meta name="description" content="Kryon is a language, runtime, and native UI framework for small app development.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/">
-  <meta property="og:title" content="Kryon — native UI runtime">
-  <meta property="og:description" content="Native declarative UI and app runtime. Write .kry, inspect KIR, ship C99 or portable KRB cartridges.">
+  <meta property="og:title" content="Kryon">
+  <meta property="og:description" content="A language, runtime, and native UI framework for small app development.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://kryonlabs.com/">
-  <meta name="twitter:title" content="Kryon — native UI runtime">
-  <meta name="twitter:description" content="Native declarative UI and app runtime. Write .kry, inspect KIR, ship C99 or KRB.">
+  <meta name="twitter:title" content="Kryon">
+  <meta name="twitter:description" content="A language, runtime, and native UI framework for small app development.">
   <meta name="twitter:site" content="@kryonlabs">
   <meta name="twitter:creator" content="@kryonlabs">
   <meta name="theme-color" content="#f3f1ea">
-  <meta name="keywords" content="Kryon,declarative UI,native UI,C99,Flutter alternative,Godot alternative,Electron alternative,.kry,raylib-style,cross-platform,UI runtime,app runtime">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
   <link rel="stylesheet" href="styles.css">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Kryon",
-    "description": "Native declarative UI and app runtime. Write .kry, inspect KIR, ship readable C99 or portable KRB cartridges.",
-    "url": "https://kryonlabs.com",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Linux, Windows, macOS, Android, Browser, FreeBSD",
-    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-    "author": {"@type": "Organization", "name": "Kryon Labs", "url": "https://kryonlabs.com"}
-  }
-  </script>
 </head>
 <body>
   <header class="site-header">
@@ -43,368 +29,115 @@
       </a>
       <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
       <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="showcase.html">Showcase</a>
+        <a href="docs.html">Docs</a>
         <a href="language.html">Language</a>
-        <a href="matrices.html">Matrices</a>
         <a href="renderers.html">Renderers</a>
-        <a href="/api">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="star-pill" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">★ <span class="count">GitHub</span></a>
-        <a class="btn btn-primary" href="/#start">Get started</a>
+        <a href="showcase.html">Showcase</a>
+        <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-primary" href="ide.html">Playground</a>
       </nav>
     </div>
   </header>
 
   <main id="top">
-    <section class="hero">
+    <section class="hero lab-hero">
       <div class="hero-inner">
-        <span class="hero-eyebrow"><span class="dot"></span>Native UI &middot; readable source &middot; portable builds</span>
+        <span class="hero-eyebrow"><span class="dot"></span>Language and native UI framework</span>
         <img class="hero-icon" src="icons/proj/kryon.png" width="84" height="84" alt="Kryon">
         <h1>Kryon</h1>
-        <p class="hero-sub">A small native UI runtime for desktop, mobile, browser, and embedded work. Write <code>.kry</code>, inspect KIR, then ship readable C99 or portable KRB cartridges.</p>
+        <p class="hero-sub">A compact app language, runtime, and renderer stack for building small native interfaces across desktop, web, and embedded targets.</p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="#start">Get started</a>
-          <a class="btn" href="ide.html">Open Playground</a>
-        </div>
-      </div>
-
-      <div class="hero-panel" aria-hidden="true">
-        <div class="hero-panel-bar">
-          <span class="tl"></span><span class="tl"></span><span class="tl"></span>
-          <span class="title">app.kry — KIR — C/KRB</span>
-        </div>
-        <div class="hero-panel-body">
-          <div class="pane">
-            <div class="pane-label">app.kry</div>
-<pre><code>#import "kryon.h"
-
-AppHome :: (app: AppState*) #ui {
-    Screen root: {
-        y: int = ScaleUIPx(24)
-        Text("Sample App", ScaleUIPx(20), y, ScaleUIPx(24))
-        BottomNav(app->bottom_nav)
-    }
-}</code></pre>
-          </div>
-          <div class="pane">
-            <div class="pane-label">portable pipeline</div>
-<pre><code>k2ir app.kry
-k2c  app.kir    # native C
-k2js app.kry    # browser ESM
-k2b  app.kir    # portable cartridge
-kryon-preview app.krb</code></pre>
-          </div>
+          <a class="btn btn-primary" href="docs.html">Read docs</a>
+          <a class="btn" href="showcase.html">Open showcase</a>
         </div>
       </div>
     </section>
 
     <section class="replaces">
-      <div class="label">Built for</div>
+      <div class="label">Development surface</div>
       <div class="pills">
-        <span class="pill">native apps</span>
-        <span class="pill">embedded interfaces</span>
-        <span class="pill">browser previews</span>
-        <span class="pill">readable generated code</span>
-        <span class="pill">agent-friendly projects</span>
+        <span class="pill">.kry language</span>
+        <span class="pill">C runtime</span>
+        <span class="pill">KIR</span>
+        <span class="pill">KRB cartridges</span>
+        <span class="pill">renderer backends</span>
+        <span class="pill">app storage</span>
       </div>
     </section>
 
-    <section id="features">
-      <p class="section-eyebrow">Features</p>
-      <h2>One source, every platform</h2>
-      <p class="section-lead">The runtime owns the whole UI lifecycle: build the widget tree, reconcile state, layout nodes, route input, render, and draw overlays. You describe intent; Kryon handles ordering, focus, inspection, and overlay behavior.</p>
-
-      <div class="tabs" data-tabs>
-        <div class="tablist" role="tablist" aria-label="Kryon feature showcase">
-          <button type="button" role="tab" id="tab-1" aria-selected="true" aria-controls="tp-1">Declarative .kry</button>
-          <button type="button" role="tab" id="tab-2" aria-selected="false" aria-controls="tp-2" tabindex="-1">KIR pipeline</button>
-          <button type="button" role="tab" id="tab-3" aria-selected="false" aria-controls="tp-3" tabindex="-1">Live preview</button>
-          <button type="button" role="tab" id="tab-4" aria-selected="false" aria-controls="tp-4" tabindex="-1">Source-aware</button>
-        </div>
-
-        <div class="tabpanel is-active" id="tp-1" role="tabpanel" aria-labelledby="tab-1">
-          <h3>Declarative .kry source</h3>
-          <p>Pages and reusable widgets stay in concise source files with explicit typed variables, node declarations, and direct compiler errors for unknown syntax.</p>
-<pre><code>#import "kryon.h"
-
-Counter :: (state: *CounterState) {
-    col {
-        Text("Count: " + to_string(state->n))
-        Button("Increment") {
-            state->n += 1
-        }
-    }
-}</code></pre>
-        </div>
-
-        <div class="tabpanel" id="tp-2" role="tabpanel" aria-labelledby="tab-2" hidden>
-          <h3>One KIR, multiple outputs</h3>
-          <p>The frontend resolves <code>.kry</code> into KIR once. <code>k2c</code> emits readable C for native apps; <code>k2js</code> emits browser-loadable ESM; <code>k2b</code> emits portable KRB cartridges for renderers.</p>
-<pre><code>k2ir counter.kry
-k2c  counter.kir
-k2js counter.kry
-k2b  counter.kir</code></pre>
-        </div>
-
-        <div class="tabpanel" id="tp-3" role="tabpanel" aria-labelledby="tab-3" hidden>
-          <h3>Runtime-owned live preview</h3>
-          <p>Edit a <code>.kry</code> file and see the running app update through Kryon's own preview host. Preview, capture, and hot-reload behavior stay inside the runtime toolchain.</p>
-<pre><code># edit app.kry, save, watch it reload
-$ kryon preview my-app</code></pre>
-        </div>
-
-        <div class="tabpanel" id="tp-4" role="tabpanel" aria-labelledby="tab-4" hidden>
-          <h3>Source-aware inspection</h3>
-          <p>Preview widgets carry source metadata, so an inspection click selects the generated UI element and opens the exact <code>.kry</code> line. The tree <em>is</em> the inspector.</p>
-<pre><code>// click a node in preview → jump to source
-AppHome: app.kry:7
-  Text("Sample App")    app.kry:9
-  BottomNav(...)        app.kry:10</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <section id="why">
-      <p class="section-eyebrow">Why Kryon</p>
-      <h2>Native first, alive by default</h2>
-      <p class="section-lead">Everything visible is a node. Source stays primary. KIR keeps the compiler debuggable, C keeps native integration direct, and KRB opens a portable renderer path.</p>
+    <section id="framework">
+      <p class="section-eyebrow">Framework</p>
+      <h2>Language, runtime, renderers</h2>
+      <p class="section-lead">Kryon keeps app code small while still exposing the lower-level surfaces needed for serious native development.</p>
       <div class="why-grid">
         <article class="why-card">
-          <h3>Alive by default</h3>
-          <p>Live preview, hot reload, and source-aware inspection are part of the runtime — not a bolted-on dev server.</p>
+          <h3><a href="language.html">Language</a></h3>
+          <p>Write declarative .kry interfaces, compile through KIR, and generate C, JavaScript, or portable runtime artifacts.</p>
         </article>
         <article class="why-card">
-          <h3>Everything is a node</h3>
-          <p>Source, bounds, state, focus, and inspection all belong to the widget tree. One model for the whole UI.</p>
+          <h3><a href="docs.html">Framework docs</a></h3>
+          <p>Use the C runtime, app shell, storage, update, assets, windows, markdown, and automation APIs from one organized reference.</p>
         </article>
         <article class="why-card">
-          <h3>Source stays primary</h3>
-          <p><code>.kry</code> files own <code>#ui</code> functions and reusable hierarchy pieces. KIR is the source-mapped compiler truth; C and KRB are outputs.</p>
-        </article>
-        <article class="why-card">
-          <h3>Small native surface</h3>
-          <p>Only exported functions enter generated headers, so build boundaries stay tiny and dependency-free.</p>
-        </article>
-        <article class="why-card">
-          <h3>Predictable runtime</h3>
-          <p>Direct C where native integration matters, portable KRB where renderer portability matters, and explicit imports between them.</p>
-        </article>
-        <article class="why-card">
-          <h3>Real product UI</h3>
-          <p>Layout, text, inputs, navigation, overlays, inspection, themes, and runtime assets — covered out of the box.</p>
+          <h3><a href="renderers.html">Renderer backends</a></h3>
+          <p>Target raylib, Canvas, DOM, terminal cells, libdraw, and headless test backends from the same UI model.</p>
         </article>
       </div>
     </section>
 
     <section id="showcase">
-      <p class="section-eyebrow">Compiler Pipeline</p>
-      <h2>One frontend, native and portable backends</h2>
-      <p class="section-lead">Kryon lowers <code>.kry</code> into debuggable KIR, then emits readable C for native applications or compact KRB cartridges for portable renderers.</p>
-      <div class="showcase">
-        <div class="col">
-          <div class="col-head"><span>app.kry</span><span class="badge">source</span></div>
-<pre><code>#import "kryon.h"
-
-Greeting :: (name: string) {
-    row {
-        Icon(ICON_ROCKET)
-        Text("Hello, " + name)
-    }
-}</code></pre>
-        </div>
-        <div class="col">
-          <div class="col-head"><span>outputs</span><span class="badge">C / KRB</span></div>
-<pre><code>Greeting.kir
-  source spans
-  widget tree
-  event logic
-  imports
-
-Greeting.c    # native backend
-Greeting.krb  # portable cartridge</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <section id="apps">
       <p class="section-eyebrow">Showcase</p>
-      <h2>Real apps built with Kryon</h2>
-      <p class="section-lead">The showcase tracks shipped Kryon applications and ranks public submissions by stars from public source platforms. Add a project through the public metadata repo.</p>
-
-      <div class="app-slider" data-app-slider>
-        <div class="app-slider-head">
-          <div class="app-slider-controls" aria-label="Showcase controls">
-            <button type="button" class="icon-btn" data-slide-prev aria-label="Previous showcase app">‹</button>
-            <button type="button" class="icon-btn" data-slide-next aria-label="Next showcase app">›</button>
-          </div>
-          <a class="btn btn-primary" href="showcase.html">View all</a>
-        </div>
-
-        <div class="app-track" tabindex="0" aria-label="Featured Kryon apps" data-showcase-home aria-live="polite"></div>
+      <h2>Apps built with Kryon</h2>
+      <p class="section-lead">The homepage stays focused on Kryon itself. The showcase page is where first-party and community apps can be browsed with real screenshots and GitHub stars.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="showcase.html">Browse showcase</a>
+        <a class="btn" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit pull request</a>
       </div>
     </section>
 
-    <section id="platforms">
-      <p class="section-eyebrow">Platforms</p>
-      <h2>One source, the targets apps ship to</h2>
-      <p class="section-lead">The same interface source builds for the environments real apps ship to — no platform-specific forks of your UI code.</p>
-      <div class="platform-grid">
-        <article class="platform">
-          <img src="icons/platforms/droid.png" width="32" height="32" alt="">
-          <h3>Android</h3>
-          <p>Mobile runtime and KRB host capabilities.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/ios.png" width="32" height="32" alt="">
-          <h3>iOS</h3>
-          <p>Mobile renderer through the portable runtime contract.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/esp32.png" width="32" height="32" alt="">
-          <h3>ESP32</h3>
-          <p>Small KRB renderers with constrained capability sets.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/microcontroller.png" width="32" height="32" alt="">
-          <h3>Microcontrollers</h3>
-          <p>Embedded targets for draw primitives, input, timers, and storage.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/tux.png" width="32" height="32" alt="">
-          <h3>Linux</h3>
-          <p>Native C builds and KRB renderers.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/win.png" width="32" height="32" alt="">
-          <h3>Windows</h3>
-          <p>Native C builds and KRB renderers.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/macos.png" width="32" height="32" alt="">
-          <h3>macOS</h3>
-          <p>Native C builds and KRB renderers.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/freebsd.png" width="32" height="32" alt="">
-          <h3>FreeBSD</h3>
-          <p>Native desktop, servers, and embedded targets.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/glenda.png" width="32" height="32" alt="">
-          <h3>Plan 9</h3>
-          <p>Portable runtime target with a small native host layer.</p>
-        </article>
-        <article class="platform">
-          <img src="icons/platforms/browser.png" width="32" height="32" alt="">
-          <h3>Browser</h3>
-          <p>Browser renderer, WASM logic, and KRB preview.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="start">
-      <p class="section-eyebrow">Get started</p>
-      <h2>Build the runtime and tools</h2>
-      <p class="section-lead">Kryon is free and open source. Clone, build, and install in a few commands.</p>
-      <p>Build the runtime:</p>
-<pre><code>git clone https://github.com/kryonlabs/kryon.git
-cd kryon
-make
-make install</code></pre>
-      <p>The clean compiler tool direction:</p>
-<pre><code>k2ir app.kry
-k2c  app.kry    # or app.kir
-k2js app.kry
-k2b  app.kry    # or app.kir</code></pre>
-      <p>A simple <code>.kry</code> shape:</p>
-<pre><code>#import "kryon.h"
-
-AppHome :: (app: AppState*) #ui {
-    Screen root: {
-        y: int = ScaleUIPx(24)
-
-        Text("Sample App", ScaleUIPx(20), y, ScaleUIPx(24))
-        BottomNav(app->bottom_nav)
-    }
-}</code></pre>
-      <h2 id="docs" style="margin-top: 40px;">Documentation</h2>
+    <section id="links">
+      <p class="section-eyebrow">Development</p>
+      <h2>Source, docs, and related systems</h2>
       <ul class="link-list">
-        <li><strong><a href="/api">API reference</a></strong> — runtime, node, and widget surface</li>
-        <li><strong><a href="language.html">Kry language reference</a></strong> — source syntax, KIR lowering, compile-time checks, and backend contracts</li>
-        <li><strong><a href="matrices.html">Widget and language matrices</a></strong> — frontend, compiler, and widget coverage</li>
-        <li><strong><a href="renderers.html">Renderer matrices</a></strong> — surface backends, KRB hosts, and native Linux backend direction</li>
-        <li><strong><a href="benchmarks.html">Benchmarks</a></strong> — generated text-input and lowering performance summaries</li>
-        <li><strong><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Source repository</a></strong> — code, issues, and releases</li>
-        <li><strong><a href="https://discord.gg/ep7gCWzHJD" target="_blank" rel="noopener">Discord</a></strong> — chat, help, and showcase</li>
-        <li><strong><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram</a></strong> — news and announcements</li>
+        <li><strong><a href="/api">API reference</a></strong> - generated C API documentation</li>
+        <li><strong><a href="ide.html">Playground</a></strong> - browser tools for trying Kryon source and artifacts</li>
+        <li><strong><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Kryon source</a></strong> - compiler, runtime, docs, and release history</li>
+        <li><strong><a href="https://daochi.net" target="_blank" rel="noopener">Daochi</a></strong> - independent sync project used by apps that opt into it</li>
       </ul>
-    </section>
-
-    <section id="faq">
-      <p class="section-eyebrow">FAQ</p>
-      <h2>Questions</h2>
-      <div class="faq">
-        <details class="faq-item">
-          <summary>What is Kryon? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Kryon is a native app development stack built around <code>.kry</code> source files, debuggable KIR, readable C output, portable KRB cartridges, and a small runtime. You write intent; the runtime handles the UI lifecycle.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>How is Kryon different from Flutter? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Flutter ships a Dart VM and its own rendering layer. Kryon keeps native C as a first-class backend and adds KRB as a portable cartridge path with explicit host capabilities. The same source can target desktop, mobile, browser, and embedded renderers.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>How is it different from Godot's UI? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Godot is a game engine with UI controls. Kryon is a dedicated app UI runtime — the widget tree owns layout, input routing, focus, overlays, and source-aware inspection for building product interfaces, not just game HUDs.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>What is a .kry file? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>A concise declarative source file describing pages and reusable widgets with explicit typed variables and node declarations. The frontend lowers each file into KIR, then backends emit readable C or portable KRB.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>Is Kryon free? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Yes — Kryon is free and open source, developed by Kryon Labs. Clone and build from <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">github.com/kryonlabs/kryon</a>.</p></div>
-        </details>
-        <details class="faq-item">
-          <summary>What platforms does it support? <span class="chev">›</span></summary>
-          <div class="faq-a"><p>Linux, Windows, macOS, Android, the browser via WebAssembly, and FreeBSD — including embedded targets. One interface source builds for all of them.</p></div>
-        </details>
-      </div>
     </section>
   </main>
 
   <footer>
     <div class="footer-inner">
       <div class="footer-brand">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="20" height="20">
+        <img src="icons/proj/kryon.png" alt="Kryon Labs" width="20" height="20">
         <span>KRYON</span>
       </div>
       <div class="footer-cols">
         <div class="footer-col">
+          <h4>Related</h4>
+          <ul>
+            <li><a href="https://daochi.net">Daochi</a></li>
+            <li><a href="https://taijios.net">TaijiOS</a></li>
+            <li><a href="https://krait.kryonlabs.com">Krait</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
           <h4>Kryon</h4>
           <ul>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#why">Why Kryon</a></li>
-            <li><a href="showcase.html">Showcase</a></li>
-            <li><a href="#platforms">Platforms</a></li>
+            <li><a href="docs.html">Docs</a></li>
+            <li><a href="language.html">Language</a></li>
             <li><a href="matrices.html">Matrices</a></li>
             <li><a href="renderers.html">Renderers</a></li>
             <li><a href="/api">API reference</a></li>
           </ul>
         </div>
         <div class="footer-col">
-          <h4>Ecosystem</h4>
-          <ul>
-            <li><a href="https://github.com/kryonlabs/showcase" target="_blank" rel="noopener">Submit an app ↗</a></li>
-            <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub ↗</a></li>
-            <li><a href="#start">Get started</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
           <h4>Community</h4>
           <ul>
-            <li><a href="https://discord.gg/ep7gCWzHJD" target="_blank" rel="noopener">Discord ↗</a></li>
-            <li><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram ↗</a></li>
+            <li><a href="showcase.html">Showcase</a></li>
+            <li><a href="https://github.com/kryonlabs" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram</a></li>
           </ul>
         </div>
       </div>
@@ -414,10 +147,8 @@ AppHome :: (app: AppState*) #ui {
     </div>
   </footer>
 
-  <script src="highlight.js"></script>
   <script>
     (function() {
-      // mobile menu
       var toggle = document.querySelector(".menu-toggle");
       var nav = document.getElementById("header-nav");
       if (toggle && nav) {
@@ -427,161 +158,6 @@ AppHome :: (app: AppState*) #ui {
         });
       }
 
-      // feature tabs
-      document.querySelectorAll("[data-tabs]").forEach(function(group) {
-        var tabs = group.querySelectorAll("[role=tab]");
-        tabs.forEach(function(tab) {
-          tab.addEventListener("click", function() {
-            tabs.forEach(function(t) {
-              var sel = t === tab;
-              t.setAttribute("aria-selected", sel ? "true" : "false");
-              t.tabIndex = sel ? 0 : -1;
-            });
-            group.querySelectorAll(".tabpanel").forEach(function(p) {
-              var active = p.id === tab.getAttribute("aria-controls");
-              p.classList.toggle("is-active", active);
-              if (active) p.removeAttribute("hidden");
-              else p.setAttribute("hidden", "");
-            });
-          });
-          tab.addEventListener("keydown", function(e) {
-            var list = Array.prototype.slice.call(tabs);
-            var i = list.indexOf(tab);
-            if (e.key === "ArrowRight") { list[(i + 1) % list.length].focus(); e.preventDefault(); }
-            if (e.key === "ArrowLeft")  { list[(i - 1 + list.length) % list.length].focus(); e.preventDefault(); }
-          });
-        });
-      });
-
-      function text(value) {
-        return String(value == null ? "" : value);
-      }
-      function escapeHtml(value) {
-        return text(value).replace(/[&<>"']/g, function(ch) {
-          return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"}[ch];
-        });
-      }
-      function starLabel(stars) {
-        if (stars == null) return "unranked";
-        return stars === 1 ? "1 star" : stars + " stars";
-      }
-      function repositorySlug(project) {
-        var match = text(project.repository).match(/^https:\/\/github\.com\/([^\/]+)\/([^\/?#]+)/);
-        return match ? match[1] + "/" + match[2].replace(/\.git$/, "") : "";
-      }
-      function rankedStars(project) {
-        return typeof project.stars === "number" && !project.unranked ? project.stars : -1;
-      }
-      function authorHtml(project) {
-        var author = project.author || {};
-        var name = author.name || "";
-        var url = author.url || "";
-        if (!name) return "";
-        if (!url) return '<span class="app-byline">By <span class="app-author">' + escapeHtml(name) + '</span></span>';
-        return '<span class="app-byline">By <a class="app-author" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(name) + '</a></span>';
-      }
-      function rerankProjects(projects) {
-        return projects
-          .map(function(project, index) {
-            var copy = {};
-            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
-            copy._sourceOrder = index;
-            return copy;
-          })
-          .sort(function(a, b) {
-            if (!!a.unranked !== !!b.unranked) return a.unranked ? 1 : -1;
-            var starDelta = rankedStars(b) - rankedStars(a);
-            return starDelta || a._sourceOrder - b._sourceOrder;
-          })
-          .slice(0, 10)
-          .map(function(project, index) {
-            delete project._sourceOrder;
-            project.rank = project.unranked ? null : index + 1;
-            return project;
-          });
-      }
-      function renderHomeProject(project) {
-        var tags = (project.tags || []).join(" · ");
-        var homepage = project.homepage || project.repository;
-        var kicker = starLabel(project.stars) + (tags ? " · " + tags : "");
-        return '<article class="app-card">' +
-          '<img class="app-card-image" src="' + escapeHtml(project.banner) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
-          '<div class="app-card-body">' +
-          '<span class="app-kicker">' + escapeHtml(kicker) + '</span>' +
-          '<h3>' + escapeHtml(project.name) + '</h3>' +
-          authorHtml(project) +
-          '<p>' + escapeHtml(project.summary) + '</p>' +
-          '<div class="app-actions">' +
-          '<a class="btn btn-primary" href="' + escapeHtml(homepage) + '" target="_blank" rel="noopener">Open</a>' +
-          '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' +
-          '</div>' +
-          '</div>' +
-          '</article>';
-      }
-      function refreshStars(projects) {
-        var requests = projects.map(function(project, index) {
-          var slug = repositorySlug(project);
-          if (!slug) return Promise.resolve({index: index});
-          return fetch("https://api.github.com/repos/" + slug)
-            .then(function(response) { return response.ok ? response.json() : null; })
-            .then(function(repo) {
-              return {
-                index: index,
-                stars: repo && typeof repo.stargazers_count === "number" ? repo.stargazers_count : null
-              };
-            })
-            .catch(function() { return {index: index}; });
-        });
-        return Promise.all(requests).then(function(results) {
-          var changed = false;
-          var next = projects.map(function(project) {
-            var copy = {};
-            Object.keys(project).forEach(function(key) { copy[key] = project[key]; });
-            return copy;
-          });
-          results.forEach(function(result) {
-            if (typeof result.stars === "number" && next[result.index].stars !== result.stars) {
-              next[result.index].stars = result.stars;
-              changed = true;
-            }
-          });
-          return changed ? rerankProjects(next) : projects;
-        });
-      }
-      var homeTrack = document.querySelector("[data-showcase-home]");
-      if (homeTrack && window.fetch) {
-        fetch("showcase-data.json")
-          .then(function(response) { return response.ok ? response.json() : null; })
-          .then(function(data) {
-            if (!data || !Array.isArray(data.projects) || !data.projects.length) return;
-            var projects = rerankProjects(data.projects);
-            if (projects.some(function(project) { return typeof project.stars === "number"; })) {
-              homeTrack.innerHTML = projects.map(renderHomeProject).join("");
-            }
-            refreshStars(projects).then(function(liveProjects) {
-              homeTrack.innerHTML = liveProjects.map(renderHomeProject).join("");
-            });
-          })
-          .catch(function() {});
-      }
-
-      // showcase slider
-      document.querySelectorAll("[data-app-slider]").forEach(function(slider) {
-        var track = slider.querySelector(".app-track");
-        var prev = slider.querySelector("[data-slide-prev]");
-        var next = slider.querySelector("[data-slide-next]");
-        if (!track || !prev || !next) return;
-
-        function slideBy(direction) {
-          var card = track.querySelector(".app-card");
-          var gap = 18;
-          var amount = card ? card.getBoundingClientRect().width + gap : track.clientWidth;
-          track.scrollBy({ left: direction * amount, behavior: "smooth" });
-        }
-
-        prev.addEventListener("click", function() { slideBy(-1); });
-        next.addEventListener("click", function() { slideBy(1); });
-      });
     })();
   </script>
 </body>
