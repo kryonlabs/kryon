@@ -71,7 +71,7 @@ static void instance_terminate_signal(int sig)
 
 /* SIGUSR2 dumps a backtrace to stderr: a poor man's debugger for
  * machines without gdb (stuck loops are diagnosed with kill -USR2). */
-#if defined(__GNUC__)
+#if defined(__linux__) && (defined(__GNUC__) || defined(__clang__))
 #include <execinfo.h>
 static void instance_backtrace_signal(int sig)
 {

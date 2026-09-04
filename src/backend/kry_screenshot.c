@@ -29,12 +29,14 @@ extern void glReadPixels(int x, int y, int width, int height,
  * link symbol stays undefined (weak NULL) in apps that do not link
  * libGLESv2 themselves. glad stores each entry point in a global function
  * POINTER variable; raylib exports those. Prefer whichever resolves. */
+#if !defined(_WIN32)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
 extern void (*glad_glReadPixels)(int x, int y, int width, int height,
                                  unsigned int format, unsigned int type,
                                  void *data);
+#endif
 #define KR_GL_RGBA 0x1908u
 #define KR_GL_UNSIGNED_BYTE 0x1401u
 #endif
@@ -115,9 +117,11 @@ void EndDrawing(void)
                 if(glReadPixels != NULL)
                     glReadPixels(0, 0, w, h, KR_GL_RGBA, KR_GL_UNSIGNED_BYTE,
                                  g_shot_buf);
+#if !defined(_WIN32)
                 else if(glad_glReadPixels != NULL)
                     glad_glReadPixels(0, 0, w, h, KR_GL_RGBA,
                                       KR_GL_UNSIGNED_BYTE, g_shot_buf);
+#endif
             }
         }
     }
