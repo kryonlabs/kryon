@@ -49,6 +49,7 @@ include/app_host.h typedef AppScreenInfo
 include/app_host.h typedef CreateAppHostCallback
 include/app_host.h typedef DestroyAppHostCallback
 include/app_instance.h function InstanceRejected
+include/app_instance.h function KryonReleaseInstanceLock
 include/app_instance.h function SetSingleInstance
 include/app_instance.h function SingleInstanceEnabled
 include/app_runtime.h function BindAppHost
