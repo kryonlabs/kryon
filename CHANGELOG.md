@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.43 - 2026-09-04
+
+### Changed
+
+- Release: bump version to v0.1.43
+- Keep Win32 close hook safe across subclasses
+
 ## v0.1.42 - 2026-09-04
 
 ### Changed
