@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.44 - 2026-09-04
+
+### Changed
+
+- Multiline text areas now start at the top, accept new lines with Enter, and keep the caret visible as text wraps.
+- Large Material text areas keep normal field corners without changing button shapes.
+- Added an interactive text-area and color-slider example.
+
 ## v0.1.43 - 2026-09-04
 
 ### Changed
