@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "sheet": "logos",
+  "icon_count": 2,
+  "image": "logos.png",
+  "cell_size": 64,
+  "content_size": 52,
+  "columns": 2,
+  "rows": 1,
+  "width": 128,
+  "height": 64,
+  "style": "full-color",
+  "tintable": false,
+  "icons": [
+    {"index": 0, "name": "proj/kryon", "x": 0, "y": 0, "width": 64, "height": 64},
+    {"index": 1, "name": "proj/wao", "x": 64, "y": 0, "width": 64, "height": 64}
+  ]
+}

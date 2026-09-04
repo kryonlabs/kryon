@@ -23,6 +23,7 @@ typedef enum UIEventKind {
     UI_EVENT_TEXT_CHANGED,
     UI_EVENT_TEXT_COMMIT,
     UI_EVENT_SELECTION_CHANGED,
+    UI_EVENT_COMPOSITION_CHANGED,
     UI_EVENT_FOCUS,
     UI_EVENT_BLUR
 } UIEventKind;
@@ -151,6 +152,9 @@ typedef struct UIWidgetNode {
     char *owned_text;
 } UIWidgetNode;
 
+typedef void (*UIAccessibilitySink)(const UIAccessibilityNode *nodes,
+                                    int count, void *userdata);
+
 /* BeginTree starts a declaration pass. EndTree atomically reconciles, lays out,
  * routes, updates, and paints it. Every container closes with End(). */
 void BeginTree(KeyID screen_key);
@@ -170,6 +174,8 @@ int GetNodeHeight(UIWidgetNode node);
 int GetNodeHeightById(int id);
 const UIWidgetNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);
+int GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity);
+void SetAccessibilitySink(UIAccessibilitySink sink, void *userdata);
 
 UIWidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
 UIWidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
@@ -209,8 +215,7 @@ void Rect(int x, int y, int w, int h, Color fill, Color border);
 #endif
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
-void IconTexture(int id, int x, int y, int size, Texture2D icon,
-                       Color tint);
+void Icon(int id, int x, int y, int size, UIIconType icon, Color tint);
 void Picture(PictureProps picture);
 int ButtonNode(ButtonSpec button);
 int IconButton(IconButtonProps button);

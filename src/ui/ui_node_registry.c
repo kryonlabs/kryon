@@ -18,7 +18,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Rect", "Rect", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
-    {"IconTexture", "Icon Texture", "UI/Display", "Control", "Icon", EDITABLE},
+    {"Icon", "Icon", "UI/Display", "Control", "Icon", EDITABLE},
     {"Image", "Image", "UI/Display", "Control", "Image", INSERT_EDITABLE},
 
     {"Button", "Button", "UI/Input", "Control", "Action", INSERT_EDITABLE},

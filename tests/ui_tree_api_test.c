@@ -555,6 +555,45 @@ main(void)
                   value[cursor - 1], '\n');
     }
 
+    /* Composition events preserve preedit separately and commit UTF-8 only
+     * when the platform IME finalizes it. */
+    {
+        KryTextCompositionEvent event;
+
+        ClearTextComposition();
+        check_int("submit composition update",
+                  SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                                        "nihon", 5, 0), 1);
+        check_int("poll composition update", PollTextComposition(&event), 1);
+        check_int("composition update phase", event.phase,
+                  KRY_TEXT_COMPOSITION_UPDATE);
+        check_int("composition update text", strcmp(event.text, "nihon"), 0);
+        check_int("composition queue drained", PollTextComposition(&event), 0);
+    }
+
+    /* The retained tree exposes a backend-neutral accessibility snapshot. */
+    {
+        UIAccessibilityNode nodes[8];
+        int count;
+        int saw_main = 0;
+        int saw_button = 0;
+
+        BeginTree(1200);
+        Button((ButtonProps){ .bounds = {10, 10, 100, 30},
+            .label = "Save", .id = 1201 });
+        EndTree();
+        count = GetAccessibilitySnapshot(nodes, 8);
+        for(int i = 0; i < count && i < 8; i++) {
+            if(strcmp(nodes[i].role, "main") == 0)
+                saw_main = 1;
+            if(strcmp(nodes[i].role, "button") == 0 &&
+               strcmp(nodes[i].label, "Save") == 0)
+                saw_button = 1;
+        }
+        check_int("accessibility snapshot main", saw_main, 1);
+        check_int("accessibility snapshot button", saw_button, 1);
+    }
+
     return failures == 0 ? 0 : 1;
 }
 

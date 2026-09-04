@@ -113,7 +113,7 @@ const expected = new Map([
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
-  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "TextInRect", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "LabelFrame", "IconTexture", "Picture", "Notebook", "ListBox", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
+  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "TextInRect", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
 ]);
 
 for (const [relPath, widgets] of expected) {

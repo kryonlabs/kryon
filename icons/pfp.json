@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "sheet": "pfp",
+  "icon_count": 25,
+  "image": "pfp.png",
+  "cell_size": 64,
+  "content_size": 52,
+  "columns": 5,
+  "rows": 5,
+  "width": 320,
+  "height": 320,
+  "icons": [
+    {
+      "index": 0,
+      "name": "pfp/bambus",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 1,
+      "name": "pfp/bird",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 2,
+      "name": "pfp/bowl",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 3,
+      "name": "pfp/bush",
+      "x": 192,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 4,
+      "name": "pfp/butterfly",
+      "x": 256,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 5,
+      "name": "pfp/cactus",
+      "x": 0,
+      "y": 64,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 6,
+      "name": "pfp/coffee",
+      "x": 64,
+      "y": 64,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 7,
+      "name": "pfp/dragonfly",
+      "x": 128,
+      "y": 64,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 8,
+      "name": "pfp/fireplace",
+      "x": 192,
+      "y": 64,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 9,
+      "name": "pfp/flower1",
+      "x": 256,
+      "y": 64,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 10,
+      "name": "pfp/flower2",
+      "x": 0,
+      "y": 128,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 11,
+      "name": "pfp/fox",
+      "x": 64,
+      "y": 128,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 12,
+      "name": "pfp/heart",
+      "x": 128,
+      "y": 128,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 13,
+      "name": "pfp/incense",
+      "x": 192,
+      "y": 128,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 14,
+      "name": "pfp/lotus",
+      "x": 256,
+      "y": 128,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 15,
+      "name": "pfp/mountain",
+      "x": 0,
+      "y": 192,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 16,
+      "name": "pfp/mushroom",
+      "x": 64,
+      "y": 192,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 17,
+      "name": "pfp/palm",
+      "x": 128,
+      "y": 192,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 18,
+      "name": "pfp/person1",
+      "x": 192,
+      "y": 192,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 19,
+      "name": "pfp/rainbow",
+      "x": 256,
+      "y": 192,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 20,
+      "name": "pfp/tent",
+      "x": 0,
+      "y": 256,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 21,
+      "name": "pfp/tree1",
+      "x": 64,
+      "y": 256,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 22,
+      "name": "pfp/tree2",
+      "x": 128,
+      "y": 256,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 23,
+      "name": "pfp/tree3",
+      "x": 192,
+      "y": 256,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 24,
+      "name": "pfp/tree4",
+      "x": 256,
+      "y": 256,
+      "width": 64,
+      "height": 64
+    }
+  ],
+  "style": "full-color",
+  "tintable": false
+}

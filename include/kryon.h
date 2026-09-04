@@ -9,6 +9,7 @@
  * the compat surface so raymath reuses its type definitions. */
 #include "kry_math3d.generated.h"
 #include "kryon_frame.h"
+#include "kry_input.h"
 
 #include "ui_color.h"
 #include "ui_scaling.h"

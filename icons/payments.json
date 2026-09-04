@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "sheet": "payments",
+  "icon_count": 3,
+  "image": "payments.png",
+  "cell_size": 64,
+  "content_size": 52,
+  "columns": 3,
+  "rows": 1,
+  "width": 192,
+  "height": 64,
+  "icons": [
+    {
+      "index": 0,
+      "name": "payments/btc",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 1,
+      "name": "payments/monero",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "index": 2,
+      "name": "payments/stripe",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64
+    }
+  ],
+  "style": "full-color",
+  "tintable": false
+}

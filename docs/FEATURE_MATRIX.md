@@ -54,7 +54,7 @@ the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture
+`Background Text TextInRect Paragraph TextLines Rect Line Bevel Icon
 Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
 Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar
@@ -73,8 +73,10 @@ hand-written Go via the `go/kryon` package API · **KRB** = lowered into a
 cartridge by `k2b`.
 
 Retained-tree caveat that applies to the whole C column: `#ui` lowering
-records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT,
-LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA;
+records ~29 widget kinds, while the retained painter covers BACKGROUND, TEXT,
+RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX. It
+routes retained interaction for BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE,
+and CHECKBOX;
 every other kind renders through its immediate-mode call during the
 declaration pass (`src/ui/ui_tree.c`).
 
@@ -90,7 +92,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
-| IconTexture (114 embedded icons) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `IconTexture` | ✗ |
+| Icon sheets (MingCute UI plus 6 full-color families) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `Icon` | ✗ |
 | Image/Picture | ✅ | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
 
 ### UI/Input
@@ -209,12 +211,12 @@ declaration pass (`src/ui/ui_tree.c`).
 | Theming | ✅ 6 palettes × light/dark INI, scopes, vars, runtime loader | ✅ `SetCurrentTheme`/`SetThemeDarkMode`/`GetTheme*` | ◐ theme color slots (`KrySwSetTheme`); light/dark env knobs on hosts |
 | Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetUIStyleTokens` | ✗ |
 | Animation | ✅ transitions (smoothstep), ripple, keyframe scene anims | ✗ | ◐ `AnimNode` + `TIME` opcode |
-| Text/fonts | ✅ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text; no shaping/bidi/IME | ✅ `RegisterUIFont(Data)`, `Push/Pop/UseUIFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
+| Text/fonts | ◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi | ✅ `RegisterUIFont(Data)`, `Push/Pop/UseUIFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
 | DPI/scaling | ✅ viewport-derived scale, `ScaleUIPx` | ✅ `ScaleUIPx`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |
 | Clipping | ✅ 16-deep scissor stack + input clip stack | ✅ `Begin/EndScissorMode` | ✅ 16-deep `clip_push/pop` in `kry_sw` |
 | Z-order/popups | ✅ overlay paint pass, modal capture, input-capture stack | ◐ dropdown popups internal to `Dropdown` | ◐ dropdown menus handled by the engine |
-| Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav | ✅ native host key/mouse/text queues | ◐ vtable: mouse, press, wheel, text-key queue |
-| Accessibility | ◐ debug focus overlay + a11y node structs; no screen-reader bridge | ✗ | ✗ |
+| Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard, backend-neutral IME composition; no gamepad nav | ✅ native host key/mouse/text queues | ◐ vtable: mouse, press, wheel, text-key queue |
+| Accessibility | ◐ retained accessibility snapshots + host sink + DOM ARIA bridge; native screen-reader bridge pending | ✗ | ✗ |
 | i18n | ✅ locale strings + CJK font switching; no RTL | ✗ | ✗ |
 | Multi-window | ✅ `OpenUIWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |
 | 3D rendering | ✅ camera + mesh/shader tier incl. curated rlgl entry points and raymath-style math3d (GLSL 100); raylib backend implements it, others stub it | ✗ | ✗ |
@@ -290,10 +292,11 @@ declaration pass (`src/ui/ui_tree.c`).
   to `KRB_CTRL_RADIO` for the common `selected == id` pattern and writes `id`
   into the mounted selection field on click. `LabelFrame` lowers to border
   rectangles plus title background/text nodes.
-- Retained tree paints 7 node kinds and routes input for 3 (see caveat
+- Retained tree paints 10 node kinds and routes interaction for 6 (see caveat
   above the widget matrix).
-- No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;
-  no IME/preedit; no gamepad UI navigation.
+- No text shaping yet: no HarfBuzz, ligatures, bidi, or RTL mirroring. Android
+  and DOM text controls do have backend-neutral IME preedit/commit; gamepad UI
+  navigation remains absent.
 - Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass
   labels in `ThemeSettingsProps`) fall back to SYSTEM tokens.
 - `kry_sw` tracks the dirty rectangle per call (`KrySwDirty` is one-shot);

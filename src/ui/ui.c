@@ -4401,7 +4401,7 @@ GetUIIconButtonPadding(UIIconSize size)
 }
 
 void
-DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint)
+DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint)
 {
     Rectangle src;
     Rectangle dst;
@@ -4546,7 +4546,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
         DrawUIBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
-    DrawUIIconTexture(x, y, icon_size, icon, WHITE);
+    DrawCustomIcon(x, y, icon_size, icon, WHITE);
 
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {

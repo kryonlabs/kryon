@@ -5,6 +5,11 @@ needs to draw and run a UI, in one little-endian, mmapable binary. This
 document is normative. An implementation that follows it can parse and
 render any cartridge without kryon source code.
 
+`k2b` rejects calls outside the portable cartridge vocabulary by default, so
+a successful build never silently changes application behavior. Projects that
+intentionally produce a reduced cartridge may pass `--allow-unsupported`; the
+compiler still lists every omitted call kind and count on standard error.
+
 Reference implementation: `src/krb/krb.c` (runtime), `cmd/k2b` (compiler),
 `include/krb.h` (constants). Reference renderers: `src/backend/kry_sw.c`
 (software), `cmd/krb-run` (headless), `cmd/krb-web` (wasm), `cmd/krb-sdl`.

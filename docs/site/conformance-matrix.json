@@ -3536,9 +3536,9 @@
         "ConfirmDialog",
         "Dropdown",
         "Href",
+        "Icon",
         "IconButton",
         "IconLink",
-        "IconTexture",
         "ImageBox",
         "LabelFrame",
         "Line",
@@ -3949,9 +3949,9 @@
     "ConfirmDialog": 2,
     "Dropdown": 3,
     "Href": 1,
+    "Icon": 1,
     "IconButton": 1,
     "IconLink": 1,
-    "IconTexture": 1,
     "ImageBox": 1,
     "LabelFrame": 1,
     "Line": 2,
@@ -4197,6 +4197,16 @@
       "status_class": "ok"
     },
     {
+      "id": "Icon",
+      "semantic_sources": [],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
       "id": "IconButton",
       "semantic_sources": [],
       "source_count": 1,
@@ -4208,16 +4218,6 @@
     },
     {
       "id": "IconLink",
-      "semantic_sources": [],
-      "source_count": 1,
-      "sources": [
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "IconTexture",
       "semantic_sources": [],
       "source_count": 1,
       "sources": [

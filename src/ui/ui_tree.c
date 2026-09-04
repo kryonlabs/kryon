@@ -15,6 +15,10 @@ typedef struct TextFieldState {
     int anchor;
     int focused;
     int dragging;
+    int composing;
+    int composition_cursor;
+    int composition_selection_length;
+    char composition[KRY_TEXT_COMPOSITION_MAX];
 } TextFieldState;
 
 static UIWidgetNode *ui_tree_nodes = NULL;
@@ -40,6 +44,15 @@ static KeyID ui_tree_text_last_click_key = 0;
 static int ui_tree_text_last_click_x = 0;
 static int ui_tree_text_last_click_y = 0;
 static double ui_tree_text_last_click_time = 0.0;
+static UIAccessibilitySink ui_accessibility_sink;
+static void *ui_accessibility_sink_userdata;
+#if defined(__GNUC__) || defined(__clang__)
+extern void kry_platform_accessibility_snapshot(
+    const UIAccessibilityNode *nodes, int count) __attribute__((weak));
+#else
+static void (*kry_platform_accessibility_snapshot)(
+    const UIAccessibilityNode *nodes, int count);
+#endif
 
 typedef struct UIWidgetOps {
     int (*measure_height)(UIWidgetNode node);
@@ -47,6 +60,32 @@ typedef struct UIWidgetOps {
 
 static UIWidgetNode *ui_tree_node(NodeId id);
 static void DrawTree(void);
+
+static int
+ui_text_insert_utf8(TextFieldProps *field, TextFieldState *state,
+                    const char *text)
+{
+    int changed = 0;
+    int bytes;
+    int codepoint;
+
+    if(field == NULL || state == NULL || text == NULL)
+        return 0;
+    while(*text != '\0') {
+        bytes = 0;
+        codepoint = GetCodepointNext(text, &bytes);
+        if(bytes <= 0)
+            break;
+        if((field->filter == NULL ||
+            field->filter(codepoint, field->filter_user_data)) &&
+           ui_text_insert_codepoint(field->text, field->text_size,
+                                    &state->cursor, codepoint,
+                                    field->max_codepoints))
+            changed = 1;
+        text += bytes;
+    }
+    return changed;
+}
 
 static char *
 ui_tree_strdup(const char *text)
@@ -506,6 +545,22 @@ EndTree(void)
     UpdateTree();
     update = GetTime();
     DrawTree();
+    if(ui_accessibility_sink != NULL ||
+       kry_platform_accessibility_snapshot != NULL) {
+        int count = GetAccessibilitySnapshot(NULL, 0);
+        UIAccessibilityNode *nodes = count > 0
+            ? malloc((size_t)count * sizeof(*nodes)) : NULL;
+
+        if(nodes != NULL) {
+            (void)GetAccessibilitySnapshot(nodes, count);
+            if(kry_platform_accessibility_snapshot != NULL)
+                kry_platform_accessibility_snapshot(nodes, count);
+            if(ui_accessibility_sink != NULL)
+                ui_accessibility_sink(nodes, count,
+                                      ui_accessibility_sink_userdata);
+            free(nodes);
+        }
+    }
     Overlays();
     draw = GetTime();
     trace_frame++;
@@ -1108,6 +1163,45 @@ RouteInput(void)
             }
             codepoint = GetCharPressed();
         }
+        {
+            KryTextCompositionEvent composition;
+
+            while(PollTextComposition(&composition)) {
+                if(composition.phase == KRY_TEXT_COMPOSITION_START ||
+                   composition.phase == KRY_TEXT_COMPOSITION_UPDATE) {
+                    state->composing = 1;
+                    strncpy(state->composition, composition.text,
+                            sizeof(state->composition) - 1);
+                    state->composition[sizeof(state->composition) - 1] = '\0';
+                    state->composition_cursor = composition.cursor;
+                    state->composition_selection_length =
+                        composition.selection_length;
+                    ui_text_field_event(node,
+                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
+                    ui_tree_invalid |= UI_INVALIDATE_PAINT;
+                } else if(composition.phase == KRY_TEXT_COMPOSITION_COMMIT) {
+                    if(end > start) {
+                        changed |= ui_text_delete_range(
+                            field->text, field->text_size, &state->cursor,
+                            start, end);
+                    }
+                    changed |= ui_text_insert_utf8(field, state,
+                                                   composition.text);
+                    state->anchor = state->cursor;
+                    state->composing = 0;
+                    state->composition[0] = '\0';
+                    selection_changed = 1;
+                    ui_text_field_event(node,
+                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
+                } else if(composition.phase == KRY_TEXT_COMPOSITION_CANCEL) {
+                    state->composing = 0;
+                    state->composition[0] = '\0';
+                    ui_text_field_event(node,
+                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
+                    ui_tree_invalid |= UI_INVALIDATE_PAINT;
+                }
+            }
+        }
         if(IsKeyPressed(KEY_BACKSPACE)) {
             if(end > start)
                 changed |= ui_text_delete_range(field->text, field->text_size,
@@ -1190,13 +1284,20 @@ static void
 DrawTree(void)
 {
     int i;
+    int window_ready = IsWindowReady();
 
-    if(!IsWindowReady())
-        return;
     if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
         return;
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
+
+        /* Slider/toggle/checkbox helpers also route their legacy input. Keep
+         * that state update alive in headless and software parity runs while
+         * suppressing draw-only nodes until a window exists. */
+        if(!window_ready && node->kind != UI_WIDGET_SLIDER_NODE &&
+           node->kind != UI_WIDGET_TOGGLE_NODE &&
+           node->kind != UI_WIDGET_CHECKBOX_NODE)
+            continue;
 
         switch(node->kind) {
         case UI_WIDGET_BACKGROUND_NODE:
@@ -1224,34 +1325,16 @@ DrawTree(void)
             break;
         case UI_WIDGET_BUTTON_NODE: {
             ButtonSpec spec = node->data.button.spec;
-            Color background;
-            Color border;
-            Color text;
-            int font;
             int hovered;
+            int pressed;
 
             if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
                 break;
             spec.bounds = node->bounds;
             spec.label = node->owned_text != NULL ? node->owned_text : "";
-            font = spec.font > 0 ? spec.font : GetUIFontSize();
-            background = spec.background.a != 0 ? spec.background : c_button;
             hovered = (node->flags & UI_NODE_HOVERED) != 0;
-            if(hovered)
-                background = spec.hover_background.a != 0
-                    ? spec.hover_background : c_button_hover;
-            if(spec.disabled && background.a > 120)
-                background.a = 120;
-            border = spec.border.a != 0 ? spec.border
-                                         : LightenUIColor(background, 32);
-            text = spec.text.a != 0 ? spec.text : c_text;
-            if(spec.disabled && text.a > 150)
-                text.a = 150;
-            ui_draw_control_background(spec.bounds, background, border,
-                                       spec.radius > 0.0f ? spec.radius : 0.06f);
-            DrawCenteredUIControlText(spec.label,
-                (int)(spec.bounds.x + spec.bounds.width * 0.5f),
-                (int)(spec.bounds.y + spec.bounds.height * 0.5f), font, text);
+            pressed = (node->flags & UI_NODE_PRESSED) != 0;
+            PaintButton(spec, hovered, pressed);
             break;
         }
         case UI_WIDGET_TEXT_AREA_NODE: {
@@ -1272,32 +1355,34 @@ DrawTree(void)
             const char *display;
             char *masked = NULL;
 
-            memset(&field, 0, sizeof(field));
-            if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
-                field = node->data.text_field;
-            } else {
-                TextAreaProps area = node->data.text_area;
-
-                field.bounds = area.bounds;
-                field.text = area.text;
-                field.text_size = area.text_size;
-                field.cursor_position = area.cursor_position;
-                field.focused = area.focused;
-                field.max_codepoints = area.max_codepoints;
-                field.font = area.font;
-                field.focus_id = area.focus_id;
-                field.style = area.style;
-                field.filter = area.filter;
-                field.filter_user_data = area.filter_user_data;
-                field.read_only = area.read_only;
-            }
+            field = node->data.text_field;
             display = field.text != NULL ? field.text : "";
+
+            if(state != NULL && state->composing && !field.secure &&
+               state->composition[0] != '\0') {
+                size_t base_len = strlen(display);
+                size_t preedit_len = strlen(state->composition);
+                size_t cursor = (size_t)ui_clampi(state->cursor, 0,
+                                                  (int)base_len);
+                char *composed = malloc(base_len + preedit_len + 1);
+
+                if(composed != NULL) {
+                    memcpy(composed, display, cursor);
+                    memcpy(composed + cursor, state->composition, preedit_len);
+                    memcpy(composed + cursor + preedit_len, display + cursor,
+                           base_len - cursor + 1);
+                    display = composed;
+                    masked = composed;
+                }
+            }
 
             if(field.secure) {
                 size_t length = strlen(display);
 
-                masked = malloc(length + 1);
-                if(masked != NULL) {
+                char *secure_mask = malloc(length + 1);
+                if(secure_mask != NULL) {
+                    free(masked);
+                    masked = secure_mask;
                     memset(masked, '*', length);
                     masked[length] = '\0';
                     display = masked;
@@ -1311,6 +1396,54 @@ DrawTree(void)
                 state != NULL && state->anchor > state->cursor
                     ? state->anchor : (state != NULL ? state->cursor : 0));
             free(masked);
+            break;
+        }
+        case UI_WIDGET_SLIDER_NODE: {
+            int old_value = node->data.slider.value != NULL
+                ? *node->data.slider.value : 0;
+            int changed = DrawUISlider(
+                node->id, (int)node->bounds.x, (int)node->bounds.y,
+                (int)node->bounds.width, node->data.slider.label,
+                node->data.slider.min, node->data.slider.max,
+                node->data.slider.value, node->data.slider.suffix,
+                node->data.slider.value_text_override);
+
+            if(changed && node->data.slider.value != NULL) {
+                UIEvent event = {0};
+                event.key = node->key;
+                event.kind = UI_EVENT_VALUE_CHANGED;
+                event.timestamp = GetTime();
+                event.data.value = *node->data.slider.value;
+                if(event.data.value != old_value)
+                    ui_event_push(event);
+            }
+            break;
+        }
+        case UI_WIDGET_TOGGLE_NODE:
+        case UI_WIDGET_CHECKBOX_NODE: {
+            int *value = node->kind == UI_WIDGET_TOGGLE_NODE
+                ? node->data.toggle.value : node->data.checkbox.value;
+            int changed;
+
+            if(node->kind == UI_WIDGET_TOGGLE_NODE) {
+                changed = DrawUIToggleSwitch(
+                    (int)node->bounds.x, (int)node->bounds.y,
+                    (int)node->bounds.width, (int)node->bounds.height,
+                    value, node->data.toggle.off_label,
+                    node->data.toggle.on_label);
+            } else {
+                changed = DrawUICheckboxToggle(
+                    (int)node->bounds.x, (int)node->bounds.y,
+                    node->data.checkbox.label, value);
+            }
+            if(changed && value != NULL) {
+                UIEvent event = {0};
+                event.key = node->key;
+                event.kind = UI_EVENT_VALUE_CHANGED;
+                event.timestamp = GetTime();
+                event.data.value = *value;
+                ui_event_push(event);
+            }
             break;
         }
         default:
@@ -1364,6 +1497,75 @@ HitTestNode(Vector2 point)
             return i;
     }
     return -1;
+}
+
+static const char *
+ui_accessibility_role(UIWidgetKind kind)
+{
+    switch(kind) {
+    case UI_WIDGET_SCREEN_NODE: return "main";
+    case UI_WIDGET_TEXT_NODE:
+    case UI_WIDGET_PARAGRAPH_NODE:
+    case UI_WIDGET_READONLY_TEXT_BOX_NODE: return "text";
+    case UI_WIDGET_BUTTON_NODE: return "button";
+    case UI_WIDGET_TEXT_FIELD_NODE:
+    case UI_WIDGET_TEXT_AREA_NODE: return "textbox";
+    case UI_WIDGET_DROPDOWN_NODE: return "combobox";
+    case UI_WIDGET_SLIDER_NODE: return "slider";
+    case UI_WIDGET_TOGGLE_NODE:
+    case UI_WIDGET_CHECKBOX_NODE: return "checkbox";
+    case UI_WIDGET_TAB_BAR_NODE: return "tablist";
+    case UI_WIDGET_COLUMN_NODE:
+    case UI_WIDGET_ROW_NODE:
+    case UI_WIDGET_STACK_NODE:
+    case UI_WIDGET_GRID_NODE:
+    case UI_WIDGET_GROUP_NODE: return "group";
+    case UI_WIDGET_PICTURE_NODE: return "img";
+    default: return NULL;
+    }
+}
+
+int
+GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
+{
+    int count = 0;
+    int i;
+
+    for(i = 0; i < ui_committed_node_count; i++) {
+        UIWidgetNode *node = &ui_committed_nodes[i];
+        const char *role = ui_accessibility_role(node->kind);
+        const char *label = node->owned_text;
+
+        if(role == NULL)
+            continue;
+        if(label == NULL && node->kind == UI_WIDGET_BUTTON_NODE)
+            label = node->data.button.spec.label;
+        else if(label == NULL && node->kind == UI_WIDGET_CHECKBOX_NODE)
+            label = node->data.checkbox.label;
+        if(nodes != NULL && count < capacity) {
+            memset(&nodes[count], 0, sizeof(nodes[count]));
+            nodes[count].bounds = node->bounds;
+            nodes[count].role = role;
+            nodes[count].label = label != NULL ? label : "";
+            nodes[count].focused = node->kind == UI_WIDGET_TEXT_FIELD_NODE &&
+                node->state != NULL &&
+                ((TextFieldState *)node->state)->focused;
+            nodes[count].disabled = node->kind == UI_WIDGET_BUTTON_NODE &&
+                node->data.button.spec.disabled;
+            nodes[count].checked = node->kind == UI_WIDGET_CHECKBOX_NODE &&
+                node->data.checkbox.value != NULL &&
+                *node->data.checkbox.value != 0;
+        }
+        count++;
+    }
+    return count;
+}
+
+void
+SetAccessibilitySink(UIAccessibilitySink sink, void *userdata)
+{
+    ui_accessibility_sink = sink;
+    ui_accessibility_sink_userdata = userdata;
 }
 
 int
@@ -1561,9 +1763,9 @@ Text(const char *text, int x, int y, int font_size, Color color)
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
         ui_tree_nodes[node].data.primitive.color = color;
     }
+    if(ui_tree_building)
+        return;
     DrawUIText(text, x, y, font_size, color);
-    if(ui_tree_building && node >= 0)
-        ui_tree_nodes[node].flags |= UI_NODE_PAINTED_IMMEDIATE;
 }
 
 void
@@ -1661,9 +1863,14 @@ ButtonNode(ButtonSpec button)
     int clicked;
 
     node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
-                       &button);
-    clicked = RenderButton(button);
-    ui_tree_mark_painted_immediate(node);
+                       NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
+        ui_tree_nodes[node].data.button.spec = button;
+        ui_tree_nodes[node].data.button.spec.label =
+            ui_tree_nodes[node].owned_text;
+    }
+    clicked = ui_tree_building ? HandleButton(button) : RenderButton(button);
     return clicked;
 }
 
@@ -1779,11 +1986,11 @@ IconLink(int id, int x, int y, int icon_size, Texture2D icon,
 }
 
 void
-IconTexture(int id, int x, int y, int size, Texture2D icon, Color tint)
+Icon(int id, int x, int y, int size, UIIconType icon, Color tint)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, size, size},
                 NULL);
-    DrawUIIconTexture(x, y, size, icon, tint);
+    DrawIcon(icon, (Rectangle){x, y, size, size}, tint);
 }
 
 int
@@ -1812,8 +2019,22 @@ Slider(int id, int x, int y, int w, const char *label,
              int min, int max, int *value, const char *suffix,
              const char *value_text_override)
 {
-    ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
-                (Rectangle){x, y, w, ScaleUIPx(56)}, value);
+    NodeId node = ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
+                              (Rectangle){x, y, w, ScaleUIPx(56)}, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.slider.value = value;
+        ui_tree_nodes[node].data.slider.label = label;
+        ui_tree_nodes[node].data.slider.min = min;
+        ui_tree_nodes[node].data.slider.max = max;
+        ui_tree_nodes[node].data.slider.suffix = suffix;
+        ui_tree_nodes[node].data.slider.value_text_override =
+            value_text_override;
+        /* Legacy controls combine input handling with painting, so retained
+         * declarations must repaint them on every frame. */
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    if(ui_tree_building)
+        return 0;
     return DrawUISlider(id, x, y, w, label, min, max, value, suffix,
                         value_text_override);
 }
@@ -1822,7 +2043,16 @@ int
 Toggle(int id, int x, int y, int w, int h, int *value,
              const char *off_label, const char *on_label)
 {
-    ui_tree_add(id, UI_WIDGET_TOGGLE_NODE, (Rectangle){x, y, w, h}, value);
+    NodeId node = ui_tree_add(id, UI_WIDGET_TOGGLE_NODE,
+                              (Rectangle){x, y, w, h}, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.toggle.value = value;
+        ui_tree_nodes[node].data.toggle.off_label = off_label;
+        ui_tree_nodes[node].data.toggle.on_label = on_label;
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    if(ui_tree_building)
+        return 0;
     (void)id;
     return DrawUIToggleSwitch(x, y, w, h, value, off_label, on_label);
 }
@@ -1830,7 +2060,18 @@ Toggle(int id, int x, int y, int w, int h, int *value,
 int
 Checkbox(int id, int x, int y, const char *label, int *value)
 {
-    ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE, (Rectangle){x, y, 0, 0}, value);
+    int font = GetUIFontSize();
+    NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
+                              (Rectangle){x, y,
+                                  ScaleUIPx(30) + TextWidth(label, font),
+                                  ScaleUIPx(34)}, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.checkbox.value = value;
+        ui_tree_nodes[node].data.checkbox.label = label;
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+    }
+    if(ui_tree_building)
+        return 0;
     (void)id;
     return DrawUICheckboxToggle(x, y, label, value);
 }
@@ -1972,6 +2213,9 @@ TextArea(TextAreaProps area)
         ui_tree_nodes[node].key = (KeyID)(unsigned)area.focus_id;
         ui_tree_nodes[node].data.text_area = area;
     }
+    /* The retained painter calls the multiline renderer in node order. Keep
+     * paint live for caret blinking and text input even when layout is stable. */
+    ui_tree_invalid |= UI_INVALIDATE_PAINT;
     if(ui_tree_building)
         return 0;
     return RenderTextArea(area);
@@ -2377,8 +2621,7 @@ Button(ButtonProps button)
             ui_tree_nodes[node].owned_text;
         ui_tree_nodes[node].data.button.style = button.style;
     }
-    clicked = RenderButton(spec);
-    ui_tree_mark_painted_immediate(node);
+    clicked = ui_tree_building ? HandleButton(spec) : RenderButton(spec);
     return clicked;
 }
 

@@ -36,6 +36,8 @@ public class KryonActivity extends NativeActivity {
         int ime, int cutoutLeft, int cutoutTop, int cutoutRight, int cutoutBottom);
     private native void nativeSetDeviceDensity(float density);
     private native void nativeTextInputCommit(int codepoint);
+    private native void nativeTextInputComposition(int phase, String text,
+                                                   int cursor, int selectionLength);
     private native void nativeTextInputBackspace();
     private native void nativeTextInputEnter();
 
@@ -250,6 +252,12 @@ public class KryonActivity extends NativeActivity {
             @Override
             public void commitText(int codepoint) {
                 nativeTextInputCommit(codepoint);
+            }
+
+            @Override
+            public void composition(int phase, String text, int cursor,
+                                    int selectionLength) {
+                nativeTextInputComposition(phase, text, cursor, selectionLength);
             }
 
             @Override

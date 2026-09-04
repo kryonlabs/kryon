@@ -21,6 +21,30 @@
 
 #include "kryon_compat.generated.h"
 
+#define KRY_TEXT_COMPOSITION_MAX 256
+
+typedef enum KryTextCompositionPhase {
+    KRY_TEXT_COMPOSITION_START = 1,
+    KRY_TEXT_COMPOSITION_UPDATE,
+    KRY_TEXT_COMPOSITION_COMMIT,
+    KRY_TEXT_COMPOSITION_CANCEL
+} KryTextCompositionPhase;
+
+typedef struct KryTextCompositionEvent {
+    KryTextCompositionPhase phase;
+    int cursor;
+    int selection_length;
+    char text[KRY_TEXT_COMPOSITION_MAX];
+} KryTextCompositionEvent;
+
+/* Platform adapters submit UTF-8 composition events here. Focused text
+ * controls consume them during input routing. Events are copied, so callers
+ * do not need to retain `text`. Returns zero only when the queue is full. */
+int SubmitTextComposition(KryTextCompositionPhase phase, const char *text,
+                          int cursor, int selection_length);
+int PollTextComposition(KryTextCompositionEvent *event);
+void ClearTextComposition(void);
+
 /* Keyboard state. Raw keycodes match the public KeyboardKey constants. */
 bool BackendRaw_IsKeyPressed(int key);
 bool BackendRaw_IsKeyPressedRepeat(int key);

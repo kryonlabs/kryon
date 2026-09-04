@@ -9,6 +9,7 @@
 #include "app_host.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #ifdef KRYON_BACKEND_RAYLIB
 #include <SDL.h>
@@ -28,6 +29,57 @@ static int g_kryon_keyboard_input_enabled = 1;
 static KeyInputPlatformCallback g_kryon_key_input_update_callback = NULL;
 static KeyPlatformCallback g_kryon_key_pressed_callback = NULL;
 static KeyPlatformCallback g_kryon_key_down_callback = NULL;
+
+#define KRY_TEXT_COMPOSITION_QUEUE_CAP 16
+static KryTextCompositionEvent
+    g_text_composition_queue[KRY_TEXT_COMPOSITION_QUEUE_CAP];
+static int g_text_composition_head;
+static int g_text_composition_count;
+
+int
+SubmitTextComposition(KryTextCompositionPhase phase, const char *text,
+                      int cursor, int selection_length)
+{
+    KryTextCompositionEvent *event;
+    int tail;
+
+    if(phase < KRY_TEXT_COMPOSITION_START ||
+       phase > KRY_TEXT_COMPOSITION_CANCEL ||
+       g_text_composition_count >= KRY_TEXT_COMPOSITION_QUEUE_CAP)
+        return 0;
+    tail = (g_text_composition_head + g_text_composition_count) %
+           KRY_TEXT_COMPOSITION_QUEUE_CAP;
+    event = &g_text_composition_queue[tail];
+    memset(event, 0, sizeof(*event));
+    event->phase = phase;
+    event->cursor = cursor >= 0 ? cursor : 0;
+    event->selection_length = selection_length >= 0 ? selection_length : 0;
+    if(text != NULL) {
+        strncpy(event->text, text, sizeof(event->text) - 1);
+        event->text[sizeof(event->text) - 1] = '\0';
+    }
+    g_text_composition_count++;
+    return 1;
+}
+
+int
+PollTextComposition(KryTextCompositionEvent *event)
+{
+    if(event == NULL || g_text_composition_count <= 0)
+        return 0;
+    *event = g_text_composition_queue[g_text_composition_head];
+    g_text_composition_head = (g_text_composition_head + 1) %
+                              KRY_TEXT_COMPOSITION_QUEUE_CAP;
+    g_text_composition_count--;
+    return 1;
+}
+
+void
+ClearTextComposition(void)
+{
+    g_text_composition_head = 0;
+    g_text_composition_count = 0;
+}
 
 static int k_key_prefers_platform(int key)
 {

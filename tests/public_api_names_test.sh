@@ -78,7 +78,7 @@ if [ -n "$public_button_matches" ]; then
 fi
 
 stale_tree_api_matches="$(
-    rg -n '\b(BeginUI|EndUI|InvalidateUI|NextUIEvent|UIReconcileTree|UILayoutTree|UIRouteInput|UIUpdateTree|UIGetTreeNodes|UIGetNodeHeight(ById)?|UIGetNode|UIHitTestNode|UINode[A-Za-z0-9_]*)\b' \
+    rg -n '\b(BeginUI|EndUI|InvalidateUI|NextUIEvent|UIReconcileTree|UILayoutTree|UIRouteInput|UIUpdateTree|UIGetTreeNodes|UIGetNodeHeight(ById)?|UIGetNode|UIHitTestNode|UIGetAccessibilitySnapshot|SetUIAccessibilitySink|UINode[A-Za-z0-9_]*)\b' \
         include src cmd go docs examples tests \
         --glob '!vendor/**' \
         --glob '!build/**' \

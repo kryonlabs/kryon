@@ -221,8 +221,8 @@ func TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, col
 	active().TextLines(lines, count, x, y, font, lineH, color)
 }
 func Bevel(x, y, w, h int32, light, dark Color) { active().Bevel(x, y, w, h, light, dark) }
-func IconTexture(id, x, y, size int32, iconType int32, tint Color) {
-	active().IconTexture(id, x, y, size, iconType, tint)
+func Icon(id, x, y, size int32, iconType int32, tint Color) {
+	active().Icon(id, x, y, size, iconType, tint)
 }
 func Picture(props PictureProps) { active().Picture(props) }
 func Paragraph(spec ParagraphSpec, x int32, y *int32) {

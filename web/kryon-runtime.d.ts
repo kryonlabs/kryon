@@ -197,7 +197,7 @@ export function EndCanvas(...args: unknown[]): unknown;
 export function EndScroll(...args: unknown[]): unknown;
 export function Href(...args: unknown[]): unknown;
 export function IconButton(...args: unknown[]): unknown;
-export function IconTexture(...args: unknown[]): unknown;
+export function Icon(...args: unknown[]): unknown;
 export function LabelFrame(...args: unknown[]): unknown;
 export function ListBox(...args: unknown[]): unknown;
 export function Modal(...args: unknown[]): unknown;

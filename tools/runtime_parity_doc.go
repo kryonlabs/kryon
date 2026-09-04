@@ -178,7 +178,7 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Rect",
 		"Line",
 		"Bevel",
-		"IconTexture",
+		"Icon",
 		"Picture",
 		"Button",
 		"IconButton",

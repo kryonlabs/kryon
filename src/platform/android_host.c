@@ -561,6 +561,23 @@ Java_com_kryonlabs_kryon_KryonActivity_nativeTextInputCommit(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
+Java_com_kryonlabs_kryon_KryonActivity_nativeTextInputComposition(
+    JNIEnv *env, jobject thiz, jint phase, jstring text, jint cursor,
+    jint selection_length)
+{
+    const char *utf8 = NULL;
+
+    (void)thiz;
+    if(text != NULL)
+        utf8 = (*env)->GetStringUTFChars(env, text, NULL);
+    (void)SubmitTextComposition((KryTextCompositionPhase)phase,
+                                utf8 != NULL ? utf8 : "", (int)cursor,
+                                (int)selection_length);
+    if(text != NULL && utf8 != NULL)
+        (*env)->ReleaseStringUTFChars(env, text, utf8);
+}
+
+JNIEXPORT void JNICALL
 Java_com_kryonlabs_kryon_KryonActivity_nativeTextInputBackspace(JNIEnv *env,
                                                                 jobject thiz)
 {

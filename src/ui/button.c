@@ -46,8 +46,9 @@ ui_draw_termi_button_outline(Rectangle bounds, Color border, int hovered,
     DrawRectangleLinesEx(bounds, thick, outline);
 }
 
-int
-RenderButton(ButtonSpec button)
+static int
+ui_render_button(ButtonSpec button, int handle_input, int paint,
+                 int retained_hovered, int retained_pressed)
 {
     char editor_id[96];
     UIWidget widget;
@@ -70,25 +71,37 @@ RenderButton(ButtonSpec button)
     int termi_button = ui_termi_backend();
     int material_controls = ui_material_style() && !termi_button;
 
-    widget = BeginUIWidget("button",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "button", button.focus_id,
-                                                 button.label),
-                           button.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    button.bounds = widget.bounds;
-    UIWidgetSetAction(&widget, button.label);
-
-    clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
-    focused = !button.disabled && button.focus_id > 0 &&
-              RegisterUIFocus(button.focus_id, button.bounds);
+    memset(&widget, 0, sizeof(widget));
+    if(handle_input) {
+        widget = BeginUIWidget("button",
+                               ui_inspect_control_id(editor_id,
+                                                     sizeof(editor_id),
+                                                     "button",
+                                                     button.focus_id,
+                                                     button.label),
+                               button.bounds,
+                               UI_WIDGET_MOVABLE |
+                               UI_WIDGET_RESIZABLE);
+        button.bounds = widget.bounds;
+        UIWidgetSetAction(&widget, button.label);
+        clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
+        focused = !button.disabled && button.focus_id > 0 &&
+                  RegisterUIFocus(button.focus_id, button.bounds);
+        retained_pressed = hovered &&
+                           IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    } else {
+        hovered = !button.disabled && retained_hovered;
+        focused = !button.disabled && button.focus_id > 0 &&
+                  IsUIFocusActive(button.focus_id);
+    }
     draw_bounds = button.bounds;
-    if(!IsWindowReady()) {
+    if(!paint || !IsWindowReady()) {
         if(focused)
             SetUIFocusTextInputActive(0);
-        EndUIWidget(&widget);
-        return clicked || IsUIFocusActivatePressed(button.focus_id);
+        if(handle_input)
+            EndUIWidget(&widget);
+        return handle_input
+            ? clicked || IsUIFocusActivatePressed(button.focus_id) : 0;
     }
 
     if(material_controls && !button.disabled) {
@@ -111,7 +124,7 @@ RenderButton(ButtonSpec button)
         {
             float dt = GetFrameTime();
             float hover_target = hovered ? 1.0f : 0.0f;
-            float press_target = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT) ? 1.0f : 0.0f;
+            float press_target = retained_pressed ? 1.0f : 0.0f;
             float hover_step = dt * 10.0f;
             float press_step = dt * 16.0f;
 
@@ -130,12 +143,11 @@ RenderButton(ButtonSpec button)
     }
 
     if(material_controls) {
-        int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        int pressed = retained_pressed;
         int ripple_key = button.focus_id != 0 ? button.focus_id :
                          (int)(button.bounds.x * 3 + button.bounds.y * 5 +
                                button.bounds.width * 7 + button.bounds.height * 11);
 
-        radius = 0.50f;
         border = BLANK;
         if(button.disabled) {
             UIMaterialScheme scheme = ui_material_scheme();
@@ -145,6 +157,7 @@ RenderButton(ButtonSpec button)
             background = button.background.a != 0 ? button.background : c_circle;
             text = button.text.a != 0 ? button.text : ui_material_on_color(background);
         }
+        radius = 0.50f;
         ui_draw_control_background(draw_bounds, background, border, radius);
         if(!button.disabled) {
             ui_material_state_layer(draw_bounds, text, hovered, focused, pressed);
@@ -158,8 +171,10 @@ RenderButton(ButtonSpec button)
                                   (int)(draw_bounds.x + draw_bounds.width * 0.5f),
                                   (int)(draw_bounds.y + draw_bounds.height * 0.5f),
                                   font, text);
-        EndUIWidget(&widget);
-        return clicked || IsUIFocusActivatePressed(button.focus_id);
+        if(handle_input)
+            EndUIWidget(&widget);
+        return handle_input
+            ? clicked || IsUIFocusActivatePressed(button.focus_id) : 0;
     }
 
     if(button.disabled) {
@@ -169,8 +184,7 @@ RenderButton(ButtonSpec button)
     draw_background = ColorLerp(background, hover_background, hover_amount);
     draw_border = ColorLerp(border, LightenUIColor(hover_background, cues ? 54 : 40),
                             hover_amount);
-    if(termi_button && !button.disabled && hovered &&
-       IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+    if(termi_button && !button.disabled && retained_pressed)
         draw_background = DarkenUIColor(draw_background, 18);
     if(cues && hovered)
         draw_background = LightenUIColor(draw_background, 6);
@@ -181,8 +195,7 @@ RenderButton(ButtonSpec button)
     ui_draw_control_background(draw_bounds, draw_background, draw_border, radius);
     if(termi_button)
         ui_draw_termi_button_outline(draw_bounds, draw_border, hovered,
-                                     hovered &&
-                                         IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                     retained_pressed,
                                      button.disabled);
     if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
         Color cue = LightenUIColor(draw_background, 42);
@@ -200,8 +213,28 @@ RenderButton(ButtonSpec button)
                               (int)(draw_bounds.x + draw_bounds.width * 0.5f),
                               (int)(draw_bounds.y + draw_bounds.height * 0.5f),
                               font, text);
-    EndUIWidget(&widget);
-    return clicked || IsUIFocusActivatePressed(button.focus_id);
+    if(handle_input)
+        EndUIWidget(&widget);
+    return handle_input
+        ? clicked || IsUIFocusActivatePressed(button.focus_id) : 0;
+}
+
+int
+RenderButton(ButtonSpec button)
+{
+    return ui_render_button(button, 1, 1, 0, 0);
+}
+
+int
+HandleButton(ButtonSpec button)
+{
+    return ui_render_button(button, 1, 0, 0, 0);
+}
+
+void
+PaintButton(ButtonSpec button, int hovered, int pressed)
+{
+    (void)ui_render_button(button, 0, 1, hovered, pressed);
 }
 
 int
@@ -252,7 +285,6 @@ DrawUIIconButton(IconButtonProps button)
                          (int)(button.bounds.x * 13 + button.bounds.y * 17);
         UIMaterialScheme scheme = ui_material_scheme();
 
-        radius = 0.50f;
         if(button.background.a == 0) {
             background = BLANK;
             border = BLANK;
@@ -267,8 +299,10 @@ DrawUIIconButton(IconButtonProps button)
             background = BLANK;
             icon_tint = scheme.disabled_content;
         }
-        if(background.a != 0)
+        if(background.a != 0) {
+            radius = 0.50f;
             ui_draw_control_background(button.bounds, background, border, radius);
+        }
         if(!button.disabled) {
             Rectangle state = ui_centered_min_hit_rect((int)button.bounds.x,
                                                        (int)button.bounds.y,
@@ -324,7 +358,12 @@ DrawUIIconButton(IconButtonProps button)
             Rectangle src = {0, 0, (float)button.icon.width, (float)button.icon.height};
             Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
             DrawTexturePro(button.icon, src, dst, kryon_zero_vector2, 0, icon_tint);
-        }
+        } else if(button.icon_type > UI_ICON_TYPE_NONE &&
+                  button.icon_type < UI_ICON_TYPE_COUNT)
+            DrawIcon(button.icon_type,
+                     (Rectangle){(float)icon_x, (float)icon_y,
+                                 (float)draw_size, (float)draw_size},
+                     icon_tint);
     }
     EndUIWidget(&widget);
     return clicked || IsUIFocusActivatePressed(button.focus_id);

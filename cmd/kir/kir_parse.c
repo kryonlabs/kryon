@@ -350,7 +350,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
 {
     static const char *const widgets[] = {
         "Background", "Text", "TextInRect", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "IconTexture", "Picture", "Button",
+        "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
         "IconButton", "Href", "TextField", "TextArea", "Dropdown", "Slider",
         "Toggle", "Checkbox", "Radio", "Progress", "Spinbox", "Combobox",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",

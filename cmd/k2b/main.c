@@ -11,7 +11,7 @@
 #include <string.h>
 
 void write_krb(const KirModule *m, const char *root, const char *out_dir,
-               int no_main);
+               int no_main, int allow_unsupported);
 
 static int
 validate_asserts(const KirModule *m)
@@ -43,7 +43,7 @@ validate_asserts(const KirModule *m)
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: k2b [--no-main] --root DIR -o DIR file.kry ...\n");
+    fprintf(stderr, "usage: k2b [--no-main] [--allow-unsupported] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -52,6 +52,7 @@ main(int argc, char **argv)
     const char *root = NULL;
     const char *out_dir = NULL;
     int no_main = 0;
+    int allow_unsupported = 0;
     int i;
 
     for(i = 1; i < argc; i++) {
@@ -61,6 +62,8 @@ main(int argc, char **argv)
             out_dir = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
+        } else if(strcmp(argv[i], "--allow-unsupported") == 0) {
+            allow_unsupported = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -84,7 +87,8 @@ main(int argc, char **argv)
                 KirProgramFree(prog);
                 return 1;
             }
-            write_krb(&prog->modules[m], root, out_dir, no_main);
+            write_krb(&prog->modules[m], root, out_dir, no_main,
+                      allow_unsupported);
         }
         KirProgramFree(prog);
     }

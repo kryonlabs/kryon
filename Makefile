@@ -55,7 +55,7 @@ INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
 CPPFLAGS_BASE = -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
-ICON_FILES = $(shell find $(ICON_DIR) -path '*/review/*' -prune -o -type f -name '*.png' -print 2>/dev/null | LC_ALL=C sort)
+ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
 ICON_ASSETS_C = src/ui/ui_icon_assets.c
 # Default embedded assets: themes + the regular UI font. The CJK Noto faces
 # (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
@@ -313,7 +313,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-generate
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -1080,15 +1080,19 @@ $(LOCALE_TEST): tests/locale_test.c src/core/locale.c include/locale.h include/e
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/locale_test.c src/core/locale.c -o $@
 
 
-$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icons.sh include/ui_icons.h
-	sh scripts/embed-icons.sh "$(ICON_DIR)" $@
+$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icons.h
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $@
 
-src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icons.sh include/ui_icon_types.h
+src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icon_types.h
 	@$(MAKE) --quiet $(ICON_ASSETS_C)
 
-icons-generate: scripts/make_icons.py scripts/embed-icons.sh
-	python3 scripts/make_icons.py
-	sh scripts/embed-icons.sh "$(ICON_DIR)" $(ICON_ASSETS_C)
+icons-embed: scripts/embed-icon-sheets.py $(ICON_FILES)
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $(ICON_ASSETS_C)
+
+icons-import-mingcute: scripts/import-mingcute-icons.py
+	@[ -n "$(MINGCUTE_DIR)" ] || { echo "set MINGCUTE_DIR to a MingCute checkout" >&2; exit 2; }
+	python3 scripts/import-mingcute-icons.py "$(MINGCUTE_DIR)"
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $(ICON_ASSETS_C)
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)

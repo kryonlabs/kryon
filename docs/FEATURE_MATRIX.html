@@ -48,11 +48,11 @@ li{margin:.25rem 0}
 <p>(<code>include/kry_backend.h</code>), selected at <b>runtime</b>. Only the KRB widget subset runs on these.</p>
 <h2>Widget statement whitelist (<code>.kry</code> frontend)</h2>
 <p><code>parse_widget_statement</code> (<code>cmd/kir/kir_parse.c</code>) recognizes 51 widget names. <code>k2c</code> compiles any library call regardless (plain call statement); <code>k2cpp</code> shares that lowering (C++ output, C linkage); <code>k2go</code> lowers the full whitelist onto its <code>Runtime</code> interface (except <code>Canvas</code>, below); <code>k2js</code> records whitelisted standalone widget calls as browser-loadable runtime operations; and <code>k2b</code> lowers a subset of it:</p>
-<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel IconTexture Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`</p>
+<p>`Background Text TextInRect Paragraph TextLines Rect Line Bevel Icon Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`</p>
 <p>(<code>Canvas</code> is whitelisted but no <code>Canvas(...)</code> widget exists — examples call <code>BeginCanvas</code> directly. Scroll coverage uses the C <code>BeginUIScrollContainer</code> / <code>EndUIScrollContainer</code> API.)</p>
 <h2>Widget matrix</h2>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2cpp</b> = <code>.kry</code>→C++ codegen (mirrors <code>k2c</code>) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
-<p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, but the retained painter covers only BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, and routes retained input for BUTTON, TEXT_FIELD, and TEXT_AREA; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
+<p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, while the retained painter covers BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX. It routes retained interaction for BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
 <h3>UI/Display</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
@@ -64,7 +64,7 @@ li{margin:.25rem 0}
 <tr><td class="">Rect</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (+ <code>RectGradientH</code>)</td><td class="part">◐ <code>DrawRectangle*</code> primitives</td><td class="ok">✅ node</td></tr>
 <tr><td class="">Line</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>DrawLine</code></td><td class="ok">✅</td></tr>
 <tr><td class="">Bevel</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Bevel</code></td><td class="ok">✅</td></tr>
-<tr><td class="">IconTexture (114 embedded icons)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>IconTexture</code></td><td class="no">✗</td></tr>
+<tr><td class="">Icon sheets (MingCute UI plus 6 full-color families)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ (by icon type)</td><td class="ok">✅ <code>Icon</code></td><td class="no">✗</td></tr>
 <tr><td class="">Image/Picture</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Picture(kryon.PictureProps)</code></td><td class="ok">✅ <code>kryon.Picture</code></td><td class="ok">✅ node (embedded asset or PNG)</td></tr>
 </table>
 <h3>UI/Input</h3>
@@ -174,12 +174,12 @@ li{margin:.25rem 0}
 <tr><td class="">Theming</td><td class="ok">✅ 6 palettes × light/dark INI, scopes, vars, runtime loader</td><td class="ok">✅ <code>SetCurrentTheme</code>/<code>SetThemeDarkMode</code>/<code>GetTheme*</code></td><td class="part">◐ theme color slots (<code>KrySwSetTheme</code>); light/dark env knobs on hosts</td></tr>
 <tr><td class="">Style tokens</td><td class="ok">✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles</td><td class="ok">✅ <code>Get/SetUIStyleTokens</code></td><td class="no">✗</td></tr>
 <tr><td class="">Animation</td><td class="ok">✅ transitions (smoothstep), ripple, keyframe scene anims</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode</td></tr>
-<tr><td class="">Text/fonts</td><td class="ok">✅ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text; no shaping/bidi/IME</td><td class="ok">✅ <code>RegisterUIFont(Data)</code>, <code>Push/Pop/UseUIFont</code>, input queue</td><td class="part">◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization</td></tr>
+<tr><td class="">Text/fonts</td><td class="part">◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi</td><td class="ok">✅ <code>RegisterUIFont(Data)</code>, <code>Push/Pop/UseUIFont</code>, input queue</td><td class="part">◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization</td></tr>
 <tr><td class="">DPI/scaling</td><td class="ok">✅ viewport-derived scale, <code>ScaleUIPx</code></td><td class="ok">✅ <code>ScaleUIPx</code>, <code>GetWindowScaleDPI</code></td><td class="part">◐ per-mille UI scale (<code>KRB_RUN_UI_SCALE</code>)</td></tr>
 <tr><td class="">Clipping</td><td class="ok">✅ 16-deep scissor stack + input clip stack</td><td class="ok">✅ <code>Begin/EndScissorMode</code></td><td class="ok">✅ 16-deep <code>clip_push/pop</code> in <code>kry_sw</code></td></tr>
 <tr><td class="">Z-order/popups</td><td class="ok">✅ overlay paint pass, modal capture, input-capture stack</td><td class="part">◐ dropdown popups internal to <code>Dropdown</code></td><td class="part">◐ dropdown menus handled by the engine</td></tr>
-<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard; no IME, no gamepad nav</td><td class="ok">✅ native host key/mouse/text queues</td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
-<tr><td class="">Accessibility</td><td class="part">◐ debug focus overlay + a11y node structs; no screen-reader bridge</td><td class="no">✗</td><td class="no">✗</td></tr>
+<tr><td class="">Input</td><td class="ok">✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard, backend-neutral IME composition; no gamepad nav</td><td class="ok">✅ native host key/mouse/text queues</td><td class="part">◐ vtable: mouse, press, wheel, text-key queue</td></tr>
+<tr><td class="">Accessibility</td><td class="part">◐ retained accessibility snapshots + host sink + DOM ARIA bridge; native screen-reader bridge pending</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">i18n</td><td class="ok">✅ locale strings + CJK font switching; no RTL</td><td class="no">✗</td><td class="no">✗</td></tr>
 <tr><td class="">Multi-window</td><td class="ok">✅ <code>OpenUIWindow</code> (X11 dlopen / SDL)</td><td class="no">✗</td><td class="na">— single framebuffer</td></tr>
 <tr><td class="">3D rendering</td><td class="ok">✅ camera + mesh/shader tier incl. curated rlgl entry points and raymath-style math3d (GLSL 100); raylib backend implements it, others stub it</td><td class="no">✗</td><td class="no">✗</td></tr>
@@ -234,13 +234,13 @@ li{margin:.25rem 0}
 </ul>
 <p>cartridge widget set remains smaller than the C catalog (see matrix). <code>Combobox</code> lowers to a <code>KRB_CTRL_COMBOBOX</code> control that renders like the dropdown, matching the C widget. <code>Progress</code> lowers to a read-only <code>KRB_CTRL_PROGRESS</code> control bound to an integer state field. <code>Radio</code> lowers to <code>KRB_CTRL_RADIO</code> for the common <code>selected == id</code> pattern and writes <code>id</code> into the mounted selection field on click. <code>LabelFrame</code> lowers to border rectangles plus title background/text nodes.</p>
 <ul>
-<li>Retained tree paints 7 node kinds and routes input for 3 (see caveat</li>
+<li>Retained tree paints 10 node kinds and routes interaction for 6 (see caveat</li>
 </ul>
 <p>above the widget matrix).</p>
 <ul>
-<li>No text shaping: no HarfBuzz, ligatures, bidi, or RTL mirroring anywhere;</li>
+<li>No text shaping yet: no HarfBuzz, ligatures, bidi, or RTL mirroring. Android</li>
 </ul>
-<p>no IME/preedit; no gamepad UI navigation.</p>
+<p>and DOM text controls do have backend-neutral IME preedit/commit; gamepad UI navigation remains absent.</p>
 <ul>
 <li>Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass</li>
 </ul>

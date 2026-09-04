@@ -523,33 +523,46 @@ const UIIconAsset *GetUIIconAsset(UIIconType type);
 const UIIconAsset *GetUIIconAssetByName(const char *name);
 ```
 
-#### `LoadUIIconTexture`
+#### `LoadIconSheet` / `UnloadIconSheets`
 
-Load an icon texture.
-
-```c
-Texture2D LoadUIIconTexture(UIIconType type);
-Texture2D LoadUIIconTextureByName(const char *name);
-```
-
-#### `LoadAllUIIconTextures` / `UnloadAllUIIconTextures`
+Load a generated spritesheet or unload all icon textures. `DrawIcon` selects
+and loads the correct sheet lazily, so normal widget code does not need to call
+these functions directly.
 
 ```c
-void LoadAllUIIconTextures(Texture2D *icons);
-void UnloadAllUIIconTextures(Texture2D *icons);
+Texture2D LoadIconSheet(UIIconSheet sheet);
+void UnloadIconSheets(void);
 ```
 
-Kryon's checked-in `icons/` tree is the shared icon source root. Subdirectories
-such as `icons/platforms/`, `icons/payments/`, `icons/language/`,
-`icons/tiles/`, `icons/pfp/`, and `icons/proj/` are embedded into the same icon
-catalog with names like `platforms_freebsd.png`, `proj_kryon.png`, and matching
+#### `DrawIcon` / `DrawIconByName`
+
+Draw an indexed atlas glyph. UI icons accept the runtime tint; PFP, platform,
+payment, language, and tile icons retain their full source colors and only use the
+tint's alpha. Every entry uses one fixed 64×64 source cell.
+
+```c
+void DrawIcon(UIIconType type, Rectangle bounds, Color tint);
+void DrawIconByName(const char *name, Rectangle bounds, Color tint);
+```
+
+Kryon's checked-in `icons/` directory is the finished spritesheet package.
+Regular UI entries—including workbook controls—use the rounded MingCute Core
+Filled family and are packed into the monochrome `icons/ui.png`. The manifest
+records each upstream SVG mapping and revision. There are no prebuilt flat-color
+variants; runtime drawing can tint the clean alpha artwork on demand.
+Product and project marks retain their brand colors, stay out of the generic UI
+atlas, and are packed into the separate `icons/logos.png` sheet.
+Entries use names like `platforms_freebsd.png`, `proj_kryon.png`, and matching
 `UI_ICON_TYPE_PLATFORMS_*` / `UI_ICON_TYPE_PROJ_*` enum values. Downstream
 websites can sync shared assets from a vendored Kryon copy with
-`vendor/kryon/scripts/sync-icons.sh`. Generated pixel icons are rebuilt with
-`make icons-generate`.
+`vendor/kryon/scripts/sync-icons.sh`. Embedded C assets are refreshed with
+`make icons-embed`.
 
-Profile-picture PNGs in `icons/pfp/` are embedded into the same icon catalog with
-`UI_ICON_TYPE_PFP_*` enum values. Use `GetUIProfilePictureIconCount`,
+Profile-picture, platform, payment, and language artwork is packed into the
+separate full-color `icons/pfp.png`, `icons/platforms.png`,
+`icons/payments.png`, `icons/language.png`, and `icons/tiles.png` sheets. They remain in the same
+indexed icon catalog with their existing `UI_ICON_TYPE_*` values. Use
+`GetUIProfilePictureIconCount`,
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.
 
@@ -1627,6 +1640,39 @@ before an app applies or saves them.
 ---
 
 ## Input Handling
+
+### Text composition
+
+Platform adapters submit UTF-8 IME preedit and commit events through the shared
+input front-end. The focused retained `TextField` or `TextArea` displays
+preedit without changing the caller-owned buffer, then applies the committed
+text through the control's normal codepoint filter.
+
+```c
+SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, "nihon", 5, 0);
+SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT, "日本", 2, 0);
+
+KryTextCompositionEvent event;
+while (PollTextComposition(&event)) {
+    /* Custom editors may consume the same backend-neutral event stream. */
+}
+```
+
+`ClearTextComposition` discards pending preedit events when a host resets or
+changes input ownership. Android `InputConnection` and the DOM backend feed
+this API directly.
+
+### Retained accessibility
+
+`GetAccessibilitySnapshot` projects the committed retained UI tree into
+backend-neutral roles, labels, bounds, focus, disabled, and checked state.
+`SetAccessibilitySink` installs a host callback invoked after every retained
+frame. The DOM backend additionally publishes the snapshot as ARIA nodes.
+
+```c
+UIAccessibilityNode nodes[64];
+int count = GetAccessibilitySnapshot(nodes, 64);
+```
 
 ### Input Capture
 

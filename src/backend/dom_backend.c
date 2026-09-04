@@ -42,7 +42,7 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         fonts: {1: {family: 'Arial, sans-serif', size: 16}},
         nextFont: 2,
         keysDown: {}, keysPressed: [], keysReleased: [], keysRepeated: [],
-        chars: [],
+        chars: [], compositions: [],
         mouseX: 0, mouseY: 0, mouseDeltaX: 0, mouseDeltaY: 0,
         mouseOffsetX: 0, mouseOffsetY: 0, mouseScaleX: 1, mouseScaleY: 1,
         buttonsDown: {}, buttonsPressed: [], buttonsReleased: [],
@@ -385,7 +385,27 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         });
         target.addEventListener('keypress', function (e) {
             if (!claimEvent(e, 'keypress')) return;
-            if (e.key && e.key.length === 1) K.chars.push(e.key.charCodeAt(0));
+            if (!e.isComposing && e.key && e.key.length === 1)
+                K.chars.push(e.key.codePointAt(0));
+        });
+        target.addEventListener('compositionstart', function (e) {
+            if (!claimEvent(e, 'compositionstart')) return;
+            K.compositions.push({phase: 1, text: e.data || "", cursor: 0,
+                                 selectionLength: 0});
+        });
+        target.addEventListener('compositionupdate', function (e) {
+            if (!claimEvent(e, 'compositionupdate')) return;
+            var text = e.data || "";
+            K.compositions.push({phase: 2, text: text,
+                                 cursor: Array.from(text).length,
+                                 selectionLength: 0});
+        });
+        target.addEventListener('compositionend', function (e) {
+            if (!claimEvent(e, 'compositionend')) return;
+            var text = e.data || "";
+            K.compositions.push({phase: text ? 3 : 4, text: text,
+                                 cursor: Array.from(text).length,
+                                 selectionLength: 0});
         });
         target.addEventListener('touchstart', function (e) {
             if (!claimEvent(e, 'touchstart')) return;
@@ -453,6 +473,17 @@ EM_JS(int, js_dom_dim, (int which), {
 EM_JS(double, js_dom_dpi, (void), {
     var K = globalThis.__kryDom;
     return K ? K.dpi : 1.0;
+});
+
+EM_JS(int, js_dom_composition_poll,
+      (char *text, int capacity, int *cursor, int *selection_length), {
+    var K = globalThis.__kryDom;
+    if (!K || !K.compositions || !K.compositions.length) return 0;
+    var event = K.compositions.shift();
+    stringToUTF8(event.text || "", text, capacity);
+    HEAP32[cursor >> 2] = event.cursor | 0;
+    HEAP32[selection_length >> 2] = event.selectionLength | 0;
+    return event.phase | 0;
 });
 
 EM_JS(void, js_dom_begin_frame, (void), {
@@ -783,6 +814,28 @@ EM_JS(void, js_dom_semantic_box, (int kind, double x, double y, double w,
     n.style.pointerEvents = 'none';
 });
 
+EM_JS(void, js_dom_accessibility_box,
+      (const char *role_ptr, const char *label_ptr, double x, double y,
+       double w, double h, int focused, int disabled, int checked), {
+    var K = globalThis.__kryDom;
+    if (!K || !K.root) return;
+    var role = role_ptr ? UTF8ToString(role_ptr) : "";
+    var label = label_ptr ? UTF8ToString(label_ptr) : "";
+    var tag = role === 'button' ? 'button' :
+              (role === 'textbox' ? 'input' :
+              (role === 'main' ? 'main' : 'div'));
+    var n = K.node(tag, 'accessibility-' + role);
+    K.baseStyle(n, x, y, w, h);
+    n.style.opacity = '0';
+    n.style.pointerEvents = 'none';
+    if (role) n.setAttribute('role', role);
+    if (label) n.setAttribute('aria-label', label);
+    if (focused) n.setAttribute('aria-current', 'true');
+    if (disabled) n.setAttribute('aria-disabled', 'true');
+    if (role === 'checkbox') n.setAttribute('aria-checked', checked ? 'true' : 'false');
+    n.tabIndex = -1;
+});
+
 EM_JS(void, js_dom_page_meta, (int which, const char *value,
                                int r, int gg, int b, int a), {
     var K = globalThis.__kryDom;
@@ -842,6 +895,22 @@ void kry_dom_semantic_box(int kind, Rectangle bounds, const char *label)
 {
     js_dom_semantic_box(kind, bounds.x, bounds.y, bounds.width, bounds.height,
                         label);
+}
+
+void
+kry_platform_accessibility_snapshot(const UIAccessibilityNode *nodes,
+                                    int count)
+{
+    int i;
+
+    if(nodes == NULL)
+        return;
+    for(i = 0; i < count; i++) {
+        js_dom_accessibility_box(nodes[i].role, nodes[i].label,
+            nodes[i].bounds.x, nodes[i].bounds.y,
+            nodes[i].bounds.width, nodes[i].bounds.height,
+            nodes[i].focused, nodes[i].disabled, nodes[i].checked);
+    }
 }
 
 void kry_dom_set_page_title(const char *title)
@@ -1835,7 +1904,19 @@ bool BackendRaw_IsKeyPressedRepeat(int key) { return js_dom_input_query(19, key)
 bool BackendRaw_IsKeyDown(int key) { return js_dom_input_query(0, key) != 0; }
 bool BackendRaw_IsKeyReleased(int key) { return js_dom_input_query(2, key) != 0; }
 int BackendRaw_GetKeyPressed(void) { return js_dom_input_query(3, 0); }
-int BackendRaw_GetCharPressed(void) { return js_dom_input_query(4, 0); }
+int BackendRaw_GetCharPressed(void)
+{
+    char text[KRY_TEXT_COMPOSITION_MAX];
+    int cursor = 0;
+    int selection_length = 0;
+    int phase = js_dom_composition_poll(text, sizeof(text), &cursor,
+                                        &selection_length);
+
+    if(phase != 0)
+        (void)SubmitTextComposition((KryTextCompositionPhase)phase, text,
+                                    cursor, selection_length);
+    return js_dom_input_query(4, 0);
+}
 bool BackendRaw_IsMouseButtonPressed(int button) { return js_dom_input_query(6, button) != 0; }
 bool BackendRaw_IsMouseButtonDown(int button) { return js_dom_input_query(5, button) != 0; }
 bool BackendRaw_IsMouseButtonReleased(int button) { return js_dom_input_query(7, button) != 0; }

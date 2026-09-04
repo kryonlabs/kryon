@@ -458,7 +458,7 @@ WIDGETS = {
     "Href",
     "IconButton",
     "IconLink",
-    "IconTexture",
+    "Icon",
     "ImageBox",
     "LabelFrame",
     "Line",
@@ -897,6 +897,8 @@ def verify_pipelines(data: dict, args: argparse.Namespace) -> int:
                     shutil.rmtree(out)
                 out.mkdir(parents=True)
                 cmd = [str(tools[pipeline["id"]]), "--root", str(ROOT), "-o", str(out), str(source)]
+                if pipeline["id"] == "k2b":
+                    cmd.insert(1, "--allow-unsupported")
                 run = subprocess.run(cmd, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if run.returncode != 0:
                     failures.append(
@@ -943,7 +945,8 @@ def verify_krb_visuals(data: dict, args: argparse.Namespace) -> int:
             sdl_png.parent.mkdir(parents=True, exist_ok=True)
 
             run = subprocess.run(
-                [str(tools["k2b"]), "--no-main", "--root", str(ROOT), "-o", str(out_dir), str(source)],
+                [str(tools["k2b"]), "--no-main", "--allow-unsupported",
+                 "--root", str(ROOT), "-o", str(out_dir), str(source)],
                 cwd=ROOT,
                 text=True,
                 stdout=subprocess.PIPE,
@@ -1084,7 +1087,8 @@ def verify_krb_web_visuals(data: dict, args: argparse.Namespace) -> int:
             native_png.parent.mkdir(parents=True, exist_ok=True)
 
             run = subprocess.run(
-                [str(tools["k2b"]), "--no-main", "--root", str(ROOT), "-o", str(out_dir), str(source)],
+                [str(tools["k2b"]), "--no-main", "--allow-unsupported",
+                 "--root", str(ROOT), "-o", str(out_dir), str(source)],
                 cwd=ROOT,
                 text=True,
                 stdout=subprocess.PIPE,

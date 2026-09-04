@@ -26,7 +26,7 @@ const char *relative_path(const char *root, const char *path);
 int is_ident_text(const char *text);
 void c_string_literal(char *dst, size_t dst_size, const char *src);
 void write_krb(const KirModule *m, const char *root, const char *out_dir,
-               int no_main);
+               int no_main, int allow_unsupported);
 
 #define KRB_BUILD_NODE_MAX 256
 #define KRB_BUILD_STR_MAX 8192
@@ -2919,6 +2919,28 @@ is_krb_layout_call(const char *call)
 }
 
 static int
+is_kry_widget_call(const char *name)
+{
+    static const char *const names[] = {
+        "Background", "Text", "TextInRect", "Paragraph", "TextLines",
+        "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
+        "IconButton", "Href", "TextField", "TextArea", "Dropdown",
+        "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
+        "Combobox", "Screen", "Column", "Row", "Stack", "End", "Scroll",
+        "Canvas", "Modal", "ActionModal", "MessageDialog",
+        "ConfirmDialog", "PromptDialog", "TitleBar", "TabBar", "BottomNav",
+        "TopNav", "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
+        "Notebook", "PanedView", "Collapsible", "ListBox", "SourceView",
+        "TableView", "CanvasGrid", "SelectableText", "InfoButton", NULL
+    };
+
+    for(int i = 0; names[i] != NULL; i++)
+        if(strcmp(name, names[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static int
 parse_widget_from_table(KrbBuild *b, const char *call)
 {
     static const KrbWidgetParserEntry entries[] = {
@@ -3000,6 +3022,8 @@ try_widget(KrbBuild *b, const char *raw)
             i++;
         }
         name[i] = '\0';
+        if(!is_kry_widget_call(name))
+            return 0;
         for(i = 0; i < b->dropped_kinds; i++)
             if(strcmp(b->dropped[i], name) == 0) {
                 b->dropped_count[i]++;
@@ -3566,7 +3590,7 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
 
 void
 write_krb(const KirModule *m, const char *root, const char *out_dir,
-          int no_main)
+          int no_main, int allow_unsupported)
 {
     const char *rel = relative_path(root, m->source_path);
     char gen_rel[KIR_PATH_MAX];
@@ -3593,6 +3617,15 @@ write_krb(const KirModule *m, const char *root, const char *out_dir,
     collect_string_arrays(&build, m);
     for(i = 0; i < m->function_count; i++)
         collect_widgets(&build, &m->functions[i]);
+
+    if(build.dropped_kinds > 0 && !allow_unsupported) {
+        fprintf(stderr, "k2b: %s: unsupported calls:", rel);
+        for(i = 0; i < build.dropped_kinds; i++)
+            fprintf(stderr, " %s x%d", build.dropped[i],
+                    build.dropped_count[i]);
+        fprintf(stderr, " (pass --allow-unsupported to omit them)\n");
+        exit(1);
+    }
 
     /* bake the glyph atlas from the UI font over the cartridge charset */
     if(build.asset_count < 24) {

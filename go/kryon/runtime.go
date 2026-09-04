@@ -899,7 +899,7 @@ type Runtime interface {
 	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
 	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
 	Bevel(x, y, w, h int32, light, dark Color)
-	IconTexture(id, x, y, size int32, iconType int32, tint Color)
+	Icon(id, x, y, size int32, iconType int32, tint Color)
 	Picture(props PictureProps)
 	Paragraph(spec ParagraphSpec, x int32, y *int32)
 	IconButton(props IconButtonProps) bool
@@ -1660,7 +1660,7 @@ func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lin
 	}
 }
 func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color) {}
-func (r *runtime) IconTexture(id, x, y, size int32, iconType int32, tint Color) {
+func (r *runtime) Icon(id, x, y, size int32, iconType int32, tint Color) {
 	r.record(FrameOp{
 		Kind:     FrameOpIcon,
 		Bounds:   Rectangle{X: float32(x), Y: float32(y), Width: float32(size), Height: float32(size)},
@@ -1752,7 +1752,7 @@ func (r *runtime) IconButton(props IconButtonProps) bool {
 	if iconType == 0 && props.Icon.ID != 0 {
 		iconType = int32(props.Icon.ID)
 	}
-	r.IconTexture(props.FocusID, iconX, iconY, size, iconType, iconColor)
+	r.Icon(props.FocusID, iconX, iconY, size, iconType, iconColor)
 	return pressed
 }
 func (r *runtime) Href(props HrefProps) bool {

@@ -63,7 +63,7 @@ DrawUIBottomNav(BottomNavProps nav)
     int height = nav.height > 0 ? nav.height : ui_bottom_nav_height();
     int bottom_margin = nav.bottom_margin > 0 ? nav.bottom_margin : 0;
     int side_margin = nav.side_margin > 0 ? nav.side_margin : 0;
-    int icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(22);
+    int icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
     int y = nav.view_height - bottom_margin - height;
     int available_w = nav.view_width - side_margin * 2;
     int tab_w;
@@ -141,7 +141,7 @@ DrawUIBottomNav(BottomNavProps nav)
             Color state_tint = item->active ? scheme.on_secondary :
                                               scheme.on_surface_variant;
 
-            icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
+            icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(26);
             icon_x = x + (w - icon_size) / 2;
             icon_y = indicator_y + (indicator_h - icon_size) / 2;
             if(item->disabled) {

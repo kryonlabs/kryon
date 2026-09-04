@@ -166,6 +166,22 @@ if "$k2b" --root "$work" -o "$work" "$work/assert_unknown.kry" 2>"$work/assert_u
 fi
 grep -q 'unresolved #assert is not supported by KRB' "$work/assert_unknown.err"
 
+cat > "$work/unsupported.kry" <<'EOF'
+#import "kryon.h"
+Unsupported :: () #ui {
+    InfoButton(1, 10, 10, 10)
+}
+EOF
+if "$k2b" --root "$work" -o "$work" "$work/unsupported.kry" \
+        2>"$work/unsupported.err"; then
+    echo "unsupported KRB call did not fail by default" >&2
+    exit 1
+fi
+grep -q 'unsupported calls: InfoButton x1' "$work/unsupported.err"
+"$k2b" --allow-unsupported --root "$work" -o "$work" \
+    "$work/unsupported.kry" 2>"$work/unsupported_allowed.err"
+test -f "$work/unsupported.krb"
+
 if [ -n "$walker" ] && [ -x "$walker" ]; then
     "$walker" "$krb"
 fi

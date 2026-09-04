@@ -15,7 +15,7 @@ desktop tray support, runtime asset downloads, and Ksync account/sync helpers.
 - `include/` - public headers, including `kryon.h` and generated raylib
   compatibility declarations
 - `src/` - Kryon implementation files, with reusable UI modules under `src/ui/`
-- `icons/` and `pfp/` - PNG icon inputs embedded into `src/ui/ui_icon_assets.c`
+- `icons/` - MingCute UI and full-color spritesheets embedded by `src/ui/ui_icon_assets.c`
 - `themes/` - built-in theme files for the runtime theme loader
 - `fonts/noto/` - bundled Noto Sans TTF/OTF font assets
 - `mk/` - Make fragments for native, web, Android, Windows, packaging, and
@@ -106,14 +106,15 @@ To integrate Kryon into your project:
 2. Include `kryon.h` for the raylib-compatible API plus Kryon modules
 3. Compile Kryon sources from `src/` and `src/ui/`, or use the `mk/` fragments
    to let Kryon assemble source lists and platform flags
-4. Use `scripts/embed-icons.sh` and `scripts/embed-assets.sh` when your app
-   needs custom embedded icons, locale files, fonts, themes, or image/audio
-   assets. Kryon's checked-in `icons/` tree is the source of truth for shared
-   UI, platform, payment, language, tile, profile, and first-party project
-   icons; project logos live under `icons/proj/`. Downstream apps can call
-   `vendor/kryon/scripts/sync-icons.sh` to copy those icons into web asset
-   directories without keeping separate icon originals. Run `make
-   icons-generate` after changing generated pixel icons.
+4. Kryon's checked-in `icons/` tree is the source of truth for the finished
+   MingCute Core Filled UI sheet, a separate full-color logo sheet, and the full-color platform,
+   payment, language, tile, and profile sheets. `make icons-embed` refreshes the embedded C assets from
+   those sheets. Use `DrawIcon` or the generated `Icon` widget with a runtime
+   `Color`; no per-color files or per-icon textures are needed. Downstream apps
+   can call `vendor/kryon/scripts/sync-icons.sh` to copy the sheets. Maintainers
+   can refresh the UI subset from an upstream checkout with
+   `make icons-import-mingcute MINGCUTE_DIR=/path/to/mingcute-icons`.
+   `scripts/embed-assets.sh` remains available for non-icon assets.
 5. Include `mk/vendor.mk` when your app enables curl or liboqs-backed features
 
 Applications should keep build artifacts in their own build directories, but

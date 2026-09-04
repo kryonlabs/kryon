@@ -137,6 +137,8 @@ void DrawUITransitionFade(const UITransition *transition, int width,
 int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
 int RenderButton(ButtonSpec button);
+int HandleButton(ButtonSpec button);
+void PaintButton(ButtonSpec button, int hovered, int pressed);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
 int RenderTextInputControl(TextInputProps input);
@@ -150,7 +152,7 @@ void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);
 void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                         int selection_start, int selection_end);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
-void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
+void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
 int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
                         int *hover);

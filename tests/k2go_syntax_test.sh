@@ -104,7 +104,7 @@ App :: () #ui {
     TextInRect("in rect", (Rectangle){ScaleUIPx(4), ScaleUIPx(130), ScaleUIPx(160), ScaleUIPx(20)}, Text16, GetThemeText())
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     Bevel(ScaleUIPx(10), ScaleUIPx(10), ScaleUIPx(60), ScaleUIPx(20), GetThemeSurface(), GetThemeButton())
-    IconTexture(2, ScaleUIPx(200), ScaleUIPx(10), ScaleUIPx(24), 3, WHITE)
+    Icon(2, ScaleUIPx(200), ScaleUIPx(10), ScaleUIPx(24), 3, WHITE)
     Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(4), ScaleUIPx(150), ScaleUIPx(96), ScaleUIPx(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(200), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, ScaleUIPx(4), &lines_y)
     IconButton((IconButtonProps){.bounds = {ScaleUIPx(210), ScaleUIPx(60), ScaleUIPx(36), ScaleUIPx(36)}, .icon_type = 2, .focus_id = 3})
@@ -344,7 +344,7 @@ grep -q 'kryon.Text("large".*kryon.Text20.*kryon.GetThemeText())' "$out"
 grep -q 'TextInRect(' "$out"
 grep -q 'TextLines(' "$out"
 grep -q 'Bevel(' "$out"
-grep -q 'IconTexture(' "$out"
+grep -q 'Icon(' "$out"
 grep -q 'kryon.Picture(kryon.PictureProps{AssetPath: "tiles/tile.png"' "$out"
 grep -q 'kryon.Paragraph(kryon.ParagraphSpec{Text: "Rich text"' "$out"
 grep -q 'kryon.IconButton(kryon.IconButtonProps{' "$out"

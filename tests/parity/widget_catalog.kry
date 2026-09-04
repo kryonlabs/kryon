@@ -90,7 +90,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         ColorPicker((ColorPickerProps){{ScaleUIPx(540), ScaleUIPx(92), ScaleUIPx(42), ScaleUIPx(42)}, 38, &pick, 0})
         LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(540), ScaleUIPx(148), ScaleUIPx(140), ScaleUIPx(48)}, .title = "Frame"})
         ImageBox((ImageBoxProps){.bounds = {ScaleUIPx(690), ScaleUIPx(148), ScaleUIPx(48), ScaleUIPx(48)}, .texture = (Texture2D){0}, .tint = WHITE})
-        IconTexture(39, ScaleUIPx(540), ScaleUIPx(210), ScaleUIPx(24), (Texture2D){0}, WHITE)
+        Icon(39, ScaleUIPx(540), ScaleUIPx(210), ScaleUIPx(24), 1, WHITE)
         IconLink(40, ScaleUIPx(580), ScaleUIPx(210), ScaleUIPx(24), (Texture2D){0}, "https://kryonlabs.com")
         Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(620), ScaleUIPx(206), ScaleUIPx(72), ScaleUIPx(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
 

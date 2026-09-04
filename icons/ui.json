@@ -1,0 +1,523 @@
+{
+  "version": 1,
+  "sheet": "ui",
+  "icon_count": 56,
+  "image": "ui.png",
+  "cell_size": 64,
+  "content_size": 48,
+  "columns": 8,
+  "rows": 7,
+  "width": 512,
+  "height": 448,
+  "icons": [
+    {
+      "index": 0,
+      "name": "activity",
+      "x": 0,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/sparkles.svg"
+    },
+    {
+      "index": 1,
+      "name": "amen",
+      "x": 64,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/pray.svg"
+    },
+    {
+      "index": 2,
+      "name": "backward",
+      "x": 128,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/skip_previous.svg"
+    },
+    {
+      "index": 3,
+      "name": "c",
+      "x": 192,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/code.svg"
+    },
+    {
+      "index": 4,
+      "name": "calendar",
+      "x": 256,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/calendar_3.svg"
+    },
+    {
+      "index": 5,
+      "name": "check",
+      "x": 320,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/check.svg"
+    },
+    {
+      "index": 6,
+      "name": "edit",
+      "x": 384,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/edit_3.svg"
+    },
+    {
+      "index": 7,
+      "name": "eye",
+      "x": 448,
+      "y": 0,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/eye.svg"
+    },
+    {
+      "index": 8,
+      "name": "eye_off",
+      "x": 0,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/eye_close.svg"
+    },
+    {
+      "index": 9,
+      "name": "fingerprint",
+      "x": 64,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/fingerprint.svg"
+    },
+    {
+      "index": 10,
+      "name": "forward",
+      "x": 128,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/skip_forward.svg"
+    },
+    {
+      "index": 11,
+      "name": "gear",
+      "x": 192,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/settings_3.svg"
+    },
+    {
+      "index": 12,
+      "name": "globe",
+      "x": 256,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/earth_3.svg"
+    },
+    {
+      "index": 13,
+      "name": "home",
+      "x": 320,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/home_3.svg"
+    },
+    {
+      "index": 14,
+      "name": "jupiter",
+      "x": 384,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/planet.svg"
+    },
+    {
+      "index": 15,
+      "name": "left",
+      "x": 448,
+      "y": 64,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/arrow_left.svg"
+    },
+    {
+      "index": 16,
+      "name": "lightoff",
+      "x": 0,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/bulb.svg"
+    },
+    {
+      "index": 17,
+      "name": "lighton",
+      "x": 64,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/bulb_2.svg"
+    },
+    {
+      "index": 18,
+      "name": "link",
+      "x": 128,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/link_2.svg"
+    },
+    {
+      "index": 19,
+      "name": "manual",
+      "x": 192,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/book_4.svg"
+    },
+    {
+      "index": 20,
+      "name": "mars",
+      "x": 256,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/male.svg"
+    },
+    {
+      "index": 21,
+      "name": "mercury",
+      "x": 320,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/earth_4.svg"
+    },
+    {
+      "index": 22,
+      "name": "moon",
+      "x": 384,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/moon_stars.svg"
+    },
+    {
+      "index": 23,
+      "name": "music",
+      "x": 448,
+      "y": 128,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/music_3.svg"
+    },
+    {
+      "index": 24,
+      "name": "mute",
+      "x": 0,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/volume_mute.svg"
+    },
+    {
+      "index": 25,
+      "name": "pause",
+      "x": 64,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/pause.svg"
+    },
+    {
+      "index": 26,
+      "name": "pencil",
+      "x": 128,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/pencil_2.svg"
+    },
+    {
+      "index": 27,
+      "name": "pet",
+      "x": 192,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/paw.svg"
+    },
+    {
+      "index": 28,
+      "name": "play",
+      "x": 256,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/play.svg"
+    },
+    {
+      "index": 29,
+      "name": "plus",
+      "x": 320,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/add.svg"
+    },
+    {
+      "index": 30,
+      "name": "profile",
+      "x": 384,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/user_3.svg"
+    },
+    {
+      "index": 31,
+      "name": "return",
+      "x": 448,
+      "y": 192,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/back_2.svg"
+    },
+    {
+      "index": 32,
+      "name": "right",
+      "x": 0,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/arrow_right.svg"
+    },
+    {
+      "index": 33,
+      "name": "rocket",
+      "x": 64,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/rocket_2.svg"
+    },
+    {
+      "index": 34,
+      "name": "routine",
+      "x": 128,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/repeat.svg"
+    },
+    {
+      "index": 35,
+      "name": "saturn",
+      "x": 192,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/space.svg"
+    },
+    {
+      "index": 36,
+      "name": "save",
+      "x": 256,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/save_2.svg"
+    },
+    {
+      "index": 37,
+      "name": "sound",
+      "x": 320,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/volume.svg"
+    },
+    {
+      "index": 38,
+      "name": "sound0",
+      "x": 384,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/volume_mute.svg"
+    },
+    {
+      "index": 39,
+      "name": "sound1",
+      "x": 448,
+      "y": 256,
+      "width": 64,
+      "height": 64,
+      "upstream": "derived/volume_low.svg"
+    },
+    {
+      "index": 40,
+      "name": "sound2",
+      "x": 0,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "derived/volume_medium.svg"
+    },
+    {
+      "index": 41,
+      "name": "sound3",
+      "x": 64,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/volume.svg"
+    },
+    {
+      "index": 42,
+      "name": "stack",
+      "x": 128,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/layers.svg"
+    },
+    {
+      "index": 43,
+      "name": "stat",
+      "x": 192,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/chart_bar.svg"
+    },
+    {
+      "index": 44,
+      "name": "sun",
+      "x": 256,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/sun.svg"
+    },
+    {
+      "index": 45,
+      "name": "text",
+      "x": 320,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/text.svg"
+    },
+    {
+      "index": 46,
+      "name": "timeline",
+      "x": 384,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/timeline.svg"
+    },
+    {
+      "index": 47,
+      "name": "todos",
+      "x": 448,
+      "y": 320,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/task_2.svg"
+    },
+    {
+      "index": 48,
+      "name": "trash",
+      "x": 0,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/delete_2.svg"
+    },
+    {
+      "index": 49,
+      "name": "venus",
+      "x": 64,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/female.svg"
+    },
+    {
+      "index": 50,
+      "name": "weekly",
+      "x": 128,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/calendar_week.svg"
+    },
+    {
+      "index": 51,
+      "name": "workbook/clear_formatting",
+      "x": 192,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/eraser.svg"
+    },
+    {
+      "index": 52,
+      "name": "workbook/fill_color",
+      "x": 256,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/paint.svg"
+    },
+    {
+      "index": 53,
+      "name": "workbook/text_color",
+      "x": 320,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/text_color.svg"
+    },
+    {
+      "index": 54,
+      "name": "wrench",
+      "x": 384,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/tool.svg"
+    },
+    {
+      "index": 55,
+      "name": "x",
+      "x": 448,
+      "y": 384,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/close.svg"
+    }
+  ],
+  "style": "mingcute-core-filled",
+  "tintable": true,
+  "license": "Apache-2.0",
+  "upstream": "https://github.com/mingcute-design/mingcute-icons",
+  "upstream_revision": "ca98bb55513a22ff0dab713aaf7870b512944653"
+}

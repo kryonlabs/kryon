@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodManager;
 public final class TextInputBridge {
     public interface Callbacks {
         void commitText(int codepoint);
+        void composition(int phase, String text, int cursor, int selectionLength);
         void backspace();
         void enter();
     }
@@ -176,9 +177,36 @@ public final class TextInputBridge {
                 EditorInfo.IME_FLAG_NO_EXTRACT_UI;
 
             return new BaseInputConnection(this, false) {
+                private boolean composing;
+
+                @Override
+                public boolean setComposingText(CharSequence text,
+                                                int newCursorPosition) {
+                    String value = text == null ? "" : text.toString();
+                    callbacks.composition(composing ? 2 : 1, value,
+                        Math.max(0, newCursorPosition - 1), 0);
+                    composing = true;
+                    return true;
+                }
+
+                @Override
+                public boolean finishComposingText() {
+                    if (composing) {
+                        callbacks.composition(4, "", 0, 0);
+                        composing = false;
+                    }
+                    return true;
+                }
+
                 @Override
                 public boolean commitText(CharSequence text, int newCursorPosition) {
-                    TextInputBridge.this.commitText(text);
+                    if (composing) {
+                        callbacks.composition(3, text == null ? "" : text.toString(),
+                            Math.max(0, newCursorPosition - 1), 0);
+                        composing = false;
+                    } else {
+                        TextInputBridge.this.commitText(text);
+                    }
                     return true;
                 }
 
