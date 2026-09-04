@@ -14,6 +14,7 @@
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_overlay.h"
+#include "ui_pager.h"
 #include "ui_profile.h"
 #include "ui_reorder.h"
 #include "ui_rows.h"

@@ -1457,6 +1457,7 @@ include/ui_page.h function SetPageCanonicalURL
 include/ui_page.h function SetPageDescription
 include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
+include/ui_pager.h function DrawUIGuidePager
 include/ui_picture.h enum PICTURE_FIT_CONTAIN
 include/ui_picture.h enum PICTURE_FIT_COVER
 include/ui_picture.h enum PICTURE_FIT_STRETCH
