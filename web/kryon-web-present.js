@@ -106,7 +106,7 @@
       alpha: false,
       depth: true,
       stencil: true,
-      antialias: false,
+      antialias: true,
       premultipliedAlpha: false,
       preserveDrawingBuffer: true,
       powerPreference: "default",

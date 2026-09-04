@@ -249,6 +249,12 @@ void InitWindow(int width, int height, const char *title)
         g_instance_rejected = 1;
         return;
     }
+    /* Shape edges are part of Kryon's UI surface, so request multisampling
+     * by default instead of requiring every application to know about the
+     * backend's pre-window configuration. Raylib treats this as a hint and
+     * falls back cleanly when a platform cannot provide a multisample
+     * framebuffer. This must happen before the backend creates its context. */
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     if(KryonRaylibBackend_InitWindow != 0)
         KryonRaylibBackend_InitWindow(width, height, title);
 }
