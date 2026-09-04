@@ -1,4 +1,10 @@
 # Changelog
+## v0.1.48 - 2026-09-04
+
+### Changed
+
+- The text-area and slider example now uses a polished responsive layout while demonstrating multiline editing.
+
 ## v0.1.47 - 2026-09-04
 
 ### Fixed

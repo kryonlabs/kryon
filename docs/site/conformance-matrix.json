@@ -2515,6 +2515,7 @@
       },
       "widgets": [
         "Background",
+        "Rect",
         "Screen",
         "Slider",
         "Text",
@@ -3966,7 +3967,7 @@
     "Progress": 3,
     "PromptDialog": 2,
     "Radio": 2,
-    "Rect": 5,
+    "Rect": 6,
     "Row": 3,
     "Screen": 30,
     "Scroll": 1,
@@ -4383,12 +4384,13 @@
     {
       "id": "Rect",
       "semantic_sources": [],
-      "source_count": 5,
+      "source_count": 6,
       "sources": [
         "examples/05_color.kry",
         "examples/06_scaling.kry",
         "examples/07_layout.kry",
         "examples/19_pictures.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
