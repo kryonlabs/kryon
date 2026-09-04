@@ -14,6 +14,7 @@ static int backend_init_calls;
 static int backend_close_calls;
 static unsigned int config_flags;
 static int backend_saw_msaa;
+static int backend_saw_vsync;
 
 void
 SetConfigFlags(unsigned int flags)
@@ -28,6 +29,7 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
     (void)height;
     (void)title;
     backend_saw_msaa = (config_flags & FLAG_MSAA_4X_HINT) != 0;
+    backend_saw_vsync = (config_flags & FLAG_VSYNC_HINT) != 0;
     backend_init_calls++;
 }
 
@@ -72,6 +74,8 @@ main(void)
     check(backend_init_calls == 1, "backend starts when lock path is unusable");
     check(backend_saw_msaa,
           "antialiasing is configured before the backend starts");
+    check(backend_saw_vsync,
+          "vsync is configured before the backend starts");
     check(WindowShouldClose() == false, "unusable lock does not reject window");
     CloseWindow();
     check(backend_close_calls == 1, "backend close after degraded lock");
