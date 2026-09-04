@@ -8,8 +8,8 @@ app "Text Area and Slider" {
 
 state {
     material_ready: int = 0
-    hue: int = 200
-    note: [4096] char = "Type something here..."
+    hue: int = 215
+    note: [4096] char = ""
     note_cursor: int = 0
     note_focused: int = 0
     note_scroll: int = 0
@@ -20,15 +20,27 @@ TextAreaSliderExample :: (viewport: Rectangle) #ui {
         SetThemeStyle(THEME_STYLE_MATERIAL)
         material_ready = 1
     }
-    bg: Color = ColorFromHSV((float)hue, 0.6f, 0.9f)
-    panel: Rectangle = {viewport.width / 2.0f - 240.0f, viewport.height - 80.0f, 480.0f, 60.0f}
-    ta_bounds: Rectangle = {40.0f, 80.0f, viewport.width - 80.0f, viewport.height - 180.0f}
+    bg: Color = ColorFromHSV((float)hue, 0.12f, 0.96f)
+    accent: Color = ColorFromHSV((float)hue, 0.68f, 0.92f)
+    panel: Rectangle = {48.0f, viewport.height - 82.0f, viewport.width - 96.0f, 54.0f}
+    ta_bounds: Rectangle = {48.0f, 120.0f, viewport.width - 96.0f, viewport.height - 230.0f}
+    ta_style: TextInputStyle = {
+        {248,250,252,255},
+        {190,200,215,255},
+        accent,
+        {28,36,48,255},
+        accent,
+        0.05f,
+        16,
+        14
+    }
     Screen root: {
         bounds = viewport
         Background(bg)
-        Text("Text area and slider", 40, 40, Text24, (Color){255, 255, 255, 255})
-        TextArea((TextAreaProps){ta_bounds, note, sizeof(note), &note_cursor, &note_focused, &note_scroll, 4000, Text16, 6, 200, "Type something here...", SyntaxNone, {0}, 0, 0, 0, 0, 1})
-        DrawRectangleRounded(panel, 0.3f, 8, (Color){30, 30, 30, 200})
-        Slider(100, (int)panel.x + 20, (int)panel.y + 16, (int)panel.width - 40, "Hue", 0, 360, &hue, "", 0)
+        Text("Text area and slider", 48, 36, Text32, (Color){24,32,44,255})
+        Text("A small, responsive note editor.", 48, 78, Text16, (Color){82,96,116,255})
+        TextArea((TextAreaProps){ta_bounds, note, sizeof(note), &note_cursor, &note_focused, &note_scroll, 4000, Text16, 6, 200, "Type something here...", SyntaxNone, ta_style, 0, 0, 0, 0, 1})
+        Rect((int)panel.x, (int)panel.y, (int)panel.width, (int)panel.height, (Color){248,250,252,255}, (Color){190,200,215,255})
+        Slider(100, (int)panel.x + 18, (int)panel.y + 13, (int)panel.width - 36, "Background hue", 0, 360, &hue, "", 0)
     }
 }
