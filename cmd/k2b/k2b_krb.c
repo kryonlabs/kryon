@@ -2909,7 +2909,8 @@ static int
 is_krb_layout_call(const char *call)
 {
     static const char *const names[] = {
-        "BeginTree", "Column", "Row", "Stack", "EndTree", "End", NULL
+        "BeginTree", "Screen", "Column", "Row", "Stack", "EndTree", "End",
+        NULL
     };
 
     for(int i = 0; names[i] != NULL; i++)

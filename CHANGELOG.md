@@ -1,4 +1,10 @@
 # Changelog
+## v0.1.47 - 2026-09-04
+
+### Fixed
+
+- Cartridge builds now accept `Screen` declarations as supported layout containers.
+
 ## v0.1.46 - 2026-09-04
 
 ### Fixed
