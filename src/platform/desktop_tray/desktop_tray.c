@@ -263,6 +263,7 @@ static int TrayState;
 static int TrayCloseAction;
 static int TrayActivateAction;
 static int TrayMenuUpdatePending;
+static int TrayMenuMapped;
 static int TrayStatusUpdatePending;
 static int TrayIconUpdatePending;
 static char TrayIconOverride[512]; /* non-empty: emblem/alternate icon */
@@ -283,6 +284,35 @@ static gboolean ApplyDesktopTrayMenu(gpointer user_data);
 static gboolean ApplyDesktopTrayStatus(gpointer user_data);
 static gboolean ApplyDesktopTrayIcon(gpointer user_data);
 static const char *GetDesktopTrayIconPath(void);
+
+static void
+DesktopTrayMenuMap(GtkWidget *widget, gpointer user_data)
+{
+    (void)widget;
+    (void)user_data;
+    pthread_mutex_lock(&TrayMenuLock);
+    TrayMenuMapped = 1;
+    pthread_mutex_unlock(&TrayMenuLock);
+}
+
+static void
+DesktopTrayMenuUnmap(GtkWidget *widget, gpointer user_data)
+{
+    int apply_pending;
+
+    (void)widget;
+    (void)user_data;
+    pthread_mutex_lock(&TrayMenuLock);
+    TrayMenuMapped = 0;
+    apply_pending = TrayMenuUpdatePending;
+    pthread_mutex_unlock(&TrayMenuLock);
+
+    /* A live status/menu update may arrive while the user is navigating the
+     * popup. Replacing a mapped GtkMenu dismisses it under the pointer. Apply
+     * the newest snapshot only after the menu naturally closes. */
+    if(apply_pending)
+        g_idle_add(ApplyDesktopTrayMenu, NULL);
+}
 
 static char *
 CopyDesktopTrayString(const char *text)
@@ -426,6 +456,8 @@ CreateDesktopTrayMenu(void)
 
     menu = CreateDesktopTrayGtkMenu(snapshot.items, snapshot.count);
     FreeDesktopTrayMenuItems(snapshot.items, snapshot.count);
+    g_signal_connect(menu, "map", G_CALLBACK(DesktopTrayMenuMap), NULL);
+    g_signal_connect(menu, "unmap", G_CALLBACK(DesktopTrayMenuUnmap), NULL);
     return menu;
 }
 
@@ -438,6 +470,10 @@ ApplyDesktopTrayMenu(gpointer user_data)
     (void)user_data;
 
     pthread_mutex_lock(&TrayMenuLock);
+    if(TrayMenuMapped) {
+        pthread_mutex_unlock(&TrayMenuLock);
+        return G_SOURCE_REMOVE;
+    }
     TrayMenuUpdatePending = 0;
     pthread_mutex_unlock(&TrayMenuLock);
 
