@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.42 - 2026-09-04
+
+### Changed
+
+- Release: bump version to v0.1.42
+- Consume Win32 core window close requests
+- Render: enable anti-aliasing by default
+
 ## v0.1.41 - 2026-09-04
 
 ### Changed
