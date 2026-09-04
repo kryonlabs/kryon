@@ -1,4 +1,10 @@
 # Changelog
+## v0.1.46 - 2026-09-04
+
+### Fixed
+
+- Static release archives now validate correctly when optional post-quantum cryptography support is disabled.
+
 ## v0.1.45 - 2026-09-04
 
 ### Changed

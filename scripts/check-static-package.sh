@@ -25,7 +25,6 @@ for path in \
     include/markdown.h \
     lib/libkryon.a \
     lib/libraylib.a \
-    lib/liboqs.a \
     lib/libcurl.a \
     lib/libcmark-gfm.a \
     lib/libcmark-gfm-extensions.a \
@@ -40,6 +39,12 @@ for path in \
         exit 1
     fi
 done
+
+if grep -q '"liboqs.a"' "$root/manifest.json" &&
+   [ ! -e "$root/lib/liboqs.a" ]; then
+    echo "missing package file: lib/liboqs.a" >&2
+    exit 1
+fi
 
 if ar -t "$root/lib/libkryon.a" | grep -Eq '(^|/)(lib.*\.a|kryon_compat\.generated\.h)$'; then
     echo "libkryon.a contains nested archives or generated headers" >&2
