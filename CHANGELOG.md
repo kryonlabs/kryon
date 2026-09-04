@@ -1,4 +1,10 @@
 # Changelog
+## v0.1.45 - 2026-09-04
+
+### Changed
+
+- The text-area and slider example is now included consistently in generated compatibility documentation and release packages.
+
 ## v0.1.44 - 2026-09-04
 
 ### Changed

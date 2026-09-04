@@ -2420,6 +2420,108 @@
       "widgets": []
     },
     {
+      "id": "examples-25_text_area_slider",
+      "label": "Text Area and Slider",
+      "path": "examples/25_text_area_slider.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "Background",
+        "Screen",
+        "Slider",
+        "Text",
+        "TextArea"
+      ]
+    },
+    {
       "id": "tests-parity-basic_controls",
       "label": "Generated Basic Controls Parity",
       "path": "tests/parity/basic_controls.kry",
@@ -3714,24 +3816,24 @@
     }
   ],
   "summary": {
-    "examples": 24,
-    "krb_alpha_byte_exact_cases": 20,
-    "krb_rgb_visual_cases": 34,
-    "libdraw_c_visual_cases": 21,
+    "examples": 25,
+    "krb_alpha_byte_exact_cases": 21,
+    "krb_rgb_visual_cases": 35,
+    "libdraw_c_visual_cases": 22,
     "libdraw_c_visual_gaps": 13,
     "parity_fixtures": 10,
-    "pipeline_cells": 204,
-    "raylib_c_visual_cases": 19,
+    "pipeline_cells": 210,
+    "raylib_c_visual_cases": 20,
     "raylib_c_visual_gaps": 15,
-    "renderer_source_cells": 204,
-    "renderer_source_ok_cells": 111,
-    "renderer_source_partial_cells": 93,
+    "renderer_source_cells": 210,
+    "renderer_source_ok_cells": 116,
+    "renderer_source_partial_cells": 94,
     "semantic_parity_cases": 9,
-    "source_cases": 34,
+    "source_cases": 35,
     "visual_comparison_exact_rows": 2,
     "visual_comparison_pending_rows": 4,
     "visual_comparison_rows": 6,
-    "web_canvas_c_visual_cases": 17,
+    "web_canvas_c_visual_cases": 18,
     "web_canvas_c_visual_gaps": 17,
     "widgets_declared": 54,
     "widgets_detected": 54,
@@ -3739,7 +3841,7 @@
   },
   "visual_comparisons": [
     {
-      "compared": 34,
+      "compared": 35,
       "evidence": [
         "make conformance-matrix-check",
         "tests/krb_exact_test.sh"
@@ -3750,12 +3852,12 @@
       "label": "KRB native software vs SDL host",
       "mode": "RGB pixel comparison",
       "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "RGB exact",
       "status_class": "ok"
     },
     {
-      "compared": 34,
+      "compared": 35,
       "evidence": [
         "make krb-web-matrix-check",
         "cmd/krb-web/node-capture.js"
@@ -3766,12 +3868,12 @@
       "label": "KRB native software vs KRB web Canvas",
       "mode": "RGBA byte comparison",
       "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "byte exact",
       "status_class": "ok"
     },
     {
-      "compared": 19,
+      "compared": 20,
       "evidence": [
         "make raylib-matrix-check"
       ],
@@ -3781,12 +3883,12 @@
       "label": "Generated C raylib vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 21,
+      "compared": 22,
       "evidence": [
         "make libdraw-matrix-check"
       ],
@@ -3796,12 +3898,12 @@
       "label": "Generated C libdraw vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 17,
+      "compared": 18,
       "evidence": [
         "make web-canvas-matrix-check"
       ],
@@ -3811,7 +3913,7 @@
       "label": "Generated C web Canvas vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "pixel diff pending",
       "status_class": "part"
     },
@@ -3826,14 +3928,14 @@
       "label": "Web raylib wasm vs desktop raylib",
       "mode": "build only",
       "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
-      "source_cases": 34,
+      "source_cases": 35,
       "status": "browser screenshot pending",
       "status_class": "part"
     }
   ],
   "widget_counts": {
     "ActionModal": 2,
-    "Background": 20,
+    "Background": 21,
     "Bevel": 1,
     "BottomNav": 1,
     "Button": 11,
@@ -3866,17 +3968,17 @@
     "Radio": 2,
     "Rect": 5,
     "Row": 3,
-    "Screen": 29,
+    "Screen": 30,
     "Scroll": 1,
     "SelectableText": 1,
-    "Slider": 3,
+    "Slider": 4,
     "SourceView": 1,
     "Spinbox": 2,
     "Stack": 2,
     "TabBar": 1,
     "TableView": 3,
-    "Text": 21,
-    "TextArea": 4,
+    "Text": 22,
+    "TextArea": 5,
     "TextField": 6,
     "TextInRect": 1,
     "TextLines": 1,
@@ -3902,7 +4004,7 @@
     {
       "id": "Background",
       "semantic_sources": [],
-      "source_count": 20,
+      "source_count": 21,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -3923,6 +4025,7 @@
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4319,7 +4422,7 @@
         "tests/parity/progress.kry",
         "tests/parity/table_view.kry"
       ],
-      "source_count": 29,
+      "source_count": 30,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4340,6 +4443,7 @@
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/fields.kry",
@@ -4379,9 +4483,10 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
         "examples/03_theme.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4451,7 +4556,7 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 21,
+      "source_count": 22,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4470,6 +4575,7 @@
         "examples/18_accessibility.kry",
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
@@ -4484,9 +4590,10 @@
         "tests/parity/fields.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
         "examples/13_text_editor.kry",
+        "examples/25_text_area_slider.kry",
         "tests/parity/fields.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/widget_catalog.kry"
