@@ -145,6 +145,10 @@ void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      TextInputStyle style);
 int RenderTextField(TextFieldProps field);
 int RenderTextArea(TextAreaProps area);
+int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);
+void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);
+void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
+                        int selection_start, int selection_end);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawUIIconTexture(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);

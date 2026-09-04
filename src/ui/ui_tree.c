@@ -915,6 +915,7 @@ UIRouteInput(void)
         } else {
             TextAreaProps *area = &node->data.text_area;
 
+            area->bounds = node->bounds;
             memset(&field_storage, 0, sizeof(field_storage));
             field_storage.bounds = area->bounds;
             field_storage.text = area->text;
@@ -968,9 +969,13 @@ UIRouteInput(void)
                         ? (int)strlen(field->text) : 0;
                     state->dragging = 0;
                 } else {
-                    state->cursor = ui_text_cursor_at_x(
-                        field->text, font, (int)node->bounds.x + padding,
-                        (int)mouse.x);
+                    if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
+                        state->cursor = ui_text_area_cursor_at_point(
+                            node->data.text_area, (int)mouse.x, (int)mouse.y);
+                    else
+                        state->cursor = ui_text_cursor_at_x(
+                            field->text, font, (int)node->bounds.x + padding,
+                            (int)mouse.x);
                     state->anchor = state->cursor;
                     state->dragging = 1;
                 }
@@ -992,9 +997,15 @@ UIRouteInput(void)
             int font = field->font > 0 ? field->font : GetUIFontSize();
             int padding = field->style.padding_x > 0
                 ? field->style.padding_x : ScaleUIPx(10);
-            int cursor = ui_text_cursor_at_x(
-                field->text, font, (int)node->bounds.x + padding,
-                (int)mouse.x);
+            int cursor;
+
+            if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
+                cursor = ui_text_area_cursor_at_point(
+                    node->data.text_area, (int)mouse.x, (int)mouse.y);
+            else
+                cursor = ui_text_cursor_at_x(
+                    field->text, font, (int)node->bounds.x + padding,
+                    (int)mouse.x);
 
             if(cursor != state->cursor) {
                 state->cursor = cursor;
@@ -1121,9 +1132,22 @@ UIRouteInput(void)
             selection_changed = changed;
         }
         if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-            if(field->commit_pressed != NULL)
-                *field->commit_pressed = 1;
-            ui_text_field_event(node, UI_EVENT_TEXT_COMMIT, GetTime());
+            if(node->kind == UI_WIDGET_TEXT_AREA_NODE && !field->read_only) {
+                if(end > start)
+                    changed |= ui_text_delete_range(
+                        field->text, field->text_size, &state->cursor,
+                        start, end);
+                if(ui_text_insert_codepoint(field->text, field->text_size,
+                                            &state->cursor, '\n',
+                                            field->max_codepoints))
+                    changed = 1;
+                state->anchor = state->cursor;
+                selection_changed = 1;
+            } else {
+                if(field->commit_pressed != NULL)
+                    *field->commit_pressed = 1;
+                ui_text_field_event(node, UI_EVENT_TEXT_COMMIT, GetTime());
+            }
         }
         if(IsKeyPressed(KEY_ESCAPE)) {
             state->focused = 0;
@@ -1134,6 +1158,9 @@ UIRouteInput(void)
         }
         if(field->cursor_position != NULL)
             *field->cursor_position = state->cursor;
+        if(node->kind == UI_WIDGET_TEXT_AREA_NODE &&
+           (changed || selection_changed))
+            ui_text_area_reveal_cursor(node->data.text_area, state->cursor);
         if(changed)
             ui_text_field_event(node, UI_EVENT_TEXT_CHANGED, GetTime());
         if(selection_changed)
@@ -1227,8 +1254,19 @@ DrawTree(void)
                 (int)(spec.bounds.y + spec.bounds.height * 0.5f), font, text);
             break;
         }
-        case UI_WIDGET_TEXT_FIELD_NODE:
         case UI_WIDGET_TEXT_AREA_NODE: {
+            TextFieldState *state = node->state;
+            int cursor = state != NULL ? state->cursor : 0;
+            int anchor = state != NULL ? state->anchor : cursor;
+
+            node->data.text_area.bounds = node->bounds;
+            ui_paint_text_area(node->data.text_area, cursor,
+                state != NULL ? state->focused : 0,
+                anchor < cursor ? anchor : cursor,
+                anchor > cursor ? anchor : cursor);
+            break;
+        }
+        case UI_WIDGET_TEXT_FIELD_NODE: {
             TextFieldProps field;
             TextFieldState *state = node->state;
             const char *display;

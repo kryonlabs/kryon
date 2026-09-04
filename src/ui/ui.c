@@ -2115,6 +2115,53 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap,
 }
 
 static int
+ui_text_area_cursor_y(const char *text, int cursor, int font, int line_gap,
+                      int wrap_width, int *cursor_height)
+{
+    int len;
+    int line_start = 0;
+    int draw_y = 0;
+
+    if(text == NULL)
+        text = "";
+    len = (int)strlen(text);
+    cursor = ui_clampi(cursor, 0, len);
+    for(int i = 0; i <= len; i++) {
+        if(text[i] == '\n' || text[i] == '\0') {
+            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int line_h = TextLineHeight(line_font) + line_gap;
+            int chunk_start = line_start;
+            int chunk_end = i;
+
+            do {
+                if(wrap_width > 0 && chunk_start < i)
+                    chunk_end = ui_text_area_wrap_chunk_end(
+                        text, chunk_start, i, line_font, wrap_width);
+                else
+                    chunk_end = i;
+                /* A cursor at a soft-wrap boundary belongs to the next
+                 * visual line, except at the logical end of the line. */
+                if(cursor >= chunk_start && cursor <= chunk_end &&
+                   (cursor < chunk_end || chunk_end == i)) {
+                    if(cursor_height != NULL)
+                        *cursor_height = TextLineHeight(line_font);
+                    return draw_y;
+                }
+                draw_y += line_h;
+                if(chunk_end <= chunk_start)
+                    break;
+                chunk_start = chunk_end;
+            } while(wrap_width > 0 && chunk_start < i);
+
+            line_start = i + 1;
+        }
+    }
+    if(cursor_height != NULL)
+        *cursor_height = TextLineHeight(font);
+    return draw_y;
+}
+
+static int
 ui_text_area_select_line(const char *text, int cursor, int *start, int *end)
 {
     int len;
@@ -2414,6 +2461,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                             line_font, syntax, style);
                     if(focused && cursor >= chunk_start && cursor <= chunk_end &&
+                       (cursor < chunk_end || chunk_end == i) &&
                        ui_caret_blink_visible()) {
                         int cursor_x = text_x + ui_text_column_x(
                             text, chunk_start, cursor, line_font);
@@ -2436,6 +2484,121 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 }
 
 int
+ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
+{
+    int font = area.font > 0 ? area.font : GetUIFontSize();
+    int line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    int padding_x = area.style.padding_x > 0
+        ? area.style.padding_x : ScaleUIPx(10);
+    int padding_y = area.style.padding_y > 0
+        ? area.style.padding_y : ScaleUIPx(8);
+    int wrap_width = area.wrap
+        ? (int)area.bounds.width - padding_x * 2 : 0;
+    int scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
+
+    if(wrap_width < ScaleUIPx(24))
+        wrap_width = 0;
+    return ui_text_area_cursor_from_point(
+        area.text, font, line_gap, wrap_width,
+        (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
+        mouse_x, mouse_y, scroll_y);
+}
+
+void
+ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
+{
+    int font;
+    int line_gap;
+    int padding_x;
+    int padding_y;
+    int wrap_width;
+    int content_h;
+    int viewport_h;
+    int max_scroll;
+    int cursor_h;
+    int cursor_y;
+    int scroll_y;
+
+    if(area.text == NULL || area.scroll_y == NULL)
+        return;
+    font = area.font > 0 ? area.font : GetUIFontSize();
+    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    padding_x = area.style.padding_x > 0
+        ? area.style.padding_x : ScaleUIPx(10);
+    padding_y = area.style.padding_y > 0
+        ? area.style.padding_y : ScaleUIPx(8);
+    wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
+    if(wrap_width < ScaleUIPx(24))
+        wrap_width = 0;
+    viewport_h = (int)area.bounds.height - padding_y * 2;
+    if(viewport_h <= 0)
+        return;
+    content_h = ui_text_area_content_height(
+        area.text, font, line_gap, wrap_width, area.content_version, 1);
+    max_scroll = content_h - viewport_h;
+    if(max_scroll < 0)
+        max_scroll = 0;
+    scroll_y = ui_clampi(*area.scroll_y, 0, max_scroll);
+    cursor_h = TextLineHeight(font);
+    cursor_y = ui_text_area_cursor_y(area.text, cursor, font, line_gap,
+                                     wrap_width, &cursor_h);
+    if(cursor_y < scroll_y)
+        scroll_y = cursor_y;
+    else if(cursor_y + cursor_h > scroll_y + viewport_h)
+        scroll_y = cursor_y + cursor_h - viewport_h;
+    *area.scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+}
+
+void
+ui_paint_text_area(TextAreaProps area, int cursor, int focused,
+                   int selection_start, int selection_end)
+{
+    int font;
+    int line_gap;
+    int padding_x;
+    int padding_y;
+    int wrap_width;
+    int scroll_y;
+    int line_h;
+    int first_line_y;
+    Color border;
+    float radius;
+
+    if(area.text == NULL)
+        return;
+    font = area.font > 0 ? area.font : GetUIFontSize();
+    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    line_h = TextLineHeight(font) + line_gap;
+    padding_x = area.style.padding_x > 0
+        ? area.style.padding_x : ScaleUIPx(10);
+    padding_y = area.style.padding_y > 0
+        ? area.style.padding_y : ScaleUIPx(8);
+    wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
+    if(wrap_width < ScaleUIPx(24))
+        wrap_width = 0;
+    scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
+    first_line_y = GetUIControlTextY(
+        "Hg", (int)area.bounds.y + padding_y, line_h, font);
+    border = focused ? area.style.focus_border : area.style.border;
+    radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
+    ui_draw_box_background(area.bounds, radius, area.style.background, border);
+    ui_begin_world_clip((Rectangle){
+        area.bounds.x + padding_x, area.bounds.y + padding_y,
+        area.bounds.width - padding_x * 2,
+        area.bounds.height - padding_y * 2});
+    if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
+        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+                   first_line_y, font, area.style.border);
+    else
+        ui_draw_text_area_text(area.text, cursor,
+                               focused && !area.read_only,
+                               area.bounds, font, line_gap, scroll_y,
+                               wrap_width, area.syntax, area.style,
+                               selection_start, selection_end);
+    EndUIClip();
+}
+
+int
 RenderTextArea(TextAreaProps area)
 {
     char editor_id[96];
@@ -2452,6 +2615,7 @@ RenderTextArea(TextAreaProps area)
     int wrap_width;
     int content_h;
     int max_scroll;
+    int reveal_cursor = 0;
     Vector2 mouse_world;
     int mouse_inside;
     int captured;
@@ -2856,6 +3020,22 @@ RenderTextArea(TextAreaProps area)
         max_scroll = 0;
     if(mouse_inside && !captured)
         scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
+    reveal_cursor = focused &&
+        (changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+         IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+         IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN));
+    if(reveal_cursor) {
+        int cursor_h = TextLineHeight(font);
+        int cursor_y = ui_text_area_cursor_y(
+            area.text, *area.cursor_position, font, line_gap, wrap_width,
+            &cursor_h);
+        int viewport_h = (int)area.bounds.height - padding_y * 2;
+
+        if(cursor_y < scroll_y)
+            scroll_y = cursor_y;
+        else if(cursor_y + cursor_h > scroll_y + viewport_h)
+            scroll_y = cursor_y + cursor_h - viewport_h;
+    }
     scroll_y = ui_clampi(scroll_y, 0, max_scroll);
     if(area.scroll_y != NULL)
         *area.scroll_y = scroll_y;

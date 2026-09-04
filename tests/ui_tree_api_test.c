@@ -517,6 +517,38 @@ main(void)
         check_int("retained tab focuses next field", strcmp(second, "x"), 0);
     }
 
+    /* Typing into a multiline text area keeps the newly reflowed caret line
+     * in view instead of leaving the scroll position at the top. */
+    {
+        char value[256] =
+            "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight";
+        int cursor = (int)strlen(value);
+        int focused = 0;
+        int scroll_y = 0;
+
+        InjectReset();
+        InjectTap(25, 25);
+        InjectPump();
+        BeginUI(1003);
+        TextArea((TextAreaProps){
+            .bounds = {10, 10, 90, 44}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .focused = &focused, .scroll_y = &scroll_y,
+            .focus_id = 1004, .font = 16, .line_gap = 4, .wrap = 1
+        });
+        UIReconcileTree();
+        UILayoutTree();
+        UIRouteInput();
+        check_int("wrapped textarea selects end",
+                  SetSelection(1004, (int)strlen(value),
+                               (int)strlen(value)), 1);
+        InjectText("x");
+        InjectPump();
+        UIRouteInput();
+        check_int("multiline textarea appends text", value[cursor - 1], 'x');
+        check_int("multiline textarea reveals caret", scroll_y > 0, 1);
+    }
+
     return failures == 0 ? 0 : 1;
 }
 
