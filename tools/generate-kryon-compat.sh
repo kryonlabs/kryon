@@ -333,6 +333,21 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
     print ""
 }
 
+# Raylib convenience DrawCircle/DrawCircleV functions are fixed at only 36
+# sides. That is visibly polygonal for large breathing and progress circles.
+# Keep the public API, but route the raylib backend through its
+# explicit-segment primitive with independent, denser geometry.
+function emit_smooth_circle_wrapper(name, args) {
+    print "void " name "(" args ")"
+    print "    {"
+    if(name == "DrawCircle")
+        print "    " prefix "DrawCircleSector((Vector2){ (float)centerX, (float)centerY }, radius, 0.0f, 360.0f, KRYON_CIRCLE_SEGMENTS, color);"
+    else
+        print "    " prefix "DrawCircleSector(center, radius, 0.0f, 360.0f, KRYON_CIRCLE_SEGMENTS, color);"
+    print "}"
+    print ""
+}
+
 # Input symbols defined publicly by src/backend/kry_input.c; the wrapper
 # file provides only the raw hook the front-end calls into.
 function emit_input_raw_wrapper(return_type, name, args, backend_args, returns_void) {
@@ -384,6 +399,10 @@ BEGIN {
     print "#include \"kryon.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
+    print "#ifndef KRYON_CIRCLE_SEGMENTS"
+    print "#define KRYON_CIRCLE_SEGMENTS 128"
+    print "#endif"
+    print "extern void " prefix "DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);"
     print "#if defined(__GNUC__) || defined(__clang__)"
     print "#define KRYON_NULL_WEAK __attribute__((weak))"
     print "#else"
@@ -418,7 +437,9 @@ FNR == 1 { in_audio_section = 0 }
         next
     if(name in shared_owned)
         next
-    if(args ~ /\.\.\./) {
+    if(name == "DrawCircle" || name == "DrawCircleV") {
+        emit_smooth_circle_wrapper(name, args)
+    } else if(args ~ /\.\.\./) {
         emit_variadic_wrapper(return_type, name, args)
     } else if(name in input_owned) {
         emit_input_raw_wrapper(return_type, name, args, call_args(args), return_type == "void")
