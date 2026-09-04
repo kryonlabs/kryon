@@ -44,6 +44,8 @@ static KeyID ui_tree_text_last_click_key = 0;
 static int ui_tree_text_last_click_x = 0;
 static int ui_tree_text_last_click_y = 0;
 static double ui_tree_text_last_click_time = 0.0;
+static double ui_tree_backspace_next_repeat_at = 0.0;
+static double ui_tree_delete_next_repeat_at = 0.0;
 static UIAccessibilitySink ui_accessibility_sink;
 static void *ui_accessibility_sink_userdata;
 #if defined(__GNUC__) || defined(__clang__)
@@ -60,6 +62,32 @@ typedef struct UIWidgetOps {
 
 static UIWidgetNode *ui_tree_node(NodeId id);
 static void DrawTree(void);
+
+static int
+ui_tree_key_repeat_count(int key, double *next_repeat_at)
+{
+    double now;
+    int count = 0;
+
+    if(IsKeyPressed(key)) {
+        *next_repeat_at = GetTime() + 0.34;
+        return 1;
+    }
+    if(!IsKeyDown(key)) {
+        *next_repeat_at = 0.0;
+        return 0;
+    }
+    now = GetTime();
+    if(*next_repeat_at <= 0.0) {
+        *next_repeat_at = now + 0.34;
+        return 0;
+    }
+    while(now >= *next_repeat_at && count < 8) {
+        count++;
+        *next_repeat_at += 0.045;
+    }
+    return count;
+}
 
 static int
 ui_text_insert_utf8(TextFieldProps *field, TextFieldState *state,
@@ -879,9 +907,16 @@ RouteInput(void)
     int target;
     int i;
     int pressed;
+    int backspace_count;
+    int delete_count;
 
     if(ui_committed_node_count <= 0)
         return;
+
+    backspace_count = ui_tree_key_repeat_count(
+        KEY_BACKSPACE, &ui_tree_backspace_next_repeat_at);
+    delete_count = ui_tree_key_repeat_count(
+        KEY_DELETE, &ui_tree_delete_next_repeat_at);
 
     /* The retained tree owns focus order. Register every interactive node
      * before routing input so Tab follows declaration order for fields and
@@ -1202,24 +1237,26 @@ RouteInput(void)
                 }
             }
         }
-        if(IsKeyPressed(KEY_BACKSPACE) ||
-           IsKeyPressedRepeat(KEY_BACKSPACE)) {
-            if(end > start)
+        if(backspace_count > 0) {
+            if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
-            else if(state->cursor > 0)
+                backspace_count--;
+            }
+            while(backspace_count-- > 0 && state->cursor > 0)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor,
                     ui_utf8_prev_offset(field->text, state->cursor),
                     state->cursor);
             state->anchor = state->cursor;
             selection_changed = changed;
-        } else if(IsKeyPressed(KEY_DELETE) ||
-                  IsKeyPressedRepeat(KEY_DELETE)) {
-            if(end > start)
+        } else if(delete_count > 0) {
+            if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
-            else
+                delete_count--;
+            }
+            while(delete_count-- > 0)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor,
                     state->cursor,
