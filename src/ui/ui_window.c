@@ -766,24 +766,30 @@ static volatile LONG ui_window_core_close_pending;
 static LRESULT CALLBACK
 ui_core_window_close_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
+    WNDPROC window_proc = ui_core_window_proc;
+
     if(message == WM_CLOSE) {
         InterlockedExchange(&ui_window_core_close_pending, 1);
         return 0;
     }
-    return CallWindowProc(ui_core_window_proc, hwnd, message, wparam, lparam);
+    if(message == WM_NCDESTROY) {
+        ui_core_window = NULL;
+        ui_core_window_proc = NULL;
+    }
+    return CallWindowProc(window_proc, hwnd, message, wparam, lparam);
 }
 
 static void
 ui_window_hook_core_close(void)
 {
     HWND hwnd = (HWND)GetWindowHandle();
-    WNDPROC current;
     WNDPROC previous;
 
     if(hwnd == NULL)
         return;
-    current = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
-    if(hwnd == ui_core_window && current == ui_core_window_close_proc)
+    /* Another subsystem may subclass us later; it will still call through
+     * this procedure. Reinstalling above it would create a callback cycle. */
+    if(hwnd == ui_core_window)
         return;
 
     SetLastError(0);
