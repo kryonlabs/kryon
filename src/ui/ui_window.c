@@ -759,6 +759,41 @@ static UIWindow *ui_window_active;
 static ATOM ui_window_class;
 static UIWindow *ui_windows[8];
 static int ui_window_count;
+static HWND ui_core_window;
+static WNDPROC ui_core_window_proc;
+static volatile LONG ui_window_core_close_pending;
+
+static LRESULT CALLBACK
+ui_core_window_close_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+{
+    if(message == WM_CLOSE) {
+        InterlockedExchange(&ui_window_core_close_pending, 1);
+        return 0;
+    }
+    return CallWindowProc(ui_core_window_proc, hwnd, message, wparam, lparam);
+}
+
+static void
+ui_window_hook_core_close(void)
+{
+    HWND hwnd = (HWND)GetWindowHandle();
+    WNDPROC current;
+    WNDPROC previous;
+
+    if(hwnd == NULL)
+        return;
+    current = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
+    if(hwnd == ui_core_window && current == ui_core_window_close_proc)
+        return;
+
+    SetLastError(0);
+    previous = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC,
+                                         (LONG_PTR)ui_core_window_close_proc);
+    if(previous == NULL && GetLastError() != 0)
+        return;
+    ui_core_window = hwnd;
+    ui_core_window_proc = previous;
+}
 
 static LRESULT CALLBACK
 ui_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
@@ -861,7 +896,11 @@ int IsUIWindowDragged(UIWindow *w){int v=w&&w->dragged;if(w){w->dragged=0;if(v)w
 void GetUIWindowPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->x:0;if(y)*y=w?w->y:0;}
 void GetUIWindowClickPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->click_x:-1;if(y)*y=w?w->click_y:-1;}
 void PumpUIWindows(void){MSG m;int i;for(i=0;i<ui_window_count;i++)while(PeekMessage(&m,ui_windows[i]->window,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessage(&m);}}
-int StealUICoreWindowClose(void){return 0;}
+int StealUICoreWindowClose(void)
+{
+    ui_window_hook_core_close();
+    return (int)InterlockedExchange(&ui_window_core_close_pending, 0);
+}
 
 #elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
                                    * on Wayland, Windows, and macOS. */
