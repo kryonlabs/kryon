@@ -377,6 +377,7 @@ main(void)
         while(NextEvent(&event)) { }
         InjectKeyTap(KEY_ENTER);
         InjectPump();
+        check_int("injected textarea enter is pressed", IsKeyPressed(KEY_ENTER), 1);
         RouteInput();
         while(NextEvent(&event)) {
             if(event.kind == UI_EVENT_TEXT_COMMIT && event.key == 78)
@@ -547,6 +548,11 @@ main(void)
         RouteInput();
         check_int("multiline textarea appends text", value[cursor - 1], 'x');
         check_int("multiline textarea reveals caret", scroll_y > 0, 1);
+        InjectKeyTap(KEY_ENTER);
+        InjectPump();
+        RouteInput();
+        check_int("multiline textarea enter inserts newline",
+                  value[cursor - 1], '\n');
     }
 
     return failures == 0 ? 0 : 1;

@@ -1137,9 +1137,9 @@ RouteInput(void)
                     changed |= ui_text_delete_range(
                         field->text, field->text_size, &state->cursor,
                         start, end);
-                if(ui_text_insert_codepoint(field->text, field->text_size,
-                                            &state->cursor, '\n',
-                                            field->max_codepoints))
+                if(ui_text_insert_ascii(field->text, field->text_size,
+                                        &state->cursor, '\n',
+                                        field->max_codepoints))
                     changed = 1;
                 state->anchor = state->cursor;
                 selection_changed = 1;
