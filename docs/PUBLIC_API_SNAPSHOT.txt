@@ -1534,6 +1534,16 @@ include/ui_scroll.h function GetUIScrollbarSafeContentWidth
 include/ui_scroll.h function MeasureUIScrollContainer
 include/ui_scroll.h typedef UIScreenScaffoldTitleFn
 include/ui_scroll.h typedef UIScrollPageHeightFn
+include/ui_swipe.h enum UI_SWIPE_ALL
+include/ui_swipe.h enum UI_SWIPE_DOWN
+include/ui_swipe.h enum UI_SWIPE_HORIZONTAL
+include/ui_swipe.h enum UI_SWIPE_LEFT
+include/ui_swipe.h enum UI_SWIPE_NONE
+include/ui_swipe.h enum UI_SWIPE_RIGHT
+include/ui_swipe.h enum UI_SWIPE_UP
+include/ui_swipe.h enum UI_SWIPE_VERTICAL
+include/ui_swipe.h function ResetUISwipe
+include/ui_swipe.h function UpdateUISwipe
 include/ui_text.h function ClearUIFonts
 include/ui_text.h function EnsureUIDefaultFont
 include/ui_text.h function GetUIFont

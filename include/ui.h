@@ -18,6 +18,7 @@
 #include "ui_reorder.h"
 #include "ui_rows.h"
 #include "ui_scroll.h"
+#include "ui_swipe.h"
 #include "ui_toast.h"
 #include "ui_widget.h"
 #include "ui_tree.h"
