@@ -1,4 +1,20 @@
 # Changelog
+## v0.1.41 - 2026-09-04
+
+### Changed
+
+- Release: bump version to v0.1.41
+- Fix: guard platform-specific runtime symbols
+- Ui: add reusable guide pager
+- Ui: add composable swipe gestures
+- Ui: add outlined button style
+- Docs: refresh public API snapshot
+- Ksync: send PUT/PATCH as their real verbs over curl
+- Ui_text: latch failed font rasterizations per size
+- Kry_instance: SIGUSR2 backtrace dump
+- Kry_instance: own SIGTERM/SIGINT + robust lock stealing
+- Kry_instance: robust lock stealing + early release
+
 ## v0.1.40 - 2026-09-03
 
 ### Changed
