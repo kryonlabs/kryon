@@ -51,21 +51,21 @@ static unsigned long rng(void)
 static void frame(void)
 {
     BeginUIFocus();
-    BeginUI(screen_key);
+    BeginTree(screen_key);
     for(int i = 0; i < FIELD_COUNT; ++i)
         TextField((TextFieldProps){.bounds = {20, fields[i].y, FIELD_W, FIELD_H},
             .text = fields[i].text, .text_size = sizeof(fields[i].text),
             .cursor_position = &fields[i].cursor, .focused = &fields[i].focused,
             .max_codepoints = 500, .font = Text16,
             .focus_id = fields[i].focus_id});
-    UIReconcileTree();
-    UILayoutTree();
-    UIRouteInput();
-    UIUpdateTree();
+    ReconcileTree();
+    LayoutTree();
+    RouteInput();
+    UpdateTree();
     EndUIFocus();
 }
 
-static void drain_events(void) { UIEvent event; while(NextUIEvent(&event)) {} }
+static void drain_events(void) { UIEvent event; while(NextEvent(&event)) {} }
 
 static void reset_fields(int long_text)
 {
@@ -158,7 +158,7 @@ static int run_typing(const char *name, int long_text, double char_budget_p99_us
         return 1;
     rng_state = 0x9e3779b97f4a7c15UL;
     reset_fields(long_text);
-    UIGetTreeNodes(&before_nodes);
+    GetTreeNodes(&before_nodes);
     for(i = -WARMUP; i < SAMPLES; ++i) {
         int index;
         char ch = letters[rng() % (sizeof(letters) - 1)];
@@ -206,7 +206,7 @@ static int run_typing(const char *name, int long_text, double char_budget_p99_us
                 worst = elapsed;
         }
     }
-    UIGetTreeNodes(&after_nodes);
+    GetTreeNodes(&after_nodes);
     report(&run, sample, (long)after_nodes - before_nodes);
     i = samples[(SAMPLES * 99) / 100] > char_budget_p99_us || run.wrong > 0 ||
         run.focus_misses > SAMPLES / 100;
@@ -224,7 +224,7 @@ static int run_focus_only(double budget_p99_us)
         return 1;
     rng_state = 0x123456789abcdefUL;
     reset_fields(0);
-    UIGetTreeNodes(&before_nodes);
+    GetTreeNodes(&before_nodes);
     for(i = -WARMUP; i < SAMPLES; ++i) {
         int index;
         double start, elapsed;
@@ -237,7 +237,7 @@ static int run_focus_only(double budget_p99_us)
         if(i >= 0)
             samples[sample++] = elapsed;
     }
-    UIGetTreeNodes(&after_nodes);
+    GetTreeNodes(&after_nodes);
     report(&run, sample, (long)after_nodes - before_nodes);
     i = samples[(SAMPLES * 99) / 100] > budget_p99_us || run.focus_misses > SAMPLES / 100;
     free(samples);

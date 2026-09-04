@@ -151,39 +151,39 @@ typedef struct UIWidgetNode {
     char *owned_text;
 } UIWidgetNode;
 
-/* BeginUI starts a declaration pass. EndUI atomically reconciles, lays out,
+/* BeginTree starts a declaration pass. EndTree atomically reconciles, lays out,
  * routes, updates, and paints it. Every container closes with End(). */
-void BeginUI(KeyID screen_key);
-void EndUI(void);
+void BeginTree(KeyID screen_key);
+void EndTree(void);
 void End(void);
 KeyID Key(const char *text);
-void InvalidateUI(UIInvalidation invalidation);
-int NextUIEvent(UIEvent *event);
+void InvalidateTree(UIInvalidation invalidation);
+int NextEvent(UIEvent *event);
 int SetSelection(KeyID key, int anchor, int cursor);
-void UIReconcileTree(void);
-void UILayoutTree(void);
-void UIRouteInput(void);
-void UIUpdateTree(void);
+void ReconcileTree(void);
+void LayoutTree(void);
+void RouteInput(void);
+void UpdateTree(void);
 void Overlays(void);
-const UIWidgetNode *UIGetTreeNodes(int *count);
-int UIGetNodeHeight(UIWidgetNode node);
-int UIGetNodeHeightById(int id);
-const UIWidgetNode *UIGetNode(NodeId id);
-NodeId UIHitTestNode(Vector2 point);
+const UIWidgetNode *GetTreeNodes(int *count);
+int GetNodeHeight(UIWidgetNode node);
+int GetNodeHeightById(int id);
+const UIWidgetNode *GetNode(NodeId id);
+NodeId HitTestNode(Vector2 point);
 
-UIWidgetNode UINodeParagraph(ParagraphSpec paragraph, int x, int y);
-UIWidgetNode UINodeReadonlyTextBox(ReadonlyTextBoxProps box);
-UIWidgetNode UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
-UIWidgetNode UINodeSectionLabel(SectionLabelProps label, int x, int y);
-UIWidgetNode UINodeCheckboxRow(CheckboxRowProps row, int x, int y);
-UIWidgetNode UINodeButtonRow(ButtonRowProps row);
-UIWidgetNode UINodeBottomNav(BottomNavProps nav);
-UIWidgetNode UINodeTopNav(TopNavProps nav);
-UIWidgetNode UINodeTabBar(TabBarProps bar);
-UIWidgetNode UINodeThemeSettings(ThemeSettingsProps settings);
-UIWidgetNode UINodeThemePicker(int x, int y, int w);
-UIWidgetNode UINodeParagraphModal(ParagraphModalMeasureProps measure);
-UIWidgetNode UINodeTitleBar(int height);
+UIWidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
+UIWidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
+UIWidgetNode NodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
+UIWidgetNode NodeSectionLabel(SectionLabelProps label, int x, int y);
+UIWidgetNode NodeCheckboxRow(CheckboxRowProps row, int x, int y);
+UIWidgetNode NodeButtonRow(ButtonRowProps row);
+UIWidgetNode NodeBottomNav(BottomNavProps nav);
+UIWidgetNode NodeTopNav(TopNavProps nav);
+UIWidgetNode NodeTabBar(TabBarProps bar);
+UIWidgetNode NodeThemeSettings(ThemeSettingsProps settings);
+UIWidgetNode NodeThemePicker(int x, int y, int w);
+UIWidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
+UIWidgetNode NodeTitleBar(int height);
 
 typedef struct ButtonProps {
     Rectangle bounds;

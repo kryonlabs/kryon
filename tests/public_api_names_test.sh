@@ -77,6 +77,20 @@ if [ -n "$public_button_matches" ]; then
     exit 1
 fi
 
+stale_tree_api_matches="$(
+    rg -n '\b(BeginUI|EndUI|InvalidateUI|NextUIEvent|UIReconcileTree|UILayoutTree|UIRouteInput|UIUpdateTree|UIGetTreeNodes|UIGetNodeHeight(ById)?|UIGetNode|UIHitTestNode|UINode[A-Za-z0-9_]*)\b' \
+        include src cmd go docs examples tests \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$stale_tree_api_matches" ]; then
+    echo "Tree APIs must use clean names such as BeginTree, GetTreeNodes, and NodeParagraph:"
+    echo "$stale_tree_api_matches"
+    exit 1
+fi
+
 button_style_matches="$(
     rg -n '\b(UIButtonStyle[A-Za-z0-9_]*|UI_BUTTON_STYLE_[A-Z_]+)\b' \
         include \

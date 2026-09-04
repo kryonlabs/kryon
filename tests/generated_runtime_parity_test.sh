@@ -548,15 +548,15 @@ cat > "$work/c_runner.c" <<EOF
 static void drain_events(void)
 {
     UIEvent event;
-    while(NextUIEvent(&event)) {}
+    while(NextEvent(&event)) {}
 }
 
 static void draw_ui(void (*fn)(void))
 {
     BeginUIFrame(640, 480, 1.0f);
-    BeginUI(Key("generated-runtime-parity"));
+    BeginTree(Key("generated-runtime-parity"));
     fn();
-    EndUI();
+    EndTree();
     EndUIFrame();
     drain_events();
 }
@@ -619,7 +619,7 @@ static unsigned long long checksum(const char *text)
 static void require_long_text_node_count(int want, const char *label)
 {
     int got = 0;
-    (void)UIGetTreeNodes(&got);
+    (void)GetTreeNodes(&got);
     if(got != want) {
         fprintf(stderr,
                 "long_text: retained node count changed after %s, got %d want %d\n",
@@ -725,7 +725,7 @@ int main(void)
 
     draw_long_text();
     int long_text_nodes = 0;
-    (void)UIGetTreeNodes(&long_text_nodes);
+    (void)GetTreeNodes(&long_text_nodes);
     SetUIFocus(701);
     draw_long_text();
     require_long_text_node_count(long_text_nodes, "focus");

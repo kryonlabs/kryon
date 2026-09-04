@@ -166,7 +166,7 @@ main(void)
         DrawText("libdraw backend", 18, 68, 16,
                  (Color){242, 242, 246, 255});
 
-        BeginUI(0x19c01);
+        BeginTree(0x19c01);
         Button((ButtonProps){.bounds = {18, 96, 96, 34},
                              .label = "Button",
                              .style = ButtonStylePrimary,
@@ -183,7 +183,7 @@ main(void)
         Dropdown(1003, 18, 140, 150, 34, options, 3, &selected);
         Slider(1004, 18, 188, 160, "Value", 0, 100, &slider, "%", NULL);
         Checkbox(1005, 198, 188, "Checked", &checked);
-        EndUI();
+        EndTree();
 
         EndDrawing();
     }

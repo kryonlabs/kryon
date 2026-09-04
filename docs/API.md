@@ -1464,8 +1464,8 @@ void EndUIScrollPage(UIScrollPage page);
 #### Node Measurement
 
 ```c
-int UIGetNodeHeight(const UIWidgetNode *node);
-int UIGetNodeHeightById(int id);
+int GetNodeHeight(const UIWidgetNode *node);
+int GetNodeHeightById(int id);
 ```
 
 ---

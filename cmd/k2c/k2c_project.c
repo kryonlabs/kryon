@@ -381,7 +381,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                 fprintf(out, "        BeginFrame();\n");
                 fprintf(out, "        BeginUIFrame(GetFrameWidth(), "
                              "GetFrameHeight(), GetFrameScale());\n");
-                fprintf(out, "        BeginUI(Key(\"%s\"));\n", hook);
+                fprintf(out, "        BeginTree(Key(\"%s\"));\n", hook);
                 if(strstr(entry->args, "Rectangle") != NULL) {
                     fprintf(out, "        %s((Rectangle){0, 0, "
                                  "(float)GetFrameWidth(), (float)GetFrameHeight()});\n",
@@ -389,7 +389,7 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
                 } else {
                     fprintf(out, "        %s();\n", hook);
                 }
-                fprintf(out, "        EndUI();\n");
+                fprintf(out, "        EndTree();\n");
                 fprintf(out, "        EndUIFrame();\n");
                 fprintf(out, "        EndFrame();\n");
             } else {
@@ -406,10 +406,10 @@ k2c_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "        BeginFrame();\n");
             fprintf(out, "        BeginUIFrame(GetFrameWidth(), "
                          "GetFrameHeight(), GetFrameScale());\n");
-            fprintf(out, "        BeginUI(Key(\"kryon_project\"));\n");
+            fprintf(out, "        BeginTree(Key(\"kryon_project\"));\n");
             fprintf(out, "        DrawAppScreen(host, (Rectangle){0, 0, "
                          "(float)GetFrameWidth(), (float)GetFrameHeight()});\n");
-            fprintf(out, "        EndUI();\n");
+            fprintf(out, "        EndTree();\n");
             fprintf(out, "        EndUIFrame();\n");
             fprintf(out, "        EndFrame();\n");
         } else {

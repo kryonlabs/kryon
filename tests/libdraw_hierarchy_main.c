@@ -86,7 +86,7 @@ main(void)
     BeginDrawing();
     ClearBackground(bg);
     BeginUIFrame(260, 180, 1.0f);
-    BeginUI(Key("libdraw-hierarchy"));
+    BeginTree(Key("libdraw-hierarchy"));
     Text("HHHHHHHHHHHH", 54, 68, 32, lower);
     DrawRectangle(44, 54, 160, 84, cover);
     Text("TOP", 72, 86, 24, WHITE);
@@ -96,7 +96,7 @@ main(void)
                          .font = Text12,
                          .id = 901});
     DrawRectangle(44, 128, 160, 42, cover);
-    EndUI();
+    EndTree();
     EndUIFrame();
     EndDrawing();
 

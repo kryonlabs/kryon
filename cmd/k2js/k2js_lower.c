@@ -878,8 +878,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         }
         case KIR_STMT_EXPR:
-            if(strncmp(raw, "BeginUI", 7) == 0 ||
-               strncmp(raw, "EndUI", 5) == 0)
+            if(strncmp(raw, "BeginTree", 9) == 0 ||
+               strncmp(raw, "EndTree", 7) == 0)
                 break;
             emit_statement_record(f, indent, raw);
             break;

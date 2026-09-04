@@ -40,7 +40,7 @@ int main(void)
         DrawRectangleGradientV(250, 18, 52, 24,
                                (Color){20, 70, 180, 255},
                                (Color){70, 180, 90, 255});
-        BeginUI(Key("dom-page"));
+        BeginTree(Key("dom-page"));
         Page((PageProps){
             .bounds = {0, 0, 320, 240},
             .title = "DOM smoke title",
@@ -68,7 +68,7 @@ int main(void)
             .color = {140, 190, 255, 255}
         });
         End();
-        EndUI();
+        EndTree();
         DrawRectangle(10, 10, 120, 34, (Color){45, 77, 123, 255});
         DrawRectangleRounded((Rectangle){10, 54, 120, 34}, 0.35f, 8,
                              (Color){130, 82, 190, 255});

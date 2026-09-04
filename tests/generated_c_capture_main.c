@@ -114,10 +114,10 @@ main(int argc, char **argv)
         ClearBackground(BLANK);
         BeginFrame();
         BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
-        BeginUI(Key("generated-c-capture"));
+        BeginTree(Key("generated-c-capture"));
         DrawAppScreen(host, (Rectangle){0, 0, (float)GetScreenWidth(),
                                         (float)GetScreenHeight()});
-        EndUI();
+        EndTree();
         EndUIFrame();
         EndFrame();
         EndDrawing();

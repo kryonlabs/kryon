@@ -32,20 +32,20 @@ static void frame(void)
 {
     int i;
     BeginUIFocus();
-    BeginUI(screen_key);
+    BeginTree(screen_key);
     for(i = 0; i < FIELD_COUNT; ++i)
         TextField((TextFieldProps){.bounds={20,fields[i].y,600,40},
             .text=fields[i].text,.text_size=sizeof(fields[i].text),
             .cursor_position=&fields[i].cursor,.focused=&fields[i].focused,
             .max_codepoints=500,.font=Text16,.focus_id=fields[i].focus_id});
-    UIReconcileTree();
-    UILayoutTree();
-    UIRouteInput();
-    UIUpdateTree();
+    ReconcileTree();
+    LayoutTree();
+    RouteInput();
+    UpdateTree();
     EndUIFocus();
 }
 
-static void drain_events(void) { UIEvent event; while(NextUIEvent(&event)) {} }
+static void drain_events(void) { UIEvent event; while(NextEvent(&event)) {} }
 
 static void reset_fields(void)
 {
@@ -76,7 +76,7 @@ static int run_scenario(const char *name)
     double *samples = malloc(sizeof(*samples) * SAMPLES), total = 0;
     int i, before = 0, after = 0, wrong = 0;
     if(!samples) return 1;
-    reset_fields(); UIGetTreeNodes(&before);
+    reset_fields(); GetTreeNodes(&before);
     for(i = -WARMUP; i < SAMPLES; ++i) {
         int field = (i + WARMUP) % FIELD_COUNT;
         double start, elapsed;
@@ -106,7 +106,7 @@ static int run_scenario(const char *name)
         drain_events();
         if(i >= 0) { samples[i] = elapsed; total += elapsed; }
     }
-    UIGetTreeNodes(&after);
+    GetTreeNodes(&after);
     qsort(samples, SAMPLES, sizeof(*samples), cmp_double);
     printf("{\"runtime\":\"retained-core-c\",\"scenario\":\"%s\",\"fields\":%d,\"samples\":%d,\"warmup\":%d,\"p50_us\":%.3f,\"p95_us\":%.3f,\"p99_us\":%.3f,\"max_us\":%.3f,\"mean_us\":%.3f,\"full_frame_budget_us\":4000,\"input_budget_p99_us\":1000,\"node_delta\":%d,\"mismatches\":%d}\n",
         name, FIELD_COUNT, SAMPLES, WARMUP, samples[SAMPLES/2],

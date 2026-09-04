@@ -45,7 +45,7 @@ main(void)
     for(int frame = 0; frame < 120 && !WindowShouldClose(); frame++) {
         BeginDrawing();
         ClearBackground((Color){8, 12, 18, 255});
-        BeginUI(10001);
+        BeginTree(10001);
         DrawRectangle(8, 8, 240, 48, (Color){24, 88, 136, 255});
         DrawRectangleLines(8, 8, 240, 48, (Color){230, 235, 240, 255});
         DrawText("Termi backend", 24, 24, 16, (Color){255, 255, 255, 255});
@@ -68,7 +68,7 @@ main(void)
             DrawRectangle(240, 72 + (frame % 2) * 16, 80, 24,
                           (Color){frame % 2 ? 48 : 160, 76, 128, 255});
         DrawText("Bottom", 24, 320, 16, (Color){255, 255, 255, 255});
-        EndUI();
+        EndTree();
         if(frame == 0)
             BeginScissorMode(0, 0, 80, 80);
         EndDrawing();

@@ -154,7 +154,7 @@ BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
     memset(&scaffold, 0, sizeof(scaffold));
 
     if(title_h <= 0)
-        title_h = UIGetNodeHeight(UINodeTitleBar(0));
+        title_h = GetNodeHeight(NodeTitleBar(0));
     scaffold.title_height = title_h;
 
     if(spec.draw_title != NULL)

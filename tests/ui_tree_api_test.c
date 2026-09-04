@@ -84,16 +84,16 @@ main(void)
     SetThemeStyle(THEME_STYLE_RETRO);
 
     check_int("section label",
-              UIGetNodeHeight(UINodeSectionLabel(section, 0, 0)),
+              GetNodeHeight(NodeSectionLabel(section, 0, 0)),
               ScaleUIPx(24));
     check_int("checkbox row",
-              UIGetNodeHeight(UINodeCheckboxRow(checkbox, 0, 0)),
+              GetNodeHeight(NodeCheckboxRow(checkbox, 0, 0)),
               ScaleUIPx(42));
     check_int("label text field",
-              UIGetNodeHeight(UINodeLabelTextField(field, 0, 0, 240)),
+              GetNodeHeight(NodeLabelTextField(field, 0, 0, 240)),
               ScaleUIPx(22) + ScaleUIPx(40) + ScaleUIPx(24));
     check_int("button row",
-              UIGetNodeHeight(UINodeButtonRow(row)),
+              GetNodeHeight(NodeButtonRow(row)),
               ScaleUIPx(40));
     form = UIFormBegin(10, 20, 240);
     taken = UIFormTakeRect(&form, ScaleUIPx(18));
@@ -101,49 +101,49 @@ main(void)
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
     check_int("form advances", UIFormY(&form), 20 + ScaleUIPx(18));
-    BeginUI(6);
+    BeginTree(6);
     UIFormSection(&form, "Account");
-    EndUI();
+    EndTree();
     check_int("form section helper advances", UIFormY(&form),
               20 + ScaleUIPx(18) + ScaleUIPx(24));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
               ScaleUIPx(54));
     check_int("bottom nav",
-              UIGetNodeHeight(UINodeBottomNav(nav)),
+              GetNodeHeight(NodeBottomNav(nav)),
               ScaleUIPx(40));
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material bottom nav",
-              UIGetNodeHeight(UINodeBottomNav(nav)),
+              GetNodeHeight(NodeBottomNav(nav)),
               ScaleUIPx(64));
     SetThemeStyle(THEME_STYLE_RETRO);
     check_int("retro tab bar",
-              UIGetNodeHeight(UINodeTabBar(tabs)),
+              GetNodeHeight(NodeTabBar(tabs)),
               ScaleUIPx(36));
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material tab bar",
-              UIGetNodeHeight(UINodeTabBar(tabs)),
+              GetNodeHeight(NodeTabBar(tabs)),
               ScaleUIPx(48));
     check_int("title bar custom",
-              UIGetNodeHeight(UINodeTitleBar(64)),
+              GetNodeHeight(NodeTitleBar(64)),
               64);
 
-    BeginUI(7);
+    BeginTree(7);
     group = Stack((ColumnProps){.bounds = {10, 10, 100, 80}, .key = 11});
     nested = Stack((ColumnProps){.bounds = {20, 20, 40, 30}, .key = 12});
     End();
     End();
-    EndUI();
+    EndTree();
 
-    nodes = UIGetTreeNodes(&count);
+    nodes = GetTreeNodes(&count);
     check_int("tree count", count, 3);
     check_int("root parent", nodes[0].parent, -1);
     check_int("root first child", nodes[0].first_child, group);
     check_int("group parent", nodes[group].parent, 0);
     check_int("group first child", nodes[group].first_child, nested);
     check_int("nested parent", nodes[nested].parent, group);
-    check_int("hit nested", UIHitTestNode((Vector2){25, 25}), nested);
-    node = UIGetNode(group);
+    check_int("hit nested", HitTestNode((Vector2){25, 25}), nested);
+    node = GetNode(group);
     check_int("get group", node != NULL ? node->id : -1, 11);
 
     stable_key = Key("settings/password");
@@ -154,67 +154,67 @@ main(void)
 
     /* The retained tree grows dynamically; the old implementation silently
      * stopped at 4096 declarations. */
-    BeginUI(19);
+    BeginTree(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 1, 1},
                             .key = (KeyID)(1000 + i)});
         End();
     }
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("dynamic tree count", count, 5001);
     check_int("dynamic last id", nodes[5000].id, 5999);
 
     /* Reconciliation retains node-owned state by parent/key/type. */
     ((UIWidgetNode *)&nodes[2500])->state = (void *)0x1234;
-    BeginUI(19);
+    BeginTree(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 2, 2},
                             .key = (KeyID)(1000 + i)});
         End();
     }
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("reconcile preserves state",
               nodes[2500].state == (void *)0x1234, 1);
 
-    BeginUI(23);
+    BeginTree(23);
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 1}); End();
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     ((UIWidgetNode *)&nodes[1])->state = (void *)0x1111;
     ((UIWidgetNode *)&nodes[2])->state = (void *)0x2222;
-    BeginUI(23);
+    BeginTree(23);
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 1}); End();
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("reconcile reordered first",
               nodes[1].state == (void *)0x2222, 1);
     check_int("reconcile reordered second",
               nodes[2].state == (void *)0x1111, 1);
 
-    BeginUI(31);
+    BeginTree(31);
     Column((ColumnProps){.bounds = {10, 20, 100, 200},
                          .gap = 5, .padding = 10, .key = 40});
     Stack((ColumnProps){.bounds = {0, 0, 0, 20}, .key = 41}); End();
     Stack((ColumnProps){.bounds = {0, 0, 0, 30}, .key = 42}); End();
     End();
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("column first x", (int)nodes[2].bounds.x, 20);
     check_int("column first y", (int)nodes[2].bounds.y, 30);
     check_int("column stretch width", (int)nodes[2].bounds.width, 80);
     check_int("column second y", (int)nodes[3].bounds.y, 55);
-    BeginUI(31);
+    BeginTree(31);
     Column((ColumnProps){.bounds = {10, 20, 100, 200},
                          .gap = 5, .padding = 10, .key = 40});
     Stack((ColumnProps){.bounds = {0, 0, 0, 20}, .key = 41}); End();
     Stack((ColumnProps){.bounds = {0, 0, 0, 30}, .key = 42}); End();
     End();
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("stable column keeps computed width", (int)nodes[2].bounds.width, 80);
 
     check_int("route fallback path", strcmp(GetRoutePath(), "/"), 0);
@@ -223,7 +223,7 @@ main(void)
 
     SetUIViewSize(320, 240);
     SetThemeStyle(THEME_STYLE_RETRO);
-    BeginUI(37);
+    BeginTree(37);
     scaffold = BeginUIScreenScaffold((UIScreenScaffoldSpec){
         .title = "Settings",
         .bottom_reserved = 12,
@@ -240,9 +240,9 @@ main(void)
     check_int("scaffold content w", scaffold.content_w,
               scaffold_fixture.seen_w);
     EndUIScreenScaffold(scaffold);
-    EndUI();
+    EndTree();
 
-    BeginUI(38);
+    BeginTree(38);
     page = Page((PageProps){.title = "Docs",
                             .bounds = {0, 0, 0, 0},
                             .gap = 6,
@@ -267,8 +267,8 @@ main(void)
     Stack((ColumnProps){.bounds = {0, 0, 0, 12}, .key = 388}); End();
     End();
     End();
-    EndUI();
-    nodes = UIGetTreeNodes(&count);
+    EndTree();
+    nodes = GetTreeNodes(&count);
     check_int("page fallback node kind", nodes[page].kind, UI_WIDGET_COLUMN_NODE);
     check_int("page fallback width", (int)nodes[page].bounds.width, 320);
     check_int("page fallback height", (int)nodes[page].bounds.height, 240);
@@ -289,16 +289,16 @@ main(void)
     InjectReset();
     InjectTap(25, 25);
     InjectPump();
-    BeginUI(44);
+    BeginTree(44);
     Button((ButtonProps){.bounds = {10, 10, 100, 40},
                          .label = "Save", .id = 9001});
-    UIReconcileTree();
-    UILayoutTree();
-    UIRouteInput();
-    check_int("button queues event", NextUIEvent(&event), 1);
+    ReconcileTree();
+    LayoutTree();
+    RouteInput();
+    check_int("button queues event", NextEvent(&event), 1);
     check_int("button event kind", event.kind, UI_EVENT_CLICK);
     check_int("button event key", (int)event.key, 9001);
-    check_int("event delivered once", NextUIEvent(&event), 0);
+    check_int("event delivered once", NextEvent(&event), 0);
 
     {
         char password[32] = "secret";
@@ -311,24 +311,24 @@ main(void)
         InjectReset();
         InjectTap(25, 25);
         InjectPump();
-        BeginUI(45);
+        BeginTree(45);
         TextField((TextFieldProps){
             .bounds = {10, 10, 200, 40}, .text = password,
             .text_size = sizeof(password), .cursor_position = &cursor,
             .focused = &focused, .focus_id = (int)password_key, .secure = 1
         });
-        UIReconcileTree();
-        UILayoutTree();
-        UIRouteInput();
-        while(NextUIEvent(&event)) { }
+        ReconcileTree();
+        LayoutTree();
+        RouteInput();
+        while(NextEvent(&event)) { }
         check_int("textfield focused", focused, 1);
         check_int("textfield selection set",
                   SetSelection(password_key, 0, 6), 1);
-        while(NextUIEvent(&event)) { }
+        while(NextEvent(&event)) { }
         InjectText("x");
         InjectPump();
-        UIRouteInput();
-        while(NextUIEvent(&event)) {
+        RouteInput();
+        while(NextEvent(&event)) {
             if(event.kind == UI_EVENT_TEXT_CHANGED)
                 saw_text = 1;
             if(event.kind == UI_EVENT_SELECTION_CHANGED &&
@@ -349,36 +349,36 @@ main(void)
         int committed = 0;
         int saw_commit = 0;
 
-        BeginUI(46);
+        BeginTree(46);
         TextField((TextFieldProps){
             .bounds = {10, 10, 220, 40}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .focus_id = 78, .font = 16,
             .commit_pressed = &committed
         });
-        UIReconcileTree();
-        UILayoutTree();
+        ReconcileTree();
+        LayoutTree();
         InjectReset();
         InjectMousePosition(20, 25);
         InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         InjectMousePosition(220, 25);
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         InjectText("z");
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         check_int("mouse selection typing replaces text", strcmp(value, "z"), 0);
         check_int("mouse replacement cursor", cursor, 1);
-        while(NextUIEvent(&event)) { }
+        while(NextEvent(&event)) { }
         InjectKeyTap(KEY_ENTER);
         InjectPump();
-        UIRouteInput();
-        while(NextUIEvent(&event)) {
+        RouteInput();
+        while(NextEvent(&event)) {
             if(event.kind == UI_EVENT_TEXT_COMMIT && event.key == 78)
                 saw_commit = 1;
         }
@@ -392,25 +392,25 @@ main(void)
         int focused = 0;
         int saw_selection = 0;
 
-        BeginUI(47);
+        BeginTree(47);
         TextField((TextFieldProps){
             .bounds = {10, 10, 220, 40}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .focus_id = 79, .font = 16
         });
-        UIReconcileTree();
-        UILayoutTree();
+        ReconcileTree();
+        LayoutTree();
         InjectReset();
         InjectTap(50, 25);
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         InjectPump();
-        UIRouteInput();
-        while(NextUIEvent(&event)) { }
+        RouteInput();
+        while(NextEvent(&event)) { }
         InjectTap(50, 25);
         InjectPump();
-        UIRouteInput();
-        while(NextUIEvent(&event)) {
+        RouteInput();
+        while(NextEvent(&event)) {
             if(event.kind == UI_EVENT_SELECTION_CHANGED &&
                event.data.selection.start == 0 &&
                event.data.selection.end == 11)
@@ -419,10 +419,10 @@ main(void)
         check_int("double click selects text", saw_selection, 1);
         check_int("double click cursor at end", cursor, 11);
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         InjectText("x");
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         check_int("double click selection typing replaces text",
                   strcmp(value, "x"), 0);
         check_int("double click replacement cursor", cursor, 1);
@@ -474,7 +474,7 @@ main(void)
         InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         InjectPump();
         BeginUIFocus();
-        BeginUI(1000);
+        BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
             .text = first, .text_size = sizeof(first),
             .cursor_position = &first_cursor, .focused = &first_focused,
@@ -483,7 +483,7 @@ main(void)
             .text = second, .text_size = sizeof(second),
             .cursor_position = &second_cursor, .focused = &second_focused,
             .focus_id = 1002, .font = 16 });
-        EndUI();
+        EndTree();
         EndUIFocus();
         InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
@@ -491,28 +491,28 @@ main(void)
         InjectKeyTap(KEY_TAB);
         InjectPump();
         BeginUIFocus();
-        BeginUI(1000);
+        BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
             .focused = &first_focused, .focus_id = 1001, .font = 16 });
         TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
             .text_size = sizeof(second), .cursor_position = &second_cursor,
             .focused = &second_focused, .focus_id = 1002, .font = 16 });
-        EndUI();
+        EndTree();
         EndUIFocus();
 
         InjectPump();
         InjectText("x");
         InjectPump();
         BeginUIFocus();
-        BeginUI(1000);
+        BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
             .focused = &first_focused, .focus_id = 1001, .font = 16 });
         TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
             .text_size = sizeof(second), .cursor_position = &second_cursor,
             .focused = &second_focused, .focus_id = 1002, .font = 16 });
-        EndUI();
+        EndTree();
         EndUIFocus();
         check_int("retained tab focuses next field", strcmp(second, "x"), 0);
     }
@@ -529,22 +529,22 @@ main(void)
         InjectReset();
         InjectTap(25, 25);
         InjectPump();
-        BeginUI(1003);
+        BeginTree(1003);
         TextArea((TextAreaProps){
             .bounds = {10, 10, 90, 44}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
             .focus_id = 1004, .font = 16, .line_gap = 4, .wrap = 1
         });
-        UIReconcileTree();
-        UILayoutTree();
-        UIRouteInput();
+        ReconcileTree();
+        LayoutTree();
+        RouteInput();
         check_int("wrapped textarea selects end",
                   SetSelection(1004, (int)strlen(value),
                                (int)strlen(value)), 1);
         InjectText("x");
         InjectPump();
-        UIRouteInput();
+        RouteInput();
         check_int("multiline textarea appends text", value[cursor - 1], 'x');
         check_int("multiline textarea reveals caret", scroll_y > 0, 1);
     }

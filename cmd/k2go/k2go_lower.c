@@ -321,9 +321,9 @@ k2go_is_go_elided_lifecycle(const char *text)
 {
     const char *p = kir_skip_ws(text);
 
-    return strncmp(p, "BeginUI", 7) == 0 && kir_skip_ws(p + 7)[0] == '('
+    return strncmp(p, "BeginTree", 9) == 0 && kir_skip_ws(p + 9)[0] == '('
         ? 1
-        : (strncmp(p, "EndUI", 5) == 0 && kir_skip_ws(p + 5)[0] == '(');
+        : (strncmp(p, "EndTree", 7) == 0 && kir_skip_ws(p + 7)[0] == '(');
 }
 
 /* One '#extern' declaration bridged to a Go host method. */

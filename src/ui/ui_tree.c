@@ -464,7 +464,7 @@ Key(const char *text)
 }
 
 void
-BeginUI(KeyID screen_key)
+BeginTree(KeyID screen_key)
 {
     NodeId root;
 
@@ -487,7 +487,7 @@ BeginUI(KeyID screen_key)
 }
 
 void
-EndUI(void)
+EndTree(void)
 {
     static int trace_enabled = -1;
     static unsigned long trace_frame;
@@ -497,13 +497,13 @@ EndUI(void)
         trace_enabled = getenv("KRYON_FRAME_TRACE") != NULL;
     ui_tree_building = 0;
     ui_tree_stack_depth = 0;
-    UIReconcileTree();
+    ReconcileTree();
     reconcile = GetTime();
-    UILayoutTree();
+    LayoutTree();
     layout = GetTime();
-    UIRouteInput();
+    RouteInput();
     input = GetTime();
-    UIUpdateTree();
+    UpdateTree();
     update = GetTime();
     DrawTree();
     Overlays();
@@ -530,13 +530,13 @@ End(void)
 }
 
 void
-InvalidateUI(UIInvalidation invalidation)
+InvalidateTree(UIInvalidation invalidation)
 {
     ui_tree_invalid |= (unsigned)invalidation;
 }
 
 int
-NextUIEvent(UIEvent *event)
+NextEvent(UIEvent *event)
 {
     if(event == NULL || ui_event_count <= 0)
         return 0;
@@ -586,7 +586,7 @@ SetSelection(KeyID key, int anchor, int cursor)
 }
 
 void
-UIReconcileTree(void)
+ReconcileTree(void)
 {
     int *slots = NULL;
     int *matched_old = NULL;
@@ -719,7 +719,7 @@ UIReconcileTree(void)
 }
 
 void
-UILayoutTree(void)
+LayoutTree(void)
 {
     int i;
 
@@ -729,7 +729,7 @@ UILayoutTree(void)
         UIWidgetNode *node = &ui_committed_nodes[i];
 
         if(node->bounds.height <= 0)
-            node->bounds.height = (float)UIGetNodeHeight(*node);
+            node->bounds.height = (float)GetNodeHeight(*node);
     }
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *parent = &ui_committed_nodes[i];
@@ -817,7 +817,7 @@ UILayoutTree(void)
 }
 
 void
-UIRouteInput(void)
+RouteInput(void)
 {
     Vector2 mouse;
     int hit;
@@ -847,7 +847,7 @@ UIRouteInput(void)
     }
 
     mouse = GetMousePosition();
-    hit = UIHitTestNode(mouse);
+    hit = HitTestNode(mouse);
     pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
@@ -1171,7 +1171,7 @@ UIRouteInput(void)
 }
 
 void
-UIUpdateTree(void)
+UpdateTree(void)
 {
     UIWidgetNode *root;
 
@@ -1329,7 +1329,7 @@ Overlays(void)
 }
 
 const UIWidgetNode *
-UIGetTreeNodes(int *count)
+GetTreeNodes(int *count)
 {
     if(count != NULL)
         *count = ui_committed_node_count > 0 ? ui_committed_node_count
@@ -1338,7 +1338,7 @@ UIGetTreeNodes(int *count)
 }
 
 const UIWidgetNode *
-UIGetNode(NodeId id)
+GetNode(NodeId id)
 {
     if(ui_committed_node_count > 0) {
         if(id < 0 || id >= ui_committed_node_count)
@@ -1349,7 +1349,7 @@ UIGetNode(NodeId id)
 }
 
 NodeId
-UIHitTestNode(Vector2 point)
+HitTestNode(Vector2 point)
 {
     int i;
     UIWidgetNode *nodes = ui_committed_node_count > 0
@@ -1367,7 +1367,7 @@ UIHitTestNode(Vector2 point)
 }
 
 int
-UIGetNodeHeight(UIWidgetNode node)
+GetNodeHeight(UIWidgetNode node)
 {
     const UIWidgetOps *ops;
 
@@ -1381,19 +1381,19 @@ UIGetNodeHeight(UIWidgetNode node)
 }
 
 int
-UIGetNodeHeightById(int id)
+GetNodeHeightById(int id)
 {
     int i;
 
     for(i = ui_tree_node_count - 1; i >= 0; i--) {
         if(ui_tree_nodes[i].id == id)
-            return UIGetNodeHeight(ui_tree_nodes[i]);
+            return GetNodeHeight(ui_tree_nodes[i]);
     }
     return 0;
 }
 
 UIWidgetNode
-UINodeParagraph(ParagraphSpec paragraph, int x, int y)
+NodeParagraph(ParagraphSpec paragraph, int x, int y)
 {
     UIWidgetNode node;
 
@@ -1404,7 +1404,7 @@ UINodeParagraph(ParagraphSpec paragraph, int x, int y)
 }
 
 UIWidgetNode
-UINodeReadonlyTextBox(ReadonlyTextBoxProps box)
+NodeReadonlyTextBox(ReadonlyTextBoxProps box)
 {
     UIWidgetNode node;
 
@@ -1414,7 +1414,7 @@ UINodeReadonlyTextBox(ReadonlyTextBoxProps box)
 }
 
 UIWidgetNode
-UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w)
+NodeLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     UIWidgetNode node;
 
@@ -1425,7 +1425,7 @@ UINodeLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 }
 
 UIWidgetNode
-UINodeSectionLabel(SectionLabelProps label, int x, int y)
+NodeSectionLabel(SectionLabelProps label, int x, int y)
 {
     UIWidgetNode node;
 
@@ -1435,7 +1435,7 @@ UINodeSectionLabel(SectionLabelProps label, int x, int y)
 }
 
 UIWidgetNode
-UINodeCheckboxRow(CheckboxRowProps row, int x, int y)
+NodeCheckboxRow(CheckboxRowProps row, int x, int y)
 {
     UIWidgetNode node;
 
@@ -1445,7 +1445,7 @@ UINodeCheckboxRow(CheckboxRowProps row, int x, int y)
 }
 
 UIWidgetNode
-UINodeButtonRow(ButtonRowProps row)
+NodeButtonRow(ButtonRowProps row)
 {
     UIWidgetNode node;
 
@@ -1456,7 +1456,7 @@ UINodeButtonRow(ButtonRowProps row)
 }
 
 UIWidgetNode
-UINodeBottomNav(BottomNavProps nav)
+NodeBottomNav(BottomNavProps nav)
 {
     UIWidgetNode node;
     int height;
@@ -1468,20 +1468,20 @@ UINodeBottomNav(BottomNavProps nav)
 }
 
 UIWidgetNode
-UINodeTopNav(TopNavProps nav)
+NodeTopNav(TopNavProps nav)
 {
     return ui_node(nav.id, UI_WIDGET_CUSTOM_NODE,
                    (Rectangle){nav.x, nav.y, nav.width, nav.height});
 }
 
 UIWidgetNode
-UINodeTabBar(TabBarProps bar)
+NodeTabBar(TabBarProps bar)
 {
     return ui_node(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds);
 }
 
 UIWidgetNode
-UINodeThemeSettings(ThemeSettingsProps settings)
+NodeThemeSettings(ThemeSettingsProps settings)
 {
     UIWidgetNode node;
 
@@ -1492,13 +1492,13 @@ UINodeThemeSettings(ThemeSettingsProps settings)
 }
 
 UIWidgetNode
-UINodeThemePicker(int x, int y, int w)
+NodeThemePicker(int x, int y, int w)
 {
     return ui_node(0, UI_WIDGET_THEME_PICKER_NODE, (Rectangle){x, y, w, 0});
 }
 
 UIWidgetNode
-UINodeParagraphModal(ParagraphModalMeasureProps measure)
+NodeParagraphModal(ParagraphModalMeasureProps measure)
 {
     UIWidgetNode node;
 
@@ -1509,7 +1509,7 @@ UINodeParagraphModal(ParagraphModalMeasureProps measure)
 }
 
 UIWidgetNode
-UINodeTitleBar(int height)
+NodeTitleBar(int height)
 {
     return ui_node(0, UI_WIDGET_TITLE_BAR_NODE,
                    (Rectangle){0, 0, ui_view_width, height});
@@ -1582,7 +1582,7 @@ Paragraph(ParagraphSpec paragraph, int x, int *y)
 
     id = ui_tree_add(0, UI_WIDGET_PARAGRAPH_NODE,
                      (Rectangle){x, start_y, paragraph.width, 0}, NULL);
-    node = UINodeParagraph(paragraph, x, start_y);
+    node = NodeParagraph(paragraph, x, start_y);
     ui_tree_store_node(id, node);
     ui_draw_paragraph(paragraph, x, y);
 }
@@ -1846,7 +1846,7 @@ ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
     id = ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
                      (Rectangle){settings.x, settings.y, settings.w, 0},
                      NULL);
-    node = UINodeThemeSettings(settings);
+    node = NodeThemeSettings(settings);
     ui_tree_store_node(id, node);
     DrawUIThemeSettings(settings, state);
     next = DrawUIThemeSettingsMenus(settings, state);
@@ -2136,7 +2136,7 @@ LabelTextField(LabelTextFieldProps row, int x, int y, int w)
 
     id = ui_tree_add(row.field.focus_id, UI_WIDGET_LABEL_TEXT_FIELD_NODE,
                      (Rectangle){x, y, w, 0}, NULL);
-    node = UINodeLabelTextField(row, x, y, w);
+    node = NodeLabelTextField(row, x, y, w);
     ui_tree_store_node(id, node);
     return DrawUILabelTextField(row, x, y, w);
 }
@@ -2149,7 +2149,7 @@ SectionLabel(SectionLabelProps label, int x, int y)
 
     id = ui_tree_add(0, UI_WIDGET_SECTION_LABEL_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
-    node = UINodeSectionLabel(label, x, y);
+    node = NodeSectionLabel(label, x, y);
     ui_tree_store_node(id, node);
     return DrawUISectionLabel(label, x, y);
 }
@@ -2162,7 +2162,7 @@ CheckboxRow(CheckboxRowProps row, int x, int y)
 
     id = ui_tree_add(0, UI_WIDGET_CHECKBOX_ROW_NODE,
                      (Rectangle){x, y, 0, 0}, NULL);
-    node = UINodeCheckboxRow(row, x, y);
+    node = NodeCheckboxRow(row, x, y);
     ui_tree_store_node(id, node);
     return DrawUICheckboxRow(row, x, y);
 }
@@ -2187,7 +2187,7 @@ ButtonRow(ButtonRowProps row)
 
     id = ui_tree_add(0, UI_WIDGET_BUTTON_ROW_NODE,
                      (Rectangle){row.x, row.y, row.width, 0}, NULL);
-    node = UINodeButtonRow(row);
+    node = NodeButtonRow(row);
     ui_tree_store_node(id, node);
     return DrawUIButtonRow(row);
 }
