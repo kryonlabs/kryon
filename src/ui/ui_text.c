@@ -268,6 +268,16 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
             return entry->tier_font[i];
     }
 
+    /* Failed earlier at this exact size: never re-attempt. A source that
+     * parses at registration but cannot rasterize (unsupported tables,
+     * no matching glyphs) would otherwise re-run the full parse for
+     * every glyph of every string, pinning a core and freezing the app
+     * mid-frame. */
+    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        if(entry->tier_size[i] == -physical_size)
+            return kryon_zero_font;
+    }
+
     /* Free slot: rasterize this size. */
     for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
         if(entry->tier_size[i] == 0) {
@@ -285,6 +295,9 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
                 ui_font_trim_heap();
                 return entry->tier_font[i];
             }
+            /* Latch the failure so this size is never rasterized again. */
+            entry->tier_font[i] = kryon_zero_font;
+            entry->tier_size[i] = -physical_size;
             return kryon_zero_font;
         }
     }
