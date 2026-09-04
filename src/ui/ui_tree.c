@@ -1202,7 +1202,8 @@ RouteInput(void)
                 }
             }
         }
-        if(IsKeyPressed(KEY_BACKSPACE)) {
+        if(IsKeyPressed(KEY_BACKSPACE) ||
+           IsKeyPressedRepeat(KEY_BACKSPACE)) {
             if(end > start)
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
@@ -1213,7 +1214,8 @@ RouteInput(void)
                     state->cursor);
             state->anchor = state->cursor;
             selection_changed = changed;
-        } else if(IsKeyPressed(KEY_DELETE)) {
+        } else if(IsKeyPressed(KEY_DELETE) ||
+                  IsKeyPressedRepeat(KEY_DELETE)) {
             if(end > start)
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
