@@ -133,8 +133,11 @@ KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body != NULL ? body : "");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,
                          (long)(body != NULL ? strlen(body) : 0));
-    } else if(strcmp(method, "DELETE") == 0) {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    } else if(method[0] != '\0' && strcmp(method, "GET") != 0 &&
+              strcmp(method, "HEAD") != 0) {
+        /* DELETE, PATCH, PUT, and any other body-carrying verb: without an
+         * explicit CUSTOMREQUEST curl silently downgrades them to GET. */
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body != NULL ? body : "");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,
                          (long)(body != NULL ? strlen(body) : 0));
