@@ -1494,12 +1494,45 @@ DrawCenteredUIControlText(const char *text, int center_x, int center_y,
     DrawUIText(text, center_x - text_w / 2, y, font, color);
 }
 
+static TextInputStyle
+ui_resolve_text_input_style(TextInputStyle style)
+{
+    Color background = c_surface.a != 0 ? c_surface : c_bg;
+
+    if(ui_material_style()) {
+        UIMaterialScheme scheme = ui_material_scheme();
+
+        background = scheme.surface_container;
+        if(style.border.a == 0)
+            style.border = scheme.outline;
+        if(style.focus_border.a == 0)
+            style.focus_border = scheme.primary;
+        if(style.text.a == 0)
+            style.text = scheme.on_surface;
+        if(style.cursor.a == 0)
+            style.cursor = scheme.primary;
+    } else {
+        if(style.border.a == 0)
+            style.border = DarkenUIColor(background, 35);
+        if(style.focus_border.a == 0)
+            style.focus_border = c_circle;
+        if(style.text.a == 0)
+            style.text = c_text;
+        if(style.cursor.a == 0)
+            style.cursor = c_circle;
+    }
+    if(style.background.a == 0)
+        style.background = background;
+    return style;
+}
+
 static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
                   int selection_end, int scroll_x)
 {
+    style = ui_resolve_text_input_style(style);
     const char *value = text ? text : "";
     int x = (int)bounds.x;
     int y = (int)bounds.y;
@@ -2566,6 +2599,7 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
 
     if(area.text == NULL)
         return;
+    area.style = ui_resolve_text_input_style(area.style);
     font = area.font > 0 ? area.font : GetUIFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     line_h = TextLineHeight(font) + line_gap;
@@ -2636,6 +2670,7 @@ RenderTextArea(TextAreaProps area)
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
+    area.style = ui_resolve_text_input_style(area.style);
     memset(&area_edit, 0, sizeof(area_edit));
     area_edit.text = area.text;
     area_edit.text_size = area.text_size;

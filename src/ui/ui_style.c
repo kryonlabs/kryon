@@ -417,7 +417,9 @@ ui_draw_box_background(Rectangle bounds, float radius, Color background,
                        Color border)
 {
     if(ui_modern_style()) {
-        ui_draw_control_background(bounds, background, border, radius);
+        /* Text fields use the Material pixel radius. A normalized legacy
+         * radius scales with height and turns large text areas into pills. */
+        ui_draw_control_background(bounds, background, border, 0.0f);
         return;
     }
     if(radius <= 0.0f) {
