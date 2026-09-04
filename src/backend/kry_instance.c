@@ -69,6 +69,31 @@ static void instance_terminate_signal(int sig)
     _exit(0);
 }
 
+/* SIGUSR2 dumps a backtrace to stderr: a poor man's debugger for
+ * machines without gdb (stuck loops are diagnosed with kill -USR2). */
+#if defined(__GNUC__)
+#include <execinfo.h>
+static void instance_backtrace_signal(int sig)
+{
+    void *frames[32];
+    int n = backtrace(frames, 32);
+    (void)sig;
+    backtrace_symbols_fd(frames, n, 2);
+    _exit(0);
+}
+static void install_backtrace_handler(void)
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = instance_backtrace_signal;
+    sigemptyset(&sa.sa_mask);
+    (void)sigaction(SIGUSR2, &sa, NULL);
+}
+#else
+static void install_backtrace_handler(void) { }
+#endif
+
 static void install_terminate_handlers(void)
 {
     struct sigaction sa;
@@ -161,6 +186,7 @@ static int acquire_instance(const char *title)
             (void)write(fd, pid_text, (size_t)size);
             g_instance_fd = fd;
             install_terminate_handlers();
+            install_backtrace_handler();
             return 1;
         }
         if(errno != EWOULDBLOCK && errno != EAGAIN) {
