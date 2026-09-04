@@ -425,6 +425,11 @@ ui_button_style_colors(ButtonStyle style, Color *bg, Color *hover_bg,
                        Color *text_color)
 {
     switch(style) {
+    case ButtonStyleOutline:
+        *bg = c_bg;
+        *hover_bg = c_surface;
+        *text_color = c_text;
+        return;
     case ButtonStyleSecondary:
         *bg = DarkenUIColor(c_bg, 14);
         *hover_bg = c_button;
@@ -481,6 +486,11 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
         UIMaterialScheme scheme = ui_material_scheme();
 
         switch(style) {
+        case ButtonStyleOutline:
+            bg = scheme.surface;
+            hover_bg = scheme.surface_variant;
+            text_color = scheme.on_surface;
+            break;
         case ButtonStyleSecondary:
             bg = scheme.surface_variant;
             hover_bg = scheme.surface_variant;
@@ -525,9 +535,16 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     spec.background = bg;
     spec.hover_background = hover_bg;
     spec.text = text_color;
-    spec.border = LightenUIColor(bg, 32);
+    spec.border = style == ButtonStyleOutline
+        ? (ui_material_style() ? ui_material_scheme().outline
+                               : Fade(text_color, 0.45f))
+        : LightenUIColor(bg, 32);
     spec.radius = 0.08f;
     clicked = RenderButton(spec);
+    if(style == ButtonStyleOutline && ui_material_style()) {
+        DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, ScaleUIPx(1),
+                                    ui_material_scheme().outline);
+    }
 
     if(!ui_material_style() && UITransitionCuesEnabled() &&
        style == ButtonStyleTabSelected &&

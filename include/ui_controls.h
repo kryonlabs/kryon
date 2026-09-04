@@ -16,6 +16,7 @@ typedef enum {
 typedef enum {
     ButtonStylePrimary,
     ButtonStyleSecondary,
+    ButtonStyleOutline,
     ButtonStyleDanger,
     ButtonStyleTab,
     ButtonStyleTabSelected
