@@ -23,6 +23,7 @@ components. The C files used for native and web builds are generated into
 15. **16_dialogs** - Message, confirm, prompt, and color picker
 16. **17_keyboard_platform** - Accelerators and clipboard
 17. **18_accessibility** - Accessibility/debug node overlay
+18. **25_text_area_slider** - Editable multiline text with a live background-color slider
 
 ## Requirements
 
