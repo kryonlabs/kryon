@@ -13,7 +13,9 @@
 #define Rectangle Win32Rectangle
 #define CloseWindow Win32CloseWindow
 #define ShowCursor Win32ShowCursor
+#define DrawIcon Win32DrawIcon
 #include <windows.h>
+#undef DrawIcon
 #undef ShowCursor
 #undef CloseWindow
 #undef Rectangle
