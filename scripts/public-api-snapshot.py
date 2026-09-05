@@ -79,7 +79,7 @@ def collect() -> list[str]:
             if line.startswith("#") or line.startswith("typedef ") or "(*" in line:
                 continue
             match = re.match(
-                r"^(?:extern\s+)?[A-Za-z_][A-Za-z0-9_\s*]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^;]*\)\s*;",
+                r"^(?:extern\s+)?[A-Za-z_][A-Za-z0-9_\s*]*[\s*]([A-Za-z_][A-Za-z0-9_]*)\s*\([^;]*\)\s*;",
                 line,
             )
             if match:

@@ -186,7 +186,7 @@ ui_clipboard_base64_value(int ch)
 static int
 ui_clipboard_decode_base64(char *out, int out_size, const char *text)
 {
-    int value = 0;
+    unsigned int value = 0;
     int bits = 0;
     int used = 0;
 

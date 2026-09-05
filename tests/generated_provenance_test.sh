@@ -9,7 +9,7 @@ status=0
 require_first_line() {
     file=$1
     pattern=$2
-    if ! head -n 1 "$file" | rg -q "$pattern"; then
+    if ! head -n 1 "$file" | grep -Eq "$pattern"; then
         echo "missing generated provenance in first line of $file" >&2
         status=1
     fi
@@ -18,7 +18,7 @@ require_first_line() {
 require_contains() {
     file=$1
     pattern=$2
-    if ! rg -q "$pattern" "$file"; then
+    if ! grep -Eq "$pattern" "$file"; then
         echo "missing generated provenance marker in $file" >&2
         status=1
     fi
