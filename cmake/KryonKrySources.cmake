@@ -30,7 +30,8 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir_token.c"
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir_expr.c"
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir_cleanup.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_check.c")
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_check.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_emit.c")
     if(KRYON_HOST_CC)
         set(KRYGEN_HOST_CC "${KRYON_HOST_CC}")
     else()

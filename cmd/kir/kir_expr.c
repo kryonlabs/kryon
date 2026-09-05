@@ -295,6 +295,7 @@ KirStructureFunction(KirFunction *fn, const KirModule *module)
                    !strcmp(tok.text, "&=") || !strcmp(tok.text, "|=") ||
                    !strcmp(tok.text, "^=") || !strcmp(tok.text, "<<=") || !strcmp(tok.text, ">>=")) {
                     value = text + lexer.pos;
+                    kir_copy(st->assignment_op, sizeof(st->assignment_op), tok.text);
                     text[lexer.pos - strlen(tok.text)] = 0;
                     st->lhs_root = KirParseExpr(fn, module, text, st->span);
                     break;

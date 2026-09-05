@@ -1,5 +1,6 @@
 #include "kir_check.h"
 #include "kir_text.h"
+#include "kir_emit.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -17,7 +18,7 @@ typedef struct Checker {
     KirModule *module;
     KirFunction *fn;
     Binding *bindings;
-    int count, capacity, depth, strict, errors;
+    int count, capacity, depth, strict, errors, failed;
 } Checker;
 
 const char *
@@ -42,10 +43,10 @@ KirScalarType(const char *type)
 static void
 error(Checker *c, KirSourceSpan span, const char *message, const char *detail)
 {
+    c->errors++;
     if(!c->strict) return;
     fprintf(stderr, "%s:%d:%d: %s%s%s\n", span.path, span.line, span.column,
             message, detail && *detail ? ": " : "", detail ? detail : "");
-    c->errors++;
 }
 
 static void
@@ -60,7 +61,7 @@ bind(Checker *c, const char *name, const char *type, KirSourceSpan span)
     if(c->count == c->capacity) {
         int size = c->capacity ? c->capacity * 2 : 32;
         Binding *next = realloc(c->bindings, (size_t)size * sizeof(*next));
-        if(!next) { c->errors++; return; }
+        if(!next) { c->errors++; c->failed=1; return; }
         c->bindings = next; c->capacity = size;
     }
     kir_copy(c->bindings[c->count].name, KIR_NAME_MAX, name);
@@ -149,7 +150,7 @@ expression_type(Checker *c, int index)
         const char *return_type = callee ? callee->return_type : "";
         char (*parts)[KIR_TEXT_MAX] = calloc(64, sizeof(*parts));
         int actual = 0, expected;
-        if(!parts) { c->errors++; break; }
+        if(!parts) { c->errors++; c->failed=1; break; }
         if(*lookup(c, e->name)) error(c, e->span, "binding is not a callable function", e->name);
         if(!callee) for(int i = 0; i < c->module->import_count; i++) {
             const KirImport *imp = &c->module->imports[i];
@@ -164,6 +165,10 @@ expression_type(Checker *c, int index)
                 char *colon = strchr(parts[actual], ':');
                 if(colon && !compatible(kir_skip_ws(colon + 1), arg_type))
                     error(c, c->fn->exprs[child].span, "argument type mismatch", e->name);
+                if(colon && (!strcmp(arg_type, "integer") || !strcmp(arg_type, "real"))) {
+                    const char *context = KirScalarType(kir_skip_ws(colon + 1));
+                    if(*context) kir_copy(c->fn->exprs[child].type, KIR_NAME_MAX, context);
+                }
             }
             actual++;
         }
@@ -192,6 +197,8 @@ expression_type(Checker *c, int index)
         else if(*left && *right) error(c, e->span, "numeric operands required", e->op);
         break;
     case KIR_EXPR_UNARY:
+        if(!strcmp(e->op, "!") && strcmp(right, "bool"))
+            error(c, e->span, "logical operand requires bool", e->op);
         if((!strcmp(e->op, "++") || !strcmp(e->op, "--")) && !assignable(c, e->right))
             error(c, e->span, "increment requires an assignable expression", "");
         if(!strcmp(e->op, "!")) type = "bool";
@@ -226,6 +233,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
     for(int p = 0; p < count; p++) for(int m = 0; m < programs[p]->module_count; m++) {
         c.module = &programs[p]->modules[m];
         for(int f = 0; f < c.module->function_count; f++) {
+            int errors_before = c.errors;
             char params[64][KIR_TEXT_MAX];
             int n;
             c.fn = &c.module->functions[f]; c.count = 0; c.depth = 0;
@@ -268,8 +276,13 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                    st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
                     c.depth++;
             }
+            c.fn->checked = c.errors == errors_before;
+            if(strict && c.fn->checked && !c.fn->is_extern && !KirCanEmitBody(c.fn)) {
+                error(&c,c.fn->span,"function is not supported by portable scalar emission",c.fn->name);
+                c.fn->checked=0;
+            }
         }
     }
     free(c.bindings);
-    return c.errors == 0;
+    return !c.failed && (!strict || c.errors == 0);
 }

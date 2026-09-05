@@ -112,6 +112,7 @@ typedef struct KirStmt {
     int lhs_root;       /* structured assignment destination, or -1 */
     char name[KIR_NAME_MAX]; /* declaration binding */
     char type[KIR_NAME_MAX]; /* declared or inferred type */
+    char assignment_op[4];
     KirSourceSpan span;
 } KirStmt;
 
@@ -139,6 +140,7 @@ typedef struct KirFunction {
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
     int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
     int is_public;  /* exported function or project route */
+    int checked;    /* shared checker resolved the function without errors */
     char extern_target[KIR_NAME_MAX];   /* '#extern "pkg.Fn"' quoted symbol */
     char extern_symbol[KIR_NAME_MAX];   /* stripped C symbol for c.* externs */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */

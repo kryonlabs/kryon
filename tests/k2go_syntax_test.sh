@@ -28,7 +28,7 @@ tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
 direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
 direct_queue_text :: (value: const char*) #extern "github.com/waozixyz/kryon/go/kryon.QueueText"
-c_abs :: (value: int) -> int #extern "c.abs"
+c_abs :: (value: int) -> int #extern "host.Abs"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -286,13 +286,11 @@ EOF
 "$k2go" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
 "$k2go" --root "$work" -o "$work/pure-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
-cgo="$work/out/valid_cgo.go"
 helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
 pure="$work/pure-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2go produced no output" >&2; exit 1; }
-[ -f "$cgo" ] || { echo "k2go produced no cgo output" >&2; exit 1; }
 [ -f "$helper" ] || { echo "k2go produced no helper output" >&2; exit 1; }
 [ -f "$hier" ] || { echo "k2go produced no hierarchy output" >&2; exit 1; }
 [ -f "$pure" ] || { echo "k2go produced no pure output" >&2; exit 1; }
@@ -311,6 +309,19 @@ if "$k2go" --runtime github.com/waozixyz/kryon/go/kryui \
     exit 1
 fi
 grep -q 'usage: k2go' "$work/runtime_override.err"
+
+cat > "$work/src/c_abi.kry" <<'EOF'
+abs :: (x: i32) -> i32 #extern "c.abs"
+EOF
+if "$k2go" --root "$work" -o "$work/c-abi-out" "$work/src/c_abi.kry" 2>"$work/c-abi.err"; then
+    echo "native Go accepted a C ABI import" >&2
+    exit 1
+fi
+grep -q 'c_abi.kry:1:.*native Go cannot import a C ABI symbol' "$work/c-abi.err"
+if find "$work/out" -name '*_cgo.go' | grep -q .; then
+    echo "generated Go contains a cgo bridge" >&2
+    exit 1
+fi
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
@@ -352,15 +363,11 @@ if grep -q 'ScaleUIPx(Value int32)' "$out"; then
     echo "k2go placed a direct Go extern in the host interface" >&2
     exit 1
 fi
-grep -q 'import "C"' "$cgo"
-grep -q 'extern int abs(int value);' "$cgo"
-grep -q 'func k2goCValidCAbs(value int32) int32' "$cgo"
-grep -q 'return int32(C.abs(C.int(value)))' "$cgo"
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
-grep -q 'k2goCValidCAbs(int32(-8))' "$out"
+grep -q 'validHost.Abs(int32(-8))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
 grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"

@@ -610,8 +610,8 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c
-KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c
+KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_emit.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)

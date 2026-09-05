@@ -76,7 +76,7 @@ if grep -q 'kryon.widget(rt, "End"' "$out"; then
     exit 1
 fi
 grep -q 'state.count += 1' "$out"
-grep -q 'kryon.hostCall(host || moduleHost, "HostValue", \[state.count\])' "$out"
+grep -Eq 'kryon.hostCall\(host \|\| moduleHost, "HostValue", \[value_[0-9]+\]\)' "$out"
 if grep -q 'TODO k2js' "$out"; then
     echo "k2js left a TODO lowering in JS output:" >&2
     grep 'TODO k2js' "$out" >&2

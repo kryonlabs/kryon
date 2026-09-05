@@ -35,7 +35,7 @@ build_failed()
     -sEXPORTED_RUNTIME_METHODS="['FS','callMain']" \
     -Icmd/kir \
     cmd/k2kir/main.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c \
+    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c cmd/kir/kir_emit.c \
     -o "$tool_dir/k2kir.js" || build_failed
 
 "$EMCC" -O0 \
@@ -50,7 +50,7 @@ build_failed()
     -Iinclude -Icmd/k2b -Icmd/kir \
     cmd/k2b/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c \
+    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c cmd/kir/kir_emit.c \
     -o "$tool_dir/k2b.js" || build_failed
 
 "$EMCC" -O0 \
@@ -65,7 +65,7 @@ build_failed()
     -Icmd/k2c -Icmd/kir \
     cmd/k2c/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c \
+    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c cmd/kir/kir_emit.c \
     -o "$tool_dir/k2c.js" || build_failed
 
 "$EMCC" -O0 \
@@ -80,7 +80,7 @@ build_failed()
     -Icmd/k2go -Icmd/kir \
     cmd/k2go/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c \
+    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c cmd/kir/kir_emit.c \
     -o "$tool_dir/k2go.js" || build_failed
 
 "$EMCC" -O0 \
@@ -95,7 +95,7 @@ build_failed()
     -Icmd/k2js -Icmd/kir \
     cmd/k2js/*.c \
     cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c \
-    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c \
+    cmd/kir/kir_token.c cmd/kir/kir_expr.c cmd/kir/kir_cleanup.c cmd/kir/kir_check.c cmd/kir/kir_emit.c \
     -o "$tool_dir/k2js.js" || build_failed
 
 "$EMCC" -Wall -Wextra -Os -Iinclude \

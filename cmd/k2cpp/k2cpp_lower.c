@@ -7,6 +7,8 @@
 #include "k2cpp_lower.h"
 #include "kir.h"
 #include "kir_text.h"
+#include "kir_emit.h"
+#include "kir_check.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -378,6 +380,10 @@ strip_alias_type(const KirModule *m, const char *type,
                  char *dst, size_t dst_size)
 {
     const char *dot = strchr(type, '.');
+    const char *scalar = KirScalarType(type);
+    if(*scalar && !strcmp(scalar,type) && KirTargetType(type,KIR_C)) {
+        snprintf(dst,dst_size,"%s",KirTargetType(type,KIR_C)); return;
+    }
 
     if(dot != NULL) {
         size_t alen = (size_t)(dot - type);
@@ -482,11 +488,6 @@ convert_args(const KirModule *m, const char *args, char *dst, size_t dst_size)
 }
 
 /* ---- statement lowering ---- */
-
-typedef struct {
-    char stmt[LOWER_TEXT_MAX];   /* deferred statement text (no 'defer ') */
-    int scope;                   /* scope depth at registration */
-} DeferEntry;
 
 static void
 emit_indent(FILE *c, int indent)
@@ -597,15 +598,25 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cppModuleSyms *restab,
     fprintf(c, "    PopUIInspectSource();\n");
 }
 
-/* Lower one function body. Defer entries are tracked by scope and spliced
- * LIFO at block close / return. */
+typedef struct BodySymbols {
+    const KirModule *module;
+    const K2cppModuleSyms *symbols;
+    int count;
+} BodySymbols;
+
+static void
+resolve_body_symbol(void *context, const char *text, char *out, size_t size)
+{
+    BodySymbols *symbols = context;
+    rewrite_body2(symbols->module, symbols->symbols, symbols->count, text, out, size, "");
+}
+
+/* Cleanup is expanded by the shared KIR pass before target emission. */
 static void
 lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int restab_count, const KirFunction *fn)
 {
-    DeferEntry defers[64];
-    int defer_count = 0;
-    int scope_stack[64];
-    int scope_top = 0;
+    BodySymbols symbols = {m, restab, restab_count};
+    if(KirEmitBody(c, m, fn, KIR_CPP, resolve_body_symbol, &symbols)) return;
     int indent = 1;
     int j;
     char shadow[LOWER_TEXT_MAX];   /* param + local names shadow functions */
@@ -659,7 +670,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
                       shadow);
         switch(st->kind) {
         case KIR_STMT_BLOCK_CLOSE: {
-            int target = scope_top > 0 ? scope_stack[--scope_top] : 0;
             int skip_close = 0;
 
             if(k2cpp_in_array_init) {
@@ -683,12 +693,7 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
                 emit_indent(c, indent);
                 fprintf(c, "}\n");
             }
-            /* fire this scope's defers LIFO */
-            while(defer_count > 0 && defers[defer_count - 1].scope > target) {
-                defer_count--;
-                emit_indent(c, indent);
-                fprintf(c, "%s;\n", defers[defer_count].stmt);
-            }
+
             break;
         }
         case KIR_STMT_IF: {
@@ -697,14 +702,10 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
             snprintf(cond, sizeof(cond), "%s", rw);
             kir_strip_block_brace(cond);
             if(strncmp(cond, "guard ", 6) == 0) {
-                /* 'guard cond' -> if(cond) { fire defers; return; } */
+                /* 'guard cond' exits when the condition is true. */
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
                 emit_indent(c, indent);
                 fprintf(c, "if(%s) {\n", cond);
-                for(int d = defer_count - 1; d >= 0; d--) {
-                    emit_indent(c, indent + 1);
-                    fprintf(c, "%s;\n", defers[d].stmt);
-                }
                 emit_indent(c, indent + 1);
                 fprintf(c, "return;\n");
                 emit_indent(c, indent);
@@ -726,8 +727,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
                 emit_indent(c, indent);
                 fprintf(c, "if(%s) {\n", cond);
             }
-            scope_stack[scope_top] = scope_top;
-                scope_top++;
             indent++;
             break;
         }
@@ -740,8 +739,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
                 memmove(cond, cond + 6, strlen(cond + 6) + 1);
             emit_indent(c, indent);
             fprintf(c, "while(%s) {\n", cond);
-            scope_stack[scope_top] = scope_top;
-                scope_top++;
             indent++;
             break;
         }
@@ -757,8 +754,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
                         strlen(head + strlen(kw) + 1) + 1);
             emit_indent(c, indent);
             fprintf(c, "%s(%s) {\n", kw, head);
-            scope_stack[scope_top] = scope_top;
-                scope_top++;
             indent++;
             break;
         }
@@ -769,11 +764,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
         case KIR_STMT_RETURN:
             emit_indent(c, indent);
             fprintf(c, "%s;\n", rw);
-            /* fire all defers (non-spending) */
-            for(int d = defer_count - 1; d >= 0; d--) {
-                emit_indent(c, indent);
-                fprintf(c, "%s;\n", defers[d].stmt);
-            }
             break;
         case KIR_STMT_BREAK:
         case KIR_STMT_CONTINUE:
@@ -787,21 +777,9 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
         case KIR_STMT_LABEL:
             fprintf(c, "%s\n", rw);   /* no indent for labels */
             break;
-        case KIR_STMT_DEFER: {
-            const char *body = rw;
-
-            while(*body == ' ')
-                body++;
-            if(strncmp(body, "defer ", 6) == 0)
-                body += 6;
-            if(defer_count < 64) {
-                snprintf(defers[defer_count].stmt,
-                         sizeof(defers[0].stmt), "%s", body);
-                defers[defer_count].scope = scope_top;
-                defer_count++;
-            }
-            break;
-        }
+        case KIR_STMT_DEFER:
+            fprintf(stderr, "internal error: cleanup was not lowered\n");
+            exit(1);
         case KIR_STMT_UNUSED: {
             const char *u = rw;
 
@@ -995,12 +973,6 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
             }
             break;
         }
-    }
-    /* function-end defers */
-    while(defer_count > 0) {
-        defer_count--;
-        emit_indent(c, 1);
-        fprintf(c, "%s;\n", defers[defer_count].stmt);
     }
 }
 
@@ -1257,7 +1229,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     if(h == NULL)
         return;
     fprintf(h, "/* Generated by k2cpp from %s. */\n", m->source_path);
-    fprintf(h, "#ifndef %s\n#define %s\n\n", guard, guard);
+    fprintf(h, "#ifndef %s\n#define %s\n\n#include <stdint.h>\n#include <stdbool.h>\n", guard, guard);
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
 
@@ -1474,7 +1446,12 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     fprintf(c, "/* Generated by k2cpp from %s. */\n", m->source_path);
     fprintf(c, "#include \"%s.hpp\"\n", stem);
     fprintf(c, "#include <stdio.h>\n");
-    fprintf(c, "#include \"ui_inspect.h\"\n");
+    int needs_inspection = 0;
+    for(int fi = 0; fi < m->function_count; fi++)
+        if(!m->functions[fi].is_extern && !KirCanEmitBody(&m->functions[fi])) needs_inspection = 1;
+    if(needs_inspection)
+        fprintf(c, "#include \"ui_inspect.h\"\n");
+    KirEmitNumbers(c, m, KIR_CPP);
     /* '#private' imports include here (implementation-only). */
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
@@ -1574,9 +1551,12 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
         char suffix[LOWER_NAME_MAX];
 
         split_array_type(f->type, base, sizeof(base), suffix, sizeof(suffix));
+        char mapped[LOWER_NAME_MAX], init[LOWER_TEXT_MAX];
+        strip_alias_type(m,base,mapped,sizeof(mapped));
+        if(!KirScalarLiteral(f->type,f->init[0]?f->init:"0",KIR_CPP,f->span,init,sizeof(init)))
+            snprintf(init,sizeof(init),"%s",f->init[0]?f->init:"{0}");
         emit_guard_open(c, f->guard);
-        fprintf(c, "static %s %s%s = %s;\n", base, f->name, suffix,
-                f->init[0] ? f->init : "{0}");
+        fprintf(c, "static %s %s%s = %s;\n", mapped, f->name, suffix, init);
         emit_guard_close(c, f->guard);
     }
     for(i = 0; i < m->function_count; i++) {

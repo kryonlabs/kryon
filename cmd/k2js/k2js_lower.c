@@ -3,6 +3,8 @@
  */
 #include "k2js_lower.h"
 #include "kir_text.h"
+#include "kir_emit.h"
+#include "kir_check.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -766,6 +768,12 @@ emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
 }
 
 static void
+resolve_body_symbol(void *context, const char *text, char *out, size_t size)
+{
+    tx_expr(context,text,out,size);
+}
+
+static void
 lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                const char *guard)
 {
@@ -799,8 +807,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         fprintf(f, ", %s", safe);
     }
     fprintf(f, ") {\n");
-    fprintf(f, "  rt = rt || kryon.createRuntime();\n");
     fprintf(f, "  state = state || moduleState;\n");
+    if(KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m)) {
+        fprintf(f,"}\n\n"); return;
+    }
+    fprintf(f, "  rt = rt || kryon.createRuntime();\n");
     for(int j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
         char raw[K2JS_TEXT_MAX];
@@ -924,10 +935,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         case KIR_STMT_UNUSED:
             break;
+        case KIR_STMT_DEFER:
+            fprintf(stderr, "internal error: cleanup was not lowered\n");
+            exit(1);
         case KIR_STMT_FOR:
         case KIR_STMT_LABEL:
         case KIR_STMT_GOTO:
-        case KIR_STMT_DEFER:
         case KIR_STMT_RAW:
         default:
             emit_statement_record(f, indent, raw);
@@ -969,8 +982,14 @@ emit_state(FILE *f, const KirModule *m)
     for(int i = 0; i < m->state_count; i++) {
         char init[K2JS_TEXT_MAX];
 
-        tx_expr(m, m->state_fields[i].init[0] ? m->state_fields[i].init : "0",
-                init, sizeof(init));
+        const KirStateField *field=&m->state_fields[i];
+        const char *value=field->init[0]?field->init:!strcmp(KirScalarType(field->type),"bool")?"false":"0";
+        if(!KirScalarLiteral(field->type,value,KIR_JS,field->span,init,sizeof(init)))
+            tx_expr(m,value,init,sizeof(init));
+        if(!strcmp(KirScalarType(field->type),"f32")) {
+            char raw[K2JS_TEXT_MAX];snprintf(raw,sizeof(raw),"%s",init);
+            snprintf(init,sizeof(init),"Math.fround(%.8000s)",raw);
+        }
         fprintf(f, "    %s: %s%s\n", m->state_fields[i].name, init,
                 i + 1 < m->state_count ? "," : "");
     }
@@ -1059,6 +1078,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "import * as kryon from ");
             js_string(f, runtime_path);
             fprintf(f, ";\n\n");
+            KirEmitNumbers(f,m,KIR_JS);
             emit_app(f, m);
             emit_state(f, m);
             for(int i = 0; i < m->import_count; i++) {

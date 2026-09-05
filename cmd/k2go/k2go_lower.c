@@ -3,6 +3,8 @@
  */
 #include "k2go_lower.h"
 #include "kir_text.h"
+#include "kir_emit.h"
+#include "kir_check.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -142,6 +144,10 @@ go_type(const char *type, char *dst, size_t dst_size)
         if(p != t)
             memmove(t, p, strlen(p) + 1);
         n = strlen(t);
+    }
+    const char *scalar = KirScalarType(t);
+    if(*scalar && (!strcmp(t,scalar) || strstr(t,"_t")) && KirTargetType(t,KIR_GO)) {
+        snprintf(dst,dst_size,"%s",KirTargetType(t,KIR_GO)); return 1;
     }
     /* 'char *' / 'char  *' mean 'char*': drop spaces adjacent to '*' */
     for(size_t k = 0; t[k] != '\0'; k++) {
@@ -339,7 +345,6 @@ k2go_is_go_elided_lifecycle(const char *text)
 typedef struct {
     char kry[K2GO_NAME_MAX];        /* kry call name */
     char go[K2GO_NAME_MAX];         /* Host interface method */
-    char c_symbol[K2GO_NAME_MAX];   /* stripped C symbol for cgo calls */
     char go_import_path[KIR_PATH_MAX];  /* direct Go package import path */
     char go_import_alias[K2GO_NAME_MAX]; /* import alias for direct calls */
     char pnames[K2GO_EXTERN_PARAM_MAX][K2GO_NAME_MAX];  /* parameter names */
@@ -348,7 +353,6 @@ typedef struct {
     char ret[K2GO_NAME_MAX];
     char host_var[K2GO_NAME_MAX + 8];   /* guard-prefixed host var */
     int direct_go;
-    int cgo;
 } K2goExtern;
 
 /* One enum member visible to expressions (bare kry name -> qualified Go const). */
@@ -490,22 +494,16 @@ extern_direct_go_target(const char *target, char *import_path,
     return import_path[0] != '\0';
 }
 
-static int
-extern_c_target(const char *target, char *symbol, size_t symbol_size)
-{
-    if(target == NULL || strncmp(target, "c.", 2) != 0 || target[2] == '\0')
-        return 0;
-    snprintf(symbol, symbol_size, "%s", target + 2);
-    return 1;
-}
-
 /* Register one extern (idempotent: first declaration wins). */
 static void
 add_extern(const char *kry, const char *args, const char *ret,
-           const char *target)
+           const char *target, KirSourceSpan span)
 {
     K2goExtern *ex;
-    char fname[K2GO_NAME_MAX];
+    if(target && !strncmp(target, "c.", 2)) {
+        fprintf(stderr, "%s:%d:%d: native Go cannot import a C ABI symbol: %s; use a Go package or host interface\n", span.path, span.line, span.column, target);
+        exit(1);
+    }
 
     if(k2go_extern_index(kry, strlen(kry)) >= 0 || g_extern_count >= 64)
         return;
@@ -514,17 +512,11 @@ add_extern(const char *kry, const char *args, const char *ret,
     snprintf(ex->kry, sizeof(ex->kry), "%s", kry);
     snprintf(ex->ret, sizeof(ex->ret), "%s", ret);
     split_params(args, ex);
-    if(extern_c_target(target, ex->c_symbol, sizeof(ex->c_symbol))) {
-        ex->cgo = 1;
-        kir_camel_ident(kry, fname, sizeof(fname));
-        snprintf(ex->go, sizeof(ex->go), "k2goC%s%s", g_guard, fname);
-    } else {
-        extern_go_name(target, kry, ex->go, sizeof(ex->go));
-        ex->direct_go = extern_direct_go_target(target, ex->go_import_path,
-                                                sizeof(ex->go_import_path),
-                                                ex->go_import_alias,
-                                                sizeof(ex->go_import_alias));
-    }
+    extern_go_name(target, kry, ex->go, sizeof(ex->go));
+    ex->direct_go = extern_direct_go_target(target, ex->go_import_path,
+                                            sizeof(ex->go_import_path),
+                                            ex->go_import_alias,
+                                            sizeof(ex->go_import_alias));
     /* guard "KryApp" -> host var "kryAppHost" */
     snprintf(ex->host_var, sizeof(ex->host_var), "%c%sHost",
              (char)tolower((unsigned char)g_guard[0]), g_guard + 1);
@@ -577,7 +569,7 @@ parse_extern_import(const KirImport *imp)
             target[n] = '\0';
         }
     }
-    add_extern(imp->name, args, ret, target);
+    add_extern(imp->name, args, ret, target, imp->span);
 }
 
 /* Parse enum body members. The parser may deliver them newline-separated or
@@ -680,9 +672,9 @@ k2go_set_module(const KirModule *m, const char *guard)
             continue;
         if(fn->extern_target[0] != '\0')
             add_extern(fn->name, fn->args, fn->return_type,
-                       fn->extern_target);
+                       fn->extern_target, fn->span);
         else
-            add_extern(fn->name, fn->args, fn->return_type, "");
+            add_extern(fn->name, fn->args, fn->return_type, "", fn->span);
     }
     for(int i = 0; i < m->type_count; i++) {
         if(m->types[i].is_enum)
@@ -1746,10 +1738,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(*ae == ')')
                         ae++;
                     p = ae;
-                    if(g_externs[xi].cgo)
-                        dn += (size_t)snprintf(dst + dn, K2GO_TEXT_MAX - dn,
-                                               "%s(", g_externs[xi].go);
-                    else if(g_externs[xi].direct_go)
+                    if(g_externs[xi].direct_go)
                         dn += (size_t)snprintf(dst + dn, K2GO_TEXT_MAX - dn,
                                                "%s.%s(",
                                                g_externs[xi].go_import_alias,
@@ -2194,6 +2183,12 @@ init_done:
 }
 
 static void
+resolve_body_symbol(void *context, const char *text, char *out, size_t size)
+{
+    tx_expr(context, text, out, size);
+}
+
+static void
 lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                const char *guard)
 {
@@ -2240,6 +2235,9 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         if(go_type(fn->return_type, ret, sizeof(ret)) && ret[0] != '\0')
             fprintf(f, " %s", ret);
         fprintf(f, " {\n");
+    }
+    if(KirEmitBody(f,m,fn,KIR_GO,resolve_body_symbol,(void *)m)) {
+        fprintf(f,"}\n\n"); k2go_array_count=saved_array_count; return;
     }
     k2go_register_arrays_args(fn->args);
     for(int j = 0; j < fn->stmt_count; j++) {
@@ -2488,9 +2486,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             fprintf(f, "%s\n", KirStmtKindName(st->kind));
             break;
         case KIR_STMT_DEFER:
-            emit_indent(f, indent);
-            fprintf(f, "defer func() { %s }()\n", rw);
-            break;
+            fprintf(stderr, "internal error: cleanup was not lowered\n");
+            exit(1);
         case KIR_STMT_LABEL:
         case KIR_STMT_GOTO:
             /* 'name:' and 'goto name' are valid Go; forward jumps over
@@ -2540,355 +2537,6 @@ k2go_validate_asserts(const KirModule *m)
         }
     }
     return 1;
-}
-
-static void
-cgo_type_norm(const char *type, char *dst, size_t dst_size)
-{
-    char t[K2GO_NAME_MAX];
-    size_t n;
-
-    snprintf(t, sizeof(t), "%s", type != NULL ? type : "");
-    n = strlen(t);
-    while(n > 0 && (t[n - 1] == ' ' || t[n - 1] == '\t'))
-        t[--n] = '\0';
-    while(t[0] == ' ' || t[0] == '\t')
-        memmove(t, t + 1, strlen(t));
-    for(size_t i = 0; t[i] != '\0'; i++) {
-        if(t[i] == ' ' && t[i + 1] == '*') {
-            memmove(t + i, t + i + 1, strlen(t + i));
-            i = (size_t)-1;
-        }
-    }
-    snprintf(dst, dst_size, "%s", t);
-}
-
-static int
-cgo_type_has_const(const char *type)
-{
-    char t[K2GO_NAME_MAX];
-
-    cgo_type_norm(type, t, sizeof(t));
-    return strncmp(t, "const ", 6) == 0;
-}
-
-static void
-cgo_type_unconst(char *type)
-{
-    if(strncmp(type, "const ", 6) == 0)
-        memmove(type, type + 6, strlen(type + 6) + 1);
-}
-
-static int
-cgo_type_is_pointer(const char *type)
-{
-    char t[K2GO_NAME_MAX];
-    size_t n;
-
-    cgo_type_norm(type, t, sizeof(t));
-    n = strlen(t);
-    return n > 0 && t[n - 1] == '*';
-}
-
-static int
-cgo_type_is_char_pointer(const char *type)
-{
-    return k2go_char_ptr_type(type);
-}
-
-static int
-cgo_go_type(const char *type, char *dst, size_t dst_size)
-{
-    char t[K2GO_NAME_MAX];
-
-    cgo_type_norm(type, t, sizeof(t));
-    cgo_type_unconst(t);
-    if(strcmp(t, "void") == 0) {
-        dst[0] = '\0';
-        return 1;
-    }
-    if(cgo_type_is_char_pointer(type)) {
-        snprintf(dst, dst_size, "string");
-        return 1;
-    }
-    if(cgo_type_is_pointer(type)) {
-        snprintf(dst, dst_size, "unsafe.Pointer");
-        return 1;
-    }
-    return go_type(t, dst, dst_size);
-}
-
-static const char *
-cgo_c_scalar_type(const char *type)
-{
-    char t[K2GO_NAME_MAX];
-
-    cgo_type_norm(type, t, sizeof(t));
-    cgo_type_unconst(t);
-    if(strcmp(t, "bool") == 0)
-        return "bool";
-    if(strcmp(t, "char") == 0)
-        return "char";
-    if(strcmp(t, "unsigned char") == 0 || strcmp(t, "byte") == 0)
-        return "unsigned char";
-    if(strcmp(t, "short") == 0)
-        return "short";
-    if(strcmp(t, "unsigned short") == 0)
-        return "unsigned short";
-    if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0)
-        return "int";
-    if(strcmp(t, "unsigned int") == 0 || strcmp(t, "unsigned") == 0 ||
-       strcmp(t, "uint") == 0)
-        return "unsigned int";
-    if(strcmp(t, "long") == 0 || strcmp(t, "int64") == 0)
-        return "long";
-    if(strcmp(t, "unsigned long") == 0)
-        return "unsigned long";
-    if(strcmp(t, "long long") == 0)
-        return "long long";
-    if(strcmp(t, "unsigned long long") == 0)
-        return "unsigned long long";
-    if(strcmp(t, "size_t") == 0)
-        return "size_t";
-    if(strcmp(t, "ssize_t") == 0)
-        return "long";
-    if(strcmp(t, "float") == 0 || strcmp(t, "float32") == 0)
-        return "float";
-    if(strcmp(t, "double") == 0 || strcmp(t, "float64") == 0)
-        return "double";
-    if(strcmp(t, "void") == 0)
-        return "void";
-    return NULL;
-}
-
-static void
-cgo_c_decl_type(const char *type, char *dst, size_t dst_size)
-{
-    const char *scalar;
-
-    if(cgo_type_is_char_pointer(type)) {
-        snprintf(dst, dst_size, "%schar *",
-                 cgo_type_has_const(type) ? "const " : "");
-        return;
-    }
-    if(cgo_type_is_pointer(type)) {
-        snprintf(dst, dst_size, "void *");
-        return;
-    }
-    scalar = cgo_c_scalar_type(type);
-    snprintf(dst, dst_size, "%s", scalar != NULL ? scalar : type);
-}
-
-static void
-cgo_c_cast(const char *type, const char *expr, char *dst, size_t dst_size)
-{
-    char t[K2GO_NAME_MAX];
-
-    cgo_type_norm(type, t, sizeof(t));
-    cgo_type_unconst(t);
-    if(cgo_type_is_char_pointer(type)) {
-        snprintf(dst, dst_size, "%s", expr);
-    } else if(cgo_type_is_pointer(type)) {
-        snprintf(dst, dst_size, "unsafe.Pointer(%s)", expr);
-    } else if(strcmp(t, "bool") == 0) {
-        snprintf(dst, dst_size, "C.bool(%s)", expr);
-    } else if(strcmp(t, "char") == 0) {
-        snprintf(dst, dst_size, "C.char(%s)", expr);
-    } else if(strcmp(t, "unsigned char") == 0 || strcmp(t, "byte") == 0) {
-        snprintf(dst, dst_size, "C.uchar(%s)", expr);
-    } else if(strcmp(t, "short") == 0) {
-        snprintf(dst, dst_size, "C.short(%s)", expr);
-    } else if(strcmp(t, "unsigned short") == 0) {
-        snprintf(dst, dst_size, "C.ushort(%s)", expr);
-    } else if(strcmp(t, "int") == 0 || strcmp(t, "int32") == 0) {
-        snprintf(dst, dst_size, "C.int(%s)", expr);
-    } else if(strcmp(t, "unsigned int") == 0 || strcmp(t, "unsigned") == 0 ||
-              strcmp(t, "uint") == 0) {
-        snprintf(dst, dst_size, "C.uint(%s)", expr);
-    } else if(strcmp(t, "long") == 0 || strcmp(t, "int64") == 0 ||
-              strcmp(t, "ssize_t") == 0) {
-        snprintf(dst, dst_size, "C.long(%s)", expr);
-    } else if(strcmp(t, "unsigned long") == 0) {
-        snprintf(dst, dst_size, "C.ulong(%s)", expr);
-    } else if(strcmp(t, "long long") == 0) {
-        snprintf(dst, dst_size, "C.longlong(%s)", expr);
-    } else if(strcmp(t, "unsigned long long") == 0) {
-        snprintf(dst, dst_size, "C.ulonglong(%s)", expr);
-    } else if(strcmp(t, "size_t") == 0) {
-        snprintf(dst, dst_size, "C.size_t(%s)", expr);
-    } else if(strcmp(t, "float") == 0 || strcmp(t, "float32") == 0) {
-        snprintf(dst, dst_size, "C.float(%s)", expr);
-    } else if(strcmp(t, "double") == 0 || strcmp(t, "float64") == 0) {
-        snprintf(dst, dst_size, "C.double(%s)", expr);
-    } else {
-        snprintf(dst, dst_size, "%s", expr);
-    }
-}
-
-static void
-cgo_param_name(const K2goExtern *ex, int index, char *dst, size_t dst_size)
-{
-    size_t n;
-
-    if(index < ex->pcount && ex->pnames[index][0] != '\0')
-        snprintf(dst, dst_size, "%s", ex->pnames[index]);
-    else
-        snprintf(dst, dst_size, "arg%d", index);
-    for(char *p = dst; *p != '\0'; p++) {
-        if(!kir_is_ident_char((unsigned char)*p))
-            *p = '_';
-    }
-    if(!(isalpha((unsigned char)dst[0]) || dst[0] == '_')) {
-        n = strlen(dst);
-        if(n + 1 < dst_size) {
-            memmove(dst + 1, dst, n + 1);
-            dst[0] = 'x';
-        }
-    }
-}
-
-static int
-cgo_extern_needs_unsafe(const K2goExtern *ex)
-{
-    if(cgo_type_is_pointer(ex->ret) || cgo_type_is_char_pointer(ex->ret))
-        return 1;
-    for(int i = 0; i < ex->pcount; i++)
-        if(cgo_type_is_pointer(ex->ptypes[i]) ||
-           cgo_type_is_char_pointer(ex->ptypes[i]))
-            return 1;
-    return 0;
-}
-
-static void
-cgo_emit_call(FILE *f, const K2goExtern *ex)
-{
-    char ret_go[K2GO_NAME_MAX];
-
-    if(!cgo_go_type(ex->ret, ret_go, sizeof(ret_go)))
-        ret_go[0] = '\0';
-    if(ret_go[0] != '\0')
-        fprintf(f, "\treturn ");
-    else
-        fprintf(f, "\t");
-    if(cgo_type_is_char_pointer(ex->ret))
-        fprintf(f, "C.GoString(");
-    else if(cgo_type_is_pointer(ex->ret))
-        fprintf(f, "unsafe.Pointer(");
-    else if(ret_go[0] != '\0')
-        fprintf(f, "%s(", ret_go);
-    fprintf(f, "C.%s(", ex->c_symbol);
-    for(int i = 0; i < ex->pcount; i++) {
-        char pname[K2GO_NAME_MAX];
-        char arg[K2GO_TEXT_MAX];
-
-        cgo_param_name(ex, i, pname, sizeof(pname));
-        if(cgo_type_is_char_pointer(ex->ptypes[i]))
-            snprintf(arg, sizeof(arg), "c%s", pname);
-        else
-            cgo_c_cast(ex->ptypes[i], pname, arg, sizeof(arg));
-        fprintf(f, "%s%s", i > 0 ? ", " : "", arg);
-    }
-    fprintf(f, ")");
-    if(cgo_type_is_char_pointer(ex->ret) || cgo_type_is_pointer(ex->ret) ||
-       ret_go[0] != '\0')
-        fprintf(f, ")");
-    fprintf(f, "\n");
-}
-
-static void
-k2go_write_cgo_wrappers(const char *out_dir, const char *stem,
-                       const char *pkg)
-{
-    char path[1024];
-    FILE *f;
-    int count = 0;
-    int needs_unsafe = 0;
-
-    for(int i = 0; i < g_extern_count; i++) {
-        if(!g_externs[i].cgo)
-            continue;
-        count++;
-        if(cgo_extern_needs_unsafe(&g_externs[i]))
-            needs_unsafe = 1;
-    }
-    if(count == 0)
-        return;
-    snprintf(path, sizeof(path), "%s/%s_cgo.go", out_dir, stem);
-    mkdir_parent(path);
-    f = fopen(path, "wb");
-    if(f == NULL) {
-        fprintf(stderr, "k2go: cannot write %s\n", path);
-        return;
-    }
-    fprintf(f, "// Code generated by k2go from %s C externs. DO NOT EDIT.\n",
-            stem);
-    fprintf(f, "package %s\n\n", pkg);
-    fprintf(f, "/*\n");
-    fprintf(f, "#include <stdbool.h>\n");
-    fprintf(f, "#include <stddef.h>\n");
-    fprintf(f, "#include <stdint.h>\n");
-    fprintf(f, "#include <stdlib.h>\n\n");
-    for(int i = 0; i < g_extern_count; i++) {
-        const K2goExtern *ex = &g_externs[i];
-        char ret[K2GO_NAME_MAX];
-
-        if(!ex->cgo)
-            continue;
-        cgo_c_decl_type(ex->ret, ret, sizeof(ret));
-        fprintf(f, "extern %s %s(", ret[0] ? ret : "void", ex->c_symbol);
-        if(ex->pcount == 0) {
-            fprintf(f, "void");
-        } else {
-            for(int a = 0; a < ex->pcount; a++) {
-                char ctype[K2GO_NAME_MAX];
-                char pname[K2GO_NAME_MAX];
-
-                cgo_c_decl_type(ex->ptypes[a], ctype, sizeof(ctype));
-                cgo_param_name(ex, a, pname, sizeof(pname));
-                fprintf(f, "%s%s %s", a > 0 ? ", " : "", ctype, pname);
-            }
-        }
-        fprintf(f, ");\n");
-    }
-    fprintf(f, "*/\n");
-    fprintf(f, "import \"C\"\n");
-    if(needs_unsafe)
-        fprintf(f, "import \"unsafe\"\n");
-    fprintf(f, "\n");
-    for(int i = 0; i < g_extern_count; i++) {
-        const K2goExtern *ex = &g_externs[i];
-        char ret[K2GO_NAME_MAX];
-
-        if(!ex->cgo)
-            continue;
-        cgo_go_type(ex->ret, ret, sizeof(ret));
-        fprintf(f, "func %s(", ex->go);
-        for(int a = 0; a < ex->pcount; a++) {
-            char pname[K2GO_NAME_MAX];
-            char gt[K2GO_NAME_MAX];
-
-            cgo_param_name(ex, a, pname, sizeof(pname));
-            if(!cgo_go_type(ex->ptypes[a], gt, sizeof(gt)) || gt[0] == '\0')
-                snprintf(gt, sizeof(gt), "any");
-            fprintf(f, "%s%s %s", a > 0 ? ", " : "", pname, gt);
-        }
-        fprintf(f, ")");
-        if(ret[0] != '\0')
-            fprintf(f, " %s", ret);
-        fprintf(f, " {\n");
-        for(int a = 0; a < ex->pcount; a++) {
-            char pname[K2GO_NAME_MAX];
-
-            if(!cgo_type_is_char_pointer(ex->ptypes[a]))
-                continue;
-            cgo_param_name(ex, a, pname, sizeof(pname));
-            fprintf(f, "\tc%s := C.CString(%s)\n", pname, pname);
-            fprintf(f, "\tdefer C.free(unsafe.Pointer(c%s))\n", pname);
-        }
-        cgo_emit_call(f, ex);
-        fprintf(f, "}\n\n");
-    }
-    fclose(f);
 }
 
 /* Pure language modules must compile without a UI runtime import. Scan the
@@ -3008,6 +2656,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 /* KIR_IMPORT_EXTERN lowers either to direct Go imports above
                  * or to the Host interface below. */
             }
+            KirEmitNumbers(f,m,KIR_GO);
             /* '#extern' host bridge: one interface, one package var, one
              * setter. Generated frames call hostVar.Method(...) directly. */
             {
@@ -3015,7 +2664,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 int host_count = 0;
 
                 for(int i = 0; i < g_extern_count; i++) {
-                    if(g_externs[i].direct_go || g_externs[i].cgo)
+                    if(g_externs[i].direct_go)
                         continue;
                     if(first_host < 0)
                         first_host = i;
@@ -3030,7 +2679,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     const K2goExtern *ex = &g_externs[i];
                     char gt[K2GO_NAME_MAX];
 
-                    if(ex->direct_go || ex->cgo)
+                    if(ex->direct_go)
                         continue;
                     fprintf(f, "\t%s(", ex->go);
                     for(int a = 0; a < ex->pcount; a++) {
@@ -3159,7 +2808,8 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 kir_camel_ident(g->name, gname, sizeof(gname));
                 if(!go_type(g->type, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", g->type);
-                tx_expr(m, g->init, ginit, sizeof(ginit));
+                if(!KirScalarLiteral(g->type,g->init,KIR_GO,g->span,ginit,sizeof(ginit)))
+                    tx_expr(m, g->init, ginit, sizeof(ginit));
                 if(ginit[0] != '\0') {
                     if(ginit[0] == '{' && strstr(gt, "TODO") == NULL)
                         fprintf(f, "var %s = %s%s\n", gname, gt, ginit);
@@ -3190,7 +2840,8 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     kir_camel_ident(sf->name, fname, sizeof(fname));
                     if(!go_type(sf->type, gt, sizeof(gt)))
                         snprintf(gt, sizeof(gt), "any");
-                    tx_expr(m, sf->init, finit, sizeof(finit));
+                    if(!KirScalarLiteral(sf->type,sf->init,KIR_GO,sf->span,finit,sizeof(finit)))
+                        tx_expr(m, sf->init, finit, sizeof(finit));
                     if(finit[0] != '\0' &&
                        !(sf->type[0] == '[' && strstr(sf->type, "char") != NULL &&
                          strcmp(finit, "\"\"") == 0)) {
@@ -3293,7 +2944,6 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     fputc(k == runtime_import_end - 1 ? '\n' : ' ', f);
             }
             fclose(f);
-            k2go_write_cgo_wrappers(out_dir, stem, pkg);
         }
     }
     return 0;
