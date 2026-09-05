@@ -1,4 +1,24 @@
 # Changelog
+## v0.1.49 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.49
+- Ci: validate current site icon layout
+- Docs: preserve renderer page in site build
+- Build: repair examples Makefile
+- Ci: repair sanitizer coverage
+- Stdlib: add kry_zlib container primitives
+- Stdlib: add kry_xml and kry_gzip primitives
+- Ui: add immediate-mode widget slice with plots and sliders
+- Android: restore visible system bars after window focus
+- Test: pin bottom navigation to usable edge
+- Ui: use Android density for layout scale
+- Web: stabilize runtime asset initialization
+- Build: honor declared app theme source and mode
+- Ui: keep Slider as the frontend API
+- Ui: repeat deletion without backend key-repeat events
+
 ## v0.1.48 - 2026-09-04
 
 ### Changed
