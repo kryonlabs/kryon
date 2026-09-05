@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.50 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.50
+- Common.mk: default FONT_FILES to the bundled Noto face for vendored apps
+- Ui_text: log the resolved default font source, warn on bitmap fallback
+
 ## v0.1.49 - 2026-09-05
 
 ### Changed
