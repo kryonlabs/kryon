@@ -348,12 +348,12 @@ EndUIScrollContainer(UIScrollArea area, UIScrollView view)
     scrollbar_x = area.scrollbar_x > 0
                       ? area.scrollbar_x
                       : (int)(area.bounds.x + area.bounds.width) - scrollbar_w;
-    DrawUIScrollbar(scrollbar_x,
+    ui_scrollbar(scrollbar_x,
                       (int)area.bounds.y,
                       (int)area.bounds.height,
                       view.content_h,
                       area.scroll_offset,
-                      view.max_scroll);
+                      view.max_scroll, 0);
 }
 
 void
@@ -454,19 +454,31 @@ ui_scrollbar_ensure_visible(Color color, Color against,
     return ui_scrollbar_contrast_from(against, amount);
 }
 
+static int scrollbar_drag_active;
+static int *scrollbar_drag_offset;
+static int scrollbar_drag_start_y;
+static int scrollbar_drag_start_scroll;
+
+void
+ui_scrollbar_cancel(int *scroll_offset)
+{
+    if(scrollbar_drag_offset != scroll_offset) return;
+    if(scrollbar_drag_active && g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)
+        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+    scrollbar_drag_active = 0;
+    scrollbar_drag_offset = NULL;
+}
+
 int
-DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll)
+ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, int max_scroll, int overlay)
 {
     /* Dont show scrollbar if no scrolling needed */
-    if(max_scroll <= 0)
+    if(max_scroll <= 0) {
+        ui_scrollbar_cancel(scroll_offset);
         return 0;
+    }
     if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)
         return 0;
-
-    static int scrollbar_drag_active = 0;
-    static int *scrollbar_drag_offset = NULL;
-    static int scrollbar_drag_start_y = 0;
-    static int scrollbar_drag_start_scroll = 0;
 
     int scrollbar_width = ScaleUIPx(8);
     int scrollbar_min_thumb = ScaleUIPx(24);
@@ -497,7 +509,8 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
         thumb_y = y + viewport_h - thumb_height;
 
     Rectangle thumb_bounds = {x + track_padding, thumb_y, scrollbar_width - track_padding * 2, thumb_height};
-    int input_captured = ui_input_captures_click_internal(mouse_pos, 0);
+    int input_captured = overlay ? ui_base_input_captures_click(mouse_pos, 0)
+                                 : ui_input_captures_click_internal(mouse_pos, 0);
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;
     int thumb_hover = thumb_active && UIHoverEffectsEnabled();
 
@@ -528,11 +541,8 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
             if(*scroll_offset < 0) *scroll_offset = 0;
             if(*scroll_offset > max_scroll) *scroll_offset = max_scroll;
         }
-    } else {
-        if(scrollbar_drag_active && g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)
-            g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
-        scrollbar_drag_active = 0;
-        scrollbar_drag_offset = NULL;
+    } else if(scrollbar_drag_offset == scroll_offset) {
+        ui_scrollbar_cancel(scroll_offset);
     }
 
     Color track_color = ui_scrollbar_ensure_visible(
@@ -545,10 +555,13 @@ DrawUIScrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset,
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, track_color, 72, 78, 28);
     thumb_color = ui_scrollbar_ensure_visible(thumb_color, c_bg, 64, 62, 22);
 
-    DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
-    DrawRectangleRec(thumb_bounds, thumb_color);
-    DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
-                         ui_scrollbar_contrast_from(thumb_color, 34));
+    if(IsWindowReady()) {
+        thumb_bounds.y = y + (int)((float)*scroll_offset / max_scroll * track_span);
+        DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
+        DrawRectangleRec(thumb_bounds, thumb_color);
+        DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
+                             ui_scrollbar_contrast_from(thumb_color, 34));
+    }
 
     return 1;
 }

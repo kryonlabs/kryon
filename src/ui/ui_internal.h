@@ -137,8 +137,9 @@ void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
 void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
-int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
-                    int *scroll_offset, int max_scroll);
+int ui_scrollbar(int x, int y, int viewport_h, int content_h,
+                 int *scroll_offset, int max_scroll, int overlay);
+void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
 void ui_button_style_colors(ButtonStyle style, Color *background, Color *hover_background, Color *text_color);
 int HandleButton(ButtonSpec button);

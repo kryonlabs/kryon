@@ -60,9 +60,36 @@ highlight separate from committed selection. Native tests navigate a 131-option
 list, confirm with Enter, cancel with Escape and reopen. The C test also selects
 the last option by pointer after End, verifying that keyboard navigation reveals
 it in the constrained viewport. Generated C/Go checks exercise Home/End and
-confirmation without prematurely changing selection. Keyboard opening and
-general popup keyboard-focus isolation remain gaps; these tests do not prove
-complete ImGui navigation semantics.
+confirmation without prematurely changing selection, opening the control with
+Space through its focus ID. Native unit tests cover opening focused positive-ID
+controls with Enter, keypad Enter, Space and Down, without moving or committing
+the selection, and reject opening under both property and scope disabling.
+Go also checks the focused paint record and focus border. General popup
+keyboard-focus isolation remains a gap; these tests do not prove complete ImGui
+navigation semantics.
+
+Native Go now constrains and flips long dropdowns using the same placement
+rules as C, reusing its ordinary scroll container for clipping, wheel input and
+scrollbar interaction. A generated C/Go regression opens a 20-option control
+near the bottom of the window, navigates to End and selects its revealed last
+row by pointer above the control. Go unit tests also exercise 131 options in
+both popup directions, retained wheel position, visible-row-only paint records,
+and dismissal cleanup. This is vertical viewport coverage, not proof of every
+popup placement policy, touch gesture or rendering backend.
+The generated native fixture also drags the scrollbar to the last row and
+releases over another row without selecting it, then selects the revealed last
+row with a fresh click. C dropdown scrollbar input now runs headlessly and is
+not blocked by its own popup capture. Native unit tests dismiss an active thumb
+drag via Escape, disabling, and owner removal, checking release of drag state.
+The real C framebuffer regression also drags a popup thumb, verifies the text
+renderer receives the last row immediately, and compares that frame pixel for
+pixel with the following stationary-pointer frame. This catches delayed row
+painting independently of the headless selection checks.
+Native C/Go also constrain popup width and horizontal position to the window.
+Unit tests exercise partially off-screen owners at either edge and owners wider
+than the window, including capture bounds and row selection. Generated native
+parity selects a popup row shifted left from a right-edge owner. These checks
+do not cover multi-monitor work areas or arbitrary popup placement flags.
 
 `tests/parity/drag_drop.kry` is executed through generated C and Go. A clipped
 source cannot activate, and a clipped target cannot consume the release before

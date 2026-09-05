@@ -151,9 +151,9 @@ def run_dialogs():
     click(790,240,3);capture('context-open');xd('key','Escape')
     category(5)
     for name,x,value in [('MessageDialog',490,1),('ConfirmDialog',735,2),('PromptDialog',900,3)]:
-     check(name,'dialog',lambda x=x:click(x,139),value);capture(name);xd('key','Escape');time.sleep(.2)
+     check(name,'dialog',lambda x=x:click(x,139),value);capture(name);key_chord('Escape');time.sleep(.2)
      if state()['dialog']!=0:
-      click(710 if value != 3 else 710,447 if value != 3 else 470)
+      click(710,447)
       time.sleep(.3)
      if state()['dialog']!=0:
       capture('dialog-needs-close')
@@ -207,13 +207,16 @@ def run_new_dialogs():
 
 def run_remaining():
     category(5)
+    # Exercise the toggle from dark regardless of the host's initial theme.
+    if not state()['dark']:
+        click(385,189)
     check('Theme light','dark',lambda:click(385,189),0)
     check('Theme light rendered','effective_dark',lambda:None,0)
     check('Theme palette','theme',lambda:click(790,189))
     capture('theme-light')
-    click(900,139);click(520,410);key_chord('ctrl+a');xd('type','--clearmodifiers','PROMPT_TEST');click(710,447)
+    click(900,139);click(520,410);key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'PROMPT_TEST');capture('prompt-typed');click(710,447)
     check('Prompt submit','dialog',lambda:None,0);check('Prompt value','text_test',lambda:None,1)
-    click(730,530);check('Popover opens','dialog',lambda:None,7);capture('popover-new');click(760,587);key_chord('ctrl+a');xd('type','--clearmodifiers','POPOVER_TEST');key_chord('Return');time.sleep(.3)
+    click(730,530);check('Popover opens','dialog',lambda:None,7);capture('popover-new');click(760,587);key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'POPOVER_TEST');key_chord('Return');time.sleep(.3)
     check('Popover submit','dialog',lambda:None,0);check('Popover value','text_test',lambda:None,1)
     category(3);xd('mousemove','--window',window,1100,620);xd('click','--repeat',9,'--delay',25,5)
     check('Cascading expand','cascade_count',lambda:click(285,495),2)

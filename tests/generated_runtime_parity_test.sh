@@ -456,6 +456,28 @@ func main() {
 		if ScrollContentStateValue.OverlaySelected != want { panic("combo keyboard commit failed") }
 	}
 
+	driver.SetFocus(24001)
+	driver.QueueKey(kryon.KeySpace); drawScroll()
+	driver.QueueKey(kryon.KeyEnd); drawScroll()
+	if ScrollContentStateValue.LongComboSelected != 0 { panic("long combo navigation committed early") }
+	driver.QueueTap(20,420); drawScroll()
+	if ScrollContentStateValue.LongComboSelected != 19 { panic("long combo flipped viewport did not reveal last row") }
+	ScrollContentStateValue.LongComboSelected = 0
+	driver.SetFocus(24001)
+	driver.QueueKey(kryon.KeySpace); drawScroll()
+	driver.QueueMouseButtonDown(kryon.MouseButtonLeft,166,50); drawScroll()
+	driver.QueueMouseMove(166,425); drawScroll()
+	driver.QueueMouseButtonUp(kryon.MouseButtonLeft,20,60); drawScroll()
+	if ScrollContentStateValue.LongComboSelected != 0 { panic("combo scrollbar drag selected a row") }
+	driver.QueueTap(20,420); drawScroll()
+	if ScrollContentStateValue.LongComboSelected != 19 { panic("combo scrollbar did not reveal last row") }
+	ScrollContentStateValue.EdgeComboVisible = true
+	driver.SetFocus(24002)
+	driver.QueueKey(kryon.KeySpace); drawScroll()
+	driver.QueueTap(490,380); drawScroll()
+	if ScrollContentStateValue.EdgeComboSelected != 1 { panic("edge combo shifted popup row did not select") }
+	ScrollContentStateValue.EdgeComboVisible = false
+
 	driver.QueueTap(450,270); drawScroll()
 	if ScrollContentStateValue.RotatedSort != -1 { panic("slanted header empty wedge sorted") }
 	driver.QueueTap(590,230); drawScroll()
@@ -1030,6 +1052,37 @@ int main(void)
         for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
         if(overlay_selected != last) { fprintf(stderr,"combo keyboard commit failed\n"); return 1; }
     }
+    InjectReset();
+    SetUIFocus(24001);
+    InjectKeyTap(KEY_SPACE);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    InjectKeyTap(KEY_END);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    if(long_combo_selected != 0) { fprintf(stderr,"long combo navigation committed early\n"); return 1; }
+    InjectTap(20,420);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    if(long_combo_selected != 19) { fprintf(stderr,"long combo flipped viewport did not reveal last row\n"); return 1; }
+    long_combo_selected = 0;
+    SetUIFocus(24001);
+    InjectKeyTap(KEY_SPACE);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectMousePosition(166,425);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectMousePosition(20,60); InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    if(long_combo_selected != 0) { fprintf(stderr,"combo scrollbar drag selected a row\n"); return 1; }
+    InjectTap(20,420);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    if(long_combo_selected != 19) { fprintf(stderr,"combo scrollbar did not reveal last row\n"); return 1; }
+    edge_combo_visible = 1;
+    SetUIFocus(24002); InjectKeyTap(KEY_SPACE);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    InjectTap(490,380);
+    for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+    if(edge_combo_selected != 1) { fprintf(stderr,"edge combo shifted popup row did not select\n"); return 1; }
+    edge_combo_visible = 0;
     InjectReset();
     InjectTap(450,270);
     InjectPump(); draw_ui(scroll_content_frame);

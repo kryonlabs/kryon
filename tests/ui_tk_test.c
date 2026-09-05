@@ -433,6 +433,68 @@ test_combo_keyboard_navigation(void)
 }
 
 static void
+test_combo_horizontal_viewport(void)
+{
+    const Rectangle bounds[] = {{-20,10,160,28},{200,10,160,28},{10,10,400,28}};
+    const char *options[] = {"One","Two"};
+    for(int i = 0; i < 3; i++) {
+        int selected = 0;
+        InjectReset(); InjectKeyTap(KEY_SPACE);
+        for(int frame = 0; frame < 3; frame++) {
+            InjectPump(); BeginUIFrame(240,240,1); SetUIFocus(25002);
+            Combobox((ComboboxProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
+            EndUIFrame();
+        }
+        int x = i == 1 ? 92 : 12;
+        check_int("shifted popup captures row",ui_dropdown_captures_click((Vector2){x,80}),1);
+        check_int("popup left edge bounded",ui_dropdown_captures_click((Vector2){-1,80}),0);
+        check_int("popup right edge bounded",ui_dropdown_captures_click((Vector2){241,80}),0);
+        InjectTap(x,80);
+        for(int frame = 0; frame < 3; frame++) {
+            InjectPump(); BeginUIFrame(240,240,1);
+            Combobox((ComboboxProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
+            EndUIFrame();
+        }
+        check_int("shifted popup selected second row",selected,1);
+        InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+    }
+}
+
+static void
+test_combo_scrollbar_dismissal(void)
+{
+    const char *options[131];
+    for(int i = 0; i < 131; i++) options[i] = "item";
+    for(int mode = 0; mode < 3; mode++) {
+        int selected = 0;
+        InjectReset();
+        InjectKeyTap(KEY_SPACE);
+        for(int frame = 0; frame < 3; frame++) {
+            InjectPump(); BeginUIFrame(240,240,1);
+            SetUIFocus(25001);
+            Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+                .options=options,.option_count=131,.selected_index=&selected});
+            EndUIFrame();
+        }
+        InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+        InjectPump(); BeginUIFrame(240,240,1);
+        Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+            .options=options,.option_count=131,.selected_index=&selected});
+        EndUIFrame();
+        check_int("combo scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
+        if(mode == 0) InjectKeyTap(KEY_ESCAPE);
+        InjectPump(); BeginUIFrame(240,240,1);
+        if(mode != 2)
+            Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+                .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
+        EndUIFrame();
+        check_int("dismissed combo scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
+        check_int("dismissed combo scrollbar released capture",ui_dropdown_captures_click((Vector2){20,70}),0);
+        InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+    }
+}
+
+static void
 test_combo_keyboard_open(void)
 {
     const char *options[] = {"One", "Two"};
@@ -957,6 +1019,8 @@ main(void)
     test_large_combo_options();
     test_combo_keyboard_navigation();
     test_combo_keyboard_open();
+    test_combo_scrollbar_dismissal();
+    test_combo_horizontal_viewport();
     test_custom_table_cell_scope();
     test_retained_scope_clip();
     test_list_box_scope();

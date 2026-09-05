@@ -1320,12 +1320,21 @@ int Dropdown(int id, int x, int y, int w, int h,
 void Overlays(void);
 ```
 
-In native C and Go, an open `Dropdown`/`Combobox` supports Up/Down to move the
+In native C and Go, a focused, enabled `Dropdown`/`Combobox` with a positive ID
+opens with Enter, keypad Enter, Space, or Down. The opening key does not move
+the highlight or commit a selection. Focused controls display a focus indicator;
+disabled controls neither open from the keyboard nor display that indicator.
+An open `Dropdown`/`Combobox` supports Up/Down to move the
 highlight, Home/End to jump to the first/last option, and Enter to commit and
 close. Escape closes without committing the highlight. Navigation clamps to
-the current option list. C scrolls the highlighted row into its constrained
-popup viewport. These behaviors do not yet provide keyboard opening of a
-closed control or general keyboard-focus isolation for arbitrary popup children.
+the current option list. Both native runtimes constrain the popup vertically,
+flip it above the control when needed, and scroll the highlighted row into view.
+Popup width is capped to the window width and its horizontal position is shifted
+inside the window; the owner button keeps its declared bounds. Painting and
+input capture use the same shifted rectangle.
+Go uses the shared scroll container for wheel input, scrollbar dragging and
+row clipping, painting only visible rows. These behaviors do not yet provide general keyboard-focus
+isolation for arbitrary popup children or complete ImGui navigation semantics.
 
 #### Segmented Control
 

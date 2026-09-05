@@ -1371,6 +1371,7 @@ type runtime struct {
 	contextMenus      map[int32]Vector2
 	openDropdowns     map[int32]bool
 	dropdownHighlight map[int32]int32
+	dropdownOffsets   map[int32]*int32
 	dropdownsSeen     map[int32]bool
 	popupPanels       map[int32]popupInputPanel
 	popupInputScopes  []popupInputToken
@@ -3082,8 +3083,8 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		}
 	}
 	open := r.openDropdowns[id]
+	panel := r.dropdownPanel(bounds, len(labels))
 	if open && !pressed {
-		panel := Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height + 4, Width: bounds.Width, Height: bounds.Height * float32(len(labels))}
 		if r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel) {
 			open = false
 		}
@@ -3093,7 +3094,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 			}
 		}
 	}
-	if len(labels) == 0 || r.keyDown[KeyEscape] {
+	if len(labels) == 0 || bounds.Height <= 0 || r.keyDown[KeyEscape] {
 		open = false
 	}
 	changed := false
@@ -3134,8 +3135,6 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		return pressed || changed
 	}
 	itemH := bounds.Height
-	menuY := bounds.Y + bounds.Height + 4
-	panel := Rectangle{X: bounds.X, Y: menuY, Width: bounds.Width, Height: itemH * float32(len(labels))}
 	layer := r.beginPaintLayer(id)
 	input := r.beginPopupInput(id, panel)
 	defer func() {
@@ -3143,8 +3142,32 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		r.endPaintLayer(layer)
 	}()
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border, ID: id})
-	for i, label := range labels {
-		row := Rectangle{X: bounds.X, Y: menuY + float32(i)*itemH, Width: bounds.Width, Height: itemH}
+	if r.dropdownOffsets == nil {
+		r.dropdownOffsets = make(map[int32]*int32)
+	}
+	offset := r.dropdownOffsets[id]
+	if offset == nil {
+		offset = new(int32)
+		r.dropdownOffsets[id] = offset
+	}
+	viewport := panel
+	viewport.Y += 4
+	viewport.Height = max(float32(0), viewport.Height-8)
+	if pressed || r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd] {
+		top := float32(r.dropdownHighlight[id]) * itemH
+		if top < float32(*offset) {
+			*offset = int32(top)
+		} else if top+itemH > float32(*offset)+viewport.Height {
+			*offset = int32(top + itemH - viewport.Height)
+		}
+	}
+	content := r.BeginScroll(viewport, int32(min(float64(itemH)*float64(len(labels)), float64(2147483647))), offset)
+	defer r.EndScroll()
+	first := max(0, int(float32(*offset)/itemH))
+	last := min(len(labels), int(math.Ceil(float64((float32(*offset)+viewport.Height)/itemH))))
+	for i := first; i < last; i++ {
+		label := labels[i]
+		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
 		selectedRow := selected != nil && int32(i) == *selected
 		if selectedRow || r.dropdownHighlight[id] == int32(i) {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: mixColor(theme.surface, theme.button, 0.35), ID: id, Row: int32(i), Selected: selectedRow, Focused: r.dropdownHighlight[id] == int32(i)})

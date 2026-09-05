@@ -23,6 +23,7 @@ typedef struct UIDropdownState {
     int touch_press_start_y;
     int touch_press_scroll;
     int touch_drag_active;
+    int scrollbar_pressed;
     int clip_top;
     int clip_bottom;
     unsigned long frame_seen;
@@ -189,18 +190,23 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
     *dropdown_h = total_h;
 }
 
+static Rectangle
+dropdown_menu_bounds(const UIDropdownState *state)
+{
+    int y = 0, height = 0;
+    dropdown_menu_layout(state, &y, &height, NULL, NULL);
+    int width = ui_clampi(state->w, 0, ui_view_width);
+    int x = ui_clampi(state->x, 0, ui_view_width - width);
+    return (Rectangle){x, y, width, height};
+}
+
 int
 ui_dropdown_captures_click(Vector2 point)
 {
     for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next) {
-        int dropdown_y = 0;
-        int dropdown_h = 0;
-        Rectangle bounds;
-
         if(!state->open || state->option_count <= 0)
             continue;
-        dropdown_menu_layout(state, &dropdown_y, &dropdown_h, NULL, NULL);
-        bounds = (Rectangle){state->x, dropdown_y, state->w, dropdown_h};
+        Rectangle bounds = dropdown_menu_bounds(state);
         if(CheckCollisionPointRec(point, bounds))
             return 1;
     }
@@ -212,10 +218,12 @@ close_dropdown_state(UIDropdownState *state)
 {
     if(state == NULL)
         return;
+    ui_scrollbar_cancel(&state->scroll_offset);
     state->open = 0;
     state->just_opened = 0;
     state->touch_pressed = 0;
     state->touch_drag_active = 0;
+    state->scrollbar_pressed = 0;
 }
 
 void
@@ -503,9 +511,13 @@ draw_dropdown_menu(int id)
     int content_h = dropdown_content_height(option_count, option_h, padding_top + padding_bottom);
     int max_scroll;
     int scrollbar_w = ScaleUIPx(8);
+    Rectangle btn_bounds = {x, y, w, h};
+    Rectangle menu_bounds = dropdown_menu_bounds(state);
+    x = (int)menu_bounds.x;
+    w = (int)menu_bounds.width;
+    dropdown_y = (int)menu_bounds.y;
+    dropdown_h = (int)menu_bounds.height;
     int option_w = w;
-
-    dropdown_menu_layout(state, &dropdown_y, &dropdown_h, NULL, NULL);
     max_scroll = content_h - dropdown_h;
     if(max_scroll < 0)
         max_scroll = 0;
@@ -516,22 +528,24 @@ draw_dropdown_menu(int id)
     if(max_scroll > 0)
         option_w = w - scrollbar_w - ScaleUIPx(2);
 
-    Rectangle menu_bounds = {x, dropdown_y, w, dropdown_h};
-    Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
     int my = (int)mouse.y;
     int pointer_in_dropdown = CheckCollisionPointRec(mouse, btn_bounds) ||
                               CheckCollisionPointRec(mouse, menu_bounds);
+    Rectangle scrollbar_bounds = {x + w - scrollbar_w, dropdown_y, scrollbar_w, dropdown_h};
+    if(max_scroll > 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+       CheckCollisionPointRec(mouse, scrollbar_bounds))
+        state->scrollbar_pressed = 1;
 
     /* Track pointer movement to distinguish click from drag */
-    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !state->scrollbar_pressed) {
         if(!state->touch_pressed && pointer_in_dropdown) {
             /* Pointer just went down - reset drag state */
             state->touch_pressed = 1;
             state->touch_press_start_y = my;
             state->touch_press_scroll = state->scroll_offset;
             state->touch_drag_active = 0;
-        } else if(!state->touch_drag_active) {
+        } else if(state->touch_pressed && !state->touch_drag_active) {
             /* Movement beyond the threshold makes it a drag - but only
              * when the list can actually scroll, otherwise a touchpad
              * clicks natural wobble would swallow every selection. */
@@ -645,12 +659,18 @@ draw_dropdown_menu(int id)
         }
     }
 
+    /* Resolve thumb input before rows use the offset, so thumb and content
+     * paint the same state on the drag frame. The panel is already painted. */
+    if(max_scroll > 0)
+        ui_scrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
+                     dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll, 1);
+
     if(can_draw) {
         BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
                     (int)(g_ui_camera.offset.y +
-                          (float)dropdown_y * g_ui_camera.zoom),
-                    (int)((float)w * g_ui_camera.zoom),
-                    (int)((float)dropdown_h * g_ui_camera.zoom));
+                          (float)(dropdown_y + padding_top) * g_ui_camera.zoom),
+                    (int)((float)option_w * g_ui_camera.zoom),
+                    (int)((float)(dropdown_h - padding_top - padding_bottom) * g_ui_camera.zoom));
         clip_started = 1;
     }
 
@@ -713,12 +733,12 @@ draw_dropdown_menu(int id)
                                                           tokens.control_radius),
                                              12, c_button_hover);
                 } else {
-                    DrawRectangle(x, visible_y, w, visible_h, c_button_hover);
+                    DrawRectangle(x, visible_y, option_w, visible_h, c_button_hover);
                 }
             }
             if(option_active) MarkUIClickable();
 
-            if(option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened &&
+            if(option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->scrollbar_pressed &&
                (!state->touch_drag_active ||
                 state->scroll_offset == state->touch_press_scroll)) {
                 ClearTextInputFocus();
@@ -747,9 +767,7 @@ draw_dropdown_menu(int id)
     if(clip_started)
         EndUIClip();
 
-    if(can_draw && max_scroll > 0)
-        DrawUIScrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
-                          dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll);
+    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) state->scrollbar_pressed = 0;
 
 draw_arrow:
     ;
@@ -757,7 +775,7 @@ draw_arrow:
     /* Redraw arrow on top of everything */
     int arrow_pad = ScaleUIPx(24);
     int arrow_size = ScaleUIPx(6);
-    int arrow_x = x + w - arrow_pad;
+    int arrow_x = state->x + state->w - arrow_pad;
     int arrow_y = y + h / 2;
 
     /* Draw dropdown X icon */
@@ -794,6 +812,7 @@ ui_draw_dropdown_overlays(void)
         UIDropdownState *state = *link;
         if(state->frame_seen != g_ui_frame_serial) {
             *link = state->next;
+            close_dropdown_state(state);
             dropdown_resize_options(state, 0);
             free(state);
             continue;

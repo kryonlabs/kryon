@@ -1982,9 +1982,9 @@ DrawUIListBox(ListBoxProps list)
     if(paint)
         EndUIClip();
     if(paint && list.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
-                        list.item_count * row_h, list.scroll_offset, max_scroll);
+                        list.item_count * row_h, list.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2044,9 +2044,9 @@ DrawUITreeView(TreeViewProps tree)
     if(paint)
         EndUIClip();
     if(paint && tree.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
-                        tree.item_count * row_h, tree.scroll_offset, max_scroll);
+                        tree.item_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2304,9 +2304,9 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
     }
     EndUIClip();
     if(tree.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
-                        visible_count * row_h, tree.scroll_offset, max_scroll);
+                        visible_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2506,10 +2506,10 @@ DrawUISourceView(SourceViewProps source)
     EndUIClip();
 
     if(source.scroll_y != NULL && max_scroll_y > 0)
-        DrawUIScrollbar((int)(source.bounds.x + source.bounds.width -
+        ui_scrollbar((int)(source.bounds.x + source.bounds.width -
                               ScaleUIPx(8)),
                         (int)source.bounds.y, (int)source.bounds.height,
-                        content_h, source.scroll_y, max_scroll_y);
+                        content_h, source.scroll_y, max_scroll_y, 0);
     return max_scroll_x > 0 || max_scroll_y > 0;
 }
 
@@ -2952,11 +2952,11 @@ DrawUITableView(TableViewProps table)
     if(paint)
         EndUIClip();
     if(paint && table.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
                         (int)(table.bounds.y + header_h + frozen_rows * row_h),
                         scroll_body_h,
                         (table.row_count - frozen_rows) * row_h,
-                        table.scroll_offset, max_scroll);
+                        table.scroll_offset, max_scroll, 0);
     return changed;
 }
 

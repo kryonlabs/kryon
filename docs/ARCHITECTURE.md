@@ -35,6 +35,20 @@ strings reuse their allocations; shrinking lists and retired controls release
 their owned storage. Overlay painting visits visible rows only, and content
 height saturates at the runtime's integer coordinate limit.
 
+The private C `ui_scrollbar` helper handles interaction independently of window
+painting. Dropdown overlays use base input capture so their own popup capture
+does not block the thumb, while ordinary scrollbars retain full popup capture.
+Dismissal and owner retirement cancel a dropdown's active scrollbar before its
+offset storage is released. Scrollbar drags are distinct from popup content
+drags and cannot select an option on release. The shared C scrollbar drag slot
+is still process-global; this does not complete per-window input ownership.
+Dropdowns process and paint the scrollbar after the panel background but before
+emitting rows, so both use the updated offset in the drag frame. Row painting
+is clipped to the content area, excluding popup padding and the scrollbar.
+The C popup bounds helper and Go dropdown layout constrain horizontal placement
+and width to the UI view. Hit testing, capture and painting share the popup
+rectangle rather than assuming that its horizontal bounds match the owner.
+
 The shared KIR parser lowers `.kry` `Disabled { when = condition ... }` blocks
 to existing runtime calls and lexical cleanup. The same cleanup pass used for
 `defer` closes the scope on normal exit, return, break and continue before any
@@ -106,6 +120,11 @@ numeric editor input path are still separate; consolidation is not complete.
 
 Native Go collects deferred popup paint in `go/kryon/paint_layers.go`, using
 ordinary frame operations rather than dropdown-specific drawing records.
+Dropdown placement lives in `dropdown_layout.go`; capture and painting share
+the resulting constrained, optionally upward-facing rectangle. Popup rows use
+the ordinary scroll container, with runtime-owned stable offset storage that
+is released on dismissal or owner removal. Keyboard navigation reveals rows
+without overriding wheel scrolling on idle frames; only visible rows are emitted.
 Nested layers paint above their parents and restore the surrounding layout,
 clip and disabled state. Existing dropdowns use this collector and the private
 `popup_input.go` registry for scoped click ownership. That registry tracks

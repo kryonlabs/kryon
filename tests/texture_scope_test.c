@@ -408,6 +408,64 @@ int main(void)
     InjectReset();
     BeginUIFrame(240,240,1);
     EndUIFrame();
+    /* Thumb and rows must reflect the same scroll offset on the drag frame,
+     * not settle into agreement one frame later. Compare real framebuffer
+     * pixels while holding the pointer still after moving the thumb. */
+    RenderTexture2D popup_target = LoadRenderTexture(240,240);
+    if(popup_target.id == 0) return 1;
+    const char *scroll_options[20];
+    for(int i = 0; i < 20; i++) scroll_options[i] = i == 19 ? "Last row" : "Row";
+    int scroll_selected = 0;
+    Image drag_frame = {0};
+    InjectReset();
+    InjectKeyTap(KEY_SPACE);
+    for(int frame = 0; frame < 6; frame++) {
+        if(frame == 3) {
+            InjectMousePosition(166,50);
+            InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+        }
+        /* A real window resumes its native cursor unless position is
+         * injected for each frame; explicitly keep this drag stationary. */
+        if(frame >= 4) InjectMousePosition(166,210);
+        InjectPump();
+        BeginTextureMode(popup_target);
+        ClearBackground(BLACK);
+        BeginUIFrame(240,240,1);
+        SetUIFocus(22001);
+        Combobox((ComboboxProps){.bounds={10,10,160,28},.id=22001,
+            .options=scroll_options,.option_count=20,.selected_index=&scroll_selected});
+        int previous_draws = full_dropdown_text_draws;
+        if(frame == 4) expected_dropdown_text = "Last row";
+        EndUIFrame();
+        expected_dropdown_text = NULL;
+        if(frame == 3 && g_ui_pointer_owner != UI_POINTER_OWNER_SCROLL) {
+            fprintf(stderr,"rendered popup scrollbar did not acquire drag\n");
+            failures++;
+        }
+        if(frame == 4 && full_dropdown_text_draws == previous_draws) {
+            fprintf(stderr,"rendered popup did not reveal last row on drag frame\n");
+            failures++;
+        }
+        EndTextureMode();
+        if(frame == 4) drag_frame = LoadImageFromTexture(popup_target.texture);
+        if(frame == 5) {
+            Image settled = LoadImageFromTexture(popup_target.texture);
+            int mismatches = 0;
+            for(int y = 0; y < 240; y++)
+                for(int x = 0; x < 240; x++) {
+                    Color a = GetImageColor(drag_frame,x,y), b = GetImageColor(settled,x,y);
+                    if(memcmp(&a,&b,sizeof(Color)) != 0) mismatches++;
+                }
+            if(mismatches) {
+                fprintf(stderr,"popup drag paint lagged by one frame at %d pixels\n",mismatches);
+                failures++;
+            }
+            UnloadImage(drag_frame);
+            UnloadImage(settled);
+        }
+    }
+    InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+    UnloadRenderTexture(popup_target);
     UnloadRenderTexture(leaf); UnloadRenderTexture(inner); UnloadRenderTexture(outer);
     CloseWindow();
     if(failures == 0) puts("nested texture scope pixels ok");
