@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.51 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.51
+- Implement libdraw gradient and standard software blend modes
+- Fix libdraw build after moving shared image functions
+- Tint modal action icons for the active theme
+- Honor bottom navigation icon tint in the Go runtime
+- Allow apps to tint bottom navigation icons with theme colors
+
 ## v0.1.50 - 2026-09-05
 
 ### Changed
