@@ -18,6 +18,22 @@
 #define KRY_LIBDRAW_KEY_CAP 512
 #define KRY_LIBDRAW_MAX_TEXT_DRAWS 2048
 
+Rectangle GetCollisionRec(Rectangle a, Rectangle b)
+{
+    Rectangle result = {0};
+    float left = a.x > b.x ? a.x : b.x;
+    float top = a.y > b.y ? a.y : b.y;
+    float right = a.x + a.width < b.x + b.width ? a.x + a.width : b.x + b.width;
+    float bottom = a.y + a.height < b.y + b.height ? a.y + a.height : b.y + b.height;
+    if(right > left && bottom > top) {
+        result.x = left;
+        result.y = top;
+        result.width = right - left;
+        result.height = bottom - top;
+    }
+    return result;
+}
+
 typedef struct KryLibdrawQueuedText {
     unsigned font_id;
     char *text;
