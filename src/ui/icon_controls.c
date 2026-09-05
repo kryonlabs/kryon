@@ -48,10 +48,10 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
     DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
                 LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
-    return DrawUIVerticalSlider(popup.id, popup_x + popup_w / 2,
-                                   popup_y + ScaleUIPx(14),
-                                   popup_h - ScaleUIPx(24),
-                                   popup.min, popup.max, popup.value);
+    return ui_render_vertical_slider(popup.id, popup_x + popup_w / 2,
+                                     popup_y + ScaleUIPx(14),
+                                     popup_h - ScaleUIPx(24),
+                                     popup.min, popup.max, popup.value);
 }
 
 IconRowResult

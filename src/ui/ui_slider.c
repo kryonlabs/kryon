@@ -1,9 +1,9 @@
 #include "ui_internal.h"
 
 int
-DrawUISlider(int id, int x, int y, int w, const char *label,
-             int min, int max, int *value, const char *suffix,
-             const char *value_text_override)
+ui_render_slider(int id, int x, int y, int w, const char *label,
+                 int min, int max, int *value, const char *suffix,
+                 const char *value_text_override)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
@@ -146,8 +146,8 @@ DrawUISlider(int id, int x, int y, int w, const char *label,
 }
 
 int
-DrawUIVerticalSlider(int id, int x, int y, int h,
-                     int min, int max, int *value)
+ui_render_vertical_slider(int id, int x, int y, int h,
+                          int min, int max, int *value)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
@@ -264,10 +264,10 @@ DrawUIVerticalSlider(int id, int x, int y, int h,
 }
 
 int
-DrawUIVerticalSliderWithMarks(int id, int x, int y, int h,
-                              int min, int max, int *value,
-                              UIVerticalSliderMarkCallback callback,
-                              void *callback_user_data)
+ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
+                                     int min, int max, int *value,
+                                     UIVerticalSliderMarkCallback callback,
+                                     void *callback_user_data)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,

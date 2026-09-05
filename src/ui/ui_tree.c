@@ -1440,7 +1440,7 @@ DrawTree(void)
         case UI_WIDGET_SLIDER_NODE: {
             int old_value = node->data.slider.value != NULL
                 ? *node->data.slider.value : 0;
-            int changed = DrawUISlider(
+            int changed = ui_render_slider(
                 node->id, (int)node->bounds.x, (int)node->bounds.y,
                 (int)node->bounds.width, node->data.slider.label,
                 node->data.slider.min, node->data.slider.max,
@@ -2074,8 +2074,8 @@ Slider(int id, int x, int y, int w, const char *label,
     }
     if(ui_tree_building)
         return 0;
-    return DrawUISlider(id, x, y, w, label, min, max, value, suffix,
-                        value_text_override);
+    return ui_render_slider(id, x, y, w, label, min, max, value, suffix,
+                            value_text_override);
 }
 
 int
