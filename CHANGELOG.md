@@ -1,4 +1,18 @@
 # Changelog
+## v0.1.54 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.54
+- Keep dropdowns within the viewport and stabilize native CI audits
+- Complete native widget catalog and runtime interaction parity
+- Provide libdraw matrix compatibility for retained paint capture
+- Export the pi double-double constant alongside 2pi
+- Add quad log, hypot, inverse trig, and pi-accurate sinpi/cospi
+- Isolate Windows header names in SDL renderer builds
+- Add spreadsheet evaluation primitives: cell addressing and ulp-grace rounding
+- Fix text area lines overriding multiline clipboard selection
+
 ## v0.1.53 - 2026-09-05
 
 ### Changed
