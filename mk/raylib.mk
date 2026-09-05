@@ -44,6 +44,7 @@ define KRYON_RAYLIB_DESKTOP_RULE
 $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	@set -e; \
 	lock="$(2).lock"; \
+	mkdir -p "$(dir $(2))"; \
 	while ! mkdir "$$$$lock" 2>/dev/null; do sleep 1; done; \
 	trap 'rmdir "$$$$lock"' 0 1 2 3 15; \
 	rm -rf $(2); \
@@ -75,6 +76,7 @@ define KRYON_RAYLIB_WEB_RULE
 $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	@set -e; \
 	lock="$(2).lock"; \
+	mkdir -p "$(dir $(2))"; \
 	while ! mkdir "$$$$lock" 2>/dev/null; do sleep 1; done; \
 	trap 'rmdir "$$$$lock"' 0 1 2 3 15; \
 	rm -rf $(2); \
@@ -97,6 +99,7 @@ define KRYON_RAYLIB_WINDOWS_RULE
 $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	@set -e; \
 	lock="$(2).lock"; \
+	mkdir -p "$(dir $(2))"; \
 	while ! mkdir "$$$$lock" 2>/dev/null; do sleep 1; done; \
 	trap 'rmdir "$$$$lock"' 0 1 2 3 15; \
 	rm -rf $(2); \
@@ -122,6 +125,7 @@ define KRYON_RAYLIB_WINDOWS_PLATFORM_RULE
 $(1): kryon-raylib-check $(RAYLIB_SOURCES) $(KRYON_RAYLIB_BACKEND_RENAME_HEADER) $(KRYON_RAYLIB_PREPARE_SCRIPT) $(BUILD_MAKEFILES)
 	@set -e; \
 	lock="$(2).lock"; \
+	mkdir -p "$(dir $(2))"; \
 	while ! mkdir "$$$$lock" 2>/dev/null; do sleep 1; done; \
 	trap 'rmdir "$$$$lock"' 0 1 2 3 15; \
 	rm -rf $(2); \
