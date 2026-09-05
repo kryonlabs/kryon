@@ -85,13 +85,18 @@ KirLexerNext(KirLexer *lx)
         token_copy(&tok, lx->src, begin, lx->pos);
         return tok;
     }
-    if(isdigit(c)) {
-        int seen_dot = 0;
+    if(isdigit(c) || (c == '.' && isdigit((unsigned char)lx->src[lx->pos + 1]))) {
+        int seen_dot = c == '.';
+        int hexadecimal = c == '0' && (lx->src[lx->pos + 1] == 'x' || lx->src[lx->pos + 1] == 'X');
 
         lexer_advance(lx);
         while(isalnum((unsigned char)lx->src[lx->pos]) ||
-              lx->src[lx->pos] == '_' || lx->src[lx->pos] == '.') {
+              lx->src[lx->pos] == '_' || lx->src[lx->pos] == '.' ||
+              ((lx->src[lx->pos] == '+' || lx->src[lx->pos] == '-') &&
+               strchr(hexadecimal ? "pP" : "eE", lx->src[lx->pos - 1]))) {
             if(lx->src[lx->pos] == '.')
+                seen_dot = 1;
+            if(strchr(hexadecimal ? "pP" : "eE", lx->src[lx->pos]))
                 seen_dot = 1;
             lexer_advance(lx);
         }
@@ -119,7 +124,8 @@ KirLexerNext(KirLexer *lx)
         token_copy(&tok, lx->src, begin, lx->pos);
         return tok;
     }
-    if(strchr("{}()[],:;", c) != NULL) {
+    if(strchr("{}()[],;", c) != NULL ||
+       (c == ':' && lx->src[lx->pos + 1] != ':' && lx->src[lx->pos + 1] != '=')) {
         lexer_advance(lx);
         tok.kind = KIR_TOKEN_PUNCT;
         token_copy(&tok, lx->src, begin, lx->pos);
@@ -127,7 +133,7 @@ KirLexerNext(KirLexer *lx)
     }
     {
         static const char *const ops[] = {
-            "::", "->", "==", "!=", "<=", ">=", "&&", "||", "+=", "-=",
+            "::", ":=", "++", "--", "->", "==", "!=", "<=", ">=", "&&", "||", "+=", "-=",
             "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "<<", ">>",
             NULL
         };

@@ -86,11 +86,11 @@ const outDir = process.argv[2];
 const expected = new Map([
   ["examples/01_file_dialog.js", ["Screen", "Background", "Text", "Text", "Button", "Button", "Button", "Text", "Text", "Text"]],
   ["examples/02_buttons.js", ["Screen", "Background", "Text", "Text", "Button", "Button", "Button", "Text", "Text", "Text", "Text"]],
-  ["examples/03_theme.js", ["Screen", "Background", "Text", "Text", "Text"]],
+  ["examples/03_theme.js", ["Screen", "Background", "Text", "Text", "Text", "Button", "Button", "TextField", "Dropdown", "Slider", "Toggle", "Checkbox", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
   ["examples/04_modal.js", ["Screen", "Background", "Text", "Text", "Button", "Text", "Text", "Button"]],
   ["examples/05_color.js", ["Screen", "Background", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Text", "Text"]],
   ["examples/06_scaling.js", ["Screen", "Background", "Text", "Rect", "Text", "Text", "Text"]],
-  ["examples/07_layout.js", ["Screen", "Background", "Text", "Rect", "Line", "Line", "Rect"]],
+  ["examples/07_layout.js", ["Screen", "Background", "Text", "Rect", "Line", "Line", "Rect", "Text", "Text", "Text", "Text", "Text"]],
   ["examples/09_geometry.js", ["Screen", "Background", "Text", "Separator", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Separator", "Text"]],
   ["examples/10_menus.js", ["Screen", "Background", "Text"]],
   ["examples/11_basic_controls.js", ["Screen", "Background", "Text", "Text", "Spinbox", "Combobox", "Progress"]],

@@ -26,7 +26,11 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
     list(APPEND KRYGEN_K2C_SOURCES
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir.c"
         "${KRYGEN_KRYON_DIR}/cmd/kir/kir_parse.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_text.c")
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_text.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_token.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_expr.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_cleanup.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_check.c")
     if(KRYON_HOST_CC)
         set(KRYGEN_HOST_CC "${KRYON_HOST_CC}")
     else()

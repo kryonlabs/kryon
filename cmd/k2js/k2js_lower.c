@@ -877,22 +877,57 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             }
             break;
         }
-        case KIR_STMT_EXPR:
+        case KIR_STMT_EXPR: {
+            char name[K2JS_NAME_MAX], args[K2JS_TEXT_MAX], out[K2JS_TEXT_MAX];
             if(strncmp(raw, "BeginTree", 9) == 0 ||
                strncmp(raw, "EndTree", 7) == 0)
                 break;
-            emit_statement_record(f, indent, raw);
+            int known_call = split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+                (module_fn_index(m, name, strlen(name)) >= 0 || extern_index(name, strlen(name)) >= 0);
+            int increment = st->expr_root >= 0 &&
+                (fn->exprs[st->expr_root].kind == KIR_EXPR_POSTFIX ||
+                 (fn->exprs[st->expr_root].kind == KIR_EXPR_UNARY &&
+                  (!strcmp(fn->exprs[st->expr_root].op, "++") || !strcmp(fn->exprs[st->expr_root].op, "--"))));
+            if(known_call || increment) {
+                tx_expr(m, raw, out, sizeof(out));
+                emit_indent(f, indent);
+                fprintf(f, "%s;\n", out);
+            } else {
+                emit_statement_record(f, indent, raw);
+            }
             break;
+        }
         case KIR_STMT_WHILE:
-        case KIR_STMT_FOR:
-        case KIR_STMT_SWITCH:
-        case KIR_STMT_CASE:
-        case KIR_STMT_LABEL:
-        case KIR_STMT_GOTO:
+        case KIR_STMT_SWITCH: {
+            const char *keyword = st->kind == KIR_STMT_WHILE ? "while" : "switch";
+            char out[K2JS_TEXT_MAX];
+            kir_strip_block_brace(raw);
+            tx_expr(m, kir_skip_ws(raw + strlen(keyword)), out, sizeof(out));
+            emit_indent(f, indent);
+            fprintf(f, "%s (%s) {\n", keyword, out);
+            if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 1;
+            indent++;
+            break;
+        }
+        case KIR_STMT_CASE: {
+            char out[K2JS_TEXT_MAX];
+            tx_expr(m, raw, out, sizeof(out));
+            emit_indent(f, indent);
+            fprintf(f, "%s\n", out);
+            break;
+        }
         case KIR_STMT_BREAK:
         case KIR_STMT_CONTINUE:
-        case KIR_STMT_DEFER:
+            emit_indent(f, indent);
+            fprintf(f, "%s;\n", KirStmtKindName(st->kind));
+            break;
         case KIR_STMT_UNUSED:
+            break;
+        case KIR_STMT_FOR:
+        case KIR_STMT_LABEL:
+        case KIR_STMT_GOTO:
+        case KIR_STMT_DEFER:
         case KIR_STMT_RAW:
         default:
             emit_statement_record(f, indent, raw);

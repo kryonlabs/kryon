@@ -69,7 +69,10 @@ typedef enum KirExprKind {
     KIR_EXPR_INDEX,
     KIR_EXPR_CAST,
     KIR_EXPR_COMPOUND,
-    KIR_EXPR_SIZEOF
+    KIR_EXPR_SIZEOF,
+    KIR_EXPR_CHAR,
+    KIR_EXPR_CONDITIONAL,
+    KIR_EXPR_POSTFIX
 } KirExprKind;
 
 typedef struct KirSourceSpan {
@@ -93,6 +96,8 @@ typedef struct KirImport {
     char target[KIR_PATH_MAX];
     char extern_symbol[KIR_NAME_MAX];
     char signature[KIR_TEXT_MAX];
+    char args[KIR_TEXT_MAX];       /* parsed extern parameters */
+    char return_type[KIR_NAME_MAX];
     int required;
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
@@ -104,6 +109,9 @@ typedef struct KirStmt {
     char widget[KIR_NAME_MAX];
     char args[KIR_TEXT_MAX];
     int expr_root;      /* index into enclosing function exprs, or -1 */
+    int lhs_root;       /* structured assignment destination, or -1 */
+    char name[KIR_NAME_MAX]; /* declaration binding */
+    char type[KIR_NAME_MAX]; /* declared or inferred type */
     KirSourceSpan span;
 } KirStmt;
 
@@ -116,6 +124,8 @@ typedef struct KirExpr {
     int right;
     int first_child;
     int next_sibling;
+    int third;         /* false arm of conditional, or -1 */
+    char type[KIR_NAME_MAX]; /* resolved type; empty means unresolved */
     KirSourceSpan span;
 } KirExpr;
 

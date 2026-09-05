@@ -447,7 +447,14 @@ docs-site:
 	test -f $(SITE_BUILD_DIR)/matrices.html
 	test -f $(SITE_BUILD_DIR)/renderers.html
 
-spec-test: $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
+.PHONY: language-test
+language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
+	@mkdir -p $(BUILD_DIR)/tests
+	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c cmd/kir/kir.c cmd/kir/kir_expr.c cmd/kir/kir_token.c cmd/kir/kir_text.c -o $(BUILD_DIR)/tests/kir_expression_test
+	$(BUILD_DIR)/tests/kir_expression_test
+	python3 tests/language_semantics_test.py $(BUILD_DIR)
+
+spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 
 runtime-parity-check:
@@ -603,8 +610,8 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c
-KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c
+KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
