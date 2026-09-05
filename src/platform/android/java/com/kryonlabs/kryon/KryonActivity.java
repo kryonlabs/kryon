@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,6 +50,16 @@ public class KryonActivity extends NativeActivity {
         kryonApplySystemBars();
         setupInsetsListener();
         setupTextInputBridge();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            // Raylib requests FLAG_FULLSCREEN while creating the native window.
+            // Restore Kryon's inset-aware system bars once that window is active.
+            kryonApplySystemBars();
+        }
     }
 
     private void loadNativeLibrary() {
@@ -120,10 +131,12 @@ public class KryonActivity extends NativeActivity {
     public void kryonApplySystemBars() {
         int[] colors = kryonSystemThemeColors();
         boolean dark = colors[0] != 0;
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().setStatusBarColor(colors[1]);
         getWindow().setNavigationBarColor(colors[1]);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             int flags = getWindow().getDecorView().getSystemUiVisibility();
+            flags &= ~View.SYSTEM_UI_FLAG_FULLSCREEN;
             if (!dark) {
                 flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
