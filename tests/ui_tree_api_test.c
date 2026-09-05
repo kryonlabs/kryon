@@ -286,6 +286,36 @@ main(void)
     check_int("page grid second y", (int)nodes[grid_second].bounds.y,
               (int)nodes[page_grid].bounds.y + 4);
 
+    /* Grid buttons must hit their visible cells during construction, before
+       EndTree performs retained layout. Exercise both columns independently. */
+    for(int column = 0; column < 2; column++) {
+        UIFrameState saved = SaveUIFrameState();
+        InjectReset();
+        for(int frame = 0; frame < 2; frame++) {
+            InjectMousePosition(120 + column * 100, 120);
+            InjectMouseButton(MOUSE_BUTTON_LEFT, frame == 0);
+            InjectPump();
+            BeginUIFrame(640, 480, 1.0f);
+            BeginTree(390 + column);
+            GridLayout((GridLayoutProps){.bounds = {100, 100, 200, 60},
+                                         .columns = 2});
+            check_int("grid first cell immediate click",
+                      Button((ButtonProps){.bounds = {0, 0, 90, 40},
+                                           .label = "A", .id = 3901}),
+                      frame == 1 && column == 0);
+            check_int("grid second cell immediate click",
+                      Button((ButtonProps){.bounds = {0, 0, 90, 40},
+                                           .label = "B", .id = 3902}),
+                      frame == 1 && column == 1);
+            End();
+            EndTree();
+            EndUIFrame();
+            while(NextEvent(&event)) {}
+        }
+        InjectReset();
+        RestoreUIFrameState(saved);
+    }
+
     InjectReset();
     InjectTap(25, 25);
     InjectPump();
@@ -594,6 +624,27 @@ main(void)
         check_int("accessibility snapshot button", saw_button, 1);
     }
 
+    {
+        char boxed[] = "owned";
+        BeginTree(Key("headless boxed text"));
+        Row((RowProps){.bounds = {11,12,80,24}});
+        TextInRect(boxed, (Rectangle){0,0,80,24}, 16, WHITE);
+        End();
+        boxed[0] = 'X';
+        EndTree();
+        nodes = GetTreeNodes(&count);
+        int boxed_count = 0;
+        for(int i = 0; i < count; i++) {
+            if(nodes[i].kind != UI_WIDGET_TEXT_IN_RECT_NODE)
+                continue;
+            boxed_count++;
+            check_int("boxed text owns string", strcmp(nodes[i].owned_text,"owned"), 0);
+            check_int("boxed text row x", (int)nodes[i].bounds.x, 11);
+            check_int("boxed text row y", (int)nodes[i].bounds.y, 12);
+            check_int("boxed text font", nodes[i].data.primitive.font, 16);
+        }
+        check_int("boxed text typed node", boxed_count, 1);
+    }
     return failures == 0 ? 0 : 1;
 }
 

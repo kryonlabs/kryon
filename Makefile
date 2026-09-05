@@ -930,6 +930,14 @@ $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(B
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
+$(BUILD_DIR)/tests/overlay_paint_test: tests/overlay_paint_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: overlay-paint-test
+overlay-paint-test: $(BUILD_DIR)/tests/overlay_paint_test
+	xvfb-run -a $(BUILD_DIR)/tests/overlay_paint_test
+
 $(UI_SWIPE_TEST): tests/ui_swipe_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_swipe_test.c \
@@ -963,6 +971,15 @@ $(UI_WINDOW_TEST): tests/ui_window_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_window_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+# Pixel integration test for the raylib/X11 presenter; requires GNU-style --wrap.
+$(BUILD_DIR)/tests/texture_scope_test: tests/texture_scope_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=LoadImageFromTexture -Wl,--wrap=DrawUIText -o $@
+
+.PHONY: texture-scope-test
+texture-scope-test: $(BUILD_DIR)/tests/texture_scope_test
+	KRYON_SHOT_ARM=1 $(BUILD_DIR)/tests/texture_scope_test
 
 # Compile-only coverage for the SDL secondary-window presenter (Wayland and
 # SDL-bundled platforms). The default Linux/FreeBSD build takes the X11 path,

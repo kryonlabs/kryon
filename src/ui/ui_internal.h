@@ -22,6 +22,9 @@ extern Camera2D g_ui_camera;
 extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
 extern unsigned long g_ui_frame_serial;
+extern float g_theme_content_alpha;
+int UIContentDisabled(void);
+int ui_current_input_clip(Rectangle *bounds);
 extern int g_ui_slider_active_id;
 extern int g_ui_pointer_dragging;
 extern int g_ui_pointer_owner;
@@ -137,6 +140,7 @@ void DrawUITransitionFade(const UITransition *transition, int width,
 int DrawUIScrollbar(int x, int y, int viewport_h, int content_h,
                     int *scroll_offset, int max_scroll);
 int RenderButton(ButtonSpec button);
+void ui_button_style_colors(ButtonStyle style, Color *background, Color *hover_background, Color *text_color);
 int HandleButton(ButtonSpec button);
 void PaintButton(ButtonSpec button, int hovered, int pressed);
 int DrawUIIconButton(IconButtonProps button);
@@ -203,6 +207,9 @@ PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
 void DrawUIPaneDropPreview(Rectangle bounds, PaneDropZone zone);
 void DrawUISeparator(Rectangle bounds, int vertical);
 void DrawUISeparatorText(SeparatorTextProps separator);
+int DrawUIDragDropSource(DragDropSourceProps source);
+int DrawUIDragDropTarget(DragDropTargetProps target);
+int DrawUIMultiSelectList(MultiSelectListProps list);
 int DrawUISmallButton(ButtonProps button);
 int DrawUISelectable(SelectableProps selectable);
 int DrawUICheckboxFlags(CheckboxFlagsProps checkbox);
@@ -224,15 +231,16 @@ int DrawUIRadioButton(RadioButtonProps radio);
 void DrawUIProgressBar(ProgressBarProps progress);
 void DrawUIPlotLines(PlotProps plot);
 void DrawUIPlotHistogram(PlotProps plot);
-int DrawUIDragFloat(DragFloatProps drag);
-int DrawUIDragInt(DragIntProps drag);
-int DrawUIDragFloatRange2(DragFloatRange2Props drag);
-int DrawUIDragIntRange2(DragIntRange2Props drag);
-int DrawUISliderFloat(SliderFloatProps slider);
-int DrawUISliderInt(SliderIntProps slider);
-int DrawUIVSliderFloat(SliderFloatProps slider);
-int DrawUIVSliderInt(SliderIntProps slider);
-int DrawUISliderAngle(SliderAngleProps slider);
+int ui_update_drag_float(DragFloatProps drag);
+int ui_update_drag_int(DragIntProps drag);
+void ui_paint_drag_float(DragFloatProps drag);
+void ui_paint_drag_int(DragIntProps drag);
+int ui_update_slider_float(SliderFloatProps slider, int vertical);
+int ui_update_slider_int(SliderIntProps slider, int vertical);
+void ui_paint_slider_float(SliderFloatProps slider, int vertical);
+void ui_paint_slider_int(SliderIntProps slider, int vertical);
+int ui_update_slider_angle(SliderAngleProps slider);
+void ui_paint_slider_angle(SliderAngleProps slider);
 int DrawUIInputFloat(InputFloatProps input);
 int DrawUIInputInt(InputIntProps input);
 int DrawUIInputDouble(InputDoubleProps input);
@@ -288,12 +296,23 @@ void DrawUIReorderPlaceholder(Rectangle bounds);
 void DrawUIToast(void);
 void DrawUIInspectOverlay(void);
 
+/* Retained submissions borrow this destination until EndTree. The caller
+ * separately captures immediate drawing and owns the texture lifetime. */
+RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
+void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
+void ui_tree_submit_text_input(Rectangle bounds, const char *text,
+                               UIWidgetTextInputPaint paint, int id);
+void ui_paint_text_input(Rectangle bounds, const char *text,
+                         UIWidgetTextInputPaint paint);
+
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);
+void ui_draw_text_in_rect_with_font_token(const char *text, Rectangle bounds,
+                                         int font_size, Color color, int token);
 void ui_text_begin_frame(void);
 int ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x);
 void ui_draw_text_input_selection(Rectangle bounds, const char *text,

@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -320,6 +321,128 @@ func TestButtonConsumesTapInsideBounds(t *testing.T) {
 	}
 	if missed {
 		t.Fatal("tap was not consumed by first matching button")
+	}
+}
+
+func TestNestedDisabledScopeSuppressesAndDimsContent(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	bounds := Rectangle{X: 20, Y: 10, Width: 80, Height: 32}
+
+	rt.BeginFrame()
+	rt.QueueTap(40, 25)
+	rt.BeginDisabled(true)
+	rt.BeginDisabled(false)
+	if rt.Button(ButtonProps{Bounds: bounds, Label: "Blocked", ID: 203}) {
+		t.Fatal("button activated inside nested disabled scope")
+	}
+	rt.EndDisabled()
+	rt.EndDisabled()
+	if !rt.Button(ButtonProps{Bounds: bounds, Label: "Enabled", ID: 204}) {
+		t.Fatal("button did not activate after leaving disabled scope")
+	}
+	ops := rt.FrameOps()
+	rt.EndFrame()
+
+	if len(ops) == 0 || !ops[0].Disabled {
+		t.Fatal("disabled scope did not mark recorded content disabled")
+	}
+	if got := ops[0].Color.A; got >= rt.theme().button.A {
+		t.Fatalf("disabled scope alpha = %d, want less than %d", got, rt.theme().button.A)
+	}
+	if rt.contentDisabled() {
+		t.Fatal("disabled scope remained active after balanced end")
+	}
+}
+
+func TestDeepDisabledScopes(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	for _, outer := range []bool{false, true} {
+		rt.BeginDisabled(outer)
+		for depth := 0; depth < 130; depth++ {
+			rt.BeginDisabled(depth == 100)
+		}
+		if !rt.contentDisabled() {
+			t.Fatal("deep scope did not disable content")
+		}
+		for depth := 129; depth >= 0; depth-- {
+			rt.EndDisabled()
+			if got, want := rt.contentDisabled(), outer || depth > 100; got != want {
+				t.Fatalf("outer=%v depth=%d: disabled=%v, want %v", outer, depth, got, want)
+			}
+		}
+		rt.EndDisabled()
+		if rt.contentDisabled() {
+			t.Fatal("outer scope did not restore content")
+		}
+	}
+}
+
+func TestScrollScopeClipsAndRestoresChildren(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	offset := int32(0)
+	r.QueueMouseMove(30, 30)
+	r.QueueMouseWheel(-1)
+	r.BeginFrame()
+	content := r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
+	if offset != 42 || content.Y != -32 {
+		t.Fatalf("content=%v offset=%d", content, offset)
+	}
+	r.QueueTap(20, 90)
+	if r.Button(ButtonProps{Bounds: NewRectangle(10, 80, 100, 28), Label: "clipped"}) {
+		t.Fatal("clipped child activated")
+	}
+	r.Rect(10, 0, 100, 160, RED)
+	r.BeginScroll(NewRectangle(20, 30, 100, 60), 100, nil)
+	r.Rect(0, 0, 160, 160, BLUE)
+	r.EndScroll()
+	r.EndScroll()
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 80, 100, 28), Label: "outside"}) {
+		t.Fatal("parent input not restored")
+	}
+	r.EndFrame()
+	img := RenderFrame(180, 180, r.FrameOps())
+	for _, sample := range []struct {
+		x, y int
+		c    Color
+	}{{15, 20, RED}, {30, 40, BLUE}, {115, 40, RAYWHITE}} {
+		got := color.RGBAModel.Convert(img.At(sample.x, sample.y)).(color.RGBA)
+		if got != (color.RGBA{sample.c.R, sample.c.G, sample.c.B, sample.c.A}) {
+			t.Fatalf("pixel %d,%d=%v", sample.x, sample.y, got)
+		}
+	}
+}
+
+func TestScrollThumbDrag(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	offset := int32(0)
+	draw := func() {
+		r.BeginFrame()
+		content := r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
+		if content.Width != 90 {
+			t.Fatal("scrollbar space not reserved")
+		}
+		if r.Button(ButtonProps{Bounds: NewRectangle(100, 10, 10, 60)}) {
+			t.Fatal("child activated through scrollbar")
+		}
+		r.EndScroll()
+		r.EndFrame()
+	}
+	r.QueueMouseButtonDown(MouseButtonLeft, 105, 20)
+	draw()
+	if offset != 0 {
+		t.Fatalf("thumb jumped on press: %d", offset)
+	}
+	r.QueueMouseMove(105, 110)
+	draw()
+	if offset != 140 {
+		t.Fatalf("drag offset=%d", offset)
+	}
+	r.QueueMouseButtonUp(MouseButtonLeft, 105, 110)
+	draw()
+	r.QueueMouseMove(105, 20)
+	draw()
+	if offset != 140 {
+		t.Fatal("released thumb kept dragging")
 	}
 }
 
@@ -752,6 +875,7 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	rightRow := int32(-1)
 	rightColumn := int32(-1)
 	sortColumn := int32(-1)
+	sortDirection := int32(0)
 	scroll := int32(0)
 	props := TableViewProps{
 		Bounds:             Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
@@ -766,6 +890,7 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 		RightClickedRow:    &rightRow,
 		RightClickedColumn: &rightColumn,
 		SortColumn:         &sortColumn,
+		SortDirection:      &sortDirection,
 		ScrollOffset:       &scroll,
 		RowHeight:          24,
 	}
@@ -817,8 +942,318 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	if sortColumn != 2 {
 		t.Fatalf("sort column = %d, want 2", sortColumn)
 	}
+	if sortDirection != 1 {
+		t.Fatalf("initial sort direction = %d, want ascending (1)", sortDirection)
+	}
 	if selectedRow != -1 || selectedColumn != 2 {
 		t.Fatalf("header selection = %d,%d, want -1,2", selectedRow, selectedColumn)
+	}
+
+	rt.QueueTap(240, 20)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if sortDirection != -1 {
+		t.Fatalf("second header click direction = %d, want descending (-1)", sortDirection)
+	}
+	rt.QueueTap(240, 20)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if sortDirection != 0 {
+		t.Fatalf("third header click direction = %d, want unsorted (0)", sortDirection)
+	}
+}
+
+func TestTableViewColumnVisibilityOrderAndCellColors(t *testing.T) {
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow, selectedColumn := int32(-1), int32(-1)
+	textColor := Color{R: 10, G: 20, B: 30, A: 255}
+	background := Color{R: 40, G: 50, B: 60, A: 255}
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
+		ID:             141,
+		Columns:        []string{"A", "hidden", "C"},
+		Rows:           []TableRow{{Cells: []string{"a", "b", "c"}, TextColors: []Color{textColor, {}, {}}, BackgroundColors: []Color{{}, {}, background}}},
+		ColumnWidths:   []int32{90, 140, 70},
+		ColumnEnabled:  []int32{1, 0, 1},
+		ColumnOrder:    []int32{2, 1, 0},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		RowHeight:      24,
+	}
+
+	rt.QueueTap(30, 52)
+	rt.BeginFrame()
+	changed := rt.TableView(props)
+	rt.EndFrame()
+	if changed == 0 || selectedRow != 0 || selectedColumn != 2 {
+		t.Fatalf("first displayed cell selection = changed %d, %d,%d; want changed, 0,2", changed, selectedRow, selectedColumn)
+	}
+
+	headerColumns := make([]int32, 0, 2)
+	paintedBackground, paintedText := false, false
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpText && op.Row == -1 {
+			headerColumns = append(headerColumns, op.Column)
+		}
+		if op.Row == 0 && op.Column == 2 && op.Kind == FrameOpRect && op.Color == background {
+			paintedBackground = true
+		}
+		if op.Row == 0 && op.Column == 0 && op.Kind == FrameOpText && op.Color == textColor {
+			paintedText = true
+		}
+		if op.Column == 1 {
+			t.Fatalf("hidden column emitted frame op: %#v", op)
+		}
+	}
+	if !reflect.DeepEqual(headerColumns, []int32{2, 0}) {
+		t.Fatalf("header display order = %v, want [2 0]", headerColumns)
+	}
+	if !paintedBackground || !paintedText {
+		t.Fatalf("custom cell colors missing: background=%v text=%v", paintedBackground, paintedText)
+	}
+
+	rt.QueueKey(KeyRight)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedColumn != 0 {
+		t.Fatalf("right arrow selected logical column %d, want reordered column 0", selectedColumn)
+	}
+	rt.QueueKey(KeyLeft)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedColumn != 2 {
+		t.Fatalf("left arrow selected logical column %d, want reordered column 2", selectedColumn)
+	}
+}
+
+func TestDisabledTableViewSuppressesInteractionAndDimsOps(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	selectedRow, selectedColumn := int32(0), int32(0)
+	sortColumn, sortDirection := int32(-1), int32(0)
+	scroll := int32(0)
+	props := TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 220, Height: 100},
+		ID:             142,
+		Columns:        []string{"A", "B"},
+		Rows:           []TableRow{{Cells: []string{"a", "b"}}, {Cells: []string{"c", "d"}}, {Cells: []string{"e", "f"}}, {Cells: []string{"g", "h"}}},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		SortColumn:     &sortColumn,
+		SortDirection:  &sortDirection,
+		ScrollOffset:   &scroll,
+		RowHeight:      24,
+		Disabled:       true,
+	}
+
+	rt.SetFocus(props.ID)
+	rt.QueueTap(150, 20)
+	rt.QueueTap(150, 52)
+	rt.QueueKey(KeyRight)
+	rt.QueueMouseMove(50, 70)
+	rt.QueueMouseWheel(-1)
+	rt.BeginFrame()
+	changed := rt.TableView(props)
+	rt.EndFrame()
+	if changed != 0 || selectedRow != 0 || selectedColumn != 0 || sortColumn != -1 || sortDirection != 0 || scroll != 0 {
+		t.Fatalf("disabled table changed: changed=%d selected=%d,%d sort=%d/%d scroll=%d", changed, selectedRow, selectedColumn, sortColumn, sortDirection, scroll)
+	}
+	if len(rt.FrameOps()) == 0 {
+		t.Fatal("disabled table emitted no frame operations")
+	}
+	for _, op := range rt.FrameOps() {
+		if !op.Disabled {
+			t.Fatalf("disabled table emitted enabled operation: %#v", op)
+		}
+	}
+}
+
+func TestTableViewResizesDisplayedColumns(t *testing.T) {
+	rt := New(AppConfig{Width: 340, Height: 180}).(*runtime)
+	widths := []int32{100, 100, 100}
+	selectedRow, selectedColumn := int32(-1), int32(-1)
+	props := TableViewProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 300, Height: 110}, ID: 143,
+		Columns: []string{"A", "B", "C"}, Rows: []TableRow{{Cells: []string{"a", "b", "c"}}},
+		ColumnWidths: widths, SelectedRow: &selectedRow, SelectedColumn: &selectedColumn,
+		Resizable: true, MinColumnWidth: 48, RowHeight: 24,
+	}
+
+	rt.QueueMouseButtonDown(MouseButtonLeft, 108, 20)
+	rt.BeginFrame()
+	changed := rt.TableView(props)
+	rt.EndFrame()
+	if changed != 0 {
+		t.Fatalf("resize press changed table before movement: %d", changed)
+	}
+	rt.QueueMouseMove(138, 20)
+	rt.BeginFrame()
+	changed = rt.TableView(props)
+	rt.EndFrame()
+	if changed == 0 || widths[0] != 130 {
+		t.Fatalf("resized first column = %d changed=%d, want 130 and changed", widths[0], changed)
+	}
+	rt.QueueMouseButtonUp(MouseButtonLeft, 138, 20)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+
+	rt.QueueTap(120, 52)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedColumn != 0 {
+		t.Fatalf("resized hit-test selected column %d, want 0", selectedColumn)
+	}
+
+	separatorLines := 0
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpLine && op.Row == 0 && op.Bounds.Height == 30 {
+			separatorLines++
+		}
+	}
+	if separatorLines != 3 {
+		t.Fatalf("resize separator lines = %d, want 3", separatorLines)
+	}
+}
+
+func TestTableFrozenRowsClipPartialScroll(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	rows := make([]TableRow, 8)
+	for i := range rows {
+		rows[i] = TableRow{Cells: []string{""}, BackgroundColors: []Color{BLUE}}
+	}
+	rows[0].BackgroundColors = []Color{RED}
+	scroll := int32(60)
+	rt.BeginFrame()
+	rt.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 180, 102), Columns: []string{"Name"}, Rows: rows, RowHeight: 24, FreezeRows: 1, ScrollOffset: &scroll})
+	rt.EndFrame()
+	img := RenderFrame(220, 160, rt.FrameOps())
+	for _, sample := range []struct {
+		y    int
+		want Color
+	}{{60, RED}, {65, BLUE}, {115, RAYWHITE}} {
+		got := color.RGBAModel.Convert(img.At(100, sample.y)).(color.RGBA)
+		want := color.RGBA{sample.want.R, sample.want.G, sample.want.B, sample.want.A}
+		if got != want {
+			t.Fatalf("pixel y=%d: got %v want %v", sample.y, got, want)
+		}
+	}
+}
+
+func TestTableRowsRespectParentScrollClip(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	r.BeginFrame()
+	r.BeginScroll(NewRectangle(10, 10, 100, 60), 120, nil)
+	r.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 150, 120), Columns: []string{""}, Rows: []TableRow{
+		{Cells: []string{""}, BackgroundColors: []Color{RED}},
+		{Cells: []string{""}, BackgroundColors: []Color{RED}},
+	}, RowHeight: 24})
+	r.EndScroll()
+	r.EndFrame()
+	img := RenderFrame(200, 160, r.FrameOps())
+	for _, p := range []image.Point{{50, 75}, {120, 50}} {
+		if got := color.RGBAModel.Convert(img.At(p.X, p.Y)).(color.RGBA); got != (color.RGBA{245, 245, 245, 255}) {
+			t.Fatalf("table escaped parent at %v: %v", p, got)
+		}
+	}
+}
+
+func TestTableViewFreezesRowsWhileScrolling(t *testing.T) {
+	rt := New(AppConfig{Width: 300, Height: 180}).(*runtime)
+	rows := make([]TableRow, 8)
+	for i := range rows {
+		rows[i] = TableRow{Cells: []string{fmt.Sprintf("row %d", i)}}
+	}
+	selectedRow, selectedColumn := int32(-1), int32(-1)
+	scroll := int32(48)
+	props := TableViewProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 180, Height: 102}, ID: 144,
+		Columns: []string{"Name"}, Rows: rows, SelectedRow: &selectedRow,
+		SelectedColumn: &selectedColumn, ScrollOffset: &scroll, RowHeight: 24,
+		FreezeRows: 1,
+	}
+
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	frozenY, scrolledY := float32(-1), float32(-1)
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpText || op.Column != 0 {
+			continue
+		}
+		if op.Row == 0 {
+			frozenY = op.Bounds.Y
+		}
+		if op.Row == 3 {
+			scrolledY = op.Bounds.Y
+		}
+	}
+	if frozenY != 46 || scrolledY != 70 {
+		t.Fatalf("frozen/scrolled text y = %.0f/%.0f, want 46/70", frozenY, scrolledY)
+	}
+
+	rt.QueueTap(30, 45)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 0 {
+		t.Fatalf("frozen-row hit selected %d, want 0", selectedRow)
+	}
+	rt.QueueTap(30, 70)
+	rt.BeginFrame()
+	rt.TableView(props)
+	rt.EndFrame()
+	if selectedRow != 3 {
+		t.Fatalf("scrolled-row hit selected %d, want 3", selectedRow)
+	}
+}
+
+func TestDisabledListAndTreeViewsSuppressInteractionAndDimOps(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	listSelected, listScroll := int32(0), int32(0)
+	list := ListBoxProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 160, Height: 48}, ID: 151,
+		Items: []string{"a", "b", "c", "d"}, SelectedIndex: &listSelected,
+		ScrollOffset: &listScroll, RowHeight: 24, Disabled: true,
+	}
+	rt.QueueTap(30, 45)
+	rt.QueueMouseMove(30, 30)
+	rt.QueueMouseWheel(-1)
+	rt.BeginFrame()
+	changed := rt.ListBox(list)
+	rt.EndFrame()
+	if changed != 0 || listSelected != 0 || listScroll != 0 {
+		t.Fatalf("disabled list changed: changed=%d selected=%d scroll=%d", changed, listSelected, listScroll)
+	}
+	for _, op := range rt.FrameOps() {
+		if !op.Disabled {
+			t.Fatalf("disabled list emitted enabled operation: %#v", op)
+		}
+	}
+
+	treeSelected, treeScroll := int32(1), int32(0)
+	tree := TreeViewProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 160, Height: 48}, ID: 152,
+		Items:      []UITreeItem{{Label: "a", ID: 1, Selectable: 1}, {Label: "b", ID: 2, Selectable: 1}, {Label: "c", ID: 3, Selectable: 1}},
+		SelectedID: &treeSelected, ScrollOffset: &treeScroll, RowHeight: 24, Disabled: true,
+	}
+	rt.QueueTap(30, 45)
+	rt.QueueMouseMove(30, 30)
+	rt.QueueMouseWheel(-1)
+	rt.BeginFrame()
+	changed = rt.TreeView(tree)
+	rt.EndFrame()
+	if changed != 0 || treeSelected != 1 || treeScroll != 0 {
+		t.Fatalf("disabled tree changed: changed=%d selected=%d scroll=%d", changed, treeSelected, treeScroll)
+	}
+	for _, op := range rt.FrameOps() {
+		if !op.Disabled {
+			t.Fatalf("disabled tree emitted enabled operation: %#v", op)
+		}
 	}
 }
 

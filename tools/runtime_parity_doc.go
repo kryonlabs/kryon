@@ -46,7 +46,7 @@ func main() {
 
 func cEntrypoints(paths ...string) (methodSet, error) {
 	out := methodSet{}
-	re := regexp.MustCompile(`(?m)^\s*(?:void|int|NodeId|[A-Za-z_][A-Za-z0-9_]*Result)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
+	re := regexp.MustCompile(`(?m)^\s*(?:void|int|Rectangle|NodeId|[A-Za-z_][A-Za-z0-9_]*Result)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -170,6 +170,14 @@ func render(native, cleanC methodSet) (string, bool) {
 	names := []string{
 		"Background",
 		"BeginFrame",
+		"BeginScroll",
+		"BeginListBox",
+		"EndListBox",
+		"BeginTableCell",
+		"EndTableCell",
+		"EndScroll",
+		"BeginDisabled",
+		"EndDisabled",
 		"EndFrame",
 		"Text",
 		"TextInRect",
@@ -178,6 +186,10 @@ func render(native, cleanC methodSet) (string, bool) {
 		"TextWrapped",
 		"LabelText",
 		"BulletText",
+		"ValueBool",
+		"ValueInt",
+		"ValueUInt",
+		"ValueFloat",
 		"TextLines",
 		"Paragraph",
 		"Rect",
@@ -196,6 +208,11 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Bullet",
 		"Separator",
 		"SeparatorText",
+		"TabItemButton",
+		"ClosableTabBar",
+		"DragDropSource",
+		"DragDropTarget",
+		"MultiSelectList",
 		"ColorEdit3",
 		"ColorEdit4",
 		"ColorPicker3",

@@ -459,7 +459,7 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     return RenderButton(spec);
 }
 
-static void
+void
 ui_button_style_colors(ButtonStyle style, Color *bg, Color *hover_bg,
                        Color *text_color)
 {

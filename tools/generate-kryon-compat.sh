@@ -333,6 +333,34 @@ function emit_regular_wrapper(return_type, name, args, backend_args, returns_voi
     print ""
 }
 
+function emit_texture_scope_wrapper(name, args) {
+    print "extern void " prefix name "(" args ");"
+    print "void " name "(" args ")"
+    print "{"
+    if(name == "BeginTextureMode") {
+        print "    KryonTextureScope *scope = malloc(sizeof(*scope));"
+        print "    if(scope == NULL) abort();"
+        print "    scope->parent = kryon_texture_scope != NULL ? kryon_texture_scope->target : (RenderTexture2D){0};"
+        print "    scope->target = target;"
+        print "    scope->projection = rlGetMatrixProjection();"
+        print "    scope->modelview = rlGetMatrixModelview();"
+        print "    scope->previous = kryon_texture_scope;"
+        print "    kryon_texture_scope = scope;"
+        print "    " prefix "BeginTextureMode(target);"
+    } else {
+        print "    KryonTextureScope *scope = kryon_texture_scope;"
+        print "    " prefix "EndTextureMode();"
+        print "    if(scope == NULL) return;"
+        print "    kryon_texture_scope = scope->previous;"
+        print "    if(scope->parent.id != 0) " prefix "BeginTextureMode(scope->parent);"
+        print "    rlSetMatrixProjection(scope->projection);"
+        print "    rlSetMatrixModelview(scope->modelview);"
+        print "    free(scope);"
+    }
+    print "}"
+    print ""
+}
+
 # Raylib convenience DrawCircle/DrawCircleV functions are fixed at only 36
 # sides. That is visibly polygonal for large breathing and progress circles.
 # Keep the public API, but route the raylib backend through its
@@ -399,6 +427,16 @@ BEGIN {
     print "#include \"kryon.h\""
     print "#include <stdarg.h>"
     print "#include <stdio.h>"
+    print "#include <stdlib.h>"
+    print "/* Preserve nested paint targets, including existing UI-window targets. */"
+    print "/* Track API targets: rlGetActiveFramebuffer returns zero on GLES2. */"
+    print "extern void " prefix "BeginTextureMode(RenderTexture2D target);"
+    print "typedef struct KryonTextureScope {"
+    print "    RenderTexture2D parent, target;"
+    print "    Matrix projection, modelview;"
+    print "    struct KryonTextureScope *previous;"
+    print "} KryonTextureScope;"
+    print "static KryonTextureScope *kryon_texture_scope;"
     print "#ifndef KRYON_CIRCLE_SEGMENTS"
     print "#define KRYON_CIRCLE_SEGMENTS 128"
     print "#endif"
@@ -437,7 +475,9 @@ FNR == 1 { in_audio_section = 0 }
         next
     if(name in shared_owned)
         next
-    if(name == "DrawCircle" || name == "DrawCircleV") {
+    if(name == "BeginTextureMode" || name == "EndTextureMode") {
+        emit_texture_scope_wrapper(name, args)
+    } else if(name == "DrawCircle" || name == "DrawCircleV") {
         emit_smooth_circle_wrapper(name, args)
     } else if(args ~ /\.\.\./) {
         emit_variadic_wrapper(return_type, name, args)

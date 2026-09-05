@@ -1,6 +1,407 @@
 package kryon
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+func TestNumericInputStateIsolation(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	states := make([]*numericInputState, 129)
+	for i := range states {
+		states[i] = r.numericInputState(numericInputKey{widgetID: int32(1 + i*128)}, fmt.Sprintf("edit-%d", i))
+		states[i].cursor = int32(i % 8)
+		states[i].focused = true
+	}
+	for i, original := range states {
+		state := r.numericInputState(numericInputKey{widgetID: int32(1 + i*128)}, "must not replace focused editing")
+		want := fmt.Sprintf("edit-%d", i)
+		if state != original || string(state.text[:len(want)]) != want ||
+			state.cursor != int32(i%8) || !state.focused {
+			t.Fatalf("numeric editor %d lost independent state", i)
+		}
+	}
+}
+
+func TestNumericInputStepLifecycle(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	values := []int32{10}
+	for scenario, want := range []int32{12, 10, 15, 15} {
+		x := float32(128)
+		if scenario == 1 {
+			x = 104
+		}
+		r.QueueTap(x, 40)
+		r.keyDown[340] = scenario == 2
+		r.BeginFrame()
+		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
+		r.BeginDisabled(scenario == 3)
+		r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 870,
+			Values: values, ValueCount: 1, Step: 2, StepFast: 5})
+		r.EndDisabled()
+		r.End()
+		r.EndFrame()
+		if values[0] != want {
+			t.Fatalf("numeric step scenario %d: got %d, want %d", scenario, values[0], want)
+		}
+	}
+}
+
+func TestNumericInputTypingLifecycle(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	values := []int32{10}
+	for frame := 0; frame < 4; frame++ {
+		if frame == 0 {
+			r.QueueTap(100, 40)
+		}
+		if frame == 1 {
+			r.QueueText("5")
+		}
+		if frame == 2 {
+			r.QueueText("9")
+		}
+		r.BeginFrame()
+		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
+		r.BeginDisabled(frame == 2)
+		changed := r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 871,
+			Values: values, ValueCount: 1})
+		r.EndDisabled()
+		r.End()
+		r.EndFrame()
+		want := int32(105)
+		if frame == 0 {
+			want = 10
+		}
+		if values[0] != want || changed != (frame == 1) {
+			t.Fatalf("typing frame %d: value=%d changed=%v, want %d/%v", frame, values[0], changed, want, frame == 1)
+		}
+	}
+}
+
+func TestNumericInputOriginLayout(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	r.BeginFrame()
+	r.Row(RowProps{Bounds: NewRectangle(0, 0, 220, 24)})
+	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 872,
+		Values: []int32{10}, ValueCount: 1, Step: 1})
+	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 40, 24), ID: 873, Label: "next"})
+	r.End()
+	r.EndFrame()
+	found := false
+	for _, op := range r.FrameOps() {
+		if op.ID == 873 {
+			found = true
+			if op.Bounds.X != 120 {
+				t.Fatalf("numeric consumes extra row space: next x=%v", op.Bounds.X)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing next sibling")
+	}
+}
+
+func TestNumericInputComponentIdentities(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	seen := map[int32]numericInputKey{}
+	for kind := int32(0); kind < 3; kind++ {
+		for id := int32(-1); id <= 2; id++ {
+			for component := int32(0); component < 33; component++ {
+				key := numericInputKey{kind, id, component}
+				state := r.numericInputState(key, "0")
+				if state != r.numericInputState(key, "0") {
+					t.Fatalf("unstable numeric identity: %+v", key)
+				}
+				for offset := int32(0); offset < 3; offset++ {
+					token := state.token + offset
+					if previous, exists := seen[token]; exists {
+						t.Fatalf("numeric ID collision: %+v and %+v", previous, key)
+					}
+					seen[token] = key
+				}
+			}
+		}
+	}
+	r.BeginFrame()
+	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 1700, 24), ID: 1,
+		Values: make([]int32, 17), ValueCount: 17, Step: 1})
+	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 30, 100, 24), ID: 2,
+		Values: []int32{0}, ValueCount: 1, Step: 1})
+	r.EndFrame()
+	ids := map[int32]bool{}
+	for _, op := range r.FrameOps() {
+		if op.Kind != FrameOpTextField && op.Kind != FrameOpButton {
+			continue
+		}
+		id := op.ID
+		if op.Kind == FrameOpTextField {
+			id = op.FocusID
+		}
+		if ids[id] {
+			t.Fatalf("duplicate numeric frame operation ID: %d", id)
+		}
+		ids[id] = true
+	}
+	if len(ids) != 54 {
+		t.Fatalf("got %d numeric field/button IDs, want 54", len(ids))
+	}
+}
+
+func TestTreeHeaderModes(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	open := false
+	p := CollapsibleProps{Bounds: NewRectangle(10, 10, 180, 32), Label: "Node", Open: &open, Tree: true, Depth: 2, Selected: true, ID: 993}
+	for _, mode := range []string{"leaf", "disabled", "enabled"} {
+		p.Leaf, p.Disabled = mode == "leaf", mode == "disabled"
+		r.QueueTap(60, 20)
+		r.BeginFrame()
+		changed := r.Collapsible(p)
+		r.EndFrame()
+		if open != (mode == "enabled") || (changed != 0) != (mode == "enabled") {
+			t.Fatalf("%s toggled incorrectly", mode)
+		}
+		op := r.FrameOps()[0]
+		if op.Bounds.X != 50 || op.Bounds.Width != 140 || !op.Selected || op.ID != 993 {
+			t.Fatalf("tree header op: %+v", op)
+		}
+		if mode == "leaf" && op.Text != "•  Node" {
+			t.Fatalf("leaf marker: %q", op.Text)
+		}
+	}
+}
+
+func TestTreeHeaderKeyboardGates(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	open := false
+	p := CollapsibleProps{Bounds: NewRectangle(10, 10, 180, 32), Open: &open, Tree: true, ID: 994}
+	r.SetFocus(994)
+	for _, mode := range []string{"leaf", "disabled", "scope", "enabled"} {
+		p.Leaf, p.Disabled = mode == "leaf", mode == "disabled"
+		r.QueueKey(KeyRight)
+		r.BeginFrame()
+		r.BeginDisabled(mode == "scope")
+		changed := r.Collapsible(p)
+		r.EndDisabled()
+		r.EndFrame()
+		if open != (mode == "enabled") || (changed != 0) != (mode == "enabled") {
+			t.Fatalf("%s keyboard gating", mode)
+		}
+	}
+}
+
+func TestComboPopupLifecycle(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	selected := int32(0)
+	p := ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
+	draw := func(show, scope bool) {
+		r.BeginFrame()
+		r.BeginDisabled(scope)
+		if show {
+			r.Combobox(p)
+		}
+		r.EndDisabled()
+		r.EndFrame()
+	}
+	for _, mode := range []string{"disabled", "scope", "hidden"} {
+		p.Disabled = false
+		r.QueueTap(20, 20)
+		draw(true, false)
+		if !r.openDropdowns[p.ID] {
+			t.Fatalf("%s: failed to open", mode)
+		}
+		p.Disabled = mode == "disabled"
+		r.QueueTap(20, 75)
+		draw(mode != "hidden", mode == "scope")
+		if r.openDropdowns[p.ID] || selected != 0 {
+			t.Fatalf("%s: popup survived or selection changed", mode)
+		}
+		p.Disabled = false
+		draw(true, false)
+		if r.openDropdowns[p.ID] {
+			t.Fatalf("%s: popup resurrected", mode)
+		}
+	}
+}
+
+func TestComboOverlayLayerAndCapture(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	selected := int32(0)
+	actions := 0
+	draw := func() {
+		r.BeginFrame()
+		if r.Button(ButtonProps{Bounds: NewRectangle(10, 42, 160, 56), Label: "Behind", ID: 997}) {
+			actions++
+		}
+		r.BeginScroll(NewRectangle(10, 10, 180, 28), 28, nil)
+		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected})
+		r.EndScroll()
+		r.Rect(10, 42, 160, 56, RED, BLANK)
+		r.EndFrame()
+	}
+	r.QueueTap(20, 20)
+	draw()
+	img := RenderFrame(200, 120, r.FrameOps())
+	got := img.RGBAAt(14, 46)
+	want := r.theme().surface
+	if got.R != want.R || got.G != want.G || got.B != want.B {
+		t.Fatalf("popup behind later paint or clipped: %v want %v", got, want)
+	}
+	r.QueueTap(20, 80)
+	draw()
+	if selected != 1 || actions != 0 || r.openDropdowns[996] {
+		t.Fatalf("overlay input: selection %d background actions %d", selected, actions)
+	}
+}
+
+func TestComboDismissal(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	selected := int32(0)
+	p := ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
+	draw := func() { r.BeginFrame(); r.Combobox(p); r.EndFrame() }
+	r.QueueTap(20, 20)
+	r.QueueKey(KeyEscape)
+	draw()
+	if r.openDropdowns[p.ID] {
+		t.Fatal("Escape did not override simultaneous opening")
+	}
+	for _, mode := range []string{"escape", "outside", "empty"} {
+		p.Options = []string{"One", "Two"}
+		r.QueueTap(20, 20)
+		draw()
+		if !r.openDropdowns[p.ID] {
+			t.Fatalf("%s: failed to open", mode)
+		}
+		switch mode {
+		case "escape":
+			r.QueueKey(KeyEscape)
+		case "outside":
+			r.QueueMouseButtonDown(MouseButtonLeft, 200, 150)
+		case "empty":
+			p.Options = nil
+		}
+		draw()
+		if r.openDropdowns[p.ID] || selected != 0 {
+			t.Fatalf("%s: dismissal failed", mode)
+		}
+		r.QueueMouseButtonUp(MouseButtonLeft, 200, 150)
+		draw()
+		r.QueueTap(20, 80)
+		draw()
+		if selected != 0 {
+			t.Fatalf("%s: stale row selected", mode)
+		}
+	}
+}
+
+func TestRotatedTableHeader(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	p := TableViewProps{Bounds: NewRectangle(10, 10, 140, 150), Columns: []string{"Header"}, Rows: []TableRow{{Cells: []string{"Body"}}}, HeaderHeight: 80, HeaderAngle: -45, RowHeight: 28}
+	r.BeginFrame()
+	r.TableView(p)
+	r.EndFrame()
+	var rotated FrameOp
+	for _, op := range r.FrameOps() {
+		if op.Kind == FrameOpText && op.Row == -1 {
+			rotated = op
+		}
+	}
+	if rotated.Rotation != -45 || !rotated.HasClip || rotated.Clip.Height != 80 || !rotated.HasPolygon {
+		t.Fatalf("header op: %+v", rotated)
+	}
+	if cell := TableCellRect(p, 0, 0); cell.Y != 90 {
+		t.Fatalf("body rect: %+v", cell)
+	}
+	img := RenderFrame(180, 180, []FrameOp{rotated})
+	count := 0
+	for y := 0; y < 180; y++ {
+		for x := 0; x < 180; x++ {
+			pixel := img.RGBAAt(x, y)
+			if pixel.R == 245 && pixel.G == 245 && pixel.B == 245 {
+				continue
+			}
+			if x < 10 || x >= 150 || y < 10 || y >= 90 {
+				t.Fatalf("rotated text escaped clip at %d,%d", x, y)
+			}
+			if !pointInPolygon(float32(x)+0.5, float32(y)+0.5, rotated.Polygon[:]) {
+				t.Fatalf("glyph escaped slanted cell at %d,%d", x, y)
+			}
+			count++
+		}
+	}
+	if count < 20 {
+		t.Fatalf("rotated label not rendered: %d pixels", count)
+	}
+}
+
+func TestCustomTableCellScope(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	scroll := int32(20)
+	p := TableViewProps{Bounds: NewRectangle(10, 10, 200, 90), Columns: []string{"A", "B"}, Rows: []TableRow{{}, {}, {}}, ColumnOrder: []int32{1, 0}, RowHeight: 30, FreezeRows: 1, ScrollOffset: &scroll, CustomCells: true}
+	r.QueueTap(120, 75)
+	r.BeginFrame()
+	r.TableView(p)
+	cell := r.BeginTableCell(p, 1, 0)
+	if cell.X != 110 || cell.Y != 50 {
+		t.Fatalf("reordered scrolling cell: %+v", cell)
+	}
+	r.Rect(0, 0, 300, 300, RED, BLANK)
+	if !r.Button(ButtonProps{Bounds: cell, ID: 1000}) {
+		t.Fatal("visible cell child inactive")
+	}
+	r.EndTableCell()
+	p.Disabled = true
+	r.BeginTableCell(p, 0, 1)
+	if !r.contentDisabled() {
+		t.Fatal("cell did not inherit disabled")
+	}
+	r.EndTableCell()
+	if r.contentDisabled() {
+		t.Fatal("cell leaked disabled scope")
+	}
+	r.EndFrame()
+	for _, op := range r.FrameOps() {
+		if op.Color == RED && (op.Clip.Y != 70 || op.Clip.Height != 10 || op.Clip.X != 110 || op.Clip.Width != 100) {
+			t.Fatalf("frozen/column cell clip: %+v", op)
+		}
+	}
+}
+
+func TestListBoxScope(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	for _, disabled := range []bool{false, true} {
+		offset := int32(0)
+		r.QueueMouseMove(30, 30)
+		r.QueueMouseWheel(-1)
+		r.BeginFrame()
+		content := r.BeginListBox(ListBoxProps{Bounds: NewRectangle(20, 20, 120, 80), ItemCount: 4, RowHeight: 25, ScrollOffset: &offset, Disabled: disabled})
+		want := int32(22)
+		if disabled {
+			want = 0
+		}
+		if offset != want || content.Width != 108 || content.Y != 21-float32(want) {
+			t.Fatalf("list content: %+v offset %d", content, offset)
+		}
+		if r.contentDisabled() != disabled {
+			t.Fatal("list disabled scope")
+		}
+		r.EndListBox()
+		if r.contentDisabled() {
+			t.Fatal("list scope not restored")
+		}
+		r.EndFrame()
+	}
+	r.BeginFrame()
+	r.BeginScroll(NewRectangle(10, 10, 100, 80), 80, nil)
+	r.BeginListBox(ListBoxProps{Bounds: NewRectangle(20, 20, 120, 80), ContentHeight: 200})
+	r.Rect(0, 0, 300, 300, RED, BLANK)
+	op := r.FrameOps()[len(r.FrameOps())-1]
+	if !op.HasClip || op.Clip != NewRectangle(21, 21, 89, 69) {
+		t.Fatalf("nested list clip: %+v", op)
+	}
+	r.EndListBox()
+	r.EndScroll()
+	r.EndFrame()
+}
 
 func TestNativeTextHelpers(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
@@ -31,6 +432,26 @@ func TestNativeTextHelpers(t *testing.T) {
 	}
 	if wrapped < 2 {
 		t.Fatalf("TextWrapped emitted %d wrapped lines", wrapped)
+	}
+}
+
+func TestNativeValueHelpers(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	r.BeginFrame()
+	r.ValueBool("Enabled", true, NewRectangle(10, 10, 140, 20), Text14, White)
+	r.ValueInt("Count", -7, NewRectangle(10, 35, 140, 20), Text14, White)
+	r.ValueUInt("Mask", 42, NewRectangle(10, 60, 140, 20), Text14, White)
+	r.ValueFloat("Rate", 1.25, "%.1f Hz", NewRectangle(10, 85, 140, 20), Text14, White)
+	r.EndFrame()
+	ops := r.FrameOps()
+	if len(ops) != 8 {
+		t.Fatalf("value helper ops=%d, want 8", len(ops))
+	}
+	want := []string{"Enabled", "true", "Count", "-7", "Mask", "42", "Rate", "1.2 Hz"}
+	for i, text := range want {
+		if ops[i].Text != text {
+			t.Fatalf("value helper op %d text=%q, want %q", i, ops[i].Text, text)
+		}
 	}
 }
 
@@ -99,6 +520,48 @@ func TestNativeTooltip(t *testing.T) {
 		t.Fatal("Tooltip rendered outside its trigger")
 	}
 	r.EndFrame()
+}
+
+func TestCollapsibleComposesInteractiveChildren(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	open := false
+	actions := 0
+	draw := func() {
+		r.BeginFrame()
+		r.Column(ColumnProps{Bounds: NewRectangle(10, 10, 200, 300), Gap: 4})
+		r.Collapsible(CollapsibleProps{Bounds: NewRectangle(0, 0, 180, 200), Label: "Details", Open: &open})
+		if open {
+			if r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 100, 28), Label: "Child", ID: 983}) {
+				actions++
+			}
+		}
+		r.End()
+		r.EndFrame()
+	}
+	r.QueueTap(20, 20)
+	draw()
+	if !open {
+		t.Fatal("header did not open")
+	}
+	ops := r.FrameOps()
+	if len(ops) != 4 || ops[2].Bounds.Y != 46 {
+		t.Fatalf("child should follow the 32px header and 4px gap: %+v", ops)
+	}
+	r.QueueTap(20, 50)
+	draw()
+	if actions != 1 {
+		t.Fatalf("child actions=%d, want 1", actions)
+	}
+	r.QueueTap(20, 20)
+	draw()
+	if open || len(r.FrameOps()) != 3 {
+		t.Fatal("closed header still rendered its child")
+	}
+	r.QueueTap(20, 50)
+	draw()
+	if actions != 1 {
+		t.Fatal("closed child activated")
+	}
 }
 
 func TestNativeImGuiWidgetSlice(t *testing.T) {
@@ -312,6 +775,45 @@ func TestNativeNavigationAndFeedback(t *testing.T) {
 	}
 	if !pressedNav || !sawTitle || !sawToast {
 		t.Fatalf("navigation/feedback ops missing: pressed=%v title=%v toast=%v", pressedNav, sawTitle, sawToast)
+	}
+}
+
+func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
+	for _, slider := range []bool{false, true} {
+		for _, scope := range []bool{false, true} {
+			t.Run(fmt.Sprintf("slider=%v/scope=%v", slider, scope), func(t *testing.T) {
+				r := New(AppConfig{}).(*runtime)
+				values := []float32{25}
+				draw := func(disabled bool) {
+					r.BeginFrame()
+					if scope {
+						r.BeginDisabled(disabled)
+					}
+					if slider {
+						r.SliderFloat(SliderFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 981, Values: values, Min: 0, Max: 100, Disabled: disabled && !scope})
+					} else {
+						r.DragFloat(DragFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 982, Values: values, Speed: 1, Min: 0, Max: 100, Disabled: disabled && !scope})
+					}
+					if scope {
+						r.EndDisabled()
+					}
+					r.EndFrame()
+				}
+				r.QueueMouseButtonDown(MouseButtonLeft, 35, 20)
+				draw(false)
+				before := values[0]
+				r.QueueMouseMove(65, 20)
+				draw(true)
+				if values[0] != before {
+					t.Fatalf("disabled gesture changed value: %g -> %g", before, values[0])
+				}
+				r.QueueMouseMove(85, 20)
+				draw(false)
+				if values[0] != before {
+					t.Fatalf("cancelled gesture resumed without a press: %g -> %g", before, values[0])
+				}
+			})
+		}
 	}
 }
 
@@ -543,6 +1045,237 @@ func TestNativeSeparatorText(t *testing.T) {
 	}
 }
 
+func TestNativeTabItemControls(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
+	r.QueueTap(20, 20)
+	r.BeginFrame()
+	if !r.TabItemButton(TabItemButtonProps{Bounds: NewRectangle(10, 10, 60, 28), ID: 86, Label: "+", Font: Text14}) {
+		t.Fatal("TabItemButton did not consume its tap")
+	}
+	r.EndFrame()
+
+	tabs := []Tab{{Label: "One", Closeable: true}, {Label: "Two", Closeable: true}}
+	selected, closed := int32(0), int32(-1)
+	props := ClosableTabBarProps{Bounds: NewRectangle(10, 60, 200, 30), Tabs: tabs, Count: 2, SelectedIndex: &selected, Font: Text14, ClosedIndex: &closed}
+	r.QueueTap(195, 70)
+	r.BeginFrame()
+	if clicked := r.ClosableTabBar(props); clicked != -1 || closed != 1 || selected != 0 {
+		t.Fatalf("close result clicked=%d closed=%d selected=%d", clicked, closed, selected)
+	}
+	r.EndFrame()
+
+	r.QueueTap(130, 70)
+	r.BeginFrame()
+	if clicked := r.ClosableTabBar(props); clicked != 1 || closed != -1 || selected != 1 {
+		t.Fatalf("select result clicked=%d closed=%d selected=%d", clicked, closed, selected)
+	}
+	r.EndFrame()
+}
+
+func TestNativeTypedDragDrop(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
+	payload := []byte("item-42")
+	output := make([]byte, 16)
+	accepted := int32(0)
+	source := DragDropSourceProps{Bounds: NewRectangle(10, 10, 80, 30), ID: 87, Type: "ITEM", Data: payload, DataSize: int32(len(payload))}
+	target := DragDropTargetProps{Bounds: NewRectangle(120, 10, 100, 30), ID: 88, Type: "ITEM", Output: output, OutputSize: int32(len(output)), AcceptedSize: &accepted}
+
+	r.QueueMouseButtonDown(MouseButtonLeft, 20, 20)
+	r.BeginFrame()
+	if !r.DragDropSource(source) {
+		t.Fatal("DragDropSource did not activate on press")
+	}
+	if r.DragDropTarget(target) {
+		t.Fatal("DragDropTarget accepted before release")
+	}
+	r.EndFrame()
+
+	r.QueueMouseMove(150, 20)
+	r.QueueMouseButtonUp(MouseButtonLeft, 150, 20)
+	r.BeginFrame()
+	if !r.DragDropSource(source) {
+		t.Fatal("DragDropSource did not retain payload through release frame")
+	}
+	if !r.DragDropTarget(target) {
+		t.Fatal("DragDropTarget did not accept matching released payload")
+	}
+	r.EndFrame()
+	if accepted != int32(len(payload)) || string(output[:accepted]) != string(payload) {
+		t.Fatalf("accepted=%d output=%q, want %q", accepted, output[:accepted], payload)
+	}
+}
+
+func TestManyComboIdentities(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	selected := make([]int32, 41)
+	draw := func(first int) {
+		r.BeginFrame()
+		for i := first; i < len(selected); i++ {
+			x := float32(300)
+			if i == 0 {
+				x = 10
+			}
+			r.Combobox(ComboboxProps{Bounds: NewRectangle(x, 10, 160, 28), ID: int32(20000 + i),
+				Options: []string{"One", "Two"}, SelectedIndex: &selected[i]})
+		}
+		r.EndFrame()
+	}
+	r.QueueTap(20, 20)
+	draw(0)
+	if !r.openDropdowns[20000] || !r.popupCaptures(20, 70) {
+		t.Fatal("41 combos lost first owner's open state")
+	}
+	r.QueueTap(20, 75)
+	draw(0)
+	if selected[0] != 1 {
+		t.Fatal("41 combos lost first owner's selection")
+	}
+	for _, value := range selected[1:] {
+		if value != 0 {
+			t.Fatal("combo selection leaked across identities")
+		}
+	}
+	r.QueueTap(20, 20)
+	draw(0)
+	draw(1)
+	if r.openDropdowns[20000] || r.popupCaptures(20, 70) {
+		t.Fatal("missing combo retained open state or capture")
+	}
+}
+
+func TestLargeComboOptions(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	options := make([]string, 131)
+	for i := range options {
+		options[i] = "item"
+	}
+	selected := int32(0)
+	draw := func() {
+		r.BeginFrame()
+		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 21000,
+			Options: options, SelectedIndex: &selected})
+		r.EndFrame()
+	}
+	r.QueueTap(20, 20)
+	draw()
+	r.QueueTap(20, 42+130*28+10)
+	draw()
+	if selected != 130 {
+		t.Fatalf("large combo selected %d, want 130", selected)
+	}
+}
+
+func TestLongComboLabelOwnership(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	labelBytes := make([]byte, 512)
+	for i := range labelBytes {
+		labelBytes[i] = 'q'
+	}
+	label := string(labelBytes)
+	options := []string{label}
+	selected := int32(0)
+	r.QueueTap(20, 20)
+	r.BeginFrame()
+	r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 22000,
+		Options: options, SelectedIndex: &selected})
+	options[0] = "changed"
+	r.EndFrame()
+	found := false
+	for _, op := range r.FrameOps() {
+		if op.Kind == FrameOpText && op.Bounds.Y >= 42 && op.Text == label {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("deferred combo did not own the complete long label")
+	}
+}
+
+func TestComboKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	options := make([]string, 131)
+	selected := int32(0)
+	for step, key := range []int32{0, KeyEnd, KeyUp, KeyEnter, 0, KeyHome, KeyEscape, 0, KeyHome, KeyDown, KeyEnter} {
+		if key == 0 {
+			r.QueueTap(20, 20)
+		} else {
+			r.QueueKey(key)
+		}
+		r.BeginFrame()
+		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 23000,
+			Options: options, SelectedIndex: &selected})
+		r.EndFrame()
+		want := int32(0)
+		if step >= 3 {
+			want = 129
+		}
+		if step == 10 {
+			want = 1
+		}
+		if selected != want {
+			t.Fatalf("keyboard step %d: selected=%d, want %d", step, selected, want)
+		}
+	}
+}
+
+func TestComboKeyboardOpen(t *testing.T) {
+	for _, key := range []int32{KeyEnter, 335, KeySpace, KeyDown} {
+		for mode := 0; mode < 3; mode++ {
+			r := New(AppConfig{}).(*runtime)
+			selected := int32(1)
+			r.QueueKey(key)
+			r.BeginFrame()
+			r.SetFocus(24000)
+			r.BeginDisabled(mode == 2)
+			r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 24000,
+				Options: []string{"One", "Two"}, SelectedIndex: &selected, Disabled: mode == 1})
+			r.EndDisabled()
+			r.EndFrame()
+			if r.openDropdowns[24000] != (mode == 0) || selected != 1 {
+				t.Fatalf("opening key %d mode %d: open=%v selected=%d", key, mode, r.openDropdowns[24000], selected)
+			}
+		}
+	}
+}
+
+func TestNativeMultiSelectListModifiers(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	selected := []int32{1, 0, 0}
+	selectedCount, anchor := int32(1), int32(0)
+	props := MultiSelectListProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
+
+	r.QueueTap(20, 48)
+	r.BeginFrame()
+	if clicked := r.MultiSelectList(props); clicked != 1 || selectedCount != 1 || anchor != 1 || selected[1] != 1 || selected[0] != 0 {
+		t.Fatalf("plain selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.EndFrame()
+
+	r.QueueKey(KeyLeftControl)
+	r.QueueTap(20, 76)
+	r.BeginFrame()
+	if clicked := r.MultiSelectList(props); clicked != 2 || selectedCount != 2 || anchor != 2 || selected[1] != 1 || selected[2] != 1 {
+		t.Fatalf("control selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.EndFrame()
+
+	r.QueueKey(KeyLeftShift)
+	r.QueueTap(20, 20)
+	r.BeginFrame()
+	if clicked := r.MultiSelectList(props); clicked != 0 || selectedCount != 3 || selected[0] != 1 || selected[1] != 1 || selected[2] != 1 {
+		t.Fatalf("shift range clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.EndFrame()
+
+	r.QueueKey(KeyLeftControl)
+	r.QueueTap(20, 48)
+	r.BeginFrame()
+	if clicked := r.MultiSelectList(props); clicked != 1 || selectedCount != 2 || selected[1] != 0 {
+		t.Fatalf("control toggle clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.EndFrame()
+}
+
 func TestNativeColorWidgets(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	rgb := []float32{0, 0.25, 0.75}
@@ -579,4 +1312,32 @@ func TestNativeColorWidgets(t *testing.T) {
 		t.Fatalf("ColorButton ops=%#v", ops)
 	}
 	r.EndFrame()
+}
+
+func TestPanedDragOutsideHandle(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	split := int32(90)
+	p := PanedViewProps{Bounds: NewRectangle(10, 10, 240, 80), ID: 9450, Vertical: true, Split: &split, MinFirst: 40, MinSecond: 40}
+	r.QueueMouseButtonDown(MouseButtonLeft, 100, 30)
+	r.BeginFrame()
+	r.PanedView(p)
+	r.EndFrame()
+	r.QueueMouseMove(190, 30)
+	r.BeginFrame()
+	r.PanedView(p)
+	r.EndFrame()
+	if split != 180 {
+		t.Fatalf("drag outside handle: got %d", split)
+	}
+	r.QueueMouseButtonUp(MouseButtonLeft, 190, 30)
+	r.BeginFrame()
+	r.PanedView(p)
+	r.EndFrame()
+	r.QueueMouseMove(100, 30)
+	r.BeginFrame()
+	r.PanedView(p)
+	r.EndFrame()
+	if split != 180 {
+		t.Fatalf("released divider moved: %d", split)
+	}
 }

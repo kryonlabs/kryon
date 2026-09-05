@@ -890,6 +890,17 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         }
         case KIR_STMT_EXPR: {
             char name[K2JS_NAME_MAX], args[K2JS_TEXT_MAX], out[K2JS_TEXT_MAX];
+            if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+               (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
+                emit_indent(f, indent);
+                if(strcmp(name, "BeginDisabled") == 0) {
+                    tx_expr(m, args, out, sizeof(out));
+                    fprintf(f, "kryon.widget(rt, \"BeginDisabled\", (%s) ? 1 : 0, state);\n", out);
+                } else {
+                    fprintf(f, "kryon.widget(rt, \"EndDisabled\", \"\", state);\n");
+                }
+                break;
+            }
             if(strncmp(raw, "BeginTree", 9) == 0 ||
                strncmp(raw, "EndTree", 7) == 0)
                 break;

@@ -298,6 +298,15 @@ include/kry_dylib.h function kry_dylib_close
 include/kry_dylib.h function kry_dylib_error
 include/kry_dylib.h function kry_dylib_load
 include/kry_dylib.h function kry_dylib_sym
+include/kry_eval.h function eval_add_epsilon
+include/kry_eval.h function eval_col_name
+include/kry_eval.h function eval_fake_ceil
+include/kry_eval.h function eval_fake_floor
+include/kry_eval.h function eval_fake_round
+include/kry_eval.h function eval_fake_trunc
+include/kry_eval.h function eval_sheet_name_needs_quote
+include/kry_eval.h function eval_sheet_prefix
+include/kry_eval.h function eval_sub_epsilon
 include/kry_filesystem.h enum KRY_TRASH_DIR_FILES
 include/kry_filesystem.h enum KRY_TRASH_DIR_INFO
 include/kry_filesystem.h enum KRY_TRASH_DIR_ROOT
@@ -450,12 +459,19 @@ include/kry_quad.h function quad_acc_add
 include/kry_quad.h function quad_acc_add_quad
 include/kry_quad.h function quad_acc_clear
 include/kry_quad.h function quad_acc_value
+include/kry_quad.h function quad_acos
 include/kry_quad.h function quad_add
+include/kry_quad.h function quad_asin
+include/kry_quad.h function quad_atan2
+include/kry_quad.h function quad_atan2pi
 include/kry_quad.h function quad_compare
+include/kry_quad.h function quad_cospi
 include/kry_quad.h function quad_div
 include/kry_quad.h function quad_exp
 include/kry_quad.h function quad_floor
+include/kry_quad.h function quad_hypot
 include/kry_quad.h function quad_init
+include/kry_quad.h function quad_log
 include/kry_quad.h function quad_matrix_back_solve
 include/kry_quad.h function quad_matrix_determinant
 include/kry_quad.h function quad_matrix_eigen_range
@@ -465,6 +481,7 @@ include/kry_quad.h function quad_matrix_multiply
 include/kry_quad.h function quad_matrix_transpose
 include/kry_quad.h function quad_mul
 include/kry_quad.h function quad_mul12
+include/kry_quad.h function quad_mulmod1
 include/kry_quad.h function quad_neg
 include/kry_quad.h function quad_pow
 include/kry_quad.h function quad_pow_frac
@@ -473,6 +490,7 @@ include/kry_quad.h function quad_qr_multiply_qt
 include/kry_quad.h function quad_qr_new
 include/kry_quad.h function quad_rescale_base
 include/kry_quad.h function quad_scalbn
+include/kry_quad.h function quad_sinpi
 include/kry_quad.h function quad_sqrt
 include/kry_quad.h function quad_sqrt1pm1
 include/kry_quad.h function quad_sub
@@ -1856,6 +1874,7 @@ include/ui_tree.h enum UI_INVALIDATE_LAYOUT
 include/ui_tree.h enum UI_INVALIDATE_NONE
 include/ui_tree.h enum UI_INVALIDATE_PAINT
 include/ui_tree.h enum UI_INVALIDATE_TREE
+include/ui_tree.h enum UI_WIDGET_ANGLE_SLIDER_NODE
 include/ui_tree.h enum UI_WIDGET_BACKGROUND_NODE
 include/ui_tree.h enum UI_WIDGET_BOTTOM_NAV_NODE
 include/ui_tree.h enum UI_WIDGET_BUTTON_NODE
@@ -1865,8 +1884,12 @@ include/ui_tree.h enum UI_WIDGET_CHECKBOX_ROW_NODE
 include/ui_tree.h enum UI_WIDGET_COLUMN_NODE
 include/ui_tree.h enum UI_WIDGET_CUSTOM_NODE
 include/ui_tree.h enum UI_WIDGET_DROPDOWN_NODE
+include/ui_tree.h enum UI_WIDGET_FLOAT_DRAG_NODE
+include/ui_tree.h enum UI_WIDGET_FLOAT_SLIDER_NODE
 include/ui_tree.h enum UI_WIDGET_GRID_NODE
 include/ui_tree.h enum UI_WIDGET_GROUP_NODE
+include/ui_tree.h enum UI_WIDGET_INT_DRAG_NODE
+include/ui_tree.h enum UI_WIDGET_INT_SLIDER_NODE
 include/ui_tree.h enum UI_WIDGET_LABEL_TEXT_FIELD_NODE
 include/ui_tree.h enum UI_WIDGET_LINE_NODE
 include/ui_tree.h enum UI_WIDGET_PARAGRAPH_MODAL_NODE
@@ -1882,6 +1905,8 @@ include/ui_tree.h enum UI_WIDGET_STACK_NODE
 include/ui_tree.h enum UI_WIDGET_TAB_BAR_NODE
 include/ui_tree.h enum UI_WIDGET_TEXT_AREA_NODE
 include/ui_tree.h enum UI_WIDGET_TEXT_FIELD_NODE
+include/ui_tree.h enum UI_WIDGET_TEXT_INPUT_PAINT_NODE
+include/ui_tree.h enum UI_WIDGET_TEXT_IN_RECT_NODE
 include/ui_tree.h enum UI_WIDGET_TEXT_NODE
 include/ui_tree.h enum UI_WIDGET_THEME_PICKER_NODE
 include/ui_tree.h enum UI_WIDGET_THEME_SETTINGS_NODE
@@ -1890,6 +1915,10 @@ include/ui_tree.h enum UI_WIDGET_TOGGLE_NODE
 include/ui_tree.h function ActionModal
 include/ui_tree.h function ArrowButton
 include/ui_tree.h function Background
+include/ui_tree.h function BeginDisabled
+include/ui_tree.h function BeginListBox
+include/ui_tree.h function BeginScroll
+include/ui_tree.h function BeginTableCell
 include/ui_tree.h function BeginTree
 include/ui_tree.h function Bevel
 include/ui_tree.h function BottomIconRow
@@ -1905,6 +1934,7 @@ include/ui_tree.h function CascadingTreeView
 include/ui_tree.h function Checkbox
 include/ui_tree.h function CheckboxFlags
 include/ui_tree.h function CheckboxRow
+include/ui_tree.h function ClosableTabBar
 include/ui_tree.h function Collapsible
 include/ui_tree.h function ColorButton
 include/ui_tree.h function ColorEdit3
@@ -1916,6 +1946,8 @@ include/ui_tree.h function Column
 include/ui_tree.h function Combobox
 include/ui_tree.h function ConfirmDialog
 include/ui_tree.h function ContextMenu
+include/ui_tree.h function DragDropSource
+include/ui_tree.h function DragDropTarget
 include/ui_tree.h function DragFloat
 include/ui_tree.h function DragFloatRange2
 include/ui_tree.h function DragInt
@@ -1923,6 +1955,10 @@ include/ui_tree.h function DragIntRange2
 include/ui_tree.h function Dropdown
 include/ui_tree.h function DropdownEx
 include/ui_tree.h function End
+include/ui_tree.h function EndDisabled
+include/ui_tree.h function EndListBox
+include/ui_tree.h function EndScroll
+include/ui_tree.h function EndTableCell
 include/ui_tree.h function EndTree
 include/ui_tree.h function Focus
 include/ui_tree.h function FocusDebugOverlay
@@ -1962,6 +1998,7 @@ include/ui_tree.h function MessageDialog
 include/ui_tree.h function Modal
 include/ui_tree.h function Modal3Button
 include/ui_tree.h function ModalFrame
+include/ui_tree.h function MultiSelectList
 include/ui_tree.h function NextEvent
 include/ui_tree.h function NodeBottomNav
 include/ui_tree.h function NodeButtonRow
@@ -2021,6 +2058,7 @@ include/ui_tree.h function Stack
 include/ui_tree.h function StyledButton
 include/ui_tree.h function SubtabBar
 include/ui_tree.h function TabBar
+include/ui_tree.h function TabItemButton
 include/ui_tree.h function TableView
 include/ui_tree.h function Text
 include/ui_tree.h function TextArea
@@ -2047,6 +2085,10 @@ include/ui_tree.h function TutorialImagePlaceholder
 include/ui_tree.h function UpdateTree
 include/ui_tree.h function VSliderFloat
 include/ui_tree.h function VSliderInt
+include/ui_tree.h function ValueBool
+include/ui_tree.h function ValueFloat
+include/ui_tree.h function ValueInt
+include/ui_tree.h function ValueUInt
 include/ui_tree.h function kry_ui_rect_shape
 include/ui_tree.h macro Rect
 include/ui_tree.h typedef KeyID

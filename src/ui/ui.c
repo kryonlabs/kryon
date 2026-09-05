@@ -52,6 +52,12 @@ static int g_ui_pointer_start_y = 0;
 static int g_ui_transition_cues_enabled = 0;
 static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
+static int g_ui_disabled_depth = 0;
+static int g_ui_disabled_start = 0;
+static int g_scroll_scope_depth = 0;
+static unsigned long g_scroll_wheel_frame = 0;
+static int *g_scroll_drag_offset = NULL;
+static float g_scroll_drag_grab = 0;
 static int g_ui_mouse_world_override_enabled = 0;
 static Vector2 g_ui_mouse_world_override = {0};
 static int ui_default_font_auto_load = 1;
@@ -404,7 +410,112 @@ SetUIKeyboardInputEnabled(int enabled)
 int
 UIKeyboardInputEnabled(void)
 {
-    return g_ui_keyboard_input_enabled;
+    return g_ui_keyboard_input_enabled && !UIContentDisabled();
+}
+
+int
+UIContentDisabled(void)
+{
+    return g_ui_disabled_start > 0;
+}
+
+void
+BeginDisabled(int disabled)
+{
+    g_ui_disabled_depth++;
+    if(!disabled || g_ui_disabled_start > 0)
+        return;
+    g_ui_disabled_start = g_ui_disabled_depth;
+    g_theme_content_alpha = 0.45f;
+    ApplyCurrentUITheme();
+}
+
+void
+EndDisabled(void)
+{
+    if(g_ui_disabled_depth <= 0)
+        return;
+    if(g_ui_disabled_depth-- != g_ui_disabled_start)
+        return;
+    g_ui_disabled_start = 0;
+    g_theme_content_alpha = 1.0f;
+    ApplyCurrentUITheme();
+}
+
+static void
+ui_reset_disabled_scope(void)
+{
+    while(g_ui_disabled_depth > 0)
+        EndDisabled();
+    g_ui_disabled_start = 0;
+}
+
+Rectangle
+BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
+{
+    int max_scroll = content_height - (int)bounds.height;
+    int offset = 0;
+    Rectangle content = bounds;
+    Vector2 mouse = ui_mouse_world();
+    if(max_scroll < 0)
+        max_scroll = 0;
+    if(scroll_offset != NULL) {
+        *scroll_offset = ui_clampi(*scroll_offset, 0, max_scroll);
+        if(CheckCollisionPointRec(mouse, bounds) && !UIInputCapturesClick(mouse) &&
+           g_scroll_wheel_frame != g_ui_frame_serial && GetMouseWheelMove() != 0) {
+            *scroll_offset = ui_clampi(*scroll_offset - (int)(GetMouseWheelMove() * 42), 0, max_scroll);
+            g_scroll_wheel_frame = g_ui_frame_serial;
+        }
+        if(max_scroll > 0 && bounds.width > 10 && bounds.height > 0) {
+            Rectangle track = {bounds.x+bounds.width-10, bounds.y, 10, bounds.height};
+            float thumb_h = bounds.height*bounds.height/content_height;
+            if(thumb_h < 16) thumb_h = 16;
+            if(thumb_h > bounds.height) thumb_h = bounds.height;
+            float travel = bounds.height-thumb_h;
+            float thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
+            if(!UIContentDisabled() && !UIInputCapturesClick(mouse) &&
+               CheckCollisionPointRec(mouse, track) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                g_scroll_drag_offset = scroll_offset;
+                g_scroll_drag_grab = mouse.y >= thumb_y && mouse.y < thumb_y+thumb_h
+                    ? mouse.y-thumb_y : thumb_h/2;
+            }
+            if(g_scroll_drag_offset == scroll_offset) {
+                if(UIContentDisabled()) g_scroll_drag_offset = NULL;
+                else if(travel > 0 && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
+                    *scroll_offset = ui_clampi((int)((mouse.y-bounds.y-g_scroll_drag_grab)*max_scroll/travel),0,max_scroll);
+                if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                    UIConsumeRelease();
+                    g_scroll_drag_offset = NULL;
+                }
+            }
+            thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
+            if(IsWindowReady()) {
+                DrawRectangleRec(track, c_surface);
+                DrawRectangleRec((Rectangle){track.x+2,thumb_y,6,thumb_h}, c_button);
+            }
+            bounds.width -= 10;
+            content.width = bounds.width;
+        }
+        offset = *scroll_offset;
+    }
+    PushUIInputClip(bounds);
+    if(IsWindowReady())
+        BeginUIClip((int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height);
+    g_scroll_scope_depth++;
+    content.y -= offset;
+    content.height = content_height > 0 ? (float)content_height : 0;
+    return content;
+}
+
+void
+EndScroll(void)
+{
+    if(g_scroll_scope_depth <= 0)
+        return;
+    g_scroll_scope_depth--;
+    if(IsWindowReady())
+        EndUIClip();
+    PopUIInputClip();
 }
 
 static int
@@ -525,6 +636,14 @@ BeginUIModalLayer(void)
 }
 
 int
+ui_current_input_clip(Rectangle *bounds)
+{
+    if(g_ui_input_clip_stack_count <= 0) return 0;
+    *bounds = g_ui_input_clip_stack[g_ui_input_clip_stack_count-1];
+    return 1;
+}
+
+int
 ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
 {
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && g_ui_release_consumed)
@@ -557,7 +676,7 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 int
 UIInputCapturesClick(Vector2 point)
 {
-    return UIInspectInputCapturesClick(point) ||
+    return UIContentDisabled() || UIInspectInputCapturesClick(point) ||
            ui_input_captures_click_internal(point, 1);
 }
 
@@ -3903,15 +4022,31 @@ RenderTextField(TextFieldProps field)
                                         selection_start, selection_end, 0, 1,
                                         field.read_only);
 
-    DrawUITextInputEx(field.bounds, display_text, *field.cursor_position,
-                      focused,
-                      !field.read_only,
-                      focused && !field.read_only && ui_caret_blink_visible(),
-                      font, field.style, selection_start, selection_end,
-                      *scroll_x_ptr);
+    UIWidgetTextInputPaint paint = {
+        .style = field.style, .cursor = *field.cursor_position, .focused = focused,
+        .editable = !field.read_only,
+        .caret = focused && !field.read_only && ui_caret_blink_visible(),
+        .font = font, .font_token = ui_active_font_token(),
+        .selection_start = selection_start, .selection_end = selection_end,
+        .scroll_x = *scroll_x_ptr
+    };
+    ui_tree_submit_text_input(field.bounds, display_text, paint, field.focus_id);
     free(masked_text);
     EndUIWidget(&widget);
     return changed;
+}
+
+void
+ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint paint)
+{
+    if(!IsWindowReady())
+        return;
+    int previous_font = ui_active_font_token();
+    PopUIFont(paint.font_token);
+    DrawUITextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
+                      paint.caret, paint.font, paint.style,
+                      paint.selection_start, paint.selection_end, paint.scroll_x);
+    PopUIFont(previous_font);
 }
 
 int
@@ -4216,6 +4351,7 @@ ui_camera_ensure_sane(void)
 void
 BeginUIFrame(int width, int height, float dpi)
 {
+    ui_reset_disabled_scope();
     SetUIViewSize(width, height);
     InitUI(width, height, dpi);
     SetUIFrame(GetUIDefaultCamera());
@@ -4251,6 +4387,7 @@ SetUIFrame(Camera2D camera)
                                        (float)ui_view_width,
                                        (float)ui_view_height}, 0);
     g_ui_input_clip_stack_count = 0;
+    g_scroll_scope_depth = 0;
     ResetUIClip();
     BeginUIInspectFrame(NULL);
 }

@@ -8,7 +8,7 @@ app "Widget Catalog Coverage" {
 
 state {
     pick: int = 0
-    open: int = 1
+    open: bool = true
     slider_value: int = 42
     toggle_value: int = 0
     checkbox_value: int = 1

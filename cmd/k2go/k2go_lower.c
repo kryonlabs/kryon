@@ -64,7 +64,8 @@ is_runtime_go_type(const char *type)
         "ThemeMode", "UIThemeSettingsState", "ThemeSettingsProps",
         "UIThemeSettingsResult", "PictureFit", "UISemanticKind",
         "TextInputStyle", "ButtonProps", "SelectableProps", "CheckboxFlagsProps",
-        "ImageWithBgProps", "ImageButtonProps", "IconButtonProps", "HrefProps",
+		"ImageWithBgProps", "ImageButtonProps", "IconButtonProps", "HrefProps",
+		"TabItemButtonProps", "Tab", "ClosableTabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "FrameBox", "Grid", "ParagraphSpec", "PictureProps", "PageProps",
         "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
@@ -74,7 +75,8 @@ is_runtime_go_type(const char *type)
 		"DragIntRange2Props", "SliderFloatProps", "SliderIntProps",
 		"SliderAngleProps",
 		"InputFloatProps", "InputIntProps", "InputDoubleProps",
-		"InvisibleButtonProps", "SeparatorTextProps", "ArrowButtonProps",
+		"InvisibleButtonProps", "SeparatorTextProps", "DragDropSourceProps",
+		"DragDropTargetProps", "MultiSelectListProps", "ArrowButtonProps",
 		"ColorEditProps", "ColorButtonProps", "TooltipProps",
 		"SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
@@ -857,7 +859,7 @@ props_field_at(const char *type, int index)
 {
     static const struct {
         const char *type;
-        const char *fields[20];
+        const char *fields[24];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"FlowProps", {"Bounds", "Gap", "Padding", "Key"}},
@@ -887,6 +889,11 @@ props_field_at(const char *type, int index)
                                 "FlagsValue", "Disabled"}},
         {"ImageWithBgProps", {"Picture", "Background"}},
         {"ImageButtonProps", {"Picture", "Background", "ID", "Disabled"}},
+		{"TabItemButtonProps", {"Bounds", "ID", "Label", "Font", "Disabled"}},
+		{"Tab", {"Label", "Icon", "IconSize", "Disabled", "Accent", "Italic",
+		         "Closeable"}},
+		{"ClosableTabBarProps", {"Bounds", "Tabs", "Count", "SelectedIndex",
+		                            "Font", "ClosedIndex"}},
         {"RadioButtonProps", {"Bounds", "Label", "ID", "Checked",
                               "Disabled"}},
         {"ProgressBarProps", {"Bounds", "Min", "Max", "Value", "Label"}},
@@ -916,6 +923,13 @@ props_field_at(const char *type, int index)
 		                        "Step", "StepFast", "Format", "Disabled"}},
 		{"InvisibleButtonProps", {"Bounds", "ID", "Disabled"}},
 		{"SeparatorTextProps", {"Bounds", "Label", "Font", "Disabled"}},
+		{"DragDropSourceProps", {"Bounds", "ID", "Type", "Data", "DataSize",
+		                           "Disabled"}},
+		{"DragDropTargetProps", {"Bounds", "ID", "Type", "Output",
+		                           "OutputSize", "AcceptedSize", "Disabled"}},
+		{"MultiSelectListProps", {"Bounds", "ID", "Items", "ItemCount",
+		                            "Selected", "SelectedCount", "Anchor",
+		                            "RowHeight", "Disabled"}},
 		{"ArrowButtonProps", {"Bounds", "ID", "Direction", "Disabled"}},
 		{"ColorEditProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
 		                     "Disabled"}},
@@ -941,10 +955,10 @@ props_field_at(const char *type, int index)
                            "Style", "Filter", "FilterUserData",
                            "ContentVersion", "ReadOnly", "Wrap"}},
 		{"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
-		                  "SelectedIndex", "ScrollOffset", "RowHeight"}},
+		                  "SelectedIndex", "ScrollOffset", "RowHeight", "Disabled"}},
 		{"UITreeItem", {"Label", "Depth", "ID", "Expanded", "Selectable"}},
 		{"TreeViewProps", {"Bounds", "ID", "Items", "ItemCount",
-		                   "SelectedID", "ScrollOffset", "RowHeight"}},
+		                   "SelectedID", "ScrollOffset", "RowHeight", "Disabled"}},
         {"FrameBox", {"Bounds", "PadX", "PadY", "Gap", "CursorX",
                       "CursorY"}},
         {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",
@@ -954,8 +968,11 @@ props_field_at(const char *type, int index)
                             "SelectedColumn", "ActivatedRow",
                             "ActivatedColumn", "RightClickedRow",
                             "RightClickedColumn", "SortColumn",
-                            "ScrollOffset", "RowHeight"}},
-        {"TableRow", {"Cells", "CellCount"}},
+                            "ScrollOffset", "RowHeight", "ColumnEnabled",
+                            "ColumnOrder", "SortDirection", "Disabled",
+                            "Resizable", "MinColumnWidth", "FreezeRows"}},
+        {"TableRow", {"Cells", "CellCount", "TextColors",
+                      "BackgroundColors"}},
         {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},
     };
     size_t i;
@@ -1115,7 +1132,7 @@ bool_prop_field(const char *field)
 {
     static const char *names[] = {"Disabled", "DrawMenu", "Active",
                                   "Secure", "Closeable", "Italic",
-                                  "FocusSelected", NULL};
+                                  "FocusSelected", "Resizable", NULL};
     int i;
 
     for(i = 0; names[i] != NULL; i++)
@@ -1133,6 +1150,15 @@ slice_prop_field(const char *type, const char *field)
         strcmp(type, "TreeViewProps") == 0) && strcmp(field, "Items") == 0)
         return 1;
     if(strcmp(type, "NotebookProps") == 0 && strcmp(field, "Tabs") == 0)
+        return 1;
+    if(strcmp(type, "ClosableTabBarProps") == 0 && strcmp(field, "Tabs") == 0)
+        return 1;
+    if(strcmp(type, "DragDropSourceProps") == 0 && strcmp(field, "Data") == 0)
+        return 1;
+    if(strcmp(type, "DragDropTargetProps") == 0 && strcmp(field, "Output") == 0)
+        return 1;
+    if(strcmp(type, "MultiSelectListProps") == 0 &&
+       (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0))
         return 1;
     if(strcmp(type, "PlotProps") == 0 && strcmp(field, "Values") == 0)
         return 1;
@@ -1154,7 +1180,13 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "TableViewProps") == 0 &&
        (strcmp(field, "Columns") == 0 || strcmp(field, "Rows") == 0 ||
-        strcmp(field, "ColumnWidths") == 0))
+        strcmp(field, "ColumnWidths") == 0 ||
+        strcmp(field, "ColumnEnabled") == 0 ||
+        strcmp(field, "ColumnOrder") == 0))
+        return 1;
+    if(strcmp(type, "TableRow") == 0 &&
+       (strcmp(field, "Cells") == 0 || strcmp(field, "TextColors") == 0 ||
+        strcmp(field, "BackgroundColors") == 0))
         return 1;
     return 0;
 }
@@ -1470,6 +1502,10 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 if(emitted++)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, ", ");
                 if((bool_prop_field(field) ||
+                    (strcmp(type, "TableViewProps") == 0 && strcmp(field, "CustomCells") == 0) ||
+                    (strcmp(type, "CollapsibleProps") == 0 &&
+                     (strcmp(field, "Tree") == 0 || strcmp(field, "Leaf") == 0 ||
+                      strcmp(field, "Selected") == 0)) ||
                     (strcmp(type, "MenuItem") == 0 &&
                      strcmp(field, "Checked") == 0)) &&
                    strcmp(value, "true") != 0 &&
@@ -1542,7 +1578,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             continue;
         }
         /* cast / compound literal: '(' ident ')' */
-        if(*p == '(') {
+        if(*p == '(' &&
+           (p == src || (!kir_is_ident_char((unsigned char)p[-1]) &&
+                         p[-1] != ')' && p[-1] != ']'))) {
             const char *q = p + 1;
             size_t tl = 0;
 
@@ -1555,6 +1593,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             if(*q == ')' && tl > 0 && tl < sizeof(char) * K2GO_NAME_MAX) {
                 char maybe[K2GO_NAME_MAX];
                 int identish = 1;
+                const char *after = kir_skip_ws(q + 1);
+
+                /* A cast needs an operand. A grouped argument at the end of
+                 * a call is not a type, even if it is a lone identifier. */
+                if(*after == '\0' || *after == ')' || *after == ',' || *after == '}')
+                    identish = 0;
 
                 memcpy(maybe, p + 1, tl < K2GO_NAME_MAX - 1 ? tl : K2GO_NAME_MAX - 1);
                 maybe[tl < K2GO_NAME_MAX - 1 ? tl : K2GO_NAME_MAX - 1] = '\0';
@@ -2463,7 +2507,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             kir_camel_ident(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
             emit_indent(f, indent);
-            fprintf(f, "%s.%s(%s)\n", K2GO_RUNTIME_PKG, wname, wargs);
+            if(strcmp(wname, "BeginDisabled") == 0)
+                fprintf(f, "%s.BeginDisabled((%s) != 0)\n",
+                        K2GO_RUNTIME_PKG, wargs);
+            else
+                fprintf(f, "%s.%s(%s)\n", K2GO_RUNTIME_PKG, wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:

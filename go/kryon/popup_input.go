@@ -1,0 +1,146 @@
+package kryon
+
+// Popup input ownership is independent of the kind of widgets in the panel.
+// Entries persist until dismissal or frame-end owner removal, so background
+// widgets declared before the popup cannot consume last frame's popup input.
+type popupInputPanel struct {
+	bounds      Rectangle
+	parent      int32
+	hasParent   bool
+	seen, order uint64
+}
+
+type popupInputToken struct {
+	runtime *runtime
+	frame   uint64
+	owner   int32
+	depth   int
+}
+
+func (r *runtime) popupDescendsFrom(owner, ancestor int32) bool {
+	for {
+		panel, ok := r.popupPanels[owner]
+		if !ok || !panel.hasParent {
+			return false
+		}
+		if panel.parent == ancestor {
+			return true
+		}
+		owner = panel.parent
+	}
+}
+
+func (r *runtime) beginPopupInput(owner int32, bounds Rectangle) popupInputToken {
+	for _, scope := range r.popupInputScopes {
+		if scope.owner == owner {
+			panic("popup owner is already active")
+		}
+	}
+	if r.popupPanels == nil {
+		r.popupPanels = make(map[int32]popupInputPanel)
+	}
+	token := popupInputToken{r, r.paintLayerFrame, owner, len(r.popupInputScopes)}
+	r.popupInputOrder++
+	panel := popupInputPanel{bounds: bounds, seen: r.paintLayerFrame, order: r.popupInputOrder}
+	if token.depth != 0 {
+		panel.parent = r.popupInputScopes[token.depth-1].owner
+		panel.hasParent = true
+		if r.popupDescendsFrom(panel.parent, owner) {
+			panic("popup ownership cycle")
+		}
+	}
+	r.popupPanels[owner] = panel
+	r.popupInputScopes = append(r.popupInputScopes, token)
+	return token
+}
+
+func (r *runtime) endPopupInput(token popupInputToken) {
+	n := len(r.popupInputScopes)
+	if n == 0 || r.popupInputScopes[n-1] != token || token.frame != r.paintLayerFrame {
+		panic("popup input scopes must close in their opening frame and stack order")
+	}
+	r.popupInputScopes = r.popupInputScopes[:n-1]
+}
+
+func (r *runtime) closePopupInput(owner int32) {
+	removed := []int32{owner}
+	for id := range r.popupPanels {
+		if r.popupDescendsFrom(id, owner) {
+			removed = append(removed, id)
+		}
+	}
+	for _, id := range removed {
+		delete(r.popupPanels, id)
+	}
+}
+
+func (r *runtime) prunePopupInput() {
+	if len(r.popupInputScopes) != 0 {
+		panic("unclosed popup input scope")
+	}
+	var missing []int32
+	for id, panel := range r.popupPanels {
+		if panel.seen != r.paintLayerFrame {
+			missing = append(missing, id)
+		}
+	}
+	for _, id := range missing {
+		r.closePopupInput(id)
+	}
+}
+
+// Compare whole branches, not just the two leaf timestamps. All descendants
+// of a later sibling layer paint above an earlier sibling's descendants.
+func (r *runtime) popupAbove(a, b int32) bool {
+	path := func(owner int32) []int32 {
+		var result []int32
+		for {
+			result = append(result, owner)
+			panel := r.popupPanels[owner]
+			if !panel.hasParent {
+				return result
+			}
+			owner = panel.parent
+		}
+	}
+	ap, bp := path(a), path(b)
+	i, j := len(ap)-1, len(bp)-1
+	for i >= 0 && j >= 0 && ap[i] == bp[j] {
+		i--
+		j--
+	}
+	if j < 0 {
+		return i >= 0
+	}
+	if i < 0 {
+		return false
+	}
+	return r.popupPanels[ap[i]].order > r.popupPanels[bp[j]].order
+}
+
+func (r *runtime) popupCaptures(x, y float32) bool {
+	var top int32
+	found := false
+	for id, panel := range r.popupPanels {
+		if !pointInRect(x, y, panel.bounds) {
+			continue
+		}
+		if !found || r.popupAbove(id, top) {
+			top, found = id, true
+		}
+	}
+	if n := len(r.popupInputScopes); n != 0 {
+		owner := r.popupInputScopes[n-1].owner
+		if _, alive := r.popupPanels[owner]; !alive {
+			return true
+		}
+		return found && owner != top
+	}
+	return found
+}
+
+func (r *runtime) closeDropdown(owner int32) {
+	delete(r.openDropdowns, owner)
+	delete(r.dropdownHighlight, owner)
+	r.closePopupInput(owner)
+}

@@ -152,6 +152,17 @@ app "Hierarchy" {
 }
 
 Main :: (viewport: Rectangle) #ui {
+    Scroll content: {
+        bounds = viewport
+        content_height = 480
+        Scroll {
+            bounds = content
+            Text("Scroll", 0, 0, Text16, GetThemeText())
+        }
+    }
+    Disabled {
+        when = 2 >= 1
+    }
     Screen root: {
         bounds = viewport
         padding = 8
@@ -314,6 +325,11 @@ grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.hpp"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
 grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
+grep -Fq 'BeginDisabled(2 >= 1);' "$hc"
+grep -Fq 'EndDisabled();' "$hc"
+grep -Fq 'BeginScroll(viewport, 480, NULL)' "$hc"
+grep -Fq 'BeginScroll(content, 0, NULL)' "$hc"
+grep -Fq 'EndScroll();' "$hc"
 grep -Fq 'Button((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .style = ButtonStyleSecondary, .font = Text16, .id = 77, });' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
@@ -341,5 +357,33 @@ if "$k2cpp" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/a
     exit 1
 fi
 grep -Fq 'intentional assertion failure' "$work/assert_fail.err"
+
+cat > "$work/src/invalid_disabled.kry" <<'EOF'
+#import "kryon.h"
+Invalid :: () {
+    Disabled {
+        unknown = true
+    }
+}
+EOF
+if "$k2cpp" --root "$work" -o "$work/out" "$work/src/invalid_disabled.kry" 2>"$work/invalid_disabled.err"; then
+    echo "unknown Disabled property was accepted" >&2
+    exit 1
+fi
+grep -Fq "Disabled only accepts the 'when' property" "$work/invalid_disabled.err"
+
+cat > "$work/src/missing_scroll_bounds.kry" <<'EOF'
+#import "kryon.h"
+Invalid :: () {
+    Scroll {
+        content_height = 100
+    }
+}
+EOF
+if "$k2cpp" --root "$work" -o "$work/out" "$work/src/missing_scroll_bounds.kry" 2>"$work/missing_scroll_bounds.err"; then
+    echo "Scroll without bounds was accepted" >&2
+    exit 1
+fi
+grep -Fq "Scroll requires 'bounds'" "$work/missing_scroll_bounds.err"
 
 echo "k2cpp ok"

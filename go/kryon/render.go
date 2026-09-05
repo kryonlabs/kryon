@@ -32,12 +32,27 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 		return
 	}
 	fillImage(img, RAYWHITE)
+	frame := img
 	for _, op := range ops {
+		img = frame
+		if op.HasClip {
+			clip := image.Rect(int(math.Ceil(float64(op.Clip.X))), int(math.Ceil(float64(op.Clip.Y))),
+				int(math.Ceil(float64(op.Clip.X+op.Clip.Width))), int(math.Ceil(float64(op.Clip.Y+op.Clip.Height))))
+			img = frame.SubImage(clip.Intersect(frame.Bounds())).(*image.RGBA)
+		}
 		switch op.Kind {
 		case FrameOpBackground:
 			fillImage(img, opaque(op.Color, RAYWHITE))
 		case FrameOpRect:
-			if op.SecondaryColor.A != 0 {
+			if op.HasPolygon {
+				for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+					for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+						if pointInPolygon(float32(x)+0.5, float32(y)+0.5, op.Polygon[:]) {
+							setPixel(img, x, y, op.Color)
+						}
+					}
+				}
+			} else if op.SecondaryColor.A != 0 {
 				fillGradientH(img, op.Bounds, opaque(op.Color, LIGHTGRAY), opaque(op.SecondaryColor, LIGHTGRAY))
 			} else {
 				fillRect(img, op.Bounds, opaque(op.Color, LIGHTGRAY))
@@ -45,7 +60,11 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 		case FrameOpLine:
 			drawLine(img, op.Bounds, opaque(op.Color, BLACK))
 		case FrameOpText:
-			drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK), op.FontID)
+			if op.Rotation != 0 {
+				drawRotatedText(img, op)
+			} else {
+				drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK), op.FontID)
+			}
 		case FrameOpButton:
 			renderButton(img, op)
 		case FrameOpIcon:
@@ -411,6 +430,47 @@ func drawTextInBox(img *image.RGBA, text string, bounds Rectangle, fontSize int3
 	x := int(round(bounds.X)) + 8
 	y := int(round(bounds.Y)) + maxInt(3, (int(round(bounds.Height))-int(textHeight(fontSize, fontID)))/2)
 	drawText(img, text, x, y, fontSize, c, fontID)
+}
+
+func pointInPolygon(x, y float32, points []Vector2) bool {
+	inside := false
+	j := len(points) - 1
+	for i, p := range points {
+		q := points[j]
+		if (p.Y > y) != (q.Y > y) && x < (q.X-p.X)*(y-p.Y)/(q.Y-p.Y)+p.X {
+			inside = !inside
+		}
+		j = i
+	}
+	return inside
+}
+
+func drawRotatedText(img *image.RGBA, op FrameOp) {
+	angle := float64(op.Rotation) * math.Pi / 180
+	if math.IsNaN(angle) || math.IsInf(angle, 0) || img.Bounds().Empty() {
+		return
+	}
+	s, c := math.Sincos(angle)
+	font := max32(1, op.FontSize)
+	w := min(runtimeTextWidth(op.Text, font)+8, img.Bounds().Dx()+img.Bounds().Dy()+int(font)*2)
+	source := image.NewRGBA(image.Rect(0, 0, max(1, w), int(font)*2+8))
+	drawText(source, op.Text, 0, 0, font, opaque(op.Color, BLACK), op.FontID)
+	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+			if op.HasPolygon && !pointInPolygon(float32(x)+0.5, float32(y)+0.5, op.Polygon[:]) {
+				continue
+			}
+			dx, dy := float64(x)+0.5-float64(op.Bounds.X), float64(y)+0.5-float64(op.Bounds.Y)
+			sx, sy := int(math.Floor(c*dx+s*dy)), int(math.Floor(-s*dx+c*dy))
+			if !image.Pt(sx, sy).In(source.Bounds()) {
+				continue
+			}
+			pixel := color.NRGBAModel.Convert(source.RGBAAt(sx, sy)).(color.NRGBA)
+			if pixel.A != 0 {
+				setPixel(img, x, y, Color{pixel.R, pixel.G, pixel.B, pixel.A})
+			}
+		}
+	}
 }
 
 func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, fontID uint32) {

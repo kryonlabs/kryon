@@ -77,10 +77,54 @@ typedef enum UIWidgetKind {
     UI_WIDGET_STACK_NODE,
     UI_WIDGET_GRID_NODE,
     UI_WIDGET_PICTURE_NODE,
-    UI_WIDGET_CUSTOM_NODE
+    UI_WIDGET_CUSTOM_NODE,
+    UI_WIDGET_FLOAT_SLIDER_NODE,
+    UI_WIDGET_INT_SLIDER_NODE,
+    UI_WIDGET_ANGLE_SLIDER_NODE,
+    UI_WIDGET_FLOAT_DRAG_NODE,
+    UI_WIDGET_INT_DRAG_NODE,
+    UI_WIDGET_TEXT_IN_RECT_NODE,
+    UI_WIDGET_TEXT_INPUT_PAINT_NODE
 } UIWidgetKind;
 
+/* Prepared painting only: no editing-state pointers survive submission. */
+typedef struct UIWidgetTextInputPaint {
+    TextInputStyle style;
+    int cursor;
+    int focused;
+    int editable;
+    int caret;
+    int font;
+    int font_token;
+    int selection_start;
+    int selection_end;
+    int scroll_x;
+} UIWidgetTextInputPaint;
+
 typedef union UIWidgetData {
+    UIWidgetTextInputPaint text_input_paint;
+    struct {
+        DragFloatProps props;
+        size_t format_offset;
+    } float_drag;
+    struct {
+        DragIntProps props;
+        size_t format_offset;
+    } int_drag;
+    struct {
+        SliderAngleProps props;
+        size_t format_offset;
+    } angle_slider;
+    struct {
+        SliderFloatProps props;
+        int vertical;
+        size_t format_offset;
+    } float_slider;
+    struct {
+        SliderIntProps props;
+        int vertical;
+        size_t format_offset;
+    } int_slider;
     struct {
         int gap;
         int padding;
@@ -100,6 +144,7 @@ typedef union UIWidgetData {
         int y2;
         int font;
         int font_token;
+        int heading_level;
         Color color;
         Color border;
     } primitive;
@@ -141,6 +186,10 @@ typedef struct UIWidgetNode {
     UIWidgetKind kind;
     Rectangle bounds;
     Rectangle declared_bounds;
+    Rectangle input_clip;
+    int has_input_clip;
+    /* Internal frame-local paint snapshot index; zero means ordinary painting. */
+    unsigned paint_capture;
     int parent;
     int first_child;
     int next_sibling;
@@ -200,6 +249,11 @@ typedef struct ButtonProps {
     int disabled;
 } ButtonProps;
 
+void BeginDisabled(int disabled);
+void EndDisabled(void);
+Rectangle BeginScroll(Rectangle bounds, int content_height, int *scroll_offset);
+void EndScroll(void);
+
 typedef struct {
     Rectangle bounds;
     int id;
@@ -229,6 +283,23 @@ typedef struct {
     int disabled;
 } ImageButtonProps;
 
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int font;
+    int disabled;
+} TabItemButtonProps;
+
+typedef struct {
+    Rectangle bounds;
+    const Tab *tabs;
+    int count;
+    int *selected_index;
+    int font;
+    int *closed_index;
+} ClosableTabBarProps;
+
 void Background(Color color);
 void Text(const char *text, int x, int y, int font_size, Color color);
 void TextInRect(const char *text, Rectangle rect, int font_size,
@@ -241,6 +312,14 @@ void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);
 void BulletText(const char *text, Rectangle bounds, int font_size,
                 Color color);
+void ValueBool(const char *prefix, int value, Rectangle bounds,
+               int font_size, Color color);
+void ValueInt(const char *prefix, int value, Rectangle bounds,
+              int font_size, Color color);
+void ValueUInt(const char *prefix, unsigned int value, Rectangle bounds,
+               int font_size, Color color);
+void ValueFloat(const char *prefix, float value, const char *format,
+                Rectangle bounds, int font_size, Color color);
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
@@ -283,6 +362,9 @@ int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
                         UIThemeSettingsResult *result);
 void Separator(Rectangle bounds, int vertical);
 void SeparatorText(SeparatorTextProps separator);
+int DragDropSource(DragDropSourceProps source);
+int DragDropTarget(DragDropTargetProps target);
+int MultiSelectList(MultiSelectListProps list);
 MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
 int PopupMenu(int id, int x, int y, const MenuItem *items,
@@ -309,10 +391,14 @@ int Combobox(ComboboxProps combo);
 void LabelFrame(LabelFrameProps frame);
 void ImageBox(ImageBoxProps image);
 int ListBox(ListBoxProps list);
+Rectangle BeginListBox(ListBoxProps list);
+void EndListBox(void);
 int TreeView(TreeViewProps tree);
 int CascadingTreeView(CascadingTreeViewProps tree);
 int SourceView(SourceViewProps source);
 int TableView(TableViewProps table);
+Rectangle BeginTableCell(TableViewProps table, int row, int column);
+void EndTableCell(void);
 int TextArea(TextAreaProps area);
 int RichTextEditor(RichTextEditorProps editor);
 void CanvasGrid(Rectangle bounds, int step, Color color);
@@ -378,6 +464,8 @@ int Selectable(SelectableProps selectable);
 int CheckboxFlags(CheckboxFlagsProps checkbox);
 void ImageWithBg(ImageWithBgProps image);
 int ImageButton(ImageButtonProps image);
+int TabItemButton(TabItemButtonProps button);
+int ClosableTabBar(ClosableTabBarProps bar);
 int SmallButton(ButtonProps button);
 int InvisibleButton(InvisibleButtonProps button);
 int ArrowButton(ArrowButtonProps button);

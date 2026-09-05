@@ -352,7 +352,8 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
 {
     static const char *const widgets[] = {
         "Background", "Text", "TextInRect", "TextColored", "TextDisabled",
-        "TextWrapped", "LabelText", "BulletText", "Paragraph", "TextLines",
+        "TextWrapped", "LabelText", "BulletText", "ValueBool", "ValueInt",
+        "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Selectable",
         "CheckboxFlags", "ImageWithBg", "ImageButton", "SmallButton",
         "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
@@ -365,9 +366,12 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "DragIntRange2", "SliderFloat", "SliderInt",
         "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt",
         "InputDouble", "Spinbox", "Combobox",
+        "DragDropSource", "DragDropTarget", "MultiSelectList",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
+        "BeginDisabled", "EndDisabled",
         "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
-        "PromptDialog", "TitleBar", "TabBar", "BottomNav", "TopNav",
+        "PromptDialog", "TitleBar", "TabBar", "TabItemButton",
+        "ClosableTabBar", "BottomNav", "TopNav",
         "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
 		"PanedView", "Collapsible", "ListBox", "TreeView", "SourceView", "TableView",
 		"ColorPicker", "CanvasGrid", "SelectableText"
@@ -442,6 +446,8 @@ typedef struct UiBlock {
     int opened;
     int emits_end;
     int prop_count;
+    char *scope_args[3];
+    unsigned scope_fields;
 } UiBlock;
 
 static int
@@ -454,6 +460,9 @@ is_layout_widget(const char *name)
 static const char *
 ui_block_prop_type(const char *widget)
 {
+    /* A lexical scope, not a runtime props type or another widget API. */
+    if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0)
+        return "";
     if(strcmp(widget, "Row") == 0)
         return "RowProps";
     if(strcmp(widget, "Screen") == 0 || strcmp(widget, "Column") == 0 ||
@@ -569,8 +578,9 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
     size_t n;
 
     eq = strchr(text, '=');
-    if(eq == NULL || strstr(text, "==") != NULL || strstr(text, "!=") != NULL ||
-       strstr(text, "<=") != NULL || strstr(text, ">=") != NULL)
+    /* Only the property separator must be assignment. Comparisons in its
+     * value are valid expressions (for example, when = count >= limit). */
+    if(eq == NULL || eq[1] == '=')
         return 0;
     *eq = '\0';
     name = kir_trim(text);
@@ -612,6 +622,40 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
 
     if(block == NULL || block->opened)
         return;
+    if(strcmp(block->widget, "Scroll") == 0) {
+        char bounds[KIR_TEXT_MAX];
+        const char *height = (block->scope_fields & 2) ? block->scope_args[1] : "0";
+        const char *offset = (block->scope_fields & 4) ? block->scope_args[2] : "nil";
+        if(!(block->scope_fields & 1))
+            die("%s:%d: Scroll requires 'bounds'", span.path, span.line);
+        const char *source_bounds = kir_skip_ws(block->scope_args[0]);
+        int n = snprintf(bounds, sizeof(bounds), "%s%s",
+                         *source_bounds == '{' ? "(Rectangle)" : "", source_bounds);
+        if(n < 0 || (size_t)n >= sizeof(bounds))
+            die("%s:%d: Scroll bounds expression is too long", span.path, span.line);
+        n = snprintf(call, sizeof(call), "%s%sBeginScroll(%s, %s, %s)",
+                     block->name, block->name[0] ? ": Rectangle = " : "",
+                     bounds, height, offset);
+        if(n < 0 || (size_t)n >= sizeof(call))
+            die("%s:%d: Scroll arguments are too long", span.path, span.line);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, block->name[0] ? KIR_STMT_DECL : KIR_STMT_EXPR,
+                           call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "Disabled") == 0) {
+        const char *condition = block->prop_count ? block->props : "true";
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        snprintf(call, sizeof(call), "BeginDisabled(%.3900s)", condition);
+        /* Scope conditions are boolean expressions, not legacy integer UI
+         * widget arguments. Keep the ordinary typed call in the shared IR. */
+        KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "", span);
+        block->opened = 1;
+        return;
+    }
     prop_type = ui_block_prop_type(block->widget);
     if(prop_type == NULL)
         return;
@@ -2465,9 +2509,15 @@ kir_parse_file(const char *path, const char *root)
                 UiBlock *block = &ui_blocks[ui_block_count - 1];
 
                 ui_block_open(fn, block, KirSpan(rel, line_no, 1));
-                if(block->emits_end)
+                if(strcmp(block->widget, "Disabled") == 0 ||
+                   strcmp(block->widget, "Scroll") == 0)
+                    KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
+                                       KirSpan(rel, line_no, 1));
+                else if(block->emits_end)
                     KirFunctionAddWidget(fn, "End", "", "End()",
                                          KirSpan(rel, line_no, 1));
+                for(int field = 0; field < 3; field++)
+                    free(block->scope_args[field]);
                 ui_block_count--;
                 if(depth > 0)
                     depth--;
@@ -2554,8 +2604,30 @@ kir_parse_file(const char *path, const char *root)
                    parse_ui_prop_line(prop_line, prop_field,
                                       sizeof(prop_field), prop_value,
                                       sizeof(prop_value))) {
-                    ui_block_append_prop(&ui_blocks[ui_block_count - 1],
-                                         prop_field, prop_value);
+                    UiBlock *block = &ui_blocks[ui_block_count - 1];
+                    if(strcmp(block->widget, "Scroll") == 0) {
+                        int field = strcmp(prop_field, "bounds") == 0 ? 0 :
+                                    strcmp(prop_field, "content_height") == 0 ? 1 :
+                                    strcmp(prop_field, "scroll_offset") == 0 ? 2 : -1;
+                        if(field < 0)
+                            die("%s:%d: Scroll accepts only bounds, content_height and scroll_offset", rel, line_no);
+                        if(block->scope_fields & (1u << field))
+                            die("%s:%d: duplicate Scroll '%s' property", rel, line_no, prop_field);
+                        block->scope_args[field] = malloc(strlen(prop_value) + 1);
+                        if(block->scope_args[field] == NULL)
+                            die("out of memory parsing Scroll scope");
+                        strcpy(block->scope_args[field], prop_value);
+                        block->scope_fields |= 1u << field;
+                    } else if(strcmp(block->widget, "Disabled") == 0) {
+                        if(strcmp(prop_field, "when") != 0)
+                            die("%s:%d: Disabled only accepts the 'when' property", rel, line_no);
+                        if(block->prop_count != 0)
+                            die("%s:%d: duplicate Disabled 'when' property", rel, line_no);
+                        kir_copy(block->props, sizeof(block->props), prop_value);
+                        block->prop_count = 1;
+                    } else {
+                        ui_block_append_prop(block, prop_field, prop_value);
+                    }
                     continue;
                 }
 

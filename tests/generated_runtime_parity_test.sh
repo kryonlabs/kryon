@@ -33,6 +33,8 @@ tests/parity/plots.kry
 tests/parity/menus.kry
 tests/parity/selection_images.kry
 tests/parity/table_view.kry
+tests/parity/scroll_content.kry
+tests/parity/drag_drop.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -83,6 +85,10 @@ type inputDriver interface {
 	QueueShiftKey(int32)
 	QueueShortcut(int32)
 	QueueTap(float32, float32)
+	QueueMouseMove(float32, float32)
+	QueueMouseWheel(float32)
+	QueueMouseButtonDown(int32, float32, float32)
+	QueueMouseButtonUp(int32, float32, float32)
 	SetClipboardText(string)
 	ClipboardText() string
 	SetSelection(int32, int32, int32)
@@ -308,6 +314,181 @@ func checksum(text string) uint64 {
 func main() {
 	host = kryon.NewHost(kryon.AppConfig{Width: 640, Height: 480, FPS: 60})
 	driver := host.Runtime().(inputDriver)
+    drawDragDrop := func() {
+        host.Draw(func() {
+            kryon.BeginFrame()
+            DragDrop_DragDropFrame(DragDropStateValue)
+            kryon.EndFrame()
+        })
+    }
+    driver.QueueMouseButtonDown(kryon.MouseButtonLeft,20,20)
+    drawDragDrop()
+    DragDropStateValue.DdPayload[0] = 'X'
+    driver.QueueMouseButtonUp(kryon.MouseButtonLeft,150,20)
+    drawDragDrop()
+    if DragDropStateValue.DdInvalidAccepts != 0 || DragDropStateValue.DdAccepted != 8 || string(DragDropStateValue.DdReceived[:4]) != "item" {
+        panic("generated drag-drop clipping or copied payload failed")
+    }
+	drawScroll := func() {
+		host.Draw(func() {
+			kryon.BeginFrame()
+			ScrollContent_ScrollContentFrame(ScrollContentStateValue)
+			kryon.EndFrame()
+		})
+	}
+	driver.QueueTap(20, 90)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingActions != 100 {
+		panic("scroll: clipped child activated or parent input was not restored")
+	}
+	scrollImage := kryon.RenderFrame(220, 160, host.FrameOps())
+	if got := color.RGBAModel.Convert(scrollImage.At(20, 75)).(color.RGBA); got != (color.RGBA{245,245,245,255}) {
+		panic("scroll: generated child painted below viewport")
+	}
+	if got := color.RGBAModel.Convert(scrollImage.At(120,55)).(color.RGBA); got != (color.RGBA{245,245,245,255}) {
+		panic("scroll: nested content escaped parent viewport")
+	}
+	if got := color.RGBAModel.Convert(scrollImage.At(65,55)).(color.RGBA); got != (color.RGBA{0,121,241,255}) {
+		panic("scroll: nested content did not render inside viewport")
+	}
+	driver.QueueMouseMove(30, 30)
+	driver.QueueMouseWheel(-1)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingOffset != 42 { panic("scroll: wheel offset") }
+	driver.QueueTap(20, 45)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingActions != 101 { panic("scroll: visible child did not activate") }
+	driver.QueueMouseButtonDown(kryon.MouseButtonLeft,105,30)
+	drawScroll()
+	driver.QueueMouseMove(105,110)
+	drawScroll()
+	driver.QueueMouseButtonUp(kryon.MouseButtonLeft,105,110)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingOffset != 140 { panic("scroll: generated thumb drag") }
+	driver.QueueTap(120,65)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingActions != 101 { panic("scroll: nested clipped child activated") }
+	driver.QueueTap(70,65)
+	drawScroll()
+	if ScrollContentStateValue.ScrollingActions != 1101 { panic("scroll: nested visible child did not activate") }
+	driver.QueueTap(250,20)
+	drawScroll()
+	if ScrollContentStateValue.MixedFlags != 4 { panic("scroll: mixed checkbox") }
+	driver.QueueTap(250,115)
+	drawScroll()
+	if ScrollContentStateValue.MixedActions != 0 { panic("scroll: hidden mixed button activated") }
+	driver.SetFocus(988)
+	driver.QueueText("!")
+	drawScroll()
+	if text64(ScrollContentStateValue.MixedText) != "item!" { panic("scroll: mixed text editing") }
+	driver.QueueMouseMove(250,80)
+	driver.QueueMouseWheel(-1)
+	drawScroll()
+	driver.QueueTap(250,80)
+	drawScroll()
+	if ScrollContentStateValue.MixedActions != 1 || ScrollContentStateValue.MixedFlags != 4 || ScrollContentStateValue.MixedOffset != 42 {
+		panic("scroll: mixed widget state or scrolled button")
+	}
+
+	for i, point := range [][2]float32{{450,20},{450,50},{470,50},{490,85},{450,20},{490,85},{450,20}} {
+		driver.QueueTap(point[0],point[1])
+		drawScroll()
+		wantRoot := i != 4 && i != 5
+		wantNested := i >= 2
+		wantActions := int32(0)
+		if i >= 3 { wantActions = 1 }
+		if ScrollContentStateValue.BranchOpen != wantRoot || ScrollContentStateValue.NestedOpen != wantNested || ScrollContentStateValue.BranchActions != wantActions {
+			panic(fmt.Sprintf("tree composition: step %d",i))
+		}
+	}
+
+	driver.SetFocus(990)
+	for i,key := range []int32{kryon.KeyLeft,kryon.KeyRight,kryon.KeyRight,kryon.KeyEnter,kryon.KeySpace} {
+		driver.SetFocus(990)
+		driver.QueueKey(key)
+		drawScroll()
+		if ScrollContentStateValue.BranchOpen != (i == 1 || i == 2 || i == 4) || !ScrollContentStateValue.NestedOpen {
+			panic(fmt.Sprintf("tree keyboard: step %d",i))
+		}
+	}
+
+	driver.QueueKey(kryon.KeyTab)
+	drawScroll()
+	driver.QueueKey(kryon.KeyLeft)
+	drawScroll()
+	if !ScrollContentStateValue.BranchOpen || ScrollContentStateValue.NestedOpen { panic("tree keyboard: tab to child") }
+	for i,key := range []int32{kryon.KeyUp,kryon.KeyDown,kryon.KeyLeft,kryon.KeyRight,kryon.KeyRight,kryon.KeyDown,kryon.KeyLeft} {
+		driver.QueueKey(key)
+		drawScroll()
+		want := int32(991)
+		if i == 0 || i == 2 || i == 6 { want = 990 }
+		if i == 5 { want = 995 }
+		if driver.Focus() != want || !ScrollContentStateValue.BranchOpen || ScrollContentStateValue.NestedOpen != (i >= 4) {
+			panic(fmt.Sprintf("tree directional focus: step %d focus %d",i,driver.Focus()))
+		}
+	}
+
+	driver.QueueTap(250,190)
+	drawScroll()
+	driver.QueueMouseMove(250,255)
+	driver.QueueMouseWheel(-1)
+	drawScroll()
+	if ScrollContentStateValue.OverlayBackgroundOffset != 0 { panic("background scroll stole popup wheel") }
+	driver.QueueTap(250,255)
+	drawScroll()
+	if ScrollContentStateValue.OverlaySelected != 1 || ScrollContentStateValue.OverlayActions != 0 { panic("combo overlay: selection or background capture") }
+	for _, escape := range []bool{true,false} {
+		driver.QueueTap(250,190); drawScroll()
+		if escape { driver.QueueKey(kryon.KeyEscape) } else { driver.QueueTap(220,280) }
+		drawScroll()
+		driver.QueueTap(250,220); drawScroll()
+		if ScrollContentStateValue.OverlaySelected != 1 { panic("combo dismissal: stale popup row selected") }
+	}
+	if ScrollContentStateValue.OverlayActions != 2 { panic("combo dismissal: popup capture remained") }
+	for _, key := range []int32{kryon.KeyHome,kryon.KeyEnd} {
+		driver.SetFocus(996)
+		driver.QueueKey(kryon.KeySpace); drawScroll()
+		before := ScrollContentStateValue.OverlaySelected
+		driver.QueueKey(key); drawScroll()
+		if ScrollContentStateValue.OverlaySelected != before { panic("combo navigation committed before Enter") }
+		driver.QueueKey(kryon.KeyEnter); drawScroll()
+		want := int32(0); if key == kryon.KeyEnd { want = 1 }
+		if ScrollContentStateValue.OverlaySelected != want { panic("combo keyboard commit failed") }
+	}
+
+	driver.QueueTap(450,270); drawScroll()
+	if ScrollContentStateValue.RotatedSort != -1 { panic("slanted header empty wedge sorted") }
+	driver.QueueTap(590,230); drawScroll()
+	if ScrollContentStateValue.RotatedSort != 0 || ScrollContentStateValue.RotatedRow != -1 { panic("rotated header hit geometry") }
+	driver.QueueTap(590,290); drawScroll()
+	if ScrollContentStateValue.RotatedSort != 1 { panic("slanted header second column hit") }
+	driver.QueueTap(450,310); drawScroll()
+	if ScrollContentStateValue.RotatedRow != 0 { panic("rotated header body geometry") }
+	driver.QueueMouseButtonDown(kryon.MouseButtonLeft,600,230); drawScroll()
+	driver.QueueMouseMove(620,230); drawScroll()
+	driver.QueueMouseButtonUp(kryon.MouseButtonLeft,620,230); drawScroll()
+	if ScrollContentStateValue.RotatedWidths[0] != 110 { panic("slanted separator resize") }
+
+	driver.QueueTap(20,345); drawScroll()
+	driver.QueueTap(180,345); drawScroll()
+	if ScrollContentStateValue.CustomActions != 1 || ScrollContentStateValue.CustomFlags != 4 || ScrollContentStateValue.CustomSelected != -1 { panic("custom table cell interaction or clipping") }
+	driver.QueueTap(120,345); drawScroll()
+	if ScrollContentStateValue.CustomActions != 11 { panic("custom table nested row layout") }
+	driver.QueueTap(340,310); drawScroll()
+	driver.QueueTap(340,330); drawScroll()
+	if ScrollContentStateValue.CustomOuterActions != 11 { panic("custom table surrounding layout restoration") }
+	driver.QueueTap(20,380); drawScroll()
+	if driver.Focus() != 1006 { panic("custom cell editor focus") }
+	driver.QueueKey(kryon.KeyEnd); drawScroll()
+	driver.QueueText("!"); drawScroll()
+	if text64(ScrollContentStateValue.CustomText) != "cell!" { panic("custom cell editing") }
+	ScrollContentStateValue.CustomDisabled = 1
+	driver.QueueText("X"); drawScroll()
+	if text64(ScrollContentStateValue.CustomText) != "cell!" { panic("disabled custom cell edited") }
+	ScrollContentStateValue.CustomDisabled = 0
+	driver.SetFocus(1006); drawScroll()
+	driver.QueueText("?"); drawScroll()
+	if text64(ScrollContentStateValue.CustomText) != "cell!?" { panic("custom cell editor re-enable") }
 
 	form := GeneratedFormStateValue
 	fields := FieldsStateValue
@@ -585,6 +766,8 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/progress.c"
 #include "$work/c/tests/parity/plots.c"
 #include "$work/c/tests/parity/table_view.c"
+#include "$work/c/tests/parity/scroll_content.c"
+#include "$work/c/tests/parity/drag_drop.c"
 
 static void drain_events(void)
 {
@@ -682,7 +865,229 @@ static void require_long_text_node_count(int want, const char *label)
 int main(void)
 {
     InjectReset();
+    InjectMousePosition(20,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump(); draw_ui(drag_drop_frame);
+    dd_payload[0] = 'X';
+    InjectMousePosition(150,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump(); draw_ui(drag_drop_frame);
+    if(dd_invalid_accepts != 0 || dd_accepted != 8 || strcmp(dd_received,"item") != 0) {
+        fprintf(stderr,"generated drag-drop clipping or copied payload failed\n"); return 1;
+    }
+    InjectReset();
+    InjectReset();
 
+    InjectTap(20, 90);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    if(scrolling_actions != 100) {
+        fprintf(stderr, "scroll: clipped child or parent restoration failed\n");
+        return 1;
+    }
+    InjectMousePosition(30, 30);
+    InjectWheel(-1);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    if(scrolling_offset != 42) {
+        fprintf(stderr, "scroll: wheel offset failed\n");
+        return 1;
+    }
+    InjectTap(20, 45);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    if(scrolling_actions != 101) {
+        fprintf(stderr, "scroll: visible child did not activate\n");
+        return 1;
+    }
+    InjectMousePosition(105,30);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    InjectMousePosition(105,110);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    draw_ui(scroll_content_frame);
+    if(scrolling_offset != 140) {
+        fprintf(stderr, "scroll: generated thumb drag failed\n");
+        return 1;
+    }
+    for(int nested = 0; nested < 2; nested++) {
+        InjectTap(nested ? 70 : 120,65);
+        InjectPump();
+        draw_ui(scroll_content_frame);
+        InjectPump();
+        draw_ui(scroll_content_frame);
+        if(scrolling_actions != (nested ? 1101 : 101)) {
+            fprintf(stderr, "scroll: nested child clipping failed\n");
+            return 1;
+        }
+    }
+    InjectTap(250,20);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(mixed_flags != 4) { fprintf(stderr, "scroll: mixed checkbox failed\n"); return 1; }
+    InjectTap(250,115);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(mixed_actions != 0) { fprintf(stderr, "scroll: hidden mixed button activated\n"); return 1; }
+    SetUIFocus(988);
+    InjectText("!");
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(strcmp(mixed_text,"item!") != 0) { fprintf(stderr, "scroll: mixed text editing failed\n"); return 1; }
+    InjectMousePosition(250,80);
+    InjectWheel(-1);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectTap(250,80);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(mixed_actions != 1 || mixed_flags != 4 || mixed_offset != 42) {
+        fprintf(stderr, "scroll: mixed widget state or scrolled button failed\n"); return 1;
+    }
+    InjectReset();
+
+    const int branch_points[][2] = {{450,20},{450,50},{470,50},{490,85},{450,20},{490,85},{450,20}};
+    for(int i = 0; i < 7; i++) {
+        InjectTap(branch_points[i][0],branch_points[i][1]);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        if(branch_open != (i != 4 && i != 5) || nested_open != (i >= 2) || branch_actions != (i >= 3)) {
+            fprintf(stderr,"tree composition: step %d failed\n",i); return 1;
+        }
+    }
+    InjectReset();
+    SetUIFocus(990);
+    const int branch_keys[] = {KEY_LEFT,KEY_RIGHT,KEY_RIGHT,KEY_ENTER,KEY_SPACE};
+    for(int i = 0; i < 5; i++) {
+        SetUIFocus(990);
+        InjectKeyTap(branch_keys[i]);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        if(branch_open != (i == 1 || i == 2 || i == 4) || !nested_open) {
+            fprintf(stderr,"tree keyboard: step %d failed\n",i); return 1;
+        }
+    }
+    InjectReset();
+    InjectKeyTap(KEY_TAB);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectKeyTap(KEY_LEFT);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(!branch_open || nested_open) { fprintf(stderr,"tree keyboard: tab to child failed\n"); return 1; }
+    const int direction_keys[] = {KEY_UP,KEY_DOWN,KEY_LEFT,KEY_RIGHT,KEY_RIGHT,KEY_DOWN,KEY_LEFT};
+    for(int i = 0; i < 7; i++) {
+        InjectKeyTap(direction_keys[i]);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        int want = (i == 0 || i == 2 || i == 6) ? 990 : i == 5 ? 995 : 991;
+        if(GetUIFocus() != want || !branch_open || nested_open != (i >= 4)) {
+            fprintf(stderr,"tree directional focus: step %d focus %d failed\n",i,GetUIFocus()); return 1;
+        }
+    }
+    InjectReset();
+    InjectTap(250,190);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectMousePosition(250,255);
+    InjectWheel(-1);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(overlay_background_offset != 0) { fprintf(stderr,"background scroll stole popup wheel\n"); return 1; }
+    InjectTap(250,255);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(overlay_selected != 1 || overlay_actions != 0) { fprintf(stderr,"combo overlay: selection or background capture failed\n"); return 1; }
+    for(int escape = 0; escape < 2; escape++) {
+        InjectTap(250,190);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        if(escape) InjectKeyTap(KEY_ESCAPE); else InjectTap(220,280);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectTap(250,220);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        InjectPump(); draw_ui(scroll_content_frame);
+        if(overlay_selected != 1) { fprintf(stderr,"combo dismissal: stale row selected\n"); return 1; }
+    }
+    if(overlay_actions != 2) { fprintf(stderr,"combo dismissal: capture remained\n"); return 1; }
+    for(int last = 0; last < 2; last++) {
+        SetUIFocus(996);
+        InjectKeyTap(KEY_SPACE);
+        for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+        int before = overlay_selected;
+        InjectKeyTap(last ? KEY_END : KEY_HOME);
+        for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+        if(overlay_selected != before) { fprintf(stderr,"combo navigation committed before Enter\n"); return 1; }
+        InjectKeyTap(KEY_ENTER);
+        for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
+        if(overlay_selected != last) { fprintf(stderr,"combo keyboard commit failed\n"); return 1; }
+    }
+    InjectReset();
+    InjectTap(450,270);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(rotated_sort != -1) { fprintf(stderr,"slanted header wedge sorted\n"); return 1; }
+    InjectTap(590,230);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(rotated_sort != 0 || rotated_row != -1) { fprintf(stderr,"rotated header hit geometry failed\n"); return 1; }
+    InjectTap(590,290);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(rotated_sort != 1) { fprintf(stderr,"slanted header second column hit failed\n"); return 1; }
+    InjectTap(450,310);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(rotated_row != 0) { fprintf(stderr,"rotated header body geometry failed\n"); return 1; }
+    InjectMousePosition(600,230); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectMousePosition(620,230);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(rotated_widths[0] != 110) { fprintf(stderr,"slanted separator resize failed\n"); return 1; }
+    InjectReset();
+    InjectTap(20,345);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectTap(180,345);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(custom_actions != 1 || custom_flags != 4 || custom_selected != -1) { fprintf(stderr,"custom table cell interaction or clipping failed: actions=%d flags=%d selected=%d\n",custom_actions,custom_flags,custom_selected); return 1; }
+    InjectTap(120,345);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(custom_actions != 11) { fprintf(stderr,"custom table nested row layout failed\n"); return 1; }
+    InjectTap(340,310);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectTap(340,330);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(custom_outer_actions != 11) { fprintf(stderr,"custom table surrounding layout restoration failed\n"); return 1; }
+    InjectTap(20,380);
+    InjectPump(); draw_ui(scroll_content_frame);
+    InjectPump(); draw_ui(scroll_content_frame);
+    if(GetUIFocus() != 1006) { fprintf(stderr,"custom cell editor focus failed\n"); return 1; }
+    InjectKeyTap(KEY_END); InjectPump(); draw_ui(scroll_content_frame);
+    InjectText("!"); InjectPump(); draw_ui(scroll_content_frame);
+    if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"custom cell editing failed: %s\n",custom_text); return 1; }
+    custom_disabled = 1;
+    InjectText("X"); InjectPump(); draw_ui(scroll_content_frame);
+    if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"disabled custom cell edited: %s\n",custom_text); return 1; }
+    custom_disabled = 0;
+    SetUIFocus(1006); InjectPump(); draw_ui(scroll_content_frame);
+    InjectText("?"); InjectPump(); draw_ui(scroll_content_frame);
+    if(strcmp(custom_text,"cell!?") != 0) { fprintf(stderr,"custom cell editor re-enable failed: %s\n",custom_text); return 1; }
+    InjectReset();
     draw_form();
     SetUIFocus(101);
     draw_form();
