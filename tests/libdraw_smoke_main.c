@@ -120,6 +120,28 @@ main(void)
         check("font atlas glyph coverage", opaque && antialias && transparent);
     }
     UnloadImage(atlas_image);
+    BeginTextureMode(target);
+    ClearBackground((Color){10, 20, 30, 255});
+    BeginBlendMode(BLEND_ADDITIVE);
+    DrawRectangle(0, 0, 1, 1, (Color){100, 0, 0, 128});
+    EndBlendMode();
+    BeginScissorMode(3, 3, 4, 4);
+    DrawCircleGradient((Vector2){6, 6}, 5, WHITE, BLACK);
+    EndScissorMode();
+    EndTextureMode();
+    {
+        Image pixels = LoadImageFromTexture(target.texture);
+        check("blend target readable", pixels.data != NULL);
+        if(pixels.data != NULL) {
+            unsigned char *p = pixels.data;
+            check("additive blend", p[0] == 60 && p[1] == 20 && p[2] == 30);
+            p += (6 * pixels.width + 6) * 4;
+            check("radial gradient center", p[0] > 200 && p[1] > 200 && p[2] > 200);
+            p = (unsigned char *)pixels.data + (6 * pixels.width + 7) * 4;
+            check("radial gradient respects clip", p[0] == 10 && p[1] == 20 && p[2] == 30);
+        }
+        UnloadImage(pixels);
+    }
     for(frame = 0; frame < 3 && !WindowShouldClose(); frame++) {
         BeginTextureMode(target);
         ClearBackground(BLANK);
