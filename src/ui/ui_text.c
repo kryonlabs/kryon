@@ -471,15 +471,23 @@ EnsureUIDefaultFont(void)
     g_ui_default_font_attempted = 1;
     if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
        RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
-       UseUIFont(UI_FONT_DEFAULT_NAME))
+       UseUIFont(UI_FONT_DEFAULT_NAME)) {
+        TraceLog(LOG_INFO, "UIFONT: default font resolved from system: %s",
+                 system_font_path);
         return 1;
+    }
 
     for(int i = 0; paths[i] != NULL; i++) {
         if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
-           UseUIFont(UI_FONT_DEFAULT_NAME))
+           UseUIFont(UI_FONT_DEFAULT_NAME)) {
+            TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
             return 1;
+        }
     }
 
+    TraceLog(LOG_WARNING,
+             "UIFONT: no font source resolved; text will use the built-in "
+             "bitmap font (embed a face via the FONT_FILES build variable)");
     return 0;
 }
 
