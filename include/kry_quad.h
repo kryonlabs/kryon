@@ -103,5 +103,6 @@ void quad_mulmod1 (Quad *dst, const Quad *qa, double b);
 
 /* The pi constants as double-double values. */
 extern const Quad QUAD_2PI_EXPORT;
+extern const Quad QUAD_PI_EXPORT;
 
 #endif /* KRY_QUAD_H */

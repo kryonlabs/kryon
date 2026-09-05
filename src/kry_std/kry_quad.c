@@ -671,7 +671,7 @@ quad_matrix_transpose (QuadMatrix *A, const QuadMatrix *B)
  * of pi/e/ln2/sqrt2, matching go_quad_constant8's normalization). */
 static const Quad QUAD_PI     = { 3.141592653589793, 1.2246467991473532e-16 };
 const Quad QUAD_2PI_EXPORT = { 6.283185307179586, 2.4492935982947064e-16 };
-static const Quad QUAD_2PI_UNUSED    = { 6.283185307179586, 2.4492935982947064e-16 };
+const Quad QUAD_PI_EXPORT  = { 3.141592653589793, 1.2246467991473532e-16 };
 static const Quad QUAD_PIHALF = { 1.5707963267948966, 6.123233995736766e-17 };
 static const Quad QUAD_LN2    = { 0.6931471805599453, 2.3190468138462996e-17 };
 static const Quad QUAD_SQRT2  = { 1.4142135623730951, -9.667293313452913e-17 };
