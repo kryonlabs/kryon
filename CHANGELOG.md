@@ -1,4 +1,17 @@
 # Changelog
+## v0.1.53 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.53
+- Use native Windows file dialogs instead of POSIX desktop helpers
+- Test rotated text origins and rectangle intersections in libdraw
+- Composite native libdraw text in drawing order using coverage masks
+- Implement libdraw rectangle intersection for table clipping
+- Emit portable scalar operations from shared KIR and remove cgo
+- Support rotated font drawing in the libdraw backend
+- Exercise libdraw gradients and additive blending in smoke test
+
 ## v0.1.52 - 2026-09-05
 
 ### Changed
