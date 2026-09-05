@@ -11,6 +11,7 @@
 #include "kry_quad.h"
 #include <math.h>
 #include <float.h>
+#include <string.h>
 
 static const double QUAD_SPLIT_CONST = 134217729.0; /* 2^27 + 1 */
 
@@ -417,6 +418,9 @@ quad_qr_new (const QuadMatrix *A)
 	QuadQR qr;
 	int qdet = 1;
 	QuadMatrix R;
+
+	memset (&qr, 0, sizeof (qr));
+	memset (&R, 0, sizeof (R));
 	int i, j, k;
 	int m = A->m, n = A->n;
 	Quad L, L2, L2p, s, p;
