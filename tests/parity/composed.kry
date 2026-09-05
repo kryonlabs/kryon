@@ -1,0 +1,5 @@
+#import "kryon.h"
+
+composed_result :: (selected: int, move: int, disabled: int) -> int {
+    return CarouselControls((CarouselControlsProps){.bounds = {0,0,320,160}, .indicators = {0,160,320,48}, .count = 4, .selected = selected, .move = move, .disabled = disabled, .id = 700})
+}

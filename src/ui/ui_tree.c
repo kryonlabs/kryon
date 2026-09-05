@@ -2809,6 +2809,11 @@ Button(ButtonProps button)
 
     if(spec.font <= 0)
         spec.font = GetUIFontSize();
+    if(button.style == ButtonStyleSecondary) {
+        spec.background = ui_material_style() ? ui_material_surface_variant() : GetThemeSurface();
+        spec.hover_background = GetThemeButtonHover();
+        spec.text = GetThemeText();
+    }
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
         ui_tree_nodes[node].data.button.spec = spec;

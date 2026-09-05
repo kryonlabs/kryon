@@ -31,6 +31,7 @@
 #include "ui_text.h"
 #include "ui_toast.h"
 #include "ui.h"
+#include "ui_composed.h"
 #include "ui_page.h"
 #include "ui_window.h"
 #include "spritesheet.h"

@@ -2,6 +2,15 @@
 
 Kryon is a lightweight C UI component library for embedded applications and runtime environments. It provides core UI primitives and icon asset management without external dependencies.
 
+## Carousel navigation
+
+`CarouselControls(CarouselControlsProps)` draws 48-unit side-arrow targets and
+tappable pagination dots. It returns the selected index, wrapping at either end.
+Pass `move` from the existing swipe recognizer or keyboard navigation. The app
+owns the images, selection persistence, and routes. Zero items return -1; one
+item hides navigation. `disabled` blocks both taps and movement. `id` reserves
+`count + 2` consecutive focus IDs. The widget is available in native C and Go.
+
 ## Table of Contents
 
 - [Initialization](#initialization)

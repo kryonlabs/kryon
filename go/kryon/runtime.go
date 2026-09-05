@@ -1572,6 +1572,9 @@ func (r *runtime) Button(props ButtonProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	pressed := r.consumeTap(props.Bounds)
 	fill := theme.button
+	if props.Style == ButtonStyleSecondary {
+		fill = theme.surface
+	}
 	if pressed {
 		fill = theme.buttonHover
 	}

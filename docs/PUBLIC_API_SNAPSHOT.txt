@@ -1305,6 +1305,7 @@ include/ui_clip.h function GetUIClipIntersection
 include/ui_clip.h function ResetUIClip
 include/ui_color.h function DarkenUIColor
 include/ui_color.h function LightenUIColor
+include/ui_composed.h function CarouselControls
 include/ui_controls.h enum UI_ICON_SIZE_LARGE
 include/ui_controls.h enum UI_ICON_SIZE_MEDIUM
 include/ui_controls.h enum UI_ICON_SIZE_SMALL
