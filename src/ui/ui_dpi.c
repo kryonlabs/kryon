@@ -71,8 +71,19 @@ UpdateUIDPI(int view_width, int view_height)
                                    ? (float)view_height / (float)base_height
                                    : 1.0f;
         float real_dpi = viewport_scale;
+
+#if defined(PLATFORM_ANDROID) || defined(__ANDROID__)
+        /* Android view dimensions are physical pixels. DisplayMetrics density
+         * is the pixel-to-dp conversion; scaling again from a tall viewport
+         * makes controls grow with aspect ratio and can push anchored chrome
+         * off-screen. Keep the viewport fallback for early startup, before
+         * the activity has delivered its density. */
+        if(g_device_density > 0.0f)
+            real_dpi = g_device_density;
+#else
         if(g_device_density > real_dpi)
             real_dpi = g_device_density;
+#endif
 
 #if !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID) && !defined(__ANDROID__)
         /* Native windows are sized in physical pixels, so the monitor scale

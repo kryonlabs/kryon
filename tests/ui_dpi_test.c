@@ -25,7 +25,7 @@ main(void)
 
     SetUIDeviceDensity(1.75f);
     UpdateUIDPI(720, 1400);
-    check_scale_hundredths("density does not shrink tall viewport", GetUIDPIScale(), 250);
+    check_scale_hundredths("android density ignores tall aspect ratio", GetUIDPIScale(), 175);
 
     SetUIDeviceDensity(3.0f);
     UpdateUIDPI(320, 560);
