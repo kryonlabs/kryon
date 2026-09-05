@@ -1296,10 +1296,32 @@ void BeginDrawing(void)
     kry_libdraw_poll();
 }
 
+static int blend_mode = BLEND_ALPHA;
+static int clip_rect_to_sw(KrySw *sw, int *x, int *y, int *w, int *h);
+static void blend_pixel_rgba(unsigned char *dst, Color c);
+
+void BeginBlendMode(int mode)
+{
+    blend_mode = mode;
+}
+
+void EndBlendMode(void)
+{
+    blend_mode = BLEND_ALPHA;
+}
+
 static void sw_clear(Color color) { g_sw_backend->clear(pack(color)); }
 static void sw_rect(int x, int y, int w, int h, Color color)
 {
-    g_sw_backend->rect(x, y, w, h, pack(color));
+    if(blend_mode == BLEND_ALPHA) {
+        g_sw_backend->rect(x, y, w, h, pack(color));
+    } else if(g_active_sw != NULL && clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) {
+        int row, col;
+        KrySwMarkDirty(g_active_sw, x, y, w, h);
+        for(row = y; row < y + h; row++)
+            for(col = x; col < x + w; col++)
+                blend_pixel_rgba(g_active_sw->pixels + (size_t)row * g_active_sw->stride + col * 4, color);
+    }
 }
 
 static int
@@ -1486,8 +1508,25 @@ blend_pixel_rgba(unsigned char *dst, Color c)
 {
     unsigned inv;
 
-    if(dst == NULL || c.a == 0)
+    if(dst == NULL) return;
+    if(blend_mode != BLEND_ALPHA) {
+        unsigned char src[4] = {c.r, c.g, c.b, c.a};
+        int i;
+        for(i = 0; i < 4; i++) {
+            int value;
+            switch(blend_mode) {
+            case BLEND_ADDITIVE: value = dst[i] + src[i] * c.a / 255; break;
+            case BLEND_MULTIPLIED: value = src[i] * dst[i] / 255 + dst[i] * (255 - c.a) / 255; break;
+            case BLEND_ADD_COLORS: value = dst[i] + src[i]; break;
+            case BLEND_SUBTRACT_COLORS: value = dst[i] - src[i]; break;
+            case BLEND_ALPHA_PREMULTIPLY: value = src[i] + dst[i] * (255 - c.a) / 255; break;
+            default: value = src[i] * c.a / 255 + dst[i] * (255 - c.a) / 255; break;
+            }
+            dst[i] = value < 0 ? 0 : value > 255 ? 255 : value;
+        }
         return;
+    }
+    if(c.a == 0) return;
     if(c.a == 255) {
         dst[0] = c.r;
         dst[1] = c.g;
@@ -1647,8 +1686,44 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments,
                                                       : 1,
                                      color);
 }
+void DrawCircleGradient(Vector2 center, float radius, Color inner, Color outer)
+{
+    int x, y, w, h, px, py;
+    float left, top, right, bottom;
+    if(g_active_sw == NULL || !(radius > 0.0f) || radius > 1000000.0f ||
+       !(center.x >= -1000000.0f && center.x <= 1000000.0f) ||
+       !(center.y >= -1000000.0f && center.y <= 1000000.0f)) return;
+    /* Clip before iterating, including very large lights. */
+    left = floorf(center.x - radius); top = floorf(center.y - radius);
+    right = ceilf(center.x + radius); bottom = ceilf(center.y + radius);
+    if(left < 0) left = 0;
+    if(top < 0) top = 0;
+    if(right > g_active_sw->w) right = g_active_sw->w;
+    if(bottom > g_active_sw->h) bottom = g_active_sw->h;
+    x = left; y = top; w = right - left; h = bottom - top;
+    if(!clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) return;
+    KrySwMarkDirty(g_active_sw, x, y, w, h);
+    for(py = y; py < y + h; py++) {
+        for(px = x; px < x + w; px++) {
+            float dx = px + 0.5f - center.x, dy = py + 0.5f - center.y;
+            float t = sqrtf(dx * dx + dy * dy) / radius;
+            Color c;
+            if(t > 1.0f) continue;
+            c.r = inner.r + (outer.r - inner.r) * t;
+            c.g = inner.g + (outer.g - inner.g) * t;
+            c.b = inner.b + (outer.b - inner.b) * t;
+            c.a = inner.a + (outer.a - inner.a) * t;
+            blend_pixel_rgba(g_active_sw->pixels + (size_t)py * g_active_sw->stride + px * 4, c);
+        }
+    }
+}
+
 void DrawCircle(int centerX, int centerY, float radius, Color color)
 {
+    if(blend_mode != BLEND_ALPHA) {
+        DrawCircleGradient((Vector2){centerX, centerY}, radius, color, color);
+        return;
+    }
     if(g_sw_backend->circle != NULL)
         g_sw_backend->circle(centerX, centerY, (int)radius, pack(color));
 }
