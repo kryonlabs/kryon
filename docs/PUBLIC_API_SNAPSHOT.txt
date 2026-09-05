@@ -315,6 +315,8 @@ include/kry_filesystem.h function kry_fs_user_dir
 include/kry_filesystem.h function kry_fs_write_file
 include/kry_filesystem.h macro KRY_FS_NAME_MAX
 include/kry_filesystem.h macro KRY_FS_PATH_MAX
+include/kry_gzip.h function kry_gzip_crc32
+include/kry_gzip.h function kry_gzip_is
 include/kry_http.h enum KRY_HTTP_DONE
 include/kry_http.h enum KRY_HTTP_FAILED
 include/kry_http.h enum KRY_HTTP_PENDING
@@ -498,6 +500,12 @@ include/kry_update_flow.h typedef KryUpdateExtractFn
 include/kry_update_flow.h typedef KryUpdateFlow
 include/kry_uri.h function CanOpenURI
 include/kry_uri.h function OpenURI
+include/kry_xml.h function kry_xml_attr_long
+include/kry_xml.h function kry_xml_buf_esc
+include/kry_xml.h function kry_xml_buf_free
+include/kry_xml.h function kry_xml_buf_raw
+include/kry_xml.h function kry_xml_free
+include/kry_xml.h typedef KryXml
 include/kryon.h function KryonAbiVersion
 include/kryon.h macro KRYON_ABI_VERSION
 include/kryon_edit_host.h macro KRYON_EDIT_HOST_ABI_VERSION
