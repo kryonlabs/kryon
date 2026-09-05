@@ -1855,6 +1855,17 @@ void BeginScissorMode(int x, int y, int width, int height)
 }
 void EndScissorMode(void) { g_sw_backend->clip_pop(); }
 void BeginMode2D(Camera2D camera) { (void)camera; }
+/* libdraw uses pixel coordinates and has no projection/modelview transform.
+ * Retained paint capture still needs the existing matrix compatibility API. */
+Matrix rlGetMatrixProjection(void)
+{
+    Matrix identity = {0};
+    identity.m0 = identity.m5 = identity.m10 = identity.m15 = 1.0f;
+    return identity;
+}
+Matrix rlGetMatrixModelview(void) { return rlGetMatrixProjection(); }
+void rlSetMatrixProjection(Matrix projection) { (void)projection; }
+void rlSetMatrixModelview(Matrix modelview) { (void)modelview; }
 void EndMode2D(void) {}
 
 bool BackendRaw_IsKeyPressed(int key)
