@@ -2566,7 +2566,8 @@ void kry_dom_replace_route(const char *path)
     (void)path;
 }
 
-/* Web-only routing hooks; the native backend reports a static root. */
+/* Native Plan 9 does not link platform/web/web.c. */
+#ifdef KRYON_NATIVE_PLAN9
 const char *kry_web_get_route_path(void)
 {
     return "/";
@@ -2591,3 +2592,5 @@ void kry_web_replace_route(const char *path)
 {
     (void)path;
 }
+
+#endif /* KRYON_NATIVE_PLAN9 */
