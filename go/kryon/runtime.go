@@ -694,6 +694,7 @@ type BottomNavProps struct {
 	SideMargin     int32
 	BottomMargin   int32
 	MaxButtonWidth int32
+	IconColor      Color
 }
 
 type TopNavProps struct {

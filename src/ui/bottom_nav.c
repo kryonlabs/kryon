@@ -40,14 +40,15 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, unsigned char alpha)
+ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char alpha)
 {
     Rectangle src;
-    Color tint = WHITE;
 
     if(icon.id == 0)
         return;
-    tint.a = alpha;
+    if(tint.a == 0)
+        tint = WHITE;
+    tint.a = (unsigned char)((int)tint.a * alpha / 255);
     src.x = 0;
     src.y = 0;
     src.width = (float)icon.width;
@@ -166,7 +167,7 @@ DrawUIBottomNav(BottomNavProps nav)
             dst.y = (float)icon_y;
             dst.width = (float)icon_size;
             dst.height = (float)icon_size;
-            ui_draw_bottom_nav_icon(item->icon, dst, icon_alpha);
+            ui_draw_bottom_nav_icon(item->icon, dst, nav.icon_color, icon_alpha);
             if(item->label != NULL && item->label[0] != '\0') {
                 Rectangle label_rect = {
                     (float)(x + label_pad),
@@ -207,8 +208,7 @@ DrawUIBottomNav(BottomNavProps nav)
             dst.y = (float)icon_y;
             dst.width = (float)icon_size;
             dst.height = (float)icon_size;
-            DrawTexturePro(item->icon, src, dst, kryon_zero_vector2, 0,
-                           (Color){255, 255, 255, icon_alpha});
+            ui_draw_bottom_nav_icon(item->icon, dst, nav.icon_color, icon_alpha);
         }
     }
 

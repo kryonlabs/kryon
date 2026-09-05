@@ -46,7 +46,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         TitleBar("Widget Catalog", ScaleUIPx(32))
         TopNav((TopNavProps){.id = 10, .x = 0, .y = ScaleUIPx(34), .width = ScaleUIPx(360), .height = ScaleUIPx(36), .title = "Top", .options = choices[:], .option_count = 3, .selected_index = &pick})
         Toolbar((ToolbarProps){.id = 11, .x = ScaleUIPx(370), .y = ScaleUIPx(34), .width = ScaleUIPx(240), .height = ScaleUIPx(36), .draw_menu = 1, .options = choices[:], .option_count = 3, .selected_index = &pick})
-        BottomNav((BottomNavProps){.view_width = ScaleUIPx(640), .view_height = ScaleUIPx(480), .count = 0, .height = ScaleUIPx(56)})
+        BottomNav((BottomNavProps){.view_width = ScaleUIPx(640), .view_height = ScaleUIPx(480), .count = 0, .height = ScaleUIPx(56), .icon_color = GetThemeText()})
 
         Column main_column: {
             bounds = {ScaleUIPx(24), ScaleUIPx(86), ScaleUIPx(300), ScaleUIPx(220)}

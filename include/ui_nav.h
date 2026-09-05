@@ -67,6 +67,7 @@ typedef struct {
     int side_margin;
     int bottom_margin;
     int max_button_width;
+    Color icon_color; /* Transparent keeps the original texture colors. */
 } BottomNavProps;
 
 typedef struct {
