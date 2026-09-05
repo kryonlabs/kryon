@@ -3568,9 +3568,14 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
         if(m->app.font_examples)
             fprintf(out, "    LoadExampleUIFont();\n");
         fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
-        if(m->app.theme[0] != '\0')
+        if(m->app.theme[0] != '\0') {
+            fprintf(out, "    SetThemeSource(THEME_SOURCE_APP);\n");
+            fprintf(out, "    SetThemeMode(%s);\n",
+                    m->app.dark_mode ? "THEME_MODE_DARK"
+                                     : "THEME_MODE_LIGHT");
             fprintf(out, "    SetCurrentTheme(%s, %d);\n",
                     m->app.theme, m->app.dark_mode);
+        }
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         fprintf(out, "        BeginDrawing();\n");
         fprintf(out, "        BeginUIFrame(%d, %d, GetUIScale());\n",

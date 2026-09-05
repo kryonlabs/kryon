@@ -148,6 +148,7 @@ cat > "$work/src/hierarchy.kry" <<'EOF'
 
 app "Hierarchy" {
     size 320 240
+    theme THEME_OCEAN light
 }
 
 Main :: (viewport: Rectangle) #ui {
@@ -188,6 +189,9 @@ test -f "$c"
 test -f "$h"
 test -f "$hc"
 test -f "$project"
+grep -Fq 'SetThemeSource(THEME_SOURCE_APP);' "$project"
+grep -Fq 'SetThemeMode(THEME_MODE_LIGHT);' "$project"
+grep -Fq 'SetCurrentTheme(THEME_OCEAN, 0);' "$project"
 
 # header: guard + include + prototype with converted args
 grep -Fq '#ifndef K_SRC_VALID_H' "$h"

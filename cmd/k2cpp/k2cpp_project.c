@@ -339,9 +339,14 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
         if(appmod->app.font_examples)
             fprintf(out, "    LoadExampleUIFont();\n");
         fprintf(out, "    InitUI(width, height, GetUIScale());\n");
-        if(appmod->app.theme[0] != '\0')
+        if(appmod->app.theme[0] != '\0') {
+            fprintf(out, "    SetThemeSource(THEME_SOURCE_APP);\n");
+            fprintf(out, "    SetThemeMode(%s);\n",
+                    appmod->app.dark_mode ? "THEME_MODE_DARK"
+                                          : "THEME_MODE_LIGHT");
             fprintf(out, "    SetCurrentTheme(%s, %d);\n",
                     appmod->app.theme, appmod->app.dark_mode);
+        }
         if(appmod->app.init[0] != '\0') {
             char hook[KIR_NAME_MAX * 3];
             int found = 0;
