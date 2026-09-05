@@ -269,6 +269,151 @@ CloseFileDialog(FileDialog *dlg)
     }
 }
 
+#elif defined(_WIN32)
+
+/* Keep Windows declarations isolated from the drawing API names. */
+#define DrawIcon Win32DrawIcon
+#define CloseWindow Win32CloseWindow
+#define ShowCursor Win32ShowCursor
+#define Rectangle Win32Rectangle
+#define DrawText Win32DrawText
+#define DrawTextEx Win32DrawTextEx
+#define PlaySound Win32PlaySound
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <commdlg.h>
+#include <shlobj.h>
+#undef DrawIcon
+#undef CloseWindow
+#undef ShowCursor
+#undef Rectangle
+#undef DrawText
+#undef DrawTextEx
+#undef PlaySound
+
+static int win_wide(wchar_t *out, int capacity, const char *text)
+{
+    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                               text ? text : "", -1, out, capacity) != 0;
+}
+
+void InitFileDialog(FileDialog *dlg)
+{
+    if(dlg) memset(dlg, 0, sizeof(*dlg));
+}
+
+int SetFileDialogCurrentDir(FileDialog *dlg, const char *path)
+{
+    wchar_t wide[FILE_DIALOG_PATH_MAX];
+    DWORD attributes;
+    char *copy;
+    if(!dlg || !path || !win_wide(wide, FILE_DIALOG_PATH_MAX, path)) return 0;
+    attributes = GetFileAttributesW(wide);
+    if(attributes == INVALID_FILE_ATTRIBUTES || !(attributes & FILE_ATTRIBUTE_DIRECTORY)) return 0;
+    copy = malloc(strlen(path) + 1);
+    if(!copy) return 0;
+    copy_dialog_path(copy, strlen(path) + 1, path);
+    free(dlg->_internal);
+    dlg->_internal = copy;
+    return 1;
+}
+
+void SetFileDialogThemeScope(const char *scope) { (void)scope; }
+const char *GetFileDialogBackendName(void) { return "windows"; }
+
+static int CALLBACK win_folder_callback(HWND window, UINT message, LPARAM param, LPARAM data)
+{
+    (void)param;
+    if(message == BFFM_INITIALIZED && data)
+        SendMessageW(window, BFFM_SETSELECTIONW, TRUE, data);
+    return 0;
+}
+
+static int win_dialog(FileDialog *dlg, FileDialogMode mode, const char *title,
+                      const char *filter, const char *filename)
+{
+    wchar_t wide_title[128], file[FILE_DIALOG_PATH_MAX] = {0};
+    wchar_t directory[FILE_DIALOG_PATH_MAX] = {0};
+    wchar_t patterns[256] = L"Files";
+    int selected = 0;
+    if(!dlg) return 0;
+    dlg->active = 0;
+    dlg->confirmed = 0;
+    dlg->result_path[0] = 0;
+    dlg->mode = mode;
+    snprintf(dlg->title, sizeof(dlg->title), "%s", title ? title : "");
+    snprintf(dlg->filter, sizeof(dlg->filter), "%s", filter ? filter : "");
+    snprintf(dlg->default_name, sizeof(dlg->default_name), "%s", filename ? filename : "");
+    if(!win_wide(wide_title, 128, dlg->title) ||
+       !win_wide(file, FILE_DIALOG_PATH_MAX, filename) ||
+       !win_wide(directory, FILE_DIALOG_PATH_MAX, dlg->_internal)) return 0;
+    if(mode == FILE_DIALOG_SELECT_FOLDER) {
+        BROWSEINFOW info = {0};
+        PIDLIST_ABSOLUTE item;
+        IMalloc *allocator = NULL;
+        info.lpszTitle = wide_title;
+        info.ulFlags = BIF_RETURNONLYFSDIRS;
+        info.lpfn = win_folder_callback;
+        info.lParam = (LPARAM)directory;
+        item = SHBrowseForFolderW(&info);
+        if(item) {
+            selected = SHGetPathFromIDListW(item, file);
+            if(SHGetMalloc(&allocator) == S_OK) {
+                allocator->lpVtbl->Free(allocator, item);
+                allocator->lpVtbl->Release(allocator);
+            }
+        }
+    } else {
+        /* Resolve common dialogs dynamically, keeping existing link clients compatible. */
+        HMODULE library = LoadLibraryW(L"comdlg32.dll");
+        typedef BOOL (WINAPI *ChooseFile)(LPOPENFILENAMEW);
+        union { FARPROC address; ChooseFile choose; } function;
+        function.address = library ? GetProcAddress(library,
+            mode == FILE_DIALOG_SAVE ? "GetSaveFileNameW" : "GetOpenFileNameW") : NULL;
+        OPENFILENAMEW info = {0};
+        char pattern[192] = {0};
+        size_t used = 0;
+        const char *p = filter;
+        while(p && *p && used + 4 < sizeof(pattern)) {
+            while(*p == ',' || *p == ';' || *p == ' ') p++;
+            if(!*p) break;
+            if(used) pattern[used++] = ';';
+            if(*p != '*') { pattern[used++] = '*'; if(*p != '.') pattern[used++] = '.'; }
+            while(*p && *p != ',' && *p != ';' && *p != ' ' && used + 1 < sizeof(pattern))
+                pattern[used++] = *p++;
+        }
+        if(!used) strcpy(pattern, "*.*");
+        win_wide(patterns + 6, 249, pattern);
+        info.lStructSize = sizeof(info);
+        info.lpstrTitle = wide_title;
+        info.lpstrFile = file;
+        info.nMaxFile = FILE_DIALOG_PATH_MAX;
+        info.lpstrInitialDir = directory[0] ? directory : NULL;
+        info.lpstrFilter = patterns;
+        info.Flags = OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST |
+            (mode == FILE_DIALOG_SAVE ? OFN_OVERWRITEPROMPT : OFN_FILEMUSTEXIST);
+        if(function.choose) selected = function.choose(&info);
+        if(library) FreeLibrary(library);
+    }
+    if(selected && WideCharToMultiByte(CP_UTF8, 0, file, -1, dlg->result_path,
+                                      sizeof(dlg->result_path), NULL, NULL))
+        dlg->confirmed = 1;
+    else dlg->result_path[0] = 0;
+    return dlg->confirmed;
+}
+
+int SaveFileDialog(FileDialog *d, const char *t, const char *f) { return win_dialog(d, FILE_DIALOG_SAVE, t, NULL, f); }
+int LoadFilteredFileDialog(FileDialog *d, const char *t, const char *f) { return win_dialog(d, FILE_DIALOG_LOAD, t, f, NULL); }
+int LoadFileDialog(FileDialog *d, const char *t) { return LoadFilteredFileDialog(d, t, NULL); }
+int SelectFileDialogFolder(FileDialog *d, const char *t) { return win_dialog(d, FILE_DIALOG_SELECT_FOLDER, t, NULL, NULL); }
+void BeginSaveFileDialog(FileDialog *d, const char *t, const char *f) { SaveFileDialog(d, t, f); }
+void BeginLoadFileDialog(FileDialog *d, const char *t) { LoadFileDialog(d, t); }
+void BeginLoadFilteredFileDialog(FileDialog *d, const char *t, const char *f) { LoadFilteredFileDialog(d, t, f); }
+void BeginSelectFileDialogFolder(FileDialog *d, const char *t) { SelectFileDialogFolder(d, t); }
+int UpdateFileDialog(FileDialog *d) { return d ? d->confirmed : 0; }
+const char *GetFileDialogPath(FileDialog *d) { return d && d->result_path[0] ? d->result_path : NULL; }
+void CloseFileDialog(FileDialog *d) { if(d) { free(d->_internal); memset(d, 0, sizeof(*d)); } }
+
 #else
 
 #include <errno.h>
