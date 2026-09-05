@@ -3190,6 +3190,20 @@ func (r *runtime) BottomNav(props BottomNavProps) {
 		if item.Active {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: ib, Color: t.button, Selected: true})
 		}
+		if item.Icon.ID != 0 {
+			tint := props.IconColor
+			if tint.A == 0 {
+				tint = Color{R: 255, G: 255, B: 255, A: 255}
+			}
+			if item.Disabled {
+				tint.A = uint8(uint32(tint.A) * 150 / 255)
+			}
+			size := props.IconSize
+			if size <= 0 {
+				size = 26
+			}
+			r.Icon(item.Route, int32(ib.X)+(int32(ib.Width)-size)/2, int32(ib.Y)+6, size, int32(item.Icon.ID), tint)
+		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: ib.X + 6, Y: ib.Y + (ib.Height-float32(Text14))/2, Width: ib.Width - 12, Height: float32(Text14 + 4)}, Text: item.Label, Color: color, FontSize: Text14, ID: item.Route, Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
