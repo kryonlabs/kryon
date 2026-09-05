@@ -120,6 +120,37 @@ main(void)
         check("font atlas glyph coverage", opaque && antialias && transparent);
     }
     UnloadImage(atlas_image);
+    {
+        Rectangle overlap = GetCollisionRec((Rectangle){-5, 2, 12, 10},
+                                             (Rectangle){3, -1, 8, 8});
+        check("rectangle intersection", overlap.x == 3 && overlap.y == 2 &&
+              overlap.width == 4 && overlap.height == 5);
+        overlap = GetCollisionRec((Rectangle){0, 0, 2, 2}, (Rectangle){2, 0, 2, 2});
+        check("touching rectangles have no area", overlap.width == 0 && overlap.height == 0);
+        RenderTexture2D text_target = LoadRenderTexture(96, 96);
+        BeginTextureMode(text_target);
+        ClearBackground(BLANK);
+        DrawTextPro(atlas_font, "A", (Vector2){48, 32}, (Vector2){3, 2},
+                     90, 24, 0, WHITE);
+        EndTextureMode();
+        Image pixels = LoadImageFromTexture(text_target.texture);
+        int ink = 0, outside = 0;
+        check("rotated text target readable", pixels.data != NULL);
+        if(pixels.data != NULL) {
+            unsigned char *data = pixels.data;
+            for(int y = 0; y < pixels.height; y++) {
+                for(int x = 0; x < pixels.width; x++) {
+                    if(data[(y * pixels.width + x) * 4 + 3] > 128) {
+                        ink++;
+                        if(x > 50 || x < 15 || y < 29 || y > 60) outside++;
+                    }
+                }
+            }
+        }
+        check("rotated glyph coverage and origin", ink > 20 && outside == 0);
+        UnloadImage(pixels);
+        UnloadRenderTexture(text_target);
+    }
     BeginTextureMode(target);
     ClearBackground((Color){10, 20, 30, 255});
     BeginBlendMode(BLEND_ADDITIVE);
