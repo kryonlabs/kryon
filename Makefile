@@ -443,7 +443,7 @@ runtime-parity-check:
 feature-matrix-docs-check:
 	sh tests/feature_matrix_docs_test.sh .
 
-conformance-matrix-check: $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B) $(KRB_RUN) $(KRB_SDL)
+conformance-matrix-check: $(K2KIR) $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2B) $(KRB_RUN) $(KRB_SDL)
 	sh tests/conformance_matrix_test.sh . $(BUILD_DIR)
 
 renderer-matrix-check:

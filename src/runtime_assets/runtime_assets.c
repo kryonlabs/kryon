@@ -20,6 +20,27 @@
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
 #include <emscripten/fetch.h>
+
+EM_ASYNC_JS(int, runtime_assets_web_init, (const char *root_ptr), {
+    const root = UTF8ToString(root_ptr);
+
+    try {
+        FS.mkdirTree('/persistent_data');
+        if(!Module.__kryonRuntimeAssetsMounted) {
+            FS.mount(IDBFS, {}, '/persistent_data');
+            Module.__kryonRuntimeAssetsMounted = true;
+            Module.__kryonRuntimeAssetsSync = new Promise((resolve, reject) => {
+                FS.syncfs(true, (err) => err ? reject(err) : resolve());
+            });
+        }
+        await Module.__kryonRuntimeAssetsSync;
+        FS.mkdirTree(root);
+        return 1;
+    } catch(e) {
+        console.error('kryon runtime asset init failed', e);
+        return 0;
+    }
+});
 #endif
 
 #if defined(HAS_LIBCURL) && !defined(__EMSCRIPTEN__)
@@ -177,31 +198,13 @@ InitRuntimeAssets(const char *app_id)
 {
     char root[512];
 
+#if defined(__EMSCRIPTEN__)
+    const char *id = (app_id != NULL && app_id[0] != '\0') ? app_id : "kryon";
+    snprintf(root, sizeof(root), "/persistent_data/%s", id);
+    return runtime_assets_web_init(root);
+#else
     if(!GetRuntimeAssetCacheRoot(app_id, root, sizeof(root)))
         return 0;
-
-#if defined(__EMSCRIPTEN__)
-    EM_ASM({
-        var root = UTF8ToString($0);
-        var parts = root.split('/').filter(Boolean);
-        var path = "";
-        try {
-            for(var i = 0; i < parts.length; i++) {
-                path += '/' + parts[i];
-                if(!FS.analyzePath(path).exists)
-                    FS.mkdir(path);
-            }
-            if(!Module.__kryonRuntimeAssetsMounted) {
-                FS.mount(IDBFS, {}, '/persistent_data');
-                Module.__kryonRuntimeAssetsMounted = true;
-            }
-            FS.syncfs(true, function(err) {
-                if(err) console.error('kryon runtime asset sync failed', err);
-            });
-        } catch(e) {
-            console.error('kryon runtime asset init failed', e);
-        }
-    }, root);
 #endif
 
     return 1;
