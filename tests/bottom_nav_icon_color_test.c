@@ -79,6 +79,7 @@ main(void)
 {
     Texture2D color_icon = {0};
     BottomNavItem items[3];
+    BottomNavResult result;
 
     color_icon.id = 42;
     color_icon.width = 16;
@@ -94,15 +95,20 @@ main(void)
     SetCurrentTheme(THEME_SKY, 0);
 
     BeginUIFrame(900, 720, 1.0f);
-    BottomNav((BottomNavProps){
+    result = BottomNav((BottomNavProps){
         .view_width = 900,
         .view_height = 720,
         .count = 3,
         .items = items,
+        .height = 66,
+        .bottom_margin = 48,
     });
     EndUIFrame();
 
     check_int("bottom nav drew all icons", icon_calls, 3);
+    check_int("bottom nav y honors bottom margin", result.y, 606);
+    check_int("bottom nav lower edge anchors to usable bottom",
+              result.y + result.height + 48, 720);
     {
         check_int("inactive bottom nav icon red", icon_tints[0].r, 255);
         check_int("inactive bottom nav icon green", icon_tints[0].g, 255);
