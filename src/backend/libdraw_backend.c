@@ -340,71 +340,63 @@ active_clip_rect(int *x, int *y, int *w, int *h)
     return 1;
 }
 
-static P9Image *
-ensure_text_surface(KrySw *sw)
-{
-    if(display == nil || sw == NULL || sw->w <= 0 || sw->h <= 0)
-        return nil;
-    if(g_text_surface != nil && Dx(g_text_surface->r) == sw->w &&
-       Dy(g_text_surface->r) == sw->h && g_text_surface->chan == RGBA32)
-        return g_text_surface;
-    if(g_text_surface != nil)
-        freeimage(g_text_surface);
-    g_text_surface = allocimage(display, kry_p9_rect(0, 0, sw->w, sw->h),
-                                RGBA32, 0, DTransparent);
-    return g_text_surface;
-}
+static int clip_rect_to_sw(KrySw *sw, int *x, int *y, int *w, int *h);
+static void blend_pixel_rgba(unsigned char *dst, Color c);
 
+/* Rasterize native fonts into a small coverage mask, then blend immediately.
+ * Deferring text until presentation would paint it over later windows/menus. */
 static int
 draw_native_text_into_active_sw(unsigned font_id, const char *text,
                                 int byte_len, int x, int y, Color color)
 {
     KryLibdrawFont *registered;
     P9Font *p9font;
-    P9Image *surface;
-    P9Image *text_color;
-    P9Rectangle old_clipr;
-    int old_repl;
-    int ndata;
-    int clip_x;
-    int clip_y;
-    int clip_w;
-    int clip_h;
-    int clip_active;
-
+    P9Image *white;
+    unsigned char *coverage;
+    int w, h, original_x = x, original_y = y;
+    int row, col;
     if(text == NULL || text[0] == '\0' || g_active_sw == NULL ||
-       g_active_sw->pixels == NULL)
-        return 0;
+       g_active_sw->pixels == NULL) return 0;
     registered = kry_libdraw_font(font_id);
     p9font = registered != NULL ? registered->font : font;
-    if(display == nil || p9font == nil)
-        return 0;
-    surface = ensure_text_surface(g_active_sw);
-    text_color = kry_libdraw_color(color);
-    if(surface == nil || text_color == nil)
-        return 0;
-    ndata = g_active_sw->stride * g_active_sw->h;
-    if(loadimage(surface, surface->r, g_active_sw->pixels, ndata) < 0)
-        return 0;
-
-    old_clipr = surface->clipr;
-    old_repl = surface->repl;
-    clip_active = active_clip_rect(&clip_x, &clip_y, &clip_w, &clip_h);
-    if(clip_active) {
-        replclipr(surface, 0, kry_p9_rect(clip_x, clip_y, clip_w, clip_h));
+    if(display == nil || p9font == nil) return 0;
+    w = byte_len < 0 ? stringwidth(p9font, (char *)text) :
+                      stringnwidth(p9font, (char *)text, byte_len);
+    h = p9font->height;
+    if(!clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) return 1;
+    if(g_text_surface != nil && (Dx(g_text_surface->r) != w ||
+       Dy(g_text_surface->r) != h || g_text_surface->chan != GREY8)) {
+        freeimage(g_text_surface);
+        g_text_surface = nil;
     }
+    if(g_text_surface == nil)
+        g_text_surface = allocimage(display, kry_p9_rect(0, 0, w, h), GREY8, 0, DBlack);
+    white = kry_libdraw_color(WHITE);
+    if(g_text_surface == nil || white == nil) return 0;
+    coverage = malloc((size_t)w * h);
+    if(coverage == NULL) return 0;
+    draw(g_text_surface, g_text_surface->r, display->black, nil, ZP);
     if(byte_len < 0)
-        string(surface, kry_p9_point(x, y), text_color, ZP, p9font,
-               (char *)text);
+        string(g_text_surface, kry_p9_point(original_x - x, original_y - y),
+               white, ZP, p9font, (char *)text);
     else
-        stringn(surface, kry_p9_point(x, y), text_color, ZP, p9font,
-                (char *)text, byte_len);
-    if(clip_active &&
-       (!eqrect(surface->clipr, old_clipr) || surface->repl != old_repl)) {
-        replclipr(surface, old_repl, old_clipr);
-    }
-    if(unloadimage(surface, surface->r, g_active_sw->pixels, ndata) < 0)
+        stringn(g_text_surface, kry_p9_point(original_x - x, original_y - y),
+                white, ZP, p9font, (char *)text, byte_len);
+    if(unloadimage(g_text_surface, g_text_surface->r, coverage, w * h) < 0) {
+        free(coverage);
         return 0;
+    }
+    KrySwMarkDirty(g_active_sw, x, y, w, h);
+    for(row = 0; row < h; row++) {
+        for(col = 0; col < w; col++) {
+            Color pixel = color;
+            pixel.a = (unsigned char)((unsigned)color.a * coverage[row * w + col] / 255);
+            if(pixel.a != 0)
+                blend_pixel_rgba(g_active_sw->pixels + (size_t)(y + row) *
+                                 g_active_sw->stride + (x + col) * 4, pixel);
+        }
+    }
+    free(coverage);
     return 1;
 }
 
@@ -1094,8 +1086,7 @@ kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len, int x,
 
     if(text == NULL || text[0] == '\0')
         return;
-    if(g_active_texture_id != 0 &&
-       draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
+    if(draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
         return;
     if(g_text_draw_count >= KRY_LIBDRAW_MAX_TEXT_DRAWS)
         return;
