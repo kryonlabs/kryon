@@ -439,7 +439,6 @@ docs-site:
 	cp web/kryon-runtime.js web/kryon-runtime.d.ts $(SITE_BUILD_DIR)/ide-tools/
 	sh scripts/build-site-live-examples.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
-	cp $(SITE_DIR)/renderers.html $(SITE_BUILD_DIR)/renderers.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
 	test -f $(SITE_BUILD_DIR)/language.html
 	test -f $(SITE_BUILD_DIR)/live-examples.html

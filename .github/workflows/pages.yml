@@ -52,8 +52,7 @@ jobs:
           test -f build/site/ide-tools/k2kir.wasm
           test -f build/site/ide-tools/k2b.js
           test -f build/site/ide-tools/k2b.wasm
-          test -f build/site/icons/kryon.png
-          test -f build/site/icons/c.png
+          test -f build/site/icons/proj/kryon.png
           test ! -f build/site/API.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
