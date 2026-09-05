@@ -665,3 +665,409 @@ quad_matrix_transpose (QuadMatrix *A, const QuadMatrix *B)
 		for (j = 0; j < A->n; j++)
 			A->data[i][j] = B->data[j][i];
 }
+
+/* ------------------------------------------------------------------ */
+/* Constants as correctly-rounded double-double values (base-2 digits
+ * of pi/e/ln2/sqrt2, matching go_quad_constant8's normalization). */
+static const Quad QUAD_PI     = { 3.141592653589793, 1.2246467991473532e-16 };
+const Quad QUAD_2PI_EXPORT = { 6.283185307179586, 2.4492935982947064e-16 };
+static const Quad QUAD_2PI_UNUSED    = { 6.283185307179586, 2.4492935982947064e-16 };
+static const Quad QUAD_PIHALF = { 1.5707963267948966, 6.123233995736766e-17 };
+static const Quad QUAD_LN2    = { 0.6931471805599453, 2.3190468138462996e-17 };
+static const Quad QUAD_SQRT2  = { 1.4142135623730951, -9.667293313452913e-17 };
+
+void
+quad_log (Quad *res, const Quad *a)
+{
+	double da = quad_val (a);
+
+	if (da == 0)
+		quad_init (res, -INFINITY);
+	else if (da < 0)
+		quad_init (res, NAN);
+	else if (!isfinite (da))
+		*res = *a;
+	else {
+		Quad as, xi, yi, dx, dl;
+		int e;
+
+		/* Scale down to near 1. */
+		frexp (da, &e);
+		if (da < 1 / sqrt (2)) e--;
+		quad_scalbn (&as, a, -e);
+
+		/* Initial approximation. */
+		quad_init (&xi, log (as.h));
+
+		/* Newton step. */
+		quad_exp (&yi, NULL, &xi);
+		quad_sub (&dx, &as, &yi);
+		quad_div (&dx, &dx, &yi);
+		quad_add (&xi, &xi, &dx);
+
+		/* Adjust for scaling. */
+		quad_init (&dl, e);
+		quad_mul (&dl, &QUAD_LN2, &dl);
+		quad_add (&xi, &xi, &dl);
+
+		*res = xi;
+	}
+}
+
+void
+quad_hypot (Quad *res, const Quad *a, const Quad *b)
+{
+	int e;
+	Quad qa, qb, qn;
+	double maxh;
+
+	qa = (a->h < 0) ? (Quad){ -a->h, -a->l } : *a;
+	qb = (b->h < 0) ? (Quad){ -b->h, -b->l } : *b;
+
+	if (qa.h == 0) { *res = qb; return; }
+	if (qb.h == 0) { *res = qa; return; }
+	if (qa.h == INFINITY || qb.h == INFINITY) { quad_init (res, INFINITY); return; }
+	if (isnan (qa.h) || isnan (qb.h)) { quad_init (res, NAN); return; }
+
+	maxh = (qa.h > qb.h) ? qa.h : qb.h;
+	frexp (maxh, &e);
+
+	quad_scalbn (&qa, &qa, -e);
+	quad_mul (&qa, &qa, &qa);
+	quad_scalbn (&qb, &qb, -e);
+	quad_mul (&qb, &qb, &qb);
+	quad_add (&qn, &qa, &qb);
+	quad_sqrt (&qn, &qn);
+	quad_scalbn (res, &qn, e);
+}
+
+static void
+quad_ihypot (Quad *res, const Quad *a)
+{
+	Quad qp, one;
+	quad_mul (&qp, a, a);
+	quad_init (&one, 1.0);
+	quad_sub (&qp, &one, &qp);
+	quad_sqrt (res, &qp);
+}
+
+/* Carlson's AGM algorithm for arcsin/arccos/arctan. */
+enum { AGM_ARCSIN, AGM_ARCCOS, AGM_ARCTAN };
+
+static void
+quad_agm_internal (Quad *res, int method, const Quad *x)
+{
+	Quad g, gp, dk[20], dpk[20], qr, qrp, qnum;
+	int n, k;
+	int converged = 0;
+	static const Quad one = { 1.0, 0.0 };
+	static const Quad half = { 0.5, 0.0 };
+
+	qrp = one;
+	qrp.h = 0; qrp.l = 0;
+
+	switch (method) {
+	case AGM_ARCSIN:
+		quad_ihypot (&dpk[0], x);
+		gp = one;
+		qnum = *x;
+		break;
+	case AGM_ARCCOS:
+		dpk[0] = *x;
+		gp = one;
+		quad_ihypot (&qnum, x);
+		break;
+	case AGM_ARCTAN:
+		dpk[0] = one;
+		quad_hypot (&gp, x, &one);
+		qnum = *x;
+		break;
+	default:
+		quad_init (res, NAN);
+		return;
+	}
+
+	for (n = 1; n < 20; n++) {
+		Quad f;
+
+		quad_add (&dk[0], &dpk[0], &gp);
+		quad_mul (&dk[0], &dk[0], &half);
+
+		quad_mul (&g, &dk[0], &gp);
+		quad_sqrt (&g, &g);
+
+		for (k = 1; k <= n; k++) {
+			quad_init (&f, ldexp (1.0, -2 * k));
+			quad_mul (&dk[k], &f, &dpk[k - 1]);
+			quad_sub (&dk[k], &dk[k - 1], &dk[k]);
+			quad_init (&f, 1.0 - ldexp (1.0, -2 * k));
+			quad_div (&dk[k], &dk[k], &f);
+		}
+
+		quad_div (&qr, &qnum, &dk[n]);
+		quad_sub (&qrp, &qrp, &qr);
+		if (fabs (qrp.h) <= ldexp (fabs (qr.h), -2 * (53 - 1))) {
+			converged = 1;
+			break;
+		}
+
+		qrp = qr;
+		gp = g;
+		for (k = 0; k <= n; k++) dpk[k] = dk[k];
+	}
+
+	(void)converged;
+	*res = qr;
+}
+
+void
+quad_asin (Quad *res, const Quad *a)
+{
+	Quad aa, aam1;
+	static const Quad sone = { 1.0, 0.0 };
+	aa = (a->h < 0) ? (Quad){ -a->h, -a->l } : *a;
+	quad_sub (&aam1, &aa, &sone);
+	if (aam1.h > 0) {
+		quad_init (res, NAN);
+		return;
+	}
+	quad_agm_internal (res, AGM_ARCSIN, a);
+}
+
+void
+quad_acos (Quad *res, const Quad *a)
+{
+	Quad aa, aam1;
+	static const Quad sone = { 1.0, 0.0 };
+	aa = (a->h < 0) ? (Quad){ -a->h, -a->l } : *a;
+	quad_sub (&aam1, &aa, &sone);
+	if (aam1.h > 0) {
+		quad_init (res, NAN);
+		return;
+	}
+	quad_agm_internal (res, AGM_ARCCOS, &aa);
+	if (a->h < 0)
+		quad_sub (res, &QUAD_PI, res);
+}
+
+static int
+quad_atan2_special (const Quad *y, const Quad *x, double *f)
+{
+	double dy = quad_val (y);
+	double dx = quad_val (x);
+
+	if (dy == 0) {
+		*f = (dx >= 0 ? 0 : +1);
+		return 1;
+	}
+	if (dx == 0) {
+		*f = (dy >= 0 ? 0.5 : -0.5);
+		return 1;
+	}
+	if (fabs (fabs (dx) - fabs (dy)) < 1e-10) {
+		Quad d;
+		quad_sub (&d, x, y);
+		if (d.h == 0) {
+			*f = (dy >= 0 ? 0.25 : -0.75);
+			return 1;
+		}
+		quad_add (&d, x, y);
+		if (d.h == 0) {
+			*f = (dy >= 0 ? +0.75 : -0.25);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void
+quad_atan2 (Quad *res, const Quad *y, const Quad *x)
+{
+	double f;
+	double dy = quad_val (y);
+	double dx = quad_val (x);
+	Quad qr;
+
+	if (quad_atan2_special (y, x, &f)) {
+		Quad qf;
+		quad_init (&qf, f);
+		quad_mul (res, &qf, &QUAD_PI);
+		return;
+	}
+
+	if (fabs (dx) >= fabs (dy)) {
+		quad_div (&qr, y, x);
+		quad_agm_internal (res, AGM_ARCTAN, &qr);
+	} else {
+		Quad qa;
+		quad_div (&qr, x, y);
+		quad_agm_internal (res, AGM_ARCTAN, &qr);
+		qa = QUAD_PIHALF;
+		if (qr.h < 0) { qa.h = -qa.h; qa.l = -qa.l; }
+		quad_sub (res, &qa, res);
+	}
+
+	if (dx < 0) {
+		if (dy > 0)
+			quad_add (res, res, &QUAD_PI);
+		else
+			quad_sub (res, res, &QUAD_PI);
+	}
+}
+
+void
+quad_atan2pi (Quad *res, const Quad *y, const Quad *x)
+{
+	double f;
+
+	if (quad_atan2_special (y, x, &f)) {
+		quad_init (res, f);
+		return;
+	}
+	quad_atan2 (res, y, x);
+	quad_div (res, res, &QUAD_PI);
+}
+
+/* Reduce a (mod 2) into [-0.5, 0.5] with quadrant bits. */
+static void
+quad_reduce_half (Quad *res, const Quad *a, int *pk)
+{
+	int k = 0;
+	Quad qxr = *a;
+
+	if (a->h < 0) {
+		Quad aa;
+		aa.h = -a->h; aa.l = -a->l;
+		quad_reduce_half (&qxr, &aa, &k);
+		qxr.h = -qxr.h; qxr.l = -qxr.l;
+		k = 4 - k;
+		if (qxr.h <= -0.25 && qxr.l == 0) {
+			Quad qh = { 0.5, 0.0 };
+			quad_add (&qxr, &qxr, &qh);
+			k += 3;
+		}
+	} else {
+		Quad qdx;
+		quad_init (&qdx, qxr.h - fmod (qxr.h, 2));
+		quad_sub (&qxr, &qxr, &qdx);
+		quad_init (&qdx, qxr.h - fmod (qxr.h, 2));
+		quad_sub (&qxr, &qxr, &qdx);
+		{
+			Quad qone = { 1.0, 0.0 };
+			Quad qh = { 0.5, 0.0 };
+			if (qxr.h >= 1) { quad_sub (&qxr, &qxr, &qone); k += 2; }
+			if (qxr.h >= 0.5) { quad_sub (&qxr, &qxr, &qh); k++; }
+			if (qxr.h > 0.25) { quad_sub (&qxr, &qxr, &qh); k++; }
+		}
+	}
+
+	*pk = (k & 3);
+	*res = qxr;
+}
+
+static void
+quad_do_sinpi (Quad *res, const Quad *a, int k)
+{
+	Quad qr, one;
+
+	if (a->h == 0) {
+		quad_init (&qr, k & 1);
+	} else if (a->h == 0.25 && a->l == 0) {
+		quad_init (&one, 1.0);
+		quad_div (&qr, &one, &QUAD_SQRT2);
+	} else {
+		Quad api;
+		quad_mul (&api, a, &QUAD_PI);
+
+		/* Sine with Newton refinement via arcsin/arccos. */
+		if (k & 1) {
+			Quad qn, qd, qq, qabs;
+			qabs = (api.h < 0) ? (Quad){ -api.h, -api.l } : api;
+			quad_init (&qr, cos (qabs.h));
+			quad_acos (&qn, &qr);
+			quad_sub (&qn, &qn, &qabs);
+			quad_ihypot (&qd, &qr);
+			quad_mul (&qq, &qn, &qd);
+			quad_add (&qr, &qr, &qq);
+		} else {
+			Quad qn, qd, qq;
+			quad_init (&qr, sin (api.h));
+			quad_asin (&qn, &qr);
+			quad_sub (&qn, &qn, &api);
+			quad_ihypot (&qd, &qr);
+			quad_mul (&qq, &qn, &qd);
+			quad_sub (&qr, &qr, &qq);
+		}
+	}
+
+	if (k & 2) {
+		qr.h = 0 - qr.h;
+		qr.l = 0 - qr.l;
+	}
+
+	*res = qr;
+}
+
+void
+quad_sinpi (Quad *res, const Quad *a)
+{
+	int k;
+	Quad a0;
+	quad_reduce_half (&a0, a, &k);
+	quad_do_sinpi (res, &a0, k);
+}
+
+void
+quad_cospi (Quad *res, const Quad *a)
+{
+	int k;
+	Quad a0;
+	quad_reduce_half (&a0, a, &k);
+	quad_do_sinpi (res, &a0, k + 1);
+}
+
+void
+quad_mulmod1 (Quad *dst, const Quad *qa_, double b)
+{
+	Quad qa = *qa_, qfb, qfa, qp, res;
+	double wb, wa;
+	int ea, eb, de;
+
+	frexp (quad_val (&qa), &ea);
+	frexp (b, &eb);
+	if (ea + eb <= 0) {
+		quad_init (&qfb, b);
+		quad_mul (dst, &qfb, &qa);
+		return;
+	}
+
+	de = (ea - eb) / 2;
+	if (de) {
+		double f = ldexp (1.0, de);
+		b *= f;
+		qa.h /= f;
+		qa.l /= f;
+	}
+
+	wb = round (b);
+	b -= wb;
+	quad_init (&qfb, b);
+
+	wa = round (quad_val (&qa));
+	quad_init (&qfa, wa);
+	quad_sub (&qfa, &qa, &qfa);
+
+	/* (wb+qfb)*(wa+qfa) mod 1, dropping the integer wa*wb term. */
+	quad_mul (&res, &qfa, &qfb);
+
+	quad_mul12 (&qp, wa, b);
+	{ Quad d = qp; Quad r0 = { round (d.h), 0.0 }; quad_sub (&qp, &d, &r0); }
+	quad_add (&res, &res, &qp);
+
+	quad_init (&qp, wb);
+	quad_mul (&qp, &qp, &qfa);
+	{ Quad d = qp; Quad r0 = { round (d.h), 0.0 }; quad_sub (&qp, &d, &r0); }
+	quad_add (&res, &res, &qp);
+
+	{ Quad d = res; Quad r0 = { round (d.h), 0.0 }; quad_sub (dst, &d, &r0); }
+}

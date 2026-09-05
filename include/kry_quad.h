@@ -85,4 +85,23 @@ int  quad_matrix_inverse (QuadMatrix *A, double threshold, QuadMatrix *Z);
 void quad_matrix_multiply (QuadMatrix *C, const QuadMatrix *A, const QuadMatrix *B);
 void quad_matrix_transpose (QuadMatrix *A, const QuadMatrix *B);
 
+/* Logarithms, hypotenuse, and inverse trigonometry. */
+void quad_log (Quad *res, const Quad *a);
+void quad_hypot (Quad *res, const Quad *a, const Quad *b);
+void quad_asin (Quad *res, const Quad *a);
+void quad_acos (Quad *res, const Quad *a);
+void quad_atan2 (Quad *res, const Quad *y, const Quad *x);
+void quad_atan2pi (Quad *res, const Quad *y, const Quad *x);
+
+/* Accurate sin/cos of a times pi. */
+void quad_sinpi (Quad *res, const Quad *a);
+void quad_cospi (Quad *res, const Quad *a);
+
+/* Multiply a by b modulo 1 (both near-unit scaled); helper for
+ * argument reduction in complex powers. */
+void quad_mulmod1 (Quad *dst, const Quad *qa, double b);
+
+/* The pi constants as double-double values. */
+extern const Quad QUAD_2PI_EXPORT;
+
 #endif /* KRY_QUAD_H */
