@@ -1,13 +1,15 @@
 /*
- * kry_gzip.c - gzip container support for the Kry standard library.
+ * kry_gzip.c - gzip (RFC 1952) and zlib (RFC 1950) container support for
+ * the Kry standard library.
  *
  * Inflate is the classic bit-reader + Huffman walker (zlib-style, rewritten
  * from RFC 1951): stored, fixed and dynamic blocks, no length-delimited
  * recursion. Deflate output uses stored blocks only, which keeps the writer
- * tiny and lossless. Both sides compute CRC-32 and the container carries
- * ISIZE so corrupt input is rejected instead of silently truncated.
+ * tiny and lossless. gzip verifies CRC-32 and ISIZE; zlib verifies Adler-32
+ * so corrupt input is rejected instead of silently truncated.
  */
 #include "kry_gzip.h"
+#include "kry_zlib.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -522,6 +524,162 @@ kry_gzip_compress(const unsigned char *data, unsigned long len,
     out[i++] = (unsigned char)((len >> 8) & 0xFF);
     out[i++] = (unsigned char)((len >> 16) & 0xFF);
     out[i++] = (unsigned char)((len >> 24) & 0xFF);
+    if(out_len != NULL)
+        *out_len = i;
+    return out;
+}
+
+/* --- zlib container (RFC 1950) -------------------------------------------- */
+
+unsigned long
+kry_zlib_adler32(const unsigned char *data, unsigned long len)
+{
+    unsigned long a = 1;
+    unsigned long b = 0;
+    unsigned long i = 0;
+
+    if(data == NULL)
+        return 1;
+    while(i < len) {
+        /* NMAX: the most bytes processable before 32-bit overflow */
+        unsigned long chunk = len - i;
+        unsigned long n;
+
+        if(chunk > 5552)
+            chunk = 5552;
+        for(n = 0; n < chunk; n++) {
+            a += data[i + n];
+            b += a;
+        }
+        a %= 65521;
+        b %= 65521;
+        i += chunk;
+    }
+    return (b << 16) | a;
+}
+
+int
+kry_zlib_is(const unsigned char *data, unsigned long len)
+{
+    unsigned cmf;
+    unsigned flg;
+
+    if(data == NULL || len < 2)
+        return 0;
+    cmf = data[0];
+    flg = data[1];
+    if((cmf & 0x0Fu) != 8)
+        return 0; /* method must be deflate */
+    if((cmf >> 4) > 7)
+        return 0; /* window larger than the 32 KiB inflater support */
+    if(((cmf << 8) | flg) % 31 != 0)
+        return 0; /* FCHECK */
+    if(flg & 0x20)
+        return 0; /* FDICT: preset dictionaries unsupported */
+    return 1;
+}
+
+unsigned char *
+kry_zlib_decompress(const unsigned char *data, unsigned long len,
+                    unsigned long *out_len)
+{
+    BitReader r;
+    Window w;
+    unsigned long trailer;
+    unsigned long expected;
+    unsigned char *result;
+
+    if(out_len != NULL)
+        *out_len = 0;
+    if(!kry_zlib_is(data, len))
+        return NULL;
+
+    r.data = data;
+    r.len = len;
+    r.pos = 2;
+    r.bit = 0;
+    r.bad = 0;
+    w.buf = NULL;
+    w.len = 0;
+    w.cap = 0;
+    w.bad = 0;
+    if(!inflate_raw(&r, &w)) {
+        free(w.buf);
+        return NULL;
+    }
+    align_byte(&r);
+    trailer = r.pos;
+    if(trailer + 4 > len) {
+        free(w.buf);
+        return NULL;
+    }
+    expected = ((unsigned long)data[trailer] << 24) |
+               ((unsigned long)data[trailer + 1] << 16) |
+               ((unsigned long)data[trailer + 2] << 8) |
+               (unsigned long)data[trailer + 3];
+    if(kry_zlib_adler32(w.buf, w.len) != expected) {
+        free(w.buf);
+        return NULL;
+    }
+    if(window_push(&w, 0)) { /* NUL convenience for text callers */
+        result = w.buf;
+        if(out_len != NULL)
+            *out_len = w.len - 1;
+        return result;
+    }
+    free(w.buf);
+    return NULL;
+}
+
+unsigned char *
+kry_zlib_compress(const unsigned char *data, unsigned long len,
+                  unsigned long *out_len)
+{
+    unsigned long total;
+    unsigned long blocks;
+    unsigned long i;
+    unsigned long done = 0;
+    unsigned long adler = kry_zlib_adler32(data, len);
+    unsigned char *out;
+
+    if(out_len != NULL)
+        *out_len = 0;
+    if(data == NULL && len != 0)
+        return NULL;
+    blocks = len / GZIP_STORED_MAX + (len % GZIP_STORED_MAX != 0 ? 1 : 0);
+    if(blocks == 0)
+        blocks = 1;
+    total = 2 + blocks * 5 + len + 4;
+    out = malloc(total);
+    if(out == NULL)
+        return NULL;
+
+    /* fixed header: CMF 0x78 (deflate, 32 KiB window), FLG 0x01 (FCHECK) */
+    out[0] = 0x78;
+    out[1] = 0x01;
+
+    i = 2;
+    for(;;) {
+        unsigned long chunk = len - done;
+
+        if(chunk > GZIP_STORED_MAX)
+            chunk = GZIP_STORED_MAX;
+        out[i++] = (done + chunk >= len) ? 0x01 : 0x00; /* BFINAL, BTYPE=00 */
+        out[i++] = (unsigned char)(chunk & 0xFF);
+        out[i++] = (unsigned char)((chunk >> 8) & 0xFF);
+        out[i++] = (unsigned char)(~chunk & 0xFF);
+        out[i++] = (unsigned char)((~chunk >> 8) & 0xFF);
+        if(chunk != 0)
+            memcpy(out + i, data + done, chunk);
+        i += chunk;
+        done += chunk;
+        if(done >= len)
+            break;
+    }
+    out[i++] = (unsigned char)((adler >> 24) & 0xFF);
+    out[i++] = (unsigned char)((adler >> 16) & 0xFF);
+    out[i++] = (unsigned char)((adler >> 8) & 0xFF);
+    out[i++] = (unsigned char)(adler & 0xFF);
     if(out_len != NULL)
         *out_len = i;
     return out;

@@ -316,6 +316,7 @@ TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_XML_TEST = $(BUILD_DIR)/tests/kry_xml_test
 KRY_GZIP_TEST = $(BUILD_DIR)/tests/kry_gzip_test
+KRY_ZLIB_TEST = $(BUILD_DIR)/tests/kry_zlib_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
@@ -506,6 +507,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(KRY_JSON_TEST)
 	$(KRY_XML_TEST)
 	$(KRY_GZIP_TEST)
+	$(KRY_ZLIB_TEST)
 	$(KRY_HTTP_TEST)
 	$(RUNTIME_ASSETS_TEST)
 	$(KRY_UPDATE_TEST)
@@ -1073,9 +1075,13 @@ $(KRY_XML_TEST): tests/kry_xml_test.c src/kry_std/kry_xml.c include/kry_xml.h | 
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_xml_test.c src/kry_std/kry_xml.c -o $@
 
-$(KRY_GZIP_TEST): tests/kry_gzip_test.c src/kry_std/kry_gzip.c include/kry_gzip.h | $(BUILD_DIR)
+$(KRY_GZIP_TEST): tests/kry_gzip_test.c src/kry_std/kry_gzip.c include/kry_gzip.h include/kry_zlib.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_gzip_test.c src/kry_std/kry_gzip.c -o $@
+
+$(KRY_ZLIB_TEST): tests/kry_zlib_test.c src/kry_std/kry_gzip.c include/kry_zlib.h include/kry_gzip.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_zlib_test.c src/kry_std/kry_gzip.c -o $@
 
 $(KRY_HTTP_TEST): tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c include/kry_http.h include/platform.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

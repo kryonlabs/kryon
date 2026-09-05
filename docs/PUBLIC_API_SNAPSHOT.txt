@@ -506,6 +506,10 @@ include/kry_xml.h function kry_xml_buf_free
 include/kry_xml.h function kry_xml_buf_raw
 include/kry_xml.h function kry_xml_free
 include/kry_xml.h typedef KryXml
+include/kry_zlib.h function kry_zlib_adler32
+include/kry_zlib.h function kry_zlib_compress
+include/kry_zlib.h function kry_zlib_decompress
+include/kry_zlib.h function kry_zlib_is
 include/kryon.h function KryonAbiVersion
 include/kryon.h macro KRYON_ABI_VERSION
 include/kryon_edit_host.h macro KRYON_EDIT_HOST_ABI_VERSION
