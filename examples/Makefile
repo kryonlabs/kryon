@@ -269,5 +269,3 @@ run:
 	else \
 		echo "Invalid example number"; \
 	fi
-; \
-	fi
