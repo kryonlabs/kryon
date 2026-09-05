@@ -1916,13 +1916,6 @@ void ImageFormat(Image *image, int newFormat)
     if(image != NULL)
         image->format = newFormat;
 }
-                           (size_t)(image->height - 1 - y) * image->width * 4;
-        memcpy(tmp, a, (size_t)image->width * 4);
-        memcpy(a, b, (size_t)image->width * 4);
-        memcpy(b, tmp, (size_t)image->width * 4);
-    }
-    free(tmp);
-}
 Texture2D LoadTextureFromImage(Image image)
 {
     Texture2D tex = {0};
