@@ -54,3 +54,30 @@ if errors:
 
 print(f"examples manifest ok: {len(entries)} examples, {len(exact)} krb exact")
 PY
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/kryon-site-examples.XXXXXX")
+trap 'rm -rf "$work"' EXIT INT TERM
+sh scripts/build-site-live-examples.sh "$work"
+
+python3 - "$work" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+root = Path(".")
+site = Path(sys.argv[1])
+source = json.loads((root / "examples" / "manifest.json").read_text(encoding="utf-8"))["examples"]
+generated = json.loads((site / "examples-manifest.json").read_text(encoding="utf-8"))["items"]
+
+expected = [(item["id"], item["title"], item["path"]) for item in source]
+actual = [(item["id"], item["title"], item["path"]) for item in generated]
+if actual != expected:
+    raise SystemExit("website examples manifest does not match examples/manifest.json")
+
+for item in generated:
+    copied = site / item["url"]
+    if not copied.is_file():
+        raise SystemExit(f"website example source missing: {item['url']}")
+
+print(f"website examples ok: {len(generated)} canonical examples")
+PY

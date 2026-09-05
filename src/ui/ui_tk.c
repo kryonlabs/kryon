@@ -5,6 +5,7 @@
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
+static const TextInputStyle kryon_zero_text_input_style;
 
 
 #define UI_TK_MENU_MAX 8
@@ -14,6 +15,10 @@ static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;
 static Rectangle g_menu_panel_bounds = {0};
 static int g_menu_panel_valid = 0;
+static int g_drag_active = 0;
+static float g_drag_last_x = 0.0f;
+static int g_slider_active = 0;
+static int ui_slider_float(SliderFloatProps slider, int vertical);
 typedef struct UIMenuOverlayState {
     int active;
     int bar_id;
@@ -266,12 +271,292 @@ Place(Rectangle parent, int x, int y, int w, int h)
 void
 DrawUISeparator(Rectangle bounds, int vertical)
 {
+    if(!IsWindowReady())
+        return;
     if(vertical)
         DrawLine((int)(bounds.x + bounds.width / 2), (int)bounds.y,
                  (int)(bounds.x + bounds.width / 2), (int)(bounds.y + bounds.height), c_button);
     else
         DrawLine((int)bounds.x, (int)(bounds.y + bounds.height / 2),
                  (int)(bounds.x + bounds.width), (int)(bounds.y + bounds.height / 2), c_button);
+}
+
+void
+DrawUISeparatorText(SeparatorTextProps separator)
+{
+    const char *label = separator.label != NULL ? separator.label : "";
+    int font = separator.font > 0 ? separator.font : GetUISmallFontSize();
+    int text_width = TextWidth(label, font);
+    int text_y = ui_row_text_y(separator.bounds, font);
+    int line_y = (int)(separator.bounds.y + separator.bounds.height * 0.5f);
+    int line_x = (int)separator.bounds.x;
+    Color color = separator.disabled ? Fade(c_text, 0.45f) : c_text;
+
+    if(!IsWindowReady())
+        return;
+    if(label[0] != '\0') {
+        DrawUIText(label, (int)separator.bounds.x, text_y, font, color);
+        line_x += text_width + ScaleUIPx(12);
+    }
+    if(line_x < (int)(separator.bounds.x + separator.bounds.width))
+        DrawLine(line_x, line_y,
+                 (int)(separator.bounds.x + separator.bounds.width), line_y,
+                 separator.disabled ? Fade(c_button, 0.45f) : c_button);
+}
+
+int
+DrawUISmallButton(ButtonProps button)
+{
+    if(!IsWindowReady())
+        return 0;
+    ButtonSpec spec = {button.bounds, button.label, GetUISmallFontSize(),
+                       button.id, button.disabled, {0}, {0}, {0}, {0}, 0.0f};
+    return RenderButton(spec);
+}
+
+int
+DrawUIInvisibleButton(InvisibleButtonProps button)
+{
+    if(!IsWindowReady())
+        return 0;
+    ButtonSpec spec = {button.bounds, "", GetUISmallFontSize(), button.id,
+                       button.disabled, {0}, {0}, {0}, {0}, 0.0f};
+    return HandleButton(spec);
+}
+
+int
+DrawUIArrowButton(ArrowButtonProps button)
+{
+    if(!IsWindowReady())
+        return 0;
+    const char *label = "<";
+    if(button.direction == ARROW_RIGHT) label = ">";
+    else if(button.direction == ARROW_UP) label = "^";
+    else if(button.direction == ARROW_DOWN) label = "v";
+    return RenderButton((ButtonSpec){button.bounds, label, GetUISmallFontSize(),
+                                     button.id, button.disabled,
+                                     {0}, {0}, {0}, {0}, 0.0f});
+}
+
+void
+DrawUIBullet(Rectangle bounds)
+{
+    if(!IsWindowReady())
+        return;
+    float radius = bounds.width < bounds.height ? bounds.width * 0.25f
+                                                 : bounds.height * 0.25f;
+    DrawCircleV((Vector2){bounds.x + bounds.width * 0.5f,
+                          bounds.y + bounds.height * 0.5f},
+                radius, GetThemeText());
+}
+
+int
+DrawUISelectable(SelectableProps selectable)
+{
+    Vector2 mouse = ui_mouse_world();
+    int selected = selectable.selected != NULL && *selectable.selected;
+    int hot = ui_contains(selectable.bounds, mouse) &&
+              !UIInputCapturesClick(mouse);
+
+    if(IsWindowReady() && (selected || hot))
+        DrawRectangleRec(selectable.bounds,
+                         selected ? GetThemeButton() : GetThemeButtonHover());
+    if(hot)
+        selectable.disabled ? MarkUIDisabled() : MarkUIClickable();
+    if(IsWindowReady())
+        DrawUIText(selectable.label != NULL ? selectable.label : "",
+                   (int)selectable.bounds.x + ScaleUIPx(8),
+                   ui_row_text_y(selectable.bounds, GetUIFontSize()),
+                   GetUIFontSize(), selectable.disabled
+                       ? Fade(GetThemeText(), 0.45f) : GetThemeText());
+    if(hot && !selectable.disabled &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        if(selectable.selected != NULL)
+            *selectable.selected = !*selectable.selected;
+        return 1;
+    }
+    return 0;
+}
+
+int
+DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
+{
+    Vector2 mouse = ui_mouse_world();
+    int checked = checkbox.flags != NULL &&
+                  ((*checkbox.flags & checkbox.flags_value) == checkbox.flags_value);
+    int box_size = ScaleUIPx(20);
+    Rectangle box = {checkbox.bounds.x,
+                     checkbox.bounds.y + (checkbox.bounds.height - box_size) * 0.5f,
+                     (float)box_size, (float)box_size};
+    int hot = ui_contains(checkbox.bounds, mouse) &&
+              !UIInputCapturesClick(mouse);
+
+    if(IsWindowReady()) {
+        DrawRectangleLinesEx(box, 1.0f, GetThemeButton());
+        if(checked)
+            DrawRectangle((int)box.x + ScaleUIPx(4),
+                          (int)box.y + ScaleUIPx(4),
+                          box_size - ScaleUIPx(8), box_size - ScaleUIPx(8),
+                          GetThemeCircle());
+        DrawUIText(checkbox.label != NULL ? checkbox.label : "",
+                   (int)box.x + box_size + ScaleUIPx(8),
+                   ui_row_text_y(checkbox.bounds, GetUIFontSize()),
+                   GetUIFontSize(), checkbox.disabled
+                       ? Fade(GetThemeText(), 0.45f) : GetThemeText());
+    }
+    if(hot)
+        checkbox.disabled ? MarkUIDisabled() : MarkUIClickable();
+    if(hot && !checkbox.disabled && checkbox.flags != NULL &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        if(checked)
+            *checkbox.flags &= ~checkbox.flags_value;
+        else
+            *checkbox.flags |= checkbox.flags_value;
+        return 1;
+    }
+    return 0;
+}
+
+static int
+ui_color_edit(ColorEditProps edit, int channels)
+{
+    if(edit.values == NULL || edit.value_count < channels)
+        return 0;
+    return ui_slider_float((SliderFloatProps){edit.bounds, edit.id, edit.label,
+                                               edit.values, channels, 0.0f, 1.0f,
+                                               "%.3f", edit.disabled}, 0);
+}
+
+static Color
+ui_float_color(const float *values, int channels)
+{
+    float component[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    for(int i = 0; i < channels; i++) {
+        component[i] = values[i];
+        if(component[i] < 0.0f) component[i] = 0.0f;
+        if(component[i] > 1.0f) component[i] = 1.0f;
+    }
+    return (Color){(unsigned char)(component[0] * 255.0f + 0.5f),
+                   (unsigned char)(component[1] * 255.0f + 0.5f),
+                   (unsigned char)(component[2] * 255.0f + 0.5f),
+                   (unsigned char)(component[3] * 255.0f + 0.5f)};
+}
+
+static int
+ui_color_picker_float(ColorEditProps picker, int channels)
+{
+    int changed = 0;
+    float swatch_h = ScaleUIPx(36);
+    float gap = ScaleUIPx(4);
+    float row_h = (picker.bounds.height - swatch_h - gap) / channels;
+    const char *labels[4] = {"R", "G", "B", "A"};
+
+    if(picker.values == NULL || picker.value_count < channels)
+        return 0;
+    if(row_h < ScaleUIPx(20))
+        row_h = ScaleUIPx(28);
+    for(int i = 0; i < channels; i++) {
+        SliderFloatProps channel = {
+            {picker.bounds.x, picker.bounds.y + row_h * i,
+             picker.bounds.width, row_h - ScaleUIPx(2)},
+            picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
+            0.0f, 1.0f, "%.3f", picker.disabled
+        };
+        changed |= ui_slider_float(channel, 0);
+    }
+    if(IsWindowReady()) {
+        Rectangle swatch = {picker.bounds.x,
+                            picker.bounds.y + row_h * channels + gap,
+                            picker.bounds.width, swatch_h};
+        DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
+        DrawRectangleLinesEx(swatch, 1.0f, c_button);
+        if(picker.label != NULL)
+            DrawUIText(picker.label, (int)swatch.x + ScaleUIPx(6),
+                       ui_row_text_y(swatch, GetUISmallFontSize()),
+                       GetUISmallFontSize(), c_text);
+    }
+    return changed;
+}
+
+int DrawUIColorEdit3(ColorEditProps edit) { return ui_color_edit(edit, 3); }
+int DrawUIColorEdit4(ColorEditProps edit) { return ui_color_edit(edit, 4); }
+int DrawUIColorPicker3(ColorEditProps picker) { return ui_color_picker_float(picker, 3); }
+int DrawUIColorPicker4(ColorEditProps picker) { return ui_color_picker_float(picker, 4); }
+
+int
+DrawUIColorButton(ColorButtonProps button)
+{
+    int pressed;
+    if(!IsWindowReady())
+        return 0;
+    pressed = HandleButton((ButtonSpec){button.bounds, "", GetUISmallFontSize(),
+                                        button.id, button.disabled,
+                                        {0}, {0}, {0}, {0}, 0.0f});
+    DrawRectangleRec(button.bounds, (Color){180, 180, 180, 255});
+    DrawRectangle((int)button.bounds.x, (int)button.bounds.y,
+                  (int)(button.bounds.width / 2), (int)(button.bounds.height / 2),
+                  (Color){220, 220, 220, 255});
+    DrawRectangle((int)(button.bounds.x + button.bounds.width / 2),
+                  (int)(button.bounds.y + button.bounds.height / 2),
+                  (int)(button.bounds.width / 2), (int)(button.bounds.height / 2),
+                  (Color){220, 220, 220, 255});
+    DrawRectangleRec(button.bounds, button.color);
+    DrawRectangleLinesEx(button.bounds, 1.0f,
+                         ui_hot(button.bounds) ? c_button_hover : c_button);
+    if(button.label != NULL)
+        DrawUIText(button.label, (int)button.bounds.x + ScaleUIPx(6),
+                   ui_row_text_y(button.bounds, GetUISmallFontSize()),
+                   GetUISmallFontSize(), c_text);
+    return pressed;
+}
+
+int
+DrawUITooltip(TooltipProps tooltip)
+{
+    Vector2 mouse = ui_mouse_world();
+    int font = tooltip.font > 0 ? tooltip.font : GetUISmallFontSize();
+    int max_width = tooltip.max_width > 0 ? tooltip.max_width : ScaleUIPx(240);
+    int padding = ScaleUIPx(8);
+    int content_width;
+    int content_height;
+    int y;
+    Rectangle panel;
+    ParagraphSpec paragraph = {0};
+
+    if(tooltip.disabled || tooltip.text == NULL ||
+       !ui_contains(tooltip.trigger, mouse))
+        return 0;
+    content_width = TextWidth(tooltip.text, font);
+    if(content_width > max_width)
+        content_width = max_width;
+    if(content_width < ScaleUIPx(24))
+        content_width = ScaleUIPx(24);
+    paragraph.text = tooltip.text;
+    paragraph.width = content_width;
+    paragraph.font = font;
+    paragraph.line_gap = ScaleUIPx(2);
+    paragraph.color = GetThemeText();
+    content_height = ui_paragraph_height(paragraph);
+    panel = (Rectangle){mouse.x + ScaleUIPx(12), mouse.y + ScaleUIPx(16),
+                        content_width + padding * 2,
+                        content_height + padding * 2};
+    if(panel.x + panel.width > GetUIViewWidth())
+        panel.x = GetUIViewWidth() - panel.width - ScaleUIPx(4);
+    if(panel.y + panel.height > GetUIViewHeight())
+        panel.y = mouse.y - panel.height - ScaleUIPx(8);
+    if(!IsWindowReady())
+        return 1;
+    DrawRectangleRec((Rectangle){panel.x + ScaleUIPx(2),
+                                 panel.y + ScaleUIPx(2),
+                                 panel.width, panel.height},
+                     Fade(GetThemeText(), 0.18f));
+    DrawRectangleRec(panel, GetThemeSurface());
+    DrawRectangleLinesEx(panel, 1.0f, GetThemeButton());
+    y = (int)panel.y + padding;
+    ui_draw_paragraph(paragraph, (int)panel.x + padding, &y);
+    return 1;
 }
 
 static int
@@ -772,6 +1057,619 @@ DrawUIProgressBar(ProgressBarProps progress)
     }
 }
 
+static void
+ui_plot(PlotProps plot, int histogram)
+{
+    float min_value;
+    float max_value;
+    float range;
+    int count = plot.value_count;
+    int offset;
+
+    if(!IsWindowReady())
+        return;
+    DrawRectangleRec(plot.bounds, ui_panel_color(10));
+    DrawRectangleLinesEx(plot.bounds, 1.0f, c_button);
+    if(plot.values == NULL || count <= 0)
+        return;
+    offset = plot.offset % count;
+    if(offset < 0)
+        offset += count;
+    min_value = plot.scale_min;
+    max_value = plot.scale_max;
+    if(min_value >= max_value) {
+        min_value = max_value = plot.values[offset];
+        for(int i = 1; i < count; i++) {
+            float value = plot.values[(offset + i) % count];
+            if(value < min_value)
+                min_value = value;
+            if(value > max_value)
+                max_value = value;
+        }
+        if(min_value == max_value) {
+            min_value -= 0.5f;
+            max_value += 0.5f;
+        }
+    }
+    range = max_value - min_value;
+    BeginUIClip((int)plot.bounds.x, (int)plot.bounds.y,
+                (int)plot.bounds.width, (int)plot.bounds.height);
+    if(histogram) {
+        float step = plot.bounds.width / (float)count;
+        for(int i = 0; i < count; i++) {
+            float value = plot.values[(offset + i) % count];
+            float t = (value - min_value) / range;
+            Rectangle bar;
+            if(t < 0.0f) t = 0.0f;
+            if(t > 1.0f) t = 1.0f;
+            bar.x = plot.bounds.x + i * step + 1.0f;
+            bar.width = step > 2.0f ? step - 2.0f : step;
+            bar.height = t * plot.bounds.height;
+            bar.y = plot.bounds.y + plot.bounds.height - bar.height;
+            DrawRectangleRec(bar, c_button_hover);
+        }
+    } else if(count == 1) {
+        float t = (plot.values[offset] - min_value) / range;
+        int y;
+        if(t < 0.0f) t = 0.0f;
+        if(t > 1.0f) t = 1.0f;
+        y = (int)(plot.bounds.y + (1.0f - t) * plot.bounds.height);
+        DrawLine((int)plot.bounds.x, y,
+                 (int)(plot.bounds.x + plot.bounds.width), y, c_button_hover);
+    } else {
+        for(int i = 1; i < count; i++) {
+            float a = plot.values[(offset + i - 1) % count];
+            float b = plot.values[(offset + i) % count];
+            float ta = (a - min_value) / range;
+            float tb = (b - min_value) / range;
+            int x1 = (int)(plot.bounds.x + (float)(i - 1) * plot.bounds.width / (float)(count - 1));
+            int x2 = (int)(plot.bounds.x + (float)i * plot.bounds.width / (float)(count - 1));
+            int y1 = (int)(plot.bounds.y + (1.0f - ta) * plot.bounds.height);
+            int y2 = (int)(plot.bounds.y + (1.0f - tb) * plot.bounds.height);
+            DrawLine(x1, y1, x2, y2, c_button_hover);
+        }
+    }
+    EndUIClip();
+    if(plot.label != NULL)
+        DrawUIText(plot.label, (int)plot.bounds.x + ScaleUIPx(6),
+                   (int)plot.bounds.y + ScaleUIPx(4), GetUISmallFontSize(), c_text);
+    if(plot.overlay != NULL) {
+        int font = GetUISmallFontSize();
+        int width = TextWidth(plot.overlay, font);
+        DrawUIText(plot.overlay,
+                   (int)(plot.bounds.x + plot.bounds.width) - width - ScaleUIPx(6),
+                   (int)plot.bounds.y + ScaleUIPx(4), font, c_text);
+    }
+}
+
+void
+DrawUIPlotLines(PlotProps plot)
+{
+    ui_plot(plot, 0);
+}
+
+void
+DrawUIPlotHistogram(PlotProps plot)
+{
+    ui_plot(plot, 1);
+}
+
+static int
+ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
+{
+    Vector2 mouse = ui_mouse_world();
+    int hot = !disabled && ui_hot(bounds);
+
+    *delta = 0.0f;
+    if(hot)
+        MarkUIClickable();
+    if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        g_drag_active = token;
+        g_drag_last_x = mouse.x;
+    }
+    if(g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        *delta = mouse.x - g_drag_last_x;
+        g_drag_last_x = mouse.x;
+    }
+    if(g_drag_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        g_drag_active = 0;
+    return *delta != 0.0f;
+}
+
+int
+DrawUIDragFloat(DragFloatProps drag)
+{
+    int count = drag.value_count;
+    int changed = 0;
+    float speed = drag.speed != 0.0f ? drag.speed : 1.0f;
+
+    if(drag.values == NULL || count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
+                          drag.bounds.y, drag.bounds.width / count,
+                          drag.bounds.height};
+        float delta;
+        if(ui_drag_delta((drag.id << 4) ^ (i + 1), cell,
+                         drag.disabled, &delta)) {
+            float value = drag.values[i] + delta * speed;
+            if(drag.min < drag.max) {
+                if(value < drag.min) value = drag.min;
+                if(value > drag.max) value = drag.max;
+            }
+            if(value != drag.values[i]) {
+                drag.values[i] = value;
+                changed = 1;
+            }
+        }
+        if(IsWindowReady()) {
+            char text[64];
+            snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
+                     drag.values[i]);
+            DrawRectangleRec(cell, drag.disabled ? c_surface : c_button);
+            DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
+            DrawUIText(text, (int)cell.x + ScaleUIPx(6),
+                       ui_row_text_y(cell, GetUISmallFontSize()),
+                       GetUISmallFontSize(), drag.disabled ? c_icon : c_text);
+        }
+    }
+    if(IsWindowReady() && drag.label != NULL)
+        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
+                   (int)drag.bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
+                   GetUISmallFontSize(), c_text);
+    return changed;
+}
+
+int
+DrawUIDragInt(DragIntProps drag)
+{
+    int count = drag.value_count;
+    int changed = 0;
+    float speed = drag.speed != 0.0f ? drag.speed : 1.0f;
+
+    if(drag.values == NULL || count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
+                          drag.bounds.y, drag.bounds.width / count,
+                          drag.bounds.height};
+        float delta;
+        if(ui_drag_delta((drag.id << 4) ^ (i + 1), cell,
+                         drag.disabled, &delta)) {
+            float scaled = delta * speed;
+            int step = (int)(scaled + (scaled < 0.0f ? -0.5f : 0.5f));
+            int value = drag.values[i] + step;
+            if(drag.min < drag.max) {
+                if(value < drag.min) value = drag.min;
+                if(value > drag.max) value = drag.max;
+            }
+            if(value != drag.values[i]) {
+                drag.values[i] = value;
+                changed = 1;
+            }
+        }
+        if(IsWindowReady()) {
+            char text[64];
+            snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
+                     drag.values[i]);
+            DrawRectangleRec(cell, drag.disabled ? c_surface : c_button);
+            DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
+            DrawUIText(text, (int)cell.x + ScaleUIPx(6),
+                       ui_row_text_y(cell, GetUISmallFontSize()),
+                       GetUISmallFontSize(), drag.disabled ? c_icon : c_text);
+        }
+    }
+    if(IsWindowReady() && drag.label != NULL)
+        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
+                   (int)drag.bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
+                   GetUISmallFontSize(), c_text);
+    return changed;
+}
+
+int
+DrawUIDragFloatRange2(DragFloatRange2Props drag)
+{
+    Rectangle low_bounds = drag.bounds;
+    Rectangle high_bounds = drag.bounds;
+    DragFloatProps low;
+    DragFloatProps high;
+    int changed;
+
+    if(drag.current_min == NULL || drag.current_max == NULL)
+        return 0;
+    low_bounds.width *= 0.5f;
+    high_bounds.x += low_bounds.width;
+    high_bounds.width -= low_bounds.width;
+    low = (DragFloatProps){low_bounds, drag.id * 2, NULL, drag.current_min, 1,
+                           drag.speed, drag.min, *drag.current_max,
+                           drag.format, drag.disabled};
+    high = (DragFloatProps){high_bounds, drag.id * 2 + 1, NULL,
+                            drag.current_max, 1, drag.speed,
+                            *drag.current_min, drag.max,
+                            drag.format_max != NULL ? drag.format_max : drag.format,
+                            drag.disabled};
+    changed = DrawUIDragFloat(low);
+    changed |= DrawUIDragFloat(high);
+    if(*drag.current_min > *drag.current_max)
+        *drag.current_min = *drag.current_max;
+    if(IsWindowReady() && drag.label != NULL)
+        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
+                   (int)drag.bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
+                   GetUISmallFontSize(), c_text);
+    return changed;
+}
+
+int
+DrawUIDragIntRange2(DragIntRange2Props drag)
+{
+    Rectangle low_bounds = drag.bounds;
+    Rectangle high_bounds = drag.bounds;
+    DragIntProps low;
+    DragIntProps high;
+    int changed;
+
+    if(drag.current_min == NULL || drag.current_max == NULL)
+        return 0;
+    low_bounds.width *= 0.5f;
+    high_bounds.x += low_bounds.width;
+    high_bounds.width -= low_bounds.width;
+    low = (DragIntProps){low_bounds, drag.id * 2, NULL, drag.current_min, 1,
+                         drag.speed, drag.min, *drag.current_max,
+                         drag.format, drag.disabled};
+    high = (DragIntProps){high_bounds, drag.id * 2 + 1, NULL,
+                          drag.current_max, 1, drag.speed,
+                          *drag.current_min, drag.max,
+                          drag.format_max != NULL ? drag.format_max : drag.format,
+                          drag.disabled};
+    changed = DrawUIDragInt(low);
+    changed |= DrawUIDragInt(high);
+    if(*drag.current_min > *drag.current_max)
+        *drag.current_min = *drag.current_max;
+    if(IsWindowReady() && drag.label != NULL)
+        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
+                   (int)drag.bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
+                   GetUISmallFontSize(), c_text);
+    return changed;
+}
+
+static int
+ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
+                float *ratio)
+{
+    Vector2 mouse = ui_mouse_world();
+    int hot = !disabled && ui_hot(bounds);
+    int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+
+    if(hot)
+        MarkUIClickable();
+    if(pressed)
+        g_slider_active = token;
+    if(g_slider_active == token &&
+       (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
+        float span = vertical ? bounds.height : bounds.width;
+        float position = vertical ? bounds.y + bounds.height - mouse.y
+                                  : mouse.x - bounds.x;
+        *ratio = span > 0.0f ? position / span : 0.0f;
+        if(*ratio < 0.0f) *ratio = 0.0f;
+        if(*ratio > 1.0f) *ratio = 1.0f;
+        return 1;
+    }
+    if(g_slider_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        g_slider_active = 0;
+    return 0;
+}
+
+static void
+ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
+                    int disabled, int vertical)
+{
+    if(!IsWindowReady())
+        return;
+    Color fill = disabled ? c_surface : c_button;
+    Color accent = disabled ? c_icon : c_button_hover;
+    DrawRectangleRec(cell, fill);
+    if(vertical) {
+        Rectangle progress = {cell.x, cell.y + cell.height * (1.0f - ratio),
+                              cell.width, cell.height * ratio};
+        DrawRectangleRec(progress, accent);
+        float knob_y = cell.y + cell.height * (1.0f - ratio);
+        DrawRectangle((int)cell.x, (int)(knob_y - ScaleUIPx(2)),
+                      (int)cell.width, ScaleUIPx(4), c_text);
+    } else {
+        Rectangle progress = {cell.x, cell.y, cell.width * ratio, cell.height};
+        DrawRectangleRec(progress, accent);
+        float knob_x = cell.x + cell.width * ratio;
+        DrawRectangle((int)(knob_x - ScaleUIPx(2)), (int)cell.y,
+                      ScaleUIPx(4), (int)cell.height, c_text);
+    }
+    DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
+    DrawUIText(text, (int)cell.x + ScaleUIPx(6),
+               ui_row_text_y(cell, GetUISmallFontSize()),
+               GetUISmallFontSize(), disabled ? c_icon : c_text);
+}
+
+static void
+ui_draw_slider_label(Rectangle bounds, const char *label)
+{
+    if(IsWindowReady() && label != NULL)
+        DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
+                   (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
+                   GetUISmallFontSize(), c_text);
+}
+
+static int
+ui_slider_float(SliderFloatProps slider, int vertical)
+{
+    int changed = 0;
+    int count = slider.value_count;
+    float range = slider.max - slider.min;
+
+    if(slider.values == NULL || count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
+                          slider.bounds.y, slider.bounds.width / count,
+                          slider.bounds.height};
+        float ratio = range > 0.0f ? (slider.values[i] - slider.min) / range : 0.0f;
+        if(ratio < 0.0f) ratio = 0.0f;
+        if(ratio > 1.0f) ratio = 1.0f;
+        if(range > 0.0f && ui_slider_ratio(0x40000000 ^ (slider.id << 4) ^ (i + 1),
+                                           cell, slider.disabled, vertical, &ratio)) {
+            float value = slider.min + ratio * range;
+            if(value != slider.values[i]) {
+                slider.values[i] = value;
+                changed = 1;
+            }
+        }
+        char text[64];
+        snprintf(text, sizeof(text), slider.format != NULL ? slider.format : "%.3f",
+                 slider.values[i]);
+        ui_draw_slider_cell(cell, ratio, text, slider.disabled, vertical);
+    }
+    ui_draw_slider_label(slider.bounds, slider.label);
+    return changed;
+}
+
+static int
+ui_slider_int(SliderIntProps slider, int vertical)
+{
+    int changed = 0;
+    int count = slider.value_count;
+    int range = slider.max - slider.min;
+
+    if(slider.values == NULL || count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
+                          slider.bounds.y, slider.bounds.width / count,
+                          slider.bounds.height};
+        float ratio = range > 0 ? (float)(slider.values[i] - slider.min) / range : 0.0f;
+        if(ratio < 0.0f) ratio = 0.0f;
+        if(ratio > 1.0f) ratio = 1.0f;
+        if(range > 0 && ui_slider_ratio(0x50000000 ^ (slider.id << 4) ^ (i + 1),
+                                        cell, slider.disabled, vertical, &ratio)) {
+            int value = slider.min + (int)(ratio * range + 0.5f);
+            if(value != slider.values[i]) {
+                slider.values[i] = value;
+                changed = 1;
+            }
+        }
+        char text[64];
+        snprintf(text, sizeof(text), slider.format != NULL ? slider.format : "%d",
+                 slider.values[i]);
+        ui_draw_slider_cell(cell, ratio, text, slider.disabled, vertical);
+    }
+    ui_draw_slider_label(slider.bounds, slider.label);
+    return changed;
+}
+
+int
+DrawUISliderFloat(SliderFloatProps slider)
+{
+    return ui_slider_float(slider, 0);
+}
+
+int
+DrawUISliderInt(SliderIntProps slider)
+{
+    return ui_slider_int(slider, 0);
+}
+
+int
+DrawUIVSliderFloat(SliderFloatProps slider)
+{
+    return ui_slider_float(slider, 1);
+}
+
+int
+DrawUIVSliderInt(SliderIntProps slider)
+{
+    return ui_slider_int(slider, 1);
+}
+
+int
+DrawUISliderAngle(SliderAngleProps slider)
+{
+    const float radians_to_degrees = 57.295779513082320876f;
+    const float degrees_to_radians = 0.01745329251994329577f;
+    float degrees;
+    SliderFloatProps value_slider;
+    int changed;
+
+    if(slider.value == NULL)
+        return 0;
+    degrees = *slider.value * radians_to_degrees;
+    value_slider = (SliderFloatProps){slider.bounds, slider.id, slider.label,
+                                      &degrees, 1, slider.min_degrees,
+                                      slider.max_degrees, slider.format,
+                                      slider.disabled};
+    changed = ui_slider_float(value_slider, 0);
+    if(changed)
+        *slider.value = degrees * degrees_to_radians;
+    return changed;
+}
+
+#define UI_NUMERIC_INPUT_SLOTS 128
+typedef struct {
+    int token;
+    char text[64];
+    int cursor;
+    int focused;
+} UINumericInputState;
+static UINumericInputState g_numeric_inputs[UI_NUMERIC_INPUT_SLOTS];
+
+static UINumericInputState *
+ui_numeric_input_state(int token)
+{
+    unsigned int key = (unsigned int)token;
+    UINumericInputState *state = &g_numeric_inputs[key % UI_NUMERIC_INPUT_SLOTS];
+    if(state->token != token) {
+        memset(state, 0, sizeof(*state));
+        state->token = token;
+    }
+    return state;
+}
+
+static int
+ui_numeric_input_filter(int codepoint, void *user_data)
+{
+    (void)user_data;
+    return (codepoint >= '0' && codepoint <= '9') || codepoint == '-' ||
+           codepoint == '+' || codepoint == '.' || codepoint == 'e' ||
+           codepoint == 'E';
+}
+
+static double
+ui_numeric_value(const void *values, int index, int kind)
+{
+    if(kind == 0) return ((const float *)values)[index];
+    if(kind == 1) return ((const int *)values)[index];
+    return ((const double *)values)[index];
+}
+
+static void
+ui_numeric_set_value(void *values, int index, int kind, double value)
+{
+    if(kind == 0) ((float *)values)[index] = (float)value;
+    else if(kind == 1) ((int *)values)[index] = (int)value;
+    else ((double *)values)[index] = value;
+}
+
+static void
+ui_numeric_format(char *text, size_t text_size, const char *format,
+                  int kind, double value)
+{
+    if(kind == 0)
+        snprintf(text, text_size, format != NULL ? format : "%.3f", (float)value);
+    else if(kind == 1)
+        snprintf(text, text_size, format != NULL ? format : "%d", (int)value);
+    else
+        snprintf(text, text_size, format != NULL ? format : "%.6f", value);
+}
+
+static int
+ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
+                 int count, double step, double step_fast, const char *format,
+                 int disabled, int kind)
+{
+    int changed = 0;
+    int paint = IsWindowReady();
+
+    if(values == NULL || count <= 0)
+        return 0;
+    for(int i = 0; i < count; i++) {
+        int token = (0x60000000 + kind * 0x08000000) ^ (id << 4) ^ (i + 1);
+        UINumericInputState *state = ui_numeric_input_state(token);
+        Rectangle cell = {bounds.x + bounds.width * i / count, bounds.y,
+                          bounds.width / count, bounds.height};
+        Rectangle field_bounds = cell;
+        Rectangle minus = cell;
+        Rectangle plus = cell;
+        int commit = 0;
+        double old_value = ui_numeric_value(values, i, kind);
+
+        if(!state->focused) {
+            ui_numeric_format(state->text, sizeof(state->text), format, kind,
+                              old_value);
+            state->cursor = (int)strlen(state->text);
+        }
+        if(step != 0.0) {
+            int button_w = ScaleUIPx(24);
+            field_bounds.width -= button_w * 2;
+            minus.x = field_bounds.x + field_bounds.width;
+            minus.width = button_w;
+            plus.x = minus.x + minus.width;
+            plus.width = button_w;
+        }
+        if(paint && RenderTextField((TextFieldProps){field_bounds, state->text,
+                                                     sizeof(state->text), &state->cursor,
+                                                     &state->focused, 63,
+                                                     GetUISmallFontSize(), token,
+                                                     kryon_zero_text_input_style,
+                                                     ui_numeric_input_filter, NULL,
+                                                     &commit, 0, disabled})) {
+            char *end = NULL;
+            double value = strtod(state->text, &end);
+            if(end != state->text && *end == '\0') {
+                if(kind == 1)
+                    value = value < 0.0 ? (double)((int)(value - 0.5))
+                                        : (double)((int)(value + 0.5));
+                if(value != old_value) {
+                    ui_numeric_set_value(values, i, kind, value);
+                    changed = 1;
+                }
+            }
+        }
+        if(paint && step != 0.0) {
+            int fast = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+            double increment = fast && step_fast != 0.0 ? step_fast : step;
+            int minus_pressed = RenderButton((ButtonSpec){minus, "-", GetUISmallFontSize(),
+                token + 1, disabled, c_button, c_button_hover, c_text, c_button, 0.0f});
+            int plus_pressed = RenderButton((ButtonSpec){plus, "+", GetUISmallFontSize(),
+                token + 2, disabled, c_button, c_button_hover, c_text, c_button, 0.0f});
+            if(minus_pressed || plus_pressed) {
+                double value = ui_numeric_value(values, i, kind) +
+                               (plus_pressed ? increment : -increment);
+                if(kind == 1)
+                    value = value < 0.0 ? (double)((int)(value - 0.5))
+                                        : (double)((int)(value + 0.5));
+                ui_numeric_set_value(values, i, kind, value);
+                ui_numeric_format(state->text, sizeof(state->text), format,
+                                  kind, value);
+                state->cursor = (int)strlen(state->text);
+                changed = 1;
+            }
+        }
+        (void)commit;
+    }
+    ui_draw_slider_label(bounds, label);
+    return changed;
+}
+
+int
+DrawUIInputFloat(InputFloatProps input)
+{
+    return ui_numeric_input(input.bounds, input.id, input.label, input.values,
+                            input.value_count, input.step, input.step_fast,
+                            input.format, input.disabled, 0);
+}
+
+int
+DrawUIInputInt(InputIntProps input)
+{
+    return ui_numeric_input(input.bounds, input.id, input.label, input.values,
+                            input.value_count, input.step, input.step_fast,
+                            input.format, input.disabled, 1);
+}
+
+int
+DrawUIInputDouble(InputDoubleProps input)
+{
+    return ui_numeric_input(input.bounds, input.id, input.label, input.values,
+                            input.value_count, input.step, input.step_fast,
+                            input.format, input.disabled, 2);
+}
+
 int
 DrawUISpinbox(SpinboxProps spinbox)
 {
@@ -923,6 +1821,7 @@ DrawUIListBox(ListBoxProps list)
 int
 DrawUITreeView(TreeViewProps tree)
 {
+    int paint = IsWindowReady();
     int font = GetUIFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
     int scroll_y;
@@ -937,8 +1836,11 @@ DrawUITreeView(TreeViewProps tree)
     scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
-    ui_draw_panel(tree.bounds);
-    BeginUIClip((int)tree.bounds.x, (int)tree.bounds.y, (int)tree.bounds.width, (int)tree.bounds.height);
+    if(paint) {
+        ui_draw_panel(tree.bounds);
+        BeginUIClip((int)tree.bounds.x, (int)tree.bounds.y,
+                    (int)tree.bounds.width, (int)tree.bounds.height);
+    }
     for(int i = 0; i <= visible && first + i < tree.item_count; i++) {
         int index = first + i;
         const UITreeItem *item = &tree.items[index];
@@ -946,16 +1848,19 @@ DrawUITreeView(TreeViewProps tree)
                          tree.bounds.width, (float)row_h};
         int hot = ui_hot(row);
         int x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
-        if(tree.selected_id != NULL && *tree.selected_id == item->id)
+        if(paint && tree.selected_id != NULL && *tree.selected_id == item->id)
             DrawRectangleRec(row, c_button);
-        else if(hot)
+        else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
-        if(item->expanded)
-            DrawUIText("v", x, ui_row_text_y(row, font), font, c_icon);
-        else
-            DrawUIText(">", x, ui_row_text_y(row, font), font, c_icon);
-        DrawUIText(item->label != NULL ? item->label : "", x + ScaleUIPx(18),
-                   ui_row_text_y(row, font), font, c_text);
+        if(paint) {
+            if(item->expanded)
+                DrawUIText("v", x, ui_row_text_y(row, font), font, c_icon);
+            else
+                DrawUIText(">", x, ui_row_text_y(row, font), font, c_icon);
+            DrawUIText(item->label != NULL ? item->label : "",
+                       x + ScaleUIPx(18), ui_row_text_y(row, font), font,
+                       c_text);
+        }
         if(hot)
             MarkUIClickable();
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->selectable && tree.selected_id != NULL) {
@@ -964,8 +1869,9 @@ DrawUITreeView(TreeViewProps tree)
             changed = 1;
         }
     }
-    EndUIClip();
-    if(tree.scroll_offset != NULL && max_scroll > 0)
+    if(paint)
+        EndUIClip();
+    if(paint && tree.scroll_offset != NULL && max_scroll > 0)
         DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         tree.item_count * row_h, tree.scroll_offset, max_scroll);

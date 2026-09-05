@@ -43,10 +43,18 @@
         </div>
       </div>
 
-      <div class="ide-grid">
+      <div class="live-grid">
+        <aside class="ide-pane example-browser">
+          <div class="pane-title">
+            <span>Examples</span>
+            <span data-count>loading</span>
+          </div>
+          <div class="example-list" data-example-list></div>
+        </aside>
+
         <div class="ide-pane source-pane">
           <div class="pane-title">
-            <span>app.kry</span>
+            <span data-source-title>app.kry</span>
             <span data-status>Loading compiler...</span>
           </div>
           <textarea spellcheck="false" data-source>#import "kryon.h"
@@ -70,7 +78,7 @@ App :: () #ui {
 
         <div class="ide-pane preview-pane">
           <div class="pane-title">
-            <span>Live KRB Preview</span>
+            <span>KRB Preview (supported nodes)</span>
             <span data-preview-status>waiting</span>
           </div>
           <canvas width="800" height="520" data-preview></canvas>

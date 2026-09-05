@@ -472,6 +472,18 @@ function handleListBox(rt, state, args) {
   return true;
 }
 
+function handleTreeView(rt, state, args) {
+  const bounds = parseBounds(args);
+  const ref = propRef(args, "selected_id");
+  const rowH = propNumber(args, "row_height", 28);
+  const count = propNumber(args, "item_count", 0);
+  const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+  if (!tap || !state || !ref)
+    return false;
+  state[ref] = Math.min(Math.max(0, Math.floor((tap.y - bounds.y) / rowH)), Math.max(0, count - 1));
+  return true;
+}
+
 function handleTableView(rt, state, args) {
   const bounds = parseBounds(args);
   const rowH = propNumber(args, "row_height", 24);
@@ -530,6 +542,8 @@ function handleWidget(rt, name, args, state) {
     return handleDropdown(rt, state, args);
   case "ListBox":
     return handleListBox(rt, state, args);
+  case "TreeView":
+    return handleTreeView(rt, state, args);
   case "TableView":
     return handleTableView(rt, state, args);
   default:

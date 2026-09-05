@@ -58,7 +58,11 @@ tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
 tests/parity/basic_controls.kry
 tests/parity/list_box.kry
+tests/parity/tree_view.kry
 tests/parity/progress.kry
+tests/parity/plots.kry
+tests/parity/menus.kry
+tests/parity/selection_images.kry
 tests/parity/table_view.kry
 tests/parity/widget_catalog.kry
 "
@@ -87,14 +91,14 @@ const expected = new Map([
   ["examples/05_color.js", ["Screen", "Background", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Text", "Text"]],
   ["examples/06_scaling.js", ["Screen", "Background", "Text", "Rect", "Text", "Text", "Text"]],
   ["examples/07_layout.js", ["Screen", "Background", "Text", "Rect", "Line", "Line", "Rect"]],
-  ["examples/09_geometry.js", ["Screen", "Background", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
+  ["examples/09_geometry.js", ["Screen", "Background", "Text", "Separator", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Separator", "Text"]],
   ["examples/10_menus.js", ["Screen", "Background", "Text"]],
   ["examples/11_basic_controls.js", ["Screen", "Background", "Text", "Text", "Spinbox", "Combobox", "Progress"]],
-  ["examples/12_collections.js", ["Screen", "Background", "ListBox", "TableView", "Text"]],
+  ["examples/12_collections.js", ["Screen", "Background", "ListBox", "TreeView", "TableView", "Text"]],
   ["examples/13_text_editor.js", ["Screen", "Background", "TextArea", "Text", "Button", "Button"]],
   ["examples/14_canvas.js", ["Screen", "Background", "CanvasGrid"]],
   ["examples/15_containers.js", ["Screen", "Background", "TabBar", "PanedView", "Collapsible", "Text"]],
-  ["examples/16_dialogs.js", ["Screen", "Background", "Button", "Button", "Button"]],
+  ["examples/16_dialogs.js", ["Screen", "Background", "Button", "Button", "Button", "ColorPicker"]],
   ["examples/17_keyboard_platform.js", ["Screen", "Background", "Text", "Text", "Text"]],
   ["examples/18_accessibility.js", ["Screen", "Background", "Text", "Checkbox", "Button"]],
   ["examples/19_pictures.js", ["Screen", "Background", "Text", "Stack", "Rect", "Picture", "Picture", "Text"]],
@@ -111,9 +115,13 @@ const expected = new Map([
   ["tests/parity/long_text.js", ["Screen", "Column", "Text", "TextField", "TextField"]],
   ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown"]],
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
+  ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
+  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "SmallButton", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "TextColored", "TextDisabled", "TextWrapped", "LabelText", "BulletText"]],
+  ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Tooltip", "Progress"]],
+  ["tests/parity/selection_images.js", ["Screen", "Selectable", "CheckboxFlags", "ImageWithBg", "ImageButton", "SeparatorText"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
-  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "TextInRect", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
+  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "TextInRect", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
 ]);
 
 for (const [relPath, widgets] of expected) {
@@ -126,7 +134,7 @@ for (const [relPath, widgets] of expected) {
   assert.deepEqual(got, widgets, `${relPath}: recorded widget stream`);
 }
 
-assert.equal(expected.size, 34, "conformance source count");
+assert.equal(expected.size, 38, "conformance source count");
 EOF
 
 node "$work/runner.mjs" "$work/out"

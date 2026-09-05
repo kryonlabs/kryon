@@ -105,6 +105,194 @@ typedef struct {
 
 typedef struct {
     Rectangle bounds;
+    const char *label;
+    const float *values;
+    int value_count;
+    int offset;
+    const char *overlay;
+    float scale_min;
+    float scale_max;
+} PlotProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *values;
+    int value_count;
+    float speed;
+    float min;
+    float max;
+    const char *format;
+    int disabled;
+} DragFloatProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *values;
+    int value_count;
+    float speed;
+    int min;
+    int max;
+    const char *format;
+    int disabled;
+} DragIntProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *current_min;
+    float *current_max;
+    float speed;
+    float min;
+    float max;
+    const char *format;
+    const char *format_max;
+    int disabled;
+} DragFloatRange2Props;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *current_min;
+    int *current_max;
+    float speed;
+    int min;
+    int max;
+    const char *format;
+    const char *format_max;
+    int disabled;
+} DragIntRange2Props;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *values;
+    int value_count;
+    float min;
+    float max;
+    const char *format;
+    int disabled;
+} SliderFloatProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *values;
+    int value_count;
+    int min;
+    int max;
+    const char *format;
+    int disabled;
+} SliderIntProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *value;
+    float min_degrees;
+    float max_degrees;
+    const char *format;
+    int disabled;
+} SliderAngleProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *values;
+    int value_count;
+    float step;
+    float step_fast;
+    const char *format;
+    int disabled;
+} InputFloatProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *values;
+    int value_count;
+    int step;
+    int step_fast;
+    const char *format;
+    int disabled;
+} InputIntProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    double *values;
+    int value_count;
+    double step;
+    double step_fast;
+    const char *format;
+    int disabled;
+} InputDoubleProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    int disabled;
+} InvisibleButtonProps;
+
+typedef struct {
+    Rectangle bounds;
+    const char *label;
+    int font;
+    int disabled;
+} SeparatorTextProps;
+
+typedef enum {
+    ARROW_LEFT = 0,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN
+} ArrowDirection;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    ArrowDirection direction;
+    int disabled;
+} ArrowButtonProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    float *values;
+    int value_count;
+    int disabled;
+} ColorEditProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    Color color;
+    int disabled;
+} ColorButtonProps;
+
+typedef struct {
+    Rectangle trigger;
+    const char *text;
+    int font;
+    int max_width;
+    int disabled;
+} TooltipProps;
+
+typedef struct {
+    Rectangle bounds;
     int id;
     int min;
     int max;

@@ -200,10 +200,47 @@ typedef struct ButtonProps {
     int disabled;
 } ButtonProps;
 
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *selected;
+    int disabled;
+} SelectableProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *label;
+    int *flags;
+    int flags_value;
+    int disabled;
+} CheckboxFlagsProps;
+
+typedef struct {
+    PictureProps picture;
+    Color background;
+} ImageWithBgProps;
+
+typedef struct {
+    PictureProps picture;
+    Color background;
+    int id;
+    int disabled;
+} ImageButtonProps;
+
 void Background(Color color);
 void Text(const char *text, int x, int y, int font_size, Color color);
 void TextInRect(const char *text, Rectangle rect, int font_size,
-                      Color color);
+                Color color);
+void TextColored(const char *text, int x, int y, int font_size, Color color);
+void TextDisabled(const char *text, int x, int y, int font_size);
+void TextWrapped(const char *text, Rectangle bounds, int font_size,
+                 Color color);
+void LabelText(const char *label, const char *value, Rectangle bounds,
+               int font_size, Color color);
+void BulletText(const char *text, Rectangle bounds, int font_size,
+                Color color);
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void TextLines(const char **lines, int count, int x, int *y,
                      int font, int line_h, Color color);
@@ -245,6 +282,7 @@ int Checkbox(int id, int x, int y, const char *label, int *value);
 int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
                         UIThemeSettingsResult *result);
 void Separator(Rectangle bounds, int vertical);
+void SeparatorText(SeparatorTextProps separator);
 MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
 int PopupMenu(int id, int x, int y, const MenuItem *items,
@@ -252,6 +290,20 @@ int PopupMenu(int id, int x, int y, const MenuItem *items,
 int ContextMenu(ContextMenuProps menu);
 int Radio(RadioButtonProps radio);
 void Progress(ProgressBarProps progress);
+void PlotLines(PlotProps plot);
+void PlotHistogram(PlotProps plot);
+int DragFloat(DragFloatProps drag);
+int DragInt(DragIntProps drag);
+int DragFloatRange2(DragFloatRange2Props drag);
+int DragIntRange2(DragIntRange2Props drag);
+int SliderFloat(SliderFloatProps slider);
+int SliderInt(SliderIntProps slider);
+int VSliderFloat(SliderFloatProps slider);
+int VSliderInt(SliderIntProps slider);
+int SliderAngle(SliderAngleProps slider);
+int InputFloat(InputFloatProps input);
+int InputInt(InputIntProps input);
+int InputDouble(InputDoubleProps input);
 int Spinbox(SpinboxProps spinbox);
 int Combobox(ComboboxProps combo);
 void LabelFrame(LabelFrameProps frame);
@@ -322,6 +374,20 @@ UIPanelFrame ModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
 
 int Button(ButtonProps button);
+int Selectable(SelectableProps selectable);
+int CheckboxFlags(CheckboxFlagsProps checkbox);
+void ImageWithBg(ImageWithBgProps image);
+int ImageButton(ImageButtonProps image);
+int SmallButton(ButtonProps button);
+int InvisibleButton(InvisibleButtonProps button);
+int ArrowButton(ArrowButtonProps button);
+void Bullet(Rectangle bounds);
+int ColorEdit3(ColorEditProps edit);
+int ColorEdit4(ColorEditProps edit);
+int ColorPicker3(ColorEditProps picker);
+int ColorPicker4(ColorEditProps picker);
+int ColorButton(ColorButtonProps button);
+int Tooltip(TooltipProps tooltip);
 
 /* Layout nodes: auto-position children like flexbox. */
 typedef struct {

@@ -2523,6 +2523,154 @@
       ]
     },
     {
+      "id": "examples-26_widget_catalog",
+      "label": "Kryon Widget Catalog",
+      "path": "examples/26_widget_catalog.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "conformance-matrix-check",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
+      "semantic_parity": false,
+      "type": "example",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "ActionModal",
+        "Background",
+        "Bevel",
+        "BottomNav",
+        "Button",
+        "Canvas",
+        "CanvasGrid",
+        "Checkbox",
+        "Collapsible",
+        "ColorPicker",
+        "Column",
+        "Combobox",
+        "ConfirmDialog",
+        "Dropdown",
+        "Href",
+        "Icon",
+        "IconButton",
+        "ImageBox",
+        "LabelFrame",
+        "Line",
+        "ListBox",
+        "MenuBar",
+        "MessageDialog",
+        "Notebook",
+        "PanedView",
+        "Paragraph",
+        "Picture",
+        "Progress",
+        "PromptDialog",
+        "Radio",
+        "Rect",
+        "Row",
+        "Screen",
+        "Scroll",
+        "Slider",
+        "SourceView",
+        "Spinbox",
+        "Stack",
+        "TabBar",
+        "TableView",
+        "Text",
+        "TextArea",
+        "TextField",
+        "TextInRect",
+        "TextLines",
+        "TitleBar",
+        "Toast",
+        "Toggle",
+        "Toolbar",
+        "TopNav",
+        "TreeView"
+      ]
+    },
+    {
       "id": "tests-parity-basic_controls",
       "label": "Generated Basic Controls Parity",
       "path": "tests/parity/basic_controls.kry",
@@ -3230,6 +3378,204 @@
       ]
     },
     {
+      "id": "tests-parity-menus",
+      "label": "Generated Menu Parity",
+      "path": "tests/parity/menus.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "MenuBar",
+        "Progress",
+        "Screen"
+      ]
+    },
+    {
+      "id": "tests-parity-plots",
+      "label": "Generated Plot Parity",
+      "path": "tests/parity/plots.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "Screen"
+      ]
+    },
+    {
       "id": "tests-parity-progress",
       "label": "Generated Progress Parity",
       "path": "tests/parity/progress.kry",
@@ -3325,6 +3671,104 @@
       },
       "widgets": [
         "Progress",
+        "Screen"
+      ]
+    },
+    {
+      "id": "tests-parity-selection_images",
+      "label": "Generated Selection Image Parity",
+      "path": "tests/parity/selection_images.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
         "Screen"
       ]
     },
@@ -3425,6 +3869,105 @@
       "widgets": [
         "Screen",
         "TableView"
+      ]
+    },
+    {
+      "id": "tests-parity-tree_view",
+      "label": "Generated Tree View Parity",
+      "path": "tests/parity/tree_view.kry",
+      "pipelines": {
+        "k2b": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2c": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2cpp": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2go": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2js": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        },
+        "k2kir": {
+          "evidence": "conformance-matrix-check",
+          "status": "gated",
+          "status_class": "ok"
+        }
+      },
+      "renderer_matrix": {
+        "desktop_libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "desktop_raylib": {
+          "evidence": "make raylib-matrix-check",
+          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "krb_native_sw": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "scope": "Per-source native kry_sw output compared with SDL readback.",
+          "status": "RGB exact",
+          "status_class": "part"
+        },
+        "krb_web_canvas": {
+          "evidence": "make krb-web-matrix-check",
+          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
+          "status": "byte exact",
+          "status_class": "ok"
+        },
+        "web_canvas_wasm": {
+          "evidence": "make web-canvas-matrix-check",
+          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
+          "status": "captured",
+          "status_class": "ok"
+        },
+        "web_raylib_wasm": {
+          "evidence": "docs-site Web IDE build",
+          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
+          "status": "build gated",
+          "status_class": "part"
+        }
+      },
+      "semantic_evidence": "tests/generated_runtime_parity_test.sh",
+      "semantic_parity": true,
+      "type": "parity fixture",
+      "visuals": {
+        "krb_alpha": {
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
+        },
+        "krb_rgb": {
+          "evidence": "conformance-matrix-check",
+          "status": "RGB exact",
+          "status_class": "ok"
+        },
+        "libdraw_c": {
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
+        }
+      },
+      "widgets": [
+        "Screen",
+        "TreeView"
       ]
     },
     {
@@ -3817,24 +4360,24 @@
     }
   ],
   "summary": {
-    "examples": 25,
-    "krb_alpha_byte_exact_cases": 21,
-    "krb_rgb_visual_cases": 35,
-    "libdraw_c_visual_cases": 22,
+    "examples": 26,
+    "krb_alpha_byte_exact_cases": 22,
+    "krb_rgb_visual_cases": 40,
+    "libdraw_c_visual_cases": 27,
     "libdraw_c_visual_gaps": 13,
-    "parity_fixtures": 10,
-    "pipeline_cells": 210,
-    "raylib_c_visual_cases": 20,
+    "parity_fixtures": 14,
+    "pipeline_cells": 240,
+    "raylib_c_visual_cases": 25,
     "raylib_c_visual_gaps": 15,
-    "renderer_source_cells": 210,
-    "renderer_source_ok_cells": 116,
-    "renderer_source_partial_cells": 94,
-    "semantic_parity_cases": 9,
-    "source_cases": 35,
+    "renderer_source_cells": 240,
+    "renderer_source_ok_cells": 137,
+    "renderer_source_partial_cells": 103,
+    "semantic_parity_cases": 13,
+    "source_cases": 40,
     "visual_comparison_exact_rows": 2,
     "visual_comparison_pending_rows": 4,
     "visual_comparison_rows": 6,
-    "web_canvas_c_visual_cases": 18,
+    "web_canvas_c_visual_cases": 23,
     "web_canvas_c_visual_gaps": 17,
     "widgets_declared": 54,
     "widgets_detected": 54,
@@ -3842,23 +4385,23 @@
   },
   "visual_comparisons": [
     {
-      "compared": 35,
+      "compared": 40,
       "evidence": [
         "make conformance-matrix-check",
         "tests/krb_exact_test.sh"
       ],
-      "gap_cases": 14,
+      "gap_cases": 18,
       "gap_label": "alpha-only gaps",
       "id": "krb-native-vs-sdl",
       "label": "KRB native software vs SDL host",
       "mode": "RGB pixel comparison",
       "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "RGB exact",
       "status_class": "ok"
     },
     {
-      "compared": 35,
+      "compared": 40,
       "evidence": [
         "make krb-web-matrix-check",
         "cmd/krb-web/node-capture.js"
@@ -3869,12 +4412,12 @@
       "label": "KRB native software vs KRB web Canvas",
       "mode": "RGBA byte comparison",
       "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "byte exact",
       "status_class": "ok"
     },
     {
-      "compared": 20,
+      "compared": 25,
       "evidence": [
         "make raylib-matrix-check"
       ],
@@ -3884,12 +4427,12 @@
       "label": "Generated C raylib vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 22,
+      "compared": 27,
       "evidence": [
         "make libdraw-matrix-check"
       ],
@@ -3899,12 +4442,12 @@
       "label": "Generated C libdraw vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 18,
+      "compared": 23,
       "evidence": [
         "make web-canvas-matrix-check"
       ],
@@ -3914,7 +4457,7 @@
       "label": "Generated C web Canvas vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "pixel diff pending",
       "status_class": "part"
     },
@@ -3929,74 +4472,75 @@
       "label": "Web raylib wasm vs desktop raylib",
       "mode": "build only",
       "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
-      "source_cases": 35,
+      "source_cases": 40,
       "status": "browser screenshot pending",
       "status_class": "part"
     }
   ],
   "widget_counts": {
-    "ActionModal": 2,
-    "Background": 21,
-    "Bevel": 1,
-    "BottomNav": 1,
-    "Button": 11,
-    "Canvas": 2,
-    "CanvasGrid": 2,
-    "Checkbox": 4,
-    "Collapsible": 2,
-    "ColorPicker": 2,
-    "Column": 4,
-    "Combobox": 2,
-    "ConfirmDialog": 2,
-    "Dropdown": 3,
-    "Href": 1,
-    "Icon": 1,
-    "IconButton": 1,
+    "ActionModal": 3,
+    "Background": 22,
+    "Bevel": 2,
+    "BottomNav": 2,
+    "Button": 12,
+    "Canvas": 3,
+    "CanvasGrid": 3,
+    "Checkbox": 5,
+    "Collapsible": 3,
+    "ColorPicker": 3,
+    "Column": 5,
+    "Combobox": 3,
+    "ConfirmDialog": 3,
+    "Dropdown": 4,
+    "Href": 2,
+    "Icon": 2,
+    "IconButton": 2,
     "IconLink": 1,
-    "ImageBox": 1,
-    "LabelFrame": 1,
-    "Line": 2,
-    "ListBox": 3,
-    "MenuBar": 1,
-    "MessageDialog": 2,
+    "ImageBox": 2,
+    "LabelFrame": 2,
+    "Line": 3,
+    "ListBox": 4,
+    "MenuBar": 3,
+    "MessageDialog": 3,
     "Modal": 1,
-    "Notebook": 1,
-    "PanedView": 2,
-    "Paragraph": 1,
-    "Picture": 2,
-    "Progress": 3,
-    "PromptDialog": 2,
-    "Radio": 2,
-    "Rect": 6,
-    "Row": 3,
-    "Screen": 30,
-    "Scroll": 1,
+    "Notebook": 2,
+    "PanedView": 3,
+    "Paragraph": 2,
+    "Picture": 3,
+    "Progress": 5,
+    "PromptDialog": 3,
+    "Radio": 3,
+    "Rect": 7,
+    "Row": 4,
+    "Screen": 35,
+    "Scroll": 2,
     "SelectableText": 1,
-    "Slider": 4,
-    "SourceView": 1,
-    "Spinbox": 2,
-    "Stack": 2,
-    "TabBar": 1,
-    "TableView": 3,
-    "Text": 22,
-    "TextArea": 5,
-    "TextField": 6,
-    "TextInRect": 1,
-    "TextLines": 1,
-    "TitleBar": 1,
-    "Toast": 1,
-    "Toggle": 3,
-    "Toolbar": 1,
-    "TopNav": 1,
-    "TreeView": 2
+    "Slider": 5,
+    "SourceView": 2,
+    "Spinbox": 3,
+    "Stack": 3,
+    "TabBar": 2,
+    "TableView": 4,
+    "Text": 23,
+    "TextArea": 6,
+    "TextField": 7,
+    "TextInRect": 2,
+    "TextLines": 2,
+    "TitleBar": 2,
+    "Toast": 2,
+    "Toggle": 4,
+    "Toolbar": 2,
+    "TopNav": 2,
+    "TreeView": 4
   },
   "widget_coverage": [
     {
       "id": "ActionModal",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/04_modal.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4005,7 +4549,7 @@
     {
       "id": "Background",
       "semantic_sources": [],
-      "source_count": 21,
+      "source_count": 22,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4027,6 +4571,7 @@
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4035,8 +4580,9 @@
     {
       "id": "Bevel",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4045,8 +4591,9 @@
     {
       "id": "BottomNav",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4058,7 +4605,7 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 11,
+      "source_count": 12,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4068,6 +4615,7 @@
         "examples/13_text_editor.kry",
         "examples/16_dialogs.kry",
         "examples/18_accessibility.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/widget_catalog.kry"
@@ -4078,9 +4626,10 @@
     {
       "id": "Canvas",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/14_canvas.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4089,9 +4638,10 @@
     {
       "id": "CanvasGrid",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/14_canvas.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4102,10 +4652,11 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
         "examples/03_theme.kry",
         "examples/18_accessibility.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4115,9 +4666,10 @@
     {
       "id": "Collapsible",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/15_containers.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4126,9 +4678,10 @@
     {
       "id": "ColorPicker",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/16_dialogs.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4141,8 +4694,9 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
@@ -4154,9 +4708,10 @@
     {
       "id": "Combobox",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/11_basic_controls.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4165,9 +4720,10 @@
     {
       "id": "ConfirmDialog",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/16_dialogs.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4178,9 +4734,10 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
         "examples/03_theme.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4190,8 +4747,9 @@
     {
       "id": "Href",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4200,8 +4758,9 @@
     {
       "id": "Icon",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4210,8 +4769,9 @@
     {
       "id": "IconButton",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4230,8 +4790,9 @@
     {
       "id": "ImageBox",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4240,8 +4801,9 @@
     {
       "id": "LabelFrame",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4250,9 +4812,10 @@
     {
       "id": "Line",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/07_layout.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4263,9 +4826,10 @@
       "semantic_sources": [
         "tests/parity/list_box.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
         "examples/12_collections.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/list_box.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4274,10 +4838,14 @@
     },
     {
       "id": "MenuBar",
-      "semantic_sources": [],
-      "source_count": 1,
+      "semantic_sources": [
+        "tests/parity/menus.kry"
+      ],
+      "source_count": 3,
       "sources": [
-        "examples/10_menus.kry"
+        "examples/10_menus.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/menus.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -4285,9 +4853,10 @@
     {
       "id": "MessageDialog",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/16_dialogs.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4306,8 +4875,9 @@
     {
       "id": "Notebook",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4316,9 +4886,10 @@
     {
       "id": "PanedView",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/15_containers.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4327,8 +4898,9 @@
     {
       "id": "Paragraph",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4337,9 +4909,10 @@
     {
       "id": "Picture",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/19_pictures.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4348,11 +4921,14 @@
     {
       "id": "Progress",
       "semantic_sources": [
+        "tests/parity/menus.kry",
         "tests/parity/progress.kry"
       ],
-      "source_count": 3,
+      "source_count": 5,
       "sources": [
         "examples/11_basic_controls.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/menus.kry",
         "tests/parity/progress.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4362,9 +4938,10 @@
     {
       "id": "PromptDialog",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/16_dialogs.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4373,9 +4950,10 @@
     {
       "id": "Radio",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/11_basic_controls.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4384,13 +4962,14 @@
     {
       "id": "Rect",
       "semantic_sources": [],
-      "source_count": 6,
+      "source_count": 7,
       "sources": [
         "examples/05_color.kry",
         "examples/06_scaling.kry",
         "examples/07_layout.kry",
         "examples/19_pictures.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4402,8 +4981,9 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/widget_catalog.kry"
@@ -4421,10 +5001,14 @@
         "tests/parity/generated_form.kry",
         "tests/parity/list_box.kry",
         "tests/parity/long_text.kry",
+        "tests/parity/menus.kry",
+        "tests/parity/plots.kry",
         "tests/parity/progress.kry",
-        "tests/parity/table_view.kry"
+        "tests/parity/selection_images.kry",
+        "tests/parity/table_view.kry",
+        "tests/parity/tree_view.kry"
       ],
-      "source_count": 30,
+      "source_count": 35,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4446,6 +5030,7 @@
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/fields.kry",
@@ -4453,8 +5038,12 @@
         "tests/parity/generated_form.kry",
         "tests/parity/list_box.kry",
         "tests/parity/long_text.kry",
+        "tests/parity/menus.kry",
+        "tests/parity/plots.kry",
         "tests/parity/progress.kry",
+        "tests/parity/selection_images.kry",
         "tests/parity/table_view.kry",
+        "tests/parity/tree_view.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4463,9 +5052,10 @@
     {
       "id": "Scroll",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
-        "examples/20_scroll.kry"
+        "examples/20_scroll.kry",
+        "examples/26_widget_catalog.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -4485,10 +5075,11 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
         "examples/03_theme.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4498,8 +5089,9 @@
     {
       "id": "SourceView",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4508,9 +5100,10 @@
     {
       "id": "Spinbox",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/11_basic_controls.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4519,9 +5112,10 @@
     {
       "id": "Stack",
       "semantic_sources": [],
-      "source_count": 2,
+      "source_count": 3,
       "sources": [
         "examples/19_pictures.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4530,9 +5124,10 @@
     {
       "id": "TabBar",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
-        "examples/15_containers.kry"
+        "examples/15_containers.kry",
+        "examples/26_widget_catalog.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -4542,9 +5137,10 @@
       "semantic_sources": [
         "tests/parity/table_view.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
         "examples/12_collections.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/table_view.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4558,7 +5154,7 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 22,
+      "source_count": 23,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -4578,6 +5174,7 @@
         "examples/19_pictures.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
@@ -4592,10 +5189,11 @@
         "tests/parity/fields.kry",
         "tests/parity/generated_form.kry"
       ],
-      "source_count": 5,
+      "source_count": 6,
       "sources": [
         "examples/13_text_editor.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/fields.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/widget_catalog.kry"
@@ -4611,9 +5209,10 @@
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry"
       ],
-      "source_count": 6,
+      "source_count": 7,
       "sources": [
         "examples/03_theme.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",
         "tests/parity/generated_form.kry",
@@ -4626,8 +5225,9 @@
     {
       "id": "TextInRect",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4636,8 +5236,9 @@
     {
       "id": "TextLines",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4646,8 +5247,9 @@
     {
       "id": "TitleBar",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4656,8 +5258,9 @@
     {
       "id": "Toast",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4668,9 +5271,10 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry"
       ],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
         "examples/03_theme.kry",
+        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -4680,8 +5284,9 @@
     {
       "id": "Toolbar",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4690,8 +5295,9 @@
     {
       "id": "TopNav",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 2,
       "sources": [
+        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -4699,10 +5305,14 @@
     },
     {
       "id": "TreeView",
-      "semantic_sources": [],
-      "source_count": 2,
+      "semantic_sources": [
+        "tests/parity/tree_view.kry"
+      ],
+      "source_count": 4,
       "sources": [
         "examples/12_collections.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/tree_view.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",

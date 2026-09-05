@@ -1,0 +1,58 @@
+#import "kryon.h"
+
+app "Generated Plot Parity" {
+    size 260 940
+    fps 60
+}
+
+state {
+    drag_floats: [2] float = {1.0f,2.0f}
+    drag_ints: [2] int = {3,4}
+    drag_float_min: float = 2.0f
+    drag_float_max: float = 8.0f
+    drag_int_min: int = 2
+    drag_int_max: int = 8
+    slider_floats: [2] float = {0.25f,0.75f}
+    slider_ints: [2] int = {2,8}
+    slider_angle: float = 0.0f
+    input_floats: [2] float = {1.25f,2.5f}
+    input_ints: [2] int = {4,8}
+    input_doubles: [2] double = {1.0,2.0}
+    edit_color: [4] float = {0.2f,0.4f,0.6f,0.8f}
+}
+
+plots_frame :: () #ui {
+    Screen plots_root: {
+        bounds = {0,0,260,940}
+        values: [4] float = {0.0f,0.25f,1.0f,0.5f}
+        PlotLines((PlotProps){.bounds = {20,20,220,60}, .label = "Lines", .values = values, .value_count = 4, .overlay = "peak", .scale_min = 0.0f, .scale_max = 1.0f})
+        PlotHistogram((PlotProps){.bounds = {20,100,220,60}, .label = "Bars", .values = values, .value_count = 4, .offset = 1})
+        DragFloat((DragFloatProps){.bounds = {20,180,105,28}, .id = 920, .label = "Float", .values = drag_floats, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
+        DragInt((DragIntProps){.bounds = {135,180,105,28}, .id = 921, .label = "Int", .values = drag_ints, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
+        DragFloatRange2((DragFloatRange2Props){.bounds = {20,215,105,28}, .id = 938, .label = "Float range", .current_min = &drag_float_min, .current_max = &drag_float_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format = "%.1f", .format_max = "max %.1f"})
+        DragIntRange2((DragIntRange2Props){.bounds = {135,215,105,28}, .id = 939, .label = "Int range", .current_min = &drag_int_min, .current_max = &drag_int_max, .speed = 1.0f, .min = 0, .max = 10, .format_max = "max %d"})
+        SliderFloat((SliderFloatProps){.bounds = {20,220,105,28}, .id = 922, .label = "Slider float", .values = slider_floats, .value_count = 2, .min = 0.0f, .max = 1.0f})
+        SliderInt((SliderIntProps){.bounds = {135,220,105,28}, .id = 923, .label = "Slider int", .values = slider_ints, .value_count = 2, .min = 0, .max = 10})
+        VSliderFloat((SliderFloatProps){.bounds = {20,270,50,100}, .id = 924, .label = "V float", .values = slider_floats, .value_count = 1, .min = 0.0f, .max = 1.0f})
+        VSliderInt((SliderIntProps){.bounds = {80,270,50,100}, .id = 925, .label = "V int", .values = slider_ints, .value_count = 1, .min = 0, .max = 10})
+        SliderAngle((SliderAngleProps){.bounds = {140,270,100,28}, .id = 926, .label = "Angle", .value = &slider_angle, .min_degrees = -180.0f, .max_degrees = 180.0f})
+        InputFloat((InputFloatProps){.bounds = {20,390,220,28}, .id = 927, .label = "Input float", .values = input_floats, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
+        InputInt((InputIntProps){.bounds = {20,430,105,28}, .id = 928, .label = "Input int", .values = input_ints, .value_count = 2, .step = 1, .step_fast = 10})
+        InputDouble((InputDoubleProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .values = input_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+        SmallButton((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .id = 930})
+        InvisibleButton((InvisibleButtonProps){.bounds = {100,475,40,24}, .id = 931})
+        ArrowButton((ArrowButtonProps){.bounds = {150,475,30,24}, .id = 932, .direction = 3})
+        Bullet((Rectangle){190,475,20,20})
+        Separator((Rectangle){20,515,220,4}, 0)
+        ColorEdit3((ColorEditProps){.bounds = {20,535,220,28}, .id = 933, .label = "RGB edit", .values = edit_color, .value_count = 3})
+        ColorEdit4((ColorEditProps){.bounds = {20,575,220,28}, .id = 934, .label = "RGBA edit", .values = edit_color, .value_count = 4})
+        ColorPicker3((ColorEditProps){.bounds = {20,620,100,130}, .id = 935, .label = "RGB picker", .values = edit_color, .value_count = 3})
+        ColorPicker4((ColorEditProps){.bounds = {140,620,100,130}, .id = 936, .label = "RGBA picker", .values = edit_color, .value_count = 4})
+        ColorButton((ColorButtonProps){.bounds = {20,760,100,28}, .id = 937, .label = "Swatch", .color = (Color){51,102,153,204}})
+        TextColored("colored", 20, 805, Text16, (Color){220,60,80,255})
+        TextDisabled("disabled", 20, 830, Text16)
+        TextWrapped("wrapped text helper uses the available width", (Rectangle){20,855,220,40}, Text16, GetThemeText())
+        LabelText("Status", "Ready", (Rectangle){20,900,220,20}, Text16, GetThemeText())
+        BulletText("bullet text", (Rectangle){140,805,100,20}, Text16, GetThemeText())
+    }
+}

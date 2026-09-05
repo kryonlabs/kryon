@@ -48,18 +48,20 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 51 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 91 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text TextInRect Paragraph TextLines Rect Line Bevel Icon
-Picture Button IconButton Href TextField TextArea Dropdown Slider Toggle
+`Background Text TextInRect TextColored TextDisabled TextWrapped LabelText BulletText Paragraph TextLines Rect Line Bevel Icon
+Picture ImageWithBg ImageButton Button Selectable CheckboxFlags SmallButton InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip IconButton Href TextField TextArea Dropdown Slider Toggle
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
-Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar
+PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
+Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
 TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
-PanedView Collapsible ListBox SourceView TableView CanvasGrid SelectableText`
+PanedView Collapsible ListBox TreeView SourceView TableView ColorPicker
+CanvasGrid SelectableText`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
 `BeginCanvas` directly. Scroll coverage uses the C `BeginUIScrollContainer` /
@@ -87,6 +89,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Background | ✅ | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
 | Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
 | TextInRect | ✅ | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
+| Text helpers (colored, disabled, wrapped, label/value, bullet) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
 | TextLines | ✅ | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
 | Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
@@ -94,12 +97,15 @@ declaration pass (`src/ui/ui_tree.c`).
 | Bevel | ✅ | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | Icon sheets (MingCute UI plus 6 full-color families) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `Icon` | ✗ |
 | Image/Picture | ✅ | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
+| ImageWithBg / ImageButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| PlotLines / PlotHistogram | ✅ | ✅ | ✅ | ✅ | ✅ `PlotLines` / `PlotHistogram` | ✗ |
 
 ### UI/Input
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
+| Selectable / CheckboxFlags | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
 | IconButton / PaddedIconBtn | ✅ | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -116,7 +122,14 @@ declaration pass (`src/ui/ui_tree.c`).
 | Progress | ✅ | ✅ | ✅ | ✅ | ✅ `Progress` | ✅ `KRB_CTRL_PROGRESS` |
 | Spinbox | ✅ | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
 | Combobox | ✅ | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
-| ColorPicker (RGB sliders) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| ColorPicker (RGB sliders) | ✅ | ✅ | ✅ | ✅ | ✅ `ColorPicker` | ✗ |
+| DragFloat / DragInt (scalar and N-component) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| DragFloatRange2 / DragIntRange2 (ordered endpoints) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| SliderFloat / SliderInt / VSliderFloat / VSliderInt / SliderAngle | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| InputFloat / InputInt / InputDouble (scalar and N-component) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| SmallButton / InvisibleButton / ArrowButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| SeparatorText | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| ColorEdit3 / ColorEdit4 / ColorPicker3 / ColorPicker4 / ColorButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 
 ### UI/Layout
 
@@ -125,7 +138,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ✅ | ✅ | ◐ via Column | ✅ via Stack | ✅ |
 | Scroll container | ✅ | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
-| Separator | ✅ | ✅ | ✅ | ✗ | ✗ | ✅ |
+| Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LabelFrame | ✅ | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
 | Notebook (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
@@ -139,7 +152,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | ListBox | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
-| TreeView / CascadingTreeView | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| TreeView / CascadingTreeView | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
 | SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
 | TableView (sortable) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
@@ -149,7 +162,8 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✅ | ✅ (`MenuBar`, nested items, retained right-click context state) | ✗ |
+| Tooltip (cursor-following, wrapped, non-focusing) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | BottomNav (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |

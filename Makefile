@@ -18,6 +18,16 @@ else
 endif
 BUILD_ROOT ?= build
 BUILD_DIR ?= $(BUILD_ROOT)/$(KRYON_PLATFORM)-$(KRYON_ARCH)
+
+# MSYS installations can live in a protected system directory where /tmp is
+# not writable. Compiler scratch files are short-lived, so use the repository
+# root, which necessarily exists and is writable during a build.
+ifneq ($(filter MSYS% MINGW%,$(UNAME_S)),)
+KRYON_MSYS_TMP := $(shell cygpath -m "$(CURDIR)")
+export TMPDIR := $(KRYON_MSYS_TMP)
+export TMP := $(KRYON_MSYS_TMP)
+export TEMP := $(KRYON_MSYS_TMP)
+endif
 PREFIX ?= $(HOME)/.local
 SITE_DIR ?= docs/site
 SITE_BUILD_DIR ?= $(BUILD_DIR)/site
@@ -304,6 +314,8 @@ KRB_WALK_TEST = $(BUILD_DIR)/tests/krb_walk_test
 KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
+KRY_XML_TEST = $(BUILD_DIR)/tests/kry_xml_test
+KRY_GZIP_TEST = $(BUILD_DIR)/tests/kry_gzip_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
@@ -492,6 +504,8 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(KRB_MOUNT_TEST)
 	$(TERMINAL_TEST)
 	$(KRY_JSON_TEST)
+	$(KRY_XML_TEST)
+	$(KRY_GZIP_TEST)
 	$(KRY_HTTP_TEST)
 	$(RUNTIME_ASSETS_TEST)
 	$(KRY_UPDATE_TEST)
@@ -1054,6 +1068,14 @@ $(SFS_TEST): tests/sfs_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 $(KRY_JSON_TEST): tests/kry_json_test.c src/kry_std/kry_json.c include/kry_json.h src/core/kry_alloc.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_json_test.c src/kry_std/kry_json.c -o $@
+
+$(KRY_XML_TEST): tests/kry_xml_test.c src/kry_std/kry_xml.c include/kry_xml.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_xml_test.c src/kry_std/kry_xml.c -o $@
+
+$(KRY_GZIP_TEST): tests/kry_gzip_test.c src/kry_std/kry_gzip.c include/kry_gzip.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_gzip_test.c src/kry_std/kry_gzip.c -o $@
 
 $(KRY_HTTP_TEST): tests/kry_http_test.c src/kry_std/kry_http.c src/platform/platform_thread.c include/kry_http.h include/platform.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

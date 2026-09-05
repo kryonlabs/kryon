@@ -24,6 +24,7 @@ components. The C files used for native and web builds are generated into
 16. **17_keyboard_platform** - Accelerators and clipboard
 17. **18_accessibility** - Accessibility/debug node overlay
 18. **25_text_area_slider** - Editable multiline text with a live background-color slider
+19. **26_widget_catalog** - Scrollable, categorized catalog of stable application widgets
 
 ## Requirements
 

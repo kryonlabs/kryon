@@ -26,6 +26,7 @@
     {"id": "physics", "path": "examples/22_physics.kry", "title": "Physics"},
     {"id": "animation", "path": "examples/23_animation.kry", "title": "Animation"},
     {"id": "tilemap", "path": "examples/24_tilemap.kry", "title": "Tilemap"},
-    {"id": "text-area-slider", "path": "examples/25_text_area_slider.kry", "title": "Text Area and Slider"}
+    {"id": "text-area-slider", "path": "examples/25_text_area_slider.kry", "title": "Text Area and Slider"},
+    {"id": "widget-catalog", "path": "examples/26_widget_catalog.kry", "title": "Widget Catalog"}
   ]
 }

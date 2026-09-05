@@ -56,17 +56,26 @@ static int
 is_runtime_go_type(const char *type)
 {
     static const char *types[] = {
-        "Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
+		"Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
+		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
         "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "UIThemeSettingsState", "ThemeSettingsProps",
         "UIThemeSettingsResult", "PictureFit", "UISemanticKind",
-        "TextInputStyle", "ButtonProps", "IconButtonProps", "HrefProps",
+        "TextInputStyle", "ButtonProps", "SelectableProps", "CheckboxFlagsProps",
+        "ImageWithBgProps", "ImageButtonProps", "IconButtonProps", "HrefProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "FrameBox", "Grid", "ParagraphSpec", "PictureProps", "PageProps",
         "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
         "FlowProps", "GridProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
-        "ToolbarProps", "RadioButtonProps", "ProgressBarProps",
-        "SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
+		"ToolbarProps", "RadioButtonProps", "ProgressBarProps", "PlotProps",
+		"DragFloatProps", "DragIntProps", "DragFloatRange2Props",
+		"DragIntRange2Props", "SliderFloatProps", "SliderIntProps",
+		"SliderAngleProps",
+		"InputFloatProps", "InputIntProps", "InputDoubleProps",
+		"InvisibleButtonProps", "SeparatorTextProps", "ArrowButtonProps",
+		"ColorEditProps", "ColorButtonProps", "TooltipProps",
+		"SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
+		"UITreeItem", "TreeViewProps",
         "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
         "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
         "ConfirmDialogProps", "PromptDialogProps", "Canvas",
@@ -881,9 +890,51 @@ props_field_at(const char *type, int index)
                              "Font", "LineGap", "Color"}},
         {"ButtonProps", {"Bounds", "Label", "Style", "Font", "ID",
                          "Disabled"}},
+        {"SelectableProps", {"Bounds", "ID", "Label", "Selected", "Disabled"}},
+        {"CheckboxFlagsProps", {"Bounds", "ID", "Label", "Flags",
+                                "FlagsValue", "Disabled"}},
+        {"ImageWithBgProps", {"Picture", "Background"}},
+        {"ImageButtonProps", {"Picture", "Background", "ID", "Disabled"}},
         {"RadioButtonProps", {"Bounds", "Label", "ID", "Checked",
                               "Disabled"}},
         {"ProgressBarProps", {"Bounds", "Min", "Max", "Value", "Label"}},
+		{"PlotProps", {"Bounds", "Label", "Values", "ValueCount", "Offset",
+		               "Overlay", "ScaleMin", "ScaleMax"}},
+		{"DragFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                      "Speed", "Min", "Max", "Format", "Disabled"}},
+		{"DragIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                    "Speed", "Min", "Max", "Format", "Disabled"}},
+		{"DragFloatRange2Props", {"Bounds", "ID", "Label", "CurrentMin",
+		                             "CurrentMax", "Speed", "Min", "Max",
+		                             "Format", "FormatMax", "Disabled"}},
+		{"DragIntRange2Props", {"Bounds", "ID", "Label", "CurrentMin",
+		                           "CurrentMax", "Speed", "Min", "Max",
+		                           "Format", "FormatMax", "Disabled"}},
+		{"SliderFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                        "Min", "Max", "Format", "Disabled"}},
+		{"SliderIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                      "Min", "Max", "Format", "Disabled"}},
+		{"SliderAngleProps", {"Bounds", "ID", "Label", "Value", "MinDegrees",
+		                        "MaxDegrees", "Format", "Disabled"}},
+		{"InputFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                       "Step", "StepFast", "Format", "Disabled"}},
+		{"InputIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                     "Step", "StepFast", "Format", "Disabled"}},
+		{"InputDoubleProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                        "Step", "StepFast", "Format", "Disabled"}},
+		{"InvisibleButtonProps", {"Bounds", "ID", "Disabled"}},
+		{"SeparatorTextProps", {"Bounds", "Label", "Font", "Disabled"}},
+		{"ArrowButtonProps", {"Bounds", "ID", "Direction", "Disabled"}},
+		{"ColorEditProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                     "Disabled"}},
+		{"ColorButtonProps", {"Bounds", "ID", "Label", "Color", "Disabled"}},
+		{"TooltipProps", {"Trigger", "Text", "Font", "MaxWidth", "Disabled"}},
+		{"MenuItem", {"Kind", "Label", "Accelerator", "ID", "Disabled",
+		                 "Checked", "Submenu", "SubmenuCount"}},
+		{"Menu", {"Bounds", "Label", "Items", "ItemCount"}},
+		{"MenuBarResult", {"ActivatedID", "OpenIndex"}},
+		{"ContextMenuProps", {"ID", "Trigger", "Items", "ItemCount", "Open",
+		                        "X", "Y"}},
         {"SpinboxProps", {"Bounds", "ID", "Min", "Max", "Step", "Value",
                           "Disabled", "ValueText", "Wrap"}},
         {"ComboboxProps", {"Bounds", "ID", "Options", "OptionCount",
@@ -897,8 +948,11 @@ props_field_at(const char *type, int index)
                            "LineGap", "FocusID", "Placeholder", "Syntax",
                            "Style", "Filter", "FilterUserData",
                            "ContentVersion", "ReadOnly", "Wrap"}},
-        {"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
-                          "SelectedIndex", "ScrollOffset", "RowHeight"}},
+		{"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
+		                  "SelectedIndex", "ScrollOffset", "RowHeight"}},
+		{"UITreeItem", {"Label", "Depth", "ID", "Expanded", "Selectable"}},
+		{"TreeViewProps", {"Bounds", "ID", "Items", "ItemCount",
+		                   "SelectedID", "ScrollOffset", "RowHeight"}},
         {"FrameBox", {"Bounds", "PadX", "PadY", "Gap", "CursorX",
                       "CursorY"}},
         {"Grid", {"Bounds", "Rows", "Cols", "GapX", "GapY", "PadX",
@@ -936,6 +990,10 @@ go_field_name(const char *field, char *dst, size_t dst_size)
         snprintf(dst, dst_size, "ID");
     else if(strcmp(dst, "FocusId") == 0)
         snprintf(dst, dst_size, "FocusID");
+    else if(strcmp(dst, "SelectedId") == 0)
+        snprintf(dst, dst_size, "SelectedID");
+    else if(strcmp(dst, "ActivatedId") == 0)
+        snprintf(dst, dst_size, "ActivatedID");
     else if(strcmp(dst, "CanonicalUrl") == 0)
         snprintf(dst, dst_size, "CanonicalURL");
 }
@@ -1071,6 +1129,41 @@ bool_prop_field(const char *field)
     for(i = 0; names[i] != NULL; i++)
         if(strcmp(names[i], field) == 0)
             return 1;
+    return 0;
+}
+
+static int
+slice_prop_field(const char *type, const char *field)
+{
+    if(strcmp(type, "ComboboxProps") == 0 && strcmp(field, "Options") == 0)
+        return 1;
+    if((strcmp(type, "ListBoxProps") == 0 ||
+        strcmp(type, "TreeViewProps") == 0) && strcmp(field, "Items") == 0)
+        return 1;
+    if(strcmp(type, "NotebookProps") == 0 && strcmp(field, "Tabs") == 0)
+        return 1;
+    if(strcmp(type, "PlotProps") == 0 && strcmp(field, "Values") == 0)
+        return 1;
+    if((strcmp(type, "DragFloatProps") == 0 ||
+        strcmp(type, "DragIntProps") == 0 ||
+        strcmp(type, "SliderFloatProps") == 0 ||
+        strcmp(type, "SliderIntProps") == 0 ||
+        strcmp(type, "InputFloatProps") == 0 ||
+        strcmp(type, "InputIntProps") == 0 ||
+        strcmp(type, "InputDoubleProps") == 0) && strcmp(field, "Values") == 0)
+        return 1;
+    if(strcmp(type, "ColorEditProps") == 0 && strcmp(field, "Values") == 0)
+        return 1;
+    if(strcmp(type, "Menu") == 0 && strcmp(field, "Items") == 0)
+        return 1;
+    if(strcmp(type, "MenuItem") == 0 && strcmp(field, "Submenu") == 0)
+        return 1;
+    if(strcmp(type, "ContextMenuProps") == 0 && strcmp(field, "Items") == 0)
+        return 1;
+    if(strcmp(type, "TableViewProps") == 0 &&
+       (strcmp(field, "Columns") == 0 || strcmp(field, "Rows") == 0 ||
+        strcmp(field, "ColumnWidths") == 0))
+        return 1;
     return 0;
 }
 
@@ -1221,9 +1314,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 snprintf(out + on, sizeof(out) - on, "%s.NewRectangle",
                          K2GO_RUNTIME_PKG);
             else {
-                /* odd arity: emit a TODO-safe zero value */
+                /* C permits partial zero initialization. Preserve the target
+                 * aggregate type for forms such as (Rectangle){0}. */
                 snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, "%s",
-                         K2GO_RUNTIME_PKG ".NewVector2(0, 0)");
+                         strcmp(type, "Rectangle") == 0
+                             ? K2GO_RUNTIME_PKG ".NewRectangle(0, 0, 0, 0)"
+                             : K2GO_RUNTIME_PKG ".NewVector2(0, 0)");
                 *dn += strlen(dst + *dn);
                 return p;
             }
@@ -1338,7 +1434,9 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     snprintf(field, sizeof(field), "%s", mapped);
                     if(*part == '\0')
                         continue;
-                    if(strcmp(field, "Bounds") == 0 && *kir_skip_ws(part) == '{') {
+                    if((strcmp(field, "Bounds") == 0 ||
+                        strcmp(field, "Trigger") == 0) &&
+                       *kir_skip_ws(part) == '{') {
                         char rect[K2GO_TEXT_MAX];
 
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(part));
@@ -1354,7 +1452,9 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     go_field_name(part + 1, field, sizeof(field));
                     if(strcmp(field, "TextSize") == 0)
                         continue;
-                    if(strcmp(field, "Bounds") == 0 && *kir_skip_ws(eq + 1) == '{') {
+                    if((strcmp(field, "Bounds") == 0 ||
+                        strcmp(field, "Trigger") == 0) &&
+                       *kir_skip_ws(eq + 1) == '{') {
                         char rect[K2GO_TEXT_MAX];
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));
                         tx_expr(m, rect, value, sizeof(value));
@@ -1366,9 +1466,21 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     strcmp(type, "TextAreaProps") == 0) &&
                    strcmp(field, "Text") == 0 && strncmp(value, "st.", 3) == 0)
                     strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
+                if(strcmp(type, "MenuItem") == 0 &&
+                   (strcmp(field, "Label") == 0 ||
+                    strcmp(field, "Accelerator") == 0) &&
+                   strcmp(value, "nil") == 0)
+                    snprintf(value, sizeof(value), "\"\"");
+                if(slice_prop_field(type, field) && strcmp(value, "nil") != 0 &&
+                   !k2go_expr_is_char_buffer_slice(value))
+                    strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
+                k2go_collapse_duplicate_slices(value);
                 if(emitted++)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, ", ");
-                if(bool_prop_field(field) && strcmp(value, "true") != 0 &&
+                if((bool_prop_field(field) ||
+                    (strcmp(type, "MenuItem") == 0 &&
+                     strcmp(field, "Checked") == 0)) &&
+                   strcmp(value, "true") != 0 &&
                    strcmp(value, "false") != 0)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn,
                                             "%s: (%s != 0)", field, value);
@@ -1748,7 +1860,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"ButtonStyleSecondary", "ButtonStyleSecondary"},
                     {"ButtonStyleDanger", "ButtonStyleDanger"},
                     {"ButtonStyleTab", "ButtonStyleTab"},
-                    {"ButtonStyleTabSelected", "ButtonStyleTabSelected"},
+					{"ButtonStyleTabSelected", "ButtonStyleTabSelected"},
+					{"MenuCommand", "MenuCommand"},
+					{"MenuCheck", "MenuCheck"},
+					{"MenuRadio", "MenuRadio"},
+					{"MenuSeparator", "MenuSeparator"},
+					{"MenuSubmenu", "MenuSubmenu"},
                     {"SideTop", "SideTop"},
                     {"SideBottom", "SideBottom"},
                     {"SideLeft", "SideLeft"},
@@ -1853,6 +1970,16 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             if(k2go_is_array_name(ident, il)) {
                 if(q[0] == '[' && q[1] == ':' && q[2] == ']') {
                     if(dn + il + 1 < dst_size) {
+                        memcpy(dst + dn, ident, il);
+                        dn += il;
+                    }
+                    p = q;
+                    continue;
+                }
+                if(addr) {
+                    /* &arr[i]: keep the address, the index suffix follows */
+                    if(dn + il + 2 < dst_size) {
+                        dst[dn++] = '&';
                         memcpy(dst + dn, ident, il);
                         dn += il;
                     }

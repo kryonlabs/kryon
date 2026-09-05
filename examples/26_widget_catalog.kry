@@ -1,0 +1,200 @@
+#import "kryon.h"
+
+app "Kryon Widget Catalog" {
+    size 900 700
+    fps 60
+    font examples
+}
+
+state {
+    scroll_off: int = 0
+    open_menu: int = -1
+    context_open: int = 0
+    context_x: int = 0
+    context_y: int = 0
+    theme_id: int = 0
+    dark_mode: int = 0
+    picked: int = 0
+    slider_value: int = 42
+    toggle_value: int = 0
+    checkbox_value: int = 1
+    text_cursor: int = 5
+    text_focused: int = 0
+    area_cursor: int = 12
+    area_focused: int = 0
+    area_scroll: int = 0
+    list_scroll: int = 0
+    tree_selected: int = 1
+    table_selected_row: int = 0
+    table_selected_column: int = 0
+    table_activated_row: int = -1
+    table_activated_column: int = -1
+    table_right_row: int = -1
+    table_right_column: int = -1
+    canvas_scroll_x: int = 0
+    canvas_scroll_y: int = 0
+    canvas_zoom: float = 1.0f
+    split: int = 170
+    open: int = 1
+    dialog: int = 0
+    color_value: Color = {88,201,235,255}
+    text_value: [64] char = "Hello"
+    area_value: [128] char = "Editable text area"
+    choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    display_lines: [2] const char * = {"Text lines: first","Text lines: second"}
+    columns: [2] const char * = {"Name","Value"}
+    cells_a: [2] const char * = {"Alpha","1"}
+    cells_b: [2] const char * = {"Beta","2"}
+    rows: [2] TableRow = {{cells_a,2},{cells_b,2}}
+    widths: [2] int = {150,90}
+    tree_items: [2] UITreeItem = {{"Root",0,1,1,1},{"Child",1,2,0,1}}
+    tabs: [2] const Tab = {{.label = "One"},{.label = "Two"}}
+}
+
+WidgetCatalogExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        Background(GetThemeBackground())
+        Text("Kryon widget catalog", ScaleUIPx(24), ScaleUIPx(20), Text24, GetThemeText())
+
+        area: UIScrollArea = {{ScaleUIPx(24), ScaleUIPx(58), (int)viewport.width - ScaleUIPx(48), (int)viewport.height - ScaleUIPx(82)}, ScaleUIPx(2100), ScaleUIPx(48), (int)viewport.width - ScaleUIPx(112), &scroll_off, ScaleUIPx(48), 0}
+        view: UIScrollView = BeginUIScrollContainer(area)
+        x: int = view.content_x
+        right: int = x + ScaleUIPx(410)
+        y: int = view.content_y
+
+        Text("DISPLAY AND MEDIA", x, y, Text20, GetThemeLink())
+        Text("Text", x, y + ScaleUIPx(38), Text16, GetThemeText())
+        TextInRect("Text in a rectangle wraps naturally.", (Rectangle){x, y + ScaleUIPx(70), ScaleUIPx(300), ScaleUIPx(52)}, Text16, GetThemeText())
+        lines_y: int = y + ScaleUIPx(132)
+        TextLines(display_lines, 2, x, &lines_y, Text14, ScaleUIPx(18), GetThemeIcon())
+        paragraph_y: int = y + ScaleUIPx(176)
+        Paragraph((ParagraphSpec){.text = "A short paragraph with an icon.", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(300), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, x, &paragraph_y)
+        Rect(right, y + ScaleUIPx(38), ScaleUIPx(120), ScaleUIPx(54), GetThemeSurface(), GetThemeButton())
+        Line(right, y + ScaleUIPx(110), right + ScaleUIPx(120), y + ScaleUIPx(110), GetThemeLink())
+        Bevel(right, y + ScaleUIPx(132), ScaleUIPx(120), ScaleUIPx(34), GetThemeSurface(), GetThemeButton())
+        Icon(100, right + ScaleUIPx(150), y + ScaleUIPx(46), ScaleUIPx(28), 1, GetThemeIcon())
+        LabelFrame((LabelFrameProps){.bounds = {right + ScaleUIPx(200), y + ScaleUIPx(36), ScaleUIPx(150), ScaleUIPx(58)}, .title = "Label frame"})
+        ImageBox((ImageBoxProps){.bounds = {right + ScaleUIPx(200), y + ScaleUIPx(112), ScaleUIPx(58), ScaleUIPx(58)}, .texture = (Texture2D){0}, .tint = WHITE})
+        Picture((PictureProps){.asset_path = "tiles/tile.png", .bounds = {right + ScaleUIPx(278), y + ScaleUIPx(112), ScaleUIPx(72), ScaleUIPx(58)}, .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
+
+        y += ScaleUIPx(250)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("ACTIONS AND INPUT", x, y, Text20, GetThemeLink())
+        Button((ButtonProps){.bounds = {x, y + ScaleUIPx(38), ScaleUIPx(140), ScaleUIPx(34)}, .label = "Button", .style = ButtonStylePrimary, .font = Text16, .id = 101})
+        IconButton((IconButtonProps){.bounds = {x + ScaleUIPx(154), y + ScaleUIPx(38), ScaleUIPx(34), ScaleUIPx(34)}, .icon_type = 1, .focus_id = 102})
+        Href((HrefProps){.bounds = {x + ScaleUIPx(204), y + ScaleUIPx(40), ScaleUIPx(100), ScaleUIPx(30)}, .text = "Kryon Labs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 103, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+        TextField((TextFieldProps){.bounds = {right, y + ScaleUIPx(38), ScaleUIPx(260), ScaleUIPx(34)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = &text_focused, .max_codepoints = 63, .font = Text16, .focus_id = 104})
+        TextArea((TextAreaProps){.bounds = {right, y + ScaleUIPx(86), ScaleUIPx(300), ScaleUIPx(76)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = &area_focused, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 105, .placeholder = "Notes", .syntax = SyntaxNone})
+
+        y += ScaleUIPx(190)
+        Dropdown(106, x, y, ScaleUIPx(180), ScaleUIPx(32), choices, 3, &picked)
+        Slider(107, x, y + ScaleUIPx(46), ScaleUIPx(250), "Slider", 0, 100, &slider_value, "%", nil)
+        Toggle(108, x, y + ScaleUIPx(92), ScaleUIPx(130), ScaleUIPx(30), &toggle_value, "Off", "On")
+        Checkbox(109, x, y + ScaleUIPx(140), "Checkbox", &checkbox_value)
+        Radio((RadioButtonProps){{right, y, ScaleUIPx(130), ScaleUIPx(28)}, "Radio", 1, picked == 1, 0})
+        Spinbox((SpinboxProps){.bounds = {right, y + ScaleUIPx(44), ScaleUIPx(140), ScaleUIPx(32)}, .id = 110, .min = 0, .max = 100, .step = 1, .value = &slider_value, .value_text = "", .wrap = 0})
+        Combobox((ComboboxProps){{right, y + ScaleUIPx(92), ScaleUIPx(180), ScaleUIPx(32)}, 111, choices, 3, &picked, 0})
+        Progress((ProgressBarProps){{right, y + ScaleUIPx(140), ScaleUIPx(220), ScaleUIPx(24)}, 0, 100, slider_value, "Progress"})
+        ColorPicker((Rectangle){right + ScaleUIPx(240), y, ScaleUIPx(120), ScaleUIPx(120)}, &color_value)
+
+        y += ScaleUIPx(230)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("LAYOUT AND CONTAINERS", x, y, Text20, GetThemeLink())
+        Column demo_column: {
+            bounds = {x, y + ScaleUIPx(38), ScaleUIPx(190), ScaleUIPx(92)}
+            gap = ScaleUIPx(6)
+            padding = ScaleUIPx(8)
+            Text("Column", 0, 0, Text16, GetThemeText())
+            Row demo_row: {
+                bounds = {0, 0, ScaleUIPx(170), ScaleUIPx(34)}
+                gap = ScaleUIPx(6)
+                Button((ButtonProps){.bounds = {0,0,ScaleUIPx(72),ScaleUIPx(30)}, .label = "Row A", .id = 112})
+                Button((ButtonProps){.bounds = {0,0,ScaleUIPx(72),ScaleUIPx(30)}, .label = "Row B", .id = 113})
+            }
+        }
+        Stack demo_stack: {
+            bounds = {x + ScaleUIPx(214), y + ScaleUIPx(38), ScaleUIPx(160), ScaleUIPx(92)}
+            key = Key("catalog-stack")
+            Rect(x + ScaleUIPx(214), y + ScaleUIPx(38), ScaleUIPx(160), ScaleUIPx(92), GetThemeSurface(), GetThemeButton())
+            Text("Stack", x + ScaleUIPx(258), y + ScaleUIPx(70), Text16, GetThemeText())
+        }
+        GridLayout((GridLayoutProps){.bounds = {x, y + ScaleUIPx(148), ScaleUIPx(374), ScaleUIPx(48)}, .columns = 2, .gap = ScaleUIPx(6)})
+        Button((ButtonProps){.bounds = {0,0,ScaleUIPx(150),ScaleUIPx(32)}, .label = "Grid A", .id = 124})
+        Button((ButtonProps){.bounds = {0,0,ScaleUIPx(150),ScaleUIPx(32)}, .label = "Grid B", .id = 125})
+        End()
+        Notebook((NotebookProps){.bounds = {right, y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(54)}, .tabs = choices, .tab_count = 3, .selected_index = &picked})
+        PanedView((PanedViewProps){{right + ScaleUIPx(198), y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(54)}, 114, 1, &split, 60, 80})
+        Collapsible((CollapsibleProps){{right, y + ScaleUIPx(108), ScaleUIPx(260), ScaleUIPx(54)}, "Collapsible", &open})
+
+        y += ScaleUIPx(240)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("COLLECTIONS AND EDITORS", x, y, Text20, GetThemeLink())
+        ListBox((ListBoxProps){.bounds = {x, y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(90)}, .id = 115, .items = choices, .selected_index = &picked, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(26)})
+        TreeView((TreeViewProps){.bounds = {x + ScaleUIPx(198), y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(90)}, .id = 116, .items = tree_items, .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(26)})
+        SourceView((SourceViewProps){.bounds = {right, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(90)}, .text = "Text(\"Hello\")", .scroll_x = &canvas_scroll_x, .scroll_y = &canvas_scroll_y, .font_size = Text14, .line_height = ScaleUIPx(18), .show_line_numbers = 1})
+        TableView((TableViewProps){.bounds = {x, y + ScaleUIPx(148), ScaleUIPx(378), ScaleUIPx(100)}, .id = 117, .columns = columns, .column_count = 2, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
+
+        y += ScaleUIPx(300)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("NAVIGATION", x, y, Text20, GetThemeLink())
+        menu_items: [2] MenuItem = {{MenuCommand,"Open",NULL,1,0,0,NULL,0},{MenuCommand,"Save",NULL,2,0,0,NULL,0}}
+        menus: [1] Menu = {{{0},"File",menu_items,2}}
+        TitleBar("Title bar", ScaleUIPx(34))
+        TopNav((TopNavProps){.id = 118, .x = x, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .title = "Top navigation", .options = choices, .option_count = 3, .selected_index = &picked})
+        Toolbar((ToolbarProps){.id = 119, .x = right, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = choices, .option_count = 3, .selected_index = &picked})
+        TabBar((TabBarProps){.bounds = {x, y + ScaleUIPx(100), ScaleUIPx(360), 0}, .tabs = tabs, .count = 2, .selected_index = picked, .focus_selected = 1})
+        BottomNav((BottomNavProps){.view_width = ScaleUIPx(360), .view_height = ScaleUIPx(170), .count = 0, .height = ScaleUIPx(50)})
+        MenuBar(126, (Rectangle){x, y + ScaleUIPx(148), ScaleUIPx(360), ScaleUIPx(34)}, menus, 1, &open_menu)
+        ContextMenu((ContextMenuProps){127, {right, y + ScaleUIPx(132), ScaleUIPx(280), ScaleUIPx(50)}, menu_items, 2, &context_open, &context_x, &context_y})
+        Text("Right-click here for a context menu", right + ScaleUIPx(12), y + ScaleUIPx(148), Text14, GetThemeText())
+
+        y += ScaleUIPx(250)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("FEEDBACK AND DIALOGS", x, y, Text20, GetThemeLink())
+        if Button((ButtonProps){.bounds = {x, y + ScaleUIPx(40), ScaleUIPx(150), ScaleUIPx(34)}, .label = "Show toast", .id = 120}) {
+            ShowToast("Hello from Kryon")
+        }
+        if Button((ButtonProps){.bounds = {x + ScaleUIPx(166), y + ScaleUIPx(40), ScaleUIPx(150), ScaleUIPx(34)}, .label = "Message dialog", .id = 121}) {
+            dialog = 1
+        }
+        if Button((ButtonProps){.bounds = {right, y + ScaleUIPx(40), ScaleUIPx(150), ScaleUIPx(34)}, .label = "Confirm dialog", .id = 122}) {
+            dialog = 2
+        }
+        if Button((ButtonProps){.bounds = {right + ScaleUIPx(166), y + ScaleUIPx(40), ScaleUIPx(150), ScaleUIPx(34)}, .label = "Prompt dialog", .id = 123}) {
+            dialog = 3
+        }
+        ThemeSwitcher(x, y + ScaleUIPx(94), ScaleUIPx(220), "Theme", "Light", "Dark", &theme_id, &dark_mode)
+        ThemePicker(right, y + ScaleUIPx(94), ScaleUIPx(260), dark_mode, &theme_id)
+        if Button((ButtonProps){.bounds = {right + ScaleUIPx(276), y + ScaleUIPx(94), ScaleUIPx(120), ScaleUIPx(34)}, .label = "Action modal", .id = 128}) {
+            dialog = 4
+        }
+
+        y += ScaleUIPx(190)
+        Separator((Rectangle){x, y - ScaleUIPx(18), view.content_w, ScaleUIPx(1)}, 0)
+        Text("CANVAS", x, y, Text20, GetThemeLink())
+        canvas_result: CanvasResult = BeginCanvas((Canvas){{x, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+        CanvasGrid((Rectangle){x, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(120)}, 12, GetThemeIcon())
+        DrawCircleV(canvas_result.world, ScaleUIPx(16), GetThemeLink())
+        EndCanvas((Canvas){{x, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+        Text("Scroll with the wheel or drag the scrollbar.", right, y + ScaleUIPx(56), Text16, GetThemeText())
+
+        EndUIScrollContainer(area, view)
+
+        if dialog == 1 && MessageDialog((MessageDialogProps){"Message","A simple message dialog.","OK"}) > 0 {
+            dialog = 0
+        }
+        if dialog == 2 && ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","Cancel","OK"}) != 0 {
+            dialog = 0
+        }
+        if dialog == 3 && PromptDialog((PromptDialogProps){"Prompt",text_value,sizeof(text_value),&text_cursor,&text_focused,"Cancel","Save"}) != 0 {
+            dialog = 0
+        }
+        if dialog == 4 {
+            actions: [2] ModalAction = {{"Cancel",ButtonStyleSecondary,0},{"Continue",ButtonStylePrimary,0}}
+            if ActionModal((ModalProps){"Action modal","Choose a simple action.",actions,2,{0},ScaleUIPx(420)}) != 0 {
+                dialog = 0
+            }
+        }
+    }
+}

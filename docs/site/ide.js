@@ -2,6 +2,7 @@
   "use strict";
 
   var source = document.querySelector("[data-source]");
+  var sourceTitle = document.querySelector("[data-source-title]");
   var status = document.querySelector("[data-status]");
   var previewStatus = document.querySelector("[data-preview-status]");
   var canvas = document.querySelector("[data-preview]");
@@ -9,6 +10,8 @@
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
   var compileButton = document.querySelector("[data-action='compile']");
   var sampleButton = document.querySelector("[data-action='load-sample']");
+  var list = document.querySelector("[data-example-list]");
+  var count = document.querySelector("[data-count]");
   var menuToggle = document.querySelector(".menu-toggle");
   var headerNav = document.getElementById("header-nav");
   var k2kirMod = null;
@@ -17,6 +20,8 @@
   var k2goMod = null;
   var k2jsMod = null;
   var activeTab = "kry";
+  var items = [];
+  var current = null;
   var last = { kry: "", kir: "", krb: "", c: "", go: "", js: "", bytes: null };
   var compileTimer = 0;
 
@@ -344,7 +349,7 @@
     });
     if (result.ok && result.text) { last.js = result.text; passed++; } else { last.js = result.text || "JS output unavailable."; failed++; }
 
-    result = runTool(k2bMod, ["--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
+    result = runTool(k2bMod, ["--allow-unsupported", "--no-main", "--root", "/work", "-o", "/work/out", "/work/src/app.kry"], function(mod) {
       var bytes = readFirst(mod, ["/work/out/app.krb", "/work/out/src/app.krb"], true);
       return { ok: bytes.length > 0, bytes: bytes, text: "KRB bytes: " + bytes.length + "\n\n" + hex(bytes) };
     });
@@ -354,6 +359,7 @@
       passed++;
       try {
         render(last.bytes);
+        if (current) setPreviewStatus("best-effort KRB subset");
       } catch (e) {
         setPreviewStatus(String(e && e.message ? e.message : e).slice(0, 80));
         failed++;
@@ -372,11 +378,94 @@
     compileTimer = window.setTimeout(compile, 260);
   }
 
+  function markSelection(path) {
+    Array.prototype.slice.call(list.querySelectorAll("button")).forEach(function(btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-path") === path);
+    });
+  }
+
+  function setScratch() {
+    current = null;
+    source.value = sample;
+    if (sourceTitle) sourceTitle.textContent = "app.kry";
+    markSelection("scratch");
+    if (window.history && window.history.replaceState)
+      window.history.replaceState({}, "", window.location.pathname);
+  }
+
+  function selectItem(item) {
+    current = item;
+    if (sourceTitle) sourceTitle.textContent = item.path;
+    markSelection(item.path);
+    setStatus("fetching source...");
+    if (window.history && window.history.replaceState)
+      window.history.replaceState({}, "", window.location.pathname + "?example=" + encodeURIComponent(item.id));
+    return fetch(item.url).then(function(res) {
+      if (!res.ok) throw new Error("Could not fetch " + item.url + ": " + res.status);
+      return res.text();
+    }).then(function(text) {
+      source.value = text;
+    });
+  }
+
+  function renderList() {
+    var heading = document.createElement("div");
+    var scratch = document.createElement("button");
+    list.innerHTML = "";
+    heading.className = "example-group";
+    heading.textContent = "Playground";
+    list.appendChild(heading);
+    scratch.type = "button";
+    scratch.textContent = "Scratch";
+    scratch.setAttribute("data-path", "scratch");
+    scratch.addEventListener("click", function() {
+      setScratch();
+      compile();
+    });
+    list.appendChild(scratch);
+    heading = document.createElement("div");
+    heading.className = "example-group";
+    heading.textContent = "Examples";
+    list.appendChild(heading);
+    items.forEach(function(item) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = item.title;
+      btn.setAttribute("data-path", item.path);
+      btn.addEventListener("click", function() {
+        selectItem(item).then(compile).catch(function(err) {
+          setStatus("source unavailable");
+          artifact.textContent = String(err);
+        });
+      });
+      list.appendChild(btn);
+    });
+    if (count) count.textContent = String(items.length);
+  }
+
+  function loadManifest() {
+    return fetch("examples-manifest.json").then(function(res) {
+      if (!res.ok) throw new Error("Could not load examples: " + res.status);
+      return res.json();
+    }).then(function(data) {
+      items = data.items || [];
+      renderList();
+    });
+  }
+
   function loadInitialSource() {
     var params = new URLSearchParams(window.location.search);
+    var wanted = params.get("example");
     var src = params.get("src");
+    var item;
+    if (wanted) {
+      item = items.filter(function(entry) {
+        return entry.id === wanted || entry.path === wanted || entry.name === wanted;
+      })[0];
+      if (item) return selectItem(item);
+    }
     if (!src) {
-      source.value = sample;
+      setScratch();
       return Promise.resolve();
     }
     setStatus("fetching source...");
@@ -404,7 +493,8 @@
       createK2bModule({ noInitialRun: true }),
       createK2cModule({ noInitialRun: true }),
       createK2gModule({ noInitialRun: true }),
-      createK2jsModule({ noInitialRun: true })
+      createK2jsModule({ noInitialRun: true }),
+      loadManifest()
     ]).then(function(mods) {
       k2kirMod = mods[0];
       k2bMod = mods[1];
@@ -431,7 +521,7 @@
   source.addEventListener("input", scheduleCompile);
   compileButton.addEventListener("click", compile);
   sampleButton.addEventListener("click", function() {
-    source.value = sample;
+    setScratch();
     compile();
   });
   boot();

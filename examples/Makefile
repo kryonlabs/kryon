@@ -57,6 +57,16 @@ endif
 KRYON_DIR := ..
 FONT_OUTPUTS := $(wildcard ../fonts/noto/*.ttf ../fonts/noto/*.otf)
 BUILD_DIR ?= ../build/examples
+
+# MSYS installations can live in a protected system directory where the
+# default /tmp is not writable. The repository root always exists and is
+# writable during an example build.
+ifneq ($(filter MSYS% MINGW%,$(UNAME_S)),)
+KRYON_MSYS_TMP := $(shell cygpath -m "$(abspath ..)")
+export TMPDIR := $(KRYON_MSYS_TMP)
+export TMP := $(KRYON_MSYS_TMP)
+export TEMP := $(KRYON_MSYS_TMP)
+endif
 K2C ?= $(KRYON_BUILD_DIR)/bin/k2c
 K2B ?= $(KRYON_BUILD_DIR)/bin/k2b
 CODEGEN_DIR := $(BUILD_DIR)/codegen
@@ -114,8 +124,8 @@ LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
 EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
 	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
 	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility \
-	19_pictures 20_scene 21_signals 22_physics 23_animation 24_tilemap \
-	25_text_area_slider
+	19_pictures 20_scene 20_scroll 21_signals 22_physics 23_animation 24_tilemap \
+	25_text_area_slider 26_widget_catalog
 EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
 
 .PHONY: all clean run list font-assets web web-clean
@@ -258,4 +268,6 @@ run:
 		fi; \
 	else \
 		echo "Invalid example number"; \
+	fi
+; \
 	fi

@@ -53,6 +53,16 @@ state {
     canvas_scroll_x: int = 0
     canvas_scroll_y: int = 0
     canvas_zoom: float = 1.0f
+    menu_open: int = -1
+    context_open: int = 0
+    context_x: int = 0
+    context_y: int = 0
+    selected_row: int = 0
+    feature_flags: int = 1
+    drag_float_min: float = 2.0f
+    drag_float_max: float = 8.0f
+    drag_int_min: int = 2
+    drag_int_max: int = 8
 }
 
 app "Smoke" {
@@ -71,6 +81,8 @@ relay_text :: (value: [64] char) {
 App :: () #ui {
     Screen root: {
     ClearBackground(GetThemeBackground())
+    menu_items: [2] MenuItem = {{MenuCommand,"Open","Ctrl+O",46,0,0,NULL,0},{MenuCheck,"Grid",NULL,47,0,1,NULL,0}}
+    menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
     if tab == TAB_JOBS {
         Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
     } else {
@@ -149,7 +161,11 @@ App :: () #ui {
     BottomNav((BottomNavProps){.view_width = ScaleUIPx(320), .view_height = ScaleUIPx(240), .count = 0, .height = ScaleUIPx(56)})
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
+    plot_values: [4] float = {0.0f, 0.25f, 1.0f, 0.5f}
+    plot_doubles: [2] double = {1.0, 2.0}
+    edit_color: [4] float = {0.2f, 0.4f, 0.6f, 0.8f}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
     Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
@@ -177,11 +193,51 @@ App :: () #ui {
     LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(4), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .title = "frame"})
     Notebook((NotebookProps){.bounds = {ScaleUIPx(140), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .tabs = choices[:], .selected_index = &pick})
     ListBox((ListBoxProps){.bounds = {ScaleUIPx(280), ScaleUIPx(300), ScaleUIPx(60), ScaleUIPx(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
+    TreeView((TreeViewProps){.bounds = {ScaleUIPx(280), ScaleUIPx(356), ScaleUIPx(80), ScaleUIPx(50)}, .id = 27, .items = tree_items, .item_count = 2, .selected_id = &pick})
     Collapsible((CollapsibleProps){.bounds = {ScaleUIPx(4), ScaleUIPx(360), ScaleUIPx(120), ScaleUIPx(30)}, .label = "sect", .open = NULL})
     SetThemeDarkMode(1)
     SetCurrentTheme(0, 1)
     Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, ""})
+    PlotLines((PlotProps){.bounds = {ScaleUIPx(250), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
+    PlotHistogram((PlotProps){.bounds = {ScaleUIPx(250), ScaleUIPx(254), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1})
+    DragFloat((DragFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(298), ScaleUIPx(100), ScaleUIPx(28)}, .id = 28, .label = "Float", .values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 1.0f})
+    DragInt((DragIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(330), ScaleUIPx(100), ScaleUIPx(28)}, .id = 29, .label = "Int", .values = nums, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
+    DragFloatRange2((DragFloatRange2Props){.bounds = {ScaleUIPx(250),ScaleUIPx(346),ScaleUIPx(100),ScaleUIPx(28)}, .id = 52, .label = "Float range", .current_min = &drag_float_min, .current_max = &drag_float_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format_max = "max %.1f"})
+    DragIntRange2((DragIntRange2Props){.bounds = {ScaleUIPx(250),ScaleUIPx(378),ScaleUIPx(100),ScaleUIPx(28)}, .id = 53, .label = "Int range", .current_min = &drag_int_min, .current_max = &drag_int_max, .min = 0, .max = 10, .format_max = "max %d"})
+    SliderFloat((SliderFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(362), ScaleUIPx(100), ScaleUIPx(28)}, .id = 30, .label = "Slider float", .values = plot_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
+    SliderInt((SliderIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(394), ScaleUIPx(100), ScaleUIPx(28)}, .id = 31, .label = "Slider int", .values = nums, .value_count = 2, .min = 0, .max = 10})
+    VSliderFloat((SliderFloatProps){.bounds = {ScaleUIPx(362), ScaleUIPx(298), ScaleUIPx(28), ScaleUIPx(100)}, .id = 32, .values = plot_values, .value_count = 1, .min = 0.0f, .max = 1.0f})
+    VSliderInt((SliderIntProps){.bounds = {ScaleUIPx(394), ScaleUIPx(298), ScaleUIPx(28), ScaleUIPx(100)}, .id = 33, .values = nums, .value_count = 1, .min = 0, .max = 10})
+    SliderAngle((SliderAngleProps){.bounds = {ScaleUIPx(250), ScaleUIPx(426), ScaleUIPx(100), ScaleUIPx(28)}, .id = 34, .value = &plot_values[0], .min_degrees = -180.0f, .max_degrees = 180.0f})
+    InputFloat((InputFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(458), ScaleUIPx(100), ScaleUIPx(28)}, .id = 35, .values = plot_values, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
+    InputInt((InputIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(490), ScaleUIPx(100), ScaleUIPx(28)}, .id = 36, .values = nums, .value_count = 2, .step = 1, .step_fast = 10})
+    InputDouble((InputDoubleProps){.bounds = {ScaleUIPx(250), ScaleUIPx(522), ScaleUIPx(100), ScaleUIPx(28)}, .id = 37, .values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+    SmallButton((ButtonProps){.bounds = {ScaleUIPx(250), ScaleUIPx(554), ScaleUIPx(70), ScaleUIPx(24)}, .label = "Small", .id = 38})
+    InvisibleButton((InvisibleButtonProps){.bounds = {ScaleUIPx(324), ScaleUIPx(554), ScaleUIPx(30), ScaleUIPx(24)}, .id = 39})
+    ArrowButton((ArrowButtonProps){.bounds = {ScaleUIPx(358), ScaleUIPx(554), ScaleUIPx(30), ScaleUIPx(24)}, .id = 40, .direction = 1})
+    Bullet((Rectangle){ScaleUIPx(392), ScaleUIPx(554), ScaleUIPx(20), ScaleUIPx(20)})
+    Separator((Rectangle){ScaleUIPx(250), ScaleUIPx(582), ScaleUIPx(160), ScaleUIPx(4)}, 0)
+    ColorEdit3((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(590), ScaleUIPx(160), ScaleUIPx(28)}, .id = 41, .values = edit_color, .value_count = 3})
+    ColorEdit4((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(622), ScaleUIPx(160), ScaleUIPx(28)}, .id = 42, .values = edit_color, .value_count = 4})
+    ColorPicker3((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 43, .values = edit_color, .value_count = 3})
+    ColorPicker4((ColorEditProps){.bounds = {ScaleUIPx(324), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 44, .values = edit_color, .value_count = 4})
+    ColorButton((ColorButtonProps){.bounds = {ScaleUIPx(398), ScaleUIPx(654), ScaleUIPx(60), ScaleUIPx(28)}, .id = 45, .label = "Tint", .color = (Color){51,102,153,204}})
+    TextColored("colored", ScaleUIPx(250), ScaleUIPx(690), Text16, (Color){220,60,80,255})
+    TextDisabled("disabled", ScaleUIPx(250), ScaleUIPx(714), Text16)
+    TextWrapped("wrapped helper text", (Rectangle){ScaleUIPx(250),ScaleUIPx(738),ScaleUIPx(160),ScaleUIPx(40)}, Text16, GetThemeText())
+    LabelText("Status", "Ready", (Rectangle){ScaleUIPx(250),ScaleUIPx(782),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
+    BulletText("bullet text", (Rectangle){ScaleUIPx(250),ScaleUIPx(806),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
+    MenuBar(46, (Rectangle){ScaleUIPx(4),ScaleUIPx(834),ScaleUIPx(220),ScaleUIPx(30)}, menus, 1, &menu_open)
+    PopupMenu(47, ScaleUIPx(4), ScaleUIPx(868), menu_items, 2)
+    ContextMenu((ContextMenuProps){.id = 48, .trigger = {ScaleUIPx(230),ScaleUIPx(834),ScaleUIPx(100),ScaleUIPx(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
+    Tooltip((TooltipProps){.trigger = {ScaleUIPx(230),ScaleUIPx(900),ScaleUIPx(100),ScaleUIPx(30)}, .text = "Helpful text", .font = Text14, .max_width = ScaleUIPx(160)})
+    choice_picture: PictureProps = {"tiles/tile.png",(Rectangle){ScaleUIPx(250),ScaleUIPx(934),ScaleUIPx(48),ScaleUIPx(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
+    Selectable((SelectableProps){.bounds = {ScaleUIPx(4),ScaleUIPx(934),ScaleUIPx(120),ScaleUIPx(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
+    CheckboxFlags((CheckboxFlagsProps){.bounds = {ScaleUIPx(4),ScaleUIPx(966),ScaleUIPx(160),ScaleUIPx(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
+    ImageWithBg((ImageWithBgProps){.picture = choice_picture, .background = GetThemeSurface()})
+    ImageButton((ImageButtonProps){.picture = choice_picture, .background = GetThemeButton(), .id = 51})
+    SeparatorText((SeparatorTextProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1000),ScaleUIPx(160),ScaleUIPx(24)}, .label = "Section", .font = Text14})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, c_abs(-8), ""})
@@ -396,6 +452,45 @@ grep -q 'kryon.Combobox(kryon.ComboboxProps{.*Options: choices\[:\].*SelectedInd
 grep -q 'kryon.LabelFrame(kryon.LabelFrameProps{' "$out"
 grep -q 'kryon.Notebook(kryon.NotebookProps{' "$out"
 grep -q 'kryon.ListBox(kryon.ListBoxProps{' "$out"
+grep -q 'kryon.TreeView(kryon.TreeViewProps{.*Items: tree_items\[:\].*SelectedID: &st.Pick' "$out"
+grep -q 'kryon.PlotLines(kryon.PlotProps{.*Values: plot_values\[:\].*ValueCount: 4' "$out"
+grep -q 'kryon.PlotHistogram(kryon.PlotProps{.*Values: plot_values\[:\].*Offset: 1' "$out"
+grep -q 'kryon.DragFloat(kryon.DragFloatProps{.*Values: plot_values\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.DragInt(kryon.DragIntProps{.*Values: nums\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.DragFloatRange2(kryon.DragFloatRange2Props{.*CurrentMin: &st.DragFloatMin.*CurrentMax: &st.DragFloatMax.*FormatMax: "max %.1f"' "$out"
+grep -q 'kryon.DragIntRange2(kryon.DragIntRange2Props{.*CurrentMin: &st.DragIntMin.*CurrentMax: &st.DragIntMax.*FormatMax: "max %d"' "$out"
+grep -q 'kryon.SliderFloat(kryon.SliderFloatProps{.*Values: plot_values\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.SliderInt(kryon.SliderIntProps{.*Values: nums\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.VSliderFloat(kryon.SliderFloatProps{' "$out"
+grep -q 'kryon.VSliderInt(kryon.SliderIntProps{' "$out"
+grep -q 'kryon.SliderAngle(kryon.SliderAngleProps{.*Value: &plot_values\[0\]' "$out"
+grep -q 'kryon.InputFloat(kryon.InputFloatProps{.*Values: plot_values\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.InputInt(kryon.InputIntProps{.*Values: nums\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.InputDouble(kryon.InputDoubleProps{.*Values: plot_doubles\[:\].*ValueCount: 2' "$out"
+grep -q 'kryon.SmallButton(kryon.ButtonProps{' "$out"
+grep -q 'kryon.InvisibleButton(kryon.InvisibleButtonProps{' "$out"
+grep -q 'kryon.ArrowButton(kryon.ArrowButtonProps{.*Direction: 1' "$out"
+grep -q 'kryon.Bullet(kryon.NewRectangle' "$out"
+grep -q 'kryon.Separator(kryon.NewRectangle.*0)' "$out"
+grep -q 'kryon.ColorEdit3(kryon.ColorEditProps{.*Values: edit_color\[:\].*ValueCount: 3' "$out"
+grep -q 'kryon.ColorEdit4(kryon.ColorEditProps{.*Values: edit_color\[:\].*ValueCount: 4' "$out"
+grep -q 'kryon.ColorPicker3(kryon.ColorEditProps{' "$out"
+grep -q 'kryon.ColorPicker4(kryon.ColorEditProps{' "$out"
+grep -q 'kryon.ColorButton(kryon.ColorButtonProps{.*Color: kryon.Color{R: 51, G: 102, B: 153, A: 204}' "$out"
+grep -q 'kryon.TextColored("colored"' "$out"
+grep -q 'kryon.TextDisabled("disabled"' "$out"
+grep -q 'kryon.TextWrapped("wrapped helper text"' "$out"
+grep -q 'kryon.LabelText("Status", "Ready"' "$out"
+grep -q 'kryon.BulletText("bullet text"' "$out"
+grep -q 'kryon.MenuBar(46, kryon.NewRectangle.*menus\[:\], 1, &st.MenuOpen)' "$out"
+grep -q 'kryon.PopupMenu(47, .*menu_items\[:\], 2)' "$out"
+grep -q 'kryon.ContextMenu(kryon.ContextMenuProps{.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
+grep -q 'kryon.Tooltip(kryon.TooltipProps{.*Text: "Helpful text".*MaxWidth: kryon.ScaleUIPx(160)' "$out"
+grep -q 'kryon.Selectable(kryon.SelectableProps{.*Selected: &st.SelectedRow' "$out"
+grep -q 'kryon.CheckboxFlags(kryon.CheckboxFlagsProps{.*Flags: &st.FeatureFlags.*FlagsValue: 4' "$out"
+grep -q 'kryon.ImageWithBg(kryon.ImageWithBgProps{Picture: choice_picture' "$out"
+grep -q 'kryon.ImageButton(kryon.ImageButtonProps{Picture: choice_picture.*ID: 51' "$out"
+grep -q 'kryon.SeparatorText(kryon.SeparatorTextProps{.*Label: "Section".*Font: kryon.Text14' "$out"
 grep -q 'kryon.Collapsible(kryon.CollapsibleProps{' "$out"
 grep -q 'SetThemeDarkMode(1' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"

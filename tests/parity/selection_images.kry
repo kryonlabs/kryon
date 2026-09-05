@@ -1,0 +1,24 @@
+#import "kryon.h"
+
+app "Generated Selection Image Parity" {
+    size 320 260
+    fps 60
+}
+
+state {
+    selected: int = 0
+    feature_flags: int = 0
+}
+
+selection_images_frame :: () #ui {
+    Screen selection_images_root: {
+        bounds = {0,0,320,260}
+        picture: PictureProps = {"",(Rectangle){20,100,96,64},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
+        Selectable((SelectableProps){.bounds = {20,20,200,30}, .id = 950, .label = "Selectable", .selected = &selected})
+        CheckboxFlags((CheckboxFlagsProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
+        ImageWithBg((ImageWithBgProps){.picture = picture, .background = (Color){40,50,60,255}})
+        picture.bounds = (Rectangle){140,100,96,64}
+        ImageButton((ImageButtonProps){.picture = picture, .background = (Color){30,40,50,255}, .id = 952})
+        SeparatorText((SeparatorTextProps){.bounds = {20,180,220,24}, .label = "Section", .font = Text14})
+    }
+}

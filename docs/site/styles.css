@@ -1523,6 +1523,7 @@ body.ide-page::before {
   outline: 0;
   background-color: #fffef9;
   color: var(--ink-strong);
+  caret-color: var(--accent);
   font: 13px/1.55 var(--font-main);
   cursor: url("cursors/ibeam.png") 15 16, text;
 }
@@ -2025,7 +2026,7 @@ h2::after { content: ""; display: block; width: 76px; height: 6px; margin-top: 1
 
 .hero-panel, .ide-shell, .live-pane, .source-pane, .preview-pane, .artifact-pane, .example-browser { border-color: rgba(255,220,74,.18); background: #181713; box-shadow: 9px 10px 0 rgba(0,0,0,.22); }
 .hero-panel-bar, .pane-label, .ide-toolbar, .live-pane-title, .artifact-tabs { color: #aaa591; background: #25231d; border-color: rgba(255,245,202,.11); }
-.preview-canvas, .example-list, .artifact-output { background: #1a1915; }
+.preview-canvas, .example-list, .artifact-output, .source-pane textarea { background: #1a1915; }
 table, .table-wrap { color: #eee9d0; background: #1a1915; border-color: rgba(255,245,202,.12); }
 th { color: var(--crayon-yellow); background: #28261f; }
 td, th { border-color: rgba(255,245,202,.11); }
@@ -2160,7 +2161,8 @@ html[data-theme="light"] .live-pane-title,
 html[data-theme="light"] .artifact-tabs { color: #6e695b; background: #eee6d4; border-color: rgba(70,60,39,.14); }
 html[data-theme="light"] .preview-canvas,
 html[data-theme="light"] .example-list,
-html[data-theme="light"] .artifact-output { background: #faf5e9; }
+html[data-theme="light"] .artifact-output,
+html[data-theme="light"] .source-pane textarea { color: #28261f; background: #faf5e9; caret-color: #705500; }
 html[data-theme="light"] table,
 html[data-theme="light"] .table-wrap { color: #332f25; background: #fffaf0; border-color: rgba(70,60,39,.16); }
 html[data-theme="light"] .matrix-table th { color: #fffaf0; background: #343127; }

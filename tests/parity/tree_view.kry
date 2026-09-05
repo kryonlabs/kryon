@@ -1,0 +1,23 @@
+#import "kryon.h"
+
+app "Generated Tree View Parity" {
+    size 260 150
+    fps 60
+}
+
+state {
+    tree_selected: int = 0
+    tree_scroll: int = 0
+}
+
+tree_frame :: () #ui {
+    Screen tree_root: {
+        bounds = {0,0,260,150}
+        items: [3] UITreeItem = {
+            {"Root",0,0,1,0},
+            {"First",1,1,0,1},
+            {"Second",1,2,0,1}
+        }
+        TreeView((TreeViewProps){.bounds = {20,20,180,90}, .id = 901, .items = items, .item_count = 3, .selected_id = &tree_selected, .scroll_offset = &tree_scroll, .row_height = 28})
+    }
+}

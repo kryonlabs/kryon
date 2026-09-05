@@ -1815,6 +1815,57 @@ TextInRect(const char *text, Rectangle rect, int font_size, Color color)
 }
 
 void
+TextColored(const char *text, int x, int y, int font_size, Color color)
+{
+    Text(text, x, y, font_size, color);
+}
+
+void
+TextDisabled(const char *text, int x, int y, int font_size)
+{
+    Text(text, x, y, font_size, Fade(GetThemeText(), 0.45f));
+}
+
+void
+TextWrapped(const char *text, Rectangle bounds, int font_size, Color color)
+{
+    ParagraphSpec paragraph = {0};
+    int y = (int)bounds.y;
+
+    paragraph.text = text;
+    paragraph.width = (int)bounds.width;
+    paragraph.font = font_size;
+    paragraph.line_gap = ScaleUIPx(2);
+    paragraph.color = color;
+    Paragraph(paragraph, (int)bounds.x, &y);
+}
+
+void
+LabelText(const char *label, const char *value, Rectangle bounds,
+          int font_size, Color color)
+{
+    int label_width = TextWidth(label != NULL ? label : "", font_size);
+    int value_x = (int)bounds.x + label_width + ScaleUIPx(8);
+
+    Text(label != NULL ? label : "", (int)bounds.x, (int)bounds.y,
+         font_size, Fade(color, 0.72f));
+    Text(value != NULL ? value : "", value_x, (int)bounds.y,
+         font_size, color);
+}
+
+void
+BulletText(const char *text, Rectangle bounds, int font_size, Color color)
+{
+    int bullet_size = ScaleUIPx(12);
+    Rectangle bullet = {bounds.x, bounds.y, (float)bullet_size,
+                        bounds.height > 0 ? bounds.height : (float)font_size};
+
+    Bullet(bullet);
+    Text(text != NULL ? text : "", (int)bounds.x + bullet_size + ScaleUIPx(4),
+         (int)bounds.y, font_size, color);
+}
+
+void
 Paragraph(ParagraphSpec paragraph, int x, int *y)
 {
     UIWidgetNode node;
@@ -2142,6 +2193,13 @@ Separator(Rectangle bounds, int vertical)
     DrawUISeparator(bounds, vertical);
 }
 
+void
+SeparatorText(SeparatorTextProps separator)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, separator.bounds, &separator);
+    DrawUISeparatorText(separator);
+}
+
 MenuBarResult
 MenuBar(int id, Rectangle bounds, const Menu *menus,
               int menu_count, int *open_index)
@@ -2177,6 +2235,104 @@ Progress(ProgressBarProps progress)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, progress.bounds, &progress);
     DrawUIProgressBar(progress);
+}
+
+void
+PlotLines(PlotProps plot)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, plot.bounds, &plot);
+    DrawUIPlotLines(plot);
+}
+
+void
+PlotHistogram(PlotProps plot)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, plot.bounds, &plot);
+    DrawUIPlotHistogram(plot);
+}
+
+int
+DragFloat(DragFloatProps drag)
+{
+    ui_tree_add(drag.id, UI_WIDGET_CUSTOM_NODE, drag.bounds, &drag);
+    return DrawUIDragFloat(drag);
+}
+
+int
+DragInt(DragIntProps drag)
+{
+    ui_tree_add(drag.id, UI_WIDGET_CUSTOM_NODE, drag.bounds, &drag);
+    return DrawUIDragInt(drag);
+}
+
+int
+DragFloatRange2(DragFloatRange2Props drag)
+{
+    ui_tree_add(drag.id, UI_WIDGET_CUSTOM_NODE, drag.bounds, &drag);
+    return DrawUIDragFloatRange2(drag);
+}
+
+int
+DragIntRange2(DragIntRange2Props drag)
+{
+    ui_tree_add(drag.id, UI_WIDGET_CUSTOM_NODE, drag.bounds, &drag);
+    return DrawUIDragIntRange2(drag);
+}
+
+int
+SliderFloat(SliderFloatProps slider)
+{
+    ui_tree_add(slider.id, UI_WIDGET_CUSTOM_NODE, slider.bounds, &slider);
+    return DrawUISliderFloat(slider);
+}
+
+int
+SliderInt(SliderIntProps slider)
+{
+    ui_tree_add(slider.id, UI_WIDGET_CUSTOM_NODE, slider.bounds, &slider);
+    return DrawUISliderInt(slider);
+}
+
+int
+VSliderFloat(SliderFloatProps slider)
+{
+    ui_tree_add(slider.id, UI_WIDGET_CUSTOM_NODE, slider.bounds, &slider);
+    return DrawUIVSliderFloat(slider);
+}
+
+int
+VSliderInt(SliderIntProps slider)
+{
+    ui_tree_add(slider.id, UI_WIDGET_CUSTOM_NODE, slider.bounds, &slider);
+    return DrawUIVSliderInt(slider);
+}
+
+int
+SliderAngle(SliderAngleProps slider)
+{
+    ui_tree_add(slider.id, UI_WIDGET_CUSTOM_NODE, slider.bounds, &slider);
+    return DrawUISliderAngle(slider);
+}
+
+int
+InputFloat(InputFloatProps input)
+{
+    ui_tree_add(input.id, UI_WIDGET_CUSTOM_NODE, input.bounds, &input);
+    return DrawUIInputFloat(input);
+}
+
+int
+InputInt(InputIntProps input)
+{
+    ui_tree_add(input.id, UI_WIDGET_CUSTOM_NODE, input.bounds, &input);
+    return DrawUIInputInt(input);
+}
+
+int
+InputDouble(InputDoubleProps input)
+{
+    ui_tree_add(input.id, UI_WIDGET_CUSTOM_NODE, input.bounds, &input);
+    return DrawUIInputDouble(input);
 }
 
 int
@@ -2662,6 +2818,112 @@ Button(ButtonProps button)
     }
     clicked = ui_tree_building ? HandleButton(spec) : RenderButton(spec);
     return clicked;
+}
+
+int
+Selectable(SelectableProps selectable)
+{
+    ui_tree_add(selectable.id, UI_WIDGET_CUSTOM_NODE, selectable.bounds,
+                &selectable);
+    return DrawUISelectable(selectable);
+}
+
+int
+CheckboxFlags(CheckboxFlagsProps checkbox)
+{
+    ui_tree_add(checkbox.id, UI_WIDGET_CUSTOM_NODE, checkbox.bounds,
+                &checkbox);
+    return DrawUICheckboxFlags(checkbox);
+}
+
+void
+ImageWithBg(ImageWithBgProps image)
+{
+    Rect((int)image.picture.bounds.x, (int)image.picture.bounds.y,
+         (int)image.picture.bounds.width, (int)image.picture.bounds.height,
+         image.background, image.background);
+    Picture(image.picture);
+}
+
+int
+ImageButton(ImageButtonProps image)
+{
+    InvisibleButtonProps hit = {image.picture.bounds, image.id, image.disabled};
+
+    Rect((int)image.picture.bounds.x, (int)image.picture.bounds.y,
+         (int)image.picture.bounds.width, (int)image.picture.bounds.height,
+         image.background, GetThemeButton());
+    Picture(image.picture);
+    return DrawUIInvisibleButton(hit);
+}
+
+int
+SmallButton(ButtonProps button)
+{
+    ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
+    return DrawUISmallButton(button);
+}
+
+int
+InvisibleButton(InvisibleButtonProps button)
+{
+    ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
+    return DrawUIInvisibleButton(button);
+}
+
+int
+ArrowButton(ArrowButtonProps button)
+{
+    ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
+    return DrawUIArrowButton(button);
+}
+
+void
+Bullet(Rectangle bounds)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
+    DrawUIBullet(bounds);
+}
+
+int
+ColorEdit3(ColorEditProps edit)
+{
+    ui_tree_add(edit.id, UI_WIDGET_CUSTOM_NODE, edit.bounds, &edit);
+    return DrawUIColorEdit3(edit);
+}
+
+int
+ColorEdit4(ColorEditProps edit)
+{
+    ui_tree_add(edit.id, UI_WIDGET_CUSTOM_NODE, edit.bounds, &edit);
+    return DrawUIColorEdit4(edit);
+}
+
+int
+ColorPicker3(ColorEditProps picker)
+{
+    ui_tree_add(picker.id, UI_WIDGET_CUSTOM_NODE, picker.bounds, &picker);
+    return DrawUIColorPicker3(picker);
+}
+
+int
+ColorPicker4(ColorEditProps picker)
+{
+    ui_tree_add(picker.id, UI_WIDGET_CUSTOM_NODE, picker.bounds, &picker);
+    return DrawUIColorPicker4(picker);
+}
+
+int
+ColorButton(ColorButtonProps button)
+{
+    ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
+    return DrawUIColorButton(button);
+}
+
+int
+Tooltip(TooltipProps tooltip)
+{
+    return DrawUITooltip(tooltip);
 }
 
 /* Retained layout containers. Every container closes with End(). */

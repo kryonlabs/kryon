@@ -27,7 +27,11 @@ tests/parity/buttons_layout.kry
 tests/parity/long_text.kry
 tests/parity/basic_controls.kry
 tests/parity/list_box.kry
+tests/parity/tree_view.kry
 tests/parity/progress.kry
+tests/parity/plots.kry
+tests/parity/menus.kry
+tests/parity/selection_images.kry
 tests/parity/table_view.kry
 "
 fixture_args=
@@ -117,6 +121,8 @@ type snapshot struct {
 	ControlsSelected   int32  `json:"controls_selected"`
 	ListBoxSelected    int32  `json:"list_box_selected"`
 	ListBoxScroll      int32  `json:"list_box_scroll"`
+	TreeSelected       int32  `json:"tree_selected"`
+	TreeScroll         int32  `json:"tree_scroll"`
 	TableSelectedRow   int32  `json:"table_selected_row"`
 	TableSelectedCol   int32  `json:"table_selected_column"`
 	TableActivatedRow  int32  `json:"table_activated_row"`
@@ -183,10 +189,26 @@ func drawListBox() {
 	})
 }
 
+func drawTreeView() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		TreeView_TreeFrame(TreeViewStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawProgress() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		Progress_ProgressFrame(ProgressStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawPlots() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Plots_PlotsFrame(PlotsStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -294,6 +316,7 @@ func main() {
 	longText := LongTextStateValue
 	controls := BasicControlsStateValue
 	listBox := ListBoxStateValue
+	treeView := TreeViewStateValue
 	table := TableViewStateValue
 
 	drawForm()
@@ -454,7 +477,21 @@ func main() {
 			listBox.ListSelected, listBox.ListScroll))
 	}
 
+	drawTreeView()
+	driver.QueueTap(36, 84)
+	drawTreeView()
+	if treeView.TreeSelected != 2 || treeView.TreeScroll != 0 {
+		panic(fmt.Sprintf("tree_view: got selected=%d scroll=%d, want 2,0",
+			treeView.TreeSelected, treeView.TreeScroll))
+	}
+
 	drawProgress()
+	drawPlots()
+	requireFrameOps("plots", map[kryon.FrameOpKind]int{
+		kryon.FrameOpRect: 6,
+		kryon.FrameOpLine: 3,
+		kryon.FrameOpText: 3,
+	})
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
 		kryon.FrameOpRect: 2,
 		kryon.FrameOpText: 1,
@@ -513,6 +550,8 @@ func main() {
 		ControlsSelected:   controls.Selected,
 		ListBoxSelected:    listBox.ListSelected,
 		ListBoxScroll:      listBox.ListScroll,
+		TreeSelected:       treeView.TreeSelected,
+		TreeScroll:         treeView.TreeScroll,
 		TableSelectedRow:   table.SelectedRow,
 		TableSelectedCol:   table.SelectedColumn,
 		TableActivatedRow:  tableActivatedRow,
@@ -542,7 +581,9 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/long_text.c"
 #include "$work/c/tests/parity/basic_controls.c"
 #include "$work/c/tests/parity/list_box.c"
+#include "$work/c/tests/parity/tree_view.c"
 #include "$work/c/tests/parity/progress.c"
+#include "$work/c/tests/parity/plots.c"
 #include "$work/c/tests/parity/table_view.c"
 
 static void drain_events(void)
@@ -596,9 +637,19 @@ static void draw_list_box(void)
     draw_ui(list_box_frame);
 }
 
+static void draw_tree_view(void)
+{
+    draw_ui(tree_frame);
+}
+
 static void draw_progress(void)
 {
     draw_ui(progress_frame);
+}
+
+static void draw_plots(void)
+{
+    draw_ui(plots_frame);
 }
 
 static void draw_table_view(void)
@@ -797,7 +848,21 @@ int main(void)
         return 1;
     }
 
+    draw_tree_view();
+    InjectTap(36, 84);
+    InjectPump();
+    draw_tree_view();
+    InjectPump();
+    draw_tree_view();
+    if(tree_selected != 2 || tree_scroll != 0) {
+        fprintf(stderr,
+                "tree_view: got selected=%d scroll=%d, want 2,0\n",
+                tree_selected, tree_scroll);
+        return 1;
+    }
+
     draw_progress();
+    draw_plots();
 
     draw_table_view();
     InjectTap(116, 62);
@@ -827,14 +892,14 @@ int main(void)
         return 1;
     }
 
-    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"list_box_selected\":%d,\"list_box_scroll\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
+    printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"list_box_selected\":%d,\"list_box_scroll\":%d,\"tree_selected\":%d,\"tree_scroll\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
         notes, notes_cursor, form_action, title, title_cursor, body,
         body_cursor, one, two, three, focus_after_focus, buttons_action,
         (int)strlen(long_first), long_first_cursor, checksum(long_first),
         (int)strlen(long_second), long_second_cursor, checksum(long_second),
         slider_value, toggle_value, checkbox_value, selected,
-        list_selected, list_scroll,
+        list_selected, list_scroll, tree_selected, tree_scroll,
         selected_row, selected_column, table_activated_row,
         table_activated_column, sort_column,
         GetUIClipboardTextValue());
@@ -863,7 +928,9 @@ import * as buttonsMod from "./js/tests/parity/buttons_layout.js";
 import * as longTextMod from "./js/tests/parity/long_text.js";
 import * as controlsMod from "./js/tests/parity/basic_controls.js";
 import * as listBoxMod from "./js/tests/parity/list_box.js";
+import * as treeViewMod from "./js/tests/parity/tree_view.js";
 import * as progressMod from "./js/tests/parity/progress.js";
+import * as plotsMod from "./js/tests/parity/plots.js";
 import * as tableMod from "./js/tests/parity/table_view.js";
 import * as kryon from "./js/kryon-runtime.js";
 
@@ -875,6 +942,7 @@ const buttons = buttonsMod.createState();
 const longText = longTextMod.createState();
 const controls = controlsMod.createState();
 const listBox = listBoxMod.createState();
+const treeView = treeViewMod.createState();
 const table = tableMod.createState();
 
 const drawForm = () => formMod.frame(rt, form);
@@ -884,7 +952,9 @@ const drawButtons = () => buttonsMod.frame(rt, buttons);
 const drawLongText = () => longTextMod.frame(rt, longText);
 const drawControls = () => controlsMod.frame(rt, controls);
 const drawListBox = () => listBoxMod.frame(rt, listBox);
+const drawTreeView = () => treeViewMod.frame(rt, treeView);
 const drawProgress = () => progressMod.frame(rt, progressMod.createState());
+const drawPlots = () => plotsMod.frame(rt, plotsMod.createState());
 const drawTableView = () => tableMod.frame(rt, table);
 
 drawForm();
@@ -998,7 +1068,14 @@ drawListBox();
 if (listBox.list_selected !== 2 || listBox.list_scroll !== 0)
   throw new Error(`list_box: got selected=${listBox.list_selected} scroll=${listBox.list_scroll}, want 2,0`);
 
+drawTreeView();
+rt.QueueTap(36, 84);
+drawTreeView();
+if (treeView.tree_selected !== 2 || treeView.tree_scroll !== 0)
+  throw new Error(`tree_view: got selected=${treeView.tree_selected} scroll=${treeView.tree_scroll}, want 2,0`);
+
 drawProgress();
+drawPlots();
 
 drawTableView();
 rt.QueueTap(116, 62);
@@ -1043,6 +1120,7 @@ const out =
   `"controls_slider":${controls.slider_value},"controls_toggle":${controls.toggle_value},` +
   `"controls_checkbox":${controls.checkbox_value},"controls_selected":${controls.selected},` +
   `"list_box_selected":${listBox.list_selected},"list_box_scroll":${listBox.list_scroll},` +
+  `"tree_selected":${treeView.tree_selected},"tree_scroll":${treeView.tree_scroll},` +
   `"table_selected_row":${table.selected_row},"table_selected_column":${table.selected_column},` +
   `"table_activated_row":${tableActivatedRow},"table_activated_column":${tableActivatedCol},` +
   `"table_sort_column":${table.sort_column},"clipboard":${JSON.stringify(rt.ClipboardText())}}`;
@@ -1057,4 +1135,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/progress.kry","tests/parity/table_view.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/menus.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"]}'

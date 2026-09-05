@@ -349,16 +349,26 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
                        char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Background", "Text", "TextInRect", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
-        "IconButton", "Href", "TextField", "TextArea", "Dropdown", "Slider",
-        "Toggle", "Checkbox", "Radio", "Progress", "Spinbox", "Combobox",
+        "Background", "Text", "TextInRect", "TextColored", "TextDisabled",
+        "TextWrapped", "LabelText", "BulletText", "Paragraph", "TextLines",
+        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Selectable",
+        "CheckboxFlags", "ImageWithBg", "ImageButton", "SmallButton",
+        "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
+        "ColorEdit3",
+        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Tooltip", "IconButton",
+        "Href", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
+        "PopupMenu", "ContextMenu",
+        "Toggle", "Checkbox", "Radio", "Progress", "PlotLines",
+        "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2",
+        "DragIntRange2", "SliderFloat", "SliderInt",
+        "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt",
+        "InputDouble", "Spinbox", "Combobox",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
         "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
         "PromptDialog", "TitleBar", "TabBar", "BottomNav", "TopNav",
         "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
-        "PanedView", "Collapsible", "ListBox", "SourceView", "TableView",
-        "CanvasGrid", "SelectableText"
+		"PanedView", "Collapsible", "ListBox", "TreeView", "SourceView", "TableView",
+		"ColorPicker", "CanvasGrid", "SelectableText"
     };
     const char *p = text;
     const char *open;

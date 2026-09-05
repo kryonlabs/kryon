@@ -144,6 +144,21 @@ func Background(c Color)      { active().Background(c) }
 func Text(text string, x, y, fontSize int32, color Color) {
 	active().Text(text, x, y, fontSize, color)
 }
+func TextColored(text string, x, y, fontSize int32, color Color) {
+	active().TextColored(text, x, y, fontSize, color)
+}
+func TextDisabled(text string, x, y, fontSize int32) {
+	active().TextDisabled(text, x, y, fontSize)
+}
+func TextWrapped(text string, bounds Rectangle, fontSize int32, color Color) {
+	active().TextWrapped(text, bounds, fontSize, color)
+}
+func LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
+	active().LabelText(label, value, bounds, fontSize, color)
+}
+func BulletText(text string, bounds Rectangle, fontSize int32, color Color) {
+	active().BulletText(text, bounds, fontSize, color)
+}
 func TextFormat(format string, args ...any) string { return active().TextFormat(format, args...) }
 func ScaleUIPx(px int32) int32                     { return active().ScaleUIPx(px) }
 func GetScreenWidth() int32                        { return active().GetScreenWidth() }
@@ -165,14 +180,46 @@ func Line(x1, y1, x2, y2 int32, color Color) { active().Line(x1, y1, x2, y2, col
 func Scroll(x, y, w, h, contentH int32, offset *int32) {
 	active().Scroll(x, y, w, h, contentH, offset)
 }
-func EndScroll()              { active().EndScroll() }
-func Button(args ...any) bool { return button(args...) }
+func EndScroll()                                      { active().EndScroll() }
+func Button(args ...any) bool                         { return button(args...) }
+func Selectable(props SelectableProps) bool           { return active().Selectable(props) }
+func CheckboxFlags(props CheckboxFlagsProps) bool     { return active().CheckboxFlags(props) }
+func ImageWithBg(props ImageWithBgProps)              { active().ImageWithBg(props) }
+func ImageButton(props ImageButtonProps) bool         { return active().ImageButton(props) }
+func SmallButton(props ButtonProps) bool              { return active().SmallButton(props) }
+func InvisibleButton(props InvisibleButtonProps) bool { return active().InvisibleButton(props) }
+func ArrowButton(props ArrowButtonProps) bool         { return active().ArrowButton(props) }
+func Bullet(bounds Rectangle)                         { active().Bullet(bounds) }
+func Separator(bounds Rectangle, vertical int32)      { active().Separator(bounds, vertical) }
+func SeparatorText(props SeparatorTextProps)          { active().SeparatorText(props) }
+func ColorEdit3(props ColorEditProps) bool            { return active().ColorEdit3(props) }
+func ColorEdit4(props ColorEditProps) bool            { return active().ColorEdit4(props) }
+func ColorPicker3(props ColorEditProps) bool          { return active().ColorPicker3(props) }
+func ColorPicker4(props ColorEditProps) bool          { return active().ColorPicker4(props) }
+func ColorButton(props ColorButtonProps) bool         { return active().ColorButton(props) }
+func Tooltip(props TooltipProps) bool                 { return active().Tooltip(props) }
 func TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
 	return active().TabBar(bounds, labels, selected, hover)
 }
 func Progress(props ProgressBarProps) {
 	active().Progress(props)
 }
+func PlotLines(props PlotProps)           { active().PlotLines(props) }
+func PlotHistogram(props PlotProps)       { active().PlotHistogram(props) }
+func DragFloat(props DragFloatProps) bool { return active().DragFloat(props) }
+func DragInt(props DragIntProps) bool     { return active().DragInt(props) }
+func DragFloatRange2(props DragFloatRange2Props) bool {
+	return active().DragFloatRange2(props)
+}
+func DragIntRange2(props DragIntRange2Props) bool { return active().DragIntRange2(props) }
+func SliderFloat(props SliderFloatProps) bool     { return active().SliderFloat(props) }
+func SliderInt(props SliderIntProps) bool         { return active().SliderInt(props) }
+func VSliderFloat(props SliderFloatProps) bool    { return active().VSliderFloat(props) }
+func VSliderInt(props SliderIntProps) bool        { return active().VSliderInt(props) }
+func SliderAngle(props SliderAngleProps) bool     { return active().SliderAngle(props) }
+func InputFloat(props InputFloatProps) bool       { return active().InputFloat(props) }
+func InputInt(props InputIntProps) bool           { return active().InputInt(props) }
+func InputDouble(props InputDoubleProps) bool     { return active().InputDouble(props) }
 func Checkbox(id, x, y int32, label string, value *int32) bool {
 	return active().Checkbox(id, x, y, label, value)
 }
@@ -243,9 +290,19 @@ func TitleBar(title string, height int32)      { active().TitleBar(title, height
 func BottomNav(props BottomNavProps)           { active().BottomNav(props) }
 func TopNav(props TopNavProps)                 { active().TopNav(props) }
 func Toolbar(props ToolbarProps) ToolbarResult { return active().Toolbar(props) }
-func MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult {
+func MenuBar(id int32, bounds Rectangle, menus []Menu, args ...any) MenuBarResult {
+	var openIndex *int32
+	for _, arg := range args {
+		if value, ok := arg.(*int32); ok {
+			openIndex = value
+		}
+	}
 	return active().MenuBar(id, bounds, menus, openIndex)
 }
+func PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
+	return active().PopupMenu(id, x, y, items, itemCount)
+}
+func ContextMenu(props ContextMenuProps) int32             { return active().ContextMenu(props) }
 func CanvasGrid(bounds Rectangle, step int32, color Color) { active().CanvasGrid(bounds, step, color) }
 func SelectableText(value string, x, y, fontSize int32, color Color) {
 	active().SelectableText(value, x, y, fontSize, color)
@@ -261,6 +318,10 @@ func LabelFrame(props LabelFrameProps)             { active().LabelFrame(props) 
 func Notebook(props NotebookProps) int32           { return active().Notebook(props) }
 func PanedView(props PanedViewProps) int32         { return active().PanedView(props) }
 func Collapsible(props CollapsibleProps) int32     { return active().Collapsible(props) }
+func ColorPicker(bounds Rectangle, color *Color) bool {
+	return active().ColorPicker(bounds, color)
+}
+func TreeView(props TreeViewProps) int32           { return active().TreeView(props) }
 func ListBox(props ListBoxProps) int32             { return active().ListBox(props) }
 func SourceView(props SourceViewProps) int32       { return active().SourceView(props) }
 func TableView(props TableViewProps) int32         { return active().TableView(props) }
