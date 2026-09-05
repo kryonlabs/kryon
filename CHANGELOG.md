@@ -1,4 +1,17 @@
 # Changelog
+## v0.1.52 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.52
+- Docs: snapshot quad public API
+- Configure cmark dependency with a CMake 4 compatible policy minimum
+- Zero-initialize QR working matrices for m<n inputs
+- Add double-double quad arithmetic, compensated accumulator, and quad QR core
+- Build shared expression checking and lexical cleanup foundation
+- Limit libdraw routing fallbacks to native Plan 9
+- Build: create raylib lock parent directory
+
 ## v0.1.51 - 2026-09-05
 
 ### Changed
