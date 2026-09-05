@@ -2447,6 +2447,9 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        TextInputStyle style, int selection_start,
                        int selection_end)
 {
+    // The editor owns selection; rendered lines must not claim it or copy
+    // a second, single-line selection over the editor clipboard contents.
+    int selectable = PushTextSelectable(0);
     char line[1024];
     int len;
     int line_start = 0;
@@ -2514,6 +2517,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                 break;
         }
     }
+    PopTextSelectable(selectable);
 }
 
 int
