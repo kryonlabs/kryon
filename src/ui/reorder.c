@@ -142,15 +142,16 @@ UpdateUIReorderList(UIReorderList list)
             return result;
         }
 
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-           g_ui_reorder_state.dragging) {
-            result.dragging = 0;
-            result.committed = result.to_index >= 0 &&
-                               result.to_index < list.item_count &&
-                               result.to_index != active_index;
-            result.from_index = active_index;
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
+            if(g_ui_reorder_state.dragging) {
+                result.dragging = 0;
+                result.committed = result.to_index >= 0 &&
+                                   result.to_index < list.item_count &&
+                                   result.to_index != active_index;
+                result.from_index = active_index;
+            }
         }
         ui_reorder_cancel();
         return result;
