@@ -450,15 +450,9 @@ DrawUITabBar(TabBarProps bar)
                                    (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
             } else if(ui_material_style()) {
-                Text((TextProps){
-                    .bounds = text_rect,
-                    .text = tab->label,
-                    .font = font,
-                    .color = text_color,
-                    .wrap = TextWrapNone,
-                    .align = TextAlignCenter,
-                    .vertical_align = TextAlignCenter
-                });
+                ui_paint_text_box(tab->label, text_rect, font, text_color,
+                                  TextWrapNone, TextAlignCenter,
+                                  TextAlignCenter, ui_active_font_token());
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }

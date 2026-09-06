@@ -1578,26 +1578,18 @@ UpdateTree(void)
     }
 }
 
-static void
-ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
-                    int wrap, int align, int vertical_align, int font_token)
+void
+ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
+                  int wrap, int align, int vertical_align, int font_token)
 {
     int previous_font = ui_active_font_token();
     int y = (int)bounds.y;
     int text_width;
-    int text_height;
-    int needs_clip;
 
     PopUIFont(font_token);
     text_width = TextWidth(value, font);
-    text_height = TextHeight(value, font);
-    needs_clip = wrap == TextWrapAuto ||
-                 text_width > (int)bounds.width ||
-                 text_height > (int)bounds.height;
-    if(needs_clip) {
-        BeginUIClip((int)bounds.x, (int)bounds.y,
-                    (int)bounds.width, (int)bounds.height);
-    }
+    BeginUIClip((int)bounds.x, (int)bounds.y,
+                (int)bounds.width, (int)bounds.height);
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
@@ -1621,8 +1613,7 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
             y += (int)bounds.height - TextHeight(value, font);
         DrawUIText(value, x, y, font, color);
     }
-    if(needs_clip)
-        EndUIClip();
+    EndUIClip();
     PopUIFont(previous_font);
 }
 
@@ -1726,7 +1717,7 @@ DrawTree(void)
                 ui_tree_heading_semantic(
                     node->owned_text != NULL ? node->owned_text : "",
                     node->data.primitive.heading_level);
-            ui_draw_text_widget(
+            ui_paint_text_box(
                 node->owned_text != NULL ? node->owned_text : "", node->bounds,
                 node->data.primitive.font, node->data.primitive.color,
                 node->data.primitive.wrap, node->data.primitive.align,
@@ -2227,18 +2218,10 @@ Text(TextProps text)
         ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    /* App screens may interleave canonical Text with direct paint primitives.
-     * Paint live text where it is declared to preserve that order, while the
-     * retained node continues to provide layout and semantic information. */
-    if(ui_tree_building && IsWindowReady()) {
-        ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
-                            text.align, text.vertical_align,
-                            ui_active_font_token());
-        ui_tree_mark_painted_immediate(node);
-    } else if(!ui_tree_building) {
-        ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
-                            text.align, text.vertical_align,
-                            ui_active_font_token());
+    if(!ui_tree_building) {
+        ui_paint_text_box(value, bounds, font, text.color, text.wrap,
+                          text.align, text.vertical_align,
+                          ui_active_font_token());
     }
 }
 

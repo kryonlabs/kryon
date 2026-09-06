@@ -137,6 +137,9 @@ void ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y,
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
+void ui_paint_text_box(const char *text, Rectangle bounds, int font,
+                       Color color, int wrap, int align, int vertical_align,
+                       int font_token);
 void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int ui_scrollbar(int x, int y, int viewport_h, int content_h,

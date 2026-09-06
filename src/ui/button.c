@@ -959,16 +959,12 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     DrawCircle(center_x, center_y, radius, fill);
     DrawCircleLines(center_x, center_y, radius, stroke);
     font = GetSmallFontSize();
-    Text((TextProps){
-        .bounds = {(float)(center_x - radius), (float)(center_y - radius),
-                   (float)diameter, (float)diameter},
-        .text = "i",
-        .font = font,
-        .color = text,
-        .wrap = TextWrapNone,
-        .align = TextAlignCenter,
-        .vertical_align = TextAlignCenter
-    });
+    ui_paint_text_box("i",
+                      (Rectangle){(float)(center_x - radius),
+                                  (float)(center_y - radius),
+                                  (float)diameter, (float)diameter},
+                      font, text, TextWrapNone, TextAlignCenter,
+                      TextAlignCenter, ui_active_font_token());
 
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         UIConsumeRelease();
