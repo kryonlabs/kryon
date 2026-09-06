@@ -79,8 +79,10 @@ const (
 	KeyF2           int32 = 291
 	KeyLeftShift    int32 = 340
 	KeyLeftControl  int32 = 341
+	KeyLeftAlt      int32 = 342
 	KeyRightShift   int32 = 344
 	KeyRightControl int32 = 345
+	KeyRightAlt     int32 = 346
 	KeyA            int32 = 65
 	KeyC            int32 = 67
 	KeyV            int32 = 86
@@ -1229,6 +1231,17 @@ type CanvasResult struct {
 	World         Vector2
 }
 
+// Accelerator describes one keyboard chord and the command returned when it
+// is pressed. Modifier fields mirror the native C runtime's clean shortcut
+// surface.
+type Accelerator struct {
+	Key   int32
+	Ctrl  int32
+	Shift int32
+	Alt   int32
+	ID    int32
+}
+
 type Runtime interface {
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
@@ -1245,6 +1258,8 @@ type Runtime interface {
 	BeginPopup(PopupProps) bool
 	EndPopup()
 	ClosePopup()
+	AcceleratorPressed(Accelerator) int32
+	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)
 	Background(Color)
 	Text(TextProps)
@@ -1670,6 +1685,49 @@ func (r *runtime) KeyPressed(key int32) bool {
 }
 func (r *runtime) KeyDown(key int32) bool {
 	return r.keyDown[key]
+}
+
+func (r *runtime) AcceleratorPressed(accelerator Accelerator) int32 {
+	if r.contentDisabled() || r.popupKeyboardCaptures() {
+		return 0
+	}
+	if accelerator.Ctrl != 0 {
+		ctrl := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
+		if !ctrl {
+			for _, event := range r.inputEvents {
+				if event.key == accelerator.Key && event.shortcut {
+					ctrl = true
+					break
+				}
+			}
+		}
+		if !ctrl {
+			return 0
+		}
+	}
+	if accelerator.Shift != 0 && !(r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]) {
+		return 0
+	}
+	if accelerator.Alt != 0 && !(r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt]) {
+		return 0
+	}
+	if !r.keyDown[accelerator.Key] {
+		return 0
+	}
+	return accelerator.ID
+}
+
+func (r *runtime) DispatchAccelerators(accelerators []Accelerator, count ...int32) int32 {
+	if len(count) > 0 {
+		limit := clamp32(count[0], 0, int32(len(accelerators)))
+		accelerators = accelerators[:limit]
+	}
+	for _, accelerator := range accelerators {
+		if id := r.AcceleratorPressed(accelerator); id != 0 {
+			return id
+		}
+	}
+	return 0
 }
 func (r *runtime) CharPressed() int32 {
 	if len(r.chars) == 0 {

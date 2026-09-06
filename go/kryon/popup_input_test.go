@@ -166,6 +166,47 @@ func TestPopupButtonKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupAcceleratorKeyboardOwnership(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	r.QueueShortcut(KeyC)
+	r.BeginFrame()
+	parent := r.beginPopupInput(26000, NewRectangle(10, 10, 120, 100))
+	child := r.beginPopupInput(26001, NewRectangle(20, 20, 80, 60))
+	copy := Accelerator{Key: KeyC, Ctrl: 1, ID: 91}
+
+	r.endPopupInput(child)
+	if got := r.AcceleratorPressed(copy); got != 0 {
+		t.Fatalf("parent accelerator behind child = %d, want 0", got)
+	}
+	child = r.beginPopupInput(26001, NewRectangle(20, 20, 80, 60))
+	if got := r.DispatchAccelerators([]Accelerator{{Key: KeyX, Ctrl: 1, ID: 90}, copy}); got != 91 {
+		t.Fatalf("top popup accelerator = %d, want 91", got)
+	}
+	r.endPopupInput(child)
+	r.closePopupInput(26001)
+	if got := r.AcceleratorPressed(copy); got != 91 {
+		t.Fatalf("parent accelerator after child close = %d, want 91", got)
+	}
+	r.endPopupInput(parent)
+	if got := r.AcceleratorPressed(copy); got != 0 {
+		t.Fatalf("background accelerator behind parent = %d, want 0", got)
+	}
+	r.closePopupInput(26000)
+	if got := r.AcceleratorPressed(copy); got != 91 {
+		t.Fatalf("background accelerator after popup close = %d, want 91", got)
+	}
+	r.EndFrame()
+
+	r.QueueShortcut(KeyC)
+	r.BeginFrame()
+	r.BeginDisabled(true)
+	if got := r.AcceleratorPressed(copy); got != 0 {
+		t.Fatalf("disabled accelerator = %d, want 0", got)
+	}
+	r.EndDisabled()
+	r.EndFrame()
+}
+
 func TestPopupTabMissingOwner(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	for frame := 0; frame < 3; frame++ {

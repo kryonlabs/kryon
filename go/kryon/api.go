@@ -89,6 +89,12 @@ func CloseCombo()                      { active().CloseCombo() }
 func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
 func EndPopup()                        { active().EndPopup() }
 func ClosePopup()                      { active().ClosePopup() }
+func AcceleratorPressed(accelerator Accelerator) int32 {
+	return active().AcceleratorPressed(accelerator)
+}
+func DispatchAccelerators(accelerators []Accelerator, count ...int32) int32 {
+	return active().DispatchAccelerators(accelerators, count...)
+}
 func SetFocus(id int32) {
 	if runtime, ok := active().(focusController); ok {
 		runtime.SetFocus(id)

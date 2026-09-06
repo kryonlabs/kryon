@@ -173,6 +173,12 @@ and edits an eligible child. C covers both immediate and deferred tree routing;
 the immediate TextArea path now avoids renderer calls in headless tests.
 All shortcuts and input replay across popup dismissal are not established by
 these tests.
+
+Generic native accelerators now have matching C and Go APIs and top-popup
+ownership. Generated k2c/k2cpp/k2go coverage proves Ctrl+C dispatch inside the
+active popup, suppression of the same background chord, and restoration after
+the popup is explicitly closed. Widget-specific shortcut paths still require
+their own ownership coverage.
 Separate native Tab tests now cover ownership-filtered focus destinations,
 forward/reverse wrapping, duplicate registrations and traversal after explicit
 child/branch dismissal. Go tests exercise previous-frame order and real editor

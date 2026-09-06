@@ -202,15 +202,18 @@ int BeginPopup(PopupProps popup)
 {
     int tooltip = (popup.flags & PopupTooltip) != 0;
     int modal = (popup.flags & PopupModal) != 0;
-    int context = (popup.flags & PopupContext) != 0;
+    int is_context = (popup.flags & PopupContext) != 0;
     if(popup.flags & ~((unsigned int)(PopupTooltip|PopupModal|PopupContext))) abort();
-    if((tooltip && (modal || context)) || (modal && context)) abort();
+    if((tooltip && (modal || is_context)) || (modal && is_context)) abort();
     if(popup.id <= 0 || popup.bounds.width <= 0 || popup.bounds.height <= 0 ||
        (!tooltip && popup.open == NULL) ||
-       ((tooltip || context) &&
+       ((tooltip || is_context) &&
         (popup.trigger.width <= 0 || popup.trigger.height <= 0)))
         return 0;
-    if(context && !popup.disabled &&
+    UIPaintLayers *layers = ui_frame_paint_layers();
+    UIPopupInput *input_context = layers ? ui_paint_layers_input(layers) :
+                                          ui_popup_input_bound();
+    if(is_context && !popup.disabled &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
        CheckCollisionPointRec(ui_mouse_world(),popup.trigger) &&
        !UIInputCapturesClick(ui_mouse_world()))
@@ -220,16 +223,19 @@ int BeginPopup(PopupProps popup)
            !CheckCollisionPointRec(ui_mouse_world(),popup.trigger)) return 0;
     } else {
         if(popup.disabled) *popup.open = false;
-        if(!*popup.open) return 0;
+        if(!*popup.open) {
+            if(input_context) ui_popup_input_close(input_context,popup.id);
+            return 0;
+        }
     }
     if(!tooltip && !modal &&
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !UIReleaseConsumed() &&
        !CheckCollisionPointRec(ui_mouse_world(),popup.bounds)) {
         UIConsumeRelease();
         *popup.open = false;
+        if(input_context) ui_popup_input_close(input_context,popup.id);
         return 0;
     }
-    UIPaintLayers *layers = ui_frame_paint_layers();
     Rectangle input_bounds = popup.bounds;
     if(modal)
         input_bounds = (Rectangle){0,0,GetUIViewWidth(),GetUIViewHeight()};

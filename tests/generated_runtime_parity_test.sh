@@ -230,6 +230,14 @@ func drawComposedPopupDrag() {
 	})
 }
 
+func drawComposedPopupShortcut() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedPopupShortcutFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawLongText() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -665,6 +673,19 @@ func main() {
 	}
 	driver.QueueMouseButtonUp(kryon.MouseButtonLeft, 230, 40)
 	drawComposedPopupDrag()
+	driver.QueueKey(kryon.KeyLeftControl)
+	driver.QueueKey(kryon.KeyC)
+	drawComposedPopupShortcut()
+	if ComposedComboStateValue.PopupShortcutInside != 1 || ComposedComboStateValue.PopupShortcutBackground != 0 {
+		panic("generated popup shortcut did not route exclusively to its owner")
+	}
+	ComposedComboStateValue.PopupShortcutOpen = false
+	driver.QueueKey(kryon.KeyLeftControl)
+	driver.QueueKey(kryon.KeyC)
+	drawComposedPopupShortcut()
+	if ComposedComboStateValue.PopupShortcutInside != 1 || ComposedComboStateValue.PopupShortcutBackground != 1 {
+		panic("generated popup shortcut did not restore background routing")
+	}
 	// Native-only composition contract: preedit never mutates committed text.
 	driver.SetFocus(26100)
 	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
@@ -1030,6 +1051,7 @@ static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
 static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
 static void draw_composed_context(void) { draw_ui(composed_context_frame); }
 static void draw_composed_popup_drag(void) { draw_ui(composed_popup_drag_frame); }
+static void draw_composed_popup_shortcut(void) { draw_ui(composed_popup_shortcut_frame); }
 
 static void draw_long_text(void)
 {
@@ -1176,6 +1198,21 @@ int main(void)
         return 1;
     }
     InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectPump(); draw_composed_popup_drag();
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_C); InjectPump();
+    draw_composed_popup_shortcut();
+    if(popup_shortcut_inside != 1 || popup_shortcut_background != 0) {
+        fprintf(stderr,"generated popup shortcut did not route exclusively to its owner\n");
+        return 1;
+    }
+    popup_shortcut_open = 0;
+    InjectPump();
+    InjectKeyTap(KEY_C); InjectPump(); draw_composed_popup_shortcut();
+    if(popup_shortcut_inside != 1 || popup_shortcut_background != 1) {
+        fprintf(stderr,"generated popup shortcut did not restore background routing: inside=%d background=%d\n",
+                popup_shortcut_inside,popup_shortcut_background);
+        return 1;
+    }
+    InjectKey(KEY_C,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     SetUIFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
     draw_composition();

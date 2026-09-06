@@ -59,6 +59,7 @@ is_runtime_go_type(const char *type)
 {
     static const char *types[] = {
 		"Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
+		"Accelerator",
 		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
         "ButtonStyle", "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "UIThemeSettingsState", "ThemeSettingsProps",
@@ -951,6 +952,7 @@ props_field_at(const char *type, int index)
         {"ComboProps", {"Bounds", "PopupSize", "Preview", "ID", "Open",
                          "Flags", "Disabled"}},
         {"PopupProps", {"Bounds", "ID", "Open", "Disabled", "Trigger", "Flags"}},
+        {"Accelerator", {"Key", "Ctrl", "Shift", "Alt", "ID"}},
         {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
                             "Focused", "MaxCodepoints", "Font", "FocusID",
                             "Style", "Filter", "FilterUserData",
@@ -1929,7 +1931,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"PopupFlagsNone", "PopupFlagsNone"},
 					{"PopupTooltip", "PopupTooltip"},
 					{"PopupModal", "PopupModal"},
-					{"PopupContext", "PopupContext"},
+                    {"PopupContext", "PopupContext"},
+                    {"KEY_C", "KeyC"},
 					{"MenuCommand", "MenuCommand"},
 					{"MenuCheck", "MenuCheck"},
 					{"MenuRadio", "MenuRadio"},

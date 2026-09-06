@@ -48,7 +48,9 @@ popup must not submit children.
   collector and a private nested popup click-ownership registry. Scrollable
   widgets gate wheel input through popup ownership and the active content clip;
   drag values, sliders, splitters and table gestures retain their starting
-  popup owner across frames. Complete shortcut routing is not implemented.
+  popup owner across frames. C and Go accelerator dispatch is routed to the
+  active top popup branch; complete routing for every widget shortcut is not
+  implemented.
 - C retained nodes now snapshot input clips and disabled scopes. Those snapshots
   must also be respected when retained nodes are painted into a popup layer.
 
@@ -229,8 +231,18 @@ editors resolve their saved input owner and reject closed/stale owners before
 editing. Matching typing tests cover blocked parent and eligible child editors,
 with both immediate and deferred C variants. Immediate C TextArea skips paint
 when no graphics window exists, matching TextField's headless editing support.
-Complete shortcut coverage and input replay after dismissal still require
-dedicated integration and tests.
+Complete widget-specific shortcut coverage and replay for every dismissal
+ordering still require dedicated integration and tests.
+
+The canonical `AcceleratorPressed` / `DispatchAccelerators` surface now exists
+in native C and Go. It inherits disabled state and only accepts a chord in the
+top live popup branch. Generated k2c/k2cpp/k2go parity queues Ctrl+C with an
+open popup, verifies that only the popup command fires, closes the popup, and
+verifies that background routing resumes on the next declaration. C
+`BeginPopup` now retires an explicitly closed or outside-dismissed input owner
+before returning, rather than leaving keyboard capture until frame cleanup.
+This establishes generic accelerator ownership and explicit-close replay, not
+all widget-specific shortcuts or cross-window routing.
 
 Focus registrations now retain popup ownership separately from the lexical
 scope. C stores frame-local registrations in the host input registry and

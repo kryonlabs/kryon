@@ -88,7 +88,9 @@ focus order during traversal. Native tests cover forward/reverse wraparound,
 parent/background exclusion and traversal after explicit dismissal. Go also
 exercises actual editor Tab events. Native lifecycle tests cover automatic
 first-child focus acquisition and parent/background restoration. Complete
-keyboard routing remains unfinished.
+keyboard routing remains unfinished. Generic accelerator dispatch is isolated
+to the top live popup branch in C and Go, including immediate restoration when
+an explicitly closed popup is next declared.
 TextField/TextArea editing now also respects top-popup keyboard ownership in
 both runtimes. C's immediate keyboard-enabled check uses the active scope;
 retained editor routing uses its declaration snapshot after scopes close.

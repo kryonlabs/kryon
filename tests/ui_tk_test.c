@@ -1360,6 +1360,42 @@ test_popup_combo_keyboard_ownership(void)
 }
 
 static void
+test_popup_accelerator_keyboard_ownership(void)
+{
+    Accelerator copy = {KEY_C,1,0,0,91};
+    Accelerator commands[] = {{KEY_X,1,0,0,90}, {KEY_C,1,0,0,91}};
+    InjectReset(); InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_C); InjectPump();
+    BeginUIFrame(240,240,1);
+    UIPopupInput *context = ui_popup_input_create();
+    ui_popup_input_frame(context);
+    UIPopupInput *previous = ui_popup_input_bind(context);
+    UIPopupInputToken parent = ui_popup_input_begin(context,26000,(Rectangle){10,10,120,100});
+    UIPopupInputToken child = ui_popup_input_begin(context,26001,(Rectangle){20,20,80,60});
+
+    ui_popup_input_end(child);
+    check_int("parent accelerator blocked behind child",AcceleratorPressed(copy),0);
+    child = ui_popup_input_begin(context,26001,(Rectangle){20,20,80,60});
+    check_int("top popup accelerator dispatch",DispatchAccelerators(commands,2),91);
+    ui_popup_input_end(child);
+    ui_popup_input_close(context,26001);
+    check_int("parent accelerator restored after child close",AcceleratorPressed(copy),91);
+    ui_popup_input_end(parent);
+    check_int("background accelerator blocked behind parent",AcceleratorPressed(copy),0);
+    ui_popup_input_close(context,26000);
+    check_int("background accelerator restored after popup close",AcceleratorPressed(copy),91);
+    BeginDisabled(1);
+    check_int("disabled accelerator blocked",AcceleratorPressed(copy),0);
+    EndDisabled();
+
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    ui_popup_input_destroy(context);
+    EndUIFrame();
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectReset();
+}
+
+static void
 test_retained_popup_pointer_focus(void)
 {
     for(int blocked = 0; blocked < 2; blocked++) {
@@ -2181,6 +2217,7 @@ main(void)
     test_retained_popup_input_ownership();
     test_retained_popup_pointer_focus();
     test_popup_combo_keyboard_ownership();
+    test_popup_accelerator_keyboard_ownership();
     test_composed_combo_scope();
     test_composed_popup_scope();
     test_composed_tooltip_scope();

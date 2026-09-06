@@ -27,6 +27,25 @@ state {
     context_action: int = 0
     popup_drag_open: bool = true
     popup_drag_values: [1] float = {10.0f}
+    popup_shortcut_open: bool = true
+    popup_shortcut_inside: int = 0
+    popup_shortcut_background: int = 0
+}
+
+composed_popup_shortcut_frame :: () #ui {
+    Screen root: {
+        Popup shortcut_owner: {
+            bounds = {20,20,120,100}
+            id = 27070
+            open = &popup_shortcut_open
+            if AcceleratorPressed((Accelerator){KEY_C,1,0,0,77}) == 77 {
+                popup_shortcut_inside += 1
+            }
+        }
+        if AcceleratorPressed((Accelerator){KEY_C,1,0,0,78}) == 78 {
+            popup_shortcut_background += 1
+        }
+    }
 }
 
 composed_popup_drag_frame :: () #ui {
