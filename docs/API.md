@@ -2068,7 +2068,6 @@ int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D i
 ### Text Drawing Helpers
 
 ```c
-void DrawCenteredUIControlText(const char *text, int center_x, int center_y, int font, Color color);
 void DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Color color);
 void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
 ```

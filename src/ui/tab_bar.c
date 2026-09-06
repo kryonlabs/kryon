@@ -449,12 +449,17 @@ DrawUITabBar(TabBarProps bar)
                 DrawUITextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
-            } else if(ui_material_style())
-                DrawCenteredUIControlText(tab->label,
-                                          (int)(text_rect.x + text_rect.width / 2),
-                                          (int)(text_rect.y + text_rect.height / 2),
-                                          font, text_color);
-            else
+            } else if(ui_material_style()) {
+                Text((TextProps){
+                    .bounds = text_rect,
+                    .text = tab->label,
+                    .font = font,
+                    .color = text_color,
+                    .wrap = TextWrapNone,
+                    .align = TextAlignCenter,
+                    .vertical_align = TextAlignCenter
+                });
+            } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }
 

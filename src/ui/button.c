@@ -959,7 +959,16 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     DrawCircle(center_x, center_y, radius, fill);
     DrawCircleLines(center_x, center_y, radius, stroke);
     font = GetSmallFontSize();
-    DrawCenteredUIControlText("i", center_x, center_y, font, text);
+    Text((TextProps){
+        .bounds = {(float)(center_x - radius), (float)(center_y - radius),
+                   (float)diameter, (float)diameter},
+        .text = "i",
+        .font = font,
+        .color = text,
+        .wrap = TextWrapNone,
+        .align = TextAlignCenter,
+        .vertical_align = TextAlignCenter
+    });
 
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         UIConsumeRelease();

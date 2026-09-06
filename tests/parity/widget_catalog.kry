@@ -52,7 +52,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
             bounds = {ScaleUIPx(24), ScaleUIPx(86), ScaleUIPx(300), ScaleUIPx(220)}
             gap = ScaleUIPx(6)
             padding = ScaleUIPx(8)
-            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Column text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Column text", .color=GetThemeText(), .wrap=TextWrapNone})
             Row action_row: {
                 bounds = {0, 0, ScaleUIPx(280), ScaleUIPx(40)}
                 gap = ScaleUIPx(6)

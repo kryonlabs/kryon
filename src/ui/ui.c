@@ -1730,17 +1730,6 @@ GetUIControlTextY(const char *text, int box_y, int box_h, int font)
     return TextBaselineY("Hg", box_y, box_h, font);
 }
 
-void
-DrawCenteredUIControlText(const char *text, int center_x, int center_y,
-                          int font, Color color)
-{
-    int text_w = TextWidth(text, font);
-    int h = ui_control_height_for_font(font);
-    int y = GetUIControlTextY(text, center_y - h / 2, h, font);
-
-    DrawUIText(text, center_x - text_w / 2, y, font, color);
-}
-
 static TextInputStyle
 ui_resolve_text_input_style(TextInputStyle style)
 {

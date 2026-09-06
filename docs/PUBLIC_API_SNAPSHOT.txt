@@ -1446,7 +1446,6 @@ include/ui_dpi.h function SetUIDeviceDensity
 include/ui_dpi.h function UpdateUIDPI
 include/ui_dpi.h macro UI_DPI_BASE_HEIGHT
 include/ui_dpi.h macro UI_DPI_BASE_WIDTH
-include/ui_draw.h function DrawCenteredUIControlText
 include/ui_draw.h function DrawFittedTextInRect
 include/ui_draw.h function DrawLeftUIControlTextInRect
 include/ui_draw.h function FitFontSize
