@@ -45,9 +45,10 @@ popup must not submit children.
   render target. It is not sufficient for nested paint-target restoration.
 - Go now collects deferred `FrameOp` records in runtime-owned nested paint
   layers. Existing option-list dropdowns and the public combo scope use that
-  collector and a private nested popup click-ownership registry. Full
-  keyboard/active-drag routing is not implemented. Go's scrollable widgets
-  now gate wheel input through popup ownership and the active content clip.
+  collector and a private nested popup click-ownership registry. Scrollable
+  widgets gate wheel input through popup ownership and the active content clip;
+  drag values, sliders, splitters and table gestures retain their starting
+  popup owner across frames. Complete shortcut routing is not implemented.
 - C retained nodes now snapshot input clips and disabled scopes. Those snapshots
   must also be respected when retained nodes are painted into a popup layer.
 
@@ -182,8 +183,8 @@ Their child scroll scopes must balance before exit restores the owner's clips.
 Ordinary button regressions verify interaction outside the owner's viewport,
 restored background clipping and rejection by a modal capture. Real pixels
 verify mixed popup content escaping a 1x1 scrolling owner; invalid-scope tests
-reject an unclosed child scroll. Full focus ownership, active-drag routing
-and shader isolation remain work.
+reject an unclosed child scroll. Complete shortcut routing and shader isolation
+remain work.
 
 The private C `ui_popup_input.c` registry now tracks persistent popup bounds,
 parentage and branch ordering in explicit contexts. The shared input-capture
@@ -212,7 +213,8 @@ pass and verifies child focus versus modal blocking after both scopes close.
 It also checks deferred click events. The test initially reproduced a click
 leaking through modal capture; hit testing and hover/press state now consult the
 same full capture predicate as pointer-focus registration. The public combo
-scope uses this ownership registry. Full active-drag routing remains unfinished.
+scope uses this ownership registry. Persistent active-gesture ownership is
+covered below.
 
 C and Go now select the top live popup branch for keyboard eligibility without
 testing pointer coordinates. Closed combos consult this check before accepting
@@ -361,10 +363,13 @@ to scroll. Generated native C/Go regression coverage opens a combo over an
 earlier scroll scope and checks that the latter's offset remains unchanged on
 wheel input. Go drag-and-drop start/accept paths now also respect popup and clip
 ownership; tests verify that rejected background targets leave the release and
-copied payload available to the popup target. Scalar-slider/resize active-drag
-ownership remains unfinished. Composed dismissal covers explicit close, Escape,
-outside pointer release and owner removal; popup focus restoration covers both
-explicit dismissal and owner removal.
+copied payload available to the popup target. Drag values, sliders, splitters
+and table column resizers now store persistent popup owner identity in C and Go.
+Native tests verify out-of-bounds continuation for the owning branch, preemption
+of a background drag by a new popup, and cancellation on owner dismissal before
+a background control with matching identity can mutate. Composed dismissal
+covers explicit close, Escape, outside pointer release and owner removal; popup
+focus restoration covers both explicit dismissal and owner removal.
 
 ## Acceptance evidence
 
@@ -376,6 +381,7 @@ explicit dismissal and owner removal.
 | Nested popup | One level closes without corrupting the parent's capture, layout or destination |
 | Scrolling owner | Popup escapes the owner's clip while ordinary owner content remains clipped |
 | Pointer ownership | Background controls declared both before and after the owner cannot steal popup input |
+| Active gestures | Generated C/Go popup drag continues outside its bounds and cancels before same-ID background reuse; k2cpp compiles the same fixture |
 | Editing lifecycle | Focus, typing, disabling, re-enabling and no replay of discarded input |
 | Dismissal | Escape, outside press, selection-close, missing owner and destroyed window |
 | Presentation choices | Alignment, size policies, preview/arrow suppression and preview-fit width |

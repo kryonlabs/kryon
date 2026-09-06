@@ -222,6 +222,14 @@ func drawComposedContext() {
 	})
 }
 
+func drawComposedPopupDrag() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedPopupDragFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawLongText() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -642,6 +650,21 @@ func main() {
 	if ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextAction != 1 {
 		panic("generated context popup child did not activate and close")
 	}
+	driver.QueueMouseButtonDown(kryon.MouseButtonLeft, 40, 40)
+	drawComposedPopupDrag()
+	driver.QueueMouseMove(200, 40)
+	drawComposedPopupDrag()
+	if ComposedComboStateValue.PopupDragValues[0] != 170 {
+		panic("generated popup drag did not retain ownership outside its bounds")
+	}
+	ComposedComboStateValue.PopupDragOpen = false
+	driver.QueueMouseMove(230, 40)
+	drawComposedPopupDrag()
+	if ComposedComboStateValue.PopupDragValues[0] != 170 {
+		panic("generated dismissed popup drag leaked into background widget")
+	}
+	driver.QueueMouseButtonUp(kryon.MouseButtonLeft, 230, 40)
+	drawComposedPopupDrag()
 	// Native-only composition contract: preedit never mutates committed text.
 	driver.SetFocus(26100)
 	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
@@ -1006,6 +1029,7 @@ static void draw_composed_popup(void) { draw_ui(composed_popup_frame); }
 static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
 static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
 static void draw_composed_context(void) { draw_ui(composed_context_frame); }
+static void draw_composed_popup_drag(void) { draw_ui(composed_popup_drag_frame); }
 
 static void draw_long_text(void)
 {
@@ -1138,6 +1162,20 @@ int main(void)
     if(context_open || context_action != 1) {
         fprintf(stderr,"generated context popup child did not activate and close\n"); return 1;
     }
+    InjectMousePosition(40,40); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump(); draw_composed_popup_drag();
+    InjectMousePosition(200,40); InjectPump(); draw_composed_popup_drag();
+    if((int)popup_drag_values[0] != 170) {
+        fprintf(stderr,"generated popup drag did not retain ownership outside its bounds\n"); return 1;
+    }
+    popup_drag_open = 0;
+    InjectMousePosition(230,40); InjectPump(); draw_composed_popup_drag();
+    if((int)popup_drag_values[0] != 170) {
+        fprintf(stderr,"generated dismissed popup drag leaked into background widget: %.1f\n",
+                popup_drag_values[0]);
+        return 1;
+    }
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectPump(); draw_composed_popup_drag();
     SetUIFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
     draw_composition();

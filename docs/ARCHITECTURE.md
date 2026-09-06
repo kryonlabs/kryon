@@ -76,7 +76,9 @@ one popup implementation rather than parallel widget trees.
 Modal outside releases remain non-dismissing. The input registry saves focus
 when a top popup first opens, focuses its first eligible child, and restores the
 parent or background after nested close, root close, or missing-owner retirement.
-Some active-drag routing remains unfinished.
+Long-lived drag values, sliders, splitters and table resizers store the same
+persistent owner identity, allowing out-of-bounds continuation only while that
+branch remains topmost and cancelling on dismissal or ownership changes.
 C and Go now have a pointer-independent top-popup keyboard predicate. Closed
 combos use it before keyboard opening, preventing a focused parent/background
 combo from opening behind a child popup. Focus registrations now retain their
@@ -252,9 +254,9 @@ or payload. Generated C/Go tests cover clipped sources/targets and copied data
 lifetime across press and release.
 The public arbitrary-content combo scope integrates these paint and input
 registries in C and Go. Generated C/Go execution and k2cpp syntax coverage use
-the same clean calls. Popup focus acquisition/restoration is covered in both
-native runtimes; device-level integration and some active-drag routing remain
-unfinished.
+the same clean calls. Popup focus acquisition/restoration and active scalar,
+slider, splitter and table-resize ownership are covered in both native runtimes;
+device-level integration remains unfinished.
 
 ## Backends
 

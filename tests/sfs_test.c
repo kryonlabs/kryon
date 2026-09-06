@@ -169,6 +169,7 @@ test_widgets(void)
                            0);
     EndUIWidget(&widget);
     EndUIInspectFrame();
+    EndUIFrame();
 
     n = KrySfsList("/widgets", entries, 16);
     CHECK(n >= 1);
@@ -203,6 +204,7 @@ test_kryt_helpers(void)
                            0);
     EndUIWidget(&widget);
     EndUIInspectFrame();
+    EndUIFrame();
 
     CHECK(KryTTap("sfs-test:save"));
     InjectPump();

@@ -56,6 +56,15 @@ static int above(UIPopupPanel *a, UIPopupPanel *b)
     return a->order > b->order;
 }
 
+static UIPopupPanel *top_panel(UIPopupInput *context)
+{
+    UIPopupPanel *top = NULL;
+    if(!context) return NULL;
+    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next)
+        if(panel->alive && (!top || above(panel,top))) top = panel;
+    return top;
+}
+
 UIPopupInput *ui_popup_input_create(void)
 {
     UIPopupInput *context = calloc(1,sizeof(*context));
@@ -257,6 +266,37 @@ int ui_popup_input_keyboard_captures(void)
 int ui_popup_input_keyboard_was_captured(void)
 {
     return bound_context && bound_context->keyboard_captured;
+}
+
+UIPopupInputOwner ui_popup_input_owner(void)
+{
+    UIPopupInputOwner owner = {bound_context,0,0};
+    if(bound_context && bound_context->active) {
+        owner.owner = bound_context->active->owner;
+        owner.has_owner = 1;
+    }
+    return owner;
+}
+
+int ui_popup_input_owner_captures(UIPopupInputOwner owner)
+{
+    UIPopupInput *context = contexts;
+    UIPopupPanel *current;
+    UIPopupPanel *top;
+
+    if(owner.context == NULL)
+        return bound_context != NULL;
+    while(context && context != owner.context) context = context->next;
+    if(!context || bound_context != context) return 1;
+    current = context->active;
+    if(owner.has_owner) {
+        if(!current || current->owner != owner.owner || !current->alive)
+            return 1;
+    } else if(current) {
+        return 1;
+    }
+    top = top_panel(context);
+    return top && (!owner.has_owner || top != current);
 }
 
 void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible)
