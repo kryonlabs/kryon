@@ -15,6 +15,7 @@ typedef struct {
     const UIReorderItem *items;
     int item_count;
     int handle_width;
+    int handle_height;
     int drag_threshold;
     int *scroll_offset;
     int max_scroll;

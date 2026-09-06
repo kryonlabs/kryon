@@ -72,6 +72,56 @@ test_semantic_font_sizes_follow_ui_scale(void)
 }
 
 static void
+test_reorder_uses_item_center_and_header_handle(void)
+{
+    UIReorderItem items[2] = {
+        {1, {10, 100, 200, 100}, 0},
+        {2, {10, 210, 200, 100}, 0}
+    };
+    UIReorderList list = {
+        .id = 811, .bounds = {0, 0, 300, 500},
+        .items = items, .item_count = 2,
+        .handle_width = 200, .handle_height = 40,
+        .drag_threshold = 5
+    };
+    UIReorderListResult result;
+
+    InjectReset();
+    InjectMousePosition(50, 170);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder ignores item body below handle", result.active, 0);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+
+    InjectReset();
+    InjectMousePosition(50, 120);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder captures header", result.active, 1);
+
+    InjectMousePosition(50, 240);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder drag active", result.dragging, 1);
+    check_int("reorder target follows lifted center", result.target_index, 1);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+}
+
+static void
 test_menu_bar_switches_while_popup_captures_input(void)
 {
     static const MenuItem file_items[] = {
@@ -301,5 +351,6 @@ main(void)
         PopUIInspectTransform(token);
     }
 
+    test_reorder_uses_item_center_and_header_handle();
     return 0;
 }
