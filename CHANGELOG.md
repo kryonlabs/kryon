@@ -1,4 +1,17 @@
 # Changelog
+## v0.1.60 - 2026-09-06
+
+### Changed
+
+- Keep retained text ordering invariant
+- Preserve immediate Text rendering in retained frames
+- Add canonical MingCute warning icon
+- Release: bump version to v0.1.60
+- Share one canonical text painter
+- Use a clean Material return affordance
+- Preserve canonical Text paint order on native screens
+- Make Text the canonical centered label API
+
 ## v0.1.59 - 2026-09-06
 
 ### Changed
