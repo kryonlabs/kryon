@@ -75,10 +75,11 @@ is_runtime_go_type(const char *type)
 		"DragIntRange2Props", "SliderFloatProps", "SliderIntProps",
 		"SliderAngleProps",
 		"InputFloatProps", "InputIntProps", "InputDoubleProps",
-		"InvisibleButtonProps", "SeparatorTextProps", "DragDropSourceProps",
+		"InvisibleButtonProps", "TextProps", "SeparatorTextProps", "DragDropSourceProps",
 		"DragDropTargetProps", "MultiSelectListProps", "ArrowButtonProps",
-		"ColorEditProps", "ColorButtonProps", "TooltipProps",
-		"SpinboxProps", "ComboboxProps", "LabelFrameProps", "ListBoxProps",
+		"ColorEditProps", "ColorButtonProps",
+		"SpinboxProps", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
+		"LabelFrameProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
         "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
         "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
@@ -922,6 +923,7 @@ props_field_at(const char *type, int index)
 		{"InputDoubleProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
 		                        "Step", "StepFast", "Format", "Disabled"}},
 		{"InvisibleButtonProps", {"Bounds", "ID", "Disabled"}},
+		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled"}},
 		{"SeparatorTextProps", {"Bounds", "Label", "Font", "Disabled"}},
 		{"DragDropSourceProps", {"Bounds", "ID", "Type", "Data", "DataSize",
 		                           "Disabled"}},
@@ -934,7 +936,6 @@ props_field_at(const char *type, int index)
 		{"ColorEditProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
 		                     "Disabled"}},
 		{"ColorButtonProps", {"Bounds", "ID", "Label", "Color", "Disabled"}},
-		{"TooltipProps", {"Trigger", "Text", "Font", "MaxWidth", "Disabled"}},
 		{"MenuItem", {"Kind", "Label", "Accelerator", "ID", "Disabled",
 		                 "Checked", "Submenu", "SubmenuCount"}},
 		{"Menu", {"Bounds", "Label", "Items", "ItemCount"}},
@@ -945,6 +946,9 @@ props_field_at(const char *type, int index)
                           "Disabled", "ValueText", "Wrap"}},
         {"ComboboxProps", {"Bounds", "ID", "Options", "OptionCount",
                            "SelectedIndex", "Disabled"}},
+        {"ComboProps", {"Bounds", "PopupSize", "Preview", "ID", "Open",
+                         "Flags", "Disabled"}},
+        {"PopupProps", {"Bounds", "ID", "Open", "Disabled", "Trigger", "Flags"}},
         {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
                             "Focused", "MaxCodepoints", "Font", "FocusID",
                             "Style", "Filter", "FilterUserData",
@@ -1465,6 +1469,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(part));
                         tx_expr(m, rect, value, sizeof(value));
+                    } else if(strcmp(field, "Color") == 0 &&
+                              *kir_skip_ws(part) == '{') {
+                        char color[K2GO_TEXT_MAX];
+
+                        snprintf(color, sizeof(color), "(Color)%s", kir_skip_ws(part));
+                        tx_expr(m, color, value, sizeof(value));
                     } else {
                         tx_expr(m, part, value, sizeof(value));
                     }
@@ -1482,6 +1492,12 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                         char rect[K2GO_TEXT_MAX];
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));
                         tx_expr(m, rect, value, sizeof(value));
+                    } else if(strcmp(field, "Color") == 0 &&
+                              *kir_skip_ws(eq + 1) == '{') {
+                        char color[K2GO_TEXT_MAX];
+
+                        snprintf(color, sizeof(color), "(Color)%s", kir_skip_ws(eq + 1));
+                        tx_expr(m, color, value, sizeof(value));
                     } else {
                         tx_expr(m, kir_skip_ws(eq + 1), value, sizeof(value));
                     }
@@ -1889,11 +1905,28 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"Text24", "Text24"},
                     {"Text32", "Text32"},
                     {"Text48", "Text48"},
+					{"TextWrapAuto", "TextWrapAuto"},
+					{"TextWrapNone", "TextWrapNone"},
+					{"TextAlignStart", "TextAlignStart"},
+					{"TextAlignCenter", "TextAlignCenter"},
+					{"TextAlignEnd", "TextAlignEnd"},
                     {"ButtonStylePrimary", "ButtonStylePrimary"},
                     {"ButtonStyleSecondary", "ButtonStyleSecondary"},
                     {"ButtonStyleDanger", "ButtonStyleDanger"},
                     {"ButtonStyleTab", "ButtonStyleTab"},
 					{"ButtonStyleTabSelected", "ButtonStyleTabSelected"},
+					{"ComboFlagsNone", "ComboFlagsNone"},
+					{"ComboPopupAlignLeft", "ComboPopupAlignLeft"},
+					{"ComboHeightSmall", "ComboHeightSmall"},
+					{"ComboHeightRegular", "ComboHeightRegular"},
+					{"ComboHeightLarge", "ComboHeightLarge"},
+					{"ComboHeightLargest", "ComboHeightLargest"},
+					{"ComboNoArrowButton", "ComboNoArrowButton"},
+					{"ComboNoPreview", "ComboNoPreview"},
+					{"ComboWidthFitPreview", "ComboWidthFitPreview"},
+					{"PopupFlagsNone", "PopupFlagsNone"},
+					{"PopupTooltip", "PopupTooltip"},
+					{"PopupModal", "PopupModal"},
 					{"MenuCommand", "MenuCommand"},
 					{"MenuCheck", "MenuCheck"},
 					{"MenuRadio", "MenuRadio"},

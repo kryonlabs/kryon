@@ -36,7 +36,7 @@ state {
 }
 
 Counter :: (app: App*) {
-    Text("Count")
+    Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone})
     if Button("Increment") {
         app->click_count += 1
     }
@@ -64,9 +64,8 @@ grep -Fq 'assert condition (42) == 42 known 1 value 1 message "fixture #run asse
 grep -Fq 'assert condition (1) known 1 value 1 message "fixture assertion should pass"' "$kir"
 grep -Fq 'state click_count type int init 0' "$kir"
 grep -Fq 'function Counter args app: App* return void' "$kir"
-grep -Fq 'stmt widget widget Text args "Count" text Text("Count")' "$kir"
-grep -Fq 'expr call text Text("Count") name Text op' "$kir"
-grep -Fq 'expr string text "Count" name  op' "$kir"
+grep -Fq 'stmt widget widget Text args (TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone} text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone})' "$kir"
+grep -Fq 'expr call text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone}) name Text op' "$kir"
 grep -Fq 'stmt if widget  args  text if Button("Increment") {' "$kir"
 grep -Fq 'expr call text Button("Increment") name Button op' "$kir"
 grep -Fq 'stmt assign widget  args  text app->click_count += 1' "$kir"

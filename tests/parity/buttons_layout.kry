@@ -39,7 +39,7 @@ buttons_frame :: () #ui {
             gap = 6
             padding = 6
             key = Key("layout-column")
-            Text("Actions", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Actions", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Row layout_row: {
                 bounds = {0,0,200,36}
                 gap = 8

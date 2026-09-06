@@ -11,15 +11,15 @@ than copying overload names: Kryon's counted value arrays cover the ImGui
 not proof of every overload, flag, interaction or rendering detail. Full-goal
 completion requires those semantics to be checked separately. In particular,
 the [composed popup checklist](COMPOSED_POPUP_IMPLEMENTATION.md) records the
-remaining combo scope, presentation choices and required rendering evidence.
+implemented combo scope and its remaining lifecycle/backend gaps.
 
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
-| Text and value helpers | `Text`, `TextColored`, `TextDisabled`, `TextWrapped`, `LabelText`, `BulletText`, `SeparatorText`, `Value*` | covered |
+| Text and value helpers | `Text(TextProps)`, `LabelText`, `BulletText`, `SeparatorText`, `Value*` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation |
 | Buttons and boolean choices | `Button`, `SmallButton`, `InvisibleButton`, `ArrowButton`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | covered |
 | Progress and links | `Progress`, `Href` | covered; `Href` represents both clickable text and open-URL links |
 | Images | `Picture`, `ImageWithBg`, `ImageButton` | covered |
-| Combo boxes | `Combobox`, `Dropdown`, `Selectable` | option-list helper implemented, including closure on disable or owner removal; arbitrary child composition is still missing |
+| Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
 | Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values |
 | Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | covered, including counted N-component values |
 | Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
@@ -30,7 +30,7 @@ remaining combo scope, presentation choices and required rendering evidence.
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `PlotLines`, `PlotHistogram` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
-| Tooltips and popups | `Tooltip`, `PopupMenu`, `ContextMenu`, modal/dialog widgets | covered through bounded native models |
+| Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip` and `PopupModal` | arbitrary popup, hover-tooltip and modal contents are native through one scope; a context-popup begin scope remains open |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
@@ -52,8 +52,9 @@ storage. Native tests select option 130, beyond the former 128-option cap.
 The C rendering test observes the real text renderer receiving a full owned
 512-byte overlay label after its caller buffer has been overwritten; Go checks
 the corresponding deferred text record. Visible-row painting avoids drawing
-every option in a large list. These changes do not resolve process-global C
-ownership or arbitrary popup composition.
+every option in a large list. Process-global state in the option-list helper
+still needs consolidation; arbitrary popup composition uses the separate public
+combo scope.
 
 Open native C/Go dropdowns support Up/Down, Home/End and Enter, keeping the
 highlight separate from committed selection. Native tests navigate a 131-option
@@ -91,6 +92,121 @@ than the window, including capture bounds and row selection. Generated native
 parity selects a popup row shifted left from a right-edge owner. These checks
 do not cover multi-monitor work areas or arbitrary popup placement flags.
 
+For composed-popup painting, the C framebuffer regression verifies translucent
+immediate and retained capture and compares premultiplied composition against
+direct source-over drawing. This manually configured backend test establishes
+the required alpha pipeline. Captured retained nodes now preserve declaration-time
+blend state and restore the caller's active and pending custom blend settings
+after painting, verified by the framebuffer test. The public combo scope uses
+the C paint-layer context, which owns and
+composites textures with scope-level drawing-state restoration. Real pixel tests
+cover mixed translucent/retained content, nested ordering, hidden parents and
+missing owners over an existing target. Native `UIWindow` now owns layer frame,
+composition and destruction. Main UI frames now own a separate context with
+automatic frame composition and pre-graphics-shutdown cleanup.
+Additional framebuffer checks interleave independent contexts with identical
+owner IDs, resize one, destroy the other while a destination is active, and
+verify the real X11 UIWindow presenter's owned-layer pixels. These prove paint
+resource isolation. The UIWindow presenter regression additionally exercises
+automatic context management across consecutive frames, a missing owner and
+closing an active frame. It does not prove isolation of the still-global C
+widget/input state or Win32 runtime behavior.
+The main-host framebuffer regression also checks a missing owner, interleaved
+auxiliary presentation and graphics-context close/reopen. Auxiliary texture
+readback no longer changes the main frame's active destination.
+C paint layers now isolate the retained layout path. Headless node/position
+checks and real pixels verify a popup's independent Column origin and that the
+surrounding Row resumes at its next slot. Unclosed child layouts are rejected.
+The public combo scope uses this isolation so its child layouts do not consume
+the surrounding layout cursor.
+C layer disabled scopes now inherit the parent's state without allowing child
+scope endings to unwind the parent. Headless nested-scope tests and the real
+layer test cover restoration, with invalid-scope checks for an unclosed child.
+C layers also isolate input clips and scroll depth from the owner. Ordinary
+button tests verify escaped clipping without bypassing modal capture, and real
+pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background
+and nested-popup input ownership now have a private C registry consulted by the
+shared hit-test path. Ordinary button tests cover nested ownership, background
+controls, dismissal, missing owners, context isolation and branch reordering.
+Paint hosts now own and advance these registries automatically. The graphical
+test checks capture before redeclaration, auxiliary-window isolation, parent
+binding restoration and missing-owner retirement. Retained hit testing and
+button hover/press state now use declaration-time popup ownership. Tests cover
+child precedence over later parent/background nodes, dismissal restoring the
+parent then background, pending-tree isolation and stale/destroyed registries.
+Deferred pointer-focus registration also uses those snapshots; a test isolates
+the deferred pass from immediate button focus and verifies modal blocking.
+The same regression checks emitted click events: a blocked popup child emits
+none, while an eligible child emits one. Deferred hit testing and hover/press
+state share the complete capture predicate with focus registration.
+Public composed-scope integration is covered; automatic focus restoration and
+some active-drag routing remain unfinished.
+The same composed `Popup` scope now supports `PopupTooltip`: hover over an
+explicit trigger submits arbitrary native child widgets into a non-input-capturing
+overlay layer without an external `open` value. Matching C and Go unit tests
+verify nested layout/child painting, disappearance outside the trigger and no
+popup-input ownership. The generated C/Go composed fixture also verifies hover
+visibility and that an underlying button still receives its click. The former
+text-only `Tooltip` helper and `TooltipProps` surface were removed after all
+maintained callers migrated, leaving one tooltip implementation.
+`PopupModal` extends that same scope rather than adding a modal-specific child
+API. It draws a full-view backdrop, keeps outside pointer input from reaching
+background controls, preserves arbitrary nested children, and closes on Escape
+or explicit caller action rather than an outside release. Matching native and
+generated C/Go tests cover these semantics.
+Matching C and Go tests now cover keyboard opening of a combo inside the top
+popup versus a blocked parent, with popup bounds away from the combo to prove
+the check is independent of pointer position. Child/branch dismissal restores
+parent/background keyboard eligibility. This is not Tab trapping or general
+button/editor keyboard isolation.
+TextField and TextArea now gate editing by top-popup keyboard ownership in C
+and Go. Native tests verify that typing leaves a focused parent editor unchanged
+and edits an eligible child. C covers both immediate and deferred tree routing;
+the immediate TextArea path now avoids renderer calls in headless tests.
+Tab trapping, focus restoration, all shortcuts and input replay across popup
+dismissal are not established by these tests.
+Separate native Tab tests now cover ownership-filtered focus destinations,
+forward/reverse wrapping, duplicate registrations and traversal after explicit
+child/branch dismissal. Go tests exercise previous-frame order and real editor
+Tab events. C finalizes focus while the host registry is still bound. Automatic
+popup focus acquisition/restoration and full keyboard routing remain work.
+Ordinary Go Button now supports focus registration, pointer focus, Enter/Space
+activation and Tab traversal. C keyboard activation consults popup ownership for
+both immediate returns and deferred click events. Matching native popup tests
+cover blocked parent versus eligible child activation. Generated C/Go checks
+extend `buttons_layout.kry` coverage with Enter/Space, disabled activation
+rejection and Tab skipping the disabled button; these additional assertions are
+native-only and do not claim JavaScript keyboard coverage.
+Native missing-owner tests additionally omit the child and then the entire
+branch across frames. C now retires missing input ownership before filtering
+focus, matching Go's frame-end behavior; Tab reaches the surviving parent or
+background in the same frame. This is traversal, not automatic focus restoration
+without a navigation event.
+Text replay tests now span dismissal: focused parent TextField/TextArea controls
+reject captured text, remain unchanged on the next frame without input, and
+accept fresh text later. C covers both injected and platform-queued characters,
+same-frame dismissal, and queued Backspace/Enter for TextField. Popup-captured
+leftovers now expire at frame end. Go's existing frame cleanup passes the matching
+text test. IME composition and device-level Android delivery remain unverified.
+C retained IME now has separate regressions: blocked commits do not replay,
+read-only TextField/TextArea reject commits, and TextField preedit cancels on
+focus loss, a read-only transition or popup capture without revival. This does
+not establish immediate C editor composition, native Go composition events or
+device-level IME delivery.
+Native Go now implements runtime-local composition events and per-editor
+preedit for TextField/TextArea. Tests cover queue isolation/limits, preedit
+persistence without buffer mutation, UTF-8 commit, cancellation, editor removal,
+focus loss, disabling and popup dismissal. `composition.kry` is executed through
+generated C and Go to verify preedit/commit/cancel behavior; it is not executed
+by the JavaScript runner. OS-window Go IME delivery and detailed preedit
+cursor/selection rendering remain unfinished.
+Read-only TextField/TextArea behavior is now covered by the native generated
+composition fixture: selection/copy remains usable while text, cut/paste,
+deletion and IME commits cannot mutate buffers. C retained mutation paths now
+enforce the property; Go text props expose ReadOnly and retain focus styling
+while suppressing the insertion caret. Go tests cover preedit cancellation,
+buffer preservation, rejected-input expiry and fresh editing after re-enabling.
+
 `tests/parity/drag_drop.kry` is executed through generated C and Go. A clipped
 source cannot activate, and a clipped target cannot consume the release before
 an eligible target. Both runners mutate the source bytes after pressing and
@@ -122,15 +238,14 @@ parent/child, including a leaf and a disabled header that navigation must skip.
 The native fixture also selects a combo popup row outside the owner's scroll
 viewport while a previously drawn button occupies the same bounds. Go pixel
 coverage verifies that the deferred popup paints above later content, without
-inheriting the owner's scroll clip. This does not yet provide arbitrary combo
-children. Native generated dismissal checks cover Escape and outside clicks,
+inheriting the owner's scroll clip. The separate composed-combo fixture covers
+arbitrary native children. Native generated dismissal checks cover Escape and outside clicks,
 unchanged selection, and restoration of underlying button interaction. Go also
 tests closing when the option list becomes empty.
 Generated C/Go tests also check that an earlier background scroll scope does
 not change its offset on wheel input over an open combo popup. Native Go unit
 tests cover the same ownership rule for scroll scopes, lists, trees, source
 views and tables, including disabled and clipped content.
-Arbitrary combo composition remains a separate gap as listed above.
 
 Generated native custom-cell tests place a button and checkbox in adjacent
 cells, verify independent state and no table-selection interception, and reject

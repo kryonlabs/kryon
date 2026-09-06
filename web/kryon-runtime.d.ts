@@ -221,7 +221,6 @@ export function TabBar(...args: unknown[]): unknown;
 export function Text(...args: unknown[]): unknown;
 export function TextArea(...args: unknown[]): unknown;
 export function TextField(...args: unknown[]): unknown;
-export function TextInRect(...args: unknown[]): unknown;
 export function TextLines(...args: unknown[]): unknown;
 export function TitleBar(...args: unknown[]): unknown;
 export function Toggle(...args: unknown[]): unknown;

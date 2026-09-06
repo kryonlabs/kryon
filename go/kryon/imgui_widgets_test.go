@@ -404,26 +404,26 @@ func TestListBoxScope(t *testing.T) {
 	r.EndFrame()
 }
 
-func TestNativeTextHelpers(t *testing.T) {
+func TestCanonicalTextProperties(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	color := Color{R: 20, G: 40, B: 60, A: 255}
 	r.BeginFrame()
-	r.TextColored("colored", 10, 10, Text16, color)
-	r.TextDisabled("disabled", 10, 30, Text16)
-	r.TextWrapped("one two three four", NewRectangle(10, 50, 48, 60), Text16, color)
+	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "colored", Font: Text16, Color: color, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 30, 0, 0), Text: "disabled", Font: Text16, Wrap: TextWrapNone, Disabled: true})
+	r.Text(TextProps{Bounds: NewRectangle(10, 50, 48, 60), Text: "one two three four", Font: Text16, Color: color})
 	r.LabelText("Status", "Ready", NewRectangle(10, 120, 160, 20), Text16, color)
 	r.BulletText("item", NewRectangle(10, 150, 120, 20), Text16, color)
 	r.EndFrame()
 
 	ops := r.FrameOps()
 	if len(ops) < 8 {
-		t.Fatalf("text helper ops=%d, want at least 8", len(ops))
+		t.Fatalf("text ops=%d, want at least 8", len(ops))
 	}
 	if ops[0].Text != "colored" || ops[0].Color != color {
-		t.Fatalf("TextColored op=%+v", ops[0])
+		t.Fatalf("colored Text op=%+v", ops[0])
 	}
 	if ops[1].Text != "disabled" || ops[1].Color.A >= 255 {
-		t.Fatalf("TextDisabled op=%+v", ops[1])
+		t.Fatalf("disabled Text op=%+v", ops[1])
 	}
 	wrapped := 0
 	for _, op := range ops {
@@ -432,7 +432,12 @@ func TestNativeTextHelpers(t *testing.T) {
 		}
 	}
 	if wrapped < 2 {
-		t.Fatalf("TextWrapped emitted %d wrapped lines", wrapped)
+		t.Fatalf("bounded Text emitted %d wrapped lines", wrapped)
+	}
+	for _, op := range ops[2 : 2+wrapped] {
+		if !op.HasClip || op.Clip != NewRectangle(10, 50, 48, 60) {
+			t.Fatalf("bounded Text clip=%+v", op)
+		}
 	}
 }
 
@@ -497,28 +502,6 @@ func TestNativePopupAndContextMenus(t *testing.T) {
 	r.BeginFrame()
 	if got := r.ContextMenu(props); got != 11 || open != 0 {
 		t.Fatalf("ContextMenu activation=%d open=%d, want 11/0", got, open)
-	}
-	r.EndFrame()
-}
-
-func TestNativeTooltip(t *testing.T) {
-	r := New(AppConfig{Width: 240, Height: 160}).(*runtime)
-	props := TooltipProps{Trigger: NewRectangle(20, 20, 80, 30), Text: "A tooltip with wrapped help text", Font: Text14, MaxWidth: 90}
-	r.QueueMouseMove(40, 30)
-	r.BeginFrame()
-	if !r.Tooltip(props) {
-		t.Fatal("Tooltip should be visible over its trigger")
-	}
-	ops := r.FrameOps()
-	if len(ops) < 4 || ops[0].Kind != FrameOpRect || ops[1].Kind != FrameOpRect {
-		t.Fatalf("Tooltip ops=%+v", ops)
-	}
-	r.EndFrame()
-
-	r.QueueMouseMove(180, 120)
-	r.BeginFrame()
-	if r.Tooltip(props) || len(r.FrameOps()) != 0 {
-		t.Fatal("Tooltip rendered outside its trigger")
 	}
 	r.EndFrame()
 }

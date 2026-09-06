@@ -36,6 +36,13 @@ __attribute__((weak))
 #endif
 extern bool KryonRaylibBackend_WindowShouldClose(void);
 
+/* Keep UI cleanup optional for minimal/headless links, but release GPU layer
+ * resources before the rendering backend destroys its context. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+extern void ui_paint_layers_shutdown(void);
+
 static int g_single_instance =
 #if defined(KRYON_BACKEND_TERMI)
     0;
@@ -261,6 +268,8 @@ void InitWindow(int width, int height, const char *title)
 
 void CloseWindow(void)
 {
+    if(!g_instance_rejected && ui_paint_layers_shutdown != 0)
+        ui_paint_layers_shutdown();
     if(!g_instance_rejected && KryonRaylibBackend_CloseWindow != 0)
         KryonRaylibBackend_CloseWindow();
     release_instance();

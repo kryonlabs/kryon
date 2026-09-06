@@ -569,14 +569,6 @@ type ColorButtonProps struct {
 	Disabled bool
 }
 
-type TooltipProps struct {
-	Trigger  Rectangle
-	Text     string
-	Font     int32
-	MaxWidth int32
-	Disabled bool
-}
-
 type IconButtonProps struct {
 	Bounds          Rectangle
 	Icon            Texture2D
@@ -614,6 +606,7 @@ type TextFieldProps struct {
 	Style          TextInputStyle
 	CommitPressed  *bool
 	Secure         bool
+	ReadOnly       bool
 }
 
 type TextAreaProps struct {
@@ -630,6 +623,74 @@ type TextAreaProps struct {
 	Syntax         SyntaxMode
 	Style          TextInputStyle
 	ContentVersion int32
+	ReadOnly       bool
+}
+
+type TextWrap int32
+
+const (
+	TextWrapAuto TextWrap = iota
+	TextWrapNone
+)
+
+type TextAlign int32
+
+const (
+	TextAlignStart TextAlign = iota
+	TextAlignCenter
+	TextAlignEnd
+)
+
+type TextProps struct {
+	Bounds        Rectangle
+	Text          string
+	Font          int32
+	Color         Color
+	Wrap          TextWrap
+	Align         TextAlign
+	VerticalAlign TextAlign
+	Disabled      bool
+}
+
+type ComboFlags uint32
+
+const (
+	ComboFlagsNone      ComboFlags = 0
+	ComboPopupAlignLeft ComboFlags = 1 << (iota - 1)
+	ComboHeightSmall
+	ComboHeightRegular
+	ComboHeightLarge
+	ComboHeightLargest
+	ComboNoArrowButton
+	ComboNoPreview
+	ComboWidthFitPreview
+)
+
+type ComboProps struct {
+	Bounds    Rectangle
+	PopupSize Vector2
+	Preview   string
+	ID        int32
+	Open      *bool
+	Flags     ComboFlags
+	Disabled  bool
+}
+
+type PopupFlags uint32
+
+const (
+	PopupFlagsNone PopupFlags = 0
+	PopupTooltip   PopupFlags = 1 << (iota - 1)
+	PopupModal
+)
+
+type PopupProps struct {
+	Bounds   Rectangle
+	ID       int32
+	Open     *bool
+	Disabled bool
+	Trigger  Rectangle
+	Flags    PopupFlags
 }
 
 type ColumnProps struct {
@@ -1168,16 +1229,24 @@ type CanvasResult struct {
 }
 
 type Runtime interface {
+	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
+	PollTextComposition(*KryTextCompositionEvent) int32
+	ClearTextComposition()
 	Close()
 	WindowShouldClose() bool
 	BeginFrame()
 	EndFrame()
 	BeginDisabled(bool)
 	EndDisabled()
+	BeginCombo(ComboProps) bool
+	EndCombo()
+	CloseCombo()
+	BeginPopup(PopupProps) bool
+	EndPopup()
+	ClosePopup()
 	ClearBackground(Color)
 	Background(Color)
-	Text(string, int32, int32, int32, Color)
-	TextWithFont(string, int32, int32, int32, Color, uint32)
+	Text(TextProps)
 	TextFormat(string, ...any) string
 	ScaleUIPx(int32) int32
 	GetScreenWidth() int32
@@ -1215,7 +1284,6 @@ type Runtime interface {
 	ColorPicker3(ColorEditProps) bool
 	ColorPicker4(ColorEditProps) bool
 	ColorButton(ColorButtonProps) bool
-	Tooltip(TooltipProps) bool
 	TabBar(Rectangle, []string, *int32, *int32) int32
 	Progress(ProgressBarProps)
 	PlotLines(PlotProps)
@@ -1268,10 +1336,6 @@ type Runtime interface {
 	GetThemeOnPrimary() Color
 	GetThemeSurfaceVariant() Color
 	GetUIMaterialScheme() MaterialScheme
-	TextInRect(text string, rect Rectangle, fontSize int32, color Color)
-	TextColored(text string, x, y, fontSize int32, color Color)
-	TextDisabled(text string, x, y, fontSize int32)
-	TextWrapped(text string, bounds Rectangle, fontSize int32, color Color)
 	LabelText(label, value string, bounds Rectangle, fontSize int32, color Color)
 	BulletText(text string, bounds Rectangle, fontSize int32, color Color)
 	ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color)
@@ -1339,6 +1403,8 @@ type runtime struct {
 	focusID           int32
 	clipboard         string
 	inputEvents       []inputEvent
+	compositionEvents []KryTextCompositionEvent
+	preedit           map[int32]KryTextCompositionEvent
 	taps              []tapEvent
 	clicks            []mouseClickEvent
 	mousePos          Vector2
@@ -1350,6 +1416,7 @@ type runtime struct {
 	chars             []rune
 	fieldOrder        []int32
 	prevOrder         []int32
+	popupFocus        map[int32]popupFocusOwner
 	treeHeaders       []treeHeaderNav
 	prevTreeHeaders   []treeHeaderNav
 	focusRefs         map[int32]*bool
@@ -1379,6 +1446,13 @@ type runtime struct {
 	paintLayers       []paintLayer
 	paintLayerScopes  []paintLayerScope
 	paintLayerFrame   uint64
+	comboScopes       []comboScope
+	openCombos        map[int32]*bool
+	combosSeen        map[int32]bool
+	popupScopes       []popupScope
+	openPopups        map[int32]*bool
+	popupsSeen        map[int32]bool
+	tooltipPopupsSeen map[int32]bool
 	selectableText    KeyID
 	drag              scalarDrag
 	slider            scalarDrag
@@ -1498,6 +1572,7 @@ type selection struct {
 }
 
 func New(config AppConfig) Runtime {
+	ensureDefaultUIFont()
 	if config.Width <= 0 {
 		config.Width = 640
 	}
@@ -1621,6 +1696,18 @@ func (r *runtime) BeginFrame() {
 		r.dropdownsSeen = make(map[int32]bool)
 	}
 	clear(r.dropdownsSeen)
+	if r.combosSeen == nil {
+		r.combosSeen = make(map[int32]bool)
+	}
+	clear(r.combosSeen)
+	if r.popupsSeen == nil {
+		r.popupsSeen = make(map[int32]bool)
+	}
+	clear(r.popupsSeen)
+	if r.tooltipPopupsSeen == nil {
+		r.tooltipPopupsSeen = make(map[int32]bool)
+	}
+	clear(r.tooltipPopupsSeen)
 	r.scrollClips = r.scrollClips[:0]
 	r.disabledStack = r.disabledStack[:0]
 	r.disabledCount = 0
@@ -1631,15 +1718,54 @@ func (r *runtime) BeginFrame() {
 	r.ops = r.ops[:0]
 }
 func (r *runtime) EndFrame() {
+	if len(r.comboScopes) != 0 {
+		panic("unclosed combo scope at frame boundary")
+	}
+	if len(r.popupScopes) != 0 {
+		panic("unclosed popup scope at frame boundary")
+	}
+	for id, open := range r.openCombos {
+		if !r.combosSeen[id] {
+			if open != nil {
+				*open = false
+			}
+			delete(r.openCombos, id)
+			r.closePopupInput(id)
+		}
+	}
+	for id, open := range r.openPopups {
+		if !r.popupsSeen[id] {
+			if open != nil {
+				*open = false
+			}
+			delete(r.openPopups, id)
+			r.closePopupInput(id)
+		}
+	}
 	for id := range r.openDropdowns {
 		if !r.dropdownsSeen[id] {
 			r.closeDropdown(id)
 		}
 	}
-	r.appendPaintLayers(func(id int32) bool { return r.openDropdowns[id] })
+	r.appendPaintLayers(func(id int32) bool {
+		return r.openDropdowns[id] || r.openCombos[id] != nil && *r.openCombos[id] ||
+			r.openPopups[id] != nil && *r.openPopups[id] || r.tooltipPopupsSeen[id]
+	})
 	r.prunePopupInput()
+	for id, owner := range r.popupFocus {
+		if owner.seen != r.paintLayerFrame {
+			delete(r.popupFocus, id)
+		}
+	}
 	r.recordToast()
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
+	// A focused widget may be disabled, missing, or behind a popup. Route any
+	// unclaimed Tab after all eligible destinations have been declared.
+	for _, event := range r.inputEvents {
+		if event.key == KeyTab && !event.shortcut {
+			r.setFocus(r.nextFocus(r.focusID, event.shift))
+		}
+	}
 	r.prevTreeHeaders = append(r.prevTreeHeaders[:0], r.treeHeaders...)
 	r.taps = nil
 	r.clicks = nil
@@ -1649,6 +1775,13 @@ func (r *runtime) EndFrame() {
 	r.keyDown = map[int32]bool{}
 	r.chars = nil
 	r.inputEvents = nil
+	r.ClearTextComposition()
+	for id := range r.preedit {
+		_, registered := r.popupFocus[id]
+		if !registered || id != r.focusID || r.popupFocusCaptures(id) {
+			delete(r.preedit, id)
+		}
+	}
 	r.frames++
 }
 func (r *runtime) BeginDisabled(disabled bool) {
@@ -1691,15 +1824,62 @@ func (r *runtime) ClearBackground(c Color) {
 func (r *runtime) Background(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
 }
-func (r *runtime) Text(text string, x, y, fontSize int32, color Color) {
-	r.TextWithFont(text, x, y, fontSize, color, 0)
+func (r *runtime) Text(props TextProps) {
+	r.textWithFont(props, 0)
 }
-func (r *runtime) TextWithFont(text string, x, y, fontSize int32, color Color, fontID uint32) {
-	bounds := Rectangle{X: float32(x), Y: float32(y), Width: float32(fontSize * 8), Height: float32(fontSize)}
-	if x == 0 && y == 0 {
+func (r *runtime) textWithFont(props TextProps, fontID uint32) {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	color := props.Color
+	if color.A == 0 {
+		color = r.GetThemeText()
+	}
+	if props.Disabled {
+		color = r.Fade(color, 0.45)
+	}
+	bounded := props.Bounds.Width > 0
+	bounds := props.Bounds
+	if bounds.Width <= 0 {
+		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
+		props.Wrap = TextWrapNone
+	}
+	lines := []string{props.Text}
+	if bounded && props.Wrap == TextWrapAuto {
+		lines = wrapRuntimeText(props.Text, bounds.Width, font)
+	}
+	lineHeight := float32(textHeight(font, fontID) + 2)
+	if bounds.Height <= 0 {
+		bounds.Height = max(float32(textHeight(font, fontID)), float32(len(lines))*lineHeight-2)
+	}
+	if bounds.X == 0 && bounds.Y == 0 {
 		bounds = r.layoutRect(bounds)
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: text, Color: color, FontSize: fontSize, FontID: fontID})
+	contentHeight := max(float32(textHeight(font, fontID)), float32(len(lines))*lineHeight-2)
+	startY := bounds.Y
+	if props.VerticalAlign == TextAlignCenter {
+		startY += (bounds.Height - contentHeight) / 2
+	} else if props.VerticalAlign == TextAlignEnd {
+		startY += bounds.Height - contentHeight
+	}
+	for i, line := range lines {
+		y := startY + float32(i)*lineHeight
+		if y+float32(textHeight(font, fontID)) > bounds.Y+bounds.Height {
+			break
+		}
+		x := bounds.X
+		lineWidth := float32(runtimeTextWidthWithFont(line, font, fontID))
+		if props.Align == TextAlignCenter {
+			x += (bounds.Width - lineWidth) / 2
+		} else if props.Align == TextAlignEnd {
+			x += bounds.Width - lineWidth
+		}
+		r.record(FrameOp{Kind: FrameOpText,
+			Bounds: Rectangle{X: x, Y: y, Width: lineWidth, Height: float32(textHeight(font, fontID))},
+			Clip:   bounds, HasClip: true, Text: line, Color: color, FontSize: font,
+			FontID: fontID, Disabled: props.Disabled})
+	}
 }
 func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
 func (r *runtime) ScaleUIPx(px int32) int32                           { return px }
@@ -1807,12 +1987,38 @@ func (r *runtime) Button(props ButtonProps) bool {
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
+	enabled := !r.contentDisabled()
+	if enabled {
+		r.registerField(props.ID)
+	}
 	pressed := r.consumeTap(props.Bounds)
+	if pressed && props.ID > 0 {
+		r.setFocus(props.ID)
+	}
+	if enabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID) {
+		remaining := r.inputEvents[:0]
+		for _, event := range r.inputEvents {
+			handled := false
+			if !event.shortcut && r.focusID == props.ID {
+				switch event.key {
+				case KeyEnter, KeySpace:
+					pressed, handled = true, true
+				case KeyTab:
+					r.setFocus(r.nextFocus(props.ID, event.shift))
+					handled = true
+				}
+			}
+			if !handled {
+				remaining = append(remaining, event)
+			}
+		}
+		r.inputEvents = remaining
+	}
 	fill := theme.button
 	if pressed {
 		fill = theme.buttonHover
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: theme.text, ID: props.ID, FontSize: props.Font, Pressed: pressed})
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: theme.text, ID: props.ID, FontSize: props.Font, Pressed: pressed, Focused: enabled && props.ID > 0 && r.focusID == props.ID})
 	return pressed
 }
 
@@ -2155,43 +2361,6 @@ func (r *runtime) ColorButton(props ColorButtonProps) bool {
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X + halfW, Y: props.Bounds.Y + halfH, Width: halfW, Height: halfH}, Color: Color{220, 220, 220, 255}})
 	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: props.Color, BorderColor: t.border, TextColor: t.text, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed})
 	return pressed
-}
-
-func (r *runtime) Tooltip(props TooltipProps) bool {
-	if props.Disabled || props.Text == "" || !pointInRect(r.mousePos.X, r.mousePos.Y, props.Trigger) {
-		return false
-	}
-	font := props.Font
-	if font <= 0 {
-		font = Text14
-	}
-	maxWidth := props.MaxWidth
-	if maxWidth <= 0 {
-		maxWidth = 240
-	}
-	lines := wrapRuntimeText(props.Text, float32(maxWidth), font)
-	contentWidth := float32(24)
-	for _, line := range lines {
-		if width := float32(runtimeTextWidth(line, font)); width > contentWidth {
-			contentWidth = width
-		}
-	}
-	if contentWidth > float32(maxWidth) {
-		contentWidth = float32(maxWidth)
-	}
-	panel := Rectangle{X: r.mousePos.X + 12, Y: r.mousePos.Y + 16, Width: contentWidth + 16, Height: float32(len(lines))*float32(font+2) + 14}
-	viewWidth, viewHeight := float32(r.GetScreenWidth()), float32(r.GetScreenHeight())
-	if panel.X+panel.Width > viewWidth {
-		panel.X = viewWidth - panel.Width - 4
-	}
-	if panel.Y+panel.Height > viewHeight {
-		panel.Y = r.mousePos.Y - panel.Height - 8
-	}
-	theme := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: panel.X + 2, Y: panel.Y + 2, Width: panel.Width, Height: panel.Height}, Color: r.Fade(theme.text, 0.18)})
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border})
-	r.TextWrapped(props.Text, Rectangle{X: panel.X + 8, Y: panel.Y + 7, Width: contentWidth, Height: panel.Height - 14}, font, theme.text)
-	return true
 }
 
 // TabBar renders a horizontal strip of equal-width tabs and returns the
@@ -2860,9 +3029,9 @@ func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, format
 		state.focused = false
 	} else {
 		var commit bool
-		textChanged = r.editText(field, state.text, &state.cursor, &state.focused, &commit, token, 63, false)
+		textChanged = r.editText(field, state.text, &state.cursor, &state.focused, &commit, token, 63, false, false)
 	}
-	r.recordTextInput(FrameOpTextField, field, state.text, &state.cursor, &state.focused, token, Text14, false)
+	r.recordTextInput(FrameOpTextField, field, state.text, &state.cursor, &state.focused, token, Text14, false, false)
 	if step == 0 {
 		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
 	}
@@ -3060,7 +3229,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		if pressed {
 			r.setFocus(id)
 		}
-		if r.focusID == id && !r.openDropdowns[id] &&
+		if r.focusID == id && !r.openDropdowns[id] && !r.popupKeyboardCaptures() &&
 			(r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace] || r.keyDown[KeyDown]) {
 			pressed = true
 		}
@@ -3358,25 +3527,6 @@ func (r *runtime) GetThemeSurfaceVariant() Color {
 }
 func (r *runtime) GetUIMaterialScheme() MaterialScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
-}
-func (r *runtime) TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
-	r.record(FrameOp{Kind: FrameOpText, Bounds: rect, Text: text, Color: color, FontSize: fontSize})
-}
-func (r *runtime) TextColored(text string, x, y, fontSize int32, color Color) {
-	r.Text(text, x, y, fontSize, color)
-}
-func (r *runtime) TextDisabled(text string, x, y, fontSize int32) {
-	r.Text(text, x, y, fontSize, r.Fade(r.GetThemeText(), 0.45))
-}
-func (r *runtime) TextWrapped(text string, bounds Rectangle, fontSize int32, color Color) {
-	lineHeight := float32(fontSize + 2)
-	for i, line := range wrapRuntimeText(text, bounds.Width, fontSize) {
-		y := bounds.Y + float32(i)*lineHeight
-		if bounds.Height > 0 && y+float32(fontSize) > bounds.Y+bounds.Height {
-			break
-		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: y, Width: bounds.Width, Height: float32(fontSize)}, Text: line, Color: color, FontSize: fontSize})
-	}
 }
 func (r *runtime) LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
 	labelWidth := float32(runtimeTextWidth(label, fontSize))
@@ -4129,8 +4279,8 @@ func (r *runtime) recordToast() {
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false)
-	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, false)
+	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false, props.ReadOnly)
+	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, false, props.ReadOnly)
 	return changed
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
@@ -4827,8 +4977,8 @@ func (r *runtime) PromptDialog(props PromptDialogProps) int32 {
 	result, field := r.drawActionModal(props.Title, "", []string{props.CancelLabel, props.ConfirmLabel}, 38)
 	commit := false
 	if props.Text != nil && props.Cursor != nil && props.Focused != nil {
-		r.editText(field, props.Text, props.Cursor, props.Focused, &commit, 7301, int32(len(props.Text)-1), false)
-		r.recordTextInput(FrameOpTextField, field, props.Text, props.Cursor, props.Focused, 7301, Text16, false)
+		r.editText(field, props.Text, props.Cursor, props.Focused, &commit, 7301, int32(len(props.Text)-1), false, false)
+		r.recordTextInput(FrameOpTextField, field, props.Text, props.Cursor, props.Focused, 7301, Text16, false, false)
 	}
 	if result == 0 && commit {
 		result = 2
@@ -4996,7 +5146,7 @@ func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result
 	labelGap := int32(22)
 
 	rowButton := func(buttonID int32, label, value string) bool {
-		Text(label, x, y, Text14, GetThemeText())
+		Text(TextProps{Bounds: Rectangle{X: float32(x), Y: float32(y)}, Text: label, Font: Text14, Color: GetThemeText(), Wrap: TextWrapNone})
 		pressed := Button(ButtonProps{
 			Bounds: NewRectangle(float32(x), float32(y+labelGap), float32(w), float32(rowH)),
 			Label:  value,
@@ -5099,8 +5249,8 @@ func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result
 
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure)
-	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure)
+	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure, props.ReadOnly)
+	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure, props.ReadOnly)
 }
 
 func (r *runtime) theme() themePalette {
@@ -5129,7 +5279,12 @@ func systemPrefersDark() bool {
 
 func (r *runtime) record(op FrameOp) {
 	if len(r.scrollClips) > 0 {
-		op.Clip = r.scrollClips[len(r.scrollClips)-1]
+		scrollClip := r.scrollClips[len(r.scrollClips)-1]
+		if op.HasClip {
+			op.Clip = intersectRectangles(op.Clip, scrollClip)
+		} else {
+			op.Clip = scrollClip
+		}
 		op.HasClip = true
 	}
 	if r.contentDisabled() {
@@ -5143,8 +5298,23 @@ func (r *runtime) record(op FrameOp) {
 	r.ops = append(r.ops, op)
 }
 
-func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure bool) {
+func intersectRectangles(a, b Rectangle) Rectangle {
+	left := max(a.X, b.X)
+	top := max(a.Y, b.Y)
+	right := min(a.X+a.Width, b.X+b.Width)
+	bottom := min(a.Y+a.Height, b.Y+b.Height)
+	return Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
+}
+
+func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool) {
 	text := string(buf[:zeroIndex(buf)])
+	if preedit, ok := r.preedit[focusID]; ok && r.focusID == focusID && !secure {
+		pos := len(text)
+		if cursor != nil {
+			pos = clampCursor(text, int(*cursor))
+		}
+		text = text[:pos] + preedit.Text + text[pos:]
+	}
 	if secure {
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
@@ -5167,6 +5337,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		FocusID:           focusID,
 		Focused:           r.focusID == focusID,
 		Secure:            secure,
+		ReadOnly:          readOnly,
 	}
 	if cursor != nil {
 		op.Cursor = *cursor
@@ -5309,7 +5480,10 @@ func pageBoundsOrView(bounds Rectangle, viewWidth, viewHeight int32) Rectangle {
 	return bounds
 }
 
-func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure bool) bool {
+func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure, readOnly bool) bool {
+	if readOnly {
+		delete(r.preedit, focusID)
+	}
 	if len(buf) == 0 {
 		return false
 	}
@@ -5320,7 +5494,8 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	if commit != nil {
 		*commit = false
 	}
-	if r.contentDisabled() {
+	if r.contentDisabled() || r.popupKeyboardCaptures() {
+		delete(r.preedit, focusID)
 		return false
 	}
 	tapX, tapped := r.consumeTapPoint(bounds)
@@ -5331,6 +5506,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		r.setFocus(focusID)
 	}
 	if r.focusID != focusID {
+		delete(r.preedit, focusID)
 		if focused != nil {
 			*focused = false
 		}
@@ -5352,6 +5528,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	changed := false
 	for _, event := range r.inputEvents {
 		if event.text != "" {
+			if readOnly {
+				continue
+			}
 			var inserted bool
 			text, pos, inserted = insertText(text, pos, sel, event.text, textLimit(buf, maxCodepoints))
 			if inserted {
@@ -5370,6 +5549,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					r.clipboard = text[start:end]
 				}
 			case KeyX:
+				if readOnly {
+					continue
+				}
 				if !secure && sel.Anchor != sel.Cursor {
 					start, end := selectionRange(sel)
 					r.clipboard = text[start:end]
@@ -5379,6 +5561,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					changed = true
 				}
 			case KeyV:
+				if readOnly {
+					continue
+				}
 				var inserted bool
 				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, maxCodepoints))
 				if inserted {
@@ -5405,6 +5590,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			pos = len(text)
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyBackspace:
+			if readOnly {
+				continue
+			}
 			if sel.Anchor != sel.Cursor {
 				var deleted bool
 				text, pos, deleted = deleteSelection(text, sel)
@@ -5419,6 +5607,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyDelete:
+			if readOnly {
+				continue
+			}
 			if sel.Anchor != sel.Cursor {
 				var deleted bool
 				text, pos, deleted = deleteSelection(text, sel)
@@ -5440,8 +5631,17 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	if len(r.inputEvents) > 0 {
 		r.inputEvents = nil
 	}
-	clear(buf)
-	copy(buf, text)
+	var composed bool
+	if readOnly {
+		r.ClearTextComposition()
+	} else {
+		text, pos, sel, composed = r.editComposition(focusID, text, pos, sel, textLimit(buf, maxCodepoints))
+	}
+	changed = changed || composed
+	if !readOnly {
+		clear(buf)
+		copy(buf, text)
+	}
 	*cursor = int32(pos)
 	if sel.Anchor == sel.Cursor {
 		delete(r.selection, focusID)
@@ -5634,6 +5834,7 @@ func (r *runtime) registerField(focusID int32) {
 	if focusID == 0 {
 		return
 	}
+	r.registerPopupFocus(focusID)
 	for _, id := range r.fieldOrder {
 		if id == focusID {
 			return
@@ -5647,8 +5848,15 @@ func (r *runtime) nextFocus(current int32, reverse bool) int32 {
 	if len(order) == 0 {
 		order = r.fieldOrder
 	}
+	eligible := make([]int32, 0, len(order))
+	for _, id := range order {
+		if !r.popupFocusCaptures(id) {
+			eligible = append(eligible, id)
+		}
+	}
+	order = eligible
 	if len(order) == 0 {
-		return current
+		return 0
 	}
 	index := -1
 	for i, id := range order {
@@ -5658,6 +5866,9 @@ func (r *runtime) nextFocus(current int32, reverse bool) int32 {
 		}
 	}
 	if index < 0 {
+		if reverse {
+			return order[len(order)-1]
+		}
 		return order[0]
 	}
 	if reverse {
@@ -6484,10 +6695,14 @@ func elideText(text string, maxWidth float32, font int32) string {
 }
 
 func runtimeTextWidth(text string, font int32) int {
+	return runtimeTextWidthWithFont(text, font, 0)
+}
+
+func runtimeTextWidthWithFont(text string, font int32, fontID uint32) int {
 	if text == "" {
 		return 0
 	}
-	return int(MeasureTextEx(Font{}, text, float32(font), 1).X)
+	return int(MeasureTextEx(Font{ID: fontID}, text, float32(font), 1).X)
 }
 
 func clamp32(v, lo, hi int32) int32 {

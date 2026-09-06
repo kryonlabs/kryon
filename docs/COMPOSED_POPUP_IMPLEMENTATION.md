@@ -1,7 +1,11 @@
 # Composed popup implementation requirements
 
-Status: unimplemented. This is an implementation checklist, not a completion
-claim or a restriction of the native ImGui widget goal.
+Status: the public native `BeginCombo` / `EndCombo` / `CloseCombo` and generic
+`BeginPopup` / `EndPopup` / `ClosePopup` scopes are implemented in C and Go,
+with k2c, k2cpp and k2go generated coverage. The
+remaining lifecycle and backend gaps below still apply. This is an
+implementation checklist, not a completion claim or a restriction of the
+native ImGui widget goal.
 
 ## Contract
 
@@ -11,6 +15,10 @@ whose contents and selection are caller-controlled. The upstream header was
 checked on 2026-09-05. It also exposes popup alignment and height choices,
 arrow/preview suppression, and fitting the width to the preview. Existing
 Kryon option arrays do not establish support for that scope or those flags.
+The same upstream header exposes arbitrary begin/end popup and tooltip scopes;
+Kryon's generic popup scope now covers caller-defined non-modal popup contents,
+non-input-capturing hover tooltips through `PopupTooltip`, and arbitrary modal
+contents through `PopupModal`. A context-popup begin scope remains open work.
 
 The clean native scope must accept ordinary native controls and nested layouts,
 not a second set of popup-specific widget aliases. C, C++ codegen over C, and
@@ -34,9 +42,9 @@ popup must not submit children.
 - `SaveUIFrameState` preserves UI camera/input state, not the active graphics
   render target. It is not sufficient for nested paint-target restoration.
 - Go now collects deferred `FrameOp` records in runtime-owned nested paint
-  layers. Existing option-list dropdowns use that collector and a private
-  nested popup click-ownership registry. The public composed scope and full
-  keyboard/active-drag routing are not implemented. Go's scrollable widgets
+  layers. Existing option-list dropdowns and the public combo scope use that
+  collector and a private nested popup click-ownership registry. Full
+  keyboard/active-drag routing is not implemented. Go's scrollable widgets
   now gate wheel input through popup ownership and the active content clip.
 - C retained nodes now snapshot input clips and disabled scopes. Those snapshots
   must also be respected when retained nodes are painted into a popup layer.
@@ -47,6 +55,10 @@ popup must not submit children.
    existing offscreen target and nested layers before exposing a public scope.
    The capture must include immediate drawing and subsequent retained painting.
    Do not assume the destination is the main framebuffer.
+   Transparent capture must accumulate alpha with source factor one, separately
+   from RGB's source-alpha factor. Composite that premultiplied result without
+   multiplying RGB by alpha a second time. Restore the caller's blend mode and
+   custom factors, including around deferred retained painting.
 2. Associate retained submissions with their layer and frame generation. Keep
    child props/state ownership valid through deferred painting; do not keep
    pointers to by-value props or temporary generated arrays after their lifetime.
@@ -97,10 +109,212 @@ that a popup automatically owns or composites that destination.
 
 This is not a complete paint-layer implementation. It does not restore
 arbitrary custom viewports or raw framebuffer bindings, or provide per-window
-popup ownership. Clip, shader, blend and input-state isolation
+popup ownership. Scope-level clip, shader, blend and input-state isolation
 still need explicit handling in the future popup layer. The SDL and Win32
 window presenters, final OS-window pixels, and per-window popup ownership have
 not been verified by this test.
+
+## Verified C translucent compositing prerequisite
+
+`tests/texture_scope_test.c` now checks half-transparent immediate and retained
+rectangles captured over transparent black. It verifies the captured RGBA values
+and compares the composite over an opaque parent against direct source-over
+drawing, pixel for pixel. The GLES2 test passes with separate RGB/alpha capture
+factors and premultiplied compositing. The backend's ordinary alpha mode uses
+one factor pair for both RGB and alpha, so it is not sufficient for transparent
+layer capture: a source alpha of one half becomes approximately one quarter.
+
+This test sets backend blend factors explicitly through a test-only declaration;
+it does not add a public low-level API or implement automatic layer ownership.
+Retained target captures now also snapshot blend state and restore it for each
+captured node, then restore the caller's blend state. The test ends the capture
+blend scope before `EndTree`, activates a different caller blend configuration,
+and configures another pending set of custom factors. It checks exact restoration
+of both active GPU state and pending renderer configuration after deferred paint.
+Kryon's build-preparation hook compiles private helpers inside the copied rlgl
+implementation; the raylib submodule and public generated APIs are unchanged.
+This implementation covers the OpenGL 3.3/GLES2 paths, with real pixel evidence
+for GLES2. The future owned layer still needs scope-level blend restoration and
+automatic composition, plus the remaining resource/window ownership work.
+
+## Implemented prerequisite: private C owned paint layers
+
+`src/ui/ui_paint_layers.c` owns render textures in an explicit host context.
+Opening a layer reserves its order and captures immediate drawing plus retained
+submissions into the same texture. Nested layers composite above the parent's
+later drawing. The context reuses textures, replaces them when dimensions change,
+and releases unused entries after the frame is composited. Hiding a parent
+suppresses its descendants; a frame without an owner emits none of its old paint.
+
+Capture establishes separate source-over alpha factors. End restores the prior
+target, clip and blend state; composition uses premultiplied alpha and restores
+the caller's matrices, clip and blend configuration. Resource allocation and
+destruction also preserve the active framebuffer, since the backend's texture
+helpers bind and unbind framebuffers internally. The host must finish retained
+painting before compositing or destroying the context. Scope tokens check frame
+generation and last-opened/first-closed order across all active host contexts,
+before touching backend state. Generations are allocated across context lifetimes
+so a destroyed host's token cannot become valid if its memory address is reused.
+Unix subprocess regressions require rejection of null, stale, double-close,
+destroyed-host and cross-host out-of-order tokens; valid nested scopes continue
+through the real framebuffer checks.
+
+The real framebuffer test covers translucent immediate content, retained content
+above later opaque main content, child-over-parent ordering, hidden parents,
+missing owners, and resumed drawing under a transformed camera and clip. This
+is exposed through the public combo scope. C layer scopes suspend the
+owner's retained layout path through `ui_tree_layout_suspend` and restore it on
+exit. Popup nodes stay attached to the screen root in the same retained tree,
+but do not consume parent Row/Column slots. Declaration-generation and balanced
+child-layout checks reject ending a layer after changing its tree or leaving a
+child layout open. A headless node/position regression and real pixels verify
+an independent popup Column origin and the resumed parent Row's next position.
+C layers also isolate disabled-scope depth while inheriting the parent's disabled
+state. An internal floor prevents a child's `EndDisabled` from unwinding its
+parent. Ending the layer requires balanced child disabled scopes, then restores
+the parent's depth and disabled origin. Headless tests cover enabled/disabled
+parents and nested scopes; the framebuffer test checks inheritance across host
+contexts and rejects an unclosed disabled child scope. C layer scopes now also
+suspend input clips and scroll-scope depth, leaving modal/input capture intact.
+Their child scroll scopes must balance before exit restores the owner's clips.
+Ordinary button regressions verify interaction outside the owner's viewport,
+restored background clipping and rejection by a modal capture. Real pixels
+verify mixed popup content escaping a 1x1 scrolling owner; invalid-scope tests
+reject an unclosed child scroll. Full focus ownership, active-drag routing
+and shader isolation remain work.
+
+The private C `ui_popup_input.c` registry now tracks persistent popup bounds,
+parentage and branch ordering in explicit contexts. The shared input-capture
+path consults its bound context, allowing ordinary controls to participate.
+Records preserve capture before the next frame's owner declaration; closing a
+parent disables descendants, and frame completion retires missing owners.
+Headless button tests cover background controls before/after the owner, a child
+receiving input instead of its parent, child dismissal, context rebinding,
+missing owners and reordered sibling branches. Go's corresponding popup tests
+remain a regression gate. C paint hosts now own their input registries: starting
+a host frame advances and binds its registry, composition retires missing owners
+and restores the previous binding, and destruction releases the registry.
+Auxiliary windows establish their own context even before declaring a layer
+when a parent context is bound. Hiding a layer closes its matching input branch.
+The graphical test checks capture before redeclaration, auxiliary isolation,
+parent restoration and missing-owner retirement. Retained nodes now keep private
+declaration-time input snapshots, separate from paint snapshots, for deferred
+hit testing and button hover/press state. Routing does not reopen lexical scopes.
+The committed tree keeps its snapshots while a replacement is being declared;
+registry generation/liveness checks reject old and destroyed owners. Headless
+tests cover child precedence over later parent/background declarations and
+dismissal restoring the parent then background. Deferred pointer-focus
+registration now uses the same snapshots, retaining modal, clip, disabled and
+inspection gates. A button regression clears immediate focus before the deferred
+pass and verifies child focus versus modal blocking after both scopes close.
+It also checks deferred click events. The test initially reproduced a click
+leaking through modal capture; hit testing and hover/press state now consult the
+same full capture predicate as pointer-focus registration.
+This does not establish automatic popup focus acquisition/restoration or full
+active-drag routing. The public combo scope uses this ownership registry.
+
+C and Go now select the top live popup branch for keyboard eligibility without
+testing pointer coordinates. Closed combos consult this check before accepting
+keyboard opening. Matching native tests cover a focused combo in the parent
+versus the top child, and keyboard eligibility after child and branch dismissal.
+This check does not cover every button/editor input path or establish full
+keyboard ownership or focus restoration.
+
+TextField/TextArea editing now consults top-popup keyboard ownership in both
+native runtimes. C's immediate keyboard-enabled query is scope-aware; retained
+editors resolve their saved input owner and reject closed/stale owners before
+editing. Matching typing tests cover blocked parent and eligible child editors,
+with both immediate and deferred C variants. Immediate C TextArea skips paint
+when no graphics window exists, matching TextField's headless editing support.
+Tab order, complete shortcut coverage, focus restoration and input replay after
+dismissal still require dedicated integration and tests.
+
+Focus registrations now retain popup ownership separately from the lexical
+scope. C stores frame-local registrations in the host input registry and
+filters/deduplicates Tab destinations before releasing the host binding. Go
+keeps ownership alongside current/previous-frame focus order and prunes removed
+registrations at frame end. Matching tests cover forward/reverse wrapping,
+parent/background exclusion, duplicate registrations and traversal after
+explicit child/branch dismissal; Go additionally sends Tab through an editor.
+These tests do not establish initial popup focus acquisition, automatic focus
+restoration on dismissal or a complete cross-window keyboard lifecycle.
+
+Ordinary Go Button now participates in focus order and handles Enter/Space and
+Tab; unclaimed Tab events route at frame end after destination registration.
+C's keyboard activation predicate checks the registered popup owner, so retained
+button events work after lexical scopes close without activating the parent.
+Matching popup tests cover Enter/Space in parent and child controls. The native
+generated `buttons_layout.kry` runners additionally verify enabled/disabled
+keyboard activation and Tab skipping a disabled button. Their shared JavaScript
+comparison remains pointer-only for this fixture.
+
+Missing C input owners are retired before focus finalization chooses a Tab
+destination, while record/resource cleanup remains in its existing finish phase.
+A regression reproduced focus being cleared when a missing child still blocked
+its surviving parent. Matching native tests now omit the child and then parent
+across frames and verify same-frame traversal to the parent and background.
+Automatic restoration without a navigation event remains unimplemented.
+
+Text input lifetime now has dismissal regressions. C reproduced blocked text
+reappearing in the underlying editor after a popup closed. The host registry
+remembers keyboard capture for the frame, and EndUIFrame expires leftover native
+characters and queued text-edit commands before releasing that binding. The
+marker survives same-frame dismissal and resets at the next host frame; ordinary
+non-popup queue behavior is unchanged. Tests cover immediate TextField/TextArea,
+injected and platform-queued characters, queued Backspace/Enter for TextField,
+and fresh input after dismissal. Go's frame cleanup passes the matching text
+test. IME composition and Android device delivery are not established here.
+
+C retained composition now has focused regressions. Popup-captured composition
+events expire at frame end alongside other unhandled text, preventing delayed
+commit after dismissal. Commits cannot mutate read-only TextField/TextArea
+buffers. Preedit is cancelled when the retained editor loses focus, becomes
+read-only or is blocked by popup keyboard ownership; tests check cancellation
+events and no revival after re-enabling. Immediate C composition and device-level
+IME delivery remain unfinished.
+
+Native Go now has runtime-local composition queues and per-editor preedit state.
+TextField/TextArea display preedit without mutating caller buffers, and commits
+use UTF-8 insertion/cursor handling. Tests cover queue isolation and limits,
+multi-frame preedit, commits, cancellation, removed/disabled/unfocused editors,
+and popup dismissal without replay. The native generated `composition.kry`
+fixture verifies non-mutating preedit, UTF-8 commit and cancellation through C
+and Go; the JavaScript runner does not execute it. Go OS-window event delivery,
+detailed preedit cursor/selection rendering and C TextArea preedit rendering
+are still incomplete.
+
+Read-only editing now has matching native generated coverage. The composition
+fixture declares read-only TextField and TextArea in C and Go, checks copying,
+and rejects ordinary text, cut/paste, deletion and IME commits. Go props carry
+ReadOnly through editing and frame metadata; focused read-only controls keep
+their focus styling without an insertion caret. C retained mutation paths also
+honor read_only. Go tests check preedit cancellation and no rejected-input replay
+when the editor becomes editable again.
+The same framebuffer test interleaves two host contexts using the same owner ID,
+resizes one context from 32 to 64 pixels, reuses the other context's resources,
+and destroys one while the other destination is active. It verifies both hosts'
+immediate/retained pixels and subsequent drawing. The real X11 `UIWindow`
+presenter readback now also checks an owned layer composited over later opaque
+retained content. Native `UIWindow` implementations lazily own their layer context:
+begin starts its frame, end composites before presentation, and close destroys
+it. Closing the active window first finishes its frame. The private accessor
+returns no context outside an active window; callers no longer manage its
+frame/composition/destruction. Four presenter readbacks cover consecutive frames,
+an omitted owner and closing an active frame. X11 runtime and SDL compile checks
+pass; Win32 runtime behavior remains unverified. This does not isolate C widget
+or input state.
+
+The main UI frame now lazily owns a separate context through the same private
+frame accessor. `SetUIFrame` starts its layer frame and `EndUIFrame` composites
+it; `CloseWindow` releases its textures before closing the graphics context.
+UIWindow frames route to their own owner and do not end the main context. The
+pixel test covers main-frame immediate/retained content, a missing owner,
+interleaving an auxiliary window, and closing/reopening the graphics context.
+Presenter texture readback preserves its caller's framebuffer, so interleaving
+an auxiliary presentation does not redirect the main frame's later composition.
+Callers of private internals still must balance layer scopes and finish retained
+painting before host finalization. The public combo scope owns that balancing
+for ordinary callers and rejects an unmatched `EndCombo`.
 
 ## Implemented prerequisite: native Go nested paint collection
 
@@ -122,10 +336,11 @@ reset, and rejection of foreign, stale and unbalanced scope tokens. The native
 Go suite and generated-runtime parity fixture for the existing dropdown path
 remain regression gates.
 
-This private paint collector is not `BeginCombo`/`EndCombo` and does not
-establish C/Go parity for arbitrary popup
-children. C still needs ownership/compositing of captured paint destinations,
-and both runtimes need the public scope, nested dismissal and generated tests.
+The public Go combo scope now builds on this collector. Native tests cover
+ordinary buttons, checkboxes, editable fields and nested layouts, including
+nested dismissal, missing owners, layout restoration and presentation flags.
+The shared `.kry` fixture is executed through generated C and Go and is also
+syntax-checked through k2cpp.
 
 `go/kryon/popup_input.go` separately generalizes click ownership. Its persistent
 runtime-local registry preserves capture before the owner is declared on the
@@ -143,8 +358,9 @@ earlier scroll scope and checks that the latter's offset remains unchanged on
 wheel input. Go drag-and-drop start/accept paths now also respect popup and clip
 ownership; tests verify that rejected background targets leave the release and
 copied payload available to the popup target. Scalar-slider/resize active-drag
-ownership, keyboard focus and composed dismissal remain
-unfinished.
+ownership and automatic popup focus restoration remain unfinished. Composed
+dismissal covers explicit close, Escape, outside pointer release and owner
+removal.
 
 ## Acceptance evidence
 

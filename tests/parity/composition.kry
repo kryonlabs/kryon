@@ -1,0 +1,21 @@
+#import "kryon.h"
+
+app "Native Composition Parity" {
+    size 320 180
+    fps 60
+}
+
+state {
+    composition_text: [64] char = "base"
+    composition_cursor: int = 4
+    composition_area: [64] char = "area"
+    composition_area_cursor: int = 4
+    composition_read_only: bool = false
+}
+
+composition_frame :: () #ui {
+    Screen root: {
+        TextField((TextFieldProps){.bounds = {20,20,220,32}, .text = composition_text, .text_size = sizeof(composition_text), .cursor_position = &composition_cursor, .focus_id = 26100, .read_only = composition_read_only})
+        TextArea((TextAreaProps){.bounds = {20,70,220,80}, .text = composition_area, .text_size = sizeof(composition_area), .cursor_position = &composition_area_cursor, .focus_id = 26101, .read_only = composition_read_only})
+    }
+}

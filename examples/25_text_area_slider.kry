@@ -37,8 +37,8 @@ TextAreaSliderExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(bg)
-        Text("Text area and slider", 48, 36, Text32, (Color){24,32,44,255})
-        Text("A small, responsive note editor.", 48, 78, Text16, (Color){82,96,116,255})
+        Text((TextProps){.bounds={48, 36, 0, 0}, .text="Text area and slider", .font=Text32, .color=(Color){24,32,44,255}, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={48, 78, 0, 0}, .text="A small, responsive note editor.", .font=Text16, .color=(Color){82,96,116,255}, .wrap=TextWrapNone})
         TextArea((TextAreaProps){ta_bounds, note, sizeof(note), &note_cursor, &note_focused, &note_scroll, 4000, Text16, 6, 200, "Type something here...", SyntaxNone, ta_style, 0, 0, 0, 0, 1})
         Rect((int)panel.x, (int)panel.y, (int)panel.width, (int)panel.height, (Color){248,250,252,255}, (Color){190,200,215,255})
         Slider(100, (int)panel.x + 18, (int)panel.y + 13, (int)panel.width - 36, "Background hue", 0, 360, &hue, "", 0)

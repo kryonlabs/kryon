@@ -12,7 +12,6 @@
 static const KryonNodeType kryon_node_types[] = {
     {"Background", "Background", "UI/Display", "Control", "Fill", KRYON_NODE_INSERTABLE | KRYON_NODE_SELECTABLE},
     {"Text", "Text", "UI/Display", "Control", "Label", MOVABLE_TEXT},
-    {"TextInRect", "Text In Rect", "UI/Display", "Control", "Wrapped label", EDITABLE},
     {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", KRYON_NODE_SELECTABLE},
     {"TextLines", "Text Lines", "UI/Display", "Control", "Multi-line label", KRYON_NODE_SELECTABLE},
     {"Rect", "Rect", "UI/Display", "Control", "Shape", INSERT_EDITABLE},

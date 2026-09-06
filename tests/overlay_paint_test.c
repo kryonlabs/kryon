@@ -29,7 +29,7 @@ int main(void)
         ClearBackground(BLACK);
         BeginUIFrame(640,480,1);
         BeginTree(2);
-        Text("Select and copy this text.",10,10,16,WHITE);
+        Text((TextProps){.bounds={10, 10, 0, 0}, .text="Select and copy this text.", .font=16, .color=WHITE, .wrap=TextWrapNone});
         InvalidateTree(UI_INVALIDATE_PAINT);
         EndTree();
         EndUIFrame();
@@ -73,7 +73,7 @@ int main(void)
             BeginUIFrame(640,480,1);
             BeginTree(1);
             Rect(10,10,20,20,RED,BLANK);
-            Text("Retained text",10,45,16,WHITE);
+            Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .font=16, .color=WHITE, .wrap=TextWrapNone});
             if(kind == 0) MessageDialog((MessageDialogProps){"Message","Hello","OK"});
             if(kind == 1) ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"});
             if(kind == 2) PromptDialog((PromptDialogProps){"Prompt",text,sizeof(text),&cursor,&focused,"Cancel","Save"});

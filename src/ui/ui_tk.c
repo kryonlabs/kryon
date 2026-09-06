@@ -644,53 +644,6 @@ DrawUIColorButton(ColorButtonProps button)
     return pressed;
 }
 
-int
-DrawUITooltip(TooltipProps tooltip)
-{
-    Vector2 mouse = ui_mouse_world();
-    int font = tooltip.font > 0 ? tooltip.font : GetUISmallFontSize();
-    int max_width = tooltip.max_width > 0 ? tooltip.max_width : ScaleUIPx(240);
-    int padding = ScaleUIPx(8);
-    int content_width;
-    int content_height;
-    int y;
-    Rectangle panel;
-    ParagraphSpec paragraph = {0};
-
-    if(tooltip.disabled || tooltip.text == NULL ||
-       !ui_contains(tooltip.trigger, mouse))
-        return 0;
-    content_width = TextWidth(tooltip.text, font);
-    if(content_width > max_width)
-        content_width = max_width;
-    if(content_width < ScaleUIPx(24))
-        content_width = ScaleUIPx(24);
-    paragraph.text = tooltip.text;
-    paragraph.width = content_width;
-    paragraph.font = font;
-    paragraph.line_gap = ScaleUIPx(2);
-    paragraph.color = GetThemeText();
-    content_height = ui_paragraph_height(paragraph);
-    panel = (Rectangle){mouse.x + ScaleUIPx(12), mouse.y + ScaleUIPx(16),
-                        content_width + padding * 2,
-                        content_height + padding * 2};
-    if(panel.x + panel.width > GetUIViewWidth())
-        panel.x = GetUIViewWidth() - panel.width - ScaleUIPx(4);
-    if(panel.y + panel.height > GetUIViewHeight())
-        panel.y = mouse.y - panel.height - ScaleUIPx(8);
-    if(!IsWindowReady())
-        return 1;
-    DrawRectangleRec((Rectangle){panel.x + ScaleUIPx(2),
-                                 panel.y + ScaleUIPx(2),
-                                 panel.width, panel.height},
-                     Fade(GetThemeText(), 0.18f));
-    DrawRectangleRec(panel, GetThemeSurface());
-    DrawRectangleLinesEx(panel, 1.0f, GetThemeButton());
-    y = (int)panel.y + padding;
-    ui_draw_paragraph(paragraph, (int)panel.x + padding, &y);
-    return 1;
-}
-
 static int
 draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
 {
@@ -1779,9 +1732,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         (void)commit;
     }
     if(IsWindowReady() && label != NULL)
-        Text(label, (int)bounds.x + ScaleUIPx(6),
-             (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
-             GetUISmallFontSize(), c_text);
+        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2), 0, 0}, .text=label, .font=GetUISmallFontSize(), .color=c_text, .wrap=TextWrapNone});
     EndDisabled();
     return changed;
 }

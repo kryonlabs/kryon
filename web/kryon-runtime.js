@@ -712,7 +712,7 @@ const runtimeCallNames = [
   "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
-  "Text", "TextArea", "TextField", "TextInRect", "TextLines", "TitleBar",
+  "Text", "TextArea", "TextField", "TextLines", "TitleBar",
   "Toggle", "Toolbar", "TopNav"
 ];
 
@@ -764,7 +764,6 @@ export function TabBar(...args) { return struct("TabBar", args); }
 export function Text(...args) { return struct("Text", args); }
 export function TextArea(...args) { return struct("TextArea", args); }
 export function TextField(...args) { return struct("TextField", args); }
-export function TextInRect(...args) { return struct("TextInRect", args); }
 export function TextLines(...args) { return struct("TextLines", args); }
 export function TitleBar(...args) { return struct("TitleBar", args); }
 export function Toggle(...args) { return struct("Toggle", args); }

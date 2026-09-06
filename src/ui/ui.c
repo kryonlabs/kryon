@@ -1,4 +1,8 @@
 #include "ui_internal.h"
+#include "ui_paint_layers_internal.h"
+#include "ui_disabled_internal.h"
+#include "ui_input_clip_internal.h"
+#include "ui_popup_input_internal.h"
 #include "ui_text.h"
 #include "ui_tk.h"
 #include "platform.h"
@@ -54,6 +58,7 @@ static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
 static int g_ui_disabled_depth = 0;
 static int g_ui_disabled_start = 0;
+static int g_ui_disabled_floor;
 static int g_scroll_scope_depth = 0;
 static unsigned long g_scroll_wheel_frame = 0;
 static int *g_scroll_drag_offset = NULL;
@@ -211,7 +216,7 @@ enum {
     UI_CURSOR_PRIORITY_RESIZE = 4
 };
 
-#define UI_INPUT_CLIP_STACK_MAX 16
+#define UI_INPUT_CLIP_STACK_MAX UI_INPUT_CLIP_DEPTH
 static Rectangle g_ui_input_clip_stack[UI_INPUT_CLIP_STACK_MAX];
 static int g_ui_input_clip_stack_count = 0;
 
@@ -410,7 +415,8 @@ SetUIKeyboardInputEnabled(int enabled)
 int
 UIKeyboardInputEnabled(void)
 {
-    return g_ui_keyboard_input_enabled && !UIContentDisabled();
+    return g_ui_keyboard_input_enabled && !UIContentDisabled() &&
+           !ui_popup_input_keyboard_captures();
 }
 
 int
@@ -433,7 +439,7 @@ BeginDisabled(int disabled)
 void
 EndDisabled(void)
 {
-    if(g_ui_disabled_depth <= 0)
+    if(g_ui_disabled_depth <= g_ui_disabled_floor)
         return;
     if(g_ui_disabled_depth-- != g_ui_disabled_start)
         return;
@@ -445,9 +451,29 @@ EndDisabled(void)
 static void
 ui_reset_disabled_scope(void)
 {
+    g_ui_disabled_floor = 0;
     while(g_ui_disabled_depth > 0)
         EndDisabled();
     g_ui_disabled_start = 0;
+}
+
+UIDisabledScope
+ui_disabled_suspend(void)
+{
+    UIDisabledScope scope = {g_ui_disabled_depth,g_ui_disabled_start,g_ui_disabled_floor};
+    g_ui_disabled_depth = g_ui_disabled_floor = 1;
+    g_ui_disabled_start = scope.start > 0 ? 1 : 0;
+    return scope;
+}
+
+void
+ui_disabled_resume(UIDisabledScope scope)
+{
+    if(g_ui_disabled_depth != 1 || g_ui_disabled_floor != 1 ||
+       g_ui_disabled_start != (scope.start > 0 ? 1 : 0)) abort();
+    g_ui_disabled_depth = scope.depth;
+    g_ui_disabled_start = scope.start;
+    g_ui_disabled_floor = scope.floor;
 }
 
 Rectangle
@@ -635,6 +661,28 @@ BeginUIModalLayer(void)
                                    (float)ui_view_height}, 0);
 }
 
+UIInputClipScope
+ui_input_clip_suspend(void)
+{
+    UIInputClipScope scope = {0};
+    scope.count = g_ui_input_clip_stack_count;
+    scope.scroll_depth = g_scroll_scope_depth;
+    memcpy(scope.clips,g_ui_input_clip_stack,(size_t)scope.count*sizeof(Rectangle));
+    g_ui_input_clip_stack_count = 0;
+    g_scroll_scope_depth = 0;
+    return scope;
+}
+
+void
+ui_input_clip_resume(UIInputClipScope scope)
+{
+    if(scope.count < 0 || scope.count > UI_INPUT_CLIP_STACK_MAX || scope.scroll_depth < 0 ||
+       g_ui_input_clip_stack_count != 0 || g_scroll_scope_depth != 0) abort();
+    memcpy(g_ui_input_clip_stack,scope.clips,(size_t)scope.count*sizeof(Rectangle));
+    g_ui_input_clip_stack_count = scope.count;
+    g_scroll_scope_depth = scope.scroll_depth;
+}
+
 int
 ui_current_input_clip(Rectangle *bounds)
 {
@@ -670,14 +718,23 @@ int
 ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 {
     return ui_base_input_captures_click(point, include_pointer_drag) ||
+           ui_popup_input_current_captures(point) ||
            ui_dropdown_captures_click(point);
+}
+
+int
+ui_input_captures_snapshot(Vector2 point, UIPopupInputToken snapshot)
+{
+    return UIContentDisabled() || UIInspectInputCapturesClick(point) ||
+           ui_base_input_captures_click(point,1) ||
+           ui_dropdown_captures_click(point) ||
+           ui_popup_input_snapshot_captures(snapshot,point);
 }
 
 int
 UIInputCapturesClick(Vector2 point)
 {
-    return UIContentDisabled() || UIInspectInputCapturesClick(point) ||
-           ui_input_captures_click_internal(point, 1);
+    return ui_input_captures_snapshot(point,ui_popup_input_snapshot());
 }
 
 int
@@ -1356,6 +1413,19 @@ EndUIFocus(void)
 
     g_ui_focus_frame_open = 0;
 
+    /* Missing popup owners must stop blocking traversal before choosing the
+     * next focus target, not only when their paint resources are retired. */
+    ui_popup_input_retire_missing(ui_popup_input_bound());
+    int eligible = 0;
+    for(int i = 0; i < g_ui_focus_count; i++) {
+        int id = g_ui_focus_ids[i], duplicate = 0;
+        if(ui_popup_input_focus_captures(id)) continue;
+        for(int j = 0; j < eligible; j++)
+            if(g_ui_focus_ids[j] == id) { duplicate = 1; break; }
+        if(!duplicate) g_ui_focus_ids[eligible++] = id;
+    }
+    g_ui_focus_count = eligible;
+
     if(g_ui_focus_count <= 0) {
         g_ui_focus_active_id = 0;
         g_ui_focus_tab_dir = 0;
@@ -1388,23 +1458,30 @@ UIFocusFrameOpen(void)
 }
 
 int
-RegisterUIFocus(int id, Rectangle bounds)
+ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
 {
     Vector2 mouse_world;
 
     if(id <= 0)
         return 0;
 
+    ui_popup_input_register_focus(id,snapshot);
     if(g_ui_focus_count < UI_FOCUS_MAX_ITEMS)
         g_ui_focus_ids[g_ui_focus_count++] = id;
 
     mouse_world = ui_mouse_world();
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
        CheckCollisionPointRec(mouse_world, bounds) &&
-       !UIInputCapturesClick(mouse_world))
+       !ui_input_captures_snapshot(mouse_world,snapshot))
         g_ui_focus_active_id = id;
 
     return g_ui_focus_active_id == id;
+}
+
+int
+RegisterUIFocus(int id, Rectangle bounds)
+{
+    return ui_register_focus_snapshot(id,bounds,ui_popup_input_snapshot());
 }
 
 static void
@@ -1528,7 +1605,8 @@ IsUIFocusActive(int id)
 int
 IsUIFocusActivatePressed(int id)
 {
-    return IsUIFocusActive(id) &&
+    return IsUIFocusActive(id) && g_ui_keyboard_input_enabled &&
+           !UIContentDisabled() && !ui_popup_input_focus_captures(id) &&
            (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
 }
 
@@ -2956,7 +3034,7 @@ RenderTextArea(TextAreaProps area)
 
     *area.focused = focused;
     SetUIFocusTextInputActive(focused && !area.read_only);
-    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+    if(focused && UIKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(area.focused, area.focus_id);
         *area.focused = 0;
@@ -3198,6 +3276,11 @@ RenderTextArea(TextAreaProps area)
     if(area.scroll_y != NULL)
         *area.scroll_y = scroll_y;
 
+    /* Keep editing usable without a renderer, as TextField already does. */
+    if(!IsWindowReady()) {
+        EndUIWidget(&widget);
+        return changed;
+    }
     border = focused ? area.style.focus_border : area.style.border;
     radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
     ui_draw_box_background(area.bounds, radius, area.style.background, border);
@@ -3835,7 +3918,7 @@ RenderTextField(TextFieldProps field)
 
     *field.focused = focused;
     SetUIFocusTextInputActive(focused && !field.read_only);
-    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+    if(focused && UIKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(field.focused, field.focus_id);
         *field.focused = 0;
@@ -4210,6 +4293,18 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
 }
 
 void
+ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
+{
+    if(y == NULL || paragraph.width <= 0)
+        return;
+    int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
+    Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
+    TextLayout layout = ParagraphLayout(paragraph);
+    DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width, align);
+    FreeTextLayout(&layout);
+}
+
+void
 DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
 {
     DrawLine(x, y, x + w - 1, y, light);
@@ -4390,6 +4485,7 @@ SetUIFrame(Camera2D camera)
     g_scroll_scope_depth = 0;
     ResetUIClip();
     BeginUIInspectFrame(NULL);
+    ui_frame_layers_begin();
 }
 
 void
@@ -4409,6 +4505,17 @@ EndUIFrame(void)
 {
     DrawUIFrameOverlays();
     EndUIFocus();
+    /* Unhandled text from a popup-captured frame must not be replayed into an
+     * underlying editor after dismissal. Retain ordinary non-popup queue
+     * behavior; the capture marker also covers a popup closed this frame. */
+    if(ui_popup_input_keyboard_captures() || ui_popup_input_keyboard_was_captured()) {
+        while(GetCharPressed() != 0) {}
+        g_ui_text_input_codepoint_count = 0;
+        g_ui_text_input_backspace_count = 0;
+        g_ui_text_input_enter_count = 0;
+        ClearTextComposition();
+    }
+    ui_frame_layers_end();
     ui_sync_platform_text_input();
     EndUIInspectFrame();
 }

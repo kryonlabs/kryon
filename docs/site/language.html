@@ -84,7 +84,7 @@ Counter :: (viewport: Rectangle, app: App*) #ui {
 
         Column body: {
             gap = 8
-            Text("Count", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.text="Count", .font=Text16})
             if Button((ButtonProps){.label = "Increment"}) {
                 app->click_count += 1
             }

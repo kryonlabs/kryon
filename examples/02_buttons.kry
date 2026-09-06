@@ -15,8 +15,8 @@ ButtonsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text("UI Buttons Example", ScaleUIPx(20), ScaleUIPx(20), Text24, GetThemeText())
-        Text("Click the buttons below to test interactions", ScaleUIPx(20), ScaleUIPx(54), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(20), ScaleUIPx(20), 0, 0}, .text="UI Buttons Example", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(20), ScaleUIPx(54), 0, 0}, .text="Click the buttons below to test interactions", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         if Button((ButtonProps){
             .bounds = {ScaleUIPx(20), ScaleUIPx(100), ScaleUIPx(200), ScaleUIPx(40)},
             .label = "Primary Button",
@@ -44,9 +44,9 @@ ButtonsExample :: (viewport: Rectangle) #ui {
             click_count++
             snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
         }
-        Text(TextFormat("Clicks:%d",click_count), ScaleUIPx(20), ScaleUIPx(260), Text16, GetThemeText())
-        Text(last_action, ScaleUIPx(20), ScaleUIPx(290), Text16, GetThemeText())
-        Text("Button Styles", ScaleUIPx(300), ScaleUIPx(100), 18, GetThemeText())
-        Text("Primary,secondary,and danger styles use the active theme.", ScaleUIPx(300), ScaleUIPx(130), 14, GetThemeIcon())
+        Text((TextProps){.bounds={ScaleUIPx(20), ScaleUIPx(260), 0, 0}, .text=TextFormat("Clicks:%d",click_count), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(20), ScaleUIPx(290), 0, 0}, .text=last_action, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(300), ScaleUIPx(100), 0, 0}, .text="Button Styles", .font=18, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(300), ScaleUIPx(130), 0, 0}, .text="Primary,secondary,and danger styles use the active theme.", .font=14, .color=GetThemeIcon(), .wrap=TextWrapNone})
     }
 }

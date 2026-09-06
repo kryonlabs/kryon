@@ -61,7 +61,15 @@ func CheckCollisionPointRec(p Vector2, r Rectangle) bool {
 }
 
 func DrawTextEx(font Font, text string, pos Vector2, size float32, _ float32, c Color) {
-	active().TextWithFont(text, int32(pos.X), int32(pos.Y), int32(size), c, font.ID)
+	props := TextProps{Bounds: Rectangle{X: pos.X, Y: pos.Y}, Text: text,
+		Font: int32(size), Color: c, Wrap: TextWrapNone}
+	if runtime, ok := active().(interface {
+		textWithFont(TextProps, uint32)
+	}); ok {
+		runtime.textWithFont(props, font.ID)
+		return
+	}
+	active().Text(props)
 }
 
 func MeasureTextEx(font Font, text string, size float32, _ float32) Vector2 {

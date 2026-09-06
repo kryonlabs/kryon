@@ -135,7 +135,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             if Button((ButtonProps){.bounds = {ScaleUIPx(20),ScaleUIPx(72),ScaleUIPx(180),ScaleUIPx(36)}, .label = "Back to catalog", .id = 950}) {
                 page_preview = 0
             }
-            Text(TextFormat("Selected route: %d", page_route), ScaleUIPx(230), ScaleUIPx(80), Text20, GetThemeText())
+            Text((TextProps){.bounds={ScaleUIPx(230), ScaleUIPx(80), 0, 0}, .text=TextFormat("Selected route: %d", page_route), .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
             nav_index: int = 0
             for nav_index = 0; nav_index < 3; nav_index++ {
                 nav_items[nav_index].active = page_route == nav_index
@@ -150,8 +150,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         ClearBackground(GetThemeBackground())
-        Text("Widget catalog", ScaleUIPx(20), ScaleUIPx(22), Text24, GetThemeText())
-        Text("Standard Kryon controls. Select a category and try them.", ScaleUIPx(246), ScaleUIPx(28), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(20), ScaleUIPx(22), 0, 0}, .text="Widget catalog", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(246), ScaleUIPx(28), 0, 0}, .text="Standard Kryon controls. Select a category and try them.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Line(ScaleUIPx(220), ScaleUIPx(76), ScaleUIPx(220), (int)viewport.height - ScaleUIPx(24), GetThemeButton())
         i: int = 0
         for i = 0; i < 10; i++ {
@@ -162,8 +162,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
                 context_open = 0
             }
         }
-        Text("Wheel to scroll", ScaleUIPx(20), (int)viewport.height - ScaleUIPx(52), Text14, GetThemeIcon())
-        Text(TextFormat("Clicks: %d", action_count), ScaleUIPx(20), (int)viewport.height - ScaleUIPx(30), Text14, GetThemeIcon())
+        Text((TextProps){.bounds={ScaleUIPx(20), (int)viewport.height - ScaleUIPx(52), 0, 0}, .text="Wheel to scroll", .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={ScaleUIPx(20), (int)viewport.height - ScaleUIPx(30), 0, 0}, .text=TextFormat("Clicks: %d", action_count), .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
 
         area: UIScrollArea = {{ScaleUIPx(236), ScaleUIPx(82), (int)viewport.width - ScaleUIPx(252), (int)viewport.height - ScaleUIPx(100)}, ScaleUIPx(category_heights[category]), ScaleUIPx(252), (int)viewport.width - ScaleUIPx(292), &scroll_off, ScaleUIPx(42), 0}
         view: UIScrollView = BeginUIScrollContainer(area)
@@ -172,9 +172,9 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         y: int = view.content_y
 
         if category == 0 {
-        Text("DISPLAY AND MEDIA", x, y, Text20, GetThemeLink())
-        Text("Text", x, y + ScaleUIPx(38), Text16, GetThemeText())
-        TextInRect("Text in a rectangle wraps naturally.", (Rectangle){x, y + ScaleUIPx(70), ScaleUIPx(300), ScaleUIPx(52)}, Text16, GetThemeText())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="DISPLAY AND MEDIA", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x, y + ScaleUIPx(38), 0, 0}, .text="Text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds=(Rectangle){x, y + ScaleUIPx(70), ScaleUIPx(300), ScaleUIPx(52)}, .text="Text is bounded, wrapped, and clipped by default.", .font=Text16, .color=GetThemeText(), .align=TextAlignCenter, .vertical_align=TextAlignCenter})
         lines_y: int = y + ScaleUIPx(132)
         TextLines(display_lines, 2, x, &lines_y, Text14, ScaleUIPx(18), GetThemeIcon())
         paragraph_y: int = y + ScaleUIPx(176)
@@ -187,13 +187,13 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         ImageBox((ImageBoxProps){.bounds = {right + ScaleUIPx(200), y + ScaleUIPx(112), ScaleUIPx(58), ScaleUIPx(58)}, .texture = demo_texture, .tint = WHITE})
         Picture((PictureProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + ScaleUIPx(278), y + ScaleUIPx(112), ScaleUIPx(72), ScaleUIPx(58)}, .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
 
-        TextColored("TextColored", x, y + ScaleUIPx(260), Text16, GetThemeLink())
-        TextDisabled("TextDisabled", x, y + ScaleUIPx(300), Text16)
-        TextWrapped("TextWrapped: a longer line wraps inside its standard text bounds.", (Rectangle){x,y + ScaleUIPx(340),ScaleUIPx(320),ScaleUIPx(60)}, Text16, GetThemeText())
+        Text((TextProps){.bounds={x, y + ScaleUIPx(260), 0, 0}, .text="Custom color", .font=Text16, .color=GetThemeLink(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x, y + ScaleUIPx(300), 0, 0}, .text="Disabled text", .font=Text16, .wrap=TextWrapNone, .disabled=1})
+        Text((TextProps){.bounds=(Rectangle){x,y + ScaleUIPx(340),ScaleUIPx(320),ScaleUIPx(60)}, .text="Bounded text wraps and clips inside its standard bounds.", .font=Text16, .color=GetThemeText()})
         LabelText("LabelText", "Value", (Rectangle){x,y + ScaleUIPx(418),ScaleUIPx(300),ScaleUIPx(28)}, Text16, GetThemeText())
         BulletText("BulletText", (Rectangle){x,y + ScaleUIPx(460),ScaleUIPx(300),ScaleUIPx(28)}, Text16, GetThemeText())
         selectable_token: int = PushTextSelectable(1)
-        Text("Select and copy this text.", x, y + ScaleUIPx(510), Text16, GetThemeText())
+        Text((TextProps){.bounds={x, y + ScaleUIPx(510), 0, 0}, .text="Select and copy this text.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         PopTextSelectable(selectable_token)
         ValueBool("ValueBool", true, (Rectangle){right,y + ScaleUIPx(260),ScaleUIPx(300),ScaleUIPx(28)}, Text16, GetThemeText())
         ValueInt("ValueInt", 42, (Rectangle){right,y + ScaleUIPx(300),ScaleUIPx(300),ScaleUIPx(28)}, Text16, GetThemeText())
@@ -204,13 +204,13 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             action_count += 1
             ShowToast("ImageButton clicked")
         }
-        Text("ImageWithBg / ImageButton", right, y + ScaleUIPx(606), Text14, GetThemeText())
+        Text((TextProps){.bounds={right, y + ScaleUIPx(606), 0, 0}, .text="ImageWithBg / ImageButton", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         SeparatorText((SeparatorTextProps){.bounds = {x,y + ScaleUIPx(570),ScaleUIPx(350),ScaleUIPx(30)}, .label = "SeparatorText"})
         Bullet((Rectangle){right,y + ScaleUIPx(460),ScaleUIPx(24),ScaleUIPx(24)})
         }
 
         if category == 1 {
-        Text("ACTIONS AND INPUT", x, y, Text20, GetThemeLink())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="ACTIONS AND INPUT", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {x, y + ScaleUIPx(38), ScaleUIPx(140), ScaleUIPx(34)}, .label = "Button", .font = Text16, .id = 101}) {
             action_count += 1
         }
@@ -242,7 +242,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         Selectable((SelectableProps){.bounds = {x,y + ScaleUIPx(250),ScaleUIPx(300),ScaleUIPx(32)}, .id = 202, .label = "Selectable", .selected = &selected})
         CheckboxFlags((CheckboxFlagsProps){.bounds = {right,y + ScaleUIPx(204),ScaleUIPx(300),ScaleUIPx(32)}, .id = 203, .label = "CheckboxFlags", .flags = &flags, .flags_value = 1})
-        Text("InvisibleButton (click this area)", right, y + ScaleUIPx(258), Text14, GetThemeText())
+        Text((TextProps){.bounds={right, y + ScaleUIPx(258), 0, 0}, .text="InvisibleButton (click this area)", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         if InvisibleButton((InvisibleButtonProps){.bounds = {right,y + ScaleUIPx(250),ScaleUIPx(300),ScaleUIPx(32)}, .id = 204}) {
             action_count += 1
             ShowToast("InvisibleButton clicked")
@@ -252,16 +252,22 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             action_count += 1
         }
         EndDisabled()
-        Tooltip((TooltipProps){.trigger = {x,y + ScaleUIPx(310),ScaleUIPx(180),ScaleUIPx(34)}, .text = "A standard tooltip", .font = Text14, .max_width = ScaleUIPx(240)})
+        Popup disabled_help: {
+            bounds = {x + ScaleUIPx(188),y + ScaleUIPx(304),ScaleUIPx(256),ScaleUIPx(48)}
+            id = 206
+            trigger = {x,y + ScaleUIPx(310),ScaleUIPx(180),ScaleUIPx(34)}
+            flags = PopupTooltip
+            Text((TextProps){.bounds={x + ScaleUIPx(196),y + ScaleUIPx(316),ScaleUIPx(240),ScaleUIPx(22)},.text="A standard tooltip",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+        }
         }
 
         if category == 2 {
-        Text("LAYOUT AND CONTAINERS", x, y, Text20, GetThemeLink())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="LAYOUT AND CONTAINERS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         Column demo_column: {
             bounds = {x, y + ScaleUIPx(38), ScaleUIPx(190), ScaleUIPx(92)}
             gap = ScaleUIPx(6)
             padding = ScaleUIPx(8)
-            Text("Column", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Column", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Row demo_row: {
                 bounds = {0, 0, ScaleUIPx(170), ScaleUIPx(34)}
                 gap = ScaleUIPx(6)
@@ -277,7 +283,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             bounds = {x + ScaleUIPx(214), y + ScaleUIPx(38), ScaleUIPx(160), ScaleUIPx(92)}
             key = Key("catalog-stack")
             Rect(x + ScaleUIPx(214), y + ScaleUIPx(38), ScaleUIPx(160), ScaleUIPx(92), GetThemeSurface(), GetThemeButton())
-            Text("Stack", x + ScaleUIPx(258), y + ScaleUIPx(70), Text16, GetThemeText())
+            Text((TextProps){.bounds={x + ScaleUIPx(258), y + ScaleUIPx(70), 0, 0}, .text="Stack", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
         GridLayout((GridLayoutProps){.bounds = {x, y + ScaleUIPx(148), ScaleUIPx(374), ScaleUIPx(48)}, .columns = 2, .gap = ScaleUIPx(6)})
         if Button((ButtonProps){.bounds = {0,0,ScaleUIPx(150),ScaleUIPx(32)}, .label = "Grid A", .id = 124}) {
@@ -289,36 +295,36 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         End()
         Notebook((NotebookProps){.bounds = {right, y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(54)}, .tabs = choices, .tab_count = 3, .selected_index = &picked})
         PanedView((PanedViewProps){{right + ScaleUIPx(198), y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(54)}, 114, 1, &split, 60, 80})
-        Text("Drag the divider", right + ScaleUIPx(198), y + ScaleUIPx(8), Text14, GetThemeIcon())
+        Text((TextProps){.bounds={right + ScaleUIPx(198), y + ScaleUIPx(8), 0, 0}, .text="Drag the divider", .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         Collapsible((CollapsibleProps){.bounds = {right, y + ScaleUIPx(108), ScaleUIPx(260), ScaleUIPx(54)}, .label = "Collapsible", .open = &open})
         if open {
-            Text("This content collapses with its header.", right, y + ScaleUIPx(174), Text14, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(174), 0, 0}, .text="This content collapses with its header.", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         }
 
         }
 
         if category == 3 {
-        Text("COLLECTIONS AND EDITORS", x, y, Text20, GetThemeLink())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="COLLECTIONS AND EDITORS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         ListBox((ListBoxProps){.bounds = {x, y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(90)}, .id = 115, .items = choices, .item_count = 3, .selected_index = &picked, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(26)})
         TreeView((TreeViewProps){.bounds = {x + ScaleUIPx(198), y + ScaleUIPx(38), ScaleUIPx(180), ScaleUIPx(90)}, .id = 116, .items = tree_items, .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = ScaleUIPx(26)})
         SourceView((SourceViewProps){.bounds = {right, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(90)}, .text = "Text(\"Hello\")", .scroll_x = &canvas_scroll_x, .scroll_y = &canvas_scroll_y, .font_size = Text14, .line_height = ScaleUIPx(18), .show_line_numbers = 1})
         TableView((TableViewProps){.bounds = {x, y + ScaleUIPx(148), ScaleUIPx(378), ScaleUIPx(100)}, .id = 117, .columns = columns, .column_count = 2, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
 
-        Text("MultiSelectList (Ctrl / Shift to select)", x, y + ScaleUIPx(290), Text16, GetThemeText())
+        Text((TextProps){.bounds={x, y + ScaleUIPx(290), 0, 0}, .text="MultiSelectList (Ctrl / Shift to select)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         MultiSelectList((MultiSelectListProps){.bounds = {x,y + ScaleUIPx(330),ScaleUIPx(350),ScaleUIPx(110)}, .id = 206, .items = choices, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = ScaleUIPx(30)})
-        Text("Drag text from the left into the right box", x, y + ScaleUIPx(480), Text16, GetThemeText())
+        Text((TextProps){.bounds={x, y + ScaleUIPx(480), 0, 0}, .text="Drag text from the left into the right box", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Rect(x,y + ScaleUIPx(522),ScaleUIPx(300),ScaleUIPx(48),GetThemeSurface(),GetThemeButton())
-        Text("DragDropSource",x + ScaleUIPx(12),y + ScaleUIPx(538),Text16,GetThemeText())
+        Text((TextProps){.bounds={x + ScaleUIPx(12), y + ScaleUIPx(538), 0, 0}, .text="DragDropSource", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         DragDropSource((DragDropSourceProps){.bounds = {x,y + ScaleUIPx(522),ScaleUIPx(300),ScaleUIPx(48)}, .id = 207, .type = "TEXT", .data = text_value, .data_size = sizeof(text_value)})
         Rect(right,y + ScaleUIPx(522),ScaleUIPx(300),ScaleUIPx(48),GetThemeSurface(),GetThemeButton())
-        Text("DragDropTarget",right + ScaleUIPx(12),y + ScaleUIPx(538),Text16,GetThemeText())
+        Text((TextProps){.bounds={right + ScaleUIPx(12), y + ScaleUIPx(538), 0, 0}, .text="DragDropTarget", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         DragDropTarget((DragDropTargetProps){.bounds = {right,y + ScaleUIPx(522),ScaleUIPx(300),ScaleUIPx(48)}, .id = 208, .type = "TEXT", .output = area_value, .output_size = sizeof(area_value), .accepted_size = &accepted_size})
-        Text(area_value, right, y + ScaleUIPx(590), Text14, GetThemeText())
+        Text((TextProps){.bounds={right, y + ScaleUIPx(590), 0, 0}, .text=area_value, .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         }
 
         if category == 4 {
-        Text("NAVIGATION", x, y, Text20, GetThemeLink())
-        Text("Menus, tabs and navigation", x, y + ScaleUIPx(22), Text14, GetThemeText())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="NAVIGATION", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x, y + ScaleUIPx(22), 0, 0}, .text="Menus, tabs and navigation", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         TopNav((TopNavProps){.id = 118, .x = x, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .title = "Top navigation", .options = choices, .option_count = 3, .selected_index = &picked})
         Toolbar((ToolbarProps){.id = 119, .x = right, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = choices, .option_count = 3, .selected_index = &picked})
         tab_result: int = TabBar((TabBarProps){.bounds = {x, y + ScaleUIPx(100), ScaleUIPx(360), ScaleUIPx(34)}, .tabs = tabs, .count = 2, .selected_index = picked, .focus_selected = 1})
@@ -333,8 +339,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if context_result > 0 {
             menu_command = context_result
         }
-        Text("Right-click here for a context menu", right + ScaleUIPx(12), y + ScaleUIPx(148), Text14, GetThemeText())
-        Text("ClosableTabBar", x, y + ScaleUIPx(216), Text16, GetThemeText())
+        Text((TextProps){.bounds={right + ScaleUIPx(12), y + ScaleUIPx(148), 0, 0}, .text="Right-click here for a context menu", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x, y + ScaleUIPx(216), 0, 0}, .text="ClosableTabBar", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         ClosableTabBar((ClosableTabBarProps){.bounds = {x,y + ScaleUIPx(252),ScaleUIPx(760),ScaleUIPx(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = &tab_selected, .font = Text16, .closed_index = &closed_tab})
         if closed_tab >= 0 {
             if closed_tab < tab_count {
@@ -361,20 +367,20 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
 
         if category == 4 {
-            Text(TextFormat("Open tabs: %d / Menu command: %d", tab_count, menu_command), x, y + ScaleUIPx(308), Text16, GetThemeText())
-            Text("SubtabBar", x, y + ScaleUIPx(350), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(308), 0, 0}, .text=TextFormat("Open tabs: %d / Menu command: %d", tab_count, menu_command), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={x, y + ScaleUIPx(350), 0, 0}, .text="SubtabBar", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             subtab_result: int = SubtabBar((SubtabBarProps){.bounds = {x,y + ScaleUIPx(384),ScaleUIPx(350),ScaleUIPx(36)},.tabs = subtabs,.count = 3,.selected_index = subtab_selected,.font = Text16})
             if subtab_result >= 0 {
                 subtab_selected = subtab_result
             }
-            Text("PaneTabs", right, y + ScaleUIPx(350), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(350), 0, 0}, .text="PaneTabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             pane_result: PaneTabBarResult = PaneTabs((PaneTabBar){.bounds = {right,y + ScaleUIPx(384),ScaleUIPx(350),ScaleUIPx(36)},.tabs = tabs,.count = 2,.selected_index = pane_selected,.font = Text16,.dragged_index = &pane_dragged})
             if pane_result.clicked_index >= 0 {
                 pane_selected = pane_result.clicked_index
             }
         }
         if category == 5 {
-        Text("FEEDBACK AND DIALOGS", x, y, Text20, GetThemeLink())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="FEEDBACK AND DIALOGS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {x, y + ScaleUIPx(40), ScaleUIPx(150), ScaleUIPx(34)}, .label = "Show toast", .id = 120}) {
             ShowToast("Hello from Kryon")
         }
@@ -411,10 +417,10 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             if Button((ButtonProps){.bounds = {x,y + ScaleUIPx(430),ScaleUIPx(180),ScaleUIPx(36)},.label = "PickerDialog",.id = 960}) { dialog = 5 }
             if Button((ButtonProps){.bounds = {x + ScaleUIPx(200),y + ScaleUIPx(430),ScaleUIPx(180),ScaleUIPx(36)},.label = "ModalFrame",.id = 961}) { dialog = 6 }
             if Button((ButtonProps){.bounds = {right,y + ScaleUIPx(430),ScaleUIPx(180),ScaleUIPx(36)},.label = "TextPopover",.id = 962}) { dialog = 7; text_focused = 0 }
-            Text(TextFormat("Picker: %d / Dialog result: %d", picker_choice, dialog_result), x, y + ScaleUIPx(486), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(486), 0, 0}, .text=TextFormat("Picker: %d / Dialog result: %d", picker_choice, dialog_result), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
         if category == 6 {
-        Text("CANVAS", x, y, Text20, GetThemeLink())
+        Text((TextProps){.bounds={x, y, 0, 0}, .text="CANVAS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         canvas_bounds: Rectangle = {x,y + ScaleUIPx(38),ScaleUIPx(360),ScaleUIPx(120)}
         mouse: Vector2 = GetMousePosition()
         if CheckCollisionPointRec(mouse, canvas_bounds) && !UIInputCapturesClick(mouse) {
@@ -438,12 +444,12 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         DrawCircle(x + ScaleUIPx(180), y + ScaleUIPx(98), ScaleUIPx(16), GetThemeLink())
         unused canvas_result
         EndCanvas((Canvas){{x, y + ScaleUIPx(38), ScaleUIPx(360), ScaleUIPx(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-        Text("Wheel to zoom; drag the canvas to pan.", right, y + ScaleUIPx(56), Text16, GetThemeText())
+        Text((TextProps){.bounds={right, y + ScaleUIPx(56), 0, 0}, .text="Wheel to zoom; drag the canvas to pan.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
 
         }
 
         if category == 6 {
-            Text(TextFormat("Pan: %d, %d / Zoom: %.2f", canvas_scroll_x,canvas_scroll_y,canvas_zoom), x, y + ScaleUIPx(190), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(190), 0, 0}, .text=TextFormat("Pan: %d, %d / Zoom: %.2f", canvas_scroll_x,canvas_scroll_y,canvas_zoom), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             if Button((ButtonProps){.bounds = {right,y + ScaleUIPx(100),ScaleUIPx(140),ScaleUIPx(34)},.label = "Reset canvas",.id = 963}) {
                 canvas_scroll_x = 0
                 canvas_scroll_y = 0
@@ -451,44 +457,44 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             }
         }
         if category == 7 {
-            Text("NUMBERS AND PLOTS", x, y, Text20, GetThemeLink())
-            Text("DragFloat", x, y + ScaleUIPx(54), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y, 0, 0}, .text="NUMBERS AND PLOTS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={x, y + ScaleUIPx(54), 0, 0}, .text="DragFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             DragFloat((DragFloatProps){.bounds = {x,y + ScaleUIPx(86),ScaleUIPx(350),ScaleUIPx(36)}, .id = 300, .values = numbers, .value_count = 3, .speed = 0.01f, .min = 0.0f, .max = 1.0f})
-            Text("DragInt", right, y + ScaleUIPx(54), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(54), 0, 0}, .text="DragInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             DragInt((DragIntProps){.bounds = {right,y + ScaleUIPx(86),ScaleUIPx(350),ScaleUIPx(36)}, .id = 301, .values = integers, .value_count = 3, .speed = 1.0f, .min = 0, .max = 10})
-            Text("DragFloatRange2", x, y + ScaleUIPx(166), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(166), 0, 0}, .text="DragFloatRange2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             DragFloatRange2((DragFloatRange2Props){.bounds = {x,y + ScaleUIPx(198),ScaleUIPx(350),ScaleUIPx(36)}, .id = 302, .current_min = &range_min, .current_max = &range_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
-            Text("DragIntRange2", right, y + ScaleUIPx(166), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(166), 0, 0}, .text="DragIntRange2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             DragIntRange2((DragIntRange2Props){.bounds = {right,y + ScaleUIPx(198),ScaleUIPx(350),ScaleUIPx(36)}, .id = 303, .current_min = &int_min, .current_max = &int_max, .speed = 1.0f, .min = 0, .max = 10})
-            Text("SliderFloat", x, y + ScaleUIPx(278), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(278), 0, 0}, .text="SliderFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             SliderFloat((SliderFloatProps){.bounds = {x,y + ScaleUIPx(310),ScaleUIPx(350),ScaleUIPx(36)}, .id = 304, .values = numbers, .value_count = 3, .min = 0.0f, .max = 1.0f})
-            Text("SliderInt", right, y + ScaleUIPx(278), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(278), 0, 0}, .text="SliderInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             SliderInt((SliderIntProps){.bounds = {right,y + ScaleUIPx(310),ScaleUIPx(350),ScaleUIPx(36)}, .id = 305, .values = integers, .value_count = 3, .min = 0, .max = 10})
-            Text("SliderAngle", x, y + ScaleUIPx(390), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(390), 0, 0}, .text="SliderAngle", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             SliderAngle((SliderAngleProps){.bounds = {x,y + ScaleUIPx(422),ScaleUIPx(350),ScaleUIPx(36)}, .id = 306, .value = &angle, .min_degrees = -180.0f, .max_degrees = 180.0f})
-            Text("InputFloat", right, y + ScaleUIPx(390), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(390), 0, 0}, .text="InputFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             InputFloat((InputFloatProps){.bounds = {right,y + ScaleUIPx(422),ScaleUIPx(350),ScaleUIPx(36)}, .id = 307, .values = numbers, .value_count = 3, .step = 0.1f, .step_fast = 1.0f})
-            Text("InputInt", x, y + ScaleUIPx(502), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(502), 0, 0}, .text="InputInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             InputInt((InputIntProps){.bounds = {x,y + ScaleUIPx(534),ScaleUIPx(350),ScaleUIPx(36)}, .id = 308, .values = integers, .value_count = 3, .step = 1, .step_fast = 10})
-            Text("InputDouble", right, y + ScaleUIPx(502), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(502), 0, 0}, .text="InputDouble", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             InputDouble((InputDoubleProps){.bounds = {right,y + ScaleUIPx(534),ScaleUIPx(350),ScaleUIPx(36)}, .id = 309, .values = doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
-            Text("VSliderFloat / VSliderInt", x, y + ScaleUIPx(628), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(628), 0, 0}, .text="VSliderFloat / VSliderInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             VSliderFloat((SliderFloatProps){.bounds = {x,y + ScaleUIPx(666),ScaleUIPx(48),ScaleUIPx(150)}, .id = 310, .values = numbers, .value_count = 1, .min = 0.0f, .max = 1.0f})
             VSliderInt((SliderIntProps){.bounds = {x + ScaleUIPx(72),y + ScaleUIPx(666),ScaleUIPx(48),ScaleUIPx(150)}, .id = 311, .values = integers, .value_count = 1, .min = 0, .max = 10})
-            Text("PlotLines", right, y + ScaleUIPx(628), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(628), 0, 0}, .text="PlotLines", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             PlotLines((PlotProps){.bounds = {right,y + ScaleUIPx(666),ScaleUIPx(350),ScaleUIPx(150)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
-            Text("PlotHistogram", x, y + ScaleUIPx(870), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(870), 0, 0}, .text="PlotHistogram", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             PlotHistogram((PlotProps){.bounds = {x,y + ScaleUIPx(908),ScaleUIPx(350),ScaleUIPx(110)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
         }
         if category == 8 {
-            Text("COLORS", x, y, Text20, GetThemeLink())
-            Text("ColorEdit3", x, y + ScaleUIPx(54), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y, 0, 0}, .text="COLORS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={x, y + ScaleUIPx(54), 0, 0}, .text="ColorEdit3", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             ColorEdit3((ColorEditProps){.bounds = {x,y + ScaleUIPx(90),ScaleUIPx(350),ScaleUIPx(36)}, .id = 320, .values = rgba, .value_count = 3})
-            Text("ColorEdit4", right, y + ScaleUIPx(54), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(54), 0, 0}, .text="ColorEdit4", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             ColorEdit4((ColorEditProps){.bounds = {right,y + ScaleUIPx(90),ScaleUIPx(350),ScaleUIPx(36)}, .id = 321, .values = rgba, .value_count = 4})
-            Text("ColorPicker3", x, y + ScaleUIPx(170), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(170), 0, 0}, .text="ColorPicker3", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             ColorPicker3((ColorEditProps){.bounds = {x,y + ScaleUIPx(208),ScaleUIPx(300),ScaleUIPx(160)}, .id = 322, .values = rgba, .value_count = 3})
-            Text("ColorPicker4", right, y + ScaleUIPx(170), Text16, GetThemeText())
+            Text((TextProps){.bounds={right, y + ScaleUIPx(170), 0, 0}, .text="ColorPicker4", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             ColorPicker4((ColorEditProps){.bounds = {right,y + ScaleUIPx(208),ScaleUIPx(300),ScaleUIPx(210)}, .id = 323, .values = rgba, .value_count = 4})
             if ColorButton((ColorButtonProps){.bounds = {x,y + ScaleUIPx(450),ScaleUIPx(160),ScaleUIPx(36)}, .id = 324, .label = "ColorButton", .color = color_value}) {
                 action_count += 1
@@ -496,11 +502,11 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
 
         if category == 3 {
-            Text("CascadingTreeView (expand folders)", x, y + ScaleUIPx(650), Text16, GetThemeText())
+            Text((TextProps){.bounds={x, y + ScaleUIPx(650), 0, 0}, .text="CascadingTreeView (expand folders)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             CascadingTreeView((CascadingTreeViewProps){.bounds = {x,y + ScaleUIPx(688),ScaleUIPx(350),ScaleUIPx(210)},.id = 964,.items = cascade_items,.item_count = 4,.selected_id = &cascade_selected,.activated_id = &cascade_activated,.expanded = {cascade_ids,&cascade_count,4},.scroll_offset = &cascade_scroll,.row_height = ScaleUIPx(30)})
         }
         if category == 9 {
-            Text("PAGES AND SETTINGS", x, y, Text20, GetThemeLink())
+            Text((TextProps){.bounds={x, y, 0, 0}, .text="PAGES AND SETTINGS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
             if Button((ButtonProps){.bounds = {x,y + ScaleUIPx(42),ScaleUIPx(350),ScaleUIPx(36)},.label = "Preview TitleBar and BottomNav",.id = 965}) { page_preview = 1 }
             Page((PageProps){.bounds = {x,y + ScaleUIPx(110),ScaleUIPx(360),ScaleUIPx(210)},.title = "Page",.gap = ScaleUIPx(12),.padding = ScaleUIPx(12),.key = 966})
             Section((SectionProps){.bounds = {0,0,ScaleUIPx(336),ScaleUIPx(180)},.label = "Section",.gap = ScaleUIPx(12),.key = 967})
@@ -539,7 +545,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         if dialog == 6 {
             frame: UIPanelFrame = ModalFrame(420,220,"ModalFrame",(Texture2D){0},(Texture2D){0})
-            Text("Custom modal content",frame.content_x,frame.content_y,Text20,GetThemeText())
+            Text((TextProps){.bounds={frame.content_x, frame.content_y, 0, 0}, .text="Custom modal content", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
             if Button((ButtonProps){.bounds = {frame.content_x,frame.content_y + ScaleUIPx(56),ScaleUIPx(160),ScaleUIPx(36)},.label = "Close",.id = 970}) || IsKeyPressed(KEY_ESCAPE) {
                 dialog = 0
             }

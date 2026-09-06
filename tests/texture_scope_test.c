@@ -4,12 +4,48 @@
 #include <string.h>
 #include "../src/ui/ui_internal.h"
 #include "../src/ui/ui_clip_internal.h"
+#include "../src/ui/ui_blend_internal.h"
+#include "../src/ui/ui_paint_layers_internal.h"
+#if defined(__unix__)
+#include <signal.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 static int failures;
 static int check_window_readback;
 static int window_readbacks;
 static const char *expected_dropdown_text;
 static int full_dropdown_text_draws;
+
+static void check_invalid_layer_end(UIPaintLayerToken token, const char *label)
+{
+#if defined(__unix__)
+    pid_t child = fork();
+    if(child == 0) {
+        struct rlimit limit = {0,0};
+        setrlimit(RLIMIT_CORE,&limit);
+        alarm(2);
+        ui_paint_layer_end(token);
+        _exit(0);
+    }
+    int status = 0;
+    if(child < 0 || waitpid(child,&status,0) != child ||
+       !WIFSIGNALED(status) || WTERMSIG(status) != SIGABRT) {
+        fprintf(stderr,"%s: invalid layer close was not rejected\n",label);
+        failures++;
+    }
+#else
+    (void)token;
+    (void)label;
+#endif
+}
+
+/* Backend-only experiment for the owned-layer prerequisite. This rlgl entry
+ * point is deliberately not added to Kryon's public generated surface. */
+extern void rlSetBlendFactorsSeparate(int srcRGB, int dstRGB, int srcAlpha,
+                                      int dstAlpha, int eqRGB, int eqAlpha);
 
 void __real_DrawUIText(const char *text, int x, int y, int font, Color color);
 void __wrap_DrawUIText(const char *text, int x, int y, int font, Color color)
@@ -40,8 +76,8 @@ Image __wrap_LoadImageFromTexture(Texture2D texture)
         window_readbacks++;
         /* Render-texture readback has its origin at the bottom. */
         check_pixel(image,1,image.height-2,RED,"UIWindow retained background");
-        check_pixel(image,9,image.height-10,GREEN,"UIWindow drawing after nested target");
-        check_pixel(image,41,image.height-42,YELLOW,"UIWindow restored viewport");
+        check_pixel(image,9,image.height-10,check_window_readback == 2 ? RED : GREEN,"UIWindow drawing after nested target");
+        check_pixel(image,41,image.height-42,check_window_readback == 2 ? RED : YELLOW,"UIWindow restored viewport");
     }
     return image;
 }
@@ -98,29 +134,261 @@ int main(void)
     check_pixel(c,1,1,MAGENTA,"leaf independent target");
     UnloadImage(a); UnloadImage(b); UnloadImage(c);
 
+    /* Ordinary source-alpha blending also multiplies the alpha channel by
+     * source alpha on this backend. Transparent layer capture instead needs
+     * separate RGB/alpha factors, followed by premultiplied compositing. */
+    rlSetBlendFactorsSeparate(0x0302,0x0303,1,0x0303,0x8006,0x8006);
+    BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+    BeginTree(Key("transparent mixed layer"));
+    BeginTextureMode(inner);
+    ClearBackground(BLANK);
+    RenderTexture2D transparent_previous = ui_tree_set_paint_target(inner);
+    DrawRectangle(0,0,4,4,(Color){0,255,0,128});
+    Rect(4,4,4,4,(Color){255,0,0,128},BLANK);
+    ui_tree_set_paint_target(transparent_previous);
+    EndTextureMode();
+    /* The lexical capture scope ends before deferred painting. Neither its
+     * active factors nor a later caller's custom configuration may leak. */
+    EndBlendMode();
+    rlSetBlendFactorsSeparate(1,1,1,1,0x8006,0x8006);
+    BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+    rlSetBlendFactorsSeparate(1,0,1,0,0x8006,0x8006);
+    UIBlendState caller_blend = ui_blend_save();
+    EndTree();
+    UIBlendState restored_blend = ui_blend_save();
+    if(memcmp(&caller_blend,&restored_blend,sizeof(UIBlendState)) != 0) {
+        fprintf(stderr,"retained layer did not restore active and pending blend state\n");
+        failures++;
+    }
+    EndBlendMode();
+    Image transparent = LoadImageFromTexture(inner.texture);
+    ImageFlipVertical(&transparent);
+    check_pixel(transparent,1,1,(Color){0,128,0,128},"transparent immediate capture");
+    check_pixel(transparent,5,5,(Color){128,0,0,128},"transparent retained capture");
+    UnloadImage(transparent);
+    BeginTextureMode(outer);
+    ClearBackground(BLUE);
+    BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+    DrawTextureRec(inner.texture,(Rectangle){0,0,16,-16},(Vector2){0,0},WHITE);
+    EndBlendMode();
+    EndTextureMode();
+    Image composite = LoadImageFromTexture(outer.texture);
+    BeginTextureMode(outer);
+    ClearBackground(BLUE);
+    rlSetBlendFactorsSeparate(0x0302,0x0303,1,0x0303,0x8006,0x8006);
+    BeginBlendMode(BLEND_CUSTOM_SEPARATE);
+    DrawRectangle(0,0,4,4,(Color){0,255,0,128});
+    DrawRectangle(4,4,4,4,(Color){255,0,0,128});
+    EndBlendMode();
+    EndTextureMode();
+    Image direct = LoadImageFromTexture(outer.texture);
+    int alpha_mismatches = 0;
+    for(int y = 0; y < 64; y++)
+        for(int x = 0; x < 64; x++) {
+            Color layer_pixel = GetImageColor(composite,x,y), direct_pixel = GetImageColor(direct,x,y);
+            if(memcmp(&layer_pixel,&direct_pixel,sizeof(Color)) != 0) alpha_mismatches++;
+        }
+    if(alpha_mismatches) {
+        fprintf(stderr,"transparent layer differs from direct source-over at %d pixels\n",alpha_mismatches);
+        failures++;
+    }
+    UnloadImage(composite); UnloadImage(direct);
+
+    UIPaintLayers *owned_layers = ui_paint_layers_create();
+    UIPaintLayerToken stale_layer = {0};
+    check_invalid_layer_end(stale_layer,"null layer token");
+    for(int frame = 0; frame < 3; frame++) {
+        BeginTextureMode(outer);
+        ClearBackground(BLACK);
+        BeginTree(Key("owned layers"));
+        ui_paint_layers_frame(owned_layers,64,64);
+        if(frame != 2) {
+            UIPopupInputToken parent_input = ui_popup_input_begin(
+                ui_paint_layers_input(owned_layers),1,(Rectangle){0,0,16,16});
+            UIPaintLayerToken parent_layer = ui_paint_layer_begin(owned_layers,1);
+            if(frame == 1) check_invalid_layer_end(stale_layer,"previous frame layer token");
+            stale_layer = parent_layer;
+            DrawRectangle(0,0,16,16,(Color){255,0,0,128});
+            if(frame == 0) {
+                UIPaintLayers *foreign = ui_paint_layers_create();
+                ui_paint_layers_frame(foreign,64,64);
+                BeginDisabled(1);
+                UIPaintLayerToken foreign_layer = ui_paint_layer_begin(foreign,1);
+                EndDisabled();
+                if(!UIContentDisabled()) {
+                    fprintf(stderr,"layer ended its parent's disabled scope\n");
+                    failures++;
+                }
+                check_invalid_layer_end(parent_layer,"cross-host out-of-order close");
+                ui_paint_layer_end(foreign_layer);
+                if(!UIContentDisabled()) failures++;
+                EndDisabled();
+                if(UIContentDisabled()) failures++;
+                ui_paint_layers_composite(foreign);
+                ui_paint_layers_destroy(foreign);
+            }
+            Rect(20,0,4,4,YELLOW,BLANK);
+            /* A descendant outside its parent's bounds must also lose capture
+             * when the parent's paint branch is hidden. */
+            UIPopupInputToken child_input = ui_popup_input_begin(
+                ui_paint_layers_input(owned_layers),2,(Rectangle){20,20,8,8});
+            UIPaintLayerToken child_layer = ui_paint_layer_begin(owned_layers,2);
+            check_invalid_layer_end(parent_layer,"parent closed before child");
+            Row((RowProps){.bounds={40,40,4,4}});
+            check_invalid_layer_end(child_layer,"unclosed popup child layout");
+            End();
+            BeginDisabled(1);
+            check_invalid_layer_end(child_layer,"unclosed popup disabled scope");
+            EndDisabled();
+            BeginScroll((Rectangle){0,0,4,4},20,NULL);
+            check_invalid_layer_end(child_layer,"unclosed popup scroll scope");
+            EndScroll();
+            Rect(4,4,4,4,GREEN,BLANK);
+            ui_paint_layer_end(child_layer);
+            ui_popup_input_end(child_input);
+            check_invalid_layer_end(child_layer,"layer closed twice");
+            Rect(4,4,4,4,BLUE,BLANK);
+            ui_paint_layer_end(parent_layer);
+            ui_popup_input_end(parent_input);
+            if(!ui_popup_input_current_captures((Vector2){1,1}) ||
+               !ui_popup_input_current_captures((Vector2){21,21})) {
+                fprintf(stderr,"owned popup branch did not capture background input\n");
+                failures++;
+            }
+            if(frame == 1) {
+                ui_paint_layers_hide(owned_layers,1);
+                if(ui_popup_input_current_captures((Vector2){1,1}) ||
+                   ui_popup_input_current_captures((Vector2){21,21})) {
+                    fprintf(stderr,"hidden paint branch retained popup input capture\n");
+                    failures++;
+                }
+            }
+        }
+        Rect(0,0,64,64,WHITE,BLANK);
+        EndTree();
+        BeginMode2D((Camera2D){.offset={7,5},.zoom=1});
+        BeginUIClip(40,40,4,4);
+        Matrix before_projection = rlGetMatrixProjection(), before_modelview = rlGetMatrixModelview();
+        UIBlendState before_blend = ui_blend_save();
+        ui_paint_layers_composite(owned_layers);
+        Matrix after_projection = rlGetMatrixProjection(), after_modelview = rlGetMatrixModelview();
+        UIBlendState after_blend = ui_blend_save();
+        if(memcmp(&before_projection,&after_projection,sizeof(Matrix)) ||
+           memcmp(&before_modelview,&after_modelview,sizeof(Matrix)) ||
+           memcmp(&before_blend,&after_blend,sizeof(UIBlendState))) {
+            fprintf(stderr,"owned layer composite did not restore parent drawing state\n");
+            failures++;
+        }
+        DrawRectangle(0,0,64,64,ORANGE);
+        EndUIClip(); EndMode2D();
+        EndTextureMode();
+        Image owned = LoadImageFromTexture(outer.texture);
+        ImageFlipVertical(&owned);
+        check_pixel(owned,1,1,frame == 0 ? (Color){255,127,127,255} : WHITE,"owned translucent layer");
+        check_pixel(owned,5,5,frame == 0 ? GREEN : WHITE,"owned nested layer above later parent paint");
+        check_pixel(owned,21,1,frame == 0 ? YELLOW : WHITE,"owned retained layer above later main paint");
+        check_pixel(owned,41,41,ORANGE,"owned layer restores caller clip and destination");
+        check_pixel(owned,39,39,WHITE,"owned layer caller clip excludes outside");
+        UnloadImage(owned);
+    }
+    ui_paint_layers_destroy(owned_layers);
+    check_invalid_layer_end(stale_layer,"destroyed host layer token");
+    UIPaintLayers *replacement_host = ui_paint_layers_create();
+    ui_paint_layers_frame(replacement_host,64,64);
+    UIPaintLayerToken replacement_layer = ui_paint_layer_begin(replacement_host,1);
+    check_invalid_layer_end(stale_layer,"destroyed host token after replacement allocation");
+    ui_paint_layer_end(replacement_layer);
+    ui_paint_layers_composite(replacement_host);
+    ui_paint_layers_destroy(replacement_host);
+
+    UIPaintLayers *host_a = ui_paint_layers_create();
+    UIPaintLayers *host_b = ui_paint_layers_create();
+    for(int frame = 0; frame < 2; frame++) {
+        int size = frame == 0 ? 32 : 64;
+        RenderTexture2D host_target = LoadRenderTexture(size,size);
+        if(!host_target.id) return 1;
+        BeginTree(Key("independent layer hosts"));
+        BeginTextureMode(host_target);
+        ClearBackground(BLACK);
+        ui_paint_layers_frame(host_a,size,size);
+        UIPaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
+        DrawRectangle(0,0,size,size,RED);
+        Rect(size-4,size-4,4,4,YELLOW,BLANK);
+        ui_paint_layer_end(a_layer);
+        EndTextureMode();
+        BeginTextureMode(inner);
+        ClearBackground(BLUE);
+        ui_paint_layers_frame(host_b,16,16);
+        UIPaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
+        DrawRectangle(0,0,4,4,GREEN);
+        Rect(8,8,4,4,MAGENTA,BLANK);
+        ui_paint_layer_end(b_layer);
+        EndTextureMode();
+        EndTree();
+        BeginTextureMode(inner);
+        ui_paint_layers_composite(host_b);
+        EndTextureMode();
+        BeginTextureMode(host_target);
+        ui_paint_layers_composite(host_a);
+        if(frame == 1) ui_paint_layers_destroy(host_b);
+        DrawRectangle(0,0,1,1,WHITE);
+        EndTextureMode();
+        Image host_image = LoadImageFromTexture(host_target.texture);
+        ImageFlipVertical(&host_image);
+        check_pixel(host_image,1,1,RED,"resized host owns its immediate layer");
+        check_pixel(host_image,size-3,size-3,YELLOW,"resized host owns its retained layer");
+        check_pixel(host_image,0,0,WHITE,"destroying another host preserves destination");
+        UnloadImage(host_image);
+        Image other_image = LoadImageFromTexture(inner.texture);
+        ImageFlipVertical(&other_image);
+        check_pixel(other_image,1,1,GREEN,"same owner ID remains host-local");
+        check_pixel(other_image,9,9,MAGENTA,"interleaved host retained target");
+        check_pixel(other_image,14,14,BLUE,"other host resize does not leak paint");
+        UnloadImage(other_image);
+        UnloadRenderTexture(host_target);
+    }
+    ui_paint_layers_destroy(host_a);
+
     UIWindow *window = OpenUIWindow("nested UI paint target",0,0,64,64,
                                    UI_WINDOW_BORDERLESS,RED,1);
     if(window == NULL) {
         fprintf(stderr,"UIWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
-        BeginUIWindow(window);
-        BeginTextureMode(inner);
-        ClearBackground(BLUE);
-        BeginTextureMode(leaf);
-        ClearBackground(MAGENTA);
-        EndTextureMode();
-        EndTextureMode();
-        DrawRectangle(8,8,4,4,GREEN);
-        DrawRectangle(40,40,4,4,YELLOW);
-        check_window_readback = 1;
-        EndUIWindow();
-        check_window_readback = 0;
-        if(window_readbacks != 1) {
-            fprintf(stderr,"expected one real UIWindow presenter readback, got %d\n",window_readbacks);
+        for(int frame = 0; frame < 4; frame++) {
+            BeginUIWindow(window);
+            BeginTextureMode(inner);
+            ClearBackground(BLUE);
+            BeginTextureMode(leaf);
+            ClearBackground(MAGENTA);
+            EndTextureMode();
+            EndTextureMode();
+            if(frame != 2) {
+                UIPaintLayers *window_layers = ui_window_paint_layers();
+                if(window_layers == NULL) return 1;
+                UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
+                BeginTree(Key("UIWindow owned layers"));
+                UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
+                DrawRectangle(8,8,4,4,GREEN);
+                Rect(40,40,4,4,YELLOW,BLANK);
+                ui_paint_layer_end(window_layer);
+                ui_popup_input_end(window_input);
+                Rect(0,0,64,64,RED,BLANK);
+                EndTree();
+            }
+            check_window_readback = frame == 2 ? 2 : 1;
+            if(frame == 3) CloseUIWindow(window);
+            else EndUIWindow();
+            check_window_readback = 0;
+            if(ui_window_paint_layers() != NULL) {
+                fprintf(stderr,"ended UIWindow retained an active layer owner\n");
+                failures++;
+            }
+        }
+        if(window_readbacks != 4) {
+            fprintf(stderr,"expected four real UIWindow presenter readbacks, got %d\n",window_readbacks);
             failures++;
         }
-        CloseUIWindow(window);
     }
     /* Mixed immediate/retained capture must survive later opaque content.
      * Repeat an unchanged tree after clearing its targets to catch invalidation. */
@@ -299,7 +567,10 @@ int main(void)
     }
     BeginTextureMode(outer);
     ClearBackground(RED);
-    DrawUITextInRect("wide", (Rectangle){10,10,20,20}, 16, WHITE);
+    BeginUIClip(10,10,20,20);
+    DrawUIText("wide", 10 + (20 - TextWidth("wide",16)) / 2,
+               TextBaselineY("wide",10,20,16),16,WHITE);
+    EndUIClip();
     DrawRectangle(25,10,5,20,BLUE);
     EndTextureMode();
     Image text_reference = LoadImageFromTexture(outer.texture);
@@ -309,7 +580,7 @@ int main(void)
     BeginTree(Key("boxed text lifecycle"));
     Rect(0,0,64,64,RED,BLANK);
     Row((RowProps){.bounds = {10,10,20,20}});
-    TextInRect(boxed_text, (Rectangle){0,0,20,20}, 16, WHITE);
+    Text((TextProps){.bounds=(Rectangle){0,0,20,20}, .text=boxed_text, .font=16, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
     End();
     memset(boxed_text,'X',4);
     Rect(25,10,5,20,BLUE,BLANK);
@@ -466,7 +737,125 @@ int main(void)
     }
     InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
     UnloadRenderTexture(popup_target);
+    UIWindow *auxiliary = OpenUIWindow("interleaved layer host",0,0,64,64,
+                                       UI_WINDOW_BORDERLESS,BLUE,1);
+    if(auxiliary == NULL) return 1;
+    UIPopupInput *main_input = NULL;
+    for(int frame = 0; frame < 2; frame++) {
+        BeginTextureMode(outer);
+        ClearBackground(BLACK);
+        BeginUIFrame(64,64,1);
+        if(frame == 1 && !ui_popup_input_current_captures((Vector2){9,9})) {
+            fprintf(stderr,"host did not preserve popup capture before owner declaration\n");
+            failures++;
+        }
+        BeginTree(Key("main host owned layers"));
+        Rect(0,0,64,64,RED,BLANK);
+        Row((RowProps){.bounds={10,20,44,8},.gap=2});
+        Rect(0,0,8,8,BLUE,BLANK);
+        if(frame == 0) {
+            UIPaintLayers *main_layers = ui_frame_paint_layers();
+            if(main_layers == NULL) return 1;
+            BeginScroll((Rectangle){0,0,1,1},1,NULL);
+            UIPaintLayerToken layer = ui_paint_layer_begin(main_layers,1);
+            main_input = ui_paint_layers_input(main_layers);
+            UIPopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
+            Column((ColumnProps){.bounds={0,0,4,4}});
+            Rect(0,0,4,4,MAGENTA,BLANK);
+            End();
+            DrawRectangle(8,8,4,4,GREEN);
+            Rect(40,40,4,4,YELLOW,BLANK);
+            ui_paint_layer_end(layer);
+            ui_popup_input_end(input);
+            EndScroll();
+        }
+        Rect(0,0,8,8,ORANGE,BLANK);
+        End();
+        EndTree();
+        if(frame == 0) {
+            UIPaintLayers *main_owner = ui_frame_paint_layers();
+            BeginUIWindow(auxiliary);
+            if(ui_popup_input_current_captures((Vector2){9,9})) {
+                fprintf(stderr,"main popup capture leaked into auxiliary host\n");
+                failures++;
+            }
+            UIPaintLayers *aux_owner = ui_frame_paint_layers();
+            if(aux_owner == NULL || aux_owner == main_owner) return 1;
+            UIPaintLayerToken aux_layer = ui_paint_layer_begin(aux_owner,1);
+            DrawRectangle(0,0,4,4,GREEN);
+            ui_paint_layer_end(aux_layer);
+            EndUIWindow();
+            if(!ui_popup_input_current_captures((Vector2){9,9})) failures++;
+            if(ui_frame_paint_layers() != main_owner) {
+                fprintf(stderr,"auxiliary frame consumed the main layer owner\n");
+                failures++;
+            }
+        }
+        EndUIFrame();
+        if(ui_popup_input_bound() != NULL ||
+           (frame == 1 && ui_popup_input_captures(main_input,(Vector2){9,9}))) {
+            fprintf(stderr,"host retained stale popup binding or missing owner\n");
+            failures++;
+        }
+        if(ui_frame_paint_layers() != NULL) {
+            fprintf(stderr,"main layer owner remained available after frame end\n");
+            failures++;
+        }
+        EndTextureMode();
+        Image main_image = LoadImageFromTexture(outer.texture);
+        ImageFlipVertical(&main_image);
+        check_pixel(main_image,9,9,frame == 0 ? GREEN : RED,"main host immediate layer lifecycle");
+        check_pixel(main_image,41,41,frame == 0 ? YELLOW : RED,"main host retained layer lifecycle");
+        check_pixel(main_image,11,21,BLUE,"parent row before popup");
+        check_pixel(main_image,21,21,ORANGE,"parent row resumes after popup");
+        check_pixel(main_image,1,1,frame == 0 ? MAGENTA : RED,"popup column independent origin");
+        UnloadImage(main_image);
+    }
+    bool composed_open = true;
+    for(int frame = 0; frame < 2; frame++) {
+        BeginTextureMode(outer);
+        ClearBackground(BLACK);
+        BeginUIFrame(64,64,1);
+        BeginTree(Key("public composed combo paint"));
+        if(BeginCombo((ComboProps){.bounds={0,0,16,8},
+                .popup_size={64,56},.preview="",.id=28000,
+                .open=&composed_open,.flags=ComboPopupAlignLeft|ComboNoArrowButton})) {
+            DrawRectangle(0,8,8,8,GREEN);
+            Rect(16,16,8,8,YELLOW,BLANK);
+            if(frame == 1) CloseCombo();
+            EndCombo();
+        }
+        Rect(0,0,64,64,RED,BLANK);
+        EndTree();
+        EndUIFrame();
+        EndTextureMode();
+        Image composed = LoadImageFromTexture(outer.texture);
+        ImageFlipVertical(&composed);
+        check_pixel(composed,2,10,frame == 0 ? GREEN : RED,
+                    "public combo immediate paint layer");
+        check_pixel(composed,18,18,frame == 0 ? YELLOW : RED,
+                    "public combo retained paint layer");
+        UnloadImage(composed);
+    }
+    if(composed_open) {
+        fprintf(stderr,"public CloseCombo did not update caller state\n");
+        failures++;
+    }
+    CloseUIWindow(auxiliary);
     UnloadRenderTexture(leaf); UnloadRenderTexture(inner); UnloadRenderTexture(outer);
+    CloseWindow();
+    if(ui_frame_paint_layers() != NULL) failures++;
+    InitWindow(64,64,"reopened layer host");
+    if(!IsWindowReady()) return 1;
+    BeginDrawing();
+    BeginUIFrame(64,64,1);
+    UIPaintLayers *reopened_layers = ui_frame_paint_layers();
+    if(reopened_layers == NULL) return 1;
+    UIPaintLayerToken reopened_layer = ui_paint_layer_begin(reopened_layers,1);
+    DrawRectangle(0,0,4,4,GREEN);
+    ui_paint_layer_end(reopened_layer);
+    EndUIFrame();
+    EndDrawing();
     CloseWindow();
     if(failures == 0) puts("nested texture scope pixels ok");
     return failures != 0;

@@ -40,8 +40,9 @@ main(void)
     fn = KirModuleAddFunction(module, "Counter", "state: *CounterState",
                               "void", 1, KirSpan("app.kry", 8, 1));
     ok &= check(fn != NULL, "add function");
-    ok &= check(KirFunctionAddWidget(fn, "Text", "\"Count\"",
-                                     "Text(\"Count\")",
+    ok &= check(KirFunctionAddWidget(fn, "Text",
+                                     "(TextProps){.text=\"Count\"}",
+                                     "Text((TextProps){.text=\"Count\"})",
                                      KirSpan("app.kry", 9, 5)) != NULL,
                 "add widget stmt");
     ok &= check(KirFunctionAddStmt(fn, KIR_STMT_ASSIGN,
@@ -74,7 +75,7 @@ main(void)
                 "dump state");
     ok &= check(strstr(buf, "function Counter args state: *CounterState") != NULL,
                 "dump function");
-    ok &= check(strstr(buf, "stmt widget widget Text args \"Count\" text Text(\"Count\")") != NULL,
+    ok &= check(strstr(buf, "stmt widget widget Text args (TextProps){.text=\"Count\"} text Text((TextProps){.text=\"Count\"})") != NULL,
                 "dump widget stmt");
 
     KirProgramFree(program);

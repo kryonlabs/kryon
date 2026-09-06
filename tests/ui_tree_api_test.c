@@ -628,14 +628,14 @@ main(void)
         char boxed[] = "owned";
         BeginTree(Key("headless boxed text"));
         Row((RowProps){.bounds = {11,12,80,24}});
-        TextInRect(boxed, (Rectangle){0,0,80,24}, 16, WHITE);
+        Text((TextProps){.bounds=(Rectangle){0,0,80,24}, .text=boxed, .font=16, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
         End();
         boxed[0] = 'X';
         EndTree();
         nodes = GetTreeNodes(&count);
         int boxed_count = 0;
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind != UI_WIDGET_TEXT_IN_RECT_NODE)
+            if(nodes[i].kind != UI_WIDGET_TEXT_NODE)
                 continue;
             boxed_count++;
             check_int("boxed text owns string", strcmp(nodes[i].owned_text,"owned"), 0);

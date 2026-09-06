@@ -78,7 +78,7 @@ App :: () #ui {
     Screen root: {
         ClearBackground(GetThemeBackground())
         Background(GetThemeSurface())
-        Text("hi", ScaleUIPx(4), ScaleUIPx(4), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(4), ScaleUIPx(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
         Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
         Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(56), ScaleUIPx(80), ScaleUIPx(20)}, "Pick", 0, radio_sel == 0, 0})

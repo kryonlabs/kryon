@@ -117,11 +117,11 @@ const expected = new Map([
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
-  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "SmallButton", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "TextColored", "TextDisabled", "TextWrapped", "LabelText", "BulletText", "ValueBool", "ValueInt", "ValueUInt", "ValueFloat"]],
-  ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Tooltip", "Progress"]],
+  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "SmallButton", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Text", "Text", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt", "ValueUInt", "ValueFloat"]],
+  ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
   ["tests/parity/selection_images.js", ["Screen", "Selectable", "CheckboxFlags", "ImageWithBg", "ImageButton", "SeparatorText", "TabItemButton", "ClosableTabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
-  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "TextInRect", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
+  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "IconButton", "Href", "Stack", "Rect", "Line", "Bevel", "Text", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
 ]);
 
 for (const [relPath, widgets] of expected) {

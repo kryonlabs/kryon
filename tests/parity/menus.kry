@@ -21,7 +21,13 @@ menus_frame :: () #ui {
         result: MenuBarResult = MenuBar(940,(Rectangle){0,0,360,30},menus,1,&open_menu)
         PopupMenu(941,20,50,items,4)
         ContextMenu((ContextMenuProps){.id = 942, .trigger = {20,190,180,60}, .items = items, .item_count = 4, .open = &context_open, .x = &context_x, .y = &context_y})
-        Tooltip((TooltipProps){.trigger = {220,50,120,40}, .text = "Menu help", .font = Text14, .max_width = 120})
+        Popup menu_help: {
+            bounds = {210,96,140,42}
+            id = 943
+            trigger = {220,50,120,40}
+            flags = PopupTooltip
+            Text((TextProps){.bounds={220,106,120,20},.text="Menu help",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+        }
         Progress((ProgressBarProps){{220,200,100,10},0,100,result.activated_id,""})
     }
 }

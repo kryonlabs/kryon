@@ -35,6 +35,8 @@ tests/parity/selection_images.kry
 tests/parity/table_view.kry
 tests/parity/scroll_content.kry
 tests/parity/drag_drop.kry
+tests/parity/composition.kry
+tests/parity/composed_combo.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -167,6 +169,46 @@ func drawButtons() {
 	host.Draw(func() {
 		kryon.BeginFrame()
 		ButtonsLayout_ButtonsFrame(ButtonsLayoutStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposition() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Composition_CompositionFrame(CompositionStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposedCombo() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedComboFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposedPopup() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedPopupFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposedTooltip() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedTooltipFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposedModal() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedModalFrame(ComposedComboStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -513,6 +555,92 @@ func main() {
 	if text64(ScrollContentStateValue.CustomText) != "cell!?" { panic("custom cell editor re-enable") }
 
 	form := GeneratedFormStateValue
+	drawComposedCombo()
+	if !ComposedComboStateValue.ComboOpen { panic("generated composed combo did not open") }
+	driver.QueueTap(30,70); drawComposedCombo()
+	if ComposedComboStateValue.ComboAction != 1 { panic("ordinary generated popup button did not activate") }
+	ComposedComboStateValue.ComboClose = true
+	drawComposedCombo()
+	if ComposedComboStateValue.ComboOpen { panic("generated CloseCombo did not update caller state") }
+	ComposedComboStateValue.ComboClose = false
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedComboEarlyExit(ComposedComboStateValue, true)
+		kryon.EndFrame()
+	})
+	drawComposedPopup()
+	driver.QueueTap(180, 70)
+	drawComposedPopup()
+	if ComposedComboStateValue.PopupAction != 1 {
+		panic("ordinary generated popup button did not activate")
+	}
+	ComposedComboStateValue.PopupClose = true
+	drawComposedPopup()
+	if ComposedComboStateValue.PopupOpen {
+		panic("generated ClosePopup did not update caller state")
+	}
+	ComposedComboStateValue.PopupClose = false
+	ComposedComboStateValue.PopupOpen = true
+	drawComposedPopup()
+	driver.QueueTap(180, 170)
+	drawComposedPopup()
+	if ComposedComboStateValue.PopupOpen || ComposedComboStateValue.PopupBackground != 0 {
+		panic("outside popup dismissal leaked into background button")
+	}
+	driver.QueueMouseMove(30, 25)
+	drawComposedTooltip()
+	visibleFrames := ComposedComboStateValue.TooltipFrames
+	if visibleFrames != 1 { panic("generated arbitrary tooltip did not open on hover") }
+	driver.QueueTap(30, 25)
+	drawComposedTooltip()
+	if ComposedComboStateValue.TooltipFrames != visibleFrames+1 || ComposedComboStateValue.TooltipBackground != 1 {
+		panic("generated tooltip captured background input")
+	}
+	driver.QueueMouseMove(300, 200)
+	drawComposedTooltip()
+	if ComposedComboStateValue.TooltipFrames != visibleFrames+1 { panic("generated tooltip remained open outside trigger") }
+	drawComposedModal()
+	if !ComposedComboStateValue.ModalOpen || ComposedComboStateValue.ModalFrames != 1 {
+		panic("generated arbitrary modal did not open")
+	}
+	driver.QueueTap(290, 175)
+	drawComposedModal()
+	if !ComposedComboStateValue.ModalOpen || ComposedComboStateValue.ModalBackground != 0 {
+		panic("generated modal dismissed or leaked outside input")
+	}
+	driver.QueueKey(kryon.KeyEscape)
+	drawComposedModal()
+	if ComposedComboStateValue.ModalOpen { panic("generated modal ignored Escape") }
+	// Native-only composition contract: preedit never mutates committed text.
+	driver.SetFocus(26100)
+	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
+	drawComposition()
+	if text64(CompositionStateValue.CompositionText) != "base" { panic("preedit mutated generated buffer") }
+	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_COMMIT, "日本", 2, 0)
+	drawComposition()
+	if text64(CompositionStateValue.CompositionText) != "base日本" || CompositionStateValue.CompositionCursor != 10 {
+		panic("generated composition commit failed")
+	}
+	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "cancel", 6, 0)
+	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_CANCEL, "", 0, 0)
+	drawComposition()
+	if text64(CompositionStateValue.CompositionText) != "base日本" { panic("composition cancellation mutated generated buffer") }
+	CompositionStateValue.CompositionReadOnly = true
+	for _, id := range []int32{26100, 26101} {
+		driver.SetFocus(id)
+		driver.QueueShortcut(kryon.KeyA); driver.QueueShortcut(kryon.KeyC)
+		driver.QueueShortcut(kryon.KeyX); driver.QueueShortcut(kryon.KeyV)
+		driver.QueueKey(kryon.KeyBackspace); driver.QueueKey(kryon.KeyDelete)
+		driver.QueueText("blocked")
+		host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_COMMIT, "blocked", 7, 0)
+		drawComposition()
+		copied := "base日本"; if id == 26101 { copied = "area" }
+		if driver.ClipboardText() != copied { panic("generated read-only copy failed") }
+		if text64(CompositionStateValue.CompositionText) != "base日本" || text64(CompositionStateValue.CompositionArea) != "area" {
+			panic("generated read-only editor mutated")
+		}
+	}
+	CompositionStateValue.CompositionReadOnly = false
 	fields := FieldsStateValue
 	focus := FocusStateValue
 	buttons := ButtonsLayoutStateValue
@@ -604,6 +732,17 @@ func main() {
 	drawButtons()
 	driver.QueueTap(130, 130)
 	drawButtons()
+	// Native keyboard parity; preserve the shared C/Go/JS pointer result below.
+	buttonPointerAction := buttons.ButtonsAction
+	driver.SetFocus(502); driver.QueueKey(kryon.KeyEnter); drawButtons()
+	driver.SetFocus(501); driver.QueueKey(kryon.KeySpace); drawButtons()
+	driver.QueueKey(kryon.KeyTab); drawButtons()
+	if driver.Focus() != 502 { panic("generated button Tab did not skip disabled control") }
+	driver.QueueKey(kryon.KeySpace); drawButtons()
+	if buttons.ButtonsAction != buttonPointerAction + 20 {
+		panic("generated button keyboard activation or disabled gating failed")
+	}
+	buttons.ButtonsAction = buttonPointerAction
 
 	drawLongText()
 	requireFrameOps("long_text", map[kryon.FrameOpKind]int{
@@ -790,6 +929,8 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/table_view.c"
 #include "$work/c/tests/parity/scroll_content.c"
 #include "$work/c/tests/parity/drag_drop.c"
+#include "$work/c/tests/parity/composition.c"
+#include "$work/c/tests/parity/composed_combo.c"
 
 static void drain_events(void)
 {
@@ -826,6 +967,12 @@ static void draw_buttons(void)
 {
     draw_ui(buttons_frame);
 }
+
+static void draw_composition(void) { draw_ui(composition_frame); }
+static void draw_composed_combo(void) { draw_ui(composed_combo_frame); }
+static void draw_composed_popup(void) { draw_ui(composed_popup_frame); }
+static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
+static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
 
 static void draw_long_text(void)
 {
@@ -887,6 +1034,89 @@ static void require_long_text_node_count(int want, const char *label)
 int main(void)
 {
     InjectReset();
+    draw_composed_combo();
+    if(!combo_open) { fprintf(stderr,"generated composed combo did not open\n"); return 1; }
+    InjectTap(30,70); InjectPump(); draw_composed_combo();
+    InjectPump(); draw_composed_combo();
+    if(combo_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
+    combo_close = 1; draw_composed_combo();
+    if(combo_open) { fprintf(stderr,"generated CloseCombo did not update caller state\n"); return 1; }
+    combo_close = 0;
+    BeginUIFrame(640,480,1);
+    composed_combo_early_exit(1);
+    EndUIFrame();
+    draw_composed_popup();
+    InjectTap(180,70); InjectPump(); draw_composed_popup();
+    InjectPump(); draw_composed_popup();
+    if(popup_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
+    popup_close = 1; draw_composed_popup();
+    if(popup_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
+    popup_close = 0; popup_open = 1; draw_composed_popup();
+    InjectTap(180,170); InjectPump(); draw_composed_popup();
+    InjectPump(); draw_composed_popup();
+    if(popup_open || popup_background != 0) {
+        fprintf(stderr,"outside popup dismissal leaked into background button\n"); return 1;
+    }
+    InjectMousePosition(30,25); InjectPump(); draw_composed_tooltip();
+    int visible_tooltip_frames = tooltip_frames;
+    if(visible_tooltip_frames != 1) {
+        fprintf(stderr,"generated arbitrary tooltip did not open on hover\n"); return 1;
+    }
+    InjectTap(30,25); InjectPump(); draw_composed_tooltip();
+    InjectPump(); draw_composed_tooltip();
+    if(tooltip_frames <= visible_tooltip_frames || tooltip_background != 1) {
+        fprintf(stderr,"generated tooltip captured background input\n"); return 1;
+    }
+    visible_tooltip_frames = tooltip_frames;
+    InjectMousePosition(300,200); InjectPump(); draw_composed_tooltip();
+    if(tooltip_frames != visible_tooltip_frames) {
+        fprintf(stderr,"generated tooltip remained open outside trigger\n"); return 1;
+    }
+    draw_composed_modal();
+    if(!modal_open || modal_frames != 1) {
+        fprintf(stderr,"generated arbitrary modal did not open\n"); return 1;
+    }
+    InjectTap(290,175); InjectPump(); draw_composed_modal();
+    InjectPump(); draw_composed_modal();
+    if(!modal_open || modal_background != 0) {
+        fprintf(stderr,"generated modal dismissed or leaked outside input\n"); return 1;
+    }
+    InjectKeyTap(KEY_ESCAPE); InjectPump(); draw_composed_modal();
+    if(modal_open) {
+        fprintf(stderr,"generated modal ignored Escape\n"); return 1;
+    }
+    SetUIFocus(26100);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
+    draw_composition();
+    if(strcmp(composition_text,"base") != 0) {
+        fprintf(stderr,"preedit mutated generated buffer\n"); return 1;
+    }
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"日本",2,0);
+    draw_composition();
+    if(strcmp(composition_text,"base日本") != 0 || composition_cursor != 10) {
+        fprintf(stderr,"generated composition commit failed\n"); return 1;
+    }
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"cancel",6,0);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_CANCEL,"",0,0);
+    draw_composition();
+    if(strcmp(composition_text,"base日本") != 0) {
+        fprintf(stderr,"composition cancellation mutated generated buffer\n"); return 1;
+    }
+    composition_read_only = 1;
+    for(int id = 26100; id <= 26101; id++) {
+        SetUIFocus(id);
+        InjectKey(KEY_LEFT_CONTROL,1);
+        InjectKeyTap(KEY_A); InjectKeyTap(KEY_C); InjectKeyTap(KEY_X); InjectKeyTap(KEY_V);
+        InjectKeyTap(KEY_BACKSPACE); InjectKeyTap(KEY_DELETE); InjectText("blocked");
+        SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"blocked",7,0);
+        InjectPump(); draw_composition();
+        if(strcmp(GetUIClipboardTextValue(),id == 26100 ? "base日本" : "area") != 0 ||
+           strcmp(composition_text,"base日本") != 0 || strcmp(composition_area,"area") != 0) {
+            fprintf(stderr,"generated read-only copy or mutation guard failed\n"); return 1;
+        }
+        InjectReset();
+    }
+    composition_read_only = 0;
     InjectMousePosition(20,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump(); draw_ui(drag_drop_frame);
@@ -1232,6 +1462,25 @@ int main(void)
     InjectPump();
     draw_buttons();
 
+    /* Native keyboard parity; retain the shared pointer-only JSON result. */
+    int button_pointer_action = buttons_action;
+    SetUIFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
+    InjectPump(); draw_buttons();
+    SetUIFocus(501); InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
+    InjectPump(); draw_buttons();
+    InjectKeyTap(KEY_TAB); InjectPump(); draw_buttons();
+    InjectPump(); draw_buttons();
+    if(GetUIFocus() != 502) {
+        fprintf(stderr,"generated button Tab did not skip disabled control\n");
+        return 1;
+    }
+    InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
+    InjectPump(); draw_buttons();
+    if(buttons_action != button_pointer_action + 20) {
+        fprintf(stderr,"generated button keyboard activation or disabled gating failed\n");
+        return 1;
+    }
+    buttons_action = button_pointer_action;
     draw_long_text();
     int long_text_nodes = 0;
     (void)GetTreeNodes(&long_text_nodes);

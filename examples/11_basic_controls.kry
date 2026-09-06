@@ -18,7 +18,7 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text("Basic controls", 40, 40, Text24, GetThemeText())
+        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Basic controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
         if picked {
             radio = picked
@@ -27,7 +27,7 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
         if picked {
             radio = picked
         }
-        Text(TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), 40, 166, Text16, GetThemeText())
+        Text((TextProps){.bounds={40, 166, 0, 0}, .text=TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
         Combobox((ComboboxProps){{240,140,180,34},202,choices,3,&combo,0})
         Progress((ProgressBarProps){{40,210,380,28},0,100,progress,"Progress"})

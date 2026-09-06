@@ -15,7 +15,7 @@ func TestHostFrameQueuesInputAndRenders(t *testing.T) {
 			Padding: 4,
 			Key:     Key("host-test"),
 		})
-		Text("Host", 0, 0, Text16, BLACK)
+		Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "Host", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
 		TextField("Name", &value)
 		Button("Save")
 		End()
@@ -63,7 +63,7 @@ func TestHostRestoresActiveRuntime(t *testing.T) {
 	host := NewHost(AppConfig{Width: 120, Height: 90})
 	host.Frame(func() {
 		BeginFrame()
-		Text("host", 4, 4, Text16, BLACK)
+		Text(TextProps{Bounds: NewRectangle(4, 4, 0, 0), Text: "host", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
 		EndFrame()
 	})
 

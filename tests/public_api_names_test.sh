@@ -249,6 +249,39 @@ if [ -n "$public_text_helper_matches" ]; then
     exit 1
 fi
 
+split_text_widget_matches="$(
+    rg -n '\b(TextInRect|TextColored|TextDisabled|TextWrapped)\b' \
+        include/ui_tree.h \
+        go/kryon/api.go \
+        go/kryon/runtime.go || true
+)"
+
+if [ -n "$split_text_widget_matches" ]; then
+    echo "Text behavior must be properties of the canonical Text widget:"
+    echo "$split_text_widget_matches"
+    exit 1
+fi
+
+split_tooltip_widget_matches="$(
+    rg -n '\bTooltipProps\b|\bTooltip\s*\(' \
+        include/ui_tree.h \
+        include/ui_tk.h \
+        go/kryon \
+        cmd/k2go \
+        cmd/kir \
+        examples \
+        tests/parity \
+        tests/k2c_syntax_test.sh \
+        tests/k2cpp_syntax_test.sh \
+        tests/k2go_syntax_test.sh || true
+)"
+
+if [ -n "$split_tooltip_widget_matches" ]; then
+    echo "Tooltip content must use the canonical Popup scope with PopupTooltip:"
+    echo "$split_tooltip_widget_matches"
+    exit 1
+fi
+
 public_text_layout_matches="$(
     rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|DrawUITextLayout)\b' \
         include/ui_text_layout.h \

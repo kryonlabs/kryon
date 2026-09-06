@@ -54,7 +54,7 @@ the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text TextInRect TextColored TextDisabled TextWrapped LabelText BulletText ValueBool ValueInt ValueUInt ValueFloat Paragraph TextLines Rect Line Bevel Icon
+`Background Text LabelText BulletText ValueBool ValueInt ValueUInt ValueFloat Paragraph TextLines Rect Line Bevel Icon
 Picture ImageWithBg ImageButton Button Selectable CheckboxFlags SmallButton InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip IconButton Href TextField TextArea Dropdown Slider Toggle
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
 PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
@@ -91,8 +91,8 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | Background | ✅ | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
 | Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
-| TextInRect | ✅ | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
-| Text helpers (colored, disabled, wrapped, label/value, bullet) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Text properties (bounds, wrap, clip, color, alignment, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Text(TextProps)` | ✅ |
+| Label/value and bullet text | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Value helpers (bool, int, unsigned, float) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
 | TextLines | ✅ | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
@@ -116,7 +116,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Href (TextLink / TextLinkOpenURL) | ✅ | ✅ | ✅ | ✅ | ✅ `Href` | ✗ |
 | IconLink | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
-| Read-only text | ✅ | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
+| Read-only text | ✅ | ✅ | ✅ | ✅ via `Text` | ✅ `Text(TextProps)` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
 | Dropdown / DropdownEx | ✅ | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
@@ -170,7 +170,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✅ | ✅ (`MenuBar`, nested items, retained right-click context state) | ✗ |
-| Tooltip (cursor-following, wrapped, non-focusing) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | TabItemButton / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Typed drag-and-drop source / target | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |

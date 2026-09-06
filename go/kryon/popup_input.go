@@ -148,3 +148,50 @@ func (r *runtime) closeDropdown(owner int32) {
 	delete(r.dropdownHighlight, owner)
 	r.closePopupInput(owner)
 }
+
+// Keyboard ownership follows the top branch regardless of pointer position.
+func (r *runtime) popupKeyboardCaptures() bool {
+	if n := len(r.popupInputScopes); n != 0 {
+		return r.popupKeyboardCapturesOwner(r.popupInputScopes[n-1].owner, true)
+	}
+	return r.popupKeyboardCapturesOwner(0, false)
+}
+
+func (r *runtime) popupKeyboardCapturesOwner(owner int32, hasOwner bool) bool {
+	var top int32
+	found := false
+	for id := range r.popupPanels {
+		if !found || r.popupAbove(id, top) {
+			top, found = id, true
+		}
+	}
+	if hasOwner {
+		if _, alive := r.popupPanels[owner]; !alive {
+			return true
+		}
+		return found && owner != top
+	}
+	return found
+}
+
+type popupFocusOwner struct {
+	owner    int32
+	hasOwner bool
+	seen     uint64
+}
+
+func (r *runtime) registerPopupFocus(id int32) {
+	if r.popupFocus == nil {
+		r.popupFocus = make(map[int32]popupFocusOwner)
+	}
+	owner := popupFocusOwner{seen: r.paintLayerFrame}
+	if n := len(r.popupInputScopes); n != 0 {
+		owner.owner, owner.hasOwner = r.popupInputScopes[n-1].owner, true
+	}
+	r.popupFocus[id] = owner
+}
+
+func (r *runtime) popupFocusCaptures(id int32) bool {
+	owner := r.popupFocus[id]
+	return r.popupKeyboardCapturesOwner(owner.owner, owner.hasOwner)
+}

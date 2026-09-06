@@ -124,14 +124,16 @@ void DrawUINonSelectableText(const char *text, int x, int y, int font_size,
 void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredUIText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
-void DrawUITextInRect(const char *text, Rectangle rect, int font_size,
-                      Color color);
 int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
                                  int line_gap);
 int DrawUISelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
+void DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
+                           Color color, int width, int align);
 void ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y);
+void ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y,
+                               int align);
 void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
 void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
@@ -222,7 +224,6 @@ int DrawUIColorEdit4(ColorEditProps edit);
 int DrawUIColorPicker3(ColorEditProps picker);
 int DrawUIColorPicker4(ColorEditProps picker);
 int DrawUIColorButton(ColorButtonProps button);
-int DrawUITooltip(TooltipProps tooltip);
 MenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
 int DrawUIPopupMenu(int id, int x, int y, const MenuItem *items,
@@ -312,8 +313,6 @@ int ui_utf8_prev_offset(const char *text, int offset);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);
-void ui_draw_text_in_rect_with_font_token(const char *text, Rectangle bounds,
-                                         int font_size, Color color, int token);
 void ui_text_begin_frame(void);
 int ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x);
 void ui_draw_text_input_selection(Rectangle bounds, const char *text,

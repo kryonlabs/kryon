@@ -83,7 +83,6 @@ typedef enum UIWidgetKind {
     UI_WIDGET_ANGLE_SLIDER_NODE,
     UI_WIDGET_FLOAT_DRAG_NODE,
     UI_WIDGET_INT_DRAG_NODE,
-    UI_WIDGET_TEXT_IN_RECT_NODE,
     UI_WIDGET_TEXT_INPUT_PAINT_NODE
 } UIWidgetKind;
 
@@ -145,6 +144,9 @@ typedef union UIWidgetData {
         int font;
         int font_token;
         int heading_level;
+        int wrap;
+        int align;
+        int vertical_align;
         Color color;
         Color border;
     } primitive;
@@ -190,6 +192,8 @@ typedef struct UIWidgetNode {
     int has_input_clip;
     /* Internal frame-local paint snapshot index; zero means ordinary painting. */
     unsigned paint_capture;
+    /* Internal declaration snapshot for deferred popup hit testing. */
+    unsigned popup_input_capture;
     int parent;
     int first_child;
     int next_sibling;
@@ -301,13 +305,7 @@ typedef struct {
 } ClosableTabBarProps;
 
 void Background(Color color);
-void Text(const char *text, int x, int y, int font_size, Color color);
-void TextInRect(const char *text, Rectangle rect, int font_size,
-                Color color);
-void TextColored(const char *text, int x, int y, int font_size, Color color);
-void TextDisabled(const char *text, int x, int y, int font_size);
-void TextWrapped(const char *text, Rectangle bounds, int font_size,
-                 Color color);
+void Text(TextProps text);
 void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);
 void BulletText(const char *text, Rectangle bounds, int font_size,
@@ -388,6 +386,12 @@ int InputInt(InputIntProps input);
 int InputDouble(InputDoubleProps input);
 int Spinbox(SpinboxProps spinbox);
 int Combobox(ComboboxProps combo);
+int BeginCombo(ComboProps combo);
+void EndCombo(void);
+void CloseCombo(void);
+int BeginPopup(PopupProps popup);
+void EndPopup(void);
+void ClosePopup(void);
 void LabelFrame(LabelFrameProps frame);
 void ImageBox(ImageBoxProps image);
 int ListBox(ListBoxProps list);
@@ -475,7 +479,6 @@ int ColorEdit4(ColorEditProps edit);
 int ColorPicker3(ColorEditProps picker);
 int ColorPicker4(ColorEditProps picker);
 int ColorButton(ColorButtonProps button);
-int Tooltip(TooltipProps tooltip);
 
 /* Layout nodes: auto-position children like flexbox. */
 typedef struct {

@@ -596,6 +596,7 @@ static int
 parse_text(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
+    const char *props = strstr(call, "TextProps");
     char parts[8][KIR_TEXT_MAX];
     int count;
     KrbBuildNode *n;
@@ -604,6 +605,51 @@ parse_text(KrbBuild *b, const char *call)
 
     if(args == NULL)
         return 0;
+    if(props != NULL) {
+        const char *p;
+
+        snprintf(name, sizeof(name), "text%d", b->node_count);
+        n = add_node(b, 2, name);
+        if(n == NULL)
+            return 0;
+        p = strstr(props, ".text");
+        if(p != NULL) {
+            const char *value = strchr(p, '=');
+            value = value != NULL ? kir_skip_inline_ws(value + 1) : p;
+            if(*value == '"' || strstr(value, "TextFormat") != NULL)
+                extract_string(value, n->text, sizeof(n->text));
+            else {
+                char ident[KIR_NAME_MAX];
+                size_t length = 0;
+                while((isalnum((unsigned char)value[length]) || value[length] == '_') &&
+                      length + 1 < sizeof(ident)) {
+                    ident[length] = value[length];
+                    length++;
+                }
+                ident[length] = '\0';
+                if(length > 0) {
+                    snprintf(n->name, sizeof(n->name), "%s", ident);
+                    snprintf(n->text, sizeof(n->text), "%%s");
+                }
+            }
+        }
+        p = strstr(props, ".bounds");
+        if(p != NULL) {
+            const char *brace = strchr(p, '{');
+            char fields[4][KIR_TEXT_MAX];
+            int fields_count = brace != NULL ? split_args(brace + 1, fields, 4) : 0;
+            if(fields_count > 0 && parse_coord(fields[0], &n->x, &scaled) && scaled) n->flags |= 1 << 2;
+            if(fields_count > 1 && parse_coord(fields[1], &n->y, &scaled) && scaled) n->flags |= 1 << 3;
+            if(fields_count > 2 && parse_coord(fields[2], &n->w, &scaled) && scaled) n->flags |= 1 << 4;
+            if(fields_count > 3 && parse_coord(fields[3], &n->h, &scaled) && scaled) n->flags |= 1 << 5;
+        }
+        p = strstr(props, ".font");
+        n->font_size = p != NULL ? font_size_of(strchr(p, '=') + 1) : 16;
+        p = strstr(props, ".color");
+        n->color = p != NULL ? parse_color(strchr(p, '=') + 1)
+                             : (KRB_COLOR_THEME | KRY_THEME_TEXT);
+        return 1;
+    }
     count = split_args(args + 1, parts, 8);
     if(count < 1)
         return 0;
@@ -1551,36 +1597,6 @@ parse_bevel(KrbBuild *b, const char *call)
     if(parse_coord(parts[2], &n->w, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_W;
     if(parse_coord(parts[3], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
     n->color = parse_color(parts[4]);
-    return 1;
-}
-
-/* TextInRect(text, Rectangle, font, color) -> a TEXT node at the rect origin. */
-static int
-parse_textinrect(KrbBuild *b, const char *call)
-{
-    const char *args = strchr(call, '(');
-    char parts[8][KIR_TEXT_MAX];
-    char name[32];
-    KrbBuildNode *n;
-    int count;
-
-    if(args == NULL)
-        return 0;
-    count = split_args(args + 1, parts, 8);
-    if(count < 2)
-        return 0;
-    snprintf(name, sizeof(name), "tir%d", b->node_count);
-    n = add_node(b, KRB_NODE_TEXT, name);
-    if(n == NULL)
-        return 0;
-    extract_string(parts[0], n->text, sizeof(n->text));
-    node_rect(n, parts[1]);
-    if(count > 2)
-        n->font_size = font_size_of(parts[2]);
-    if(count > 3)
-        n->color = parse_color(parts[3]);
-    else
-        n->color = KRB_COLOR_THEME | KRY_THEME_TEXT;
     return 1;
 }
 
@@ -2923,7 +2939,7 @@ static int
 is_kry_widget_call(const char *name)
 {
     static const char *const names[] = {
-        "Background", "Text", "TextInRect", "Paragraph", "TextLines",
+        "Background", "Text", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
         "IconButton", "Href", "TextField", "TextArea", "Dropdown",
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
@@ -2959,7 +2975,6 @@ parse_widget_from_table(KrbBuild *b, const char *call)
         { "Separator", parse_separator },
         { "Line", parse_line },
         { "Bevel", parse_bevel },
-        { "TextInRect", parse_textinrect },
         { "Picture", parse_picture },
         { "Checkbox", parse_checkbox },
         { "Radio", parse_radio },
@@ -3004,7 +3019,7 @@ try_widget(KrbBuild *b, const char *raw)
     if(is_krb_layout_call(call))
         return 1;
     if(starts_ident(call, "Text") && !starts_ident(call, "TextFormat") &&
-       !starts_ident(call, "TextInRect") && !starts_ident(call, "TextLines") &&
+       !starts_ident(call, "TextLines") &&
        !starts_ident(call, "TextField") &&
        !starts_ident(call, "TextArea"))
         return parse_text(b, call);

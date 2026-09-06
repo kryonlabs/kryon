@@ -11,8 +11,7 @@ app "Kryon Pictures" {
 App :: () #ui {
     Screen root: {
         Background(GetThemeBackground())
-        Text("Pictures are image nodes", ScaleUIPx(32), ScaleUIPx(30),
-                   Text24, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(32), ScaleUIPx(30), 0, 0}, .text="Pictures are image nodes", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Stack picture_card: {
             bounds = {ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210)}
             key = Key("picture-card")
@@ -26,8 +25,7 @@ App :: () #ui {
                      .bounds = {ScaleUIPx(168), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
                      .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
-            Text("Pictures keep their node bounds for editing",
-                       ScaleUIPx(52), ScaleUIPx(226), Text12, GetThemeIcon())
+            Text((TextProps){.bounds={ScaleUIPx(52), ScaleUIPx(226), 0, 0}, .text="Pictures keep their node bounds for editing", .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
         }
     }
 }

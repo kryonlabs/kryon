@@ -1,4 +1,5 @@
 #include "ui_window.h"
+#include "ui_paint_layers_internal.h"
 
 #include <stddef.h>
 
@@ -160,8 +161,10 @@ typedef int (*InbeXChangeProperty)(Display *, Window, Atom, Atom, int, int,
 /* XCreateWindow attributes we set through XChangeWindowAttributes. */
 enum { InbeCWOverrideRedirect = 1 << 9 };
 
+#define UI_WINDOW_OWNS_PAINT_LAYERS 1
 struct UIWindow {
     Window window;
+    UIPaintLayers *paint_layers;
     int width;
     int height;
     float scale;
@@ -459,9 +462,9 @@ CloseUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
+    if(ui_window_active == window) EndUIWindow();
     ui_window_unregister(window);
-    if(ui_window_active == window)
-        ui_window_active = NULL;
+    ui_paint_layers_destroy(window->paint_layers);
     if(window->ximage != NULL) {
         ((InbeXImageInfo *)window->ximage)->data = NULL;
         ui_destroy_image(window->ximage);
@@ -482,6 +485,7 @@ BeginUIWindow(UIWindow *window)
     BeginTextureMode(window->target);
     ClearBackground(window->background);
     BeginUIFrame(window->width, window->height, window->scale);
+    ui_window_layers_begin();
 }
 
 static void
@@ -622,13 +626,14 @@ EndUIWindow(void)
 
     if(window == NULL)
         return;
-    ui_window_active = NULL;
     EndUIFrame();
+    if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
+    ui_window_active = NULL;
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
     EndTextureMode();
 
-    image = LoadImageFromTexture(window->target.texture);
+    image = ui_paint_readback(window->target.texture);
     if(image.data == NULL || ui_create_image == NULL)
         return;
 
@@ -741,8 +746,10 @@ StealUICoreWindowClose(void)
 #define UI_WINDOW_CLASS_NAME "KryonUIWindow"
 #define UI_WINDOW_APP_ICON 101
 
+#define UI_WINDOW_OWNS_PAINT_LAYERS 1
 struct UIWindow {
     HWND window;
+    UIPaintLayers *paint_layers;
     int width, height;
     float scale;
     Color background;
@@ -882,13 +889,41 @@ UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
     ShowWindow(window->window,SW_SHOWNOACTIVATE); UpdateWindow(window->window); return window;
 }
 
-void CloseUIWindow(UIWindow *window) { int i; if(!window)return; if(ui_window_active==window)ui_window_active=NULL; for(i=0;i<ui_window_count;i++)if(ui_windows[i]==window){for(;i<ui_window_count-1;i++)ui_windows[i]=ui_windows[i+1];ui_window_count--;break;} DestroyWindow(window->window); UnloadRenderTexture(window->target); free(window->pixels); free(window); }
-void BeginUIWindow(UIWindow *window) { if(!window)return; ui_window_active=window; BeginTextureMode(window->target); ClearBackground(window->background); BeginUIFrame(window->width,window->height,window->scale); }
+void CloseUIWindow(UIWindow *window)
+{
+    if(!window) return;
+    if(ui_window_active == window) EndUIWindow();
+    ui_paint_layers_destroy(window->paint_layers);
+    for(int i = 0; i < ui_window_count; i++) {
+        if(ui_windows[i] != window) continue;
+        for(; i < ui_window_count-1; i++) ui_windows[i] = ui_windows[i+1];
+        ui_window_count--;
+        break;
+    }
+    DestroyWindow(window->window);
+    UnloadRenderTexture(window->target);
+    free(window->pixels);
+    free(window);
+}
+
+void BeginUIWindow(UIWindow *window)
+{
+    if(!window) return;
+    ui_window_active = window;
+    BeginTextureMode(window->target);
+    ClearBackground(window->background);
+    BeginUIFrame(window->width,window->height,window->scale);
+    ui_window_layers_begin();
+}
 void EndUIWindow(void)
 {
     UIWindow *window=ui_window_active; Image image; BITMAPINFO info; HDC dc; size_t count,i;
-    if(!window)return; ui_window_active=NULL; EndUIFrame(); EndTextureMode();
-    image=LoadImageFromTexture(window->target.texture); if(!image.data)return;
+    if(!window)return;
+    EndUIFrame();
+    if(window->paint_layers)ui_paint_layers_composite(window->paint_layers);
+    ui_window_active=NULL;
+    EndTextureMode();
+    image=ui_paint_readback(window->target.texture); if(!image.data)return;
     ImageFormat(&image,PIXELFORMAT_UNCOMPRESSED_R8G8B8A8); count=(size_t)window->width*window->height;
     window->pixels=(unsigned char *)realloc(window->pixels,count*4); if(!window->pixels){UnloadImage(image);return;}
     for(i=0;i<count;i++){const unsigned char *s=(const unsigned char *)image.data+i*4; unsigned char *d=window->pixels+i*4; d[0]=s[2];d[1]=s[1];d[2]=s[0];d[3]=255;}
@@ -919,8 +954,10 @@ int StealUICoreWindowClose(void)
 
 #include "ui_core.h"
 
+#define UI_WINDOW_OWNS_PAINT_LAYERS 1
 struct UIWindow {
     SDL_Window *window;
+    UIPaintLayers *paint_layers;
     SDL_GLContext context;
     Uint32 window_id;
     int width;
@@ -1255,9 +1292,9 @@ CloseUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
+    if(ui_window_active == window) EndUIWindow();
     ui_window_unregister(window);
-    if(ui_window_active == window)
-        ui_window_active = NULL;
+    ui_paint_layers_destroy(window->paint_layers);
 #if defined(__linux__) || defined(__FreeBSD__)
     {
         SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
@@ -1284,6 +1321,7 @@ BeginUIWindow(UIWindow *window)
     BeginTextureMode(window->target);
     ClearBackground(window->background);
     BeginUIFrame(window->width, window->height, window->scale);
+    ui_window_layers_begin();
 }
 
 void
@@ -1292,8 +1330,9 @@ EndUIWindow(void)
     UIWindow *window = ui_window_active;
     if(window == NULL)
         return;
-    ui_window_active = NULL;
     EndUIFrame();
+    if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
+    ui_window_active = NULL;
     EndTextureMode();
 #if defined(__linux__) || defined(__FreeBSD__)
     {
@@ -1519,3 +1558,39 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 }
 
 #endif
+
+UIPaintLayers *ui_window_paint_layers(void)
+{
+#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
+    UIWindow *window = ui_window_active;
+    if(window == NULL) return NULL;
+    if(window->paint_layers == NULL) {
+        window->paint_layers = ui_paint_layers_create();
+        ui_paint_layers_frame(window->paint_layers,window->width,window->height);
+    }
+    return window->paint_layers;
+#else
+    return NULL;
+#endif
+}
+
+int ui_window_frame_active(void)
+{
+#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
+    return ui_window_active != NULL;
+#else
+    return 0;
+#endif
+}
+
+void ui_window_layers_begin(void)
+{
+#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
+    UIWindow *window = ui_window_active;
+    if(window == NULL) return;
+    if(window->paint_layers)
+        ui_paint_layers_frame(window->paint_layers,window->width,window->height);
+    else if(ui_popup_input_bound() != NULL)
+        (void)ui_window_paint_layers();
+#endif
+}

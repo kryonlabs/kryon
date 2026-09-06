@@ -30,6 +30,14 @@ Do not expand it, duplicate it under another alias, or use it from generated
 output. Remove compatibility code once no maintained app or fixture depends on
 it.
 
+## Canonical Widget Rule
+
+One widget concept has one public implementation. Variations such as wrapping,
+clipping, color, alignment, and disabled state belong in that widget's props;
+do not create parallel helpers such as `TextWrapped`, `TextColored`, or
+`TextDisabled`. Migrate maintained callers when consolidating an older split
+surface, then remove the duplicate entry points and generated output.
+
 ## Test Rule
 
 Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must keep the

@@ -334,7 +334,7 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		}
 		drawText(img, sliceTextByByteCursor(op.Text, start, end), sx, y, op.FontSize, selected, op.FontID)
 	}
-	if op.Focused {
+	if op.Focused && !op.ReadOnly {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5

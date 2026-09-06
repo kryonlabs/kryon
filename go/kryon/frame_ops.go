@@ -50,6 +50,7 @@ type FrameOp struct {
 	Pressed           bool
 	Disabled          bool
 	Secure            bool
+	ReadOnly          bool
 	Row               int32
 	Column            int32
 	Selected          bool

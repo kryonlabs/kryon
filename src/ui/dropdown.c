@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_popup_input_internal.h"
 
 #include "locale.h"
 #include <limits.h>
@@ -373,7 +374,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
         MarkUIClickable();
 
     /* Handle click on button */
-    int keyboard_open = focused && !state->open &&
+    int keyboard_open = focused && !state->open && !ui_popup_input_keyboard_captures() &&
         (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
          IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_DOWN));
     if((active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) || keyboard_open) {

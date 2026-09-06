@@ -12,7 +12,7 @@ state {
 
 LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
     info: const char * = TextFormat("%s:%d",label,value)
-    Text(info, x, y, Text16, GetThemeText())
+    Text((TextProps){.bounds={x, y, 0, 0}, .text=info, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
@@ -24,7 +24,7 @@ WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {
-    Text(label, x, y, Text16, color)
+    Text((TextProps){.bounds={x, y, 0, 0}, .text=label, .font=Text16, .color=color, .wrap=TextWrapNone})
 }
 
 LayoutExample :: (viewport: Rectangle) #ui {
@@ -48,7 +48,7 @@ LayoutExample :: (viewport: Rectangle) #ui {
         btn0_x = column_x + ScaleUIPx(16)
         btn1_x = column_x + ScaleUIPx(138)
         btn2_x = column_x + ScaleUIPx(260)
-        Text("Responsive layout", page_x, ScaleUIPx(16), Text24, GetThemeText())
+        Text((TextProps){.bounds={page_x, ScaleUIPx(16), 0, 0}, .text="Responsive layout", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Rect(page_x, y, page_w, guide_h, GetThemeSurface(), GetThemeIcon())
         Line(side_padding, y, side_padding, y+guide_h, GetThemeLink())
         Line(right_edge, y, right_edge, y+guide_h, GetThemeLink())

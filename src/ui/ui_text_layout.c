@@ -255,6 +255,13 @@ ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
 void
 DrawTextLayout(TextLayout *layout, int x, int *y, int font_size, Color color)
 {
+    DrawTextLayoutAligned(layout, x, y, font_size, color, 0, 0);
+}
+
+void
+DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
+                      Color color, int width, int align)
+{
     if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
         return;
 
@@ -266,6 +273,7 @@ DrawTextLayout(TextLayout *layout, int x, int *y, int font_size, Color color)
     int line_count = layout->line_count > 0 ? layout->line_count : 1;
 
     for(int line = 0; line < line_count; line++) {
+        int line_x = x;
         int start = (layout->line_breaks != NULL && layout->line_breaks[line] >= 0)
                         ? layout->line_breaks[line] : 0;
         int end = (layout->line_breaks != NULL && line + 1 < line_count &&
@@ -279,11 +287,19 @@ DrawTextLayout(TextLayout *layout, int x, int *y, int font_size, Color color)
         if(end > layout->element_count)
             end = layout->element_count;
 
+        if(width > 0 && layout->line_widths != NULL) {
+            int spare = width - layout->line_widths[line];
+            if(spare > 0 && align == TextAlignCenter)
+                line_x += spare / 2;
+            else if(spare > 0 && align == TextAlignEnd)
+                line_x += spare;
+        }
+
         if(ui_text_layout_line_text_len(layout, start, end) >= 0)
-            ui_text_layout_draw_text_line(layout, start, end, x, current_y,
+            ui_text_layout_draw_text_line(layout, start, end, line_x, current_y,
                                           font_size, color);
         else
-            ui_text_layout_draw_mixed_line(layout, start, end, x, current_y,
+            ui_text_layout_draw_mixed_line(layout, start, end, line_x, current_y,
                                            font_size, color, space_width,
                                            icon_spacing);
         current_y += drawn_line_height;

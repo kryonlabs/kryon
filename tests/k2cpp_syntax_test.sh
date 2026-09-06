@@ -50,7 +50,7 @@ Valid :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(10), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Column form: {
             bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}
             gap = ScaleUIPx(4)
@@ -157,7 +157,7 @@ Main :: (viewport: Rectangle) #ui {
         content_height = 480
         Scroll {
             bounds = content
-            Text("Scroll", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Scroll", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
     }
     Disabled {
@@ -169,7 +169,7 @@ Main :: (viewport: Rectangle) #ui {
 
         Column body: {
             gap = 4
-            Text("Hello", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Button {
                 bounds = {8, 40, 96, 28}
                 label = "Block"
@@ -236,7 +236,9 @@ grep -Fq 'int app_count = 0;' "$c"
 # calls wrap with Push/Pop + source line
 grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
-grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText());' "$c"
+grep -Fq 'Text((TextProps){' "$c"
+grep -Fq '"hi"' "$c"
+grep -Fq 'TextWrapNone' "$c"
 grep -Fq 'Column((ColumnProps)' "$c"
 grep -Fq 'TextField((TextFieldProps)' "$c"
 grep -Fq 'TextArea((TextAreaProps)' "$c"
@@ -316,6 +318,22 @@ fi
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$work/out" "$c"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$work/out" "$hc"
 
+# Keep native C++ codegen on the same clean composed-widget surface as C and
+# Go. This fixture is shared with generated runtime parity.
+mkdir -p "$work/composed"
+"$k2cpp" --no-main --root "$root" -o "$work/composed" \
+    "$root/tests/parity/composed_combo.kry"
+sh "$root/tests/check_clean_generated_output.sh" "$work/composed"
+combo_cpp="$work/composed/tests/parity/composed_combo.cpp"
+grep -Fq 'BeginCombo((ComboProps)' "$combo_cpp"
+grep -Fq 'CloseCombo();' "$combo_cpp"
+grep -Fq 'EndCombo();' "$combo_cpp"
+grep -Fq 'BeginPopup((PopupProps)' "$combo_cpp"
+grep -Fq 'ClosePopup();' "$combo_cpp"
+grep -Fq 'EndPopup();' "$combo_cpp"
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+    -I"$work/composed" "$combo_cpp"
+
 # C++-specific output: extern "C" linkage in header and source
 grep -Fq '#ifdef __cplusplus' "$h"
 grep -Fq 'extern "C" {' "$h"
@@ -324,7 +342,7 @@ grep -Fq 'extern "C" {' "$c"
 grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.hpp"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
-grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
+grep -Fq '"Hello"' "$hc"
 grep -Fq 'BeginDisabled(2 >= 1);' "$hc"
 grep -Fq 'EndDisabled();' "$hc"
 grep -Fq 'BeginScroll(viewport, 480, NULL)' "$hc"

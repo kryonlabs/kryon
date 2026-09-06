@@ -23,6 +23,100 @@ downstream application demonstrably needs the behavior.
 
 ### Widget lifecycle consolidation
 
+Captured C retained paint includes blend state through the private
+`ui_blend_internal.h` snapshot. OpenGL 3.3/GLES2 backend hooks preserve both
+effective GPU factors/equations and rlgl's cached mode/custom configuration,
+including changes awaiting activation. The hooks are injected into the build
+copy by `prepare-raylib-source.sh`, not into the raylib submodule or public API.
+Each captured node restores its declaration state for painting and restores the
+caller's state afterward. The snapshot itself does not own render resources.
+
+The private `ui_paint_layers.c` context now owns temporary C render textures,
+collects mixed immediate/retained layers, and composites them in opening order.
+Nested layers remain above subsequent parent paint; hidden parents suppress
+descendants. Capture and composition restore drawing state, and texture resource
+operations preserve the active framebuffer. Native `UIWindow` hosts lazily own
+their context and handle its frame, composition and destruction. The private
+active-window accessor exposes that owner to future composed widgets without
+adding app-level lifecycle calls. Main UI frames own a separate lazy context:
+`SetUIFrame` starts it, `EndUIFrame` composites it, and `CloseWindow` releases
+its resources before graphics shutdown. The private frame accessor routes to
+the active UIWindow when appropriate. Presenter readback preserves the calling
+framebuffer. Layer scopes suspend the retained Row/Column path, keeping popup
+children in the screen tree without consuming the owner's layout slots. Scope
+exit checks balanced child layouts and restores the owner's path. Disabled
+scopes likewise inherit the owner's state behind a protected local depth floor,
+then restore the parent's scope on exit. Input clips and scroll depth are
+isolated similarly, while modal capture stays active. The private C popup input
+registry supplies nested branch capture to the shared hit-test path. Each paint
+host owns its registry and advances, binds, retires and destroys it automatically.
+Auxiliary frames switch to their own registry and restore the parent's binding
+on completion; hiding a layer closes its input branch. Retained nodes snapshot
+popup ownership for deferred hit testing and button hover/press state; snapshots
+are kept with the committed tree while a replacement is declared. Closed,
+missing, previous-frame or destroyed owners cannot receive those hits.
+Deferred pointer-focus registration uses the same ownership snapshots without
+reopening scopes, preserving modal, clip, disabled and inspection capture.
+Retained hit testing and button hover/press state now use that same full capture
+predicate, so modal blocking also prevents deferred click events.
+The public `BeginCombo` / `EndCombo` / `CloseCombo` and `BeginPopup` /
+`EndPopup` / `ClosePopup` scopes bind these paint, layout and input contexts for
+arbitrary native children. `PopupTooltip` reuses that paint/layout scope while
+intentionally skipping input ownership. `PopupModal` uses the same scope with a
+full-view backdrop and background pointer/keyboard ownership, while outside
+releases remain non-dismissing. Automatic popup focus restoration and some
+active-drag routing remain unfinished.
+C and Go now have a pointer-independent top-popup keyboard predicate. Closed
+combos use it before keyboard opening, preventing a focused parent/background
+combo from opening behind a child popup. Focus registrations now retain their
+popup owner: C filters and deduplicates Tab destinations at focus finalization,
+before releasing the host input binding; Go filters its current/previous-frame
+focus order during traversal. Native tests cover forward/reverse wraparound,
+parent/background exclusion and traversal after explicit dismissal. Go also
+exercises actual editor Tab events. Automatic popup focus acquisition and
+restoration, plus complete keyboard routing, remain unfinished.
+TextField/TextArea editing now also respects top-popup keyboard ownership in
+both runtimes. C's immediate keyboard-enabled check uses the active scope;
+retained editor routing uses its declaration snapshot after scopes close.
+Tests cover blocked parent and eligible child typing, including immediate and
+retained C paths. Immediate C TextArea skips painting without a graphics window.
+Ordinary Go Button now registers focus, focuses on pointer activation and
+handles Enter/Space and Tab. C's activation check also consults registered popup
+ownership, including deferred button events. Unclaimed Go Tab events route at
+frame end so a disabled, absent or blocked focus owner cannot swallow traversal.
+Generated C/Go button tests cover Enter/Space, disabled rejection and Tab skipping
+a disabled control; popup tests cover parent/child keyboard activation.
+Missing C popup input owners are now retired before frame-end focus filtering,
+not only during paint cleanup. Matching C/Go tests omit a child and then its
+parent and verify that Tab reaches the surviving parent/background that frame.
+Popup keyboard capture is remembered for the C host frame. Unhandled character
+input and queued text-edit commands expire at frame end after such capture,
+including same-frame dismissal, instead of leaking into an underlying editor
+later. Tests cover injected/platform-queued text, queued Backspace/Enter and
+fresh input after dismissal. Non-popup queue behavior is unchanged.
+C retained IME commits now respect read-only editors, and popup-captured
+composition events expire with other blocked text input. Preedit is cancelled
+on focus loss, read-only transition or popup keyboard capture. Regression tests
+cover cancellation and no commit replay after dismissal. Native Go now owns a
+composition queue and per-editor preedit records. TextField/TextArea display
+preedit separately from committed buffers and insert UTF-8 commits; focus loss,
+removal, disabling and popup capture discard preedit. A native generated
+composition fixture verifies non-mutating preedit, commit and cancellation in
+C and Go. Device-level Go IME routing remains unfinished.
+Native Go text props now carry ReadOnly, with mutation guards separate from
+focus/selection/copy handling and read-only caret metadata. C retained editing
+also guards ordinary typing, cut/paste and deletion, not just composition
+commits. The generated composition fixture verifies read-only TextField and
+TextArea buffers and copying in both native runtimes; Go tests cover preedit
+cancellation, byte-for-byte buffer preservation and re-enabling without replay.
+Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
+development-tree, or standard system locations before falling back to the
+minimal bitmap renderer. This matches the C host's default-font policy while
+preserving explicit `RegisterUIFontData` / `UseUIFont` overrides.
+Private paint scopes share a drawing-order guard across host contexts while
+keeping texture ownership host-local. Token generations survive host destruction
+and allocation reuse. Invalid closes are rejected before restoring drawing state.
+
 C dropdown identity records now have stable dynamically allocated storage,
 rather than a fixed 24-control array whose overflow reused the first control.
 Frame-end overlay processing retires records for owners no longer declared.
@@ -58,7 +152,10 @@ same shared lowering. Native `Scroll` blocks use the same lexical cleanup and
 existing `BeginScroll`/`EndScroll` operations. An optional block name binds the
 returned content rectangle without leaking it beyond the block. Native generated
 scroll parity covers nested clips/input and restoration after return, break and
-continue. Other begin/end APIs have not all gained block syntax.
+continue. Native `Combo` and `Popup` blocks similarly lower caller-defined popup
+contents to conditional begin calls plus cleanup-managed end calls, removing manual scope
+bookkeeping from `.kry` sources while retaining the small runtime contract.
+Other begin/end APIs have not all gained block syntax.
 
 The C widget implementation is still being consolidated. Some constructors
 submit retained paint, while others register generic nodes and draw immediately.
@@ -81,17 +178,19 @@ ordinary typed drag nodes inside a Row, plus retained Text for the label. Their
 children preserve the existing input IDs and borrow the caller's endpoint
 pointers; no range-specific renderer or prefixed drag draw entry point remains.
 
-`TextInRect` uses a typed retained text node with owned text, captured font
-selection, and resolved bounds. Its deferred painter preserves the existing
-centering and clipping rules. Headless declaration does not invoke a graphics
-backend. The pixel test compares it against the immediate text renderer,
-including an overlapping later rectangle and a mutated source string.
+`Text(TextProps)` uses one typed retained text node with owned text, captured
+font selection, and resolved bounds. Its painter measures intrinsic lines or
+wraps bounded text, clips to positive bounds, and applies alignment, color, and
+disabled presentation from the same property object. Headless declaration does
+not invoke a graphics backend. There are no separate public colored, disabled,
+wrapped, or in-rectangle text widget implementations.
 
 The remaining families must migrate with evidence for layout, input timing,
 paint order, disabled/clip scopes, and data lifetime. Captured render textures
-are currently an internal bridge for mixed painting, not a public popup API or
-the completed widget architecture. Native Go keeps its own implementation and
-must retain matching behavior through generated-runtime parity coverage.
+remain private implementation machinery behind the public combo scope, not a
+low-level public paint API or the completed widget architecture. Native Go keeps
+its own implementation and must retain matching behavior through
+generated-runtime parity coverage.
 
 Numeric editor state uses collision chains keyed by numeric type, widget ID,
 and component index,
@@ -139,8 +238,10 @@ and accepting a drag; an already active source retains its payload when the
 pointer leaves its original bounds. Rejected targets do not consume the release
 or payload. Generated C/Go tests cover clipped sources/targets and copied data
 lifetime across press and release.
-General keyboard focus, active-drag routing, C composed-popup integration and a public
-arbitrary-content combo scope remain unfinished.
+The public arbitrary-content combo scope integrates these paint and input
+registries in C and Go. Generated C/Go execution and k2cpp syntax coverage use
+the same clean calls. Automatic focus restoration, device-level integration and
+some active-drag routing remain unfinished.
 
 ## Backends
 

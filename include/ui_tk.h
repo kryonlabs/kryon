@@ -245,6 +245,28 @@ typedef struct {
     int disabled;
 } InvisibleButtonProps;
 
+typedef enum {
+    TextWrapAuto = 0,
+    TextWrapNone
+} TextWrap;
+
+typedef enum {
+    TextAlignStart = 0,
+    TextAlignCenter,
+    TextAlignEnd
+} TextAlign;
+
+typedef struct {
+    Rectangle bounds;
+    const char *text;
+    int font;
+    Color color;
+    TextWrap wrap;
+    TextAlign align;
+    TextAlign vertical_align;
+    int disabled;
+} TextProps;
+
 typedef struct {
     Rectangle bounds;
     const char *label;
@@ -315,14 +337,6 @@ typedef struct {
 } ColorButtonProps;
 
 typedef struct {
-    Rectangle trigger;
-    const char *text;
-    int font;
-    int max_width;
-    int disabled;
-} TooltipProps;
-
-typedef struct {
     Rectangle bounds;
     int id;
     int min;
@@ -342,6 +356,43 @@ typedef struct {
     int *selected_index;
     int disabled;
 } ComboboxProps;
+
+typedef enum {
+    ComboFlagsNone = 0,
+    ComboPopupAlignLeft = 1 << 0,
+    ComboHeightSmall = 1 << 1,
+    ComboHeightRegular = 1 << 2,
+    ComboHeightLarge = 1 << 3,
+    ComboHeightLargest = 1 << 4,
+    ComboNoArrowButton = 1 << 5,
+    ComboNoPreview = 1 << 6,
+    ComboWidthFitPreview = 1 << 7
+} ComboFlags;
+
+typedef struct {
+    Rectangle bounds;
+    Vector2 popup_size;
+    const char *preview;
+    int id;
+    bool *open;
+    unsigned int flags;
+    int disabled;
+} ComboProps;
+
+typedef enum {
+    PopupFlagsNone = 0,
+    PopupTooltip = 1 << 0,
+    PopupModal = 1 << 1
+} PopupFlags;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    bool *open;
+    int disabled;
+    Rectangle trigger;
+    unsigned int flags;
+} PopupProps;
 
 typedef struct {
     Rectangle bounds;

@@ -5,6 +5,10 @@
 #include "ui_inspect.h"
 #include "../src/ui/ui_internal.h"
 #include "../src/ui/ui_numeric_input_internal.h"
+#include "../src/ui/ui_tree_layout_internal.h"
+#include "../src/ui/ui_disabled_internal.h"
+#include "../src/ui/ui_input_clip_internal.h"
+#include "../src/ui/ui_popup_input_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -430,6 +434,708 @@ test_combo_keyboard_navigation(void)
     }
     check_int("keyboard End reveals last option for pointer selection",selected,130);
     InjectReset();
+}
+
+static void
+test_popup_preedit_cancellation(void)
+{
+    for(int cause = 0; cause < 3; cause++) {
+        UIPopupInput *context = ui_popup_input_create();
+        char text[32] = "a";
+        int cursor = 1, focused = 1;
+        InjectReset(); ClearTextComposition();
+        for(int frame = 0; frame < 3; frame++) {
+            if(frame == 0) SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
+            InjectPump(); BeginUIFrame(240,240,1);
+            ui_popup_input_frame(context);
+            UIPopupInput *previous = ui_popup_input_bind(context);
+            BeginTree(Key("popup-preedit-cancellation"));
+            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            if(frame == 1 && cause == 0) {
+                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                ui_popup_input_end(child);
+            } else ui_popup_input_close(context,1);
+            SetUIFocus(frame == 1 && cause == 2 ? 0 : 26010);
+            TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
+                .cursor_position=&cursor,.focused=&focused,.focus_id=26010,
+                .read_only=frame == 1 && cause == 1});
+            ui_popup_input_end(parent);
+            UIEvent event;
+            while(NextEvent(&event)) {}
+            EndTree();
+            int composition_events = 0;
+            while(NextEvent(&event))
+                if(event.kind == UI_EVENT_COMPOSITION_CHANGED) composition_events++;
+            check_int("preedit starts then cancels without revival",composition_events,frame < 2 ? 1 : 0);
+            check_int("preedit cancellation leaves committed text intact",strcmp(text,"a"),0);
+            EndUIFrame();
+            ui_popup_input_finish(context);
+            ui_popup_input_bind(previous);
+        }
+        ui_popup_input_destroy(context);
+    }
+    ClearTextComposition(); InjectReset();
+}
+
+static void
+test_popup_composition_dismissal_replay(void)
+{
+    for(int read_only = 0; read_only < 2; read_only++)
+    for(int area = 0; area < 2; area++) {
+        UIPopupInput *context = ui_popup_input_create();
+        char text[32] = "a";
+        int cursor = 1, focused = 1;
+        InjectReset(); ClearTextComposition();
+        for(int frame = 0; frame < 3; frame++) {
+            if(frame != 1) {
+                SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
+                SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"x",1,0);
+            }
+            InjectPump(); BeginUIFrame(240,240,1);
+            ui_popup_input_frame(context);
+            UIPopupInput *previous = ui_popup_input_bind(context);
+            BeginTree(Key("popup-composition-replay"));
+            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            if(frame == 0) {
+                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                ui_popup_input_end(child);
+            } else ui_popup_input_close(context,1);
+            SetUIFocus(26000); focused = 1;
+            if(area)
+                TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
+                    .cursor_position=&cursor,.focused=&focused,.focus_id=26000,.read_only=read_only});
+            else
+                TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
+                    .cursor_position=&cursor,.focused=&focused,.focus_id=26000,.read_only=read_only});
+            ui_popup_input_end(parent);
+            EndTree();
+            check_int("IME commit respects popup ownership and read-only state",
+                strcmp(text,frame == 2 && !read_only ? "ax" : "a"),0);
+            EndUIFrame();
+            ui_popup_input_finish(context);
+            ui_popup_input_bind(previous);
+        }
+        ui_popup_input_destroy(context);
+    }
+    ClearTextComposition(); InjectReset();
+}
+
+static void
+test_popup_text_dismissal_replay(void)
+{
+    for(int close_same_frame = 0; close_same_frame < 2; close_same_frame++)
+    for(int area = 0; area < 2; area++)
+    for(int queued = 0; queued < 3; queued++) {
+        if(area && queued == 2) continue;
+        UIPopupInput *context = ui_popup_input_create();
+        char text[32] = "a";
+        int cursor = 1, focused = 1, commit = 0;
+        InjectReset(); ClearTextInputFocus();
+        for(int frame = 0; frame < 3; frame++) {
+            if(frame != 1) {
+                if(queued == 2) {
+                    QueueTextInputBackspace(); QueueTextInputEnter();
+                } else if(queued) QueueTextInputCodepoint('x');
+                else InjectText("x");
+            }
+            InjectPump(); BeginUIFrame(240,240,1);
+            ui_popup_input_frame(context);
+            UIPopupInput *previous = ui_popup_input_bind(context);
+            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            if(frame == 0) {
+                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                ui_popup_input_end(child);
+            } else ui_popup_input_close(context,1);
+            SetUIFocus(25900); focused = 1;
+            if(area)
+                TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
+                    .cursor_position=&cursor,.focused=&focused,.focus_id=25900});
+            else
+                TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
+                    .cursor_position=&cursor,.focused=&focused,.commit_pressed=&commit,.focus_id=25900});
+            ui_popup_input_end(parent);
+            check_int("dismissal does not replay blocked editor text",
+                strcmp(text,frame == 2 ? (queued == 2 ? "" : "ax") : "a"),0);
+            if(queued == 2) check_int("dismissal does not replay queued Enter",commit,frame == 2);
+            if(close_same_frame && frame == 0) ui_popup_input_close(context,0);
+            EndUIFrame();
+            ui_popup_input_finish(context);
+            ui_popup_input_bind(previous);
+        }
+        ClearTextInputFocus();
+        ui_popup_input_destroy(context);
+    }
+    InjectReset();
+}
+
+static void
+test_popup_tab_missing_owner(void)
+{
+    UIPopupInput *context = ui_popup_input_create();
+    InjectReset();
+    for(int frame = 0; frame < 3; frame++) {
+        if(frame) InjectKeyTap(KEY_TAB);
+        InjectPump(); BeginUIFrame(240,240,1);
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        RegisterUIFocus(25800,(Rectangle){0});
+        if(frame < 2) {
+            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            RegisterUIFocus(25810,(Rectangle){0});
+            if(frame == 0) {
+                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                RegisterUIFocus(25820,(Rectangle){0});
+                SetUIFocus(25820);
+                ui_popup_input_end(child);
+            }
+            ui_popup_input_end(parent);
+        }
+        EndUIFocus();
+        check_int("missing popup owner releases Tab in the same frame",GetUIFocus(),
+            frame == 0 ? 25820 : frame == 1 ? 25810 : 25800);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        EndUIFrame();
+        InjectPump();
+    }
+    ui_popup_input_destroy(context);
+    InjectReset();
+}
+
+static void
+test_popup_button_keyboard_ownership(void)
+{
+    const int keys[] = {KEY_ENTER,KEY_SPACE};
+    for(int key = 0; key < 2; key++)
+    for(int inside = 0; inside < 2; inside++) {
+        InjectReset(); InjectKeyTap(keys[key]); InjectPump();
+        BeginUIFrame(240,240,1);
+        SetUIFocusTextInputActive(0);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        BeginTree(Key("popup-button-keyboard"));
+        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25700);
+        int activated = Button((ButtonProps){.bounds={10,10,120,28},.label="Action",.id=25700});
+        check_int("only top popup button activates from keyboard",activated,inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        UIEvent event;
+        while(NextEvent(&event)) {}
+        EndTree();
+        int clicks = 0;
+        while(NextEvent(&event)) if(event.kind == UI_EVENT_CLICK) clicks++;
+        check_int("deferred keyboard clicks preserve popup ownership",clicks,inside);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_popup_tab_ownership(void)
+{
+    const int start[] = {25620,25621,25620,25600,25620,25620};
+    const int want[] = {25621,25620,25621,25621,25610,25600};
+    for(int mode = 0; mode < 6; mode++) {
+        InjectReset();
+        if(mode == 2 || mode == 3) InjectKey(KEY_LEFT_SHIFT,1);
+        InjectKeyTap(KEY_TAB); InjectPump();
+        BeginUIFrame(240,240,1);
+        SetUIFocus(start[mode]);
+        RegisterUIFocus(25600,(Rectangle){0});
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        RegisterUIFocus(25610,(Rectangle){0});
+        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+        RegisterUIFocus(25620,(Rectangle){0});
+        RegisterUIFocus(25621,(Rectangle){0});
+        RegisterUIFocus(25620,(Rectangle){0});
+        ui_popup_input_end(child);
+        RegisterUIFocus(25611,(Rectangle){0});
+        ui_popup_input_end(parent);
+        RegisterUIFocus(25601,(Rectangle){0});
+        if(mode == 4) ui_popup_input_close(context,1);
+        if(mode == 5) ui_popup_input_close(context,0);
+        EndUIFocus();
+        check_int("popup Tab ownership and wraparound",GetUIFocus(),want[mode]);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_popup_text_keyboard_ownership(void)
+{
+    for(int retained = 0; retained < 2; retained++)
+    for(int area = 0; area < 2; area++)
+    for(int inside = 0; inside < 2; inside++) {
+        char text[32] = "a";
+        int cursor = 1, focused = 1;
+        InjectReset(); ClearTextInputFocus(); InjectText("x"); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        if(retained) BeginTree(Key("popup-editor-keyboard"));
+        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25500);
+        if(area)
+            TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
+                .cursor_position=&cursor,.focused=&focused,.focus_id=25500});
+        else
+            TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
+                .cursor_position=&cursor,.focused=&focused,.focus_id=25500});
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        if(retained) EndTree();
+        check_int("only top popup editor receives typing",strcmp(text,inside ? "ax" : "a"),0);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        ClearTextInputFocus();
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_composed_combo_scope(void)
+{
+    bool open = true;
+    char text[16] = "edit";
+    int cursor = 4;
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed combo ordinary children"));
+    Button((ButtonProps){.bounds={10,10,80,24},.label="Background",.id=26999});
+    check_int("open composed combo returns true",
+        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
+            .preview="Choose",.id=27000,.open=&open,.flags=ComboPopupAlignLeft}),1);
+    Column((ColumnProps){.bounds={12,72,100,60},.gap=3});
+    Button((ButtonProps){.bounds={0,0,90,24},.label="Action",.id=27001});
+    TextField((TextFieldProps){.bounds={0,0,90,24},.text=text,.text_size=sizeof(text),
+        .cursor_position=&cursor,.focus_id=27002});
+    End();
+    EndCombo();
+    Button((ButtonProps){.bounds={120,10,80,24},.label="After",.id=27003});
+    EndTree();
+    int count = 0, action = 0, field = 0, after = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    for(int i = 0; i < count; i++) {
+        if(nodes[i].id == 27001) {
+            action++;
+            check_int("composed layout detached from owner",
+                nodes[nodes[i].parent].parent,0);
+            check_int("composed child x",(int)nodes[i].bounds.x,12);
+        } else if(nodes[i].id == 27002) field++;
+        else if(nodes[i].id == 27003) after++;
+    }
+    check_int("ordinary button retained in composed combo",action,1);
+    check_int("ordinary field retained in composed combo",field,1);
+    check_int("parent declarations resume after combo",after,1);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed combo explicit close"));
+    check_int("composed combo reopens from caller state",
+        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
+            .preview="Choose",.id=27000,.open=&open,
+            .flags=ComboNoArrowButton|ComboWidthFitPreview|ComboHeightSmall}),1);
+    CloseCombo();
+    check_int("CloseCombo updates caller state",open,0);
+    EndCombo();
+    EndTree();
+    EndUIFrame();
+    BeginUIFrame(240,180,1);
+    check_int("closed composed combo stays closed",
+        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
+            .preview="Choose",.id=27000,.open=&open}),0);
+    EndUIFrame();
+}
+
+static void
+test_composed_popup_scope(void)
+{
+    bool open = true;
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed popup ordinary children"));
+    check_int("open composed popup returns true",
+        BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
+    Column((ColumnProps){.bounds={28,40,120,70},.gap=4});
+    Button((ButtonProps){.bounds={0,0,100,28},.label="Apply",.id=29001});
+    End();
+    EndPopup();
+    Button((ButtonProps){.bounds={160,30,70,28},.label="After",.id=29002});
+    EndTree();
+    int count = 0, child = 0, after = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    for(int i = 0; i < count; i++) {
+        if(nodes[i].id == 29001) {
+            child++;
+            check_int("composed popup child x",(int)nodes[i].bounds.x,28);
+        } else if(nodes[i].id == 29002) after++;
+    }
+    check_int("ordinary button retained in composed popup",child,1);
+    check_int("parent resumes after composed popup",after,1);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed popup explicit close"));
+    check_int("composed popup reopens from caller state",
+        BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
+    ClosePopup();
+    check_int("ClosePopup updates caller state",open,0);
+    EndPopup();
+    EndTree();
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    check_int("invalid composed popup stays closed",
+        BeginPopup((PopupProps){.bounds={20,30,0,100},.id=29000,.open=&open}),0);
+    EndUIFrame();
+}
+
+static void
+test_composed_tooltip_scope(void)
+{
+    InjectReset();
+    InjectMousePosition(30,25);
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed tooltip arbitrary children"));
+    check_int("hovered tooltip popup opens",
+        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
+            .trigger={20,20,80,30},.flags=PopupTooltip}),1);
+    Column((ColumnProps){.bounds={88,58,114,54},.gap=4});
+    Text((TextProps){.text="arbitrary tooltip",.font=Text14,
+        .color=BLACK,.wrap=TextWrapNone});
+    Button((ButtonProps){.bounds={0,0,90,24},.label="detail",.id=29301});
+    End();
+    check_int("tooltip does not capture popup input",
+        ui_popup_input_current_captures((Vector2){90,60}),0);
+    EndPopup();
+    EndTree();
+    int count = 0, child = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    for(int i = 0; i < count; i++) if(nodes[i].id == 29301) child++;
+    check_int("ordinary child retained in tooltip",child,1);
+    EndUIFrame();
+
+    InjectMousePosition(230,170);
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("tooltip closes outside trigger",
+        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
+            .trigger={20,20,80,30},.flags=PopupTooltip}),0);
+    EndUIFrame();
+}
+
+static void
+test_composed_modal_scope(void)
+{
+    bool open = true;
+    InjectReset();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed modal arbitrary children"));
+    check_int("open composed modal returns true",
+        BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
+            .open=&open,.flags=PopupModal}),1);
+    Column((ColumnProps){.bounds={48,38,104,70},.gap=4});
+    Text((TextProps){.text="arbitrary modal",.font=Text14,
+        .color=BLACK,.wrap=TextWrapNone});
+    Button((ButtonProps){.bounds={0,0,90,24},.label="confirm",.id=29401});
+    End();
+    EndPopup();
+    Button((ButtonProps){.bounds={190,145,45,30},.label="Behind",.id=29402});
+    EndTree();
+    int count = 0, child = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    for(int i = 0; i < count; i++) if(nodes[i].id == 29401) child++;
+    check_int("ordinary child retained in modal",child,1);
+    check_int("outside declaration leaves modal open",open,1);
+    EndUIFrame();
+
+    InjectKeyTap(KEY_ESCAPE);
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("Escape closes composed modal",
+        BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
+            .open=&open,.flags=PopupModal}),0);
+    check_int("Escape updates modal caller state",open,0);
+    EndUIFrame();
+    InjectReset();
+}
+
+static void
+test_popup_combo_keyboard_ownership(void)
+{
+    const char *options[] = {"One","Two"};
+    for(int inside = 0; inside < 2; inside++) {
+        InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        check_int("keyboard capture is independent of pointer bounds",ui_popup_input_keyboard_captures(),!inside);
+        int selected = 0;
+        SetUIFocus(25400);
+        Combobox((ComboboxProps){.bounds={10,10,100,28},.id=25400,
+            .options=options,.option_count=2,.selected_index=&selected});
+        check_int("only top popup may open a focused combo",ui_dropdown_captures_click((Vector2){20,60}),inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_close(context,1);
+        check_int("child dismissal restores parent keyboard",ui_popup_input_keyboard_captures(),0);
+        ui_popup_input_end(parent);
+        check_int("parent still captures background keyboard",ui_popup_input_keyboard_captures(),1);
+        ui_popup_input_close(context,0);
+        check_int("branch dismissal restores background keyboard",ui_popup_input_keyboard_captures(),0);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        ui_dropdown_close(25400);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_retained_popup_pointer_focus(void)
+{
+    for(int blocked = 0; blocked < 2; blocked++) {
+        InjectReset(); InjectTap(60,60); InjectPump();
+        BeginUIFrame(240,240,1);
+        SetUIFocus(0);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        PushUIInputCapture((Rectangle){0,0,blocked ? 5 : 240,240},1);
+        BeginTree(Key("retained-popup-pointer-focus"));
+        UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+        Row((RowProps){.bounds={50,50,80,24}});
+        Button((ButtonProps){.bounds={0,0,40,24},.id=25301,.label="Child"});
+        End();
+        ui_popup_input_end(inner);
+        Button((ButtonProps){.bounds={50,50,40,24},.id=25302,.label="Parent"});
+        ui_popup_input_end(outer);
+        Button((ButtonProps){.bounds={50,50,40,24},.id=25303,.label="Background"});
+        check_int("immediate popup focus preserves modal blocking",GetUIFocus(),blocked ? 0 : 25301);
+        /* Exercise the deferred focus pass independently of the immediate
+         * button check; the popup scopes are already closed here. */
+        SetUIFocus(0);
+        UIEvent event;
+        while(NextEvent(&event)) {}
+        EndTree();
+        check_int("deferred popup focus preserves modal blocking",GetUIFocus(),blocked ? 0 : 25301);
+        int clicks = 0;
+        while(NextEvent(&event)) {
+            if(event.kind != UI_EVENT_CLICK) continue;
+            check_int("deferred click belongs to popup child",(int)event.key,25301);
+            clicks++;
+        }
+        check_int("modal blocker prevents deferred popup clicks",clicks,blocked ? 0 : 1);
+        ClearUIInputCaptures();
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_retained_popup_input_ownership(void)
+{
+    InjectReset();
+    BeginUIFrame(240,240,1);
+    BeginTree(Key("retained-popup-input"));
+    Button((ButtonProps){.bounds={50,50,40,24},.id=25200,.label="Before"});
+    UIPopupInput *context = ui_popup_input_create();
+    ui_popup_input_frame(context);
+    UIPopupInput *previous = ui_popup_input_bind(context);
+    UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+    UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+    Button((ButtonProps){.bounds={50,50,40,24},.id=25201,.label="Child"});
+    ui_popup_input_end(inner);
+    Button((ButtonProps){.bounds={50,50,40,24},.id=25202,.label="Later parent"});
+    ui_popup_input_end(outer);
+    Button((ButtonProps){.bounds={50,50,40,24},.id=25203,.label="After"});
+    EndTree();
+    const UIWidgetNode *node = GetNode(HitTestNode((Vector2){60,60}));
+    check_int("retained child beats later parent and background",node ? node->id : -1,25201);
+    NodeId child_hit = HitTestNode((Vector2){60,60});
+    BeginTree(Key("replacement-popup-tree"));
+    check_int("pending declaration preserves committed popup ownership",
+        HitTestNode((Vector2){60,60}),child_hit);
+    check_int("deferred hit test does not reopen input scope",ui_popup_input_snapshot().order,0);
+    ui_popup_input_close(context,1);
+    node = GetNode(HitTestNode((Vector2){60,60}));
+    check_int("retained parent receives input after child closes",node ? node->id : -1,25202);
+    ui_popup_input_close(context,0);
+    node = GetNode(HitTestNode((Vector2){60,60}));
+    check_int("retained background receives input after branch closes",node ? node->id : -1,25203);
+    ui_popup_input_finish(context);
+    ui_popup_input_frame(context);
+    check_int("previous-frame retained owners reject input",HitTestNode((Vector2){60,60}) <= 1,1);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    ui_popup_input_destroy(context);
+    node = GetNode(HitTestNode((Vector2){60,60}));
+    check_int("destroyed registry snapshots reject input safely",node ? node->id : -1,25200);
+    EndTree();
+    EndUIFrame();
+}
+
+static void
+test_nested_popup_input_ownership(void)
+{
+    UIPopupInput *context = ui_popup_input_create();
+    UIPopupInput *previous = ui_popup_input_bind(context);
+    int background = 0, parent = 0, child = 0;
+    InjectReset();
+    for(int frame = 0; frame < 4; frame++) {
+        if(frame == 1) InjectTap(60,60);
+        InjectPump(); BeginUIFrame(240,240,1);
+        ui_popup_input_frame(context);
+        background += Button((ButtonProps){.bounds={50,50,40,24},.id=25100,.label="Before"});
+        UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        parent += Button((ButtonProps){.bounds={50,50,40,24},.id=25101,.label="Parent"});
+        UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+        child += Button((ButtonProps){.bounds={50,50,40,24},.id=25102,.label="Child"});
+        ui_popup_input_end(inner);
+        ui_popup_input_end(outer);
+        background += Button((ButtonProps){.bounds={50,50,40,24},.id=25103,.label="After"});
+        ui_popup_input_finish(context);
+        EndUIFrame();
+    }
+    check_int("popup background controls blocked",background,0);
+    check_int("popup parent cannot steal child input",parent,0);
+    check_int("ordinary popup child button activates",child,1);
+    ui_popup_input_frame(context);
+    UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+    check_int("previous-frame child remains above parent",ui_popup_input_captures(context,(Vector2){60,60}),1);
+    ui_popup_input_close(context,1);
+    check_int("closing child restores parent input",ui_popup_input_captures(context,(Vector2){60,60}),0);
+    ui_popup_input_end(outer);
+    ui_popup_input_finish(context);
+    UIPopupInput *other = ui_popup_input_create();
+    ui_popup_input_bind(other);
+    check_int("popup capture remains context-local",ui_popup_input_current_captures((Vector2){60,60}),0);
+    ui_popup_input_bind(context);
+    check_int("rebinding restores popup capture",ui_popup_input_current_captures((Vector2){60,60}),1);
+    ui_popup_input_frame(context);
+    ui_popup_input_finish(context);
+    check_int("missing popup owner retired",ui_popup_input_current_captures((Vector2){60,60}),0);
+    ui_popup_input_frame(context);
+    outer = ui_popup_input_begin(context,0,(Rectangle){0,0,100,100});
+    UIPopupInputToken nested = ui_popup_input_begin(context,1,(Rectangle){0,0,100,100});
+    ui_popup_input_end(nested); ui_popup_input_end(outer);
+    UIPopupInputToken sibling = ui_popup_input_begin(context,2,(Rectangle){0,0,100,100});
+    check_int("later sibling beats earlier nested branch",ui_popup_input_captures(context,(Vector2){60,60}),0);
+    nested = ui_popup_input_begin(context,3,(Rectangle){0,0,100,100});
+    ui_popup_input_end(nested); ui_popup_input_end(sibling);
+    ui_popup_input_finish(context);
+    ui_popup_input_frame(context);
+    outer = ui_popup_input_begin(context,0,(Rectangle){0,0,100,100});
+    ui_popup_input_close(context,1);
+    check_int("reordered root beats other branch descendants",ui_popup_input_captures(context,(Vector2){60,60}),0);
+    nested = ui_popup_input_begin(context,1,(Rectangle){0,0,100,100});
+    ui_popup_input_close(context,0);
+    check_int("closing parent disables active child",ui_popup_input_captures(context,(Vector2){60,60}),1);
+    ui_popup_input_end(nested); ui_popup_input_end(outer);
+    ui_popup_input_finish(context);
+    check_int("closed and missing branches retired",ui_popup_input_current_captures((Vector2){60,60}),0);
+    ui_popup_input_bind(previous);
+    ui_popup_input_destroy(other);
+    ui_popup_input_destroy(context);
+    InjectReset();
+}
+
+static void
+test_popup_input_clip_restoration(void)
+{
+    for(int blocked = 0; blocked < 2; blocked++) {
+        int popup_actions = 0, parent_actions = 0;
+        InjectReset(); InjectTap(20,20);
+        for(int frame = 0; frame < 3; frame++) {
+            InjectPump(); BeginUIFrame(240,240,1);
+            BeginTree(Key("popup input clip"));
+            PushUIInputCapture((Rectangle){0,0,blocked ? 5 : 100,100},1);
+            BeginScroll((Rectangle){0,0,1,1},100,NULL);
+            UIInputClipScope scope = ui_input_clip_suspend();
+            EndScroll(); /* Cannot pop the suspended owner's scroll scope. */
+            popup_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25004,.label="Popup"});
+            ui_input_clip_resume(scope);
+            parent_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25005,.label="Clipped"});
+            EndScroll();
+            EndTree(); ClearUIInputCaptures(); EndUIFrame();
+        }
+        check_int("popup input escapes owner clip but respects capture",popup_actions,!blocked);
+        check_int("owner input clip restored",parent_actions,0);
+    }
+    InjectReset();
+}
+
+static void
+test_popup_disabled_restoration(void)
+{
+    for(int disabled = 0; disabled < 2; disabled++) {
+        BeginDisabled(disabled);
+        UIDisabledScope outer = ui_disabled_suspend();
+        EndDisabled();
+        check_int("popup cannot end parent disabled scope",UIContentDisabled(),disabled);
+        BeginDisabled(1);
+        UIDisabledScope inner = ui_disabled_suspend();
+        BeginDisabled(0); EndDisabled();
+        check_int("nested popup inherits disabled",UIContentDisabled(),1);
+        ui_disabled_resume(inner);
+        EndDisabled();
+        check_int("popup child disabling restored",UIContentDisabled(),disabled);
+        ui_disabled_resume(outer);
+        check_int("popup parent disabling restored",UIContentDisabled(),disabled);
+        EndDisabled();
+        check_int("parent disabled scope remains balanced",UIContentDisabled(),0);
+    }
+}
+
+static void
+test_popup_layout_restoration(void)
+{
+    BeginTree(Key("popup layout restoration"));
+    NodeId parent = Row((RowProps){.bounds={10,10,200,20},.gap=5});
+    Rect(0,0,20,20,RED,BLANK);
+    UITreeLayoutScope scope = ui_tree_layout_suspend();
+    NodeId popup = Row((RowProps){.bounds={0,0,100,20},.gap=3});
+    Rect(0,0,30,20,BLUE,BLANK);
+    End();
+    ui_tree_layout_resume(scope);
+    Rect(0,0,20,20,GREEN,BLANK);
+    End();
+    EndTree();
+    int count = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    check_int("isolated popup tree count",count,6);
+    if(count != 6) return;
+    check_int("popup attached to screen root",nodes[popup].parent,0);
+    check_int("popup child layout origin",(int)nodes[4].bounds.x,0);
+    check_int("parent child before popup",(int)nodes[2].bounds.x,10);
+    check_int("parent child after popup",(int)nodes[5].bounds.x,35);
+    check_int("parent relationship restored",nodes[5].parent,parent);
 }
 
 static void
@@ -1021,6 +1727,24 @@ main(void)
     test_combo_keyboard_open();
     test_combo_scrollbar_dismissal();
     test_combo_horizontal_viewport();
+    test_popup_layout_restoration();
+    test_popup_disabled_restoration();
+    test_popup_input_clip_restoration();
+    test_nested_popup_input_ownership();
+    test_retained_popup_input_ownership();
+    test_retained_popup_pointer_focus();
+    test_popup_combo_keyboard_ownership();
+    test_composed_combo_scope();
+    test_composed_popup_scope();
+    test_composed_tooltip_scope();
+    test_composed_modal_scope();
+    test_popup_text_keyboard_ownership();
+    test_popup_tab_ownership();
+    test_popup_button_keyboard_ownership();
+    test_popup_tab_missing_owner();
+    test_popup_text_dismissal_replay();
+    test_popup_composition_dismissal_replay();
+    test_popup_preedit_cancellation();
     test_custom_table_cell_scope();
     test_retained_scope_clip();
     test_list_box_scope();

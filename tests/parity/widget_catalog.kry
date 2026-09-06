@@ -52,7 +52,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
             bounds = {ScaleUIPx(24), ScaleUIPx(86), ScaleUIPx(300), ScaleUIPx(220)}
             gap = ScaleUIPx(6)
             padding = ScaleUIPx(8)
-            Text("Column text", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Column text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Row action_row: {
                 bounds = {0, 0, ScaleUIPx(280), ScaleUIPx(40)}
                 gap = ScaleUIPx(6)
@@ -70,7 +70,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         }
 
         y: int = ScaleUIPx(320)
-        TextInRect("TextInRect", (Rectangle){ScaleUIPx(24), y, ScaleUIPx(120), ScaleUIPx(24)}, Text16, GetThemeText())
+        Text((TextProps){.bounds=(Rectangle){ScaleUIPx(24), y, ScaleUIPx(120), ScaleUIPx(24)}, .text="Text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter})
         TextLines("one;two;three", 3, ScaleUIPx(24), &y, Text16, ScaleUIPx(18), GetThemeText())
         Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(180), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText()}, ScaleUIPx(24), &y)
         SelectableText("Selectable", ScaleUIPx(24), y + ScaleUIPx(18), Text16, GetThemeText())

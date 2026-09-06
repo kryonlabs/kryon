@@ -81,8 +81,14 @@ func EndFrame() {
 	active().EndFrame()
 	endDirectFrame()
 }
-func BeginDisabled(disabled bool) { active().BeginDisabled(disabled) }
-func EndDisabled()                { active().EndDisabled() }
+func BeginDisabled(disabled bool)      { active().BeginDisabled(disabled) }
+func EndDisabled()                     { active().EndDisabled() }
+func BeginCombo(props ComboProps) bool { return active().BeginCombo(props) }
+func EndCombo()                        { active().EndCombo() }
+func CloseCombo()                      { active().CloseCombo() }
+func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
+func EndPopup()                        { active().EndPopup() }
+func ClosePopup()                      { active().ClosePopup() }
 func SetFocus(id int32) {
 	if runtime, ok := active().(focusController); ok {
 		runtime.SetFocus(id)
@@ -143,18 +149,7 @@ func Selection(focusID int32) (anchor, cursor int32, ok bool) {
 }
 func ClearBackground(c Color) { active().ClearBackground(c) }
 func Background(c Color)      { active().Background(c) }
-func Text(text string, x, y, fontSize int32, color Color) {
-	active().Text(text, x, y, fontSize, color)
-}
-func TextColored(text string, x, y, fontSize int32, color Color) {
-	active().TextColored(text, x, y, fontSize, color)
-}
-func TextDisabled(text string, x, y, fontSize int32) {
-	active().TextDisabled(text, x, y, fontSize)
-}
-func TextWrapped(text string, bounds Rectangle, fontSize int32, color Color) {
-	active().TextWrapped(text, bounds, fontSize, color)
-}
+func Text(props TextProps)    { active().Text(props) }
 func LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
 	active().LabelText(label, value, bounds, fontSize, color)
 }
@@ -225,7 +220,6 @@ func ColorEdit4(props ColorEditProps) bool             { return active().ColorEd
 func ColorPicker3(props ColorEditProps) bool           { return active().ColorPicker3(props) }
 func ColorPicker4(props ColorEditProps) bool           { return active().ColorPicker4(props) }
 func ColorButton(props ColorButtonProps) bool          { return active().ColorButton(props) }
-func Tooltip(props TooltipProps) bool                  { return active().Tooltip(props) }
 func TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
 	return active().TabBar(bounds, labels, selected, hover)
 }
@@ -289,9 +283,6 @@ func GetThemeLink() Color                            { return active().GetThemeL
 func GetThemePrimary() Color                         { return active().GetThemePrimary() }
 func GetThemeOnPrimary() Color                       { return active().GetThemeOnPrimary() }
 func GetThemeSurfaceVariant() Color                  { return active().GetThemeSurfaceVariant() }
-func TextInRect(text string, rect Rectangle, fontSize int32, color Color) {
-	active().TextInRect(text, rect, fontSize, color)
-}
 func TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color) {
 	active().TextLines(lines, count, x, y, font, lineH, color)
 }

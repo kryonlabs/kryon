@@ -44,7 +44,7 @@ call_host :: () -> int {
 
 App :: () #ui {
     Screen root: {
-        Text("hello", ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Button((ButtonProps){.bounds = {10, 50, 120, 28}, .label = "Tap"})
         count += 1
     }

@@ -67,10 +67,10 @@ App :: () #ui {
     Screen root: {
         Background((Color){249, 246, 235, 255})
         Rect(48, 42, 704, 390, (Color){255, 254, 249, 255})
-        Text("Hello from .kry", 76, 86, Text24, (Color){31, 83, 102, 255})
-        Text("This page runs k2kir and k2b as WebAssembly, then renders the KRB cartridge.", 76, 134, Text16, (Color){42, 59, 64, 255})
+        Text((TextProps){.bounds={76,86,0,0}, .text="Hello from .kry", .font=Text24, .color=(Color){31,83,102,255}, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={76,134,0,0}, .text="This page runs k2kir and k2b as WebAssembly, then renders the KRB cartridge.", .font=Text16, .color=(Color){42,59,64,255}, .wrap=TextWrapNone})
         Rect(76, 188, 292, 80, (Color){35, 101, 125, 255})
-        Text("Portable preview", 104, 219, Text20, WHITE)
+        Text((TextProps){.bounds={104,219,0,0}, .text="Portable preview", .font=Text20, .color=WHITE, .wrap=TextWrapNone})
         Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = "Get started"})
     }
 }</textarea>

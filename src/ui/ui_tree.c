@@ -1,11 +1,14 @@
 #include "ui_internal.h"
 #include "ui_picture_internal.h"
 #include "ui_clip_internal.h"
+#include "ui_blend_internal.h"
+#include "ui_tree_layout_internal.h"
+#include "ui_popup_input_internal.h"
 #include "embedded_assets.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-#define UI_TREE_MAX_DEPTH 128
+#define UI_TREE_MAX_DEPTH UI_TREE_LAYOUT_DEPTH
 #define UI_NODE_HOVERED (1U << 28)
 #define UI_NODE_PRESSED (1U << 29)
 #define UI_NODE_OWNS_STATE (1U << 30)
@@ -34,15 +37,21 @@ static KeyID ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
 static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
+static unsigned long ui_tree_declaration;
 static RenderTexture2D ui_tree_paint_target;
 typedef struct UIPaintCapture {
     RenderTexture2D target;
     Matrix projection, modelview;
     Rectangle clip;
     int has_clip;
+    UIBlendState blend;
 } UIPaintCapture;
 static UIPaintCapture *ui_tree_paint_captures;
 static unsigned ui_tree_paint_capture_count, ui_tree_paint_capture_capacity;
+static UIPopupInputToken *ui_tree_input_captures;
+static unsigned ui_tree_input_capture_count, ui_tree_input_capture_capacity;
+static UIPopupInputToken *ui_committed_input_captures;
+static unsigned ui_committed_input_capture_capacity;
 static unsigned ui_tree_generation = 0;
 static unsigned ui_tree_invalid = UI_INVALIDATE_TREE |
                                   UI_INVALIDATE_LAYOUT |
@@ -94,6 +103,46 @@ ui_tree_heading_semantic(const char *text, int level)
 static char *ui_tree_numeric_text(const char *label, const char *format, size_t *offset);
 
 static unsigned
+ui_tree_capture_input(void)
+{
+    UIPopupInputToken token = ui_popup_input_snapshot();
+    if(!token.context) return 0;
+    if(ui_tree_input_capture_count) {
+        UIPopupInputToken last = ui_tree_input_captures[ui_tree_input_capture_count-1];
+        if(last.context == token.context && last.generation == token.generation &&
+           last.order == token.order && last.owner == token.owner)
+            return ui_tree_input_capture_count;
+    }
+    if(ui_tree_input_capture_count == ui_tree_input_capture_capacity) {
+        unsigned capacity = ui_tree_input_capture_capacity ? ui_tree_input_capture_capacity*2 : 8;
+        size_t bytes = (size_t)capacity*sizeof(UIPopupInputToken);
+        if(capacity < ui_tree_input_capture_capacity ||
+           bytes/sizeof(UIPopupInputToken) != capacity) abort();
+        UIPopupInputToken *items = realloc(ui_tree_input_captures,bytes);
+        if(!items) abort();
+        ui_tree_input_captures = items;
+        ui_tree_input_capture_capacity = capacity;
+    }
+    ui_tree_input_captures[ui_tree_input_capture_count++] = token;
+    return ui_tree_input_capture_count;
+}
+
+static UIPopupInputToken
+ui_tree_input_snapshot(const UIWidgetNode *node)
+{
+    UIPopupInputToken *captures = ui_committed_node_count > 0 ?
+        ui_committed_input_captures : ui_tree_input_captures;
+    return node->popup_input_capture ?
+        captures[node->popup_input_capture-1] : (UIPopupInputToken){0};
+}
+
+static int
+ui_tree_input_blocked(const UIWidgetNode *node, Vector2 point)
+{
+    return ui_input_captures_snapshot(point,ui_tree_input_snapshot(node));
+}
+
+static unsigned
 ui_tree_capture_paint(void)
 {
     UIPaintCapture capture = {0};
@@ -102,12 +151,14 @@ ui_tree_capture_paint(void)
     capture.projection = rlGetMatrixProjection();
     capture.modelview = rlGetMatrixModelview();
     capture.has_clip = ui_clip_current(&capture.clip);
+    capture.blend = ui_blend_save();
     if(ui_tree_paint_capture_count > 0) {
         UIPaintCapture *last = &ui_tree_paint_captures[ui_tree_paint_capture_count-1];
         if(last->target.id == capture.target.id &&
            last->target.texture.width == capture.target.texture.width &&
            last->target.texture.height == capture.target.texture.height &&
            last->has_clip == capture.has_clip &&
+           memcmp(&last->blend,&capture.blend,sizeof(UIBlendState)) == 0 &&
            (!capture.has_clip || memcmp(&last->clip,&capture.clip,sizeof(Rectangle)) == 0) &&
            memcmp(&last->projection,&capture.projection,sizeof(Matrix)) == 0 &&
            memcmp(&last->modelview,&capture.modelview,sizeof(Matrix)) == 0)
@@ -433,6 +484,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     node->declared_bounds = bounds;
     node->has_input_clip = ui_current_input_clip(&node->input_clip);
     node->paint_capture = ui_tree_capture_paint();
+    node->popup_input_capture = ui_tree_capture_input();
     if(UIContentDisabled()) node->flags |= UI_NODE_SCOPE_DISABLED;
     node->props = props;
     node->parent = -1;
@@ -518,6 +570,7 @@ ui_tree_store_node(NodeId id, UIWidgetNode src)
     src.input_clip = dst->input_clip;
     src.has_input_clip = dst->has_input_clip;
     src.paint_capture = dst->paint_capture;
+    src.popup_input_capture = dst->popup_input_capture;
     src.flags |= dst->flags & UI_NODE_SCOPE_DISABLED;
     *dst = src;
 }
@@ -674,7 +727,6 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_ANGLE_SLIDER_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_FLOAT_DRAG_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_INT_DRAG_NODE] = {ui_measure_bounds_height},
-    [UI_WIDGET_TEXT_IN_RECT_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_INPUT_PAINT_NODE] = {ui_measure_bounds_height},
 };
 
@@ -696,6 +748,7 @@ void
 BeginTree(KeyID screen_key)
 {
     NodeId root;
+    ui_tree_declaration++;
 
     /* Embedders that never call SetUIFrame still need valid screen-to-world
      * math for input routing; a zero camera would turn every hit test into
@@ -711,6 +764,7 @@ BeginTree(KeyID screen_key)
     ui_tree_node_count = 0;
     ui_tree_paint_target = (RenderTexture2D){0};
     ui_tree_paint_capture_count = 0;
+    ui_tree_input_capture_count = 0;
     ui_tree_building = 1;
     ui_tree_stack_depth = 0;
     root = ui_tree_add(ui_tree_screen_id, UI_WIDGET_SCREEN_NODE,
@@ -771,6 +825,31 @@ EndTree(void)
                 (update-input)*1e6, (draw-update)*1e6,
                 (draw-start)*1e6);
     }
+}
+
+UITreeLayoutScope
+ui_tree_layout_suspend(void)
+{
+    UITreeLayoutScope scope = {0};
+    if(ui_tree_building && ui_tree_stack_depth < 1) abort();
+    scope.depth = ui_tree_stack_depth;
+    scope.building = ui_tree_building;
+    scope.declaration = ui_tree_declaration;
+    memcpy(scope.stack,ui_tree_stack,(size_t)scope.depth*sizeof(NodeId));
+    /* Keep the screen root, but detach from the owner's Row/Column path.
+     * Popup children remain in the same retained tree and lifetime. */
+    ui_tree_stack_depth = ui_tree_building ? 1 : 0;
+    return scope;
+}
+
+void
+ui_tree_layout_resume(UITreeLayoutScope scope)
+{
+    if(scope.depth < 0 || scope.depth > UI_TREE_MAX_DEPTH ||
+       scope.declaration != ui_tree_declaration || scope.building != ui_tree_building ||
+       ui_tree_stack_depth != (scope.building ? 1 : 0)) abort();
+    memcpy(ui_tree_stack,scope.stack,(size_t)scope.depth*sizeof(NodeId));
+    ui_tree_stack_depth = scope.depth;
 }
 
 void
@@ -964,6 +1043,18 @@ ReconcileTree(void)
     free(matched_old);
     free(slots);
     free(old_nodes);
+    /* Keep the displayed tree's snapshots intact while its replacement is
+     * being declared. HitTestNode may still query that committed tree. */
+    if(ui_committed_input_capture_capacity < ui_tree_input_capture_count) {
+        UIPopupInputToken *captures = realloc(ui_committed_input_captures,
+            (size_t)ui_tree_input_capture_count*sizeof(*captures));
+        if(!captures) abort();
+        ui_committed_input_captures = captures;
+        ui_committed_input_capture_capacity = ui_tree_input_capture_count;
+    }
+    if(ui_tree_input_capture_count)
+        memcpy(ui_committed_input_captures,ui_tree_input_captures,
+            (size_t)ui_tree_input_capture_count*sizeof(*ui_tree_input_captures));
     ui_committed_node_count = ui_tree_node_count;
     if(tree_changed)
         ui_tree_invalid |= UI_INVALIDATE_LAYOUT | UI_INVALIDATE_PAINT;
@@ -1075,7 +1166,8 @@ RouteInput(void)
             focus_id = node->data.button.spec.focus_id;
         if(node->has_input_clip) PushUIInputClip(node->input_clip);
         if(UIFocusFrameOpen() && focus_id > 0)
-            (void)RegisterUIFocus(focus_id, node->bounds);
+            (void)ui_register_focus_snapshot(focus_id, node->bounds,
+                ui_tree_input_snapshot(node));
         if(node->has_input_clip) PopUIInputClip();
     }
 
@@ -1091,6 +1183,8 @@ RouteInput(void)
         before = node->flags;
         node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
         if(!node->data.button.spec.disabled &&
+           (node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
+           !ui_tree_input_blocked(node,mouse) &&
            (!node->has_input_clip || CheckCollisionPointRec(mouse,node->input_clip)) &&
            CheckCollisionPointRec(mouse, node->bounds)) {
             node->flags |= UI_NODE_HOVERED;
@@ -1234,7 +1328,17 @@ RouteInput(void)
         }
         if(field->focused != NULL)
             *field->focused = state->focused;
-        if(!state->focused || field->text == NULL || field->text_size == 0)
+        int keyboard_captured = ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node));
+        if(state->composing && (!state->focused || field->read_only || keyboard_captured)) {
+            state->composing = 0;
+            state->composition[0] = '\0';
+            state->composition_cursor = 0;
+            state->composition_selection_length = 0;
+            ui_text_field_event(node,UI_EVENT_COMPOSITION_CHANGED,GetTime());
+            ui_tree_invalid |= UI_INVALIDATE_PAINT;
+        }
+        if(!state->focused || field->text == NULL || field->text_size == 0 ||
+           keyboard_captured)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             int font = field->font > 0 ? field->font : GetUIFontSize();
@@ -1274,7 +1378,7 @@ RouteInput(void)
             else
                 (void)SetUIClipboardTextValue(field->text);
         }
-        if(modifier && IsKeyPressed(KEY_X) && !field->secure) {
+        if(modifier && IsKeyPressed(KEY_X) && !field->secure && !field->read_only) {
             if(end > start) {
                 if(ui_text_copy_range(field->text, start, end))
                     changed |= ui_text_delete_range(
@@ -1290,7 +1394,7 @@ RouteInput(void)
             selection_changed = 1;
             start = end = state->cursor;
         }
-        if(modifier && IsKeyPressed(KEY_V)) {
+        if(modifier && IsKeyPressed(KEY_V) && !field->read_only) {
             if(end > start)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor, start, end);
@@ -1334,6 +1438,7 @@ RouteInput(void)
         }
         codepoint = GetCharPressed();
         while(codepoint > 0) {
+            if(field->read_only) { codepoint = GetCharPressed(); continue; }
             if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
@@ -1355,6 +1460,7 @@ RouteInput(void)
             KryTextCompositionEvent composition;
 
             while(PollTextComposition(&composition)) {
+                if(field->read_only) continue;
                 if(composition.phase == KRY_TEXT_COMPOSITION_START ||
                    composition.phase == KRY_TEXT_COMPOSITION_UPDATE) {
                     state->composing = 1;
@@ -1390,7 +1496,7 @@ RouteInput(void)
                 }
             }
         }
-        if(backspace_count > 0) {
+        if(backspace_count > 0 && !field->read_only) {
             if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
@@ -1403,7 +1509,7 @@ RouteInput(void)
                     state->cursor);
             state->anchor = state->cursor;
             selection_changed = changed;
-        } else if(delete_count > 0) {
+        } else if(delete_count > 0 && !field->read_only) {
             if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
@@ -1473,6 +1579,44 @@ UpdateTree(void)
 }
 
 static void
+ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
+                    int wrap, int align, int vertical_align, int font_token)
+{
+    int previous_font = ui_active_font_token();
+    int y = (int)bounds.y;
+
+    PopUIFont(font_token);
+    BeginUIClip((int)bounds.x, (int)bounds.y,
+                (int)bounds.width, (int)bounds.height);
+    if(wrap == TextWrapAuto) {
+        ParagraphSpec paragraph = {
+            .text = value, .width = (int)bounds.width, .font = font,
+            .line_gap = ScaleUIPx(2), .color = color
+        };
+        int height = ui_paragraph_height(paragraph);
+        if(vertical_align == TextAlignCenter)
+            y += ((int)bounds.height - height) / 2;
+        else if(vertical_align == TextAlignEnd)
+            y += (int)bounds.height - height;
+        ui_draw_paragraph_aligned(paragraph, (int)bounds.x, &y, align);
+    } else {
+        int text_width = TextWidth(value, font);
+        int x = (int)bounds.x;
+        if(align == TextAlignCenter)
+            x += ((int)bounds.width - text_width) / 2;
+        else if(align == TextAlignEnd)
+            x += (int)bounds.width - text_width;
+        if(vertical_align == TextAlignCenter)
+            y = TextBaselineY(value, (int)bounds.y, (int)bounds.height, font);
+        else if(vertical_align == TextAlignEnd)
+            y += (int)bounds.height - TextHeight(value, font);
+        DrawUIText(value, x, y, font, color);
+    }
+    EndUIClip();
+    PopUIFont(previous_font);
+}
+
+static void
 DrawTree(void)
 {
     int i;
@@ -1483,6 +1627,7 @@ DrawTree(void)
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
         UIClipState parent_clip = {0};
+        UIBlendState parent_blend = {{0}};
 
         if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
             continue;
@@ -1498,7 +1643,9 @@ DrawTree(void)
         if(window_ready && node->paint_capture != 0) {
             UIPaintCapture *capture = &ui_tree_paint_captures[node->paint_capture-1];
             parent_clip = ui_clip_save();
+            parent_blend = ui_blend_save();
             BeginTextureMode(capture->target);
+            ui_blend_restore(capture->blend);
             rlSetMatrixProjection(capture->projection);
             rlSetMatrixModelview(capture->modelview);
             ResetUIClip();
@@ -1515,13 +1662,6 @@ DrawTree(void)
         case UI_WIDGET_TEXT_INPUT_PAINT_NODE:
             ui_paint_text_input(node->bounds, node->owned_text,
                                 node->data.text_input_paint);
-            break;
-        case UI_WIDGET_TEXT_IN_RECT_NODE:
-            ui_tree_heading_semantic(node->owned_text, node->data.primitive.heading_level);
-            ui_draw_text_in_rect_with_font_token(
-                node->owned_text != NULL ? node->owned_text : "", node->bounds,
-                node->data.primitive.font, node->data.primitive.color,
-                node->data.primitive.font_token);
             break;
         case UI_WIDGET_FLOAT_DRAG_NODE: {
             DragFloatProps drag = node->data.float_drag.props;
@@ -1572,10 +1712,15 @@ DrawTree(void)
         case UI_WIDGET_TEXT_NODE:
             if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
                 break;
-            ui_draw_text_with_font_token(
-                node->owned_text != NULL ? node->owned_text : "",
-                (int)node->bounds.x, (int)node->bounds.y,
+            if(node->data.primitive.heading_level > 0)
+                ui_tree_heading_semantic(
+                    node->owned_text != NULL ? node->owned_text : "",
+                    node->data.primitive.heading_level);
+            ui_draw_text_widget(
+                node->owned_text != NULL ? node->owned_text : "", node->bounds,
                 node->data.primitive.font, node->data.primitive.color,
+                node->data.primitive.wrap, node->data.primitive.align,
+                node->data.primitive.vertical_align,
                 node->data.primitive.font_token);
             break;
         case UI_WIDGET_RECT_NODE:
@@ -1722,6 +1867,7 @@ DrawTree(void)
         EndDisabled();
         if(window_ready && node->paint_capture != 0) {
             EndTextureMode();
+            ui_blend_restore(parent_blend);
             ui_clip_restore(parent_clip);
         }
     }
@@ -1767,6 +1913,7 @@ HitTestNode(Vector2 point)
 
     for(i = count - 1; i >= 0; i--) {
         if((nodes[i].flags & UI_NODE_SCOPE_DISABLED) != 0) continue;
+        if(ui_tree_input_blocked(&nodes[i],point)) continue;
         if(nodes[i].bounds.width <= 0 || nodes[i].bounds.height <= 0)
             continue;
         if(nodes[i].has_input_clip && !CheckCollisionPointRec(point,nodes[i].input_clip)) continue;
@@ -1781,7 +1928,6 @@ ui_accessibility_role(UIWidgetKind kind)
 {
     switch(kind) {
     case UI_WIDGET_SCREEN_NODE: return "main";
-    case UI_WIDGET_TEXT_IN_RECT_NODE:
     case UI_WIDGET_TEXT_NODE:
     case UI_WIDGET_PARAGRAPH_NODE:
     case UI_WIDGET_READONLY_TEXT_BOX_NODE: return "text";
@@ -2033,37 +2179,48 @@ Background(Color color)
 }
 
 void
-Text(const char *text, int x, int y, int font_size, Color color)
+Text(TextProps text)
 {
-    NodeId node = ui_tree_add(0, UI_WIDGET_TEXT_NODE,
-                                (Rectangle){x, y, 0,
-                                    TextHeight(text, font_size)}, NULL);
+    const char *value = text.text != NULL ? text.text : "";
+    int font = text.font > 0 ? text.font : GetUIFontSize();
+    int bounded = text.bounds.width > 0;
+    Rectangle bounds = text.bounds;
+    NodeId node;
 
+    if(text.color.a == 0)
+        text.color = GetThemeText();
+    if(text.disabled)
+        text.color = Fade(text.color, 0.45f);
+    if(bounds.width <= 0) {
+        bounds.width = (float)TextWidth(value, font);
+        text.wrap = TextWrapNone;
+    }
+    if(bounds.height <= 0) {
+        if(bounded && text.wrap == TextWrapAuto) {
+            ParagraphSpec paragraph = {
+                .text = value, .width = (int)bounds.width, .font = font,
+                .line_gap = ScaleUIPx(2), .color = text.color
+            };
+            bounds.height = (float)ui_paragraph_height(paragraph);
+        } else {
+            bounds.height = (float)TextHeight(value, font);
+        }
+    }
+    node = ui_tree_add(0, UI_WIDGET_TEXT_NODE, bounds, NULL);
     if(node >= 0) {
-        ui_tree_nodes[node].owned_text = ui_tree_strdup(text);
-        ui_tree_nodes[node].data.primitive.font = font_size;
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(value);
+        ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
-        ui_tree_nodes[node].data.primitive.color = color;
+        ui_tree_nodes[node].data.primitive.color = text.color;
+        ui_tree_nodes[node].data.primitive.wrap = text.wrap;
+        ui_tree_nodes[node].data.primitive.align = text.align;
+        ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    if(ui_tree_building)
-        return;
-    DrawUIText(text, x, y, font_size, color);
-}
-
-void
-TextInRect(const char *text, Rectangle rect, int font_size, Color color)
-{
-    NodeId id = ui_tree_add(0, UI_WIDGET_TEXT_IN_RECT_NODE, rect, NULL);
-    if(id >= 0) {
-        UIWidgetNode *node = &ui_tree_nodes[id];
-        node->owned_text = ui_tree_strdup(text);
-        node->data.primitive.font = font_size;
-        node->data.primitive.font_token = ui_active_font_token();
-        node->data.primitive.color = color;
-    }
-    if(ui_tree_building)
-        return;
-    DrawUITextInRect(text, rect, font_size, color);
+    if(!ui_tree_building)
+        ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
+                            text.align, text.vertical_align,
+                            ui_active_font_token());
 }
 
 void
@@ -2071,35 +2228,10 @@ ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int l
 {
     if(!ui_tree_building)
         ui_tree_heading_semantic(text, level);
-    TextInRect(text, bounds, font, color);
+    Text((TextProps){.bounds=bounds,.text=text,.font=font,.color=color,
+                     .wrap=TextWrapNone});
     if(ui_tree_building && ui_tree_node_count > 0)
         ui_tree_nodes[ui_tree_node_count - 1].data.primitive.heading_level = level;
-}
-
-void
-TextColored(const char *text, int x, int y, int font_size, Color color)
-{
-    Text(text, x, y, font_size, color);
-}
-
-void
-TextDisabled(const char *text, int x, int y, int font_size)
-{
-    Text(text, x, y, font_size, Fade(GetThemeText(), 0.45f));
-}
-
-void
-TextWrapped(const char *text, Rectangle bounds, int font_size, Color color)
-{
-    ParagraphSpec paragraph = {0};
-    int y = (int)bounds.y;
-
-    paragraph.text = text;
-    paragraph.width = (int)bounds.width;
-    paragraph.font = font_size;
-    paragraph.line_gap = ScaleUIPx(2);
-    paragraph.color = color;
-    Paragraph(paragraph, (int)bounds.x, &y);
 }
 
 void
@@ -2109,10 +2241,8 @@ LabelText(const char *label, const char *value, Rectangle bounds,
     int label_width = TextWidth(label != NULL ? label : "", font_size);
     int value_x = (int)bounds.x + label_width + ScaleUIPx(8);
 
-    Text(label != NULL ? label : "", (int)bounds.x, (int)bounds.y,
-         font_size, Fade(color, 0.72f));
-    Text(value != NULL ? value : "", value_x, (int)bounds.y,
-         font_size, color);
+    Text((TextProps){.bounds={(int)bounds.x, (int)bounds.y, 0, 0}, .text=label != NULL ? label : "", .font=font_size, .color=Fade(color, 0.72f), .wrap=TextWrapNone});
+    Text((TextProps){.bounds={value_x, (int)bounds.y, 0, 0}, .text=value != NULL ? value : "", .font=font_size, .color=color, .wrap=TextWrapNone});
 }
 
 void
@@ -2123,8 +2253,7 @@ BulletText(const char *text, Rectangle bounds, int font_size, Color color)
                         bounds.height > 0 ? bounds.height : (float)font_size};
 
     Bullet(bullet);
-    Text(text != NULL ? text : "", (int)bounds.x + bullet_size + ScaleUIPx(4),
-         (int)bounds.y, font_size, color);
+    Text((TextProps){.bounds={(int)bounds.x + bullet_size + ScaleUIPx(4), (int)bounds.y, 0, 0}, .text=text != NULL ? text : "", .font=font_size, .color=color, .wrap=TextWrapNone});
 }
 
 void
@@ -2643,8 +2772,7 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
         int font = GetUISmallFontSize();
-        Text(label, (int)bounds.x + ScaleUIPx(6),
-             (int)bounds.y - font - ScaleUIPx(2), font, c_text);
+        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - font - ScaleUIPx(2), 0, 0}, .text=label, .font=font, .color=c_text, .wrap=TextWrapNone});
     }
 }
 
@@ -3498,12 +3626,6 @@ ColorButton(ColorButtonProps button)
 
     ui_tree_mark_painted_immediate(node);
     return clicked;
-}
-
-int
-Tooltip(TooltipProps tooltip)
-{
-    return DrawUITooltip(tooltip);
 }
 
 /* Retained layout containers. Every container closes with End(). */

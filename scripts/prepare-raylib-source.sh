@@ -11,6 +11,14 @@ sdl_core="$src_dir/platforms/rcore_desktop_sdl.c"
 audio="$src_dir/raudio.c"
 rgfw_core="$src_dir/platforms/rcore_desktop_rgfw.c"
 
+# Compile private paint-state hooks inside rlgl, where its renderer cache is
+# visible. Patch only the build copy; keep the raylib submodule unchanged.
+prepare_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cp "$prepare_dir/../src/backend/kry_rlgl_blend.inc" "$src_dir/kry_rlgl_blend.inc"
+if ! grep -q '#include "kry_rlgl_blend.inc"' "$src_dir/rlgl.h"; then
+    perl -0pi -e 's/(?=void rlSetBlendMode\(int mode\)\n\{)/#include "kry_rlgl_blend.inc"\n\n/ or die "rlgl blend hook insertion point missing\n"' "$src_dir/rlgl.h"
+fi
+
 if [ -f "$sdl_core" ] && ! grep -q 'Kryon: avoid X11 Font typedef collision' "$sdl_core"; then
     perl -0pi -e 's@(#elif defined\(USING_SDL2_PROJECT\)\n\s*#include "SDL2/SDL\.h"\n)(\s*#include "SDL2/SDL_syswm\.h"\s*// Required to get window handlers)@$1    // Kryon: avoid X11 Font typedef collision when SDL_syswm.h pulls X11 headers.\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #define Font X11Font\n    #endif\n$2\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #undef Font\n    #endif@' "$sdl_core"
 fi

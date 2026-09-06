@@ -34,6 +34,16 @@ type windowRuntime struct {
 	dirty   bool
 }
 
+func (w *windowRuntime) textWithFont(props TextProps, fontID uint32) {
+	if runtime, ok := w.Runtime.(interface {
+		textWithFont(TextProps, uint32)
+	}); ok {
+		runtime.textWithFont(props, fontID)
+		return
+	}
+	w.Runtime.Text(props)
+}
+
 type legacyPointerController interface {
 	QueueMouseButton(int32, float32, float32)
 	QueueMouseWheel(float32)

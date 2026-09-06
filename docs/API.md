@@ -160,6 +160,53 @@ nested input/clipping, wheel scrolling, scrollbar dragging and parent restoratio
 C++ syntax tests cover the shared lowering. This native scope is not yet
 behaviorally verified in the JS runner.
 
+### Composed combo blocks in native `.kry` code
+
+Use a `Combo` block when the popup contains caller-defined widgets:
+
+```kry
+Combo commands: {
+    bounds = {20, 20, 180, 32}
+    popup_size = (Vector2){260, 160}
+    preview = "Commands"
+    id = 4200
+    open = &commands_open
+    flags = ComboPopupAlignLeft | ComboHeightSmall
+
+    Row actions: {
+        Button { label = "Run" }
+        TextField { text = query }
+    }
+}
+```
+
+The block conditionally submits its children only while open. The compiler
+emits `BeginCombo` and a matching `EndCombo` through the shared lexical cleanup
+pass, including `return`, `break`, and `continue`, so application source cannot
+forget the closing call. Call `CloseCombo()` inside the block for explicit
+dismissal. The properties are the fields of `ComboProps`; generated C, C++ and
+native Go target the same runtime scope.
+
+Use a `Popup` block for arbitrary caller-owned popup contents without a combo
+owner:
+
+```kry
+Popup tools: {
+    bounds = {170, 50, 240, 140}
+    id = 4201
+    open = &tools_open
+
+    Column content: {
+        Text { text = "Tools" }
+        Button { label = "Apply" }
+    }
+}
+```
+
+`Popup` has the same conditional, cleanup-managed block behavior as `Combo`.
+Call `ClosePopup()` inside the block for explicit dismissal. Its properties are
+the fields of `PopupProps`.
+
 ### Runtime surface
 
 Kryon owns the public app-facing API. The default backend still implements much
@@ -201,7 +248,10 @@ Settings :: (viewport: Rectangle) #ui {
             gap = 12
             padding = 16
 
-            Text("Account", 0, 0, Text24, GetThemeText())
+            Text((TextProps){
+                .text = "Account"
+                .font = Text24
+            })
             TextField(account_field)
             Button(save_button)
         }
@@ -512,7 +562,40 @@ int TextLineHeight(int font_size);
 #### Text Widgets
 
 ```c
-void Text(const char *text, int x, int y, int font_size, Color color);
+typedef enum { TextWrapAuto, TextWrapNone } TextWrap;
+typedef enum { TextAlignStart, TextAlignCenter, TextAlignEnd } TextAlign;
+
+typedef struct {
+    Rectangle bounds;
+    const char *text;
+    int font;
+    Color color;
+    TextWrap wrap;
+    TextAlign align;
+    TextAlign vertical_align;
+    int disabled;
+} TextProps;
+
+void Text(TextProps text);
+```
+
+`Text` is the single read-only text widget. A positive bounds width enables
+word wrapping by default, and a positive height clips the result. Set
+`wrap = TextWrapNone` for one line; `align` and `vertical_align` control its
+placement inside the bounds.
+Zero width measures the line intrinsically. Zero font and transparent color
+select the current UI defaults. Color and disabled presentation are properties,
+not separate widget entry points.
+
+Native `.kry` can use the same properties without a compound literal:
+
+```kry
+Text message: {
+    bounds = {24, 24, 240, 64}
+    text = "This wraps and clips inside its bounds."
+    font = Text16
+    color = GetThemeText()
+}
 ```
 
 #### Vertical Centering
@@ -1336,6 +1419,97 @@ Go uses the shared scroll container for wheel input, scrollbar dragging and
 row clipping, painting only visible rows. These behaviors do not yet provide general keyboard-focus
 isolation for arbitrary popup children or complete ImGui navigation semantics.
 
+For caller-defined contents, use the native composed combo scope:
+
+```c
+typedef enum {
+    ComboFlagsNone = 0,
+    ComboPopupAlignLeft = 1 << 0,
+    ComboHeightSmall = 1 << 1,
+    ComboHeightRegular = 1 << 2,
+    ComboHeightLarge = 1 << 3,
+    ComboHeightLargest = 1 << 4,
+    ComboNoArrowButton = 1 << 5,
+    ComboNoPreview = 1 << 6,
+    ComboWidthFitPreview = 1 << 7
+} ComboFlags;
+
+typedef struct {
+    Rectangle bounds;
+    Vector2 popup_size;
+    const char *preview;
+    int id;
+    bool *open;
+    unsigned int flags;
+    int disabled;
+} ComboProps;
+
+int BeginCombo(ComboProps combo);
+void EndCombo(void);
+void CloseCombo(void);
+```
+
+Call `EndCombo` exactly once when `BeginCombo` returns nonzero. Between those
+calls, ordinary widgets and nested `Row` or `Column` layouts are clipped,
+painted, and routed as popup contents; no popup-specific widget variants are
+needed. `CloseCombo` closes the current scope immediately and updates the
+caller-owned `open` value. Disabling the combo, pressing Escape, releasing the
+pointer outside its popup, or omitting its owner on a later frame also closes
+it. Nested combo scopes are supported.
+
+At most one height flag may be supplied. With a zero popup height, Small,
+Regular/default, Large, and Largest select approximately 4, 8, 20, and 32 owner
+rows. A zero width uses the owner width. Popups are constrained to the current
+view and flip above the owner when necessary. The default aligns right edges;
+`ComboPopupAlignLeft` aligns left edges. The remaining flags suppress the arrow
+or preview and optionally expand the owner to fit its preview.
+
+The begin/end pair marks the lexical lifetime of arbitrary child declarations;
+frame ownership and paint-target management remain internal to Kryon. Generated
+C, C++ and native Go use this same clean surface.
+
+For an arbitrary popup that is not owned by a combo, use:
+
+```c
+typedef struct {
+    Rectangle bounds;
+    int id;
+    bool *open;
+    int disabled;
+    Rectangle trigger;
+    unsigned int flags;
+} PopupProps;
+
+typedef enum {
+    PopupFlagsNone = 0,
+    PopupTooltip = 1 << 0,
+    PopupModal = 1 << 1
+} PopupFlags;
+
+int BeginPopup(PopupProps popup);
+void EndPopup(void);
+void ClosePopup(void);
+```
+
+`BeginPopup` returns nonzero only while the caller-owned `open` value is true.
+Its children use the same overlay painting, clipping, nested layout and input
+capture as composed combos. Escape, a pointer release outside the popup,
+disabling it, or omitting its owner on a later frame closes it. Outside releases
+are consumed so the background widget underneath is not activated.
+
+With `PopupTooltip`, `open` is optional and visibility is derived from pointer
+hover over `trigger`. The tooltip uses the same arbitrary-child paint and layout
+scope, but does not enter popup input capture: controls beneath it continue to
+receive input. Tooltip bounds and child positions are explicit, keeping sizing
+and placement in the retained layout rather than creating a second text-only
+renderer. `ClosePopup` may hide the tooltip for its current frame.
+
+With `PopupModal`, the same scope accepts arbitrary native children while
+drawing a full-view dimming backdrop and owning pointer and keyboard input over
+the background. Pointer releases outside the panel are blocked without closing
+it; Escape, `ClosePopup`, disabling it, or omitting its owner closes it. Modal
+and tooltip flags are mutually exclusive.
+
 #### Segmented Control
 
 Responsive choice control for mutually exclusive compact options. It measures
@@ -1715,9 +1889,10 @@ before an app applies or saves them.
 ### Text composition
 
 Platform adapters submit UTF-8 IME preedit and commit events through the shared
-input front-end. The focused retained `TextField` or `TextArea` displays
-preedit without changing the caller-owned buffer, then applies the committed
-text through the control's normal codepoint filter.
+input front-end. C retained `TextField` and `TextArea` consume these events;
+commits use the editor's insertion rules and cannot mutate a read-only buffer.
+C retained `TextField` displays preedit separately from committed text; C
+TextArea preedit rendering and immediate C composition remain incomplete.
 
 ```c
 SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, "nihon", 5, 0);
@@ -1729,9 +1904,27 @@ while (PollTextComposition(&event)) {
 }
 ```
 
-`ClearTextComposition` discards pending preedit events when a host resets or
-changes input ownership. Android `InputConnection` and the DOM backend feed
-this API directly.
+`ClearTextComposition` discards pending composition events, including commits;
+it does not cancel preedit already stored in an editor. Submit a `CANCEL` event
+to cancel that preedit. Android `InputConnection` and the DOM backend feed this
+C API directly.
+
+Native Go exposes the same phase names and `SubmitTextComposition`,
+`PollTextComposition`, and `ClearTextComposition`, both as package functions
+and Runtime methods. Its queue belongs to the runtime. Go TextField/TextArea
+display preedit without changing the caller buffer, apply commits with UTF-8
+cursor/length handling, and discard preedit on focus loss, removal, disabling
+or popup capture. Unconsumed Go events expire at frame end. Both queues accept
+up to 16 events with at most 255 text bytes per event; submission returns 1 on
+success and 0 for an invalid phase or full queue. Native Go OS-window IME event
+delivery and detailed preedit cursor/selection rendering remain incomplete.
+
+Native Go `TextFieldProps.ReadOnly` and `TextAreaProps.ReadOnly` mirror C's
+`read_only` property. Read-only editors remain focusable and allow selection,
+navigation and copying, but reject typing, cut/paste mutations, deletion and
+IME commits. Switching a Go editor to read-only cancels its preedit; its frame
+operation carries `ReadOnly` so rendering suppresses the insertion caret without
+removing focus styling. Re-enabling editing does not replay rejected input.
 
 ### Retained accessibility
 

@@ -1,0 +1,133 @@
+#import "kryon.h"
+
+app "Native Composed Combo Parity" {
+    size 320 220
+    fps 60
+}
+
+state {
+    combo_open: bool = true
+    combo_close: bool = false
+    combo_action: int = 0
+    combo_checked: int = 0
+    combo_text: [32] char = "edit"
+    combo_cursor: int = 4
+    combo_cleanup_open: bool = true
+    popup_open: bool = true
+    popup_close: bool = false
+    popup_action: int = 0
+    popup_background: int = 0
+    tooltip_frames: int = 0
+    tooltip_background: int = 0
+    modal_open: bool = true
+    modal_frames: int = 0
+    modal_background: int = 0
+}
+
+composed_modal_frame :: () #ui {
+    Screen root: {
+        Popup modal: {
+            bounds = {70,50,180,110}
+            id = 27040
+            open = &modal_open
+            flags = PopupModal
+            modal_frames += 1
+            Column modal_content: {
+                bounds = {80,60,160,80}
+                gap = 4
+                Text((TextProps){.text="Native modal children",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+                Button((ButtonProps){.bounds={0,0,100,24},.label="Confirm",.id=27041})
+            }
+        }
+        if Button((ButtonProps){.bounds={270,160,40,30},.label="Back",.id=27042}) {
+            modal_background += 1
+        }
+    }
+}
+
+composed_tooltip_frame :: () #ui {
+    Screen root: {
+        Popup help: {
+            bounds = {90,60,150,70}
+            id = 27030
+            trigger = {20,20,80,30}
+            flags = PopupTooltip
+            tooltip_frames += 1
+            Column tooltip_content: {
+                bounds = {98,68,134,54}
+                gap = 4
+                Text((TextProps){.text="Native children",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+                if Button((ButtonProps){.bounds={0,0,100,24},.label="Details",.id=27031}) {
+                    tooltip_frames += 10
+                }
+            }
+        }
+        if Button((ButtonProps){.bounds={20,20,80,30},.label="Hover",.id=27032}) {
+            tooltip_background += 1
+        }
+    }
+}
+
+composed_combo_early_exit :: (leave: bool) #ui {
+    Combo cleanup: {
+        bounds = {180,20,120,28}
+        popup_size = (Vector2){120,80}
+        preview = "Cleanup"
+        id = 27010
+        open = &combo_cleanup_open
+        if leave {
+            return
+        }
+        Text((TextProps){.bounds={184, 56, 0, 0}, .text="balanced", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+    }
+}
+
+composed_combo_frame :: () #ui {
+    Screen root: {
+        Combo popup: {
+            bounds = {20,20,120,28}
+            popup_size = (Vector2){150,100}
+            preview = "Tools"
+            id = 27000
+            open = &combo_open
+            flags = ComboPopupAlignLeft | ComboHeightSmall
+            Row popup_row: {
+                bounds = {24,64,140,30}
+                gap = 6
+                key = Key("composed-popup-row")
+                if Button((ButtonProps){.bounds = {0,0,50,26}, .label = "Run", .id = 27001}) {
+                    combo_action += 1
+                }
+                Checkbox(27003, 80, 64, "", &combo_checked)
+                TextField((TextFieldProps){.bounds = {0,0,50,26}, .text = combo_text, .text_size = sizeof(combo_text), .cursor_position = &combo_cursor, .focus_id = 27002})
+            }
+            if combo_close {
+                CloseCombo()
+            }
+        }
+    }
+}
+
+composed_popup_frame :: () #ui {
+    Screen root: {
+        Popup tools: {
+            bounds = {170,50,130,100}
+            id = 27020
+            open = &popup_open
+            Row popup_actions: {
+                bounds = {176,60,118,30}
+                gap = 6
+                if Button((ButtonProps){.bounds = {0,0,54,26}, .label = "Apply", .id = 27021}) {
+                    popup_action += 1
+                }
+                Checkbox(27022, 240, 64, "", &combo_checked)
+            }
+            if popup_close {
+                ClosePopup()
+            }
+        }
+        if Button((ButtonProps){.bounds = {170,160,130,28}, .label = "Background", .id = 27023}) {
+            popup_background += 1
+        }
+    }
+}

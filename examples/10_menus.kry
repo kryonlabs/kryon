@@ -22,6 +22,6 @@ MenusExample :: (viewport: Rectangle) #ui {
         if result.activated_id != 0 {
             snprintf(status,sizeof(status),"Command %d",result.activated_id)
         }
-        Text(status, 40, 80, 20, GetThemeText())
+        Text((TextProps){.bounds={40, 80, 0, 0}, .text=status, .font=20, .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }

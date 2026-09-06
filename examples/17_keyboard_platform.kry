@@ -15,15 +15,15 @@ KeyboardPlatformExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text("Keyboard and clipboard", 40, 40, Text24, GetThemeText())
-        Text(message, 40, 90, Text16, GetThemeText())
+        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Keyboard and clipboard", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={40, 90, 0, 0}, .text=message, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,1}) {
             SetUIClipboardTextValue("Copied from Kryon")
             snprintf(message,sizeof(message),"Copied to clipboard")
             copied = 1
         }
         if copied {
-            Text("Clipboard updated.", 40, 130, Text16, GetThemeLink())
+            Text((TextProps){.bounds={40, 130, 0, 0}, .text="Clipboard updated.", .font=Text16, .color=GetThemeLink(), .wrap=TextWrapNone})
         }
     }
 }

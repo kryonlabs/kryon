@@ -1841,34 +1841,6 @@ DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, 
     DrawUIText(text, center_x - text_w / 2, y, font_size, color);
 }
 
-void
-DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
-{
-    const char *value = text != NULL ? text : "";
-    int text_w = TextWidth(value, font_size);
-    int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
-    int y = TextBaselineY(value, (int)rect.y, (int)rect.height, font_size);
-    int clip_guard = 1;
-
-    Rectangle clip = text_world_rect_to_screen((Rectangle){
-        rect.x, rect.y - clip_guard, rect.width, rect.height + clip_guard * 2
-    });
-    BeginUIClip((int)clip.x, (int)clip.y, (int)clip.width, (int)clip.height);
-    DrawUIText(value, x, y, font_size, color);
-    EndUIClip();
-}
-
-void
-ui_draw_text_in_rect_with_font_token(const char *text, Rectangle bounds,
-                                    int font_size, Color color, int token)
-{
-    int previous = g_ui_active_font;
-    if(token >= 0 && token < g_ui_font_count)
-        g_ui_active_font = token;
-    DrawUITextInRect(text, bounds, font_size, color);
-    g_ui_active_font = previous;
-}
-
 int
 ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale)
 {

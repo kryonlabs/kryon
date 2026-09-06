@@ -25,7 +25,13 @@ form_frame :: () #ui {
             gap = 8
             padding = 8
             key = Key("form-column")
-            Text("Account", 0, 0, Text16, GetThemeText())
+            Text heading: {
+                bounds = {0,0,320,24}
+                text = "Account"
+                font = Text16
+                color = GetThemeText()
+                wrap = TextWrapNone
+            }
             TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = first, .text_size = sizeof(first), .cursor_position = &first_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
             TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = second, .text_size = sizeof(second), .cursor_position = &second_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 102})
             TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = password, .text_size = sizeof(password), .cursor_position = &password_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 103, .secure = true})

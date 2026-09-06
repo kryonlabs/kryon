@@ -4,7 +4,7 @@ KRYON_RAYLIB_MK_INCLUDED := 1
 KRYON_DIR ?= vendor/kryon
 RAYLIB_DIR ?= $(KRYON_DIR)/vendor/raylib/src
 
-RAYLIB_SOURCES = $(shell if [ -d "$(RAYLIB_DIR)" ]; then find "$(RAYLIB_DIR)" -type f \( -name '*.c' -o -name '*.h' \); fi)
+RAYLIB_SOURCES = $(shell if [ -d "$(RAYLIB_DIR)" ]; then find "$(RAYLIB_DIR)" -type f \( -name '*.c' -o -name '*.h' \); fi) $(KRYON_DIR)/src/backend/kry_rlgl_blend.inc
 KRYON_RAYLIB_GENERATED_DIR ?= $(BUILD_DIR)/generated
 KRYON_RAYLIB_GENERATED_PUBLIC_HEADER ?= $(KRYON_RAYLIB_GENERATED_DIR)/kryon_compat.generated.h
 KRYON_RAYLIB_BACKEND_RENAME_HEADER ?= $(KRYON_RAYLIB_GENERATED_DIR)/raylib_backend_rename.h

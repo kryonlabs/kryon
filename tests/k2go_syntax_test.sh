@@ -6,7 +6,7 @@ k2go=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2go build/*/bin
 work=${TMPDIR:-/tmp}/kryon-k2go-syntax-test.$$
 root=$(pwd)
 
-cleanup() { rm -rf "$work"; }
+cleanup() { [ "${KEEP_K2GO_SYNTAX_WORK:-0}" = 1 ] || rm -rf "$work"; }
 trap cleanup EXIT INT TERM
 
 if [ ! -f "$k2go" ]; then
@@ -89,12 +89,12 @@ App :: () #ui {
     menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
     rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
     if tab == TAB_JOBS {
-        Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(20), 0, 0}, .text=label_text(tab), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     } else {
-        Text("hello", ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     }
-    Text("small", ScaleUIPx(10), ScaleUIPx(38), Text14, GetThemeText())
-    Text("large", ScaleUIPx(10), ScaleUIPx(56), Text20, GetThemeText())
+    Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(38), 0, 0}, .text="small", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(56), 0, 0}, .text="large", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
     switch tab {
         case TAB_OVERVIEW: {
             scroll_off = 0
@@ -118,7 +118,7 @@ App :: () #ui {
     DrawCircleV((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
     DrawRing((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(36), ScaleUIPx(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
     EndScroll()
-    TextInRect("in rect", (Rectangle){ScaleUIPx(4), ScaleUIPx(130), ScaleUIPx(160), ScaleUIPx(20)}, Text16, GetThemeText())
+    Text((TextProps){.bounds = {ScaleUIPx(4), ScaleUIPx(130), ScaleUIPx(160), ScaleUIPx(20)}, .text = "in rect", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
     TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
     Bevel(ScaleUIPx(10), ScaleUIPx(10), ScaleUIPx(60), ScaleUIPx(20), GetThemeSurface(), GetThemeButton())
     Icon(2, ScaleUIPx(200), ScaleUIPx(10), ScaleUIPx(24), 3, WHITE)
@@ -143,11 +143,11 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Details", .level = 2})
     End()
     Flow((FlowProps){.bounds = {ScaleUIPx(4), ScaleUIPx(176), ScaleUIPx(180), ScaleUIPx(24)}, .gap = ScaleUIPx(4)})
-    Text("flow", 0, 0, Text16, GetThemeText())
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="flow", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
     PageGrid((GridProps){.bounds = {ScaleUIPx(4), ScaleUIPx(204), ScaleUIPx(180), ScaleUIPx(40)}, .columns = 2, .gap = ScaleUIPx(4), .padding = ScaleUIPx(4)})
-    Text("g1", 0, 0, Text16, GetThemeText())
-    Text("g2", 0, 0, Text16, GetThemeText())
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g1", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
     Slider(9, ScaleUIPx(4), ScaleUIPx(170), ScaleUIPx(180), "S", 0, 100, &slider_val, "%", nil)
     Toggle(10, ScaleUIPx(200), ScaleUIPx(170), ScaleUIPx(120), ScaleUIPx(32), &toggle_val, "Off", "On")
@@ -195,7 +195,7 @@ App :: () #ui {
     TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
     TextArea((TextAreaProps){.bounds = {ScaleUIPx(250), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
-    Text("ro", ScaleUIPx(150), ScaleUIPx(152), Text16, GetThemeText())
+    Text((TextProps){.bounds={ScaleUIPx(150), ScaleUIPx(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
     Combobox((ComboboxProps){{ScaleUIPx(240), ScaleUIPx(270), ScaleUIPx(70), ScaleUIPx(28)}, 25, choices, 3, &pick, 0})
@@ -232,9 +232,9 @@ App :: () #ui {
     ColorPicker3((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 43, .values = edit_color, .value_count = 3})
     ColorPicker4((ColorEditProps){.bounds = {ScaleUIPx(324), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 44, .values = edit_color, .value_count = 4})
     ColorButton((ColorButtonProps){.bounds = {ScaleUIPx(398), ScaleUIPx(654), ScaleUIPx(60), ScaleUIPx(28)}, .id = 45, .label = "Tint", .color = (Color){51,102,153,204}})
-    TextColored("colored", ScaleUIPx(250), ScaleUIPx(690), Text16, (Color){220,60,80,255})
-    TextDisabled("disabled", ScaleUIPx(250), ScaleUIPx(714), Text16)
-    TextWrapped("wrapped helper text", (Rectangle){ScaleUIPx(250),ScaleUIPx(738),ScaleUIPx(160),ScaleUIPx(40)}, Text16, GetThemeText())
+    Text((TextProps){.bounds = {ScaleUIPx(250), ScaleUIPx(690), 0, 0}, .text = "colored", .font = Text16, .color = {220,60,80,255}, .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {ScaleUIPx(250), ScaleUIPx(714), 0, 0}, .text = "disabled", .font = Text16, .wrap = TextWrapNone, .disabled = 1})
+    Text((TextProps){.bounds = {ScaleUIPx(250),ScaleUIPx(738),ScaleUIPx(160),ScaleUIPx(40)}, .text = "wrapped text", .font = Text16, .color = GetThemeText()})
     LabelText("Status", "Ready", (Rectangle){ScaleUIPx(250),ScaleUIPx(782),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
     BulletText("bullet text", (Rectangle){ScaleUIPx(250),ScaleUIPx(806),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
     ValueBool("Enabled", check != 0, (Rectangle){ScaleUIPx(250),ScaleUIPx(1030),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
@@ -244,7 +244,10 @@ App :: () #ui {
     MenuBar(46, (Rectangle){ScaleUIPx(4),ScaleUIPx(834),ScaleUIPx(220),ScaleUIPx(30)}, menus, 1, &menu_open)
     PopupMenu(47, ScaleUIPx(4), ScaleUIPx(868), menu_items, 2)
     ContextMenu((ContextMenuProps){.id = 48, .trigger = {ScaleUIPx(230),ScaleUIPx(834),ScaleUIPx(100),ScaleUIPx(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
-    Tooltip((TooltipProps){.trigger = {ScaleUIPx(230),ScaleUIPx(900),ScaleUIPx(100),ScaleUIPx(30)}, .text = "Helpful text", .font = Text14, .max_width = ScaleUIPx(160)})
+    if BeginPopup((PopupProps){.bounds={ScaleUIPx(220),ScaleUIPx(934),ScaleUIPx(176),ScaleUIPx(42)},.id=58,.trigger={ScaleUIPx(230),ScaleUIPx(900),ScaleUIPx(100),ScaleUIPx(30)},.flags=PopupTooltip}) {
+        Text((TextProps){.bounds={ScaleUIPx(228),ScaleUIPx(944),ScaleUIPx(160),ScaleUIPx(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+        EndPopup()
+    }
     choice_picture: PictureProps = {"tiles/tile.png",(Rectangle){ScaleUIPx(250),ScaleUIPx(934),ScaleUIPx(48),ScaleUIPx(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
     Selectable((SelectableProps){.bounds = {ScaleUIPx(4),ScaleUIPx(934),ScaleUIPx(120),ScaleUIPx(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     CheckboxFlags((CheckboxFlagsProps){.bounds = {ScaleUIPx(4),ScaleUIPx(966),ScaleUIPx(160),ScaleUIPx(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
@@ -286,7 +289,7 @@ Main :: (viewport: Rectangle) #ui {
 
         Column body: {
             gap = 4
-            Text("Hello", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
     }
 }
@@ -417,12 +420,12 @@ grep -q 'Checkbox(' "$out"
 grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
 grep -q 'Rect(' "$out"
-grep -q 'kryon.Text("small".*kryon.Text14.*kryon.GetThemeText())' "$out"
-grep -q 'kryon.Text("large".*kryon.Text20.*kryon.GetThemeText())' "$out"
+grep -q 'Text: "small".*Font: kryon.Text14.*Color: kryon.GetThemeText().*Wrap: kryon.TextWrapNone' "$out"
+grep -q 'Text: "large".*Font: kryon.Text20.*Color: kryon.GetThemeText().*Wrap: kryon.TextWrapNone' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.
-grep -q 'TextInRect(' "$out"
+grep -q 'kryon.Text(kryon.TextProps{' "$out"
 grep -q 'TextLines(' "$out"
 grep -q 'Bevel(' "$out"
 grep -q 'Icon(' "$out"
@@ -504,9 +507,9 @@ grep -q 'kryon.ColorEdit4(kryon.ColorEditProps{.*Values: edit_color\[:\].*ValueC
 grep -q 'kryon.ColorPicker3(kryon.ColorEditProps{' "$out"
 grep -q 'kryon.ColorPicker4(kryon.ColorEditProps{' "$out"
 grep -q 'kryon.ColorButton(kryon.ColorButtonProps{.*Color: kryon.Color{R: 51, G: 102, B: 153, A: 204}' "$out"
-grep -q 'kryon.TextColored("colored"' "$out"
-grep -q 'kryon.TextDisabled("disabled"' "$out"
-grep -q 'kryon.TextWrapped("wrapped helper text"' "$out"
+grep -q 'Text: "colored"' "$out"
+grep -q 'Text: "disabled".*Disabled:' "$out"
+grep -q 'Text: "wrapped text"' "$out"
 grep -q 'kryon.LabelText("Status", "Ready"' "$out"
 grep -q 'kryon.BulletText("bullet text"' "$out"
 grep -q 'kryon.ValueBool("Enabled", st.Check != 0' "$out"
@@ -516,7 +519,8 @@ grep -q 'kryon.ValueFloat("Rate".*"%.1f"' "$out"
 grep -q 'kryon.MenuBar(46, kryon.NewRectangle.*menus\[:\], 1, &st.MenuOpen)' "$out"
 grep -q 'kryon.PopupMenu(47, .*menu_items\[:\], 2)' "$out"
 grep -q 'kryon.ContextMenu(kryon.ContextMenuProps{.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
-grep -q 'kryon.Tooltip(kryon.TooltipProps{.*Text: "Helpful text".*MaxWidth: kryon.ScaleUIPx(160)' "$out"
+grep -q 'kryon.BeginPopup(kryon.PopupProps{.*ID: 58.*Flags: kryon.PopupTooltip' "$out"
+grep -q 'Text: "Helpful text"' "$out"
 grep -q 'kryon.Selectable(kryon.SelectableProps{.*Selected: &st.SelectedRow' "$out"
 grep -q 'kryon.CheckboxFlags(kryon.CheckboxFlagsProps{.*Flags: &st.FeatureFlags.*FlagsValue: 4' "$out"
 grep -q 'kryon.ImageWithBg(kryon.ImageWithBgProps{Picture: choice_picture' "$out"

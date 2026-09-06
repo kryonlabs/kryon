@@ -4,6 +4,8 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -28,6 +30,47 @@ var (
 	fontsByName             = map[string]*uiFontSource{}
 	activeUIFontName string
 )
+
+const defaultUIFontName = "kryon-default"
+
+// ensureDefaultUIFont gives every native Go host the same default UI face as
+// the C runtime. Applications can still replace it with RegisterUIFontData and
+// UseUIFont; failure to resolve a packaged/system font keeps the small built-in
+// renderer fallback available for minimal environments.
+func ensureDefaultUIFont() {
+	fontMu.Lock()
+	if activeUIFontName != "" {
+		fontMu.Unlock()
+		return
+	}
+	fontMu.Unlock()
+
+	paths := []string{
+		"fonts/noto/NotoSans-Regular.ttf",
+		"../fonts/noto/NotoSans-Regular.ttf",
+		"../../fonts/noto/NotoSans-Regular.ttf",
+		"vendor/kryon/fonts/noto/NotoSans-Regular.ttf",
+		"/usr/local/share/fonts/noto/NotoSans-Regular.ttf",
+		"/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+	}
+	if executable, err := os.Executable(); err == nil {
+		dir := filepath.Dir(executable)
+		paths = append([]string{
+			filepath.Join(dir, "fonts", "noto", "NotoSans-Regular.ttf"),
+			filepath.Join(dir, "..", "share", "kryon", "fonts", "noto", "NotoSans-Regular.ttf"),
+		}, paths...)
+	}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		if _, ok := registerFontData(defaultUIFontName, ".ttf", data); ok {
+			useUIFont(defaultUIFontName)
+			return
+		}
+	}
+}
 
 func registerFontData(name, typ string, data []byte) (uint32, bool) {
 	if len(data) == 0 {

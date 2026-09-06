@@ -53,7 +53,7 @@ ApplyThemeState :: () {
 }
 
 TokenValue :: (label: const char *, value: int, x: int, y: int) {
-    Text(TextFormat("%s %d", label, value), x, y, Text12, GetThemeIcon())
+    Text((TextProps){.bounds={x, y, 0, 0}, .text=TextFormat("%s %d", label, value), .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
 }
 
 ControlDemo :: (x: int, y: int, w: int) {
@@ -69,7 +69,7 @@ ControlDemo :: (x: int, y: int, w: int) {
         ScaleUIPx(8)
     }
 
-    Text("Live controls", x, y, Text24, GetThemeText())
+    Text((TextProps){.bounds={x, y, 0, 0}, .text="Live controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
     y += ScaleUIPx(46)
     Button((ButtonProps){
         .bounds = {x, y, ScaleUIPx(190), ScaleUIPx(44)},
@@ -123,8 +123,8 @@ ThemeExample :: (viewport: Rectangle) #ui {
             .style_system_label = "System style"
         }
     
-        Text("Kryon Native Theme State", margin, ScaleUIPx(24), Text24, GetThemeText())
-        Text("Switch style and palette here; every control on the right uses Kryon live.", right_x, ScaleUIPx(30), Text16, GetThemeIcon())
+        Text((TextProps){.bounds={margin, ScaleUIPx(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right_x, ScaleUIPx(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
         result: UIThemeSettingsResult = {0}
         ThemeSettings(settings, &menu_state, &result)
     
@@ -132,7 +132,7 @@ ThemeExample :: (viewport: Rectangle) #ui {
     
         tokens := GetUIStyleTokens()
         token_y: int = ScaleUIPx(520)
-        Text("Active style tokens", right_x, token_y, Text16, GetThemeText())
+        Text((TextProps){.bounds={right_x, token_y, 0, 0}, .text="Active style tokens", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         token_y += ScaleUIPx(30)
         TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
         TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)

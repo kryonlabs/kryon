@@ -351,14 +351,13 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
                        char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Background", "Text", "TextInRect", "TextColored", "TextDisabled",
-        "TextWrapped", "LabelText", "BulletText", "ValueBool", "ValueInt",
+        "Background", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt",
         "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Selectable",
         "CheckboxFlags", "ImageWithBg", "ImageButton", "SmallButton",
         "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
         "ColorEdit3",
-        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Tooltip", "IconButton",
+        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "IconButton",
         "Href", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
         "PopupMenu", "ContextMenu",
         "Toggle", "Checkbox", "Radio", "Progress", "PlotLines",
@@ -463,6 +462,12 @@ ui_block_prop_type(const char *widget)
     /* A lexical scope, not a runtime props type or another widget API. */
     if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0)
         return "";
+    if(strcmp(widget, "Combo") == 0)
+        return "ComboProps";
+    if(strcmp(widget, "Popup") == 0)
+        return "PopupProps";
+    if(strcmp(widget, "Text") == 0)
+        return "TextProps";
     if(strcmp(widget, "Row") == 0)
         return "RowProps";
     if(strcmp(widget, "Screen") == 0 || strcmp(widget, "Column") == 0 ||
@@ -653,6 +658,19 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
          * widget arguments. Keep the ordinary typed call in the shared IR. */
         KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", span);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "Combo") == 0 ||
+       strcmp(block->widget, "Popup") == 0) {
+        const char *type = strcmp(block->widget,"Combo") == 0 ?
+                           "ComboProps" : "PopupProps";
+        snprintf(args, sizeof(args), "(%s){%.3800s}", type, block->props);
+        snprintf(call, sizeof(call), "if Begin%s(%.3900s) {",
+                 block->widget,args);
+        KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", span);
+        snprintf(call,sizeof(call),"defer End%s()",block->widget);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
         block->opened = 1;
         return;
     }
@@ -2510,7 +2528,9 @@ kir_parse_file(const char *path, const char *root)
 
                 ui_block_open(fn, block, KirSpan(rel, line_no, 1));
                 if(strcmp(block->widget, "Disabled") == 0 ||
-                   strcmp(block->widget, "Scroll") == 0)
+                   strcmp(block->widget, "Scroll") == 0 ||
+                   strcmp(block->widget, "Combo") == 0 ||
+                   strcmp(block->widget, "Popup") == 0)
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));
                 else if(block->emits_end)

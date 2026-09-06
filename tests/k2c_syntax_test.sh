@@ -50,7 +50,7 @@ Valid :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText())
+        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(10), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Column form: {
             bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}
             gap = ScaleUIPx(4)
@@ -158,7 +158,7 @@ Main :: (viewport: Rectangle) #ui {
 
         Column body: {
             gap = 4
-            Text("Hello", 0, 0, Text16, GetThemeText())
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Button {
                 bounds = {8, 40, 96, 28}
                 label = "Block"
@@ -225,7 +225,9 @@ grep -Fq 'int app_count = 0;' "$c"
 # calls wrap with Push/Pop + source line
 grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
-grep -Fq 'Text("hi", ScaleUIPx(10), ScaleUIPx(10), Text16, GetThemeText());' "$c"
+grep -Fq 'Text((TextProps){' "$c"
+grep -Fq '"hi"' "$c"
+grep -Fq 'TextWrapNone' "$c"
 grep -Fq 'Column((ColumnProps)' "$c"
 grep -Fq 'TextField((TextFieldProps)' "$c"
 grep -Fq 'TextArea((TextAreaProps)' "$c"
@@ -308,7 +310,7 @@ cc -fsyntax-only -I"$root/include" -I"$work/out" "$hc"
 grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.h"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
 grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
-grep -Fq 'Text("Hello", 0, 0, Text16, GetThemeText());' "$hc"
+grep -Fq '"Hello"' "$hc"
 grep -Fq 'Button((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .style = ButtonStyleSecondary, .font = Text16, .id = 77, });' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
