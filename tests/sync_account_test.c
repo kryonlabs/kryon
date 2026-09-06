@@ -1,4 +1,5 @@
 #include "sync/account.h"
+#include "sync_crypto.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +53,7 @@ make_account(SyncAccount *account)
         public_key[i] = (unsigned char)(i * 7U + 11U);
     for(size_t i = 0; i < sizeof(private_key); i++)
         private_key[i] = (unsigned char)(i * 17U + 3U);
-    SyncSha256Hex(public_key, sizeof(public_key), account->public_id);
+    SyncCryptoSha256Hex(public_key, sizeof(public_key), account->public_id);
     bytes_to_hex_local(public_key, sizeof(public_key), account->public_key_hex,
                        sizeof(account->public_key_hex));
     bytes_to_hex_local(private_key, sizeof(private_key), account->private_key_hex,
@@ -68,7 +69,7 @@ test_export_parse_roundtrip(void)
 
     make_account(&account);
     check_true("export text", ExportSyncAccountText(&account, text, sizeof(text)));
-    check_true("generic header", strstr(text, "sync-account-key-v1\n") == text);
+    check_true("generic header", strstr(text, "account-key-v1\n") == text);
     check_true("parse exported text", ParseSyncAccountText(text, &parsed));
     check_true("roundtrip public id", strcmp(parsed.public_id, account.public_id) == 0);
     check_true("roundtrip public key", strcmp(parsed.public_key_hex, account.public_key_hex) == 0);
@@ -154,8 +155,8 @@ test_encrypted_roundtrip(void)
     make_account(&account);
     check_true("encrypted export", ExportSyncAccountTextEncrypted(&account, "hunter2", text, sizeof(text)));
     check_true("encrypted export marks v2 header",
-               strncmp(text, "sync-account-key-v2",
-                       strlen("sync-account-key-v2")) == 0);
+               strncmp(text, "ksync-account-key-v2",
+                       strlen("ksync-account-key-v2")) == 0);
     check_true("encrypted export hides private key", strstr(text, account.private_key_hex) == NULL);
     check_true("encrypted import", ParseSyncAccountTextEncrypted(text, "hunter2", &parsed));
     check_true("encrypted roundtrip id", strcmp(parsed.public_id, account.public_id) == 0);

@@ -12,10 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SYNC_ACCOUNT_KEY_HEADER "sync-account-key-v1"
+#define SYNC_ACCOUNT_KEY_HEADER "account-key-v1"
 #define SYNC_LEGACY_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
 #define SYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
-#define SYNC_ACCOUNT_KEY_V2_HEADER "sync-account-key-v2"
+#define SYNC_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
 #define SYNC_LEGACY_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
 
 static char account_last_error[192];
@@ -177,20 +177,6 @@ read_file_text(const char *filename)
     return body;
 }
 
-void
-SyncSha256Hex(const uint8_t *data, size_t len, char out_hex[SYNC_PUBLIC_ID_HEX_SIZE])
-{
-    uint8_t digest[32];
-
-    if(out_hex == NULL)
-        return;
-    out_hex[0] = '\0';
-    if(data == NULL && len > 0)
-        return;
-    SyncCryptoSha256(data, len, digest);
-    SyncCryptoBytesToHex(digest, sizeof(digest), out_hex, SYNC_PUBLIC_ID_HEX_SIZE);
-}
-
 int
 IsSyncAccountAvailable(void)
 {
@@ -242,7 +228,7 @@ ValidateSyncAccount(SyncAccount *account)
         set_account_error("public_key could not be decoded");
         return 0;
     }
-    SyncSha256Hex(public_key, sizeof(public_key), expected_public_id);
+    SyncCryptoSha256Hex(public_key, sizeof(public_key), expected_public_id);
     if(account->public_id[0] == '\0') {
         snprintf(account->public_id, sizeof(account->public_id), "%s", expected_public_id);
         account_last_error[0] = '\0';
@@ -386,7 +372,7 @@ CreateSyncAccount(SyncAccount *account)
     }
     OQS_SIG_free(sig);
 
-    SyncSha256Hex(public_key, sizeof(public_key), generated.public_id);
+    SyncCryptoSha256Hex(public_key, sizeof(public_key), generated.public_id);
     SyncCryptoBytesToHex(public_key, sizeof(public_key), generated.public_key_hex,
                  sizeof(generated.public_key_hex));
     SyncCryptoBytesToHex(private_key, sizeof(private_key), generated.private_key_hex,

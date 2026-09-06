@@ -93,19 +93,20 @@ test_http(const char *method, const char *url, const char *body,
     ctx->last_auth[0] = '\0';
     ctx->last_user[0] = '\0';
     ctx->last_signature[0] = '\0';
+    ctx->last_transaction[0] = '\0';
     for(int i = 0; i < header_count; i++) {
         if(headers[i] != NULL && strncmp(headers[i], "Authorization:", 14) == 0)
             snprintf(ctx->last_auth, sizeof(ctx->last_auth), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Sync-User:", strlen("X-Sync-User:")) == 0 ||
+           (strncmp(headers[i], "X-Daochi-User:", strlen("X-Daochi-User:")) == 0 ||
             strncmp(headers[i], "X-Custom-User:", strlen("X-Custom-User:")) == 0))
             snprintf(ctx->last_user, sizeof(ctx->last_user), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Sync-Signature:", strlen("X-Sync-Signature:")) == 0 ||
+           (strncmp(headers[i], "X-Daochi-Signature:", strlen("X-Daochi-Signature:")) == 0 ||
             strncmp(headers[i], "X-Custom-Signature:", strlen("X-Custom-Signature:")) == 0))
             snprintf(ctx->last_signature, sizeof(ctx->last_signature), "%s", headers[i]);
         if(headers[i] != NULL &&
-           strncmp(headers[i], "X-Sync-Tx:", strlen("X-Sync-Tx:")) == 0)
+           strncmp(headers[i], "X-Daochi-Tx:", strlen("X-Daochi-Tx:")) == 0)
             snprintf(ctx->last_transaction, sizeof(ctx->last_transaction), "%s",
                      headers[i]);
     }
@@ -262,9 +263,9 @@ test_sync_run_with_valid_token(void)
           "sync posts to sync path");
     check(strcmp(ctx.last_auth, "Authorization: Bearer saved-token") == 0,
           "sync sends bearer token");
-    check(strncmp(ctx.last_user, "X-Sync-User:",
-                  strlen("X-Sync-User:")) == 0,
-          "sync uses Sync user header by default");
+    check(strncmp(ctx.last_user, "X-Daochi-User:",
+                  strlen("X-Daochi-User:")) == 0,
+          "sync uses Daochi user header by default");
     check(ctx.apply_called == 1, "sync applies response");
     check(ctx.purge_called == 1, "sync purges after success");
 }
@@ -313,8 +314,8 @@ test_sync_node_failover(void)
     check(ctx.http_calls == 2, "local and public nodes attempted once");
     check(strstr(ctx.last_storage_key, "sync_node_public-node_") == ctx.last_storage_key,
           "credentials scoped to active node");
-    check(strncmp(ctx.last_user, "X-Sync-User:", strlen("X-Sync-User:")) == 0,
-          "clean node sync uses Sync wire header");
+    check(strncmp(ctx.last_user, "X-Daochi-User:", strlen("X-Daochi-User:")) == 0,
+          "clean node sync uses Daochi wire header");
 }
 
 static int

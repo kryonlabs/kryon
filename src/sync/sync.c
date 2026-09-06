@@ -12,16 +12,16 @@
 #define SYNC_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
 #define SYNC_ACCOUNT_DELETE_PATH "/api/v1/account/delete"
 #define SYNC_DEVICE_REGISTRATION_PATH "/api/v1/account/devices"
-#define SYNC_DELETE_SIGNATURE_CONTEXT "sync-delete-v1"
-#define SYNC_DEVICE_REGISTRATION_CONTEXT "sync-device-registration-v1"
-#define SYNC_TRANSACTION_CONTEXT "sync-tx-v1"
+#define SYNC_DELETE_SIGNATURE_CONTEXT "daochi-delete-v1"
+#define SYNC_DEVICE_REGISTRATION_CONTEXT "daochi-device-registration-v1"
+#define SYNC_TRANSACTION_CONTEXT "daochi-tx-v1"
 #define SYNC_PAYLOAD_CONTEXT "sync-payload-key-v1"
 #define SYNC_AUTH_TOKEN_KEY "sync_auth_token"
 #define SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
 #define SYNC_CLOCK_SKEW_KEY "sync_clock_skew"
-#define SYNC_SIGNATURE_CONTEXT "sync-v1"
-#define SYNC_USER_HEADER "X-Sync-User"
-#define SYNC_SIGNATURE_HEADER "X-Sync-Signature"
+#define SYNC_SIGNATURE_CONTEXT "daochi-sync-v1"
+#define SYNC_USER_HEADER "X-Daochi-User"
+#define SYNC_SIGNATURE_HEADER "X-Daochi-Signature"
 #define SYNC_PAYLOAD_COMPRESSION "lzss1"
 #define SYNC_DEVICE_PRIVATE_KEY "sync_device_private_key"
 #define SYNC_DEVICE_PUBLIC_KEY "sync_device_public_key"
@@ -535,7 +535,7 @@ sync_build_message(const SyncConfig *cfg, const char *method, const char *path,
     if(cfg == NULL || method == NULL || path == NULL || nonce_hex == NULL ||
        body == NULL || out == NULL || out_size == 0)
         return 0;
-    SyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    SyncCryptoSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     if(body_hash[0] == '\0')
         return 0;
     context = cfg->signature_context != NULL && cfg->signature_context[0] != '\0'
@@ -805,7 +805,7 @@ sync_load_or_create_device_key(const SyncConfig *cfg,
                              SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1)) {
         return 0;
     }
-    SyncSha256Hex(public_key, sizeof(public_key), key_id);
+    SyncCryptoSha256Hex(public_key, sizeof(public_key), key_id);
     cfg->set_text(SYNC_DEVICE_PRIVATE_KEY, private_key_hex, cfg->user);
     cfg->set_text(SYNC_DEVICE_PUBLIC_KEY, public_key_hex, cfg->user);
     cfg->set_text(SYNC_DEVICE_KEY_ID, key_id, cfg->user);
@@ -953,7 +953,7 @@ sync_build_transaction_header(const SyncConfig *cfg, const char *body,
        !sync_random_identifier(tx_id) || !sync_random_identifier(nonce)) {
         return 0;
     }
-    SyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    SyncCryptoSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     expires_at = (long long)time(NULL) + sync_clock_skew(cfg) + 300;
     written = snprintf(message, sizeof(message),
                        "%s\n%d\n%s\n%s\n%s\n%s\nPOST\n%s\n%s\n%s\n%lld\n",
@@ -975,8 +975,8 @@ sync_build_transaction_header(const SyncConfig *cfg, const char *body,
                              sizeof(device_signature_hex))) {
         return 0;
     }
-    ok = AppendSyncBuffer(&json, "X-Sync-Tx: {\"protocol_version\":",
-                          strlen("X-Sync-Tx: {\"protocol_version\":"));
+    ok = AppendSyncBuffer(&json, "X-Daochi-Tx: {\"protocol_version\":",
+                          strlen("X-Daochi-Tx: {\"protocol_version\":"));
     {
         char protocol[16];
         snprintf(protocol, sizeof(protocol), "%d", cfg->protocol_version);

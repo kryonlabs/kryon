@@ -1,4 +1,5 @@
 #include "sync_nodes.h"
+#include "sync_crypto.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -165,7 +166,7 @@ BuildSyncNodeStorageKey(const SyncNode *node, const char *key,
     }
     id = node->id;
     if(id[0] == '\0') {
-        SyncSha256Hex((const uint8_t *)node->url, strlen(node->url), fallback_id);
+        SyncCryptoSha256Hex((const uint8_t *)node->url, strlen(node->url), fallback_id);
         id = fallback_id;
     }
     written = snprintf(out, out_size, "sync_node_%s_%s", id, key);
@@ -273,9 +274,9 @@ run_on_node(const SyncConfig *original, const SyncNode *node)
     SyncConfig config = *original;
 
     config.base_url = node->url;
-    config.signature_context = "sync-v1";
-    config.user_header_name = "X-Sync-User";
-    config.signature_header_name = "X-Sync-Signature";
+    config.signature_context = "daochi-sync-v1";
+    config.user_header_name = "X-Daochi-User";
+    config.signature_header_name = "X-Daochi-Signature";
     config.http_request = node_http_request;
     config.get_text = node_get_text;
     config.set_text = node_set_text;
