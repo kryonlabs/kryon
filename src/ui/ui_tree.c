@@ -2217,10 +2217,20 @@ Text(TextProps text)
         ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    if(!ui_tree_building)
+    /* Native app screens can freely interleave canonical Text with direct
+     * paint primitives. Paint text at declaration time on a live surface so
+     * that ordering remains deterministic, while retaining the node for
+     * layout, semantics, and headless backends. */
+    if(ui_tree_building && IsWindowReady()) {
         ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
                             text.align, text.vertical_align,
                             ui_active_font_token());
+        ui_tree_mark_painted_immediate(node);
+    } else if(!ui_tree_building) {
+        ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
+                            text.align, text.vertical_align,
+                            ui_active_font_token());
+    }
 }
 
 void
