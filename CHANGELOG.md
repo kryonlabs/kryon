@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.56 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.56
+- Add canonical context popup scope
+
 ## v0.1.55 - 2026-09-06
 
 ### Changed
