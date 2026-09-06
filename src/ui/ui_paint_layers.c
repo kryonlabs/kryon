@@ -62,6 +62,11 @@ struct UIPaintLayers {
 
 static UIPaintLayers *main_layers;
 static int main_frame_open;
+/* Input ownership is a runtime concern, not a renderer concern.  Injection,
+ * generated parity, and other headless callers still need popup scopes even
+ * when no texture-backed paint-layer host can exist. */
+static UIPopupInput *headless_input, *headless_previous_input;
+static int headless_input_open;
 /* Graphics scopes form one stack even when their textures belong to separate
  * host contexts. Validate it before restoring any backend or borrowed state. */
 static UIPaintLayerToken active_scope;
@@ -71,6 +76,12 @@ void ui_frame_layers_begin(void)
 {
     if(ui_window_frame_active()) return;
     if(main_layers) ui_paint_layers_frame(main_layers,ui_view_width,ui_view_height);
+    else if(!IsWindowReady() && ui_popup_input_bound() == NULL) {
+        if(!headless_input) headless_input = ui_popup_input_create();
+        ui_popup_input_frame(headless_input);
+        headless_previous_input = ui_popup_input_bind(headless_input);
+        headless_input_open = 1;
+    }
     main_frame_open = 1;
 }
 
@@ -89,6 +100,12 @@ void ui_frame_layers_end(void)
 {
     if(ui_window_frame_active() || !main_frame_open) return;
     if(main_layers) ui_paint_layers_composite(main_layers);
+    if(headless_input_open) {
+        ui_popup_input_finish(headless_input);
+        ui_popup_input_bind(headless_previous_input);
+        headless_previous_input = NULL;
+        headless_input_open = 0;
+    }
     main_frame_open = 0;
 }
 
@@ -99,6 +116,16 @@ void ui_paint_layers_shutdown(void)
             ui_paint_layers_composite(main_layers);
         ui_paint_layers_destroy(main_layers);
         main_layers = NULL;
+    }
+    if(headless_input) {
+        if(headless_input_open) {
+            ui_popup_input_finish(headless_input);
+            ui_popup_input_bind(headless_previous_input);
+            headless_input_open = 0;
+        }
+        ui_popup_input_destroy(headless_input);
+        headless_input = NULL;
+        headless_previous_input = NULL;
     }
     main_frame_open = 0;
 }

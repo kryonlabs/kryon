@@ -1533,6 +1533,7 @@ type tableDrag struct {
 	id       int32
 	startRow int32
 	startCol int32
+	owner    popupInputOwner
 }
 
 type tableResize struct {
@@ -1541,12 +1542,14 @@ type tableResize struct {
 	column     int32
 	startX     float32
 	startWidth int32
+	owner      popupInputOwner
 }
 
 type scalarDrag struct {
 	active bool
 	token  int32
 	lastX  float32
+	owner  popupInputOwner
 }
 
 type numericInputKey struct {
@@ -2614,11 +2617,14 @@ func (r *runtime) plot(props PlotProps, histogram bool) {
 
 func (r *runtime) dragDelta(token int32, bounds Rectangle, disabled bool) (float32, bool) {
 	disabled = disabled || r.contentDisabled()
+	if r.drag.active && r.popupInputOwnerCaptures(r.drag.owner) {
+		r.drag = scalarDrag{}
+	}
 	if disabled && r.drag.active && r.drag.token == token {
 		r.drag = scalarDrag{}
 	}
 	if !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds) {
-		r.drag = scalarDrag{active: true, token: token, lastX: r.mousePos.X}
+		r.drag = scalarDrag{active: true, token: token, lastX: r.mousePos.X, owner: r.currentPopupInputOwner()}
 	}
 	if r.drag.active && r.drag.token == token && r.mouseDown[MouseButtonLeft] {
 		delta := r.mousePos.X - r.drag.lastX
@@ -2828,12 +2834,15 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 
 func (r *runtime) sliderRatio(token int32, bounds Rectangle, disabled, vertical bool) (float32, bool) {
 	disabled = disabled || r.contentDisabled()
+	if r.slider.active && r.popupInputOwnerCaptures(r.slider.owner) {
+		r.slider = scalarDrag{}
+	}
 	if disabled && r.slider.active && r.slider.token == token {
 		r.slider = scalarDrag{}
 	}
 	pressed := !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds)
 	if pressed {
-		r.slider = scalarDrag{active: true, token: token}
+		r.slider = scalarDrag{active: true, token: token, owner: r.currentPopupInputOwner()}
 	}
 	if r.slider.active && r.slider.token == token && (pressed || r.mouseDown[MouseButtonLeft]) {
 		var ratio float32
@@ -4424,11 +4433,14 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 		h = Rectangle{X: p.Bounds.X + float32(split) - 4, Y: p.Bounds.Y, Width: 8, Height: p.Bounds.Height}
 	}
 	changed := int32(0)
-	if r.contentDisabled() && r.drag.token == p.ID {
+	if r.drag.active && r.popupInputOwnerCaptures(r.drag.owner) {
+		r.drag = scalarDrag{}
+	}
+	if r.contentDisabled() && r.drag.active && r.drag.token == p.ID {
 		r.drag = scalarDrag{}
 	}
 	if !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(h) {
-		r.drag = scalarDrag{active: true, token: p.ID}
+		r.drag = scalarDrag{active: true, token: p.ID, owner: r.currentPopupInputOwner()}
 	}
 	if r.drag.active && r.drag.token == p.ID && r.mouseDown[MouseButtonLeft] {
 		n := int32(r.mousePos.Y - p.Bounds.Y)
@@ -4813,6 +4825,9 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	}
 
 	changed := int32(0)
+	if r.tableResize.active && r.popupInputOwnerCaptures(r.tableResize.owner) {
+		r.tableResize = tableResize{}
+	}
 	if r.tableResize.active && r.mouseReleased[MouseButtonLeft] &&
 		(r.tableResize.id != props.ID || props.Disabled || !props.Resizable || len(props.ColumnWidths) == 0) {
 		r.tableResize = tableResize{}
@@ -4842,7 +4857,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 			}
 			click.consumed = true
 			r.consumeTap(Rectangle{X: separatorX - 5, Y: props.Bounds.Y, Width: 10, Height: float32(headerH)})
-			r.tableResize = tableResize{active: true, id: props.ID, column: column, startX: click.x, startWidth: tableColumnWidth(props, column)}
+			r.tableResize = tableResize{active: true, id: props.ID, column: column, startX: click.x, startWidth: tableColumnWidth(props, column), owner: r.currentPopupInputOwner()}
 			break
 		}
 		if r.tableResize.active && r.tableResize.id == props.ID {
@@ -4907,11 +4922,14 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	}
 
 	if !props.CustomCells {
+		if r.tableDrag.active && r.popupInputOwnerCaptures(r.tableDrag.owner) {
+			r.tableDrag = tableDrag{}
+		}
 		for _, click := range r.consumeMouseButtonEvents(MouseButtonLeft, body) {
 			row, col := tableCellAt(props, body, rowH, click.x, click.y)
 			if row >= 0 && col >= 0 {
 				changed |= setTableSelection(props, row, col, row, col)
-				r.tableDrag = tableDrag{active: true, id: props.ID, startRow: row, startCol: col}
+				r.tableDrag = tableDrag{active: true, id: props.ID, startRow: row, startCol: col, owner: r.currentPopupInputOwner()}
 				if props.ID != 0 {
 					r.setFocus(props.ID)
 				}

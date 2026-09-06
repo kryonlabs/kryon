@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_tk.h"
 #include "ui_numeric_input_internal.h"
+#include "ui_popup_input_internal.h"
 #include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -20,7 +21,9 @@ static Rectangle g_menu_panel_bounds = {0};
 static int g_menu_panel_valid = 0;
 static int g_drag_active = 0;
 static float g_drag_last_x = 0.0f;
+static UIPopupInputOwner g_drag_owner = {0};
 static int g_slider_active = 0;
+static UIPopupInputOwner g_slider_owner = {0};
 typedef struct UIDragDropState {
     int active;
     int source_id;
@@ -1247,6 +1250,8 @@ ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
     int hot = !disabled && ui_hot(bounds);
 
     *delta = 0.0f;
+    if(g_drag_active && ui_popup_input_owner_captures(g_drag_owner))
+        g_drag_active = 0;
     if(disabled && g_drag_active == token)
         g_drag_active = 0;
     if(hot)
@@ -1254,6 +1259,7 @@ ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         g_drag_active = token;
         g_drag_last_x = mouse.x;
+        g_drag_owner = ui_popup_input_owner();
     }
     if(!disabled && g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         *delta = mouse.x - g_drag_last_x;
@@ -1388,12 +1394,16 @@ ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
     int hot = !disabled && ui_hot(bounds);
     int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
+    if(g_slider_active && ui_popup_input_owner_captures(g_slider_owner))
+        g_slider_active = 0;
     if(disabled && g_slider_active == token)
         g_slider_active = 0;
     if(hot)
         MarkUIClickable();
-    if(pressed)
+    if(pressed) {
         g_slider_active = token;
+        g_slider_owner = ui_popup_input_owner();
+    }
     if(!disabled && g_slider_active == token &&
        (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
         float span = vertical ? bounds.height : bounds.width;
@@ -2615,6 +2625,7 @@ DrawUITableView(TableViewProps table)
     static int resize_column = -1;
     static int resize_start_x = 0;
     static int resize_start_width = 0;
+    static UIPopupInputOwner resize_owner = {0};
     int paint = IsWindowReady();
     int font = GetUISmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
@@ -2631,6 +2642,12 @@ DrawUITableView(TableViewProps table)
     int changed = 0;
 
     table.disabled = table.disabled || UIContentDisabled();
+
+    if(resize_column >= 0 &&
+       ui_popup_input_owner_captures(resize_owner)) {
+        resize_table_id = 0;
+        resize_column = -1;
+    }
 
     if(resize_column >= 0 &&
        (UIContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
@@ -2682,6 +2699,7 @@ DrawUITableView(TableViewProps table)
                 resize_start_x = (int)mouse.x;
                 resize_start_width = ui_table_column_width(table, column,
                                                            default_col_w);
+                resize_owner = ui_popup_input_owner();
                 MarkUIClickable();
             }
         }
@@ -3043,6 +3061,7 @@ int
 DrawUIPanedView(PanedViewProps panes)
 {
     static int *active_split;
+    static UIPopupInputOwner active_owner;
     int changed = 0;
     int limit = (int)(panes.vertical ? panes.bounds.width : panes.bounds.height) - panes.min_second;
     if(limit < panes.min_first) limit = panes.min_first;
@@ -3052,11 +3071,16 @@ DrawUIPanedView(PanedViewProps panes)
     Rectangle handle = panes.vertical
         ? (Rectangle){panes.bounds.x + split - grip / 2, panes.bounds.y, grip, panes.bounds.height}
         : (Rectangle){panes.bounds.x, panes.bounds.y + split - grip / 2, panes.bounds.width, grip};
+    if(active_split != NULL && ui_popup_input_owner_captures(active_owner))
+        active_split = NULL;
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) active_split = NULL;
     if(UIContentDisabled() && active_split == panes.split) active_split = NULL;
     if(!UIContentDisabled() && ui_hot(handle)) {
         MarkUIClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) active_split = panes.split;
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            active_split = panes.split;
+            active_owner = ui_popup_input_owner();
+        }
     }
     if(active_split != NULL && active_split == panes.split) {
         Vector2 mouse = ui_mouse_world();

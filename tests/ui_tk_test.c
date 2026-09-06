@@ -1035,6 +1035,228 @@ test_composed_popup_focus_lifecycle(void)
 }
 
 static void
+test_popup_active_drag_ownership(void)
+{
+    UIPopupInput *context = ui_popup_input_create();
+    UIPopupInput *previous;
+    UIPopupInputToken owner;
+    float drag_value = 10.0f;
+    float background_value = 10.0f;
+    float slider_value = 0.0f;
+    int split = 50;
+    DragFloatProps drag = {.bounds={30,30,80,24},.id=401,
+        .values=&drag_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
+    SliderFloatProps slider = {.bounds={30,30,80,24},.id=411,
+        .values=&slider_value,.value_count=1,.min=0,.max=100};
+    DragFloatProps background_drag = {.bounds={30,30,80,24},.id=391,
+        .values=&background_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
+    const char *columns[] = {"A","B"};
+    const char *cells[] = {"a","b"};
+    TableRow rows[] = {{cells,2,NULL,NULL}};
+    int widths[] = {70,70};
+    TableViewProps table = {0};
+    PanedViewProps panes = {{30,30,100,80},416,1,&split,20,20};
+
+    table.bounds = (Rectangle){25,25,140,90};
+    table.id = 421;
+    table.columns = columns;
+    table.column_count = 2;
+    table.rows = rows;
+    table.row_count = 1;
+    table.column_widths = widths;
+    table.resizable = 1;
+    table.min_column_width = 32;
+
+    InjectReset();
+    InjectMousePosition(40,40);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    (void)DragFloat(background_drag);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    InjectMousePosition(80,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,390,(Rectangle){20,20,120,100});
+    ui_popup_input_end(owner);
+    check_int("new popup cancels background drag",DragFloat(background_drag),0);
+    check_int("new popup blocks background drag mutation",(int)background_value,10);
+    ui_popup_input_close(context,390);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+
+    InjectReset();
+    InjectMousePosition(40,40);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
+    (void)DragFloat(drag);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    InjectMousePosition(200,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
+    check_int("popup drag continues outside bounds",DragFloat(drag),1);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("popup drag outside value",(int)drag_value,170);
+
+    InjectMousePosition(230,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    check_int("missing popup cancels active drag",DragFloat(drag),0);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("dismissed popup drag does not mutate background",(int)drag_value,170);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    InjectMousePosition(50,40);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
+    (void)SliderFloat(slider);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    InjectMousePosition(90,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
+    (void)SliderFloat(slider);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("popup slider follows owned drag",(int)slider_value,75);
+
+    InjectMousePosition(30,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    (void)SliderFloat(slider);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("dismissed popup slider does not mutate background",(int)slider_value,75);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    InjectMousePosition(80,40);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,415,(Rectangle){20,20,120,100});
+    (void)PanedView(panes);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    InjectMousePosition(110,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,415,(Rectangle){20,20,120,100});
+    check_int("popup splitter follows owned drag",PanedView(panes),1);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("popup splitter value",split,80);
+
+    InjectMousePosition(60,40);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    (void)PanedView(panes);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("dismissed popup splitter does not mutate background",split,80);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    InjectMousePosition(93,35);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,420,(Rectangle){20,20,160,110});
+    (void)TableView(table);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    InjectMousePosition(123,35);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    owner = ui_popup_input_begin(context,420,(Rectangle){20,20,160,110});
+    check_int("popup table resize follows owned drag",TableView(table),1);
+    ui_popup_input_end(owner);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("popup table resize width",widths[0],100);
+
+    InjectMousePosition(153,35);
+    InjectPump();
+    BeginUIFrame(300,200,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    (void)TableView(table);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    check_int("dismissed popup resize does not mutate background",widths[0],100);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    ui_popup_input_destroy(context);
+    InjectReset();
+}
+
+static void
 test_popup_combo_keyboard_ownership(void)
 {
     const char *options[] = {"One","Two"};
@@ -1896,6 +2118,7 @@ main(void)
     test_composed_modal_scope();
     test_composed_context_popup_scope();
     test_composed_popup_focus_lifecycle();
+    test_popup_active_drag_ownership();
     test_popup_text_keyboard_ownership();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();

@@ -21,6 +21,25 @@ type popupInputToken struct {
 	depth   int
 }
 
+type popupInputOwner struct {
+	owner    int32
+	hasOwner bool
+}
+
+func (r *runtime) currentPopupInputOwner() popupInputOwner {
+	if n := len(r.popupInputScopes); n != 0 {
+		return popupInputOwner{owner: r.popupInputScopes[n-1].owner, hasOwner: true}
+	}
+	return popupInputOwner{}
+}
+
+func (r *runtime) popupInputOwnerCaptures(owner popupInputOwner) bool {
+	if r.currentPopupInputOwner() != owner {
+		return true
+	}
+	return r.popupKeyboardCapturesOwner(owner.owner, owner.hasOwner)
+}
+
 func (r *runtime) popupDescendsFrom(owner, ancestor int32) bool {
 	for {
 		panel, ok := r.popupPanels[owner]

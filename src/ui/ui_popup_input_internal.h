@@ -8,6 +8,11 @@ typedef struct UIPopupInputToken {
     unsigned long order;
     int owner;
 } UIPopupInputToken;
+typedef struct UIPopupInputOwner {
+    UIPopupInput *context;
+    int owner;
+    int has_owner;
+} UIPopupInputOwner;
 UIPopupInput *ui_popup_input_create(void);
 void ui_popup_input_destroy(UIPopupInput *context);
 UIPopupInput *ui_popup_input_bind(UIPopupInput *context);
@@ -25,6 +30,9 @@ int ui_popup_input_keyboard_was_captured(void);
 int ui_popup_input_snapshot_keyboard_captures(UIPopupInputToken token);
 void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible);
 int ui_popup_input_focus_captures(int id);
+/* Persistent owner identity for pointer interactions spanning frames. */
+UIPopupInputOwner ui_popup_input_owner(void);
+int ui_popup_input_owner_captures(UIPopupInputOwner owner);
 /* Declaration snapshots do not reopen lexical scopes during deferred routing. */
 UIPopupInputToken ui_popup_input_snapshot(void);
 int ui_popup_input_snapshot_captures(UIPopupInputToken token, Vector2 point);

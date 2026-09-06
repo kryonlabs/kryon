@@ -142,7 +142,8 @@ state share the complete capture predicate with focus registration.
 Public composed-scope integration is covered. A newly opened top popup now
 saves the displaced focus and gives focus to its first eligible child. Closing
 a nested popup restores its parent's focus, while closing or omitting the root
-owner restores the background focus. Some active-drag routing remains unfinished.
+owner restores the background focus. Active drag values, sliders, splitters and
+table column resizing now retain the popup branch that started the gesture.
 The same composed `Popup` scope now supports `PopupTooltip`: hover over an
 explicit trigger submits arbitrary native child widgets into a non-input-capturing
 overlay layer without an external `open` value. Matching C and Go unit tests
@@ -223,8 +224,13 @@ check that the target receives the original copied payload. This native-only
 fixture is not executed by the JavaScript runner. Go runtime tests additionally
 exercise drag sources and targets beneath a popup, within its input scope, and
 under disabled/clip restrictions, including rejection without losing the release
-or payload. Active scalar-slider/resize drags and composed popup dismissal are
-not established by these drag-and-drop tests.
+or payload. Separate native C/Go tests cover active drag values, sliders,
+splitters and table resizing: an owned gesture follows the pointer beyond its
+original bounds, a newly opened popup preempts a background gesture, and popup
+dismissal cancels the gesture before a background widget can inherit it.
+The composed-popup parity fixture drives that ownership lifecycle through
+generated C and native Go, while k2cpp compiles the same `.kry` source against
+the C runtime surface.
 
 `tests/parity/scroll_content.kry` is driven through generated C and Go in the
 parity harness. It checks wheel-driven offset changes, visible child clicks,

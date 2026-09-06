@@ -25,6 +25,22 @@ state {
     context_open: bool = false
     context_frames: int = 0
     context_action: int = 0
+    popup_drag_open: bool = true
+    popup_drag_values: [1] float = {10.0f}
+}
+
+composed_popup_drag_frame :: () #ui {
+    Screen root: {
+        Popup drag_owner: {
+            bounds = {20,20,120,100}
+            id = 27060
+            open = &popup_drag_open
+            DragFloat((DragFloatProps){.bounds={30,30,80,24},.id=27061,.values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
+        }
+        if !popup_drag_open {
+            DragFloat((DragFloatProps){.bounds={30,30,80,24},.id=27061,.values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
+        }
+    }
 }
 
 composed_context_frame :: () #ui {

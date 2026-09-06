@@ -396,6 +396,139 @@ func TestPopupDragDropOwnershipAndClipping(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestPopupOwnsActiveScalarSliderAndTableResizeDrags(t *testing.T) {
+	panel := NewRectangle(20, 20, 120, 100)
+
+	t.Run("new popup preempts background drag", func(t *testing.T) {
+		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
+		values := []float32{10}
+		props := DragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 391, Values: values, Speed: 1, Min: 0, Max: 500}
+		r.QueueMouseButtonDown(MouseButtonLeft, 40, 40)
+		r.BeginFrame()
+		r.DragFloat(props)
+		r.EndFrame()
+
+		r.QueueMouseMove(80, 40)
+		r.BeginFrame()
+		owner := r.beginPopupInput(390, panel)
+		r.endPopupInput(owner)
+		if r.DragFloat(props) || values[0] != 10 || r.drag.active {
+			t.Fatalf("background drag survived new popup: value=%g active=%v", values[0], r.drag.active)
+		}
+		r.EndFrame()
+	})
+
+	t.Run("drag value", func(t *testing.T) {
+		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
+		values := []float32{10}
+		props := DragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 401, Values: values, Speed: 1, Min: 0, Max: 500}
+		r.QueueMouseButtonDown(MouseButtonLeft, 40, 40)
+		r.BeginFrame()
+		owner := r.beginPopupInput(400, panel)
+		r.DragFloat(props)
+		r.endPopupInput(owner)
+		r.EndFrame()
+
+		r.QueueMouseMove(200, 40)
+		r.BeginFrame()
+		owner = r.beginPopupInput(400, panel)
+		if !r.DragFloat(props) || values[0] != 170 {
+			t.Fatalf("popup drag outside bounds value=%g, want 170", values[0])
+		}
+		r.endPopupInput(owner)
+		r.closePopupInput(400)
+		before := values[0]
+		r.QueueMouseMove(230, 40)
+		if r.DragFloat(props) || values[0] != before || r.drag.active {
+			t.Fatalf("dismissed popup drag leaked to background: value=%g active=%v", values[0], r.drag.active)
+		}
+		r.EndFrame()
+	})
+
+	t.Run("slider", func(t *testing.T) {
+		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
+		values := []float32{0}
+		props := SliderFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 411, Values: values, Min: 0, Max: 100}
+		r.QueueMouseButtonDown(MouseButtonLeft, 50, 40)
+		r.BeginFrame()
+		owner := r.beginPopupInput(410, panel)
+		r.SliderFloat(props)
+		r.endPopupInput(owner)
+		r.EndFrame()
+
+		r.QueueMouseMove(90, 40)
+		r.BeginFrame()
+		owner = r.beginPopupInput(410, panel)
+		r.SliderFloat(props)
+		r.endPopupInput(owner)
+		before := values[0]
+		r.closePopupInput(410)
+		r.QueueMouseMove(30, 40)
+		if r.SliderFloat(props) || values[0] != before || r.slider.active {
+			t.Fatalf("dismissed popup slider leaked to background: value=%g active=%v", values[0], r.slider.active)
+		}
+		r.EndFrame()
+	})
+
+	t.Run("splitter", func(t *testing.T) {
+		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
+		split := int32(50)
+		props := PanedViewProps{Bounds: NewRectangle(30, 30, 100, 80), ID: 416, Vertical: true, Split: &split, MinFirst: 20, MinSecond: 20}
+		r.QueueMouseButtonDown(MouseButtonLeft, 80, 40)
+		r.BeginFrame()
+		owner := r.beginPopupInput(415, panel)
+		r.PanedView(props)
+		r.endPopupInput(owner)
+		r.EndFrame()
+
+		r.QueueMouseMove(110, 40)
+		r.BeginFrame()
+		owner = r.beginPopupInput(415, panel)
+		if r.PanedView(props) == 0 || split != 80 {
+			t.Fatalf("popup splitter value=%d, want 80", split)
+		}
+		r.endPopupInput(owner)
+		r.closePopupInput(415)
+		before := split
+		r.QueueMouseMove(60, 40)
+		r.PanedView(props)
+		if split != before || r.drag.active {
+			t.Fatalf("dismissed popup splitter leaked to background: split=%d active=%v", split, r.drag.active)
+		}
+		r.EndFrame()
+	})
+
+	t.Run("table resize", func(t *testing.T) {
+		r := New(AppConfig{Width: 300, Height: 200}).(*runtime)
+		widths := []int32{70, 70}
+		props := TableViewProps{Bounds: NewRectangle(25, 25, 140, 90), ID: 421,
+			Columns: []string{"A", "B"}, Rows: []TableRow{{Cells: []string{"a", "b"}}},
+			ColumnWidths: widths, Resizable: true, MinColumnWidth: 32}
+		r.QueueMouseButtonDown(MouseButtonLeft, 93, 35)
+		r.BeginFrame()
+		owner := r.beginPopupInput(420, NewRectangle(20, 20, 160, 110))
+		r.TableView(props)
+		r.endPopupInput(owner)
+		r.EndFrame()
+
+		r.QueueMouseMove(123, 35)
+		r.BeginFrame()
+		owner = r.beginPopupInput(420, NewRectangle(20, 20, 160, 110))
+		if r.TableView(props) == 0 || widths[0] != 100 {
+			t.Fatalf("popup table resize width=%d, want 100", widths[0])
+		}
+		r.endPopupInput(owner)
+		r.closePopupInput(420)
+		before := widths[0]
+		r.QueueMouseMove(153, 35)
+		r.TableView(props)
+		if widths[0] != before || r.tableResize.active {
+			t.Fatalf("dismissed popup resize leaked to background: width=%d active=%v", widths[0], r.tableResize.active)
+		}
+		r.EndFrame()
+	})
+}
+
 func TestPopupInputBranchOrder(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	panel := NewRectangle(0, 0, 100, 100)
