@@ -658,6 +658,39 @@ func TestPopupTableKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupListBoxKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{Width: 200, Height: 120}).(*runtime)
+		selected, offset := int32(0), int32(0)
+		props := ListBoxProps{
+			Bounds: NewRectangle(20, 20, 100, 48), ID: 26131,
+			Items: []string{"a", "b"}, SelectedIndex: &selected,
+			ScrollOffset: &offset, RowHeight: 24,
+		}
+		r.QueueKey(KeyDown)
+		r.BeginFrame()
+		parent := r.beginPopupInput(26100, NewRectangle(10, 10, 140, 100))
+		child := r.beginPopupInput(26101, NewRectangle(15, 15, 120, 80))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.SetFocus(props.ID)
+		r.ListBox(props)
+		want := int32(0)
+		if inside {
+			want = 1
+		}
+		if selected != want {
+			t.Fatalf("inside=%v selected=%d, want %d", inside, selected, want)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupInputBranchOrder(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	panel := NewRectangle(0, 0, 100, 100)

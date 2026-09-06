@@ -909,6 +909,12 @@ func main() {
 	requireRenderedFrame("list_box", 1000)
 	driver.QueueTap(36, 78)
 	drawListBox()
+	driver.SetFocus(0); driver.QueueKey(kryon.KeyTab); drawListBox()
+	if driver.Focus() != 801 { panic("generated list Tab focus failed") }
+	driver.SetFocus(801); driver.QueueKey(kryon.KeyEnd); drawListBox()
+	driver.QueueKey(kryon.KeyHome); drawListBox()
+	driver.QueueKey(kryon.KeyEnd); drawListBox()
+	driver.QueueKey(kryon.KeyUp); drawListBox()
 	if listBox.ListSelected != 2 || listBox.ListScroll != 0 {
 		panic(fmt.Sprintf("list_box: got selected=%d scroll=%d, want 2,0",
 			listBox.ListSelected, listBox.ListScroll))
@@ -1753,6 +1759,12 @@ int main(void)
     InjectTap(36, 78);
     InjectPump();
     draw_list_box();
+    SetUIFocus(0); InjectKeyTap(KEY_TAB); InjectPump(); draw_list_box();
+    if(GetUIFocus() != 801) { fprintf(stderr,"generated list Tab focus failed\n"); return 1; }
+    SetUIFocus(801); InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
+    InjectKeyTap(KEY_HOME); InjectPump(); draw_list_box();
+    InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
+    InjectKeyTap(KEY_UP); InjectPump(); draw_list_box();
     InjectPump();
     draw_list_box();
     if(list_selected != 2 || list_scroll != 0) {

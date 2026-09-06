@@ -26,7 +26,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered |
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
 | Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including Ctrl/Shift range selection |
-| List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper and framed scrolling scope for arbitrary native children |
+| List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll, plus a framed scrolling scope for arbitrary native children |
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `PlotLines`, `PlotHistogram` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
@@ -235,6 +235,12 @@ deletion and IME commits cannot mutate buffers. C retained mutation paths now
 enforce the property; Go text props expose ReadOnly and retain focus styling
 while suppressing the insertion caret. Go tests cover preedit cancellation,
 buffer preservation, rejected-input expiry and fresh editing after re-enabling.
+
+Native C and Go list boxes now register with ordinary Tab focus, expose a
+visible focus presentation, and move selection with Up/Down/Home/End while
+keeping the selected row visible. Disabled and higher-popup-owned lists reject
+the same keys. The shared generated list fixture exercises the navigation
+contract through k2c and k2go without adding backend-specific widget aliases.
 
 `tests/parity/drag_drop.kry` is executed through generated C and Go. A clipped
 source cannot activate, and a clipped target cannot consume the release before

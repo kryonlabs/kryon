@@ -1805,6 +1805,79 @@ test_list_box_scope(void)
 }
 
 static void
+test_list_box_keyboard_navigation(void)
+{
+    const char *items[] = {"0","1","2","3","4","5","6","7"};
+    int selected = 0, offset = 0;
+    ListBoxProps list = {
+        .bounds={20,20,120,48}, .id=26130, .items=items, .item_count=8,
+        .selected_index=&selected, .scroll_offset=&offset, .row_height=24
+    };
+
+    InjectReset(); InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(200,120,1); SetUIFocus(list.id);
+    check_int("list End changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list End selection",selected,7);
+    check_int("list End reveal",offset,144);
+
+    InjectKeyTap(KEY_UP); InjectPump();
+    BeginUIFrame(200,120,1); SetUIFocus(list.id);
+    check_int("list Up changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list Up selection",selected,6);
+    check_int("list Up retains viewport",offset,144);
+
+    InjectKeyTap(KEY_HOME); InjectPump();
+    BeginUIFrame(200,120,1); SetUIFocus(list.id);
+    check_int("list Home changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list Home selection",selected,0);
+    check_int("list Home reveal",offset,0);
+
+    list.disabled = 1;
+    InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(200,120,1); SetUIFocus(list.id);
+    check_int("disabled list rejects End",DrawUIListBox(list),0); EndUIFrame();
+    check_int("disabled list selection",selected,0);
+    list.disabled = 0;
+    selected = -1;
+    InjectReset(); InjectPump();
+    BeginUIFrame(200,120,1); SetUIFocus(list.id);
+    check_int("idle list unchanged",DrawUIListBox(list),0); EndUIFrame();
+    check_int("idle list keeps no selection",selected,-1);
+    InjectReset();
+}
+
+static void
+test_popup_list_box_keyboard_ownership(void)
+{
+    const char *items[] = {"a","b"};
+    for(int inside = 0; inside < 2; inside++) {
+        int selected = 0, offset = 0;
+        ListBoxProps list = {
+            .bounds={20,20,100,48}, .id=26131, .items=items, .item_count=2,
+            .selected_index=&selected, .scroll_offset=&offset, .row_height=24
+        };
+        InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
+        BeginUIFrame(200,120,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,100});
+        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(list.id);
+        DrawUIListBox(list);
+        check_int("only top popup list handles keyboard",selected,inside ? 1 : 0);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 test_scroll_scope(void)
 {
     int offset = 0;
@@ -2414,6 +2487,8 @@ main(void)
     test_custom_table_cell_scope();
     test_retained_scope_clip();
     test_list_box_scope();
+    test_list_box_keyboard_navigation();
+    test_popup_list_box_keyboard_ownership();
     test_scroll_scope();
     test_scroll_thumb_drag();
     test_table_frozen_rows_hit_testing();

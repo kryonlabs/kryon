@@ -4822,6 +4822,7 @@ func (r *runtime) EndListBox() { r.EndScroll(); r.EndDisabled() }
 func (r *runtime) ListBox(props ListBoxProps) int32 {
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
+	props.Disabled = props.Disabled || r.contentDisabled()
 	rowH := props.RowHeight
 	if rowH <= 0 {
 		rowH = 30
@@ -4837,6 +4838,49 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 	}
 	if !props.Disabled && props.ID != 0 {
 		r.registerField(props.ID)
+	}
+	if !props.Disabled && props.ID != 0 && r.focusID == props.ID &&
+		!r.popupFocusCaptures(props.ID) && props.SelectedIndex != nil && len(props.Items) > 0 {
+		next := *props.SelectedIndex
+		navigate := true
+		switch {
+		case r.keyDown[KeyHome]:
+			next = 0
+		case r.keyDown[KeyEnd]:
+			next = int32(len(props.Items) - 1)
+		case r.keyDown[KeyUp]:
+			if next < 0 {
+				next = int32(len(props.Items) - 1)
+			} else {
+				next--
+			}
+		case r.keyDown[KeyDown]:
+			if next < 0 {
+				next = 0
+			} else {
+				next++
+			}
+		default:
+			navigate = false
+		}
+		if navigate {
+			next = clamp32(next, 0, int32(len(props.Items)-1))
+			if next != *props.SelectedIndex {
+				*props.SelectedIndex = next
+				changed = 1
+			}
+			if props.ScrollOffset != nil {
+				top := next * rowH
+				bottom := top + rowH
+				viewport := int32(props.Bounds.Height)
+				if top < *props.ScrollOffset {
+					*props.ScrollOffset = top
+				} else if bottom > *props.ScrollOffset+viewport {
+					*props.ScrollOffset = bottom - viewport
+				}
+				*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+			}
+		}
 	}
 	changed |= r.recordListBoxOps(props, rowH)
 	return changed
@@ -6114,7 +6158,12 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		rowH = 30
 	}
 	changed := int32(0)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), BorderColor: disabledColor(theme.border), ID: props.ID, Disabled: props.Disabled})
+	focused := !props.Disabled && props.ID != 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
+	border := theme.border
+	if focused {
+		border = theme.focus
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), BorderColor: disabledColor(border), ID: props.ID, Disabled: props.Disabled, Focused: focused})
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset

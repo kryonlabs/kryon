@@ -1900,6 +1900,7 @@ DrawUIListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
     int font = GetFontSize();
+    int disabled = list.disabled || UIContentDisabled();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = list.row_height > 0 ? ScaleUIPx(list.row_height) : ScaleUIPx(30);
     int scroll_y;
@@ -1910,7 +1911,41 @@ DrawUIListBox(ListBoxProps list)
     int changed = 0;
 
     max_scroll = ui_update_scroll(list.bounds, list.item_count * row_h,
-                                  list.disabled ? NULL : list.scroll_offset, row_h);
+                                  disabled ? NULL : list.scroll_offset, row_h);
+    int focused = !disabled && list.id > 0 &&
+                  RegisterUIFocus(list.id, list.bounds);
+    if(focused) SetUIFocusTextInputActive(0);
+    if(focused && list.selected_index != NULL && list.item_count > 0 &&
+       !ui_popup_input_focus_captures(list.id)) {
+        int next = selected;
+        int navigate = 1;
+        if(IsKeyPressed(KEY_HOME)) next = 0;
+        else if(IsKeyPressed(KEY_END)) next = list.item_count - 1;
+        else if(IsKeyPressed(KEY_UP))
+            next = selected < 0 ? list.item_count - 1 : selected - 1;
+        else if(IsKeyPressed(KEY_DOWN))
+            next = selected < 0 ? 0 : selected + 1;
+        else navigate = 0;
+        if(navigate) {
+            if(next < 0) next = 0;
+            if(next >= list.item_count) next = list.item_count - 1;
+            if(next != selected) {
+                *list.selected_index = next;
+                selected = next;
+                changed = 1;
+            }
+            if(list.scroll_offset != NULL) {
+                int top = selected * row_h;
+                int bottom = top + row_h;
+                int viewport = (int)list.bounds.height;
+                if(top < *list.scroll_offset) *list.scroll_offset = top;
+                else if(bottom > *list.scroll_offset + viewport)
+                    *list.scroll_offset = bottom - viewport;
+                if(*list.scroll_offset < 0) *list.scroll_offset = 0;
+                if(*list.scroll_offset > max_scroll) *list.scroll_offset = max_scroll;
+            }
+        }
+    }
     scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : 0;
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
@@ -1923,9 +1958,9 @@ DrawUIListBox(ListBoxProps list)
         int index = first + i;
         Rectangle row = {list.bounds.x, list.bounds.y + (float)(i * row_h - y_offset),
                          list.bounds.width, (float)row_h};
-        int hot = !list.disabled && ui_hot(row);
+        int hot = !disabled && ui_hot(row);
         if(paint && index == selected)
-            DrawRectangleRec(row, list.disabled ? DarkenUIColor(c_button, 38) : c_button);
+            DrawRectangleRec(row, disabled ? DarkenUIColor(c_button, 38) : c_button);
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
@@ -1933,7 +1968,7 @@ DrawUIListBox(ListBoxProps list)
         if(paint)
             DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
                        (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font,
-                       list.disabled ? DarkenUIColor(c_text, 38) : c_text);
+                       disabled ? DarkenUIColor(c_text, 38) : c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             UIConsumeRelease();
             *list.selected_index = index;
@@ -1946,6 +1981,8 @@ DrawUIListBox(ListBoxProps list)
         ui_scrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
                         list.item_count * row_h, list.scroll_offset, max_scroll, 0);
+    if(paint && focused)
+        DrawUIFocus(list.bounds);
     return changed;
 }
 

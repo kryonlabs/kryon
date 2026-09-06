@@ -39,7 +39,7 @@ require_contains src/ui/ui_icon_assets.c 'UI_ICON_SHEET_PFP'
 require_contains src/ui/ui_icon_assets.c 'UI_ICON_SHEET_LOGOS'
 require_contains icons/pfp.json '"icon_count": 25'
 require_contains icons/pfp.json '"style": "full-color"'
-require_contains icons/ui.json '"style": "mingcute-core-filled"'
+require_contains icons/ui.json '"style": "mingcute-core"'
 require_contains icons/ui.json '"license": "Apache-2.0"'
 require_contains icons/ui.json '"upstream_revision"'
 

@@ -404,6 +404,47 @@ func TestListBoxScope(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestListBoxKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 200, Height: 120}).(*runtime)
+	selected, offset := int32(0), int32(0)
+	props := ListBoxProps{
+		Bounds: NewRectangle(20, 20, 120, 48), ID: 26130,
+		Items:         []string{"0", "1", "2", "3", "4", "5", "6", "7"},
+		SelectedIndex: &selected, ScrollOffset: &offset, RowHeight: 24,
+	}
+	for _, step := range []struct {
+		key, selected, offset int32
+	}{{KeyEnd, 7, 144}, {KeyUp, 6, 144}, {KeyHome, 0, 0}} {
+		r.SetFocus(props.ID)
+		r.QueueKey(step.key)
+		r.BeginFrame()
+		if changed := r.ListBox(props); changed != 1 {
+			t.Fatalf("key %d changed=%d, want 1", step.key, changed)
+		}
+		r.EndFrame()
+		if selected != step.selected || offset != step.offset {
+			t.Fatalf("key %d selected=%d offset=%d, want %d,%d", step.key, selected, offset, step.selected, step.offset)
+		}
+	}
+	if ops := r.FrameOps(); len(ops) == 0 || !ops[0].Focused {
+		t.Fatal("focused list did not emit a focus presentation")
+	}
+	props.Disabled = true
+	r.QueueKey(KeyEnd)
+	r.BeginFrame()
+	if changed := r.ListBox(props); changed != 0 || selected != 0 || offset != 0 {
+		t.Fatalf("disabled list changed=%d selected=%d offset=%d", changed, selected, offset)
+	}
+	r.EndFrame()
+	props.Disabled = false
+	selected = -1
+	r.BeginFrame()
+	if changed := r.ListBox(props); changed != 0 || selected != -1 {
+		t.Fatalf("idle list changed=%d selected=%d, want 0,-1", changed, selected)
+	}
+	r.EndFrame()
+}
+
 func TestCanonicalTextProperties(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	color := Color{R: 20, G: 40, B: 60, A: 255}
