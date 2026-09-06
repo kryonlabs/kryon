@@ -1461,11 +1461,18 @@ int
 ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
 {
     Vector2 mouse_world;
+    Vector2 focus_point;
 
     if(id <= 0)
         return 0;
 
-    ui_popup_input_register_focus(id,snapshot);
+    focus_point = (Vector2){bounds.x+bounds.width*0.5f,
+                            bounds.y+bounds.height*0.5f};
+    ui_popup_input_register_focus(id,snapshot,
+        !UIContentDisabled() && !UIInspectInputCapturesClick(focus_point) &&
+        !ui_base_input_captures_click(focus_point,0) &&
+        !ui_dropdown_captures_click(focus_point) &&
+        !ui_popup_input_snapshot_captures(snapshot,focus_point));
     if(g_ui_focus_count < UI_FOCUS_MAX_ITEMS)
         g_ui_focus_ids[g_ui_focus_count++] = id;
 

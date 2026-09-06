@@ -139,8 +139,10 @@ the deferred pass from immediate button focus and verifies modal blocking.
 The same regression checks emitted click events: a blocked popup child emits
 none, while an eligible child emits one. Deferred hit testing and hover/press
 state share the complete capture predicate with focus registration.
-Public composed-scope integration is covered; automatic focus restoration and
-some active-drag routing remain unfinished.
+Public composed-scope integration is covered. A newly opened top popup now
+saves the displaced focus and gives focus to its first eligible child. Closing
+a nested popup restores its parent's focus, while closing or omitting the root
+owner restores the background focus. Some active-drag routing remains unfinished.
 The same composed `Popup` scope now supports `PopupTooltip`: hover over an
 explicit trigger submits arbitrary native child widgets into a non-input-capturing
 overlay layer without an external `open` value. Matching C and Go unit tests
@@ -168,13 +170,15 @@ TextField and TextArea now gate editing by top-popup keyboard ownership in C
 and Go. Native tests verify that typing leaves a focused parent editor unchanged
 and edits an eligible child. C covers both immediate and deferred tree routing;
 the immediate TextArea path now avoids renderer calls in headless tests.
-Tab trapping, focus restoration, all shortcuts and input replay across popup
-dismissal are not established by these tests.
+All shortcuts and input replay across popup dismissal are not established by
+these tests.
 Separate native Tab tests now cover ownership-filtered focus destinations,
 forward/reverse wrapping, duplicate registrations and traversal after explicit
 child/branch dismissal. Go tests exercise previous-frame order and real editor
-Tab events. C finalizes focus while the host registry is still bound. Automatic
-popup focus acquisition/restoration and full keyboard routing remain work.
+Tab events. C finalizes focus while the host registry is still bound. Separate
+native lifecycle tests cover first-child acquisition and restoration after
+nested close, root close and missing-owner retirement. Full keyboard routing
+remains work.
 Ordinary Go Button now supports focus registration, pointer focus, Enter/Space
 activation and Tab traversal. C keyboard activation consults popup ownership for
 both immediate returns and deferred click events. Matching native popup tests
@@ -185,8 +189,8 @@ native-only and do not claim JavaScript keyboard coverage.
 Native missing-owner tests additionally omit the child and then the entire
 branch across frames. C now retires missing input ownership before filtering
 focus, matching Go's frame-end behavior; Tab reaches the surviving parent or
-background in the same frame. This is traversal, not automatic focus restoration
-without a navigation event.
+background in the same frame. Popup lifecycle tests separately verify automatic
+restoration without a navigation event.
 Text replay tests now span dismissal: focused parent TextField/TextArea controls
 reject captured text, remain unchanged on the next frame without input, and
 accept fresh text later. C covers both injected and platform-queued characters,

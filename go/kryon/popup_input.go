@@ -4,10 +4,14 @@ package kryon
 // Entries persist until dismissal or frame-end owner removal, so background
 // widgets declared before the popup cannot consume last frame's popup input.
 type popupInputPanel struct {
-	bounds      Rectangle
-	parent      int32
-	hasParent   bool
-	seen, order uint64
+	bounds       Rectangle
+	parent       int32
+	hasParent    bool
+	seen, order  uint64
+	restoreFocus int32
+	lastFocus    int32
+	hasLastFocus bool
+	autofocus    bool
 }
 
 type popupInputToken struct {
@@ -41,7 +45,15 @@ func (r *runtime) beginPopupInput(owner int32, bounds Rectangle) popupInputToken
 	}
 	token := popupInputToken{r, r.paintLayerFrame, owner, len(r.popupInputScopes)}
 	r.popupInputOrder++
-	panel := popupInputPanel{bounds: bounds, seen: r.paintLayerFrame, order: r.popupInputOrder}
+	panel, existed := r.popupPanels[owner]
+	if !existed {
+		panel.restoreFocus = r.focusID
+		panel.autofocus = true
+	}
+	panel.bounds = bounds
+	panel.seen = r.paintLayerFrame
+	panel.order = r.popupInputOrder
+	panel.hasParent = false
 	if token.depth != 0 {
 		panel.parent = r.popupInputScopes[token.depth-1].owner
 		panel.hasParent = true
@@ -63,14 +75,27 @@ func (r *runtime) endPopupInput(token popupInputToken) {
 }
 
 func (r *runtime) closePopupInput(owner int32) {
+	panel, found := r.popupPanels[owner]
+	restore := false
 	removed := []int32{owner}
-	for id := range r.popupPanels {
+	for id, child := range r.popupPanels {
 		if r.popupDescendsFrom(id, owner) {
 			removed = append(removed, id)
 		}
+		if (id == owner || r.popupDescendsFrom(id, owner)) &&
+			child.hasLastFocus && child.lastFocus == r.focusID {
+			restore = true
+		}
+	}
+	if focusOwner, ok := r.popupFocus[r.focusID]; ok && focusOwner.hasOwner &&
+		(focusOwner.owner == owner || r.popupDescendsFrom(focusOwner.owner, owner)) {
+		restore = true
 	}
 	for _, id := range removed {
 		delete(r.popupPanels, id)
+	}
+	if found && restore {
+		r.setFocus(panel.restoreFocus)
 	}
 }
 
@@ -187,6 +212,16 @@ func (r *runtime) registerPopupFocus(id int32) {
 	owner := popupFocusOwner{seen: r.paintLayerFrame}
 	if n := len(r.popupInputScopes); n != 0 {
 		owner.owner, owner.hasOwner = r.popupInputScopes[n-1].owner, true
+		panel := r.popupPanels[owner.owner]
+		if panel.autofocus && !r.popupKeyboardCapturesOwner(owner.owner, true) {
+			r.setFocus(id)
+			panel.autofocus = false
+		}
+		if r.focusID == id {
+			panel.lastFocus = id
+			panel.hasLastFocus = true
+		}
+		r.popupPanels[owner.owner] = panel
 	}
 	r.popupFocus[id] = owner
 }

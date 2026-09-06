@@ -211,16 +211,15 @@ inspection gates. A button regression clears immediate focus before the deferred
 pass and verifies child focus versus modal blocking after both scopes close.
 It also checks deferred click events. The test initially reproduced a click
 leaking through modal capture; hit testing and hover/press state now consult the
-same full capture predicate as pointer-focus registration.
-This does not establish automatic popup focus acquisition/restoration or full
-active-drag routing. The public combo scope uses this ownership registry.
+same full capture predicate as pointer-focus registration. The public combo
+scope uses this ownership registry. Full active-drag routing remains unfinished.
 
 C and Go now select the top live popup branch for keyboard eligibility without
 testing pointer coordinates. Closed combos consult this check before accepting
 keyboard opening. Matching native tests cover a focused combo in the parent
 versus the top child, and keyboard eligibility after child and branch dismissal.
-This check does not cover every button/editor input path or establish full
-keyboard ownership or focus restoration.
+This check does not cover every shortcut path or establish complete keyboard
+ownership.
 
 TextField/TextArea editing now consults top-popup keyboard ownership in both
 native runtimes. C's immediate keyboard-enabled query is scope-aware; retained
@@ -228,8 +227,8 @@ editors resolve their saved input owner and reject closed/stale owners before
 editing. Matching typing tests cover blocked parent and eligible child editors,
 with both immediate and deferred C variants. Immediate C TextArea skips paint
 when no graphics window exists, matching TextField's headless editing support.
-Tab order, complete shortcut coverage, focus restoration and input replay after
-dismissal still require dedicated integration and tests.
+Complete shortcut coverage and input replay after dismissal still require
+dedicated integration and tests.
 
 Focus registrations now retain popup ownership separately from the lexical
 scope. C stores frame-local registrations in the host input registry and
@@ -238,8 +237,10 @@ keeps ownership alongside current/previous-frame focus order and prunes removed
 registrations at frame end. Matching tests cover forward/reverse wrapping,
 parent/background exclusion, duplicate registrations and traversal after
 explicit child/branch dismissal; Go additionally sends Tab through an editor.
-These tests do not establish initial popup focus acquisition, automatic focus
-restoration on dismissal or a complete cross-window keyboard lifecycle.
+Lifecycle tests in both runtimes verify that the first eligible child of a newly
+opened top popup acquires focus, a nested close restores parent focus, and a
+root close restores background focus. A complete cross-window keyboard lifecycle
+is not established.
 
 Ordinary Go Button now participates in focus order and handles Enter/Space and
 Tab; unclaimed Tab events route at frame end after destination registration.
@@ -255,7 +256,8 @@ destination, while record/resource cleanup remains in its existing finish phase.
 A regression reproduced focus being cleared when a missing child still blocked
 its surviving parent. Matching native tests now omit the child and then parent
 across frames and verify same-frame traversal to the parent and background.
-Automatic restoration without a navigation event remains unimplemented.
+Separate lifecycle regressions verify automatic background-focus restoration
+when a popup owner disappears without a navigation event.
 
 Text input lifetime now has dismissal regressions. C reproduced blocked text
 reappearing in the underlying editor after a popup closed. The host registry
@@ -360,9 +362,9 @@ earlier scroll scope and checks that the latter's offset remains unchanged on
 wheel input. Go drag-and-drop start/accept paths now also respect popup and clip
 ownership; tests verify that rejected background targets leave the release and
 copied payload available to the popup target. Scalar-slider/resize active-drag
-ownership and automatic popup focus restoration remain unfinished. Composed
-dismissal covers explicit close, Escape, outside pointer release and owner
-removal.
+ownership remains unfinished. Composed dismissal covers explicit close, Escape,
+outside pointer release and owner removal; popup focus restoration covers both
+explicit dismissal and owner removal.
 
 ## Acceptance evidence
 

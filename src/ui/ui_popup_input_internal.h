@@ -23,7 +23,7 @@ int ui_popup_input_current_captures(Vector2 point);
 int ui_popup_input_keyboard_captures(void);
 int ui_popup_input_keyboard_was_captured(void);
 int ui_popup_input_snapshot_keyboard_captures(UIPopupInputToken token);
-void ui_popup_input_register_focus(int id, UIPopupInputToken token);
+void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible);
 int ui_popup_input_focus_captures(int id);
 /* Declaration snapshots do not reopen lexical scopes during deferred routing. */
 UIPopupInputToken ui_popup_input_snapshot(void);

@@ -641,7 +641,7 @@ static void
 test_popup_tab_ownership(void)
 {
     const int start[] = {25620,25621,25620,25600,25620,25620};
-    const int want[] = {25621,25620,25621,25621,25610,25600};
+    const int want[] = {25621,25621,25621,25621,25611,25600};
     for(int mode = 0; mode < 6; mode++) {
         InjectReset();
         if(mode == 2 || mode == 3) InjectKey(KEY_LEFT_SHIFT,1);
@@ -923,6 +923,114 @@ test_composed_context_popup_scope(void)
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext,
             .disabled=1}),0);
     EndUIFrame();
+    InjectReset();
+}
+
+static void
+test_composed_popup_focus_lifecycle(void)
+{
+    bool parent_open = true, child_open = false;
+    UIPopupInput *context = ui_popup_input_create();
+    UIPopupInput *previous;
+    InjectReset();
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    SetUIFocus(29600);
+    BeginTree(Key("composed popup focus acquisition"));
+    check_int("focus parent popup opens",
+        BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+            .open=&parent_open}),1);
+    BeginDisabled(1);
+    Button((ButtonProps){.bounds={30,30,100,24},.label="Disabled",.id=29612});
+    EndDisabled();
+    Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
+    EndPopup();
+    EndTree();
+    check_int("parent popup acquires first child focus",GetUIFocus(),29611);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    child_open = true;
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    BeginTree(Key("composed nested popup focus"));
+    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+        .open=&parent_open});
+    Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
+    BeginPopup((PopupProps){.bounds={50,60,130,80},.id=29620,
+        .open=&child_open});
+    Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
+    EndPopup();
+    EndPopup();
+    EndTree();
+    check_int("nested popup acquires first child focus",GetUIFocus(),29621);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    BeginTree(Key("composed nested popup focus restore"));
+    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+        .open=&parent_open});
+    Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
+    BeginPopup((PopupProps){.bounds={50,60,130,80},.id=29620,
+        .open=&child_open});
+    Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
+    ClosePopup();
+    check_int("nested popup restores parent focus",GetUIFocus(),29611);
+    EndPopup();
+    EndPopup();
+    EndTree();
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    BeginTree(Key("composed parent popup focus restore"));
+    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+        .open=&parent_open});
+    Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
+    ClosePopup();
+    check_int("parent popup restores background focus",GetUIFocus(),29600);
+    EndPopup();
+    EndTree();
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    parent_open = true;
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    SetUIFocus(29700);
+    BeginTree(Key("composed missing popup owner focus"));
+    BeginPopup((PopupProps){.bounds={20,20,120,80},.id=29710,
+        .open=&parent_open});
+    Button((ButtonProps){.bounds={30,30,90,24},.label="Popup",.id=29711});
+    EndPopup();
+    EndTree();
+    check_int("popup before missing owner has child focus",GetUIFocus(),29711);
+    ui_popup_input_finish(context);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    ui_popup_input_frame(context);
+    previous = ui_popup_input_bind(context);
+    BeginTree(Key("composed missing popup owner restore"));
+    EndTree();
+    ui_popup_input_finish(context);
+    check_int("missing popup owner restores background focus",GetUIFocus(),29700);
+    ui_popup_input_bind(previous);
+    EndUIFrame();
+    ui_popup_input_destroy(context);
     InjectReset();
 }
 
@@ -1787,6 +1895,7 @@ main(void)
     test_composed_tooltip_scope();
     test_composed_modal_scope();
     test_composed_context_popup_scope();
+    test_composed_popup_focus_lifecycle();
     test_popup_text_keyboard_ownership();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();

@@ -66,8 +66,10 @@ intentionally skipping input ownership. `PopupModal` uses the same scope with a
 full-view input/backdrop policy, and `PopupContext` uses it with right-release
 activation over a retained trigger. Presentation variants remain flags on the
 one popup implementation rather than parallel widget trees.
-Modal outside releases remain non-dismissing. Automatic popup focus restoration
-and some active-drag routing remain unfinished.
+Modal outside releases remain non-dismissing. The input registry saves focus
+when a top popup first opens, focuses its first eligible child, and restores the
+parent or background after nested close, root close, or missing-owner retirement.
+Some active-drag routing remains unfinished.
 C and Go now have a pointer-independent top-popup keyboard predicate. Closed
 combos use it before keyboard opening, preventing a focused parent/background
 combo from opening behind a child popup. Focus registrations now retain their
@@ -75,8 +77,9 @@ popup owner: C filters and deduplicates Tab destinations at focus finalization,
 before releasing the host input binding; Go filters its current/previous-frame
 focus order during traversal. Native tests cover forward/reverse wraparound,
 parent/background exclusion and traversal after explicit dismissal. Go also
-exercises actual editor Tab events. Automatic popup focus acquisition and
-restoration, plus complete keyboard routing, remain unfinished.
+exercises actual editor Tab events. Native lifecycle tests cover automatic
+first-child focus acquisition and parent/background restoration. Complete
+keyboard routing remains unfinished.
 TextField/TextArea editing now also respects top-popup keyboard ownership in
 both runtimes. C's immediate keyboard-enabled check uses the active scope;
 retained editor routing uses its declaration snapshot after scopes close.
@@ -242,8 +245,9 @@ or payload. Generated C/Go tests cover clipped sources/targets and copied data
 lifetime across press and release.
 The public arbitrary-content combo scope integrates these paint and input
 registries in C and Go. Generated C/Go execution and k2cpp syntax coverage use
-the same clean calls. Automatic focus restoration, device-level integration and
-some active-drag routing remain unfinished.
+the same clean calls. Popup focus acquisition/restoration is covered in both
+native runtimes; device-level integration and some active-drag routing remain
+unfinished.
 
 ## Backends
 

@@ -7,6 +7,7 @@ typedef struct UIPopupPanel {
     Rectangle bounds;
     unsigned long seen, order;
     int owner, alive;
+    int restore_focus, last_focus, has_last_focus, autofocus;
 } UIPopupPanel;
 
 typedef struct UIPopupFocus {
@@ -112,6 +113,8 @@ UIPopupInputToken ui_popup_input_begin(UIPopupInput *context, int owner, Rectang
         panel->next = context->panels;
         context->panels = panel;
         panel->owner = owner;
+        panel->restore_focus = GetUIFocus();
+        panel->autofocus = 1;
     }
     panel->parent = context->active;
     panel->bounds = bounds;
@@ -135,8 +138,20 @@ void ui_popup_input_close(UIPopupInput *context, int owner)
     if(!context) abort();
     for(UIPopupPanel *panel = context->panels; panel; panel = panel->next) {
         if(panel->owner != owner) continue;
-        for(UIPopupPanel *child = context->panels; child; child = child->next)
-            if(descends(child,panel)) child->alive = 0;
+        int focused = GetUIFocus(), restore = 0;
+        for(UIPopupFocus *entry = context->focus; entry; entry = entry->next) {
+            if(entry->id != focused || !entry->token.order) continue;
+            for(UIPopupPanel *child = context->panels; child; child = child->next)
+                if(child->owner == entry->token.owner &&
+                   child->order == entry->token.order && descends(child,panel))
+                    restore = 1;
+        }
+        for(UIPopupPanel *child = context->panels; child; child = child->next) {
+            if(!descends(child,panel)) continue;
+            if(child->has_last_focus && child->last_focus == focused) restore = 1;
+            child->alive = 0;
+        }
+        if(restore) SetUIFocus(panel->restore_focus);
         return;
     }
 }
@@ -244,7 +259,7 @@ int ui_popup_input_keyboard_was_captured(void)
     return bound_context && bound_context->keyboard_captured;
 }
 
-void ui_popup_input_register_focus(int id, UIPopupInputToken token)
+void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible)
 {
     UIPopupInput *context = token.context ? token.context : bound_context;
     if(!context || id <= 0) return;
@@ -262,6 +277,22 @@ void ui_popup_input_register_focus(int id, UIPopupInputToken token)
         entry->id = id;
     }
     entry->token = token;
+    if(token.order) {
+        UIPopupPanel *panel = context->panels;
+        while(panel && (panel->owner != token.owner ||
+              panel->order != token.order)) panel = panel->next;
+        if(panel && panel->alive) {
+            if(eligible && panel->autofocus &&
+               !ui_popup_input_snapshot_keyboard_captures(token)) {
+                SetUIFocus(id);
+                panel->autofocus = 0;
+            }
+            if(GetUIFocus() == id) {
+                panel->last_focus = id;
+                panel->has_last_focus = 1;
+            }
+        }
+    }
 }
 
 int ui_popup_input_focus_captures(int id)

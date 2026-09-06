@@ -160,6 +160,73 @@ func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	parentOpen, childOpen := true, false
+	r.setFocus(29600)
+
+	r.BeginFrame()
+	if !r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen}) {
+		t.Fatal("parent popup did not open")
+	}
+	r.BeginDisabled(true)
+	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Disabled", ID: 29612})
+	r.EndDisabled()
+	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
+	r.EndPopup()
+	r.EndFrame()
+	if r.Focus() != 29611 {
+		t.Fatalf("parent popup focus=%d, want first child 29611", r.Focus())
+	}
+
+	childOpen = true
+	r.BeginFrame()
+	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
+	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
+	r.BeginPopup(PopupProps{Bounds: NewRectangle(50, 60, 130, 80), ID: 29620, Open: &childOpen})
+	r.Button(ButtonProps{Bounds: NewRectangle(60, 70, 100, 24), Label: "Child", ID: 29621})
+	if r.Focus() != 29621 {
+		t.Fatalf("nested popup focus=%d, want first child 29621", r.Focus())
+	}
+	r.ClosePopup()
+	if r.Focus() != 29611 {
+		t.Fatalf("nested close restored focus=%d, want parent 29611", r.Focus())
+	}
+	r.EndPopup()
+	r.EndPopup()
+	r.EndFrame()
+
+	r.BeginFrame()
+	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
+	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
+	r.ClosePopup()
+	if r.Focus() != 29600 {
+		t.Fatalf("parent close restored focus=%d, want background 29600", r.Focus())
+	}
+	r.EndPopup()
+	r.EndFrame()
+}
+
+func TestComposedPopupMissingOwnerRestoresFocus(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	open := true
+	r.setFocus(29700)
+	r.BeginFrame()
+	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 120, 80), ID: 29710, Open: &open})
+	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 90, 24), Label: "Popup", ID: 29711})
+	r.EndPopup()
+	r.EndFrame()
+	if r.Focus() != 29711 {
+		t.Fatalf("popup focus=%d, want 29711", r.Focus())
+	}
+
+	r.BeginFrame()
+	r.EndFrame()
+	if r.Focus() != 29700 {
+		t.Fatalf("missing owner restored focus=%d, want 29700", r.Focus())
+	}
+}
+
 func TestComposedPopupOwnsOrdinaryChildrenAndPaintOrder(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true
