@@ -2576,6 +2576,66 @@ ui_table_header_shift(TableViewProps table, float y)
 }
 
 static int
+ui_table_mod_key_down(void)
+{
+    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
+           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+}
+
+static const char *
+ui_table_cell_text(TableViewProps table, int row, int column)
+{
+    if(table.rows == NULL || row < 0 || row >= table.row_count || column < 0 ||
+       column >= table.column_count || table.rows[row].cells == NULL ||
+       column >= table.rows[row].cell_count || table.rows[row].cells[column] == NULL)
+        return "";
+    return table.rows[row].cells[column];
+}
+
+static char *
+ui_table_clipboard_text(TableViewProps table, int row, int column)
+{
+    size_t size = 1;
+    int count = 0;
+
+    if(table.copy_text != NULL) {
+        size = strlen(table.copy_text)+1;
+        char *copy = malloc(size);
+        if(copy == NULL) return NULL;
+        memcpy(copy,table.copy_text,size);
+        return copy;
+    }
+    if(row >= 0 && row < table.row_count && column >= 0 && column < table.column_count)
+        count = 1;
+    else if(row >= 0 && row < table.row_count)
+        count = table.column_count;
+    else if(column >= 0 && column < table.column_count)
+        count = table.row_count;
+    if(count < 1) return NULL;
+
+    for(int i = 0; i < count; i++) {
+        const char *cell = ui_table_cell_text(table,
+            row >= 0 ? row : i,column >= 0 ? column : i);
+        size_t length = strlen(cell);
+        if(length > SIZE_MAX-size-(i > 0 ? 1u : 0u)) return NULL;
+        size += length+(i > 0 ? 1u : 0u);
+    }
+    char *copy = malloc(size);
+    if(copy == NULL) return NULL;
+    char *out = copy;
+    for(int i = 0; i < count; i++) {
+        const char *cell = ui_table_cell_text(table,
+            row >= 0 ? row : i,column >= 0 ? column : i);
+        size_t length = strlen(cell);
+        if(i > 0) *out++ = row >= 0 ? '\t' : '\n';
+        memcpy(out,cell,length);
+        out += length;
+    }
+    *out = '\0';
+    return copy;
+}
+
+static int
 ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
                      int frozen_rows, int max_scroll)
 {
@@ -2636,6 +2696,25 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         column = ui_table_display_column(table,column_slot);
         ui_consume_focus_tab();
         selection_changed = changed = 1;
+    }
+    if(ui_table_mod_key_down() &&
+       (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_X))) {
+        char *copy = ui_table_clipboard_text(table,*table.selected_row,
+            table.selected_column != NULL ? *table.selected_column : -1);
+        if(copy != NULL) {
+            SetUIClipboardTextValue(copy);
+            free(copy);
+            changed = 1;
+        }
+    }
+    if(ui_table_mod_key_down() && IsKeyPressed(KEY_V) &&
+       table.pasted_text != NULL) {
+        *table.pasted_text = GetUIClipboardTextValue();
+        if(table.pasted_row != NULL) *table.pasted_row = *table.selected_row;
+        if(table.pasted_column != NULL)
+            *table.pasted_column = table.selected_column != NULL
+                ? *table.selected_column : -1;
+        changed = 1;
     }
     if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
        IsKeyPressed(KEY_F2)) {
@@ -2761,6 +2840,12 @@ DrawUITableView(TableViewProps table)
         *table.right_clicked_row = -1;
     if(table.right_clicked_column != NULL)
         *table.right_clicked_column = -1;
+    if(table.pasted_text != NULL)
+        *table.pasted_text = NULL;
+    if(table.pasted_row != NULL)
+        *table.pasted_row = -1;
+    if(table.pasted_column != NULL)
+        *table.pasted_column = -1;
     int visible_columns = ui_table_visible_columns(table);
     if(visible_columns < 1)
         return 0;

@@ -2203,6 +2203,12 @@ activates the current cell with Enter or F2, clears selection with Escape, and
 scrolls the selected row into view. Popup ownership and disabled state suppress
 those keys.
 
+Ctrl/Cmd+C copies the selected cell, row, or column; `copy_text`/`CopyText` can
+override that value for an editable cell. Ctrl/Cmd+V reports the clipboard text
+and target through `pasted_text`, `pasted_row`, and `pasted_column` (the matching
+capitalized fields in Go). C exposes the pasted string from runtime-owned
+clipboard storage, valid until the clipboard is changed again.
+
 For interactive cell content, set `TableViewProps.custom_cells` (`CustomCells`
 in Go), draw `TableView`, then call `BeginTableCell(table, row, column)` for each
 cell and finish each scope with `EndTableCell()`. The returned rectangle is the

@@ -507,6 +507,10 @@ typedef struct {
     int header_height;
     float header_angle;
     int custom_cells;
+    const char *copy_text;
+    const char **pasted_text;
+    int *pasted_row;
+    int *pasted_column;
 } TableViewProps;
 
 typedef struct {

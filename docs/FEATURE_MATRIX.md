@@ -159,7 +159,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | ListBox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
 | TreeView (+ disabled) / CascadingTreeView | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
 | SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
-| TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard navigation, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
+| TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard/clipboard, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
 | SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
 | MultiSelectList (Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |

@@ -862,7 +862,7 @@ props_field_at(const char *type, int index)
 {
     static const struct {
         const char *type;
-        const char *fields[24];
+        const char *fields[40];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"CarouselControlsProps", {"Bounds", "Indicators", "Count", "Selected", "Move", "Disabled", "ID"}},
@@ -978,7 +978,10 @@ props_field_at(const char *type, int index)
                             "RightClickedColumn", "SortColumn",
                             "ScrollOffset", "RowHeight", "ColumnEnabled",
                             "ColumnOrder", "SortDirection", "Disabled",
-                            "Resizable", "MinColumnWidth", "FreezeRows"}},
+                            "Resizable", "MinColumnWidth", "FreezeRows",
+                            "HeaderHeight", "HeaderAngle", "CustomCells",
+                            "CopyText", "PastedText", "PastedRow",
+                            "PastedColumn"}},
         {"TableRow", {"Cells", "CellCount", "TextColors",
                       "BackgroundColors"}},
         {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},

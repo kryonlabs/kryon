@@ -13,6 +13,9 @@ state {
     sort_column: int = -1
     sort_direction: int = 0
     scroll: int = 0
+    pasted_text: const char * = ""
+    pasted_row: int = -1
+    pasted_column: int = -1
 }
 
 table_frame :: () #ui {
@@ -26,6 +29,6 @@ table_frame :: () #ui {
         widths: [3] int = {90,140,70}
         enabled: [3] int = {1,1,1}
         order: [3] int = {0,1,2}
-        TableView((TableViewProps){.bounds = {20,20,300,120}, .id = 901, .columns = columns, .column_count = 3, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &selected_row, .selected_column = &selected_column, .activated_row = &activated_row, .activated_column = &activated_column, .sort_column = &sort_column, .scroll_offset = &scroll, .row_height = 24, .column_enabled = enabled, .column_order = order, .sort_direction = &sort_direction, .disabled = 0, .resizable = 1, .min_column_width = 32, .freeze_rows = 0})
+        TableView((TableViewProps){.bounds = {20,20,300,120}, .id = 901, .columns = columns, .column_count = 3, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &selected_row, .selected_column = &selected_column, .activated_row = &activated_row, .activated_column = &activated_column, .sort_column = &sort_column, .scroll_offset = &scroll, .row_height = 24, .column_enabled = enabled, .column_order = order, .sort_direction = &sort_direction, .disabled = 0, .resizable = 1, .min_column_width = 32, .freeze_rows = 0, .pasted_text = &pasted_text, .pasted_row = &pasted_row, .pasted_column = &pasted_column})
     }
 }

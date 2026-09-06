@@ -2023,6 +2023,48 @@ test_table_keyboard_navigation(void)
     InjectKey(KEY_ESCAPE,0); InjectPump();
     check_int("table escape clears row",selected_row,-1);
     check_int("table escape clears column",selected_column,-1);
+
+    selected_row = 0;
+    selected_column = 1;
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKey(KEY_C,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_C,0); InjectPump();
+    check_int("table cell copy",strcmp(GetUIClipboardTextValue(),"b"),0);
+
+    selected_column = -1;
+    InjectKey(KEY_C,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_C,0); InjectPump();
+    check_int("table row copy",strcmp(GetUIClipboardTextValue(),"a\tb\tc"),0);
+
+    selected_row = -1;
+    selected_column = 2;
+    InjectKey(KEY_C,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_C,0); InjectPump();
+    check_int("table column copy",strcmp(GetUIClipboardTextValue(),"c\nc\nc\nc\nc\nc"),0);
+
+    table.copy_text = "editable-id";
+    InjectKey(KEY_C,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_C,0); InjectPump();
+    check_int("table copy override",strcmp(GetUIClipboardTextValue(),"editable-id"),0);
+
+    const char *pasted_text = NULL;
+    int pasted_row = -1, pasted_column = -1;
+    table.pasted_text = &pasted_text;
+    table.pasted_row = &pasted_row;
+    table.pasted_column = &pasted_column;
+    selected_row = 1;
+    selected_column = 0;
+    SetUIClipboardTextValue("new\tvalues");
+    InjectKey(KEY_V,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145);
+    check_int("table paste changed",TableView(table),1); EndUIFrame();
+    InjectKey(KEY_V,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    check_int("table paste text",strcmp(pasted_text,"new\tvalues"),0);
+    check_int("table paste row",pasted_row,1);
+    check_int("table paste column",pasted_column,0);
     InjectReset();
 }
 

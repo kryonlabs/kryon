@@ -982,6 +982,19 @@ func main() {
 		panic(fmt.Sprintf("table_view keyboard activation: got selected=(%d,%d) activated=(%d,%d), want (1,1),(1,1)",
 			table.SelectedRow, table.SelectedColumn, table.ActivatedRow, table.ActivatedColumn))
 	}
+	driver.QueueShortcut(kryon.KeyC)
+	drawTableView()
+	if driver.ClipboardText() != "Wallet" {
+		panic(fmt.Sprintf("table_view cell copy: got %q, want Wallet", driver.ClipboardText()))
+	}
+	driver.SetClipboardText("generated-paste")
+	driver.QueueShortcut(kryon.KeyV)
+	drawTableView()
+	if table.PastedText != "generated-paste" || table.PastedRow != 1 || table.PastedColumn != 1 {
+		panic(fmt.Sprintf("table_view paste: got %q at (%d,%d), want generated-paste at (1,1)",
+			table.PastedText, table.PastedRow, table.PastedColumn))
+	}
+	driver.SetClipboardText("old")
 	table.SelectedRow, table.SelectedColumn = -1, 2
 
 	out := snapshot{
@@ -1824,6 +1837,23 @@ int main(void)
                 selected_row,selected_column,activated_row,activated_column);
         return 1;
     }
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKey(KEY_C,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_C,0); InjectPump();
+    if(strcmp(GetUIClipboardTextValue(),"Wallet") != 0) {
+        fprintf(stderr,"table_view cell copy: got %s, want Wallet\n",
+                GetUIClipboardTextValue());
+        return 1;
+    }
+    SetUIClipboardTextValue("generated-paste");
+    InjectKey(KEY_V,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_V,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    if(pasted_text == NULL || strcmp(pasted_text,"generated-paste") != 0 ||
+       pasted_row != 1 || pasted_column != 1) {
+        fprintf(stderr,"table_view paste: got %s at (%d,%d), want generated-paste at (1,1)\n",
+                pasted_text != NULL ? pasted_text : "(null)",pasted_row,pasted_column);
+        return 1;
+    }
+    SetUIClipboardTextValue("old");
     selected_row = -1;
     selected_column = 2;
 

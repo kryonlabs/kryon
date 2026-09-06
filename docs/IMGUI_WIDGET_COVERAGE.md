@@ -31,7 +31,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Plots | `PlotLines`, `PlotHistogram` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
-| Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, Enter/F2 activation, Escape clearing, and scoped native child widgets in custom-cell mode |
+| Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
 | Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
@@ -188,6 +188,10 @@ clearing, and selection-following scroll now share a native C/Go contract.
 Generated k2c and k2go fixtures exercise the same movement and activation, and
 native popup tests prove that a focused table cannot consume keys owned by a
 higher popup branch.
+Cell, full-row, full-column, and override copying plus paste target reporting
+now run through that same owned key path. Native C tests cover every copy shape,
+and the shared generated fixture proves cell-copy and paste parity in k2c
+and k2go.
 Separate native Tab tests now cover ownership-filtered focus destinations,
 forward/reverse wrapping, duplicate registrations and traversal after explicit
 child/branch dismissal. Go tests exercise previous-frame order and real editor
