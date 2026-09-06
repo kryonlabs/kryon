@@ -1,4 +1,21 @@
 # Changelog
+## v0.1.58 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.58
+- Keep active gestures owned by popup branches
+- Rename optional sync module to Daochi
+- Enlarge canonical return title bar target
+- Implement DrawTextureRec in the libdraw backend
+- Render dropdown state with a chevron
+- Derive material bottom nav spacing from content
+- Align reorder targets with lifted items
+- Make fitted text density aware
+- Scale semantic font tokens with UI density
+- Add spreadsheet string-literal and error-name scanners to kry_eval
+- Ui: add shared carousel controls and honor secondary button style
+
 ## v0.1.57 - 2026-09-06
 
 ### Changed
