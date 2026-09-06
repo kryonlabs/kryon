@@ -31,11 +31,19 @@ DrawUITitleBarReturnButton(Texture2D return_icon, int height)
     int button_size = icon_size + padding * 2;
     int x = 0;
     int y = (height - button_size) / 2;
-    int hover = 0;
+    IconButtonProps button = {0};
 
     if(y < 0)
         y = 0;
-    return DrawUIPaddedIconBtn(x, y, icon_size, padding, return_icon, &hover);
+    button.bounds = (Rectangle){(float)x, (float)y,
+                                (float)button_size, (float)button_size};
+    button.icon = return_icon;
+    button.icon_size = icon_size;
+    button.icon_padding = padding;
+    button.icon_color = GetThemeText();
+    button.hover_background = Fade(GetThemeText(), 0.12f);
+    button.radius = 0.50f;
+    return DrawUIIconButton(button);
 }
 
 static void
