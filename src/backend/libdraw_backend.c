@@ -2176,6 +2176,13 @@ void DrawTexture(Texture2D texture, int posX, int posY, Color tint)
                                (float)texture.width, (float)texture.height},
                    (Vector2){0.0f, 0.0f}, 0.0f, tint);
 }
+void DrawTextureRec(Texture2D texture, Rectangle source, Vector2 position, Color tint)
+{
+    DrawTexturePro(texture, source,
+                   (Rectangle){position.x, position.y,
+                               fabsf(source.width), fabsf(source.height)},
+                   (Vector2){0.0f, 0.0f}, 0.0f, tint);
+}
 void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                     Vector2 origin, float rotation, Color tint)
 {
