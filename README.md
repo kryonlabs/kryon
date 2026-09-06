@@ -8,7 +8,7 @@ Kryon is a small C support library for raylib-style applications. It keeps a
 raylib-compatible public surface available through `kryon.h`, then adds the
 pieces shared by downstream apps: UI controls, Tk-style toolkit widgets, layout
 helpers, text rendering, themes, embedded assets, locale loading, file dialogs,
-desktop tray support, runtime asset downloads, and Ksync account/sync helpers.
+desktop tray support, runtime asset downloads, and optional account/sync helpers.
 
 ## Layout
 
@@ -135,15 +135,22 @@ kryon package appimage
 kryon preview
 ```
 
-For local development against a sync backend, run a Ksync server in the
-foreground. `dev-backend` locates the server source at `$KSYNC_DIR` or as a
-sibling checkout (`../ksync`), isolates its data under `<project>/.kryon/`, and
+For local development against a sync backend, run a Daochi node in the
+foreground. `dev-backend` locates the server source at `$DAOCHI_DIR` or as a
+sibling checkout (`../daochi`), isolates its data under `<project>/.kryon/`, and
 prints the sync URL to point your app at. Tokens are regenerated each start,
 so it is for local development only:
 
 ```sh
 kryon dev-backend          # serves http://127.0.0.1:8080
 ```
+
+Apps can keep startup simple with one `SyncNodePool`: add the shipped public
+node as `SYNC_NODE_PUBLIC`, add LAN or remote nodes learned through explicit
+pairing as `SYNC_NODE_PAIRED`, then call `RunSyncWithNodes`. The pool tries a
+paired local node first, another paired node second, and the public node last.
+Temporary connectivity and authentication failures fall through automatically;
+credentials and clock state remain isolated per node.
 
 App `project.kryon` files should use `target` entries that call `kryon`
 rather than embedding platform-specific build commands directly. Existing app

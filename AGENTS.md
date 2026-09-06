@@ -44,3 +44,10 @@ Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must ke
 generated-output scanners and runtime parity tests passing. If a new widget or
 semantic is added, add it to both generated runtimes and to parity coverage in
 the same change.
+
+## Readability Rule
+
+Write conventional, fully readable code. Do not compress multiple statements,
+branches, or error checks onto one line. Handlers and protocol code must use
+descriptive names, explicit control flow, and focused helpers. Run the language
+formatter and inspect the resulting diff before considering a change complete.

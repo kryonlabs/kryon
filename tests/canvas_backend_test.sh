@@ -43,7 +43,7 @@ if [ ! -f "$null_backend" ]; then
 fi
 
 srcs=$(find "$root/src" -name '*.c' \
-    ! -path '*/ksync/*' \
+    ! -path '*/sync/*' \
     ! -path '*/platform/plan9/*' \
     ! -path '*/scene/physics_world.c' \
     ! -path '*/scene/node_body2d.c' \

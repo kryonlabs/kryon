@@ -14,6 +14,13 @@ sync, filesystem, desktop integration, and optional terminal primitives.
 Public APIs should be named after the real domain concept. Do not add temporary
 prefixes, compatibility aliases, or product-flavored names for new behavior.
 
+The optional sync-node pool is local-first: paired LAN nodes rank ahead of
+paired remote nodes, and a configured public node is the final fallback. Each
+node has isolated bearer-token and clock-skew storage, so failing over cannot
+send one node's credentials to another. Connectivity and authentication errors
+advance to the next node; account, signing, and payload errors stop immediately.
+Discovery may add candidates, but only explicit pairing grants trusted status.
+
 ## Runtime Implementation
 
 Runtime code lives in `src/`. It owns widget behavior, rendering helpers,

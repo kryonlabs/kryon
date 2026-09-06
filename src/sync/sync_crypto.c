@@ -1,4 +1,5 @@
-#include "ksync_crypto.h"
+#include "sync_crypto.h"
+#include "monocypher-ed25519.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -10,12 +11,12 @@
 /* SHA-256                                                             */
 /* ------------------------------------------------------------------ */
 
-typedef struct KsyncSha256Ctx {
+typedef struct SyncSha256Ctx {
     uint32_t state[8];
     uint64_t bit_len;
     uint8_t data[64];
     size_t data_len;
-} KsyncSha256Ctx;
+} SyncSha256Ctx;
 
 static const uint32_t sha256_k[64] = {
     0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U,
@@ -38,7 +39,7 @@ rotr32(uint32_t value, uint32_t bits)
 }
 
 static void
-sha256_transform(KsyncSha256Ctx *ctx, const uint8_t data[64])
+sha256_transform(SyncSha256Ctx *ctx, const uint8_t data[64])
 {
     uint32_t m[64];
     uint32_t a, b, c, d, e, f, g, h;
@@ -92,7 +93,7 @@ sha256_transform(KsyncSha256Ctx *ctx, const uint8_t data[64])
 }
 
 static void
-sha256_init(KsyncSha256Ctx *ctx)
+sha256_init(SyncSha256Ctx *ctx)
 {
     memset(ctx, 0, sizeof(*ctx));
     ctx->state[0] = 0x6a09e667U;
@@ -106,7 +107,7 @@ sha256_init(KsyncSha256Ctx *ctx)
 }
 
 static void
-sha256_update(KsyncSha256Ctx *ctx, const uint8_t *data, size_t len)
+sha256_update(SyncSha256Ctx *ctx, const uint8_t *data, size_t len)
 {
     for(size_t i = 0; i < len; i++) {
         ctx->data[ctx->data_len++] = data[i];
@@ -119,7 +120,7 @@ sha256_update(KsyncSha256Ctx *ctx, const uint8_t *data, size_t len)
 }
 
 static void
-sha256_final(KsyncSha256Ctx *ctx, uint8_t hash[32])
+sha256_final(SyncSha256Ctx *ctx, uint8_t hash[32])
 {
     size_t i = ctx->data_len;
 
@@ -145,9 +146,9 @@ sha256_final(KsyncSha256Ctx *ctx, uint8_t hash[32])
 }
 
 void
-KsyncCryptoSha256(const uint8_t *data, size_t len, uint8_t out[32])
+SyncCryptoSha256(const uint8_t *data, size_t len, uint8_t out[32])
 {
-    KsyncSha256Ctx sha;
+    SyncSha256Ctx sha;
 
     if(out == NULL)
         return;
@@ -166,14 +167,14 @@ static void
 hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *data,
             size_t data_len, uint8_t out[32])
 {
-    KsyncSha256Ctx sha;
+    SyncSha256Ctx sha;
     uint8_t block[64];
     uint8_t pad[64];
     uint8_t inner[32];
 
     memset(block, 0, sizeof(block));
     if(key != NULL && key_len > 64) {
-        KsyncCryptoSha256(key, key_len, block);
+        SyncCryptoSha256(key, key_len, block);
     } else if(key != NULL) {
         memcpy(block, key, key_len);
     }
@@ -193,7 +194,7 @@ hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *data,
 }
 
 void
-KsyncCryptoHmacSha256(const uint8_t *key, size_t key_len,
+SyncCryptoHmacSha256(const uint8_t *key, size_t key_len,
                       const uint8_t *data, size_t data_len, uint8_t out[32])
 {
     if(out == NULL)
@@ -202,7 +203,7 @@ KsyncCryptoHmacSha256(const uint8_t *key, size_t key_len,
 }
 
 void
-KsyncCryptoPbkdf2Sha256(const uint8_t *password, size_t password_len,
+SyncCryptoPbkdf2Sha256(const uint8_t *password, size_t password_len,
                         const uint8_t *salt, size_t salt_len,
                         unsigned long iterations, uint8_t out[32])
 {
@@ -503,7 +504,7 @@ timing_safe_equal(const uint8_t *a, const uint8_t *b, size_t len)
 }
 
 int
-KsyncCryptoChaCha20Poly1305Seal(const uint8_t key[32], const uint8_t nonce[12],
+SyncCryptoChaCha20Poly1305Seal(const uint8_t key[32], const uint8_t nonce[12],
                                const uint8_t *plain, size_t plain_len,
                                const uint8_t *aad, size_t aad_len,
                                uint8_t *ciphertext_and_tag)
@@ -547,7 +548,7 @@ KsyncCryptoChaCha20Poly1305Seal(const uint8_t key[32], const uint8_t nonce[12],
 }
 
 int
-KsyncCryptoChaCha20Poly1305Open(const uint8_t key[32], const uint8_t nonce[12],
+SyncCryptoChaCha20Poly1305Open(const uint8_t key[32], const uint8_t nonce[12],
                                const uint8_t *ciphertext_and_tag, size_t total_len,
                                const uint8_t *aad, size_t aad_len,
                                uint8_t *plain)
@@ -596,7 +597,7 @@ KsyncCryptoChaCha20Poly1305Open(const uint8_t key[32], const uint8_t nonce[12],
 }
 
 void
-KsyncCryptoRandom(uint8_t *out, size_t len)
+SyncCryptoRandom(uint8_t *out, size_t len)
 {
     static uint32_t fallback_state;
     FILE *file;
@@ -623,14 +624,14 @@ KsyncCryptoRandom(uint8_t *out, size_t len)
             store_le32(seed + 4, fallback_state);
             store_le32(seed + 8, (uint32_t)(uintptr_t)&fallback_state);
             store_le32(seed + 12, (uint32_t)off);
-            KsyncCryptoSha256(seed, sizeof(seed), digest);
+            SyncCryptoSha256(seed, sizeof(seed), digest);
             memcpy(out + off, digest, n);
         }
     }
 }
 
 int
-KsyncCryptoBytesToHex(const uint8_t *bytes, size_t len, char *out, size_t out_size)
+SyncCryptoBytesToHex(const uint8_t *bytes, size_t len, char *out, size_t out_size)
 {
     static const char hex[] = "0123456789abcdef";
 
@@ -645,7 +646,7 @@ KsyncCryptoBytesToHex(const uint8_t *bytes, size_t len, char *out, size_t out_si
 }
 
 int
-KsyncCryptoHexToBytes(const char *hex, uint8_t *out, size_t out_len)
+SyncCryptoHexToBytes(const char *hex, uint8_t *out, size_t out_len)
 {
     static const char digits[] = "0123456789abcdef";
     size_t len;
@@ -663,4 +664,42 @@ KsyncCryptoHexToBytes(const char *hex, uint8_t *out, size_t out_len)
         out[i] = (uint8_t)((hi - digits) << 4 | (lo - digits));
     }
     return 1;
+}
+
+int
+SyncCryptoCreateDeviceKey(uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE],
+                          uint8_t public_key[SYNC_ED25519_PUBLIC_KEY_SIZE])
+{
+    uint8_t seed[32];
+
+    if(private_key == NULL || public_key == NULL)
+        return 0;
+    SyncCryptoRandom(seed, sizeof(seed));
+    crypto_ed25519_key_pair(private_key, public_key, seed);
+    crypto_wipe(seed, sizeof(seed));
+    return 1;
+}
+
+void
+SyncCryptoSignDevice(const uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE],
+                     const uint8_t *message, size_t message_len,
+                     uint8_t signature[SYNC_ED25519_SIGNATURE_SIZE])
+{
+    if(private_key == NULL || signature == NULL ||
+       (message == NULL && message_len > 0)) {
+        return;
+    }
+    crypto_ed25519_sign(signature, private_key, message, message_len);
+}
+
+int
+SyncCryptoVerifyDevice(const uint8_t public_key[SYNC_ED25519_PUBLIC_KEY_SIZE],
+                       const uint8_t *message, size_t message_len,
+                       const uint8_t signature[SYNC_ED25519_SIGNATURE_SIZE])
+{
+    if(public_key == NULL || signature == NULL ||
+       (message == NULL && message_len > 0)) {
+        return 0;
+    }
+    return crypto_ed25519_check(signature, public_key, message, message_len) == 0;
 }

@@ -13,3 +13,6 @@
 [submodule "vendor/box2d"]
 	path = vendor/box2d
 	url = https://github.com/erincatto/box2d.git
+[submodule "vendor/monocypher"]
+	path = vendor/monocypher
+	url = https://github.com/LoupVaillant/Monocypher.git

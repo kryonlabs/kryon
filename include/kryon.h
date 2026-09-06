@@ -47,10 +47,10 @@
 #include "ui_text_layout.h"
 #include "ui_transition.h"
 #include "locale.h"
-#if (defined(KRYON_WITH_DAOCHI) && KRYON_WITH_DAOCHI) || \
-    (defined(KRYON_WITH_KSYNC) && KRYON_WITH_KSYNC)
-#include "ksync_account.h"
-#include "ksync_sync.h"
+#if defined(KRYON_WITH_DAOCHI) && KRYON_WITH_DAOCHI
+#include "sync/account.h"
+#include "sync.h"
+#include "sync_nodes.h"
 #endif
 #include "theme.h"
 #include "theme_meta.h"

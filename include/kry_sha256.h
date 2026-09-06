@@ -3,7 +3,7 @@
  *
  * Streaming interface plus a one-shot file hasher used by kry_update to
  * verify downloaded artifacts against an appcast digest. No external
- * dependencies; the ksync crypto stack intentionally stays separate.
+ * dependencies; the account sync crypto stack intentionally stays separate.
  */
 #ifndef KRYON_KRY_SHA256_H
 #define KRYON_KRY_SHA256_H

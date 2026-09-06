@@ -1,6 +1,6 @@
 /*
  * kry_sha256.c - SHA-256 per FIPS 180-4. Compact, dependency-free; the
- * ksync crypto stack keeps its own copy because it predates this module.
+ * Account sync keeps its own copy because it predates this module.
  */
 #include "kry_sha256.h"
 

@@ -1,8 +1,8 @@
-#include "ksync_account.h"
-#include "ksync_crypto.h"
+#include "sync/account.h"
+#include "sync_crypto.h"
 
 #if !defined(HAS_LIBOQS)
-#error "Kryon Ksync accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
+#error "Kryon sync accounts require HAS_LIBOQS; build and link liboqs instead of disabling account crypto"
 #endif
 
 #include <oqs/oqs.h>
@@ -12,26 +12,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define KSYNC_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
-#define KSYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
-#define KSYNC_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
+#define SYNC_ACCOUNT_KEY_HEADER "sync-account-key-v1"
+#define SYNC_LEGACY_ACCOUNT_KEY_HEADER "ksync-account-key-v1"
+#define SYNC_LEGACY_UKU_KEY_HEADER "account-key-v1"
+#define SYNC_ACCOUNT_KEY_V2_HEADER "sync-account-key-v2"
+#define SYNC_LEGACY_ACCOUNT_KEY_V2_HEADER "ksync-account-key-v2"
 
-static char g_ksync_account_last_error[192];
+static char account_last_error[192];
 
 static void
 set_account_error(const char *message)
 {
     if(message == NULL)
         message = "unknown account key error";
-    snprintf(g_ksync_account_last_error, sizeof(g_ksync_account_last_error),
+    snprintf(account_last_error, sizeof(account_last_error),
              "%s", message);
 }
 
 const char *
-GetKsyncAccountLastError(void)
+GetSyncAccountLastError(void)
 {
-    return g_ksync_account_last_error[0] != '\0' ?
-        g_ksync_account_last_error : "unknown account key error";
+    return account_last_error[0] != '\0' ?
+        account_last_error : "unknown account key error";
 }
 
 static int
@@ -67,7 +69,7 @@ copy_key_value(char *out, size_t out_size, const char *value, size_t value_len)
 }
 
 static void
-parse_account_line(KsyncAccount *account, const char *line, size_t line_len)
+parse_account_line(SyncAccount *account, const char *line, size_t line_len)
 {
     if(account == NULL || line == NULL)
         return;
@@ -176,7 +178,7 @@ read_file_text(const char *filename)
 }
 
 void
-KsyncSha256Hex(const uint8_t *data, size_t len, char out_hex[KSYNC_PUBLIC_ID_HEX_SIZE])
+SyncSha256Hex(const uint8_t *data, size_t len, char out_hex[SYNC_PUBLIC_ID_HEX_SIZE])
 {
     uint8_t digest[32];
 
@@ -185,28 +187,28 @@ KsyncSha256Hex(const uint8_t *data, size_t len, char out_hex[KSYNC_PUBLIC_ID_HEX
     out_hex[0] = '\0';
     if(data == NULL && len > 0)
         return;
-    KsyncCryptoSha256(data, len, digest);
-    KsyncCryptoBytesToHex(digest, sizeof(digest), out_hex, KSYNC_PUBLIC_ID_HEX_SIZE);
+    SyncCryptoSha256(data, len, digest);
+    SyncCryptoBytesToHex(digest, sizeof(digest), out_hex, SYNC_PUBLIC_ID_HEX_SIZE);
 }
 
 int
-IsKsyncAccountAvailable(void)
+IsSyncAccountAvailable(void)
 {
     return 1;
 }
 
 int
-HasKsyncAccountValues(const KsyncAccount *account)
+HasSyncAccountValues(const SyncAccount *account)
 {
     return account != NULL && account->public_id[0] != '\0' &&
            account->public_key_hex[0] != '\0' && account->private_key_hex[0] != '\0';
 }
 
 int
-ValidateKsyncAccount(KsyncAccount *account)
+ValidateSyncAccount(SyncAccount *account)
 {
     uint8_t public_key[1312];
-    char expected_public_id[KSYNC_PUBLIC_ID_HEX_SIZE];
+    char expected_public_id[SYNC_PUBLIC_ID_HEX_SIZE];
 
     if(account == NULL) {
         set_account_error("no account object was provided");
@@ -236,14 +238,14 @@ ValidateKsyncAccount(KsyncAccount *account)
         set_account_error("private_key is not valid hex");
         return 0;
     }
-    if(!KsyncCryptoHexToBytes(account->public_key_hex, public_key, sizeof(public_key))) {
+    if(!SyncCryptoHexToBytes(account->public_key_hex, public_key, sizeof(public_key))) {
         set_account_error("public_key could not be decoded");
         return 0;
     }
-    KsyncSha256Hex(public_key, sizeof(public_key), expected_public_id);
+    SyncSha256Hex(public_key, sizeof(public_key), expected_public_id);
     if(account->public_id[0] == '\0') {
         snprintf(account->public_id, sizeof(account->public_id), "%s", expected_public_id);
-        g_ksync_account_last_error[0] = '\0';
+        account_last_error[0] = '\0';
         return 1;
     }
     if(strlen(account->public_id) != 64) {
@@ -258,16 +260,16 @@ ValidateKsyncAccount(KsyncAccount *account)
         set_account_error("public_id does not match public_key");
         return 0;
     }
-    g_ksync_account_last_error[0] = '\0';
+    account_last_error[0] = '\0';
     return 1;
 }
 
 int
-ParseKsyncAccountText(const char *text, KsyncAccount *account)
+ParseSyncAccountText(const char *text, SyncAccount *account)
 {
     const char *line;
     const char *next;
-    char exported_key[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    char exported_key[SYNC_ACCOUNT_EXPORT_TEXT_SIZE];
 
     if(text == NULL || account == NULL) {
         set_account_error("no account key text was provided");
@@ -285,7 +287,8 @@ ParseKsyncAccountText(const char *text, KsyncAccount *account)
         set_account_error("account key file is empty");
         return 0;
     }
-    if(strstr(line, KSYNC_ACCOUNT_KEY_V2_HEADER) == line) {
+    if(strstr(line, SYNC_ACCOUNT_KEY_V2_HEADER) == line ||
+       strstr(line, SYNC_LEGACY_ACCOUNT_KEY_V2_HEADER) == line) {
         set_account_error("account key is encrypted and needs a passphrase");
         return 0;
     }
@@ -302,25 +305,25 @@ ParseKsyncAccountText(const char *text, KsyncAccount *account)
         parse_account_line(account, line, (size_t)(next - line));
         line = next + 1;
     }
-    return ValidateKsyncAccount(account);
+    return ValidateSyncAccount(account);
 }
 
 int
-ExportKsyncAccountText(const KsyncAccount *account, char *out, size_t out_size)
+ExportSyncAccountText(const SyncAccount *account, char *out, size_t out_size)
 {
     int len;
 
-    if(!HasKsyncAccountValues(account) || out == NULL || out_size == 0)
+    if(!HasSyncAccountValues(account) || out == NULL || out_size == 0)
         return 0;
     len = snprintf(out, out_size,
-                   KSYNC_ACCOUNT_KEY_HEADER
+                   SYNC_ACCOUNT_KEY_HEADER
                    "\nalgorithm=ML-DSA-44\npublic_id=%s\npublic_key=%s\nprivate_key=%s\n",
                    account->public_id, account->public_key_hex, account->private_key_hex);
     return len > 0 && (size_t)len < out_size;
 }
 
 int
-ImportKsyncAccountFile(const char *filename, KsyncAccount *account)
+ImportSyncAccountFile(const char *filename, SyncAccount *account)
 {
     char *body = read_file_text(filename);
     int ok;
@@ -333,21 +336,21 @@ ImportKsyncAccountFile(const char *filename, KsyncAccount *account)
         set_account_error("could not read selected account key file");
         return 0;
     }
-    ok = ParseKsyncAccountText(body, account);
+    ok = ParseSyncAccountText(body, account);
     free(body);
     return ok;
 }
 
 int
-ExportKsyncAccountFile(const KsyncAccount *account, const char *filename)
+ExportSyncAccountFile(const SyncAccount *account, const char *filename)
 {
-    char body[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    char body[SYNC_ACCOUNT_EXPORT_TEXT_SIZE];
     FILE *file;
     size_t len;
     int ok;
 
     if(filename == NULL || filename[0] == '\0' ||
-       !ExportKsyncAccountText(account, body, sizeof(body)))
+       !ExportSyncAccountText(account, body, sizeof(body)))
         return 0;
     file = fopen(filename, "wb");
     if(file == NULL)
@@ -360,12 +363,12 @@ ExportKsyncAccountFile(const KsyncAccount *account, const char *filename)
 }
 
 int
-CreateKsyncAccount(KsyncAccount *account)
+CreateSyncAccount(SyncAccount *account)
 {
     OQS_SIG *sig;
     uint8_t public_key[1312];
     uint8_t private_key[2560];
-    KsyncAccount generated;
+    SyncAccount generated;
 
     if(account == NULL)
         return 0;
@@ -383,17 +386,17 @@ CreateKsyncAccount(KsyncAccount *account)
     }
     OQS_SIG_free(sig);
 
-    KsyncSha256Hex(public_key, sizeof(public_key), generated.public_id);
-    KsyncCryptoBytesToHex(public_key, sizeof(public_key), generated.public_key_hex,
+    SyncSha256Hex(public_key, sizeof(public_key), generated.public_id);
+    SyncCryptoBytesToHex(public_key, sizeof(public_key), generated.public_key_hex,
                  sizeof(generated.public_key_hex));
-    KsyncCryptoBytesToHex(private_key, sizeof(private_key), generated.private_key_hex,
+    SyncCryptoBytesToHex(private_key, sizeof(private_key), generated.private_key_hex,
                  sizeof(generated.private_key_hex));
     *account = generated;
     return 1;
 }
 
 int
-SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
+SignSyncAccountHex(const SyncAccount *account, const uint8_t *message,
                             size_t message_len, char *out_signature_hex, size_t out_size)
 {
     OQS_SIG *sig;
@@ -401,11 +404,11 @@ SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
     uint8_t signature[2420];
     size_t signature_len = 0;
 
-    if(!HasKsyncAccountValues(account) || out_signature_hex == NULL ||
+    if(!HasSyncAccountValues(account) || out_signature_hex == NULL ||
        out_size < sizeof(signature) * 2 + 1 || (message == NULL && message_len > 0))
         return 0;
     out_signature_hex[0] = '\0';
-    if(!KsyncCryptoHexToBytes(account->private_key_hex, private_key, sizeof(private_key)))
+    if(!SyncCryptoHexToBytes(account->private_key_hex, private_key, sizeof(private_key)))
         return 0;
     sig = OQS_SIG_new(OQS_SIG_alg_ml_dsa_44);
     if(sig == NULL || sig->length_secret_key != sizeof(private_key) ||
@@ -421,7 +424,7 @@ SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
         return 0;
     }
     OQS_SIG_free(sig);
-    KsyncCryptoBytesToHex(signature, sizeof(signature), out_signature_hex, out_size);
+    SyncCryptoBytesToHex(signature, sizeof(signature), out_signature_hex, out_size);
     return out_signature_hex[0] != '\0';
 }
 
@@ -429,7 +432,7 @@ SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
 /* Passphrase-protected export (v2)                                    */
 /* ------------------------------------------------------------------ */
 
-#define KSYNC_ACCOUNT_SALT_BYTES 16
+#define SYNC_ACCOUNT_SALT_BYTES 16
 
 static int
 account_find_line_value(const char *text, const char *prefix, char *out,
@@ -455,70 +458,74 @@ account_find_line_value(const char *text, const char *prefix, char *out,
 }
 
 static void
-account_derive_passphrase_key(const char *passphrase, const uint8_t *salt,
-                              size_t salt_len, unsigned long iterations,
-                              uint8_t out[32])
+account_derive_passphrase_key(const char *passphrase, const char *context,
+                              const uint8_t *salt, size_t salt_len,
+                              unsigned long iterations, uint8_t out[32])
 {
-    static const char info[] = "ksync-account-key-v2";
-
     if(passphrase == NULL)
         passphrase = "";
+    if(context == NULL)
+        context = SYNC_ACCOUNT_KEY_V2_HEADER;
     /* domain-separated salt: fixed label || random salt */
     {
         uint8_t salted[64];
         size_t used = 0;
-        size_t info_len = sizeof(info) - 1;
-        memcpy(salted + used, info, info_len < sizeof(salted) ? info_len : sizeof(salted));
-        used += info_len;
+        size_t context_len = strlen(context);
+
+        if(context_len > sizeof(salted))
+            context_len = sizeof(salted);
+        memcpy(salted + used, context, context_len);
+        used += context_len;
         if(salt != NULL && salt_len > 0 && used < sizeof(salted)) {
             size_t n = salt_len < sizeof(salted) - used ? salt_len : sizeof(salted) - used;
             memcpy(salted + used, salt, n);
             used += n;
         }
-        KsyncCryptoPbkdf2Sha256((const uint8_t *)passphrase, strlen(passphrase),
+        SyncCryptoPbkdf2Sha256((const uint8_t *)passphrase, strlen(passphrase),
                                 salted, used, iterations, out);
     }
 }
 
 int
-ExportKsyncAccountTextEncrypted(const KsyncAccount *account, const char *passphrase,
+ExportSyncAccountTextEncrypted(const SyncAccount *account, const char *passphrase,
                                 char *out, size_t out_size)
 {
-    char plaintext[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
-    uint8_t salt[KSYNC_ACCOUNT_SALT_BYTES];
+    char plaintext[SYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    uint8_t salt[SYNC_ACCOUNT_SALT_BYTES];
     uint8_t nonce[12];
     uint8_t key[32];
     uint8_t *sealed = NULL;
-    char salt_hex[KSYNC_ACCOUNT_SALT_BYTES * 2 + 1];
+    char salt_hex[SYNC_ACCOUNT_SALT_BYTES * 2 + 1];
     char nonce_hex[12 * 2 + 1];
     size_t sealed_len;
     int len;
 
-    if(!HasKsyncAccountValues(account) || passphrase == NULL ||
+    if(!HasSyncAccountValues(account) || passphrase == NULL ||
        passphrase[0] == '\0' || out == NULL || out_size == 0)
         return 0;
-    if(!ExportKsyncAccountText(account, plaintext, sizeof(plaintext)))
+    if(!ExportSyncAccountText(account, plaintext, sizeof(plaintext)))
         return 0;
-    KsyncCryptoRandom(salt, sizeof(salt));
-    KsyncCryptoRandom(nonce, sizeof(nonce));
-    account_derive_passphrase_key(passphrase, salt, sizeof(salt),
-                                  KSYNC_ACCOUNT_PASSPHRASE_ITERATIONS, key);
+    SyncCryptoRandom(salt, sizeof(salt));
+    SyncCryptoRandom(nonce, sizeof(nonce));
+    account_derive_passphrase_key(passphrase, SYNC_ACCOUNT_KEY_V2_HEADER,
+                                  salt, sizeof(salt),
+                                  SYNC_ACCOUNT_PASSPHRASE_ITERATIONS, key);
     sealed_len = strlen(plaintext) + 16;
     sealed = (uint8_t *)malloc(sealed_len);
     if(sealed == NULL)
         return 0;
-    if(!KsyncCryptoChaCha20Poly1305Seal(key, nonce, (const uint8_t *)plaintext,
+    if(!SyncCryptoChaCha20Poly1305Seal(key, nonce, (const uint8_t *)plaintext,
                                         strlen(plaintext), NULL, 0, sealed)) {
         free(sealed);
         return 0;
     }
-    KsyncCryptoBytesToHex(salt, sizeof(salt), salt_hex, sizeof(salt_hex));
-    KsyncCryptoBytesToHex(nonce, sizeof(nonce), nonce_hex, sizeof(nonce_hex));
+    SyncCryptoBytesToHex(salt, sizeof(salt), salt_hex, sizeof(salt_hex));
+    SyncCryptoBytesToHex(nonce, sizeof(nonce), nonce_hex, sizeof(nonce_hex));
     len = snprintf(out, out_size,
-                   KSYNC_ACCOUNT_KEY_V2_HEADER
+                   SYNC_ACCOUNT_KEY_V2_HEADER
                    "\nalgorithm=ML-DSA-44\nkdf=PBKDF2-SHA256\niterations=%d\n"
                    "salt=%s\nnonce=%s\nciphertext=",
-                   KSYNC_ACCOUNT_PASSPHRASE_ITERATIONS, salt_hex, nonce_hex);
+                   SYNC_ACCOUNT_PASSPHRASE_ITERATIONS, salt_hex, nonce_hex);
     if(len < 0 || (size_t)len >= out_size) {
         free(sealed);
         return 0;
@@ -526,7 +533,7 @@ ExportKsyncAccountTextEncrypted(const KsyncAccount *account, const char *passphr
     {
         char *cursor = out + len;
         size_t remaining = out_size - (size_t)len;
-        if(!KsyncCryptoBytesToHex(sealed, sealed_len, cursor, remaining)) {
+        if(!SyncCryptoBytesToHex(sealed, sealed_len, cursor, remaining)) {
             free(sealed);
             return 0;
         }
@@ -536,23 +543,24 @@ ExportKsyncAccountTextEncrypted(const KsyncAccount *account, const char *passphr
 }
 
 int
-ParseKsyncAccountTextEncrypted(const char *text, const char *passphrase,
-                               KsyncAccount *account)
+ParseSyncAccountTextEncrypted(const char *text, const char *passphrase,
+                               SyncAccount *account)
 {
     char iterations_text[32];
-    char salt_hex[KSYNC_ACCOUNT_SALT_BYTES * 2 + 1];
+    char salt_hex[SYNC_ACCOUNT_SALT_BYTES * 2 + 1];
     char nonce_hex[12 * 2 + 1];
-    char *ciphertext_hex = (char *)malloc(KSYNC_ACCOUNT_EXPORT_TEXT_SIZE * 2 + 64);
+    char *ciphertext_hex = (char *)malloc(SYNC_ACCOUNT_EXPORT_TEXT_SIZE * 2 + 64);
     char *plaintext;
-    uint8_t salt[KSYNC_ACCOUNT_SALT_BYTES];
+    uint8_t salt[SYNC_ACCOUNT_SALT_BYTES];
     uint8_t nonce[12];
     uint8_t key[32];
     uint8_t *sealed = NULL;
     unsigned long iterations;
+    const char *key_context;
     size_t sealed_len;
     int ok = 0;
 
-    plaintext = (char *)malloc(KSYNC_ACCOUNT_EXPORT_TEXT_SIZE);
+    plaintext = (char *)malloc(SYNC_ACCOUNT_EXPORT_TEXT_SIZE);
     if(ciphertext_hex == NULL || plaintext == NULL) {
         free(ciphertext_hex);
         free(plaintext);
@@ -563,7 +571,11 @@ ParseKsyncAccountTextEncrypted(const char *text, const char *passphrase,
         free(plaintext);
         return 0;
     }
-    if(strstr(text, KSYNC_ACCOUNT_KEY_V2_HEADER) != text) {
+    if(strstr(text, SYNC_ACCOUNT_KEY_V2_HEADER) == text) {
+        key_context = SYNC_ACCOUNT_KEY_V2_HEADER;
+    } else if(strstr(text, SYNC_LEGACY_ACCOUNT_KEY_V2_HEADER) == text) {
+        key_context = SYNC_LEGACY_ACCOUNT_KEY_V2_HEADER;
+    } else {
         free(ciphertext_hex);
         free(plaintext);
         return 0;
@@ -573,27 +585,28 @@ ParseKsyncAccountTextEncrypted(const char *text, const char *passphrase,
        !account_find_line_value(text, "salt=", salt_hex, sizeof(salt_hex)) ||
        !account_find_line_value(text, "nonce=", nonce_hex, sizeof(nonce_hex)) ||
        !account_find_line_value(text, "ciphertext=", ciphertext_hex,
-                                KSYNC_ACCOUNT_EXPORT_TEXT_SIZE * 2 + 64))
+                                SYNC_ACCOUNT_EXPORT_TEXT_SIZE * 2 + 64))
         goto fail;
     iterations = strtoul(iterations_text, NULL, 10);
     if(iterations == 0 || iterations > 100000000UL)
         goto fail;
-    if(!KsyncCryptoHexToBytes(salt_hex, salt, sizeof(salt)) ||
-       !KsyncCryptoHexToBytes(nonce_hex, nonce, sizeof(nonce)))
+    if(!SyncCryptoHexToBytes(salt_hex, salt, sizeof(salt)) ||
+       !SyncCryptoHexToBytes(nonce_hex, nonce, sizeof(nonce)))
         goto fail;
     sealed_len = strlen(ciphertext_hex) / 2;
-    if(sealed_len <= 16 || sealed_len > KSYNC_ACCOUNT_EXPORT_TEXT_SIZE)
+    if(sealed_len <= 16 || sealed_len > SYNC_ACCOUNT_EXPORT_TEXT_SIZE)
         goto fail;
     sealed = (uint8_t *)malloc(sealed_len);
     if(sealed == NULL)
         goto fail;
-    if(KsyncCryptoHexToBytes(ciphertext_hex, sealed, sealed_len)) {
-        account_derive_passphrase_key(passphrase, salt, sizeof(salt), iterations, key);
-        if(KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, sealed_len,
+    if(SyncCryptoHexToBytes(ciphertext_hex, sealed, sealed_len)) {
+        account_derive_passphrase_key(passphrase, key_context, salt, sizeof(salt),
+                                      iterations, key);
+        if(SyncCryptoChaCha20Poly1305Open(key, nonce, sealed, sealed_len,
                                            NULL, 0, (uint8_t *)plaintext)) {
             size_t plain_len = sealed_len - 16;
             plaintext[plain_len] = '\0';
-            ok = ParseKsyncAccountText(plaintext, account);
+            ok = ParseSyncAccountText(plaintext, account);
         }
     }
     free(sealed);
@@ -608,16 +621,16 @@ fail:
 }
 
 int
-ExportKsyncAccountFileEncrypted(const KsyncAccount *account, const char *passphrase,
+ExportSyncAccountFileEncrypted(const SyncAccount *account, const char *passphrase,
                                 const char *filename)
 {
-    char body[KSYNC_ACCOUNT_EXPORT_ENCRYPTED_TEXT_SIZE];
+    char body[SYNC_ACCOUNT_EXPORT_ENCRYPTED_TEXT_SIZE];
     FILE *file;
     size_t len;
     int ok;
 
     if(filename == NULL || filename[0] == '\0' ||
-       !ExportKsyncAccountTextEncrypted(account, passphrase, body, sizeof(body)))
+       !ExportSyncAccountTextEncrypted(account, passphrase, body, sizeof(body)))
         return 0;
     file = fopen(filename, "wb");
     if(file == NULL)
@@ -630,15 +643,15 @@ ExportKsyncAccountFileEncrypted(const KsyncAccount *account, const char *passphr
 }
 
 int
-ImportKsyncAccountFileEncrypted(const char *filename, const char *passphrase,
-                                KsyncAccount *account)
+ImportSyncAccountFileEncrypted(const char *filename, const char *passphrase,
+                                SyncAccount *account)
 {
     char *body = read_file_text(filename);
     int ok;
 
     if(body == NULL)
         return 0;
-    ok = ParseKsyncAccountTextEncrypted(body, passphrase, account);
+    ok = ParseSyncAccountTextEncrypted(body, passphrase, account);
     free(body);
     return ok;
 }

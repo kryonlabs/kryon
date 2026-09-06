@@ -3,8 +3,8 @@
 #include "kryon_plan9.h"
 #include "kry_update_flow.h"
 #include "kry_uri.h"
-#include "ksync_account.h"
-#include "ksync_sync.h"
+#include "sync/account.h"
+#include "sync.h"
 #include "notification.h"
 #include "notification_schedule.h"
 #include "platform.h"
@@ -102,25 +102,25 @@ KryNotificationSendReminder(KryNotificationReminder *reminder,
     return 0;
 }
 
-int IsKsyncAccountAvailable(void) { return 0; }
+int IsSyncAccountAvailable(void) { return 0; }
 
 int
-HasKsyncAccountValues(const KsyncAccount *account)
+HasSyncAccountValues(const SyncAccount *account)
 {
     return account != nil && account->public_id[0] != '\0' &&
            account->public_key_hex[0] != '\0' &&
            account->private_key_hex[0] != '\0';
 }
 
-int CreateKsyncAccount(KsyncAccount *account) { (void)account; return 0; }
-int ValidateKsyncAccount(KsyncAccount *account) { (void)account; return 0; }
-int ParseKsyncAccountText(const char *text, KsyncAccount *account)
+int CreateSyncAccount(SyncAccount *account) { (void)account; return 0; }
+int ValidateSyncAccount(SyncAccount *account) { (void)account; return 0; }
+int ParseSyncAccountText(const char *text, SyncAccount *account)
 {
     (void)text;
     (void)account;
     return 0;
 }
-int ExportKsyncAccountText(const KsyncAccount *account, char *out,
+int ExportSyncAccountText(const SyncAccount *account, char *out,
                            size_t out_size)
 {
     (void)account;
@@ -128,19 +128,19 @@ int ExportKsyncAccountText(const KsyncAccount *account, char *out,
         out[0] = '\0';
     return 0;
 }
-int ImportKsyncAccountFile(const char *filename, KsyncAccount *account)
+int ImportSyncAccountFile(const char *filename, SyncAccount *account)
 {
     (void)filename;
     (void)account;
     return 0;
 }
-int ExportKsyncAccountFile(const KsyncAccount *account, const char *filename)
+int ExportSyncAccountFile(const SyncAccount *account, const char *filename)
 {
     (void)account;
     (void)filename;
     return 0;
 }
-int ExportKsyncAccountTextEncrypted(const KsyncAccount *account,
+int ExportSyncAccountTextEncrypted(const SyncAccount *account,
                                     const char *passphrase, char *out,
                                     size_t out_size)
 {
@@ -150,7 +150,7 @@ int ExportKsyncAccountTextEncrypted(const KsyncAccount *account,
         out[0] = '\0';
     return 0;
 }
-int ExportKsyncAccountFileEncrypted(const KsyncAccount *account,
+int ExportSyncAccountFileEncrypted(const SyncAccount *account,
                                     const char *passphrase,
                                     const char *filename)
 {
@@ -159,25 +159,25 @@ int ExportKsyncAccountFileEncrypted(const KsyncAccount *account,
     (void)filename;
     return 0;
 }
-int ParseKsyncAccountTextEncrypted(const char *text, const char *passphrase,
-                                   KsyncAccount *account)
+int ParseSyncAccountTextEncrypted(const char *text, const char *passphrase,
+                                   SyncAccount *account)
 {
     (void)text;
     (void)passphrase;
     (void)account;
     return 0;
 }
-int ImportKsyncAccountFileEncrypted(const char *filename,
+int ImportSyncAccountFileEncrypted(const char *filename,
                                     const char *passphrase,
-                                    KsyncAccount *account)
+                                    SyncAccount *account)
 {
     (void)filename;
     (void)passphrase;
     (void)account;
     return 0;
 }
-void KsyncSha256Hex(const uint8_t *data, size_t len,
-                    char out_hex[KSYNC_PUBLIC_ID_HEX_SIZE])
+void SyncSha256Hex(const uint8_t *data, size_t len,
+                    char out_hex[SYNC_PUBLIC_ID_HEX_SIZE])
 {
     int i;
 
@@ -185,11 +185,11 @@ void KsyncSha256Hex(const uint8_t *data, size_t len,
     (void)len;
     if(out_hex == nil)
         return;
-    for(i = 0; i < KSYNC_PUBLIC_ID_HEX_SIZE - 1; i++)
+    for(i = 0; i < SYNC_PUBLIC_ID_HEX_SIZE - 1; i++)
         out_hex[i] = '0';
-    out_hex[KSYNC_PUBLIC_ID_HEX_SIZE - 1] = '\0';
+    out_hex[SYNC_PUBLIC_ID_HEX_SIZE - 1] = '\0';
 }
-int SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
+int SignSyncAccountHex(const SyncAccount *account, const uint8_t *message,
                         size_t message_len, char *out_signature_hex,
                         size_t out_size)
 {
@@ -202,28 +202,28 @@ int SignKsyncAccountHex(const KsyncAccount *account, const uint8_t *message,
 }
 
 const char *
-GetKsyncSyncResultName(KsyncSyncResult result)
+GetSyncResultName(SyncResult result)
 {
     switch(result) {
-    case KSYNC_SYNC_OK: return "ok";
-    case KSYNC_SYNC_INVALID_URL: return "invalid-url";
-    case KSYNC_SYNC_NO_ACCOUNT: return "no-account";
-    case KSYNC_SYNC_PAYLOAD_FAILED: return "payload-failed";
-    case KSYNC_SYNC_CHALLENGE_FAILED: return "challenge-failed";
-    case KSYNC_SYNC_SIGN_FAILED: return "sign-failed";
-    case KSYNC_SYNC_REQUEST_FAILED: return "request-failed";
-    case KSYNC_SYNC_AUTH_FAILED: return "auth-failed";
+    case SYNC_OK: return "ok";
+    case SYNC_INVALID_URL: return "invalid-url";
+    case SYNC_NO_ACCOUNT: return "no-account";
+    case SYNC_PAYLOAD_FAILED: return "payload-failed";
+    case SYNC_CHALLENGE_FAILED: return "challenge-failed";
+    case SYNC_SIGN_FAILED: return "sign-failed";
+    case SYNC_REQUEST_FAILED: return "request-failed";
+    case SYNC_AUTH_FAILED: return "auth-failed";
     }
     return "unknown";
 }
-int IsKsyncSyncURLValid(const char *url) { return url != nil && url[0] != '\0'; }
-int NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size)
+int IsSyncURLValid(const char *url) { return url != nil && url[0] != '\0'; }
+int NormalizeSyncURL(const char *input, char *out, size_t out_size)
 {
     if(out != nil && out_size > 0)
         snprint(out, out_size, "%s", input != nil ? input : "");
     return input != nil && input[0] != '\0';
 }
-int JoinKsyncSyncURL(char *out, size_t out_size, const char *base_url,
+int JoinSyncURL(char *out, size_t out_size, const char *base_url,
                      const char *path)
 {
     if(out != nil && out_size > 0)
@@ -231,12 +231,12 @@ int JoinKsyncSyncURL(char *out, size_t out_size, const char *base_url,
                 path != nil ? path : "");
     return out != nil && out_size > 0;
 }
-int JoinKsyncSyncWebSocketURL(char *out, size_t out_size,
+int JoinSyncWebSocketURL(char *out, size_t out_size,
                               const char *base_url, const char *path)
 {
-    return JoinKsyncSyncURL(out, out_size, base_url, path);
+    return JoinSyncURL(out, out_size, base_url, path);
 }
-int AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer, const void *data,
+int AppendSyncBuffer(SyncBuffer *buffer, const void *data,
                           size_t bytes)
 {
     (void)buffer;
@@ -244,13 +244,13 @@ int AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer, const void *data,
     (void)bytes;
     return 0;
 }
-int AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer, const char *text)
+int AppendSyncBufferJSONString(SyncBuffer *buffer, const char *text)
 {
     (void)buffer;
     (void)text;
     return 0;
 }
-void FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer)
+void FreeSyncBuffer(SyncBuffer *buffer)
 {
     if(buffer != nil) {
         free(buffer->data);
@@ -259,7 +259,7 @@ void FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer)
         buffer->cap = 0;
     }
 }
-int FindKsyncSyncJSONString(const char *json, const char *key,
+int FindSyncJSONString(const char *json, const char *key,
                             char *out, size_t out_size)
 {
     (void)json;
@@ -268,25 +268,25 @@ int FindKsyncSyncJSONString(const char *json, const char *key,
         out[0] = '\0';
     return 0;
 }
-long long FindKsyncSyncJSONInt64(const char *json, const char *key,
+long long FindSyncJSONInt64(const char *json, const char *key,
                                  long long fallback)
 {
     (void)json;
     (void)key;
     return fallback;
 }
-void ClearKsyncSyncAuthToken(const KsyncSyncConfig *cfg) { (void)cfg; }
-KsyncSyncResult LoginKsyncSync(const KsyncSyncConfig *cfg)
+void ClearSyncAuthToken(const SyncConfig *cfg) { (void)cfg; }
+SyncResult LoginSync(const SyncConfig *cfg)
 {
     (void)cfg;
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 }
-KsyncSyncResult RunKsyncSync(const KsyncSyncConfig *cfg)
+SyncResult RunSync(const SyncConfig *cfg)
 {
     (void)cfg;
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 }
-KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
+SyncResult RequestSyncBearer(const SyncConfig *cfg,
                                        const char *method, const char *path,
                                        const char *body, char *out,
                                        size_t out_size)
@@ -297,14 +297,14 @@ KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
     (void)body;
     if(out != nil && out_size > 0)
         out[0] = '\0';
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 }
-KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg)
+SyncResult DeleteSyncAccount(const SyncConfig *cfg)
 {
     (void)cfg;
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 }
-int WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload,
+int WrapSyncPayload(const SyncAccount *account, const char *payload,
                          char **out)
 {
     (void)account;
@@ -313,7 +313,7 @@ int WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload,
         *out = nil;
     return 0;
 }
-int UnwrapKsyncSyncPayload(const KsyncAccount *account,
+int UnwrapSyncPayload(const SyncAccount *account,
                            const char *envelope_json, char **out)
 {
     (void)account;
@@ -322,10 +322,10 @@ int UnwrapKsyncSyncPayload(const KsyncAccount *account,
         *out = nil;
     return 0;
 }
-int KsyncDefaultHttpRequest(const char *method, const char *url,
+int DefaultSyncHttpRequest(const char *method, const char *url,
                             const char *body,
                             const char *const *headers, int header_count,
-                            KsyncSyncBuffer *response, long *status,
+                            SyncBuffer *response, long *status,
                             void *user)
 {
     (void)method;
@@ -339,12 +339,12 @@ int KsyncDefaultHttpRequest(const char *method, const char *url,
         *status = 0;
     return 0;
 }
-KsyncSyncResult KsyncRemoteEventWait(const KsyncSyncConfig *cfg,
+SyncResult WaitForRemoteSyncEvent(const SyncConfig *cfg,
                                      const char *path)
 {
     (void)cfg;
     (void)path;
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 }
 
 KryUpdateChannel kry_update_detect_channel(void) { return KRY_UPDATE_CHANNEL_SOURCE; }

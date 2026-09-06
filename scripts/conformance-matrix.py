@@ -1170,7 +1170,7 @@ def canvas_backend_sources() -> list[str]:
     sources = []
     for path in sorted((ROOT / "src").rglob("*.c")):
         r = rel(path)
-        if "/ksync/" in f"/{r}/":
+        if "/sync/" in f"/{r}/":
             continue
         if "/platform/plan9/" in f"/{r}/":
             continue

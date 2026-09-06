@@ -704,11 +704,11 @@ indexed icon catalog with their existing `UI_ICON_TYPE_*` values. Use
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-picture options.
 
-Kryon also exposes stable `UI_KSYNC_PROFILE_ICON_*` IDs and mapping helpers:
+Kryon also exposes stable `UI_SYNC_PROFILE_ICON_*` IDs and mapping helpers:
 
 ```c
-UIIconType GetUIProfilePictureIconTypeForKsyncID(int ksync_id);
-int GetUIKsyncIDForProfilePictureIconType(UIIconType type);
+UIIconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
+int GetUISyncIDForProfilePictureIconType(UIIconType type);
 ```
 
 Use those IDs for server storage or sync payloads instead of generated
@@ -835,47 +835,47 @@ int GetCurrentLocaleIndex(void);
 
 ### Sync
 
-Ksync Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
+Sync Sync is Kryon's common sync protocol layer. Kryon owns URL handling, token auth,
 challenge/login, bearer requests, sync posting, account deletion, and small JSON
 helpers, and default platform transport. Applications still own their local data
 model and provide callbacks to build sync payloads, apply sync responses, and
 store auth tokens.
 
-#### `KsyncSyncResult`
+#### `SyncResult`
 
 ```c
-typedef enum KsyncSyncResult {
-    KSYNC_SYNC_OK = 0,
-    KSYNC_SYNC_INVALID_URL,
-    KSYNC_SYNC_NO_ACCOUNT,
-    KSYNC_SYNC_PAYLOAD_FAILED,
-    KSYNC_SYNC_CHALLENGE_FAILED,
-    KSYNC_SYNC_SIGN_FAILED,
-    KSYNC_SYNC_REQUEST_FAILED,
-    KSYNC_SYNC_AUTH_FAILED
-} KsyncSyncResult;
+typedef enum SyncResult {
+    SYNC_OK = 0,
+    SYNC_INVALID_URL,
+    SYNC_NO_ACCOUNT,
+    SYNC_PAYLOAD_FAILED,
+    SYNC_CHALLENGE_FAILED,
+    SYNC_SIGN_FAILED,
+    SYNC_REQUEST_FAILED,
+    SYNC_AUTH_FAILED
+} SyncResult;
 ```
 
-#### `KsyncSyncConfig`
+#### `SyncConfig`
 
 ```c
-typedef struct KsyncSyncConfig {
+typedef struct SyncConfig {
     const char *base_url;
-    const KsyncAccount *account;
+    const SyncAccount *account;
     const char *client_id;
-    KsyncSyncHttpRequestFn http_request;
-    KsyncSyncGetTextFn get_text;
-    KsyncSyncSetTextFn set_text;
-    KsyncSyncBuildPayloadFn build_payload;
-    KsyncSyncFreePayloadFn free_payload;
-    KsyncSyncApplyResponseFn apply_response;
-    KsyncSyncVoidFn purge_synced_deleted;
-    KsyncSyncLogFn log_http_failure;
+    SyncHttpRequestFn http_request;
+    SyncGetTextFn get_text;
+    SyncSetTextFn set_text;
+    SyncBuildPayloadFn build_payload;
+    SyncFreePayloadFn free_payload;
+    SyncApplyResponseFn apply_response;
+    SyncVoidFn purge_synced_deleted;
+    SyncLogFn log_http_failure;
     void *user;
-} KsyncSyncConfig;
+} SyncConfig;
 ```
 
-`http_request` can be app-provided, or set to `KsyncDefaultHttpRequest` for
+`http_request` can be app-provided, or set to `DefaultSyncHttpRequest` for
 Kryon's built-in libcurl/JNI/fetch transport.
 `get_text` and `set_text` store `sync_auth_token` and
 `sync_auth_token_expires_at`.
@@ -883,11 +883,11 @@ Kryon's built-in libcurl/JNI/fetch transport.
 #### URL Helpers
 
 ```c
-int IsKsyncSyncURLValid(const char *url);
-int NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size);
-int JoinKsyncSyncURL(char *out, size_t out_size,
+int IsSyncURLValid(const char *url);
+int NormalizeSyncURL(const char *input, char *out, size_t out_size);
+int JoinSyncURL(char *out, size_t out_size,
                              const char *base_url, const char *path);
-int JoinKsyncSyncWebSocketURL(char *out, size_t out_size,
+int JoinSyncWebSocketURL(char *out, size_t out_size,
                                 const char *base_url, const char *path);
 ```
 
@@ -897,71 +897,71 @@ Remote sync URLs must be HTTPS. HTTP is accepted only for loopback hosts such as
 #### Buffer And JSON Helpers
 
 ```c
-int AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer,
+int AppendSyncBuffer(SyncBuffer *buffer,
                                   const void *data, size_t bytes);
-int AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer,
+int AppendSyncBufferJSONString(SyncBuffer *buffer,
                                               const char *text);
-void FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer);
-int FindKsyncSyncJSONString(const char *json, const char *key,
+void FreeSyncBuffer(SyncBuffer *buffer);
+int FindSyncJSONString(const char *json, const char *key,
                                      char *out, size_t out_size);
-long long FindKsyncSyncJSONInt64(const char *json, const char *key,
+long long FindSyncJSONInt64(const char *json, const char *key,
                                           long long fallback);
 ```
 
-These are intentionally small helpers for Ksync protocol payload construction and
+These are intentionally small helpers for Sync protocol payload construction and
 simple response fields. Applications that already have a full JSON parser should
 keep using it for domain data.
 
 #### Auth And Sync
 
 ```c
-void ClearKsyncSyncAuthToken(const KsyncSyncConfig *cfg);
-KsyncSyncResult LoginKsyncSync(const KsyncSyncConfig *cfg);
-KsyncSyncResult RunKsyncSync(const KsyncSyncConfig *cfg);
-KsyncSyncResult RequestKsyncSyncBearer(const KsyncSyncConfig *cfg,
+void ClearSyncAuthToken(const SyncConfig *cfg);
+SyncResult LoginSync(const SyncConfig *cfg);
+SyncResult RunSync(const SyncConfig *cfg);
+SyncResult RequestSyncBearer(const SyncConfig *cfg,
                                                    const char *method,
                                                    const char *path,
                                                    const char *body,
                                                    char *out,
                                                    size_t out_size);
-KsyncSyncResult DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg);
-const char *GetKsyncSyncResultName(KsyncSyncResult result);
+SyncResult DeleteSyncAccount(const SyncConfig *cfg);
+const char *GetSyncResultName(SyncResult result);
 ```
 
-`RunKsyncSync` loads or refreshes an auth token, asks the app callback for
+`RunSync` loads or refreshes an auth token, asks the app callback for
 a local-first payload, posts it to `/api/v1/sync`, applies the response through
-the callback, and purges synced tombstones on success. `RequestKsyncSyncBearer`
-is for app-specific Ksync endpoints that use the same account token.
+the callback, and purges synced tombstones on success. `RequestSyncBearer`
+is for app-specific Sync endpoints that use the same account token.
 
 #### Default Transport And Events
 
 ```c
-int KsyncDefaultHttpRequest(const char *method, const char *url,
+int DefaultSyncHttpRequest(const char *method, const char *url,
                             const char *body,
                             const char *const *headers,
                             int header_count,
-                            KsyncSyncBuffer *response,
+                            SyncBuffer *response,
                             long *status, void *user);
-KsyncSyncResult KsyncRemoteEventWait(const KsyncSyncConfig *cfg,
+SyncResult WaitForRemoteSyncEvent(const SyncConfig *cfg,
                                      const char *path);
 #if defined(__EMSCRIPTEN__)
-int KsyncWebSyncStart(const KsyncSyncConfig *cfg);
-int KsyncWebSyncPoll(KsyncSyncResult *result, int *changed);
-int KsyncWebRemoteEventsStart(const KsyncSyncConfig *cfg, const char *path);
-int KsyncWebRemoteEventsPoll(void);
+int StartWebSync(const SyncConfig *cfg);
+int PollWebSync(SyncResult *result, int *changed);
+int StartWebRemoteEvents(const SyncConfig *cfg, const char *path);
+int PollWebRemoteEvents(void);
 #endif
 ```
 
-`KsyncDefaultHttpRequest` provides the common platform HTTP transport. Native
+`DefaultSyncHttpRequest` provides the common platform HTTP transport. Native
 builds use libcurl, Android builds call `syncHttpRequest`/`syncWebSocketWait` on
 the activity through JNI, and web builds use JavaScript `fetch`.
 
-`KsyncRemoteEventWait` waits for one Ksync WebSocket sync-change event using the
-stored bearer token. Web builds use the nonblocking `KsyncWebRemoteEventsStart`
-and `KsyncWebRemoteEventsPoll` pair instead.
+`WaitForRemoteSyncEvent` waits for one Sync WebSocket sync-change event using the
+stored bearer token. Web builds use the nonblocking `StartWebRemoteEvents`
+and `PollWebRemoteEvents` pair instead.
 
-`KsyncWebSyncStart` and `KsyncWebSyncPoll` run the same login/token/sync flow as
-`RunKsyncSync` without blocking the browser frame loop.
+`StartWebSync` and `PollWebSync` run the same login/token/sync flow as
+`RunSync` without blocking the browser frame loop.
 
 ---
 

@@ -173,29 +173,30 @@ KRYON_ZLIB_LDLIB ?= -lz
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
 RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1 -DMAX_CLIPBOARD_BUFFER_LENGTH=1048576
 APP_RAYLIB_CONFIG ?= $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0 -DSUPPORT_FILEFORMAT_MP3=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1
-KRYON_WITH_KSYNC ?=
-KRYON_WITH_DAOCHI ?= $(if $(strip $(KRYON_WITH_KSYNC)),$(KRYON_WITH_KSYNC),0)
+KRYON_WITH_DAOCHI ?= 0
 ifeq ($(KRYON_WITH_DAOCHI),1)
-  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=1 -DKRYON_WITH_KSYNC=1 -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE)
+  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=1 -DHAS_LIBOQS=1 \
+    $(KRYON_LIBOQS_INCLUDE) -Ivendor/monocypher/src \
+    -Ivendor/monocypher/src/optional
   KRYON_DAOCHI_DEPS = $(KRYON_LIBOQS_A)
   KRYON_DAOCHI_LDLIBS = $(KRYON_LIBOQS_A)
-  KRYON_DAOCHI_TESTS = $(KSYNC_ACCOUNT_TEST) $(KSYNC_SYNC_TEST) $(KSYNC_CRYPTO_TEST)
+  KRYON_DAOCHI_TESTS = $(SYNC_ACCOUNT_TEST) $(SYNC_TEST) $(SYNC_CRYPTO_TEST)
   KRYON_STATIC_PACKAGE_DAOCHI_FILES ?= $(KRYON_LIBOQS_A)
   KRYON_STATIC_PACKAGE_DAOCHI_LIBS ?= -loqs
-  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DHAS_LIBOQS=1 -DKRYON_WITH_DAOCHI=1 -DKRYON_WITH_KSYNC=1
+  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DHAS_LIBOQS=1 -DKRYON_WITH_DAOCHI=1
   KRYON_STATIC_PACKAGE_DAOCHI_MANIFEST_LIBS ?= "liboqs.a", 
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;HAS_LIBOQS=1;KRYON_WITH_DAOCHI=1;KRYON_WITH_KSYNC=1
+  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;HAS_LIBOQS=1;KRYON_WITH_DAOCHI=1
   KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_LIBS ?= "$${KRYON_PACKAGE_PREFIX}/lib/liboqs.a" 
 else
-  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=0 -DKRYON_WITH_KSYNC=0
+  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=0
   KRYON_DAOCHI_DEPS =
   KRYON_DAOCHI_LDLIBS =
   KRYON_DAOCHI_TESTS =
   KRYON_STATIC_PACKAGE_DAOCHI_FILES ?=
   KRYON_STATIC_PACKAGE_DAOCHI_LIBS ?=
-  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DKRYON_WITH_DAOCHI=0 -DKRYON_WITH_KSYNC=0
+  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DKRYON_WITH_DAOCHI=0
   KRYON_STATIC_PACKAGE_DAOCHI_MANIFEST_LIBS ?=
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;KRYON_WITH_DAOCHI=0;KRYON_WITH_KSYNC=0
+  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;KRYON_WITH_DAOCHI=0
   KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_LIBS ?=
 endif
 KRYON_STATIC_PACKAGE_EXTERNAL_LIBS ?= $(RAY_LDLIBS) $(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) $(KRYON_ZLIB_LDLIB) -lpthread -lm
@@ -223,7 +224,7 @@ CPPFLAGS += $(KRYON_NOTIFICATION_CPPFLAGS) $(KRYON_NOTIFICATION_CFLAGS)
 LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
-KRYON_DAOCHI_SRCS_REL := $(wildcard src/ksync/*.c)
+KRYON_DAOCHI_SRCS_REL := $(wildcard src/sync/*.c)
 
 # Browser-only backend sources compile to empty translation units under native
 # compilers and only link when their backend is selected; keep the find from
@@ -265,9 +266,9 @@ endif
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = $(BUILD_DIR)/libkryon.a
-KSYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/ksync_account_test
-KSYNC_SYNC_TEST = $(BUILD_DIR)/tests/ksync_sync_test
-KSYNC_CRYPTO_TEST = $(BUILD_DIR)/tests/ksync_crypto_test
+SYNC_ACCOUNT_TEST = $(BUILD_DIR)/tests/sync_account_test
+SYNC_TEST = $(BUILD_DIR)/tests/sync_test
+SYNC_CRYPTO_TEST = $(BUILD_DIR)/tests/sync_crypto_test
 TRANSITION_TEST = $(BUILD_DIR)/tests/transition_test
 FILE_DIALOG_BACKEND_TEST = $(BUILD_DIR)/tests/file_dialog_backend_test
 DESKTOP_TEST = $(BUILD_DIR)/tests/desktop_test
@@ -523,9 +524,9 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(LOCALE_TEST)
 	$(SFS_TEST)
 	@if [ "$(KRYON_WITH_DAOCHI)" = "1" ]; then \
-		$(KSYNC_ACCOUNT_TEST); \
-		$(KSYNC_SYNC_TEST); \
-		$(KSYNC_CRYPTO_TEST); \
+		$(SYNC_ACCOUNT_TEST); \
+		$(SYNC_TEST); \
+		$(SYNC_CRYPTO_TEST); \
 	fi
 	$(TRANSITION_TEST)
 	$(FILE_DIALOG_BACKEND_TEST)
@@ -752,22 +753,25 @@ $(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/ch
 		'}' > $(TOOLS_DIST_ROOT)/manifest.json
 	tar -C $(BUILD_DIR)/dist -czf $@ $(notdir $(TOOLS_DIST_ROOT))
 
-$(KSYNC_ACCOUNT_TEST): tests/ksync_account_test.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c include/ksync_account.h include/ksync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(SYNC_ACCOUNT_TEST): tests/sync_account_test.c src/sync/sync_account.c src/sync/sync_crypto.c src/sync/monocypher.c src/sync/monocypher_ed25519.c include/sync/account.h include/sync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
-		tests/ksync_account_test.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c \
+		tests/sync_account_test.c src/sync/sync_account.c src/sync/sync_crypto.c \
+		src/sync/monocypher.c src/sync/monocypher_ed25519.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
 
-$(KSYNC_SYNC_TEST): tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c src/ksync/ksync_crypto.c include/ksync_sync.h include/ksync_account.h include/ksync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
+$(SYNC_TEST): tests/sync_test.c src/sync/sync.c src/sync/sync_nodes.c src/sync/sync_account.c src/sync/sync_crypto.c src/sync/monocypher.c src/sync/monocypher_ed25519.c include/sync.h include/sync_nodes.h include/sync/account.h include/sync_crypto.h $(KRYON_LIBOQS_A) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DHAS_LIBOQS=1 $(KRYON_LIBOQS_INCLUDE) \
-		tests/ksync_sync_test.c src/ksync/ksync_sync.c src/ksync/ksync_account.c \
-		src/ksync/ksync_crypto.c \
+		tests/sync_test.c src/sync/sync.c src/sync/sync_nodes.c src/sync/sync_account.c \
+		src/sync/sync_crypto.c src/sync/monocypher.c \
+		src/sync/monocypher_ed25519.c \
 		$(KRYON_LIBOQS_A) -lm -o $@
 
-$(KSYNC_CRYPTO_TEST): tests/ksync_crypto_test.c src/ksync/ksync_crypto.c include/ksync_crypto.h | $(BUILD_DIR)
+$(SYNC_CRYPTO_TEST): tests/sync_crypto_test.c src/sync/sync_crypto.c include/sync_crypto.h src/sync/monocypher.c src/sync/monocypher_ed25519.c | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ksync_crypto_test.c src/ksync/ksync_crypto.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sync_crypto_test.c src/sync/sync_crypto.c \
+		src/sync/monocypher.c src/sync/monocypher_ed25519.c -o $@
 
 $(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

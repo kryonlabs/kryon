@@ -7,7 +7,7 @@
 #include <windows.h>
 #endif
 
-#include "ksync_sync.h"
+#include "sync.h"
 #include "platform.h"
 
 #include <stdint.h>
@@ -25,58 +25,58 @@ extern struct android_app *GetAndroidApp(void);
 #else
 #include <curl/curl.h>
 #if LIBCURL_VERSION_NUM < 0x075600
-#error "Kryon Ksync transport requires libcurl 7.86.0 or newer with websocket support"
+#error "Kryon sync transport requires libcurl 7.86.0 or newer with websocket support"
 #endif
 #endif
 
-#define KSYNC_SYNC_PATH "/api/v1/sync"
-#define KSYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
-#define KSYNC_LOGIN_PATH "/api/v1/sync/login"
-#define KSYNC_SIGNATURE_CONTEXT "ksync-sync-v1"
-#define KSYNC_USER_HEADER "X-Ksync-User"
-#define KSYNC_SIGNATURE_HEADER "X-Ksync-Signature"
-#define KSYNC_WEB_RESPONSE_MAX (4 * 1024 * 1024)
+#define SYNC_PATH "/api/v1/sync"
+#define SYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
+#define SYNC_LOGIN_PATH "/api/v1/sync/login"
+#define SYNC_SIGNATURE_CONTEXT "daochi-sync-v1"
+#define SYNC_USER_HEADER "X-Daochi-User"
+#define SYNC_SIGNATURE_HEADER "X-Daochi-Signature"
+#define SYNC_WEB_RESPONSE_MAX (4 * 1024 * 1024)
 
 #if defined(__EMSCRIPTEN__)
 static const char *
-transport_signature_context(const KsyncSyncConfig *cfg)
+transport_signature_context(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->signature_context != NULL &&
                    cfg->signature_context[0] != '\0'
                ? cfg->signature_context
-               : KSYNC_SIGNATURE_CONTEXT;
+               : SYNC_SIGNATURE_CONTEXT;
 }
 
 static const char *
-transport_user_header_name(const KsyncSyncConfig *cfg)
+transport_user_header_name(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->user_header_name != NULL &&
                    cfg->user_header_name[0] != '\0'
                ? cfg->user_header_name
-               : KSYNC_USER_HEADER;
+               : SYNC_USER_HEADER;
 }
 
 static const char *
-transport_signature_header_name(const KsyncSyncConfig *cfg)
+transport_signature_header_name(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->signature_header_name != NULL &&
                    cfg->signature_header_name[0] != '\0'
                ? cfg->signature_header_name
-               : KSYNC_SIGNATURE_HEADER;
+               : SYNC_SIGNATURE_HEADER;
 }
 
 static int
-transport_build_message(const KsyncSyncConfig *cfg, const char *method,
+transport_build_message(const SyncConfig *cfg, const char *method,
                         const char *path, const char *nonce_hex,
                         const char *body, char *out, size_t out_size)
 {
-    char body_hash[KSYNC_PUBLIC_ID_HEX_SIZE];
+    char body_hash[SYNC_PUBLIC_ID_HEX_SIZE];
     int len;
 
     if(method == NULL || path == NULL || nonce_hex == NULL || body == NULL ||
        out == NULL || out_size == 0)
         return 0;
-    KsyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    SyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     if(body_hash[0] == '\0')
         return 0;
     len = snprintf(out, out_size, "%s\n%s\n%s\n%s\n%s\n",
@@ -90,18 +90,18 @@ transport_build_message(const KsyncSyncConfig *cfg, const char *method,
 static size_t
 transport_write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-    KsyncSyncBuffer *buffer = (KsyncSyncBuffer *)userdata;
+    SyncBuffer *buffer = (SyncBuffer *)userdata;
     size_t bytes = size * nmemb;
 
     if(buffer == NULL || bytes == 0)
         return bytes;
-    return AppendKsyncSyncBuffer(buffer, ptr, bytes) ? bytes : 0;
+    return AppendSyncBuffer(buffer, ptr, bytes) ? bytes : 0;
 }
 
 int
-KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
+DefaultSyncHttpRequest(const char *method, const char *url, const char *body,
                         const char *const *headers, int header_count,
-                        KsyncSyncBuffer *response, long *status, void *user)
+                        SyncBuffer *response, long *status, void *user)
 {
     CURL *curl;
     CURLcode res;
@@ -118,7 +118,7 @@ KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
         return 0;
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon-ksync/1");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon-sync/1");
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, transport_write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
@@ -151,7 +151,7 @@ KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
 }
 #elif ANDROID_BUILD
 static int
-transport_buffer_set(KsyncSyncBuffer *response, const char *text)
+transport_buffer_set(SyncBuffer *response, const char *text)
 {
     size_t len;
 
@@ -173,7 +173,7 @@ static int
 transport_android_call(const char *java_method, const char *url,
                        const char *method, const char *body,
                        const char *const *headers, int header_count,
-                       KsyncSyncBuffer *response, long *status)
+                       SyncBuffer *response, long *status)
 {
     struct android_app *app = GetAndroidApp();
     JavaVM *jvm;
@@ -282,16 +282,16 @@ done:
 }
 
 int
-KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
+DefaultSyncHttpRequest(const char *method, const char *url, const char *body,
                         const char *const *headers, int header_count,
-                        KsyncSyncBuffer *response, long *status, void *user)
+                        SyncBuffer *response, long *status, void *user)
 {
     (void)user;
     return transport_android_call("syncHttpRequest", url, method, body, headers,
                                   header_count, response, status);
 }
 #elif defined(__EMSCRIPTEN__)
-EM_ASYNC_JS(int, ksync_web_http_request_js,
+EM_ASYNC_JS(int, sync_web_http_request_js,
             (const char *method_ptr, const char *url_ptr, const char *body_ptr,
              const char *headers_ptr, char *response_ptr, int response_size,
              long *status_ptr), {
@@ -321,14 +321,14 @@ EM_ASYNC_JS(int, ksync_web_http_request_js,
         stringToUTF8(text, response_ptr, response_size);
         return 1;
     } catch(e) {
-        console.error("Ksync HTTP failed:", e);
+        console.error("Sync HTTP failed:", e);
         setValue(status_ptr, 0, "i32");
         stringToUTF8("", response_ptr, response_size);
         return 0;
     }
 });
 
-EM_JS(int, ksync_web_fetch_start_js,
+EM_JS(int, sync_web_fetch_start_js,
       (int request_id, const char *method_ptr, const char *url_ptr,
        const char *body_ptr, const char *headers_ptr), {
     const method = UTF8ToString(method_ptr);
@@ -337,9 +337,9 @@ EM_JS(int, ksync_web_fetch_start_js,
     const headerLines = headers_ptr ? UTF8ToString(headers_ptr) : "";
     const headers = {};
 
-    if(!Module.__ksyncFetches)
-        Module.__ksyncFetches = {};
-    Module.__ksyncFetches[request_id] = {state: 0, status: 0, text: ""};
+    if(!Module.__syncFetches)
+        Module.__syncFetches = {};
+    Module.__syncFetches[request_id] = {state: 0, status: 0, text: ""};
 
     for(const line of headerLines.split("\n")) {
         if(!line) continue;
@@ -356,17 +356,17 @@ EM_JS(int, ksync_web_fetch_start_js,
         redirect: "manual"
     }).then(async response => {
         const text = await response.text();
-        Module.__ksyncFetches[request_id] = {state: 1, status: response.status, text};
+        Module.__syncFetches[request_id] = {state: 1, status: response.status, text};
     }).catch(error => {
-        console.error("Ksync HTTP failed:", error);
-        Module.__ksyncFetches[request_id] = {state: 2, status: 0, text: ""};
+        console.error("Sync HTTP failed:", error);
+        Module.__syncFetches[request_id] = {state: 2, status: 0, text: ""};
     });
     return 1;
 });
 
-EM_JS(int, ksync_web_fetch_poll_js,
+EM_JS(int, sync_web_fetch_poll_js,
       (int request_id, char *response_ptr, int response_size, long *status_ptr), {
-    const requests = Module.__ksyncFetches || {};
+    const requests = Module.__syncFetches || {};
     const request = requests[request_id];
     if(!request)
         return 2;
@@ -378,63 +378,63 @@ EM_JS(int, ksync_web_fetch_poll_js,
     return request.state === 1 ? 1 : 2;
 });
 
-EM_JS(int, ksync_websocket_start_js, (const char *url_ptr, const char *token_ptr), {
+EM_JS(int, sync_websocket_start_js, (const char *url_ptr, const char *token_ptr), {
     const url = UTF8ToString(url_ptr);
     const token = UTF8ToString(token_ptr);
     const now = Date.now();
     function scheduleRetry() {
-        const failures = Math.min((Module.__ksyncWebSocketFailures || 0) + 1, 8);
-        Module.__ksyncWebSocketFailures = failures;
-        Module.__ksyncWebSocketRetryAt = Date.now() +
+        const failures = Math.min((Module.__syncWebSocketFailures || 0) + 1, 8);
+        Module.__syncWebSocketFailures = failures;
+        Module.__syncWebSocketRetryAt = Date.now() +
             Math.min(300000, 2000 * Math.pow(2, failures - 1));
     }
     function logSocketError(event) {
-        const logAt = Module.__ksyncWebSocketLogAt || 0;
+        const logAt = Module.__syncWebSocketLogAt || 0;
         if(Date.now() < logAt)
             return;
-        Module.__ksyncWebSocketLogAt = Date.now() + 60000;
-        console.warn("Ksync WebSocket unavailable; remote sync events will retry.", event);
+        Module.__syncWebSocketLogAt = Date.now() + 60000;
+        console.warn("Sync WebSocket unavailable; remote sync events will retry.", event);
     }
-    if(Module.__ksyncWebSocket &&
-       Module.__ksyncWebSocketUrl === url &&
-       (Module.__ksyncWebSocket.readyState === WebSocket.OPEN ||
-        Module.__ksyncWebSocket.readyState === WebSocket.CONNECTING))
+    if(Module.__syncWebSocket &&
+       Module.__syncWebSocketUrl === url &&
+       (Module.__syncWebSocket.readyState === WebSocket.OPEN ||
+        Module.__syncWebSocket.readyState === WebSocket.CONNECTING))
         return 1;
-    if(Module.__ksyncWebSocketRetryAt && now < Module.__ksyncWebSocketRetryAt)
+    if(Module.__syncWebSocketRetryAt && now < Module.__syncWebSocketRetryAt)
         return 1;
-    if(Module.__ksyncWebSocket) {
-        try { Module.__ksyncWebSocket.close(); } catch(e) {}
-        Module.__ksyncWebSocket = null;
+    if(Module.__syncWebSocket) {
+        try { Module.__syncWebSocket.close(); } catch(e) {}
+        Module.__syncWebSocket = null;
     }
-    Module.__ksyncWebSocketUrl = url;
+    Module.__syncWebSocketUrl = url;
     try {
-        const ws = new WebSocket(url, ["ksync-sync-v1", "bearer." + token]);
-        Module.__ksyncWebSocket = ws;
+        const ws = new WebSocket(url, ["daochi-sync-v1", "bearer." + token]);
+        Module.__syncWebSocket = ws;
         ws.onopen = function() {
-            Module.__ksyncWebSocketRetryAt = 0;
-            Module.__ksyncWebSocketFailures = 0;
-            Module.__ksyncWebSocketLogAt = 0;
-            console.info("Ksync WebSocket connected");
+            Module.__syncWebSocketRetryAt = 0;
+            Module.__syncWebSocketFailures = 0;
+            Module.__syncWebSocketLogAt = 0;
+            console.info("Sync WebSocket connected");
         };
         ws.onmessage = function(event) {
             try {
                 const message = JSON.parse(String(event.data || ""));
                 if(message.type === "sync_ready" || message.type === "sync_changed")
-                    Module.__ksyncWebSocketEvent = 1;
+                    Module.__syncWebSocketEvent = 1;
             } catch(e) {
                 if(String(event.data || "").indexOf("sync_changed") >= 0)
-                    Module.__ksyncWebSocketEvent = 1;
+                    Module.__syncWebSocketEvent = 1;
             }
         };
         ws.onclose = function(event) {
-            if(Module.__ksyncWebSocket === ws)
-                Module.__ksyncWebSocket = null;
+            if(Module.__syncWebSocket === ws)
+                Module.__syncWebSocket = null;
             scheduleRetry();
-            if(ws.__ksyncHadError)
+            if(ws.__syncHadError)
                 logSocketError(event);
         };
         ws.onerror = function(event) {
-            ws.__ksyncHadError = true;
+            ws.__syncHadError = true;
         };
         return 1;
     } catch(e) {
@@ -444,18 +444,18 @@ EM_JS(int, ksync_websocket_start_js, (const char *url_ptr, const char *token_ptr
     }
 });
 
-EM_JS(int, ksync_websocket_poll_js, (void), {
-    const event = Module.__ksyncWebSocketEvent ? 1 : 0;
-    Module.__ksyncWebSocketEvent = 0;
+EM_JS(int, sync_websocket_poll_js, (void), {
+    const event = Module.__syncWebSocketEvent ? 1 : 0;
+    Module.__syncWebSocketEvent = 0;
     return event;
 });
 
 int
-KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
+DefaultSyncHttpRequest(const char *method, const char *url, const char *body,
                         const char *const *headers, int header_count,
-                        KsyncSyncBuffer *response, long *status, void *user)
+                        SyncBuffer *response, long *status, void *user)
 {
-    KsyncSyncBuffer header_blob = {0};
+    SyncBuffer header_blob = {0};
     char *response_text;
     int ok;
 
@@ -466,35 +466,35 @@ KsyncDefaultHttpRequest(const char *method, const char *url, const char *body,
         return 0;
     for(int i = 0; i < header_count; i++) {
         if(headers[i] != NULL &&
-           (!AppendKsyncSyncBuffer(&header_blob, headers[i], strlen(headers[i])) ||
-            !AppendKsyncSyncBuffer(&header_blob, "\n", 1))) {
-            FreeKsyncSyncBuffer(&header_blob);
+           (!AppendSyncBuffer(&header_blob, headers[i], strlen(headers[i])) ||
+            !AppendSyncBuffer(&header_blob, "\n", 1))) {
+            FreeSyncBuffer(&header_blob);
             return 0;
         }
     }
 
-    response_text = (char *)calloc(1, KSYNC_WEB_RESPONSE_MAX);
+    response_text = (char *)calloc(1, SYNC_WEB_RESPONSE_MAX);
     if(response_text == NULL) {
-        FreeKsyncSyncBuffer(&header_blob);
+        FreeSyncBuffer(&header_blob);
         return 0;
     }
-    ok = ksync_web_http_request_js(method, url, body != NULL ? body : "",
+    ok = sync_web_http_request_js(method, url, body != NULL ? body : "",
                                    header_blob.data != NULL ? header_blob.data : "",
-                                   response_text, KSYNC_WEB_RESPONSE_MAX, status);
-    FreeKsyncSyncBuffer(&header_blob);
+                                   response_text, SYNC_WEB_RESPONSE_MAX, status);
+    FreeSyncBuffer(&header_blob);
     if(!ok) {
         free(response_text);
         return 0;
     }
     response->data = response_text;
     response->len = strlen(response_text);
-    response->cap = KSYNC_WEB_RESPONSE_MAX;
+    response->cap = SYNC_WEB_RESPONSE_MAX;
     return 1;
 }
 #endif
 
 static int
-transport_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t out_size)
+transport_load_valid_auth_token(const SyncConfig *cfg, char *out, size_t out_size)
 {
     const char *token;
     const char *expires_text;
@@ -514,46 +514,46 @@ transport_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t ou
     return out[0] != '\0';
 }
 
-KsyncSyncResult
-KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
+SyncResult
+WaitForRemoteSyncEvent(const SyncConfig *cfg, const char *path)
 {
 #if ANDROID_BUILD
     char token[4096];
     char ws_url[6000];
     char auth_header[4200];
     const char *headers[1];
-    KsyncSyncBuffer response = {0};
+    SyncBuffer response = {0};
     long status = 0;
 
-    if(cfg == NULL || !IsKsyncSyncURLValid(cfg->base_url))
-        return KSYNC_SYNC_INVALID_URL;
-    if(!HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
+    if(cfg == NULL || !IsSyncURLValid(cfg->base_url))
+        return SYNC_INVALID_URL;
+    if(!HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
     if(!transport_load_valid_auth_token(cfg, token, sizeof(token)))
-        return KSYNC_SYNC_AUTH_FAILED;
-    if(!JoinKsyncSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
-        return KSYNC_SYNC_INVALID_URL;
+        return SYNC_AUTH_FAILED;
+    if(!JoinSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
+        return SYNC_INVALID_URL;
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
     headers[0] = auth_header;
     if(!transport_android_call("syncWebSocketWait", ws_url, NULL, NULL, headers, 1,
                                &response, &status)) {
         if(status == 401)
-            ClearKsyncSyncAuthToken(cfg);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+            ClearSyncAuthToken(cfg);
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(status != 101) {
         if(status == 401)
-            ClearKsyncSyncAuthToken(cfg);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+            ClearSyncAuthToken(cfg);
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(response.data != NULL && strstr(response.data, "\"type\":\"sync_changed\"") != NULL) {
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_OK;
+        FreeSyncBuffer(&response);
+        return SYNC_OK;
     }
-    FreeKsyncSyncBuffer(&response);
-    return KSYNC_SYNC_REQUEST_FAILED;
+    FreeSyncBuffer(&response);
+    return SYNC_REQUEST_FAILED;
 #elif !defined(__EMSCRIPTEN__)
     char token[4096];
     char ws_url[6000];
@@ -565,24 +565,24 @@ KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
     char message[2048];
     size_t message_len = 0;
 
-    if(cfg == NULL || !IsKsyncSyncURLValid(cfg->base_url))
-        return KSYNC_SYNC_INVALID_URL;
-    if(!HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
+    if(cfg == NULL || !IsSyncURLValid(cfg->base_url))
+        return SYNC_INVALID_URL;
+    if(!HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
     if(!transport_load_valid_auth_token(cfg, token, sizeof(token)))
-        return KSYNC_SYNC_AUTH_FAILED;
-    if(!JoinKsyncSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
-        return KSYNC_SYNC_INVALID_URL;
+        return SYNC_AUTH_FAILED;
+    if(!JoinSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
+        return SYNC_INVALID_URL;
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
     if(curl == NULL)
-        return KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_REQUEST_FAILED;
     curl_headers = curl_slist_append(curl_headers, auth_header);
     curl_easy_setopt(curl, CURLOPT_URL, ws_url);
     curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon-ksync/1");
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon-sync/1");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, curl_headers);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -592,10 +592,10 @@ KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
     if(code != CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
         if(status == 401)
-            ClearKsyncSyncAuthToken(cfg);
+            ClearSyncAuthToken(cfg);
         curl_slist_free_all(curl_headers);
         curl_easy_cleanup(curl);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_REQUEST_FAILED;
     }
     curl_slist_free_all(curl_headers);
 
@@ -618,11 +618,11 @@ KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
         }
         if(code != CURLE_OK) {
             curl_easy_cleanup(curl);
-            return KSYNC_SYNC_REQUEST_FAILED;
+            return SYNC_REQUEST_FAILED;
         }
         if(meta != NULL && (meta->flags & CURLWS_CLOSE)) {
             curl_easy_cleanup(curl);
-            return KSYNC_SYNC_REQUEST_FAILED;
+            return SYNC_REQUEST_FAILED;
         }
         if(meta != NULL && !(meta->flags & CURLWS_TEXT))
             continue;
@@ -637,7 +637,7 @@ KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
             continue;
         if(strstr(message, "\"type\":\"sync_changed\"") != NULL) {
             curl_easy_cleanup(curl);
-            return KSYNC_SYNC_OK;
+            return SYNC_OK;
         }
         message_len = 0;
         message[0] = '\0';
@@ -645,42 +645,42 @@ KsyncRemoteEventWait(const KsyncSyncConfig *cfg, const char *path)
 #else
     (void)cfg;
     (void)path;
-    return KSYNC_SYNC_REQUEST_FAILED;
+    return SYNC_REQUEST_FAILED;
 #endif
 }
 
 #if defined(__EMSCRIPTEN__)
-typedef enum KsyncWebSyncState {
-    KSYNC_WEB_SYNC_IDLE,
-    KSYNC_WEB_SYNC_WAIT_CHALLENGE,
-    KSYNC_WEB_SYNC_WAIT_LOGIN,
-    KSYNC_WEB_SYNC_WAIT_SYNC
-} KsyncWebSyncState;
+typedef enum SyncWebSyncState {
+    SYNC_WEB_SYNC_IDLE,
+    SYNC_WEB_SYNC_WAIT_CHALLENGE,
+    SYNC_WEB_SYNC_WAIT_LOGIN,
+    SYNC_WEB_SYNC_WAIT_SYNC
+} SyncWebSyncState;
 
-typedef struct KsyncWebSyncJob {
-    KsyncWebSyncState state;
+typedef struct SyncWebSyncJob {
+    SyncWebSyncState state;
     int request_id;
-    KsyncSyncConfig cfg;
+    SyncConfig cfg;
     char base_url[512];
     char client_id[128];
     char signature_context[64];
     char user_header_name[64];
     char signature_header_name[64];
-    KsyncAccount account;
-    KsyncSyncBuffer login_body;
+    SyncAccount account;
+    SyncBuffer login_body;
     char *payload;
     char *response_text;
     long status;
     int retried_auth;
-} KsyncWebSyncJob;
+} SyncWebSyncJob;
 
-static KsyncWebSyncJob g_web_sync;
+static SyncWebSyncJob g_web_sync;
 static int g_web_sync_next_request_id = 1;
 
 static void
 web_sync_reset(void)
 {
-    FreeKsyncSyncBuffer(&g_web_sync.login_body);
+    FreeSyncBuffer(&g_web_sync.login_body);
     if(g_web_sync.payload != NULL && g_web_sync.cfg.free_payload != NULL)
         g_web_sync.cfg.free_payload(g_web_sync.payload, g_web_sync.cfg.user);
     free(g_web_sync.response_text);
@@ -690,56 +690,56 @@ web_sync_reset(void)
 static int
 web_sync_start_fetch(const char *method, const char *url, const char *body,
                      const char *const *headers, int header_count,
-                     KsyncWebSyncState wait_state)
+                     SyncWebSyncState wait_state)
 {
-    KsyncSyncBuffer header_blob = {0};
+    SyncBuffer header_blob = {0};
 
     free(g_web_sync.response_text);
     g_web_sync.response_text = NULL;
     g_web_sync.status = 0;
     for(int i = 0; i < header_count; i++) {
         if(headers[i] != NULL &&
-           (!AppendKsyncSyncBuffer(&header_blob, headers[i], strlen(headers[i])) ||
-            !AppendKsyncSyncBuffer(&header_blob, "\n", 1))) {
-            FreeKsyncSyncBuffer(&header_blob);
+           (!AppendSyncBuffer(&header_blob, headers[i], strlen(headers[i])) ||
+            !AppendSyncBuffer(&header_blob, "\n", 1))) {
+            FreeSyncBuffer(&header_blob);
             return 0;
         }
     }
-    g_web_sync.response_text = (char *)calloc(1, KSYNC_WEB_RESPONSE_MAX);
+    g_web_sync.response_text = (char *)calloc(1, SYNC_WEB_RESPONSE_MAX);
     if(g_web_sync.response_text == NULL) {
-        FreeKsyncSyncBuffer(&header_blob);
+        FreeSyncBuffer(&header_blob);
         return 0;
     }
     g_web_sync.request_id = g_web_sync_next_request_id++;
     if(g_web_sync_next_request_id <= 0)
         g_web_sync_next_request_id = 1;
     g_web_sync.state = wait_state;
-    if(!ksync_web_fetch_start_js(g_web_sync.request_id, method, url,
+    if(!sync_web_fetch_start_js(g_web_sync.request_id, method, url,
                                  body != NULL ? body : "",
                                  header_blob.data != NULL ? header_blob.data : "")) {
-        FreeKsyncSyncBuffer(&header_blob);
+        FreeSyncBuffer(&header_blob);
         return 0;
     }
-    FreeKsyncSyncBuffer(&header_blob);
+    FreeSyncBuffer(&header_blob);
     return 1;
 }
 
 static int
-web_sync_poll_fetch(KsyncSyncBuffer *response)
+web_sync_poll_fetch(SyncBuffer *response)
 {
     int poll;
 
     if(response == NULL || g_web_sync.response_text == NULL)
         return 2;
-    poll = ksync_web_fetch_poll_js(g_web_sync.request_id,
+    poll = sync_web_fetch_poll_js(g_web_sync.request_id,
                                    g_web_sync.response_text,
-                                   KSYNC_WEB_RESPONSE_MAX,
+                                   SYNC_WEB_RESPONSE_MAX,
                                    &g_web_sync.status);
     if(poll != 1)
         return poll;
     response->data = g_web_sync.response_text;
     response->len = strlen(g_web_sync.response_text);
-    response->cap = KSYNC_WEB_RESPONSE_MAX;
+    response->cap = SYNC_WEB_RESPONSE_MAX;
     g_web_sync.response_text = NULL;
     return 1;
 }
@@ -749,37 +749,37 @@ web_sync_start_challenge(void)
 {
     char url[768];
 
-    if(!JoinKsyncSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
-                         KSYNC_CHALLENGE_PATH))
+    if(!JoinSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
+                         SYNC_CHALLENGE_PATH))
         return 0;
     if(strlen(url) + strlen(g_web_sync.account.public_id) + 10 >= sizeof(url))
         return 0;
     strncat(url, "?user_id=", sizeof(url) - strlen(url) - 1);
     strncat(url, g_web_sync.account.public_id, sizeof(url) - strlen(url) - 1);
     return web_sync_start_fetch("GET", url, NULL, NULL, 0,
-                                KSYNC_WEB_SYNC_WAIT_CHALLENGE);
+                                SYNC_WEB_SYNC_WAIT_CHALLENGE);
 }
 
 static int
 web_sync_start_login(const char *nonce_hex)
 {
     char message[256];
-    char signature_hex[KSYNC_SIGNATURE_HEX_SIZE];
+    char signature_hex[SYNC_SIGNATURE_HEX_SIZE];
     char url[768];
     char user_header[128];
-    char signature_header[KSYNC_SIGNATURE_HEX_SIZE + 64];
+    char signature_header[SYNC_SIGNATURE_HEX_SIZE + 64];
     const char *headers[3];
 
-    if(!transport_build_message(&g_web_sync.cfg, "POST", KSYNC_LOGIN_PATH,
+    if(!transport_build_message(&g_web_sync.cfg, "POST", SYNC_LOGIN_PATH,
                                 nonce_hex, g_web_sync.login_body.data,
                                 message, sizeof(message)))
         return 0;
-    if(!SignKsyncAccountHex(&g_web_sync.account, (const uint8_t *)message,
+    if(!SignSyncAccountHex(&g_web_sync.account, (const uint8_t *)message,
                             strlen(message), signature_hex,
                             sizeof(signature_hex)))
         return 0;
-    if(!JoinKsyncSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
-                         KSYNC_LOGIN_PATH))
+    if(!JoinSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
+                         SYNC_LOGIN_PATH))
         return 0;
     snprintf(user_header, sizeof(user_header), "%s: %s",
              transport_user_header_name(&g_web_sync.cfg),
@@ -790,7 +790,7 @@ web_sync_start_login(const char *nonce_hex)
     headers[1] = user_header;
     headers[2] = signature_header;
     return web_sync_start_fetch("POST", url, g_web_sync.login_body.data,
-                                headers, 3, KSYNC_WEB_SYNC_WAIT_LOGIN);
+                                headers, 3, SYNC_WEB_SYNC_WAIT_LOGIN);
 }
 
 static int
@@ -811,8 +811,8 @@ web_sync_start_sync(void)
         if(g_web_sync.payload == NULL)
             return 0;
     }
-    if(!JoinKsyncSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
-                         KSYNC_SYNC_PATH))
+    if(!JoinSyncURL(url, sizeof(url), g_web_sync.cfg.base_url,
+                         SYNC_PATH))
         return 0;
     snprintf(user_header, sizeof(user_header), "%s: %s",
              transport_user_header_name(&g_web_sync.cfg),
@@ -822,7 +822,7 @@ web_sync_start_sync(void)
     headers[1] = user_header;
     headers[2] = auth_header;
     return web_sync_start_fetch("POST", url, g_web_sync.payload, headers, 3,
-                                KSYNC_WEB_SYNC_WAIT_SYNC);
+                                SYNC_WEB_SYNC_WAIT_SYNC);
 }
 
 static int
@@ -830,29 +830,29 @@ web_sync_build_login_body(void)
 {
     if(g_web_sync.login_body.data != NULL)
         return 1;
-    return AppendKsyncSyncBuffer(&g_web_sync.login_body, "{\"user_id_hash\":",
+    return AppendSyncBuffer(&g_web_sync.login_body, "{\"user_id_hash\":",
                                  strlen("{\"user_id_hash\":")) &&
-           AppendKsyncSyncBufferJSONString(&g_web_sync.login_body,
+           AppendSyncBufferJSONString(&g_web_sync.login_body,
                                            g_web_sync.account.public_id) &&
-           AppendKsyncSyncBuffer(&g_web_sync.login_body, ",\"client_id\":",
+           AppendSyncBuffer(&g_web_sync.login_body, ",\"client_id\":",
                                  strlen(",\"client_id\":")) &&
-           AppendKsyncSyncBufferJSONString(&g_web_sync.login_body,
+           AppendSyncBufferJSONString(&g_web_sync.login_body,
                                            g_web_sync.cfg.client_id) &&
-           AppendKsyncSyncBuffer(&g_web_sync.login_body, ",\"public_key\":",
+           AppendSyncBuffer(&g_web_sync.login_body, ",\"public_key\":",
                                  strlen(",\"public_key\":")) &&
-           AppendKsyncSyncBufferJSONString(&g_web_sync.login_body,
+           AppendSyncBufferJSONString(&g_web_sync.login_body,
                                            g_web_sync.account.public_key_hex) &&
-           AppendKsyncSyncBuffer(&g_web_sync.login_body, "}", 1);
+           AppendSyncBuffer(&g_web_sync.login_body, "}", 1);
 }
 
 int
-KsyncWebSyncStart(const KsyncSyncConfig *cfg)
+StartWebSync(const SyncConfig *cfg)
 {
     char token[4096];
 
-    if(g_web_sync.state != KSYNC_WEB_SYNC_IDLE || cfg == NULL)
+    if(g_web_sync.state != SYNC_WEB_SYNC_IDLE || cfg == NULL)
         return 0;
-    if(!IsKsyncSyncURLValid(cfg->base_url) || !HasKsyncAccountValues(cfg->account) ||
+    if(!IsSyncURLValid(cfg->base_url) || !HasSyncAccountValues(cfg->account) ||
        cfg->get_text == NULL || cfg->set_text == NULL ||
        cfg->build_payload == NULL || cfg->free_payload == NULL ||
        cfg->apply_response == NULL)
@@ -890,54 +890,54 @@ KsyncWebSyncStart(const KsyncSyncConfig *cfg)
 }
 
 int
-KsyncWebSyncPoll(KsyncSyncResult *result, int *changed)
+PollWebSync(SyncResult *result, int *changed)
 {
-    KsyncSyncBuffer response = {0};
+    SyncBuffer response = {0};
     int poll;
 
     if(result != NULL)
-        *result = KSYNC_SYNC_OK;
+        *result = SYNC_OK;
     if(changed != NULL)
         *changed = 0;
-    if(g_web_sync.state == KSYNC_WEB_SYNC_IDLE)
+    if(g_web_sync.state == SYNC_WEB_SYNC_IDLE)
         return 0;
     poll = web_sync_poll_fetch(&response);
     if(poll == 0)
         return 0;
     if(poll == 2) {
         if(result != NULL)
-            *result = KSYNC_SYNC_REQUEST_FAILED;
+            *result = SYNC_REQUEST_FAILED;
         web_sync_reset();
         return 1;
     }
 
-    if(g_web_sync.state == KSYNC_WEB_SYNC_WAIT_CHALLENGE) {
+    if(g_web_sync.state == SYNC_WEB_SYNC_WAIT_CHALLENGE) {
         char nonce_hex[65];
         if(g_web_sync.status != 200 ||
-           !FindKsyncSyncJSONString(response.data, "nonce", nonce_hex,
+           !FindSyncJSONString(response.data, "nonce", nonce_hex,
                                     sizeof(nonce_hex)) ||
            strlen(nonce_hex) != 64) {
             if(g_web_sync.cfg.log_http_failure != NULL)
                 g_web_sync.cfg.log_http_failure("challenge", g_web_sync.status,
                                                 response.data, g_web_sync.cfg.user);
             if(result != NULL)
-                *result = g_web_sync.status == 401 ? KSYNC_SYNC_AUTH_FAILED
-                                                   : KSYNC_SYNC_CHALLENGE_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = g_web_sync.status == 401 ? SYNC_AUTH_FAILED
+                                                   : SYNC_CHALLENGE_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
-        FreeKsyncSyncBuffer(&response);
+        FreeSyncBuffer(&response);
         if(!web_sync_start_login(nonce_hex)) {
             if(result != NULL)
-                *result = KSYNC_SYNC_SIGN_FAILED;
+                *result = SYNC_SIGN_FAILED;
             web_sync_reset();
             return 1;
         }
         return 0;
     }
 
-    if(g_web_sync.state == KSYNC_WEB_SYNC_WAIT_LOGIN) {
+    if(g_web_sync.state == SYNC_WEB_SYNC_WAIT_LOGIN) {
         char token[4096];
         long long expires_in;
         long long expires_at;
@@ -947,8 +947,8 @@ KsyncWebSyncPoll(KsyncSyncResult *result, int *changed)
                 g_web_sync.cfg.log_http_failure("login auth", g_web_sync.status,
                                                 response.data, g_web_sync.cfg.user);
             if(result != NULL)
-                *result = KSYNC_SYNC_AUTH_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = SYNC_AUTH_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
@@ -957,16 +957,16 @@ KsyncWebSyncPoll(KsyncSyncResult *result, int *changed)
                 g_web_sync.cfg.log_http_failure("login", g_web_sync.status,
                                                 response.data, g_web_sync.cfg.user);
             if(result != NULL)
-                *result = KSYNC_SYNC_REQUEST_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = SYNC_REQUEST_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
-        expires_in = FindKsyncSyncJSONInt64(response.data, "expires_in_seconds", 3600);
-        if(!FindKsyncSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
+        expires_in = FindSyncJSONInt64(response.data, "expires_in_seconds", 3600);
+        if(!FindSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
             if(result != NULL)
-                *result = KSYNC_SYNC_PAYLOAD_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = SYNC_PAYLOAD_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
@@ -980,27 +980,27 @@ KsyncWebSyncPoll(KsyncSyncResult *result, int *changed)
             g_web_sync.cfg.set_text("sync_auth_token_expires_at", text,
                                     g_web_sync.cfg.user);
         }
-        FreeKsyncSyncBuffer(&response);
+        FreeSyncBuffer(&response);
         if(!web_sync_start_sync()) {
             if(result != NULL)
-                *result = KSYNC_SYNC_PAYLOAD_FAILED;
+                *result = SYNC_PAYLOAD_FAILED;
             web_sync_reset();
             return 1;
         }
         return 0;
     }
 
-    if(g_web_sync.state == KSYNC_WEB_SYNC_WAIT_SYNC) {
+    if(g_web_sync.state == SYNC_WEB_SYNC_WAIT_SYNC) {
         if(g_web_sync.status == 401) {
-            ClearKsyncSyncAuthToken(&g_web_sync.cfg);
-            FreeKsyncSyncBuffer(&response);
+            ClearSyncAuthToken(&g_web_sync.cfg);
+            FreeSyncBuffer(&response);
             if(!g_web_sync.retried_auth) {
                 g_web_sync.retried_auth = 1;
                 if(web_sync_build_login_body() && web_sync_start_challenge())
                     return 0;
             }
             if(result != NULL)
-                *result = KSYNC_SYNC_AUTH_FAILED;
+                *result = SYNC_AUTH_FAILED;
             web_sync_reset();
             return 1;
         }
@@ -1009,55 +1009,55 @@ KsyncWebSyncPoll(KsyncSyncResult *result, int *changed)
                 g_web_sync.cfg.log_http_failure("sync", g_web_sync.status,
                                                 response.data, g_web_sync.cfg.user);
             if(result != NULL)
-                *result = KSYNC_SYNC_REQUEST_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = SYNC_REQUEST_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
         if(!g_web_sync.cfg.apply_response(response.data, g_web_sync.cfg.user)) {
             if(result != NULL)
-                *result = KSYNC_SYNC_PAYLOAD_FAILED;
-            FreeKsyncSyncBuffer(&response);
+                *result = SYNC_PAYLOAD_FAILED;
+            FreeSyncBuffer(&response);
             web_sync_reset();
             return 1;
         }
         if(changed != NULL)
             *changed = 1;
-        FreeKsyncSyncBuffer(&response);
+        FreeSyncBuffer(&response);
         if(g_web_sync.cfg.purge_synced_deleted != NULL)
             g_web_sync.cfg.purge_synced_deleted(g_web_sync.cfg.user);
         if(result != NULL)
-            *result = KSYNC_SYNC_OK;
+            *result = SYNC_OK;
         web_sync_reset();
         return 1;
     }
 
     web_sync_reset();
     if(result != NULL)
-        *result = KSYNC_SYNC_REQUEST_FAILED;
+        *result = SYNC_REQUEST_FAILED;
     return 1;
 }
 
 int
-KsyncWebRemoteEventsStart(const KsyncSyncConfig *cfg, const char *path)
+StartWebRemoteEvents(const SyncConfig *cfg, const char *path)
 {
     char token[4096];
     char ws_url[6000];
 
-    if(cfg == NULL || !IsKsyncSyncURLValid(cfg->base_url))
+    if(cfg == NULL || !IsSyncURLValid(cfg->base_url))
         return 0;
-    if(!HasKsyncAccountValues(cfg->account))
+    if(!HasSyncAccountValues(cfg->account))
         return 0;
     if(!transport_load_valid_auth_token(cfg, token, sizeof(token)))
         return 0;
-    if(!JoinKsyncSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
+    if(!JoinSyncWebSocketURL(ws_url, sizeof(ws_url), cfg->base_url, path))
         return 0;
-    return ksync_websocket_start_js(ws_url, token);
+    return sync_websocket_start_js(ws_url, token);
 }
 
 int
-KsyncWebRemoteEventsPoll(void)
+PollWebRemoteEvents(void)
 {
-    return ksync_websocket_poll_js();
+    return sync_websocket_poll_js();
 }
 #endif

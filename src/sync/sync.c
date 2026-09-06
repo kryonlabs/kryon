@@ -1,45 +1,51 @@
-#include "ksync_sync.h"
-#include "ksync_crypto.h"
+#include "sync.h"
+#include "sync_crypto.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#define KSYNC_SYNC_PATH "/api/v1/sync"
-#define KSYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
-#define KSYNC_LOGIN_PATH "/api/v1/sync/login"
-#define KSYNC_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
-#define KSYNC_ACCOUNT_DELETE_PATH "/api/v1/account/delete"
-#define KSYNC_DELETE_SIGNATURE_CONTEXT "ksync-delete-v1"
-#define KSYNC_SYNC_PAYLOAD_CONTEXT "ksync-payload-key-v1"
-#define KSYNC_SYNC_AUTH_TOKEN_KEY "sync_auth_token"
-#define KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
-#define KSYNC_SYNC_CLOCK_SKEW_KEY "sync_clock_skew"
-#define KSYNC_SYNC_SIGNATURE_CONTEXT "ksync-sync-v1"
-#define KSYNC_SYNC_USER_HEADER "X-Ksync-User"
-#define KSYNC_SYNC_SIGNATURE_HEADER "X-Ksync-Signature"
-#define KSYNC_SYNC_PAYLOAD_COMPRESSION "lzss1"
+#define SYNC_PATH "/api/v1/sync"
+#define SYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
+#define SYNC_LOGIN_PATH "/api/v1/sync/login"
+#define SYNC_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
+#define SYNC_ACCOUNT_DELETE_PATH "/api/v1/account/delete"
+#define SYNC_DEVICE_REGISTRATION_PATH "/api/v1/account/devices"
+#define SYNC_DELETE_SIGNATURE_CONTEXT "daochi-delete-v1"
+#define SYNC_DEVICE_REGISTRATION_CONTEXT "daochi-device-registration-v1"
+#define SYNC_TRANSACTION_CONTEXT "daochi-tx-v1"
+#define SYNC_PAYLOAD_CONTEXT "sync-payload-key-v1"
+#define SYNC_AUTH_TOKEN_KEY "sync_auth_token"
+#define SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
+#define SYNC_CLOCK_SKEW_KEY "sync_clock_skew"
+#define SYNC_SIGNATURE_CONTEXT "daochi-sync-v1"
+#define SYNC_USER_HEADER "X-Daochi-User"
+#define SYNC_SIGNATURE_HEADER "X-Daochi-Signature"
+#define SYNC_PAYLOAD_COMPRESSION "lzss1"
+#define SYNC_DEVICE_PRIVATE_KEY "sync_device_private_key"
+#define SYNC_DEVICE_PUBLIC_KEY "sync_device_public_key"
+#define SYNC_DEVICE_KEY_ID "sync_device_key_id"
 
 const char *
-GetKsyncSyncResultName(KsyncSyncResult result)
+GetSyncResultName(SyncResult result)
 {
     switch(result) {
-        case KSYNC_SYNC_OK:
+        case SYNC_OK:
             return "ok";
-        case KSYNC_SYNC_INVALID_URL:
+        case SYNC_INVALID_URL:
             return "invalid_url";
-        case KSYNC_SYNC_NO_ACCOUNT:
+        case SYNC_NO_ACCOUNT:
             return "no_account";
-        case KSYNC_SYNC_PAYLOAD_FAILED:
+        case SYNC_PAYLOAD_FAILED:
             return "payload_failed";
-        case KSYNC_SYNC_CHALLENGE_FAILED:
+        case SYNC_CHALLENGE_FAILED:
             return "challenge_failed";
-        case KSYNC_SYNC_SIGN_FAILED:
+        case SYNC_SIGN_FAILED:
             return "sign_failed";
-        case KSYNC_SYNC_REQUEST_FAILED:
+        case SYNC_REQUEST_FAILED:
             return "request_failed";
-        case KSYNC_SYNC_AUTH_FAILED:
+        case SYNC_AUTH_FAILED:
             return "auth_failed";
         default:
             return "unknown";
@@ -128,7 +134,7 @@ sync_local_authority_valid(const char *authority)
 }
 
 int
-IsKsyncSyncURLValid(const char *url)
+IsSyncURLValid(const char *url)
 {
     if(url == NULL || url[0] == '\0')
         return 0;
@@ -140,14 +146,14 @@ IsKsyncSyncURLValid(const char *url)
 }
 
 int
-NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size)
+NormalizeSyncURL(const char *input, char *out, size_t out_size)
 {
     int len;
 
     if(out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    if(!IsKsyncSyncURLValid(input))
+    if(!IsSyncURLValid(input))
         return 0;
     if(sync_has_prefix(input, "https://") || sync_has_prefix(input, "http://"))
         len = snprintf(out, out_size, "%s", input);
@@ -157,7 +163,7 @@ NormalizeKsyncSyncURL(const char *input, char *out, size_t out_size)
 }
 
 int
-JoinKsyncSyncURL(char *out, size_t out_size, const char *base_url, const char *path)
+JoinSyncURL(char *out, size_t out_size, const char *base_url, const char *path)
 {
     size_t len;
     int written;
@@ -175,7 +181,7 @@ JoinKsyncSyncURL(char *out, size_t out_size, const char *base_url, const char *p
 }
 
 int
-JoinKsyncSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const char *path)
+JoinSyncWebSocketURL(char *out, size_t out_size, const char *base_url, const char *path)
 {
     char http_url[768];
     const char *body;
@@ -185,7 +191,7 @@ JoinKsyncSyncWebSocketURL(char *out, size_t out_size, const char *base_url, cons
     if(out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    if(!JoinKsyncSyncURL(http_url, sizeof(http_url), base_url, path))
+    if(!JoinSyncURL(http_url, sizeof(http_url), base_url, path))
         return 0;
     if(sync_has_prefix(http_url, "https://")) {
         scheme = "wss://";
@@ -201,7 +207,7 @@ JoinKsyncSyncWebSocketURL(char *out, size_t out_size, const char *base_url, cons
 }
 
 int
-AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer, const void *data, size_t bytes)
+AppendSyncBuffer(SyncBuffer *buffer, const void *data, size_t bytes)
 {
     char *next;
     size_t next_cap;
@@ -225,11 +231,11 @@ AppendKsyncSyncBuffer(KsyncSyncBuffer *buffer, const void *data, size_t bytes)
 }
 
 int
-AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer, const char *text)
+AppendSyncBufferJSONString(SyncBuffer *buffer, const char *text)
 {
     const char *p;
 
-    if(!AppendKsyncSyncBuffer(buffer, "\"", 1))
+    if(!AppendSyncBuffer(buffer, "\"", 1))
         return 0;
     if(text == NULL)
         text = "";
@@ -237,31 +243,31 @@ AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer, const char *text)
         char escaped[2];
         switch(*p) {
             case '\\':
-                if(!AppendKsyncSyncBuffer(buffer, "\\\\", 2))
+                if(!AppendSyncBuffer(buffer, "\\\\", 2))
                     return 0;
                 break;
             case '"':
-                if(!AppendKsyncSyncBuffer(buffer, "\\\"", 2))
+                if(!AppendSyncBuffer(buffer, "\\\"", 2))
                     return 0;
                 break;
             case '\n':
-                if(!AppendKsyncSyncBuffer(buffer, "\\n", 2))
+                if(!AppendSyncBuffer(buffer, "\\n", 2))
                     return 0;
                 break;
             case '\r':
-                if(!AppendKsyncSyncBuffer(buffer, "\\r", 2))
+                if(!AppendSyncBuffer(buffer, "\\r", 2))
                     return 0;
                 break;
             case '\t':
-                if(!AppendKsyncSyncBuffer(buffer, "\\t", 2))
+                if(!AppendSyncBuffer(buffer, "\\t", 2))
                     return 0;
                 break;
             case '\b':
-                if(!AppendKsyncSyncBuffer(buffer, "\\b", 2))
+                if(!AppendSyncBuffer(buffer, "\\b", 2))
                     return 0;
                 break;
             case '\f':
-                if(!AppendKsyncSyncBuffer(buffer, "\\f", 2))
+                if(!AppendSyncBuffer(buffer, "\\f", 2))
                     return 0;
                 break;
             default:
@@ -269,22 +275,22 @@ AppendKsyncSyncBufferJSONString(KsyncSyncBuffer *buffer, const char *text)
                     char unicode_escape[8];
                     snprintf(unicode_escape, sizeof(unicode_escape), "\\u%04x",
                              (unsigned char)*p);
-                    if(!AppendKsyncSyncBuffer(buffer, unicode_escape, 6))
+                    if(!AppendSyncBuffer(buffer, unicode_escape, 6))
                         return 0;
                 } else {
                     escaped[0] = *p;
                     escaped[1] = '\0';
-                    if(!AppendKsyncSyncBuffer(buffer, escaped, 1))
+                    if(!AppendSyncBuffer(buffer, escaped, 1))
                         return 0;
                 }
                 break;
         }
     }
-    return AppendKsyncSyncBuffer(buffer, "\"", 1);
+    return AppendSyncBuffer(buffer, "\"", 1);
 }
 
 void
-FreeKsyncSyncBuffer(KsyncSyncBuffer *buffer)
+FreeSyncBuffer(SyncBuffer *buffer)
 {
     if(buffer == NULL)
         return;
@@ -390,7 +396,7 @@ sync_json_decode_escape(const char **pp, char *out, size_t out_size,
 }
 
 int
-FindKsyncSyncJSONString(const char *json, const char *key, char *out, size_t out_size)
+FindSyncJSONString(const char *json, const char *key, char *out, size_t out_size)
 {
     char pattern[64];
     const char *candidate;
@@ -444,7 +450,7 @@ FindKsyncSyncJSONString(const char *json, const char *key, char *out, size_t out
 }
 
 long long
-FindKsyncSyncJSONInt64(const char *json, const char *key, long long fallback)
+FindSyncJSONInt64(const char *json, const char *key, long long fallback)
 {
     const char *p;
     char pattern[64];
@@ -465,7 +471,7 @@ FindKsyncSyncJSONInt64(const char *json, const char *key, long long fallback)
 }
 
 static int
-sync_config_valid(const KsyncSyncConfig *cfg)
+sync_config_valid(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->base_url != NULL && cfg->account != NULL &&
            cfg->client_id != NULL && cfg->http_request != NULL &&
@@ -473,7 +479,7 @@ sync_config_valid(const KsyncSyncConfig *cfg)
 }
 
 static void
-sync_log_http_failure(const KsyncSyncConfig *cfg, const char *step,
+sync_log_http_failure(const SyncConfig *cfg, const char *step,
                       long status, const char *response)
 {
     if(cfg != NULL && cfg->log_http_failure != NULL)
@@ -481,7 +487,7 @@ sync_log_http_failure(const KsyncSyncConfig *cfg, const char *step,
 }
 
 static int
-sync_retry_wait(const KsyncSyncConfig *cfg, int attempt, long status)
+sync_retry_wait(const SyncConfig *cfg, int attempt, long status)
 {
     int delay;
 
@@ -498,15 +504,15 @@ sync_retry_wait(const KsyncSyncConfig *cfg, int attempt, long status)
 }
 
 static int
-sync_http_request_retry(const KsyncSyncConfig *cfg, const char *method,
+sync_http_request_retry(const SyncConfig *cfg, const char *method,
                         const char *url, const char *body,
                         const char *const *headers, int header_count,
-                        KsyncSyncBuffer *response, long *status)
+                        SyncBuffer *response, long *status)
 {
     int attempt;
 
     for(attempt = 0; ; attempt++) {
-        FreeKsyncSyncBuffer(response);
+        FreeSyncBuffer(response);
         *status = 0;
         if(cfg->http_request(method, url, body, headers, header_count,
                              response, status, cfg->user))
@@ -518,7 +524,7 @@ sync_http_request_retry(const KsyncSyncConfig *cfg, const char *method,
 }
 
 static int
-sync_build_message(const KsyncSyncConfig *cfg, const char *method, const char *path,
+sync_build_message(const SyncConfig *cfg, const char *method, const char *path,
                    const char *nonce_hex, const char *body, char *out,
                    size_t out_size)
 {
@@ -529,44 +535,44 @@ sync_build_message(const KsyncSyncConfig *cfg, const char *method, const char *p
     if(cfg == NULL || method == NULL || path == NULL || nonce_hex == NULL ||
        body == NULL || out == NULL || out_size == 0)
         return 0;
-    KsyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    SyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
     if(body_hash[0] == '\0')
         return 0;
     context = cfg->signature_context != NULL && cfg->signature_context[0] != '\0'
                   ? cfg->signature_context
-                  : KSYNC_SYNC_SIGNATURE_CONTEXT;
+                  : SYNC_SIGNATURE_CONTEXT;
     len = snprintf(out, out_size, "%s\n%s\n%s\n%s\n%s\n", context, method,
                    path, body_hash, nonce_hex);
     return len > 0 && (size_t)len < out_size;
 }
 
 static const char *
-sync_user_header_name(const KsyncSyncConfig *cfg)
+sync_user_header_name(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->user_header_name != NULL &&
                    cfg->user_header_name[0] != '\0'
                ? cfg->user_header_name
-               : KSYNC_SYNC_USER_HEADER;
+               : SYNC_USER_HEADER;
 }
 
 static const char *
-sync_signature_header_name(const KsyncSyncConfig *cfg)
+sync_signature_header_name(const SyncConfig *cfg)
 {
     return cfg != NULL && cfg->signature_header_name != NULL &&
                    cfg->signature_header_name[0] != '\0'
                ? cfg->signature_header_name
-               : KSYNC_SYNC_SIGNATURE_HEADER;
+               : SYNC_SIGNATURE_HEADER;
 }
 
 static long long
-sync_clock_skew(const KsyncSyncConfig *cfg)
+sync_clock_skew(const SyncConfig *cfg)
 {
     const char *skew_text;
     long long skew;
 
     if(cfg == NULL || cfg->get_text == NULL)
         return 0;
-    skew_text = cfg->get_text(KSYNC_SYNC_CLOCK_SKEW_KEY, cfg->user);
+    skew_text = cfg->get_text(SYNC_CLOCK_SKEW_KEY, cfg->user);
     skew = skew_text != NULL ? atoll(skew_text) : 0;
     if(skew > 86400)
         skew = 86400;
@@ -576,7 +582,7 @@ sync_clock_skew(const KsyncSyncConfig *cfg)
 }
 
 static int
-sync_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t out_size)
+sync_load_valid_auth_token(const SyncConfig *cfg, char *out, size_t out_size)
 {
     const char *token;
     const char *expires_text;
@@ -586,9 +592,9 @@ sync_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t out_siz
     if(!sync_config_valid(cfg) || out == NULL || out_size == 0)
         return 0;
     out[0] = '\0';
-    token = cfg->get_text(KSYNC_SYNC_AUTH_TOKEN_KEY, cfg->user);
+    token = cfg->get_text(SYNC_AUTH_TOKEN_KEY, cfg->user);
     snprintf(token_copy, sizeof(token_copy), "%s", token != NULL ? token : "");
-    expires_text = cfg->get_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, cfg->user);
+    expires_text = cfg->get_text(SYNC_AUTH_TOKEN_EXPIRES_KEY, cfg->user);
     expires_at = expires_text != NULL ? atoll(expires_text) : 0;
     if(token_copy[0] == '\0' ||
        expires_at <= (long long)time(NULL) + sync_clock_skew(cfg))
@@ -598,92 +604,92 @@ sync_load_valid_auth_token(const KsyncSyncConfig *cfg, char *out, size_t out_siz
 }
 
 void
-ClearKsyncSyncAuthToken(const KsyncSyncConfig *cfg)
+ClearSyncAuthToken(const SyncConfig *cfg)
 {
     if(!sync_config_valid(cfg))
         return;
-    cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_KEY, "", cfg->user);
-    cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, "", cfg->user);
+    cfg->set_text(SYNC_AUTH_TOKEN_KEY, "", cfg->user);
+    cfg->set_text(SYNC_AUTH_TOKEN_EXPIRES_KEY, "", cfg->user);
 }
 
-static KsyncSyncResult
-sync_fetch_challenge(const KsyncSyncConfig *cfg, const char *user_id,
+static SyncResult
+sync_fetch_challenge(const SyncConfig *cfg, const char *user_id,
                      char nonce_hex[65])
 {
     char url[768];
-    KsyncSyncBuffer response = {0};
+    SyncBuffer response = {0};
     long status = 0;
     int ok;
 
     nonce_hex[0] = '\0';
-    if(!JoinKsyncSyncURL(url, sizeof(url), cfg->base_url,
-                                 KSYNC_CHALLENGE_PATH))
-        return KSYNC_SYNC_INVALID_URL;
+    if(!JoinSyncURL(url, sizeof(url), cfg->base_url,
+                                 SYNC_CHALLENGE_PATH))
+        return SYNC_INVALID_URL;
     if(strlen(url) + strlen(user_id) + 10 >= sizeof(url))
-        return KSYNC_SYNC_INVALID_URL;
+        return SYNC_INVALID_URL;
     strncat(url, "?user_id=", sizeof(url) - strlen(url) - 1);
     strncat(url, user_id, sizeof(url) - strlen(url) - 1);
     ok = sync_http_request_retry(cfg, "GET", url, NULL, NULL, 0, &response, &status);
     if(!ok || status != 200 ||
-       !FindKsyncSyncJSONString(response.data, "nonce", nonce_hex, 65) ||
+       !FindSyncJSONString(response.data, "nonce", nonce_hex, 65) ||
        strlen(nonce_hex) != 64) {
         sync_log_http_failure(cfg, "challenge", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return status == 401 ? KSYNC_SYNC_AUTH_FAILED : KSYNC_SYNC_CHALLENGE_FAILED;
+        FreeSyncBuffer(&response);
+        return status == 401 ? SYNC_AUTH_FAILED : SYNC_CHALLENGE_FAILED;
     }
-    FreeKsyncSyncBuffer(&response);
-    return KSYNC_SYNC_OK;
+    FreeSyncBuffer(&response);
+    return SYNC_OK;
 }
 
-KsyncSyncResult
-LoginKsyncSync(const KsyncSyncConfig *cfg)
+SyncResult
+LoginSync(const SyncConfig *cfg)
 {
     char nonce_hex[65];
     char message[256];
-    char signature_hex[KSYNC_SIGNATURE_HEX_SIZE];
+    char signature_hex[SYNC_SIGNATURE_HEX_SIZE];
     char url[768];
     char user_header[96];
-    char signature_header[KSYNC_SIGNATURE_HEX_SIZE + 32];
+    char signature_header[SYNC_SIGNATURE_HEX_SIZE + 32];
     const char *headers[3];
-    KsyncSyncBuffer body = {0};
-    KsyncSyncBuffer response = {0};
+    SyncBuffer body = {0};
+    SyncBuffer response = {0};
     long status = 0;
-    KsyncSyncResult challenge_result;
+    SyncResult challenge_result;
     int ok;
     char token[4096];
     long long expires_in;
     long long expires_at;
     long long server_time;
 
-    if(!sync_config_valid(cfg) || !HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
-    if(!AppendKsyncSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_id) ||
-       !AppendKsyncSyncBuffer(&body, ",\"client_id\":", strlen(",\"client_id\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->client_id) ||
-       !AppendKsyncSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
-       !AppendKsyncSyncBuffer(&body, "}", 1)) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!sync_config_valid(cfg) || !HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
+    if(!AppendSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->account->public_id) ||
+       !AppendSyncBuffer(&body, ",\"client_id\":", strlen(",\"client_id\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->client_id) ||
+       !AppendSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
+       !AppendSyncBuffer(&body, "}", 1)) {
+        FreeSyncBuffer(&body);
+        return SYNC_PAYLOAD_FAILED;
     }
 
     challenge_result = sync_fetch_challenge(cfg, cfg->account->public_id, nonce_hex);
-    if(challenge_result != KSYNC_SYNC_OK) {
-        FreeKsyncSyncBuffer(&body);
+    if(challenge_result != SYNC_OK) {
+        FreeSyncBuffer(&body);
         return challenge_result;
     }
-    if(!sync_build_message(cfg, "POST", KSYNC_LOGIN_PATH, nonce_hex,
+    if(!sync_build_message(cfg, "POST", SYNC_LOGIN_PATH, nonce_hex,
                            body.data, message, sizeof(message))) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_SIGN_FAILED;
+        FreeSyncBuffer(&body);
+        return SYNC_SIGN_FAILED;
     }
-    if(!SignKsyncAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
+    if(!SignSyncAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
                                     signature_hex, sizeof(signature_hex))) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_SIGN_FAILED;
+        FreeSyncBuffer(&body);
+        return SYNC_SIGN_FAILED;
     }
-    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, KSYNC_LOGIN_PATH);
+    JoinSyncURL(url, sizeof(url), cfg->base_url, SYNC_LOGIN_PATH);
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(signature_header, sizeof(signature_header), "%s: %s",
@@ -692,34 +698,34 @@ LoginKsyncSync(const KsyncSyncConfig *cfg)
     headers[1] = user_header;
     headers[2] = signature_header;
     ok = sync_http_request_retry(cfg, "POST", url, body.data, headers, 3, &response, &status);
-    FreeKsyncSyncBuffer(&body);
+    FreeSyncBuffer(&body);
     if(!ok) {
         sync_log_http_failure(cfg, "login request", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
         sync_log_http_failure(cfg, "login auth", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_AUTH_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_AUTH_FAILED;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, "login", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
-    expires_in = FindKsyncSyncJSONInt64(response.data, "expires_in_seconds", 3600);
-    server_time = FindKsyncSyncJSONInt64(response.data, "server_time", 0);
-    if(!FindKsyncSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
+    expires_in = FindSyncJSONInt64(response.data, "expires_in_seconds", 3600);
+    server_time = FindSyncJSONInt64(response.data, "server_time", 0);
+    if(!FindSyncJSONString(response.data, "auth_token", token, sizeof(token))) {
         sync_log_http_failure(cfg, "login payload", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_PAYLOAD_FAILED;
     }
     if(server_time > 0) {
         char skew_text[32];
         long long skew = server_time - (long long)time(NULL);
         snprintf(skew_text, sizeof(skew_text), "%lld", skew);
-        cfg->set_text(KSYNC_SYNC_CLOCK_SKEW_KEY, skew_text, cfg->user);
+        cfg->set_text(SYNC_CLOCK_SKEW_KEY, skew_text, cfg->user);
     }
     expires_at = (long long)time(NULL) + sync_clock_skew(cfg) + expires_in - 30;
     if(expires_at < (long long)time(NULL) + sync_clock_skew(cfg))
@@ -727,25 +733,279 @@ LoginKsyncSync(const KsyncSyncConfig *cfg)
     {
         char text[32];
         snprintf(text, sizeof(text), "%lld", expires_at);
-        cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_KEY, token, cfg->user);
-        cfg->set_text(KSYNC_SYNC_AUTH_TOKEN_EXPIRES_KEY, text, cfg->user);
+        cfg->set_text(SYNC_AUTH_TOKEN_KEY, token, cfg->user);
+        cfg->set_text(SYNC_AUTH_TOKEN_EXPIRES_KEY, text, cfg->user);
     }
-    FreeKsyncSyncBuffer(&response);
-    return KSYNC_SYNC_OK;
+    FreeSyncBuffer(&response);
+    return SYNC_OK;
 }
 
-static KsyncSyncResult
-sync_send_bearer(const KsyncSyncConfig *cfg, const char *body, const char *token)
+static int
+sync_random_identifier(char out[65])
 {
+    uint8_t random[32];
+
+    if(out == NULL)
+        return 0;
+    SyncCryptoRandom(random, sizeof(random));
+    return SyncCryptoBytesToHex(random, sizeof(random), out, 65);
+}
+
+static int
+sync_load_or_create_device_key(const SyncConfig *cfg,
+                               uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE],
+                               char public_key_hex[SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1],
+                               char key_id[65])
+{
+    const char *stored_private;
+    const char *stored_public;
+    const char *stored_id;
+    uint8_t public_key[SYNC_ED25519_PUBLIC_KEY_SIZE];
+    char private_key_hex[SYNC_ED25519_PRIVATE_KEY_SIZE * 2 + 1];
+
+    stored_private = cfg->get_text(SYNC_DEVICE_PRIVATE_KEY, cfg->user);
+    stored_public = cfg->get_text(SYNC_DEVICE_PUBLIC_KEY, cfg->user);
+    stored_id = cfg->get_text(SYNC_DEVICE_KEY_ID, cfg->user);
+    if(stored_private != NULL && stored_public != NULL && stored_id != NULL &&
+       SyncCryptoHexToBytes(stored_private, private_key,
+                            SYNC_ED25519_PRIVATE_KEY_SIZE) &&
+       strlen(stored_public) == SYNC_ED25519_PUBLIC_KEY_SIZE * 2 &&
+       strlen(stored_id) == 64) {
+        snprintf(public_key_hex, SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1, "%s",
+                 stored_public);
+        snprintf(key_id, 65, "%s", stored_id);
+        return 1;
+    }
+    if(!SyncCryptoCreateDeviceKey(private_key, public_key))
+        return 0;
+    if(!SyncCryptoBytesToHex(private_key, SYNC_ED25519_PRIVATE_KEY_SIZE,
+                             private_key_hex, sizeof(private_key_hex)) ||
+       !SyncCryptoBytesToHex(public_key, SYNC_ED25519_PUBLIC_KEY_SIZE,
+                             public_key_hex,
+                             SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1)) {
+        return 0;
+    }
+    SyncSha256Hex(public_key, sizeof(public_key), key_id);
+    cfg->set_text(SYNC_DEVICE_PRIVATE_KEY, private_key_hex, cfg->user);
+    cfg->set_text(SYNC_DEVICE_PUBLIC_KEY, public_key_hex, cfg->user);
+    cfg->set_text(SYNC_DEVICE_KEY_ID, key_id, cfg->user);
+    memset(private_key_hex, 0, sizeof(private_key_hex));
+    return 1;
+}
+
+static int
+sync_build_device_registration_message(const SyncConfig *cfg,
+                                       const char *key_id,
+                                       const char *public_key,
+                                       const char *nonce,
+                                       long long expires_at,
+                                       char *out, size_t out_size)
+{
+    int written;
+
+    written = snprintf(out, out_size, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%lld\n",
+                       SYNC_DEVICE_REGISTRATION_CONTEXT,
+                       cfg->account->public_id, cfg->app_id, key_id,
+                       cfg->client_id, public_key, nonce, expires_at);
+    return written > 0 && (size_t)written < out_size;
+}
+
+static SyncResult
+sync_register_device(const SyncConfig *cfg, const char *token)
+{
+    uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE];
+    char public_key[SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1];
+    char key_id[65];
+    char nonce[65];
+    char message[1024];
+    char signature[SYNC_SIGNATURE_HEX_SIZE];
     char url[768];
     char user_header[96];
     char auth_header[4200];
     const char *headers[3];
-    KsyncSyncBuffer response = {0};
+    SyncBuffer body = {0};
+    SyncBuffer response = {0};
+    long status = 0;
+    long long expires_at;
+    int ok;
+
+    if(cfg->protocol_version < 6)
+        return SYNC_OK;
+    if(cfg->app_id == NULL || cfg->app_id[0] == '\0')
+        return SYNC_PAYLOAD_FAILED;
+    if(!sync_load_or_create_device_key(cfg, private_key, public_key, key_id) ||
+       !sync_random_identifier(nonce)) {
+        return SYNC_SIGN_FAILED;
+    }
+    expires_at = (long long)time(NULL) + sync_clock_skew(cfg) + 300;
+    if(!sync_build_device_registration_message(cfg, key_id, public_key, nonce,
+                                                expires_at, message,
+                                                sizeof(message)) ||
+       !SignSyncAccountHex(cfg->account, (const uint8_t *)message,
+                           strlen(message), signature, sizeof(signature))) {
+        memset(private_key, 0, sizeof(private_key));
+        return SYNC_SIGN_FAILED;
+    }
+    body.data = NULL;
+    if(!AppendSyncBuffer(&body, "{\"app_id\":", strlen("{\"app_id\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->app_id) ||
+       !AppendSyncBuffer(&body, ",\"device_key_id\":",
+                         strlen(",\"device_key_id\":")) ||
+       !AppendSyncBufferJSONString(&body, key_id) ||
+       !AppendSyncBuffer(&body, ",\"client_id\":", strlen(",\"client_id\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->client_id) ||
+       !AppendSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
+       !AppendSyncBufferJSONString(&body, public_key) ||
+       !AppendSyncBuffer(&body, ",\"nonce\":", strlen(",\"nonce\":")) ||
+       !AppendSyncBufferJSONString(&body, nonce) ||
+       !AppendSyncBuffer(&body, ",\"expires_at\":", strlen(",\"expires_at\":"))) {
+        FreeSyncBuffer(&body);
+        memset(private_key, 0, sizeof(private_key));
+        return SYNC_PAYLOAD_FAILED;
+    }
+    {
+        char expires_text[32];
+        snprintf(expires_text, sizeof(expires_text), "%lld", expires_at);
+        ok = AppendSyncBuffer(&body, expires_text, strlen(expires_text)) &&
+             AppendSyncBuffer(&body, ",\"signature\":",
+                              strlen(",\"signature\":")) &&
+             AppendSyncBufferJSONString(&body, signature) &&
+             AppendSyncBuffer(&body, "}", 1);
+    }
+    memset(private_key, 0, sizeof(private_key));
+    if(!ok) {
+        FreeSyncBuffer(&body);
+        return SYNC_PAYLOAD_FAILED;
+    }
+    if(!JoinSyncURL(url, sizeof(url), cfg->base_url,
+                    SYNC_DEVICE_REGISTRATION_PATH)) {
+        FreeSyncBuffer(&body);
+        return SYNC_INVALID_URL;
+    }
+    snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
+             cfg->account->public_id);
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
+    headers[0] = "Content-Type: application/json";
+    headers[1] = user_header;
+    headers[2] = auth_header;
+    ok = sync_http_request_retry(cfg, "POST", url, body.data, headers, 3,
+                                 &response, &status);
+    FreeSyncBuffer(&body);
+    FreeSyncBuffer(&response);
+    if(!ok)
+        return SYNC_REQUEST_FAILED;
+    if(status == 401)
+        return SYNC_AUTH_FAILED;
+    return status >= 200 && status < 300 ? SYNC_OK : SYNC_REQUEST_FAILED;
+}
+
+static int
+sync_append_transaction_string(SyncBuffer *json, const char *field,
+                               const char *value)
+{
+    return AppendSyncBuffer(json, ",\"", 2) &&
+           AppendSyncBuffer(json, field, strlen(field)) &&
+           AppendSyncBuffer(json, "\":", 2) &&
+           AppendSyncBufferJSONString(json, value);
+}
+
+static int
+sync_build_transaction_header(const SyncConfig *cfg, const char *body,
+                              char **header_out)
+{
+    uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE];
+    uint8_t device_signature[SYNC_ED25519_SIGNATURE_SIZE];
+    char public_key[SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1];
+    char key_id[65];
+    char tx_id[65];
+    char nonce[65];
+    char body_hash[65];
+    char account_signature[SYNC_SIGNATURE_HEX_SIZE];
+    char device_signature_hex[SYNC_ED25519_SIGNATURE_SIZE * 2 + 1];
+    char message[7000];
+    long long expires_at;
+    int written;
+    int ok;
+    SyncBuffer json = {0};
+
+    *header_out = NULL;
+    if(!sync_load_or_create_device_key(cfg, private_key, public_key, key_id) ||
+       !sync_random_identifier(tx_id) || !sync_random_identifier(nonce)) {
+        return 0;
+    }
+    SyncSha256Hex((const uint8_t *)body, strlen(body), body_hash);
+    expires_at = (long long)time(NULL) + sync_clock_skew(cfg) + 300;
+    written = snprintf(message, sizeof(message),
+                       "%s\n%d\n%s\n%s\n%s\n%s\nPOST\n%s\n%s\n%s\n%lld\n",
+                       SYNC_TRANSACTION_CONTEXT, cfg->protocol_version, tx_id,
+                       cfg->account->public_id, cfg->app_id, key_id, SYNC_PATH,
+                       body_hash, nonce, expires_at);
+    if(written <= 0 || (size_t)written >= sizeof(message) ||
+       !SignSyncAccountHex(cfg->account, (const uint8_t *)message,
+                           (size_t)written, account_signature,
+                           sizeof(account_signature))) {
+        memset(private_key, 0, sizeof(private_key));
+        return 0;
+    }
+    SyncCryptoSignDevice(private_key, (const uint8_t *)message, (size_t)written,
+                         device_signature);
+    memset(private_key, 0, sizeof(private_key));
+    if(!SyncCryptoBytesToHex(device_signature, sizeof(device_signature),
+                             device_signature_hex,
+                             sizeof(device_signature_hex))) {
+        return 0;
+    }
+    ok = AppendSyncBuffer(&json, "X-Daochi-Tx: {\"protocol_version\":",
+                          strlen("X-Daochi-Tx: {\"protocol_version\":"));
+    {
+        char protocol[16];
+        snprintf(protocol, sizeof(protocol), "%d", cfg->protocol_version);
+        ok = ok && AppendSyncBuffer(&json, protocol, strlen(protocol));
+    }
+    ok = ok && sync_append_transaction_string(&json, "tx_id", tx_id);
+    ok = ok && sync_append_transaction_string(&json, "account_id",
+                                               cfg->account->public_id);
+    ok = ok && sync_append_transaction_string(&json, "app_id", cfg->app_id);
+    ok = ok && sync_append_transaction_string(&json, "device_key_id", key_id);
+    ok = ok && sync_append_transaction_string(&json, "method", "POST");
+    ok = ok && sync_append_transaction_string(&json, "path", SYNC_PATH);
+    ok = ok && sync_append_transaction_string(&json, "body_sha256", body_hash);
+    ok = ok && sync_append_transaction_string(&json, "nonce", nonce);
+    ok = ok && AppendSyncBuffer(&json, ",\"expires_at\":",
+                                strlen(",\"expires_at\":"));
+    {
+        char expires_text[32];
+        snprintf(expires_text, sizeof(expires_text), "%lld", expires_at);
+        ok = ok && AppendSyncBuffer(&json, expires_text, strlen(expires_text));
+    }
+    ok = ok && sync_append_transaction_string(&json, "signature_context",
+                                              SYNC_TRANSACTION_CONTEXT);
+    ok = ok && sync_append_transaction_string(&json, "signature",
+                                              account_signature);
+    ok = ok && sync_append_transaction_string(&json, "device_signature",
+                                              device_signature_hex);
+    ok = ok && AppendSyncBuffer(&json, "}", 1);
+    if(!ok || json.data == NULL) {
+        FreeSyncBuffer(&json);
+        return 0;
+    }
+    *header_out = json.data;
+    return 1;
+}
+
+static SyncResult
+sync_send_bearer(const SyncConfig *cfg, const char *body, const char *token)
+{
+    char url[768];
+    char user_header[96];
+    char auth_header[4200];
+    const char *headers[4];
+    char *transaction_header = NULL;
+    SyncBuffer response = {0};
     long status = 0;
     int ok;
 
-    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, KSYNC_SYNC_PATH);
+    JoinSyncURL(url, sizeof(url), cfg->base_url, SYNC_PATH);
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s",
@@ -753,100 +1013,114 @@ sync_send_bearer(const KsyncSyncConfig *cfg, const char *body, const char *token
     headers[0] = "Content-Type: application/json";
     headers[1] = user_header;
     headers[2] = auth_header;
-    ok = sync_http_request_retry(cfg, "POST", url, body, headers, 3, &response, &status);
+    if(cfg->protocol_version >= 6) {
+        if(!sync_build_transaction_header(cfg, body, &transaction_header))
+            return SYNC_SIGN_FAILED;
+        headers[3] = transaction_header;
+    }
+    ok = sync_http_request_retry(cfg, "POST", url, body, headers,
+                                 transaction_header != NULL ? 4 : 3,
+                                 &response, &status);
+    free(transaction_header);
     if(!ok) {
         sync_log_http_failure(cfg, "sync request", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
         sync_log_http_failure(cfg, "sync auth", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_AUTH_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_AUTH_FAILED;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, "sync", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(cfg->apply_response != NULL && cfg->encrypt_payload) {
         char *plain = NULL;
-        if(UnwrapKsyncSyncPayload(cfg->account, response.data, &plain)) {
+        if(UnwrapSyncPayload(cfg->account, response.data, &plain)) {
             int applied = cfg->apply_response(plain, cfg->user);
             free(plain);
             if(!applied) {
                 sync_log_http_failure(cfg, "sync payload", status, response.data);
-                FreeKsyncSyncBuffer(&response);
-                return KSYNC_SYNC_PAYLOAD_FAILED;
+                FreeSyncBuffer(&response);
+                return SYNC_PAYLOAD_FAILED;
             }
-            FreeKsyncSyncBuffer(&response);
-            return KSYNC_SYNC_OK;
+            FreeSyncBuffer(&response);
+            return SYNC_OK;
         }
         /* not an envelope: fall through and hand the raw body to the app */
     }
     if(cfg->apply_response == NULL || !cfg->apply_response(response.data, cfg->user)) {
         sync_log_http_failure(cfg, "sync payload", status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_PAYLOAD_FAILED;
     }
-    FreeKsyncSyncBuffer(&response);
-    return KSYNC_SYNC_OK;
+    FreeSyncBuffer(&response);
+    return SYNC_OK;
 }
 
-KsyncSyncResult
-RunKsyncSync(const KsyncSyncConfig *cfg)
+SyncResult
+RunSync(const SyncConfig *cfg)
 {
     char *payload;
     int wrapped_payload = 0;
-    KsyncSyncResult result;
+    SyncResult result;
     char token[4096];
 
     if(!sync_config_valid(cfg) || cfg->build_payload == NULL || cfg->free_payload == NULL)
-        return KSYNC_SYNC_PAYLOAD_FAILED;
-    if(!IsKsyncSyncURLValid(cfg->base_url))
-        return KSYNC_SYNC_INVALID_URL;
-    if(!HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
+        return SYNC_PAYLOAD_FAILED;
+    if(!IsSyncURLValid(cfg->base_url))
+        return SYNC_INVALID_URL;
+    if(!HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
     if(!sync_load_valid_auth_token(cfg, token, sizeof(token))) {
-        result = LoginKsyncSync(cfg);
-        if(result != KSYNC_SYNC_OK)
+        result = LoginSync(cfg);
+        if(result != SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return KSYNC_SYNC_AUTH_FAILED;
+            return SYNC_AUTH_FAILED;
     }
+    result = sync_register_device(cfg, token);
+    if(result != SYNC_OK)
+        return result;
     payload = cfg->build_payload(cfg->account->public_id, cfg->account->public_key_hex, cfg->user);
     if(payload == NULL)
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+        return SYNC_PAYLOAD_FAILED;
     if(cfg->encrypt_payload) {
         char *wrapped = NULL;
-        if(!WrapKsyncSyncPayload(cfg->account, payload, &wrapped)) {
+        if(!WrapSyncPayload(cfg->account, payload, &wrapped)) {
             cfg->free_payload(payload, cfg->user);
-            return KSYNC_SYNC_PAYLOAD_FAILED;
+            return SYNC_PAYLOAD_FAILED;
         }
         cfg->free_payload(payload, cfg->user);
         payload = wrapped;
         wrapped_payload = 1;
     }
     result = sync_send_bearer(cfg, payload, token);
-    if(result == KSYNC_SYNC_AUTH_FAILED) {
-        ClearKsyncSyncAuthToken(cfg);
-        result = LoginKsyncSync(cfg);
-        if(result == KSYNC_SYNC_OK && sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            result = sync_send_bearer(cfg, payload, token);
-        else if(result == KSYNC_SYNC_OK)
-            result = KSYNC_SYNC_AUTH_FAILED;
+    if(result == SYNC_AUTH_FAILED) {
+        ClearSyncAuthToken(cfg);
+        result = LoginSync(cfg);
+        if(result == SYNC_OK && sync_load_valid_auth_token(cfg, token, sizeof(token))) {
+            result = sync_register_device(cfg, token);
+            if(result == SYNC_OK)
+                result = sync_send_bearer(cfg, payload, token);
+        }
+        else if(result == SYNC_OK)
+            result = SYNC_AUTH_FAILED;
     }
     if(wrapped_payload)
         free(payload);
     else
         cfg->free_payload(payload, cfg->user);
-    if(result == KSYNC_SYNC_OK && cfg->purge_synced_deleted != NULL)
+    if(result == SYNC_OK && cfg->purge_synced_deleted != NULL)
         cfg->purge_synced_deleted(cfg->user);
     return result;
 }
 
 static int
-sync_copy_response_text(const KsyncSyncBuffer *response, char *out, size_t out_size)
+sync_copy_response_text(const SyncBuffer *response, char *out, size_t out_size)
 {
     if(out == NULL || out_size == 0)
         return 1;
@@ -859,8 +1133,8 @@ sync_copy_response_text(const KsyncSyncBuffer *response, char *out, size_t out_s
     return 1;
 }
 
-KsyncSyncResult
-RequestKsyncSyncBearer(const KsyncSyncConfig *cfg, const char *method,
+SyncResult
+RequestSyncBearer(const SyncConfig *cfg, const char *method,
                                const char *path, const char *body,
                                char *out, size_t out_size)
 {
@@ -870,33 +1144,33 @@ RequestKsyncSyncBearer(const KsyncSyncConfig *cfg, const char *method,
     char auth_header[4200];
     const char *headers[3];
     int header_count = 0;
-    KsyncSyncBuffer response = {0};
+    SyncBuffer response = {0};
     long status = 0;
-    KsyncSyncResult result;
+    SyncResult result;
     int ok;
     int retried_auth = 0;
 
     if(out != NULL && out_size > 0)
         out[0] = '\0';
     if(!sync_config_valid(cfg))
-        return KSYNC_SYNC_PAYLOAD_FAILED;
-    if(!IsKsyncSyncURLValid(cfg->base_url))
-        return KSYNC_SYNC_INVALID_URL;
+        return SYNC_PAYLOAD_FAILED;
+    if(!IsSyncURLValid(cfg->base_url))
+        return SYNC_INVALID_URL;
     if(method == NULL || path == NULL)
-        return KSYNC_SYNC_PAYLOAD_FAILED;
-    if(!HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
+        return SYNC_PAYLOAD_FAILED;
+    if(!HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
     if(!sync_load_valid_auth_token(cfg, token, sizeof(token))) {
-        result = LoginKsyncSync(cfg);
-        if(result != KSYNC_SYNC_OK)
+        result = LoginSync(cfg);
+        if(result != SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return KSYNC_SYNC_AUTH_FAILED;
+            return SYNC_AUTH_FAILED;
     }
 
 retry:
-    if(!JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, path))
-        return KSYNC_SYNC_INVALID_URL;
+    if(!JoinSyncURL(url, sizeof(url), cfg->base_url, path))
+        return SYNC_INVALID_URL;
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
@@ -908,115 +1182,115 @@ retry:
                                  headers, header_count, &response, &status);
     if(!ok) {
         sync_log_http_failure(cfg, path, status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(status == 401) {
-        FreeKsyncSyncBuffer(&response);
-        ClearKsyncSyncAuthToken(cfg);
+        FreeSyncBuffer(&response);
+        ClearSyncAuthToken(cfg);
         if(retried_auth)
-            return KSYNC_SYNC_AUTH_FAILED;
+            return SYNC_AUTH_FAILED;
         retried_auth = 1;
-        result = LoginKsyncSync(cfg);
-        if(result != KSYNC_SYNC_OK)
+        result = LoginSync(cfg);
+        if(result != SYNC_OK)
             return result;
         if(!sync_load_valid_auth_token(cfg, token, sizeof(token)))
-            return KSYNC_SYNC_AUTH_FAILED;
+            return SYNC_AUTH_FAILED;
         status = 0;
         header_count = 0;
         goto retry;
     }
     if(status < 200 || status >= 300) {
         sync_log_http_failure(cfg, path, status, response.data);
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_REQUEST_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_REQUEST_FAILED;
     }
     if(!sync_copy_response_text(&response, out, out_size)) {
-        FreeKsyncSyncBuffer(&response);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+        FreeSyncBuffer(&response);
+        return SYNC_PAYLOAD_FAILED;
     }
-    FreeKsyncSyncBuffer(&response);
-    return KSYNC_SYNC_OK;
+    FreeSyncBuffer(&response);
+    return SYNC_OK;
 }
 
-static KsyncSyncResult
-sync_delete_with_key(const KsyncSyncConfig *cfg)
+static SyncResult
+sync_delete_with_key(const SyncConfig *cfg)
 {
     char url[768];
-    char exported_key[KSYNC_ACCOUNT_EXPORT_TEXT_SIZE];
-    KsyncSyncBuffer body = {0};
-    KsyncSyncBuffer response = {0};
+    char exported_key[SYNC_ACCOUNT_EXPORT_TEXT_SIZE];
+    SyncBuffer body = {0};
+    SyncBuffer response = {0};
     const char *headers[1] = {"Content-Type: application/json"};
     long status = 0;
     int ok;
 
-    if(!ExportKsyncAccountText(cfg->account, exported_key, sizeof(exported_key)))
-        return KSYNC_SYNC_PAYLOAD_FAILED;
-    if(!AppendKsyncSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_id) ||
-       !AppendKsyncSyncBuffer(&body, ",\"exported_key\":", strlen(",\"exported_key\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, exported_key) ||
-       !AppendKsyncSyncBuffer(&body, "}", 1)) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!ExportSyncAccountText(cfg->account, exported_key, sizeof(exported_key)))
+        return SYNC_PAYLOAD_FAILED;
+    if(!AppendSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->account->public_id) ||
+       !AppendSyncBuffer(&body, ",\"exported_key\":", strlen(",\"exported_key\":")) ||
+       !AppendSyncBufferJSONString(&body, exported_key) ||
+       !AppendSyncBuffer(&body, "}", 1)) {
+        FreeSyncBuffer(&body);
+        return SYNC_PAYLOAD_FAILED;
     }
 
-    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url,
-                             KSYNC_ACCOUNT_DELETE_WITH_KEY_PATH);
+    JoinSyncURL(url, sizeof(url), cfg->base_url,
+                             SYNC_ACCOUNT_DELETE_WITH_KEY_PATH);
     ok = sync_http_request_retry(cfg, "POST", url, body.data, headers, 1,
                                  &response, &status);
-    FreeKsyncSyncBuffer(&body);
-    FreeKsyncSyncBuffer(&response);
+    FreeSyncBuffer(&body);
+    FreeSyncBuffer(&response);
     if(!ok)
-        return KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_REQUEST_FAILED;
     if(status == 401 || status == 403)
-        return KSYNC_SYNC_AUTH_FAILED;
-    return status >= 200 && status < 300 ? KSYNC_SYNC_OK : KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_AUTH_FAILED;
+    return status >= 200 && status < 300 ? SYNC_OK : SYNC_REQUEST_FAILED;
 }
 
-KsyncSyncResult
-DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg)
+SyncResult
+DeleteSyncAccount(const SyncConfig *cfg)
 {
     char nonce_hex[65];
     char message[256];
-    char signature_hex[KSYNC_SIGNATURE_HEX_SIZE];
+    char signature_hex[SYNC_SIGNATURE_HEX_SIZE];
     char url[768];
     char user_header[96];
-    char signature_header[KSYNC_SIGNATURE_HEX_SIZE + 32];
+    char signature_header[SYNC_SIGNATURE_HEX_SIZE + 32];
     const char *headers[3];
-    KsyncSyncBuffer body = {0};
-    KsyncSyncBuffer response = {0};
+    SyncBuffer body = {0};
+    SyncBuffer response = {0};
     long status = 0;
-    KsyncSyncResult result;
+    SyncResult result;
     int ok;
 
     if(!sync_config_valid(cfg))
-        return KSYNC_SYNC_PAYLOAD_FAILED;
-    if(!IsKsyncSyncURLValid(cfg->base_url))
-        return KSYNC_SYNC_INVALID_URL;
-    if(!HasKsyncAccountValues(cfg->account))
-        return KSYNC_SYNC_NO_ACCOUNT;
+        return SYNC_PAYLOAD_FAILED;
+    if(!IsSyncURLValid(cfg->base_url))
+        return SYNC_INVALID_URL;
+    if(!HasSyncAccountValues(cfg->account))
+        return SYNC_NO_ACCOUNT;
 
     /* preferred: signed deletion proof that never transmits the key */
     result = sync_fetch_challenge(cfg, cfg->account->public_id, nonce_hex);
-    if(result != KSYNC_SYNC_OK)
+    if(result != SYNC_OK)
         return result;
-    if(!AppendKsyncSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_id) ||
-       !AppendKsyncSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
-       !AppendKsyncSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
-       !AppendKsyncSyncBuffer(&body, "}", 1)) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_PAYLOAD_FAILED;
+    if(!AppendSyncBuffer(&body, "{\"user_id_hash\":", strlen("{\"user_id_hash\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->account->public_id) ||
+       !AppendSyncBuffer(&body, ",\"public_key\":", strlen(",\"public_key\":")) ||
+       !AppendSyncBufferJSONString(&body, cfg->account->public_key_hex) ||
+       !AppendSyncBuffer(&body, "}", 1)) {
+        FreeSyncBuffer(&body);
+        return SYNC_PAYLOAD_FAILED;
     }
-    if(!sync_build_message(cfg, "POST", KSYNC_ACCOUNT_DELETE_PATH, nonce_hex,
+    if(!sync_build_message(cfg, "POST", SYNC_ACCOUNT_DELETE_PATH, nonce_hex,
                            body.data, message, sizeof(message)) ||
-       !SignKsyncAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
+       !SignSyncAccountHex(cfg->account, (const uint8_t *)message, strlen(message),
                             signature_hex, sizeof(signature_hex))) {
-        FreeKsyncSyncBuffer(&body);
-        return KSYNC_SYNC_SIGN_FAILED;
+        FreeSyncBuffer(&body);
+        return SYNC_SIGN_FAILED;
     }
-    JoinKsyncSyncURL(url, sizeof(url), cfg->base_url, KSYNC_ACCOUNT_DELETE_PATH);
+    JoinSyncURL(url, sizeof(url), cfg->base_url, SYNC_ACCOUNT_DELETE_PATH);
     snprintf(user_header, sizeof(user_header), "%s: %s", sync_user_header_name(cfg),
              cfg->account->public_id);
     snprintf(signature_header, sizeof(signature_header), "%s: %s",
@@ -1026,18 +1300,18 @@ DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg)
     headers[2] = signature_header;
     ok = sync_http_request_retry(cfg, "POST", url, body.data, headers, 3,
                                  &response, &status);
-    FreeKsyncSyncBuffer(&body);
+    FreeSyncBuffer(&body);
     if(ok && (status == 404 || status == 405)) {
         /* server predates the signed-delete endpoint */
-        FreeKsyncSyncBuffer(&response);
+        FreeSyncBuffer(&response);
         return sync_delete_with_key(cfg);
     }
-    FreeKsyncSyncBuffer(&response);
+    FreeSyncBuffer(&response);
     if(!ok)
-        return KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_REQUEST_FAILED;
     if(status == 401 || status == 403)
-        return KSYNC_SYNC_AUTH_FAILED;
-    return status >= 200 && status < 300 ? KSYNC_SYNC_OK : KSYNC_SYNC_REQUEST_FAILED;
+        return SYNC_AUTH_FAILED;
+    return status >= 200 && status < 300 ? SYNC_OK : SYNC_REQUEST_FAILED;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1045,17 +1319,17 @@ DeleteKsyncSyncAccount(const KsyncSyncConfig *cfg)
 /* ------------------------------------------------------------------ */
 
 static int
-sync_payload_key(const KsyncAccount *account, uint8_t out[32])
+sync_payload_key(const SyncAccount *account, uint8_t out[32])
 {
     uint8_t private_key[2560];
 
-    if(!HasKsyncAccountValues(account))
+    if(!HasSyncAccountValues(account))
         return 0;
-    if(!KsyncCryptoHexToBytes(account->private_key_hex, private_key, sizeof(private_key)))
+    if(!SyncCryptoHexToBytes(account->private_key_hex, private_key, sizeof(private_key)))
         return 0;
-    KsyncCryptoHmacSha256(private_key, sizeof(private_key),
-                          (const uint8_t *)KSYNC_SYNC_PAYLOAD_CONTEXT,
-                          strlen(KSYNC_SYNC_PAYLOAD_CONTEXT), out);
+    SyncCryptoHmacSha256(private_key, sizeof(private_key),
+                          (const uint8_t *)SYNC_PAYLOAD_CONTEXT,
+                          strlen(SYNC_PAYLOAD_CONTEXT), out);
     return 1;
 }
 
@@ -1255,7 +1529,7 @@ fail:
 }
 
 int
-WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **out)
+WrapSyncPayload(const SyncAccount *account, const char *payload, char **out)
 {
     uint8_t key[32];
     uint8_t nonce[12];
@@ -1268,7 +1542,7 @@ WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **ou
     size_t plain_len;
     size_t compressed_len = 0;
     size_t sealed_len;
-    KsyncSyncBuffer envelope = {0};
+    SyncBuffer envelope = {0};
     int ok;
     int compressed_payload = 0;
 
@@ -1297,35 +1571,35 @@ WrapKsyncSyncPayload(const KsyncAccount *account, const char *payload, char **ou
     }
     if(!sync_payload_key(account, key))
         goto fail;
-    KsyncCryptoRandom(nonce, sizeof(nonce));
-    if(!KsyncCryptoChaCha20Poly1305Seal(key, nonce, plain, plain_len,
+    SyncCryptoRandom(nonce, sizeof(nonce));
+    if(!SyncCryptoChaCha20Poly1305Seal(key, nonce, plain, plain_len,
                                         NULL, 0, sealed))
         goto fail;
-    if(!KsyncCryptoBytesToHex(sealed, sealed_len, sealed_hex, sealed_len * 2 + 1) ||
-       !KsyncCryptoBytesToHex(nonce, sizeof(nonce), nonce_hex, sizeof(nonce_hex)))
+    if(!SyncCryptoBytesToHex(sealed, sealed_len, sealed_hex, sealed_len * 2 + 1) ||
+       !SyncCryptoBytesToHex(nonce, sizeof(nonce), nonce_hex, sizeof(nonce_hex)))
         goto fail;
     if(compressed_payload) {
         char size_text[32];
 
         snprintf(size_text, sizeof(size_text), "%zu", payload_len);
-        ok = AppendKsyncSyncBuffer(&envelope, "{\"v\":2,\"compression\":", strlen("{\"v\":2,\"compression\":")) &&
-             AppendKsyncSyncBufferJSONString(&envelope, KSYNC_SYNC_PAYLOAD_COMPRESSION) &&
-             AppendKsyncSyncBuffer(&envelope, ",\"plain_size\":", strlen(",\"plain_size\":")) &&
-             AppendKsyncSyncBuffer(&envelope, size_text, strlen(size_text)) &&
-             AppendKsyncSyncBuffer(&envelope, ",\"nonce\":", strlen(",\"nonce\":")) &&
-             AppendKsyncSyncBufferJSONString(&envelope, nonce_hex) &&
-             AppendKsyncSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
-             AppendKsyncSyncBufferJSONString(&envelope, sealed_hex) &&
-             AppendKsyncSyncBuffer(&envelope, "}", 1);
+        ok = AppendSyncBuffer(&envelope, "{\"v\":2,\"compression\":", strlen("{\"v\":2,\"compression\":")) &&
+             AppendSyncBufferJSONString(&envelope, SYNC_PAYLOAD_COMPRESSION) &&
+             AppendSyncBuffer(&envelope, ",\"plain_size\":", strlen(",\"plain_size\":")) &&
+             AppendSyncBuffer(&envelope, size_text, strlen(size_text)) &&
+             AppendSyncBuffer(&envelope, ",\"nonce\":", strlen(",\"nonce\":")) &&
+             AppendSyncBufferJSONString(&envelope, nonce_hex) &&
+             AppendSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
+             AppendSyncBufferJSONString(&envelope, sealed_hex) &&
+             AppendSyncBuffer(&envelope, "}", 1);
     } else {
-        ok = AppendKsyncSyncBuffer(&envelope, "{\"v\":1,\"nonce\":", strlen("{\"v\":1,\"nonce\":")) &&
-             AppendKsyncSyncBufferJSONString(&envelope, nonce_hex) &&
-             AppendKsyncSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
-             AppendKsyncSyncBufferJSONString(&envelope, sealed_hex) &&
-             AppendKsyncSyncBuffer(&envelope, "}", 1);
+        ok = AppendSyncBuffer(&envelope, "{\"v\":1,\"nonce\":", strlen("{\"v\":1,\"nonce\":")) &&
+             AppendSyncBufferJSONString(&envelope, nonce_hex) &&
+             AppendSyncBuffer(&envelope, ",\"ciphertext\":", strlen(",\"ciphertext\":")) &&
+             AppendSyncBufferJSONString(&envelope, sealed_hex) &&
+             AppendSyncBuffer(&envelope, "}", 1);
     }
     if(!ok) {
-        FreeKsyncSyncBuffer(&envelope);
+        FreeSyncBuffer(&envelope);
         goto fail;
     }
     free(sealed);
@@ -1341,7 +1615,7 @@ fail:
 }
 
 int
-UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, char **out)
+UnwrapSyncPayload(const SyncAccount *account, const char *envelope_json, char **out)
 {
     uint8_t key[32];
     uint8_t nonce[12];
@@ -1362,23 +1636,23 @@ UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, c
     ciphertext_hex = (char *)malloc(hex_cap);
     if(ciphertext_hex == NULL)
         return 0;
-    version = FindKsyncSyncJSONInt64(envelope_json, "v", 0);
+    version = FindSyncJSONInt64(envelope_json, "v", 0);
     if((version != 1 && version != 2) ||
-       !FindKsyncSyncJSONString(envelope_json, "nonce", nonce_hex, sizeof(nonce_hex)) ||
-       !FindKsyncSyncJSONString(envelope_json, "ciphertext", ciphertext_hex, hex_cap))
+       !FindSyncJSONString(envelope_json, "nonce", nonce_hex, sizeof(nonce_hex)) ||
+       !FindSyncJSONString(envelope_json, "ciphertext", ciphertext_hex, hex_cap))
         goto done; /* not an envelope */
     compression[0] = '\0';
     plain_size = 0;
     if(version == 2) {
-        plain_size = FindKsyncSyncJSONInt64(envelope_json, "plain_size", -1);
+        plain_size = FindSyncJSONInt64(envelope_json, "plain_size", -1);
         if(plain_size < 0 || plain_size > 0x7fffffff ||
-           !FindKsyncSyncJSONString(envelope_json, "compression",
+           !FindSyncJSONString(envelope_json, "compression",
                                     compression, sizeof(compression)) ||
-           strcmp(compression, KSYNC_SYNC_PAYLOAD_COMPRESSION) != 0)
+           strcmp(compression, SYNC_PAYLOAD_COMPRESSION) != 0)
             goto done;
     }
     if(!sync_payload_key(account, key) ||
-       !KsyncCryptoHexToBytes(nonce_hex, nonce, sizeof(nonce)))
+       !SyncCryptoHexToBytes(nonce_hex, nonce, sizeof(nonce)))
         goto done;
     sealed_len = strlen(ciphertext_hex) / 2;
     if(sealed_len <= 16)
@@ -1387,9 +1661,9 @@ UnwrapKsyncSyncPayload(const KsyncAccount *account, const char *envelope_json, c
     plain = (char *)malloc(sealed_len); /* sealed includes 16-byte tag */
     if(sealed == NULL || plain == NULL)
         goto done;
-    if(!KsyncCryptoHexToBytes(ciphertext_hex, sealed, sealed_len))
+    if(!SyncCryptoHexToBytes(ciphertext_hex, sealed, sealed_len))
         goto done;
-    if(!KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, sealed_len,
+    if(!SyncCryptoChaCha20Poly1305Open(key, nonce, sealed, sealed_len,
                                         NULL, 0, (uint8_t *)plain))
         goto done;
     if(version == 2) {

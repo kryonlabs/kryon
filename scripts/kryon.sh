@@ -19,8 +19,8 @@ Commands:
   fmt [--check] FILE...   format .kry source files
   locale-check SRC... -- LOCALE...
                           check t("key") source references against locales
-  dev-backend             run a local Ksync sync server for this project
-                          (locates the server at $KSYNC_DIR or ../ksync; prints
+  dev-backend             run a local Daochi sync node for this project
+                          (locates it at $DAOCHI_DIR or ../daochi; prints
                           the sync URL to point your app at)
 USAGE
 }
@@ -139,68 +139,61 @@ locale-check)
     exit $?
     ;;
 dev-backend)
-    # Run a local Ksync sync server for development. Locates the server source
-    # at $KSYNC_DIR (if set) or as a sibling checkout (../ksync relative to this
-    # script), isolates its data in <project>/.kryon/, and runs it in the
-    # foreground. The server regenerates its token secret each start, so this
-    # is for local development only — do not use it for shared deployments.
-    ksync_dir=${KSYNC_DIR:-}
-    if [ -z "$ksync_dir" ]; then
-        # Try a sibling checkout: walk up from the current directory looking
-        # for a ../ksync that contains the server, then fall back to a sibling
-        # of the script's own location (for the in-tree kryon build).
+    # Run a local Daochi node for development.
+    daochi_dir=${DAOCHI_DIR:-}
+    if [ -z "$daochi_dir" ]; then
         search_dir=$(pwd)
         while [ "$search_dir" != "/" ]; do
-            candidate=$search_dir/../ksync
-            if [ -f "$candidate/main.go" ] || [ -x "$candidate/ksync" ]; then
-                ksync_dir=$(cd "$candidate" 2>/dev/null && pwd)
+            candidate=$search_dir/../daochi
+            if [ -f "$candidate/main.go" ] || [ -x "$candidate/daochi" ]; then
+                daochi_dir=$(cd "$candidate" 2>/dev/null && pwd)
                 break
             fi
             search_dir=$(dirname "$search_dir")
         done
     fi
-    if [ -z "$ksync_dir" ]; then
+    if [ -z "$daochi_dir" ]; then
         script_dir=$(cd "$(dirname "$0" 2>/dev/null || printf '.')" 2>/dev/null && pwd)
-        candidate=$script_dir/../ksync
-        if [ -f "$candidate/main.go" ] || [ -x "$candidate/ksync" ]; then
-            ksync_dir=$(cd "$candidate" 2>/dev/null && pwd)
+        candidate=$script_dir/../daochi
+        if [ -f "$candidate/main.go" ] || [ -x "$candidate/daochi" ]; then
+            daochi_dir=$(cd "$candidate" 2>/dev/null && pwd)
         fi
     fi
-    if [ -z "$ksync_dir" ] || { [ ! -f "$ksync_dir/main.go" ] && [ ! -x "$ksync_dir/ksync" ]; }; then
-        die "could not find the Ksync server source.
-Set KSYNC_DIR to its checkout path (e.g. export KSYNC_DIR=/home/wao/src/ksync),
-or place it as a sibling of a parent directory (../ksync)."
+    if [ -z "$daochi_dir" ] ||
+       { [ ! -f "$daochi_dir/main.go" ] && [ ! -x "$daochi_dir/daochi" ]; }; then
+        die "could not find the Daochi server source.
+Set DAOCHI_DIR to its checkout path, or place Daochi at ../daochi."
     fi
     # Per-project data dir. SQLite needs a native filesystem: shared/virtual
     # mounts (9p, etc.) fail its WAL/locking with "disk I/O error". Default to
     # a runtime cache dir on tmpfs, keyed by project so concurrent projects
-    # don't collide; let KSYNC_DB override for users who want it elsewhere.
+    # don't collide; let DAOCHI_DB override for users who want it elsewhere.
     project_tag=$(pwd | cksum | awk '{print $1}')
     dev_root=${XDG_CACHE_HOME:-${TMPDIR:-/tmp}}/kryon-dev-backend
     mkdir -p "$dev_root"
-    dev_db=${KSYNC_DB:-$dev_root/ksync-$project_tag.db}
-    dev_addr=${KSYNC_ADDR:-127.0.0.1:8080}
+    dev_db=${DAOCHI_DB:-$dev_root/daochi-$project_tag.db}
+    dev_addr=${DAOCHI_ADDR:-127.0.0.1:8080}
     printf '== kryon dev-backend ==\n'
-    printf 'server:  %s\n' "$ksync_dir"
+    printf 'server:  %s\n' "$daochi_dir"
     printf 'data:    %s\n' "$dev_db"
     printf 'listen:  http://%s\n' "$dev_addr"
     printf '\nPoint your app at this URL, e.g. by setting the sync base URL\n'
-    printf 'to http://%s before calling RunKsyncSync/RequestKsyncSyncBearer.\n' "$dev_addr"
+    printf 'to http://%s before calling RunSync/RequestSyncBearer.\n' "$dev_addr"
     printf '(Tokens are ephemeral; they reset on each restart.)\n\n'
-    export KSYNC_ADDR=$dev_addr
-    export KSYNC_BASE_URL=http://$dev_addr
-    export KSYNC_DB=$dev_db
-    export KSYNC_ALLOW_EPHEMERAL_TOKEN_SECRET=1
-    if [ -x "$ksync_dir/ksync" ]; then
-        exec "$ksync_dir/ksync"
+    export DAOCHI_ADDR=$dev_addr
+    export DAOCHI_BASE_URL=http://$dev_addr
+    export DAOCHI_DB=$dev_db
+    export DAOCHI_ALLOW_EPHEMERAL_TOKEN_SECRET=1
+    if [ -x "$daochi_dir/daochi" ]; then
+        exec "$daochi_dir/daochi"
     fi
     if ! command -v go >/dev/null 2>&1; then
-        die "found Ksync source at $ksync_dir but 'go' is not on PATH.
-Install Go, or build the server once with 'make build' in $ksync_dir."
+        die "found Daochi source at $daochi_dir but 'go' is not on PATH.
+Install Go, or build the server once with 'make build' in $daochi_dir."
     fi
     printf '(building + running via "go run ."; first run compiles liboqs)\n\n'
     make_cmd=${MAKE:-make}
-    "$make_cmd" -C "$ksync_dir" run
+    "$make_cmd" -C "$daochi_dir" run
     ;;
 clean)
     case "$target" in

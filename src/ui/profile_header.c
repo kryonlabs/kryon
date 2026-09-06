@@ -34,32 +34,32 @@ static const UIIconType ui_profile_picture_icons[] = {
     UI_ICON_TYPE_PFP_TREE4
 };
 
-static const int ui_profile_picture_ksync_ids[] = {
-    UI_KSYNC_PROFILE_ICON_BAMBUS,
-    UI_KSYNC_PROFILE_ICON_BIRD,
-    UI_KSYNC_PROFILE_ICON_BOWL,
-    UI_KSYNC_PROFILE_ICON_BUSH,
-    UI_KSYNC_PROFILE_ICON_BUTTERFLY,
-    UI_KSYNC_PROFILE_ICON_CACTUS,
-    UI_KSYNC_PROFILE_ICON_COFFEE,
-    UI_KSYNC_PROFILE_ICON_DRAGONFLY,
-    UI_KSYNC_PROFILE_ICON_FIREPLACE,
-    UI_KSYNC_PROFILE_ICON_FLOWER1,
-    UI_KSYNC_PROFILE_ICON_FLOWER2,
-    UI_KSYNC_PROFILE_ICON_FOX,
-    UI_KSYNC_PROFILE_ICON_HEART,
-    UI_KSYNC_PROFILE_ICON_INCENSE,
-    UI_KSYNC_PROFILE_ICON_LOTUS,
-    UI_KSYNC_PROFILE_ICON_MOUNTAIN,
-    UI_KSYNC_PROFILE_ICON_MUSHROOM,
-    UI_KSYNC_PROFILE_ICON_PALM,
-    UI_KSYNC_PROFILE_ICON_PERSON1,
-    UI_KSYNC_PROFILE_ICON_RAINBOW,
-    UI_KSYNC_PROFILE_ICON_TENT,
-    UI_KSYNC_PROFILE_ICON_TREE1,
-    UI_KSYNC_PROFILE_ICON_TREE2,
-    UI_KSYNC_PROFILE_ICON_TREE3,
-    UI_KSYNC_PROFILE_ICON_TREE4
+static const int ui_profile_picture_sync_ids[] = {
+    UI_SYNC_PROFILE_ICON_BAMBUS,
+    UI_SYNC_PROFILE_ICON_BIRD,
+    UI_SYNC_PROFILE_ICON_BOWL,
+    UI_SYNC_PROFILE_ICON_BUSH,
+    UI_SYNC_PROFILE_ICON_BUTTERFLY,
+    UI_SYNC_PROFILE_ICON_CACTUS,
+    UI_SYNC_PROFILE_ICON_COFFEE,
+    UI_SYNC_PROFILE_ICON_DRAGONFLY,
+    UI_SYNC_PROFILE_ICON_FIREPLACE,
+    UI_SYNC_PROFILE_ICON_FLOWER1,
+    UI_SYNC_PROFILE_ICON_FLOWER2,
+    UI_SYNC_PROFILE_ICON_FOX,
+    UI_SYNC_PROFILE_ICON_HEART,
+    UI_SYNC_PROFILE_ICON_INCENSE,
+    UI_SYNC_PROFILE_ICON_LOTUS,
+    UI_SYNC_PROFILE_ICON_MOUNTAIN,
+    UI_SYNC_PROFILE_ICON_MUSHROOM,
+    UI_SYNC_PROFILE_ICON_PALM,
+    UI_SYNC_PROFILE_ICON_PERSON1,
+    UI_SYNC_PROFILE_ICON_RAINBOW,
+    UI_SYNC_PROFILE_ICON_TENT,
+    UI_SYNC_PROFILE_ICON_TREE1,
+    UI_SYNC_PROFILE_ICON_TREE2,
+    UI_SYNC_PROFILE_ICON_TREE3,
+    UI_SYNC_PROFILE_ICON_TREE4
 };
 
 static const char *ui_profile_picture_names[] = {
@@ -114,31 +114,31 @@ GetUIProfilePictureIconName(int index)
 }
 
 UIIconType
-GetUIProfilePictureIconTypeForKsyncID(int ksync_id)
+GetUIProfilePictureIconTypeForSyncID(int sync_id)
 {
     int i;
 
-    if(ksync_id == UI_KSYNC_PROFILE_ICON_NONE)
+    if(sync_id == UI_SYNC_PROFILE_ICON_NONE)
         return UI_ICON_TYPE_NONE;
     for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
-        if(ui_profile_picture_ksync_ids[i] == ksync_id)
+        if(ui_profile_picture_sync_ids[i] == sync_id)
             return ui_profile_picture_icons[i];
     }
     return UI_ICON_TYPE_NONE;
 }
 
 int
-GetUIKsyncIDForProfilePictureIconType(UIIconType type)
+GetUISyncIDForProfilePictureIconType(UIIconType type)
 {
     int i;
 
     if(type == UI_ICON_TYPE_NONE)
-        return UI_KSYNC_PROFILE_ICON_NONE;
+        return UI_SYNC_PROFILE_ICON_NONE;
     for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
         if(ui_profile_picture_icons[i] == type)
-            return ui_profile_picture_ksync_ids[i];
+            return ui_profile_picture_sync_ids[i];
     }
-    return UI_KSYNC_PROFILE_ICON_NONE;
+    return UI_SYNC_PROFILE_ICON_NONE;
 }
 
 static void

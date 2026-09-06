@@ -1,4 +1,4 @@
-#include "ksync_crypto.h"
+#include "sync_crypto.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +22,7 @@ hex_eq(const char *hex, const uint8_t *bytes, size_t len)
     char got[256];
     if(len * 2 + 1 > sizeof(got))
         return 0;
-    KsyncCryptoBytesToHex(bytes, len, got, sizeof(got));
+    SyncCryptoBytesToHex(bytes, len, got, sizeof(got));
     return strcmp(got, hex) == 0;
 }
 
@@ -31,11 +31,11 @@ test_sha256(void)
 {
     uint8_t digest[32];
 
-    KsyncCryptoSha256((const uint8_t *)"", 0, digest);
+    SyncCryptoSha256((const uint8_t *)"", 0, digest);
     CHECK(hex_eq("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                  digest, 32), "sha256 empty");
 
-    KsyncCryptoSha256((const uint8_t *)"abc", 3, digest);
+    SyncCryptoSha256((const uint8_t *)"abc", 3, digest);
     CHECK(hex_eq("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
                  digest, 32), "sha256 abc");
 
@@ -43,7 +43,7 @@ test_sha256(void)
         /* 448-bit message spanning multiple blocks */
         const char *long_msg =
             "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
-        KsyncCryptoSha256((const uint8_t *)long_msg, strlen(long_msg), digest);
+        SyncCryptoSha256((const uint8_t *)long_msg, strlen(long_msg), digest);
         CHECK(hex_eq("248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
                      digest, 32), "sha256 multi block");
     }
@@ -54,7 +54,7 @@ test_hmac(void)
 {
     /* RFC 4231 test case 2 */
     uint8_t digest[32];
-    KsyncCryptoHmacSha256((const uint8_t *)"Jefe", 4,
+    SyncCryptoHmacSha256((const uint8_t *)"Jefe", 4,
                           (const uint8_t *)"what do ya want for nothing?", 28,
                           digest);
     CHECK(hex_eq("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
@@ -64,7 +64,7 @@ test_hmac(void)
     {
         uint8_t key[131];
         memset(key, 0xaa, sizeof(key));
-        KsyncCryptoHmacSha256(key, sizeof(key),
+        SyncCryptoHmacSha256(key, sizeof(key),
                               (const uint8_t *)
                               "Test Using Larger Than Block-Size Key - Hash Key First",
                               54, digest);
@@ -78,17 +78,17 @@ test_pbkdf2(void)
 {
     uint8_t out[32];
 
-    KsyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
+    SyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
                             (const uint8_t *)"salt", 4, 1, out);
     CHECK(hex_eq("120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b",
                  out, 32), "pbkdf2 c=1");
 
-    KsyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
+    SyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
                             (const uint8_t *)"salt", 4, 2, out);
     CHECK(hex_eq("ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43",
                  out, 32), "pbkdf2 c=2");
 
-    KsyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
+    SyncCryptoPbkdf2Sha256((const uint8_t *)"password", 8,
                             (const uint8_t *)"salt", 4, 4096, out);
     CHECK(hex_eq("c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a",
                  out, 32), "pbkdf2 c=4096");
@@ -124,33 +124,33 @@ test_chacha20_poly1305(void)
     char got[256];
     size_t plain_len = strlen(plain);
 
-    CHECK(KsyncCryptoChaCha20Poly1305Seal(key, nonce, (const uint8_t *)plain,
+    CHECK(SyncCryptoChaCha20Poly1305Seal(key, nonce, (const uint8_t *)plain,
                                           plain_len, aad, sizeof(aad), sealed) == 1,
           "aead seal ok");
     CHECK(hex_eq(expected, sealed, plain_len), "aead rfc8439 ciphertext");
     CHECK(hex_eq(expected_tag, sealed + plain_len, 16), "aead rfc8439 tag");
 
-    CHECK(KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, plain_len + 16,
+    CHECK(SyncCryptoChaCha20Poly1305Open(key, nonce, sealed, plain_len + 16,
                                           aad, sizeof(aad), opened) == 1,
           "aead open ok");
     CHECK(memcmp(opened, plain, plain_len) == 0, "aead roundtrip");
 
     sealed[0] ^= 0x01;
-    CHECK(KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, plain_len + 16,
+    CHECK(SyncCryptoChaCha20Poly1305Open(key, nonce, sealed, plain_len + 16,
                                           aad, sizeof(aad), opened) == 0,
           "aead tamper rejected");
 
     /* empty plaintext */
-    CHECK(KsyncCryptoChaCha20Poly1305Seal(key, nonce, NULL, 0, NULL, 0, sealed) == 1 &&
-          KsyncCryptoChaCha20Poly1305Open(key, nonce, sealed, 16, NULL, 0, opened) == 1,
+    CHECK(SyncCryptoChaCha20Poly1305Seal(key, nonce, NULL, 0, NULL, 0, sealed) == 1 &&
+          SyncCryptoChaCha20Poly1305Open(key, nonce, sealed, 16, NULL, 0, opened) == 1,
           "aead empty roundtrip");
 
     /* random nonces must not repeat */
     {
         uint8_t n1[12], n2[12];
-        KsyncCryptoRandom(n1, sizeof(n1));
-        KsyncCryptoRandom(n2, sizeof(n2));
-        KsyncCryptoBytesToHex(n1, sizeof(n1), got, sizeof(got));
+        SyncCryptoRandom(n1, sizeof(n1));
+        SyncCryptoRandom(n2, sizeof(n2));
+        SyncCryptoBytesToHex(n1, sizeof(n1), got, sizeof(got));
         CHECK(strlen(got) == 24, "random hex length");
     }
 }
@@ -162,12 +162,32 @@ test_hex(void)
     char hex[16];
     uint8_t back[4];
 
-    CHECK(KsyncCryptoBytesToHex(bytes, 4, hex, sizeof(hex)) == 1, "hex encode ok");
+    CHECK(SyncCryptoBytesToHex(bytes, 4, hex, sizeof(hex)) == 1, "hex encode ok");
     CHECK(strcmp(hex, "01abff00") == 0, "hex encode value");
-    CHECK(KsyncCryptoHexToBytes(hex, back, 4) == 1, "hex decode ok");
+    CHECK(SyncCryptoHexToBytes(hex, back, 4) == 1, "hex decode ok");
     CHECK(memcmp(bytes, back, 4) == 0, "hex roundtrip");
-    CHECK(KsyncCryptoHexToBytes("01abff0", back, 4) == 0, "hex decode odd length");
-    CHECK(KsyncCryptoHexToBytes("01abff0g", back, 4) == 0, "hex decode bad digit");
+    CHECK(SyncCryptoHexToBytes("01abff0", back, 4) == 0, "hex decode odd length");
+    CHECK(SyncCryptoHexToBytes("01abff0g", back, 4) == 0, "hex decode bad digit");
+}
+
+static void
+test_device_signature(void)
+{
+    static const uint8_t message[] = "device transaction";
+    uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE];
+    uint8_t public_key[SYNC_ED25519_PUBLIC_KEY_SIZE];
+    uint8_t signature[SYNC_ED25519_SIGNATURE_SIZE];
+
+    CHECK(SyncCryptoCreateDeviceKey(private_key, public_key) == 1,
+          "create Ed25519 device key");
+    SyncCryptoSignDevice(private_key, message, sizeof(message) - 1, signature);
+    CHECK(SyncCryptoVerifyDevice(public_key, message, sizeof(message) - 1,
+                                 signature) == 1,
+          "verify Ed25519 device signature");
+    signature[0] ^= 1;
+    CHECK(SyncCryptoVerifyDevice(public_key, message, sizeof(message) - 1,
+                                 signature) == 0,
+          "reject changed Ed25519 device signature");
 }
 
 int
@@ -178,6 +198,7 @@ main(void)
     test_pbkdf2();
     test_chacha20_poly1305();
     test_hex();
+    test_device_signature();
     if(failures > 0) {
         printf("%d failure(s)\n", failures);
         return 1;
