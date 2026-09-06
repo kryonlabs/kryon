@@ -33,4 +33,18 @@ double eval_fake_ceil  (double x);
 double eval_add_epsilon (double x);
 double eval_sub_epsilon (double x);
 
+/* Scan a gnumeric-compatible string literal starting at text[*pos]
+ * (which must point at the opening quote).  Doubled quotes yield one
+ * quote and a backslash escapes the next character (itself dropped);
+ * anything else is copied verbatim.  Writes a NUL-terminated value to
+ * out and advances pos past the closing quote.  Returns 1 on success,
+ * 0 on an unterminated literal or missing opening quote. */
+int  eval_parse_string_literal (const char *text, int *pos, char *out, int cap);
+
+/* If text[*pos] starts a spreadsheet error name (#DIV/0!, #VALUE!,
+ * #REF!, #NAME?, #NUM!, #N/A, #NULL!, #CYCLE!), advance pos past it
+ * and return its index 0..7 in that order.  Returns -1 otherwise with
+ * pos untouched. */
+int  eval_scan_error_name (const char *text, int *pos);
+
 #endif /* KRY_EVAL_H */

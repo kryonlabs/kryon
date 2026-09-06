@@ -163,3 +163,58 @@ eval_fake_ceil (double x)
 		return x;
 	return ceil (eval_sub_epsilon (x));
 }
+
+static const char *const eval_error_names[8] = {
+	"#DIV/0!", "#VALUE!", "#REF!", "#NAME?",
+	"#NUM!", "#N/A", "#NULL!", "#CYCLE!"
+};
+
+int
+eval_scan_error_name (const char *text, int *pos)
+{
+	int i;
+
+	if (text[*pos] != '#')
+		return -1;
+	for (i = 0; i < 8; i++) {
+		int len = (int)strlen (eval_error_names[i]);
+		if (strncmp (text + *pos, eval_error_names[i], (size_t)len) == 0) {
+			*pos += len;
+			return i;
+		}
+	}
+	return -1;
+}
+
+int
+eval_parse_string_literal (const char *text, int *pos, char *out, int cap)
+{
+	int n = 0;
+
+	if (text[*pos] != '"')
+		return 0;
+	(*pos)++;
+	while (text[*pos] != 0) {
+		char ch = text[*pos];
+		if (ch == '"') {
+			if (text[*pos + 1] == '"') {
+				if (n < cap - 1)
+					out[n++] = '"';
+				*pos += 2;
+				continue;
+			}
+			(*pos)++;
+			out[n] = 0;
+			return 1;
+		}
+		if (ch == '\\' && text[*pos + 1] != 0) {
+			(*pos)++;
+			ch = text[*pos];
+		}
+		if (n < cap - 1)
+			out[n++] = ch;
+		(*pos)++;
+	}
+	out[n] = 0;
+	return 0;
+}
