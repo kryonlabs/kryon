@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.57 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.57
+- Restore focus across popup lifecycles
+
 ## v0.1.56 - 2026-09-06
 
 ### Changed
