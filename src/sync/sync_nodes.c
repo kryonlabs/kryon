@@ -273,9 +273,9 @@ run_on_node(const SyncConfig *original, const SyncNode *node)
     SyncConfig config = *original;
 
     config.base_url = node->url;
-    config.signature_context = "daochi-sync-v1";
-    config.user_header_name = "X-Daochi-User";
-    config.signature_header_name = "X-Daochi-Signature";
+    config.signature_context = "sync-v1";
+    config.user_header_name = "X-Sync-User";
+    config.signature_header_name = "X-Sync-Signature";
     config.http_request = node_http_request;
     config.get_text = node_get_text;
     config.set_text = node_set_text;

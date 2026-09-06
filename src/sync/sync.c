@@ -12,16 +12,16 @@
 #define SYNC_ACCOUNT_DELETE_WITH_KEY_PATH "/api/v1/account/delete-with-key"
 #define SYNC_ACCOUNT_DELETE_PATH "/api/v1/account/delete"
 #define SYNC_DEVICE_REGISTRATION_PATH "/api/v1/account/devices"
-#define SYNC_DELETE_SIGNATURE_CONTEXT "daochi-delete-v1"
-#define SYNC_DEVICE_REGISTRATION_CONTEXT "daochi-device-registration-v1"
-#define SYNC_TRANSACTION_CONTEXT "daochi-tx-v1"
+#define SYNC_DELETE_SIGNATURE_CONTEXT "sync-delete-v1"
+#define SYNC_DEVICE_REGISTRATION_CONTEXT "sync-device-registration-v1"
+#define SYNC_TRANSACTION_CONTEXT "sync-tx-v1"
 #define SYNC_PAYLOAD_CONTEXT "sync-payload-key-v1"
 #define SYNC_AUTH_TOKEN_KEY "sync_auth_token"
 #define SYNC_AUTH_TOKEN_EXPIRES_KEY "sync_auth_token_expires_at"
 #define SYNC_CLOCK_SKEW_KEY "sync_clock_skew"
-#define SYNC_SIGNATURE_CONTEXT "daochi-sync-v1"
-#define SYNC_USER_HEADER "X-Daochi-User"
-#define SYNC_SIGNATURE_HEADER "X-Daochi-Signature"
+#define SYNC_SIGNATURE_CONTEXT "sync-v1"
+#define SYNC_USER_HEADER "X-Sync-User"
+#define SYNC_SIGNATURE_HEADER "X-Sync-Signature"
 #define SYNC_PAYLOAD_COMPRESSION "lzss1"
 #define SYNC_DEVICE_PRIVATE_KEY "sync_device_private_key"
 #define SYNC_DEVICE_PUBLIC_KEY "sync_device_public_key"
@@ -752,21 +752,39 @@ sync_random_identifier(char out[65])
 }
 
 static int
+sync_copy_config_text(const SyncConfig *cfg, const char *key,
+                      char *out, size_t out_size)
+{
+    const char *value;
+
+    if(cfg == NULL || cfg->get_text == NULL || out == NULL || out_size == 0)
+        return 0;
+    out[0] = '\0';
+    value = cfg->get_text(key, cfg->user);
+    if(value == NULL || value[0] == '\0' || strlen(value) >= out_size)
+        return 0;
+    snprintf(out, out_size, "%s", value);
+    return 1;
+}
+
+static int
 sync_load_or_create_device_key(const SyncConfig *cfg,
                                uint8_t private_key[SYNC_ED25519_PRIVATE_KEY_SIZE],
                                char public_key_hex[SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1],
                                char key_id[65])
 {
-    const char *stored_private;
-    const char *stored_public;
-    const char *stored_id;
+    char stored_private[SYNC_ED25519_PRIVATE_KEY_SIZE * 2 + 1];
+    char stored_public[SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1];
+    char stored_id[65];
     uint8_t public_key[SYNC_ED25519_PUBLIC_KEY_SIZE];
     char private_key_hex[SYNC_ED25519_PRIVATE_KEY_SIZE * 2 + 1];
 
-    stored_private = cfg->get_text(SYNC_DEVICE_PRIVATE_KEY, cfg->user);
-    stored_public = cfg->get_text(SYNC_DEVICE_PUBLIC_KEY, cfg->user);
-    stored_id = cfg->get_text(SYNC_DEVICE_KEY_ID, cfg->user);
-    if(stored_private != NULL && stored_public != NULL && stored_id != NULL &&
+    if(sync_copy_config_text(cfg, SYNC_DEVICE_PRIVATE_KEY, stored_private,
+                             sizeof(stored_private)) &&
+       sync_copy_config_text(cfg, SYNC_DEVICE_PUBLIC_KEY, stored_public,
+                             sizeof(stored_public)) &&
+       sync_copy_config_text(cfg, SYNC_DEVICE_KEY_ID, stored_id,
+                             sizeof(stored_id)) &&
        SyncCryptoHexToBytes(stored_private, private_key,
                             SYNC_ED25519_PRIVATE_KEY_SIZE) &&
        strlen(stored_public) == SYNC_ED25519_PUBLIC_KEY_SIZE * 2 &&
@@ -774,8 +792,10 @@ sync_load_or_create_device_key(const SyncConfig *cfg,
         snprintf(public_key_hex, SYNC_ED25519_PUBLIC_KEY_SIZE * 2 + 1, "%s",
                  stored_public);
         snprintf(key_id, 65, "%s", stored_id);
+        memset(stored_private, 0, sizeof(stored_private));
         return 1;
     }
+    memset(stored_private, 0, sizeof(stored_private));
     if(!SyncCryptoCreateDeviceKey(private_key, public_key))
         return 0;
     if(!SyncCryptoBytesToHex(private_key, SYNC_ED25519_PRIVATE_KEY_SIZE,
@@ -955,8 +975,8 @@ sync_build_transaction_header(const SyncConfig *cfg, const char *body,
                              sizeof(device_signature_hex))) {
         return 0;
     }
-    ok = AppendSyncBuffer(&json, "X-Daochi-Tx: {\"protocol_version\":",
-                          strlen("X-Daochi-Tx: {\"protocol_version\":"));
+    ok = AppendSyncBuffer(&json, "X-Sync-Tx: {\"protocol_version\":",
+                          strlen("X-Sync-Tx: {\"protocol_version\":"));
     {
         char protocol[16];
         snprintf(protocol, sizeof(protocol), "%d", cfg->protocol_version);

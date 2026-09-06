@@ -9,12 +9,17 @@
 typedef struct TestCtx {
     char token[64];
     char expires[32];
+    char device_private_key[129];
+    char device_public_key[65];
+    char device_key_id[65];
+    char registered_device_key_id[65];
     char last_method[16];
     char last_url[256];
-    char last_body[256];
+    char last_body[10000];
     char last_auth[128];
     char last_user[128];
     char last_signature[256];
+    char last_transaction[10000];
     int apply_called;
     int purge_called;
     int http_calls;
@@ -38,6 +43,12 @@ test_get_text(const char *key, void *user)
     TestCtx *ctx = user;
 
     snprintf(ctx->last_storage_key, sizeof(ctx->last_storage_key), "%s", key);
+    if(strcmp(key, "sync_device_private_key") == 0)
+        return ctx->device_private_key;
+    if(strcmp(key, "sync_device_public_key") == 0)
+        return ctx->device_public_key;
+    if(strcmp(key, "sync_device_key_id") == 0)
+        return ctx->device_key_id;
     if(strstr(key, "sync_auth_token_expires_at") != NULL) {
         return ctx->expires;
     }
@@ -53,7 +64,16 @@ test_set_text(const char *key, const char *value, void *user)
     TestCtx *ctx = user;
 
     snprintf(ctx->last_storage_key, sizeof(ctx->last_storage_key), "%s", key);
-    if(strstr(key, "sync_auth_token_expires_at") != NULL) {
+    if(strcmp(key, "sync_device_private_key") == 0) {
+        snprintf(ctx->device_private_key, sizeof(ctx->device_private_key), "%s",
+                 value != NULL ? value : "");
+    } else if(strcmp(key, "sync_device_public_key") == 0) {
+        snprintf(ctx->device_public_key, sizeof(ctx->device_public_key), "%s",
+                 value != NULL ? value : "");
+    } else if(strcmp(key, "sync_device_key_id") == 0) {
+        snprintf(ctx->device_key_id, sizeof(ctx->device_key_id), "%s",
+                 value != NULL ? value : "");
+    } else if(strstr(key, "sync_auth_token_expires_at") != NULL) {
         snprintf(ctx->expires, sizeof(ctx->expires), "%s", value != NULL ? value : "");
     } else if(strstr(key, "sync_auth_token") != NULL) {
         snprintf(ctx->token, sizeof(ctx->token), "%s", value != NULL ? value : "");
@@ -77,14 +97,21 @@ test_http(const char *method, const char *url, const char *body,
         if(headers[i] != NULL && strncmp(headers[i], "Authorization:", 14) == 0)
             snprintf(ctx->last_auth, sizeof(ctx->last_auth), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Daochi-User:", strlen("X-Daochi-User:")) == 0 ||
+           (strncmp(headers[i], "X-Sync-User:", strlen("X-Sync-User:")) == 0 ||
             strncmp(headers[i], "X-Custom-User:", strlen("X-Custom-User:")) == 0))
             snprintf(ctx->last_user, sizeof(ctx->last_user), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Daochi-Signature:", strlen("X-Daochi-Signature:")) == 0 ||
+           (strncmp(headers[i], "X-Sync-Signature:", strlen("X-Sync-Signature:")) == 0 ||
             strncmp(headers[i], "X-Custom-Signature:", strlen("X-Custom-Signature:")) == 0))
             snprintf(ctx->last_signature, sizeof(ctx->last_signature), "%s", headers[i]);
+        if(headers[i] != NULL &&
+           strncmp(headers[i], "X-Sync-Tx:", strlen("X-Sync-Tx:")) == 0)
+            snprintf(ctx->last_transaction, sizeof(ctx->last_transaction), "%s",
+                     headers[i]);
     }
+    if(strstr(url, "/api/v1/account/devices") != NULL)
+        FindSyncJSONString(body, "device_key_id", ctx->registered_device_key_id,
+                           sizeof(ctx->registered_device_key_id));
     if(status != NULL)
         *status = 200;
     return AppendSyncBuffer(response, "{\"status\":\"ok\",\"changes\":{}}",
@@ -235,9 +262,9 @@ test_sync_run_with_valid_token(void)
           "sync posts to sync path");
     check(strcmp(ctx.last_auth, "Authorization: Bearer saved-token") == 0,
           "sync sends bearer token");
-    check(strncmp(ctx.last_user, "X-Daochi-User:",
-                  strlen("X-Daochi-User:")) == 0,
-          "sync uses Daochi user header by default");
+    check(strncmp(ctx.last_user, "X-Sync-User:",
+                  strlen("X-Sync-User:")) == 0,
+          "sync uses Sync user header by default");
     check(ctx.apply_called == 1, "sync applies response");
     check(ctx.purge_called == 1, "sync purges after success");
 }
@@ -286,8 +313,8 @@ test_sync_node_failover(void)
     check(ctx.http_calls == 2, "local and public nodes attempted once");
     check(strstr(ctx.last_storage_key, "sync_node_public-node_") == ctx.last_storage_key,
           "credentials scoped to active node");
-    check(strncmp(ctx.last_user, "X-Daochi-User:", strlen("X-Daochi-User:")) == 0,
-          "clean node sync uses Daochi wire header");
+    check(strncmp(ctx.last_user, "X-Sync-User:", strlen("X-Sync-User:")) == 0,
+          "clean node sync uses Sync wire header");
 }
 
 static int
@@ -379,6 +406,51 @@ test_json_hardening(void)
 }
 
 static void
+test_v6_device_key_is_stable(void)
+{
+    TestCtx ctx = {0};
+    SyncAccount account;
+    SyncConfig cfg;
+    char first_key_id[65];
+    SyncResult result;
+
+    check(CreateSyncAccount(&account), "create v6 test account");
+    if(!HasSyncAccountValues(&account))
+        return;
+    snprintf(ctx.token, sizeof(ctx.token), "token-v6");
+    snprintf(ctx.expires, sizeof(ctx.expires), "%lld",
+             (long long)time(NULL) + 3600);
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.base_url = "https://node.example";
+    cfg.account = &account;
+    cfg.client_id = "client-v6-device";
+    cfg.app_id = "inbe";
+    cfg.protocol_version = 6;
+    cfg.http_request = test_http;
+    cfg.get_text = test_get_text;
+    cfg.set_text = test_set_text;
+    cfg.build_payload = test_build_payload;
+    cfg.free_payload = test_free_payload;
+    cfg.apply_response = test_apply_response;
+    cfg.user = &ctx;
+
+    result = RunSync(&cfg);
+    check(result == SYNC_OK, "v6 sync succeeds");
+    check(ctx.registered_device_key_id[0] != '\0', "v6 registers device key");
+    check(strstr(ctx.last_transaction, ctx.registered_device_key_id) != NULL,
+          "v6 transaction uses registered device key");
+    snprintf(first_key_id, sizeof(first_key_id), "%s",
+             ctx.registered_device_key_id);
+
+    result = RunSync(&cfg);
+    check(result == SYNC_OK, "second v6 sync succeeds");
+    check(strcmp(first_key_id, ctx.registered_device_key_id) == 0,
+          "v6 reuses installation device key");
+    check(strstr(ctx.last_transaction, first_key_id) != NULL,
+          "second v6 transaction uses stable device key");
+}
+
+static void
 test_payload_encryption(void)
 {
     SyncAccount account;
@@ -441,6 +513,7 @@ main(void)
     test_json_helpers();
     test_json_hardening();
     test_payload_encryption();
+    test_v6_device_key_is_stable();
     test_sync_run_with_valid_token();
     test_sync_node_failover();
     test_login_uses_configured_wire_names();

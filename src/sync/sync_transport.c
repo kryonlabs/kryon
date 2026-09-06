@@ -32,9 +32,9 @@ extern struct android_app *GetAndroidApp(void);
 #define SYNC_PATH "/api/v1/sync"
 #define SYNC_CHALLENGE_PATH "/api/v1/sync/challenge"
 #define SYNC_LOGIN_PATH "/api/v1/sync/login"
-#define SYNC_SIGNATURE_CONTEXT "daochi-sync-v1"
-#define SYNC_USER_HEADER "X-Daochi-User"
-#define SYNC_SIGNATURE_HEADER "X-Daochi-Signature"
+#define SYNC_SIGNATURE_CONTEXT "sync-v1"
+#define SYNC_USER_HEADER "X-Sync-User"
+#define SYNC_SIGNATURE_HEADER "X-Sync-Signature"
 #define SYNC_WEB_RESPONSE_MAX (4 * 1024 * 1024)
 
 #if defined(__EMSCRIPTEN__)
@@ -408,7 +408,7 @@ EM_JS(int, sync_websocket_start_js, (const char *url_ptr, const char *token_ptr)
     }
     Module.__syncWebSocketUrl = url;
     try {
-        const ws = new WebSocket(url, ["daochi-sync-v1", "bearer." + token]);
+        const ws = new WebSocket(url, ["sync-v1", "bearer." + token]);
         Module.__syncWebSocket = ws;
         ws.onopen = function() {
             Module.__syncWebSocketRetryAt = 0;

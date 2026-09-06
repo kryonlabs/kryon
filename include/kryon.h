@@ -48,7 +48,7 @@
 #include "ui_text_layout.h"
 #include "ui_transition.h"
 #include "locale.h"
-#if defined(KRYON_WITH_DAOCHI) && KRYON_WITH_DAOCHI
+#if defined(KRYON_WITH_SYNC) && KRYON_WITH_SYNC
 #include "sync/account.h"
 #include "sync.h"
 #include "sync_nodes.h"

@@ -173,35 +173,35 @@ KRYON_ZLIB_LDLIB ?= -lz
 RAY_SDL_INCLUDE_DIR ?= $(shell pkg-config --variable=includedir sdl2 2>/dev/null | sed 's,/SDL2$$,,')
 RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSUPPORT_AUTOMATION_EVENTS=0 -DSUPPORT_CLIPBOARD_IMAGE=0 -DSUPPORT_FILEFORMAT_BMP=0 -DSUPPORT_FILEFORMAT_GIF=0 -DSUPPORT_FILEFORMAT_QOI=0 -DSUPPORT_FILEFORMAT_DDS=0 -DSUPPORT_FILEFORMAT_TTF=1 -DMAX_CLIPBOARD_BUFFER_LENGTH=1048576
 APP_RAYLIB_CONFIG ?= $(filter-out -DSUPPORT_MODULE_RAUDIO=0 -DSUPPORT_FILEFORMAT_PNG=0 -DSUPPORT_FILEFORMAT_JPG=0 -DSUPPORT_FILEFORMAT_OGG=0 -DSUPPORT_FILEFORMAT_MP3=0,$(RAY_RAYLIB_CONFIG)) -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1
-KRYON_WITH_DAOCHI ?= 0
-ifeq ($(KRYON_WITH_DAOCHI),1)
-  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=1 -DHAS_LIBOQS=1 \
+KRYON_WITH_SYNC ?= 0
+ifeq ($(KRYON_WITH_SYNC),1)
+  KRYON_SYNC_CPPFLAGS = -DKRYON_WITH_SYNC=1 -DHAS_LIBOQS=1 \
     $(KRYON_LIBOQS_INCLUDE) -Ivendor/monocypher/src \
     -Ivendor/monocypher/src/optional
-  KRYON_DAOCHI_DEPS = $(KRYON_LIBOQS_A)
-  KRYON_DAOCHI_LDLIBS = $(KRYON_LIBOQS_A)
-  KRYON_DAOCHI_TESTS = $(SYNC_ACCOUNT_TEST) $(SYNC_TEST) $(SYNC_CRYPTO_TEST)
-  KRYON_STATIC_PACKAGE_DAOCHI_FILES ?= $(KRYON_LIBOQS_A)
-  KRYON_STATIC_PACKAGE_DAOCHI_LIBS ?= -loqs
-  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DHAS_LIBOQS=1 -DKRYON_WITH_DAOCHI=1
-  KRYON_STATIC_PACKAGE_DAOCHI_MANIFEST_LIBS ?= "liboqs.a", 
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;HAS_LIBOQS=1;KRYON_WITH_DAOCHI=1
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_LIBS ?= "$${KRYON_PACKAGE_PREFIX}/lib/liboqs.a" 
+  KRYON_SYNC_DEPS = $(KRYON_LIBOQS_A)
+  KRYON_SYNC_LDLIBS = $(KRYON_LIBOQS_A)
+  KRYON_SYNC_TESTS = $(SYNC_ACCOUNT_TEST) $(SYNC_TEST) $(SYNC_CRYPTO_TEST)
+  KRYON_STATIC_PACKAGE_SYNC_FILES ?= $(KRYON_LIBOQS_A)
+  KRYON_STATIC_PACKAGE_SYNC_LIBS ?= -loqs
+  KRYON_STATIC_PACKAGE_SYNC_CFLAGS ?= -DHAS_LIBOQS=1 -DKRYON_WITH_SYNC=1
+  KRYON_STATIC_PACKAGE_SYNC_MANIFEST_LIBS ?= "liboqs.a",
+  KRYON_STATIC_PACKAGE_SYNC_CMAKE_DEFS ?= ;HAS_LIBOQS=1;KRYON_WITH_SYNC=1
+  KRYON_STATIC_PACKAGE_SYNC_CMAKE_LIBS ?= "$${KRYON_PACKAGE_PREFIX}/lib/liboqs.a"
 else
-  KRYON_DAOCHI_CPPFLAGS = -DKRYON_WITH_DAOCHI=0
-  KRYON_DAOCHI_DEPS =
-  KRYON_DAOCHI_LDLIBS =
-  KRYON_DAOCHI_TESTS =
-  KRYON_STATIC_PACKAGE_DAOCHI_FILES ?=
-  KRYON_STATIC_PACKAGE_DAOCHI_LIBS ?=
-  KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS ?= -DKRYON_WITH_DAOCHI=0
-  KRYON_STATIC_PACKAGE_DAOCHI_MANIFEST_LIBS ?=
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS ?= ;KRYON_WITH_DAOCHI=0
-  KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_LIBS ?=
+  KRYON_SYNC_CPPFLAGS = -DKRYON_WITH_SYNC=0
+  KRYON_SYNC_DEPS =
+  KRYON_SYNC_LDLIBS =
+  KRYON_SYNC_TESTS =
+  KRYON_STATIC_PACKAGE_SYNC_FILES ?=
+  KRYON_STATIC_PACKAGE_SYNC_LIBS ?=
+  KRYON_STATIC_PACKAGE_SYNC_CFLAGS ?= -DKRYON_WITH_SYNC=0
+  KRYON_STATIC_PACKAGE_SYNC_MANIFEST_LIBS ?=
+  KRYON_STATIC_PACKAGE_SYNC_CMAKE_DEFS ?= ;KRYON_WITH_SYNC=0
+  KRYON_STATIC_PACKAGE_SYNC_CMAKE_LIBS ?=
 endif
 KRYON_STATIC_PACKAGE_EXTERNAL_LIBS ?= $(RAY_LDLIBS) $(KRYON_OPENSSL_SSL_LDLIB) $(KRYON_OPENSSL_CRYPTO_LDLIB) $(KRYON_ZLIB_LDLIB) -lpthread -lm
-KRYON_STATIC_PACKAGE_LIBS ?= -lkryon -lraylib $(KRYON_STATIC_PACKAGE_DAOCHI_LIBS) -lcurl -lcmark-gfm-extensions -lcmark-gfm $(KRYON_STATIC_PACKAGE_EXTERNAL_LIBS)
-KRYON_STATIC_PACKAGE_CFLAGS ?= -I$${includedir} $(KRYON_STATIC_PACKAGE_DAOCHI_CFLAGS) -DHAS_LIBCURL=1 -DCURL_STATICLIB -DKRYON_HAS_CMARK_GFM=1
+KRYON_STATIC_PACKAGE_LIBS ?= -lkryon -lraylib $(KRYON_STATIC_PACKAGE_SYNC_LIBS) -lcurl -lcmark-gfm-extensions -lcmark-gfm $(KRYON_STATIC_PACKAGE_EXTERNAL_LIBS)
+KRYON_STATIC_PACKAGE_CFLAGS ?= -I$${includedir} $(KRYON_STATIC_PACKAGE_SYNC_CFLAGS) -DHAS_LIBCURL=1 -DCURL_STATICLIB -DKRYON_HAS_CMARK_GFM=1
 
 # Check if we're in nix-shell and use its flags
 ifneq ($(NIX_CFLAGS_COMPILE),)
@@ -217,14 +217,14 @@ KRYON_VENDOR_BUILD_DIR ?= $(BUILD_DIR)/vendor
 include mk/vendor.mk
 include mk/raylib.mk
 
-CPPFLAGS += $(KRYON_DAOCHI_CPPFLAGS) \
+CPPFLAGS += $(KRYON_SYNC_CPPFLAGS) \
 	-DHAS_LIBCURL=1 $(KRYON_CURL_CFLAGS) \
 	$(KRYON_MARKDOWN_CFLAGS)
 CPPFLAGS += $(KRYON_NOTIFICATION_CPPFLAGS) $(KRYON_NOTIFICATION_CFLAGS)
 LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
-KRYON_DAOCHI_SRCS_REL := $(wildcard src/sync/*.c)
+KRYON_SYNC_SRCS_REL := $(wildcard src/sync/*.c)
 
 # Browser-only backend sources compile to empty translation units under native
 # compilers and only link when their backend is selected; keep the find from
@@ -253,8 +253,8 @@ KRYON_PHYSICS_SRCS_REL := src/scene/physics_world.c src/scene/node_body2d.c \
 ifeq ($(KRYON_WITH_PHYSICS),0)
 SRCS := $(filter-out $(KRYON_PHYSICS_SRCS_REL),$(SRCS))
 endif
-ifneq ($(KRYON_WITH_DAOCHI),1)
-SRCS := $(filter-out $(KRYON_DAOCHI_SRCS_REL),$(SRCS))
+ifneq ($(KRYON_WITH_SYNC),1)
+SRCS := $(filter-out $(KRYON_SYNC_SRCS_REL),$(SRCS))
 endif
 
 SYSTEM_THEME_PKG := $(shell if pkg-config --exists gtk+-3.0 2>/dev/null; then printf '%s' gtk+-3.0; fi)
@@ -396,7 +396,7 @@ raylib-matrix-check-internal: $(K2C) $(LIB) $(KRYON_BACKEND_LIBS)
 		--cc "$(CC)" \
 		--cppflags "$(CPPFLAGS)" \
 		--cflags "$(CFLAGS)" \
-		--ldinputs "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_DAOCHI_LDLIBS) $(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+		--ldinputs "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_SYNC_LDLIBS) $(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
 libdraw-matrix-check: $(K2C)
 	$(MAKE) --no-print-directory BUILD_DIR=$(BUILD_DIR)-libdraw KRYON_BACKEND=libdraw libdraw-matrix-check-internal
@@ -406,7 +406,7 @@ libdraw-matrix-check-internal: $(LIB)
 		--cc "$(CC)" \
 		--cppflags "$(CPPFLAGS)" \
 		--cflags "$(CFLAGS)" \
-		--ldinputs "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_DAOCHI_LDLIBS) $(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)" \
+		--ldinputs "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_SYNC_LDLIBS) $(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)" \
 		--plan9port-dir "$(PLAN9PORT_DIR)"
 
 # Native web host for KRB cartridges: kry_sw rasterizer compiled to wasm,
@@ -489,19 +489,19 @@ k2js-runtime-snapshot-test: $(K2JS)
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 
 generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
-	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_DAOCHI_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
 preflight: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
 	git diff --check
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_DAOCHI_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(UI_DPI_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(UI_DPI_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
 	sh tests/k2go_syntax_test.sh $(K2GO)
 	sh tests/k2js_syntax_test.sh $(K2JS)
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
-	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_DAOCHI_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
 	sh tests/krb_engine_test.sh $(K2B) $(KRB_RUN) .
@@ -523,7 +523,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check public-api-na
 	$(KRY_SHA256_TEST)
 	$(LOCALE_TEST)
 	$(SFS_TEST)
-	@if [ "$(KRYON_WITH_DAOCHI)" = "1" ]; then \
+	@if [ "$(KRYON_WITH_SYNC)" = "1" ]; then \
 		$(SYNC_ACCOUNT_TEST); \
 		$(SYNC_TEST); \
 		$(SYNC_CRYPTO_TEST); \
@@ -603,7 +603,7 @@ generated-provenance-check:
 backend-capabilities-check:
 	sh tests/backend_capabilities_test.sh .
 
-$(LIB): $(OBJS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
+$(LIB): $(OBJS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
 	rm -f $@
 	$(AR) $(ARFLAGS) $@ $(OBJS)
 
@@ -649,7 +649,7 @@ $(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUIL
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
-		$(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_DAOCHI_LDLIBS) \
+		$(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_SYNC_LDLIBS) \
 		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) \
 		$(CURL_CODEC_LDLIBS) $(LDLIBS) -lpthread -lm
 
@@ -688,11 +688,11 @@ install-static: $(STATIC_DIST_ARCHIVE)
 	mkdir -p $(DESTDIR)$(PREFIX)
 	tar -xzf $(STATIC_DIST_ARCHIVE) -C $(DESTDIR)$(PREFIX) --strip-components=1
 
-$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
+$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
 	rm -rf $(STATIC_DIST_ROOT)
 	mkdir -p $(STATIC_DIST_ROOT)/include $(STATIC_DIST_ROOT)/lib $(STATIC_DIST_ROOT)/lib/pkgconfig $(STATIC_DIST_ROOT)/lib/cmake/kryon $(STATIC_DIST_ROOT)/share/doc/kryon $(STATIC_DIST_ROOT)/share/licenses/kryon $(STATIC_DIST_ROOT)/examples $(DIST_DIR)
 	cp -R include/. $(STATIC_DIST_ROOT)/include/
-	cp $(LIB) $(RAYLIB_A) $(KRYON_STATIC_PACKAGE_DAOCHI_FILES) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) $(STATIC_DIST_ROOT)/lib/
+	cp $(LIB) $(RAYLIB_A) $(KRYON_STATIC_PACKAGE_SYNC_FILES) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) $(STATIC_DIST_ROOT)/lib/
 	cp README.md $(STATIC_DIST_ROOT)/
 	cp LICENSE $(STATIC_DIST_ROOT)/
 	cp LICENSE THIRD_PARTY_NOTICES.md $(STATIC_DIST_ROOT)/share/licenses/kryon/
@@ -706,7 +706,7 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_A) 
 		'  "version": "$(VERSION)",' \
 		'  "target": "$(KRYON_PLATFORM)-$(KRYON_ARCH)",' \
 		'  "compiler": "$(CC)",' \
-		'  "static_libraries": ["libkryon.a", "libraylib.a", $(KRYON_STATIC_PACKAGE_DAOCHI_MANIFEST_LIBS)"libcurl.a", "libcmark-gfm-extensions.a", "libcmark-gfm.a"],' \
+		'  "static_libraries": ["libkryon.a", "libraylib.a", $(KRYON_STATIC_PACKAGE_SYNC_MANIFEST_LIBS)"libcurl.a", "libcmark-gfm-extensions.a", "libcmark-gfm.a"],' \
 		'  "external_libraries": "$(KRYON_STATIC_PACKAGE_EXTERNAL_LIBS)",' \
 		'  "pkg_config": "lib/pkgconfig/kryon.pc"' \
 		'}' > $(STATIC_DIST_ROOT)/manifest.json
@@ -726,10 +726,10 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_A) 
 		'include(CMakeFindDependencyMacro)' \
 		'get_filename_component(KRYON_PACKAGE_PREFIX "$${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)' \
 		'add_library(Kryon::kryon STATIC IMPORTED)' \
-		'set_target_properties(Kryon::kryon PROPERTIES IMPORTED_LOCATION "$${KRYON_PACKAGE_PREFIX}/lib/libkryon.a" INTERFACE_INCLUDE_DIRECTORIES "$${KRYON_PACKAGE_PREFIX}/include" INTERFACE_COMPILE_DEFINITIONS "HAS_LIBCURL=1;CURL_STATICLIB;KRYON_HAS_CMARK_GFM=1$(KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_DEFS)")' \
+		'set_target_properties(Kryon::kryon PROPERTIES IMPORTED_LOCATION "$${KRYON_PACKAGE_PREFIX}/lib/libkryon.a" INTERFACE_INCLUDE_DIRECTORIES "$${KRYON_PACKAGE_PREFIX}/include" INTERFACE_COMPILE_DEFINITIONS "HAS_LIBCURL=1;CURL_STATICLIB;KRYON_HAS_CMARK_GFM=1$(KRYON_STATIC_PACKAGE_SYNC_CMAKE_DEFS)")' \
 		'add_library(Kryon::raylib STATIC IMPORTED)' \
 		'set_target_properties(Kryon::raylib PROPERTIES IMPORTED_LOCATION "$${KRYON_PACKAGE_PREFIX}/lib/libraylib.a")' \
-		'set(Kryon_PACKAGE_LIBS $(KRYON_STATIC_PACKAGE_DAOCHI_CMAKE_LIBS)"$${KRYON_PACKAGE_PREFIX}/lib/libcurl.a" "$${KRYON_PACKAGE_PREFIX}/lib/libcmark-gfm-extensions.a" "$${KRYON_PACKAGE_PREFIX}/lib/libcmark-gfm.a")' \
+		'set(Kryon_PACKAGE_LIBS $(KRYON_STATIC_PACKAGE_SYNC_CMAKE_LIBS) "$${KRYON_PACKAGE_PREFIX}/lib/libcurl.a" "$${KRYON_PACKAGE_PREFIX}/lib/libcmark-gfm-extensions.a" "$${KRYON_PACKAGE_PREFIX}/lib/libcmark-gfm.a")' \
 		'set_target_properties(Kryon::kryon PROPERTIES INTERFACE_LINK_LIBRARIES "Kryon::raylib;$${Kryon_PACKAGE_LIBS}")' \
 		'set(Kryon_LIBRARIES Kryon::kryon Kryon::raylib $${Kryon_PACKAGE_LIBS})' \
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
@@ -1153,11 +1153,11 @@ icons-import-mingcute: scripts/import-mingcute-icons.py
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
 
-$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_DAOCHI_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 

@@ -10,7 +10,7 @@
 # Sources: the portable core, the libdraw backend, the full UI toolkit, the
 # kry_std modules that do not need hosted OS services.
 # Excluded on purpose: canvas/KRB backends, raylib audio, dylib/process/http
-# surfaces, Daochi sync, notifications, desktop integration, file dialogs, preview
+# surfaces, sync, notifications, desktop integration, file dialogs, preview
 # hosts, and runtime asset downloads.
 #
 # After `mk install`, link with -lkryon (or /$objtype/lib/libkryon.a) and
