@@ -382,7 +382,8 @@ typedef struct {
 typedef enum {
     PopupFlagsNone = 0,
     PopupTooltip = 1 << 0,
-    PopupModal = 1 << 1
+    PopupModal = 1 << 1,
+    PopupContext = 1 << 2
 } PopupFlags;
 
 typedef struct {

@@ -22,6 +22,26 @@ state {
     modal_open: bool = true
     modal_frames: int = 0
     modal_background: int = 0
+    context_open: bool = false
+    context_frames: int = 0
+    context_action: int = 0
+}
+
+composed_context_frame :: () #ui {
+    Screen root: {
+        Popup context: {
+            bounds = {90,60,150,80}
+            id = 27050
+            open = &context_open
+            trigger = {20,20,100,32}
+            flags = PopupContext
+            context_frames += 1
+            if Button((ButtonProps){.bounds={100,70,100,26},.label="Context action",.id=27051}) {
+                context_action += 1
+                ClosePopup()
+            }
+        }
+    }
 }
 
 composed_modal_frame :: () #ui {

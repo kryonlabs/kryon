@@ -879,6 +879,54 @@ test_composed_modal_scope(void)
 }
 
 static void
+test_composed_context_popup_scope(void)
+{
+    bool open = false;
+    InjectReset();
+    InjectMousePosition(30,25);
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,1); InjectPump();
+    InjectMousePosition(30,25);
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,0); InjectPump();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("composed context popup arbitrary children"));
+    check_int("right release opens composed context popup",
+        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+            .open=&open,.trigger={20,20,80,30},.flags=PopupContext}),1);
+    Button((ButtonProps){.bounds={88,58,100,24},.label="context child",
+        .id=29501});
+    EndPopup();
+    EndTree();
+    check_int("context popup updates caller open state",open,1);
+    int count = 0, child = 0;
+    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    for(int i = 0; i < count; i++)
+        if(nodes[i].id == 29501) child++;
+    check_int("ordinary child retained in context popup",child,1);
+    EndUIFrame();
+
+    InjectTap(220,160); InjectPump(); InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("outside release dismisses context popup",
+        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+            .open=&open,.trigger={20,20,80,30},.flags=PopupContext}),0);
+    check_int("context popup dismissal updates caller",open,0);
+    EndUIFrame();
+
+    InjectReset();
+    InjectMousePosition(30,25);
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,1); InjectPump();
+    InjectMousePosition(30,25);
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,0); InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("disabled context popup stays closed",
+        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+            .open=&open,.trigger={20,20,80,30},.flags=PopupContext,
+            .disabled=1}),0);
+    EndUIFrame();
+    InjectReset();
+}
+
+static void
 test_popup_combo_keyboard_ownership(void)
 {
     const char *options[] = {"One","Two"};
@@ -1738,6 +1786,7 @@ main(void)
     test_composed_popup_scope();
     test_composed_tooltip_scope();
     test_composed_modal_scope();
+    test_composed_context_popup_scope();
     test_popup_text_keyboard_ownership();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();

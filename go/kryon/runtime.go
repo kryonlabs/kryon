@@ -682,6 +682,7 @@ const (
 	PopupFlagsNone PopupFlags = 0
 	PopupTooltip   PopupFlags = 1 << (iota - 1)
 	PopupModal
+	PopupContext
 )
 
 type PopupProps struct {

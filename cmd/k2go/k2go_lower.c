@@ -1927,6 +1927,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"PopupFlagsNone", "PopupFlagsNone"},
 					{"PopupTooltip", "PopupTooltip"},
 					{"PopupModal", "PopupModal"},
+					{"PopupContext", "PopupContext"},
 					{"MenuCommand", "MenuCommand"},
 					{"MenuCheck", "MenuCheck"},
 					{"MenuRadio", "MenuRadio"},

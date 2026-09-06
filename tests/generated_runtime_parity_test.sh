@@ -213,6 +213,14 @@ func drawComposedModal() {
 	})
 }
 
+func drawComposedContext() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedCombo_ComposedContextFrame(ComposedComboStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawLongText() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -611,6 +619,21 @@ func main() {
 	driver.QueueKey(kryon.KeyEscape)
 	drawComposedModal()
 	if ComposedComboStateValue.ModalOpen { panic("generated modal ignored Escape") }
+	driver.QueueMouseButtonDown(kryon.MouseButtonRight, 30, 25)
+	drawComposedContext()
+	if ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextFrames != 0 {
+		panic("generated context popup opened before right release")
+	}
+	driver.QueueMouseButtonUp(kryon.MouseButtonRight, 30, 25)
+	drawComposedContext()
+	if !ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextFrames != 1 {
+		panic("generated context popup did not open on right release")
+	}
+	driver.QueueTap(120, 80)
+	drawComposedContext()
+	if ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextAction != 1 {
+		panic("generated context popup child did not activate and close")
+	}
 	// Native-only composition contract: preedit never mutates committed text.
 	driver.SetFocus(26100)
 	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
@@ -973,6 +996,7 @@ static void draw_composed_combo(void) { draw_ui(composed_combo_frame); }
 static void draw_composed_popup(void) { draw_ui(composed_popup_frame); }
 static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
 static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
+static void draw_composed_context(void) { draw_ui(composed_context_frame); }
 
 static void draw_long_text(void)
 {
@@ -1084,6 +1108,21 @@ int main(void)
     InjectKeyTap(KEY_ESCAPE); InjectPump(); draw_composed_modal();
     if(modal_open) {
         fprintf(stderr,"generated modal ignored Escape\n"); return 1;
+    }
+    InjectMousePosition(30,25); InjectMouseButton(MOUSE_BUTTON_RIGHT,1);
+    InjectPump(); draw_composed_context();
+    if(context_open || context_frames != 0) {
+        fprintf(stderr,"generated context popup opened before right release\n"); return 1;
+    }
+    InjectMousePosition(30,25); InjectMouseButton(MOUSE_BUTTON_RIGHT,0);
+    InjectPump(); draw_composed_context();
+    if(!context_open || context_frames != 1) {
+        fprintf(stderr,"generated context popup did not open on right release\n"); return 1;
+    }
+    InjectTap(120,80); InjectPump(); draw_composed_context();
+    InjectPump(); draw_composed_context();
+    if(context_open || context_action != 1) {
+        fprintf(stderr,"generated context popup child did not activate and close\n"); return 1;
     }
     SetUIFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);

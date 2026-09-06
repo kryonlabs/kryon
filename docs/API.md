@@ -1483,7 +1483,8 @@ typedef struct {
 typedef enum {
     PopupFlagsNone = 0,
     PopupTooltip = 1 << 0,
-    PopupModal = 1 << 1
+    PopupModal = 1 << 1,
+    PopupContext = 1 << 2
 } PopupFlags;
 
 int BeginPopup(PopupProps popup);
@@ -1509,6 +1510,13 @@ drawing a full-view dimming backdrop and owning pointer and keyboard input over
 the background. Pointer releases outside the panel are blocked without closing
 it; Escape, `ClosePopup`, disabling it, or omitting its owner closes it. Modal
 and tooltip flags are mutually exclusive.
+
+With `PopupContext`, a right-button release inside `trigger` sets the
+caller-owned `open` value and enters the same arbitrary-child popup scope.
+The caller supplies the panel position in `bounds`; this keeps placement stable
+after the pointer moves. Outside left-button dismissal, Escape, explicit close,
+disabled state, and missing-owner cleanup use the ordinary popup lifecycle.
+Context, modal, and tooltip presentation flags are mutually exclusive.
 
 #### Segmented Control
 

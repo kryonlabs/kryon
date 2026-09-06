@@ -63,9 +63,11 @@ The public `BeginCombo` / `EndCombo` / `CloseCombo` and `BeginPopup` /
 `EndPopup` / `ClosePopup` scopes bind these paint, layout and input contexts for
 arbitrary native children. `PopupTooltip` reuses that paint/layout scope while
 intentionally skipping input ownership. `PopupModal` uses the same scope with a
-full-view backdrop and background pointer/keyboard ownership, while outside
-releases remain non-dismissing. Automatic popup focus restoration and some
-active-drag routing remain unfinished.
+full-view input/backdrop policy, and `PopupContext` uses it with right-release
+activation over a retained trigger. Presentation variants remain flags on the
+one popup implementation rather than parallel widget trees.
+Modal outside releases remain non-dismissing. Automatic popup focus restoration
+and some active-drag routing remain unfinished.
 C and Go now have a pointer-independent top-popup keyboard predicate. Closed
 combos use it before keyboard opening, preventing a focused parent/background
 combo from opening behind a child popup. Focus registrations now retain their

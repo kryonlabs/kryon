@@ -109,6 +109,57 @@ func TestComposedModalOwnsArbitraryContentAndFullViewInput(t *testing.T) {
 	}
 }
 
+func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	open := false
+	r.QueueMouseButton(MouseButtonRight, 30, 25)
+	r.BeginFrame()
+	if !r.BeginPopup(PopupProps{
+		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
+		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext,
+	}) {
+		t.Fatal("right release in trigger did not open context popup")
+	}
+	r.Text(TextProps{Bounds: NewRectangle(88, 58, 0, 0), Text: "context child", Font: Text14, Color: BLACK, Wrap: TextWrapNone})
+	r.EndPopup()
+	r.EndFrame()
+	if !open {
+		t.Fatal("context popup did not update caller-owned open state")
+	}
+	found := false
+	for _, op := range r.FrameOps() {
+		if op.Text == "context child" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("context popup did not retain an ordinary child")
+	}
+
+	r.QueueTap(220, 160)
+	r.BeginFrame()
+	if r.BeginPopup(PopupProps{
+		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
+		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext,
+	}) {
+		t.Fatal("outside tap did not dismiss context popup")
+	}
+	r.EndFrame()
+	if open {
+		t.Fatal("context-popup dismissal did not update open state")
+	}
+
+	r.QueueMouseButton(MouseButtonRight, 30, 25)
+	r.BeginFrame()
+	if r.BeginPopup(PopupProps{
+		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
+		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext, Disabled: true,
+	}) {
+		t.Fatal("disabled context popup opened")
+	}
+	r.EndFrame()
+}
+
 func TestComposedPopupOwnsOrdinaryChildrenAndPaintOrder(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true

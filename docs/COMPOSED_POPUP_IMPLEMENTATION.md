@@ -18,7 +18,9 @@ Kryon option arrays do not establish support for that scope or those flags.
 The same upstream header exposes arbitrary begin/end popup and tooltip scopes;
 Kryon's generic popup scope now covers caller-defined non-modal popup contents,
 non-input-capturing hover tooltips through `PopupTooltip`, and arbitrary modal
-contents through `PopupModal`. A context-popup begin scope remains open work.
+contents through `PopupModal`. `PopupContext` adds right-release activation over
+an explicit trigger while retaining the same arbitrary-child scope and
+caller-owned open state.
 
 The clean native scope must accept ordinary native controls and nested layouts,
 not a second set of popup-specific widget aliases. C, C++ codegen over C, and

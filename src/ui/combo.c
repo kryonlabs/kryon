@@ -202,12 +202,19 @@ int BeginPopup(PopupProps popup)
 {
     int tooltip = (popup.flags & PopupTooltip) != 0;
     int modal = (popup.flags & PopupModal) != 0;
-    if(popup.flags & ~((unsigned int)(PopupTooltip|PopupModal))) abort();
-    if(tooltip && modal) abort();
+    int context = (popup.flags & PopupContext) != 0;
+    if(popup.flags & ~((unsigned int)(PopupTooltip|PopupModal|PopupContext))) abort();
+    if((tooltip && (modal || context)) || (modal && context)) abort();
     if(popup.id <= 0 || popup.bounds.width <= 0 || popup.bounds.height <= 0 ||
        (!tooltip && popup.open == NULL) ||
-       (tooltip && (popup.trigger.width <= 0 || popup.trigger.height <= 0)))
+       ((tooltip || context) &&
+        (popup.trigger.width <= 0 || popup.trigger.height <= 0)))
         return 0;
+    if(context && !popup.disabled &&
+       IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
+       CheckCollisionPointRec(ui_mouse_world(),popup.trigger) &&
+       !UIInputCapturesClick(ui_mouse_world()))
+        *popup.open = true;
     if(tooltip) {
         if(popup.disabled ||
            !CheckCollisionPointRec(ui_mouse_world(),popup.trigger)) return 0;

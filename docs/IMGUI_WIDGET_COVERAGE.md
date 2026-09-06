@@ -30,7 +30,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `PlotLines`, `PlotHistogram` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
-| Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip` and `PopupModal` | arbitrary popup, hover-tooltip and modal contents are native through one scope; a context-popup begin scope remains open |
+| Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
@@ -154,6 +154,11 @@ API. It draws a full-view backdrop, keeps outside pointer input from reaching
 background controls, preserves arbitrary nested children, and closes on Escape
 or explicit caller action rather than an outside release. Matching native and
 generated C/Go tests cover these semantics.
+`PopupContext` extends the scope with a right-release trigger instead of adding
+a context-only child API. The caller retains open state and stable panel bounds;
+ordinary children, explicit close, outside dismissal, disabled rejection and
+missing-owner cleanup remain shared with `Popup`. Matching native C/Go tests
+and a generated k2c/k2cpp/k2go fixture cover the trigger and child lifecycle.
 Matching C and Go tests now cover keyboard opening of a combo inside the top
 popup versus a blocked parent, with popup bounds away from the combo to prove
 the check is independent of pointer position. Child/branch dismissal restores

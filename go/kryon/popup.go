@@ -11,16 +11,23 @@ type popupScope struct {
 func (r *runtime) BeginPopup(p PopupProps) bool {
 	tooltip := p.Flags&PopupTooltip != 0
 	modal := p.Flags&PopupModal != 0
-	if p.Flags & ^(PopupTooltip|PopupModal) != 0 {
+	context := p.Flags&PopupContext != 0
+	if p.Flags & ^(PopupTooltip|PopupModal|PopupContext) != 0 {
 		panic("unsupported popup flags")
 	}
-	if tooltip && modal {
-		panic("tooltip and modal popup flags are mutually exclusive")
+	if tooltip && (modal || context) || modal && context {
+		panic("tooltip, modal, and context popup flags are mutually exclusive")
 	}
 	if p.ID <= 0 || p.Bounds.Width <= 0 || p.Bounds.Height <= 0 ||
 		(!tooltip && p.Open == nil) ||
-		(tooltip && (p.Trigger.Width <= 0 || p.Trigger.Height <= 0)) {
+		((tooltip || context) && (p.Trigger.Width <= 0 || p.Trigger.Height <= 0)) {
 		return false
+	}
+	if context && !p.Disabled && r.mouseReleased[MouseButtonRight] {
+		if r.pointerCanReach(p.Trigger) {
+			*p.Open = true
+			r.mouseReleased[MouseButtonRight] = false
+		}
 	}
 	if tooltip {
 		if p.Disabled || !pointInRect(r.mousePos.X, r.mousePos.Y, p.Trigger) {

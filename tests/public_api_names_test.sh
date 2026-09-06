@@ -282,6 +282,23 @@ if [ -n "$split_tooltip_widget_matches" ]; then
     exit 1
 fi
 
+split_context_popup_matches="$(
+    rg -n '\b(BeginPopupContext|EndPopupContext|ContextPopupProps)\b' \
+        include/ui_tree.h \
+        include/ui_tk.h \
+        go/kryon \
+        cmd/k2go \
+        cmd/kir \
+        examples \
+        tests/parity || true
+)"
+
+if [ -n "$split_context_popup_matches" ]; then
+    echo "Context popup content must use the canonical Popup scope with PopupContext:"
+    echo "$split_context_popup_matches"
+    exit 1
+fi
+
 public_text_layout_matches="$(
     rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|DrawUITextLayout)\b' \
         include/ui_text_layout.h \
