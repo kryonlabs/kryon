@@ -1,0 +1,25 @@
+#import "kryon.h"
+
+state {
+    dd_payload: [8] char = "item"
+    dd_received: [8] char = ""
+    dd_accepted: int = 0
+    dd_invalid_accepts: int = 0
+}
+
+drag_drop_frame :: () #ui {
+    Scroll {
+        bounds = {0,0,1,1}
+        if DragDropSource((DragDropSourceProps){.bounds = {10,10,80,30}, .id = 961, .type = "ITEM", .data = dd_payload, .data_size = 8}) {
+            dd_invalid_accepts += 1
+        }
+    }
+    DragDropSource((DragDropSourceProps){.bounds = {10,10,80,30}, .id = 962, .type = "ITEM", .data = dd_payload, .data_size = 8})
+    Scroll {
+        bounds = {0,0,1,1}
+        if DragDropTarget((DragDropTargetProps){.bounds = {120,10,100,30}, .id = 963, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted}) {
+            dd_invalid_accepts += 1
+        }
+    }
+    DragDropTarget((DragDropTargetProps){.bounds = {120,10,100,30}, .id = 964, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted})
+}

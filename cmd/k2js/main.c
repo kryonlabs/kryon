@@ -3,10 +3,11 @@
  * every .kry parses into a KirProgram (kir_parse.c), then lowers to ESM that
  * calls the web Kryon runtime.
  *
- * usage: k2js [--no-main] [--runtime PATH] --root DIR -o DIR file.kry ...
+ * usage: k2js [--strict] [--no-main] [--runtime PATH] --root DIR -o DIR file.kry ...
  */
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_check.h"
 #include "k2js_lower.h"
 
 #include <stdio.h>
@@ -17,7 +18,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2js [--no-main] [--runtime PATH] "
+            "usage: k2js [--strict] [--no-main] [--runtime PATH] "
             "--root DIR -o DIR file.kry ...\n");
 }
 
@@ -28,6 +29,7 @@ main(int argc, char **argv)
     const char *out_dir = NULL;
     const char *runtime_import = NULL;
     int no_main = 0;
+    int strict = 0;
     KirProgram **progs;
     int file_count;
     int i;
@@ -42,6 +44,8 @@ main(int argc, char **argv)
             runtime_import = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
+        } else if(strcmp(argv[i], "--strict") == 0) {
+            strict = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -67,6 +71,11 @@ main(int argc, char **argv)
             free(progs);
             return 1;
         }
+    }
+    if(!KirCheckPrograms(progs, file_count, strict)) {
+        for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
+        free(progs);
+        return 1;
     }
     if(k2js_lower((const KirProgram *const *)progs, file_count, root, out_dir,
                   runtime_import, no_main) != 0) {

@@ -5,6 +5,8 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_text.h"
+#include "kir_cleanup.h"
+#include "kir_expr.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -350,7 +352,8 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
 {
     static const char *const widgets[] = {
         "Background", "Text", "TextInRect", "TextColored", "TextDisabled",
-        "TextWrapped", "LabelText", "BulletText", "Paragraph", "TextLines",
+        "TextWrapped", "LabelText", "BulletText", "ValueBool", "ValueInt",
+        "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Selectable",
         "CheckboxFlags", "ImageWithBg", "ImageButton", "SmallButton",
         "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
@@ -363,9 +366,12 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "DragIntRange2", "SliderFloat", "SliderInt",
         "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt",
         "InputDouble", "Spinbox", "Combobox",
+        "DragDropSource", "DragDropTarget", "MultiSelectList",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
+        "BeginDisabled", "EndDisabled",
         "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
-        "PromptDialog", "TitleBar", "TabBar", "BottomNav", "TopNav",
+        "PromptDialog", "TitleBar", "TabBar", "TabItemButton",
+        "ClosableTabBar", "BottomNav", "TopNav",
         "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
 		"PanedView", "Collapsible", "ListBox", "TreeView", "SourceView", "TableView",
 		"ColorPicker", "CanvasGrid", "SelectableText"
@@ -440,6 +446,8 @@ typedef struct UiBlock {
     int opened;
     int emits_end;
     int prop_count;
+    char *scope_args[3];
+    unsigned scope_fields;
 } UiBlock;
 
 static int
@@ -452,6 +460,9 @@ is_layout_widget(const char *name)
 static const char *
 ui_block_prop_type(const char *widget)
 {
+    /* A lexical scope, not a runtime props type or another widget API. */
+    if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0)
+        return "";
     if(strcmp(widget, "Row") == 0)
         return "RowProps";
     if(strcmp(widget, "Screen") == 0 || strcmp(widget, "Column") == 0 ||
@@ -567,8 +578,9 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
     size_t n;
 
     eq = strchr(text, '=');
-    if(eq == NULL || strstr(text, "==") != NULL || strstr(text, "!=") != NULL ||
-       strstr(text, "<=") != NULL || strstr(text, ">=") != NULL)
+    /* Only the property separator must be assignment. Comparisons in its
+     * value are valid expressions (for example, when = count >= limit). */
+    if(eq == NULL || eq[1] == '=')
         return 0;
     *eq = '\0';
     name = kir_trim(text);
@@ -610,6 +622,40 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
 
     if(block == NULL || block->opened)
         return;
+    if(strcmp(block->widget, "Scroll") == 0) {
+        char bounds[KIR_TEXT_MAX];
+        const char *height = (block->scope_fields & 2) ? block->scope_args[1] : "0";
+        const char *offset = (block->scope_fields & 4) ? block->scope_args[2] : "nil";
+        if(!(block->scope_fields & 1))
+            die("%s:%d: Scroll requires 'bounds'", span.path, span.line);
+        const char *source_bounds = kir_skip_ws(block->scope_args[0]);
+        int n = snprintf(bounds, sizeof(bounds), "%s%s",
+                         *source_bounds == '{' ? "(Rectangle)" : "", source_bounds);
+        if(n < 0 || (size_t)n >= sizeof(bounds))
+            die("%s:%d: Scroll bounds expression is too long", span.path, span.line);
+        n = snprintf(call, sizeof(call), "%s%sBeginScroll(%s, %s, %s)",
+                     block->name, block->name[0] ? ": Rectangle = " : "",
+                     bounds, height, offset);
+        if(n < 0 || (size_t)n >= sizeof(call))
+            die("%s:%d: Scroll arguments are too long", span.path, span.line);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, block->name[0] ? KIR_STMT_DECL : KIR_STMT_EXPR,
+                           call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "Disabled") == 0) {
+        const char *condition = block->prop_count ? block->props : "true";
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        snprintf(call, sizeof(call), "BeginDisabled(%.3900s)", condition);
+        /* Scope conditions are boolean expressions, not legacy integer UI
+         * widget arguments. Keep the ordinary typed call in the shared IR. */
+        KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "", span);
+        block->opened = 1;
+        return;
+    }
     prop_type = ui_block_prop_type(block->widget);
     if(prop_type == NULL)
         return;
@@ -626,637 +672,6 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
     block->opened = 1;
 }
 
-static void
-copy_trim_expr(char *dst, size_t dst_size, const char *src)
-{
-    char tmp[KIR_TEXT_MAX];
-    char *t;
-
-    snprintf(tmp, sizeof(tmp), "%s", src != NULL ? src : "");
-    t = kir_trim(tmp);
-    snprintf(dst, dst_size, "%s", t);
-}
-
-static int
-is_simple_ident(const char *s)
-{
-    if(!(isalpha((unsigned char)s[0]) || s[0] == '_'))
-        return 0;
-    for(const char *p = s + 1; *p != '\0'; p++)
-        if(!(isalnum((unsigned char)*p) || *p == '_'))
-            return 0;
-    return 1;
-}
-
-static int
-is_int_literal_text(const char *s)
-{
-    char *end;
-
-    if(!isdigit((unsigned char)s[0]))
-        return 0;
-    (void)strtol(s, &end, 0);
-    if(end == s)
-        return 0;
-    while(*end != '\0') {
-        if(*end != 'u' && *end != 'U' && *end != 'l' && *end != 'L')
-            return 0;
-        end++;
-    }
-    return 1;
-}
-
-static int
-is_float_literal_text(const char *s)
-{
-    char *end;
-
-    if(!isdigit((unsigned char)s[0]) && s[0] != '.')
-        return 0;
-    (void)strtod(s, &end);
-    if(end == s || strchr(s, '.') == NULL)
-        return 0;
-    while(*end != '\0') {
-        if(*end != 'f' && *end != 'F')
-            return 0;
-        end++;
-    }
-    return 1;
-}
-
-static int
-find_matching_close(const char *s, int open_pos)
-{
-    int depth = 0;
-    int in_string = 0;
-    int in_char = 0;
-
-    for(int i = open_pos; s[i] != '\0'; i++) {
-        if(in_string) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '"')
-                in_string = 0;
-        } else if(in_char) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '\'')
-                in_char = 0;
-        } else if(s[i] == '"') {
-            in_string = 1;
-        } else if(s[i] == '\'') {
-            in_char = 1;
-        } else if(s[i] == '(') {
-            depth++;
-        } else if(s[i] == ')') {
-            depth--;
-            if(depth == 0)
-                return i;
-        }
-    }
-    return -1;
-}
-
-static int
-find_matching_bracket_close(const char *s, int open_pos)
-{
-    int depth = 0;
-    int in_string = 0;
-    int in_char = 0;
-
-    for(int i = open_pos; s[i] != '\0'; i++) {
-        if(in_string) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '"')
-                in_string = 0;
-        } else if(in_char) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '\'')
-                in_char = 0;
-        } else if(s[i] == '"') {
-            in_string = 1;
-        } else if(s[i] == '\'') {
-            in_char = 1;
-        } else if(s[i] == '[') {
-            depth++;
-        } else if(s[i] == ']') {
-            depth--;
-            if(depth == 0)
-                return i;
-        }
-    }
-    return -1;
-}
-
-static int
-has_balanced_outer_parens(const char *s)
-{
-    size_t n = strlen(s);
-    int close;
-
-    if(n < 2 || s[0] != '(' || s[n - 1] != ')')
-        return 0;
-    close = find_matching_close(s, 0);
-    return close == (int)n - 1;
-}
-
-static int
-find_top_op(const char *s, const char *const *ops, int op_count,
-            const char **op_out)
-{
-    int depth = 0;
-    int in_string = 0;
-    int in_char = 0;
-    int last = -1;
-    const char *last_op = NULL;
-
-    for(int i = 0; s[i] != '\0'; i++) {
-        if(in_string) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '"')
-                in_string = 0;
-        } else if(in_char) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '\'')
-                in_char = 0;
-        } else if(s[i] == '"') {
-            in_string = 1;
-        } else if(s[i] == '\'') {
-            in_char = 1;
-        } else if(s[i] == '(' || s[i] == '[' || s[i] == '{') {
-            depth++;
-        } else if(s[i] == ')' || s[i] == ']' || s[i] == '}') {
-            if(depth > 0)
-                depth--;
-        } else if(depth == 0) {
-            for(int op = 0; op < op_count; op++) {
-                size_t len = strlen(ops[op]);
-
-                if(strncmp(s + i, ops[op], len) == 0) {
-                    if(ops[op][0] == '>' && i > 0 && s[i - 1] == '-')
-                        continue;
-                    if(ops[op][0] == '-' && s[i + 1] == '>')
-                        continue;
-                    if((ops[op][0] == '+' || ops[op][0] == '-') &&
-                       (i == 0 || strchr("(!=<>+-*/%,", s[i - 1]) != NULL))
-                        continue;
-                    last = i;
-                    last_op = ops[op];
-                }
-            }
-        }
-    }
-    if(last >= 0 && op_out != NULL)
-        *op_out = last_op;
-    return last;
-}
-
-static int
-find_top_member_op(const char *s, const char **op_out)
-{
-    int depth = 0;
-    int in_string = 0;
-    int in_char = 0;
-    int last = -1;
-    const char *last_op = NULL;
-
-    for(int i = 0; s[i] != '\0'; i++) {
-        if(in_string) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '"')
-                in_string = 0;
-        } else if(in_char) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '\'')
-                in_char = 0;
-        } else if(s[i] == '"') {
-            in_string = 1;
-        } else if(s[i] == '\'') {
-            in_char = 1;
-        } else if(s[i] == '(' || s[i] == '[' || s[i] == '{') {
-            depth++;
-        } else if(s[i] == ')' || s[i] == ']' || s[i] == '}') {
-            if(depth > 0)
-                depth--;
-        } else if(depth == 0 && s[i] == '-' && s[i + 1] == '>' &&
-                  kir_is_ident_char((unsigned char)s[i + 2])) {
-            last = i;
-            last_op = "->";
-            i++;
-        } else if(depth == 0 && s[i] == '.' &&
-                  i > 0 && !isdigit((unsigned char)s[i - 1]) &&
-                  kir_is_ident_char((unsigned char)s[i + 1])) {
-            last = i;
-            last_op = ".";
-        }
-    }
-    if(last >= 0 && op_out != NULL)
-        *op_out = last_op;
-    return last;
-}
-
-static int
-find_top_index_open(const char *s)
-{
-    int depth = 0;
-    int in_string = 0;
-    int in_char = 0;
-
-    for(int i = 0; s[i] != '\0'; i++) {
-        if(in_string) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '"')
-                in_string = 0;
-        } else if(in_char) {
-            if(s[i] == '\\' && s[i + 1] != '\0')
-                i++;
-            else if(s[i] == '\'')
-                in_char = 0;
-        } else if(s[i] == '"') {
-            in_string = 1;
-        } else if(s[i] == '\'') {
-            in_char = 1;
-        } else if(s[i] == '(' || s[i] == '{') {
-            depth++;
-        } else if(s[i] == ')' || s[i] == '}') {
-            if(depth > 0)
-                depth--;
-        } else if(s[i] == '[' && depth == 0) {
-            return i;
-        } else if(s[i] == '[') {
-            depth++;
-        } else if(s[i] == ']') {
-            if(depth > 0)
-                depth--;
-        }
-    }
-    return -1;
-}
-
-static int parse_expr_to_kir(KirFunction *fn, const char *text,
-                             KirSourceSpan span);
-
-static void
-append_call_arg(KirFunction *fn, int call_index, int child)
-{
-    int *slot;
-
-    if(fn == NULL || call_index < 0 || call_index >= fn->expr_count ||
-       child < 0)
-        return;
-    slot = &fn->exprs[call_index].first_child;
-    while(*slot >= 0 && *slot < fn->expr_count)
-        slot = &fn->exprs[*slot].next_sibling;
-    *slot = child;
-}
-
-static int
-parse_expr_to_kir(KirFunction *fn, const char *text, KirSourceSpan span)
-{
-    static const char *const or_ops[] = { "||" };
-    static const char *const and_ops[] = { "&&" };
-    static const char *const eq_ops[] = { "==", "!=" };
-    static const char *const rel_ops[] = { "<=", ">=", "<", ">" };
-    static const char *const add_ops[] = { "+", "-" };
-    static const char *const mul_ops[] = { "*", "/", "%" };
-    const char *op = NULL;
-    const char *expr_ops[6][4];
-    int expr_counts[6] = { 1, 1, 2, 4, 2, 3 };
-    char s[KIR_TEXT_MAX];
-    KirExpr *expr;
-    int pos = -1;
-
-    copy_trim_expr(s, sizeof(s), text);
-    if(s[0] == '\0')
-        return -1;
-    if(has_balanced_outer_parens(s)) {
-        char inner[KIR_TEXT_MAX];
-
-        snprintf(inner, sizeof(inner), "%.*s", (int)strlen(s) - 2, s + 1);
-        return parse_expr_to_kir(fn, inner, span);
-    }
-    expr_ops[0][0] = or_ops[0];
-    expr_ops[1][0] = and_ops[0];
-    expr_ops[2][0] = eq_ops[0];
-    expr_ops[2][1] = eq_ops[1];
-    expr_ops[3][0] = rel_ops[0];
-    expr_ops[3][1] = rel_ops[1];
-    expr_ops[3][2] = rel_ops[2];
-    expr_ops[3][3] = rel_ops[3];
-    expr_ops[4][0] = add_ops[0];
-    expr_ops[4][1] = add_ops[1];
-    expr_ops[5][0] = mul_ops[0];
-    expr_ops[5][1] = mul_ops[1];
-    expr_ops[5][2] = mul_ops[2];
-    for(int group = 0; group < 6; group++) {
-        pos = find_top_op(s, expr_ops[group], expr_counts[group], &op);
-        if(pos >= 0)
-            break;
-    }
-    if(pos > 0 && op != NULL) {
-        char left[KIR_TEXT_MAX];
-        char right[KIR_TEXT_MAX];
-        int idx;
-
-        snprintf(left, sizeof(left), "%.*s", pos, s);
-        snprintf(right, sizeof(right), "%s", s + pos + strlen(op));
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_BINARY, s, span);
-        if(expr == NULL)
-            return -1;
-        idx = fn->expr_count - 1;
-        snprintf(expr->op, sizeof(expr->op), "%s", op);
-        {
-            int left_idx = parse_expr_to_kir(fn, left, span);
-            int right_idx = parse_expr_to_kir(fn, right, span);
-
-            if(idx >= 0 && idx < fn->expr_count) {
-                fn->exprs[idx].left = left_idx;
-                fn->exprs[idx].right = right_idx;
-            }
-        }
-        return idx;
-    }
-    if(strncmp(s, "sizeof", 6) == 0 &&
-       (s[6] == '(' || s[6] == ' ' || s[6] == '\t')) {
-        const char *body = s + 6;
-        int idx;
-
-        while(*body == ' ' || *body == '\t')
-            body++;
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_SIZEOF, s, span);
-        if(expr == NULL)
-            return -1;
-        idx = fn->expr_count - 1;
-        {
-            int right_idx = parse_expr_to_kir(fn, body, span);
-
-            if(idx >= 0 && idx < fn->expr_count)
-                fn->exprs[idx].right = right_idx;
-        }
-        return idx;
-    }
-    if(s[0] == '!' || s[0] == '~' ||
-       ((s[0] == '-' || s[0] == '+' || s[0] == '&' || s[0] == '*') &&
-        s[1] != '\0')) {
-        int idx;
-
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_UNARY, s, span);
-        if(expr == NULL)
-            return -1;
-        idx = fn->expr_count - 1;
-        snprintf(expr->op, sizeof(expr->op), "%c", s[0]);
-        {
-            int right_idx = parse_expr_to_kir(fn, s + 1, span);
-
-            if(idx >= 0 && idx < fn->expr_count)
-                fn->exprs[idx].right = right_idx;
-        }
-        return idx;
-    }
-    {
-        int open = find_top_index_open(s);
-
-        if(open > 0) {
-            int close = find_matching_bracket_close(s, open);
-            size_t n = strlen(s);
-
-            if(close == (int)n - 1) {
-                char left[KIR_TEXT_MAX];
-                char right[KIR_TEXT_MAX];
-                int idx;
-
-                snprintf(left, sizeof(left), "%.*s", open, s);
-                snprintf(right, sizeof(right), "%.*s", close - open - 1,
-                         s + open + 1);
-                expr = KirFunctionAddExpr(fn, KIR_EXPR_INDEX, s, span);
-                if(expr == NULL)
-                    return -1;
-                idx = fn->expr_count - 1;
-                {
-                    int left_idx = parse_expr_to_kir(fn, left, span);
-                    int right_idx = parse_expr_to_kir(fn, right, span);
-
-                    if(idx >= 0 && idx < fn->expr_count) {
-                        fn->exprs[idx].left = left_idx;
-                        fn->exprs[idx].right = right_idx;
-                    }
-                }
-                return idx;
-            }
-        }
-    }
-    {
-        const char *member_op = NULL;
-        int member_pos = find_top_member_op(s, &member_op);
-
-        if(member_pos > 0 && member_op != NULL) {
-            char left[KIR_TEXT_MAX];
-            char right[KIR_NAME_MAX];
-            int idx;
-            int op_len = (int)strlen(member_op);
-
-            snprintf(left, sizeof(left), "%.*s", member_pos, s);
-            snprintf(right, sizeof(right), "%s", s + member_pos + op_len);
-            if(is_simple_ident(right)) {
-                expr = KirFunctionAddExpr(
-                    fn, strcmp(member_op, "->") == 0
-                            ? KIR_EXPR_POINTER_MEMBER
-                            : KIR_EXPR_MEMBER,
-                    s, span);
-                if(expr == NULL)
-                    return -1;
-                idx = fn->expr_count - 1;
-                snprintf(expr->name, sizeof(expr->name), "%s", right);
-                snprintf(expr->op, sizeof(expr->op), "%s", member_op);
-                {
-                    int left_idx = parse_expr_to_kir(fn, left, span);
-
-                    if(idx >= 0 && idx < fn->expr_count)
-                        fn->exprs[idx].left = left_idx;
-                }
-                return idx;
-            }
-        }
-    }
-    {
-        size_t n = strlen(s);
-
-        for(size_t i = 0; i + 1 < n; i++) {
-            if(s[i] == ')' && s[i + 1] == '{' && s[n - 1] == '}') {
-                expr = KirFunctionAddExpr(fn, KIR_EXPR_COMPOUND, s, span);
-                return expr != NULL ? fn->expr_count - 1 : -1;
-            }
-        }
-    }
-    {
-        char *open = strchr(s, '(');
-
-        if(open != NULL && open > s) {
-            int open_pos = (int)(open - s);
-            int close = find_matching_close(s, open_pos);
-            char *tail = close >= 0 ? s + close + 1 : NULL;
-
-            if(close >= 0 && tail != NULL) {
-                while(*tail == ' ' || *tail == '\t')
-                    tail++;
-                if(*tail == '\0') {
-                    char name[KIR_NAME_MAX];
-                    char args[KIR_TEXT_MAX];
-                    int idx;
-                    size_t nl = (size_t)(open - s);
-
-                    if(nl >= sizeof(name))
-                        nl = sizeof(name) - 1;
-                    memcpy(name, s, nl);
-                    name[nl] = '\0';
-                    if(is_simple_ident(name)) {
-                        expr = KirFunctionAddExpr(fn, KIR_EXPR_CALL, s, span);
-                        if(expr == NULL)
-                            return -1;
-                        idx = fn->expr_count - 1;
-                        snprintf(expr->name, sizeof(expr->name), "%s", name);
-                        snprintf(args, sizeof(args), "%.*s",
-                                 close - open_pos - 1, s + open_pos + 1);
-                        {
-                            char *start = args;
-                            int depth = 0;
-                            int in_string = 0;
-
-                            for(char *p = args;; p++) {
-                                if(in_string) {
-                                    if(*p == '\\' && p[1] != '\0')
-                                        p++;
-                                    else if(*p == '"')
-                                        in_string = 0;
-                                } else if(*p == '"') {
-                                    in_string = 1;
-                                } else if(*p == '(' || *p == '[' || *p == '{') {
-                                    depth++;
-                                } else if(*p == ')' || *p == ']' || *p == '}') {
-                                    if(depth > 0)
-                                        depth--;
-                                }
-                                if((*p == ',' && depth == 0) || *p == '\0') {
-                                    char save = *p;
-                                    int child;
-
-                                    *p = '\0';
-                                    if(kir_trim(start)[0] != '\0') {
-                                        child = parse_expr_to_kir(fn, start, span);
-                                        append_call_arg(fn, idx, child);
-                                    }
-                                    if(save == '\0')
-                                        break;
-                                    start = p + 1;
-                                }
-                            }
-                        }
-                        return idx;
-                    }
-                }
-            }
-        }
-    }
-    if(s[0] == '"' && s[strlen(s) - 1] == '"') {
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_STRING, s, span);
-        return expr != NULL ? fn->expr_count - 1 : -1;
-    }
-    if(is_int_literal_text(s)) {
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_INT, s, span);
-        return expr != NULL ? fn->expr_count - 1 : -1;
-    }
-    if(is_float_literal_text(s)) {
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_FLOAT, s, span);
-        return expr != NULL ? fn->expr_count - 1 : -1;
-    }
-    if(is_simple_ident(s)) {
-        expr = KirFunctionAddExpr(fn, KIR_EXPR_IDENT, s, span);
-        if(expr != NULL)
-            kir_copy(expr->name, sizeof(expr->name), s);
-        return expr != NULL ? fn->expr_count - 1 : -1;
-    }
-    expr = KirFunctionAddExpr(fn, KIR_EXPR_UNKNOWN, s, span);
-    return expr != NULL ? fn->expr_count - 1 : -1;
-}
-
-static void
-strip_expr_block_brace(char *s)
-{
-    size_t n = strlen(s);
-
-    while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' ||
-                    s[n - 1] == '\r' || s[n - 1] == '\n'))
-        s[--n] = '\0';
-    if(n > 0 && s[n - 1] == '{') {
-        s[--n] = '\0';
-        while(n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t'))
-            s[--n] = '\0';
-    }
-}
-
-static const char *
-stmt_expr_source(KirStmtKind kind, const char *text)
-{
-    const char *p;
-
-    if(kind == KIR_STMT_DECL) {
-        p = strstr(text, ":=");
-        if(p != NULL)
-            return p + 2;
-        p = strstr(text, " = ");
-        if(p != NULL)
-            return p + 3;
-        return NULL;
-    }
-    if(kind == KIR_STMT_ASSIGN) {
-        p = strrchr(text, '=');
-        if(p != NULL)
-            return p + 1;
-        return NULL;
-    }
-    if(kind == KIR_STMT_RETURN) {
-        p = text;
-        while(*p == ' ' || *p == '\t')
-            p++;
-        if(strncmp(p, "return", 6) == 0)
-            return p + 6;
-        return NULL;
-    }
-    if(kind == KIR_STMT_IF || kind == KIR_STMT_WHILE ||
-       kind == KIR_STMT_SWITCH) {
-        static char buf[KIR_TEXT_MAX];
-        char *b;
-
-        snprintf(buf, sizeof(buf), "%s", text);
-        strip_expr_block_brace(buf);
-        b = kir_trim(buf);
-        if(strncmp(b, "else if ", 8) == 0)
-            return b + 8;
-        if(strncmp(b, "if ", 3) == 0)
-            return b + 3;
-        if(strncmp(b, "while ", 6) == 0)
-            return b + 6;
-        if(strncmp(b, "switch ", 7) == 0)
-            return b + 7;
-        return b;
-    }
-    if(kind == KIR_STMT_EXPR || kind == KIR_STMT_WIDGET)
-        return text;
-    return NULL;
-}
-
-/* 'if cond { body }' (also else/while/for/switch/case/default/guard) written
- * on one logical line: locate the block-open brace at paren/bracket depth 0
- * outside string/char literals, and report the header (up to and including
- * the '{') plus the body (between '{ ' and the trailing '}'). Returns 0 when
- * the line is not a one-line control block. */
 static int
 split_oneline_block(const char *t, char *head, size_t hsz,
                     char *body, size_t bsz)
@@ -1534,6 +949,10 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
                              name, target[0] ? target : name, line, 1,
                              KirSpan(path, line_no, 1));
     if(imp != NULL) {
+        char parsed_name[KIR_NAME_MAX];
+        parse_function_header(parsed_name, sizeof(parsed_name), imp->args,
+                              sizeof(imp->args), imp->return_type,
+                              sizeof(imp->return_type), line);
         imp->extern_kind = extern_kind;
         snprintf(imp->extern_symbol, sizeof(imp->extern_symbol), "%s",
                  symbol);
@@ -3090,9 +2509,15 @@ kir_parse_file(const char *path, const char *root)
                 UiBlock *block = &ui_blocks[ui_block_count - 1];
 
                 ui_block_open(fn, block, KirSpan(rel, line_no, 1));
-                if(block->emits_end)
+                if(strcmp(block->widget, "Disabled") == 0 ||
+                   strcmp(block->widget, "Scroll") == 0)
+                    KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
+                                       KirSpan(rel, line_no, 1));
+                else if(block->emits_end)
                     KirFunctionAddWidget(fn, "End", "", "End()",
                                          KirSpan(rel, line_no, 1));
+                for(int field = 0; field < 3; field++)
+                    free(block->scope_args[field]);
                 ui_block_count--;
                 if(depth > 0)
                     depth--;
@@ -3128,7 +2553,6 @@ kir_parse_file(const char *path, const char *root)
                 KirStmtKind kind = classify_stmt(t);
                 char widget[KIR_NAME_MAX] = "";
                 char widget_args[KIR_TEXT_MAX] = "";
-                KirStmt *added;
                 int brace_delta = net_block_braces(t);
                 char block_widget[KIR_NAME_MAX];
                 char block_name[KIR_NAME_MAX];
@@ -3180,8 +2604,30 @@ kir_parse_file(const char *path, const char *root)
                    parse_ui_prop_line(prop_line, prop_field,
                                       sizeof(prop_field), prop_value,
                                       sizeof(prop_value))) {
-                    ui_block_append_prop(&ui_blocks[ui_block_count - 1],
-                                         prop_field, prop_value);
+                    UiBlock *block = &ui_blocks[ui_block_count - 1];
+                    if(strcmp(block->widget, "Scroll") == 0) {
+                        int field = strcmp(prop_field, "bounds") == 0 ? 0 :
+                                    strcmp(prop_field, "content_height") == 0 ? 1 :
+                                    strcmp(prop_field, "scroll_offset") == 0 ? 2 : -1;
+                        if(field < 0)
+                            die("%s:%d: Scroll accepts only bounds, content_height and scroll_offset", rel, line_no);
+                        if(block->scope_fields & (1u << field))
+                            die("%s:%d: duplicate Scroll '%s' property", rel, line_no, prop_field);
+                        block->scope_args[field] = malloc(strlen(prop_value) + 1);
+                        if(block->scope_args[field] == NULL)
+                            die("out of memory parsing Scroll scope");
+                        strcpy(block->scope_args[field], prop_value);
+                        block->scope_fields |= 1u << field;
+                    } else if(strcmp(block->widget, "Disabled") == 0) {
+                        if(strcmp(prop_field, "when") != 0)
+                            die("%s:%d: Disabled only accepts the 'when' property", rel, line_no);
+                        if(block->prop_count != 0)
+                            die("%s:%d: duplicate Disabled 'when' property", rel, line_no);
+                        kir_copy(block->props, sizeof(block->props), prop_value);
+                        block->prop_count = 1;
+                    } else {
+                        ui_block_append_prop(block, prop_field, prop_value);
+                    }
                     continue;
                 }
 
@@ -3197,19 +2643,11 @@ kir_parse_file(const char *path, const char *root)
                                           sizeof(widget_args)))
                     kind = KIR_STMT_WIDGET;
                 if(kind == KIR_STMT_WIDGET)
-                    added = KirFunctionAddWidget(fn, widget, widget_args, t,
+                    KirFunctionAddWidget(fn, widget, widget_args, t,
                                                  KirSpan(rel, line_no, 1));
                 else
-                    added = KirFunctionAddStmt(fn, kind, t, widget,
+                    KirFunctionAddStmt(fn, kind, t, widget,
                                                KirSpan(rel, line_no, 1));
-                if(added != NULL) {
-                    const char *expr_src = stmt_expr_source(kind, t);
-
-                    if(expr_src != NULL)
-                        added->expr_root =
-                            parse_expr_to_kir(fn, expr_src,
-                                              KirSpan(rel, line_no, 1));
-                }
                 depth += brace_delta;
                 if(depth < 0)
                     depth = 0;
@@ -3217,5 +2655,13 @@ kir_parse_file(const char *path, const char *root)
         }
     }
     fclose(in);
+    for(int mi = 0; mi < program->module_count; mi++)
+        for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
+            if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {
+                KirProgramFree(program);
+                return NULL;
+            }
+            KirStructureFunction(&program->modules[mi].functions[fi], &program->modules[mi]);
+        }
     return program;
 }

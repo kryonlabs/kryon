@@ -257,11 +257,11 @@ grep -Fq '} else {' "$c"
 
 # K&R '} else {' lines: close + re-open recorded on the else statement,
 # bodies must survive (regression: the else branch used to be dropped)
-grep -Fq 'if(n > 0) {' "$c"
-grep -Fq 'return 100;' "$c"
-grep -Fq '} else if(n < 0) {' "$c"
-grep -Fq 'return 200;' "$c"
-grep -Fq 'return 300;' "$c"
+# Typed bodies capture operands before branching. Execution is covered by
+# language_semantics_test.py; check all source branch values survive here.
+grep -Eq 'int32_t value_[0-9]+ = 100;' "$c"
+grep -Eq 'int32_t value_[0-9]+ = 200;' "$c"
+grep -Eq 'int32_t value_[0-9]+ = 300;' "$c"
 
 # '#if/#else_if/#else' chains with K&R '} #else_if {' closers: every branch
 # must lower and compile (regression: chains past the first region vanished,

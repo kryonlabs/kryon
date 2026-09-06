@@ -4,6 +4,7 @@
  */
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_check.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +44,10 @@ main(int argc, char **argv)
         KirProgram *program = kir_parse_file(argv[i], root);
         if(program == NULL)
             return 1;
+        if(!KirCheckPrograms(&program, 1, 0)) {
+            KirProgramFree(program);
+            return 1;
+        }
         /* Write the .kir dump using the module's source_path (relative to root)
          * so directory structure is preserved. */
         if(program->module_count > 0) {

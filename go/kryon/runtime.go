@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"math"
 	"os"
 	"reflect"
 	"strconv"
@@ -62,23 +63,28 @@ const (
 	FlagVsyncHint       uint = 0x00000040
 	FlagWindowResizable uint = 0x00000004
 
-	KeyNull      int32 = 0
-	KeyEscape    int32 = 256
-	KeyEnter     int32 = 257
-	KeyTab       int32 = 258
-	KeyBackspace int32 = 259
-	KeyDelete    int32 = 261
-	KeyRight     int32 = 262
-	KeyLeft      int32 = 263
-	KeyDown      int32 = 264
-	KeyUp        int32 = 265
-	KeyHome      int32 = 268
-	KeyEnd       int32 = 269
-	KeyF2        int32 = 291
-	KeyA         int32 = 65
-	KeyC         int32 = 67
-	KeyV         int32 = 86
-	KeyX         int32 = 88
+	KeyNull         int32 = 0
+	KeyEscape       int32 = 256
+	KeySpace        int32 = 32
+	KeyEnter        int32 = 257
+	KeyTab          int32 = 258
+	KeyBackspace    int32 = 259
+	KeyDelete       int32 = 261
+	KeyRight        int32 = 262
+	KeyLeft         int32 = 263
+	KeyDown         int32 = 264
+	KeyUp           int32 = 265
+	KeyHome         int32 = 268
+	KeyEnd          int32 = 269
+	KeyF2           int32 = 291
+	KeyLeftShift    int32 = 340
+	KeyLeftControl  int32 = 341
+	KeyRightShift   int32 = 344
+	KeyRightControl int32 = 345
+	KeyA            int32 = 65
+	KeyC            int32 = 67
+	KeyV            int32 = 86
+	KeyX            int32 = 88
 
 	MouseButtonLeft  int32 = 0
 	MouseButtonRight int32 = 1
@@ -459,6 +465,33 @@ type ImageButtonProps struct {
 	Disabled   bool
 }
 
+type TabItemButtonProps struct {
+	Bounds   Rectangle
+	ID       int32
+	Label    string
+	Font     int32
+	Disabled bool
+}
+
+type Tab struct {
+	Label     string
+	Icon      Texture2D
+	IconSize  int32
+	Disabled  bool
+	Accent    Color
+	Italic    bool
+	Closeable bool
+}
+
+type ClosableTabBarProps struct {
+	Bounds        Rectangle
+	Tabs          []Tab
+	Count         int32
+	SelectedIndex *int32
+	Font          int32
+	ClosedIndex   *int32
+}
+
 type InvisibleButtonProps struct {
 	Bounds   Rectangle
 	ID       int32
@@ -470,6 +503,37 @@ type SeparatorTextProps struct {
 	Label    string
 	Font     int32
 	Disabled bool
+}
+
+type DragDropSourceProps struct {
+	Bounds   Rectangle
+	ID       int32
+	Type     string
+	Data     []byte
+	DataSize int32
+	Disabled bool
+}
+
+type DragDropTargetProps struct {
+	Bounds       Rectangle
+	ID           int32
+	Type         string
+	Output       []byte
+	OutputSize   int32
+	AcceptedSize *int32
+	Disabled     bool
+}
+
+type MultiSelectListProps struct {
+	Bounds        Rectangle
+	ID            int32
+	Items         []string
+	ItemCount     int32
+	Selected      []int32
+	SelectedCount *int32
+	Anchor        *int32
+	RowHeight     int32
+	Disabled      bool
 }
 
 type ArrowDirection int32
@@ -694,6 +758,7 @@ type BottomNavProps struct {
 	SideMargin     int32
 	BottomMargin   int32
 	MaxButtonWidth int32
+	IconColor      Color
 }
 
 type TopNavProps struct {
@@ -962,6 +1027,8 @@ type ListBoxProps struct {
 	SelectedIndex *int32
 	ScrollOffset  *int32
 	RowHeight     int32
+	Disabled      bool
+	ContentHeight int32
 }
 
 type UITreeItem struct {
@@ -980,6 +1047,7 @@ type TreeViewProps struct {
 	SelectedID   *int32
 	ScrollOffset *int32
 	RowHeight    int32
+	Disabled     bool
 }
 
 type SourceViewProps struct {
@@ -1007,6 +1075,8 @@ type TableViewProps struct {
 	Rows                 []TableRow
 	RowCount             int32
 	ColumnWidths         []int32
+	ColumnEnabled        []int32
+	ColumnOrder          []int32
 	SelectedRow          *int32
 	SelectedColumn       *int32
 	SelectionStartRow    *int32
@@ -1022,8 +1092,16 @@ type TableViewProps struct {
 	PastedRow            *int32
 	PastedColumn         *int32
 	SortColumn           *int32
+	SortDirection        *int32
 	ScrollOffset         *int32
 	RowHeight            int32
+	Disabled             bool
+	Resizable            bool
+	MinColumnWidth       int32
+	FreezeRows           int32
+	HeaderHeight         int32
+	HeaderAngle          float32
+	CustomCells          bool
 }
 
 type NotebookProps struct {
@@ -1042,9 +1120,15 @@ type PanedViewProps struct {
 }
 
 type CollapsibleProps struct {
-	Bounds Rectangle
-	Label  string
-	Open   *bool
+	Bounds   Rectangle
+	Label    string
+	Open     *bool
+	Tree     bool
+	Depth    int32
+	Leaf     bool
+	Selected bool
+	Disabled bool
+	ID       int32
 }
 
 type MessageDialogProps struct {
@@ -1088,6 +1172,8 @@ type Runtime interface {
 	WindowShouldClose() bool
 	BeginFrame()
 	EndFrame()
+	BeginDisabled(bool)
+	EndDisabled()
 	ClearBackground(Color)
 	Background(Color)
 	Text(string, int32, int32, int32, Color)
@@ -1107,17 +1193,23 @@ type Runtime interface {
 	Line(int32, int32, int32, int32, Color)
 	Scroll(int32, int32, int32, int32, int32, *int32)
 	EndScroll()
+	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Button(ButtonProps) bool
 	Selectable(SelectableProps) bool
 	CheckboxFlags(CheckboxFlagsProps) bool
 	ImageWithBg(ImageWithBgProps)
 	ImageButton(ImageButtonProps) bool
+	TabItemButton(TabItemButtonProps) bool
+	ClosableTabBar(ClosableTabBarProps) int32
 	SmallButton(ButtonProps) bool
 	InvisibleButton(InvisibleButtonProps) bool
 	ArrowButton(ArrowButtonProps) bool
 	Bullet(Rectangle)
 	Separator(Rectangle, int32)
 	SeparatorText(SeparatorTextProps)
+	DragDropSource(DragDropSourceProps) bool
+	DragDropTarget(DragDropTargetProps) bool
+	MultiSelectList(MultiSelectListProps) int32
 	ColorEdit3(ColorEditProps) bool
 	ColorEdit4(ColorEditProps) bool
 	ColorPicker3(ColorEditProps) bool
@@ -1182,6 +1274,10 @@ type Runtime interface {
 	TextWrapped(text string, bounds Rectangle, fontSize int32, color Color)
 	LabelText(label, value string, bounds Rectangle, fontSize int32, color Color)
 	BulletText(text string, bounds Rectangle, fontSize int32, color Color)
+	ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color)
+	ValueInt(prefix string, value int32, bounds Rectangle, fontSize int32, color Color)
+	ValueUInt(prefix string, value uint32, bounds Rectangle, fontSize int32, color Color)
+	ValueFloat(prefix string, value float32, format string, bounds Rectangle, fontSize int32, color Color)
 	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
 	Bevel(x, y, w, h int32, light, dark Color)
 	Icon(id, x, y, size int32, iconType int32, tint Color)
@@ -1214,8 +1310,12 @@ type Runtime interface {
 	ColorPicker(bounds Rectangle, color *Color) bool
 	TreeView(props TreeViewProps) int32
 	ListBox(props ListBoxProps) int32
+	BeginListBox(ListBoxProps) Rectangle
+	EndListBox()
 	SourceView(props SourceViewProps) int32
 	TableView(props TableViewProps) int32
+	BeginTableCell(TableViewProps, int32, int32) Rectangle
+	EndTableCell()
 	MessageDialog(props MessageDialogProps) int32
 	ConfirmDialog(props ConfirmDialogProps) int32
 	PromptDialog(props PromptDialogProps) int32
@@ -1233,50 +1333,69 @@ type Runtime interface {
 }
 
 type runtime struct {
-	config           AppConfig
-	closed           bool
-	frames           int
-	focusID          int32
-	clipboard        string
-	inputEvents      []inputEvent
-	taps             []tapEvent
-	clicks           []mouseClickEvent
-	mousePos         Vector2
-	mouseWheel       float32
-	mouseDown        map[int32]bool
-	mousePressed     map[int32]bool
-	mouseReleased    map[int32]bool
-	keyDown          map[int32]bool
-	chars            []rune
-	fieldOrder       []int32
-	prevOrder        []int32
-	focusRefs        map[int32]*bool
-	selection        map[int32]selection
-	layout           []layoutFrame
-	ops              []FrameOp
-	pageTitle        string
-	pageDescription  string
-	pageCanonicalURL string
-	pageThemeColor   Color
-	routePath        string
-	routeHash        string
-	routeVersion     int32
-	lastTableClick   tableClick
-	tableDrag        tableDrag
-	openMenus        map[int32]int32
-	openSubmenus     map[int32]int32
-	contextMenus     map[int32]Vector2
-	openDropdowns    map[int32]bool
-	selectableText   KeyID
-	drag             scalarDrag
-	slider           scalarDrag
-	numericInputs    map[int32]*numericInputState
-	toastMessage     string
-	toastUntil       time.Time
-	currentThemeID   ThemeId
-	themeSource      ThemeSource
-	themeMode        ThemeMode
-	themeStyle       ThemeStyle
+	config            AppConfig
+	closed            bool
+	frames            int
+	focusID           int32
+	clipboard         string
+	inputEvents       []inputEvent
+	taps              []tapEvent
+	clicks            []mouseClickEvent
+	mousePos          Vector2
+	mouseWheel        float32
+	mouseDown         map[int32]bool
+	mousePressed      map[int32]bool
+	mouseReleased     map[int32]bool
+	keyDown           map[int32]bool
+	chars             []rune
+	fieldOrder        []int32
+	prevOrder         []int32
+	treeHeaders       []treeHeaderNav
+	prevTreeHeaders   []treeHeaderNav
+	focusRefs         map[int32]*bool
+	selection         map[int32]selection
+	layout            []layoutFrame
+	ops               []FrameOp
+	pageTitle         string
+	pageDescription   string
+	pageCanonicalURL  string
+	pageThemeColor    Color
+	routePath         string
+	routeHash         string
+	routeVersion      int32
+	lastTableClick    tableClick
+	tableDrag         tableDrag
+	tableResize       tableResize
+	openMenus         map[int32]int32
+	openSubmenus      map[int32]int32
+	contextMenus      map[int32]Vector2
+	openDropdowns     map[int32]bool
+	dropdownHighlight map[int32]int32
+	dropdownOffsets   map[int32]*int32
+	dropdownsSeen     map[int32]bool
+	popupPanels       map[int32]popupInputPanel
+	popupInputScopes  []popupInputToken
+	popupInputOrder   uint64
+	paintLayers       []paintLayer
+	paintLayerScopes  []paintLayerScope
+	paintLayerFrame   uint64
+	selectableText    KeyID
+	drag              scalarDrag
+	slider            scalarDrag
+	numericInputs     map[numericInputKey]*numericInputState
+	numericNextToken  int32
+	dragDrop          dragDropState
+	toastMessage      string
+	toastUntil        time.Time
+	currentThemeID    ThemeId
+	themeSource       ThemeSource
+	themeMode         ThemeMode
+	themeStyle        ThemeStyle
+	disabledStack     []bool
+	scrollClips       []Rectangle
+	scrollDragOffset  *int32
+	scrollDragGrab    float32
+	disabledCount     int32
 }
 
 type themePalette struct {
@@ -1341,16 +1460,36 @@ type tableDrag struct {
 	startCol int32
 }
 
+type tableResize struct {
+	active     bool
+	id         int32
+	column     int32
+	startX     float32
+	startWidth int32
+}
+
 type scalarDrag struct {
 	active bool
 	token  int32
 	lastX  float32
 }
 
+type numericInputKey struct {
+	kind, widgetID, component int32
+}
+
 type numericInputState struct {
+	token   int32
 	text    []byte
 	cursor  int32
 	focused bool
+}
+
+type dragDropState struct {
+	active   bool
+	sourceID int32
+	typeName string
+	data     []byte
 }
 
 type selection struct {
@@ -1474,14 +1613,34 @@ func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
 func (r *runtime) Close()                  { r.closed = true }
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame() {
+	if len(r.popupInputScopes) != 0 {
+		panic("unclosed popup input scope at frame boundary")
+	}
+	r.resetPaintLayers()
+	if r.dropdownsSeen == nil {
+		r.dropdownsSeen = make(map[int32]bool)
+	}
+	clear(r.dropdownsSeen)
+	r.scrollClips = r.scrollClips[:0]
+	r.disabledStack = r.disabledStack[:0]
+	r.disabledCount = 0
 	r.fieldOrder = r.fieldOrder[:0]
+	r.treeHeaders = r.treeHeaders[:0]
 	clear(r.focusRefs)
 	r.layout = r.layout[:0]
 	r.ops = r.ops[:0]
 }
 func (r *runtime) EndFrame() {
+	for id := range r.openDropdowns {
+		if !r.dropdownsSeen[id] {
+			r.closeDropdown(id)
+		}
+	}
+	r.appendPaintLayers(func(id int32) bool { return r.openDropdowns[id] })
+	r.prunePopupInput()
 	r.recordToast()
 	r.prevOrder = append(r.prevOrder[:0], r.fieldOrder...)
+	r.prevTreeHeaders = append(r.prevTreeHeaders[:0], r.treeHeaders...)
 	r.taps = nil
 	r.clicks = nil
 	r.mouseWheel = 0
@@ -1492,8 +1651,25 @@ func (r *runtime) EndFrame() {
 	r.inputEvents = nil
 	r.frames++
 }
-func (r *runtime) SetFocus(id int32) { r.setFocus(id) }
-func (r *runtime) Focus() int32      { return r.focusID }
+func (r *runtime) BeginDisabled(disabled bool) {
+	r.disabledStack = append(r.disabledStack, disabled)
+	if disabled {
+		r.disabledCount++
+	}
+}
+func (r *runtime) EndDisabled() {
+	if len(r.disabledStack) == 0 {
+		return
+	}
+	last := len(r.disabledStack) - 1
+	if r.disabledStack[last] {
+		r.disabledCount--
+	}
+	r.disabledStack = r.disabledStack[:last]
+}
+func (r *runtime) contentDisabled() bool { return r.disabledCount > 0 }
+func (r *runtime) SetFocus(id int32)     { r.setFocus(id) }
+func (r *runtime) Focus() int32          { return r.focusID }
 func (r *runtime) setFocus(id int32) {
 	if r.focusID == id {
 		return
@@ -1562,7 +1738,68 @@ func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
 	})
 }
 func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32) {}
-func (r *runtime) EndScroll()                                       {}
+func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
+	clip := r.scrollClip(bounds)
+	if offset != nil {
+		maximum := max32(0, contentHeight-int32(bounds.Height))
+		*offset = clamp32(*offset, 0, maximum)
+		if r.pointerCanReach(clip) && r.mouseWheel != 0 {
+			*offset = clamp32(*offset-int32(r.mouseWheel*42), 0, maximum)
+			r.mouseWheel = 0
+		}
+		if maximum > 0 && bounds.Width > 10 && bounds.Height > 0 {
+			track := Rectangle{X: bounds.X + bounds.Width - 10, Y: bounds.Y, Width: 10, Height: bounds.Height}
+			thumbH := min(bounds.Height, max(float32(16), bounds.Height*bounds.Height/float32(contentHeight)))
+			travel := bounds.Height - thumbH
+			thumbY := bounds.Y
+			if travel > 0 {
+				thumbY += travel * float32(*offset) / float32(maximum)
+			}
+			if !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(track) {
+				r.scrollDragOffset = offset
+				r.scrollDragGrab = thumbH / 2
+				if r.mousePos.Y >= thumbY && r.mousePos.Y < thumbY+thumbH {
+					r.scrollDragGrab = r.mousePos.Y - thumbY
+				}
+			}
+			if r.scrollDragOffset == offset {
+				if r.contentDisabled() {
+					r.scrollDragOffset = nil
+				} else if travel > 0 && (r.mouseDown[MouseButtonLeft] || r.mousePressed[MouseButtonLeft]) {
+					*offset = clamp32(int32((r.mousePos.Y-bounds.Y-r.scrollDragGrab)*float32(maximum)/travel), 0, maximum)
+				}
+				if r.mouseReleased[MouseButtonLeft] {
+					r.scrollDragOffset = nil
+				}
+			}
+			thumbY = bounds.Y + travel*float32(*offset)/float32(maximum)
+			t := r.theme()
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: track, Color: t.surface})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}, Color: t.button})
+			bounds.Width -= 10
+			clip = r.scrollClip(bounds)
+		}
+	}
+	r.scrollClips = append(r.scrollClips, clip)
+	if offset != nil {
+		bounds.Y -= float32(*offset)
+	}
+	bounds.Height = float32(max32(0, contentHeight))
+	return bounds
+}
+func (r *runtime) EndScroll() {
+	if len(r.scrollClips) > 0 {
+		r.scrollClips = r.scrollClips[:len(r.scrollClips)-1]
+	}
+}
+func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
+	if len(r.scrollClips) == 0 {
+		return bounds
+	}
+	clip := r.scrollClips[len(r.scrollClips)-1]
+	x, y := max(bounds.X, clip.X), max(bounds.Y, clip.Y)
+	return Rectangle{X: x, Y: y, Width: max(float32(0), min(bounds.X+bounds.Width, clip.X+clip.Width)-x), Height: max(float32(0), min(bounds.Y+bounds.Height, clip.Y+clip.Height)-y)}
+}
 func (r *runtime) Button(props ButtonProps) bool {
 	theme := r.theme()
 	if props.Disabled {
@@ -1650,6 +1887,14 @@ func (r *runtime) ImageButton(props ImageButtonProps) bool {
 	return pressed
 }
 
+func (r *runtime) TabItemButton(props TabItemButtonProps) bool {
+	font := props.Font
+	if font <= 0 {
+		font = Text14
+	}
+	return r.Button(ButtonProps{Bounds: props.Bounds, Label: props.Label, Style: ButtonStyleSecondary, Font: font, ID: props.ID, Disabled: props.Disabled})
+}
+
 func (r *runtime) SmallButton(props ButtonProps) bool {
 	if props.Font <= 0 {
 		props.Font = Text14
@@ -1716,6 +1961,144 @@ func (r *runtime) SeparatorText(props SeparatorTextProps) {
 	if lineX < endX {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: lineX, Y: props.Bounds.Y + props.Bounds.Height/2, Width: endX - lineX}, Color: lineColor, Disabled: props.Disabled})
 	}
+}
+
+func (r *runtime) DragDropSource(props DragDropSourceProps) bool {
+	if r.dragDrop.active && r.dragDrop.sourceID == props.ID &&
+		!r.mouseDown[MouseButtonLeft] && !r.mouseReleased[MouseButtonLeft] {
+		r.dragDrop = dragDropState{}
+	}
+	if props.Disabled || r.contentDisabled() || props.Type == "" {
+		return false
+	}
+	bounds := r.layoutRect(props.Bounds)
+	if r.mousePressed[MouseButtonLeft] && r.pointerCanReach(bounds) {
+		size := int(props.DataSize)
+		if size <= 0 || size > len(props.Data) {
+			size = len(props.Data)
+		}
+		r.dragDrop = dragDropState{active: true, sourceID: props.ID, typeName: props.Type, data: append([]byte(nil), props.Data[:size]...)}
+	}
+	return r.dragDrop.active && r.dragDrop.sourceID == props.ID &&
+		(r.mouseDown[MouseButtonLeft] || r.mouseReleased[MouseButtonLeft])
+}
+
+func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
+	if props.AcceptedSize != nil {
+		*props.AcceptedSize = 0
+	}
+	bounds := r.layoutRect(props.Bounds)
+	matches := r.dragDrop.active && props.Type != "" && r.dragDrop.typeName == props.Type
+	hot := !props.Disabled && r.pointerCanReach(bounds)
+	if matches {
+		color := r.theme().border
+		if hot {
+			color = r.theme().link
+		}
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, BorderColor: color, Disabled: props.Disabled, Selected: hot})
+	}
+	if props.Disabled || r.contentDisabled() || !matches || !hot || !r.mouseReleased[MouseButtonLeft] {
+		return false
+	}
+	size := int(props.OutputSize)
+	if size <= 0 || size > len(props.Output) {
+		size = len(props.Output)
+	}
+	if size > len(r.dragDrop.data) {
+		size = len(r.dragDrop.data)
+	}
+	copy(props.Output[:size], r.dragDrop.data[:size])
+	if props.AcceptedSize != nil {
+		*props.AcceptedSize = int32(size)
+	}
+	r.dragDrop = dragDropState{}
+	r.mouseReleased[MouseButtonLeft] = false
+	return true
+}
+
+func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
+	count := int(props.ItemCount)
+	if count <= 0 || count > len(props.Items) {
+		count = len(props.Items)
+	}
+	if count > len(props.Selected) {
+		count = len(props.Selected)
+	}
+	if count == 0 {
+		if props.SelectedCount != nil {
+			*props.SelectedCount = 0
+		}
+		return -1
+	}
+	bounds := r.layoutRect(props.Bounds)
+	rowHeight := props.RowHeight
+	if rowHeight <= 0 {
+		rowHeight = 28
+	}
+	clicked := int32(-1)
+	if !props.Disabled {
+		for i := 0; i < count; i++ {
+			row := Rectangle{X: bounds.X, Y: bounds.Y + float32(i*int(rowHeight)), Width: bounds.Width, Height: float32(rowHeight)}
+			if r.consumeTap(row) {
+				clicked = int32(i)
+				break
+			}
+		}
+	}
+	if clicked >= 0 {
+		control := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
+		shift := r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
+		i := int(clicked)
+		if shift && props.Anchor != nil && *props.Anchor >= 0 && int(*props.Anchor) < count {
+			first, last := int(*props.Anchor), i
+			if first > last {
+				first, last = last, first
+			}
+			if !control {
+				clear(props.Selected[:count])
+			}
+			for j := first; j <= last; j++ {
+				props.Selected[j] = 1
+			}
+		} else if control {
+			if props.Selected[i] != 0 {
+				props.Selected[i] = 0
+			} else {
+				props.Selected[i] = 1
+			}
+			if props.Anchor != nil {
+				*props.Anchor = clicked
+			}
+		} else {
+			clear(props.Selected[:count])
+			props.Selected[i] = 1
+			if props.Anchor != nil {
+				*props.Anchor = clicked
+			}
+		}
+	}
+	theme := r.theme()
+	selectedCount := int32(0)
+	for i := 0; i < count; i++ {
+		selected := props.Selected[i] != 0
+		if selected {
+			selectedCount++
+		}
+		row := Rectangle{X: bounds.X, Y: bounds.Y + float32(i*int(rowHeight)), Width: bounds.Width, Height: float32(rowHeight)}
+		fill := theme.surface
+		if selected {
+			fill = theme.buttonHover
+		}
+		textColor := theme.text
+		if props.Disabled {
+			textColor = r.Fade(textColor, 0.45)
+		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: row, Text: props.Items[i], Color: fill, BorderColor: theme.border, TextColor: textColor, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: props.Disabled, Pressed: int32(i) == clicked})
+	}
+	if props.SelectedCount != nil {
+		*props.SelectedCount = selectedCount
+	}
+	return clicked
 }
 
 func (r *runtime) colorEdit(props ColorEditProps, channels int) bool {
@@ -1866,6 +2249,67 @@ func (r *runtime) TabBar(bounds Rectangle, labels []string, selected, hover *int
 	return clicked
 }
 
+func (r *runtime) ClosableTabBar(props ClosableTabBarProps) int32 {
+	if props.ClosedIndex != nil {
+		*props.ClosedIndex = -1
+	}
+	count := int(props.Count)
+	if count <= 0 || count > len(props.Tabs) {
+		count = len(props.Tabs)
+	}
+	if count == 0 || props.SelectedIndex == nil {
+		return -1
+	}
+	bounds := r.layoutRect(props.Bounds)
+	if bounds.Width <= 0 || bounds.Height <= 0 {
+		return -1
+	}
+	selected := *props.SelectedIndex
+	if selected < 0 || selected >= int32(count) {
+		selected = 0
+		*props.SelectedIndex = 0
+	}
+	font := props.Font
+	if font <= 0 {
+		font = Text14
+	}
+	theme := r.theme()
+	width := bounds.Width / float32(count)
+	clicked := int32(-1)
+	for i := 0; i < count; i++ {
+		item := props.Tabs[i]
+		tab := Rectangle{X: bounds.X + float32(i)*width, Y: bounds.Y, Width: width, Height: bounds.Height}
+		closeWidth := float32(0)
+		close := Rectangle{}
+		closed := false
+		if item.Closeable {
+			closeWidth = 24
+			close = Rectangle{X: tab.X + tab.Width - closeWidth, Y: tab.Y, Width: closeWidth, Height: tab.Height}
+			closed = !item.Disabled && r.consumeTap(close)
+			if closed && props.ClosedIndex != nil {
+				*props.ClosedIndex = int32(i)
+			}
+		}
+		pressed := !item.Disabled && r.consumeTap(Rectangle{X: tab.X, Y: tab.Y, Width: tab.Width - closeWidth, Height: tab.Height})
+		fill, textColor := theme.surface, theme.icon
+		if int32(i) == selected {
+			fill, textColor = theme.buttonHover, theme.text
+		}
+		if item.Disabled {
+			textColor = r.Fade(textColor, 0.45)
+		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: tab, Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: fill, BorderColor: theme.border, TextColor: textColor, FontSize: font, Disabled: item.Disabled, Pressed: int32(i) == selected || pressed, Row: int32(i)})
+		if pressed {
+			*props.SelectedIndex = int32(i)
+			clicked = int32(i)
+		}
+		if item.Closeable {
+			r.record(FrameOp{Kind: FrameOpText, Bounds: close, Text: "×", Color: theme.icon, FontSize: font, Disabled: item.Disabled, Pressed: closed, Row: int32(i)})
+		}
+	}
+	return clicked
+}
+
 // fitTabLabel truncates with an ellipsis until the label measures within
 // maxWidth (rune-safe; measurement falls back to a width estimate when no
 // font face is loaded, e.g. headless tests).
@@ -2002,6 +2446,10 @@ func (r *runtime) plot(props PlotProps, histogram bool) {
 }
 
 func (r *runtime) dragDelta(token int32, bounds Rectangle, disabled bool) (float32, bool) {
+	disabled = disabled || r.contentDisabled()
+	if disabled && r.drag.active && r.drag.token == token {
+		r.drag = scalarDrag{}
+	}
 	if !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds) {
 		r.drag = scalarDrag{active: true, token: token, lastX: r.mousePos.X}
 	}
@@ -2212,6 +2660,10 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 }
 
 func (r *runtime) sliderRatio(token int32, bounds Rectangle, disabled, vertical bool) (float32, bool) {
+	disabled = disabled || r.contentDisabled()
+	if disabled && r.slider.active && r.slider.token == token {
+		r.slider = scalarDrag{}
+	}
 	pressed := !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds)
 	if pressed {
 		r.slider = scalarDrag{active: true, token: token}
@@ -2363,14 +2815,19 @@ func (r *runtime) SliderAngle(props SliderAngleProps) bool {
 	return changed
 }
 
-func (r *runtime) numericInputState(token int32, formatted string) *numericInputState {
+func (r *runtime) numericInputState(key numericInputKey, formatted string) *numericInputState {
 	if r.numericInputs == nil {
-		r.numericInputs = make(map[int32]*numericInputState)
+		r.numericInputs = make(map[numericInputKey]*numericInputState)
+		r.numericNextToken = 0x60000000
 	}
-	state := r.numericInputs[token]
+	state := r.numericInputs[key]
 	if state == nil {
-		state = &numericInputState{text: make([]byte, 64)}
-		r.numericInputs[token] = state
+		if r.numericNextToken > 0x7fffffff-3 {
+			panic("numeric input identity space exhausted")
+		}
+		state = &numericInputState{text: make([]byte, 64), token: r.numericNextToken}
+		r.numericNextToken += 3
+		r.numericInputs[key] = state
 	}
 	if !state.focused {
 		clear(state.text)
@@ -2380,8 +2837,8 @@ func (r *runtime) numericInputState(token int32, formatted string) *numericInput
 	return state
 }
 
-func (r *runtime) setNumericInputText(token int32, formatted string) {
-	state := r.numericInputs[token]
+func (r *runtime) setNumericInputText(key numericInputKey, formatted string) {
+	state := r.numericInputs[key]
 	if state == nil {
 		return
 	}
@@ -2390,8 +2847,9 @@ func (r *runtime) setNumericInputText(token int32, formatted string) {
 	state.cursor = int32(len(formatted))
 }
 
-func (r *runtime) numericInputCell(bounds Rectangle, token int32, formatted string, disabled bool, step, stepFast float64) (string, float64, bool) {
-	state := r.numericInputState(token, formatted)
+func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, formatted string, disabled bool, step, stepFast float64) (string, float64, bool) {
+	state := r.numericInputState(key, formatted)
+	token := state.token
 	field := bounds
 	minus, plus := bounds, bounds
 	if step != 0 {
@@ -2414,12 +2872,12 @@ func (r *runtime) numericInputCell(bounds Rectangle, token int32, formatted stri
 	t := r.theme()
 	minusPressed := !disabled && r.consumeTap(minus)
 	plusPressed := !disabled && r.consumeTap(plus)
-	for _, button := range []struct {
+	for index, button := range []struct {
 		bounds  Rectangle
 		label   string
 		pressed bool
 	}{{minus, "-", minusPressed}, {plus, "+", plusPressed}} {
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: button.bounds, Text: button.label, Color: t.button, BorderColor: t.border, TextColor: t.text, FontSize: Text14, ID: token, Disabled: disabled, Pressed: button.pressed})
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: button.bounds, Text: button.label, Color: t.button, BorderColor: t.border, TextColor: t.text, FontSize: Text14, ID: token + 1 + int32(index), Disabled: disabled, Pressed: button.pressed})
 	}
 	if !minusPressed && !plusPressed {
 		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
@@ -2447,8 +2905,8 @@ func (r *runtime) InputFloat(props InputFloatProps) bool {
 			format = "%.3f"
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
-		token := int32(0x60000000) ^ (props.ID*16 + int32(i) + 1)
-		text, increment, edited := r.numericInputCell(cell, token, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
+		key := numericInputKey{kind: 0, widgetID: props.ID, component: int32(i)}
+		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -2458,7 +2916,7 @@ func (r *runtime) InputFloat(props InputFloatProps) bool {
 		}
 		if increment != 0 {
 			value, valid = value+float32(increment), true
-			r.setNumericInputText(token, fmt.Sprintf(format, value))
+			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
 			props.Values[i] = value
@@ -2482,8 +2940,8 @@ func (r *runtime) InputInt(props InputIntProps) bool {
 			format = "%d"
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
-		token := int32(0x68000000) ^ (props.ID*16 + int32(i) + 1)
-		text, increment, edited := r.numericInputCell(cell, token, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
+		key := numericInputKey{kind: 1, widgetID: props.ID, component: int32(i)}
+		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -2493,7 +2951,7 @@ func (r *runtime) InputInt(props InputIntProps) bool {
 		}
 		if increment != 0 {
 			value, valid = value+int32(increment), true
-			r.setNumericInputText(token, fmt.Sprintf(format, value))
+			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
 			props.Values[i] = value
@@ -2517,8 +2975,8 @@ func (r *runtime) InputDouble(props InputDoubleProps) bool {
 			format = "%.6f"
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
-		token := int32(0x70000000) ^ (props.ID*16 + int32(i) + 1)
-		text, increment, edited := r.numericInputCell(cell, token, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step, props.StepFast)
+		key := numericInputKey{kind: 2, widgetID: props.ID, component: int32(i)}
+		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step, props.StepFast)
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -2528,7 +2986,7 @@ func (r *runtime) InputDouble(props InputDoubleProps) bool {
 		}
 		if increment != 0 {
 			value, valid = value+increment, true
-			r.setNumericInputText(token, fmt.Sprintf(format, value))
+			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
 			props.Values[i] = value
@@ -2588,30 +3046,134 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	return r.dropdownAt(id, bounds, labels, selected)
 }
 func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32) bool {
+	if r.dropdownsSeen == nil {
+		r.dropdownsSeen = make(map[int32]bool)
+	}
+	r.dropdownsSeen[id] = true
+	if r.contentDisabled() {
+		r.closeDropdown(id)
+	}
 	if selected != nil && len(labels) > 0 {
 		*selected = clamp32(*selected, 0, int32(len(labels)-1))
 	}
 	theme := r.theme()
 	pressed := r.consumeTap(bounds)
+	if !r.contentDisabled() && id > 0 {
+		r.registerField(id)
+		if pressed {
+			r.setFocus(id)
+		}
+		if r.focusID == id && !r.openDropdowns[id] &&
+			(r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace] || r.keyDown[KeyDown]) {
+			pressed = true
+		}
+	}
 	if pressed {
+		for other := range r.openDropdowns {
+			if other != id {
+				r.closeDropdown(other)
+			}
+		}
 		r.openDropdowns[id] = !r.openDropdowns[id]
+		if r.openDropdowns[id] {
+			if r.dropdownHighlight == nil {
+				r.dropdownHighlight = make(map[int32]int32)
+			}
+			r.dropdownHighlight[id] = 0
+			if selected != nil {
+				r.dropdownHighlight[id] = *selected
+			}
+		}
 	}
 	open := r.openDropdowns[id]
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Text: selectedLabel(labels, selected), Color: theme.surface, BorderColor: theme.border, TextColor: theme.text, ID: id, FontSize: Text16, Pressed: pressed})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - 24, Y: bounds.Y + 5, Width: 16, Height: bounds.Height}, Text: "x", Color: theme.text, FontSize: Text14, ID: id})
-	if !open {
-		return pressed
+	panel := r.dropdownPanel(bounds, len(labels))
+	if open && !pressed {
+		if r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel) {
+			open = false
+		}
+		for _, tap := range r.taps {
+			if !pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel) {
+				open = false
+			}
+		}
+	}
+	if len(labels) == 0 || bounds.Height <= 0 || r.keyDown[KeyEscape] {
+		open = false
 	}
 	changed := false
+	if open && !pressed {
+		highlight := clamp32(r.dropdownHighlight[id], 0, int32(len(labels)-1))
+		if r.keyDown[KeyUp] {
+			highlight = max32(0, highlight-1)
+		} else if r.keyDown[KeyDown] {
+			highlight = min32(int32(len(labels)-1), highlight+1)
+		} else if r.keyDown[KeyHome] {
+			highlight = 0
+		} else if r.keyDown[KeyEnd] {
+			highlight = int32(len(labels) - 1)
+		}
+		if r.dropdownHighlight == nil {
+			r.dropdownHighlight = make(map[int32]int32)
+		}
+		r.dropdownHighlight[id] = highlight
+		if r.keyDown[KeyEnter] || r.keyDown[335] {
+			if selected != nil {
+				changed = *selected != highlight
+				*selected = highlight
+			}
+			open = false
+		}
+	}
+	if !open {
+		r.closeDropdown(id)
+	}
+	border := theme.border
+	focused := !r.contentDisabled() && id > 0 && r.focusID == id
+	if focused {
+		border = theme.focus
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Text: selectedLabel(labels, selected), Color: theme.surface, BorderColor: border, TextColor: theme.text, ID: id, FontSize: Text16, Pressed: pressed, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - 24, Y: bounds.Y + 5, Width: 16, Height: bounds.Height}, Text: "x", Color: theme.text, FontSize: Text14, ID: id})
+	if !open {
+		return pressed || changed
+	}
 	itemH := bounds.Height
-	menuY := bounds.Y + bounds.Height + 4
-	panel := Rectangle{X: bounds.X, Y: menuY, Width: bounds.Width, Height: itemH * float32(len(labels))}
+	layer := r.beginPaintLayer(id)
+	input := r.beginPopupInput(id, panel)
+	defer func() {
+		r.endPopupInput(input)
+		r.endPaintLayer(layer)
+	}()
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border, ID: id})
-	for i, label := range labels {
-		row := Rectangle{X: bounds.X, Y: menuY + float32(i)*itemH, Width: bounds.Width, Height: itemH}
+	if r.dropdownOffsets == nil {
+		r.dropdownOffsets = make(map[int32]*int32)
+	}
+	offset := r.dropdownOffsets[id]
+	if offset == nil {
+		offset = new(int32)
+		r.dropdownOffsets[id] = offset
+	}
+	viewport := panel
+	viewport.Y += 4
+	viewport.Height = max(float32(0), viewport.Height-8)
+	if pressed || r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd] {
+		top := float32(r.dropdownHighlight[id]) * itemH
+		if top < float32(*offset) {
+			*offset = int32(top)
+		} else if top+itemH > float32(*offset)+viewport.Height {
+			*offset = int32(top + itemH - viewport.Height)
+		}
+	}
+	content := r.BeginScroll(viewport, int32(min(float64(itemH)*float64(len(labels)), float64(2147483647))), offset)
+	defer r.EndScroll()
+	first := max(0, int(float32(*offset)/itemH))
+	last := min(len(labels), int(math.Ceil(float64((float32(*offset)+viewport.Height)/itemH))))
+	for i := first; i < last; i++ {
+		label := labels[i]
+		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
 		selectedRow := selected != nil && int32(i) == *selected
-		if selectedRow {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: mixColor(theme.surface, theme.button, 0.35), ID: id, Row: int32(i), Selected: true})
+		if selectedRow || r.dropdownHighlight[id] == int32(i) {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: mixColor(theme.surface, theme.button, 0.35), ID: id, Row: int32(i), Selected: selectedRow, Focused: r.dropdownHighlight[id] == int32(i)})
 		}
 		if selected != nil && r.consumeTap(row) {
 			next := int32(i)
@@ -2619,7 +3181,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 				*selected = next
 				changed = true
 			}
-			delete(r.openDropdowns, id)
+			r.closeDropdown(id)
 			selectedRow = true
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 12, Y: row.Y + 5, Width: row.Width - 24, Height: row.Height}, Text: label, Color: theme.text, FontSize: Text16, ID: id, Row: int32(i), Selected: selectedRow})
@@ -2832,6 +3394,25 @@ func (r *runtime) BulletText(text string, bounds Rectangle, fontSize int32, colo
 	}
 	r.Bullet(Rectangle{X: bounds.X, Y: bounds.Y, Width: bulletSize, Height: bulletHeight})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bulletSize + 4, Y: bounds.Y, Width: bounds.Width - bulletSize - 4, Height: bounds.Height}, Text: text, Color: color, FontSize: fontSize})
+}
+
+func (r *runtime) ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color) {
+	r.LabelText(prefix, strconv.FormatBool(value), bounds, fontSize, color)
+}
+
+func (r *runtime) ValueInt(prefix string, value int32, bounds Rectangle, fontSize int32, color Color) {
+	r.LabelText(prefix, strconv.FormatInt(int64(value), 10), bounds, fontSize, color)
+}
+
+func (r *runtime) ValueUInt(prefix string, value uint32, bounds Rectangle, fontSize int32, color Color) {
+	r.LabelText(prefix, strconv.FormatUint(uint64(value), 10), bounds, fontSize, color)
+}
+
+func (r *runtime) ValueFloat(prefix string, value float32, format string, bounds Rectangle, fontSize int32, color Color) {
+	if format == "" {
+		format = "%.3f"
+	}
+	r.LabelText(prefix, fmt.Sprintf(format, value), bounds, fontSize, color)
 }
 
 func wrapRuntimeText(text string, width float32, fontSize int32) []string {
@@ -3192,6 +3773,20 @@ func (r *runtime) BottomNav(props BottomNavProps) {
 		if item.Active {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: ib, Color: t.button, Selected: true})
 		}
+		if item.Icon.ID != 0 {
+			tint := props.IconColor
+			if tint.A == 0 {
+				tint = Color{R: 255, G: 255, B: 255, A: 255}
+			}
+			if item.Disabled {
+				tint.A = uint8(uint32(tint.A) * 150 / 255)
+			}
+			size := props.IconSize
+			if size <= 0 {
+				size = 26
+			}
+			r.Icon(item.Route, int32(ib.X)+(int32(ib.Width)-size)/2, int32(ib.Y)+6, size, int32(item.Icon.ID), tint)
+		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: ib.X + 6, Y: ib.Y + (ib.Height-float32(Text14))/2, Width: ib.Width - 12, Height: float32(Text14 + 4)}, Text: item.Label, Color: color, FontSize: Text14, ID: item.Route, Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
@@ -3440,7 +4035,7 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 		}
 		r.contextMenus[props.ID] = pos
 	}
-	if r.mouseReleased[MouseButtonRight] && pointInRect(r.mousePos.X, r.mousePos.Y, props.Trigger) {
+	if !r.contentDisabled() && r.mouseReleased[MouseButtonRight] && pointInRect(r.mousePos.X, r.mousePos.Y, props.Trigger) {
 		r.contextMenus[props.ID] = r.mousePos
 		if props.Open != nil {
 			*props.Open = 1
@@ -3458,7 +4053,7 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 	}
 	selected, panel := r.drawPopupMenu(props.ID, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount))
 	closeMenu := selected != 0
-	if !closeMenu {
+	if !closeMenu && !r.contentDisabled() {
 		for i := range r.taps {
 			if !r.taps[i].consumed && !pointInRect(r.taps[i].x, r.taps[i].y, panel) {
 				r.taps[i].consumed = true
@@ -3499,7 +4094,7 @@ func (r *runtime) SelectableText(value string, x, y, fontSize int32, color Color
 		r.selectableText = key
 	}
 	selected := r.selectableText == key
-	if selected {
+	if selected && !r.contentDisabled() {
 		for _, event := range r.inputEvents {
 			if event.shortcut && event.key == KeyC {
 				r.clipboard = value
@@ -3615,6 +4210,7 @@ func (r *runtime) Combobox(p ComboboxProps) bool {
 	}
 	opts := p.Options[:n]
 	if p.Disabled {
+		r.closeDropdown(p.ID)
 		t := r.theme()
 		r.record(FrameOp{Kind: FrameOpButton, Bounds: p.Bounds, Text: selectedLabel(opts, p.SelectedIndex), Color: t.surface, BorderColor: t.border, TextColor: t.icon, FontSize: Text16, ID: p.ID, Disabled: true})
 		return false
@@ -3671,13 +4267,22 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	if p.Vertical {
 		limit = int32(p.Bounds.Width) - p.MinSecond
 	}
+	if limit < p.MinFirst {
+		limit = p.MinFirst
+	}
 	split = clamp32(split, p.MinFirst, limit)
 	h := Rectangle{X: p.Bounds.X, Y: p.Bounds.Y + float32(split) - 4, Width: p.Bounds.Width, Height: 8}
 	if p.Vertical {
 		h = Rectangle{X: p.Bounds.X + float32(split) - 4, Y: p.Bounds.Y, Width: 8, Height: p.Bounds.Height}
 	}
 	changed := int32(0)
-	if r.mouseDown[MouseButtonLeft] && pointInRect(r.mousePos.X, r.mousePos.Y, h) {
+	if r.contentDisabled() && r.drag.token == p.ID {
+		r.drag = scalarDrag{}
+	}
+	if !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(h) {
+		r.drag = scalarDrag{active: true, token: p.ID}
+	}
+	if r.drag.active && r.drag.token == p.ID && r.mouseDown[MouseButtonLeft] {
 		n := int32(r.mousePos.Y - p.Bounds.Y)
 		if p.Vertical {
 			n = int32(r.mousePos.X - p.Bounds.X)
@@ -3694,23 +4299,127 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	} else {
 		h.Y = p.Bounds.Y + float32(split) - 4
 	}
+	if !r.mouseDown[MouseButtonLeft] && r.drag.token == p.ID {
+		r.drag = scalarDrag{}
+	}
+	if *p.Split != split {
+		*p.Split = split
+		changed = 1
+	}
 	t := r.theme()
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: h, Color: t.button, BorderColor: t.border, ID: p.ID, Pressed: changed != 0})
 	return changed
 }
+
+type treeHeaderNav struct{ id, depth int32 }
+
+func (r *runtime) treeHeaderTarget(p CollapsibleProps, key int32) int32 {
+	for i, node := range r.prevTreeHeaders {
+		if node.id != p.ID {
+			continue
+		}
+		switch key {
+		case KeyDown:
+			if i+1 < len(r.prevTreeHeaders) {
+				return r.prevTreeHeaders[i+1].id
+			}
+		case KeyUp:
+			if i > 0 {
+				return r.prevTreeHeaders[i-1].id
+			}
+		case KeyRight:
+			if i+1 < len(r.prevTreeHeaders) && r.prevTreeHeaders[i+1].depth > node.depth {
+				return r.prevTreeHeaders[i+1].id
+			}
+		case KeyLeft:
+			for j := i - 1; j >= 0; j-- {
+				if r.prevTreeHeaders[j].depth < node.depth {
+					return r.prevTreeHeaders[j].id
+				}
+			}
+		}
+		break
+	}
+	return p.ID
+}
+
 func (r *runtime) Collapsible(p CollapsibleProps) int32 {
-	p.Bounds = r.layoutRect(p.Bounds)
 	p.Bounds.Height = 32
-	pressed := p.Open != nil && r.consumeTap(p.Bounds)
+	p.Bounds = r.layoutRect(p.Bounds)
+	if p.Tree && p.Depth > 0 {
+		indent := min(float32(p.Depth)*20, p.Bounds.Width)
+		p.Bounds.X += indent
+		p.Bounds.Width -= indent
+	}
+	enabled := !p.Disabled && !r.contentDisabled()
+	if enabled {
+		r.registerField(p.ID)
+		if p.Tree && p.ID > 0 {
+			r.treeHeaders = append(r.treeHeaders, treeHeaderNav{p.ID, max(p.Depth, 0)})
+		}
+	}
+	tapped := enabled && r.consumeTap(p.Bounds)
+	if tapped && p.ID != 0 {
+		r.setFocus(p.ID)
+	}
+	pressed := tapped && !p.Leaf && p.Open != nil
 	if pressed {
 		*p.Open = !*p.Open
+	}
+	if enabled && p.ID != 0 && r.focusID == p.ID {
+		remaining := r.inputEvents[:0]
+		for _, event := range r.inputEvents {
+			handled := false
+			if !event.shortcut && r.focusID == p.ID {
+				if p.Tree && (event.key == KeyUp || event.key == KeyDown ||
+					event.key == KeyLeft && (p.Leaf || p.Open == nil || !*p.Open) ||
+					event.key == KeyRight && !p.Leaf && p.Open != nil && *p.Open) {
+					r.setFocus(r.treeHeaderTarget(p, event.key))
+					handled = true
+				} else if event.key == KeyTab {
+					r.setFocus(r.nextFocus(p.ID, event.shift))
+					handled = true
+				} else if !p.Leaf && p.Open != nil {
+					old := *p.Open
+					switch event.key {
+					case KeyRight:
+						*p.Open = true
+						handled = true
+					case KeyLeft:
+						*p.Open = false
+						handled = true
+					case KeyEnter, KeySpace:
+						*p.Open = !*p.Open
+						handled = true
+					}
+					pressed = pressed || old != *p.Open
+				}
+			}
+			if !handled {
+				remaining = append(remaining, event)
+			}
+		}
+		r.inputEvents = remaining
 	}
 	mark := ">"
 	if p.Open != nil && *p.Open {
 		mark = "v"
 	}
+	if p.Leaf {
+		mark = "•"
+	}
 	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: p.Bounds, Text: mark + "  " + p.Label, Color: t.button, BorderColor: t.buttonHover, TextColor: t.text, FontSize: Text16, Pressed: pressed, Selected: p.Open != nil && *p.Open})
+	bg, border, fg := t.button, t.buttonHover, t.text
+	if p.Tree {
+		bg, border = BLANK, BLANK
+	}
+	if p.Selected {
+		bg = t.buttonHover
+	}
+	if p.Disabled {
+		fg.A = uint8(float32(fg.A) * 0.45)
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: p.Bounds, Text: mark + "  " + p.Label, Color: bg, BorderColor: border, TextColor: fg, FontSize: Text16, Pressed: pressed, Selected: p.Selected, ID: p.ID, Focused: enabled && p.ID != 0 && r.focusID == p.ID})
 	if pressed {
 		return 1
 	}
@@ -3745,7 +4454,7 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	maxScroll := max32(0, count*rowH-int32(props.Bounds.Height))
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
-		if pointInRect(r.mousePos.X, r.mousePos.Y, props.Bounds) && r.mouseWheel != 0 {
+		if !props.Disabled && r.pointerCanReach(props.Bounds) && r.mouseWheel != 0 {
 			*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
 		}
 	}
@@ -3754,7 +4463,11 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		scroll = *props.ScrollOffset
 	}
 	theme := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface, BorderColor: theme.border, ID: props.ID})
+	panelColor, borderColor := theme.surface, theme.border
+	if props.Disabled {
+		panelColor, borderColor = r.Fade(panelColor, 0.45), r.Fade(borderColor, 0.45)
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: panelColor, BorderColor: borderColor, ID: props.ID, Disabled: props.Disabled})
 	changed := int32(0)
 	first := scroll / rowH
 	yOffset := scroll % rowH
@@ -3766,22 +4479,30 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		item := props.Items[index]
 		row := Rectangle{X: props.Bounds.X, Y: y, Width: props.Bounds.Width, Height: float32(rowH)}
 		selected := props.SelectedID != nil && *props.SelectedID == item.ID
-		pressed := item.Selectable != 0 && r.consumeTap(row)
+		pressed := !props.Disabled && item.Selectable != 0 && r.consumeTap(row)
 		if pressed && props.SelectedID != nil {
 			*props.SelectedID = item.ID
 			selected = true
 			changed = 1
 		}
 		if selected {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.button, ID: props.ID, Row: index, Selected: true})
+			color := theme.button
+			if props.Disabled {
+				color = r.Fade(color, 0.45)
+			}
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: color, ID: props.ID, Row: index, Selected: true, Disabled: props.Disabled})
 		}
 		indent := float32(8 + item.Depth*18)
 		mark := ">"
 		if item.Expanded != 0 {
 			mark = "v"
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent, Y: row.Y + 4, Width: 16, Height: row.Height}, Text: mark, Color: theme.icon, FontSize: Text16, ID: item.ID, Row: index})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent + 18, Y: row.Y + 4, Width: row.Width - indent - 26, Height: row.Height}, Text: item.Label, Color: theme.text, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected})
+		iconColor, textColor := theme.icon, theme.text
+		if props.Disabled {
+			iconColor, textColor = r.Fade(iconColor, 0.45), r.Fade(textColor, 0.45)
+		}
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent, Y: row.Y + 4, Width: 16, Height: row.Height}, Text: mark, Color: iconColor, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent + 18, Y: row.Y + 4, Width: row.Width - indent - 26, Height: row.Height}, Text: item.Label, Color: textColor, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
@@ -3809,7 +4530,7 @@ func (r *runtime) SourceView(props SourceViewProps) int32 {
 	maxY := max32(0, contentH-viewH)
 	if props.ScrollY != nil {
 		*props.ScrollY = clamp32(*props.ScrollY, 0, maxY)
-		if pointInRect(r.mousePos.X, r.mousePos.Y, props.Bounds) && r.mouseWheel != 0 {
+		if r.pointerCanReach(props.Bounds) && r.mouseWheel != 0 {
 			*props.ScrollY = clamp32(*props.ScrollY-int32(r.mouseWheel)*lineH*3, 0, maxY)
 		}
 	}
@@ -3850,6 +4571,33 @@ func (r *runtime) SourceView(props SourceViewProps) int32 {
 	}
 	return 0
 }
+func (r *runtime) BeginListBox(props ListBoxProps) Rectangle {
+	props.Bounds = r.layoutRect(props.Bounds)
+	r.BeginDisabled(props.Disabled)
+	t := r.theme()
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: t.surface, ID: props.ID, Role: "listbox"})
+	for _, edge := range []Rectangle{
+		{X: props.Bounds.X, Y: props.Bounds.Y, Width: props.Bounds.Width},
+		{X: props.Bounds.X, Y: props.Bounds.Y + props.Bounds.Height - 1, Width: props.Bounds.Width},
+		{X: props.Bounds.X, Y: props.Bounds.Y, Height: props.Bounds.Height},
+		{X: props.Bounds.X + props.Bounds.Width - 1, Y: props.Bounds.Y, Height: props.Bounds.Height},
+	} {
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: edge, Color: t.border, ID: props.ID})
+	}
+	inner := Rectangle{X: props.Bounds.X + 1, Y: props.Bounds.Y + 1, Width: max(float32(0), props.Bounds.Width-2), Height: max(float32(0), props.Bounds.Height-2)}
+	height := props.ContentHeight
+	if height <= 0 {
+		rowH := props.RowHeight
+		if rowH <= 0 {
+			rowH = 30
+		}
+		height = int32(min(int64(1<<31-1), int64(max32(0, props.ItemCount))*int64(rowH)))
+	}
+	return r.BeginScroll(inner, height, props.ScrollOffset)
+}
+
+func (r *runtime) EndListBox() { r.EndScroll(); r.EndDisabled() }
+
 func (r *runtime) ListBox(props ListBoxProps) int32 {
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -3862,11 +4610,11 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
 	}
 	changed := int32(0)
-	if pointInRect(r.mousePos.X, r.mousePos.Y, props.Bounds) && props.ScrollOffset != nil && r.mouseWheel != 0 {
+	if !props.Disabled && r.pointerCanReach(props.Bounds) && props.ScrollOffset != nil && r.mouseWheel != 0 {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
 		changed = 1
 	}
-	if props.ID != 0 {
+	if !props.Disabled && props.ID != 0 {
 		r.registerField(props.ID)
 	}
 	changed |= r.recordListBoxOps(props, rowH)
@@ -3875,6 +4623,7 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 func (r *runtime) TableView(props TableViewProps) int32 {
 	props = normalizeTableViewProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
+	props.Disabled = props.Disabled || r.contentDisabled()
 	if len(props.Columns) == 0 {
 		return 0
 	}
@@ -3883,7 +4632,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	if rowH <= 0 {
 		rowH = 28
 	}
-	headerH := int32(30)
+	headerH := max32(30, props.HeaderHeight)
 	body := Rectangle{
 		X:      props.Bounds.X,
 		Y:      props.Bounds.Y + float32(headerH),
@@ -3916,11 +4665,56 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	}
 
 	changed := int32(0)
-	maxScroll := max32(0, int32(len(props.Rows))*rowH-int32(body.Height))
+	if r.tableResize.active && r.mouseReleased[MouseButtonLeft] &&
+		(r.tableResize.id != props.ID || props.Disabled || !props.Resizable || len(props.ColumnWidths) == 0) {
+		r.tableResize = tableResize{}
+	}
+	frozenRows := tableFrozenRows(props, rowH, int32(body.Height))
+	maxScroll := max32(0, (int32(len(props.Rows))-frozenRows)*rowH-(int32(body.Height)-frozenRows*rowH))
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
 	}
-	if pointInRect(r.mousePos.X, r.mousePos.Y, body) && props.ScrollOffset != nil && r.mouseWheel != 0 {
+	if props.Disabled {
+		r.record(FrameOp{Kind: FrameOpTable, Bounds: props.Bounds, ID: props.ID, Disabled: true})
+		r.drawTableOps(props, rowH, headerH)
+		return 0
+	}
+	if props.Resizable && len(props.ColumnWidths) > 0 {
+		for i := range r.clicks {
+			click := &r.clicks[i]
+			if click.consumed || click.button != MouseButtonLeft ||
+				click.y < props.Bounds.Y || click.y >= props.Bounds.Y+float32(headerH) {
+				continue
+			}
+			shift := tableHeaderShift(props, click.y)
+			column, separatorX := tableSeparatorAtX(props, click.x-shift, 5)
+			separatorX += shift
+			if column < 0 || int(column) >= len(props.ColumnWidths) {
+				continue
+			}
+			click.consumed = true
+			r.consumeTap(Rectangle{X: separatorX - 5, Y: props.Bounds.Y, Width: 10, Height: float32(headerH)})
+			r.tableResize = tableResize{active: true, id: props.ID, column: column, startX: click.x, startWidth: tableColumnWidth(props, column)}
+			break
+		}
+		if r.tableResize.active && r.tableResize.id == props.ID {
+			if r.mouseDown[MouseButtonLeft] {
+				minimum := props.MinColumnWidth
+				if minimum <= 0 {
+					minimum = 32
+				}
+				width := max32(minimum, r.tableResize.startWidth+int32(r.mousePos.X-r.tableResize.startX))
+				if props.ColumnWidths[r.tableResize.column] != width {
+					props.ColumnWidths[r.tableResize.column] = width
+					changed = 1
+				}
+			}
+			if r.mouseReleased[MouseButtonLeft] {
+				r.tableResize = tableResize{}
+			}
+		}
+	}
+	if !props.Disabled && r.pointerCanReach(body) && props.ScrollOffset != nil && r.mouseWheel != 0 {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
 		changed = 1
 	}
@@ -3932,7 +4726,11 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	headerClickX, headerClicked := r.consumeMouseButtonPoint(MouseButtonLeft, headerBounds)
 	if headerClicked && headerClickX >= props.Bounds.X && headerClickX < props.Bounds.X+props.Bounds.Width &&
 		r.mousePos.Y >= props.Bounds.Y && r.mousePos.Y < props.Bounds.Y+float32(headerH) {
-		col := tableColumnAtX(props, headerClickX)
+		col := tableColumnAtX(props, headerClickX-tableHeaderShift(props, r.mousePos.Y))
+		previousSortColumn := int32(-1)
+		if props.SortColumn != nil {
+			previousSortColumn = *props.SortColumn
+		}
 		if col >= 0 && props.SelectedRow != nil {
 			*props.SelectedRow = -1
 			changed = 1
@@ -3945,57 +4743,69 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 			*props.SortColumn = col
 			changed = 1
 		}
+		if col >= 0 && props.SortColumn != nil && props.SortDirection != nil {
+			if previousSortColumn != col || *props.SortDirection == 0 {
+				*props.SortDirection = 1
+			} else if *props.SortDirection > 0 {
+				*props.SortDirection = -1
+			} else {
+				*props.SortDirection = 0
+			}
+			changed = 1
+		}
 		if props.ID != 0 {
 			r.setFocus(props.ID)
 		}
 	}
 
-	for _, click := range r.consumeMouseButtonEvents(MouseButtonLeft, body) {
-		row, col := tableCellAt(props, body, rowH, click.x, click.y)
-		if row >= 0 && col >= 0 {
-			changed |= setTableSelection(props, row, col, row, col)
-			r.tableDrag = tableDrag{active: true, id: props.ID, startRow: row, startCol: col}
-			if props.ID != 0 {
-				r.setFocus(props.ID)
-			}
-			if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
-				r.lastTableClick.column == col && click.when.Sub(r.lastTableClick.when) <= 450*time.Millisecond {
-				if props.ActivatedRow != nil {
-					*props.ActivatedRow = row
+	if !props.CustomCells {
+		for _, click := range r.consumeMouseButtonEvents(MouseButtonLeft, body) {
+			row, col := tableCellAt(props, body, rowH, click.x, click.y)
+			if row >= 0 && col >= 0 {
+				changed |= setTableSelection(props, row, col, row, col)
+				r.tableDrag = tableDrag{active: true, id: props.ID, startRow: row, startCol: col}
+				if props.ID != 0 {
+					r.setFocus(props.ID)
 				}
-				if props.ActivatedColumn != nil {
-					*props.ActivatedColumn = col
+				if r.lastTableClick.id == props.ID && r.lastTableClick.row == row &&
+					r.lastTableClick.column == col && click.when.Sub(r.lastTableClick.when) <= 450*time.Millisecond {
+					if props.ActivatedRow != nil {
+						*props.ActivatedRow = row
+					}
+					if props.ActivatedColumn != nil {
+						*props.ActivatedColumn = col
+					}
+					changed = 1
+				}
+				r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: click.when}
+			}
+		}
+		if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseDown[MouseButtonLeft] {
+			row, col := tableCellAt(props, body, rowH, r.mousePos.X, r.mousePos.Y)
+			if row >= 0 && col >= 0 {
+				changed |= setTableSelection(props, r.tableDrag.startRow, r.tableDrag.startCol, row, col)
+			}
+		}
+		if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseReleased[MouseButtonLeft] {
+			r.tableDrag = tableDrag{}
+		}
+
+		if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonRight, body); clicked {
+			row, col := tableCellAt(props, body, rowH, clickX, r.mousePos.Y)
+			if row >= 0 && col >= 0 {
+				if props.RightClickedRow != nil {
+					*props.RightClickedRow = row
+				}
+				if props.RightClickedColumn != nil {
+					*props.RightClickedColumn = col
 				}
 				changed = 1
 			}
-			r.lastTableClick = tableClick{id: props.ID, row: row, column: col, when: click.when}
 		}
-	}
-	if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseDown[MouseButtonLeft] {
-		row, col := tableCellAt(props, body, rowH, r.mousePos.X, r.mousePos.Y)
-		if row >= 0 && col >= 0 {
-			changed |= setTableSelection(props, r.tableDrag.startRow, r.tableDrag.startCol, row, col)
-		}
-	}
-	if r.tableDrag.active && r.tableDrag.id == props.ID && r.mouseReleased[MouseButtonLeft] {
-		r.tableDrag = tableDrag{}
-	}
 
-	if clickX, clicked := r.consumeMouseButtonPoint(MouseButtonRight, body); clicked {
-		row, col := tableCellAt(props, body, rowH, clickX, r.mousePos.Y)
-		if row >= 0 && col >= 0 {
-			if props.RightClickedRow != nil {
-				*props.RightClickedRow = row
-			}
-			if props.RightClickedColumn != nil {
-				*props.RightClickedColumn = col
-			}
-			changed = 1
+		if !r.contentDisabled() && !props.Disabled && props.ID != 0 && r.focusID == props.ID {
+			changed |= r.handleTableKeys(props)
 		}
-	}
-
-	if props.ID != 0 && r.focusID == props.ID {
-		changed |= r.handleTableKeys(props)
 	}
 
 	r.record(FrameOp{Kind: FrameOpTable, Bounds: props.Bounds, ID: props.ID})
@@ -4321,6 +5131,18 @@ func systemPrefersDark() bool {
 }
 
 func (r *runtime) record(op FrameOp) {
+	if len(r.scrollClips) > 0 {
+		op.Clip = r.scrollClips[len(r.scrollClips)-1]
+		op.HasClip = true
+	}
+	if r.contentDisabled() {
+		if !op.Disabled {
+			op.Color = r.Fade(op.Color, 0.45)
+			op.BorderColor = r.Fade(op.BorderColor, 0.45)
+			op.TextColor = r.Fade(op.TextColor, 0.45)
+		}
+		op.Disabled = true
+	}
 	r.ops = append(r.ops, op)
 }
 
@@ -4498,12 +5320,15 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	if focused != nil {
 		r.focusRefs[focusID] = focused
 	}
+	if commit != nil {
+		*commit = false
+	}
+	if r.contentDisabled() {
+		return false
+	}
 	tapX, tapped := r.consumeTapPoint(bounds)
 	if focusID != 0 && tapped {
 		r.setFocus(focusID)
-	}
-	if commit != nil {
-		*commit = false
 	}
 	if focused != nil && *focused {
 		r.setFocus(focusID)
@@ -4632,9 +5457,19 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	return changed
 }
 
+func (r *runtime) pointerCanReach(bounds Rectangle) bool {
+	return !r.contentDisabled() &&
+		!r.popupCaptures(r.mousePos.X, r.mousePos.Y) &&
+		pointInRect(r.mousePos.X, r.mousePos.Y, r.scrollClip(bounds))
+}
+
 func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
+	bounds = r.scrollClip(bounds)
+	if r.contentDisabled() {
+		return 0, false
+	}
 	for i := range r.taps {
-		if r.taps[i].consumed {
+		if r.taps[i].consumed || r.popupCaptures(r.taps[i].x, r.taps[i].y) {
 			continue
 		}
 		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
@@ -4646,8 +5481,12 @@ func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
 }
 
 func (r *runtime) consumeTap(bounds Rectangle) bool {
+	bounds = r.scrollClip(bounds)
+	if r.contentDisabled() {
+		return false
+	}
 	for i := range r.taps {
-		if r.taps[i].consumed {
+		if r.taps[i].consumed || r.popupCaptures(r.taps[i].x, r.taps[i].y) {
 			continue
 		}
 		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
@@ -4662,8 +5501,12 @@ func (r *runtime) consumeTap(bounds Rectangle) bool {
 }
 
 func (r *runtime) consumeMouseButtonPoint(button int32, bounds Rectangle) (float32, bool) {
+	bounds = r.scrollClip(bounds)
+	if r.contentDisabled() {
+		return 0, false
+	}
 	for i := range r.clicks {
-		if r.clicks[i].consumed || r.clicks[i].button != button {
+		if r.clicks[i].consumed || r.clicks[i].button != button || r.popupCaptures(r.clicks[i].x, r.clicks[i].y) {
 			continue
 		}
 		if pointInRect(r.clicks[i].x, r.clicks[i].y, bounds) {
@@ -4675,9 +5518,13 @@ func (r *runtime) consumeMouseButtonPoint(button int32, bounds Rectangle) (float
 }
 
 func (r *runtime) consumeMouseButtonEvents(button int32, bounds Rectangle) []mouseClickEvent {
+	bounds = r.scrollClip(bounds)
+	if r.contentDisabled() {
+		return nil
+	}
 	var events []mouseClickEvent
 	for i := range r.clicks {
-		if r.clicks[i].consumed || r.clicks[i].button != button {
+		if r.clicks[i].consumed || r.clicks[i].button != button || r.popupCaptures(r.clicks[i].x, r.clicks[i].y) {
 			continue
 		}
 		if pointInRect(r.clicks[i].x, r.clicks[i].y, bounds) {
@@ -4968,11 +5815,17 @@ func cellH(grid Grid) float32 {
 
 func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	theme := r.theme()
+	disabledColor := func(color Color) Color {
+		if props.Disabled {
+			return r.Fade(color, 0.45)
+		}
+		return color
+	}
 	if rowH <= 0 {
 		rowH = 30
 	}
 	changed := int32(0)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface, BorderColor: theme.border, ID: props.ID})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), BorderColor: disabledColor(theme.border), ID: props.ID, Disabled: props.Disabled})
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
@@ -4989,7 +5842,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 			Width:  props.Bounds.Width,
 			Height: float32(rowH),
 		}
-		if props.SelectedIndex != nil && r.consumeTap(row) {
+		if !props.Disabled && props.SelectedIndex != nil && r.consumeTap(row) {
 			if *props.SelectedIndex != index {
 				*props.SelectedIndex = index
 				changed = 1
@@ -5000,9 +5853,9 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		}
 		selected := props.SelectedIndex != nil && *props.SelectedIndex == index
 		if selected {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.button, ID: props.ID, Row: index, Selected: true})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: disabledColor(theme.button), ID: props.ID, Row: index, Selected: true, Disabled: props.Disabled})
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: theme.text, FontSize: font, ID: props.ID, Row: index, Selected: selected})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: disabledColor(theme.text), FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
@@ -5016,6 +5869,12 @@ func normalizeTableViewProps(props TableViewProps) TableViewProps {
 	}
 	if len(props.ColumnWidths) > len(props.Columns) {
 		props.ColumnWidths = props.ColumnWidths[:len(props.Columns)]
+	}
+	if len(props.ColumnEnabled) > len(props.Columns) {
+		props.ColumnEnabled = props.ColumnEnabled[:len(props.Columns)]
+	}
+	if len(props.ColumnOrder) > len(props.Columns) {
+		props.ColumnOrder = props.ColumnOrder[:len(props.Columns)]
 	}
 	for i := range props.Rows {
 		if props.Rows[i].CellCount > 0 && int(props.Rows[i].CellCount) < len(props.Rows[i].Cells) {
@@ -5032,6 +5891,33 @@ func normalizeListBoxProps(props ListBoxProps) ListBoxProps {
 	return props
 }
 
+func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle {
+	props = normalizeTableViewProps(props)
+	cell := TableCellRect(props, row, col)
+	header := max32(30, props.HeaderHeight)
+	rowH := props.RowHeight
+	if rowH <= 0 {
+		rowH = 28
+	}
+	bodyHeight := max32(0, int32(props.Bounds.Height)-header)
+	frozen := tableFrozenRows(props, rowH, bodyHeight)
+	top := props.Bounds.Y + float32(header)
+	bottom := props.Bounds.Y + props.Bounds.Height
+	if row < frozen {
+		bottom = top + float32(frozen*rowH)
+	} else {
+		top += float32(frozen * rowH)
+	}
+	left, right := max(cell.X, props.Bounds.X), min(cell.X+cell.Width, props.Bounds.X+props.Bounds.Width)
+	top, bottom = max(top, cell.Y), min(bottom, cell.Y+cell.Height)
+	clip := Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
+	r.BeginDisabled(props.Disabled)
+	r.BeginScroll(clip, int32(clip.Height), nil)
+	return cell
+}
+
+func (r *runtime) EndTableCell() { r.EndScroll(); r.EndDisabled() }
+
 func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)
 	if len(props.Columns) == 0 || row < 0 || col < 0 || int(row) >= len(props.Rows) || int(col) >= len(props.Columns) {
@@ -5041,18 +5927,34 @@ func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	if rowH <= 0 {
 		rowH = 28
 	}
-	headerH := int32(30)
+	headerH := max32(30, props.HeaderHeight)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
 	x := props.Bounds.X
-	for c := int32(0); c < col; c++ {
-		x += float32(tableColumnWidth(props, c))
+	found := false
+	for _, logical := range tableDisplayColumns(props) {
+		if logical == col {
+			found = true
+			break
+		}
+		x += float32(tableColumnWidth(props, logical))
+	}
+	if !found {
+		return Rectangle{}
+	}
+	bodyHeight := max32(0, int32(props.Bounds.Height)-headerH)
+	frozenRows := tableFrozenRows(props, rowH, bodyHeight)
+	y := props.Bounds.Y + float32(headerH)
+	if row < frozenRows {
+		y += float32(row * rowH)
+	} else {
+		y += float32(frozenRows*rowH + (row-frozenRows)*rowH - scroll)
 	}
 	return Rectangle{
 		X:      x,
-		Y:      props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll),
+		Y:      y,
 		Width:  float32(tableColumnWidth(props, col)),
 		Height: float32(rowH),
 	}
@@ -5074,10 +5976,18 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 	if selectedRow >= 0 {
 		row = clamp32(selectedRow, 0, int32(len(props.Rows)-1))
 	}
-	col := int32(0)
-	if selectedCol >= 0 {
-		col = clamp32(selectedCol, 0, int32(len(props.Columns)-1))
+	displayColumns := tableDisplayColumns(props)
+	if len(displayColumns) == 0 {
+		return 0
 	}
+	colIndex := 0
+	for i, candidate := range displayColumns {
+		if candidate == selectedCol {
+			colIndex = i
+			break
+		}
+	}
+	col := displayColumns[colIndex]
 	for _, event := range r.inputEvents {
 		if event.text != "" {
 			continue
@@ -5115,27 +6025,34 @@ func (r *runtime) handleTableKeys(props TableViewProps) int32 {
 			changed = 1
 			selectionChanged = true
 		case KeyLeft:
-			col = clamp32(col-1, 0, int32(len(props.Columns)-1))
+			if colIndex > 0 {
+				colIndex--
+			}
+			col = displayColumns[colIndex]
 			changed = 1
 			selectionChanged = true
 		case KeyRight:
-			col = clamp32(col+1, 0, int32(len(props.Columns)-1))
+			if colIndex < len(displayColumns)-1 {
+				colIndex++
+			}
+			col = displayColumns[colIndex]
 			changed = 1
 			selectionChanged = true
 		case KeyTab:
 			if event.shift {
-				if col > 0 {
-					col--
+				if colIndex > 0 {
+					colIndex--
 				} else {
-					col = int32(len(props.Columns) - 1)
+					colIndex = len(displayColumns) - 1
 					row = clamp32(row-1, 0, int32(len(props.Rows)-1))
 				}
-			} else if col < int32(len(props.Columns)-1) {
-				col++
+			} else if colIndex < len(displayColumns)-1 {
+				colIndex++
 			} else {
-				col = 0
+				colIndex = 0
 				row = clamp32(row+1, 0, int32(len(props.Rows)-1))
 			}
+			col = displayColumns[colIndex]
 			changed = 1
 			selectionChanged = true
 		case KeyEnter, KeyF2:
@@ -5268,24 +6185,52 @@ func (r *runtime) scrollTableSelectionIntoView(props TableViewProps) {
 	if rowH <= 0 {
 		rowH = 28
 	}
-	bodyH := int32(props.Bounds.Height) - 30
+	bodyH := int32(props.Bounds.Height) - max32(30, props.HeaderHeight)
 	if bodyH <= 0 {
 		return
 	}
-	top := *props.SelectedRow * rowH
+	frozenRows := tableFrozenRows(props, rowH, bodyH)
+	if *props.SelectedRow < frozenRows {
+		return
+	}
+	viewH := bodyH - frozenRows*rowH
+	if viewH <= 0 {
+		return
+	}
+	top := (*props.SelectedRow - frozenRows) * rowH
 	bottom := top + rowH
 	if top < *props.ScrollOffset {
 		*props.ScrollOffset = top
-	} else if bottom > *props.ScrollOffset+bodyH {
-		*props.ScrollOffset = bottom - bodyH
+	} else if bottom > *props.ScrollOffset+viewH {
+		*props.ScrollOffset = bottom - viewH
 	}
-	maxScroll := max32(0, int32(len(props.Rows))*rowH-bodyH)
+	maxScroll := max32(0, (int32(len(props.Rows))-frozenRows)*rowH-viewH)
 	*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+}
+
+func tableHeaderShift(props TableViewProps, y float32) float32 {
+	a := float64(props.HeaderAngle)
+	if a == 0 || math.IsNaN(a) || math.IsInf(a, 0) {
+		return 0
+	}
+	a = math.Max(-89, math.Min(89, a))
+	h := float32(max32(30, props.HeaderHeight))
+	return -(h - (y - props.Bounds.Y)) / float32(math.Tan(a*math.Pi/180))
 }
 
 func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	theme := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface})
+	disabledColor := func(color Color) Color {
+		if props.Disabled {
+			return r.Fade(color, 0.45)
+		}
+		return color
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), Disabled: props.Disabled})
+	displayColumns := tableDisplayColumns(props)
+	if len(displayColumns) == 0 {
+		return
+	}
 	selectedRow := int32(-1)
 	selectedCol := int32(-1)
 	if props.SelectedRow != nil {
@@ -5298,9 +6243,9 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if rowH >= 28 {
 		font = Text14
 	}
-	for c := range props.Columns {
-		col := int32(c)
-		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []TableRow{{}}, ColumnWidths: props.ColumnWidths, RowHeight: rowH}, 0, col)
+	for _, col := range displayColumns {
+		c := int(col)
+		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []TableRow{{}}, ColumnWidths: props.ColumnWidths, ColumnEnabled: props.ColumnEnabled, ColumnOrder: props.ColumnOrder, RowHeight: rowH}, 0, col)
 		rect.Y = props.Bounds.Y
 		rect.Height = float32(headerH)
 		fill := theme.button
@@ -5309,33 +6254,82 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			fill = theme.selectedHot
 			selected = true
 		}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: fill, Row: -1, Column: col, Selected: selected})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: theme.text, FontSize: font, Row: -1, Column: col})
+		shift := tableHeaderShift(props, rect.Y)
+		var polygon [4]Vector2
+		if shift != 0 {
+			polygon = [4]Vector2{{rect.X + shift, rect.Y}, {rect.X + rect.Width + shift, rect.Y}, {rect.X + rect.Width, rect.Y + rect.Height}, {rect.X, rect.Y + rect.Height}}
+		}
+		headerClip := r.scrollClip(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: props.Bounds.Width, Height: float32(headerH)})
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Polygon: polygon, HasPolygon: shift != 0, Color: disabledColor(fill), Row: -1, Column: col, Selected: selected, Disabled: props.Disabled})
+		if shift != 0 {
+			r.ops[len(r.ops)-1].Clip = headerClip
+			r.ops[len(r.ops)-1].HasClip = true
+		}
+		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: disabledColor(theme.text), FontSize: font, Row: -1, Column: col, Disabled: props.Disabled}
+		angle := props.HeaderAngle
+		if math.IsNaN(float64(angle)) || math.IsInf(float64(angle), 0) {
+			angle = 0
+		}
+		angle = max(float32(-89), min(float32(89), angle))
+		if angle != 0 {
+			textOp.Polygon = polygon
+			textOp.HasPolygon = true
+			textOp.Text, textOp.Rotation = props.Columns[c], angle
+			textOp.Bounds.X, textOp.Bounds.Y = rect.X+6, rect.Y+6
+			if angle > 0 {
+				textOp.Bounds.X += shift
+			}
+			if angle < 0 {
+				textOp.Bounds.Y = rect.Y + rect.Height - 6
+			}
+		}
+		r.record(textOp)
+		if angle != 0 {
+			r.ops[len(r.ops)-1].Clip = headerClip
+			r.ops[len(r.ops)-1].HasClip = true
+		}
+		if props.Resizable && c < len(props.ColumnWidths) {
+			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: rect.X + rect.Width + shift - 1, Y: rect.Y, Width: -shift, Height: rect.Height}, Color: disabledColor(theme.border), Column: col, Disabled: props.Disabled})
+			r.ops[len(r.ops)-1].Clip, r.ops[len(r.ops)-1].HasClip = headerClip, true
+		}
 	}
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	first := int32(0)
+	bodyHeight := max32(0, int32(props.Bounds.Height)-headerH)
+	frozenRows := tableFrozenRows(props, rowH, bodyHeight)
+	first := frozenRows
 	if rowH > 0 {
-		first = scroll / rowH
+		first += scroll / rowH
 	}
 	visible := int32(0)
 	if rowH > 0 {
 		visible = int32(props.Bounds.Height-float32(headerH))/rowH + 2
 	}
-	for i := int32(0); i < visible && first+i < int32(len(props.Rows)); i++ {
-		row := first + i
-		rowY := props.Bounds.Y + float32(headerH) + float32(row*rowH-scroll)
+	drawRow := func(row int32) {
+		clip := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + float32(headerH), Width: props.Bounds.Width, Height: float32(frozenRows * rowH)}
+		if row >= frozenRows {
+			clip.Y += clip.Height
+			clip.Height = props.Bounds.Y + props.Bounds.Height - clip.Y
+		}
+		start := len(r.ops)
+		defer func() {
+			for i := start; i < len(r.ops); i++ {
+				r.ops[i].Clip = r.scrollClip(clip)
+				r.ops[i].HasClip = true
+			}
+		}()
+		rowY := TableCellRect(props, row, displayColumns[0]).Y
 		rowRect := Rectangle{X: props.Bounds.X, Y: rowY, Width: props.Bounds.Width, Height: float32(rowH)}
 		if row%2 == 1 {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: mixColor(theme.surface, theme.button, 0.16), Row: row})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: disabledColor(mixColor(theme.surface, theme.button, 0.16)), Row: row, Disabled: props.Disabled})
 		}
 		if row == selectedRow && selectedCol < 0 {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: theme.selectedHot, Row: row, Column: -1, Selected: true})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: disabledColor(theme.selectedHot), Row: row, Column: -1, Selected: true, Disabled: props.Disabled})
 		}
-		for c := range props.Columns {
-			col := int32(c)
+		for _, col := range displayColumns {
+			c := int(col)
 			rect := TableCellRect(props, row, col)
 			if rect.Y+rect.Height < props.Bounds.Y+float32(headerH) || rect.Y > props.Bounds.Y+props.Bounds.Height {
 				continue
@@ -5344,22 +6338,28 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			if int(row) < len(props.Rows) {
 				tableRow := props.Rows[row]
 				if c < len(tableRow.BackgroundColors) && tableRow.BackgroundColors[c].A != 0 {
-					r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: tableRow.BackgroundColors[c], Row: row, Column: col})
+					r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: disabledColor(tableRow.BackgroundColors[c]), Row: row, Column: col, Disabled: props.Disabled})
 				}
 				if c < len(tableRow.TextColors) && tableRow.TextColors[c].A != 0 {
 					cellTextColor = tableRow.TextColors[c]
 				}
 			}
 			if tableCellSelected(props, row, col, selectedRow, selectedCol) {
-				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: theme.selectedHot, Row: row, Column: col, Selected: true, SelectionStartRow: valueOr32(props.SelectionStartRow, -1), SelectionStartCol: valueOr32(props.SelectionStartColumn, -1), SelectionEndRow: valueOr32(props.SelectionEndRow, -1), SelectionEndCol: valueOr32(props.SelectionEndColumn, -1)})
+				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: disabledColor(theme.selectedHot), Row: row, Column: col, Selected: true, Disabled: props.Disabled, SelectionStartRow: valueOr32(props.SelectionStartRow, -1), SelectionStartCol: valueOr32(props.SelectionStartColumn, -1), SelectionEndRow: valueOr32(props.SelectionEndRow, -1), SelectionEndCol: valueOr32(props.SelectionEndColumn, -1)})
 				cellTextColor = theme.selectedText
 			}
 			text := ""
 			if int(row) < len(props.Rows) && c < len(props.Rows[row].Cells) {
 				text = props.Rows[row].Cells[c]
 			}
-			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: cellTextColor, FontSize: font, Row: row, Column: col})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: disabledColor(cellTextColor), FontSize: font, Row: row, Column: col, Disabled: props.Disabled})
 		}
+	}
+	for row := int32(0); row < frozenRows; row++ {
+		drawRow(row)
+	}
+	for i := int32(0); i < visible && first+i < int32(len(props.Rows)); i++ {
+		drawRow(first + i)
 	}
 }
 
@@ -5376,7 +6376,15 @@ func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	row := int32((y - body.Y + float32(scroll)) / float32(rowH))
+	frozenRows := tableFrozenRows(props, rowH, int32(body.Height))
+	frozenHeight := float32(frozenRows * rowH)
+	localY := y - body.Y
+	row := int32(0)
+	if localY < frozenHeight {
+		row = int32(localY / float32(rowH))
+	} else {
+		row = frozenRows + int32((localY-frozenHeight+float32(scroll))/float32(rowH))
+	}
 	if row < 0 || int(row) >= len(props.Rows) {
 		return -1, -1
 	}
@@ -5393,10 +6401,10 @@ func tableColumnAtX(props TableViewProps, x float32) int32 {
 		return -1
 	}
 	cursor := props.Bounds.X
-	for c := range props.Columns {
-		w := float32(tableColumnWidth(props, int32(c)))
+	for _, col := range tableDisplayColumns(props) {
+		w := float32(tableColumnWidth(props, col))
 		if x >= cursor && x < cursor+w {
-			return int32(c)
+			return col
 		}
 		cursor += w
 	}
@@ -5411,7 +6419,56 @@ func tableColumnWidth(props TableViewProps, col int32) int32 {
 	if int(col) < len(props.ColumnWidths) && props.ColumnWidths[col] > 0 {
 		return props.ColumnWidths[col]
 	}
-	return int32(props.Bounds.Width) / int32(len(props.Columns))
+	visible := len(tableDisplayColumns(props))
+	if visible == 0 {
+		return 0
+	}
+	return int32(props.Bounds.Width) / int32(visible)
+}
+
+func tableFrozenRows(props TableViewProps, rowH, bodyHeight int32) int32 {
+	if rowH <= 0 || bodyHeight <= 0 {
+		return 0
+	}
+	return clamp32(props.FreezeRows, 0, min32(int32(len(props.Rows)), bodyHeight/rowH))
+}
+
+func tableSeparatorAtX(props TableViewProps, x, tolerance float32) (int32, float32) {
+	cursor := props.Bounds.X
+	for _, column := range tableDisplayColumns(props) {
+		cursor += float32(tableColumnWidth(props, column))
+		if x >= cursor-tolerance && x <= cursor+tolerance {
+			return column, cursor
+		}
+	}
+	return -1, 0
+}
+
+func tableDisplayColumns(props TableViewProps) []int32 {
+	count := len(props.Columns)
+	if count == 0 {
+		return nil
+	}
+	enabled := func(col int) bool {
+		return col >= len(props.ColumnEnabled) || props.ColumnEnabled[col] != 0
+	}
+	columns := make([]int32, 0, count)
+	seen := make([]bool, count)
+	for _, requested := range props.ColumnOrder {
+		col := int(requested)
+		if col >= 0 && col < count && !seen[col] {
+			seen[col] = true
+			if enabled(col) {
+				columns = append(columns, requested)
+			}
+		}
+	}
+	for col := 0; col < count; col++ {
+		if !seen[col] && enabled(col) {
+			columns = append(columns, int32(col))
+		}
+	}
+	return columns
 }
 
 func elideText(text string, maxWidth float32, font int32) string {
@@ -5473,6 +6530,13 @@ func mixColor(a, b Color, t float32) Color {
 
 func max32(a, b int32) int32 {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func min32(a, b int32) int32 {
+	if a < b {
 		return a
 	}
 	return b

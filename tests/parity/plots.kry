@@ -54,5 +54,9 @@ plots_frame :: () #ui {
         TextWrapped("wrapped text helper uses the available width", (Rectangle){20,855,220,40}, Text16, GetThemeText())
         LabelText("Status", "Ready", (Rectangle){20,900,220,20}, Text16, GetThemeText())
         BulletText("bullet text", (Rectangle){140,805,100,20}, Text16, GetThemeText())
+        ValueBool("Enabled", drag_ints[0] != 0, (Rectangle){20,925,100,20}, Text14, GetThemeText())
+        ValueInt("Count", drag_ints[0], (Rectangle){125,925,100,20}, Text14, GetThemeText())
+        ValueUInt("Mask", 42, (Rectangle){20,950,100,20}, Text14, GetThemeText())
+        ValueFloat("Rate", drag_floats[0], "%.1f", (Rectangle){125,950,100,20}, Text14, GetThemeText())
     }
 }

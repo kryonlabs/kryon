@@ -18,6 +18,22 @@
 #define KRY_LIBDRAW_KEY_CAP 512
 #define KRY_LIBDRAW_MAX_TEXT_DRAWS 2048
 
+Rectangle GetCollisionRec(Rectangle a, Rectangle b)
+{
+    Rectangle result = {0};
+    float left = a.x > b.x ? a.x : b.x;
+    float top = a.y > b.y ? a.y : b.y;
+    float right = a.x + a.width < b.x + b.width ? a.x + a.width : b.x + b.width;
+    float bottom = a.y + a.height < b.y + b.height ? a.y + a.height : b.y + b.height;
+    if(right > left && bottom > top) {
+        result.x = left;
+        result.y = top;
+        result.width = right - left;
+        result.height = bottom - top;
+    }
+    return result;
+}
+
 typedef struct KryLibdrawQueuedText {
     unsigned font_id;
     char *text;
@@ -324,71 +340,63 @@ active_clip_rect(int *x, int *y, int *w, int *h)
     return 1;
 }
 
-static P9Image *
-ensure_text_surface(KrySw *sw)
-{
-    if(display == nil || sw == NULL || sw->w <= 0 || sw->h <= 0)
-        return nil;
-    if(g_text_surface != nil && Dx(g_text_surface->r) == sw->w &&
-       Dy(g_text_surface->r) == sw->h && g_text_surface->chan == RGBA32)
-        return g_text_surface;
-    if(g_text_surface != nil)
-        freeimage(g_text_surface);
-    g_text_surface = allocimage(display, kry_p9_rect(0, 0, sw->w, sw->h),
-                                RGBA32, 0, DTransparent);
-    return g_text_surface;
-}
+static int clip_rect_to_sw(KrySw *sw, int *x, int *y, int *w, int *h);
+static void blend_pixel_rgba(unsigned char *dst, Color c);
 
+/* Rasterize native fonts into a small coverage mask, then blend immediately.
+ * Deferring text until presentation would paint it over later windows/menus. */
 static int
 draw_native_text_into_active_sw(unsigned font_id, const char *text,
                                 int byte_len, int x, int y, Color color)
 {
     KryLibdrawFont *registered;
     P9Font *p9font;
-    P9Image *surface;
-    P9Image *text_color;
-    P9Rectangle old_clipr;
-    int old_repl;
-    int ndata;
-    int clip_x;
-    int clip_y;
-    int clip_w;
-    int clip_h;
-    int clip_active;
-
+    P9Image *white;
+    unsigned char *coverage;
+    int w, h, original_x = x, original_y = y;
+    int row, col;
     if(text == NULL || text[0] == '\0' || g_active_sw == NULL ||
-       g_active_sw->pixels == NULL)
-        return 0;
+       g_active_sw->pixels == NULL) return 0;
     registered = kry_libdraw_font(font_id);
     p9font = registered != NULL ? registered->font : font;
-    if(display == nil || p9font == nil)
-        return 0;
-    surface = ensure_text_surface(g_active_sw);
-    text_color = kry_libdraw_color(color);
-    if(surface == nil || text_color == nil)
-        return 0;
-    ndata = g_active_sw->stride * g_active_sw->h;
-    if(loadimage(surface, surface->r, g_active_sw->pixels, ndata) < 0)
-        return 0;
-
-    old_clipr = surface->clipr;
-    old_repl = surface->repl;
-    clip_active = active_clip_rect(&clip_x, &clip_y, &clip_w, &clip_h);
-    if(clip_active) {
-        replclipr(surface, 0, kry_p9_rect(clip_x, clip_y, clip_w, clip_h));
+    if(display == nil || p9font == nil) return 0;
+    w = byte_len < 0 ? stringwidth(p9font, (char *)text) :
+                      stringnwidth(p9font, (char *)text, byte_len);
+    h = p9font->height;
+    if(!clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) return 1;
+    if(g_text_surface != nil && (Dx(g_text_surface->r) != w ||
+       Dy(g_text_surface->r) != h || g_text_surface->chan != GREY8)) {
+        freeimage(g_text_surface);
+        g_text_surface = nil;
     }
+    if(g_text_surface == nil)
+        g_text_surface = allocimage(display, kry_p9_rect(0, 0, w, h), GREY8, 0, DBlack);
+    white = kry_libdraw_color(WHITE);
+    if(g_text_surface == nil || white == nil) return 0;
+    coverage = malloc((size_t)w * h);
+    if(coverage == NULL) return 0;
+    draw(g_text_surface, g_text_surface->r, display->black, nil, ZP);
     if(byte_len < 0)
-        string(surface, kry_p9_point(x, y), text_color, ZP, p9font,
-               (char *)text);
+        string(g_text_surface, kry_p9_point(original_x - x, original_y - y),
+               white, ZP, p9font, (char *)text);
     else
-        stringn(surface, kry_p9_point(x, y), text_color, ZP, p9font,
-                (char *)text, byte_len);
-    if(clip_active &&
-       (!eqrect(surface->clipr, old_clipr) || surface->repl != old_repl)) {
-        replclipr(surface, old_repl, old_clipr);
-    }
-    if(unloadimage(surface, surface->r, g_active_sw->pixels, ndata) < 0)
+        stringn(g_text_surface, kry_p9_point(original_x - x, original_y - y),
+                white, ZP, p9font, (char *)text, byte_len);
+    if(unloadimage(g_text_surface, g_text_surface->r, coverage, w * h) < 0) {
+        free(coverage);
         return 0;
+    }
+    KrySwMarkDirty(g_active_sw, x, y, w, h);
+    for(row = 0; row < h; row++) {
+        for(col = 0; col < w; col++) {
+            Color pixel = color;
+            pixel.a = (unsigned char)((unsigned)color.a * coverage[row * w + col] / 255);
+            if(pixel.a != 0)
+                blend_pixel_rgba(g_active_sw->pixels + (size_t)(y + row) *
+                                 g_active_sw->stride + (x + col) * 4, pixel);
+        }
+    }
+    free(coverage);
     return 1;
 }
 
@@ -1078,8 +1086,7 @@ kry_libdraw_queue_text(unsigned font_id, const char *text, int byte_len, int x,
 
     if(text == NULL || text[0] == '\0')
         return;
-    if(g_active_texture_id != 0 &&
-       draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
+    if(draw_native_text_into_active_sw(font_id, text, byte_len, x, y, color))
         return;
     if(g_text_draw_count >= KRY_LIBDRAW_MAX_TEXT_DRAWS)
         return;
@@ -1296,10 +1303,32 @@ void BeginDrawing(void)
     kry_libdraw_poll();
 }
 
+static int blend_mode = BLEND_ALPHA;
+static int clip_rect_to_sw(KrySw *sw, int *x, int *y, int *w, int *h);
+static void blend_pixel_rgba(unsigned char *dst, Color c);
+
+void BeginBlendMode(int mode)
+{
+    blend_mode = mode;
+}
+
+void EndBlendMode(void)
+{
+    blend_mode = BLEND_ALPHA;
+}
+
 static void sw_clear(Color color) { g_sw_backend->clear(pack(color)); }
 static void sw_rect(int x, int y, int w, int h, Color color)
 {
-    g_sw_backend->rect(x, y, w, h, pack(color));
+    if(blend_mode == BLEND_ALPHA) {
+        g_sw_backend->rect(x, y, w, h, pack(color));
+    } else if(g_active_sw != NULL && clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) {
+        int row, col;
+        KrySwMarkDirty(g_active_sw, x, y, w, h);
+        for(row = y; row < y + h; row++)
+            for(col = x; col < x + w; col++)
+                blend_pixel_rgba(g_active_sw->pixels + (size_t)row * g_active_sw->stride + col * 4, color);
+    }
 }
 
 static int
@@ -1486,8 +1515,25 @@ blend_pixel_rgba(unsigned char *dst, Color c)
 {
     unsigned inv;
 
-    if(dst == NULL || c.a == 0)
+    if(dst == NULL) return;
+    if(blend_mode != BLEND_ALPHA) {
+        unsigned char src[4] = {c.r, c.g, c.b, c.a};
+        int i;
+        for(i = 0; i < 4; i++) {
+            int value;
+            switch(blend_mode) {
+            case BLEND_ADDITIVE: value = dst[i] + src[i] * c.a / 255; break;
+            case BLEND_MULTIPLIED: value = src[i] * dst[i] / 255 + dst[i] * (255 - c.a) / 255; break;
+            case BLEND_ADD_COLORS: value = dst[i] + src[i]; break;
+            case BLEND_SUBTRACT_COLORS: value = dst[i] - src[i]; break;
+            case BLEND_ALPHA_PREMULTIPLY: value = src[i] + dst[i] * (255 - c.a) / 255; break;
+            default: value = src[i] * c.a / 255 + dst[i] * (255 - c.a) / 255; break;
+            }
+            dst[i] = value < 0 ? 0 : value > 255 ? 255 : value;
+        }
         return;
+    }
+    if(c.a == 0) return;
     if(c.a == 255) {
         dst[0] = c.r;
         dst[1] = c.g;
@@ -1647,8 +1693,44 @@ void DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments,
                                                       : 1,
                                      color);
 }
+void DrawCircleGradient(Vector2 center, float radius, Color inner, Color outer)
+{
+    int x, y, w, h, px, py;
+    float left, top, right, bottom;
+    if(g_active_sw == NULL || !(radius > 0.0f) || radius > 1000000.0f ||
+       !(center.x >= -1000000.0f && center.x <= 1000000.0f) ||
+       !(center.y >= -1000000.0f && center.y <= 1000000.0f)) return;
+    /* Clip before iterating, including very large lights. */
+    left = floorf(center.x - radius); top = floorf(center.y - radius);
+    right = ceilf(center.x + radius); bottom = ceilf(center.y + radius);
+    if(left < 0) left = 0;
+    if(top < 0) top = 0;
+    if(right > g_active_sw->w) right = g_active_sw->w;
+    if(bottom > g_active_sw->h) bottom = g_active_sw->h;
+    x = left; y = top; w = right - left; h = bottom - top;
+    if(!clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) return;
+    KrySwMarkDirty(g_active_sw, x, y, w, h);
+    for(py = y; py < y + h; py++) {
+        for(px = x; px < x + w; px++) {
+            float dx = px + 0.5f - center.x, dy = py + 0.5f - center.y;
+            float t = sqrtf(dx * dx + dy * dy) / radius;
+            Color c;
+            if(t > 1.0f) continue;
+            c.r = inner.r + (outer.r - inner.r) * t;
+            c.g = inner.g + (outer.g - inner.g) * t;
+            c.b = inner.b + (outer.b - inner.b) * t;
+            c.a = inner.a + (outer.a - inner.a) * t;
+            blend_pixel_rgba(g_active_sw->pixels + (size_t)py * g_active_sw->stride + px * 4, c);
+        }
+    }
+}
+
 void DrawCircle(int centerX, int centerY, float radius, Color color)
 {
+    if(blend_mode != BLEND_ALPHA) {
+        DrawCircleGradient((Vector2){centerX, centerY}, radius, color, color);
+        return;
+    }
     if(g_sw_backend->circle != NULL)
         g_sw_backend->circle(centerX, centerY, (int)radius, pack(color));
 }
@@ -1773,6 +1855,17 @@ void BeginScissorMode(int x, int y, int width, int height)
 }
 void EndScissorMode(void) { g_sw_backend->clip_pop(); }
 void BeginMode2D(Camera2D camera) { (void)camera; }
+/* libdraw uses pixel coordinates and has no projection/modelview transform.
+ * Retained paint capture still needs the existing matrix compatibility API. */
+Matrix rlGetMatrixProjection(void)
+{
+    Matrix identity = {0};
+    identity.m0 = identity.m5 = identity.m10 = identity.m15 = 1.0f;
+    return identity;
+}
+Matrix rlGetMatrixModelview(void) { return rlGetMatrixProjection(); }
+void rlSetMatrixProjection(Matrix projection) { (void)projection; }
+void rlSetMatrixModelview(Matrix modelview) { (void)modelview; }
 void EndMode2D(void) {}
 
 bool BackendRaw_IsKeyPressed(int key)
@@ -1915,13 +2008,6 @@ void ImageFormat(Image *image, int newFormat)
 {
     if(image != NULL)
         image->format = newFormat;
-}
-                           (size_t)(image->height - 1 - y) * image->width * 4;
-        memcpy(tmp, a, (size_t)image->width * 4);
-        memcpy(a, b, (size_t)image->width * 4);
-        memcpy(b, tmp, (size_t)image->width * 4);
-    }
-    free(tmp);
 }
 Texture2D LoadTextureFromImage(Image image)
 {
@@ -2498,7 +2584,8 @@ void kry_dom_replace_route(const char *path)
     (void)path;
 }
 
-/* Web-only routing hooks; the native backend reports a static root. */
+/* Native Plan 9 does not link platform/web/web.c. */
+#ifdef KRYON_NATIVE_PLAN9
 const char *kry_web_get_route_path(void)
 {
     return "/";
@@ -2523,3 +2610,5 @@ void kry_web_replace_route(const char *path)
 {
     (void)path;
 }
+
+#endif /* KRYON_NATIVE_PLAN9 */

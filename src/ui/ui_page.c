@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "ui_internal.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -211,8 +212,7 @@ Heading(HeadingProps props)
         bounds.width = (float)TextWidth(text, font);
     if(bounds.height <= 0)
         bounds.height = (float)TextHeight(text, font);
-    page_semantic_next(UI_SEMANTIC_HEADING, text, NULL, NULL, level, -1);
-    TextInRect(text, bounds, font, color);
+    ui_tree_heading(text, bounds, font, color, level);
 }
 
 void

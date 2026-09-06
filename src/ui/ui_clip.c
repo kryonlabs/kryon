@@ -1,9 +1,37 @@
-#include "ui_clip.h"
-
-#define UI_CLIP_STACK_MAX 16
+#include "ui_clip_internal.h"
+#include <string.h>
 
 static Rectangle g_ui_clip_stack[UI_CLIP_STACK_MAX];
 static int g_ui_clip_stack_count = 0;
+
+UIClipState
+ui_clip_save(void)
+{
+    UIClipState state = {0};
+    state.count = g_ui_clip_stack_count;
+    memcpy(state.bounds,g_ui_clip_stack,(size_t)state.count*sizeof(Rectangle));
+    return state;
+}
+
+int
+ui_clip_current(Rectangle *bounds)
+{
+    if(g_ui_clip_stack_count == 0) return 0;
+    *bounds = g_ui_clip_stack[g_ui_clip_stack_count-1];
+    return 1;
+}
+
+void
+ui_clip_restore(UIClipState state)
+{
+    ResetUIClip();
+    g_ui_clip_stack_count = state.count;
+    memcpy(g_ui_clip_stack,state.bounds,(size_t)state.count*sizeof(Rectangle));
+    if(state.count > 0) {
+        Rectangle bounds = state.bounds[state.count-1];
+        BeginScissorMode((int)bounds.x,(int)bounds.y,(int)bounds.width,(int)bounds.height);
+    }
+}
 
 Rectangle
 GetUIClipIntersection(Rectangle a, Rectangle b)
@@ -64,5 +92,6 @@ EndUIClip(void)
 void
 ResetUIClip(void)
 {
+    if(IsWindowReady()) EndScissorMode();
     g_ui_clip_stack_count = 0;
 }

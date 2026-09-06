@@ -85,6 +85,7 @@ export function createRuntime(options = {}) {
     statements: [],
     hostCalls: [],
     mounted: false,
+    disabledStack: [],
     input: {
       events: [],
       focus: 0,
@@ -114,14 +115,17 @@ export function beginFrame(rt) {
   rt.frame = [];
   rt.statements = [];
   rt.hostCalls = [];
+  rt.disabledStack = [];
   if (rt.input)
     rt.input.focusOrder = [];
   return rt;
 }
 
 export function endFrame(rt) {
-  if (rt.input)
+  if (rt.input) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
+    rt.input.events = [];
+  }
   return snapshot(rt);
 }
 
@@ -524,6 +528,17 @@ function handleTableView(rt, state, args) {
 function handleWidget(rt, name, args, state) {
   if (!rt.input)
     return false;
+  if (name === "BeginDisabled") {
+    rt.disabledStack.push(numberValue(args) !== 0);
+    return false;
+  }
+  if (name === "EndDisabled") {
+    if (rt.disabledStack.length > 0)
+      rt.disabledStack.pop();
+    return false;
+  }
+  if (rt.disabledStack.some(Boolean))
+    return false;
   switch (name) {
   case "Button":
   case "IconButton":
@@ -691,9 +706,9 @@ export function CanvasHitTest(canvas, screen) {
 }
 
 const runtimeCallNames = [
-  "Background", "Bevel", "BottomNav", "Button", "CanvasGrid", "Checkbox",
+  "Background", "BeginDisabled", "Bevel", "BottomNav", "Button", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "Combobox", "Dropdown", "EndCanvas",
-  "EndScroll", "Href", "Icon", "IconButton", "LabelFrame", "ListBox",
+  "EndDisabled", "EndScroll", "Href", "Icon", "IconButton", "LabelFrame", "ListBox",
   "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
@@ -709,6 +724,7 @@ for (const name of runtimeCallNames) {
 globalThis.__kryonRuntimeInit = true;
 
 export function Background(...args) { return struct("Background", args); }
+export function BeginDisabled(...args) { return struct("BeginDisabled", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function BottomNav(...args) { return struct("BottomNav", args); }
 export function Button(...args) { return struct("Button", args); }
@@ -720,6 +736,7 @@ export function Column(...args) { return struct("Column", args); }
 export function Combobox(...args) { return struct("Combobox", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
 export function EndCanvas(...args) { return struct("EndCanvas", args); }
+export function EndDisabled(...args) { return struct("EndDisabled", args); }
 export function EndScroll(...args) { return struct("EndScroll", args); }
 export function Href(...args) { return struct("Href", args); }
 export function IconButton(...args) { return struct("IconButton", args); }

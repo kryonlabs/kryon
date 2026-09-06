@@ -4,10 +4,11 @@
  * (k2go_lower.c) that calls the native Go Kryon runtime. One frontend, three
  * backends.
  *
- * usage: k2go [--no-main] [--pkg NAME] --root DIR -o DIR file.kry ...
+ * usage: k2go [--strict] [--no-main] [--pkg NAME] --root DIR -o DIR file.kry ...
  */
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_check.h"
 #include "k2go_lower.h"
 
 #include <stdio.h>
@@ -18,7 +19,7 @@ static void
 usage(void)
 {
     fprintf(stderr,
-            "usage: k2go [--no-main] [--pkg NAME] "
+            "usage: k2go [--strict] [--no-main] [--pkg NAME] "
             "--root DIR -o DIR file.kry ...\n");
 }
 
@@ -29,6 +30,7 @@ main(int argc, char **argv)
     const char *out_dir = NULL;
     const char *pkg = "krygen";
     int no_main = 0;
+    int strict = 0;
     KirProgram **progs;
     int file_count;
     int i;
@@ -43,6 +45,8 @@ main(int argc, char **argv)
             pkg = argv[++i];
         } else if(strcmp(argv[i], "--no-main") == 0) {
             no_main = 1;
+        } else if(strcmp(argv[i], "--strict") == 0) {
+            strict = 1;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;
@@ -68,6 +72,11 @@ main(int argc, char **argv)
             fprintf(stderr, "k2go: failed to parse %s\n", argv[first_file + i]);
             return 1;
         }
+    }
+    if(!KirCheckPrograms(progs, file_count, strict)) {
+        for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
+        free(progs);
+        return 1;
     }
     if(k2go_lower((const KirProgram *const *)progs, file_count, root, out_dir,
                  pkg, no_main) != 0) {

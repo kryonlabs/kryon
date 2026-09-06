@@ -1,4 +1,69 @@
 # Changelog
+## v0.1.53 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.53
+- Use native Windows file dialogs instead of POSIX desktop helpers
+- Test rotated text origins and rectangle intersections in libdraw
+- Composite native libdraw text in drawing order using coverage masks
+- Implement libdraw rectangle intersection for table clipping
+- Emit portable scalar operations from shared KIR and remove cgo
+- Support rotated font drawing in the libdraw backend
+- Exercise libdraw gradients and additive blending in smoke test
+
+## v0.1.52 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.52
+- Docs: snapshot quad public API
+- Configure cmark dependency with a CMake 4 compatible policy minimum
+- Zero-initialize QR working matrices for m<n inputs
+- Add double-double quad arithmetic, compensated accumulator, and quad QR core
+- Build shared expression checking and lexical cleanup foundation
+- Limit libdraw routing fallbacks to native Plan 9
+- Build: create raylib lock parent directory
+
+## v0.1.51 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.51
+- Implement libdraw gradient and standard software blend modes
+- Fix libdraw build after moving shared image functions
+- Tint modal action icons for the active theme
+- Honor bottom navigation icon tint in the Go runtime
+- Allow apps to tint bottom navigation icons with theme colors
+
+## v0.1.50 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.50
+- Common.mk: default FONT_FILES to the bundled Noto face for vendored apps
+- Ui_text: log the resolved default font source, warn on bitmap fallback
+
+## v0.1.49 - 2026-09-05
+
+### Changed
+
+- Release: bump version to v0.1.49
+- Ci: validate current site icon layout
+- Docs: preserve renderer page in site build
+- Build: repair examples Makefile
+- Ci: repair sanitizer coverage
+- Stdlib: add kry_zlib container primitives
+- Stdlib: add kry_xml and kry_gzip primitives
+- Ui: add immediate-mode widget slice with plots and sliders
+- Android: restore visible system bars after window focus
+- Test: pin bottom navigation to usable edge
+- Ui: use Android density for layout scale
+- Web: stabilize runtime asset initialization
+- Build: honor declared app theme source and mode
+- Ui: keep Slider as the frontend API
+- Ui: repeat deletion without backend key-repeat events
+
 ## v0.1.48 - 2026-09-04
 
 ### Changed

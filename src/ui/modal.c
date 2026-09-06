@@ -1,6 +1,27 @@
 #include "ui_internal.h"
 
 static int
+ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *hover)
+{
+    IconButtonProps props;
+    memset(&props, 0, sizeof(props));
+    props.bounds = (Rectangle){(float)x, (float)y,
+                               (float)(size + padding * 2),
+                               (float)(size + padding * 2)};
+    props.icon = icon;
+    props.icon_size = size;
+    props.icon_padding = padding;
+    props.background = c_button;
+    props.hover_background = c_button_hover;
+    props.icon_color = GetThemeText();
+    props.border = DarkenUIColor(c_button, 35);
+    props.radius = 0.12f;
+    if(hover != NULL)
+        *hover = 0;
+    return DrawUIIconButton(props);
+}
+
+static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                 ButtonStyle style, Vector2 mouse_world)
 {
@@ -224,7 +245,7 @@ DrawUIActionModal(ModalProps modal)
         int icon_w = icon_size + icon_padding * 2;
         int hover = 0;
 
-        if(DrawUIPaddedIconBtn(modal_x + modal_w - icon_w - ScaleUIPx(6),
+        if(ui_modal_icon_button(modal_x + modal_w - icon_w - ScaleUIPx(6),
                                modal_y + ScaleUIPx(6), icon_size,
                                icon_padding, modal.close_icon, &hover))
             result = -1;
@@ -405,13 +426,13 @@ DrawUIModalFrame(int width, int height, const char *title,
                     frame.y + ScaleUIPx(14), title_font, c_text);
 
     if(left_icon.id != 0) {
-        frame.left_clicked = DrawUIPaddedIconBtn(frame.x + ScaleUIPx(6),
+        frame.left_clicked = ui_modal_icon_button(frame.x + ScaleUIPx(6),
                                                      frame.y + ScaleUIPx(6),
                                                      icon_size, icon_padding,
                                                      left_icon, &hover);
     }
     if(frame.right_clicked == 0 && right_icon.id != 0) {
-        frame.right_clicked = DrawUIPaddedIconBtn(frame.x + frame.w - icon_w - ScaleUIPx(6),
+        frame.right_clicked = ui_modal_icon_button(frame.x + frame.w - icon_w - ScaleUIPx(6),
                                                       frame.y + ScaleUIPx(6),
                                                       icon_size, icon_padding,
                                                       right_icon, &hover);

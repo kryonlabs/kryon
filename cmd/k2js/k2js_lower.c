@@ -3,6 +3,8 @@
  */
 #include "k2js_lower.h"
 #include "kir_text.h"
+#include "kir_emit.h"
+#include "kir_check.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -766,6 +768,12 @@ emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
 }
 
 static void
+resolve_body_symbol(void *context, const char *text, char *out, size_t size)
+{
+    tx_expr(context,text,out,size);
+}
+
+static void
 lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                const char *guard)
 {
@@ -799,8 +807,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         fprintf(f, ", %s", safe);
     }
     fprintf(f, ") {\n");
-    fprintf(f, "  rt = rt || kryon.createRuntime();\n");
     fprintf(f, "  state = state || moduleState;\n");
+    if(KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m)) {
+        fprintf(f,"}\n\n"); return;
+    }
+    fprintf(f, "  rt = rt || kryon.createRuntime();\n");
     for(int j = 0; j < fn->stmt_count; j++) {
         const KirStmt *st = &fn->stmts[j];
         char raw[K2JS_TEXT_MAX];
@@ -877,22 +888,70 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             }
             break;
         }
-        case KIR_STMT_EXPR:
+        case KIR_STMT_EXPR: {
+            char name[K2JS_NAME_MAX], args[K2JS_TEXT_MAX], out[K2JS_TEXT_MAX];
+            if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+               (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
+                emit_indent(f, indent);
+                if(strcmp(name, "BeginDisabled") == 0) {
+                    tx_expr(m, args, out, sizeof(out));
+                    fprintf(f, "kryon.widget(rt, \"BeginDisabled\", (%s) ? 1 : 0, state);\n", out);
+                } else {
+                    fprintf(f, "kryon.widget(rt, \"EndDisabled\", \"\", state);\n");
+                }
+                break;
+            }
             if(strncmp(raw, "BeginTree", 9) == 0 ||
                strncmp(raw, "EndTree", 7) == 0)
                 break;
-            emit_statement_record(f, indent, raw);
+            int known_call = split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+                (module_fn_index(m, name, strlen(name)) >= 0 || extern_index(name, strlen(name)) >= 0);
+            int increment = st->expr_root >= 0 &&
+                (fn->exprs[st->expr_root].kind == KIR_EXPR_POSTFIX ||
+                 (fn->exprs[st->expr_root].kind == KIR_EXPR_UNARY &&
+                  (!strcmp(fn->exprs[st->expr_root].op, "++") || !strcmp(fn->exprs[st->expr_root].op, "--"))));
+            if(known_call || increment) {
+                tx_expr(m, raw, out, sizeof(out));
+                emit_indent(f, indent);
+                fprintf(f, "%s;\n", out);
+            } else {
+                emit_statement_record(f, indent, raw);
+            }
             break;
+        }
         case KIR_STMT_WHILE:
-        case KIR_STMT_FOR:
-        case KIR_STMT_SWITCH:
-        case KIR_STMT_CASE:
-        case KIR_STMT_LABEL:
-        case KIR_STMT_GOTO:
+        case KIR_STMT_SWITCH: {
+            const char *keyword = st->kind == KIR_STMT_WHILE ? "while" : "switch";
+            char out[K2JS_TEXT_MAX];
+            kir_strip_block_brace(raw);
+            tx_expr(m, kir_skip_ws(raw + strlen(keyword)), out, sizeof(out));
+            emit_indent(f, indent);
+            fprintf(f, "%s (%s) {\n", keyword, out);
+            if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 1;
+            indent++;
+            break;
+        }
+        case KIR_STMT_CASE: {
+            char out[K2JS_TEXT_MAX];
+            tx_expr(m, raw, out, sizeof(out));
+            emit_indent(f, indent);
+            fprintf(f, "%s\n", out);
+            break;
+        }
         case KIR_STMT_BREAK:
         case KIR_STMT_CONTINUE:
-        case KIR_STMT_DEFER:
+            emit_indent(f, indent);
+            fprintf(f, "%s;\n", KirStmtKindName(st->kind));
+            break;
         case KIR_STMT_UNUSED:
+            break;
+        case KIR_STMT_DEFER:
+            fprintf(stderr, "internal error: cleanup was not lowered\n");
+            exit(1);
+        case KIR_STMT_FOR:
+        case KIR_STMT_LABEL:
+        case KIR_STMT_GOTO:
         case KIR_STMT_RAW:
         default:
             emit_statement_record(f, indent, raw);
@@ -934,8 +993,14 @@ emit_state(FILE *f, const KirModule *m)
     for(int i = 0; i < m->state_count; i++) {
         char init[K2JS_TEXT_MAX];
 
-        tx_expr(m, m->state_fields[i].init[0] ? m->state_fields[i].init : "0",
-                init, sizeof(init));
+        const KirStateField *field=&m->state_fields[i];
+        const char *value=field->init[0]?field->init:!strcmp(KirScalarType(field->type),"bool")?"false":"0";
+        if(!KirScalarLiteral(field->type,value,KIR_JS,field->span,init,sizeof(init)))
+            tx_expr(m,value,init,sizeof(init));
+        if(!strcmp(KirScalarType(field->type),"f32")) {
+            char raw[K2JS_TEXT_MAX];snprintf(raw,sizeof(raw),"%s",init);
+            snprintf(init,sizeof(init),"Math.fround(%.8000s)",raw);
+        }
         fprintf(f, "    %s: %s%s\n", m->state_fields[i].name, init,
                 i + 1 < m->state_count ? "," : "");
     }
@@ -1024,6 +1089,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
             fprintf(f, "import * as kryon from ");
             js_string(f, runtime_path);
             fprintf(f, ";\n\n");
+            KirEmitNumbers(f,m,KIR_JS);
             emit_app(f, m);
             emit_state(f, m);
             for(int i = 0; i < m->import_count; i++) {

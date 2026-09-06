@@ -8,6 +8,14 @@ app "Generated Selection Image Parity" {
 state {
     selected: int = 0
     feature_flags: int = 0
+    selected_tab: int = 0
+    closed_tab: int = -1
+    payload: [8] char = "item"
+    received: [8] char = ""
+    accepted_size: int = 0
+    multi_selected: [3] int = {1,0,0}
+    multi_count: int = 1
+    multi_anchor: int = 0
 }
 
 selection_images_frame :: () #ui {
@@ -20,5 +28,12 @@ selection_images_frame :: () #ui {
         picture.bounds = (Rectangle){140,100,96,64}
         ImageButton((ImageButtonProps){.picture = picture, .background = (Color){30,40,50,255}, .id = 952})
         SeparatorText((SeparatorTextProps){.bounds = {20,180,220,24}, .label = "Section", .font = Text14})
+        tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
+        TabItemButton((TabItemButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .font = Text14})
+        ClosableTabBar((ClosableTabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = &selected_tab, .font = Text14, .closed_index = &closed_tab})
+        DragDropSource((DragDropSourceProps){.bounds = {20,245,80,28}, .id = 955, .type = "ITEM", .data = payload, .data_size = 8})
+        DragDropTarget((DragDropTargetProps){.bounds = {120,245,120,28}, .id = 956, .type = "ITEM", .output = received, .output_size = 8, .accepted_size = &accepted_size})
+        multi_items: [3] const char * = {"Alpha","Beta","Gamma"}
+        MultiSelectList((MultiSelectListProps){.bounds = {20,280,220,84}, .id = 957, .items = multi_items, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
     }
 }

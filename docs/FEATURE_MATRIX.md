@@ -48,19 +48,19 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 91 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 102 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text TextInRect TextColored TextDisabled TextWrapped LabelText BulletText Paragraph TextLines Rect Line Bevel Icon
+`Background Text TextInRect TextColored TextDisabled TextWrapped LabelText BulletText ValueBool ValueInt ValueUInt ValueFloat Paragraph TextLines Rect Line Bevel Icon
 Picture ImageWithBg ImageButton Button Selectable CheckboxFlags SmallButton InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip IconButton Href TextField TextArea Dropdown Slider Toggle
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
 PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
-Canvas Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
+Canvas BeginDisabled EndDisabled Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
 TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
-PanedView Collapsible ListBox TreeView SourceView TableView ColorPicker
+PanedView Collapsible ListBox TreeView SourceView TableView ColorPicker TabItemButton ClosableTabBar DragDropSource DragDropTarget MultiSelectList
 CanvasGrid SelectableText`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
@@ -68,6 +68,9 @@ CanvasGrid SelectableText`
 `EndUIScrollContainer` API.)
 
 ## Widget matrix
+
+The upstream widget-family crosswalk and its remaining semantic gaps are kept
+in [`IMGUI_WIDGET_COVERAGE.md`](IMGUI_WIDGET_COVERAGE.md).
 
 Columns: **C** = the C API · **k2c** = `.kry`→C codegen (always equal to C) · **k2cpp** = `.kry`→C++ codegen (mirrors `k2c`) · **k2go** = `.kry`→Go codegen
 (pure Go importing `go/kryon` as `kryon` and calling `kryon.<Widget>`) · **Go** =
@@ -90,6 +93,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
 | TextInRect | ✅ | ✅ | ✅ | ✅ | ✅ `TextInRect` | ✅ |
 | Text helpers (colored, disabled, wrapped, label/value, bullet) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Value helpers (bool, int, unsigned, float) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
 | TextLines | ✅ | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
 | Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
@@ -109,13 +113,14 @@ declaration pass (`src/ui/ui_tree.c`).
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
 | IconButton / PaddedIconBtn | ✅ | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
 | InfoButton | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Href (hyperlink) / IconLink | ✅ | ✅ | ✅ | ◐ `Href` only | ◐ `Href` only | ✗ |
+| Href (TextLink / TextLinkOpenURL) | ✅ | ✅ | ✅ | ✅ | ✅ `Href` | ✗ |
+| IconLink | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ | ✅ via `Text`/`TextInRect` | ✅ `Text`/`TextInRect` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
 | Dropdown / DropdownEx | ✅ | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| Vertical sliders | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Slider` in generated Go | ✗ generated Go uses `kryon.Slider` | ✅ VSLIDER control |
+| Vertical sliders | ✅ | ✅ | ✅ | ✅ `VSliderFloat` / `VSliderInt` | ✅ | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
 | Radio | ✅ | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
@@ -137,7 +142,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ✅ | ✅ | ◐ via Column | ✅ via Stack | ✅ |
-| Scroll container | ✅ | ✅ | ✅ | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ `BeginUIScrollContainer`/`EndUIScrollContainer` | ✅ SCROLL node |
+| Scroll container | ✅ `BeginScroll`/`EndScroll` | ✅ C API | ✅ C API | ✅ generated wheel/drag/nested-child tests | ✅ wheel scrolling, scrollbar dragging, and nested clipping via `BeginScroll`/`EndScroll` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LabelFrame | ✅ | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
 | Notebook (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
@@ -151,12 +156,14 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| ListBox | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
-| TreeView / CascadingTreeView | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
+| ListBox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
+| TreeView (+ disabled) / CascadingTreeView | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
 | SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
-| TableView (sortable) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
+| TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
 | SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
+| MultiSelectList (Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Nested disabled scope | ✅ | ✅ | ✅ | ✅ | ✅ `BeginDisabled` / `EndDisabled` | ✗ |
 
 ### UI/Navigation
 
@@ -165,6 +172,8 @@ declaration pass (`src/ui/ui_tree.c`).
 | MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✅ | ✅ (`MenuBar`, nested items, retained right-click context state) | ✗ |
 | Tooltip (cursor-following, wrapped, non-focusing) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
+| TabItemButton / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Typed drag-and-drop source / target | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | BottomNav (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |
 | TopNav / Toolbar / ToolbarHeader | ✅ | ✅ | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |

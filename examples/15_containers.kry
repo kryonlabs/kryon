@@ -9,7 +9,7 @@ app "Kryon Containers" {
 state {
     tab: int = 0
     split: int = 260
-    open: int = 1
+    open: bool = true
     tabs: [3] const Tab = {{"Files"},{"Search"},{"Output"}}
 }
 

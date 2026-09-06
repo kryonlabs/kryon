@@ -26,6 +26,10 @@ const (
 type FrameOp struct {
 	Kind              FrameOpKind
 	Bounds            Rectangle
+	Polygon           [4]Vector2
+	HasPolygon        bool
+	Clip              Rectangle
+	HasClip           bool
 	Text              string
 	Color             Color
 	SecondaryColor    Color
@@ -35,6 +39,7 @@ type FrameOp struct {
 	SelectedTextColor Color
 	CursorColor       Color
 	FontSize          int32
+	Rotation          float32
 	FontID            uint32
 	ID                int32
 	FocusID           int32

@@ -28,7 +28,7 @@ tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
 direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
 direct_queue_text :: (value: const char*) #extern "github.com/waozixyz/kryon/go/kryon.QueueText"
-c_abs :: (value: int) -> int #extern "c.abs"
+c_abs :: (value: int) -> int #extern "host.Abs"
 
 TabMode :: enum {
     TAB_OVERVIEW = 0,
@@ -57,8 +57,12 @@ state {
     context_open: int = 0
     context_x: int = 0
     context_y: int = 0
+    accepted_size: int = 0
+    multi_count: int = 0
+    multi_anchor: int = -1
     selected_row: int = 0
     feature_flags: int = 1
+    closed_tab: int = -1
     drag_float_min: float = 2.0f
     drag_float_max: float = 8.0f
     drag_int_min: int = 2
@@ -83,6 +87,7 @@ App :: () #ui {
     ClearBackground(GetThemeBackground())
     menu_items: [2] MenuItem = {{MenuCommand,"Open","Ctrl+O",46,0,0,NULL,0},{MenuCheck,"Grid",NULL,47,0,1,NULL,0}}
     menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
+    rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
     if tab == TAB_JOBS {
         Text(label_text(tab), ScaleUIPx(10), ScaleUIPx(20), Text16, GetThemeText())
     } else {
@@ -166,7 +171,11 @@ App :: () #ui {
     edit_color: [4] float = {0.2f, 0.4f, 0.6f, 0.8f}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
     tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
+    BeginDisabled(1)
+    BeginScroll((Rectangle){0,0,320,240}, 400, &scroll_off)
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
+    EndDisabled()
+    EndScroll()
     Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
     Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
     frame_box: FrameBox = BeginFrameBox((Rectangle){ScaleUIPx(4), ScaleUIPx(392), ScaleUIPx(160), ScaleUIPx(80)}, ScaleUIPx(8), ScaleUIPx(8), ScaleUIPx(4))
@@ -228,6 +237,10 @@ App :: () #ui {
     TextWrapped("wrapped helper text", (Rectangle){ScaleUIPx(250),ScaleUIPx(738),ScaleUIPx(160),ScaleUIPx(40)}, Text16, GetThemeText())
     LabelText("Status", "Ready", (Rectangle){ScaleUIPx(250),ScaleUIPx(782),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
     BulletText("bullet text", (Rectangle){ScaleUIPx(250),ScaleUIPx(806),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
+    ValueBool("Enabled", check != 0, (Rectangle){ScaleUIPx(250),ScaleUIPx(1030),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
+    ValueInt("Count", scalar, (Rectangle){ScaleUIPx(250),ScaleUIPx(1054),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
+    ValueUInt("Mask", 42, (Rectangle){ScaleUIPx(250),ScaleUIPx(1078),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
+    ValueFloat("Rate", plot_values[0], "%.1f", (Rectangle){ScaleUIPx(250),ScaleUIPx(1102),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
     MenuBar(46, (Rectangle){ScaleUIPx(4),ScaleUIPx(834),ScaleUIPx(220),ScaleUIPx(30)}, menus, 1, &menu_open)
     PopupMenu(47, ScaleUIPx(4), ScaleUIPx(868), menu_items, 2)
     ContextMenu((ContextMenuProps){.id = 48, .trigger = {ScaleUIPx(230),ScaleUIPx(834),ScaleUIPx(100),ScaleUIPx(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
@@ -238,6 +251,11 @@ App :: () #ui {
     ImageWithBg((ImageWithBgProps){.picture = choice_picture, .background = GetThemeSurface()})
     ImageButton((ImageButtonProps){.picture = choice_picture, .background = GetThemeButton(), .id = 51})
     SeparatorText((SeparatorTextProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1000),ScaleUIPx(160),ScaleUIPx(24)}, .label = "Section", .font = Text14})
+    TabItemButton((TabItemButtonProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1130),ScaleUIPx(60),ScaleUIPx(28)}, .id = 54, .label = "+", .font = Text14})
+    ClosableTabBar((ClosableTabBarProps){.bounds = {ScaleUIPx(314),ScaleUIPx(1130),ScaleUIPx(180),ScaleUIPx(28)}, .tabs = rich_tabs, .count = 2, .selected_index = &tab, .font = Text14, .closed_index = &closed_tab})
+    DragDropSource((DragDropSourceProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1162),ScaleUIPx(80),ScaleUIPx(28)}, .id = 55, .type = "TEXT", .data = field_text, .data_size = 64})
+    DragDropTarget((DragDropTargetProps){.bounds = {ScaleUIPx(334),ScaleUIPx(1162),ScaleUIPx(120),ScaleUIPx(28)}, .id = 56, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
+    MultiSelectList((MultiSelectListProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1194),ScaleUIPx(180),ScaleUIPx(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), ""})
     Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, c_abs(-8), ""})
@@ -286,13 +304,11 @@ EOF
 "$k2go" --root "$work" -o "$work/hierarchy-out" "$work/src/hierarchy.kry"
 "$k2go" --root "$work" -o "$work/pure-out" "$work/src/hierarchy.kry"
 out="$work/out/valid.go"
-cgo="$work/out/valid_cgo.go"
 helper="$work/out/helper.go"
 hier="$work/hierarchy-out/hierarchy.go"
 pure="$work/pure-out/hierarchy.go"
 
 [ -f "$out" ] || { echo "k2go produced no output" >&2; exit 1; }
-[ -f "$cgo" ] || { echo "k2go produced no cgo output" >&2; exit 1; }
 [ -f "$helper" ] || { echo "k2go produced no helper output" >&2; exit 1; }
 [ -f "$hier" ] || { echo "k2go produced no hierarchy output" >&2; exit 1; }
 [ -f "$pure" ] || { echo "k2go produced no pure output" >&2; exit 1; }
@@ -311,6 +327,19 @@ if "$k2go" --runtime github.com/waozixyz/kryon/go/kryui \
     exit 1
 fi
 grep -q 'usage: k2go' "$work/runtime_override.err"
+
+cat > "$work/src/c_abi.kry" <<'EOF'
+abs :: (x: i32) -> i32 #extern "c.abs"
+EOF
+if "$k2go" --root "$work" -o "$work/c-abi-out" "$work/src/c_abi.kry" 2>"$work/c-abi.err"; then
+    echo "native Go accepted a C ABI import" >&2
+    exit 1
+fi
+grep -q 'c_abi.kry:1:.*native Go cannot import a C ABI symbol' "$work/c-abi.err"
+if find "$work/out" -name '*_cgo.go' | grep -q .; then
+    echo "generated Go contains a cgo bridge" >&2
+    exit 1
+fi
 
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
@@ -352,15 +381,11 @@ if grep -q 'ScaleUIPx(Value int32)' "$out"; then
     echo "k2go placed a direct Go extern in the host interface" >&2
     exit 1
 fi
-grep -q 'import "C"' "$cgo"
-grep -q 'extern int abs(int value);' "$cgo"
-grep -q 'func k2goCValidCAbs(value int32) int32' "$cgo"
-grep -q 'return int32(C.abs(C.int(value)))' "$cgo"
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
 grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
-grep -q 'k2goCValidCAbs(int32(-8))' "$out"
+grep -q 'validHost.Abs(int32(-8))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
 grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"
@@ -433,6 +458,8 @@ grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "GB"' "$out"
+grep -q 'kryon.BeginDisabled((1) != 0)' "$out"
+grep -q 'kryon.EndDisabled()' "$out"
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "TB"' "$out"
 grep -q 'Dropdown(22,' "$out"
 grep -q 'kryon.BeginFrameBox(kryon.NewRectangle' "$out"
@@ -482,6 +509,10 @@ grep -q 'kryon.TextDisabled("disabled"' "$out"
 grep -q 'kryon.TextWrapped("wrapped helper text"' "$out"
 grep -q 'kryon.LabelText("Status", "Ready"' "$out"
 grep -q 'kryon.BulletText("bullet text"' "$out"
+grep -q 'kryon.ValueBool("Enabled", st.Check != 0' "$out"
+grep -q 'kryon.ValueInt("Count", scalar' "$out"
+grep -q 'kryon.ValueUInt("Mask", 42' "$out"
+grep -q 'kryon.ValueFloat("Rate".*"%.1f"' "$out"
 grep -q 'kryon.MenuBar(46, kryon.NewRectangle.*menus\[:\], 1, &st.MenuOpen)' "$out"
 grep -q 'kryon.PopupMenu(47, .*menu_items\[:\], 2)' "$out"
 grep -q 'kryon.ContextMenu(kryon.ContextMenuProps{.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
@@ -491,6 +522,11 @@ grep -q 'kryon.CheckboxFlags(kryon.CheckboxFlagsProps{.*Flags: &st.FeatureFlags.
 grep -q 'kryon.ImageWithBg(kryon.ImageWithBgProps{Picture: choice_picture' "$out"
 grep -q 'kryon.ImageButton(kryon.ImageButtonProps{Picture: choice_picture.*ID: 51' "$out"
 grep -q 'kryon.SeparatorText(kryon.SeparatorTextProps{.*Label: "Section".*Font: kryon.Text14' "$out"
+grep -q 'kryon.TabItemButton(kryon.TabItemButtonProps{.*Label: "+".*Font: kryon.Text14' "$out"
+grep -q 'kryon.ClosableTabBar(kryon.ClosableTabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: &st.Tab.*ClosedIndex: &st.ClosedTab' "$out"
+grep -q 'kryon.DragDropSource(kryon.DragDropSourceProps{.*Data: st.FieldText\[:\]' "$out"
+grep -q 'kryon.DragDropTarget(kryon.DragDropTargetProps{.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
+grep -q 'kryon.MultiSelectList(kryon.MultiSelectListProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
 grep -q 'kryon.Collapsible(kryon.CollapsibleProps{' "$out"
 grep -q 'SetThemeDarkMode(1' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"

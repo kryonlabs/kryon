@@ -24,7 +24,7 @@ components. The C files used for native and web builds are generated into
 16. **17_keyboard_platform** - Accelerators and clipboard
 17. **18_accessibility** - Accessibility/debug node overlay
 18. **25_text_area_slider** - Editable multiline text with a live background-color slider
-19. **26_widget_catalog** - Scrollable, categorized catalog of stable application widgets
+19. **26_widget_catalog** - Native `.kry` widget catalog with ten clickable sidebar categories, scrollable previews, editable controls, and click feedback
 
 ## Requirements
 
@@ -77,7 +77,8 @@ only needed for full projects that want custom build or run targets.
 ### Toolkit Examples
 
 The toolkit examples use one direct API shape per widget: fill the struct that
-describes the widget state and call the matching `...Node` declaration. Geometry
+describes the widget state and call its widget function, such as `Button`,
+`TextField`, or `TableView`. Geometry
 uses `BeginFrameBox`, `FramePack`, `GridCell`, and `Place`; canvas uses
 `BeginCanvas` / `EndCanvas`.
 
@@ -87,3 +88,23 @@ uses `BeginFrameBox`, `FramePack`, `GridCell`, and `Place`; canvas uses
 - Press **S** to open save file dialog  
 - Press **ESC** to exit
 - Toggle "Show hidden files" checkbox in dialogs
+
+## Widget catalog
+
+The catalog UI lives entirely in `26_widget_catalog.kry` and uses standard Kryon
+widgets. Build and launch it from the repository root:
+
+```sh
+make -C examples 26_widget_catalog
+./build/examples/bin/26_widget_catalog
+```
+
+Choose a category in the left sidebar. The right pane scrolls independently and
+resets to the top when categories change. Numeric controls expose live values;
+buttons increment the sidebar click counter. Tabs can be added and closed,
+themes apply immediately, and the canvas supports wheel zoom and drag panning. Image samples use the checked-in
+`icons/tiles.png` asset. Escape is reserved for controls; close the window to quit.
+
+See [the native catalog audit](WIDGET_CATALOG_AUDIT.md) for verified behavior,
+visual checks, regression tests, and reproducible audit commands. This example is a native C-target
+showcase; its Go/JS rendering is not claimed to have equivalent coverage.

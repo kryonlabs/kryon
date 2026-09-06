@@ -177,7 +177,17 @@ LOCALE_FILES = $(wildcard locales/*.txt)
 THEME_FILES = $(wildcard $(KRYON_DIR)/themes/*.ini)
 IMAGE_FILES ?=
 SOUND_FILES ?=
-FONT_FILES ?= $(wildcard fonts/noto/*.ttf fonts/noto/*.otf)
+# Font faces linked into the binary as embedded assets so the UI font
+# resolves with no filesystem (web, Android). Apps with their own fonts/
+# tree keep it; vendored apps with none fall back to kryon's bundled
+# Noto Sans. An explicit assignment (even empty, to embed no font) always
+# wins — but it must come before this include, like every asset variable.
+ifeq ($(origin FONT_FILES),undefined)
+FONT_FILES := $(wildcard fonts/noto/*.ttf fonts/noto/*.otf)
+ifeq ($(strip $(FONT_FILES)),)
+FONT_FILES := $(KRYON_DIR)/fonts/noto/NotoSans-Regular.ttf
+endif
+endif
 EMBEDDED_ASSET_FILES = $(LOCALE_FILES) $(THEME_FILES) $(IMAGE_FILES) $(SOUND_FILES) $(FONT_FILES)
 EMBEDDED_ASSETS_C = $(BUILD_OBJ_DIR)/$(APP_NAME)_embedded_assets.c
 SRC += $(EMBEDDED_ASSETS_C)
@@ -195,6 +205,10 @@ RAY_RAYLIB_CONFIG ?= -DSUPPORT_SCREEN_CAPTURE=0 -DSUPPORT_COMPRESSION_API=0 -DSU
 KRYON_MAKEFILES = $(KRYON_MAKE_DIR)common.mk $(KRYON_MAKE_DIR)raylib.mk $(KRYON_MAKE_DIR)native.mk $(KRYON_MAKE_DIR)windows.mk $(KRYON_MAKE_DIR)web.mk $(KRYON_MAKE_DIR)android.mk $(KRYON_MAKE_DIR)dist.mk $(KRYON_MAKE_DIR)package-freebsd.mk $(KRYON_MAKE_DIR)clean.mk
 BUILD_MAKEFILES = Makefile $(KRYON_MAKEFILES)
 
+# The prerequisite list expands when this rule is read, so asset variables
+# assigned after the include still reach the recipe (and get embedded) but
+# are not tracked as dependencies — the generated source can then go stale
+# without a rebuild. Assign them before including common.mk.
 $(EMBEDDED_ASSETS_C): $(EMBEDDED_ASSET_FILES) $(KRYON_DIR)/scripts/embed-assets.sh | $(BUILD_OBJ_DIR)
 	sh $(KRYON_DIR)/scripts/embed-assets.sh $@ $(EMBEDDED_ASSET_FILES)
 

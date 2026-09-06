@@ -116,6 +116,61 @@ void EndUIFrame(void);
 
 ## Canonical App API
 
+### Disabled content blocks in `.kry`
+
+Use a lexical block to disable ordinary child controls without manually pairing
+runtime calls:
+
+```kry
+Disabled saving: {
+    when = busy
+    Button {
+        label = "Save"
+        bounds = {20, 20, 100, 32}
+    }
+}
+```
+
+The name is optional. `when` is a boolean expression, evaluated once on entry;
+omitting it means `true`. Nested blocks inherit an outer disabled state even
+when their own condition is false. Only `when` is accepted as a scope property.
+The shared compiler cleanup pass restores the previous state at the closing
+brace and on `return`, `break`, or `continue` leaving the block. This is authoring
+syntax over the existing `BeginDisabled`/`EndDisabled` runtime operations, not a
+new public widget or props type. As with explicit `defer`, functions containing
+this scope currently reject raw C/preprocessor regions, `goto`/labels, and
+`guard` exits; use structured control flow and explicit `if`/`return` instead.
+
+### Scrolling blocks in native `.kry` code
+
+```kry
+Scroll content: {
+    bounds = {20, 20, 240, 160}
+    content_height = 600
+    scroll_offset = &offset
+    Button {
+        bounds = {content.x, content.y, 200, 32}
+        label = "Scrollable action"
+    }
+}
+```
+
+`bounds` is required and accepts a rectangle expression or `{x,y,w,h}`.
+`content_height` defaults to zero; `scroll_offset` defaults to `nil` and, when
+provided, points to caller-owned integer state. A block name optionally binds
+the content rectangle returned by `BeginScroll`, visible only inside that block.
+Child widgets use this rectangle for scrolled positioning; the scope does not
+silently transform explicit coordinates. Nested blocks intersect clips.
+
+The compiler pairs `BeginScroll` and `EndScroll` through lexical cleanup,
+including return, break and continue. The same structured-control-flow
+restrictions as `Disabled` apply. Generated C and native Go parity tests exercise
+nested input/clipping, wheel scrolling, scrollbar dragging and parent restoration;
+C++ syntax tests cover the shared lowering. This native scope is not yet
+behaviorally verified in the JS runner.
+
+### Runtime surface
+
 Kryon owns the public app-facing API. The default backend still implements much
 of the surface through raylib, but application and generated code should include
 Kryon headers and call Kryon-owned names directly. That keeps apps portable to
@@ -1274,6 +1329,22 @@ int Dropdown(int id, int x, int y, int w, int h,
 void Overlays(void);
 ```
 
+In native C and Go, a focused, enabled `Dropdown`/`Combobox` with a positive ID
+opens with Enter, keypad Enter, Space, or Down. The opening key does not move
+the highlight or commit a selection. Focused controls display a focus indicator;
+disabled controls neither open from the keyboard nor display that indicator.
+An open `Dropdown`/`Combobox` supports Up/Down to move the
+highlight, Home/End to jump to the first/last option, and Enter to commit and
+close. Escape closes without committing the highlight. Navigation clamps to
+the current option list. Both native runtimes constrain the popup vertically,
+flip it above the control when needed, and scroll the highlighted row into view.
+Popup width is capped to the window width and its horizontal position is shifted
+inside the window; the owner button keeps its declared bounds. Painting and
+input capture use the same shifted rectangle.
+Go uses the shared scroll container for wheel input, scrollbar dragging and
+row clipping, painting only visible rows. These behaviors do not yet provide general keyboard-focus
+isolation for arbitrary popup children or complete ImGui navigation semantics.
+
 #### Segmented Control
 
 Responsive choice control for mutually exclusive compact options. It measures
@@ -1903,9 +1974,58 @@ Feature families:
 - Geometry: `BeginFrameBox`, `FramePack`, `GridCell`, `Place`, `UISeparatorNode`
 - Menus: `UIMenuBarNode`, `UIPopupMenuNode`
 - Basic controls: `Radio`, `Progress`, `Spinbox`, `Combobox`, `UILabelFrameNode`, `UIImageBoxNode`
-- Collections: `UIListBoxNode`, `UITreeViewNode`, `UITableViewNode`
+- Collections: `ListBox`, `TreeView`, `TableView`
+
+`BeginListBox(ListBoxProps)` opens a framed, scrollable area for arbitrary
+native children; finish it with `EndListBox()`. Its returned rectangle is the
+scrolled content origin and available width, excluding the frame and scrollbar.
+Set `content_height` (`ContentHeight` in Go) explicitly, or use `item_count`
+times `row_height` (default 30). Place children using the returned bounds or a
+nested Row/Column. The scope owns clipping, scrolling and disabled state; child
+widgets own selection and editing. `items` and `selected_index` are used by the
+string-list `ListBox` helper, not by this composition scope.
 - Canvas: `BeginCanvas`, `EndCanvas`, `UICanvasGridNode`, `CanvasHitTest`
 - Containers: `UINotebookNode`, `PanedView`, `Collapsible`
+
+`TableViewProps.header_height` controls header height, with a minimum/default
+of 30 logical pixels. `header_angle` rotates header labels in degrees, clamped
+to -89 through 89; zero keeps ordinary horizontal text. Sorting and body-row
+hit testing use the configured height. Nonzero angles create slanted header
+cells; labels are clipped to those cells, and sorting/resizing follow their
+slanted boundaries. Go uses the corresponding
+`HeaderHeight` and `HeaderAngle` fields.
+
+For interactive cell content, set `TableViewProps.custom_cells` (`CustomCells`
+in Go), draw `TableView`, then call `BeginTableCell(table, row, column)` for each
+cell and finish each scope with `EndTableCell()`. The returned rectangle is the
+cell's full bounds; place native child widgets using those coordinates. The
+scope clips drawing and input to the visible cell, respects column order,
+visibility, scrolling and frozen rows, and inherits table disabled state.
+Always end the scope, including for hidden or invalid cells. The table and
+children should use explicit bounds. In custom-cell mode, body selection,
+activation and body keyboard handling belong to the children; header sorting
+and resizing remain owned by the table. Keep row entries for geometry even
+when their cell text arrays are empty.
+
+Cell content may use `Row` or `Column` with the returned cell bounds and
+zero-positioned child controls. Explicitly positioned children stay outside the
+surrounding layout flow; ending the inner layout restores the outer cursor.
+
+`CollapsibleProps.open` is a `bool*` in C and `Open *bool` in Go; `.kry`
+callers should use boolean state. `Collapsible` returns whether that state
+changed. Render child widgets conditionally on the open state. Set `tree` for
+an unframed tree header, `depth` for 20-pixel-per-level header indentation,
+`leaf` to show a non-expanding leaf marker, and `selected` for highlighting.
+`disabled` prevents toggling and dims the label; `id` identifies the header.
+Children retain their own widget IDs and explicitly supplied bounds. Collapsing
+a parent does not reset the caller's nested open state. Headers with a positive
+ID participate in focus traversal: Left closes, Right opens, and Enter/Space
+toggle the focused non-leaf header. In tree mode, Up/Down move through enabled
+headers in the previous frame's visible order. Right on an open branch focuses
+its first child; Left on a closed branch or leaf focuses its nearest ancestor.
+Depth determines that hierarchy. Leaves and disabled content never expand;
+disabled headers are skipped during directional traversal. Automatic child
+indentation is not implemented.
 - Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchAccelerators`, clipboard helpers
 - Accessibility/debug: `UIFocusDebugOverlayNode`
 

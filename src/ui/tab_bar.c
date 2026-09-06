@@ -283,6 +283,8 @@ DrawUITabBar(TabBarProps bar)
         }
     }
 
+    BeginUIClip(bar_x, bar_y, bar_w, bar_h);
+    PushUIInputClip(bar.bounds);
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
         int tab_w = equal_tabs ? bar_w / bar.count :
@@ -511,6 +513,9 @@ DrawUITabBar(TabBarProps bar)
 
         tab_x += tab_w + tab_gap;
     }
+
+    PopUIInputClip();
+    EndUIClip();
 
     if(reorder_enabled && drag_active && released &&
        press_index >= 0 && press_index < bar.count) {

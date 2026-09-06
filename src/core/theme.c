@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
+float g_theme_content_alpha = 1.0f;
+
 static ThemeScope scopes[THEME_MAX_SCOPES];
 static int scope_count = 0;
 static bool dark_mode = false;
@@ -831,10 +833,12 @@ GetCurrentThemeColor(const char *key)
     if(theme_source == THEME_SOURCE_SYSTEM) {
         SetSystemThemeDarkMode(GetEffectiveThemeDarkMode());
         if(SystemThemeColor(key, &color))
-            return color;
+            goto apply_alpha;
     }
     GetThemeCatalogColor(NormalizeTheme(current_theme_id),
                               GetEffectiveThemeDarkMode(), key, &color);
+apply_alpha:
+    color.a = (unsigned char)((float)color.a * g_theme_content_alpha + 0.5f);
     return color;
 }
 

@@ -49,8 +49,9 @@ expr-text       = C-close expression text up to a statement/block delimiter ;
 raw-c-text      = text after the `c` statement marker ;
 ```
 
-The frontend parses a conservative subset of expressions into KIR expression
-metadata. Full C-close expression text is still preserved for backends.
+The frontend tokenizes expressions and parses them with C operator precedence.
+Full C-close expression text is still preserved for backends. Unsupported forms
+remain explicit `unknown` nodes; compound initializers retain their source text.
 
 ## Top-Level Grammar
 
@@ -167,6 +168,25 @@ matching `End()`.
 
 ## Tooling
 
+`k2c`, `k2cpp`, `k2go`, and `k2js` accept `--strict`. This enables the shared
+scalar type checker before output generation. It checks lexical bindings,
+duplicate local declarations, scalar operand compatibility, assignments,
+function argument counts/types, return value types, and boolean conditions.
+Unresolved names, opaque expressions, and unsupported statements are errors with
+source locations. Accepted non-extern functions must use the shared scalar
+emitter; strict mode cannot silently fall back to backend text interpretation.
+It currently excludes UI calls, raw C, `for` headers, `switch`, pointer-sized
+types, and aggregate/pointer expressions. It does not yet prove that every
+control-flow path returns a value. Existing app builds may omit the flag while
+these areas are being migrated.
+
+The checker also annotates known expression types in ordinary builds, without
+rejecting unresolved imported C/runtime symbols. KIR dumps expose these types.
+`make language-test` runs expression-tree tests and executes matching numeric
+and cleanup fixtures through C, C++, Go, and JavaScript, including arithmetic
+traps and negative diagnostics. See [portable scalar programming](LANGUAGE_SCALARS.md)
+for the exact numeric contract and build commands.
+
 `kryon fmt [--check] file.kry...` formats Kry source with stable indentation
 and simple spacing cleanup. `--check` exits non-zero when a file would change.
 
@@ -209,7 +229,7 @@ the normalized raw source text. Expression records currently cover:
 | `int` | Integer literal text. |
 | `float` | Floating-point literal text. |
 | `string` | String literal text. |
-| `call` | Simple `Name(args...)` call with child expressions for arguments. |
+| `call` | Call with child argument expressions; indirect calls also retain the callee expression. |
 | `binary` | Top-level binary expression with operator, left child, and right child. |
 | `unary` | Prefix unary expression with operator and right child. |
 | `member` | `base.field` access with base expression and field name. |
@@ -217,10 +237,39 @@ the normalized raw source text. Expression records currently cover:
 | `index` | `base[index]` access with base and index children. |
 | `compound` | C-style compound literal text preserved as one expression. |
 | `sizeof` | `sizeof(...)` expression metadata. |
+| `char` | Character literal. |
+| `cast` | Explicit C-style cast with target type and operand. |
+| `conditional` | Condition, true arm, and false arm of `a ? b : c`. |
+| `postfix` | Postfix increment or decrement. |
 | `unknown` | Preserved expression text that the frontend did not structure yet. |
 
 Backends may use raw statement text while structured expression KIR grows. They
 must not require a second source-language path around KIR.
+
+Declaration statements retain binding names and declared/inferred types.
+Assignment statements retain separate destination and value expression roots.
+Expressions include a resolved type when the scalar checker can establish it.
+An empty type means unresolved; it must not be interpreted as a concrete type.
+
+## Lexical Cleanup
+
+`defer expression` or `defer assignment` registers a cleanup action in its
+lexical block. Registered actions run in reverse order before leaving that
+block, including `return`, `break`, and `continue`. A return expression is
+evaluated exactly once into a temporary before cleanup begins. Deferred
+expressions read their operands at cleanup time, not registration time.
+
+Cleanup is lowered into ordinary KIR statements before backend emission. This
+gives C, C++, Go, and JS the same normal-control-flow behavior; it does not use
+Go's function-scoped `defer`. Cleanup does not run after process termination,
+foreign exceptions, Go panics, or JS exceptions. Exceptional unwinding is not
+yet part of this language contract.
+
+Functions using cleanup currently reject raw C, conditional preprocessing,
+`goto`, labels, and `guard` (use explicit `if`/`return`). A switch case must use an explicit nested block to register
+cleanup. Declarations cannot shadow names referenced by active cleanup actions;
+`for` headers cannot reuse those names. These forms require further binding and
+control-flow lowering and are diagnosed instead of emitting incorrect cleanup.
 
 ## Backend Conformance
 
@@ -237,9 +286,9 @@ must not require a second source-language path around KIR.
 | `#assert` | yes | `#if/#error` | known true only | known true only |
 | Locals and assignments | yes | yes | yes | partial |
 | Control flow | yes | yes | partial | partial |
-| `defer` | yes | yes | no | no |
+| `defer` | shared lexical lowering | yes | yes | lowered subset; not behaviorally verified |
 | Raw C lines | yes | yes | no | no |
-| Structured expression metadata | partial | metadata only | metadata only | metadata only |
+| Structured scalar expression emission | yes | yes | yes | metadata only |
 
 ## Known Boundaries
 
@@ -247,9 +296,14 @@ must not require a second source-language path around KIR.
 - Go is a declarative app subset. Tagged extern targets that contain a full Go
   import path, such as `github.com/example/app.Generate`, are imported and
   called directly by generated Go; short targets such as `app.Generate` remain
-  host-interface methods. Explicit C targets use the `c.symbol` form, such as
-  `#extern "c.abs"`; only those declarations generate an isolated cgo bridge.
+  host-interface methods. Explicit C ABI targets such as `#extern "c.abs"`
+  are rejected by Go with a source diagnostic. Generated Go never uses cgo;
+  provide a native Go package or host implementation instead.
 - KRB is a portable cartridge subset with explicit host/capability boundaries.
-- `defer` is currently a C-oriented compile-time transform.
+- `defer` is a shared KIR transform; the restrictions above apply to every target.
 - Raw C lines are not portable.
-- Structured expression KIR is metadata today, not the sole lowering source.
+- Checked scalar functions emit directly from structured KIR in C/C++/Go/JS.
+  App, aggregate, and other unconverted bodies still use target-specific text
+  lowering outside strict mode. KRB has not adopted the scalar emitter.
+- Kry is not yet a full C replacement. [Implementation status](LANGUAGE_IMPLEMENTATION.md)
+  lists the remaining type, memory, ABI, ownership, and compile-time work.

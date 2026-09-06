@@ -53,6 +53,7 @@ KirProgramFree(KirProgram *program)
             free(m->functions[j].exprs);
         }
         free(m->state_fields);
+        free(m->globals);
         free(m->imports);
         free(m->functions);
         free(m->defines);
@@ -310,6 +311,7 @@ KirFunctionAddStmt(KirFunction *fn, KirStmtKind kind, const char *text,
     kir_copy(st->text, sizeof(st->text), text);
     kir_copy(st->widget, sizeof(st->widget), widget);
     st->expr_root = -1;
+    st->lhs_root = -1;
     st->span = span;
     return st;
 }
@@ -346,6 +348,7 @@ KirFunctionAddExpr(KirFunction *fn, KirExprKind kind, const char *text,
     expr->right = -1;
     expr->first_child = -1;
     expr->next_sibling = -1;
+    expr->third = -1;
     kir_copy(expr->text, sizeof(expr->text), text);
     expr->span = span;
     return expr;
@@ -393,6 +396,9 @@ KirExprKindName(KirExprKind kind)
     case KIR_EXPR_CAST: return "cast";
     case KIR_EXPR_COMPOUND: return "compound";
     case KIR_EXPR_SIZEOF: return "sizeof";
+    case KIR_EXPR_CHAR: return "char";
+    case KIR_EXPR_CONDITIONAL: return "conditional";
+    case KIR_EXPR_POSTFIX: return "postfix";
     default: return "unknown";
     }
 }
@@ -443,11 +449,14 @@ kir_dump_expr(const KirFunction *fn, int index, FILE *out, int indent)
     fprintf(out, "expr %s text %s name %s op %s span ",
             KirExprKindName(expr->kind), expr->text, expr->name, expr->op);
     kir_dump_span(out, expr->span);
+    if(expr->type[0]) fprintf(out, " type %s", expr->type);
     fprintf(out, "\n");
     if(expr->left >= 0)
         kir_dump_expr(fn, expr->left, out, indent + 1);
     if(expr->right >= 0)
         kir_dump_expr(fn, expr->right, out, indent + 1);
+    if(expr->third >= 0)
+        kir_dump_expr(fn, expr->third, out, indent + 1);
     for(int child = expr->first_child; child >= 0 &&
          child < fn->expr_count; child = fn->exprs[child].next_sibling)
         kir_dump_expr(fn, child, out, indent + 1);
@@ -539,6 +548,8 @@ KirProgramDump(const KirProgram *program, FILE *out)
                 fprintf(out, "\n");
                 if(st->expr_root >= 0)
                     kir_dump_expr(fn, st->expr_root, out, 3);
+                if(st->lhs_root >= 0)
+                    kir_dump_expr(fn, st->lhs_root, out, 3);
             }
         }
     }

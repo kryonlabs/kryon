@@ -252,6 +252,37 @@ typedef struct {
     int disabled;
 } SeparatorTextProps;
 
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *type;
+    const void *data;
+    int data_size;
+    int disabled;
+} DragDropSourceProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char *type;
+    void *output;
+    int output_size;
+    int *accepted_size;
+    int disabled;
+} DragDropTargetProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    const char **items;
+    int item_count;
+    int *selected;
+    int *selected_count;
+    int *anchor;
+    int row_height;
+    int disabled;
+} MultiSelectListProps;
+
 typedef enum {
     ARROW_LEFT = 0,
     ARROW_RIGHT,
@@ -331,6 +362,8 @@ typedef struct {
     int *selected_index;
     int *scroll_offset;
     int row_height;
+    int disabled;
+    int content_height;
 } ListBoxProps;
 
 typedef struct {
@@ -349,6 +382,7 @@ typedef struct {
     int *selected_id;
     int *scroll_offset;
     int row_height;
+    int disabled;
 } TreeViewProps;
 
 typedef struct {
@@ -390,6 +424,8 @@ typedef struct {
 typedef struct {
     const char **cells;
     int cell_count;
+    const Color *text_colors;
+    const Color *background_colors;
 } TableRow;
 
 typedef struct {
@@ -399,7 +435,7 @@ typedef struct {
     int column_count;
     const TableRow *rows;
     int row_count;
-    const int *column_widths;
+    int *column_widths;
     int *selected_row;
     int *selected_column;
     int *activated_row;
@@ -409,6 +445,16 @@ typedef struct {
     int *sort_column;
     int *scroll_offset;
     int row_height;
+    const int *column_enabled;
+    const int *column_order;
+    int *sort_direction;
+    int disabled;
+    int resizable;
+    int min_column_width;
+    int freeze_rows;
+    int header_height;
+    float header_angle;
+    int custom_cells;
 } TableViewProps;
 
 typedef struct {
@@ -444,7 +490,15 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     const char *label;
-    int *open;
+    bool *open;
+    /* Tree-style headers indent by depth; callers lay out conditional children.
+       Leaves never toggle open. Return value remains whether open changed. */
+    int tree;
+    int depth;
+    int leaf;
+    int selected;
+    int disabled;
+    int id;
 } CollapsibleProps;
 
 typedef struct {

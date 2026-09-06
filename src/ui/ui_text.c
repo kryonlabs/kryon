@@ -471,15 +471,23 @@ EnsureUIDefaultFont(void)
     g_ui_default_font_attempted = 1;
     if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
        RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
-       UseUIFont(UI_FONT_DEFAULT_NAME))
+       UseUIFont(UI_FONT_DEFAULT_NAME)) {
+        TraceLog(LOG_INFO, "UIFONT: default font resolved from system: %s",
+                 system_font_path);
         return 1;
+    }
 
     for(int i = 0; paths[i] != NULL; i++) {
         if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
-           UseUIFont(UI_FONT_DEFAULT_NAME))
+           UseUIFont(UI_FONT_DEFAULT_NAME)) {
+            TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
             return 1;
+        }
     }
 
+    TraceLog(LOG_WARNING,
+             "UIFONT: no font source resolved; text will use the built-in "
+             "bitmap font (embed a face via the FONT_FILES build variable)");
     return 0;
 }
 
@@ -1041,13 +1049,13 @@ ui_text_hash_int(int hash, int value)
 static int
 ui_text_id(const char *text, int x, int y, int font_size)
 {
-    uintptr_t ptr = (uintptr_t)text;
-    int hash = 5381;
+    /* Retained trees copy text between frames. Allocation addresses therefore
+     * cannot identify a selection spanning a press, drag, and copy sequence. */
+    unsigned content = 2166136261u;
+    for(const unsigned char *p = (const unsigned char *)text; p != NULL && *p; p++)
+        content = (content ^ *p) * 16777619u;
+    int hash = (int)content;
 
-    hash = ui_text_hash_int(hash, (int)(ptr & 0xffffffffu));
-#if UINTPTR_MAX > 0xffffffffu
-    hash = ui_text_hash_int(hash, (int)(ptr >> 32));
-#endif
     hash = ui_text_hash_int(hash, x);
     hash = ui_text_hash_int(hash, y);
     hash = ui_text_hash_int(hash, font_size);
@@ -1848,6 +1856,17 @@ DrawUITextInRect(const char *text, Rectangle rect, int font_size, Color color)
     BeginUIClip((int)clip.x, (int)clip.y, (int)clip.width, (int)clip.height);
     DrawUIText(value, x, y, font_size, color);
     EndUIClip();
+}
+
+void
+ui_draw_text_in_rect_with_font_token(const char *text, Rectangle bounds,
+                                    int font_size, Color color, int token)
+{
+    int previous = g_ui_active_font;
+    if(token >= 0 && token < g_ui_font_count)
+        g_ui_active_font = token;
+    DrawUITextInRect(text, bounds, font_size, color);
+    g_ui_active_font = previous;
 }
 
 int

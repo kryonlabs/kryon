@@ -1,5 +1,7 @@
 #include "ui_internal.h"
 #include "ui_tk.h"
+#include "ui_numeric_input_internal.h"
+#include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -11,6 +13,7 @@ static const TextInputStyle kryon_zero_text_input_style;
 #define UI_TK_MENU_MAX 8
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
+#define UI_DRAG_DROP_DATA_MAX 1024
 static int g_menu_open_id = 0;
 static int g_menu_submenu_id = 0;
 static Rectangle g_menu_panel_bounds = {0};
@@ -18,6 +21,14 @@ static int g_menu_panel_valid = 0;
 static int g_drag_active = 0;
 static float g_drag_last_x = 0.0f;
 static int g_slider_active = 0;
+typedef struct UIDragDropState {
+    int active;
+    int source_id;
+    char type[32];
+    unsigned char data[UI_DRAG_DROP_DATA_MAX];
+    int data_size;
+} UIDragDropState;
+static UIDragDropState g_drag_drop = {0};
 static int ui_slider_float(SliderFloatProps slider, int vertical);
 typedef struct UIMenuOverlayState {
     int active;
@@ -302,6 +313,127 @@ DrawUISeparatorText(SeparatorTextProps separator)
         DrawLine(line_x, line_y,
                  (int)(separator.bounds.x + separator.bounds.width), line_y,
                  separator.disabled ? Fade(c_button, 0.45f) : c_button);
+}
+
+int
+DrawUIDragDropSource(DragDropSourceProps source)
+{
+    int hot;
+
+    if(g_drag_drop.active && g_drag_drop.source_id == source.id &&
+       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        g_drag_drop = (UIDragDropState){0};
+    if(source.disabled || UIContentDisabled() || source.type == NULL || source.type[0] == '\0' ||
+       source.data_size < 0 || source.data_size > UI_DRAG_DROP_DATA_MAX ||
+       (source.data_size > 0 && source.data == NULL))
+        return 0;
+    hot = ui_hot(source.bounds);
+    if(hot)
+        MarkUIClickable();
+    if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        g_drag_drop = (UIDragDropState){0};
+        g_drag_drop.active = 1;
+        g_drag_drop.source_id = source.id;
+        snprintf(g_drag_drop.type, sizeof(g_drag_drop.type), "%s", source.type);
+        g_drag_drop.data_size = source.data_size;
+        if(source.data_size > 0)
+            memcpy(g_drag_drop.data, source.data, (size_t)source.data_size);
+    }
+    return g_drag_drop.active && g_drag_drop.source_id == source.id &&
+           (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ||
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
+}
+
+int
+DrawUIDragDropTarget(DragDropTargetProps target)
+{
+    Vector2 mouse = ui_mouse_world();
+    int hot = CheckCollisionPointRec(mouse, target.bounds) &&
+              !UIContentDisabled() && !UIInspectInputCapturesClick(mouse) &&
+              !ui_input_captures_click_internal(mouse, 0);
+    int matches = g_drag_drop.active && target.type != NULL &&
+                  strcmp(g_drag_drop.type, target.type) == 0;
+
+    if(target.accepted_size != NULL)
+        *target.accepted_size = 0;
+    if(matches && IsWindowReady())
+        DrawRectangleLinesEx(target.bounds, hot ? 2.0f : 1.0f,
+                             hot ? c_link : c_button_hover);
+    if(target.disabled || !matches || !hot ||
+       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        return 0;
+    if(target.output != NULL && target.output_size > 0) {
+        int copied = g_drag_drop.data_size < target.output_size
+                         ? g_drag_drop.data_size : target.output_size;
+        memcpy(target.output, g_drag_drop.data, (size_t)copied);
+        if(target.accepted_size != NULL)
+            *target.accepted_size = copied;
+    }
+    g_drag_drop = (UIDragDropState){0};
+    UIConsumeRelease();
+    return 1;
+}
+
+int
+DrawUIMultiSelectList(MultiSelectListProps list)
+{
+    Vector2 mouse = ui_mouse_world();
+    int row_height = list.row_height > 0 ? list.row_height : ScaleUIPx(28);
+    int clicked = -1;
+    int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+
+    if(list.items == NULL || list.selected == NULL || list.item_count <= 0)
+        return -1;
+    for(int i = 0; i < list.item_count; i++) {
+        Rectangle row = {list.bounds.x, list.bounds.y + i * row_height,
+                         list.bounds.width, (float)row_height};
+        int hot = CheckCollisionPointRec(mouse, row) &&
+                  !UIInputCapturesClick(mouse);
+        if(IsWindowReady()) {
+            if(list.selected[i] || hot)
+                DrawRectangleRec(row, list.selected[i] ? c_button_hover : c_button);
+            DrawUIText(list.items[i] != NULL ? list.items[i] : "",
+                       (int)row.x + ScaleUIPx(8),
+                       ui_row_text_y(row, GetSmallFontSize()),
+                       GetSmallFontSize(), list.disabled ? c_icon : c_text);
+        }
+        if(hot)
+            list.disabled ? MarkUIDisabled() : MarkUIClickable();
+        if(hot && !list.disabled &&
+           IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            if(shift && list.anchor != NULL && *list.anchor >= 0 &&
+               *list.anchor < list.item_count) {
+                int first = *list.anchor < i ? *list.anchor : i;
+                int last = *list.anchor > i ? *list.anchor : i;
+                if(!control)
+                    memset(list.selected, 0,
+                           (size_t)list.item_count * sizeof(*list.selected));
+                for(int j = first; j <= last; j++)
+                    list.selected[j] = 1;
+            } else if(control) {
+                list.selected[i] = !list.selected[i];
+                if(list.anchor != NULL)
+                    *list.anchor = i;
+            } else {
+                memset(list.selected, 0,
+                       (size_t)list.item_count * sizeof(*list.selected));
+                list.selected[i] = 1;
+                if(list.anchor != NULL)
+                    *list.anchor = i;
+            }
+            UIConsumeRelease();
+            clicked = i;
+        }
+    }
+    if(list.selected_count != NULL) {
+        int count = 0;
+        for(int i = 0; i < list.item_count; i++)
+            count += list.selected[i] != 0;
+        *list.selected_count = count;
+    }
+    return clicked;
 }
 
 int
@@ -1158,16 +1290,19 @@ static int
 ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
 {
     Vector2 mouse = ui_mouse_world();
+    disabled = disabled || UIContentDisabled();
     int hot = !disabled && ui_hot(bounds);
 
     *delta = 0.0f;
+    if(disabled && g_drag_active == token)
+        g_drag_active = 0;
     if(hot)
         MarkUIClickable();
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         g_drag_active = token;
         g_drag_last_x = mouse.x;
     }
-    if(g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    if(!disabled && g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         *delta = mouse.x - g_drag_last_x;
         g_drag_last_x = mouse.x;
     }
@@ -1177,7 +1312,7 @@ ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
 }
 
 int
-DrawUIDragFloat(DragFloatProps drag)
+ui_update_drag_float(DragFloatProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
@@ -1202,26 +1337,12 @@ DrawUIDragFloat(DragFloatProps drag)
                 changed = 1;
             }
         }
-        if(IsWindowReady()) {
-            char text[64];
-            snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
-                     drag.values[i]);
-            DrawRectangleRec(cell, drag.disabled ? c_surface : c_button);
-            DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
-            DrawUIText(text, (int)cell.x + ScaleUIPx(6),
-                       ui_row_text_y(cell, GetSmallFontSize()),
-                       GetSmallFontSize(), drag.disabled ? c_icon : c_text);
-        }
     }
-    if(IsWindowReady() && drag.label != NULL)
-        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
-                   (int)drag.bounds.y - GetSmallFontSize() - ScaleUIPx(2),
-                   GetSmallFontSize(), c_text);
     return changed;
 }
 
 int
-DrawUIDragInt(DragIntProps drag)
+ui_update_drag_int(DragIntProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
@@ -1248,88 +1369,61 @@ DrawUIDragInt(DragIntProps drag)
                 changed = 1;
             }
         }
-        if(IsWindowReady()) {
-            char text[64];
-            snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
-                     drag.values[i]);
-            DrawRectangleRec(cell, drag.disabled ? c_surface : c_button);
-            DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
-            DrawUIText(text, (int)cell.x + ScaleUIPx(6),
-                       ui_row_text_y(cell, GetSmallFontSize()),
-                       GetSmallFontSize(), drag.disabled ? c_icon : c_text);
-        }
     }
-    if(IsWindowReady() && drag.label != NULL)
-        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
-                   (int)drag.bounds.y - GetSmallFontSize() - ScaleUIPx(2),
-                   GetSmallFontSize(), c_text);
     return changed;
 }
 
-int
-DrawUIDragFloatRange2(DragFloatRange2Props drag)
+static void
+ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled)
 {
-    Rectangle low_bounds = drag.bounds;
-    Rectangle high_bounds = drag.bounds;
-    DragFloatProps low;
-    DragFloatProps high;
-    int changed;
-
-    if(drag.current_min == NULL || drag.current_max == NULL)
-        return 0;
-    low_bounds.width *= 0.5f;
-    high_bounds.x += low_bounds.width;
-    high_bounds.width -= low_bounds.width;
-    low = (DragFloatProps){low_bounds, drag.id * 2, NULL, drag.current_min, 1,
-                           drag.speed, drag.min, *drag.current_max,
-                           drag.format, drag.disabled};
-    high = (DragFloatProps){high_bounds, drag.id * 2 + 1, NULL,
-                            drag.current_max, 1, drag.speed,
-                            *drag.current_min, drag.max,
-                            drag.format_max != NULL ? drag.format_max : drag.format,
-                            drag.disabled};
-    changed = DrawUIDragFloat(low);
-    changed |= DrawUIDragFloat(high);
-    if(*drag.current_min > *drag.current_max)
-        *drag.current_min = *drag.current_max;
-    if(IsWindowReady() && drag.label != NULL)
-        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
-                   (int)drag.bounds.y - GetSmallFontSize() - ScaleUIPx(2),
-                   GetSmallFontSize(), c_text);
-    return changed;
+    DrawRectangleRec(bounds, disabled ? c_surface : c_button);
+    DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
+    DrawUIText(text, (int)bounds.x + ScaleUIPx(6),
+               ui_row_text_y(bounds, GetSmallFontSize()),
+               GetSmallFontSize(), disabled ? c_icon : c_text);
 }
 
-int
-DrawUIDragIntRange2(DragIntRange2Props drag)
+static void
+ui_paint_drag_label(Rectangle bounds, const char *label)
 {
-    Rectangle low_bounds = drag.bounds;
-    Rectangle high_bounds = drag.bounds;
-    DragIntProps low;
-    DragIntProps high;
-    int changed;
-
-    if(drag.current_min == NULL || drag.current_max == NULL)
-        return 0;
-    low_bounds.width *= 0.5f;
-    high_bounds.x += low_bounds.width;
-    high_bounds.width -= low_bounds.width;
-    low = (DragIntProps){low_bounds, drag.id * 2, NULL, drag.current_min, 1,
-                         drag.speed, drag.min, *drag.current_max,
-                         drag.format, drag.disabled};
-    high = (DragIntProps){high_bounds, drag.id * 2 + 1, NULL,
-                          drag.current_max, 1, drag.speed,
-                          *drag.current_min, drag.max,
-                          drag.format_max != NULL ? drag.format_max : drag.format,
-                          drag.disabled};
-    changed = DrawUIDragInt(low);
-    changed |= DrawUIDragInt(high);
-    if(*drag.current_min > *drag.current_max)
-        *drag.current_min = *drag.current_max;
-    if(IsWindowReady() && drag.label != NULL)
-        DrawUIText(drag.label, (int)drag.bounds.x + ScaleUIPx(6),
-                   (int)drag.bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+    if(label != NULL)
+        DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
+                   (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
                    GetSmallFontSize(), c_text);
-    return changed;
+}
+
+void
+ui_paint_drag_float(DragFloatProps drag)
+{
+    if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
+        return;
+    for(int i = 0; i < drag.value_count; i++) {
+        Rectangle cell = {drag.bounds.x + drag.bounds.width*i/drag.value_count,
+                          drag.bounds.y, drag.bounds.width/drag.value_count,
+                          drag.bounds.height};
+        char text[64];
+        snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
+                 drag.values[i]);
+        ui_paint_drag_cell(cell, text, drag.disabled || UIContentDisabled());
+    }
+    ui_paint_drag_label(drag.bounds, drag.label);
+}
+
+void
+ui_paint_drag_int(DragIntProps drag)
+{
+    if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
+        return;
+    for(int i = 0; i < drag.value_count; i++) {
+        Rectangle cell = {drag.bounds.x + drag.bounds.width*i/drag.value_count,
+                          drag.bounds.y, drag.bounds.width/drag.value_count,
+                          drag.bounds.height};
+        char text[64];
+        snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
+                 drag.values[i]);
+        ui_paint_drag_cell(cell, text, drag.disabled || UIContentDisabled());
+    }
+    ui_paint_drag_label(drag.bounds, drag.label);
 }
 
 static int
@@ -1337,14 +1431,17 @@ ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
                 float *ratio)
 {
     Vector2 mouse = ui_mouse_world();
+    disabled = disabled || UIContentDisabled();
     int hot = !disabled && ui_hot(bounds);
     int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
+    if(disabled && g_slider_active == token)
+        g_slider_active = 0;
     if(hot)
         MarkUIClickable();
     if(pressed)
         g_slider_active = token;
-    if(g_slider_active == token &&
+    if(!disabled && g_slider_active == token &&
        (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
         float span = vertical ? bounds.height : bounds.width;
         float position = vertical ? bounds.y + bounds.height - mouse.y
@@ -1397,8 +1494,8 @@ ui_draw_slider_label(Rectangle bounds, const char *label)
                    GetSmallFontSize(), c_text);
 }
 
-static int
-ui_slider_float(SliderFloatProps slider, int vertical)
+int
+ui_update_slider_float(SliderFloatProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
@@ -1421,17 +1518,12 @@ ui_slider_float(SliderFloatProps slider, int vertical)
                 changed = 1;
             }
         }
-        char text[64];
-        snprintf(text, sizeof(text), slider.format != NULL ? slider.format : "%.3f",
-                 slider.values[i]);
-        ui_draw_slider_cell(cell, ratio, text, slider.disabled, vertical);
     }
-    ui_draw_slider_label(slider.bounds, slider.label);
     return changed;
 }
 
-static int
-ui_slider_int(SliderIntProps slider, int vertical)
+int
+ui_update_slider_int(SliderIntProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
@@ -1454,41 +1546,60 @@ ui_slider_int(SliderIntProps slider, int vertical)
                 changed = 1;
             }
         }
-        char text[64];
-        snprintf(text, sizeof(text), slider.format != NULL ? slider.format : "%d",
-                 slider.values[i]);
-        ui_draw_slider_cell(cell, ratio, text, slider.disabled, vertical);
     }
-    ui_draw_slider_label(slider.bounds, slider.label);
+    return changed;
+}
+
+void
+ui_paint_slider_float(SliderFloatProps slider, int vertical)
+{
+    if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
+    slider.disabled |= UIContentDisabled();
+    for(int i = 0; i < slider.value_count; i++) {
+        Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
+                          slider.bounds.y, slider.bounds.width/slider.value_count,
+                          slider.bounds.height};
+        float range = slider.max-slider.min;
+        float ratio = range > 0 ? (slider.values[i]-slider.min)/range : 0;
+        if(ratio < 0) ratio = 0;
+        if(ratio > 1) ratio = 1;
+        char text[64];
+        snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%.3f",slider.values[i]);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical);
+    }
+    ui_draw_slider_label(slider.bounds,slider.label);
+}
+
+void
+ui_paint_slider_int(SliderIntProps slider, int vertical)
+{
+    if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
+    slider.disabled |= UIContentDisabled();
+    for(int i = 0; i < slider.value_count; i++) {
+        Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
+                          slider.bounds.y, slider.bounds.width/slider.value_count,
+                          slider.bounds.height};
+        double range = (double)slider.max-slider.min;
+        float ratio = range > 0 ? (float)(((double)slider.values[i]-slider.min)/range) : 0;
+        if(ratio < 0) ratio = 0;
+        if(ratio > 1) ratio = 1;
+        char text[64];
+        snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%d",slider.values[i]);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical);
+    }
+    ui_draw_slider_label(slider.bounds,slider.label);
+}
+
+static int
+ui_slider_float(SliderFloatProps slider, int vertical)
+{
+    int changed = ui_update_slider_float(slider,vertical);
+    ui_paint_slider_float(slider,vertical);
     return changed;
 }
 
 int
-DrawUISliderFloat(SliderFloatProps slider)
-{
-    return ui_slider_float(slider, 0);
-}
-
-int
-DrawUISliderInt(SliderIntProps slider)
-{
-    return ui_slider_int(slider, 0);
-}
-
-int
-DrawUIVSliderFloat(SliderFloatProps slider)
-{
-    return ui_slider_float(slider, 1);
-}
-
-int
-DrawUIVSliderInt(SliderIntProps slider)
-{
-    return ui_slider_int(slider, 1);
-}
-
-int
-DrawUISliderAngle(SliderAngleProps slider)
+ui_update_slider_angle(SliderAngleProps slider)
 {
     const float radians_to_degrees = 57.295779513082320876f;
     const float degrees_to_radians = 0.01745329251994329577f;
@@ -1503,30 +1614,52 @@ DrawUISliderAngle(SliderAngleProps slider)
                                       &degrees, 1, slider.min_degrees,
                                       slider.max_degrees, slider.format,
                                       slider.disabled};
-    changed = ui_slider_float(value_slider, 0);
+    changed = ui_update_slider_float(value_slider, 0);
     if(changed)
         *slider.value = degrees * degrees_to_radians;
     return changed;
 }
 
-#define UI_NUMERIC_INPUT_SLOTS 128
-typedef struct {
-    int token;
-    char text[64];
-    int cursor;
-    int focused;
-} UINumericInputState;
-static UINumericInputState g_numeric_inputs[UI_NUMERIC_INPUT_SLOTS];
-
-static UINumericInputState *
-ui_numeric_input_state(int token)
+void
+ui_paint_slider_angle(SliderAngleProps slider)
 {
-    unsigned int key = (unsigned int)token;
-    UINumericInputState *state = &g_numeric_inputs[key % UI_NUMERIC_INPUT_SLOTS];
-    if(state->token != token) {
-        memset(state, 0, sizeof(*state));
-        state->token = token;
-    }
+    if(slider.value == NULL)
+        return;
+    float degrees = *slider.value * 57.295779513082320876f;
+    SliderFloatProps value_slider = {
+        slider.bounds, slider.id, slider.label, &degrees, 1,
+        slider.min_degrees, slider.max_degrees, slider.format, slider.disabled
+    };
+    ui_paint_slider_float(value_slider, 0);
+}
+
+#define UI_NUMERIC_INPUT_BUCKETS 128
+static UINumericInputState *g_numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
+static int g_numeric_next_token = 0x60000000;
+
+UINumericInputState *
+ui_numeric_input_state(int kind, int widget_id, int component)
+{
+    unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
+                       (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
+    for(UINumericInputState *state = g_numeric_inputs[bucket];
+        state != NULL; state = state->next)
+        if(state->kind == kind && state->widget_id == widget_id &&
+           state->component == component)
+            return state;
+
+    UINumericInputState *state = calloc(1, sizeof(*state));
+    if(state == NULL)
+        abort();
+    if(g_numeric_next_token > INT_MAX - 3)
+        abort();
+    state->token = g_numeric_next_token;
+    g_numeric_next_token += 3; /* field, decrement, increment */
+    state->kind = kind;
+    state->widget_id = widget_id;
+    state->component = component;
+    state->next = g_numeric_inputs[bucket];
+    g_numeric_inputs[bucket] = state;
     return state;
 }
 
@@ -1573,13 +1706,13 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                  int disabled, int kind)
 {
     int changed = 0;
-    int paint = IsWindowReady();
 
     if(values == NULL || count <= 0)
         return 0;
+    BeginDisabled(disabled);
     for(int i = 0; i < count; i++) {
-        int token = (0x60000000 + kind * 0x08000000) ^ (id << 4) ^ (i + 1);
-        UINumericInputState *state = ui_numeric_input_state(token);
+        UINumericInputState *state = ui_numeric_input_state(kind, id, i);
+        int token = state->token;
         Rectangle cell = {bounds.x + bounds.width * i / count, bounds.y,
                           bounds.width / count, bounds.height};
         Rectangle field_bounds = cell;
@@ -1587,6 +1720,9 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         Rectangle plus = cell;
         int commit = 0;
         double old_value = ui_numeric_value(values, i, kind);
+
+        if(UIContentDisabled() && state->focused)
+            while(GetCharPressed() != 0) {}
 
         if(!state->focused) {
             ui_numeric_format(state->text, sizeof(state->text), format, kind,
@@ -1601,7 +1737,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             plus.x = minus.x + minus.width;
             plus.width = button_w;
         }
-        if(paint && RenderTextField((TextFieldProps){field_bounds, state->text,
+        if(RenderTextField((TextFieldProps){field_bounds, state->text,
                                                      sizeof(state->text), &state->cursor,
                                                      &state->focused, 63,
                                                      GetSmallFontSize(), token,
@@ -1620,13 +1756,13 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                 }
             }
         }
-        if(paint && step != 0.0) {
+        if(step != 0.0) {
             int fast = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
             double increment = fast && step_fast != 0.0 ? step_fast : step;
-            int minus_pressed = RenderButton((ButtonSpec){minus, "-", GetSmallFontSize(),
-                token + 1, disabled, c_button, c_button_hover, c_text, c_button, 0.0f});
-            int plus_pressed = RenderButton((ButtonSpec){plus, "+", GetSmallFontSize(),
-                token + 2, disabled, c_button, c_button_hover, c_text, c_button, 0.0f});
+            int minus_pressed = Button((ButtonProps){.bounds = minus, .label = "-",
+                .font = GetSmallFontSize(), .id = token + 1, .disabled = disabled});
+            int plus_pressed = Button((ButtonProps){.bounds = plus, .label = "+",
+                .font = GetSmallFontSize(), .id = token + 2, .disabled = disabled});
             if(minus_pressed || plus_pressed) {
                 double value = ui_numeric_value(values, i, kind) +
                                (plus_pressed ? increment : -increment);
@@ -1642,7 +1778,11 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         }
         (void)commit;
     }
-    ui_draw_slider_label(bounds, label);
+    if(IsWindowReady() && label != NULL)
+        Text(label, (int)bounds.x + ScaleUIPx(6),
+             (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+             GetSmallFontSize(), c_text);
+    EndDisabled();
     return changed;
 }
 
@@ -1730,12 +1870,16 @@ DrawUISpinbox(SpinboxProps spinbox)
 int
 DrawUICombobox(ComboboxProps combo)
 {
+    int changed;
     if(combo.disabled)
         MarkUIDisabled();
-    return DrawUIDropdown(combo.id, (int)combo.bounds.x, (int)combo.bounds.y,
+    BeginDisabled(combo.disabled);
+    changed = DrawUIDropdown(combo.id, (int)combo.bounds.x, (int)combo.bounds.y,
                           (int)combo.bounds.width, (int)combo.bounds.height,
                           combo.options, combo.option_count,
                           combo.selected_index);
+    EndDisabled();
+    return changed;
 }
 
 void
@@ -1765,6 +1909,31 @@ DrawUIImageBox(ImageBoxProps image)
     DrawRectangleLinesEx(image.bounds, 1.0f, c_button);
 }
 
+Rectangle
+BeginListBox(ListBoxProps list)
+{
+    BeginDisabled(list.disabled);
+    if(IsWindowReady()) {
+        DrawRectangleRec(list.bounds,c_bg);
+        DrawRectangleLinesEx(list.bounds,1,c_button);
+    }
+    Rectangle inner = {list.bounds.x+1,list.bounds.y+1,
+                       fmaxf(0,list.bounds.width-2),fmaxf(0,list.bounds.height-2)};
+    int height = list.content_height;
+    if(height <= 0) {
+        long long total = (long long)(list.item_count > 0 ? list.item_count : 0)*(list.row_height > 0 ? list.row_height : 30);
+        height = total > INT_MAX ? INT_MAX : (int)total;
+    }
+    return BeginScroll(inner,ScaleUIPx(height),list.scroll_offset);
+}
+
+void
+EndListBox(void)
+{
+    EndScroll();
+    EndDisabled();
+}
+
 int
 DrawUIListBox(ListBoxProps list)
 {
@@ -1780,7 +1949,7 @@ DrawUIListBox(ListBoxProps list)
     int changed = 0;
 
     max_scroll = ui_update_scroll(list.bounds, list.item_count * row_h,
-                                  list.scroll_offset, row_h);
+                                  list.disabled ? NULL : list.scroll_offset, row_h);
     scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : 0;
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
@@ -1793,16 +1962,17 @@ DrawUIListBox(ListBoxProps list)
         int index = first + i;
         Rectangle row = {list.bounds.x, list.bounds.y + (float)(i * row_h - y_offset),
                          list.bounds.width, (float)row_h};
-        int hot = ui_hot(row);
+        int hot = !list.disabled && ui_hot(row);
         if(paint && index == selected)
-            DrawRectangleRec(row, c_button);
+            DrawRectangleRec(row, list.disabled ? DarkenUIColor(c_button, 38) : c_button);
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
             MarkUIClickable();
         if(paint)
             DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
-                       (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, c_text);
+                       (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font,
+                       list.disabled ? DarkenUIColor(c_text, 38) : c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             UIConsumeRelease();
             *list.selected_index = index;
@@ -1812,9 +1982,9 @@ DrawUIListBox(ListBoxProps list)
     if(paint)
         EndUIClip();
     if(paint && list.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
-                        list.item_count * row_h, list.scroll_offset, max_scroll);
+                        list.item_count * row_h, list.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -1832,7 +2002,7 @@ DrawUITreeView(TreeViewProps tree)
     int changed = 0;
 
     max_scroll = ui_update_scroll(tree.bounds, tree.item_count * row_h,
-                                  tree.scroll_offset, row_h);
+                                  tree.disabled ? NULL : tree.scroll_offset, row_h);
     scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
     first = scroll_y / row_h;
     y_offset = scroll_y % row_h;
@@ -1846,20 +2016,22 @@ DrawUITreeView(TreeViewProps tree)
         const UITreeItem *item = &tree.items[index];
         Rectangle row = {tree.bounds.x, tree.bounds.y + (float)(i * row_h - y_offset),
                          tree.bounds.width, (float)row_h};
-        int hot = ui_hot(row);
+        int hot = !tree.disabled && ui_hot(row);
         int x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
         if(paint && tree.selected_id != NULL && *tree.selected_id == item->id)
-            DrawRectangleRec(row, c_button);
+            DrawRectangleRec(row, tree.disabled ? DarkenUIColor(c_button, 38) : c_button);
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(paint) {
             if(item->expanded)
-                DrawUIText("v", x, ui_row_text_y(row, font), font, c_icon);
+                DrawUIText("v", x, ui_row_text_y(row, font), font,
+                           tree.disabled ? DarkenUIColor(c_icon, 38) : c_icon);
             else
-                DrawUIText(">", x, ui_row_text_y(row, font), font, c_icon);
+                DrawUIText(">", x, ui_row_text_y(row, font), font,
+                           tree.disabled ? DarkenUIColor(c_icon, 38) : c_icon);
             DrawUIText(item->label != NULL ? item->label : "",
                        x + ScaleUIPx(18), ui_row_text_y(row, font), font,
-                       c_text);
+                       tree.disabled ? DarkenUIColor(c_text, 38) : c_text);
         }
         if(hot)
             MarkUIClickable();
@@ -1872,9 +2044,9 @@ DrawUITreeView(TreeViewProps tree)
     if(paint)
         EndUIClip();
     if(paint && tree.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
-                        tree.item_count * row_h, tree.scroll_offset, max_scroll);
+                        tree.item_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2132,9 +2304,9 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
     }
     EndUIClip();
     if(tree.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
-                        visible_count * row_h, tree.scroll_offset, max_scroll);
+                        visible_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2334,11 +2506,151 @@ DrawUISourceView(SourceViewProps source)
     EndUIClip();
 
     if(source.scroll_y != NULL && max_scroll_y > 0)
-        DrawUIScrollbar((int)(source.bounds.x + source.bounds.width -
+        ui_scrollbar((int)(source.bounds.x + source.bounds.width -
                               ScaleUIPx(8)),
                         (int)source.bounds.y, (int)source.bounds.height,
-                        content_h, source.scroll_y, max_scroll_y);
+                        content_h, source.scroll_y, max_scroll_y, 0);
     return max_scroll_x > 0 || max_scroll_y > 0;
+}
+
+static int
+ui_table_display_column(TableViewProps table, int slot)
+{
+    if(table.column_order == NULL) {
+        if(slot < 0 || slot >= table.column_count)
+            return -1;
+        if(table.column_enabled != NULL && table.column_enabled[slot] == 0)
+            return -1;
+        return slot;
+    }
+
+    int ordinal = 0;
+    for(int order_slot = 0; order_slot < table.column_count; order_slot++) {
+        int column = table.column_order[order_slot];
+        int duplicate = 0;
+        if(column < 0 || column >= table.column_count)
+            continue;
+        for(int previous = 0; previous < order_slot; previous++)
+            if(table.column_order[previous] == column)
+                duplicate = 1;
+        if(duplicate || (table.column_enabled != NULL && table.column_enabled[column] == 0))
+            continue;
+        if(ordinal++ == slot)
+            return column;
+    }
+    for(int column = 0; column < table.column_count; column++) {
+        int requested = 0;
+        for(int order_slot = 0; order_slot < table.column_count; order_slot++)
+            if(table.column_order[order_slot] == column)
+                requested = 1;
+        if(requested || (table.column_enabled != NULL && table.column_enabled[column] == 0))
+            continue;
+        if(ordinal++ == slot)
+            return column;
+    }
+    return -1;
+}
+
+static int
+ui_table_visible_columns(TableViewProps table)
+{
+    int count = 0;
+
+    for(int slot = 0; slot < table.column_count; slot++)
+        if(ui_table_display_column(table, slot) >= 0)
+            count++;
+    return count;
+}
+
+static int
+ui_table_column_width(TableViewProps table, int column, int default_width)
+{
+    return table.column_widths != NULL && table.column_widths[column] > 0
+        ? table.column_widths[column] : default_width;
+}
+
+static int
+ui_table_column_x(TableViewProps table, int column, int default_width)
+{
+    int x = (int)table.bounds.x;
+
+    for(int slot = 0; slot < table.column_count; slot++) {
+        int current = ui_table_display_column(table, slot);
+        if(current == column)
+            return x;
+        if(current >= 0)
+            x += ui_table_column_width(table, current, default_width);
+    }
+    return x;
+}
+
+static int
+ui_table_separator_at_x(TableViewProps table, int x, int tolerance,
+                        int default_width, int *separator_x)
+{
+    int cursor = (int)table.bounds.x;
+
+    for(int slot = 0; slot < table.column_count; slot++) {
+        int column = ui_table_display_column(table, slot);
+        if(column < 0)
+            continue;
+        cursor += ui_table_column_width(table, column, default_width);
+        if(x >= cursor - tolerance && x <= cursor + tolerance) {
+            if(separator_x != NULL)
+                *separator_x = cursor;
+            return column;
+        }
+    }
+    return -1;
+}
+
+static float
+ui_table_header_shift(TableViewProps table, float y)
+{
+    float angle = table.header_angle;
+    if(!isfinite(angle) || angle == 0) return 0;
+    angle = fmaxf(-89,fminf(89,angle));
+    float height = ScaleUIPx(table.header_height > 30 ? table.header_height : 30);
+    return -(height-(y-table.bounds.y))/tanf(angle*3.14159265358979323846f/180);
+}
+
+Rectangle
+BeginTableCell(TableViewProps table, int row, int column)
+{
+    Rectangle cell = {0,0,0,0}, clip = {0,0,0,0};
+    int visible = ui_table_visible_columns(table), found = 0;
+    for(int slot = 0; slot < table.column_count; slot++)
+        if(ui_table_display_column(table,slot) == column) found = 1;
+    if(found && visible > 0 && row >= 0 && row < table.row_count) {
+        int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
+        int header_h = ScaleUIPx(table.header_height > 30 ? table.header_height : 30);
+        int body_h = (int)table.bounds.height-header_h;
+        if(body_h < 0) body_h = 0;
+        int frozen = table.freeze_rows;
+        if(frozen < 0) frozen = 0;
+        if(frozen > table.row_count) frozen = table.row_count;
+        if(frozen > body_h/row_h) frozen = body_h/row_h;
+        int scroll = table.scroll_offset != NULL ? *table.scroll_offset : 0;
+        int default_width = (int)table.bounds.width/visible;
+        cell = (Rectangle){(float)ui_table_column_x(table,column,default_width),
+                           table.bounds.y+header_h+row*row_h-(row >= frozen ? scroll : 0),
+                           (float)ui_table_column_width(table,column,default_width),(float)row_h};
+        Rectangle viewport = {table.bounds.x,table.bounds.y+header_h,
+                              table.bounds.width,(float)body_h};
+        if(row < frozen) viewport.height = (float)(frozen*row_h);
+        else { viewport.y += frozen*row_h; viewport.height -= frozen*row_h; }
+        clip = GetCollisionRec(cell,viewport);
+    }
+    BeginDisabled(table.disabled);
+    (void)BeginScroll(clip,(int)clip.height,NULL);
+    return cell;
+}
+
+void
+EndTableCell(void)
+{
+    EndScroll();
+    EndDisabled();
 }
 
 int
@@ -2348,18 +2660,34 @@ DrawUITableView(TableViewProps table)
     static int last_table_row = -1;
     static int last_table_column = -1;
     static double last_table_click_time = 0.0;
+    static int resize_table_id = 0;
+    static int resize_column = -1;
+    static int resize_start_x = 0;
+    static int resize_start_width = 0;
     int paint = IsWindowReady();
     int font = GetSmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
     int header_h = ScaleUIPx(30);
+    if(table.header_height > 30) header_h = ScaleUIPx(table.header_height);
     int default_col_w;
     int scroll_y;
     int first;
     int y_offset;
     int visible;
+    int frozen_rows;
+    int scroll_body_h;
     int max_scroll;
     int changed = 0;
 
+    table.disabled = table.disabled || UIContentDisabled();
+
+    if(resize_column >= 0 &&
+       (UIContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
+       (UIContentDisabled() || resize_table_id != table.id || table.disabled || !table.resizable ||
+        table.column_widths == NULL)) {
+        resize_table_id = 0;
+        resize_column = -1;
+    }
     if(table.column_count < 1)
         return 0;
     if(table.activated_row != NULL)
@@ -2370,35 +2698,140 @@ DrawUITableView(TableViewProps table)
         *table.right_clicked_row = -1;
     if(table.right_clicked_column != NULL)
         *table.right_clicked_column = -1;
-    default_col_w = (int)table.bounds.width / table.column_count;
-    max_scroll = ui_update_scroll((Rectangle){table.bounds.x, table.bounds.y + header_h,
-                                              table.bounds.width, table.bounds.height - header_h},
-                                  table.row_count * row_h, table.scroll_offset, row_h);
+    int visible_columns = ui_table_visible_columns(table);
+    if(visible_columns < 1)
+        return 0;
+    default_col_w = (int)table.bounds.width / visible_columns;
+    frozen_rows = table.freeze_rows;
+    if(frozen_rows < 0)
+        frozen_rows = 0;
+    if(frozen_rows > table.row_count)
+        frozen_rows = table.row_count;
+    int max_frozen_rows = (int)(table.bounds.height - header_h) / row_h;
+    if(max_frozen_rows < 0)
+        max_frozen_rows = 0;
+    if(frozen_rows > max_frozen_rows)
+        frozen_rows = max_frozen_rows;
+    scroll_body_h = (int)table.bounds.height - header_h - frozen_rows * row_h;
+    if(scroll_body_h < 0)
+        scroll_body_h = 0;
+    if(!UIContentDisabled() && !table.disabled && table.resizable && table.column_widths != NULL) {
+        Vector2 mouse = ui_mouse_world();
+        Rectangle header = {table.bounds.x, table.bounds.y,
+                            table.bounds.width, (float)header_h};
+        if(resize_column < 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+           ui_contains(header, mouse)) {
+            int separator_x = 0;
+            int column = ui_table_separator_at_x(table, (int)(mouse.x-ui_table_header_shift(table,mouse.y)),
+                                                  ScaleUIPx(5), default_col_w,
+                                                  &separator_x);
+            if(column >= 0) {
+                resize_table_id = table.id;
+                resize_column = column;
+                resize_start_x = (int)mouse.x;
+                resize_start_width = ui_table_column_width(table, column,
+                                                           default_col_w);
+                MarkUIClickable();
+            }
+        }
+        if(resize_column >= 0 && resize_table_id == table.id) {
+            int minimum = table.min_column_width > 0
+                ? ScaleUIPx(table.min_column_width) : ScaleUIPx(32);
+            if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+                int width = resize_start_width + (int)mouse.x - resize_start_x;
+                if(width < minimum)
+                    width = minimum;
+                if(table.column_widths[resize_column] != width) {
+                    table.column_widths[resize_column] = width;
+                    changed = 1;
+                }
+                MarkUIClickable();
+            }
+            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                UIConsumeRelease();
+                resize_table_id = 0;
+                resize_column = -1;
+            }
+        }
+    }
+    max_scroll = ui_update_scroll((Rectangle){table.bounds.x,
+                                              table.bounds.y + header_h + frozen_rows * row_h,
+                                              table.bounds.width, (float)scroll_body_h},
+                                  (table.row_count - frozen_rows) * row_h,
+                                  table.disabled ? NULL : table.scroll_offset, row_h);
     scroll_y = table.scroll_offset != NULL ? *table.scroll_offset : 0;
-    first = scroll_y / row_h;
+    first = frozen_rows + scroll_y / row_h;
     y_offset = scroll_y % row_h;
-    visible = (int)(table.bounds.height - header_h) / row_h;
+    visible = scroll_body_h / row_h;
     if(paint)
         ui_draw_panel(table.bounds);
 
-    for(int c = 0; c < table.column_count; c++) {
-        int x = (int)table.bounds.x;
-        int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
-        for(int prev = 0; prev < c; prev++)
-            x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
+    for(int slot = 0; slot < table.column_count; slot++) {
+        int c = ui_table_display_column(table, slot);
+        if(c < 0)
+            continue;
+        int x = ui_table_column_x(table, c, default_col_w);
+        int col_w = ui_table_column_width(table, c, default_col_w);
         Rectangle head = {(float)x, table.bounds.y, (float)col_w, (float)header_h};
         if(paint) {
-            DrawRectangleRec(head, DarkenUIColor(c_bg, 10));
-            DrawRectangleLinesEx(head, 1.0f, DarkenUIColor(c_bg, 28));
-            DrawUIText(table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "",
-                       (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, c_text);
+            Color header_color = DarkenUIColor(c_bg, table.disabled ? 32 : 10);
+            Color text_color = table.disabled ? DarkenUIColor(c_text, 38) : c_text;
+            float shift = ui_table_header_shift(table,head.y);
+            if(shift != 0) {
+                Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
+                Vector2 c = {head.x+head.width,head.y+head.height}, d = {head.x,head.y+head.height};
+                BeginUIClip((int)table.bounds.x,(int)table.bounds.y,(int)table.bounds.width,header_h);
+                DrawTriangle(a,d,c,header_color); DrawTriangle(a,c,b,header_color);
+                EndUIClip();
+            } else {
+                DrawRectangleRec(head, header_color);
+                DrawRectangleLinesEx(head, 1.0f, DarkenUIColor(c_bg, 28));
+            }
+            const char *label = table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "";
+            float angle = isfinite(table.header_angle) ? fmaxf(-89, fminf(89,table.header_angle)) : 0;
+            if(angle != 0) {
+                /* Scissor one raster row at a time to clip glyphs to the slanted
+                   cell without a backend-specific stencil or offscreen target. */
+                for(int row = 0; row < header_h; row++) {
+                    float left = head.x + ui_table_header_shift(table,head.y+row+0.5f);
+                    int x0 = (int)ceilf(fmaxf(table.bounds.x,left)-0.5f);
+                    int x1 = (int)ceilf(fminf(table.bounds.x+table.bounds.width,left+head.width)-0.5f);
+                    if(x1 <= x0) continue;
+                    BeginUIClip(x0,(int)head.y+row,x1-x0,1);
+                    DrawTextPro(GetUIFont(), label,
+                            (Vector2){head.x + (angle > 0 ? shift : 0) + ScaleUIPx(6), angle < 0 ? head.y + head.height - ScaleUIPx(6) : head.y + ScaleUIPx(6)},
+                            (Vector2){0,0}, angle, font, 1, text_color);
+                    EndUIClip();
+                }
+            } else DrawUIText(label, (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, text_color);
+            if(table.resizable && table.column_widths != NULL) {
+                BeginUIClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
+                DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
+                         (int)(head.x + head.width) - 1,
+                         (int)(head.y + head.height),
+                         table.disabled ? DarkenUIColor(c_button, 38) : c_button);
+                EndUIClip();
+            }
         }
-        if(ui_clicked(head) && table.sort_column != NULL) {
+        Vector2 header_mouse = ui_mouse_world();
+        Vector2 local_mouse = {header_mouse.x-ui_table_header_shift(table,header_mouse.y),header_mouse.y};
+        Rectangle all_headers = {table.bounds.x,table.bounds.y,table.bounds.width,(float)header_h};
+        if(!table.disabled && ui_contains(all_headers,header_mouse) && ui_contains(head,local_mouse) &&
+           !UIInputCapturesClick(header_mouse) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.sort_column != NULL) {
+            int previous_sort_column = *table.sort_column;
             if(table.selected_row != NULL)
                 *table.selected_row = -1;
             if(table.selected_column != NULL)
                 *table.selected_column = c;
             *table.sort_column = c;
+            if(table.sort_direction != NULL) {
+                if(previous_sort_column != c || *table.sort_direction == 0)
+                    *table.sort_direction = 1;
+                else if(*table.sort_direction > 0)
+                    *table.sort_direction = -1;
+                else
+                    *table.sort_direction = 0;
+            }
             changed = 1;
         }
     }
@@ -2406,42 +2839,74 @@ DrawUITableView(TableViewProps table)
     if(paint)
         BeginUIClip((int)table.bounds.x, (int)(table.bounds.y + header_h),
                     (int)table.bounds.width, (int)(table.bounds.height - header_h));
-    for(int i = 0; i <= visible && first + i < table.row_count; i++) {
-        int r = first + i;
-        Rectangle row = {table.bounds.x, table.bounds.y + header_h + (float)(i * row_h - y_offset),
+    for(int draw_index = 0; draw_index < frozen_rows + visible + 1; draw_index++) {
+        int scrolling = draw_index >= frozen_rows;
+        if(paint && draw_index == frozen_rows) {
+            EndUIClip();
+            BeginUIClip((int)table.bounds.x,
+                        (int)table.bounds.y + header_h + frozen_rows * row_h,
+                        (int)table.bounds.width, scroll_body_h);
+        }
+        int i = draw_index - frozen_rows;
+        int r = scrolling ? first + i : draw_index;
+        if(r < 0 || r >= table.row_count)
+            continue;
+        Rectangle row = {table.bounds.x,
+                         scrolling
+                             ? table.bounds.y + header_h + frozen_rows * row_h +
+                                   (float)(i * row_h - y_offset)
+                             : table.bounds.y + header_h + (float)(r * row_h),
                          table.bounds.width, (float)row_h};
-        int hot = ui_hot(row);
+        Rectangle viewport = {table.bounds.x,
+                              table.bounds.y + header_h + (scrolling ? frozen_rows * row_h : 0),
+                              table.bounds.width,
+                              (float)(scrolling ? scroll_body_h : frozen_rows * row_h)};
+        int hot = !table.disabled && !table.custom_cells && ui_contains(viewport, ui_mouse_world()) && ui_hot(row);
         if(paint && table.selected_row != NULL && *table.selected_row == r)
             DrawRectangleRec(row, DarkenUIColor(c_bg, 18));
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
             MarkUIClickable();
-        for(int c = 0; c < table.column_count; c++) {
-            int x = (int)table.bounds.x;
-            int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
+        for(int slot = 0; slot < table.column_count; slot++) {
+            int c = ui_table_display_column(table, slot);
+            if(c < 0)
+                continue;
+            int x = ui_table_column_x(table, c, default_col_w);
+            int col_w = ui_table_column_width(table, c, default_col_w);
             const char *text = "";
-            for(int prev = 0; prev < c; prev++)
-                x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
             if(table.rows != NULL && table.rows[r].cells != NULL && c < table.rows[r].cell_count)
                 text = table.rows[r].cells[c] != NULL ? table.rows[r].cells[c] : "";
             if(paint) {
+                if(table.rows != NULL && table.rows[r].background_colors != NULL &&
+                   c < table.rows[r].cell_count && table.rows[r].background_colors[c].a != 0)
+                    DrawRectangleRec((Rectangle){(float)x, row.y, (float)col_w, row.height},
+                                     table.disabled
+                                         ? DarkenUIColor(table.rows[r].background_colors[c], 38)
+                                         : table.rows[r].background_colors[c]);
                 BeginUIClip(x, (int)row.y, col_w, (int)row.height);
-                DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, c_text);
+                Color text_color = c_text;
+                if(table.rows != NULL && table.rows[r].text_colors != NULL &&
+                   c < table.rows[r].cell_count && table.rows[r].text_colors[c].a != 0)
+                    text_color = table.rows[r].text_colors[c];
+                if(table.disabled)
+                    text_color = DarkenUIColor(text_color, 38);
+                DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, text_color);
                 EndUIClip();
             }
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
+        if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
             int clicked_col = -1;
             double now = GetTime();
             Vector2 mouse = GetMousePosition();
             UIConsumeRelease();
             *table.selected_row = r;
-            for(int c = 0; c < table.column_count; c++) {
-                int x = (int)table.bounds.x;
-                int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
-                for(int prev = 0; prev < c; prev++)
-                    x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
+            for(int slot = 0; slot < table.column_count; slot++) {
+                int c = ui_table_display_column(table, slot);
+                if(c < 0)
+                    continue;
+                int x = ui_table_column_x(table, c, default_col_w);
+                int col_w = ui_table_column_width(table, c, default_col_w);
                 if(mouse.x >= (float)x && mouse.x < (float)(x + col_w)) {
                     clicked_col = c;
                     break;
@@ -2463,14 +2928,15 @@ DrawUITableView(TableViewProps table)
             last_table_click_time = now;
             changed = 1;
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
             int clicked_col = -1;
             Vector2 mouse = GetMousePosition();
-            for(int c = 0; c < table.column_count; c++) {
-                int x = (int)table.bounds.x;
-                int col_w = table.column_widths != NULL ? table.column_widths[c] : default_col_w;
-                for(int prev = 0; prev < c; prev++)
-                    x += table.column_widths != NULL ? table.column_widths[prev] : default_col_w;
+            for(int slot = 0; slot < table.column_count; slot++) {
+                int c = ui_table_display_column(table, slot);
+                if(c < 0)
+                    continue;
+                int x = ui_table_column_x(table, c, default_col_w);
+                int col_w = ui_table_column_width(table, c, default_col_w);
                 if(mouse.x >= (float)x && mouse.x < (float)(x + col_w)) {
                     clicked_col = c;
                     break;
@@ -2486,10 +2952,11 @@ DrawUITableView(TableViewProps table)
     if(paint)
         EndUIClip();
     if(paint && table.scroll_offset != NULL && max_scroll > 0)
-        DrawUIScrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
-                        (int)(table.bounds.y + header_h),
-                        (int)(table.bounds.height - header_h),
-                        table.row_count * row_h, table.scroll_offset, max_scroll);
+        ui_scrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
+                        (int)(table.bounds.y + header_h + frozen_rows * row_h),
+                        scroll_body_h,
+                        (table.row_count - frozen_rows) * row_h,
+                        table.scroll_offset, max_scroll, 0);
     return changed;
 }
 
@@ -2624,55 +3091,142 @@ DrawUINotebook(NotebookProps notebook)
 int
 DrawUIPanedView(PanedViewProps panes)
 {
+    static int *active_split;
     int changed = 0;
-    int split = panes.split != NULL ? *panes.split : (panes.vertical ? (int)panes.bounds.width / 2 : (int)panes.bounds.height / 2);
+    int limit = (int)(panes.vertical ? panes.bounds.width : panes.bounds.height) - panes.min_second;
+    if(limit < panes.min_first) limit = panes.min_first;
+    int split = panes.split != NULL ? *panes.split : limit / 2;
+    split = ui_clampi(split, panes.min_first, limit);
     int grip = ScaleUIPx(8);
-    Rectangle handle;
-
-    if(panes.vertical)
-        handle = (Rectangle){panes.bounds.x + split - grip / 2, panes.bounds.y, (float)grip, panes.bounds.height};
-    else
-        handle = (Rectangle){panes.bounds.x, panes.bounds.y + split - grip / 2, panes.bounds.width, (float)grip};
-    DrawRectangleRec(handle, c_button);
-    if(ui_hot(handle)) {
+    Rectangle handle = panes.vertical
+        ? (Rectangle){panes.bounds.x + split - grip / 2, panes.bounds.y, grip, panes.bounds.height}
+        : (Rectangle){panes.bounds.x, panes.bounds.y + split - grip / 2, panes.bounds.width, grip};
+    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) active_split = NULL;
+    if(UIContentDisabled() && active_split == panes.split) active_split = NULL;
+    if(!UIContentDisabled() && ui_hot(handle)) {
         MarkUIClickable();
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && panes.split != NULL) {
-            Vector2 mouse = ui_mouse_world();
-            split = panes.vertical ? (int)(mouse.x - panes.bounds.x) : (int)(mouse.y - panes.bounds.y);
-            if(split < panes.min_first)
-                split = panes.min_first;
-            if(panes.vertical && split > (int)panes.bounds.width - panes.min_second)
-                split = (int)panes.bounds.width - panes.min_second;
-            if(!panes.vertical && split > (int)panes.bounds.height - panes.min_second)
-                split = (int)panes.bounds.height - panes.min_second;
-            *panes.split = split;
-            changed = 1;
-        }
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) active_split = panes.split;
     }
+    if(active_split != NULL && active_split == panes.split) {
+        Vector2 mouse = ui_mouse_world();
+        int next = panes.vertical ? (int)(mouse.x - panes.bounds.x) : (int)(mouse.y - panes.bounds.y);
+        split = ui_clampi(next, panes.min_first, limit);
+    }
+    if(panes.split != NULL && *panes.split != split) {
+        *panes.split = split;
+        changed = 1;
+    }
+    if(panes.vertical) handle.x = panes.bounds.x + split - grip / 2;
+    else handle.y = panes.bounds.y + split - grip / 2;
+    if(IsWindowReady()) DrawRectangleRec(handle, c_button);
     return changed;
+}
+
+typedef struct UITreeHeaderNav { int id, depth; } UITreeHeaderNav;
+static UITreeHeaderNav *g_tree_headers, *g_tree_previous;
+static int g_tree_header_count, g_tree_previous_count;
+static int g_tree_header_capacity, g_tree_previous_capacity;
+static unsigned long g_tree_header_frame, g_tree_key_frame;
+
+static void
+ui_tree_header_register(CollapsibleProps section, int enabled)
+{
+    if(g_tree_header_frame != g_ui_frame_serial) {
+        UITreeHeaderNav *swap = g_tree_previous;
+        int capacity = g_tree_previous_capacity;
+        g_tree_previous = g_tree_headers;
+        g_tree_previous_count = g_tree_header_frame + 1 == g_ui_frame_serial ? g_tree_header_count : 0;
+        g_tree_previous_capacity = g_tree_header_capacity;
+        g_tree_headers = swap;
+        g_tree_header_capacity = capacity;
+        g_tree_header_count = 0;
+        g_tree_header_frame = g_ui_frame_serial;
+    }
+    if(!enabled || !section.tree || section.id <= 0) return;
+    if(g_tree_header_count == g_tree_header_capacity) {
+        int capacity = g_tree_header_capacity ? g_tree_header_capacity * 2 : 32;
+        UITreeHeaderNav *items = realloc(g_tree_headers, sizeof(*items) * capacity);
+        if(items == NULL) return;
+        g_tree_headers = items;
+        g_tree_header_capacity = capacity;
+    }
+    g_tree_headers[g_tree_header_count++] = (UITreeHeaderNav){section.id, section.depth > 0 ? section.depth : 0};
+}
+
+static int
+ui_tree_header_target(int id, int key)
+{
+    for(int i = 0; i < g_tree_previous_count; i++) {
+        if(g_tree_previous[i].id != id) continue;
+        if(key == KEY_DOWN && i + 1 < g_tree_previous_count) return g_tree_previous[i+1].id;
+        if(key == KEY_UP && i > 0) return g_tree_previous[i-1].id;
+        if(key == KEY_RIGHT && i + 1 < g_tree_previous_count &&
+           g_tree_previous[i+1].depth > g_tree_previous[i].depth) return g_tree_previous[i+1].id;
+        if(key == KEY_LEFT)
+            for(int j = i - 1; j >= 0; j--)
+                if(g_tree_previous[j].depth < g_tree_previous[i].depth) return g_tree_previous[j].id;
+        break;
+    }
+    return id;
 }
 
 int
 DrawUICollapsible(CollapsibleProps section)
 {
     int font = GetFontSize();
+    int changed = 0;
     Rectangle header = section.bounds;
     header.height = ScaleUIPx(32);
-    DrawRectangleRec(header, c_button);
-    DrawRectangleLinesEx(header, 1.0f, c_button_hover);
-    DrawUIText(section.open != NULL && *section.open ? "v" : ">",
-               (int)header.x + ScaleUIPx(8), ui_row_text_y(header, font), font, c_icon);
-    DrawUIText(section.label != NULL ? section.label : "",
-               (int)header.x + ScaleUIPx(28), ui_row_text_y(header, font), font, c_text);
-    if(ui_hot(header)) {
+    if(section.tree && section.depth > 0) {
+        float indent = fminf((float)section.depth * ScaleUIPx(20), header.width);
+        header.x += indent;
+        header.width -= indent;
+    }
+    int enabled = !section.disabled && !UIContentDisabled();
+    ui_tree_header_register(section, enabled);
+    int focused = enabled && section.id > 0 && RegisterUIFocus(section.id, header);
+    if(focused) SetUIFocusTextInputActive(0);
+    if(enabled && ui_hot(header)) {
         MarkUIClickable();
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && section.open != NULL) {
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
-            *section.open = !*section.open;
-            return 1;
+            if(section.id > 0) SetUIFocus(section.id);
+            if(!section.leaf && section.open != NULL) {
+                *section.open = !*section.open;
+                changed = 1;
+            }
         }
     }
-    return 0;
+    if(focused && g_tree_key_frame != g_ui_frame_serial) {
+        int key = IsKeyPressed(KEY_DOWN) ? KEY_DOWN : IsKeyPressed(KEY_UP) ? KEY_UP :
+                  IsKeyPressed(KEY_RIGHT) ? KEY_RIGHT : IsKeyPressed(KEY_LEFT) ? KEY_LEFT : 0;
+        int open = section.open != NULL && *section.open;
+        if(section.tree && (key == KEY_DOWN || key == KEY_UP ||
+           (key == KEY_RIGHT && open && !section.leaf) || (key == KEY_LEFT && (!open || section.leaf)))) {
+            SetUIFocus(ui_tree_header_target(section.id,key));
+            g_tree_key_frame = g_ui_frame_serial;
+        } else if(!section.leaf && section.open != NULL) {
+            if(key == KEY_RIGHT) *section.open = true;
+            if(key == KEY_LEFT) *section.open = false;
+            if(IsUIFocusActivatePressed(section.id)) *section.open = !*section.open;
+            changed |= open != *section.open;
+            if(key != 0 || IsUIFocusActivatePressed(section.id)) g_tree_key_frame = g_ui_frame_serial;
+        }
+    }
+    focused = enabled && section.id > 0 && IsUIFocusActive(section.id);
+    if(IsWindowReady()) {
+        Color text = c_text, icon = c_icon;
+        if(section.disabled) { text.a = (unsigned char)(text.a * 0.45f); icon.a = (unsigned char)(icon.a * 0.45f); }
+        if(!section.tree || section.selected)
+            DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
+        if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
+        DrawUIText(section.leaf ? "•" : section.open != NULL && *section.open ? "v" : ">",
+                   (int)header.x + ScaleUIPx(8), ui_row_text_y(header, font), font, icon);
+        DrawUIText(section.label != NULL ? section.label : "",
+                   (int)header.x + ScaleUIPx(28), ui_row_text_y(header, font), font, text);
+        if(focused) DrawUIFocus(header);
+    }
+    return changed;
 }
 
 int
@@ -2808,8 +3362,9 @@ DrawUITextPopover(TextPopoverProps popover)
                         (float)popover_w, (float)popover_h};
     SetUIModalCapture(panel);
     if((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !CheckCollisionPointRec(mouse, panel)) {
+        (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !UIReleaseConsumed())) &&
+       !CheckCollisionPointRec(mouse, panel) &&
+       !CheckCollisionPointRec(mouse, popover.anchor)) {
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             UIConsumeRelease();
         return 1;
@@ -3037,6 +3592,8 @@ DrawUIColorPicker(Rectangle bounds, Color *color)
 int
 AcceleratorPressed(Accelerator accelerator)
 {
+    if(!UIKeyboardInputEnabled())
+        return 0;
     if(accelerator.ctrl &&
        !(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)))
         return 0;

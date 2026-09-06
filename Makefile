@@ -447,7 +447,14 @@ docs-site:
 	test -f $(SITE_BUILD_DIR)/matrices.html
 	test -f $(SITE_BUILD_DIR)/renderers.html
 
-spec-test: $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
+.PHONY: language-test
+language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
+	@mkdir -p $(BUILD_DIR)/tests
+	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c cmd/kir/kir.c cmd/kir/kir_expr.c cmd/kir/kir_token.c cmd/kir/kir_text.c -o $(BUILD_DIR)/tests/kir_expression_test
+	$(BUILD_DIR)/tests/kir_expression_test
+	python3 tests/language_semantics_test.py $(BUILD_DIR)
+
+spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 
 runtime-parity-check:
@@ -603,8 +610,8 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c
-KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c
+KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_emit.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
@@ -923,6 +930,14 @@ $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(B
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
+$(BUILD_DIR)/tests/overlay_paint_test: tests/overlay_paint_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: overlay-paint-test
+overlay-paint-test: $(BUILD_DIR)/tests/overlay_paint_test
+	xvfb-run -a $(BUILD_DIR)/tests/overlay_paint_test
+
 $(UI_SWIPE_TEST): tests/ui_swipe_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_swipe_test.c \
@@ -956,6 +971,15 @@ $(UI_WINDOW_TEST): tests/ui_window_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_window_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+# Pixel integration test for the raylib/X11 presenter; requires GNU-style --wrap.
+$(BUILD_DIR)/tests/texture_scope_test: tests/texture_scope_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=LoadImageFromTexture -Wl,--wrap=DrawUIText -o $@
+
+.PHONY: texture-scope-test
+texture-scope-test: $(BUILD_DIR)/tests/texture_scope_test
+	KRYON_SHOT_ARM=1 $(BUILD_DIR)/tests/texture_scope_test
 
 # Compile-only coverage for the SDL secondary-window presenter (Wayland and
 # SDL-bundled platforms). The default Linux/FreeBSD build takes the X11 path,

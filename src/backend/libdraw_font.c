@@ -802,6 +802,43 @@ DrawTextEx(Font font, const char *text, Vector2 position, float fontSize,
 }
 
 void
+DrawTextPro(Font font, const char *text, Vector2 position, Vector2 origin,
+             float rotation, float fontSize, float spacing, Color tint)
+{
+    const char *p = text;
+    float scale, angle, cosine, sine, pen_x = 0, pen_y = 0;
+    if(text == NULL || fontSize <= 0) return;
+    if(rotation == 0) {
+        DrawTextEx(font, text, (Vector2){position.x - origin.x, position.y - origin.y},
+                    fontSize, spacing, tint);
+        return;
+    }
+    if(!IsFontValid(font)) font = GetFontDefault();
+    if(!IsFontValid(font)) return;
+    scale = fontSize / font.baseSize;
+    angle = rotation * 0.017453292519943295f;
+    cosine = cosf(angle); sine = sinf(angle);
+    while(*p != '\0') {
+        int bytes = 0, cp = GetCodepointNext(p, &bytes);
+        GlyphInfo glyph;
+        Rectangle src, dst;
+        float x, y;
+        if(bytes <= 0) bytes = 1;
+        p += bytes;
+        if(cp == '\n') { pen_x = 0; pen_y += fontSize; continue; }
+        glyph = GetGlyphInfo(font, cp);
+        src = GetGlyphAtlasRec(font, cp);
+        x = pen_x + glyph.offsetX * scale - origin.x;
+        y = pen_y + glyph.offsetY * scale - origin.y;
+        dst = (Rectangle){position.x + x * cosine - y * sine,
+                          position.y + x * sine + y * cosine,
+                          src.width * scale, src.height * scale};
+        DrawTexturePro(font.texture, src, dst, (Vector2){0, 0}, rotation, tint);
+        pen_x += glyph.advanceX * scale + spacing;
+    }
+}
+
+void
 DrawText(const char *text, int posX, int posY, int fontSize, Color color)
 {
     DrawTextEx(GetFontDefault(), text, (Vector2){(float)posX, (float)posY},

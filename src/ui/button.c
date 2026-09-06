@@ -167,10 +167,17 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             SetUIFocusTextInputActive(0);
             ui_material_focus(draw_bounds);
         }
-        DrawCenteredUIControlText(button.label ? button.label : "",
-                                  (int)(draw_bounds.x + draw_bounds.width * 0.5f),
-                                  (int)(draw_bounds.y + draw_bounds.height * 0.5f),
-                                  font, text);
+        {
+            int inset = ScaleUIPx(12);
+            Rectangle label_bounds = draw_bounds;
+
+            label_bounds.x += inset;
+            label_bounds.width -= inset * 2;
+            if(label_bounds.width < 1)
+                label_bounds.width = 1;
+            DrawFittedTextInRect(button.label ? button.label : "",
+                                 label_bounds, font, Text8, text);
+        }
         if(handle_input)
             EndUIWidget(&widget);
         return handle_input
@@ -209,10 +216,17 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         DrawUIFocus(draw_bounds);
     }
 
-    DrawCenteredUIControlText(button.label ? button.label : "",
-                              (int)(draw_bounds.x + draw_bounds.width * 0.5f),
-                              (int)(draw_bounds.y + draw_bounds.height * 0.5f),
-                              font, text);
+    {
+        int inset = ScaleUIPx(8);
+        Rectangle label_bounds = draw_bounds;
+
+        label_bounds.x += inset;
+        label_bounds.width -= inset * 2;
+        if(label_bounds.width < 1)
+            label_bounds.width = 1;
+        DrawFittedTextInRect(button.label ? button.label : "",
+                             label_bounds, font, Text8, text);
+    }
     if(handle_input)
         EndUIWidget(&widget);
     return handle_input
@@ -459,7 +473,7 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     return RenderButton(spec);
 }
 
-static void
+void
 ui_button_style_colors(ButtonStyle style, Color *bg, Color *hover_bg,
                        Color *text_color)
 {
