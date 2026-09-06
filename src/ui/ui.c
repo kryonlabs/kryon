@@ -1453,27 +1453,30 @@ DrawUIFocus(Rectangle bounds)
 }
 
 int
-GetUIFontSize(void)
+GetFontSize(void)
 {
-    return Text16;
+    return ScaleUIPx(Text16);
 }
 
 int
-GetUISmallFontSize(void)
+GetSmallFontSize(void)
 {
-    return Text12;
+    return ScaleUIPx(Text14);
 }
 
 int
-GetUITitleFontSize(const char *title, int max_width)
+GetTitleFontSize(const char *title, int max_width)
 {
     const char *value = title != NULL ? title : "";
+    int large = ScaleUIPx(Text24);
+    int medium = ScaleUIPx(Text16);
+    int small = ScaleUIPx(Text14);
 
-    if(max_width <= 0 || TextWidth(value, Text24) <= max_width)
-        return Text24;
-    if(TextWidth(value, Text16) <= max_width)
-        return Text16;
-    return Text12;
+    if(max_width <= 0 || TextWidth(value, large) <= max_width)
+        return large;
+    if(TextWidth(value, medium) <= max_width)
+        return medium;
+    return small;
 }
 
 int
@@ -1805,7 +1808,7 @@ RenderTextInputControl(TextInputProps input)
 
     DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
-                             input.font > 0 ? input.font : GetUIFontSize(),
+                             input.font > 0 ? input.font : GetFontSize(),
                              input.style);
     EndUIWidget(&widget);
     return focused;
@@ -1817,7 +1820,7 @@ DrawUIHref(HrefProps link)
     char editor_id[96];
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
-    int font = link.font > 0 ? link.font : GetUIFontSize();
+    int font = link.font > 0 ? link.font : GetFontSize();
     const char *text = link.text != NULL ? link.text : "";
     int text_w = TextWidth(text, font);
     Rectangle bounds = link.bounds;
@@ -2519,7 +2522,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
-    int font = area.font > 0 ? area.font : GetUIFontSize();
+    int font = area.font > 0 ? area.font : GetFontSize();
     int line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     int padding_x = area.style.padding_x > 0
         ? area.style.padding_x : ScaleUIPx(10);
@@ -2554,7 +2557,7 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
 
     if(area.text == NULL || area.scroll_y == NULL)
         return;
-    font = area.font > 0 ? area.font : GetUIFontSize();
+    font = area.font > 0 ? area.font : GetFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     padding_x = area.style.padding_x > 0
         ? area.style.padding_x : ScaleUIPx(10);
@@ -2600,7 +2603,7 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
     if(area.text == NULL)
         return;
     area.style = ui_resolve_text_input_style(area.style);
-    font = area.font > 0 ? area.font : GetUIFontSize();
+    font = area.font > 0 ? area.font : GetFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0
@@ -2688,7 +2691,7 @@ RenderTextArea(TextAreaProps area)
                            UI_WIDGET_RESIZABLE);
     area.bounds = widget.bounds;
 
-    font = area.font > 0 ? area.font : GetUIFontSize();
+    font = area.font > 0 ? area.font : GetFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
@@ -3547,7 +3550,7 @@ RenderTextField(TextFieldProps field)
                            UI_WIDGET_RESIZABLE);
     field.bounds = widget.bounds;
 
-    font = field.font > 0 ? field.font : GetUIFontSize();
+    font = field.font > 0 ? field.font : GetFontSize();
     padding_x = field.style.padding_x > 0 ? field.style.padding_x : ScaleUIPx(10);
     focused = *field.focused != 0;
     focused = IsUITextFocusOwner(field.focused) ? focused : 0;
@@ -3923,7 +3926,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
     int content_w = width - padding_x * 2;
 
     if(font <= 0)
-        font = GetUIFontSize();
+        font = GetFontSize();
     if(line_gap < 0)
         line_gap = 0;
     if(content_w < ScaleUIPx(24))
@@ -3962,7 +3965,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     UIWidget widget;
     char line[1024];
     const char *text = box.text != NULL ? box.text : "";
-    int font = box.font > 0 ? box.font : GetUIFontSize();
+    int font = box.font > 0 ? box.font : GetFontSize();
     int padding_x = box.style.padding_x > 0 ? box.style.padding_x : ScaleUIPx(10);
     int padding_y = box.style.padding_y > 0 ? box.style.padding_y : ScaleUIPx(8);
     int line_gap = box.line_gap > 0 ? box.line_gap : 0;
@@ -4036,7 +4039,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
 static TextLayout
 ParagraphLayout(ParagraphSpec paragraph)
 {
-    int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
+    int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
     int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : ScaleUIPx(4);
     int icon_size = paragraph.icon_size > 0 ? paragraph.icon_size : font;
     TextLayout layout = ParseTextLayout(paragraph.text ? paragraph.text : "",
@@ -4063,7 +4066,7 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
 {
     if(y == NULL || paragraph.width <= 0)
         return;
-    int font = paragraph.font > 0 ? paragraph.font : GetUIFontSize();
+    int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     TextLayout layout = ParagraphLayout(paragraph);
     DrawTextLayout(&layout, x, y, font, color);
@@ -4420,7 +4423,7 @@ DrawUISubtabBar(SubtabBarProps bar)
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int clicked_tab = -1;
-    int font = bar.font > 0 ? bar.font : GetUIFontSize();
+    int font = bar.font > 0 ? bar.font : GetFontSize();
     int tab_w;
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;

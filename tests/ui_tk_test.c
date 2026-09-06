@@ -60,6 +60,16 @@ test_theme_surface_helpers(void)
 }
 
 static void
+test_semantic_font_sizes_follow_ui_scale(void)
+{
+    BeginUIFrame(720, 1400, 1.75f);
+    check_int("body font at 1.75x", GetFontSize(), 28);
+    check_int("small font at 1.75x", GetSmallFontSize(), 25);
+    check_int("title font at 1.75x", GetTitleFontSize("Title", 1000), 42);
+    EndUIFrame();
+}
+
+static void
 test_menu_bar_switches_while_popup_captures_input(void)
 {
     static const MenuItem file_items[] = {
@@ -80,7 +90,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
 
     InjectReset();
     BeginUIFrame(640, 480, 1.0f);
-    font = GetUIFontSize();
+    font = GetFontSize();
     edit_x = ScaleUIPx(4) + TextWidth("File", font) + ScaleUIPx(24) +
              ScaleUIPx(2) + ScaleUIPx(8);
     EndUIFrame();
@@ -148,6 +158,7 @@ main(void)
 
     SetUIScale(1.0f);
     test_theme_surface_helpers();
+    test_semantic_font_sizes_follow_ui_scale();
     test_circle_click_uses_ui_release_path();
 
     SetThemeStyle(THEME_STYLE_RETRO);

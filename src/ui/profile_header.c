@@ -203,8 +203,8 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     int avatar_y = header.y + top_pad + avatar_r;
     int name_x = avatar_x + avatar_r + ScaleUIPx(14);
     int name_y = avatar_y - ScaleUIPx(14);
-    int name_font = GetUIFontSize();
-    int small_font = GetUISmallFontSize();
+    int name_font = GetFontSize();
+    int small_font = GetSmallFontSize();
     int count_y = avatar_y + avatar_r + ScaleUIPx(8);
     int click_enabled = header.current_frame == 0 ||
                         header.current_frame != header.block_click_frame;

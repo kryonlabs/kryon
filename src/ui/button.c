@@ -55,7 +55,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     int hovered;
     int focused;
     int clicked = 0;
-    int font = button.font > 0 ? button.font : GetUIFontSize();
+    int font = button.font > 0 ? button.font : GetFontSize();
     Color background = button.background.a != 0 ? button.background : c_button;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
     Color text = button.text.a != 0 ? button.text : c_text;
@@ -429,7 +429,7 @@ int
 RenderTextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     const char *text = label != NULL ? label : "";
     int w = (int)TextWidth(text, font) + ScaleUIPx(16);
     int h = TextLineHeight(font) + ScaleUIPx(8);
@@ -509,7 +509,7 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
                        ButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     Rectangle bounds = {x, y, w, h};
     int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     int captured = UIInputCapturesClick(mouse_world);
@@ -622,7 +622,7 @@ segmented_item_width(const SegmentOption *option, int font,
 int
 GetSegmentedControlHeight(SegmentedControlProps control)
 {
-    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int font = control.font > 0 ? control.font : GetSmallFontSize();
     int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
     int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
     int row_w = 0;
@@ -656,7 +656,7 @@ SegmentedControlResult
 SegmentedControl(SegmentedControlProps control)
 {
     SegmentedControlResult result;
-    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int font = control.font > 0 ? control.font : GetSmallFontSize();
     int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
     int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
     int row_start = 0;
@@ -801,7 +801,7 @@ ScoreControlResult
 ScoreControl(ScoreControlProps control)
 {
     ScoreControlResult result;
-    int font = control.font > 0 ? control.font : GetUISmallFontSize();
+    int font = control.font > 0 ? control.font : GetSmallFontSize();
     int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
     int row_h = control.height > 0 ? control.height : ScaleUIPx(34);
     int item_w = control.min_item_width > 0
@@ -944,7 +944,7 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     }
     DrawCircle(center_x, center_y, radius, fill);
     DrawCircleLines(center_x, center_y, radius, stroke);
-    font = GetUISmallFontSize();
+    font = GetSmallFontSize();
     DrawCenteredUIControlText("i", center_x, center_y, font, text);
 
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {

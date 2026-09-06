@@ -128,7 +128,7 @@ DrawUIBottomNav(BottomNavProps nav)
 
         if(ui_material_style()) {
             Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
-            int label_font = GetUISmallFontSize();
+            int label_font = GetSmallFontSize();
             int label_h = TextLineHeight(label_font);
             int label_y = y + height - ScaleUIPx(10) - label_h;
             int indicator_w = ScaleUIPx(56);
@@ -322,7 +322,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
                                      ? modal.slot_labels[i]
                                      : "";
         int remove_hover = 0;
-        DrawUIText(slot_label, frame.content_x, y, GetUIFontSize(), c_text);
+        DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
         if(DrawUIDropdown(modal.id + i, frame.content_x,
                           y + ScaleUIPx(22),
                           frame.content_w - remove_w - ScaleUIPx(8),

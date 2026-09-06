@@ -257,7 +257,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     char editor_id[96];
     UIDropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int arrow_pad = ScaleUIPx(24);
     int arrow_size = ScaleUIPx(6);
     int changed = 0;
@@ -447,7 +447,7 @@ draw_dropdown_menu(int id)
         return 0;
     }
 
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int x = state->x;
     int y = state->y;
     int w = state->w;

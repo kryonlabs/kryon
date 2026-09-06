@@ -10,8 +10,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
-    int label_font = GetUIFontSize();
-    int value_font = GetUIFontSize();
+    int label_font = GetFontSize();
+    int value_font = GetFontSize();
     int track_y = y + ScaleUIPx(28);
     int track_h = ScaleUIPx(8);
     int knob_w = ScaleUIPx(12);
@@ -396,7 +396,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ui_touch_target_min();
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int material_style = ui_material_style();
     int can_draw = IsWindowReady();
     int off_w = material_style ? 0 : TextWidth(off_label, font);
@@ -518,7 +518,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 {
     char editor_id[96];
     UIWidget widget;
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int box_size = ScaleUIPx(22);
     int label_gap = ScaleUIPx(10);
     int label_w = TextWidth(label, font);

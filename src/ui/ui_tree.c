@@ -1040,7 +1040,7 @@ RouteInput(void)
                                                   : UI_EVENT_BLUR, GetTime());
             }
             if(focused) {
-                int font = field->font > 0 ? field->font : GetUIFontSize();
+                int font = field->font > 0 ? field->font : GetFontSize();
                 int padding = field->style.padding_x > 0
                     ? field->style.padding_x : ScaleUIPx(10);
                 double now = GetTime();
@@ -1084,7 +1084,7 @@ RouteInput(void)
         if(!state->focused || field->text == NULL || field->text_size == 0)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int font = field->font > 0 ? field->font : GetUIFontSize();
+            int font = field->font > 0 ? field->font : GetFontSize();
             int padding = field->style.padding_x > 0
                 ? field->style.padding_x : ScaleUIPx(10);
             int cursor;
@@ -2150,7 +2150,7 @@ Toggle(int id, int x, int y, int w, int h, int *value,
 int
 Checkbox(int id, int x, int y, const char *label, int *value)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
                               (Rectangle){x, y,
                                   ScaleUIPx(30) + TextWidth(label, font),
@@ -2808,7 +2808,7 @@ Button(ButtonProps button)
     int clicked;
 
     if(spec.font <= 0)
-        spec.font = GetUIFontSize();
+        spec.font = GetFontSize();
     if(button.style == ButtonStyleSecondary) {
         spec.background = ui_material_style() ? ui_material_surface_variant() : GetThemeSurface();
         spec.hover_background = GetThemeButtonHover();

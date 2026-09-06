@@ -21,7 +21,7 @@ DrawUIInfoRows(InfoRowsProps rows)
     for(int i = 0; i < rows.row_count; i++) {
         const UIInfoRow *row = &rows.rows[i];
         int y = rows.y + i * row_h;
-        int font = row->font > 0 ? row->font : GetUIFontSize();
+        int font = row->font > 0 ? row->font : GetFontSize();
         Color text = row->color.a != 0 ? row->color : default_text;
 
         if(i > 0)
@@ -55,7 +55,7 @@ GetUILabelTextFieldHeight(LabelTextFieldProps row)
 int
 DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
-    int label_font = row.label_font > 0 ? row.label_font : GetUISmallFontSize();
+    int label_font = row.label_font > 0 ? row.label_font : GetSmallFontSize();
     int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
     int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
     int gap = row.gap > 0 ? row.gap : 0;
@@ -76,7 +76,7 @@ ui_section_label_height(SectionLabelProps label)
 int
 DrawUISectionLabel(SectionLabelProps label, int x, int y)
 {
-    int font = label.font > 0 ? label.font : GetUISmallFontSize();
+    int font = label.font > 0 ? label.font : GetSmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : ScaleUIPx(18);
     Color color = label.color.a != 0 ? label.color : DarkenUIColor(c_text, 34);
     const char *text = label.label != NULL ? label.label : "";
@@ -126,7 +126,7 @@ DrawUIOverlayButton(OverlayButtonProps button)
     captured = UIInputCapturesClick(mouse);
     active = !button.disabled && !captured && mouse_inside;
     hovered = active && UIHoverEffectsEnabled();
-    font = button.font > 0 ? button.font : GetUIFontSize();
+    font = button.font > 0 ? button.font : GetFontSize();
     background = hovered && button.hover_background.a != 0
                      ? button.hover_background
                      : button.background;
@@ -164,7 +164,7 @@ GetUIButtonRowHeight(ButtonRowProps row)
     int width = row.width;
     int row_w = 0;
     int rows = 1;
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
 
     if(row.items == NULL || row.count <= 0)
         return height;
@@ -344,7 +344,7 @@ UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
     height = GetUISpinboxRowHeight(row);
     UIFormTakeRect(form, height);
 
-    label_font = row.label_font > 0 ? row.label_font : GetUIFontSize();
+    label_font = row.label_font > 0 ? row.label_font : GetFontSize();
     control_w = row.control_width > 0 ? row.control_width : ScaleUIPx(156);
     if(control_w > form->width)
         control_w = form->width;
@@ -488,7 +488,7 @@ DrawUIButtonRow(ButtonRowProps row)
     int row_w = 0;
     int row_count = 0;
     int y = row.y;
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
 
     if(row.height <= 0)
         row.height = ScaleUIPx(30);

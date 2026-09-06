@@ -1396,10 +1396,10 @@ include/ui_dpi.h macro UI_DPI_BASE_WIDTH
 include/ui_draw.h function DrawCenteredUIControlText
 include/ui_draw.h function DrawFittedTextInRect
 include/ui_draw.h function DrawLeftUIControlTextInRect
+include/ui_draw.h function GetFontSize
+include/ui_draw.h function GetSmallFontSize
+include/ui_draw.h function GetTitleFontSize
 include/ui_draw.h function GetUIControlTextY
-include/ui_draw.h function GetUIFontSize
-include/ui_draw.h function GetUISmallFontSize
-include/ui_draw.h function GetUITitleFontSize
 include/ui_icon_types.h enum UI_ICON_TYPE_ACTIVITY
 include/ui_icon_types.h enum UI_ICON_TYPE_AMEN
 include/ui_icon_types.h enum UI_ICON_TYPE_BACKWARD
