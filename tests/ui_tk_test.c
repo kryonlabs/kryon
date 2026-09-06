@@ -1396,6 +1396,33 @@ test_popup_accelerator_keyboard_ownership(void)
 }
 
 static void
+test_popup_collapsible_keyboard_ownership(void)
+{
+    for(int inside = 0; inside < 2; inside++) {
+        bool open = false;
+        InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,120,100});
+        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){20,20,80,60});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(26110);
+        Collapsible((CollapsibleProps){.bounds={20,20,80,28},.id=26110,
+                    .label="Node",.open=&open,.tree=1});
+        check_int("only top popup collapsible handles keyboard",open,inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 test_retained_popup_pointer_focus(void)
 {
     for(int blocked = 0; blocked < 2; blocked++) {
@@ -2218,6 +2245,7 @@ main(void)
     test_retained_popup_pointer_focus();
     test_popup_combo_keyboard_ownership();
     test_popup_accelerator_keyboard_ownership();
+    test_popup_collapsible_keyboard_ownership();
     test_composed_combo_scope();
     test_composed_popup_scope();
     test_composed_tooltip_scope();

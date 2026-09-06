@@ -4312,7 +4312,7 @@ func (r *runtime) SelectableText(value string, x, y, fontSize int32, color Color
 		r.selectableText = key
 	}
 	selected := r.selectableText == key
-	if selected && !r.contentDisabled() {
+	if selected && !r.contentDisabled() && !r.popupKeyboardCaptures() {
 		for _, event := range r.inputEvents {
 			if event.shortcut && event.key == KeyC {
 				r.clipboard = value
@@ -4587,7 +4587,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	if pressed {
 		*p.Open = !*p.Open
 	}
-	if enabled && p.ID != 0 && r.focusID == p.ID {
+	if enabled && p.ID != 0 && r.focusID == p.ID && !r.popupFocusCaptures(p.ID) {
 		remaining := r.inputEvents[:0]
 		for _, event := range r.inputEvents {
 			handled := false

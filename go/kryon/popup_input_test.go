@@ -207,6 +207,60 @@ func TestPopupAcceleratorKeyboardOwnership(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestPopupCollapsibleKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.QueueKey(KeyRight)
+		r.BeginFrame()
+		parent := r.beginPopupInput(26100, NewRectangle(10, 10, 120, 100))
+		child := r.beginPopupInput(26101, NewRectangle(20, 20, 80, 60))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		open := false
+		r.setFocus(26110)
+		r.Collapsible(CollapsibleProps{Bounds: NewRectangle(20, 20, 80, 28),
+			ID: 26110, Label: "Node", Open: &open, Tree: true})
+		if open != inside {
+			t.Fatalf("inside=%v: popup-owned collapsible open=%v", inside, open)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
+func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.QueueTap(12, 12)
+		r.BeginFrame()
+		r.SelectableText("copy me", 10, 10, Text16, WHITE)
+		r.EndFrame()
+		r.SetClipboardText("seed")
+		r.QueueShortcut(KeyC)
+		r.BeginFrame()
+		parent := r.beginPopupInput(26200, NewRectangle(10, 10, 120, 100))
+		child := r.beginPopupInput(26201, NewRectangle(20, 20, 80, 60))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.SelectableText("copy me", 10, 10, Text16, WHITE)
+		want := "seed"
+		if inside {
+			want = "copy me"
+			r.endPopupInput(child)
+		}
+		if got := r.ClipboardText(); got != want {
+			t.Fatalf("inside=%v: selectable copy=%q want %q", inside, got, want)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupTabMissingOwner(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	for frame := 0; frame < 3; frame++ {

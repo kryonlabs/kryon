@@ -3065,6 +3065,7 @@
       "widgets": [
         "Button",
         "Checkbox",
+        "Collapsible",
         "Column",
         "Row",
         "Screen",
@@ -4985,7 +4986,7 @@
     "Canvas": 3,
     "CanvasGrid": 3,
     "Checkbox": 6,
-    "Collapsible": 4,
+    "Collapsible": 5,
     "ColorPicker": 3,
     "Column": 7,
     "Combobox": 4,
@@ -5169,12 +5170,14 @@
     {
       "id": "Collapsible",
       "semantic_sources": [
+        "tests/parity/composed_combo.kry",
         "tests/parity/scroll_content.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
         "examples/15_containers.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/composed_combo.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],

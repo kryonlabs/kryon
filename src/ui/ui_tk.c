@@ -3172,7 +3172,8 @@ DrawUICollapsible(CollapsibleProps section)
             }
         }
     }
-    if(focused && g_tree_key_frame != g_ui_frame_serial) {
+    if(focused && !ui_popup_input_focus_captures(section.id) &&
+       g_tree_key_frame != g_ui_frame_serial) {
         int key = IsKeyPressed(KEY_DOWN) ? KEY_DOWN : IsKeyPressed(KEY_UP) ? KEY_UP :
                   IsKeyPressed(KEY_RIGHT) ? KEY_RIGHT : IsKeyPressed(KEY_LEFT) ? KEY_LEFT : 0;
         int open = section.open != NULL && *section.open;

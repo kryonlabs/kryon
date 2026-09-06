@@ -179,6 +179,10 @@ ownership. Generated k2c/k2cpp/k2go coverage proves Ctrl+C dispatch inside the
 active popup, suppression of the same background chord, and restoration after
 the popup is explicitly closed. Widget-specific shortcut paths still require
 their own ownership coverage.
+Collapsible/tree-header arrows now have matching native and generated popup
+ownership coverage, including background restoration after close.
+Selectable-text copy is likewise ownership-gated in C and Go; native Go tests
+cover both blocked background and eligible popup selection copies.
 Separate native Tab tests now cover ownership-filtered focus destinations,
 forward/reverse wrapping, duplicate registrations and traversal after explicit
 child/branch dismissal. Go tests exercise previous-frame order and real editor

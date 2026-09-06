@@ -686,6 +686,26 @@ func main() {
 	if ComposedComboStateValue.PopupShortcutInside != 1 || ComposedComboStateValue.PopupShortcutBackground != 1 {
 		panic("generated popup shortcut did not restore background routing")
 	}
+	ComposedComboStateValue.PopupShortcutOpen = true
+	driver.SetFocus(27072)
+	driver.QueueKey(kryon.KeyRight)
+	drawComposedPopupShortcut()
+	if ComposedComboStateValue.PopupTreeBackgroundOpen {
+		panic("generated background tree handled a popup-owned key")
+	}
+	driver.SetFocus(27071)
+	driver.QueueKey(kryon.KeyRight)
+	drawComposedPopupShortcut()
+	if !ComposedComboStateValue.PopupTreeInsideOpen {
+		panic("generated popup tree did not handle its owned key")
+	}
+	ComposedComboStateValue.PopupShortcutOpen = false
+	driver.SetFocus(27072)
+	driver.QueueKey(kryon.KeyRight)
+	drawComposedPopupShortcut()
+	if !ComposedComboStateValue.PopupTreeBackgroundOpen {
+		panic("generated background tree routing was not restored")
+	}
 	// Native-only composition contract: preedit never mutates committed text.
 	driver.SetFocus(26100)
 	host.Runtime().SubmitTextComposition(kryon.KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
@@ -1213,6 +1233,24 @@ int main(void)
         return 1;
     }
     InjectKey(KEY_C,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    popup_shortcut_open = 1;
+    SetUIFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    draw_composed_popup_shortcut();
+    if(popup_tree_background_open) {
+        fprintf(stderr,"generated background tree handled a popup-owned key\n"); return 1;
+    }
+    InjectPump(); SetUIFocus(27071); InjectKeyTap(KEY_RIGHT); InjectPump();
+    draw_composed_popup_shortcut();
+    if(!popup_tree_inside_open) {
+        fprintf(stderr,"generated popup tree did not handle its owned key\n"); return 1;
+    }
+    InjectPump(); popup_shortcut_open = 0;
+    SetUIFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    draw_composed_popup_shortcut();
+    if(!popup_tree_background_open) {
+        fprintf(stderr,"generated background tree routing was not restored\n"); return 1;
+    }
+    InjectKey(KEY_RIGHT,0); InjectPump();
     SetUIFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
     draw_composition();

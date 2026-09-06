@@ -30,6 +30,8 @@ state {
     popup_shortcut_open: bool = true
     popup_shortcut_inside: int = 0
     popup_shortcut_background: int = 0
+    popup_tree_inside_open: bool = false
+    popup_tree_background_open: bool = false
 }
 
 composed_popup_shortcut_frame :: () #ui {
@@ -41,10 +43,12 @@ composed_popup_shortcut_frame :: () #ui {
             if AcceleratorPressed((Accelerator){KEY_C,1,0,0,77}) == 77 {
                 popup_shortcut_inside += 1
             }
+            Collapsible((CollapsibleProps){.bounds={30,50,90,28},.label="Popup tree",.open=&popup_tree_inside_open,.tree=1,.id=27071})
         }
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,78}) == 78 {
             popup_shortcut_background += 1
         }
+        Collapsible((CollapsibleProps){.bounds={170,50,120,28},.label="Background tree",.open=&popup_tree_background_open,.tree=1,.id=27072})
     }
 }
 

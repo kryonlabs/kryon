@@ -244,6 +244,14 @@ before returning, rather than leaving keyboard capture until frame cleanup.
 This establishes generic accelerator ownership and explicit-close replay, not
 all widget-specific shortcuts or cross-window routing.
 
+Collapsible/tree-header directional navigation now resolves its registered
+popup focus owner before handling arrows in C and Go. Native and generated
+tests cover a focused background header blocked by an open popup, an eligible
+header inside that popup, and restored background navigation after close.
+Selectable-text copy also consults top-popup keyboard ownership in both
+runtimes; Go's native regression covers blocked background and eligible popup
+copy paths. C uses the same scope-aware keyboard predicate as accelerators.
+
 Focus registrations now retain popup ownership separately from the lexical
 scope. C stores frame-local registrations in the host input registry and
 filters/deduplicates Tab destinations before releasing the host binding. Go

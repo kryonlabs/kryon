@@ -1379,7 +1379,8 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                 g_ui_text_selection.dragging = 0;
             }
         }
-        if(g_ui_text_selection.id == id && ui_text_mod_key_down() &&
+        if(g_ui_text_selection.id == id && UIKeyboardInputEnabled() &&
+           ui_text_mod_key_down() &&
            IsKeyPressed(KEY_C)) {
             int start = g_ui_text_selection.anchor;
             int end = g_ui_text_selection.cursor;
@@ -1666,7 +1667,8 @@ DrawUISelectableTextBlock(SelectableTextBlock block)
             selected_start = selected_end;
             selected_end = tmp;
         }
-        if(ui_text_mod_key_down() && IsKeyPressed(KEY_C))
+        if(UIKeyboardInputEnabled() && ui_text_mod_key_down() &&
+           IsKeyPressed(KEY_C))
             ui_text_copy_selection(block.text, selected_start, selected_end);
     }
 
