@@ -1953,6 +1953,103 @@ test_table_frozen_rows_hit_testing(void)
 }
 
 static void
+test_table_keyboard_navigation(void)
+{
+    const char *columns[] = {"A", "B", "C"};
+    const char *cells[] = {"a", "b", "c"};
+    TableRow rows[] = {
+        {cells,3,NULL,NULL}, {cells,3,NULL,NULL}, {cells,3,NULL,NULL},
+        {cells,3,NULL,NULL}, {cells,3,NULL,NULL}, {cells,3,NULL,NULL}
+    };
+    int order[] = {2,0,1};
+    int selected_row = 0, selected_column = 2;
+    int activated_row = -1, activated_column = -1, scroll = 0;
+    TableViewProps table = {
+        .bounds={10,10,180,70}, .id=145, .columns=columns, .column_count=3,
+        .rows=rows, .row_count=6, .selected_row=&selected_row,
+        .selected_column=&selected_column, .activated_row=&activated_row,
+        .activated_column=&activated_column, .scroll_offset=&scroll,
+        .row_height=20, .column_order=order
+    };
+
+    InjectReset(); InjectKey(KEY_RIGHT,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145);
+    int changed = TableView(table); EndUIFrame();
+    InjectKey(KEY_RIGHT,0); InjectPump();
+    check_int("table keyboard right changed",changed,1);
+    check_int("table keyboard follows display order",selected_column,0);
+
+    InjectKey(KEY_DOWN,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_DOWN,0); InjectPump();
+    check_int("table keyboard down",selected_row,1);
+
+    InjectKey(KEY_F2,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    check_int("table keyboard activated row",activated_row,1);
+    check_int("table keyboard activated column",activated_column,0);
+    InjectKey(KEY_F2,0); InjectPump();
+
+    for(int row = 2; row < 6; row++) {
+        InjectKey(KEY_DOWN,1); InjectPump();
+        BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+        InjectKey(KEY_DOWN,0); InjectPump();
+        check_int("table keyboard advances each row",selected_row,row);
+    }
+    check_int("table keyboard reaches final row",selected_row,5);
+    check_int("table keyboard scrolls selection",scroll,80);
+
+    table.disabled = 1;
+    InjectKey(KEY_UP,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_UP,0); InjectPump();
+    check_int("disabled table blocks keyboard",selected_row,5);
+    table.disabled = 0;
+
+    InjectKey(KEY_ESCAPE,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_ESCAPE,0); InjectPump();
+    check_int("table escape clears row",selected_row,-1);
+    check_int("table escape clears column",selected_column,-1);
+    InjectReset();
+}
+
+static void
+test_popup_table_keyboard_ownership(void)
+{
+    const char *columns[] = {"A"};
+    const char *cells[] = {"a"};
+    TableRow rows[] = {{cells,1,NULL,NULL},{cells,1,NULL,NULL}};
+
+    for(int inside = 0; inside < 2; inside++) {
+        int selected_row = 0, selected_column = 0;
+        TableViewProps table = {
+            .bounds={20,20,100,80}, .id=26120, .columns=columns,
+            .column_count=1, .rows=rows, .row_count=2,
+            .selected_row=&selected_row, .selected_column=&selected_column
+        };
+        InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
+        BeginUIFrame(240,160,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,120});
+        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,100});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(26120);
+        TableView(table);
+        check_int("only top popup table handles keyboard",selected_row,inside ? 1 : 0);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 test_paned_drag_outside_handle(void)
 {
     UIFrameState saved = SaveUIFrameState();
@@ -2267,6 +2364,8 @@ main(void)
     test_scroll_thumb_drag();
     test_table_frozen_rows_hit_testing();
     test_table_column_resize();
+    test_table_keyboard_navigation();
+    test_popup_table_keyboard_ownership();
 
     {
         int sx = 10;

@@ -5030,7 +5030,8 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 			}
 		}
 
-		if !r.contentDisabled() && !props.Disabled && props.ID != 0 && r.focusID == props.ID {
+		if !r.contentDisabled() && !props.Disabled && props.ID != 0 && r.focusID == props.ID &&
+			!r.popupFocusCaptures(props.ID) {
 			changed |= r.handleTableKeys(props)
 		}
 	}

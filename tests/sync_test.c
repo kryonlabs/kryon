@@ -425,7 +425,7 @@ test_v6_device_key_is_stable(void)
     cfg.base_url = "https://node.example";
     cfg.account = &account;
     cfg.client_id = "client-v6-device";
-    cfg.app_id = "inbe";
+    cfg.app_id = "fixture-app";
     cfg.protocol_version = 6;
     cfg.http_request = test_http;
     cfg.get_text = test_get_text;

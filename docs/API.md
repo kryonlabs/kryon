@@ -2196,6 +2196,12 @@ cells; labels are clipped to those cells, and sorting/resizing follow their
 slanted boundaries. Go uses the corresponding
 `HeaderHeight` and `HeaderAngle` fields.
 
+A nonzero table `id`/`ID` participates in focus traversal. While focused, the
+standard table body moves through visible columns with the arrow keys,
+activates the current cell with Enter or F2, clears selection with Escape, and
+scrolls the selected row into view. Popup ownership and disabled state suppress
+those keys.
+
 For interactive cell content, set `TableViewProps.custom_cells` (`CustomCells`
 in Go), draw `TableView`, then call `BeginTableCell(table, row, column)` for each
 cell and finish each scope with `EndTableCell()`. The returned rectangle is the

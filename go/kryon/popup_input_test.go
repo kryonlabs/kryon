@@ -624,6 +624,40 @@ func TestPopupOwnsActiveScalarSliderAndTableResizeDrags(t *testing.T) {
 	})
 }
 
+func TestPopupTableKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+		selectedRow, selectedColumn := int32(0), int32(0)
+		props := TableViewProps{
+			Bounds: NewRectangle(20, 20, 100, 80), ID: 26120,
+			Columns: []string{"A"}, Rows: []TableRow{{Cells: []string{"a"}}, {Cells: []string{"b"}}},
+			SelectedRow: &selectedRow, SelectedColumn: &selectedColumn,
+		}
+
+		r.QueueKey(KeyDown)
+		r.BeginFrame()
+		parent := r.beginPopupInput(26100, NewRectangle(10, 10, 140, 120))
+		child := r.beginPopupInput(26101, NewRectangle(15, 15, 120, 100))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.SetFocus(26120)
+		r.TableView(props)
+		want := int32(0)
+		if inside {
+			want = 1
+		}
+		if selectedRow != want {
+			t.Fatalf("inside=%v selected row=%d, want %d", inside, selectedRow, want)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupInputBranchOrder(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	panel := NewRectangle(0, 0, 100, 100)

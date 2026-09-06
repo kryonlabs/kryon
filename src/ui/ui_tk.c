@@ -2575,6 +2575,85 @@ ui_table_header_shift(TableViewProps table, float y)
     return -(height-(y-table.bounds.y))/tanf(angle*3.14159265358979323846f/180);
 }
 
+static int
+ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
+                     int frozen_rows, int max_scroll)
+{
+    int row, column, column_slot = 0, selection_changed = 0, changed = 0;
+    int visible_columns = ui_table_visible_columns(table);
+
+    if(table.disabled || table.selected_row == NULL || table.row_count < 1 ||
+       visible_columns < 1 || table.id <= 0 ||
+       !IsUIFocusActive(table.id) || !UIKeyboardInputEnabled() ||
+       ui_popup_input_focus_captures(table.id))
+        return 0;
+
+    row = *table.selected_row >= 0
+        ? (*table.selected_row < table.row_count ? *table.selected_row : table.row_count-1)
+        : 0;
+    column = ui_table_display_column(table,0);
+    if(table.selected_column != NULL) {
+        for(int slot = 0; slot < visible_columns; slot++) {
+            int candidate = ui_table_display_column(table,slot);
+            if(candidate == *table.selected_column) {
+                column_slot = slot;
+                column = candidate;
+                break;
+            }
+        }
+    }
+
+    if(IsKeyPressed(KEY_UP)) {
+        if(row > 0) row--;
+        selection_changed = changed = 1;
+    }
+    if(IsKeyPressed(KEY_DOWN)) {
+        if(row < table.row_count-1) row++;
+        selection_changed = changed = 1;
+    }
+    if(IsKeyPressed(KEY_LEFT)) {
+        if(column_slot > 0) column_slot--;
+        column = ui_table_display_column(table,column_slot);
+        selection_changed = changed = 1;
+    }
+    if(IsKeyPressed(KEY_RIGHT)) {
+        if(column_slot < visible_columns-1) column_slot++;
+        column = ui_table_display_column(table,column_slot);
+        selection_changed = changed = 1;
+    }
+    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+       IsKeyPressed(KEY_F2)) {
+        if(table.activated_row != NULL) *table.activated_row = row;
+        if(table.activated_column != NULL) *table.activated_column = column;
+        selection_changed = changed = 1;
+    }
+    if(IsKeyPressed(KEY_ESCAPE) &&
+       (*table.selected_row >= 0 ||
+        (table.selected_column != NULL && *table.selected_column >= 0))) {
+        row = -1;
+        column = -1;
+        selection_changed = changed = 1;
+    }
+
+    if(selection_changed) {
+        *table.selected_row = row;
+        if(table.selected_column != NULL) *table.selected_column = column;
+        if(row >= frozen_rows && table.scroll_offset != NULL) {
+            int view_h = (int)table.bounds.height-header_h-frozen_rows*row_h;
+            int top = (row-frozen_rows)*row_h;
+            int bottom = top+row_h;
+            if(view_h > 0) {
+                if(top < *table.scroll_offset) *table.scroll_offset = top;
+                else if(bottom > *table.scroll_offset+view_h)
+                    *table.scroll_offset = bottom-view_h;
+                if(*table.scroll_offset < 0) *table.scroll_offset = 0;
+                if(*table.scroll_offset > max_scroll) *table.scroll_offset = max_scroll;
+            }
+        }
+    }
+    return changed;
+}
+
 Rectangle
 BeginTableCell(TableViewProps table, int row, int column)
 {
@@ -2728,6 +2807,11 @@ DrawUITableView(TableViewProps table)
                                               table.bounds.width, (float)scroll_body_h},
                                   (table.row_count - frozen_rows) * row_h,
                                   table.disabled ? NULL : table.scroll_offset, row_h);
+    int focused = !table.disabled && table.id > 0 &&
+                  RegisterUIFocus(table.id,table.bounds);
+    if(focused) SetUIFocusTextInputActive(0);
+    if(!table.custom_cells)
+        changed |= ui_table_handle_keys(table,row_h,header_h,frozen_rows,max_scroll);
     scroll_y = table.scroll_offset != NULL ? *table.scroll_offset : 0;
     first = frozen_rows + scroll_y / row_h;
     y_offset = scroll_y % row_h;
@@ -2926,6 +3010,8 @@ DrawUITableView(TableViewProps table)
                         scroll_body_h,
                         (table.row_count - frozen_rows) * row_h,
                         table.scroll_offset, max_scroll, 0);
+    if(paint && focused)
+        DrawUIFocus(table.bounds);
     return changed;
 }
 

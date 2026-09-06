@@ -955,6 +955,22 @@ func main() {
 		panic(fmt.Sprintf("table_view: got selected=(%d,%d) activated=(%d,%d) sort=%d, want (-1,2),(0,1),2",
 			table.SelectedRow, table.SelectedColumn, tableActivatedRow, tableActivatedCol, table.SortColumn))
 	}
+	driver.SetFocus(901)
+	driver.QueueKey(kryon.KeyLeft)
+	drawTableView()
+	if table.SelectedRow != 0 || table.SelectedColumn != 1 {
+		panic(fmt.Sprintf("table_view keyboard left: got (%d,%d), want (0,1)",
+			table.SelectedRow, table.SelectedColumn))
+	}
+	driver.QueueKey(kryon.KeyDown)
+	driver.QueueKey(kryon.KeyF2)
+	drawTableView()
+	if table.SelectedRow != 1 || table.SelectedColumn != 1 ||
+		table.ActivatedRow != 1 || table.ActivatedColumn != 1 {
+		panic(fmt.Sprintf("table_view keyboard activation: got selected=(%d,%d) activated=(%d,%d), want (1,1),(1,1)",
+			table.SelectedRow, table.SelectedColumn, table.ActivatedRow, table.ActivatedColumn))
+	}
+	table.SelectedRow, table.SelectedColumn = -1, 2
 
 	out := snapshot{
 		FormFirst:          text64(form.First),
@@ -1764,6 +1780,26 @@ int main(void)
                 table_activated_column, sort_column);
         return 1;
     }
+
+    SetUIFocus(901);
+    InjectKey(KEY_LEFT,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_LEFT,0); InjectPump();
+    if(selected_row != 0 || selected_column != 1) {
+        fprintf(stderr,"table_view keyboard left: got (%d,%d), want (0,1)\n",
+                selected_row,selected_column);
+        return 1;
+    }
+    InjectKey(KEY_DOWN,1); InjectKey(KEY_F2,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_DOWN,0); InjectKey(KEY_F2,0); InjectPump();
+    if(selected_row != 1 || selected_column != 1 ||
+       activated_row != 1 || activated_column != 1) {
+        fprintf(stderr,
+                "table_view keyboard activation: got selected=(%d,%d) activated=(%d,%d), want (1,1),(1,1)\n",
+                selected_row,selected_column,activated_row,activated_column);
+        return 1;
+    }
+    selected_row = -1;
+    selected_column = 2;
 
     printf("{\"form_first\":\"%s\",\"form_first_cursor\":%d,\"form_second\":\"%s\",\"form_second_cursor\":%d,\"form_password\":\"%s\",\"form_password_cursor\":%d,\"form_notes\":\"%s\",\"form_notes_cursor\":%d,\"form_action\":%d,\"fields_title\":\"%s\",\"fields_title_cursor\":%d,\"fields_body\":\"%s\",\"fields_body_cursor\":%d,\"focus_one\":\"%s\",\"focus_two\":\"%s\",\"focus_three\":\"%s\",\"focus_id\":%d,\"buttons_action\":%d,\"long_first_len\":%d,\"long_first_cursor\":%d,\"long_first_hash\":%llu,\"long_second_len\":%d,\"long_second_cursor\":%d,\"long_second_hash\":%llu,\"controls_slider\":%d,\"controls_toggle\":%d,\"controls_checkbox\":%d,\"controls_selected\":%d,\"list_box_selected\":%d,\"list_box_scroll\":%d,\"tree_selected\":%d,\"tree_scroll\":%d,\"table_selected_row\":%d,\"table_selected_column\":%d,\"table_activated_row\":%d,\"table_activated_column\":%d,\"table_sort_column\":%d,\"clipboard\":\"%s\"}\n",
         first, first_cursor, second, second_cursor, password, password_cursor,
