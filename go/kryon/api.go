@@ -175,6 +175,57 @@ func GetTitleFontSize(title string, maxWidth int32) int32 {
 	}
 	return small
 }
+func FitFontSize(text string, maxWidth, preferredSize, minSize int32) int32 {
+	minimum := ScaleUIPx(Text8)
+	caption := ScaleUIPx(Text12)
+	small := ScaleUIPx(Text14)
+	body := ScaleUIPx(Text16)
+	normalize := func(size int32) int32 {
+		switch size {
+		case Text8:
+			return minimum
+		case Text12:
+			return caption
+		case Text14:
+			return small
+		case Text16:
+			return body
+		case Text24:
+			return ScaleUIPx(Text24)
+		}
+		if size <= minimum {
+			return minimum
+		}
+		if size <= caption {
+			return caption
+		}
+		if size <= small {
+			return small
+		}
+		if size <= body {
+			return body
+		}
+		return ScaleUIPx(Text24)
+	}
+	fontSize := normalize(preferredSize)
+	minAllowed := normalize(minSize)
+	if fontSize < minAllowed {
+		fontSize = minAllowed
+	}
+	for fontSize > minAllowed && int32(runtimeTextWidth(text, fontSize)) > maxWidth {
+		switch {
+		case fontSize > body:
+			fontSize = body
+		case fontSize > small:
+			fontSize = small
+		case fontSize > caption:
+			fontSize = caption
+		default:
+			fontSize = minimum
+		}
+	}
+	return fontSize
+}
 func GetScreenWidth() int32     { return active().GetScreenWidth() }
 func GetScreenHeight() int32    { return active().GetScreenHeight() }
 func GetThemeBackground() Color { return active().GetThemeBackground() }

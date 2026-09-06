@@ -1135,23 +1135,62 @@ ui_control_cursor_height(int font, int box_h)
 static int
 ui_text_next_smaller_size(int font_size)
 {
-    if(font_size > Text16)
-        return Text16;
-    if(font_size > Text12)
-        return Text12;
-    return Text8;
+    int body = ScaleUIPx(Text16);
+    int small = ScaleUIPx(Text14);
+    int caption = ScaleUIPx(Text12);
+    int minimum = ScaleUIPx(Text8);
+
+    if(font_size > body)
+        return body;
+    if(font_size > small)
+        return small;
+    if(font_size > caption)
+        return caption;
+    return minimum;
 }
 
 static int
 ui_text_normalize_size(int font_size)
 {
-    if(font_size <= Text8)
-        return Text8;
-    if(font_size <= Text12)
-        return Text12;
-    if(font_size <= Text16)
-        return Text16;
-    return Text24;
+    int minimum = ScaleUIPx(Text8);
+    int caption = ScaleUIPx(Text12);
+    int small = ScaleUIPx(Text14);
+    int body = ScaleUIPx(Text16);
+
+    if(font_size == Text8)
+        return minimum;
+    if(font_size == Text12)
+        return caption;
+    if(font_size == Text14)
+        return small;
+    if(font_size == Text16)
+        return body;
+    if(font_size == Text24)
+        return ScaleUIPx(Text24);
+    if(font_size <= minimum)
+        return minimum;
+    if(font_size <= caption)
+        return caption;
+    if(font_size <= small)
+        return small;
+    if(font_size <= body)
+        return body;
+    return ScaleUIPx(Text24);
+}
+
+int
+FitFontSize(const char *text, int max_width,
+            int preferred_size, int min_size)
+{
+    const char *value = text != NULL ? text : "";
+    int font_size = ui_text_normalize_size(preferred_size);
+    int min_allowed = ui_text_normalize_size(min_size);
+
+    if(font_size < min_allowed)
+        font_size = min_allowed;
+    while(font_size > min_allowed && TextWidth(value, font_size) > max_width)
+        font_size = ui_text_next_smaller_size(font_size);
+    return font_size;
 }
 
 void
@@ -1172,13 +1211,8 @@ DrawFittedTextInRect(const char *text, Rectangle rect,
                             int preferred_size, int min_size, Color color)
 {
     const char *value = text != NULL ? text : "";
-    int font_size = ui_text_normalize_size(preferred_size);
-    int min_allowed = ui_text_normalize_size(min_size);
-
-    if(font_size < min_allowed)
-        font_size = min_allowed;
-    while(font_size > min_allowed && TextWidth(value, font_size) > (int)rect.width)
-        font_size = ui_text_next_smaller_size(font_size);
+    int font_size = FitFontSize(value, (int)rect.width,
+                                preferred_size, min_size);
     ui_draw_text_centered_in_rect(value, rect, font_size, color);
 }
 

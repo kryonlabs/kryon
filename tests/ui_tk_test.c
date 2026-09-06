@@ -66,6 +66,8 @@ test_semantic_font_sizes_follow_ui_scale(void)
     check_int("body font at 1.75x", GetFontSize(), 28);
     check_int("small font at 1.75x", GetSmallFontSize(), 25);
     check_int("title font at 1.75x", GetTitleFontSize("Title", 1000), 42);
+    check_int("fitted font preserves body", FitFontSize("Day", 1000, Text16, Text8), 28);
+    check_int("fitted caption token scales", FitFontSize("", 1000, Text12, Text8), 21);
     EndUIFrame();
 }
 

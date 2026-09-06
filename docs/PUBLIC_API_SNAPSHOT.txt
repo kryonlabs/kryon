@@ -1396,6 +1396,7 @@ include/ui_dpi.h macro UI_DPI_BASE_WIDTH
 include/ui_draw.h function DrawCenteredUIControlText
 include/ui_draw.h function DrawFittedTextInRect
 include/ui_draw.h function DrawLeftUIControlTextInRect
+include/ui_draw.h function FitFontSize
 include/ui_draw.h function GetFontSize
 include/ui_draw.h function GetSmallFontSize
 include/ui_draw.h function GetTitleFontSize
