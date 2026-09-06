@@ -1,4 +1,14 @@
 # Changelog
+## v0.1.61 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.61
+- Add native list box keyboard parity
+- Clip Text only when its bounds require it
+- Preserve outlined icons and live Text layering
+- Refine Material guides and warning artwork
+
 ## v0.1.60 - 2026-09-06
 
 ### Changed
