@@ -176,8 +176,8 @@ int ImportSyncAccountFileEncrypted(const char *filename,
     (void)account;
     return 0;
 }
-void SyncSha256Hex(const uint8_t *data, size_t len,
-                    char out_hex[SYNC_PUBLIC_ID_HEX_SIZE])
+void SyncCryptoSha256Hex(const uint8_t *data, size_t len,
+                         char out_hex[SYNC_SHA256_HEX_SIZE])
 {
     int i;
 
@@ -185,9 +185,9 @@ void SyncSha256Hex(const uint8_t *data, size_t len,
     (void)len;
     if(out_hex == nil)
         return;
-    for(i = 0; i < SYNC_PUBLIC_ID_HEX_SIZE - 1; i++)
+    for(i = 0; i < SYNC_SHA256_HEX_SIZE - 1; i++)
         out_hex[i] = '0';
-    out_hex[SYNC_PUBLIC_ID_HEX_SIZE - 1] = '\0';
+    out_hex[SYNC_SHA256_HEX_SIZE - 1] = '\0';
 }
 int SignSyncAccountHex(const SyncAccount *account, const uint8_t *message,
                         size_t message_len, char *out_signature_hex,

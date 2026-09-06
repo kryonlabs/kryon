@@ -917,6 +917,7 @@ include/sync.h typedef SyncVoidFn
 include/sync_crypto.h enum SYNC_ED25519_PRIVATE_KEY_SIZE
 include/sync_crypto.h enum SYNC_ED25519_PUBLIC_KEY_SIZE
 include/sync_crypto.h enum SYNC_ED25519_SIGNATURE_SIZE
+include/sync_crypto.h enum SYNC_SHA256_HEX_SIZE
 include/sync_crypto.h function SyncCryptoBytesToHex
 include/sync_crypto.h function SyncCryptoChaCha20Poly1305Open
 include/sync_crypto.h function SyncCryptoChaCha20Poly1305Seal
@@ -926,6 +927,7 @@ include/sync_crypto.h function SyncCryptoHmacSha256
 include/sync_crypto.h function SyncCryptoPbkdf2Sha256
 include/sync_crypto.h function SyncCryptoRandom
 include/sync_crypto.h function SyncCryptoSha256
+include/sync_crypto.h function SyncCryptoSha256Hex
 include/sync_crypto.h function SyncCryptoSignDevice
 include/sync_crypto.h function SyncCryptoVerifyDevice
 include/sync_nodes.h enum SYNC_NODE_ID_SIZE

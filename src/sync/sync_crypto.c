@@ -159,6 +159,22 @@ SyncCryptoSha256(const uint8_t *data, size_t len, uint8_t out[32])
     sha256_final(&sha, out);
 }
 
+void
+SyncCryptoSha256Hex(const uint8_t *data, size_t len,
+                    char out_hex[SYNC_SHA256_HEX_SIZE])
+{
+    uint8_t digest[32];
+
+    if(out_hex == NULL)
+        return;
+    out_hex[0] = '\0';
+    if(data == NULL && len > 0)
+        return;
+    SyncCryptoSha256(data, len, digest);
+    SyncCryptoBytesToHex(digest, sizeof(digest), out_hex,
+                         SYNC_SHA256_HEX_SIZE);
+}
+
 /* ------------------------------------------------------------------ */
 /* HMAC-SHA256 (RFC 2104) and PBKDF2 (RFC 2898)                        */
 /* ------------------------------------------------------------------ */

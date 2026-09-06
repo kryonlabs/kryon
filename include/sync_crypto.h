@@ -5,12 +5,15 @@
 #include <stdint.h>
 
 enum {
+    SYNC_SHA256_HEX_SIZE = 65,
     SYNC_ED25519_PUBLIC_KEY_SIZE = 32,
     SYNC_ED25519_PRIVATE_KEY_SIZE = 64,
     SYNC_ED25519_SIGNATURE_SIZE = 64
 };
 
 void SyncCryptoSha256(const uint8_t *data, size_t len, uint8_t out[32]);
+void SyncCryptoSha256Hex(const uint8_t *data, size_t len,
+                         char out_hex[SYNC_SHA256_HEX_SIZE]);
 void SyncCryptoHmacSha256(const uint8_t *key, size_t key_len,
                            const uint8_t *data, size_t data_len,
                            uint8_t out[32]);

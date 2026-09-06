@@ -42,7 +42,6 @@ int ParseSyncAccountTextEncrypted(const char *text, const char *passphrase,
                                    SyncAccount *account);
 int ImportSyncAccountFileEncrypted(const char *filename, const char *passphrase,
                                     SyncAccount *account);
-void SyncSha256Hex(const uint8_t *data, size_t len, char out_hex[SYNC_PUBLIC_ID_HEX_SIZE]);
 int SignSyncAccountHex(const SyncAccount *account, const uint8_t *message,
                                 size_t message_len, char *out_signature_hex,
                                 size_t out_size);
