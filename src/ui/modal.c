@@ -147,8 +147,8 @@ DrawUIActionModal(ModalProps modal)
     int modal_x;
     int modal_y;
     int title_font;
-    int msg_font = GetUIFontSize();
-    int btn_font = GetUISmallFontSize();
+    int msg_font = GetFontSize();
+    int btn_font = GetSmallFontSize();
     int btn_h = ClampUIPx(30, 28, 32);
     int btn_gap = ScaleUIPx(8);
     int title_h = ScaleUIPx(48);
@@ -230,7 +230,7 @@ DrawUIActionModal(ModalProps modal)
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
-    title_font = GetUITitleFontSize(modal.title, modal_w - ScaleUIPx(92));
+    title_font = GetTitleFontSize(modal.title, modal_w - ScaleUIPx(92));
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     DrawUIText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
@@ -305,7 +305,7 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
     int header_h = measure.header_h > 0 ? measure.header_h : ScaleUIPx(58);
     int button_h = measure.button_h > 0 ? measure.button_h : ScaleUIPx(36);
     int line_gap = measure.line_gap > 0 ? measure.line_gap : ScaleUIPx(4);
-    int font = measure.font > 0 ? measure.font : GetUIFontSize();
+    int font = measure.font > 0 ? measure.font : GetFontSize();
     int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
     int min_h = measure.min_height > 0 ? measure.min_height : 0;
     int content_w;
@@ -388,7 +388,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     frame.content_y = frame.y + ScaleUIPx(58);
     frame.content_w = frame.w - ScaleUIPx(36);
     frame.content_h = frame.h - ScaleUIPx(74);
-    title_font = GetUITitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
+    title_font = GetTitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
     title_w = TextWidth(title, title_font);
     capture.x = (float)frame.x;
     capture.y = (float)frame.y;

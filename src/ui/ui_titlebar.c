@@ -26,10 +26,10 @@ DrawUITitleBarBackground(int height)
 static int
 DrawUITitleBarReturnButton(Texture2D return_icon, int height)
 {
-    int icon_size = ScaleUIPx(18);
-    int padding = ScaleUIPx(5);
+    int icon_size = ScaleUIPx(22);
+    int padding = ScaleUIPx(13);
     int button_size = icon_size + padding * 2;
-    int x = ScaleUIPx(4);
+    int x = 0;
     int y = (height - button_size) / 2;
     int hover = 0;
 
@@ -42,7 +42,7 @@ static void
 DrawUITitleBarCenteredTitle(const char *title, int height,
                                        int side_reserved)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int title_w;
     int max_w = ui_view_width - side_reserved * 2;
 

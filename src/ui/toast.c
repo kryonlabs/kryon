@@ -47,7 +47,7 @@ DrawToast(void)
 void
 DrawUIToast(void)
 {
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     int pad_x = ScaleUIPx(14);
     int pad_y = ScaleUIPx(10);
     int margin = ScaleUIPx(18);

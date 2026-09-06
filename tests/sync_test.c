@@ -77,11 +77,12 @@ test_http(const char *method, const char *url, const char *body,
         if(headers[i] != NULL && strncmp(headers[i], "Authorization:", 14) == 0)
             snprintf(ctx->last_auth, sizeof(ctx->last_auth), "%s", headers[i]);
         if(headers[i] != NULL &&
-           (strncmp(headers[i], "X-Ksync-User:", strlen("X-Ksync-User:")) == 0 ||
-            strncmp(headers[i], "X-Daochi-User:", strlen("X-Daochi-User:")) == 0))
+           (strncmp(headers[i], "X-Daochi-User:", strlen("X-Daochi-User:")) == 0 ||
+            strncmp(headers[i], "X-Custom-User:", strlen("X-Custom-User:")) == 0))
             snprintf(ctx->last_user, sizeof(ctx->last_user), "%s", headers[i]);
         if(headers[i] != NULL &&
-           strncmp(headers[i], "X-Ksync-Signature:", strlen("X-Ksync-Signature:")) == 0)
+           (strncmp(headers[i], "X-Daochi-Signature:", strlen("X-Daochi-Signature:")) == 0 ||
+            strncmp(headers[i], "X-Custom-Signature:", strlen("X-Custom-Signature:")) == 0))
             snprintf(ctx->last_signature, sizeof(ctx->last_signature), "%s", headers[i]);
     }
     if(status != NULL)
@@ -329,9 +330,9 @@ test_login_uses_configured_wire_names(void)
     cfg.base_url = "https://api.example.test";
     cfg.account = &account;
     cfg.client_id = "client-123";
-    cfg.signature_context = "ksync-sync-v1";
-    cfg.user_header_name = "X-Ksync-User";
-    cfg.signature_header_name = "X-Ksync-Signature";
+    cfg.signature_context = "custom-sync-v1";
+    cfg.user_header_name = "X-Custom-User";
+    cfg.signature_header_name = "X-Custom-Signature";
     cfg.http_request = test_login_http;
     cfg.get_text = test_get_text;
     cfg.set_text = test_set_text;
@@ -339,10 +340,10 @@ test_login_uses_configured_wire_names(void)
 
     result = LoginSync(&cfg);
     check(result == SYNC_OK, "login with configured wire names returns ok");
-    check(strncmp(ctx.last_user, "X-Ksync-User:", strlen("X-Ksync-User:")) == 0,
+    check(strncmp(ctx.last_user, "X-Custom-User:", strlen("X-Custom-User:")) == 0,
           "login uses configured user header");
-    check(strncmp(ctx.last_signature, "X-Ksync-Signature:",
-                  strlen("X-Ksync-Signature:")) == 0,
+    check(strncmp(ctx.last_signature, "X-Custom-Signature:",
+                  strlen("X-Custom-Signature:")) == 0,
           "login uses configured signature header");
     check(strcmp(ctx.token, "new-token") == 0, "login saves auth token");
 }

@@ -230,7 +230,7 @@ ParagraphText(ParagraphTextProps props)
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = text;
     paragraph.width = width;
-    paragraph.font = props.font > 0 ? props.font : GetUIFontSize();
+    paragraph.font = props.font > 0 ? props.font : GetFontSize();
     paragraph.line_gap = props.line_gap;
     paragraph.color = page_color_or(props.color, GetThemeText());
     page_semantic_next(UI_SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);

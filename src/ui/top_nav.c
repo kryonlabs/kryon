@@ -22,7 +22,7 @@ ui_top_nav_background(Rectangle bounds)
 static void
 ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int max_w = (int)bounds.width - side_reserved * 2;
     int title_w;
 

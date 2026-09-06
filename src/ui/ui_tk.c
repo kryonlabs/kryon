@@ -296,7 +296,7 @@ void
 DrawUISeparatorText(SeparatorTextProps separator)
 {
     const char *label = separator.label != NULL ? separator.label : "";
-    int font = separator.font > 0 ? separator.font : GetUISmallFontSize();
+    int font = separator.font > 0 ? separator.font : GetSmallFontSize();
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
     int line_y = (int)(separator.bounds.y + separator.bounds.height * 0.5f);
@@ -396,8 +396,8 @@ DrawUIMultiSelectList(MultiSelectListProps list)
                 DrawRectangleRec(row, list.selected[i] ? c_button_hover : c_button);
             DrawUIText(list.items[i] != NULL ? list.items[i] : "",
                        (int)row.x + ScaleUIPx(8),
-                       ui_row_text_y(row, GetUISmallFontSize()),
-                       GetUISmallFontSize(), list.disabled ? c_icon : c_text);
+                       ui_row_text_y(row, GetSmallFontSize()),
+                       GetSmallFontSize(), list.disabled ? c_icon : c_text);
         }
         if(hot)
             list.disabled ? MarkUIDisabled() : MarkUIClickable();
@@ -441,7 +441,7 @@ DrawUISmallButton(ButtonProps button)
 {
     if(!IsWindowReady())
         return 0;
-    ButtonSpec spec = {button.bounds, button.label, GetUISmallFontSize(),
+    ButtonSpec spec = {button.bounds, button.label, GetSmallFontSize(),
                        button.id, button.disabled, {0}, {0}, {0}, {0}, 0.0f};
     return RenderButton(spec);
 }
@@ -451,7 +451,7 @@ DrawUIInvisibleButton(InvisibleButtonProps button)
 {
     if(!IsWindowReady())
         return 0;
-    ButtonSpec spec = {button.bounds, "", GetUISmallFontSize(), button.id,
+    ButtonSpec spec = {button.bounds, "", GetSmallFontSize(), button.id,
                        button.disabled, {0}, {0}, {0}, {0}, 0.0f};
     return HandleButton(spec);
 }
@@ -465,7 +465,7 @@ DrawUIArrowButton(ArrowButtonProps button)
     if(button.direction == ARROW_RIGHT) label = ">";
     else if(button.direction == ARROW_UP) label = "^";
     else if(button.direction == ARROW_DOWN) label = "v";
-    return RenderButton((ButtonSpec){button.bounds, label, GetUISmallFontSize(),
+    return RenderButton((ButtonSpec){button.bounds, label, GetSmallFontSize(),
                                      button.id, button.disabled,
                                      {0}, {0}, {0}, {0}, 0.0f});
 }
@@ -498,8 +498,8 @@ DrawUISelectable(SelectableProps selectable)
     if(IsWindowReady())
         DrawUIText(selectable.label != NULL ? selectable.label : "",
                    (int)selectable.bounds.x + ScaleUIPx(8),
-                   ui_row_text_y(selectable.bounds, GetUIFontSize()),
-                   GetUIFontSize(), selectable.disabled
+                   ui_row_text_y(selectable.bounds, GetFontSize()),
+                   GetFontSize(), selectable.disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
     if(hot && !selectable.disabled &&
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -533,8 +533,8 @@ DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
                           GetThemeCircle());
         DrawUIText(checkbox.label != NULL ? checkbox.label : "",
                    (int)box.x + box_size + ScaleUIPx(8),
-                   ui_row_text_y(checkbox.bounds, GetUIFontSize()),
-                   GetUIFontSize(), checkbox.disabled
+                   ui_row_text_y(checkbox.bounds, GetFontSize()),
+                   GetFontSize(), checkbox.disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
     }
     if(hot)
@@ -606,8 +606,8 @@ ui_color_picker_float(ColorEditProps picker, int channels)
         DrawRectangleLinesEx(swatch, 1.0f, c_button);
         if(picker.label != NULL)
             DrawUIText(picker.label, (int)swatch.x + ScaleUIPx(6),
-                       ui_row_text_y(swatch, GetUISmallFontSize()),
-                       GetUISmallFontSize(), c_text);
+                       ui_row_text_y(swatch, GetSmallFontSize()),
+                       GetSmallFontSize(), c_text);
     }
     return changed;
 }
@@ -623,7 +623,7 @@ DrawUIColorButton(ColorButtonProps button)
     int pressed;
     if(!IsWindowReady())
         return 0;
-    pressed = HandleButton((ButtonSpec){button.bounds, "", GetUISmallFontSize(),
+    pressed = HandleButton((ButtonSpec){button.bounds, "", GetSmallFontSize(),
                                         button.id, button.disabled,
                                         {0}, {0}, {0}, {0}, 0.0f});
     DrawRectangleRec(button.bounds, (Color){180, 180, 180, 255});
@@ -639,15 +639,15 @@ DrawUIColorButton(ColorButtonProps button)
                          ui_hot(button.bounds) ? c_button_hover : c_button);
     if(button.label != NULL)
         DrawUIText(button.label, (int)button.bounds.x + ScaleUIPx(6),
-                   ui_row_text_y(button.bounds, GetUISmallFontSize()),
-                   GetUISmallFontSize(), c_text);
+                   ui_row_text_y(button.bounds, GetSmallFontSize()),
+                   GetSmallFontSize(), c_text);
     return pressed;
 }
 
 static int
 draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int row_h = ScaleUIPx(30);
     int pad = ScaleUIPx(12);
     int accel_w = ScaleUIPx(88);
@@ -734,7 +734,7 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
 static Rectangle
 menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int row_h = ScaleUIPx(30);
     int pad = ScaleUIPx(12);
     int accel_w = ScaleUIPx(88);
@@ -779,7 +779,7 @@ MenuBarResult
 DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
 {
     MenuBarResult result = {0, -1};
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int x = (int)bounds.x + ScaleUIPx(4);
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
@@ -979,7 +979,7 @@ DrawUIContextMenu(ContextMenuProps menu)
 int
 DrawUIRadioButton(RadioButtonProps radio)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int diameter = ScaleUIPx(20);
     int touch = ScaleUIPx(40);
     Rectangle hit_bounds = radio.bounds;
@@ -1106,7 +1106,7 @@ DrawUIProgressBar(ProgressBarProps progress)
     Rectangle fill = progress.bounds;
     const char *label = progress.label;
     Color fill_color = c_button_hover;
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     int center_x = (int)(progress.bounds.x + progress.bounds.width / 2);
     if(progress.max <= progress.min)
         progress.max = progress.min + 1;
@@ -1217,9 +1217,9 @@ ui_plot(PlotProps plot, int histogram)
     EndUIClip();
     if(plot.label != NULL)
         DrawUIText(plot.label, (int)plot.bounds.x + ScaleUIPx(6),
-                   (int)plot.bounds.y + ScaleUIPx(4), GetUISmallFontSize(), c_text);
+                   (int)plot.bounds.y + ScaleUIPx(4), GetSmallFontSize(), c_text);
     if(plot.overlay != NULL) {
-        int font = GetUISmallFontSize();
+        int font = GetSmallFontSize();
         int width = TextWidth(plot.overlay, font);
         DrawUIText(plot.overlay,
                    (int)(plot.bounds.x + plot.bounds.width) - width - ScaleUIPx(6),
@@ -1332,8 +1332,8 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled)
     DrawRectangleRec(bounds, disabled ? c_surface : c_button);
     DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
     DrawUIText(text, (int)bounds.x + ScaleUIPx(6),
-               ui_row_text_y(bounds, GetUISmallFontSize()),
-               GetUISmallFontSize(), disabled ? c_icon : c_text);
+               ui_row_text_y(bounds, GetSmallFontSize()),
+               GetSmallFontSize(), disabled ? c_icon : c_text);
 }
 
 static void
@@ -1341,8 +1341,8 @@ ui_paint_drag_label(Rectangle bounds, const char *label)
 {
     if(label != NULL)
         DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
-                   (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
-                   GetUISmallFontSize(), c_text);
+                   (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+                   GetSmallFontSize(), c_text);
 }
 
 void
@@ -1434,8 +1434,8 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     }
     DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
     DrawUIText(text, (int)cell.x + ScaleUIPx(6),
-               ui_row_text_y(cell, GetUISmallFontSize()),
-               GetUISmallFontSize(), disabled ? c_icon : c_text);
+               ui_row_text_y(cell, GetSmallFontSize()),
+               GetSmallFontSize(), disabled ? c_icon : c_text);
 }
 
 static void
@@ -1443,8 +1443,8 @@ ui_draw_slider_label(Rectangle bounds, const char *label)
 {
     if(IsWindowReady() && label != NULL)
         DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
-                   (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2),
-                   GetUISmallFontSize(), c_text);
+                   (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+                   GetSmallFontSize(), c_text);
 }
 
 int
@@ -1693,7 +1693,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         if(RenderTextField((TextFieldProps){field_bounds, state->text,
                                                      sizeof(state->text), &state->cursor,
                                                      &state->focused, 63,
-                                                     GetUISmallFontSize(), token,
+                                                     GetSmallFontSize(), token,
                                                      kryon_zero_text_input_style,
                                                      ui_numeric_input_filter, NULL,
                                                      &commit, 0, disabled})) {
@@ -1713,9 +1713,9 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             int fast = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
             double increment = fast && step_fast != 0.0 ? step_fast : step;
             int minus_pressed = Button((ButtonProps){.bounds = minus, .label = "-",
-                .font = GetUISmallFontSize(), .id = token + 1, .disabled = disabled});
+                .font = GetSmallFontSize(), .id = token + 1, .disabled = disabled});
             int plus_pressed = Button((ButtonProps){.bounds = plus, .label = "+",
-                .font = GetUISmallFontSize(), .id = token + 2, .disabled = disabled});
+                .font = GetSmallFontSize(), .id = token + 2, .disabled = disabled});
             if(minus_pressed || plus_pressed) {
                 double value = ui_numeric_value(values, i, kind) +
                                (plus_pressed ? increment : -increment);
@@ -1732,7 +1732,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         (void)commit;
     }
     if(IsWindowReady() && label != NULL)
-        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - GetUISmallFontSize() - ScaleUIPx(2), 0, 0}, .text=label, .font=GetUISmallFontSize(), .color=c_text, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2), 0, 0}, .text=label, .font=GetSmallFontSize(), .color=c_text, .wrap=TextWrapNone});
     EndDisabled();
     return changed;
 }
@@ -1788,8 +1788,8 @@ DrawUISpinbox(SpinboxProps spinbox)
     else
         snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
-                       GetUIFontSize(), c_text);
-    if(RenderButton((ButtonSpec){left, "-", GetUIFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
+                       GetFontSize(), c_text);
+    if(RenderButton((ButtonSpec){left, "-", GetFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL) {
         if(*spinbox.value > spinbox.min) {
@@ -1802,7 +1802,7 @@ DrawUISpinbox(SpinboxProps spinbox)
         if(*spinbox.value < spinbox.min)
             *spinbox.value = spinbox.min;
     }
-    if(RenderButton((ButtonSpec){right, "+", GetUIFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
+    if(RenderButton((ButtonSpec){right, "+", GetFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL) {
         if(*spinbox.value < spinbox.max) {
@@ -1836,7 +1836,7 @@ DrawUICombobox(ComboboxProps combo)
 void
 DrawUILabelFrame(LabelFrameProps frame)
 {
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
     if(frame.title != NULL) {
         int pad = ScaleUIPx(8);
@@ -1889,7 +1889,7 @@ int
 DrawUIListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = list.row_height > 0 ? ScaleUIPx(list.row_height) : ScaleUIPx(30);
     int scroll_y;
@@ -1943,7 +1943,7 @@ int
 DrawUITreeView(TreeViewProps tree)
 {
     int paint = IsWindowReady();
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
     int scroll_y;
     int first;
@@ -2154,7 +2154,7 @@ ui_draw_tree_file_mark(Rectangle box, int hot)
 int
 DrawUICascadingTreeView(CascadingTreeViewProps tree)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
     Vector2 mouse = ui_mouse_world();
     int blocked = UIInputCapturesClick(mouse);
@@ -2369,7 +2369,7 @@ int
 DrawUISourceView(SourceViewProps source)
 {
     const char *text = source.text != NULL ? source.text : "";
-    int font = source.font_size > 0 ? source.font_size : GetUISmallFontSize();
+    int font = source.font_size > 0 ? source.font_size : GetSmallFontSize();
     int line_h = source.line_height > 0 ? ScaleUIPx(source.line_height)
                                         : TextLineHeight(font) + ScaleUIPx(4);
     int pad = ScaleUIPx(12);
@@ -2616,7 +2616,7 @@ DrawUITableView(TableViewProps table)
     static int resize_start_x = 0;
     static int resize_start_width = 0;
     int paint = IsWindowReady();
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
     int header_h = ScaleUIPx(30);
     if(table.header_height > 30) header_h = ScaleUIPx(table.header_height);
@@ -3009,7 +3009,7 @@ CanvasHitTest(Vector2 point, Rectangle *items, int item_count)
 int
 DrawUINotebook(NotebookProps notebook)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int changed = 0;
     int x = (int)notebook.bounds.x;
     int tab_h = ScaleUIPx(34);
@@ -3124,7 +3124,7 @@ ui_tree_header_target(int id, int key)
 int
 DrawUICollapsible(CollapsibleProps section)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int changed = 0;
     Rectangle header = section.bounds;
     header.height = ScaleUIPx(32);
@@ -3247,7 +3247,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
         field_props.cursor_position = dialog.cursor_position;
         field_props.focused = dialog.focused;
         field_props.max_codepoints = dialog.text_size - 1;
-        field_props.font = GetUIFontSize();
+        field_props.font = GetFontSize();
         field_props.focus_id = 7301;
         field_props.commit_pressed = &commit_pressed;
         RenderTextField(field_props);
@@ -3263,8 +3263,8 @@ int
 DrawUITextPopover(TextPopoverProps popover)
 {
     int result = 0;
-    int font = GetUIFontSize();
-    int small_font = GetUISmallFontSize();
+    int font = GetFontSize();
+    int small_font = GetSmallFontSize();
     int pad = ScaleUIPx(10);
     int gap = ScaleUIPx(8);
     int close_size = ScaleUIPx(22);
@@ -3456,7 +3456,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
     DrawRectangleRounded(panel, 0.06f, 8, c_surface);
     DrawRectangleRoundedLines(panel, 0.06f, 8, DarkenUIColor(c_surface, 30));
     DrawUIText(picker.title != NULL ? picker.title : "",
-               x + pad, y + pad, GetUIFontSize(), c_text);
+               x + pad, y + pad, GetFontSize(), c_text);
 
     y += title_h;
     for(i = 0; i < picker.option_count; i++) {
@@ -3469,7 +3469,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
         button.bounds.width = (float)(w - pad * 2);
         button.bounds.height = (float)row_h;
         button.label = "";
-        button.font = GetUIFontSize();
+        button.font = GetFontSize();
         button.background = c_surface;
         button.hover_background = c_button_hover;
         button.text = c_text;
@@ -3493,7 +3493,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
         }
         DrawCenteredUIText(picker.labels[i] != NULL ? picker.labels[i] : "",
                            (text_x + x + w - pad) / 2, y + row_h / 2,
-                           GetUIFontSize(), c_text);
+                           GetFontSize(), c_text);
         y += row_h;
     }
 
@@ -3504,7 +3504,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
     button.bounds.width = (float)(w - pad * 2);
     button.bounds.height = (float)button_h;
     button.label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel";
-    button.font = GetUIFontSize();
+    button.font = GetFontSize();
     button.background = c_surface;
     button.hover_background = c_button_hover;
     button.text = c_text;
@@ -3574,7 +3574,7 @@ DispatchAccelerators(const Accelerator *accelerators, int count)
 void
 DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
 {
-    int font = GetUISmallFontSize();
+    int font = GetSmallFontSize();
     if(nodes == NULL)
         return;
     for(int i = 0; i < count; i++) {

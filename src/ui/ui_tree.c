@@ -1287,7 +1287,7 @@ RouteInput(void)
                                                   : UI_EVENT_BLUR, GetTime());
             }
             if(focused) {
-                int font = field->font > 0 ? field->font : GetUIFontSize();
+                int font = field->font > 0 ? field->font : GetFontSize();
                 int padding = field->style.padding_x > 0
                     ? field->style.padding_x : ScaleUIPx(10);
                 double now = GetTime();
@@ -1341,7 +1341,7 @@ RouteInput(void)
            keyboard_captured)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int font = field->font > 0 ? field->font : GetUIFontSize();
+            int font = field->font > 0 ? field->font : GetFontSize();
             int padding = field->style.padding_x > 0
                 ? field->style.padding_x : ScaleUIPx(10);
             int cursor;
@@ -2182,7 +2182,7 @@ void
 Text(TextProps text)
 {
     const char *value = text.text != NULL ? text.text : "";
-    int font = text.font > 0 ? text.font : GetUIFontSize();
+    int font = text.font > 0 ? text.font : GetFontSize();
     int bounded = text.bounds.width > 0;
     Rectangle bounds = text.bounds;
     NodeId node;
@@ -2591,7 +2591,7 @@ Toggle(int id, int x, int y, int w, int h, int *value,
 int
 Checkbox(int id, int x, int y, const char *label, int *value)
 {
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
                               (Rectangle){x, y,
                                   ScaleUIPx(30) + TextWidth(label, font),
@@ -2771,7 +2771,7 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
 {
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
-        int font = GetUISmallFontSize();
+        int font = GetSmallFontSize();
         Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - font - ScaleUIPx(2), 0, 0}, .text=label, .font=font, .color=c_text, .wrap=TextWrapNone});
     }
 }
@@ -3471,7 +3471,12 @@ Button(ButtonProps button)
     ui_button_style_colors(button.style, &spec.background,
                            &spec.hover_background, &spec.text);
     if(spec.font <= 0)
-        spec.font = GetUIFontSize();
+        spec.font = GetFontSize();
+    if(button.style == ButtonStyleSecondary) {
+        spec.background = ui_material_style() ? ui_material_surface_variant() : GetThemeSurface();
+        spec.hover_background = GetThemeButtonHover();
+        spec.text = GetThemeText();
+    }
     if(node >= 0) {
         spec.bounds = ui_tree_nodes[node].bounds;
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);

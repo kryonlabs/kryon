@@ -86,6 +86,7 @@ UpdateUIReorderList(UIReorderList list)
         int active_index = ui_reorder_find_index(&list,
                                                  g_ui_reorder_state.item_id);
         int dy = pointer_y - g_ui_reorder_state.press_y;
+        int dragged_center_y;
 
         if(active_index < 0 || active_index >= list.item_count ||
            list.items == NULL || list.items[active_index].disabled) {
@@ -98,8 +99,10 @@ UpdateUIReorderList(UIReorderList list)
         result.active_index = active_index;
         result.active_id = g_ui_reorder_state.item_id;
         result.drag_delta_y = dy;
+        dragged_center_y = pointer_y - g_ui_reorder_state.press_offset_y +
+                           (int)(list.items[active_index].bounds.height / 2.0f);
         result.target_index = ui_reorder_target_index(&list, active_index,
-                                                      pointer_y);
+                                                      dragged_center_y);
         result.to_index = result.target_index;
 
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -167,6 +170,8 @@ UpdateUIReorderList(UIReorderList list)
             continue;
         handle = item->bounds;
         handle.width = (float)handle_w;
+        if(list.handle_height > 0 && handle.height > list.handle_height)
+            handle.height = (float)list.handle_height;
         if(CheckCollisionPointRec(mouse, handle)) {
             g_ui_reorder_state.list_id = list.id;
             g_ui_reorder_state.item_id = item->id;
@@ -228,6 +233,18 @@ DrawUIReorderPlaceholder(Rectangle bounds)
 
     if(w <= 0 || h <= 0)
         return;
+    if(h >= ScaleUIPx(32)) {
+        int inset = ScaleUIPx(3);
+        Rectangle slot = {(float)(x + inset), (float)(y + inset),
+                          (float)(w - inset * 2), (float)(h - inset * 2)};
+        float stroke = (float)ScaleUIPx(2);
+
+        if(slot.width <= 0 || slot.height <= 0)
+            return;
+        DrawRectangleRounded(slot, 0.12f, 10, Fade(color, 0.10f));
+        DrawRectangleRoundedLinesEx(slot, 0.12f, 10, stroke, color);
+        return;
+    }
     if(line_h < 1)
         line_h = 1;
     DrawRectangle(x, y + h / 2 - line_h / 2, w, line_h, color);

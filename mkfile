@@ -10,7 +10,7 @@
 # Sources: the portable core, the libdraw backend, the full UI toolkit, the
 # kry_std modules that do not need hosted OS services.
 # Excluded on purpose: canvas/KRB backends, raylib audio, dylib/process/http
-# surfaces, ksync, notifications, desktop integration, file dialogs, preview
+# surfaces, Daochi sync, notifications, desktop integration, file dialogs, preview
 # hosts, and runtime asset downloads.
 #
 # After `mk install`, link with -lkryon (or /$objtype/lib/libkryon.a) and
@@ -56,7 +56,7 @@ OFILES=\
 	src/core/theme.$O\
 	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
-	src/ksync/ksync_crypto.$O\
+	src/sync/sync_crypto.$O\
 	src/ui/bottom_nav.$O\
 	src/ui/button.$O\
 	src/ui/dropdown.$O\
@@ -129,7 +129,7 @@ OFILES=\
 	src/platform/plan9/plan9_ui_globals.$O\
 	src/platform/system_theme/system_theme.$O\
 
-CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/ksync/*.$O src/platform/*/*.$O \
+CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/sync/*.$O src/platform/*/*.$O \
 	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i
 
 all:V: $LIB
@@ -165,8 +165,8 @@ src/core/%.$O: src/core/%.c
 src/kry_std/%.$O: src/kry_std/%.c
 	cd src/kry_std && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 
-src/ksync/%.$O: src/ksync/%.c
-	cd src/ksync && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+src/sync/%.$O: src/sync/%.c
+	cd src/sync && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 src/platform/plan9/%.$O: src/platform/plan9/%.c
 	cd src/platform/plan9 && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
 

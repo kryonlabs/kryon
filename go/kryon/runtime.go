@@ -2016,6 +2016,9 @@ func (r *runtime) Button(props ButtonProps) bool {
 		r.inputEvents = remaining
 	}
 	fill := theme.button
+	if props.Style == ButtonStyleSecondary {
+		fill = theme.surface
+	}
 	if pressed {
 		fill = theme.buttonHover
 	}

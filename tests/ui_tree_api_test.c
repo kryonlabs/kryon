@@ -115,7 +115,7 @@ main(void)
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material bottom nav",
               GetNodeHeight(NodeBottomNav(nav)),
-              ScaleUIPx(64));
+              ScaleUIPx(80));
     SetThemeStyle(THEME_STYLE_RETRO);
     check_int("retro tab bar",
               GetNodeHeight(NodeTabBar(tabs)),

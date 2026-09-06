@@ -110,6 +110,25 @@ ui_dropdown_text_on(Color bg)
                          : (Color){246, 246, 246, 255};
 }
 
+static void
+dropdown_draw_indicator(int center_x, int center_y, int size, int open,
+                        Color color)
+{
+    int half = size / 2;
+    int left = center_x - half;
+    int right = center_x + half;
+    int upper = center_y - half / 2;
+    int lower = center_y + half / 2;
+
+    if(open) {
+        DrawLine(left, lower, center_x, upper, color);
+        DrawLine(center_x, upper, right, lower, color);
+        return;
+    }
+    DrawLine(left, upper, center_x, lower, color);
+    DrawLine(center_x, lower, right, upper, color);
+}
+
 void
 SetUIDropdownClipTop(int top)
 {
@@ -290,7 +309,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     char editor_id[96];
     UIDropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int arrow_pad = ScaleUIPx(24);
     int arrow_size = ScaleUIPx(6);
     int changed = 0;
@@ -417,7 +436,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     }
     button_text = ui_dropdown_text_on(button_bg);
 
-    /* Draw current selection text, clipped before the X icon. */
+    /* Draw current selection text, clipped before the chevron. */
     int current_index = state->selected_index;
     if(current_index < 0 || current_index >= option_count)
         current_index = 0;
@@ -436,17 +455,9 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
         PopUIFont(font_token);
     }
 
-    /* Draw dropdown X icon */
-    int x_size = arrow_size;
-    int x_half = x_size / 2;
-    int x1 = arrow_x - x_half;
-    int x2 = arrow_x + x_half;
-    int y1 = arrow_y - x_half;
-    int y2 = arrow_y + x_half;
-    if(can_draw) {
-        DrawLine(x1, y1, x2, y2, button_text);
-        DrawLine(x1, y2, x2, y1, button_text);
-    }
+    if(can_draw)
+        dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
+                                state->open, button_text);
 
     if(can_draw && focused) DrawUIFocus(btn_bounds);
     EndUIWidget(&widget);
@@ -492,7 +503,7 @@ draw_dropdown_menu(int id)
         return 0;
     }
 
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int x = state->x;
     int y = state->y;
     int w = state->w;
@@ -779,17 +790,9 @@ draw_arrow:
     int arrow_x = state->x + state->w - arrow_pad;
     int arrow_y = y + h / 2;
 
-    /* Draw dropdown X icon */
-    int x_size = arrow_size;
-    int x_half = x_size / 2;
-    int x1 = arrow_x - x_half;
-    int x2 = arrow_x + x_half;
-    int y1 = arrow_y - x_half;
-    int y2 = arrow_y + x_half;
-    if(can_draw) {
-        DrawLine(x1, y1, x2, y2, option_text);
-        DrawLine(x1, y2, x2, y1, option_text);
-    }
+    if(can_draw)
+        dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
+                                state->open, option_text);
     return changed;
 }
 

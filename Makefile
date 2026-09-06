@@ -244,7 +244,7 @@ SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
 SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
-KRYON_PUBLIC_HEADERS := $(wildcard include/*.h)
+KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
 # Keep in sync with KRYON_PHYSICS_SRCS in mk/vendor.mk.

@@ -68,6 +68,7 @@ is_runtime_go_type(const char *type)
 		"TabItemButtonProps", "Tab", "ClosableTabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "FrameBox", "Grid", "ParagraphSpec", "PictureProps", "PageProps",
+        "CarouselControlsProps",
         "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
         "FlowProps", "GridProps", "BottomNavItem", "BottomNavProps", "TopNavProps",
 		"ToolbarProps", "RadioButtonProps", "ProgressBarProps", "PlotProps",
@@ -863,6 +864,7 @@ props_field_at(const char *type, int index)
         const char *fields[24];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
+        {"CarouselControlsProps", {"Bounds", "Indicators", "Count", "Selected", "Move", "Disabled", "ID"}},
         {"FlowProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"GridProps", {"Bounds", "Columns", "Gap", "Padding", "Key"}},
         {"PageProps", {"Bounds", "Title", "Description", "CanonicalURL",
@@ -1463,7 +1465,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     if(*part == '\0')
                         continue;
                     if((strcmp(field, "Bounds") == 0 ||
-                        strcmp(field, "Trigger") == 0) &&
+                        strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
                        *kir_skip_ws(part) == '{') {
                         char rect[K2GO_TEXT_MAX];
 
@@ -1487,7 +1489,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     if(strcmp(field, "TextSize") == 0)
                         continue;
                     if((strcmp(field, "Bounds") == 0 ||
-                        strcmp(field, "Trigger") == 0) &&
+                        strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
                        *kir_skip_ws(eq + 1) == '{') {
                         char rect[K2GO_TEXT_MAX];
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));

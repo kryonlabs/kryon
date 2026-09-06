@@ -66,6 +66,74 @@ test_theme_surface_helpers(void)
 }
 
 static void
+test_semantic_font_sizes_follow_ui_scale(void)
+{
+    BeginUIFrame(720, 1400, 1.75f);
+    check_int("body font at 1.75x", GetFontSize(), 28);
+    check_int("small font at 1.75x", GetSmallFontSize(), 25);
+    check_int("title font at 1.75x", GetTitleFontSize("Title", 1000), 42);
+    check_int("fitted font preserves body", FitFontSize("Day", 1000, Text16, Text8), 28);
+    check_int("fitted caption token scales", FitFontSize("", 1000, Text12, Text8), 21);
+    {
+        int fitted = FitFontSize("Delete Habit", ScaleUIPx(64),
+                                 GetFontSize(), Text8);
+        check_int("button label fit stays inside content width",
+                  TextWidth("Delete Habit", fitted) <= ScaleUIPx(64), 1);
+    }
+    EndUIFrame();
+}
+
+static void
+test_reorder_uses_item_center_and_header_handle(void)
+{
+    UIReorderItem items[2] = {
+        {1, {10, 100, 200, 100}, 0},
+        {2, {10, 210, 200, 100}, 0}
+    };
+    UIReorderList list = {
+        .id = 811, .bounds = {0, 0, 300, 500},
+        .items = items, .item_count = 2,
+        .handle_width = 200, .handle_height = 40,
+        .drag_threshold = 5
+    };
+    UIReorderListResult result;
+
+    InjectReset();
+    InjectMousePosition(50, 170);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder ignores item body below handle", result.active, 0);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+
+    InjectReset();
+    InjectMousePosition(50, 120);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder captures header", result.active, 1);
+
+    InjectMousePosition(50, 240);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+    check_int("reorder drag active", result.dragging, 1);
+    check_int("reorder target follows lifted center", result.target_index, 1);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+    BeginUIFrame(300, 500, 1.0f);
+    result = UpdateUIReorderList(list);
+    EndUIFrame();
+}
+
+static void
 test_menu_bar_switches_while_popup_captures_input(void)
 {
     static const MenuItem file_items[] = {
@@ -86,7 +154,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
 
     InjectReset();
     BeginUIFrame(640, 480, 1.0f);
-    font = GetUIFontSize();
+    font = GetFontSize();
     edit_x = ScaleUIPx(4) + TextWidth("File", font) + ScaleUIPx(24) +
              ScaleUIPx(2) + ScaleUIPx(8);
     EndUIFrame();
@@ -1776,6 +1844,7 @@ main(void)
 
     SetUIScale(1.0f);
     test_theme_surface_helpers();
+    test_semantic_font_sizes_follow_ui_scale();
     test_circle_click_uses_ui_release_path();
 
     SetThemeStyle(THEME_STYLE_RETRO);
@@ -1956,5 +2025,6 @@ main(void)
         PopUIInspectTransform(token);
     }
 
+    test_reorder_uses_item_center_and_header_handle();
     return 0;
 }

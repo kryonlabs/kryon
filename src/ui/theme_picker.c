@@ -115,7 +115,7 @@ ui_theme_settings_height(ThemeSettingsProps settings)
         return 0;
     if(ui_theme_settings_show_mode(settings))
         rows++;
-    return rows * (GetUIFontSize() + ScaleUIPx(8) + ScaleUIPx(UI_THEME_SETTINGS_ROW_H)) +
+    return rows * (GetFontSize() + ScaleUIPx(8) + ScaleUIPx(UI_THEME_SETTINGS_ROW_H)) +
            (rows - 1) * ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
 }
 
@@ -129,7 +129,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     int label_gap = ScaleUIPx(20);
     int row_h = ScaleUIPx(UI_THEME_SETTINGS_ROW_H);
     int row_gap = ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int palette_count;
     int palette_index;
     int show_mode;
@@ -448,7 +448,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
                        int *theme_id, int *dark_mode)
 {
     int changed = 0;
-    int font = GetUIFontSize();
+    int font = GetFontSize();
     int dark = dark_mode != NULL ? *dark_mode : 0;
 
     DrawUIText(label ? label : "Theme", x, y, font, c_text);

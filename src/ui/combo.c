@@ -136,7 +136,7 @@ int BeginCombo(ComboProps combo)
     const char *preview = (combo.flags & ComboNoPreview) ? "" :
                           (combo.preview ? combo.preview : "");
     if(combo.flags & ComboWidthFitPreview) {
-        float need = (float)TextWidth(preview,GetUIFontSize())+20;
+        float need = (float)TextWidth(preview,GetFontSize())+20;
         if(!(combo.flags & ComboNoArrowButton)) need += 20;
         if(need > trigger.width) trigger.width = need;
     }

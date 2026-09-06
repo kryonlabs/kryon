@@ -12,7 +12,7 @@ int
 ui_bottom_nav_height(void)
 {
     if(ui_material_style())
-        return ScaleUIPx(64);
+        return ScaleUIPx(80);
     return ScaleUIPx(40);
 }
 
@@ -129,13 +129,15 @@ DrawUIBottomNav(BottomNavProps nav)
 
         if(ui_material_style()) {
             Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
-            int label_font = GetUISmallFontSize();
+            int label_font = GetSmallFontSize();
             int label_h = TextLineHeight(label_font);
-            int label_y = y + height - ScaleUIPx(10) - label_h;
-            int indicator_w = ScaleUIPx(56);
-            int indicator_h = ScaleUIPx(28);
+            int indicator_w = ScaleUIPx(64);
+            int indicator_h = ScaleUIPx(32);
             int indicator_x = x + (w - indicator_w) / 2;
-            int indicator_y = y + ScaleUIPx(6);
+            int label_gap = ScaleUIPx(4);
+            int content_h = indicator_h + label_gap + label_h;
+            int indicator_y = y + (height - content_h) / 2;
+            int label_y = indicator_y + indicator_h + label_gap;
             int label_pad = ScaleUIPx(4);
             Color text_tint = item->active ? scheme.on_surface :
                                              scheme.on_surface_variant;
@@ -143,6 +145,9 @@ DrawUIBottomNav(BottomNavProps nav)
                                               scheme.on_surface_variant;
 
             icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(26);
+            if(indicator_y < y + ScaleUIPx(4))
+                indicator_y = y + ScaleUIPx(4);
+            label_y = indicator_y + indicator_h + label_gap;
             icon_x = x + (w - icon_size) / 2;
             icon_y = indicator_y + (indicator_h - icon_size) / 2;
             if(item->disabled) {
@@ -322,7 +327,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
                                      ? modal.slot_labels[i]
                                      : "";
         int remove_hover = 0;
-        DrawUIText(slot_label, frame.content_x, y, GetUIFontSize(), c_text);
+        DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
         if(DrawUIDropdown(modal.id + i, frame.content_x,
                           y + ScaleUIPx(22),
                           frame.content_w - remove_w - ScaleUIPx(8),

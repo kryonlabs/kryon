@@ -170,11 +170,76 @@ func ValueFloat(prefix string, value float32, format string, bounds Rectangle, f
 }
 func TextFormat(format string, args ...any) string { return active().TextFormat(format, args...) }
 func ScaleUIPx(px int32) int32                     { return active().ScaleUIPx(px) }
-func GetScreenWidth() int32                        { return active().GetScreenWidth() }
-func GetScreenHeight() int32                       { return active().GetScreenHeight() }
-func GetThemeBackground() Color                    { return active().GetThemeBackground() }
-func GetThemeText() Color                          { return active().GetThemeText() }
-func GetThemeIcon() Color                          { return active().GetThemeIcon() }
+func GetFontSize() int32                           { return ScaleUIPx(Text16) }
+func GetSmallFontSize() int32                      { return ScaleUIPx(Text14) }
+func GetTitleFontSize(title string, maxWidth int32) int32 {
+	large := ScaleUIPx(Text24)
+	medium := ScaleUIPx(Text16)
+	small := ScaleUIPx(Text14)
+	if maxWidth <= 0 || int32(runtimeTextWidth(title, large)) <= maxWidth {
+		return large
+	}
+	if int32(runtimeTextWidth(title, medium)) <= maxWidth {
+		return medium
+	}
+	return small
+}
+func FitFontSize(text string, maxWidth, preferredSize, minSize int32) int32 {
+	minimum := ScaleUIPx(Text8)
+	caption := ScaleUIPx(Text12)
+	small := ScaleUIPx(Text14)
+	body := ScaleUIPx(Text16)
+	normalize := func(size int32) int32 {
+		switch size {
+		case Text8:
+			return minimum
+		case Text12:
+			return caption
+		case Text14:
+			return small
+		case Text16:
+			return body
+		case Text24:
+			return ScaleUIPx(Text24)
+		}
+		if size <= minimum {
+			return minimum
+		}
+		if size <= caption {
+			return caption
+		}
+		if size <= small {
+			return small
+		}
+		if size <= body {
+			return body
+		}
+		return ScaleUIPx(Text24)
+	}
+	fontSize := normalize(preferredSize)
+	minAllowed := normalize(minSize)
+	if fontSize < minAllowed {
+		fontSize = minAllowed
+	}
+	for fontSize > minAllowed && int32(runtimeTextWidth(text, fontSize)) > maxWidth {
+		switch {
+		case fontSize > body:
+			fontSize = body
+		case fontSize > small:
+			fontSize = small
+		case fontSize > caption:
+			fontSize = caption
+		default:
+			fontSize = minimum
+		}
+	}
+	return fontSize
+}
+func GetScreenWidth() int32     { return active().GetScreenWidth() }
+func GetScreenHeight() int32    { return active().GetScreenHeight() }
+func GetThemeBackground() Color { return active().GetThemeBackground() }
+func GetThemeText() Color       { return active().GetThemeText() }
+func GetThemeIcon() Color       { return active().GetThemeIcon() }
 func DrawCircleV(center Vector2, radius any, color Color) {
 	active().DrawCircleV(center, radius, color)
 }
