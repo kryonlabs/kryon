@@ -469,20 +469,20 @@ EnsureUIDefaultFont(void)
         return 0;
 
     g_ui_default_font_attempted = 1;
-    if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
-       RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
-       UseUIFont(UI_FONT_DEFAULT_NAME)) {
-        TraceLog(LOG_INFO, "UIFONT: default font resolved from system: %s",
-                 system_font_path);
-        return 1;
-    }
-
     for(int i = 0; paths[i] != NULL; i++) {
         if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
            UseUIFont(UI_FONT_DEFAULT_NAME)) {
             TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
             return 1;
         }
+    }
+
+    if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
+       RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
+       UseUIFont(UI_FONT_DEFAULT_NAME)) {
+        TraceLog(LOG_INFO, "UIFONT: bundled face unavailable; default font "
+                          "resolved from system: %s", system_font_path);
+        return 1;
     }
 
     TraceLog(LOG_WARNING,

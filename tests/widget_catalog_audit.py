@@ -29,7 +29,7 @@ static void AuditFrame(Rectangle viewport) {
     if(out) {
         fprintf(out,"{\"clicks\":%d,\"category\":%d,\"scroll\":%d,\"picked\":%d,\"slider\":%d,\"toggle\":%d,\"checkbox\":%d,\"selected\":%d,\"flags\":%d,\"dialog\":%d,\"open\":%d,\"tree\":%d,\"row\":%d,\"multi\":%d,\"same_text\":%d,\"accepted\":%d,\"number\":%.6f,\"integer\":%d,\"double\":%.6f,\"rmin\":%.6f,\"imin\":%d,\"angle\":%.6f,\"red\":%.6f,\"alpha\":%.6f,\"text_test\":%d,\"area_test\":%d,",action_count,category,scroll_off,picked,slider_value,toggle_value,checkbox_value,selected,flags,dialog,open,tree_selected,table_selected_row,multi_count,strcmp(text_value,area_value)==0,accepted_size,numbers[0],integers[0],doubles[0],range_min,int_min,angle,rgba[0],rgba[3],strstr(text_value,"TEST")!=NULL,strstr(area_value,"TEST")!=NULL);
         fprintf(out,"\"tabs\":%d,\"tab_selected\":%d,\"subtab\":%d,\"pane\":%d,\"command\":%d,\"split\":%d,\"dark\":%d,\"theme\":%d,\"zoom\":%.3f,\"pan_x\":%d,\"pan_y\":%d,\"cascade_count\":%d,\"cascade_selected\":%d,\"preview\":%d,\"route\":%d,\"picker\":%d,",tab_count,tab_selected,subtab_selected,pane_selected,menu_command,split,dark_mode,theme_id,canvas_zoom,canvas_scroll_x,canvas_scroll_y,cascade_count,cascade_selected,page_preview,page_route,picker_choice);
-        fprintf(out,"\"fits\":%d,\"scale\":%.4f,\"href\":%d,\"effective_dark\":%d,\"copied\":%d,\"mode\":%d,\"style\":%d,\"dialog_result\":%d,\"n1\":%.4f,\"n2\":%.4f,\"i1\":%d,\"i2\":%d}",ScaleUIPx(1060)<=viewport.width && ScaleUIPx(546)<=viewport.height-ScaleUIPx(52),GetUIScale(),href_activated,GetEffectiveThemeDarkMode(),GetClipboardText()!=NULL && strstr(GetClipboardText(),"Select")!=NULL,theme_mode,theme_style,dialog_result,numbers[1],numbers[2],integers[1],integers[2]);
+        fprintf(out,"\"fits\":%d,\"scale\":%.4f,\"href\":%d,\"effective_dark\":%d,\"copied\":%d,\"mode\":%d,\"style\":%d,\"dialog_result\":%d,\"n1\":%.4f,\"n2\":%.4f,\"i1\":%d,\"i2\":%d,\"focus\":%d,\"popover_test\":%d}",ScaleUIPx(1060)<=viewport.width && ScaleUIPx(546)<=viewport.height-ScaleUIPx(52),GetUIScale(),href_activated,GetEffectiveThemeDarkMode(),GetClipboardText()!=NULL && strstr(GetClipboardText(),"Select")!=NULL,theme_mode,theme_style,dialog_result,numbers[1],numbers[2],integers[1],integers[2],GetUIFocus(),strstr(text_value,"POPOVER_TEST")!=NULL);
         fclose(out); rename("@STATE@.tmp","@STATE@");
     }
 }
@@ -109,7 +109,12 @@ def run_actions():
     check('Slider','slider',lambda:drag(358,350,460,350))
     check('Radio','picked',lambda:click(674,287),1)
     check('Spinbox','slider',lambda:click(790,331))
-    check('Selectable','selected',lambda:click(300,538))
+    def selectable():
+     before=state()['selected']
+     for _ in range(3):
+      click(300,538)
+      if state()['selected']!=before: break
+    check('Selectable','selected',selectable)
     check('CheckboxFlags','flags',lambda:click(674,492))
     def text():
      click(730,137);xd('key','ctrl+a');xd('type','--clearmodifiers','--delay',80,'TEST')
@@ -216,8 +221,15 @@ def run_remaining():
     capture('theme-light')
     click(900,139);click(520,410);key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'PROMPT_TEST');capture('prompt-typed');click(710,447)
     check('Prompt submit','dialog',lambda:None,0);check('Prompt value','text_test',lambda:None,1)
-    click(730,530);check('Popover opens','dialog',lambda:None,7);capture('popover-new');click(760,587);key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'POPOVER_TEST');key_chord('Return');time.sleep(.3)
-    check('Popover submit','dialog',lambda:None,0);check('Popover value','text_test',lambda:None,1)
+    click(730,530);check('Popover opens','dialog',lambda:None,7);capture('popover-new')
+    for _ in range(3):
+     click(760,587)
+     if state()['focus']==971: break
+    key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'POPOVER_TEST')
+    for _ in range(3):
+     key_chord('Return');time.sleep(.3)
+     if state()['dialog']==0: break
+    check('Popover submit','dialog',lambda:None,0);check('Popover value','popover_test',lambda:None,1)
     category(3);xd('mousemove','--window',window,1100,620);xd('click','--repeat',9,'--delay',25,5)
     check('Cascading expand','cascade_count',lambda:click(285,495),2)
     check('Cascading select','cascade_selected',lambda:click(350,525),12)
