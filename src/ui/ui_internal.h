@@ -255,6 +255,7 @@ int DrawUITreeView(TreeViewProps tree);
 int DrawUICascadingTreeView(CascadingTreeViewProps tree);
 int DrawUISourceView(SourceViewProps source);
 int DrawUITableView(TableViewProps table);
+void ui_consume_focus_tab(void);
 void DrawUICanvasGrid(Rectangle bounds, int step, Color color);
 int DrawUINotebook(NotebookProps notebook);
 int DrawUIPanedView(PanedViewProps panes);

@@ -31,7 +31,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Plots | `PlotLines`, `PlotHistogram` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
-| Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow navigation, Enter/F2 activation, Escape clearing, and scoped native child widgets in custom-cell mode |
+| Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, Enter/F2 activation, Escape clearing, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
 | Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
@@ -183,7 +183,7 @@ Collapsible/tree-header arrows now have matching native and generated popup
 ownership coverage, including background restoration after close.
 Selectable-text copy is likewise ownership-gated in C and Go; native Go tests
 cover both blocked background and eligible popup selection copies.
-Table focus, display-order arrow navigation, Enter/F2 activation, Escape
+Table focus, display-order arrow and Tab/Shift+Tab navigation, Enter/F2 activation, Escape
 clearing, and selection-following scroll now share a native C/Go contract.
 Generated k2c and k2go fixtures exercise the same movement and activation, and
 native popup tests prove that a focused table cannot consume keys owned by a

@@ -2621,6 +2621,22 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         column = ui_table_display_column(table,column_slot);
         selection_changed = changed = 1;
     }
+    if(IsKeyPressed(KEY_TAB)) {
+        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
+            if(column_slot > 0) column_slot--;
+            else {
+                column_slot = visible_columns-1;
+                if(row > 0) row--;
+            }
+        } else if(column_slot < visible_columns-1) column_slot++;
+        else {
+            column_slot = 0;
+            if(row < table.row_count-1) row++;
+        }
+        column = ui_table_display_column(table,column_slot);
+        ui_consume_focus_tab();
+        selection_changed = changed = 1;
+    }
     if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
        IsKeyPressed(KEY_F2)) {
         if(table.activated_row != NULL) *table.activated_row = row;

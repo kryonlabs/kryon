@@ -2197,7 +2197,8 @@ slanted boundaries. Go uses the corresponding
 `HeaderHeight` and `HeaderAngle` fields.
 
 A nonzero table `id`/`ID` participates in focus traversal. While focused, the
-standard table body moves through visible columns with the arrow keys,
+standard table body moves through visible columns with the arrow keys or
+Tab/Shift+Tab,
 activates the current cell with Enter or F2, clears selection with Escape, and
 scrolls the selected row into view. Popup ownership and disabled state suppress
 those keys.

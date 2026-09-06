@@ -1979,6 +1979,18 @@ test_table_keyboard_navigation(void)
     check_int("table keyboard right changed",changed,1);
     check_int("table keyboard follows display order",selected_column,0);
 
+    InjectKey(KEY_TAB,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_TAB,0); InjectPump();
+    check_int("table tab advances within row",selected_column,1);
+    check_int("table tab retains table focus",GetUIFocus(),145);
+
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump();
+    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    check_int("table shift tab reverses within row",selected_column,0);
+    check_int("table shift tab retains table focus",GetUIFocus(),145);
+
     InjectKey(KEY_DOWN,1); InjectPump();
     BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
     InjectKey(KEY_DOWN,0); InjectPump();

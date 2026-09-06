@@ -956,6 +956,18 @@ func main() {
 			table.SelectedRow, table.SelectedColumn, tableActivatedRow, tableActivatedCol, table.SortColumn))
 	}
 	driver.SetFocus(901)
+	driver.QueueKey(kryon.KeyTab)
+	drawTableView()
+	if table.SelectedRow != 1 || table.SelectedColumn != 0 || driver.Focus() != 901 {
+		panic(fmt.Sprintf("table_view tab: got selected=(%d,%d) focus=%d, want (1,0),901",
+			table.SelectedRow, table.SelectedColumn, driver.Focus()))
+	}
+	driver.QueueShiftKey(kryon.KeyTab)
+	drawTableView()
+	if table.SelectedRow != 0 || table.SelectedColumn != 2 || driver.Focus() != 901 {
+		panic(fmt.Sprintf("table_view shift-tab: got selected=(%d,%d) focus=%d, want (0,2),901",
+			table.SelectedRow, table.SelectedColumn, driver.Focus()))
+	}
 	driver.QueueKey(kryon.KeyLeft)
 	drawTableView()
 	if table.SelectedRow != 0 || table.SelectedColumn != 1 {
@@ -1782,6 +1794,20 @@ int main(void)
     }
 
     SetUIFocus(901);
+    InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_TAB,0); InjectPump();
+    if(selected_row != 1 || selected_column != 0 || GetUIFocus() != 901) {
+        fprintf(stderr,"table_view tab: got selected=(%d,%d) focus=%d, want (1,0),901\n",
+                selected_row,selected_column,GetUIFocus());
+        return 1;
+    }
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
+    InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    if(selected_row != 0 || selected_column != 2 || GetUIFocus() != 901) {
+        fprintf(stderr,"table_view shift-tab: got selected=(%d,%d) focus=%d, want (0,2),901\n",
+                selected_row,selected_column,GetUIFocus());
+        return 1;
+    }
     InjectKey(KEY_LEFT,1); InjectPump(); draw_table_view();
     InjectKey(KEY_LEFT,0); InjectPump();
     if(selected_row != 0 || selected_column != 1) {

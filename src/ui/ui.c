@@ -1437,6 +1437,12 @@ BeginUIFocus(void)
 }
 
 void
+ui_consume_focus_tab(void)
+{
+    g_ui_focus_tab_dir = 0;
+}
+
+void
 EndUIFocus(void)
 {
     int current_index = -1;
