@@ -1584,10 +1584,20 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
 {
     int previous_font = ui_active_font_token();
     int y = (int)bounds.y;
+    int text_width;
+    int text_height;
+    int needs_clip;
 
     PopUIFont(font_token);
-    BeginUIClip((int)bounds.x, (int)bounds.y,
-                (int)bounds.width, (int)bounds.height);
+    text_width = TextWidth(value, font);
+    text_height = TextHeight(value, font);
+    needs_clip = wrap == TextWrapAuto ||
+                 text_width > (int)bounds.width ||
+                 text_height > (int)bounds.height;
+    if(needs_clip) {
+        BeginUIClip((int)bounds.x, (int)bounds.y,
+                    (int)bounds.width, (int)bounds.height);
+    }
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
@@ -1600,7 +1610,6 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
             y += (int)bounds.height - height;
         ui_draw_paragraph_aligned(paragraph, (int)bounds.x, &y, align);
     } else {
-        int text_width = TextWidth(value, font);
         int x = (int)bounds.x;
         if(align == TextAlignCenter)
             x += ((int)bounds.width - text_width) / 2;
@@ -1612,7 +1621,8 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
             y += (int)bounds.height - TextHeight(value, font);
         DrawUIText(value, x, y, font, color);
     }
-    EndUIClip();
+    if(needs_clip)
+        EndUIClip();
     PopUIFont(previous_font);
 }
 
