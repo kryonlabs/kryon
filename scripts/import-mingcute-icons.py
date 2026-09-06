@@ -174,6 +174,8 @@ def render_sheet(paths: list[Path], destination: Path, columns: int,
             "height": str(CONTENT_SIZE),
             "viewBox": source.get("viewBox", "0 0 24 24"),
         })
+        if source.get("fill") is not None:
+            nested.set("fill", source.get("fill"))
         for child in source:
             nested.append(copy.deepcopy(child))
 

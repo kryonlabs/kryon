@@ -2218,7 +2218,15 @@ Text(TextProps text)
         ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    if(!ui_tree_building) {
+    /* Canonical widgets and immediate drawing primitives can share one app
+     * frame. Paint Text at its declaration point so later pictures and panels
+     * cannot cover it before the retained tree is committed. */
+    if(ui_tree_building && IsWindowReady()) {
+        ui_paint_text_box(value, bounds, font, text.color, text.wrap,
+                          text.align, text.vertical_align,
+                          ui_active_font_token());
+        ui_tree_mark_painted_immediate(node);
+    } else if(!ui_tree_building) {
         ui_paint_text_box(value, bounds, font, text.color, text.wrap,
                           text.align, text.vertical_align,
                           ui_active_font_token());
