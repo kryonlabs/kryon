@@ -1585,11 +1585,19 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
     int previous_font = ui_active_font_token();
     int y = (int)bounds.y;
     int text_width;
+    int text_height;
+    int needs_clip;
 
     PopUIFont(font_token);
     text_width = TextWidth(value, font);
-    BeginUIClip((int)bounds.x, (int)bounds.y,
-                (int)bounds.width, (int)bounds.height);
+    text_height = TextHeight(value, font);
+    needs_clip = wrap == TextWrapAuto ||
+                 text_width > (int)bounds.width ||
+                 text_height > (int)bounds.height;
+    if(needs_clip) {
+        BeginUIClip((int)bounds.x, (int)bounds.y,
+                    (int)bounds.width, (int)bounds.height);
+    }
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
@@ -1613,7 +1621,8 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
             y += (int)bounds.height - TextHeight(value, font);
         DrawUIText(value, x, y, font, color);
     }
-    EndUIClip();
+    if(needs_clip)
+        EndUIClip();
     PopUIFont(previous_font);
 }
 
