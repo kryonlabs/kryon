@@ -86,6 +86,10 @@ KRYON_ALL_SRCS := $(filter-out $(KRYON_SYNC_SRCS),$(KRYON_ALL_SRCS))
 endif
 KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
 KRYON_INCLUDE = -I$(KRYON_DIR)/include
+ifeq ($(KRYON_WITH_SYNC),1)
+KRYON_INCLUDE += -I$(KRYON_DIR)/vendor/monocypher/src
+KRYON_INCLUDE += -I$(KRYON_DIR)/vendor/monocypher/src/optional
+endif
 KRYON_USE_SYSTEM_CURL ?= 1
 ifeq ($(KRYON_USE_SYSTEM_CURL),1)
 KRYON_CURL_CFLAGS ?= $(shell pkg-config --cflags libcurl 2>/dev/null)

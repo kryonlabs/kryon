@@ -38,12 +38,22 @@ do not create parallel helpers such as `TextWrapped`, `TextColored`, or
 `TextDisabled`. Migrate maintained callers when consolidating an older split
 surface, then remove the duplicate entry points and generated output.
 
+`Text` has exactly one public signature: `Text(TextProps)`. Every maintained C
+and `.kry` caller must pass one explicit `TextProps` value. Position, bounds,
+wrapping, clipping, color, alignment, and disabled state belong in those props.
+Do not restore the positional `Text(text, x, y, font, color)` form or hide it
+behind a helper, macro, overload, generated shim, or compatibility alias.
+
 ## Test Rule
 
 Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must keep the
 generated-output scanners and runtime parity tests passing. If a new widget or
 semantic is added, add it to both generated runtimes and to parity coverage in
 the same change.
+
+Run `python3 scripts/check-clean-text-api.py <changed-source-roots>` when a
+maintained app or fixture changes text rendering. Downstream repositories must
+wire this check into their normal test target.
 
 ## Readability Rule
 
