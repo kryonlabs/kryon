@@ -68,6 +68,7 @@ MAPPING = {
     "todos": "task_2.svg",
     "trash": "delete_2.svg",
     "venus": "female.svg",
+    "warning": "warning.svg",
     "weekly": "calendar_week.svg",
     "workbook/clear_formatting": "eraser.svg",
     "workbook/fill_color": "paint.svg",

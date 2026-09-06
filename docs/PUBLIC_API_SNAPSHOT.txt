@@ -1567,6 +1567,7 @@ include/ui_icon_types.h enum UI_ICON_TYPE_TIMELINE
 include/ui_icon_types.h enum UI_ICON_TYPE_TODOS
 include/ui_icon_types.h enum UI_ICON_TYPE_TRASH
 include/ui_icon_types.h enum UI_ICON_TYPE_VENUS
+include/ui_icon_types.h enum UI_ICON_TYPE_WARNING
 include/ui_icon_types.h enum UI_ICON_TYPE_WEEKLY
 include/ui_icon_types.h enum UI_ICON_TYPE_WORKBOOK_CLEAR_FORMATTING
 include/ui_icon_types.h enum UI_ICON_TYPE_WORKBOOK_FILL_COLOR

@@ -116,6 +116,7 @@ const char *ui_icon_names[] = {
     "todos.png",  /* UI_ICON_TYPE_TODOS */
     "trash.png",  /* UI_ICON_TYPE_TRASH */
     "venus.png",  /* UI_ICON_TYPE_VENUS */
+    "warning.png",  /* UI_ICON_TYPE_WARNING */
     "weekly.png",  /* UI_ICON_TYPE_WEEKLY */
     "workbook_clear_formatting.png",  /* UI_ICON_TYPE_WORKBOOK_CLEAR_FORMATTING */
     "workbook_fill_color.png",  /* UI_ICON_TYPE_WORKBOOK_FILL_COLOR */

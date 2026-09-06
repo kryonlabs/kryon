@@ -1,14 +1,14 @@
 {
   "version": 1,
   "sheet": "ui",
-  "icon_count": 56,
+  "icon_count": 57,
   "image": "ui.png",
   "cell_size": 64,
   "content_size": 48,
   "columns": 8,
-  "rows": 7,
+  "rows": 8,
   "width": 512,
-  "height": 448,
+  "height": 512,
   "icons": [
     {
       "index": 0,
@@ -513,6 +513,15 @@
       "width": 64,
       "height": 64,
       "upstream": "core/filled/close.svg"
+    },
+    {
+      "index": 56,
+      "name": "warning",
+      "x": 0,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "core/filled/warning.svg"
     }
   ],
   "style": "mingcute-core-filled",
