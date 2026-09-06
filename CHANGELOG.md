@@ -1,4 +1,24 @@
 # Changelog
+## v0.1.59 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.59
+- Keep canonical text retained and clipped
+- Add native table clipboard parity
+- Keep table Tab navigation within cells
+- Add native table keyboard parity
+- Keep reorder release owned through card dispatch
+- Keep popup-owned widget shortcuts isolated
+- Route accelerators through popup ownership
+- Avoid redundant clipping for intrinsic text
+- Preserve canonical text paint order in native screens
+- Enforce canonical TextProps usage
+- Refine canonical carousel navigation controls
+- Complete Sync crypto helper consolidation
+- Preserve shipped sync wire compatibility
+- Use clean Sync naming throughout optional sync runtime
+
 ## v0.1.58 - 2026-09-06
 
 ### Changed
