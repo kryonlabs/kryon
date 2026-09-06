@@ -107,7 +107,7 @@ To integrate Kryon into your project:
 3. Compile Kryon sources from `src/` and `src/ui/`, or use the `mk/` fragments
    to let Kryon assemble source lists and platform flags
 4. Kryon's checked-in `icons/` tree is the source of truth for the finished
-   MingCute Core Filled UI sheet, a separate full-color logo sheet, and the full-color platform,
+   MingCute Core UI sheet, a separate full-color logo sheet, and the full-color platform,
    payment, language, tile, and profile sheets. `make icons-embed` refreshes the embedded C assets from
    those sheets. Use `DrawIcon` or the generated `Icon` widget with a runtime
    `Color`; no per-color files or per-icon textures are needed. Downstream apps

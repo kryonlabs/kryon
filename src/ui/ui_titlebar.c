@@ -8,7 +8,10 @@ static void
 DrawUITitleBarBackground(int height)
 {
     Color bar = DarkenUIColor(c_bg, 14);
-    if(ui_modern_style()) {
+    if(ui_material_style()) {
+        bar = ui_material_surface_container();
+        bar.a = 224;
+    } else if(ui_modern_style()) {
         UIStyleTokens tokens = GetUIStyleTokens();
         if(tokens.panel_alpha < bar.a)
             bar.a = tokens.panel_alpha;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import only Kryon's used MingCute Core Filled UI subset."""
+"""Import only Kryon's used MingCute Core UI subset."""
 
 import argparse
 import copy
@@ -68,13 +68,20 @@ MAPPING = {
     "todos": "task_2.svg",
     "trash": "delete_2.svg",
     "venus": "female.svg",
-    "warning": "warning.svg",
+    "warning": "alert.svg",
     "weekly": "calendar_week.svg",
     "workbook/clear_formatting": "eraser.svg",
     "workbook/fill_color": "paint.svg",
     "workbook/text_color": "text_color.svg",
     "wrench": "tool.svg",
     "x": "close.svg",
+}
+
+# Most of Kryon's UI sheet uses the filled family. Safety guidance benefits
+# from MingCute's regular alert outline, which stays legible over a tinted
+# callout without turning into a heavy solid shape.
+SOURCE_OVERRIDES = {
+    "warning": Path("regular/system/alert.svg"),
 }
 
 # MingCute ships matching mute and two-wave volume glyphs, but no discrete
@@ -190,7 +197,8 @@ def main() -> None:
     parser.add_argument("checkout", type=Path, help="local MingCute repository checkout")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
-    source_root = checkout / "assets" / "svg" / "core" / "filled"
+    core_root = checkout / "assets" / "svg" / "core"
+    source_root = core_root / "filled"
     license_path = checkout / "LICENSE"
 
     if not source_root.is_dir():
@@ -226,7 +234,11 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="kryon-mingcute-") as temporary:
         temp = Path(temporary)
         sources.update(write_derived_volume_icons(temp))
-        alias_paths = [sources[MAPPING[name]] for name in names]
+        alias_paths = [
+            core_root / SOURCE_OVERRIDES[name]
+            if name in SOURCE_OVERRIDES else sources[MAPPING[name]]
+            for name in names
+        ]
         alias_rows = render_sheet(alias_paths, OUTPUT / "ui.png", COLUMNS, temp)
 
         for stale in (*OUTPUT.glob("mingcute-*.png"), *OUTPUT.glob("mingcute-*.json")):
@@ -239,12 +251,14 @@ def main() -> None:
             "y": index // COLUMNS * CELL_SIZE,
             "width": CELL_SIZE,
             "height": CELL_SIZE,
-            "upstream": (f"derived/{MAPPING[icon['name']]}"
+            "upstream": (f"core/{SOURCE_OVERRIDES[icon['name']]}"
+                         if icon["name"] in SOURCE_OVERRIDES
+                         else f"derived/{MAPPING[icon['name']]}"
                          if MAPPING[icon["name"]] in DERIVED_VOLUME_PATHS
                          else f"core/filled/{MAPPING[icon['name']]}")
         })
     manifest.update({
-        "style": "mingcute-core-filled",
+        "style": "mingcute-core",
         "license": "Apache-2.0",
         "upstream": "https://github.com/mingcute-design/mingcute-icons",
         "upstream_revision": revision,
@@ -256,7 +270,7 @@ def main() -> None:
         "tintable": True,
     })
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"imported {len(names)} used MingCute Core Filled icons")
+    print(f"imported {len(names)} used MingCute Core icons")
 
 
 if __name__ == "__main__":

@@ -694,7 +694,7 @@ void DrawIconByName(const char *name, Rectangle bounds, Color tint);
 
 Kryon's checked-in `icons/` directory is the finished spritesheet package.
 Regular UI entries—including workbook controls—use the rounded MingCute Core
-Filled family and are packed into the monochrome `icons/ui.png`. The manifest
+family and are packed into the monochrome `icons/ui.png`. The manifest
 records each upstream SVG mapping and revision. There are no prebuilt flat-color
 variants; runtime drawing can tint the clean alpha artwork on demand.
 Product and project marks retain their brand colors, stay out of the generic UI

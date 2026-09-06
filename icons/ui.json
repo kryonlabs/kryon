@@ -521,10 +521,10 @@
       "y": 448,
       "width": 64,
       "height": 64,
-      "upstream": "core/filled/warning.svg"
+      "upstream": "core/regular/system/alert.svg"
     }
   ],
-  "style": "mingcute-core-filled",
+  "style": "mingcute-core",
   "tintable": true,
   "license": "Apache-2.0",
   "upstream": "https://github.com/mingcute-design/mingcute-icons",

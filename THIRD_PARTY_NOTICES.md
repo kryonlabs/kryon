@@ -8,7 +8,7 @@ submodules listed in `SUBMODULES.txt`.
 - curl/libcurl: curl license, see `vendor/curl/COPYING` in the source tree.
 - cmark-gfm: BSD-style license, see `vendor/cmark-gfm/COPYING` in the source tree.
 - Noto fonts: SIL Open Font License 1.1, see `fonts/noto/LICENSE.txt` in the source tree.
-- MingCute Core Filled icons: Apache License 2.0, see
+- MingCute Core icons: Apache License 2.0, see
   `licenses/mingcute/LICENSE.txt` in the source tree. Kryon embeds only the
   selected, renamed monochrome subset used by its UI in `icons/ui.png`.
   Apache 2.0 does not grant rights to third-party trademarks depicted by some
