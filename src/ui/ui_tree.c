@@ -1585,19 +1585,11 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
     int previous_font = ui_active_font_token();
     int y = (int)bounds.y;
     int text_width;
-    int text_height;
-    int needs_clip;
 
     PopUIFont(font_token);
     text_width = TextWidth(value, font);
-    text_height = TextHeight(value, font);
-    needs_clip = wrap == TextWrapAuto ||
-                 text_width > (int)bounds.width ||
-                 text_height > (int)bounds.height;
-    if(needs_clip) {
-        BeginUIClip((int)bounds.x, (int)bounds.y,
-                    (int)bounds.width, (int)bounds.height);
-    }
+    BeginUIClip((int)bounds.x, (int)bounds.y,
+                (int)bounds.width, (int)bounds.height);
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
@@ -1621,8 +1613,7 @@ ui_draw_text_widget(const char *value, Rectangle bounds, int font, Color color,
             y += (int)bounds.height - TextHeight(value, font);
         DrawUIText(value, x, y, font, color);
     }
-    if(needs_clip)
-        EndUIClip();
+    EndUIClip();
     PopUIFont(previous_font);
 }
 
@@ -2227,16 +2218,7 @@ Text(TextProps text)
         ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    /* Native app screens can freely interleave canonical Text with direct
-     * paint primitives. Paint text at declaration time on a live surface so
-     * that ordering remains deterministic, while retaining the node for
-     * layout, semantics, and headless backends. */
-    if(ui_tree_building && IsWindowReady()) {
-        ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
-                            text.align, text.vertical_align,
-                            ui_active_font_token());
-        ui_tree_mark_painted_immediate(node);
-    } else if(!ui_tree_building) {
+    if(!ui_tree_building) {
         ui_draw_text_widget(value, bounds, font, text.color, text.wrap,
                             text.align, text.vertical_align,
                             ui_active_font_token());
