@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.55 - 2026-09-06
+
+### Changed
+
+- Release: bump version to v0.1.55
+- Prefer bundled UI font and stabilize widget audit
+- Unify native text and composed popup widgets
+- Add spreadsheet string-literal and error-name scanners to kry_eval
+
 ## v0.1.54 - 2026-09-05
 
 ### Changed
