@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.70 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.70
+- Add composed native tab scopes
+- Fix scroll clipping under render scale
+
 ## v0.1.69 - 2026-09-07
 
 ### Changed
