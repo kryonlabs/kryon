@@ -1743,6 +1743,33 @@ test_text_area_page_navigation(void)
     InjectKeyTap(KEY_PAGE_UP); InjectPump();
     BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
     check_int("TextArea PageUp moves more than one line",cursor <= before_page - 4,1);
+
+    int selection_start = 0;
+    int selection_end = 0;
+    before_page = cursor;
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_PAGE_DOWN); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    check_int("TextArea Shift+PageDown keeps anchor",
+              GetTextAreaSelection(area.focus_id, &selection_start,
+                                   &selection_end),1);
+    check_int("TextArea Shift+PageDown selection start",
+              selection_start,before_page);
+    check_int("TextArea Shift+PageDown selection end",selection_end,cursor);
+
+    InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Left collapses selection",cursor,before_page);
+    check_int("TextArea collapsed selection is empty",
+              GetTextAreaSelection(area.focus_id, NULL, NULL),0);
+
+    InjectKeyTap(KEY_HOME); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Home moves to line start",cursor,6);
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    check_int("TextArea Ctrl+End moves to buffer end",cursor,(int)strlen(text));
     ClearTextInputFocus();
     InjectReset();
 }

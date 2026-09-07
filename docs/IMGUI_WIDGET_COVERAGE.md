@@ -264,7 +264,10 @@ immediate and retained paths share the same internal line/page movement helpers,
 so generated code no longer loses vertical navigation when submitted through
 the retained tree. Enter inserts a newline in Go TextArea instead of following
 the single-line commit path. Direct runtime tests and the generated composition
-fixture exercise these behaviors through k2c and k2go.
+fixture exercise these behaviors through k2c and k2go. Shift extends selections
+across horizontal, vertical, page and Home/End navigation; an unmodified arrow
+collapses an active selection toward that edge. Multiline Home/End target the
+current line, while the platform modifier plus Home/End targets the whole buffer.
 
 Native C and Go list boxes now register with ordinary Tab focus, expose a
 visible focus presentation, and move selection with Up/Down/Home/End while

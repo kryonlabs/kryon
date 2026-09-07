@@ -2173,7 +2173,7 @@ DrawUIHref(HrefProps link)
     return 0;
 }
 
-static int
+int
 ui_text_line_start(const char *text, int cursor)
 {
     int i;
@@ -2187,7 +2187,7 @@ ui_text_line_start(const char *text, int cursor)
     return 0;
 }
 
-static int
+int
 ui_text_line_end(const char *text, int cursor)
 {
     int len;
@@ -2240,6 +2240,22 @@ ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int t
     return end;
 }
 
+static int
+ui_text_cursor_from_line_column(const char *text, int start, int end,
+                                int column)
+{
+    int cursor = start;
+
+    while(column-- > 0 && cursor < end) {
+        int next = ui_utf8_next_offset(text, cursor);
+
+        if(next <= cursor)
+            break;
+        cursor = next;
+    }
+    return cursor;
+}
+
 int
 ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 {
@@ -2265,6 +2281,21 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
             return cursor;
         other_start = end + 1;
         other_end = ui_text_line_end(text, other_start);
+    }
+    if(target_x <= 0 && cursor > start) {
+        int column = 0;
+        int column_cursor = start;
+
+        while(column_cursor < cursor) {
+            int next = ui_utf8_next_offset(text, column_cursor);
+
+            if(next <= column_cursor)
+                break;
+            column_cursor = next;
+            column++;
+        }
+        return ui_text_cursor_from_line_column(
+            text, other_start, other_end, column);
     }
     return ui_text_cursor_from_line_x(text, other_start, other_end, font, target_x);
 }
@@ -3588,6 +3619,52 @@ RenderTextArea(TextAreaProps area)
                 selection_key_handled = 1;
             }
         }
+        if(!selection_key_handled &&
+           (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+            IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+            IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                        IsKeyDown(KEY_RIGHT_SHIFT);
+            int old_cursor = *area.cursor_position;
+            int cursor = old_cursor;
+            int anchor = old_cursor;
+
+            if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                         area.focused))
+                anchor = g_ui_text_area_selection.anchor;
+            if(IsKeyPressed(KEY_HOME))
+                cursor = ui_mod_key_down()
+                    ? 0 : ui_text_line_start(area.text, cursor);
+            else if(IsKeyPressed(KEY_END))
+                cursor = ui_mod_key_down()
+                    ? (int)strlen(area.text)
+                    : ui_text_line_end(area.text, cursor);
+            else if(!shift && selection_end > selection_start &&
+                    (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)))
+                cursor = IsKeyPressed(KEY_LEFT)
+                    ? selection_start : selection_end;
+            else if(IsKeyPressed(KEY_LEFT))
+                cursor = ui_utf8_prev_offset(area.text, cursor);
+            else if(IsKeyPressed(KEY_RIGHT))
+                cursor = ui_utf8_next_offset(area.text, cursor);
+            else if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN))
+                cursor = ui_text_move_vertical(
+                    area.text, cursor, font,
+                    IsKeyPressed(KEY_UP) ? -1 : 1);
+            else
+                cursor = ui_text_area_move_page(
+                    area, cursor, IsKeyPressed(KEY_PAGE_UP) ? -1 : 1);
+
+            *area.cursor_position = cursor;
+            if(!shift)
+                anchor = cursor;
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, anchor, cursor, 0);
+            selection_start = anchor < cursor ? anchor : cursor;
+            selection_end = anchor > cursor ? anchor : cursor;
+            selection_key_handled = 1;
+        }
         if(!area.read_only && !selection_key_handled) {
             changed |= EditText(area_edit);
         }
@@ -3604,19 +3681,7 @@ RenderTextArea(TextAreaProps area)
             }
             g_ui_text_input_enter_count = 0;
         }
-        if(IsKeyPressed(KEY_UP))
-            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
-        if(IsKeyPressed(KEY_DOWN))
-            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
-        if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
-            int direction = IsKeyPressed(KEY_PAGE_UP) ? -1 : 1;
-            *area.cursor_position = ui_text_area_move_page(
-                area, *area.cursor_position, direction);
-        }
-        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-           IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
+        if(changed && !selection_key_handled) {
             if(!g_ui_text_area_selection.dragging) {
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, *area.cursor_position,

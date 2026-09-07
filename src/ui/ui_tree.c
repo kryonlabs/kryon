@@ -1436,14 +1436,22 @@ RouteInput(void)
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
             int cursor = state->cursor;
 
-            if(IsKeyPressed(KEY_HOME))
-                cursor = 0;
-            else if(IsKeyPressed(KEY_END))
-                cursor = (int)strlen(field->text);
-            else if(IsKeyPressed(KEY_LEFT))
+            if(IsKeyPressed(KEY_HOME)) {
+                cursor = node->kind == UI_WIDGET_TEXT_AREA_NODE &&
+                         !modifier
+                    ? ui_text_line_start(field->text, cursor) : 0;
+            } else if(IsKeyPressed(KEY_END)) {
+                cursor = node->kind == UI_WIDGET_TEXT_AREA_NODE &&
+                         !modifier
+                    ? ui_text_line_end(field->text, cursor)
+                    : (int)strlen(field->text);
+            } else if(!shift && end > start) {
+                cursor = IsKeyPressed(KEY_LEFT) ? start : end;
+            } else if(IsKeyPressed(KEY_LEFT)) {
                 cursor = ui_utf8_prev_offset(field->text, cursor);
-            else
+            } else {
                 cursor = ui_utf8_next_offset(field->text, cursor);
+            }
             state->cursor = cursor;
             if(!shift)
                 state->anchor = cursor;

@@ -6703,25 +6703,42 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					changed = true
 					sel = selection{Anchor: pos, Cursor: pos}
 				}
+			case KeyHome:
+				pos, sel = textMoveSelection(sel, pos, 0, event.shift)
+			case KeyEnd:
+				pos, sel = textMoveSelection(sel, pos, len(text), event.shift)
 			}
 			continue
 		}
+		textSelection := event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		switch event.key {
 		case KeyTab:
 			r.setFocus(r.nextFocus(focusID, event.shift))
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyLeft:
-			pos = prevRune(text, pos)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := prevRune(text, pos)
+			if !textSelection && sel.Anchor != sel.Cursor {
+				target, _ = selectionRange(sel)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyRight:
-			pos = nextRune(text, pos)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := nextRune(text, pos)
+			if !textSelection && sel.Anchor != sel.Cursor {
+				_, target = selectionRange(sel)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyHome:
-			pos = 0
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := 0
+			if options.multiline {
+				target = textLineStart(text, pos)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyEnd:
-			pos = len(text)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := len(text)
+			if options.multiline {
+				target = textLineEnd(text, pos)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyUp, KeyDown, KeyPageUp, KeyPageDown:
 			if options.multiline {
 				direction, rows := -1, 1
@@ -6731,8 +6748,8 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 				if event.key == KeyPageUp || event.key == KeyPageDown {
 					rows = max(1, options.pageRows)
 				}
-				pos = textMoveVertical(text, pos, direction, rows)
-				sel = selection{Anchor: pos, Cursor: pos}
+				target := textMoveVertical(text, pos, direction, rows)
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
 			}
 		case KeyBackspace:
 			if options.readOnly {
@@ -7218,6 +7235,17 @@ func textMoveVertical(text string, pos, direction, rows int) int {
 		column--
 	}
 	return pos
+}
+
+func textMoveSelection(current selection, cursor, target int, extend bool) (int, selection) {
+	if extend {
+		if current.Anchor == current.Cursor {
+			current.Anchor = cursor
+		}
+		current.Cursor = target
+		return target, current
+	}
+	return target, selection{Anchor: target, Cursor: target}
 }
 
 func cellW(grid Grid) float32 {
