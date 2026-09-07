@@ -1475,6 +1475,8 @@ type runtime struct {
 	tableResize       tableResize
 	lastTabClick      tabClick
 	tabDrag           tabDrag
+	tabScroll         map[int32]int32
+	tabBarsSeen       map[int32]bool
 	openMenus         map[int32]int32
 	openSubmenus      map[int32]int32
 	menuNavigation    map[int32]*menuNavigation
@@ -1817,6 +1819,10 @@ func (r *runtime) BeginFrame() {
 		r.tooltipPopupsSeen = make(map[int32]bool)
 	}
 	clear(r.tooltipPopupsSeen)
+	if r.tabBarsSeen == nil {
+		r.tabBarsSeen = make(map[int32]bool)
+	}
+	clear(r.tabBarsSeen)
 	r.scrollClips = r.scrollClips[:0]
 	r.disabledStack = r.disabledStack[:0]
 	r.disabledCount = 0
@@ -1854,6 +1860,11 @@ func (r *runtime) EndFrame() {
 	for id := range r.openDropdowns {
 		if !r.dropdownsSeen[id] {
 			r.closeDropdown(id)
+		}
+	}
+	for id := range r.tabScroll {
+		if !r.tabBarsSeen[id] {
+			delete(r.tabScroll, id)
 		}
 	}
 	r.appendPaintLayers(func(id int32) bool {
@@ -2711,6 +2722,13 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	localScroll := int32(0)
 	scroll := props.ScrollOffset
 	if scroll == nil {
+		if props.ID > 0 {
+			if r.tabScroll == nil {
+				r.tabScroll = make(map[int32]int32)
+			}
+			localScroll = r.tabScroll[props.ID]
+			r.tabBarsSeen[props.ID] = true
+		}
 		scroll = &localScroll
 	}
 	maxScroll := int32(max(float32(0), totalWidth-bounds.Width))
@@ -2826,6 +2844,9 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 			}
 			r.tabDrag = tabDrag{}
 		}
+	}
+	if props.ScrollOffset == nil && props.ID > 0 {
+		r.tabScroll[props.ID] = *scroll
 	}
 	return clicked
 }

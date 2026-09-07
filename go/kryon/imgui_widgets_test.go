@@ -1667,6 +1667,40 @@ func TestNativeTabBarRichSignals(t *testing.T) {
 	}
 }
 
+func TestNativeTabBarsOwnIndependentDefaultScroll(t *testing.T) {
+	r := New(AppConfig{Width: 420, Height: 160}).(*runtime)
+	tabs := []Tab{{Label: "Alpha"}, {Label: "Beta"}, {Label: "Gamma"}}
+	first := TabBarProps{Bounds: NewRectangle(10, 10, 160, 30), Tabs: tabs,
+		Count: 3, SelectedIndex: 2, MinTabWidth: 100, MaxTabWidth: 100,
+		FocusSelected: true, ID: 924}
+	second := first
+	second.Bounds = NewRectangle(210, 10, 160, 30)
+	second.SelectedIndex = 0
+	second.FocusSelected = false
+	second.ID = 925
+
+	r.BeginFrame()
+	r.TabBar(first)
+	r.TabBar(second)
+	r.EndFrame()
+	firstScroll := r.tabScroll[first.ID]
+	if firstScroll <= 0 {
+		t.Fatalf("first default scroll=%d, want a revealed selected tab", firstScroll)
+	}
+	if got := r.tabScroll[second.ID]; got != 0 {
+		t.Fatalf("second default scroll inherited %d from first tab bar", got)
+	}
+
+	first.FocusSelected = false
+	r.BeginFrame()
+	r.TabBar(first)
+	r.TabBar(second)
+	r.EndFrame()
+	if got := r.tabScroll[first.ID]; got != firstScroll {
+		t.Fatalf("default scroll did not persist: got %d want %d", got, firstScroll)
+	}
+}
+
 func TestNativeTypedDragDrop(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	payload := []byte("item-42")

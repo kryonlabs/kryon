@@ -264,6 +264,25 @@ test_tab_bar_keyboard_navigation(void)
 }
 
 static void
+test_tab_bar_owned_scroll_state(void)
+{
+    int fallback = 0;
+    int *first;
+    int *second;
+
+    BeginUIFrame(360,180,1);
+    first = ui_tab_bar_owned_scroll(635,&fallback);
+    *first = 47;
+    second = ui_tab_bar_owned_scroll(636,&fallback);
+    check_int("tab bars own independent scroll",*second,0);
+    check_int("tab bar scroll persists by id",
+              *ui_tab_bar_owned_scroll(635,&fallback),47);
+    check_int("anonymous tab bar uses caller fallback",
+              ui_tab_bar_owned_scroll(0,&fallback) == &fallback,1);
+    EndUIFrame();
+}
+
+static void
 test_popup_tab_bar_keyboard_ownership(void)
 {
     Tab tabs[] = {{.label="One"},{.label="Two"}};
@@ -3241,6 +3260,7 @@ main(void)
     test_slider_keyboard_navigation();
     test_drag_keyboard_navigation();
     test_tab_bar_keyboard_navigation();
+    test_tab_bar_owned_scroll_state();
     test_popup_tab_bar_keyboard_ownership();
     test_step_button_keyboard_navigation();
     return 0;

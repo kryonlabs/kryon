@@ -4540,6 +4540,7 @@ DrawUIFrameOverlays(void)
     ResetUIClip();
     ui_draw_dropdown_overlays();
     ui_draw_menu_overlays();
+    ui_tab_bar_finish_frame();
     ui_text_draw_context_overlay();
 }
 

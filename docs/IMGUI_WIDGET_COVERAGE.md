@@ -32,7 +32,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | nested submenus plus focus, disabled/separator skipping, arrow/Home/End traversal, submenu entry/backout, activation, and Escape dismissal in native C and Go |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
-| Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
+| Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; omitted scroll state is owned independently by stable tab-bar ID |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
 | Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
 
@@ -65,9 +65,10 @@ confirmation without prematurely changing selection, opening the control with
 Space through its focus ID. Native unit tests cover opening focused positive-ID
 controls with Enter, keypad Enter, Space and Down, without moving or committing
 the selection, and reject opening under both property and scope disabling.
-Go also checks the focused paint record and focus border. General popup
-keyboard-focus isolation remains a gap; these tests do not prove complete ImGui
-navigation semantics.
+Go also checks the focused paint record and focus border. Popup keyboard-focus
+isolation is covered separately across buttons, editors, choices, drags, lists,
+tables, menus, tabs, collapsibles and generic accelerators; these tests still do
+not prove every ImGui navigation semantic or widget-specific shortcut.
 
 Native C and Go sliders now register each counted component as a focus target.
 Left/Right adjust horizontal sliders, Up/Down adjust vertical sliders, Home/End
