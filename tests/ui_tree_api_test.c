@@ -21,6 +21,9 @@ void __wrap_DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
 void __wrap_BeginScissorMode(int x, int y, int width, int height);
 void __wrap_EndScissorMode(void);
 
+void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
+                        int selection_start, int selection_end);
+
 typedef struct ScaffoldFixture {
     int seen_w;
     int closed;
@@ -583,6 +586,22 @@ main(void)
         RouteInput();
         check_int("multiline textarea enter inserts newline",
                   value[cursor - 1], '\n');
+    }
+
+    {
+        char value[64] = "textarea-probe";
+        int cursor = 0;
+        int focused = 0;
+        int scroll_y = -400;
+
+        InjectReset();
+        ui_paint_text_area((TextAreaProps){
+            .bounds = {20, 30, 180, 120}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .focused = &focused, .scroll_y = &scroll_y,
+            .focus_id = 1006, .font = 16, .line_gap = 4
+        }, cursor, focused, cursor, cursor);
+        check_int("retained textarea clamps negative scroll", scroll_y, 0);
     }
 
     /* Composition events preserve preedit separately and commit UTF-8 only

@@ -2851,6 +2851,19 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
     if(wrap_width < ScaleUIPx(24))
         wrap_width = 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
+    {
+        int content_h = ui_text_area_content_height(
+            area.text, font, line_gap, wrap_width,
+            area.content_version, 0);
+        int viewport_h = (int)area.bounds.height - padding_y * 2;
+        int max_scroll = content_h - viewport_h;
+
+        if(max_scroll < 0)
+            max_scroll = 0;
+        scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+        if(area.scroll_y != NULL)
+            *area.scroll_y = scroll_y;
+    }
     first_line_y = GetUIControlTextY(
         "Hg", (int)area.bounds.y + padding_y, line_h, font);
     border = focused ? area.style.focus_border : area.style.border;
