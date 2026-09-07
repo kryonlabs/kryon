@@ -29,7 +29,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll, plus a framed scrolling scope for arbitrary native children |
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `PlotLines`, `PlotHistogram` | covered |
-| Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | covered, including nested submenus |
+| Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | nested submenus plus focus, disabled/separator skipping, arrow/Home/End traversal, submenu entry/backout, activation, and Escape dismissal in native C and Go |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | covered |
@@ -241,6 +241,14 @@ visible focus presentation, and move selection with Up/Down/Home/End while
 keeping the selected row visible. Disabled and higher-popup-owned lists reject
 the same keys. The shared generated list fixture exercises the navigation
 contract through k2c and k2go without adding backend-specific widget aliases.
+
+Native C and Go menus share one navigation model across menu bars, standalone
+popup menus, context menus, and recursive submenus. Arrow, Home, End,
+Enter/Space, and Escape navigation skips separators and disabled commands,
+respects the active popup owner, and does not let passive pointer hover steal
+keyboard focus. The generated menu fixture exercises nested activation through
+k2c and k2go. C owns a recursive snapshot of deferred overlay items, so
+generated frame-local menu arrays remain valid through end-of-frame painting.
 
 `tests/parity/drag_drop.kry` is executed through generated C and Go. A clipped
 source cannot activate, and a clipped target cannot consume the release before

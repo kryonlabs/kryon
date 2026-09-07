@@ -547,6 +547,101 @@ func TestNativePopupAndContextMenus(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestMenuKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
+	child := []MenuItem{{Kind: MenuCommand, Label: "Child", ID: 23}}
+	file := []MenuItem{
+		{Kind: MenuCommand, Label: "Open", ID: 21},
+		{Kind: MenuSeparator},
+		{Kind: MenuCommand, Label: "Disabled", ID: 22, Disabled: true},
+		{Kind: MenuSubmenu, Label: "More", ID: 24, Submenu: child, SubmenuCount: 1},
+	}
+	edit := []MenuItem{{Kind: MenuCommand, Label: "Copy", ID: 31}}
+	menus := []Menu{{Label: "File", Items: file, ItemCount: int32(len(file))}, {Label: "Edit", Items: edit, ItemCount: 1}}
+	open := int32(-1)
+	draw := func(key int32) MenuBarResult {
+		r.QueueKey(key)
+		r.BeginFrame()
+		result := r.MenuBar(300, NewRectangle(0, 0, 360, 30), menus, &open)
+		r.EndFrame()
+		return result
+	}
+
+	r.SetFocus(300)
+	if got := draw(KeyDown); got.OpenIndex != 0 || open != 0 {
+		t.Fatalf("Down opens focused menu: result=%+v open=%d", got, open)
+	}
+	if got := draw(KeyEnd); got.ActivatedID != 0 {
+		t.Fatalf("End activated menu item: %+v", got)
+	}
+	if got := draw(KeyRight); got.ActivatedID != 0 {
+		t.Fatalf("Right activated submenu: %+v", got)
+	}
+	if got := draw(KeyEnter); got.ActivatedID != 23 || open != -1 {
+		t.Fatalf("submenu Enter result=%+v open=%d, want 23/-1", got, open)
+	}
+
+	r.SetFocus(300)
+	draw(KeyRight)
+	if got := draw(KeyDown); got.OpenIndex != 1 || open != 1 {
+		t.Fatalf("Right then Down opens next menu: result=%+v open=%d", got, open)
+	}
+	if got := draw(KeyEnter); got.ActivatedID != 31 || open != -1 {
+		t.Fatalf("second menu Enter result=%+v open=%d, want 31/-1", got, open)
+	}
+
+	r.SetFocus(300)
+	draw(KeyDown)
+	draw(KeyEscape)
+	if open != -1 {
+		t.Fatalf("Escape left menu open at %d", open)
+	}
+}
+
+func TestContextMenuKeyboardNavigationAndOwnership(t *testing.T) {
+	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
+	items := []MenuItem{
+		{Kind: MenuCommand, Label: "Disabled", ID: 41, Disabled: true},
+		{Kind: MenuSeparator},
+		{Kind: MenuCommand, Label: "Run", ID: 42},
+	}
+	open, x, y := int32(0), int32(20), int32(20)
+	props := ContextMenuProps{ID: 400, Trigger: NewRectangle(10, 10, 100, 50), Items: items, ItemCount: int32(len(items)), Open: &open, X: &x, Y: &y}
+
+	r.QueueMouseButtonUp(MouseButtonRight, 20, 20)
+	r.BeginFrame()
+	r.ContextMenu(props)
+	r.EndFrame()
+	if open != 1 || r.Focus() != 400 {
+		t.Fatalf("context open/focus=%d/%d, want 1/400", open, r.Focus())
+	}
+	r.QueueKey(KeyEnter)
+	r.BeginFrame()
+	got := r.ContextMenu(props)
+	r.EndFrame()
+	if got != 42 || open != 0 {
+		t.Fatalf("context Enter=%d open=%d, want 42/0", got, open)
+	}
+
+	open = 1
+	r.SetFocus(999)
+	r.QueueKey(KeyEnter)
+	r.BeginFrame()
+	got = r.ContextMenu(props)
+	r.EndFrame()
+	if got != 0 || open != 1 {
+		t.Fatalf("unfocused context consumed Enter: got=%d open=%d", got, open)
+	}
+	r.SetFocus(400)
+	r.QueueKey(KeyEscape)
+	r.BeginFrame()
+	r.ContextMenu(props)
+	r.EndFrame()
+	if open != 0 {
+		t.Fatalf("Escape left context menu open")
+	}
+}
+
 func TestCollapsibleComposesInteractiveChildren(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	open := false

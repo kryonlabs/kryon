@@ -1451,6 +1451,7 @@ type runtime struct {
 	tableResize       tableResize
 	openMenus         map[int32]int32
 	openSubmenus      map[int32]int32
+	menuNavigation    map[int32]*menuNavigation
 	contextMenus      map[int32]Vector2
 	openDropdowns     map[int32]bool
 	dropdownHighlight map[int32]int32
@@ -1590,6 +1591,11 @@ type selection struct {
 	Cursor int
 }
 
+type menuNavigation struct {
+	Top  int32
+	Path []int
+}
+
 func New(config AppConfig) Runtime {
 	ensureDefaultUIFont()
 	if config.Width <= 0 {
@@ -1608,6 +1614,7 @@ func New(config AppConfig) Runtime {
 		keyDown:        map[int32]bool{},
 		openMenus:      map[int32]int32{},
 		openSubmenus:   map[int32]int32{},
+		menuNavigation: map[int32]*menuNavigation{},
 		contextMenus:   map[int32]Vector2{},
 		openDropdowns:  map[int32]bool{},
 		currentThemeID: ThemeMono,
@@ -4101,9 +4108,43 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	}
 	return result
 }
+func menuItemAt(items []MenuItem, start, direction int) int {
+	if len(items) == 0 {
+		return -1
+	}
+	index := start
+	for range items {
+		index = (index + direction + len(items)) % len(items)
+		if items[index].Kind != MenuSeparator && !items[index].Disabled {
+			return index
+		}
+	}
+	return -1
+}
+
+func menuFirstItem(items []MenuItem) int { return menuItemAt(items, -1, 1) }
+func menuLastItem(items []MenuItem) int  { return menuItemAt(items, 0, -1) }
+
+func (r *runtime) menuNav(id int32) *menuNavigation {
+	state := r.menuNavigation[id]
+	if state == nil {
+		state = &menuNavigation{}
+		r.menuNavigation[id] = state
+	}
+	return state
+}
+
+func resetMenuPath(state *menuNavigation, items []MenuItem) {
+	state.Path = state.Path[:0]
+	if first := menuFirstItem(items); first >= 0 {
+		state.Path = append(state.Path, first)
+	}
+}
+
 func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult {
 	theme := r.theme()
 	result := MenuBarResult{OpenIndex: -1}
+	state := r.menuNav(id)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(r.GetScreenWidth()) - bounds.X
 	}
@@ -4114,8 +4155,63 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 		r.openMenus[id] = *openIndex
 	}
 	open := int32(-1)
+	openedByKeyboard := false
 	if v, ok := r.openMenus[id]; ok {
 		open = v
+	}
+	if len(menus) > 0 {
+		state.Top = clamp32(state.Top, 0, int32(len(menus)-1))
+	}
+	if !r.contentDisabled() {
+		r.registerField(id)
+	}
+	focused := !r.contentDisabled() && id != 0 && r.focusID == id && !r.popupFocusCaptures(id)
+	if focused && len(menus) > 0 {
+		if open < 0 {
+			switch {
+			case r.keyDown[KeyLeft]:
+				state.Top = (state.Top + int32(len(menus)) - 1) % int32(len(menus))
+			case r.keyDown[KeyRight]:
+				state.Top = (state.Top + 1) % int32(len(menus))
+			case r.keyDown[KeyHome]:
+				state.Top = 0
+			case r.keyDown[KeyEnd]:
+				state.Top = int32(len(menus) - 1)
+			case r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace] || r.keyDown[KeyDown]:
+				open = state.Top
+				r.openMenus[id] = open
+				resetMenuPath(state, limitedMenuItems(menus[open].Items, menus[open].ItemCount))
+				openedByKeyboard = true
+			}
+		} else if r.keyDown[KeyEscape] {
+			open = -1
+			delete(r.openMenus, id)
+			delete(r.openSubmenus, id)
+			state.Path = state.Path[:0]
+		} else if len(state.Path) <= 1 && r.keyDown[KeyLeft] {
+			open = (open + int32(len(menus)) - 1) % int32(len(menus))
+			state.Top = open
+			r.openMenus[id] = open
+			delete(r.openSubmenus, id)
+			resetMenuPath(state, limitedMenuItems(menus[open].Items, menus[open].ItemCount))
+			openedByKeyboard = true
+		} else if len(state.Path) <= 1 && r.keyDown[KeyRight] {
+			selected := -1
+			if len(state.Path) == 1 {
+				selected = state.Path[0]
+			}
+			opensSubmenu := selected >= 0 && selected < len(limitedMenuItems(menus[open].Items, menus[open].ItemCount)) &&
+				limitedMenuItems(menus[open].Items, menus[open].ItemCount)[selected].Kind == MenuSubmenu &&
+				!limitedMenuItems(menus[open].Items, menus[open].ItemCount)[selected].Disabled
+			if !opensSubmenu {
+				open = (open + 1) % int32(len(menus))
+				state.Top = open
+				r.openMenus[id] = open
+				delete(r.openSubmenus, id)
+				resetMenuPath(state, limitedMenuItems(menus[open].Items, menus[open].ItemCount))
+				openedByKeyboard = true
+			}
+		}
 	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: theme.surface, BorderColor: theme.border})
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
@@ -4124,7 +4220,8 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 	for i, menu := range menus {
 		w := float32(maxInt(44, runtimeTextWidth(menu.Label, font)+24))
 		item := Rectangle{X: x, Y: bounds.Y + 3, Width: w, Height: bounds.Height - 6}
-		if r.consumeTap(item) {
+		if !r.contentDisabled() && r.consumeTap(item) {
+			r.setFocus(id)
 			idx := int32(i)
 			if open == idx {
 				idx = -1
@@ -4134,9 +4231,11 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 				delete(r.openMenus, id)
 			} else {
 				r.openMenus[id] = open
+				state.Top = open
+				resetMenuPath(state, limitedMenuItems(menu.Items, menu.ItemCount))
 			}
 		}
-		if open == int32(i) {
+		if open == int32(i) || focused && open < 0 && state.Top == int32(i) {
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: item, Color: theme.button})
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: theme.text, FontSize: font})
@@ -4153,11 +4252,13 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 			menuX += float32(maxInt(44, runtimeTextWidth(menus[i].Label, font)+24)) + 2
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
-		result.ActivatedID, _ = r.drawPopupMenu(id, int32(menuX), int32(bounds.Y+bounds.Height), items)
+		handled := openedByKeyboard
+		result.ActivatedID, _ = r.drawPopupMenu(id, int32(menuX), int32(bounds.Y+bounds.Height), items, id, 0, &handled)
 		if result.ActivatedID != 0 {
 			delete(r.openMenus, id)
 			delete(r.openSubmenus, id)
 			open = -1
+			state.Path = state.Path[:0]
 		}
 	}
 	if open < 0 && openIndex != nil {
@@ -4173,7 +4274,7 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 	return items[:count]
 }
 
-func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem) (int32, Rectangle) {
+func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
 	theme := r.theme()
 	font := int32(Text14)
 	rowH := float32(30)
@@ -4191,6 +4292,47 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem) (int32, Rectan
 	if len(items) == 0 {
 		return 0, panel
 	}
+	state := r.menuNav(focusID)
+	keyboard := !r.contentDisabled() && focusID != 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+	if keyboard {
+		for len(state.Path) <= depth {
+			state.Path = append(state.Path, menuFirstItem(items))
+		}
+		selected := state.Path[depth]
+		if selected < 0 || selected >= len(items) || items[selected].Kind == MenuSeparator || items[selected].Disabled {
+			selected = menuFirstItem(items)
+			state.Path[depth] = selected
+		}
+		if !*handled && depth == len(state.Path)-1 && selected >= 0 {
+			switch {
+			case r.keyDown[KeyUp]:
+				state.Path[depth] = menuItemAt(items, selected, -1)
+				*handled = true
+			case r.keyDown[KeyDown]:
+				state.Path[depth] = menuItemAt(items, selected, 1)
+				*handled = true
+			case r.keyDown[KeyHome]:
+				state.Path[depth] = menuFirstItem(items)
+				*handled = true
+			case r.keyDown[KeyEnd]:
+				state.Path[depth] = menuLastItem(items)
+				*handled = true
+			case r.keyDown[KeyLeft] && depth > 0:
+				state.Path = state.Path[:depth]
+				*handled = true
+			case r.keyDown[KeyRight] || r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace]:
+				item := items[selected]
+				if item.Kind == MenuSubmenu && len(limitedMenuItems(item.Submenu, item.SubmenuCount)) > 0 {
+					r.openSubmenus[id] = item.ID
+					state.Path = append(state.Path, menuFirstItem(limitedMenuItems(item.Submenu, item.SubmenuCount)))
+					*handled = true
+				} else if !item.Disabled && item.Kind != MenuSeparator {
+					*handled = true
+					return item.ID, panel
+				}
+			}
+		}
+	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border})
 	for i, item := range items {
 		row := Rectangle{X: panel.X + 4, Y: panel.Y + 4 + float32(i)*rowH, Width: panel.Width - 8, Height: rowH}
@@ -4198,15 +4340,28 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem) (int32, Rectan
 			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16}, Color: theme.border})
 			continue
 		}
-		hovered := pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		hovered := !r.contentDisabled() && pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		selected := keyboard && len(state.Path) > depth && state.Path[depth] == i
 		if hovered && !item.Disabled {
+			if len(state.Path) > depth {
+				state.Path[depth] = i
+				state.Path = state.Path[:depth+1]
+			}
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.buttonHover})
 			if item.Kind == MenuSubmenu {
 				r.openSubmenus[id] = item.ID
 			}
 		}
-		if !item.Disabled && item.Kind != MenuSubmenu && r.consumeTap(row) {
-			return item.ID, panel
+		if selected && !hovered {
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.buttonHover})
+		}
+		if !item.Disabled && r.consumeTap(row) {
+			r.setFocus(focusID)
+			if item.Kind == MenuSubmenu {
+				r.openSubmenus[id] = item.ID
+			} else {
+				return item.ID, panel
+			}
 		}
 		textColor := theme.text
 		if item.Disabled {
@@ -4222,11 +4377,15 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem) (int32, Rectan
 		}
 		if item.Kind == MenuSubmenu {
 			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, FontSize: font})
-			if r.openSubmenus[id] == item.ID {
+			submenuOpen := r.openSubmenus[id] == item.ID
+			if keyboard {
+				submenuOpen = selected && len(state.Path) > depth+1
+			}
+			if submenuOpen {
 				subitems := limitedMenuItems(item.Submenu, item.SubmenuCount)
-				selected, _ := r.drawPopupMenu(item.ID, int32(row.X+row.Width), int32(row.Y), subitems)
-				if selected != 0 {
-					return selected, panel
+				activated, _ := r.drawPopupMenu(item.ID, int32(row.X+row.Width), int32(row.Y), subitems, focusID, depth+1, handled)
+				if activated != 0 {
+					return activated, panel
 				}
 			}
 		}
@@ -4235,7 +4394,18 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem) (int32, Rectan
 }
 
 func (r *runtime) PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
-	selected, _ := r.drawPopupMenu(id, x, y, limitedMenuItems(items, itemCount))
+	items = limitedMenuItems(items, itemCount)
+	if !r.contentDisabled() {
+		r.registerField(id)
+	}
+	state := r.menuNav(id)
+	if r.focusID == id && r.keyDown[KeyEscape] {
+		state.Path = state.Path[:0]
+		r.setFocus(0)
+		return 0
+	}
+	handled := false
+	selected, _ := r.drawPopupMenu(id, x, y, items, id, 0, &handled)
 	return selected
 }
 
@@ -4255,6 +4425,8 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 	}
 	if !r.contentDisabled() && r.mouseReleased[MouseButtonRight] && pointInRect(r.mousePos.X, r.mousePos.Y, props.Trigger) {
 		r.contextMenus[props.ID] = r.mousePos
+		r.setFocus(props.ID)
+		resetMenuPath(r.menuNav(props.ID), limitedMenuItems(props.Items, props.ItemCount))
 		if props.Open != nil {
 			*props.Open = 1
 		}
@@ -4269,7 +4441,20 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 	if !open {
 		return 0
 	}
-	selected, panel := r.drawPopupMenu(props.ID, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount))
+	if !r.contentDisabled() {
+		r.registerField(props.ID)
+	}
+	if !r.contentDisabled() && r.focusID == props.ID && !r.popupFocusCaptures(props.ID) && r.keyDown[KeyEscape] {
+		delete(r.contextMenus, props.ID)
+		delete(r.openSubmenus, props.ID)
+		r.menuNav(props.ID).Path = r.menuNav(props.ID).Path[:0]
+		if props.Open != nil {
+			*props.Open = 0
+		}
+		return 0
+	}
+	handled := false
+	selected, panel := r.drawPopupMenu(props.ID, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount), props.ID, 0, &handled)
 	closeMenu := selected != 0
 	if !closeMenu && !r.contentDisabled() {
 		for i := range r.taps {
@@ -4283,6 +4468,7 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 	if closeMenu {
 		delete(r.contextMenus, props.ID)
 		delete(r.openSubmenus, props.ID)
+		r.menuNav(props.ID).Path = r.menuNav(props.ID).Path[:0]
 		if props.Open != nil {
 			*props.Open = 0
 		}

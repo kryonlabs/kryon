@@ -166,6 +166,34 @@ func TestPopupButtonKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupMenuKeyboardOwnership(t *testing.T) {
+	items := []MenuItem{{Kind: MenuCommand, Label: "Run", ID: 25710}}
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.QueueKey(KeyEnter)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(25711)
+		got := r.PopupMenu(25711, 10, 10, items, 1)
+		want := int32(0)
+		if inside {
+			want = 25710
+		}
+		if got != want {
+			t.Fatalf("inside=%v: popup menu activation=%d want=%d", inside, got, want)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupAcceleratorKeyboardOwnership(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	r.QueueShortcut(KeyC)

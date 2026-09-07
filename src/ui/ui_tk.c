@@ -12,6 +12,7 @@ static const TextInputStyle kryon_zero_text_input_style;
 
 
 #define UI_TK_MENU_MAX 8
+#define UI_TK_MENU_DEPTH_MAX 8
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
 #define UI_DRAG_DROP_DATA_MAX 1024
@@ -39,8 +40,8 @@ typedef struct UIMenuOverlayState {
     int menu_id;
     int x;
     int y;
-    const MenuItem *items;
     int item_count;
+    MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
 } UIMenuOverlayState;
 
 typedef struct UIContextMenuOverlayState {
@@ -64,6 +65,17 @@ static int g_context_menu_pending_activated = 0;
 static int g_context_menu_pending_closed_id = 0;
 static int g_canvas_depth = 0;
 static int g_canvas_mode_depth = 0;
+
+typedef struct UIMenuNavigation {
+    int focus_id;
+    int top;
+    int depth;
+    int path[UI_TK_MENU_DEPTH_MAX];
+    int key_handled;
+    unsigned long key_frame;
+} UIMenuNavigation;
+
+static UIMenuNavigation g_menu_navigation = {0};
 
 typedef struct UIRadioAnimState {
     unsigned int key;
@@ -648,7 +660,46 @@ DrawUIColorButton(ColorButtonProps button)
 }
 
 static int
-draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
+menu_item_at(const MenuItem *items, int item_count, int start, int direction)
+{
+    int index = start;
+    if(items == NULL || item_count <= 0) return -1;
+    for(int i = 0; i < item_count; i++) {
+        index = (index + direction + item_count) % item_count;
+        if(items[index].kind != MenuSeparator && !items[index].disabled)
+            return index;
+    }
+    return -1;
+}
+
+static int menu_first_item(const MenuItem *items, int count)
+{ return menu_item_at(items,count,-1,1); }
+static int menu_last_item(const MenuItem *items, int count)
+{ return menu_item_at(items,count,0,-1); }
+
+static void
+menu_navigation_begin_frame(void)
+{
+    if(g_menu_navigation.key_frame == g_ui_frame_serial)
+        return;
+    g_menu_navigation.key_frame = g_ui_frame_serial;
+    g_menu_navigation.key_handled = 0;
+}
+
+static void
+menu_navigation_reset(int focus_id, const MenuItem *items, int item_count)
+{
+    g_menu_navigation.focus_id = focus_id;
+    g_menu_navigation.top = 0;
+    g_menu_navigation.depth = 0;
+    for(int i = 0; i < UI_TK_MENU_DEPTH_MAX; i++)
+        g_menu_navigation.path[i] = -1;
+    g_menu_navigation.path[0] = menu_first_item(items,item_count);
+}
+
+static int
+draw_menu_items(int x, int y, const MenuItem *items, int item_count,
+                int focus_id, int depth)
 {
     int font = GetFontSize();
     int row_h = ScaleUIPx(30);
@@ -659,10 +710,66 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
     Rectangle panel;
     Vector2 mouse;
     int can_draw = IsWindowReady();
+    int keyboard;
 
-    (void)id;
     if(items == NULL || item_count <= 0)
         return 0;
+
+    keyboard = !UIContentDisabled() && focus_id > 0 && IsUIFocusActive(focus_id) &&
+               UIKeyboardInputEnabled() &&
+               !ui_popup_input_focus_captures(focus_id);
+    if(keyboard && g_menu_navigation.focus_id != focus_id)
+        menu_navigation_reset(focus_id,items,item_count);
+    if(keyboard && depth < UI_TK_MENU_DEPTH_MAX) {
+        int selected;
+        if(g_menu_navigation.path[depth] < 0 ||
+           g_menu_navigation.path[depth] >= item_count ||
+           items[g_menu_navigation.path[depth]].kind == MenuSeparator ||
+           items[g_menu_navigation.path[depth]].disabled)
+            g_menu_navigation.path[depth] = menu_first_item(items,item_count);
+        selected = g_menu_navigation.path[depth];
+        if(!g_menu_navigation.key_handled &&
+           g_menu_navigation.depth == depth && selected >= 0) {
+            if(IsKeyPressed(KEY_UP)) {
+                g_menu_navigation.path[depth] =
+                    menu_item_at(items,item_count,selected,-1);
+                g_menu_navigation.key_handled = 1;
+            } else if(IsKeyPressed(KEY_DOWN)) {
+                g_menu_navigation.path[depth] =
+                    menu_item_at(items,item_count,selected,1);
+                g_menu_navigation.key_handled = 1;
+            } else if(IsKeyPressed(KEY_HOME)) {
+                g_menu_navigation.path[depth] = menu_first_item(items,item_count);
+                g_menu_navigation.key_handled = 1;
+            } else if(IsKeyPressed(KEY_END)) {
+                g_menu_navigation.path[depth] = menu_last_item(items,item_count);
+                g_menu_navigation.key_handled = 1;
+            } else if(IsKeyPressed(KEY_LEFT) && depth > 0) {
+                g_menu_navigation.depth = depth-1;
+                g_menu_navigation.path[depth] = -1;
+                g_menu_navigation.key_handled = 1;
+            } else if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER) ||
+                      IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
+                const MenuItem *selected_item =
+                    &items[g_menu_navigation.path[depth]];
+                g_menu_navigation.key_handled = 1;
+                if(selected_item->kind == MenuSubmenu &&
+                   selected_item->submenu != NULL &&
+                   selected_item->submenu_count > 0 &&
+                   depth+1 < UI_TK_MENU_DEPTH_MAX) {
+                    g_menu_submenu_id = selected_item->id;
+                    g_menu_navigation.depth = depth+1;
+                    g_menu_navigation.path[depth+1] =
+                        menu_first_item(selected_item->submenu,
+                                        selected_item->submenu_count);
+                } else if(selected_item->kind != MenuSeparator &&
+                          !selected_item->disabled) {
+                    g_menu_open_id = 0;
+                    return selected_item->id;
+                }
+            }
+        }
+    }
 
     for(int i = 0; i < item_count; i++) {
         int text_w = items[i].label != NULL ? TextWidth(items[i].label, font) : 0;
@@ -684,8 +791,11 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
         Rectangle row = {(float)x + 4, (float)y + 4 + (float)(i * row_h),
                          (float)w - 8, (float)row_h};
         const MenuItem *item = &items[i];
-        int row_hot = ui_contains(row, mouse) && item->kind != MenuSeparator;
+        int row_hot = !UIContentDisabled() && ui_contains(row, mouse) &&
+                      item->kind != MenuSeparator;
         int hot = row_hot && !item->disabled;
+        int selected = keyboard && depth < UI_TK_MENU_DEPTH_MAX &&
+                       g_menu_navigation.path[depth] == i;
 
         if(item->kind == MenuSeparator) {
             if(can_draw)
@@ -694,10 +804,19 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
         }
 
         if(hot) {
+            if(g_menu_navigation.focus_id == focus_id &&
+               depth < UI_TK_MENU_DEPTH_MAX) {
+                g_menu_navigation.path[depth] = i;
+                g_menu_navigation.depth = depth;
+                for(int child = depth+1; child < UI_TK_MENU_DEPTH_MAX; child++)
+                    g_menu_navigation.path[child] = -1;
+            }
             if(can_draw)
                 DrawRectangleRec(row, GetThemeButtonHover());
             MarkUIClickable();
         }
+        if(selected && !hot && can_draw)
+            DrawRectangleRec(row, GetThemeButtonHover());
         if(item->disabled && row_hot)
             MarkUIDisabled();
         if(can_draw && item->checked)
@@ -717,17 +836,32 @@ draw_menu_items(int id, int x, int y, const MenuItem *items, int item_count)
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(hot && item->kind == MenuSubmenu)
             g_menu_submenu_id = item->id;
-        if(item->kind == MenuSubmenu && g_menu_submenu_id == item->id &&
+        if(item->kind == MenuSubmenu &&
+           (keyboard
+                ? selected && g_menu_navigation.depth > depth
+                : g_menu_submenu_id == item->id) &&
            item->submenu != NULL && item->submenu_count > 0) {
-            int sub = draw_menu_items(item->id, (int)(row.x + row.width), (int)row.y,
-                                      item->submenu, item->submenu_count);
+            int sub = draw_menu_items((int)(row.x + row.width), (int)row.y,
+                                      item->submenu,
+                                      item->submenu_count, focus_id, depth+1);
             if(sub != 0)
                 activated = sub;
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->kind != MenuSubmenu) {
+        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
-            activated = item->id;
-            g_menu_open_id = 0;
+            if(g_menu_navigation.focus_id != focus_id)
+                menu_navigation_reset(focus_id,items,item_count);
+            if(depth < UI_TK_MENU_DEPTH_MAX) {
+                g_menu_navigation.path[depth] = i;
+                g_menu_navigation.depth = depth;
+            }
+            SetUIFocus(focus_id);
+            if(item->kind == MenuSubmenu)
+                g_menu_submenu_id = item->id;
+            else {
+                activated = item->id;
+                g_menu_open_id = 0;
+            }
         }
     }
 
@@ -756,17 +890,55 @@ menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
                        (float)(row_h * item_count + ScaleUIPx(8))};
 }
 
+static int
+copy_menu_items(MenuItem *arena, int *used, const MenuItem *items,
+                int item_count, int *copied_count)
+{
+    int start;
+    int count;
+
+    *copied_count = 0;
+    if(items == NULL || item_count <= 0 ||
+       *used >= UI_TK_CONTEXT_MENU_MAX_ITEMS)
+        return -1;
+    count = item_count;
+    if(count > UI_TK_CONTEXT_MENU_MAX_ITEMS-*used)
+        count = UI_TK_CONTEXT_MENU_MAX_ITEMS-*used;
+    start = *used;
+    *used += count;
+    *copied_count = count;
+    for(int i = 0; i < count; i++)
+        arena[start+i] = items[i];
+    for(int i = 0; i < count; i++) {
+        MenuItem *copy = &arena[start+i];
+        int child_count = 0;
+        int child_start;
+        if(copy->kind != MenuSubmenu || copy->submenu == NULL ||
+           copy->submenu_count <= 0) {
+            copy->submenu = NULL;
+            copy->submenu_count = 0;
+            continue;
+        }
+        child_start = copy_menu_items(arena,used,copy->submenu,
+                                      copy->submenu_count,&child_count);
+        copy->submenu = child_start >= 0 ? &arena[child_start] : NULL;
+        copy->submenu_count = child_count;
+    }
+    return start;
+}
+
 static void
 queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
 {
-    int count = menu.item_count;
+    int count = 0;
+    int used = 0;
 
-    if(menu.items == NULL || count <= 0) {
+    if(menu.items == NULL || menu.item_count <= 0) {
         g_context_menu_overlay.active = 0;
         return;
     }
-    if(count > UI_TK_CONTEXT_MENU_MAX_ITEMS)
-        count = UI_TK_CONTEXT_MENU_MAX_ITEMS;
+    copy_menu_items(g_context_menu_overlay.items,&used,menu.items,
+                    menu.item_count,&count);
 
     g_context_menu_overlay.active = 1;
     g_context_menu_overlay.id = menu.id;
@@ -774,8 +946,6 @@ queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
     g_context_menu_overlay.y = menu.y != NULL ? *menu.y : 0;
     g_context_menu_overlay.item_count = count;
     g_context_menu_overlay.suppress_close = suppress_close;
-    for(int i = 0; i < count; i++)
-        g_context_menu_overlay.items[i] = menu.items[i];
 }
 
 MenuBarResult
@@ -788,6 +958,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     int skip_external_open = 0;
     int bar_capture_pushed = 0;
     int can_draw = IsWindowReady();
+    int focused;
 
     if(g_menu_pending_bar_id == id) {
         result.activated_id = g_menu_pending_activated;
@@ -804,8 +975,63 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     }
     if(menu_count > UI_TK_MENU_MAX)
         menu_count = UI_TK_MENU_MAX;
+    focused = !UIContentDisabled() && id > 0 && RegisterUIFocus(id,bounds) &&
+              !ui_popup_input_focus_captures(id);
+    if(g_menu_navigation.focus_id != id)
+        menu_navigation_reset(id,NULL,0);
+    if(g_menu_navigation.top < 0 || g_menu_navigation.top >= menu_count)
+        g_menu_navigation.top = 0;
+    menu_navigation_begin_frame();
     if(!skip_external_open && open_index != NULL && *open_index >= 0)
         g_menu_open_id = id + 1 + *open_index;
+    if(focused && menu_count > 0) {
+        int current = ui_menu_bar_owns_open_menu(id,menu_count)
+            ? g_menu_open_id-id-1 : -1;
+        if(current < 0) {
+            if(IsKeyPressed(KEY_LEFT))
+                g_menu_navigation.top =
+                    (g_menu_navigation.top+menu_count-1)%menu_count;
+            else if(IsKeyPressed(KEY_RIGHT))
+                g_menu_navigation.top = (g_menu_navigation.top+1)%menu_count;
+            else if(IsKeyPressed(KEY_HOME)) g_menu_navigation.top = 0;
+            else if(IsKeyPressed(KEY_END)) g_menu_navigation.top = menu_count-1;
+            else if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+                    IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_DOWN)) {
+                current = g_menu_navigation.top;
+                g_menu_open_id = id+1+current;
+                menu_navigation_reset(id,menus[current].items,
+                                       menus[current].item_count);
+                g_menu_navigation.top = current;
+                g_menu_navigation.key_handled = 1;
+            }
+        } else if(IsKeyPressed(KEY_ESCAPE)) {
+            g_menu_open_id = 0;
+            g_menu_submenu_id = 0;
+            g_menu_navigation.depth = 0;
+            g_menu_navigation.path[0] = -1;
+        } else if(g_menu_navigation.depth == 0 && IsKeyPressed(KEY_LEFT)) {
+            current = (current+menu_count-1)%menu_count;
+            g_menu_open_id = id+1+current;
+            menu_navigation_reset(id,menus[current].items,
+                                   menus[current].item_count);
+            g_menu_navigation.top = current;
+            g_menu_navigation.key_handled = 1;
+        } else if(g_menu_navigation.depth == 0 && IsKeyPressed(KEY_RIGHT)) {
+            int selected = g_menu_navigation.path[0];
+            int opens_submenu = selected >= 0 &&
+                selected < menus[current].item_count &&
+                menus[current].items[selected].kind == MenuSubmenu &&
+                !menus[current].items[selected].disabled;
+            if(!opens_submenu) {
+                current = (current+1)%menu_count;
+                g_menu_open_id = id+1+current;
+                menu_navigation_reset(id,menus[current].items,
+                                       menus[current].item_count);
+                g_menu_navigation.top = current;
+                g_menu_navigation.key_handled = 1;
+            }
+        }
+    }
     if(ui_menu_bar_owns_open_menu(id, menu_count)) {
         PushUIInputCapture(bounds, 1);
         bar_capture_pushed = 1;
@@ -821,7 +1047,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
         Rectangle item = {(float)x, bounds.y + ScaleUIPx(3), (float)w, bounds.height - ScaleUIPx(6)};
         int menu_id = id + 1 + i;
         int open = g_menu_open_id == menu_id;
-        int hot = ui_hot(item);
+        int hot = !UIContentDisabled() && ui_hot(item);
         if(can_draw && (hot || open))
             DrawRectangleRec(item, open ? c_button : c_button_hover);
         if(hot)
@@ -832,9 +1058,15 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
                        c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
+            SetUIFocus(id);
             g_menu_open_id = open ? 0 : menu_id;
             if(g_menu_open_id == 0)
                 g_menu_submenu_id = 0;
+            else {
+                g_menu_navigation.top = i;
+                menu_navigation_reset(id,menus[i].items,menus[i].item_count);
+                g_menu_navigation.top = i;
+            }
             open = g_menu_open_id == menu_id;
         }
         if(hot && g_menu_open_id != 0 && !open) {
@@ -849,8 +1081,9 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
             g_menu_overlay.menu_id = id + i;
             g_menu_overlay.x = x;
             g_menu_overlay.y = (int)(bounds.y + bounds.height);
-            g_menu_overlay.items = menus[i].items;
-            g_menu_overlay.item_count = menus[i].item_count;
+            int used = 0;
+            copy_menu_items(g_menu_overlay.items,&used,menus[i].items,
+                            menus[i].item_count,&g_menu_overlay.item_count);
         }
         x += w + ScaleUIPx(2);
     }
@@ -867,6 +1100,8 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
         PushUIInputCapture(bounds, 1);
     if(open_index != NULL)
         *open_index = result.open_index;
+    if(can_draw && focused)
+        DrawUIFocus(bounds);
     return result;
 }
 
@@ -877,11 +1112,11 @@ ui_draw_menu_overlays(void)
 
     if(g_menu_overlay.active && g_menu_open_id != 0) {
         g_menu_panel_valid = 0;
-        activated = draw_menu_items(g_menu_overlay.menu_id,
-                                    g_menu_overlay.x,
+        activated = draw_menu_items(g_menu_overlay.x,
                                     g_menu_overlay.y,
                                     g_menu_overlay.items,
-                                    g_menu_overlay.item_count);
+                                    g_menu_overlay.item_count,
+                                    g_menu_overlay.bar_id, 0);
         if(activated != 0) {
             g_menu_pending_bar_id = g_menu_overlay.bar_id;
             g_menu_pending_activated = activated;
@@ -895,11 +1130,11 @@ ui_draw_menu_overlays(void)
         Vector2 mouse = ui_mouse_world();
 
         g_menu_panel_valid = 0;
-        activated = draw_menu_items(g_context_menu_overlay.id,
-                                    g_context_menu_overlay.x,
+        activated = draw_menu_items(g_context_menu_overlay.x,
                                     g_context_menu_overlay.y,
                                     g_context_menu_overlay.items,
-                                    g_context_menu_overlay.item_count);
+                                    g_context_menu_overlay.item_count,
+                                    g_context_menu_overlay.id, 0);
         if(activated != 0) {
             g_context_menu_pending_id = g_context_menu_overlay.id;
             g_context_menu_pending_activated = activated;
@@ -919,7 +1154,15 @@ ui_draw_menu_overlays(void)
 int
 DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 {
-    return draw_menu_items(id, x, y, items, item_count);
+    Rectangle panel = menu_items_panel_bounds(x,y,items,item_count);
+    int focused = !UIContentDisabled() && id > 0 && RegisterUIFocus(id,panel);
+    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+        menu_navigation_reset(0,NULL,0);
+        SetUIFocus(0);
+        return 0;
+    }
+    menu_navigation_begin_frame();
+    return draw_menu_items(x,y,items,item_count,id,0);
 }
 
 int
@@ -931,6 +1174,7 @@ DrawUIContextMenu(ContextMenuProps menu)
     int y_local = 0;
     Rectangle panel;
     int suppress_close = 0;
+    int focused;
 
     if(menu.open == NULL)
         menu.open = &open_local;
@@ -951,12 +1195,14 @@ DrawUIContextMenu(ContextMenuProps menu)
         *menu.open = 0;
         return 0;
     }
-    if(ui_contains(menu.trigger, mouse) &&
+    if(!UIContentDisabled() && ui_contains(menu.trigger, mouse) &&
        !UIInputCapturesClick(mouse) &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         *menu.open = 1;
         *menu.x = (int)mouse.x;
         *menu.y = (int)mouse.y;
+        SetUIFocus(menu.id);
+        menu_navigation_reset(menu.id,menu.items,menu.item_count);
         suppress_close = 1;
     }
     if(!*menu.open) {
@@ -971,6 +1217,16 @@ DrawUIContextMenu(ContextMenuProps menu)
     g_context_menu_open_id = menu.id;
     panel = menu_items_panel_bounds(*menu.x, *menu.y,
                                     menu.items, menu.item_count);
+    focused = !UIContentDisabled() && menu.id > 0 && RegisterUIFocus(menu.id,panel) &&
+              !ui_popup_input_focus_captures(menu.id);
+    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+        *menu.open = 0;
+        g_context_menu_open_id = 0;
+        g_menu_submenu_id = 0;
+        menu_navigation_reset(0,NULL,0);
+        return 0;
+    }
+    menu_navigation_begin_frame();
     ui_menu_track_panel(panel);
     PushUIInputCapture(panel, 1);
     if(ui_contains(panel, mouse))

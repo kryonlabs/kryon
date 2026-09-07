@@ -7,9 +7,10 @@ app "Generated Menu Parity" {
 
 state {
     open_menu: int = -1
-    context_open: int = 0
-    context_x: int = 0
-    context_y: int = 0
+    menu_context_open: int = 0
+    menu_context_x: int = 0
+    menu_context_y: int = 0
+    menu_action: int = 0
 }
 
 menus_frame :: () #ui {
@@ -19,8 +20,9 @@ menus_frame :: () #ui {
         items: [4] MenuItem = {{MenuCommand,"Open","Ctrl+O",21,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0},{MenuCheck,"Grid",NULL,22,0,1,NULL,0},{MenuSubmenu,"More",NULL,24,0,0,child_items,1}}
         menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",items,4}}
         result: MenuBarResult = MenuBar(940,(Rectangle){0,0,360,30},menus,1,&open_menu)
+        if result.activated_id != 0 { menu_action = result.activated_id }
         PopupMenu(941,20,50,items,4)
-        ContextMenu((ContextMenuProps){.id = 942, .trigger = {20,190,180,60}, .items = items, .item_count = 4, .open = &context_open, .x = &context_x, .y = &context_y})
+        ContextMenu((ContextMenuProps){.id = 942, .trigger = {20,190,180,60}, .items = items, .item_count = 4, .open = &menu_context_open, .x = &menu_context_x, .y = &menu_context_y})
         Popup menu_help: {
             bounds = {210,96,140,42}
             id = 943

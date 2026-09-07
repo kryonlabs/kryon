@@ -286,6 +286,14 @@ func drawPlots() {
 	})
 }
 
+func drawMenus() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		Menus_MenusFrame(MenusStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawTableView() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -920,6 +928,15 @@ func main() {
 			listBox.ListSelected, listBox.ListScroll))
 	}
 
+	driver.SetFocus(940); driver.QueueKey(kryon.KeyDown); drawMenus()
+	if MenusStateValue.OpenMenu != 0 { panic("generated menu Down did not open") }
+	driver.QueueKey(kryon.KeyEnd); drawMenus()
+	driver.QueueKey(kryon.KeyRight); drawMenus()
+	driver.QueueKey(kryon.KeyEnter); drawMenus()
+	if MenusStateValue.MenuAction != 23 || MenusStateValue.OpenMenu != -1 {
+		panic("generated submenu keyboard activation failed")
+	}
+
 	drawTreeView()
 	driver.QueueTap(36, 84)
 	drawTreeView()
@@ -1069,6 +1086,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/tree_view.c"
 #include "$work/c/tests/parity/progress.c"
 #include "$work/c/tests/parity/plots.c"
+#include "$work/c/tests/parity/menus.c"
 #include "$work/c/tests/parity/table_view.c"
 #include "$work/c/tests/parity/scroll_content.c"
 #include "$work/c/tests/parity/drag_drop.c"
@@ -1148,6 +1166,11 @@ static void draw_progress(void)
 static void draw_plots(void)
 {
     draw_ui(plots_frame);
+}
+
+static void draw_menus(void)
+{
+    draw_ui(menus_frame);
 }
 
 static void draw_table_view(void)
@@ -1772,6 +1795,16 @@ int main(void)
                 "list_box: got selected=%d scroll=%d, want 2,0\n",
                 list_selected, list_scroll);
         return 1;
+    }
+
+    SetUIFocus(940); InjectKeyTap(KEY_DOWN); InjectPump(); draw_menus();
+    if(open_menu != 0) { fprintf(stderr,"generated menu Down did not open\n"); return 1; }
+    InjectKeyTap(KEY_END); InjectPump(); draw_menus();
+    InjectKeyTap(KEY_RIGHT); InjectPump(); draw_menus();
+    InjectKeyTap(KEY_ENTER); InjectPump(); draw_menus();
+    InjectPump(); draw_menus();
+    if(menu_action != 23 || open_menu != -1) {
+        fprintf(stderr,"generated submenu keyboard activation failed\n"); return 1;
     }
 
     draw_tree_view();

@@ -174,6 +174,124 @@ test_menu_bar_switches_while_popup_captures_input(void)
 }
 
 static void
+test_menu_keyboard_navigation(void)
+{
+    static const MenuItem child[] = {
+        {MenuCommand,"Child",NULL,23,0,0,NULL,0}
+    };
+    static const MenuItem file[] = {
+        {MenuCommand,"Open",NULL,21,0,0,NULL,0},
+        {MenuSeparator,NULL,NULL,0,0,0,NULL,0},
+        {MenuCommand,"Disabled",NULL,22,1,0,NULL,0},
+        {MenuSubmenu,"More",NULL,24,0,0,child,1}
+    };
+    static const MenuItem edit[] = {
+        {MenuCommand,"Copy",NULL,31,0,0,NULL,0}
+    };
+    static const Menu menus[] = {
+        {{0,0,0,0},"File",file,4}, {{0,0,0,0},"Edit",edit,1}
+    };
+    Rectangle bounds = {0,0,360,30};
+    int open = -1;
+    MenuBarResult result;
+
+    InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    check_int("menu Down opens",open,0);
+    check_int("menu Down open result",result.open_index,0);
+
+    InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectPump(); BeginUIFrame(640,480,1);
+    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    check_int("submenu Enter activates",result.activated_id,23);
+    check_int("submenu activation closes",open,-1);
+
+    InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    check_int("menu Right then Down opens next",result.open_index,1);
+    InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectPump(); BeginUIFrame(640,480,1);
+    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    check_int("second menu Enter activates",result.activated_id,31);
+
+    InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    InjectKeyTap(KEY_ESCAPE); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    check_int("menu Escape closes",open,-1);
+    InjectReset();
+}
+
+static void
+test_popup_menu_keyboard_navigation(void)
+{
+    static const MenuItem items[] = {
+        {MenuCommand,"Disabled",NULL,41,1,0,NULL,0},
+        {MenuSeparator,NULL,NULL,0,0,0,NULL,0},
+        {MenuCommand,"Run",NULL,42,0,0,NULL,0}
+    };
+    int activated;
+
+    InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(400);
+    activated = PopupMenu(400,20,20,items,3); EndUIFrame();
+    check_int("popup Enter skips disabled",activated,42);
+
+    InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(640,480,1); SetUIFocus(999);
+    activated = PopupMenu(400,20,20,items,3); EndUIFrame();
+    check_int("unfocused popup rejects Enter",activated,0);
+    InjectReset();
+}
+
+static void
+test_popup_menu_keyboard_ownership(void)
+{
+    static const MenuItem items[] = {
+        {MenuCommand,"Run",NULL,25710,0,0,NULL,0}
+    };
+    for(int inside = 0; inside < 2; inside++) {
+        InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
+        BeginUIFrame(320,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(
+            context,25700,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(
+            context,25701,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25711);
+        check_int("only top popup menu handles keyboard",
+                  PopupMenu(25711,10,10,items,1),inside ? 25710 : 0);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 test_circle_click_uses_ui_release_path(void)
 {
     int hover = 0;
@@ -2448,6 +2566,9 @@ main(void)
     check_int("topmost hit", CanvasHitTest((Vector2){15, 15}, hits, 3), 1);
     check_int("miss", CanvasHitTest((Vector2){80, 80}, hits, 3), -1);
     test_menu_bar_switches_while_popup_captures_input();
+    test_menu_keyboard_navigation();
+    test_popup_menu_keyboard_navigation();
+    test_popup_menu_keyboard_ownership();
     test_nested_disabled_scope();
     test_disabled_scalar_cancels_gesture();
     test_deep_disabled_scopes();
