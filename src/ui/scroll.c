@@ -316,10 +316,25 @@ BeginUIScrollContainer(UIScrollArea area)
             visual_screen_bounds.height += visual_screen_bounds.y;
             visual_screen_bounds.y = 0;
         }
-        if(visual_screen_bounds.x + visual_screen_bounds.width > ui_view_width)
-            visual_screen_bounds.width = ui_view_width - visual_screen_bounds.x;
-        if(visual_screen_bounds.y + visual_screen_bounds.height > ui_view_height)
-            visual_screen_bounds.height = ui_view_height - visual_screen_bounds.y;
+        {
+            int screen_w = GetScreenWidth();
+            int screen_h = GetScreenHeight();
+
+            if(screen_w <= 0)
+                screen_w = (int)(g_ui_camera.offset.x +
+                                 (float)ui_view_width * g_ui_camera.zoom);
+            if(screen_h <= 0)
+                screen_h = (int)(g_ui_camera.offset.y +
+                                 (float)ui_view_height * g_ui_camera.zoom);
+            if(visual_screen_bounds.x + visual_screen_bounds.width >
+               (float)screen_w)
+                visual_screen_bounds.width = (float)screen_w -
+                                             visual_screen_bounds.x;
+            if(visual_screen_bounds.y + visual_screen_bounds.height >
+               (float)screen_h)
+                visual_screen_bounds.height = (float)screen_h -
+                                              visual_screen_bounds.y;
+        }
         if(visual_screen_bounds.width < 0)
             visual_screen_bounds.width = 0;
         if(visual_screen_bounds.height < 0)
