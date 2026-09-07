@@ -402,7 +402,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     DrawRectangleRounded(bounds, radius, 12, background);
     if(border.a != 0)
         DrawRectangleRoundedLines(bounds, radius, 12, border);
-    if(tokens.shine_alpha > 0) {
+    if(tokens.shine_alpha > 0 && radius < 0.45f) {
         Color shine = WHITE;
         shine.a = tokens.shine_alpha;
         int inset = Scale(2);
