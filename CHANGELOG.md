@@ -1,4 +1,14 @@
 # Changelog
+## v0.1.77 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.77
+- Restore premultiplied paint layer compositing
+- Make tab capacity audit resilient to dropped clicks
+- Clean up default button rendering
+- Open numeric editors on double click
+
 ## v0.1.76 - 2026-09-07
 
 ### Changed
