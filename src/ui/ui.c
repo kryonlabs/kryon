@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -51,8 +52,8 @@ int g_ui_slider_active_id = 0;
 static int g_ui_pointer_down = 0;
 int g_ui_pointer_dragging = 0;
 static int g_ui_pointer_dragged_this_click = 0;
-static int g_ui_pointer_start_x = 0;
-static int g_ui_pointer_start_y = 0;
+static int g_ui_pointer_start_x = INT_MIN;
+static int g_ui_pointer_start_y = INT_MIN;
 static Vector2 g_ui_pointer_start_world = {0};
 static int g_ui_transition_cues_enabled = 0;
 static int g_ui_release_consumed = 0;
@@ -633,6 +634,13 @@ ui_update_pointer_gesture(void)
             g_ui_pointer_dragged_this_click = 1;
         }
     } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        /* A complete injected tap can be pumped before a UI frame. In that
+         * case no press origin was observed, so activation falls back to the
+         * release point just as it did before origin tracking existed. */
+        if(!g_ui_pointer_down) {
+            g_ui_pointer_start_x = INT_MIN;
+            g_ui_pointer_start_y = INT_MIN;
+        }
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_scroll_gesture_pending = 0;
@@ -644,6 +652,8 @@ ui_update_pointer_gesture(void)
         g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+        g_ui_pointer_start_x = INT_MIN;
+        g_ui_pointer_start_y = INT_MIN;
     }
 }
 
@@ -775,12 +785,16 @@ UIConsumePointerRelease(void)
 static int
 press_started_inside(Rectangle bounds)
 {
+    if(g_ui_pointer_start_x == INT_MIN && g_ui_pointer_start_y == INT_MIN)
+        return 1;
     return CheckCollisionPointRec(g_ui_pointer_start_world, bounds);
 }
 
 static int
 press_started_inside_circle(Vector2 center, float radius)
 {
+    if(g_ui_pointer_start_x == INT_MIN && g_ui_pointer_start_y == INT_MIN)
+        return 1;
     float dx = g_ui_pointer_start_world.x - center.x;
     float dy = g_ui_pointer_start_world.y - center.y;
 
@@ -4927,9 +4941,6 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_pointer_dragged_this_click = state.pointer_dragged_this_click;
     g_ui_pointer_start_x = state.pointer_start_x;
     g_ui_pointer_start_y = state.pointer_start_y;
-    g_ui_pointer_start_world =
-        screen_to_world_for_input((Vector2){(float)g_ui_pointer_start_x,
-                                            (float)g_ui_pointer_start_y});
     g_ui_pointer_owner = state.pointer_owner;
     g_ui_release_consumed = state.release_consumed;
     g_ui_focus_active_id = state.focus_active_id;
@@ -4942,6 +4953,10 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_text_input_show_requested = state.text_input_show_requested;
     g_ui_mouse_world_override_enabled = state.mouse_world_override_enabled;
     g_ui_mouse_world_override = state.mouse_world_override;
+    if(g_ui_pointer_start_x != INT_MIN || g_ui_pointer_start_y != INT_MIN)
+        g_ui_pointer_start_world = screen_to_world_for_input(
+            (Vector2){(float)g_ui_pointer_start_x,
+                      (float)g_ui_pointer_start_y});
     g_ui_frame_serial = state.frame_serial;
     SetUIScale(state.ui_scale);
     ResetUIClip();
