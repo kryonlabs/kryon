@@ -28,6 +28,7 @@ Texture2D LoadIconSheet(UIIconSheet sheet);
 void UnloadIconSheets(void);
 void DrawIcon(UIIconType type, Rectangle bounds, Color tint);
 void DrawIconByName(const char *name, Rectangle bounds, Color tint);
+void DrawProfilePictureIcon(UIIconType type, Rectangle bounds, int dark_mode);
 
 /* Transitional texture API for controls that do not yet accept UIIconType. */
 Texture2D LoadUIIconTexture(UIIconType type);

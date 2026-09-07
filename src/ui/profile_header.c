@@ -166,15 +166,19 @@ ui_draw_pfp_texture(Texture2D icon, int x, int y, int size)
 static void
 ui_draw_pfp_texture_in_circle(Texture2D icon, int cx, int cy, int radius)
 {
-    int inner_size = radius * 14 / 10;
+    int inner_size = radius * 2;
     int x;
     int y;
 
-    if(inner_size > radius * 2)
-        inner_size = radius * 2;
     x = cx - inner_size / 2;
     y = cy - inner_size / 2;
     ui_draw_pfp_texture(icon, x, y, inner_size);
+}
+
+static int
+ui_profile_pictures_dark_mode(void)
+{
+    return IsThemeColorDark(GetThemeBackground()) ? 1 : 0;
 }
 
 static void
@@ -263,7 +267,17 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
                LightenUIColor(c_surface, 12));
     DrawCircleLines(avatar_x, avatar_y, (float)avatar_r,
                     DarkenUIColor(c_text, 38));
-    if(pfp_icon.id != 0)
+    if(header.pfp_icon_type > UI_ICON_TYPE_NONE &&
+       header.pfp_icon_type < UI_ICON_TYPE_COUNT) {
+        Rectangle icon_bounds;
+
+        icon_bounds.x = (float)(avatar_x - avatar_r);
+        icon_bounds.y = (float)(avatar_y - avatar_r);
+        icon_bounds.width = (float)avatar_size;
+        icon_bounds.height = (float)avatar_size;
+        DrawProfilePictureIcon(header.pfp_icon_type, icon_bounds,
+                               ui_profile_pictures_dark_mode());
+    } else if(pfp_icon.id != 0)
         ui_draw_pfp_texture_in_circle(pfp_icon, avatar_x, avatar_y, avatar_r);
     else
         ui_draw_pfp_fallback(avatar_x - avatar_r, avatar_y - avatar_r,
@@ -375,7 +389,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     scroll_view = BeginUIScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
-    icon_inset = Scale(12);
+    icon_inset = Scale(2);
     for(i = 0; i < count; i++) {
         int row = i / columns;
         int col = i % columns;
@@ -400,7 +414,16 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
         if(modal.icons != NULL && type > UI_ICON_TYPE_NONE &&
            type < UI_ICON_TYPE_COUNT)
             icon = modal.icons[type];
-        if(icon.id != 0)
+        if(type > UI_ICON_TYPE_NONE && type < UI_ICON_TYPE_COUNT) {
+            Rectangle icon_bounds;
+
+            icon_bounds.x = (float)(x + icon_inset);
+            icon_bounds.y = (float)(y + icon_inset);
+            icon_bounds.width = (float)(cell - icon_inset * 2);
+            icon_bounds.height = (float)(cell - icon_inset * 2);
+            DrawProfilePictureIcon(type, icon_bounds,
+                                   ui_profile_pictures_dark_mode());
+        } else if(icon.id != 0)
             ui_draw_pfp_texture(icon, x + icon_inset, y + icon_inset,
                                 cell - icon_inset * 2);
         else

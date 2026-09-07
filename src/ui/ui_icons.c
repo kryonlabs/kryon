@@ -11,6 +11,10 @@ extern const unsigned char ui_icon_atlas_png[];
 extern const unsigned int ui_icon_atlas_png_size;
 extern const unsigned char ui_pfp_atlas_png[];
 extern const unsigned int ui_pfp_atlas_png_size;
+extern const unsigned char ui_pfp_dark_atlas_png[];
+extern const unsigned int ui_pfp_dark_atlas_png_size;
+extern const unsigned char ui_pfp_light_atlas_png[];
+extern const unsigned int ui_pfp_light_atlas_png_size;
 extern const unsigned char ui_platforms_atlas_png[];
 extern const unsigned int ui_platforms_atlas_png_size;
 extern const unsigned char ui_payments_atlas_png[];
@@ -23,6 +27,7 @@ extern const unsigned char ui_logos_atlas_png[];
 extern const unsigned int ui_logos_atlas_png_size;
 
 static Texture2D icon_sheets[UI_ICON_SHEET_COUNT];
+static Texture2D pfp_theme_sheets[2];
 
 static int
 icon_sheet_png(UIIconSheet sheet, const unsigned char **png,
@@ -122,6 +127,18 @@ LoadIconSheet(UIIconSheet sheet)
     return load_atlas(&icon_sheets[sheet], png, png_size);
 }
 
+static Texture2D
+load_profile_picture_sheet(int dark_mode)
+{
+    int index = dark_mode ? 1 : 0;
+    const unsigned char *png =
+        dark_mode ? ui_pfp_dark_atlas_png : ui_pfp_light_atlas_png;
+    unsigned int png_size =
+        dark_mode ? ui_pfp_dark_atlas_png_size : ui_pfp_light_atlas_png_size;
+
+    return load_atlas(&pfp_theme_sheets[index], png, png_size);
+}
+
 void
 UnloadIconSheets(void)
 {
@@ -129,7 +146,12 @@ UnloadIconSheets(void)
         if(icon_sheets[sheet].id != 0)
             UnloadTexture(icon_sheets[sheet]);
     }
+    for(int sheet = 0; sheet < 2; sheet++) {
+        if(pfp_theme_sheets[sheet].id != 0)
+            UnloadTexture(pfp_theme_sheets[sheet]);
+    }
     memset(icon_sheets, 0, sizeof(icon_sheets));
+    memset(pfp_theme_sheets, 0, sizeof(pfp_theme_sheets));
 }
 
 static void
@@ -159,6 +181,24 @@ void
 DrawIconByName(const char *name, Rectangle bounds, Color tint)
 {
     draw_icon_asset(GetUIIconAssetByName(name), bounds, tint);
+}
+
+void
+DrawProfilePictureIcon(UIIconType type, Rectangle bounds, int dark_mode)
+{
+    const UIIconAsset *asset = GetUIIconAsset(type);
+    Texture2D atlas;
+
+    if(asset == NULL || bounds.width <= 0 || bounds.height <= 0)
+        return;
+    if(asset->sheet != UI_ICON_SHEET_PFP) {
+        DrawIcon(type, bounds, WHITE);
+        return;
+    }
+    atlas = load_profile_picture_sheet(dark_mode);
+    if(atlas.id == 0)
+        return;
+    DrawTexturePro(atlas, asset->source, bounds, (Vector2){0}, 0.0f, WHITE);
 }
 
 static Texture2D
