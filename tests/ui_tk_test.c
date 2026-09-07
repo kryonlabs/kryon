@@ -234,23 +234,23 @@ test_tab_bar_keyboard_navigation(void)
         .selected_index=selected,.closed_index=&closed,.id=634};
 
     InjectReset();
-    BeginUIFrame(360,180,1); DrawUITabBar(props); EndUIFrame();
+    BeginUIFrame(360,180,1); ui_tab_bar_keyboard_input(props); EndUIFrame();
     SetUIFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginUIFrame(360,180,1);
-    selected = DrawUITabBar(props);
+    selected = ui_tab_bar_keyboard_input(props);
     EndUIFrame();
     check_int("tab Right skips disabled",selected,2);
     props.selected_index = selected;
 
     InjectKeyTap(KEY_DELETE); InjectPump();
     BeginUIFrame(360,180,1);
-    check_int("tab Delete does not select",DrawUITabBar(props),-1);
+    check_int("tab Delete does not select",ui_tab_bar_keyboard_input(props),-1);
     EndUIFrame();
     check_int("tab Delete closes selected",closed,2);
 
     InjectKeyTap(KEY_HOME); InjectPump();
     BeginUIFrame(360,180,1);
-    selected = DrawUITabBar(props);
+    selected = ui_tab_bar_keyboard_input(props);
     EndUIFrame();
     check_int("tab Home",selected,0);
 
@@ -258,7 +258,7 @@ test_tab_bar_keyboard_navigation(void)
     props.selected_index = 0;
     InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginUIFrame(360,180,1); SetUIFocus(props.id);
-    check_int("disabled tab ignores keyboard",DrawUITabBar(props),-1);
+    check_int("disabled tab ignores keyboard",ui_tab_bar_keyboard_input(props),-1);
     EndUIFrame();
     InjectReset();
 }
@@ -283,7 +283,7 @@ test_popup_tab_bar_keyboard_ownership(void)
         if(!inside) ui_popup_input_end(child);
         SetUIFocus(props.id);
         check_int("only top popup tab bar handles keyboard",
-                  DrawUITabBar(props),inside ? 1 : -1);
+                  ui_tab_bar_keyboard_input(props),inside ? 1 : -1);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);

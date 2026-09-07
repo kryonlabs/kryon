@@ -209,6 +209,7 @@ TopNavResult DrawUITopNav(TopNavProps nav);
 ToolbarResult DrawUIToolbar(ToolbarProps toolbar);
 ToolbarHeaderResult DrawUIToolbarHeader(ToolbarHeaderProps header);
 int DrawUISubtabBar(SubtabBarProps bar);
+int ui_tab_bar_keyboard_input(TabBarProps bar);
 int DrawUITabBar(TabBarProps bar);
 PaneTabBarResult DrawUIPaneTabBar(PaneTabBar bar);
 PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);

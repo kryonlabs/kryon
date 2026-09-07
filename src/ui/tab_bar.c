@@ -66,6 +66,35 @@ ui_tab_bar_next_enabled(TabBarProps bar, int from, int direction)
     return from;
 }
 
+int
+ui_tab_bar_keyboard_input(TabBarProps bar)
+{
+    int selected;
+
+    if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
+       bar.bounds.height <= 0 || bar.disabled || UIContentDisabled() ||
+       bar.id <= 0 || !RegisterUIFocus(bar.id, bar.bounds) ||
+       ui_popup_input_focus_captures(bar.id))
+        return -1;
+
+    SetUIFocusTextInputActive(0);
+    selected = bar.selected_index;
+    if(selected < 0 || selected >= bar.count)
+        selected = 0;
+    if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_UP))
+        return ui_tab_bar_next_enabled(bar, selected, -1);
+    if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_DOWN))
+        return ui_tab_bar_next_enabled(bar, selected, 1);
+    if(IsKeyPressed(KEY_HOME))
+        return ui_tab_bar_next_enabled(bar, -1, 1);
+    if(IsKeyPressed(KEY_END))
+        return ui_tab_bar_next_enabled(bar, 0, -1);
+    if((IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_BACKSPACE)) &&
+       bar.tabs[selected].closeable && bar.closed_index != NULL)
+        *bar.closed_index = selected;
+    return -1;
+}
+
 static int
 ui_tab_bar_total_width(TabBarProps bar, int min_tab_w, int max_tab_w,
                        int icon_tab_w, int tab_gap)
@@ -218,26 +247,9 @@ DrawUITabBar(TabBarProps bar)
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
 
-    focused = !disabled && bar.id > 0 && RegisterUIFocus(bar.id, bar.bounds) &&
+    clicked_tab = ui_tab_bar_keyboard_input(bar);
+    focused = !disabled && bar.id > 0 && GetUIFocus() == bar.id &&
               !ui_popup_input_focus_captures(bar.id);
-    if(focused) {
-        int selected = bar.selected_index;
-
-        SetUIFocusTextInputActive(0);
-        if(selected < 0 || selected >= bar.count)
-            selected = 0;
-        if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_UP))
-            clicked_tab = ui_tab_bar_next_enabled(bar, selected, -1);
-        else if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_DOWN))
-            clicked_tab = ui_tab_bar_next_enabled(bar, selected, 1);
-        else if(IsKeyPressed(KEY_HOME))
-            clicked_tab = ui_tab_bar_next_enabled(bar, -1, 1);
-        else if(IsKeyPressed(KEY_END))
-            clicked_tab = ui_tab_bar_next_enabled(bar, 0, -1);
-        else if((IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_BACKSPACE)) &&
-                bar.tabs[selected].closeable && bar.closed_index != NULL)
-            *bar.closed_index = selected;
-    }
 
     if(ui_material_style())
         DrawRectangle(bar_x, bar_y, bar_w, bar_h,
