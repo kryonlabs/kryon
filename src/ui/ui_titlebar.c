@@ -57,7 +57,7 @@ static void
 DrawUITitleBarCenteredTitle(const char *title, int height,
                                        int side_reserved)
 {
-    int font = GetFontSize();
+    int font;
     int title_w;
     int max_w = ui_view_width - side_reserved * 2;
 
@@ -65,6 +65,7 @@ DrawUITitleBarCenteredTitle(const char *title, int height,
         title = "";
     if(max_w < ScaleUIPx(48))
         max_w = ui_view_width - ScaleUIPx(16);
+    font = GetTitleFontSize(title, max_w);
     title_w = TextWidth(title, font);
     while(font > Text12 && title_w > max_w) {
         font--;
