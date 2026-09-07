@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.63 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.63
+- Defer Text painting inside retained layouts
+- Keep canonical Text visible in mixed UI frames
+
 ## v0.1.62 - 2026-09-07
 
 ### Changed
