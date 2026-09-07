@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.68 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.68
+- Reuse canonical button behavior in composite widgets
+- Keep tab keyboard tests renderer-free
+- Unify native tab bar behavior
+
 ## v0.1.67 - 2026-09-07
 
 ### Changed
