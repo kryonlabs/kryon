@@ -287,10 +287,10 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
         rlSetMatrixModelview(layers->modelview);
     }
     ResetUIClip();
-    /* Keep paint-layer compositing on the same straight-alpha path as normal
-     * UI drawing. Font atlases are straight-alpha textures; treating captured
-     * layers as premultiplied makes glyph quads render as visible boxes. */
-    BeginBlendMode(BLEND_ALPHA);
+    /* Inputs such as font atlases may use straight alpha, but capture applies
+     * source-over and stores the resulting layer premultiplied. Ordinary alpha
+     * here would multiply every translucent pixel a second time. */
+    BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
     for(int i = 0; i < layers->count; i++) {
         UIPaintLayer *layer = &layers->items[i];
         if(layer->parent >= 0 && !layers->items[layer->parent].visible) layer->visible = 0;
