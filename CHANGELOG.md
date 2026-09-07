@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.79 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.79
+- Unify text selection navigation
+
 ## v0.1.78 - 2026-09-07
 
 ### Changed
