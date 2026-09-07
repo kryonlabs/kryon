@@ -175,6 +175,12 @@ ui_draw_pfp_texture_in_circle(Texture2D icon, int cx, int cy, int radius)
     ui_draw_pfp_texture(icon, x, y, inner_size);
 }
 
+static void
+ui_draw_avatar_tile(Rectangle bounds, Color background, Color outline)
+{
+    ui_draw_control_background(bounds, background, outline, 0.22f);
+}
+
 static int
 ui_profile_pictures_dark_mode(void)
 {
@@ -262,19 +268,19 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
             result.pfp_clicked = 1;
         }
     }
-    DrawCircle(avatar_x, avatar_y, (float)(avatar_r + Scale(3)), c_surface);
-    DrawCircle(avatar_x, avatar_y, (float)avatar_r,
-               LightenUIColor(c_surface, 12));
-    DrawCircleLines(avatar_x, avatar_y, (float)avatar_r,
-                    DarkenUIColor(c_text, 38));
+    ui_draw_avatar_tile((Rectangle){(float)(avatar_x - avatar_r - Scale(3)),
+                                    (float)(avatar_y - avatar_r - Scale(3)),
+                                    (float)(avatar_size + Scale(6)),
+                                    (float)(avatar_size + Scale(6))},
+                        c_surface, DarkenUIColor(c_surface, 18));
     if(header.pfp_icon_type > UI_ICON_TYPE_NONE &&
        header.pfp_icon_type < UI_ICON_TYPE_COUNT) {
         Rectangle icon_bounds;
 
-        icon_bounds.x = (float)(avatar_x - avatar_r);
-        icon_bounds.y = (float)(avatar_y - avatar_r);
-        icon_bounds.width = (float)avatar_size;
-        icon_bounds.height = (float)avatar_size;
+        icon_bounds.x = (float)(avatar_x - avatar_r + Scale(3));
+        icon_bounds.y = (float)(avatar_y - avatar_r + Scale(3));
+        icon_bounds.width = (float)(avatar_size - Scale(6));
+        icon_bounds.height = (float)(avatar_size - Scale(6));
         DrawProfilePictureIcon(header.pfp_icon_type, icon_bounds,
                                ui_profile_pictures_dark_mode());
     } else if(pfp_icon.id != 0)
@@ -389,7 +395,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     scroll_view = BeginUIScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
-    icon_inset = Scale(2);
+    icon_inset = Scale(6);
     for(i = 0; i < count; i++) {
         int row = i / columns;
         int col = i % columns;
@@ -403,12 +409,11 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
                       !UIInputCapturesClick(mouse);
         int active = type == selected;
 
-        DrawRectangleRounded(bounds, 0.12f, 8,
-                             hovered ? LightenUIColor(c_surface, 10)
-                                     : c_surface);
-        DrawUIBevel(x, y, cell, cell,
-                    LightenUIColor(c_surface, active ? 68 : 34),
-                    DarkenUIColor(c_surface, active ? 68 : 34));
+        ui_draw_avatar_tile(bounds,
+                            hovered ? LightenUIColor(c_surface, 10)
+                                    : c_surface,
+                            active ? c_button_hover
+                                   : DarkenUIColor(c_surface, 22));
         if(active)
             DrawRectangleLinesEx(bounds, Scale(2), c_button_hover);
         if(modal.icons != NULL && type > UI_ICON_TYPE_NONE &&
