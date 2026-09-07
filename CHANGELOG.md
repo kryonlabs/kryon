@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.65 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.65
+- Add native toggle keyboard navigation
+
 ## v0.1.64 - 2026-09-07
 
 ### Changed
