@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.76 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.76
+- Add temporary input to numeric controls
+
 ## v0.1.75 - 2026-09-07
 
 ### Changed
