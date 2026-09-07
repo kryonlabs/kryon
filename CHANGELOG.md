@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.74 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.74
+- Track single profile icon atlas
+- Use single transparent profile picture atlas
+- Keep paint layers premultiplied
+- Use rounded profile picture tiles
+- Use normal alpha for paint layer compositing
+
 ## v0.1.73 - 2026-09-07
 
 ### Changed
