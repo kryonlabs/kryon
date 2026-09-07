@@ -205,13 +205,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         ui_draw_termi_button_outline(draw_bounds, draw_border, hovered,
                                      retained_pressed,
                                      button.disabled);
-    if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
-        Color cue = LightenUIColor(draw_background, 42);
-        cue.a = cue.a > 170 ? 170 : cue.a;
-        DrawRectangle((int)draw_bounds.x + 2, (int)draw_bounds.y + 1,
-                      (int)button.bounds.width - 4, Scale(1), cue);
-    }
-
     if(focused) {
         SetUIFocusTextInputActive(0);
         DrawUIFocus(draw_bounds);
@@ -353,12 +346,6 @@ DrawUIIconButton(IconButtonProps button)
                                          hovered &&
                                              IsMouseButtonDown(MOUSE_BUTTON_LEFT),
                                          button.disabled);
-        if(cues && hovered && button.bounds.width > 4 && button.bounds.height > 4) {
-            Color cue = LightenUIColor(draw_background, 42);
-            cue.a = cue.a > 170 ? 170 : cue.a;
-            DrawRectangle((int)button.bounds.x + 2, (int)button.bounds.y + 1,
-                          (int)button.bounds.width - 4, Scale(1), cue);
-        }
         if(focused) {
             SetUIFocusTextInputActive(0);
             DrawUIFocus(button.bounds);
@@ -448,10 +435,16 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     const char *text = label != NULL ? label : "";
     int w = (int)TextWidth(text, font) + Scale(16);
     int h = TextLineHeight(font) + Scale(8);
+    int min_w = Scale(34);
+    int min_h = Scale(34);
     Rectangle bounds;
     int hovered;
     ButtonSpec spec;
 
+    if(w < min_w)
+        w = min_w;
+    if(h < min_h)
+        h = min_h;
     x = x - w / 2;
     bounds.x = (float)x;
     bounds.y = (float)y;
@@ -598,16 +591,6 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     if(style == ButtonStyleOutline && ui_material_style()) {
         DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, Scale(1),
                                     ui_material_scheme().outline);
-    }
-
-    if(!ui_material_style() && UITransitionCuesEnabled() &&
-       style == ButtonStyleTabSelected &&
-       !disabled && w > Scale(18)) {
-        int cue_h = Scale(2);
-        if(cue_h < 1)
-            cue_h = 1;
-        DrawRectangle(x + Scale(9), y + h - cue_h, w - Scale(18),
-                      cue_h, LightenUIColor(c_button_hover, 18));
     }
 
     return clicked;
