@@ -2318,6 +2318,83 @@ ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
     return cursor;
 }
 
+int
+ui_text_navigation_key(int multiline)
+{
+    if(IsKeyPressed(KEY_LEFT))
+        return KEY_LEFT;
+    if(IsKeyPressed(KEY_RIGHT))
+        return KEY_RIGHT;
+    if(IsKeyPressed(KEY_HOME))
+        return KEY_HOME;
+    if(IsKeyPressed(KEY_END))
+        return KEY_END;
+    if(multiline && IsKeyPressed(KEY_UP))
+        return KEY_UP;
+    if(multiline && IsKeyPressed(KEY_DOWN))
+        return KEY_DOWN;
+    if(multiline && IsKeyPressed(KEY_PAGE_UP))
+        return KEY_PAGE_UP;
+    if(multiline && IsKeyPressed(KEY_PAGE_DOWN))
+        return KEY_PAGE_DOWN;
+    return 0;
+}
+
+int
+ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
+{
+    int start;
+    int end;
+    int target;
+
+    if(input.text == NULL || anchor == NULL || cursor == NULL)
+        return 0;
+    start = *anchor < *cursor ? *anchor : *cursor;
+    end = *anchor > *cursor ? *anchor : *cursor;
+    target = *cursor;
+
+    switch(input.key) {
+    case KEY_LEFT:
+        target = !input.shift && end > start
+            ? start : ui_utf8_prev_offset(input.text, target);
+        break;
+    case KEY_RIGHT:
+        target = !input.shift && end > start
+            ? end : ui_utf8_next_offset(input.text, target);
+        break;
+    case KEY_HOME:
+        target = input.area != NULL && !input.modifier
+            ? ui_text_line_start(input.text, target) : 0;
+        break;
+    case KEY_END:
+        target = input.area != NULL && !input.modifier
+            ? ui_text_line_end(input.text, target)
+            : (int)strlen(input.text);
+        break;
+    case KEY_UP:
+    case KEY_DOWN:
+        if(input.area == NULL)
+            return 0;
+        target = ui_text_move_vertical(
+            input.text, target, input.font,
+            input.key == KEY_UP ? -1 : 1);
+        break;
+    case KEY_PAGE_UP:
+    case KEY_PAGE_DOWN:
+        if(input.area == NULL)
+            return 0;
+        target = ui_text_area_move_page(
+            *input.area, target, input.key == KEY_PAGE_UP ? -1 : 1);
+        break;
+    default:
+        return 0;
+    }
+    *cursor = target;
+    if(!input.shift)
+        *anchor = target;
+    return 1;
+}
+
 static int
 ui_text_area_line_font(const char *text, int start, int end, int base_font)
 {
@@ -3619,51 +3696,32 @@ RenderTextArea(TextAreaProps area)
                 selection_key_handled = 1;
             }
         }
-        if(!selection_key_handled &&
-           (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-            IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-            IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))) {
+        if(!selection_key_handled) {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
                         IsKeyDown(KEY_RIGHT_SHIFT);
-            int old_cursor = *area.cursor_position;
-            int cursor = old_cursor;
-            int anchor = old_cursor;
+            int cursor = *area.cursor_position;
+            int anchor = cursor;
+            int navigation_key = ui_text_navigation_key(1);
+            TextNavigationInput navigation = {
+                .text = area.text,
+                .area = &area,
+                .font = font,
+                .key = navigation_key,
+                .shift = shift,
+                .modifier = ui_mod_key_down()
+            };
 
             if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
                                          area.focused))
                 anchor = g_ui_text_area_selection.anchor;
-            if(IsKeyPressed(KEY_HOME))
-                cursor = ui_mod_key_down()
-                    ? 0 : ui_text_line_start(area.text, cursor);
-            else if(IsKeyPressed(KEY_END))
-                cursor = ui_mod_key_down()
-                    ? (int)strlen(area.text)
-                    : ui_text_line_end(area.text, cursor);
-            else if(!shift && selection_end > selection_start &&
-                    (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)))
-                cursor = IsKeyPressed(KEY_LEFT)
-                    ? selection_start : selection_end;
-            else if(IsKeyPressed(KEY_LEFT))
-                cursor = ui_utf8_prev_offset(area.text, cursor);
-            else if(IsKeyPressed(KEY_RIGHT))
-                cursor = ui_utf8_next_offset(area.text, cursor);
-            else if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN))
-                cursor = ui_text_move_vertical(
-                    area.text, cursor, font,
-                    IsKeyPressed(KEY_UP) ? -1 : 1);
-            else
-                cursor = ui_text_area_move_page(
-                    area, cursor, IsKeyPressed(KEY_PAGE_UP) ? -1 : 1);
-
-            *area.cursor_position = cursor;
-            if(!shift)
-                anchor = cursor;
-            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                  area.focused, anchor, cursor, 0);
-            selection_start = anchor < cursor ? anchor : cursor;
-            selection_end = anchor > cursor ? anchor : cursor;
-            selection_key_handled = 1;
+            if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                *area.cursor_position = cursor;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, anchor, cursor, 0);
+                selection_start = anchor < cursor ? anchor : cursor;
+                selection_end = anchor > cursor ? anchor : cursor;
+                selection_key_handled = 1;
+            }
         }
         if(!area.read_only && !selection_key_handled) {
             changed |= EditText(area_edit);

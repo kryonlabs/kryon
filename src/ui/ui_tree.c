@@ -1431,57 +1431,27 @@ RouteInput(void)
             selection_changed = 1;
             start = end = state->cursor;
         }
-        if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
+        {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            int cursor = state->cursor;
-
-            if(IsKeyPressed(KEY_HOME)) {
-                cursor = node->kind == UI_WIDGET_TEXT_AREA_NODE &&
-                         !modifier
-                    ? ui_text_line_start(field->text, cursor) : 0;
-            } else if(IsKeyPressed(KEY_END)) {
-                cursor = node->kind == UI_WIDGET_TEXT_AREA_NODE &&
-                         !modifier
-                    ? ui_text_line_end(field->text, cursor)
-                    : (int)strlen(field->text);
-            } else if(!shift && end > start) {
-                cursor = IsKeyPressed(KEY_LEFT) ? start : end;
-            } else if(IsKeyPressed(KEY_LEFT)) {
-                cursor = ui_utf8_prev_offset(field->text, cursor);
-            } else {
-                cursor = ui_utf8_next_offset(field->text, cursor);
-            }
-            state->cursor = cursor;
-            if(!shift)
-                state->anchor = cursor;
-            selection_changed = 1;
-            start = state->anchor < state->cursor
-                ? state->anchor : state->cursor;
-            end = state->anchor > state->cursor
-                ? state->anchor : state->cursor;
-        }
-        if(node->kind == UI_WIDGET_TEXT_AREA_NODE &&
-           (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-            IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))) {
-            int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            int direction = (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_PAGE_UP))
-                ? -1 : 1;
+            int multiline = node->kind == UI_WIDGET_TEXT_AREA_NODE;
+            int navigation_key = ui_text_navigation_key(multiline);
             int font = field->font > 0 ? field->font : GetFontSize();
+            TextNavigationInput navigation = {
+                .text = field->text,
+                .area = multiline ? &node->data.text_area : NULL,
+                .font = font,
+                .key = navigation_key,
+                .shift = shift,
+                .modifier = modifier
+            };
 
-            if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))
-                state->cursor = ui_text_area_move_page(
-                    node->data.text_area, state->cursor, direction);
-            else
-                state->cursor = ui_text_move_vertical(
-                    field->text, state->cursor, font, direction);
-            if(!shift)
-                state->anchor = state->cursor;
-            selection_changed = 1;
-            start = state->anchor < state->cursor
-                ? state->anchor : state->cursor;
-            end = state->anchor > state->cursor
-                ? state->anchor : state->cursor;
+            if(ui_text_navigate(navigation, &state->anchor, &state->cursor)) {
+                selection_changed = 1;
+                start = state->anchor < state->cursor
+                    ? state->anchor : state->cursor;
+                end = state->anchor > state->cursor
+                    ? state->anchor : state->cursor;
+            }
         }
         codepoint = GetCharPressed();
         while(codepoint > 0) {

@@ -260,14 +260,15 @@ while suppressing the insertion caret. Go tests cover preedit cancellation,
 buffer preservation, rejected-input expiry and fresh editing after re-enabling.
 Multiline TextArea navigation now handles Up/Down and PageUp/PageDown in native
 C and Go, with page movement derived from the visible editor height. The C
-immediate and retained paths share the same internal line/page movement helpers,
-so generated code no longer loses vertical navigation when submitted through
-the retained tree. Enter inserts a newline in Go TextArea instead of following
-the single-line commit path. Direct runtime tests and the generated composition
-fixture exercise these behaviors through k2c and k2go. Shift extends selections
-across horizontal, vertical, page and Home/End navigation; an unmodified arrow
-collapses an active selection toward that edge. Multiline Home/End target the
-current line, while the platform modifier plus Home/End targets the whole buffer.
+immediate and retained paths route every navigation key through one internal
+selection-navigation routine, including the shared line/page movement helpers,
+so generated code cannot drift from the direct widget behavior. Enter inserts
+a newline in Go TextArea instead of following the single-line commit path.
+Direct runtime tests and the generated composition fixture exercise these
+behaviors through k2c and k2go. Shift extends selections across horizontal,
+vertical, page and Home/End navigation; an unmodified arrow collapses an active
+selection toward that edge. Multiline Home/End target the current line, while
+the platform modifier plus Home/End targets the whole buffer.
 
 Native C and Go list boxes now register with ordinary Tab focus, expose a
 visible focus presentation, and move selection with Up/Down/Home/End while

@@ -120,10 +120,20 @@ int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(ParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+typedef struct TextNavigationInput {
+    const char *text;
+    const TextAreaProps *area;
+    int font;
+    int key;
+    int shift;
+    int modifier;
+} TextNavigationInput;
 int ui_text_line_start(const char *text, int cursor);
 int ui_text_line_end(const char *text, int cursor);
 int ui_text_move_vertical(const char *text, int cursor, int font, int direction);
 int ui_text_area_move_page(TextAreaProps area, int cursor, int direction);
+int ui_text_navigation_key(int multiline);
+int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
 void DrawUITextStyled(const char *text, int x, int y, TextStyle style);

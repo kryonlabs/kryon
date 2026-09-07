@@ -774,12 +774,21 @@ func main() {
 	}
 	CompositionStateValue.CompositionReadOnly = false
 	driver.SetFocus(26102)
-	driver.QueueShiftKey(kryon.KeyDown); drawComposition()
-	if CompositionStateValue.CompositionPageCursor != 7 { panic("generated TextArea Shift+Down did not move") }
-	driver.QueueShortcut(kryon.KeyC); drawComposition()
-	if driver.ClipboardText() != "1\nc" { panic("generated TextArea Shift+Down did not select") }
-	driver.QueueKey(kryon.KeyLeft); drawComposition()
-	if CompositionStateValue.CompositionPageCursor != 4 { panic("generated TextArea Left did not collapse selection") }
+	driver.QueueShiftKey(kryon.KeyDown)
+	drawComposition()
+	if CompositionStateValue.CompositionPageCursor != 7 {
+		panic("generated TextArea Shift+Down did not move")
+	}
+	driver.QueueShortcut(kryon.KeyC)
+	drawComposition()
+	if driver.ClipboardText() != "1\nc" {
+		panic("generated TextArea Shift+Down did not select")
+	}
+	driver.QueueKey(kryon.KeyLeft)
+	drawComposition()
+	if CompositionStateValue.CompositionPageCursor != 4 {
+		panic("generated TextArea Left did not collapse selection")
+	}
 	driver.QueueKey(kryon.KeyDown); drawComposition()
 	if CompositionStateValue.CompositionPageCursor <= 4 { panic("generated TextArea Down did not move") }
 	beforePage := CompositionStateValue.CompositionPageCursor
@@ -1574,20 +1583,33 @@ int main(void)
     }
     composition_read_only = 0;
     SetUIFocus(26102);
-    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_DOWN); InjectPump(); draw_composition();
-    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    InjectKey(KEY_LEFT_SHIFT,1);
+    InjectKeyTap(KEY_DOWN);
+    InjectPump();
+    draw_composition();
+    InjectKey(KEY_LEFT_SHIFT,0);
+    InjectPump();
     if(composition_page_cursor != 7) {
         fprintf(stderr,"generated TextArea Shift+Down cursor=%d, want 7\n",
-                composition_page_cursor); return 1;
+                composition_page_cursor);
+        return 1;
     }
-    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_C); InjectPump(); draw_composition();
-    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_C);
+    InjectPump();
+    draw_composition();
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
     if(strcmp(GetUIClipboardTextValue(),"1\nc") != 0) {
-        fprintf(stderr,"generated TextArea Shift+Down did not select\n"); return 1;
+        fprintf(stderr,"generated TextArea Shift+Down did not select\n");
+        return 1;
     }
-    InjectKeyTap(KEY_LEFT); InjectPump(); draw_composition();
+    InjectKeyTap(KEY_LEFT);
+    InjectPump();
+    draw_composition();
     if(composition_page_cursor != 4) {
-        fprintf(stderr,"generated TextArea Left did not collapse selection\n"); return 1;
+        fprintf(stderr,"generated TextArea Left did not collapse selection\n");
+        return 1;
     }
     InjectKeyTap(KEY_DOWN); InjectPump(); draw_composition();
     if(composition_page_cursor <= 4) {
