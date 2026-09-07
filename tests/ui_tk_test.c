@@ -151,6 +151,125 @@ test_slider_keyboard_navigation(void)
 }
 
 static void
+draw_focusable_choices(int *checkbox, int *selected, int *flags,
+                       int disable_flags, int *checkbox_activated,
+                       int *selectable_activated, int *flags_activated,
+                       int *radio_activated)
+{
+    BeginUIFrame(640,480,1.0f);
+    *checkbox_activated = Checkbox(609,10,130,"Check",checkbox);
+    *selectable_activated = Selectable((SelectableProps){
+        .bounds = {10,10,140,28}, .id = 610, .label = "Choice",
+        .selected = selected
+    });
+    BeginDisabled(disable_flags);
+    *flags_activated = CheckboxFlags((CheckboxFlagsProps){
+        .bounds = {10,50,140,28}, .id = 611, .label = "Flag",
+        .flags = flags, .flags_value = 4
+    });
+    EndDisabled();
+    *radio_activated = Radio((RadioButtonProps){
+        .bounds = {10,90,140,28}, .label = "Radio", .id = 612
+    });
+    EndUIFrame();
+}
+
+static void
+test_focusable_choice_keyboard_navigation(void)
+{
+    int checkbox = 0;
+    int selected = 0;
+    int flags = 0;
+    int checkbox_activated;
+    int selectable_activated;
+    int flags_activated;
+    int radio_activated;
+
+    InjectReset();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+
+    SetUIFocus(609); InjectKeyTap(KEY_ENTER); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("checkbox Enter activation",checkbox_activated,1);
+    check_int("checkbox Enter state",checkbox,1);
+
+    SetUIFocus(610); InjectKeyTap(KEY_SPACE); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("selectable Space activation",selectable_activated,1);
+    check_int("selectable Space state",selected,1);
+
+    SetUIFocus(611); InjectKeyTap(KEY_ENTER); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("checkbox flags Enter activation",flags_activated,1);
+    check_int("checkbox flags Enter state",flags,4);
+
+    SetUIFocus(612); InjectKeyTap(KEY_SPACE); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("radio Space activation",radio_activated,612);
+
+    SetUIFocus(610); InjectKeyTap(KEY_TAB); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("choice Tab traversal",GetUIFocus(),611);
+
+    SetUIFocus(611); InjectKeyTap(KEY_SPACE); InjectPump();
+    draw_focusable_choices(&checkbox,&selected,&flags,1,&checkbox_activated,
+                           &selectable_activated,&flags_activated,
+                           &radio_activated);
+    check_int("disabled flags rejects activation",flags_activated,0);
+    check_int("disabled flags preserves state",flags,4);
+}
+
+static void
+test_focusable_image_keyboard_navigation(void)
+{
+    PictureProps picture = {
+        .asset_path = "", .bounds = {10,10,40,30}, .tint = WHITE,
+        .fit = PICTURE_FIT_CONTAIN
+    };
+
+    InjectReset();
+    BeginUIFrame(240,180,1);
+    DrawUIInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
+    ImageButton((ImageButtonProps){picture,BLACK,621,0});
+    ColorButton((ColorButtonProps){
+        .bounds={10,90,80,30},.id=622,.label="Color",.color=RED
+    });
+    EndUIFrame();
+
+    SetUIFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("invisible button Enter activation",
+              DrawUIInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0}),1);
+    EndUIFrame();
+
+    SetUIFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("image button Space activation",
+              ImageButton((ImageButtonProps){picture,BLACK,621,0}),1);
+    EndUIFrame();
+
+    SetUIFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(240,180,1);
+    check_int("color button Enter activation",
+              ColorButton((ColorButtonProps){
+                  .bounds={10,90,80,30},.id=622,.label="Color",.color=RED
+              }),1);
+    EndUIFrame();
+}
+
+static void
 test_reorder_uses_item_center_and_header_handle(void)
 {
     UIReorderItem items[2] = {
@@ -882,6 +1001,39 @@ test_popup_button_keyboard_ownership(void)
         int clicks = 0;
         while(NextEvent(&event)) if(event.kind == UI_EVENT_CLICK) clicks++;
         check_int("deferred keyboard clicks preserve popup ownership",clicks,inside);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_popup_choice_keyboard_ownership(void)
+{
+    for(int inside = 0; inside < 2; inside++) {
+        int selected = 0;
+        InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(
+            context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(
+            context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25705);
+        int activated = Selectable((SelectableProps){
+            .bounds={10,10,120,28},.label="Choice",.id=25705,
+            .selected=&selected
+        });
+        check_int("only top popup choice activates from keyboard",
+                  activated,inside);
+        check_int("blocked popup choice preserves state",selected,inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
@@ -2638,6 +2790,8 @@ main(void)
     test_popup_menu_keyboard_ownership();
     test_nested_disabled_scope();
     test_disabled_scalar_cancels_gesture();
+    test_focusable_choice_keyboard_navigation();
+    test_focusable_image_keyboard_navigation();
     test_deep_disabled_scopes();
     test_collapsible_composes_children();
     test_tree_header_modes();
@@ -2668,6 +2822,7 @@ main(void)
     test_popup_text_keyboard_ownership();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
+    test_popup_choice_keyboard_ownership();
     test_popup_tab_missing_owner();
     test_popup_text_dismissal_replay();
     test_popup_composition_dismissal_replay();

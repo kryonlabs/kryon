@@ -2765,6 +2765,7 @@
       "widgets": [
         "Checkbox",
         "Dropdown",
+        "Radio",
         "Screen",
         "Slider",
         "Toggle"
@@ -5009,7 +5010,7 @@
     "Picture": 3,
     "Progress": 5,
     "PromptDialog": 3,
-    "Radio": 3,
+    "Radio": 4,
     "Rect": 8,
     "Row": 6,
     "Screen": 37,
@@ -5465,11 +5466,14 @@
     },
     {
       "id": "Radio",
-      "semantic_sources": [],
-      "source_count": 3,
+      "semantic_sources": [
+        "tests/parity/basic_controls.kry"
+      ],
+      "source_count": 4,
       "sources": [
         "examples/11_basic_controls.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/basic_controls.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",

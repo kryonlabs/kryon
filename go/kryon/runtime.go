@@ -2051,53 +2051,66 @@ func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
 }
 func (r *runtime) Button(props ButtonProps) bool {
 	theme := r.theme()
-	if props.Disabled {
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: r.layoutRect(props.Bounds), Text: props.Label, Color: mixColor(theme.surface, theme.button, 0.5), BorderColor: theme.button, TextColor: theme.icon, ID: props.ID, FontSize: props.Font, Disabled: true})
-		return false
-	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	enabled := !r.contentDisabled()
-	if enabled {
-		r.registerField(props.ID)
-	}
-	pressed := r.consumeTap(props.Bounds)
-	if pressed && props.ID > 0 {
-		r.setFocus(props.ID)
-	}
-	if enabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID) {
-		remaining := r.inputEvents[:0]
-		for _, event := range r.inputEvents {
-			handled := false
-			if !event.shortcut && r.focusID == props.ID {
-				switch event.key {
-				case KeyEnter, KeySpace:
-					pressed, handled = true, true
-				case KeyTab:
-					r.setFocus(r.nextFocus(props.ID, event.shift))
-					handled = true
-				}
-			}
-			if !handled {
-				remaining = append(remaining, event)
-			}
-		}
-		r.inputEvents = remaining
-	}
+	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	fill := theme.button
 	if props.Style == ButtonStyleSecondary {
 		fill = theme.surface
 	}
+	if props.Disabled {
+		fill = mixColor(theme.surface, theme.button, 0.5)
+	}
 	if pressed {
 		fill = theme.buttonHover
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: theme.text, ID: props.ID, FontSize: props.Font, Pressed: pressed, Focused: enabled && props.ID > 0 && r.focusID == props.ID})
+	textColor := theme.text
+	if props.Disabled {
+		textColor = theme.icon
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: textColor, ID: props.ID, FontSize: props.Font, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
 	return pressed
+}
+
+// focusablePress is the common interaction contract for button-like widgets:
+// pointer focus, Enter/Space activation, Tab traversal, disabled scopes and
+// popup keyboard ownership all stay identical across their different paints.
+func (r *runtime) focusablePress(bounds Rectangle, id int32, disabled bool) (pressed, focused bool) {
+	enabled := !disabled && !r.contentDisabled()
+	if enabled {
+		r.registerField(id)
+		pressed = r.consumeTap(bounds)
+	}
+	if pressed && id > 0 {
+		r.setFocus(id)
+	}
+	focused = enabled && id > 0 && r.focusID == id && !r.popupFocusCaptures(id)
+	if !focused {
+		return pressed, false
+	}
+	remaining := r.inputEvents[:0]
+	for _, event := range r.inputEvents {
+		handled := false
+		if !event.shortcut && r.focusID == id {
+			switch event.key {
+			case KeyEnter, KeySpace:
+				pressed, handled = true, true
+			case KeyTab:
+				r.setFocus(r.nextFocus(id, event.shift))
+				handled = true
+			}
+		}
+		if !handled {
+			remaining = append(remaining, event)
+		}
+	}
+	r.inputEvents = remaining
+	return pressed, r.focusID == id
 }
 
 func (r *runtime) Selectable(props SelectableProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	selected := props.Selected != nil && *props.Selected != 0
-	pressed := !props.Disabled && r.consumeTap(props.Bounds)
+	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	if pressed && props.Selected != nil {
 		if selected {
 			*props.Selected = 0
@@ -2118,14 +2131,15 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	if props.Disabled {
 		textColor = r.Fade(textColor, 0.45)
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 8, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - 16, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 8, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - 16, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
 	return pressed
 }
 
 func (r *runtime) CheckboxFlags(props CheckboxFlagsProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	checked := props.Flags != nil && (*props.Flags&props.FlagsValue) == props.FlagsValue
-	pressed := !props.Disabled && props.Flags != nil && r.consumeTap(props.Bounds)
+	disabled := props.Disabled || props.Flags == nil
+	pressed, focused := r.focusablePress(props.Bounds, props.ID, disabled)
 	if pressed {
 		if checked {
 			*props.Flags &^= props.FlagsValue
@@ -2136,15 +2150,19 @@ func (r *runtime) CheckboxFlags(props CheckboxFlagsProps) bool {
 	}
 	theme := r.theme()
 	box := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + (props.Bounds.Height-20)/2, Width: 20, Height: 20}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: box, Color: theme.surface, BorderColor: theme.border, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: checked})
+	border := theme.border
+	if focused {
+		border = theme.focus
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: box, Color: theme.surface, BorderColor: border, ID: props.ID, Disabled: disabled, Pressed: pressed, Selected: checked, Focused: focused})
 	if checked {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: box.X + 4, Y: box.Y + 4, Width: 12, Height: 12}, Color: theme.circle})
 	}
 	textColor := theme.text
-	if props.Disabled {
+	if disabled {
 		textColor = r.Fade(textColor, 0.45)
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: box.X + 28, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, Disabled: props.Disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: box.X + 28, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, Disabled: disabled})
 	return pressed
 }
 
@@ -2156,8 +2174,12 @@ func (r *runtime) ImageWithBg(props ImageWithBgProps) {
 
 func (r *runtime) ImageButton(props ImageButtonProps) bool {
 	bounds := r.layoutRect(props.Picture.Bounds)
-	pressed := !props.Disabled && r.consumeTap(bounds)
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Color: props.Background, BorderColor: r.theme().border, ID: props.ID, Disabled: props.Disabled, Pressed: pressed})
+	pressed, focused := r.focusablePress(bounds, props.ID, props.Disabled)
+	border := r.theme().border
+	if focused {
+		border = r.theme().focus
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Color: props.Background, BorderColor: border, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
 	r.record(FrameOp{Kind: FrameOpPicture, Bounds: bounds, Text: props.Picture.AssetPath, Color: props.Picture.Tint, Disabled: props.Disabled})
 	return pressed
 }
@@ -2179,7 +2201,8 @@ func (r *runtime) SmallButton(props ButtonProps) bool {
 
 func (r *runtime) InvisibleButton(props InvisibleButtonProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	return !props.Disabled && r.consumeTap(props.Bounds)
+	pressed, _ := r.focusablePress(props.Bounds, props.ID, props.Disabled)
+	return pressed
 }
 
 func (r *runtime) ArrowButton(props ArrowButtonProps) bool {
@@ -2425,13 +2448,17 @@ func (r *runtime) ColorPicker4(props ColorEditProps) bool { return r.colorPicker
 
 func (r *runtime) ColorButton(props ColorButtonProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	pressed := !props.Disabled && r.consumeTap(props.Bounds)
+	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	t := r.theme()
 	halfW, halfH := props.Bounds.Width/2, props.Bounds.Height/2
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: Color{180, 180, 180, 255}})
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: halfW, Height: halfH}, Color: Color{220, 220, 220, 255}})
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X + halfW, Y: props.Bounds.Y + halfH, Width: halfW, Height: halfH}, Color: Color{220, 220, 220, 255}})
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: props.Color, BorderColor: t.border, TextColor: t.text, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed})
+	border := t.border
+	if focused {
+		border = t.focus
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: props.Color, BorderColor: border, TextColor: t.text, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
 	return pressed
 }
 
@@ -3401,7 +3428,7 @@ func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) boo
 	gap := float32(10)
 	labelW := float32(runtimeTextWidth(label, font))
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: box + gap + labelW, Height: box})
-	pressed := r.consumeTap(bounds)
+	pressed, focused := r.focusablePress(bounds, id, value == nil)
 	if dbg := r.tapDebug(bounds, pressed, label); dbg != "" {
 		log.Print(dbg)
 	}
@@ -3413,7 +3440,11 @@ func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) boo
 		}
 	}
 	boxBounds := Rectangle{X: bounds.X, Y: bounds.Y, Width: box, Height: box}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: boxBounds, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: pressed, Selected: *value != 0})
+	border := theme.border
+	if focused {
+		border = theme.focus
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: boxBounds, Color: theme.button, BorderColor: border, ID: id, Pressed: pressed, Selected: *value != 0, Focused: focused})
 	if *value != 0 {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 4, Y: boxBounds.Y + 11, Width: 6, Height: 7}, Color: theme.text, ID: id})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 10, Y: boxBounds.Y + 18, Width: 8, Height: -14}, Color: theme.text, ID: id})
@@ -4692,7 +4723,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 }
 func (r *runtime) Radio(props RadioButtonProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
-	pressed := !props.Disabled && r.consumeTap(props.Bounds)
+	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	c := r.theme().text
 	if props.Disabled {
 		c = r.theme().icon
@@ -4701,8 +4732,8 @@ func (r *runtime) Radio(props RadioButtonProps) int32 {
 	if props.Checked {
 		mark = "◉"
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: 24, Height: props.Bounds.Height}, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 28, Y: props.Bounds.Y, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: 24, Height: props.Bounds.Height}, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 28, Y: props.Bounds.Y, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
 	if pressed {
 		return props.ID
 	}

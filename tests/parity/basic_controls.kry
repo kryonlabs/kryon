@@ -10,6 +10,9 @@ state {
     toggle_value: int = 0
     checkbox_value: int = 0
     selected: int = 0
+    choice_selected: int = 0
+    choice_flags: int = 0
+    choice_radio_actions: int = 0
     options: [3] const char * = {"Alpha","Beta","Gamma"}
 }
 
@@ -19,5 +22,11 @@ controls_frame :: () #ui {
         Toggle(802, 20, 80, 120, 34, &toggle_value, "Off", "On")
         Checkbox(803, 20, 128, "Check", &checkbox_value)
         Dropdown(804, 20, 168, 160, 30, options, 3, &selected)
+        Selectable((SelectableProps){.bounds = {220,20,160,30}, .id = 805, .label = "Choice", .selected = &choice_selected})
+        CheckboxFlags((CheckboxFlagsProps){.bounds = {220,60,160,30}, .id = 806, .label = "Feature", .flags = &choice_flags, .flags_value = 4})
+        choice_radio: int = Radio((RadioButtonProps){.bounds = {220,100,160,30}, .label = "Radio", .id = 807})
+        if choice_radio != 0 {
+            choice_radio_actions += 1
+        }
     }
 }

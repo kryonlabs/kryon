@@ -113,7 +113,7 @@ const expected = new Map([
   ["tests/parity/focus.js", ["Screen", "TextField", "TextField", "TextField"]],
   ["tests/parity/buttons_layout.js", ["BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "Screen", "Column", "Text", "Row", "BeginDisabled", "BeginDisabled", "Button", "EndDisabled", "EndDisabled", "Button"]],
   ["tests/parity/long_text.js", ["Screen", "Column", "Text", "TextField", "TextField"]],
-  ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown"]],
+    ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown", "Selectable", "CheckboxFlags"]],
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],

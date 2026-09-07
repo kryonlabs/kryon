@@ -99,10 +99,37 @@ ui_hot(Rectangle bounds)
     return ui_contains(bounds, mouse) && !UIInputCapturesClick(mouse);
 }
 
-static int
-ui_clicked(Rectangle bounds)
+/* Keep every button-like widget on one focus/activation contract even when
+ * its paint is not a button. The caller remains responsible for drawing the
+ * focused presentation that fits its shape. */
+int
+ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
 {
-    return ui_hot(bounds) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    Vector2 mouse = ui_mouse_world();
+    int enabled = !disabled && !UIContentDisabled();
+    int inside = ui_contains(bounds, mouse);
+    int captured = UIInputCapturesClick(mouse);
+    int hot = enabled && inside && !captured;
+    int active = 0;
+
+    *focused = 0;
+    if(enabled && id > 0)
+        *focused = RegisterUIFocus(id, bounds) &&
+                   !ui_popup_input_focus_captures(id);
+    if(hot)
+        MarkUIClickable();
+    else if(inside && !captured && !enabled)
+        MarkUIDisabled();
+    if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        UIConsumeRelease();
+        if(id > 0)
+            SetUIFocus(id);
+        *focused = id > 0;
+        active = 1;
+    }
+    if(enabled && id > 0 && IsUIFocusActivatePressed(id))
+        active = 1;
+    return active;
 }
 
 static int
@@ -464,8 +491,6 @@ DrawUISmallButton(ButtonProps button)
 int
 DrawUIInvisibleButton(InvisibleButtonProps button)
 {
-    if(!IsWindowReady())
-        return 0;
     ButtonSpec spec = {button.bounds, "", GetSmallFontSize(), button.id,
                        button.disabled, {0}, {0}, {0}, {0}, 0.0f};
     return HandleButton(spec);
@@ -502,23 +527,25 @@ DrawUISelectable(SelectableProps selectable)
 {
     Vector2 mouse = ui_mouse_world();
     int selected = selectable.selected != NULL && *selectable.selected;
-    int hot = ui_contains(selectable.bounds, mouse) &&
+    int disabled = selectable.disabled || UIContentDisabled();
+    int focused = 0;
+    int pressed = ui_focusable_pressed(selectable.bounds, selectable.id,
+                                       selectable.disabled, &focused);
+    int hot = !disabled && ui_contains(selectable.bounds, mouse) &&
               !UIInputCapturesClick(mouse);
 
     if(IsWindowReady() && (selected || hot))
         DrawRectangleRec(selectable.bounds,
                          selected ? GetThemeButton() : GetThemeButtonHover());
-    if(hot)
-        selectable.disabled ? MarkUIDisabled() : MarkUIClickable();
     if(IsWindowReady())
         DrawUIText(selectable.label != NULL ? selectable.label : "",
                    (int)selectable.bounds.x + ScaleUIPx(8),
                    ui_row_text_y(selectable.bounds, GetFontSize()),
-                   GetFontSize(), selectable.disabled
+                   GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
-    if(hot && !selectable.disabled &&
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UIConsumeRelease();
+    if(focused && IsWindowReady())
+        DrawUIFocus(selectable.bounds);
+    if(pressed) {
         if(selectable.selected != NULL)
             *selectable.selected = !*selectable.selected;
         return 1;
@@ -529,15 +556,17 @@ DrawUISelectable(SelectableProps selectable)
 int
 DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
 {
-    Vector2 mouse = ui_mouse_world();
     int checked = checkbox.flags != NULL &&
                   ((*checkbox.flags & checkbox.flags_value) == checkbox.flags_value);
+    int disabled = checkbox.disabled || UIContentDisabled() || checkbox.flags == NULL;
+    int focused = 0;
+    int pressed = ui_focusable_pressed(checkbox.bounds, checkbox.id,
+                                       checkbox.disabled || checkbox.flags == NULL,
+                                       &focused);
     int box_size = ScaleUIPx(20);
     Rectangle box = {checkbox.bounds.x,
                      checkbox.bounds.y + (checkbox.bounds.height - box_size) * 0.5f,
                      (float)box_size, (float)box_size};
-    int hot = ui_contains(checkbox.bounds, mouse) &&
-              !UIInputCapturesClick(mouse);
 
     if(IsWindowReady()) {
         DrawRectangleLinesEx(box, 1.0f, GetThemeButton());
@@ -549,14 +578,12 @@ DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
         DrawUIText(checkbox.label != NULL ? checkbox.label : "",
                    (int)box.x + box_size + ScaleUIPx(8),
                    ui_row_text_y(checkbox.bounds, GetFontSize()),
-                   GetFontSize(), checkbox.disabled
+                   GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
+        if(focused)
+            DrawUIFocus(box);
     }
-    if(hot)
-        checkbox.disabled ? MarkUIDisabled() : MarkUIClickable();
-    if(hot && !checkbox.disabled && checkbox.flags != NULL &&
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UIConsumeRelease();
+    if(pressed) {
         if(checked)
             *checkbox.flags &= ~checkbox.flags_value;
         else
@@ -636,11 +663,11 @@ int
 DrawUIColorButton(ColorButtonProps button)
 {
     int pressed;
-    if(!IsWindowReady())
-        return 0;
     pressed = HandleButton((ButtonSpec){button.bounds, "", GetSmallFontSize(),
                                         button.id, button.disabled,
                                         {0}, {0}, {0}, {0}, 0.0f});
+    if(!IsWindowReady())
+        return pressed;
     DrawRectangleRec(button.bounds, (Color){180, 180, 180, 255});
     DrawRectangle((int)button.bounds.x, (int)button.bounds.y,
                   (int)(button.bounds.width / 2), (int)(button.bounds.height / 2),
@@ -656,6 +683,9 @@ DrawUIColorButton(ColorButtonProps button)
         DrawUIText(button.label, (int)button.bounds.x + ScaleUIPx(6),
                    ui_row_text_y(button.bounds, GetSmallFontSize()),
                    GetSmallFontSize(), c_text);
+    if(!button.disabled && IsUIFocusActive(button.id) &&
+       !ui_popup_input_focus_captures(button.id))
+        DrawUIFocus(button.bounds);
     return pressed;
 }
 
@@ -1246,6 +1276,8 @@ DrawUIRadioButton(RadioButtonProps radio)
                       radio.bounds.y + radio.bounds.height / 2.0f};
     int hot;
     int down;
+    int focused = 0;
+    int activated;
 
     if(ui_material_style() && hit_bounds.height < touch &&
        radio.bounds.height >= touch) {
@@ -1254,13 +1286,17 @@ DrawUIRadioButton(RadioButtonProps radio)
     }
     if(ui_material_style() && hit_bounds.width < touch)
         hit_bounds.width = (float)touch;
-    hot = ui_hot(hit_bounds) && !radio.disabled;
+    activated = ui_focusable_pressed(hit_bounds, radio.id, radio.disabled,
+                                     &focused);
+    hot = ui_hot(hit_bounds) && !radio.disabled && !UIContentDisabled();
     down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
         MarkUIClickable();
     if(radio.disabled)
         MarkUIDisabled();
+    if(!IsWindowReady())
+        return activated ? radio.id : 0;
     if(ui_material_style()) {
         UIMaterialScheme scheme = ui_material_scheme();
         UIRadioAnimState *anim;
@@ -1351,8 +1387,9 @@ DrawUIRadioButton(RadioButtonProps radio)
         DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
                    ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     }
-    if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UIConsumeRelease();
+    if(focused && IsWindowReady())
+        DrawUIFocus(hit_bounds);
+    if(activated) {
         return radio.id;
     }
     return 0;

@@ -1233,6 +1233,85 @@ func TestNativeSelectionAndImageWidgets(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestFocusableChoiceAndImageWidgets(t *testing.T) {
+	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
+	checkbox, selected, flags := int32(0), int32(0), int32(0)
+	picture := PictureProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 170, 48, 32), Tint: White, Fit: PictureFitContain}
+	activations := make(map[int32]int)
+	draw := func(disableFlags bool) {
+		r.BeginFrame()
+		if r.Checkbox(900, 10, 10, "Check", &checkbox) {
+			activations[900]++
+		}
+		if r.Selectable(SelectableProps{Bounds: NewRectangle(10, 50, 140, 28), ID: 901, Label: "Choice", Selected: &selected}) {
+			activations[901]++
+		}
+		r.BeginDisabled(disableFlags)
+		if r.CheckboxFlags(CheckboxFlagsProps{Bounds: NewRectangle(10, 90, 140, 28), ID: 902, Label: "Flag", Flags: &flags, FlagsValue: 4}) {
+			activations[902]++
+		}
+		r.EndDisabled()
+		if got := r.Radio(RadioButtonProps{Bounds: NewRectangle(10, 130, 140, 28), ID: 903, Label: "Radio"}); got != 0 {
+			activations[got]++
+		}
+		if r.ImageButton(ImageButtonProps{Picture: picture, Background: Black, ID: 904}) {
+			activations[904]++
+		}
+		if r.InvisibleButton(InvisibleButtonProps{Bounds: NewRectangle(70, 170, 48, 32), ID: 905}) {
+			activations[905]++
+		}
+		if r.ColorButton(ColorButtonProps{Bounds: NewRectangle(10, 220, 100, 32), ID: 906, Label: "Color", Color: Color{R: 255, A: 255}}) {
+			activations[906]++
+		}
+		r.EndFrame()
+	}
+
+	draw(false)
+	for _, tc := range []struct {
+		id  int32
+		key int32
+	}{
+		{900, KeySpace}, {901, KeyEnter}, {902, KeySpace},
+		{903, KeyEnter}, {904, KeySpace}, {905, KeyEnter}, {906, KeySpace},
+	} {
+		r.SetFocus(tc.id)
+		r.QueueKey(tc.key)
+		draw(false)
+		if activations[tc.id] != 1 {
+			t.Fatalf("widget %d keyboard activations=%d, want 1", tc.id, activations[tc.id])
+		}
+	}
+	if checkbox != 1 || selected != 1 || flags != 4 {
+		t.Fatalf("choice state checkbox=%d selected=%d flags=%d", checkbox, selected, flags)
+	}
+
+	r.SetFocus(901)
+	r.QueueKey(KeyTab)
+	draw(false)
+	if r.Focus() != 902 {
+		t.Fatalf("choice Tab focus=%d, want 902", r.Focus())
+	}
+
+	r.SetFocus(902)
+	r.QueueKey(KeySpace)
+	draw(true)
+	if flags != 4 || activations[902] != 1 {
+		t.Fatal("disabled choice accepted keyboard activation")
+	}
+
+	r.SetFocus(901)
+	draw(false)
+	focused := false
+	for _, op := range r.FrameOps() {
+		if op.ID == 901 && op.Focused {
+			focused = true
+		}
+	}
+	if !focused {
+		t.Fatal("focused selectable has no focus presentation")
+	}
+}
+
 func TestNativeSeparatorText(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.BeginFrame()

@@ -16,16 +16,16 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
 | Text and value helpers | `Text(TextProps)`, `LabelText`, `BulletText`, `SeparatorText`, `Value*` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation |
-| Buttons and boolean choices | `Button`, `SmallButton`, `InvisibleButton`, `ArrowButton`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | covered |
+| Buttons and boolean choices | `Button`, `SmallButton`, `InvisibleButton`, `ArrowButton`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
 | Progress and links | `Progress`, `Href` | covered; `Href` represents both clickable text and open-URL links |
-| Images | `Picture`, `ImageWithBg`, `ImageButton` | covered |
+| Images | `Picture`, `ImageWithBg`, `ImageButton` | covered; `ImageButton` shares ordinary focus and keyboard activation |
 | Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
 | Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values |
 | Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, and slow/fast modifiers are covered |
 | Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
-| Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered |
+| Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered; `ColorButton` shares ordinary focus and keyboard activation |
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
-| Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including Ctrl/Shift range selection |
+| Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including focus/Enter/Space activation for `Selectable` and Ctrl/Shift range selection for multi-selection |
 | List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll, plus a framed scrolling scope for arbitrary native children |
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `PlotLines`, `PlotHistogram` | covered |
@@ -215,6 +215,13 @@ cover blocked parent versus eligible child activation. Generated C/Go checks
 extend `buttons_layout.kry` coverage with Enter/Space, disabled activation
 rejection and Tab skipping the disabled button; these additional assertions are
 native-only and do not claim JavaScript keyboard coverage.
+The same focusable-activation contract now backs native C and Go `Checkbox`,
+`CheckboxFlags`, `Radio`, `Selectable`, `InvisibleButton`, `ImageButton`, and
+`ColorButton`, instead of duplicating key handling in each paint routine.
+Direct runtime tests cover Enter/Space, Tab, disabled scopes, focus presentation,
+and top-popup ownership. The generated `basic_controls.kry` fixture exercises
+the canonical checkbox and props-based choice widgets through k2c and k2go;
+JavaScript remains outside these added keyboard assertions.
 Native missing-owner tests additionally omit the child and then the entire
 branch across frames. C now retires missing input ownership before filtering
 focus, matching Go's frame-end behavior; Tab reaches the surviving parent or

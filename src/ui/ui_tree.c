@@ -1873,6 +1873,10 @@ DrawTree(void)
                 changed = DrawUICheckboxToggle(
                     (int)node->bounds.x, (int)node->bounds.y,
                     node->data.checkbox.label, value);
+                if(IsUIFocusActive(node->id) &&
+                   !ui_popup_input_snapshot_keyboard_captures(
+                       ui_tree_input_snapshot(node)) && IsWindowReady())
+                    DrawUIFocus(node->bounds);
             }
             if(changed && value != NULL) {
                 UIEvent event = {0};
@@ -2626,6 +2630,8 @@ int
 Checkbox(int id, int x, int y, const char *label, int *value)
 {
     int font = GetFontSize();
+    int focused = 0;
+    int changed;
     NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
                               (Rectangle){x, y,
                                   ScaleUIPx(30) + TextWidth(label, font),
@@ -2635,10 +2641,27 @@ Checkbox(int id, int x, int y, const char *label, int *value)
         ui_tree_nodes[node].data.checkbox.label = label;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
+    changed = value != NULL && ui_focusable_pressed(
+        node >= 0 ? ui_tree_nodes[node].bounds
+                  : (Rectangle){x,y,ScaleUIPx(30)+TextWidth(label,font),ScaleUIPx(34)},
+        id, value == NULL, &focused);
+    if(changed) {
+        *value = !*value;
+        if(node >= 0) {
+            UIEvent event = {0};
+            event.key = ui_tree_nodes[node].key;
+            event.kind = UI_EVENT_VALUE_CHANGED;
+            event.timestamp = GetTime();
+            event.data.value = *value;
+            ui_event_push(event);
+        }
+    }
     if(ui_tree_building)
-        return 0;
-    (void)id;
-    return DrawUICheckboxToggle(x, y, label, value);
+        return changed;
+    (void)DrawUICheckboxToggle(x, y, label, value);
+    if(focused && IsWindowReady())
+        DrawUIFocus((Rectangle){x,y,ScaleUIPx(30)+TextWidth(label,font),ScaleUIPx(34)});
+    return changed;
 }
 
 int
@@ -3551,12 +3574,19 @@ int
 ImageButton(ImageButtonProps image)
 {
     InvisibleButtonProps hit = {image.picture.bounds, image.id, image.disabled};
+    int activated;
 
     ui_tree_add(image.id, UI_WIDGET_CUSTOM_NODE, image.picture.bounds, NULL);
-    DrawRectangleRec(image.picture.bounds, image.background);
-    DrawRectangleLinesEx(image.picture.bounds, 1.0f, GetThemeButton());
-    Picture(image.picture);
-    return DrawUIInvisibleButton(hit);
+    activated = DrawUIInvisibleButton(hit);
+    if(IsWindowReady()) {
+        DrawRectangleRec(image.picture.bounds, image.background);
+        DrawRectangleLinesEx(image.picture.bounds, 1.0f, GetThemeButton());
+        Picture(image.picture);
+        if(IsUIFocusActive(image.id) &&
+           !ui_popup_input_focus_captures(image.id))
+            DrawUIFocus(image.picture.bounds);
+    }
+    return activated;
 }
 
 int

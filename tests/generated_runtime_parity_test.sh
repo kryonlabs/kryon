@@ -888,8 +888,8 @@ func main() {
 
 	drawControls()
 	requireFrameOps("controls", map[kryon.FrameOpKind]int{
-		kryon.FrameOpRect:   4,
-		kryon.FrameOpText:   6,
+		kryon.FrameOpRect:   5,
+		kryon.FrameOpText:   10,
 		kryon.FrameOpButton: 3,
 	})
 	requireRenderedFrame("controls", 1200)
@@ -907,6 +907,34 @@ func main() {
 	if controls.SliderValue != 70 || controls.ToggleValue != 1 || controls.CheckboxValue != 1 || controls.Selected != 1 {
 		panic(fmt.Sprintf("controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1",
 			controls.SliderValue, controls.ToggleValue, controls.CheckboxValue, controls.Selected))
+	}
+	driver.SetFocus(803)
+	driver.QueueKey(kryon.KeySpace)
+	drawControls()
+	if controls.CheckboxValue != 0 {
+		panic("controls: generated Checkbox rejected keyboard toggle")
+	}
+	driver.QueueKey(kryon.KeySpace)
+	drawControls()
+	driver.SetFocus(805)
+	driver.QueueKey(kryon.KeyEnter)
+	drawControls()
+	driver.SetFocus(806)
+	driver.QueueKey(kryon.KeySpace)
+	drawControls()
+	driver.SetFocus(807)
+	driver.QueueKey(kryon.KeyEnter)
+	drawControls()
+	if controls.ChoiceSelected != 1 || controls.ChoiceFlags != 4 || controls.ChoiceRadioActions != 1 {
+		panic(fmt.Sprintf("controls: generated choice keyboard state=%d/%d/%d, want 1/4/1",
+			controls.ChoiceSelected, controls.ChoiceFlags, controls.ChoiceRadioActions))
+	}
+	controls.ChoiceSelected, controls.ChoiceFlags, controls.ChoiceRadioActions = 0, 0, 0
+	driver.SetFocus(805)
+	driver.QueueKey(kryon.KeyTab)
+	drawControls()
+	if driver.Focus() != 806 {
+		panic(fmt.Sprintf("controls: generated choice Tab focus=%d, want 806", driver.Focus()))
 	}
 
 	drawListBox()
@@ -1787,6 +1815,26 @@ int main(void)
         fprintf(stderr,
                 "controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1\n",
                 slider_value, toggle_value, checkbox_value, selected);
+        return 1;
+    }
+    SetUIFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    if(checkbox_value != 0) {
+        fprintf(stderr,"controls: generated Checkbox rejected keyboard toggle\n");
+        return 1;
+    }
+    InjectPump(); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    SetUIFocus(805); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    SetUIFocus(806); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    SetUIFocus(807); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    if(choice_selected != 1 || choice_flags != 4 || choice_radio_actions != 1) {
+        fprintf(stderr,"controls: generated choice keyboard state=%d/%d/%d, want 1/4/1\n",
+                choice_selected,choice_flags,choice_radio_actions);
+        return 1;
+    }
+    choice_selected = choice_flags = choice_radio_actions = 0;
+    SetUIFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(GetUIFocus() != 806) {
+        fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetUIFocus());
         return 1;
     }
 
