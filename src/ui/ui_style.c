@@ -28,28 +28,17 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
 
     /* Field-wise assembly (rather than a designated compound literal) so
      * the same source builds with the strict native Plan 9 compiler. */
-    tokens.control_radius = 2.0f;
-    tokens.panel_radius = 0.0f;
-    tokens.control_alpha = 255;
-    tokens.panel_alpha = 255;
-    tokens.title_bar_alpha = 255;
-    tokens.border_alpha = 255;
-    tokens.shadow_alpha = 0;
-    tokens.shine_alpha = 0;
-    tokens.bevel_enabled = 1;
-    tokens.touch_target_min = 36;
-    tokens.shadow_offset_y = 0;
-    if(style == THEME_STYLE_MATERIAL) {
-        /* Fixed pixels: 4px control / 6px panel corners. Fractional
-         * radii read as pills on tall controls. */
-        tokens.control_radius = 4.0f;
-        tokens.panel_radius = 6.0f;
-        tokens.shadow_alpha = 36;
-        tokens.title_bar_alpha = 204;
-        tokens.bevel_enabled = 0;
-        tokens.touch_target_min = 48;
-        tokens.shadow_offset_y = 2;
-    }
+    tokens.control_radius = 12.0f;
+    tokens.panel_radius = 14.0f;
+    tokens.control_alpha = 222;
+    tokens.panel_alpha = 235;
+    tokens.title_bar_alpha = 222;
+    tokens.border_alpha = 118;
+    tokens.shadow_alpha = 44;
+    tokens.shine_alpha = 34;
+    tokens.bevel_enabled = 0;
+    tokens.touch_target_min = 48;
+    tokens.shadow_offset_y = 3;
     return tokens;
 }
 

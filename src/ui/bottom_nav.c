@@ -12,9 +12,7 @@ static const Vector2 kryon_zero_vector2;
 int
 ui_bottom_nav_height(void)
 {
-    if(ui_material_style())
-        return Scale(80);
-    return Scale(40);
+    return Scale(106);
 }
 
 static int
@@ -57,28 +55,48 @@ ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char
     DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, tint);
 }
 
+static Color
+ui_bottom_nav_mix(Color a, Color b, float t)
+{
+    if(t < 0.0f)
+        t = 0.0f;
+    if(t > 1.0f)
+        t = 1.0f;
+    return (Color){
+        (unsigned char)((float)a.r + ((float)b.r - (float)a.r) * t),
+        (unsigned char)((float)a.g + ((float)b.g - (float)a.g) * t),
+        (unsigned char)((float)a.b + ((float)b.b - (float)a.b) * t),
+        (unsigned char)((float)a.a + ((float)b.a - (float)a.a) * t)
+    };
+}
+
 BottomNavResult
 DrawUIBottomNav(BottomNavProps nav)
 {
     BottomNavResult result = {-1, -1, 0, 0};
     int count = nav.count;
     int height = nav.height > 0 ? nav.height : ui_bottom_nav_height();
-    int bottom_margin = nav.bottom_margin > 0 ? nav.bottom_margin : 0;
-    int side_margin = nav.side_margin > 0 ? nav.side_margin : 0;
-    int icon_size = nav.icon_size > 0 ? nav.icon_size : Scale(24);
+    int bottom_margin = nav.bottom_margin > 0 ? nav.bottom_margin : Scale(12);
+    int side_margin = nav.side_margin > 0 ? nav.side_margin : Scale(14);
+    int icon_size = nav.icon_size > 0 ? nav.icon_size : Scale(28);
     int y = nav.view_height - bottom_margin - height;
     int available_w = nav.view_width - side_margin * 2;
     int tab_w;
     int group_w;
     int start_x;
-    int cues = UITransitionCuesEnabled();
     UIWidget widget;
     Rectangle bounds;
-    UIMaterialScheme scheme;
+    Color bg = GetThemeBackground();
+    Color surface = c_surface.a != 0 ? c_surface : DarkenUIColor(bg, 5);
+    Color accent = c_button_hover.a != 0 ? c_button_hover : c_circle;
+    Color inactive = ui_bottom_nav_mix(c_text, bg, GetEffectiveThemeDarkMode() ? 0.30f : 0.46f);
+    Color glass_top = ui_bottom_nav_mix(surface, WHITE, GetEffectiveThemeDarkMode() ? 0.06f : 0.30f);
+    Color glass_bottom = ui_bottom_nav_mix(surface, BLACK, GetEffectiveThemeDarkMode() ? 0.28f : 0.04f);
+    Color border = ui_bottom_nav_mix(accent, WHITE, GetEffectiveThemeDarkMode() ? 0.34f : 0.12f);
     int i;
-    Rectangle src;
     Rectangle dst;
     Rectangle rounded;
+    Rectangle bar;
 
     result.y = y;
     result.height = height;
@@ -105,16 +123,17 @@ DrawUIBottomNav(BottomNavProps nav)
                            UI_WIDGET_READONLY);
     UIWidgetSetAction(&widget, "DrawUIBottomNav");
 
-    scheme = ui_material_scheme();
-    if(ui_material_style()) {
-        Rectangle bar = {0, (float)y, (float)nav.view_width, (float)height};
-
-        ui_material_elevation(bar, 0.0f, 2);
-        DrawRectangleRec(bar, scheme.surface_container);
-    } else {
-        DrawRectangle(0, y, nav.view_width, height, DarkenUIColor(c_bg, 10));
-        DrawLine(0, y, nav.view_width, y, DarkenUIColor(c_bg, 42));
-    }
+    bar.x = (float)side_margin;
+    bar.y = (float)(y + Scale(8));
+    bar.width = (float)available_w;
+    bar.height = (float)(height - Scale(16));
+    ui_material_elevation(bar, 0.38f, 3);
+    DrawRectangleRounded(bar, 0.38f, 18, ui_alpha(BLACK, GetEffectiveThemeDarkMode() ? 70 : 22));
+    DrawRectangleRounded(bar, 0.38f, 18, glass_bottom);
+    DrawRectangleGradientV((int)bar.x, (int)bar.y, (int)bar.width,
+                           (int)(bar.height * 0.55f),
+                           ui_alpha(glass_top, 210), ui_alpha(glass_top, 40));
+    DrawRectangleRoundedLinesEx(bar, 0.38f, 18, Scale(1), ui_alpha(border, 96));
 
     for(i = 0; i < count; i++) {
         const BottomNavItem *item = &nav.items[i];
@@ -123,98 +142,66 @@ DrawUIBottomNav(BottomNavProps nav)
         int icon_x;
         int icon_y;
         int hover = 0;
-        ButtonStyle style = item->active
-                                  ? ButtonStyleTabSelected
-                                  : ButtonStyleTab;
         unsigned char icon_alpha = item->disabled ? 150 : 255;
+        Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
+        int label_font = GetSmallFontSize();
+        int label_h = TextLineHeight(label_font);
+        int label_gap = Scale(5);
+        int active_h = Scale(76);
+        int active_w = w - Scale(10);
+        int active_x = x + (w - active_w) / 2;
+        int active_y = y + Scale(8);
+        int content_y = y + Scale(19);
+        int label_y = content_y + icon_size + label_gap;
+        int label_pad = Scale(3);
+        Color text_tint = item->active ? LightenUIColor(accent, 42) : inactive;
+        Color icon_tint = item->active ? LightenUIColor(accent, 48) : inactive;
 
-        if(ui_material_style()) {
-            Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
-            int label_font = GetSmallFontSize();
-            int label_h = TextLineHeight(label_font);
-            int indicator_w = Scale(64);
-            int indicator_h = Scale(32);
-            int indicator_x = x + (w - indicator_w) / 2;
-            int label_gap = Scale(4);
-            int content_h = indicator_h + label_gap + label_h;
-            int indicator_y = y + (height - content_h) / 2;
-            int label_y = indicator_y + indicator_h + label_gap;
-            int label_pad = Scale(4);
-            Color text_tint = item->active ? scheme.on_surface :
-                                             scheme.on_surface_variant;
-            Color state_tint = item->active ? scheme.on_secondary :
-                                              scheme.on_surface_variant;
-
-            icon_size = nav.icon_size > 0 ? nav.icon_size : Scale(26);
-            if(indicator_y < y + Scale(4))
-                indicator_y = y + Scale(4);
-            label_y = indicator_y + indicator_h + label_gap;
-            icon_x = x + (w - icon_size) / 2;
-            icon_y = indicator_y + (indicator_h - icon_size) / 2;
-            if(item->disabled) {
-                text_tint = scheme.disabled_content;
-                state_tint = scheme.disabled_content;
-            }
-            if(ui_bottom_nav_hit(item_bounds, item->disabled, &hover)) {
-                result.clicked_index = i;
-                result.clicked_route = item->route;
-            }
-            if(hover)
-                ui_material_state_layer(item_bounds, state_tint, hover, 0,
-                                        hover && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-            if(item->active) {
-                rounded.x = (float)indicator_x;
-                rounded.y = (float)indicator_y;
-                rounded.width = (float)indicator_w;
-                rounded.height = (float)indicator_h;
-                DrawRectangleRounded(rounded, 0.50f, 12, scheme.secondary);
-            }
-            dst.x = (float)icon_x;
-            dst.y = (float)icon_y;
-            dst.width = (float)icon_size;
-            dst.height = (float)icon_size;
-            ui_draw_bottom_nav_icon(item->icon, dst, nav.icon_color, icon_alpha);
-            if(item->label != NULL && item->label[0] != '\0') {
-                Rectangle label_rect = {
-                    (float)(x + label_pad),
-                    (float)label_y,
-                    (float)(w - label_pad * 2),
-                    (float)label_h
-                };
-                DrawFittedTextInRect(item->label, label_rect, label_font,
-                                       Text8, text_tint);
-            }
-            continue;
+        if(item->disabled) {
+            text_tint = ui_alpha(inactive, 112);
+            icon_tint = ui_alpha(inactive, 112);
         }
-
-        icon_x = x + (w - icon_size) / 2;
-        icon_y = y + (height - icon_size) / 2;
-        if(RenderStyledButton(x, y, w, height, "", style,
-                                  item->disabled, &hover)) {
+        if(ui_bottom_nav_hit(item_bounds, item->disabled, &hover)) {
             result.clicked_index = i;
             result.clicked_route = item->route;
         }
-
-        if(!ui_material_style() && cues && item->active &&
-           !item->disabled && w > Scale(20)) {
-            int cue_h = Scale(2);
-            if(cue_h < 1)
-                cue_h = 1;
-            DrawRectangle(x + Scale(10), y + height - cue_h,
-                          w - Scale(20), cue_h,
-                          LightenUIColor(c_button_hover, 18));
+        if(hover && !item->active) {
+            rounded.x = (float)(x + Scale(5));
+            rounded.y = (float)(y + Scale(14));
+            rounded.width = (float)(w - Scale(10));
+            rounded.height = (float)active_h;
+            DrawRectangleRounded(rounded, 0.24f, 14, ui_alpha(c_text, 22));
         }
-
-        if(item->icon.id != 0) {
-            src.x = 0;
-            src.y = 0;
-            src.width = (float)item->icon.width;
-            src.height = (float)item->icon.height;
-            dst.x = (float)icon_x;
-            dst.y = (float)icon_y;
-            dst.width = (float)icon_size;
-            dst.height = (float)icon_size;
-            ui_draw_bottom_nav_icon(item->icon, dst, nav.icon_color, icon_alpha);
+        if(item->active) {
+            Color glow = LightenUIColor(accent, 30);
+            rounded.x = (float)active_x;
+            rounded.y = (float)active_y;
+            rounded.width = (float)active_w;
+            rounded.height = (float)active_h;
+            DrawRectangleRounded((Rectangle){rounded.x - Scale(2), rounded.y + Scale(4),
+                                             rounded.width + Scale(4), rounded.height},
+                                 0.24f, 16, ui_alpha(glow, 38));
+            DrawRectangleRounded(rounded, 0.24f, 16,
+                                 ui_alpha(ui_bottom_nav_mix(accent, surface, 0.56f), 174));
+            DrawRectangleRoundedLinesEx(rounded, 0.24f, 16, Scale(1),
+                                        ui_alpha(LightenUIColor(accent, 42), 150));
+        }
+        icon_x = x + (w - icon_size) / 2;
+        icon_y = content_y;
+        dst.x = (float)icon_x;
+        dst.y = (float)icon_y;
+        dst.width = (float)icon_size;
+        dst.height = (float)icon_size;
+        ui_draw_bottom_nav_icon(item->icon, dst, nav.icon_color.a == 0 ? icon_tint : nav.icon_color, icon_alpha);
+        if(item->label != NULL && item->label[0] != '\0') {
+            Rectangle label_rect = {
+                (float)(x + label_pad),
+                (float)label_y,
+                (float)(w - label_pad * 2),
+                (float)label_h
+            };
+            DrawFittedTextInRect(item->label, label_rect, label_font,
+                                 Text8, text_tint);
         }
     }
 

@@ -89,7 +89,7 @@ load_atlas(Texture2D *atlas, const unsigned char *png, unsigned int png_size)
     *atlas = LoadTextureFromImage(image);
     UnloadImage(image);
     if(atlas->id != 0)
-        SetTextureFilter(*atlas, TEXTURE_FILTER_POINT);
+        SetTextureFilter(*atlas, TEXTURE_FILTER_BILINEAR);
     return *atlas;
 }
 
@@ -257,7 +257,7 @@ load_icon_asset_texture(const UIIconAsset *asset)
     texture = LoadTextureFromImage(image);
     UnloadImage(image);
     if(texture.id != 0)
-        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+        SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
     return texture;
 }
 
