@@ -327,7 +327,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y + ScaleUIPx(22), 0, 0}, .text="Menus, tabs and navigation", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         TopNav((TopNavProps){.id = 118, .x = x, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .title = "Top navigation", .options = choices, .option_count = 3, .selected_index = &picked})
         Toolbar((ToolbarProps){.id = 119, .x = right, .y = y + ScaleUIPx(44), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = choices, .option_count = 3, .selected_index = &picked})
-        tab_result: int = TabBar((TabBarProps){.bounds = {x, y + ScaleUIPx(100), ScaleUIPx(360), ScaleUIPx(34)}, .tabs = tabs, .count = 2, .selected_index = picked, .focus_selected = 1})
+        tab_result: int = TabBar((TabBarProps){.bounds = {x, y + ScaleUIPx(100), ScaleUIPx(360), ScaleUIPx(34)}, .tabs = tabs, .count = 2, .selected_index = picked, .focus_selected = 1, .id = 2603})
         if tab_result >= 0 {
             picked = tab_result
         }
@@ -341,7 +341,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         Text((TextProps){.bounds={right + ScaleUIPx(12), y + ScaleUIPx(148), 0, 0}, .text="Right-click here for a context menu", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + ScaleUIPx(216), 0, 0}, .text="ClosableTabBar", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        ClosableTabBar((ClosableTabBarProps){.bounds = {x,y + ScaleUIPx(252),ScaleUIPx(760),ScaleUIPx(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = &tab_selected, .font = Text16, .closed_index = &closed_tab})
+        ClosableTabBar((ClosableTabBarProps){.bounds = {x,y + ScaleUIPx(252),ScaleUIPx(760),ScaleUIPx(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = &tab_selected, .font = Text16, .closed_index = &closed_tab, .id = 2604})
         if closed_tab >= 0 {
             if closed_tab < tab_count {
                 tab_index: int = closed_tab

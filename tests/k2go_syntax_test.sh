@@ -110,7 +110,7 @@ App :: () #ui {
     guard tab >= 0 {
         return
     }
-    TabBar((Rectangle){ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(200), ScaleUIPx(30)}, tab_labels(), &tab, NULL)
+    tab = TabBar((TabBarProps){.bounds = {ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(200), ScaleUIPx(30)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .id = 140})
     Checkbox(0, ScaleUIPx(4), ScaleUIPx(60), "Check", &check)
     Dropdown(1, ScaleUIPx(4), ScaleUIPx(80), ScaleUIPx(120), ScaleUIPx(30), "a;b;c", &pick)
     Progress((ProgressBarProps){{ScaleUIPx(4), ScaleUIPx(120), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, query_jobs(0, 10), ""})

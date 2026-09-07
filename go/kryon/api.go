@@ -291,9 +291,7 @@ func ColorEdit4(props ColorEditProps) bool             { return active().ColorEd
 func ColorPicker3(props ColorEditProps) bool           { return active().ColorPicker3(props) }
 func ColorPicker4(props ColorEditProps) bool           { return active().ColorPicker4(props) }
 func ColorButton(props ColorButtonProps) bool          { return active().ColorButton(props) }
-func TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
-	return active().TabBar(bounds, labels, selected, hover)
-}
+func TabBar(props TabBarProps) int32                   { return active().TabBar(props) }
 func Progress(props ProgressBarProps) {
 	active().Progress(props)
 }

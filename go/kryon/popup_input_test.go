@@ -231,6 +231,35 @@ func TestPopupMultiSelectKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupTabBarKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+		props := TabBarProps{Bounds: NewRectangle(20, 20, 180, 30), ID: 26132,
+			Tabs: []Tab{{Label: "a"}, {Label: "b"}}, Count: 2, SelectedIndex: 0}
+		r.QueueKey(KeyRight)
+		r.BeginFrame()
+		parent := r.beginPopupInput(26100, NewRectangle(10, 10, 220, 100))
+		child := r.beginPopupInput(26101, NewRectangle(15, 15, 200, 80))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.SetFocus(props.ID)
+		clicked := r.TabBar(props)
+		want := int32(-1)
+		if inside {
+			want = 1
+		}
+		if clicked != want {
+			t.Fatalf("inside=%v clicked=%d, want %d", inside, clicked, want)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupDragKeyboardOwnership(t *testing.T) {
 	for _, inside := range []bool{false, true} {
 		r := New(AppConfig{}).(*runtime)

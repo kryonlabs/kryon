@@ -221,6 +221,80 @@ test_drag_keyboard_navigation(void)
 }
 
 static void
+test_tab_bar_keyboard_navigation(void)
+{
+    Tab tabs[] = {
+        {.label="One"},
+        {.label="Disabled",.disabled=1},
+        {.label="Three",.closeable=1}
+    };
+    int selected = 0;
+    int closed = -1;
+    TabBarProps props = {.bounds={10,10,300,32},.tabs=tabs,.count=3,
+        .selected_index=selected,.closed_index=&closed,.id=634};
+
+    InjectReset();
+    BeginUIFrame(360,180,1); DrawUITabBar(props); EndUIFrame();
+    SetUIFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(360,180,1);
+    selected = DrawUITabBar(props);
+    EndUIFrame();
+    check_int("tab Right skips disabled",selected,2);
+    props.selected_index = selected;
+
+    InjectKeyTap(KEY_DELETE); InjectPump();
+    BeginUIFrame(360,180,1);
+    check_int("tab Delete does not select",DrawUITabBar(props),-1);
+    EndUIFrame();
+    check_int("tab Delete closes selected",closed,2);
+
+    InjectKeyTap(KEY_HOME); InjectPump();
+    BeginUIFrame(360,180,1);
+    selected = DrawUITabBar(props);
+    EndUIFrame();
+    check_int("tab Home",selected,0);
+
+    props.disabled = 1;
+    props.selected_index = 0;
+    InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(360,180,1); SetUIFocus(props.id);
+    check_int("disabled tab ignores keyboard",DrawUITabBar(props),-1);
+    EndUIFrame();
+    InjectReset();
+}
+
+static void
+test_popup_tab_bar_keyboard_ownership(void)
+{
+    Tab tabs[] = {{.label="One"},{.label="Two"}};
+    TabBarProps props = {.bounds={20,20,180,30},.tabs=tabs,.count=2,
+        .selected_index=0,.id=26132};
+
+    for(int inside = 0; inside < 2; inside++) {
+        InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(240,120,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(
+            context,26100,(Rectangle){10,10,220,100});
+        UIPopupInputToken child = ui_popup_input_begin(
+            context,26101,(Rectangle){15,15,200,80});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(props.id);
+        check_int("only top popup tab bar handles keyboard",
+                  DrawUITabBar(props),inside ? 1 : -1);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 draw_focusable_choices(int *checkbox, int *selected, int *flags,
                        int disable_flags, int *checkbox_activated,
                        int *selectable_activated, int *flags_activated,
@@ -3130,5 +3204,7 @@ main(void)
     test_reorder_uses_item_center_and_header_handle();
     test_slider_keyboard_navigation();
     test_drag_keyboard_navigation();
+    test_tab_bar_keyboard_navigation();
+    test_popup_tab_bar_keyboard_ownership();
     return 0;
 }

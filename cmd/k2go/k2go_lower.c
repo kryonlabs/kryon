@@ -66,7 +66,7 @@ is_runtime_go_type(const char *type)
         "UIThemeSettingsResult", "PictureFit", "UISemanticKind",
         "TextInputStyle", "ButtonProps", "SelectableProps", "CheckboxFlagsProps",
 		"ImageWithBgProps", "ImageButtonProps", "IconButtonProps", "HrefProps",
-		"TabItemButtonProps", "Tab", "ClosableTabBarProps",
+		"TabItemButtonProps", "Tab", "TabBarProps", "ClosableTabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "FrameBox", "Grid", "ParagraphSpec", "PictureProps", "PageProps",
         "CarouselControlsProps",
@@ -896,8 +896,14 @@ props_field_at(const char *type, int index)
 		{"TabItemButtonProps", {"Bounds", "ID", "Label", "Font", "Disabled"}},
 		{"Tab", {"Label", "Icon", "IconSize", "Disabled", "Accent", "Italic",
 		         "Closeable"}},
+		{"TabBarProps", {"Bounds", "Tabs", "Count", "SelectedIndex", "Font",
+		                 "MinTabWidth", "MaxTabWidth", "ScrollOffset",
+		                 "FocusSelected", "ClosedIndex", "DoubleClickedIndex",
+		                 "ReorderedFromIndex", "ReorderedToIndex",
+		                 "SelectedTabBounds", "MiddleClickedIndex", "ID",
+		                 "Disabled"}},
 		{"ClosableTabBarProps", {"Bounds", "Tabs", "Count", "SelectedIndex",
-		                            "Font", "ClosedIndex"}},
+		                            "Font", "ClosedIndex", "ID", "Disabled"}},
         {"RadioButtonProps", {"Bounds", "Label", "ID", "Checked",
                               "Disabled"}},
         {"ProgressBarProps", {"Bounds", "Min", "Max", "Value", "Label"}},
@@ -1162,7 +1168,8 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "NotebookProps") == 0 && strcmp(field, "Tabs") == 0)
         return 1;
-    if(strcmp(type, "ClosableTabBarProps") == 0 && strcmp(field, "Tabs") == 0)
+    if((strcmp(type, "TabBarProps") == 0 ||
+        strcmp(type, "ClosableTabBarProps") == 0) && strcmp(field, "Tabs") == 0)
         return 1;
     if(strcmp(type, "DragDropSourceProps") == 0 && strcmp(field, "Data") == 0)
         return 1;

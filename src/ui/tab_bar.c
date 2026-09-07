@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_popup_input_internal.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -49,6 +50,20 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
     if(w > max_tab_w)
         w = max_tab_w;
     return w;
+}
+
+static int
+ui_tab_bar_next_enabled(TabBarProps bar, int from, int direction)
+{
+    for(int step = 1; step <= bar.count; step++) {
+        int index = (from + direction * step) % bar.count;
+
+        if(index < 0)
+            index += bar.count;
+        if(!bar.tabs[index].disabled)
+            return index;
+    }
+    return from;
 }
 
 static int
@@ -174,6 +189,8 @@ DrawUITabBar(TabBarProps bar)
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
     int cues = UITransitionCuesEnabled();
+    int disabled = bar.disabled || UIContentDisabled();
+    int focused = 0;
     static int default_scroll_offset = 0;
     static Vector2 last_drag_pos = {0};
     static int is_dragging = 0;
@@ -200,6 +217,27 @@ DrawUITabBar(TabBarProps bar)
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 || bar.bounds.height <= 0)
         return -1;
+
+    focused = !disabled && bar.id > 0 && RegisterUIFocus(bar.id, bar.bounds) &&
+              !ui_popup_input_focus_captures(bar.id);
+    if(focused) {
+        int selected = bar.selected_index;
+
+        SetUIFocusTextInputActive(0);
+        if(selected < 0 || selected >= bar.count)
+            selected = 0;
+        if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_UP))
+            clicked_tab = ui_tab_bar_next_enabled(bar, selected, -1);
+        else if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_DOWN))
+            clicked_tab = ui_tab_bar_next_enabled(bar, selected, 1);
+        else if(IsKeyPressed(KEY_HOME))
+            clicked_tab = ui_tab_bar_next_enabled(bar, -1, 1);
+        else if(IsKeyPressed(KEY_END))
+            clicked_tab = ui_tab_bar_next_enabled(bar, 0, -1);
+        else if((IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_BACKSPACE)) &&
+                bar.tabs[selected].closeable && bar.closed_index != NULL)
+            *bar.closed_index = selected;
+    }
 
     if(ui_material_style())
         DrawRectangle(bar_x, bar_y, bar_w, bar_h,
@@ -261,7 +299,7 @@ DrawUITabBar(TabBarProps bar)
                           bar.reordered_to_index != NULL;
     int drag_target = -1;
 
-    if(reorder_enabled && press_index >= 0 && press_index < bar.count &&
+    if(!disabled && reorder_enabled && press_index >= 0 && press_index < bar.count &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         int dx = (int)(mouse_world.x - press_pos.x);
         int dy = (int)(mouse_world.y - press_pos.y);
@@ -296,7 +334,7 @@ DrawUITabBar(TabBarProps bar)
         int is_active = CheckCollisionPointRec(mouse_world, tab_rect) && !input_captured;
         int is_hovered = is_active && UIHoverEffectsEnabled();
         int is_selected = i == bar.selected_index;
-        int is_disabled = tab->disabled;
+        int is_disabled = disabled || tab->disabled;
 
         if(is_selected && bar.selected_tab_bounds != NULL)
             *bar.selected_tab_bounds = tab_rect;
@@ -381,7 +419,7 @@ DrawUITabBar(TabBarProps bar)
             (float)close_size,
             (float)close_size
         };
-        int close_active = tab->closeable &&
+        int close_active = tab->closeable && !is_disabled &&
                            CheckCollisionPointRec(mouse_world, close_rect) &&
                            !input_captured;
         int close_hovered = close_active && UIHoverEffectsEnabled();
@@ -507,8 +545,15 @@ DrawUITabBar(TabBarProps bar)
                 last_clicked_tab = i;
                 last_click_time = now;
                 clicked_tab = i;
+                if(bar.id > 0) {
+                    SetUIFocus(bar.id);
+                    focused = 1;
+                }
             }
         }
+
+        if(focused && i == (clicked_tab >= 0 ? clicked_tab : bar.selected_index))
+            DrawUIFocus(tab_rect);
 
         tab_x += tab_w + tab_gap;
     }
@@ -516,7 +561,7 @@ DrawUITabBar(TabBarProps bar)
     PopUIInputClip();
     EndUIClip();
 
-    if(reorder_enabled && drag_active && released &&
+    if(!disabled && reorder_enabled && drag_active && released &&
        press_index >= 0 && press_index < bar.count) {
         int target = drag_target;
 
@@ -538,7 +583,7 @@ DrawUITabBar(TabBarProps bar)
             g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
     }
 
-    if(needs_scroll && !(reorder_enabled && drag_active)) {
+    if(!disabled && needs_scroll && !(reorder_enabled && drag_active)) {
         // Handle manual drag scrolling
         Vector2 current_pos = mouse_world;
         int is_mouse_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);

@@ -302,6 +302,8 @@ typedef struct {
     int *selected_index;
     int font;
     int *closed_index;
+    int id;
+    int disabled;
 } ClosableTabBarProps;
 
 void Background(Color color);

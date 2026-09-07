@@ -1501,6 +1501,121 @@ func TestNativeTabItemControls(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestNativeTabBarKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 360, Height: 180}).(*runtime)
+	tabs := []Tab{{Label: "One"}, {Label: "Disabled", Disabled: true}, {Label: "Three", Closeable: true}}
+	selected, closed := int32(0), int32(-1)
+	props := TabBarProps{Bounds: NewRectangle(10, 10, 300, 32), Tabs: tabs, Count: 3,
+		SelectedIndex: selected, ClosedIndex: &closed, ID: 920}
+	draw := func(disabled bool) int32 {
+		props.SelectedIndex = selected
+		r.BeginFrame()
+		r.BeginDisabled(disabled)
+		clicked := r.TabBar(props)
+		r.EndDisabled()
+		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 921, Label: "Next"})
+		r.EndFrame()
+		if clicked >= 0 {
+			selected = clicked
+		}
+		return clicked
+	}
+
+	draw(false)
+	r.SetFocus(props.ID)
+	r.QueueKey(KeyRight)
+	if clicked := draw(false); clicked != 2 || selected != 2 {
+		t.Fatalf("Right did not skip disabled tab: clicked=%d selected=%d", clicked, selected)
+	}
+	r.QueueKey(KeyDelete)
+	if clicked := draw(false); clicked != -1 || closed != 2 {
+		t.Fatalf("Delete close result clicked=%d closed=%d", clicked, closed)
+	}
+	r.QueueKey(KeyHome)
+	if clicked := draw(false); clicked != 0 || selected != 0 {
+		t.Fatalf("Home result clicked=%d selected=%d", clicked, selected)
+	}
+	focused := false
+	for _, op := range r.FrameOps() {
+		if op.ID == props.ID && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+			focused = true
+		}
+	}
+	if !focused {
+		t.Fatal("selected tab lacks focus presentation")
+	}
+	r.QueueKey(KeyRight)
+	if clicked := draw(true); clicked != -1 || selected != 0 {
+		t.Fatalf("disabled tab bar changed selection: clicked=%d selected=%d", clicked, selected)
+	}
+	r.SetFocus(props.ID)
+	r.QueueKey(KeyTab)
+	draw(false)
+	if r.Focus() != 921 {
+		t.Fatalf("Tab focus=%d, want 921", r.Focus())
+	}
+}
+
+func TestNativeTabBarRichSignals(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 120}).(*runtime)
+	tabs := []Tab{{Label: "Alpha"}, {Label: "Beta"}, {Label: "Gamma"}}
+	scroll := int32(0)
+	selectedBounds := Rectangle{}
+	doubleClicked, middleClicked := int32(-1), int32(-1)
+	props := TabBarProps{Bounds: NewRectangle(10, 10, 180, 30), Tabs: tabs, Count: 3,
+		SelectedIndex: 2, MinTabWidth: 100, MaxTabWidth: 100, ScrollOffset: &scroll,
+		FocusSelected: true, DoubleClickedIndex: &doubleClicked,
+		SelectedTabBounds: &selectedBounds, MiddleClickedIndex: &middleClicked, ID: 922}
+
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	if scroll <= 0 || selectedBounds.X+selectedBounds.Width > props.Bounds.X+props.Bounds.Width+1 {
+		t.Fatalf("selected tab was not revealed: scroll=%d bounds=%+v", scroll, selectedBounds)
+	}
+
+	props.FocusSelected = false
+	props.SelectedIndex = 0
+	scroll = 0
+	r.QueueTap(30, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	r.QueueTap(30, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	if doubleClicked != 0 {
+		t.Fatalf("double-click index=%d, want 0", doubleClicked)
+	}
+
+	r.QueueMouseButton(MouseButtonMiddle, 130, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	if middleClicked != 1 {
+		t.Fatalf("middle-click index=%d, want 1", middleClicked)
+	}
+
+	from, to := int32(-1), int32(-1)
+	props.ReorderedFromIndex, props.ReorderedToIndex = &from, &to
+	r.QueueMouseButtonDown(MouseButtonLeft, 30, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	r.QueueMouseMove(170, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	r.QueueMouseButtonUp(MouseButtonLeft, 170, 20)
+	r.BeginFrame()
+	r.TabBar(props)
+	r.EndFrame()
+	if from != 0 || to != 2 {
+		t.Fatalf("reorder=%d->%d, want 0->2", from, to)
+	}
+}
+
 func TestNativeTypedDragDrop(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	payload := []byte("item-42")

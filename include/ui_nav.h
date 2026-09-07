@@ -221,6 +221,8 @@ typedef struct {
     int *reordered_to_index;
     Rectangle *selected_tab_bounds;
     int *middle_clicked_index;
+    int id;
+    int disabled;
 } TabBarProps;
 
 typedef enum {

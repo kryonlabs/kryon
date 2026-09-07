@@ -1978,8 +1978,8 @@ func TestTabBarRecordsOpsAndSelectsOnClick(t *testing.T) {
 	r := New(AppConfig{Width: 400, Height: 100}).(*runtime)
 	defer SetRuntime(nil)
 	SetRuntime(r)
-	labels := []string{"Alpha", "Beta", "Gamma"}
-	sel, hov := int32(1), int32(-1)
+	tabs := []Tab{{Label: "Alpha"}, {Label: "Beta"}, {Label: "Gamma"}}
+	sel := int32(1)
 
 	BeginFrame()
 	EndFrame()
@@ -1987,7 +1987,11 @@ func TestTabBarRecordsOpsAndSelectsOnClick(t *testing.T) {
 	r.QueueMouseMove(350, 10)
 	r.QueueMouseButton(MouseButtonLeft, 350, 10)
 	BeginFrame() // the queued input lands on the next frame's state
-	clicked := TabBar(NewRectangle(0, 0, 400, 30), labels, &sel, &hov)
+	clicked := TabBar(TabBarProps{Bounds: NewRectangle(0, 0, 400, 30), Tabs: tabs,
+		Count: int32(len(tabs)), SelectedIndex: sel, ID: 901})
+	if clicked >= 0 {
+		sel = clicked
+	}
 	ops := FrameOps()
 	buttons := 0
 	var active *FrameOp
@@ -1997,14 +2001,11 @@ func TestTabBarRecordsOpsAndSelectsOnClick(t *testing.T) {
 			active = &ops[i]
 		}
 	}
-	if buttons != len(labels) {
-		t.Fatalf("recorded %d tab buttons, want %d", buttons, len(labels))
+	if buttons != len(tabs) {
+		t.Fatalf("recorded %d tab buttons, want %d", buttons, len(tabs))
 	}
 	if clicked != 2 || sel != 2 {
 		t.Fatalf("click selected %d (sel=%d), want 2", clicked, sel)
-	}
-	if hov != 2 {
-		t.Fatalf("hover = %d, want 2", hov)
 	}
 	if active == nil || active.Text != "Gamma" || !active.Pressed {
 		t.Fatalf("last tab op = %+v, want active Gamma", active)
@@ -2016,9 +2017,8 @@ func TestTabBarEmptyLabels(t *testing.T) {
 	r := New(AppConfig{Width: 100, Height: 30}).(*runtime)
 	defer SetRuntime(nil)
 	SetRuntime(r)
-	sel := int32(0)
 	BeginFrame()
-	if got := TabBar(NewRectangle(0, 0, 100, 30), nil, &sel, nil); got != -1 {
+	if got := TabBar(TabBarProps{Bounds: NewRectangle(0, 0, 100, 30)}); got != -1 {
 		t.Fatalf("TabBar with no labels = %d, want -1", got)
 	}
 	EndFrame()

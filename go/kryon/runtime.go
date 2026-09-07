@@ -88,8 +88,9 @@ const (
 	KeyV            int32 = 86
 	KeyX            int32 = 88
 
-	MouseButtonLeft  int32 = 0
-	MouseButtonRight int32 = 1
+	MouseButtonLeft   int32 = 0
+	MouseButtonRight  int32 = 1
+	MouseButtonMiddle int32 = 2
 
 	FilterBilinear int32 = 1
 
@@ -485,6 +486,26 @@ type Tab struct {
 	Closeable bool
 }
 
+type TabBarProps struct {
+	Bounds             Rectangle
+	Tabs               []Tab
+	Count              int32
+	SelectedIndex      int32
+	Font               int32
+	MinTabWidth        int32
+	MaxTabWidth        int32
+	ScrollOffset       *int32
+	FocusSelected      bool
+	ClosedIndex        *int32
+	DoubleClickedIndex *int32
+	ReorderedFromIndex *int32
+	ReorderedToIndex   *int32
+	SelectedTabBounds  *Rectangle
+	MiddleClickedIndex *int32
+	ID                 int32
+	Disabled           bool
+}
+
 type ClosableTabBarProps struct {
 	Bounds        Rectangle
 	Tabs          []Tab
@@ -492,6 +513,8 @@ type ClosableTabBarProps struct {
 	SelectedIndex *int32
 	Font          int32
 	ClosedIndex   *int32
+	ID            int32
+	Disabled      bool
 }
 
 type InvisibleButtonProps struct {
@@ -1300,7 +1323,7 @@ type Runtime interface {
 	ColorPicker3(ColorEditProps) bool
 	ColorPicker4(ColorEditProps) bool
 	ColorButton(ColorButtonProps) bool
-	TabBar(Rectangle, []string, *int32, *int32) int32
+	TabBar(TabBarProps) int32
 	Progress(ProgressBarProps)
 	PlotLines(PlotProps)
 	PlotHistogram(PlotProps)
@@ -1449,6 +1472,8 @@ type runtime struct {
 	lastTableClick    tableClick
 	tableDrag         tableDrag
 	tableResize       tableResize
+	lastTabClick      tabClick
+	tabDrag           tabDrag
 	openMenus         map[int32]int32
 	openSubmenus      map[int32]int32
 	menuNavigation    map[int32]*menuNavigation
@@ -1559,6 +1584,20 @@ type tableResize struct {
 	startX     float32
 	startWidth int32
 	owner      popupInputOwner
+}
+
+type tabClick struct {
+	id     int32
+	index  int32
+	when   time.Time
+	bounds Rectangle
+}
+
+type tabDrag struct {
+	active bool
+	id     int32
+	from   int32
+	bounds Rectangle
 }
 
 type scalarDrag struct {
@@ -2550,115 +2589,254 @@ func (r *runtime) ColorButton(props ColorButtonProps) bool {
 	return pressed
 }
 
-// TabBar renders a horizontal strip of equal-width tabs and returns the
-// index clicked this frame (-1 = none). The selected tab (through *selected)
-// carries the highlighted styling; *hover tracks the tab under the pointer.
-func (r *runtime) TabBar(bounds Rectangle, labels []string, selected, hover *int32) int32 {
-	if len(labels) == 0 || selected == nil {
-		return -1
-	}
-	theme := r.theme()
-	b := r.layoutRect(bounds)
-	if b.Width <= 0 || b.Height <= 0 {
-		return -1
-	}
-	sel := *selected
-	if sel < 0 || sel >= int32(len(labels)) {
-		sel = 0
-		*selected = 0
-	}
-	mouse := r.MousePosition()
-	tw := b.Width / float32(len(labels))
-	fontSize := int32(14)
-	if b.Height > 12 && fontSize > int32(b.Height)-6 {
-		fontSize = int32(b.Height) - 6
-	}
-	clicked := int32(-1)
-	if hover != nil {
-		*hover = -1
-	}
-	for i, label := range labels {
-		tab := Rectangle{X: b.X + float32(i)*tw, Y: b.Y, Width: tw, Height: b.Height}
-		inside := mouse.X >= tab.X && mouse.X < tab.X+tab.Width &&
-			mouse.Y >= tab.Y && mouse.Y < tab.Y+tab.Height
-		press := r.consumeTap(tab)
-		active := int32(i) == sel
-		fill, border, text := theme.surface, theme.button, theme.icon
-		if active {
-			fill, border, text = theme.buttonHover, theme.buttonHover, theme.text
-		} else if inside {
-			fill, text = theme.button, theme.text
-		}
-		if hover != nil && inside {
-			*hover = int32(i)
-		}
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: tab, Text: fitTabLabel(label, tab.Width-12, fontSize),
-			Color: fill, BorderColor: border, TextColor: text, FontSize: fontSize, Pressed: active || press})
-		if press {
-			*selected = int32(i)
-			clicked = int32(i)
+// TabBar is the canonical tab implementation. It owns sizing, scrolling,
+// focus, keyboard navigation, closing and pointer interaction for every tab
+// surface; narrower helpers only adapt their props to this function.
+func (r *runtime) TabBar(props TabBarProps) int32 {
+	resetIndex := func(value *int32) {
+		if value != nil {
+			*value = -1
 		}
 	}
-	return clicked
-}
-
-func (r *runtime) ClosableTabBar(props ClosableTabBarProps) int32 {
-	if props.ClosedIndex != nil {
-		*props.ClosedIndex = -1
+	resetIndex(props.ClosedIndex)
+	resetIndex(props.DoubleClickedIndex)
+	resetIndex(props.ReorderedFromIndex)
+	resetIndex(props.ReorderedToIndex)
+	resetIndex(props.MiddleClickedIndex)
+	if props.SelectedTabBounds != nil {
+		*props.SelectedTabBounds = Rectangle{}
 	}
 	count := int(props.Count)
 	if count <= 0 || count > len(props.Tabs) {
 		count = len(props.Tabs)
 	}
-	if count == 0 || props.SelectedIndex == nil {
+	if count == 0 {
 		return -1
 	}
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 || bounds.Height <= 0 {
 		return -1
 	}
-	selected := *props.SelectedIndex
-	if selected < 0 || selected >= int32(count) {
+	disabled := props.Disabled || r.contentDisabled()
+	if !disabled && props.ID > 0 {
+		r.registerField(props.ID)
+	}
+	focused := !disabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
+	selected := props.SelectedIndex
+	if selected < 0 || int(selected) >= count {
 		selected = 0
-		*props.SelectedIndex = 0
+	}
+	nextEnabled := func(from, direction int32) int32 {
+		for step := 1; step <= count; step++ {
+			i := (from + direction*int32(step)) % int32(count)
+			if i < 0 {
+				i += int32(count)
+			}
+			if !props.Tabs[i].Disabled {
+				return i
+			}
+		}
+		return from
+	}
+	clicked := int32(-1)
+	if focused {
+		remaining := r.inputEvents[:0]
+		for _, event := range r.inputEvents {
+			handled := false
+			if !event.shortcut {
+				switch event.key {
+				case KeyLeft, KeyUp:
+					clicked, handled = nextEnabled(selected, -1), true
+				case KeyRight, KeyDown:
+					clicked, handled = nextEnabled(selected, 1), true
+				case KeyHome:
+					clicked, handled = nextEnabled(-1, 1), true
+				case KeyEnd:
+					clicked, handled = nextEnabled(0, -1), true
+				case KeyDelete, KeyBackspace:
+					if props.Tabs[selected].Closeable && props.ClosedIndex != nil {
+						*props.ClosedIndex, handled = selected, true
+					}
+				}
+			}
+			if handled && clicked >= 0 {
+				selected = clicked
+			}
+			if !handled {
+				remaining = append(remaining, event)
+			}
+		}
+		r.inputEvents = remaining
 	}
 	font := props.Font
 	if font <= 0 {
-		font = Text14
+		font = Text12
+	}
+	minWidth := float32(props.MinTabWidth)
+	if minWidth <= 0 {
+		minWidth = 120
+	}
+	maxWidth := float32(props.MaxTabWidth)
+	if maxWidth <= 0 {
+		maxWidth = minWidth
+	}
+	if maxWidth < minWidth {
+		maxWidth = minWidth
+	}
+	widths := make([]float32, count)
+	totalWidth := float32(0)
+	for i := 0; i < count; i++ {
+		w := float32(runtimeTextWidth(props.Tabs[i].Label, font) + 16)
+		if props.Tabs[i].Closeable {
+			w += 24
+		}
+		w = min(maxWidth, max(minWidth, w))
+		widths[i], totalWidth = w, totalWidth+w
+	}
+	equalTabs := totalWidth <= bounds.Width
+	if equalTabs {
+		for i := range widths {
+			widths[i] = bounds.Width / float32(count)
+		}
+		totalWidth = bounds.Width
+	}
+	localScroll := int32(0)
+	scroll := props.ScrollOffset
+	if scroll == nil {
+		scroll = &localScroll
+	}
+	maxScroll := int32(max(float32(0), totalWidth-bounds.Width))
+	*scroll = min(maxScroll, max(0, *scroll))
+	if !disabled && !equalTabs && r.pointerCanReach(bounds) && r.mouseWheel != 0 {
+		*scroll = min(maxScroll, max(0, *scroll-int32(r.mouseWheel*42)))
+		r.mouseWheel = 0
+	}
+	if equalTabs {
+		*scroll = 0
+	}
+	if props.FocusSelected && !equalTabs {
+		x := bounds.X - float32(*scroll)
+		for i := int32(0); i < selected; i++ {
+			x += widths[i]
+		}
+		if x < bounds.X {
+			*scroll = max(0, *scroll-int32(bounds.X-x))
+		} else if end := x + widths[selected]; end > bounds.X+bounds.Width {
+			*scroll = min(maxScroll, *scroll+int32(end-(bounds.X+bounds.Width)))
+		}
 	}
 	theme := r.theme()
-	width := bounds.Width / float32(count)
-	clicked := int32(-1)
+	x := bounds.X - float32(*scroll)
 	for i := 0; i < count; i++ {
 		item := props.Tabs[i]
-		tab := Rectangle{X: bounds.X + float32(i)*width, Y: bounds.Y, Width: width, Height: bounds.Height}
+		tab := Rectangle{X: x, Y: bounds.Y, Width: widths[i], Height: bounds.Height}
+		x += widths[i]
+		itemDisabled := disabled || item.Disabled
+		isSelected := int32(i) == selected
+		if isSelected && props.SelectedTabBounds != nil {
+			*props.SelectedTabBounds = tab
+		}
 		closeWidth := float32(0)
-		close := Rectangle{}
+		closeBounds := Rectangle{}
 		closed := false
 		if item.Closeable {
-			closeWidth = 24
-			close = Rectangle{X: tab.X + tab.Width - closeWidth, Y: tab.Y, Width: closeWidth, Height: tab.Height}
-			closed = !item.Disabled && r.consumeTap(close)
+			closeWidth = min(24, tab.Width)
+			closeBounds = Rectangle{X: tab.X + tab.Width - closeWidth, Y: tab.Y, Width: closeWidth, Height: tab.Height}
+			closed = !itemDisabled && r.consumeTap(intersectRectangles(closeBounds, bounds))
 			if closed && props.ClosedIndex != nil {
 				*props.ClosedIndex = int32(i)
 			}
 		}
-		pressed := !item.Disabled && r.consumeTap(Rectangle{X: tab.X, Y: tab.Y, Width: tab.Width - closeWidth, Height: tab.Height})
-		fill, textColor := theme.surface, theme.icon
-		if int32(i) == selected {
-			fill, textColor = theme.buttonHover, theme.text
+		body := Rectangle{X: tab.X, Y: tab.Y, Width: max(0, tab.Width-closeWidth), Height: tab.Height}
+		pressed := !itemDisabled && !closed && r.consumeTap(intersectRectangles(body, bounds))
+		if pressed {
+			selected, clicked = int32(i), int32(i)
+			if props.ID > 0 {
+				r.setFocus(props.ID)
+				focused = true
+			}
+			now := time.Now()
+			if props.DoubleClickedIndex != nil && r.lastTabClick.id == props.ID && r.lastTabClick.bounds == bounds &&
+				r.lastTabClick.index == int32(i) && now.Sub(r.lastTabClick.when) <= 450*time.Millisecond {
+				*props.DoubleClickedIndex = int32(i)
+			}
+			r.lastTabClick = tabClick{id: props.ID, index: int32(i), when: now, bounds: bounds}
 		}
-		if item.Disabled {
+		if !itemDisabled {
+			if _, middle := r.consumeMouseButtonPoint(MouseButtonMiddle, intersectRectangles(tab, bounds)); middle && props.MiddleClickedIndex != nil {
+				*props.MiddleClickedIndex = int32(i)
+			}
+		}
+		fill, textColor, border := theme.surface, theme.icon, theme.border
+		hovered := !itemDisabled && r.pointerCanReach(intersectRectangles(tab, bounds))
+		if isSelected || int32(i) == selected {
+			fill, textColor = theme.buttonHover, theme.text
+		} else if hovered {
+			fill, textColor = theme.button, theme.text
+		}
+		if itemDisabled {
 			textColor = r.Fade(textColor, 0.45)
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: tab, Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: fill, BorderColor: theme.border, TextColor: textColor, FontSize: font, Disabled: item.Disabled, Pressed: int32(i) == selected || pressed, Row: int32(i)})
-		if pressed {
-			*props.SelectedIndex = int32(i)
-			clicked = int32(i)
+		if focused && int32(i) == selected {
+			border = theme.focus
 		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: tab, Clip: bounds, HasClip: true,
+			Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: fill,
+			BorderColor: border, TextColor: textColor, FontSize: font, ID: props.ID,
+			Disabled: itemDisabled, Pressed: int32(i) == selected, Focused: focused && int32(i) == selected, Row: int32(i)})
 		if item.Closeable {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: close, Text: "×", Color: theme.icon, FontSize: font, Disabled: item.Disabled, Pressed: closed, Row: int32(i)})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Clip: bounds, HasClip: true, Text: "×", Color: textColor,
+				FontSize: font, Disabled: itemDisabled, Pressed: closed, Row: int32(i)})
 		}
+	}
+	if !disabled && props.ReorderedFromIndex != nil && props.ReorderedToIndex != nil {
+		token := props.ID
+		if r.mousePressed[MouseButtonLeft] && pointInRect(r.mousePos.X, r.mousePos.Y, bounds) {
+			x = bounds.X - float32(*scroll)
+			for i, width := range widths {
+				if r.mousePos.X >= x && r.mousePos.X < x+width {
+					r.tabDrag = tabDrag{active: true, id: token, from: int32(i), bounds: bounds}
+					break
+				}
+				x += width
+			}
+		}
+		if r.tabDrag.active && r.tabDrag.id == token && r.tabDrag.bounds == bounds && r.mouseReleased[MouseButtonLeft] {
+			x = bounds.X - float32(*scroll)
+			to := r.tabDrag.from
+			for i, width := range widths {
+				if r.mousePos.X < x+width/2 {
+					to = int32(i)
+					break
+				}
+				to = int32(i)
+				x += width
+			}
+			if to != r.tabDrag.from {
+				*props.ReorderedFromIndex, *props.ReorderedToIndex = r.tabDrag.from, to
+				clicked = -1
+			}
+			r.tabDrag = tabDrag{}
+		}
+	}
+	return clicked
+}
+
+func (r *runtime) ClosableTabBar(props ClosableTabBarProps) int32 {
+	selected := int32(0)
+	if props.SelectedIndex != nil {
+		selected = *props.SelectedIndex
+	}
+	minWidth := int32(0)
+	if props.Count > 0 && props.Bounds.Width > 0 {
+		minWidth = int32(props.Bounds.Width) / props.Count
+	}
+	clicked := r.TabBar(TabBarProps{Bounds: props.Bounds, Tabs: props.Tabs,
+		Count: props.Count, SelectedIndex: selected, Font: props.Font,
+		MinTabWidth: minWidth, MaxTabWidth: minWidth, ClosedIndex: props.ClosedIndex,
+		ID: props.ID, Disabled: props.Disabled})
+	if clicked >= 0 && props.SelectedIndex != nil {
+		*props.SelectedIndex = clicked
 	}
 	return clicked
 }

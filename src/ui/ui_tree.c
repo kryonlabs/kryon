@@ -3638,6 +3638,8 @@ ClosableTabBar(ClosableTabBarProps bar)
         props.max_tab_width = props.min_tab_width;
     }
     props.closed_index = bar.closed_index;
+    props.id = bar.id;
+    props.disabled = bar.disabled;
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
     clicked = DrawUITabBar(props);
     if(clicked >= 0 && bar.selected_index != NULL)
