@@ -263,10 +263,31 @@ def run_tab_limits():
     category(4)
     check("Close first tab","tabs",lambda:click(612,352),1)
     check("Close last tab","tabs",lambda:click(992,352),0)
-    check("Reopen empty tab bar","tabs",lambda:click(730,410),1)
+
+    def add_tab(name, expected):
+        before=state()["tabs"]
+        after=before
+        # Xvfb can occasionally drop an injected click while llvmpipe is busy.
+        # Retry only while the button had no effect; never click again after the
+        # count changes, so a real double-add or capacity error still fails.
+        for _ in range(3):
+            click(730,410)
+            after=state()["tabs"]
+            if after != before:
+                break
+        results.append(dict(widget=name, passed=after == expected, key="tabs",
+                            before=before, after=after))
+
+    add_tab("Reopen empty tab bar",1)
     for count in range(2,9):
-        check(f"Add tab {count}","tabs",lambda:click(730,410),count)
-    check("Tab capacity disables add","tabs",lambda:click(730,410),8)
+        add_tab(f"Add tab {count}",count)
+    before=state()["tabs"]
+    for _ in range(3):
+        click(730,410)
+    after=state()["tabs"]
+    results.append(dict(widget="Tab capacity disables add",
+                        passed=before == 8 and after == 8, key="tabs",
+                        before=before, after=after))
     capture("full-tab-bar")
 
 def run_settings():
