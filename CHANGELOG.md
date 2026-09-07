@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.78 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.78
+- Add multiline TextArea page navigation
+
 ## v0.1.77 - 2026-09-07
 
 ### Changed
