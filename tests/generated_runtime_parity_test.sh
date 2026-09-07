@@ -1018,6 +1018,24 @@ func main() {
 		kryon.FrameOpLine: 3,
 		kryon.FrameOpText: 3,
 	})
+	driver.SetFocus(920)
+	driver.QueueKey(kryon.KeyRight)
+	drawPlots()
+	if value := PlotsStateValue.DragFloats[0]; value < 1.0999 || value > 1.1001 {
+		panic(fmt.Sprintf("generated float drag keyboard value=%v, want 1.1", value))
+	}
+	driver.SetFocus(921)
+	driver.QueueKey(kryon.KeyRight)
+	drawPlots()
+	if value := PlotsStateValue.DragInts[0]; value != 4 {
+		panic(fmt.Sprintf("generated int drag keyboard value=%d, want 4", value))
+	}
+	driver.SetFocus(938)
+	driver.QueueKey(kryon.KeyRight)
+	drawPlots()
+	if value := PlotsStateValue.DragFloatMin; value < 2.0999 || value > 2.1001 {
+		panic(fmt.Sprintf("generated float range drag keyboard value=%v, want 2.1", value))
+	}
 	driver.SetFocus(922)
 	driver.QueueKey(kryon.KeyRight)
 	drawPlots()
@@ -1958,6 +1976,22 @@ int main(void)
 
     draw_progress();
     draw_plots();
+    SetUIFocus(920); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(drag_floats[0] < 1.0999f || drag_floats[0] > 1.1001f) {
+        fprintf(stderr,"generated float drag keyboard value=%f, want 1.1\n",drag_floats[0]);
+        return 1;
+    }
+    InjectPump(); SetUIFocus(921); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(drag_ints[0] != 4) {
+        fprintf(stderr,"generated int drag keyboard value=%d, want 4\n",drag_ints[0]);
+        return 1;
+    }
+    InjectPump(); SetUIFocus(938); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(drag_float_min < 2.0999f || drag_float_min > 2.1001f) {
+        fprintf(stderr,"generated float range drag keyboard value=%f, want 2.1\n",drag_float_min);
+        return 1;
+    }
+    InjectPump();
     SetUIFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
     if((int)(slider_floats[0]*1000.0f+0.5f) != 260) {
         fprintf(stderr,"generated float slider keyboard value=%f, want 0.26\n",

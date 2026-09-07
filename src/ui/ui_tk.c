@@ -1592,8 +1592,26 @@ DrawUIPlotHistogram(PlotProps plot)
     ui_plot(plot, 1);
 }
 
+int
+ui_numeric_focus_id(int id, int component, int integer)
+{
+    unsigned int token;
+
+    if(id <= 0)
+        return 0;
+    if(component == 0)
+        return id;
+    token = (integer ? 0x50000000u : 0x40000000u) ^
+            ((unsigned int)id << 4) ^ (unsigned int)(component + 1);
+    token &= (unsigned int)INT_MAX;
+    return token != 0 ? (int)token : id;
+}
+
+static int ui_slider_keyboard_direction(int vertical);
+
 static int
-ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
+ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
+              float *delta)
 {
     Vector2 mouse = ui_mouse_world();
     disabled = disabled || UIContentDisabled();
@@ -1610,6 +1628,8 @@ ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
         g_drag_active = token;
         g_drag_last_x = mouse.x;
         g_drag_owner = ui_popup_input_owner();
+        if(focus_id > 0)
+            SetUIFocus(focus_id);
     }
     if(!disabled && g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         *delta = mouse.x - g_drag_last_x;
@@ -1618,6 +1638,69 @@ ui_drag_delta(int token, Rectangle bounds, int disabled, float *delta)
     if(g_drag_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_drag_active = 0;
     return *delta != 0.0f;
+}
+
+static int
+ui_update_drag_float_keyboard(int focus_id, float speed, float minimum,
+                              float maximum, float *value)
+{
+    float next = *value;
+    float step;
+    int direction;
+
+    if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+        return 0;
+    if(IsKeyPressed(KEY_HOME) && minimum < maximum)
+        next = minimum;
+    else if(IsKeyPressed(KEY_END) && minimum < maximum)
+        next = maximum;
+    else if((direction = ui_slider_keyboard_direction(0)) != 0) {
+        step = speed;
+        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) step *= 0.1f;
+        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) step *= 10.0f;
+        next += direction * step;
+        if(minimum < maximum) {
+            if(next < minimum) next = minimum;
+            if(next > maximum) next = maximum;
+        }
+    }
+    if(next == *value) return 0;
+    *value = next;
+    return 1;
+}
+
+static int
+ui_update_drag_int_keyboard(int focus_id, float speed, int minimum,
+                            int maximum, int *value)
+{
+    long long next = *value;
+    float scaled;
+    long long step;
+    int direction;
+
+    if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+        return 0;
+    if(IsKeyPressed(KEY_HOME) && minimum < maximum)
+        next = minimum;
+    else if(IsKeyPressed(KEY_END) && minimum < maximum)
+        next = maximum;
+    else if((direction = ui_slider_keyboard_direction(0)) != 0) {
+        scaled = speed;
+        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) scaled *= 0.1f;
+        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) scaled *= 10.0f;
+        step = (long long)(scaled + (scaled < 0.0f ? -0.5f : 0.5f));
+        if(step == 0) step = scaled < 0.0f ? -1 : 1;
+        next += direction * step;
+        if(minimum < maximum) {
+            if(next < minimum) next = minimum;
+            if(next > maximum) next = maximum;
+        }
+    }
+    if(next == *value) return 0;
+    *value = (int)next;
+    return 1;
 }
 
 int
@@ -1630,11 +1713,18 @@ ui_update_drag_float(DragFloatProps drag)
     if(drag.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
+        int focus_id = ui_numeric_focus_id(drag.id,i,0);
         Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
                           drag.bounds.y, drag.bounds.width / count,
                           drag.bounds.height};
         float delta;
-        if(ui_drag_delta((drag.id << 4) ^ (i + 1), cell,
+        int enabled = !drag.disabled && !UIContentDisabled();
+        if(enabled && focus_id > 0) RegisterUIFocus(focus_id,cell);
+        if(enabled && ui_update_drag_float_keyboard(focus_id,speed,
+                drag.min,drag.max,&drag.values[i]))
+            changed = 1;
+        if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
+                               (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
             float value = drag.values[i] + delta * speed;
             if(drag.min < drag.max) {
@@ -1660,11 +1750,18 @@ ui_update_drag_int(DragIntProps drag)
     if(drag.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
+        int focus_id = ui_numeric_focus_id(drag.id,i,1);
         Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
                           drag.bounds.y, drag.bounds.width / count,
                           drag.bounds.height};
         float delta;
-        if(ui_drag_delta((drag.id << 4) ^ (i + 1), cell,
+        int enabled = !drag.disabled && !UIContentDisabled();
+        if(enabled && focus_id > 0) RegisterUIFocus(focus_id,cell);
+        if(enabled && ui_update_drag_int_keyboard(focus_id,speed,
+                drag.min,drag.max,&drag.values[i]))
+            changed = 1;
+        if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
+                               (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
             float scaled = delta * speed;
             int step = (int)(scaled + (scaled < 0.0f ? -0.5f : 0.5f));
@@ -1683,13 +1780,14 @@ ui_update_drag_int(DragIntProps drag)
 }
 
 static void
-ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled)
+ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused)
 {
     DrawRectangleRec(bounds, disabled ? c_surface : c_button);
     DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
     DrawUIText(text, (int)bounds.x + ScaleUIPx(6),
                ui_row_text_y(bounds, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
+    if(focused) DrawUIFocus(bounds);
 }
 
 static void
@@ -1711,9 +1809,13 @@ ui_paint_drag_float(DragFloatProps drag)
                           drag.bounds.y, drag.bounds.width/drag.value_count,
                           drag.bounds.height};
         char text[64];
+        int focus_id = ui_numeric_focus_id(drag.id,i,0);
+        int disabled = drag.disabled || UIContentDisabled();
+        int focused = !disabled && focus_id > 0 && IsUIFocusActive(focus_id) &&
+                      !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
                  drag.values[i]);
-        ui_paint_drag_cell(cell, text, drag.disabled || UIContentDisabled());
+        ui_paint_drag_cell(cell,text,disabled,focused);
     }
     ui_paint_drag_label(drag.bounds, drag.label);
 }
@@ -1728,9 +1830,13 @@ ui_paint_drag_int(DragIntProps drag)
                           drag.bounds.y, drag.bounds.width/drag.value_count,
                           drag.bounds.height};
         char text[64];
+        int focus_id = ui_numeric_focus_id(drag.id,i,1);
+        int disabled = drag.disabled || UIContentDisabled();
+        int focused = !disabled && focus_id > 0 && IsUIFocusActive(focus_id) &&
+                      !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
                  drag.values[i]);
-        ui_paint_drag_cell(cell, text, drag.disabled || UIContentDisabled());
+        ui_paint_drag_cell(cell,text,disabled,focused);
     }
     ui_paint_drag_label(drag.bounds, drag.label);
 }
@@ -1767,21 +1873,6 @@ ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
     if(g_slider_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_slider_active = 0;
     return 0;
-}
-
-static int
-ui_slider_focus_id(int id, int component, int integer)
-{
-    unsigned int token;
-
-    if(id <= 0)
-        return 0;
-    if(component == 0)
-        return id;
-    token = (integer ? 0x50000000u : 0x40000000u) ^
-            ((unsigned int)id << 4) ^ (unsigned int)(component + 1);
-    token &= (unsigned int)INT_MAX;
-    return token != 0 ? (int)token : id;
 }
 
 static int
@@ -1913,7 +2004,7 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
     if(slider.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
-        int focus_id = ui_slider_focus_id(slider.id,i,0);
+        int focus_id = ui_numeric_focus_id(slider.id,i,0);
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
@@ -1952,7 +2043,7 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
     if(slider.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
-        int focus_id = ui_slider_focus_id(slider.id,i,1);
+        int focus_id = ui_numeric_focus_id(slider.id,i,1);
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
@@ -1998,7 +2089,7 @@ ui_paint_slider_float(SliderFloatProps slider, int vertical)
         if(ratio < 0) ratio = 0;
         if(ratio > 1) ratio = 1;
         char text[64];
-        int focus_id = ui_slider_focus_id(slider.id,i,0);
+        int focus_id = ui_numeric_focus_id(slider.id,i,0);
         int focused = !slider.disabled && focus_id > 0 &&
                       IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
@@ -2022,7 +2113,7 @@ ui_paint_slider_int(SliderIntProps slider, int vertical)
         if(ratio < 0) ratio = 0;
         if(ratio > 1) ratio = 1;
         char text[64];
-        int focus_id = ui_slider_focus_id(slider.id,i,1);
+        int focus_id = ui_numeric_focus_id(slider.id,i,1);
         int focused = !slider.disabled && focus_id > 0 &&
                       IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);

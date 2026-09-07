@@ -231,6 +231,34 @@ func TestPopupMultiSelectKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupDragKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		values := []float32{1}
+		r.QueueKey(KeyRight)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(25707)
+		changed := r.DragFloat(DragFloatProps{Bounds: NewRectangle(10, 10, 120, 28), ID: 25707, Values: values, ValueCount: 1, Speed: 1, Min: 0, Max: 10})
+		want := float32(1)
+		if inside {
+			want = 2
+		}
+		if changed != inside || values[0] != want {
+			t.Fatalf("inside=%v: changed=%v value=%v", inside, changed, values[0])
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupMenuKeyboardOwnership(t *testing.T) {
 	items := []MenuItem{{Kind: MenuCommand, Label: "Run", ID: 25710}}
 	for _, inside := range []bool{false, true} {

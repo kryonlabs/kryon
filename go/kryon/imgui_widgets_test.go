@@ -970,6 +970,110 @@ func TestNativeDragScalars(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestNativeDragKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
+	floats := []float32{2, 5}
+	ints := []int32{2, 5}
+	floatProps := DragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 70, Values: floats, ValueCount: 2, Speed: 0.25, Min: 0, Max: 10}
+	intProps := DragIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 71, Values: ints, ValueCount: 2, Speed: 2, Min: 0, Max: 10}
+	draw := func() {
+		r.BeginFrame()
+		r.DragFloat(floatProps)
+		r.DragInt(intProps)
+		r.EndFrame()
+	}
+	draw()
+	r.SetFocus(70)
+	r.QueueKey(KeyRight)
+	draw()
+	if floats[0] != 2.25 {
+		t.Fatalf("DragFloat Right=%v, want 2.25", floats[0])
+	}
+	foundFocus := false
+	for _, op := range r.ops {
+		if op.ID == 70 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+			foundFocus = true
+		}
+	}
+	if !foundFocus {
+		t.Fatal("focused drag component lacks focus presentation")
+	}
+	r.QueueShiftKey(KeyRight)
+	draw()
+	if floats[0] != 4.75 {
+		t.Fatalf("DragFloat Shift+Right=%v, want 4.75", floats[0])
+	}
+	r.QueueKey(KeyTab)
+	draw()
+	if r.Focus() == 70 {
+		t.Fatal("DragFloat Tab did not reach second component")
+	}
+	r.QueueKey(KeyHome)
+	draw()
+	if floats[1] != 0 {
+		t.Fatalf("DragFloat Home=%v, want 0", floats[1])
+	}
+	r.SetFocus(71)
+	r.QueueKey(KeyRight)
+	draw()
+	if ints[0] != 4 {
+		t.Fatalf("DragInt Right=%d, want 4", ints[0])
+	}
+	r.QueueKey(KeyTab)
+	draw()
+	r.QueueKey(KeyLeft)
+	draw()
+	if ints[1] != 3 {
+		t.Fatalf("DragInt second Left=%d, want 3", ints[1])
+	}
+
+	floatMin, floatMax := float32(2), float32(8)
+	intMin, intMax := int32(2), int32(8)
+	floatRange := DragFloatRange2Props{Bounds: NewRectangle(240, 10, 200, 30), ID: 72, CurrentMin: &floatMin, CurrentMax: &floatMax, Speed: 1, Min: 0, Max: 10}
+	intRange := DragIntRange2Props{Bounds: NewRectangle(240, 50, 200, 30), ID: 73, CurrentMin: &intMin, CurrentMax: &intMax, Speed: 2, Min: 0, Max: 10}
+	drawRanges := func(disabled bool) {
+		r.BeginFrame()
+		r.BeginDisabled(disabled)
+		r.DragFloatRange2(floatRange)
+		r.DragIntRange2(intRange)
+		r.EndDisabled()
+		r.EndFrame()
+	}
+	drawRanges(false)
+	r.SetFocus(72)
+	r.QueueKey(KeyRight)
+	drawRanges(false)
+	if floatMin != 3 {
+		t.Fatalf("DragFloatRange2 min Right=%v, want 3", floatMin)
+	}
+	r.QueueKey(KeyTab)
+	drawRanges(false)
+	r.QueueKey(KeyLeft)
+	drawRanges(false)
+	if floatMax != 7 {
+		t.Fatalf("DragFloatRange2 max Left=%v, want 7", floatMax)
+	}
+	r.SetFocus(73)
+	r.QueueKey(KeyRight)
+	drawRanges(false)
+	if intMin != 4 {
+		t.Fatalf("DragIntRange2 min Right=%d, want 4", intMin)
+	}
+	r.QueueKey(KeyTab)
+	drawRanges(false)
+	r.QueueKey(KeyLeft)
+	drawRanges(false)
+	if intMax != 6 {
+		t.Fatalf("DragIntRange2 max Left=%d, want 6", intMax)
+	}
+	r.SetFocus(72)
+	r.QueueKey(KeyRight)
+	drawRanges(true)
+	if floatMin != 3 {
+		t.Fatalf("disabled DragFloatRange2 changed min to %v", floatMin)
+	}
+}
+
 func TestNativeSliders(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{0, 2}

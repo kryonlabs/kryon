@@ -151,6 +151,76 @@ test_slider_keyboard_navigation(void)
 }
 
 static void
+draw_drag_keyboard(DragFloatProps floats, DragIntProps ints)
+{
+    BeginUIFrame(480,240,1);
+    (void)DragFloat(floats);
+    (void)DragInt(ints);
+    EndUIFrame();
+}
+
+static void
+test_drag_keyboard_navigation(void)
+{
+    float floats[] = {2.0f,5.0f};
+    int ints[] = {2,5};
+    DragFloatProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
+        .value_count=2,.speed=0.25f,.min=0,.max=10};
+    DragIntProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
+        .value_count=2,.speed=2,.min=0,.max=10};
+
+    InjectReset(); draw_drag_keyboard(fp,ip);
+    SetUIFocus(630); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag float Right",(int)(floats[0]*100),225);
+    InjectPump(); InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
+    draw_drag_keyboard(fp,ip);
+    check_int("drag float Shift Right",(int)(floats[0]*100),475);
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag float Tab second",GetUIFocus(),ui_numeric_focus_id(630,1,0));
+    InjectKeyTap(KEY_HOME); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag float Home",(int)floats[1],0);
+
+    SetUIFocus(631); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag int Right",ints[0],4);
+    InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag int Tab second",GetUIFocus(),ui_numeric_focus_id(631,1,1));
+    InjectKeyTap(KEY_LEFT); InjectPump(); draw_drag_keyboard(fp,ip);
+    check_int("drag int second Left",ints[1],3);
+
+    {
+        float fmin=2.0f, fmax=8.0f;
+        int imin=2, imax=8;
+        DragFloatRange2Props fr = {.bounds={240,10,200,30},.id=632,
+            .current_min=&fmin,.current_max=&fmax,.speed=1,.min=0,.max=10};
+        DragIntRange2Props ir = {.bounds={240,50,200,30},.id=633,
+            .current_min=&imin,.current_max=&imax,.speed=2,.min=0,.max=10};
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag float range min",(int)fmin,3);
+        InjectKeyTap(KEY_TAB); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag float range Tab",GetUIFocus(),ui_numeric_focus_id(632,1,0));
+        InjectKeyTap(KEY_LEFT); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag float range max",(int)fmax,7);
+        SetUIFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag int range min",imin,4);
+        InjectKeyTap(KEY_TAB); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag int range Tab",GetUIFocus(),ui_numeric_focus_id(633,1,1));
+        InjectKeyTap(KEY_LEFT); InjectPump();
+        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        check_int("drag int range max",imax,6);
+        SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(480,240,1); BeginDisabled(1); DragFloatRange2(fr); EndDisabled(); EndUIFrame();
+        check_int("disabled drag range",(int)fmin,3);
+    }
+}
+
+static void
 draw_focusable_choices(int *checkbox, int *selected, int *flags,
                        int disable_flags, int *checkbox_activated,
                        int *selectable_activated, int *flags_activated,
@@ -1169,6 +1239,38 @@ test_popup_multi_select_keyboard_ownership(void)
         check_int("only top popup multi-select navigates",clicked,inside ? 1 : -1);
         check_int("blocked popup multi-select preserves anchor",anchor,inside ? 1 : 0);
         check_int("blocked popup multi-select preserves selection",selected[1],inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_popup_drag_keyboard_ownership(void)
+{
+    for(int inside = 0; inside < 2; inside++) {
+        float value = 1.0f;
+        InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(
+            context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(
+            context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25707);
+        int changed = DragFloat((DragFloatProps){
+            .bounds={10,10,120,28},.id=25707,.values=&value,.value_count=1,
+            .speed=1,.min=0,.max=10
+        });
+        check_int("only top popup drag changes from keyboard",changed,inside);
+        check_int("blocked popup drag preserves value",(int)value,inside ? 2 : 1);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);
@@ -2963,6 +3065,7 @@ main(void)
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();
     test_popup_multi_select_keyboard_ownership();
+    test_popup_drag_keyboard_ownership();
     test_popup_tab_missing_owner();
     test_popup_text_dismissal_replay();
     test_popup_composition_dismissal_replay();
@@ -3026,5 +3129,6 @@ main(void)
 
     test_reorder_uses_item_center_and_header_handle();
     test_slider_keyboard_navigation();
+    test_drag_keyboard_navigation();
     return 0;
 }

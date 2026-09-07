@@ -147,6 +147,7 @@ int ui_scrollbar(int x, int y, int viewport_h, int content_h,
 void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
+int ui_numeric_focus_id(int id, int component, int integer);
 void ui_button_style_colors(ButtonStyle style, Color *background, Color *hover_background, Color *text_color);
 int HandleButton(ButtonSpec button);
 void PaintButton(ButtonSpec button, int hovered, int pressed);

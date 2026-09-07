@@ -2867,9 +2867,9 @@ DragFloatRange2(DragFloatRange2Props drag)
     high.x += low.width;
     high.width -= low.width;
     float old_min = *drag.current_min;
-    int changed = DragFloat((DragFloatProps){low, drag.id*2, NULL, drag.current_min,
+    int changed = DragFloat((DragFloatProps){low, drag.id, NULL, drag.current_min,
         1, drag.speed, drag.min, *drag.current_max, drag.format, drag.disabled});
-    changed |= DragFloat((DragFloatProps){high, drag.id*2+1, NULL, drag.current_max,
+    changed |= DragFloat((DragFloatProps){high, ui_numeric_focus_id(drag.id,1,0), NULL, drag.current_max,
         1, drag.speed, old_min, drag.max,
         drag.format_max != NULL ? drag.format_max : drag.format, drag.disabled});
     if(*drag.current_min > *drag.current_max)
@@ -2889,9 +2889,9 @@ DragIntRange2(DragIntRange2Props drag)
     high.x += low.width;
     high.width -= low.width;
     int old_min = *drag.current_min;
-    int changed = DragInt((DragIntProps){low, drag.id*2, NULL, drag.current_min,
+    int changed = DragInt((DragIntProps){low, drag.id, NULL, drag.current_min,
         1, drag.speed, drag.min, *drag.current_max, drag.format, drag.disabled});
-    changed |= DragInt((DragIntProps){high, drag.id*2+1, NULL, drag.current_max,
+    changed |= DragInt((DragIntProps){high, ui_numeric_focus_id(drag.id,1,1), NULL, drag.current_max,
         1, drag.speed, old_min, drag.max,
         drag.format_max != NULL ? drag.format_max : drag.format, drag.disabled});
     if(*drag.current_min > *drag.current_max)

@@ -2798,7 +2798,7 @@ func (r *runtime) plot(props PlotProps, histogram bool) {
 	}
 }
 
-func (r *runtime) dragDelta(token int32, bounds Rectangle, disabled bool) (float32, bool) {
+func (r *runtime) dragDelta(token, focusID int32, bounds Rectangle, disabled bool) (float32, bool) {
 	disabled = disabled || r.contentDisabled()
 	if r.drag.active && r.popupInputOwnerCaptures(r.drag.owner) {
 		r.drag = scalarDrag{}
@@ -2808,6 +2808,9 @@ func (r *runtime) dragDelta(token int32, bounds Rectangle, disabled bool) (float
 	}
 	if !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds) {
 		r.drag = scalarDrag{active: true, token: token, lastX: r.mousePos.X, owner: r.currentPopupInputOwner()}
+		if focusID > 0 {
+			r.setFocus(focusID)
+		}
 	}
 	if r.drag.active && r.drag.token == token && r.mouseDown[MouseButtonLeft] {
 		delta := r.mousePos.X - r.drag.lastX
@@ -2818,6 +2821,104 @@ func (r *runtime) dragDelta(token int32, bounds Rectangle, disabled bool) (float
 		r.drag = scalarDrag{}
 	}
 	return 0, false
+}
+
+func (r *runtime) dragFloatKeyboard(focusID int32, speed, minimum, maximum, value float32) (float32, bool) {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) {
+		return value, false
+	}
+	next := value
+	remaining := r.inputEvents[:0]
+	for _, event := range r.inputEvents {
+		handled := false
+		if !event.shortcut {
+			switch event.key {
+			case KeyHome:
+				if minimum < maximum {
+					next, handled = minimum, true
+				}
+			case KeyEnd:
+				if minimum < maximum {
+					next, handled = maximum, true
+				}
+			default:
+				direction := r.sliderKeyboardDirection(false, event.key)
+				if direction == 0 {
+					break
+				}
+				step := speed
+				if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
+					step *= 0.1
+				}
+				if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
+					step *= 10
+				}
+				next += float32(direction) * step
+				if minimum < maximum {
+					next = min(maximum, max(minimum, next))
+				}
+				handled = true
+			}
+		}
+		if !handled {
+			remaining = append(remaining, event)
+		}
+	}
+	r.inputEvents = remaining
+	return next, next != value
+}
+
+func (r *runtime) dragIntKeyboard(focusID int32, speed float32, minimum, maximum, value int32) (int32, bool) {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) {
+		return value, false
+	}
+	next := int64(value)
+	remaining := r.inputEvents[:0]
+	for _, event := range r.inputEvents {
+		handled := false
+		if !event.shortcut {
+			switch event.key {
+			case KeyHome:
+				if minimum < maximum {
+					next, handled = int64(minimum), true
+				}
+			case KeyEnd:
+				if minimum < maximum {
+					next, handled = int64(maximum), true
+				}
+			default:
+				direction := r.sliderKeyboardDirection(false, event.key)
+				if direction == 0 {
+					break
+				}
+				step := speed
+				if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
+					step *= 0.1
+				}
+				if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
+					step *= 10
+				}
+				delta := int64(math.Round(float64(step)))
+				if delta == 0 {
+					if step < 0 {
+						delta = -1
+					} else {
+						delta = 1
+					}
+				}
+				next += int64(direction) * delta
+				if minimum < maximum {
+					next = min(int64(maximum), max(int64(minimum), next))
+				}
+				handled = true
+			}
+		}
+		if !handled {
+			remaining = append(remaining, event)
+		}
+	}
+	r.inputEvents = remaining
+	return int32(next), int32(next) != value
 }
 
 func (r *runtime) DragFloat(props DragFloatProps) bool {
@@ -2835,8 +2936,17 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 	}
 	changed := false
 	for i := 0; i < count; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), false)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, cell, props.Disabled); dragged {
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+			if next, keyboardChanged := r.dragFloatKeyboard(focusID, speed, props.Min, props.Max, props.Values[i]); keyboardChanged {
+				props.Values[i] = next
+				changed = true
+			}
+		}
+		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
 			value := props.Values[i] + delta*speed
 			if props.Min < props.Max {
 				if value < props.Min {
@@ -2853,7 +2963,8 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 		if format == "" {
 			format = "%.3f"
 		}
-		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ID, int32(i))
 	}
 	r.drawDragLabel(props.Bounds, props.Label)
 	return changed
@@ -2874,8 +2985,17 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 	}
 	changed := false
 	for i := 0; i < count; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), true)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, cell, props.Disabled); dragged {
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+			if next, keyboardChanged := r.dragIntKeyboard(focusID, speed, props.Min, props.Max, props.Values[i]); keyboardChanged {
+				props.Values[i] = next
+				changed = true
+			}
+		}
+		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
 			scaled := delta * speed
 			step := int32(scaled + 0.5)
 			if scaled < 0 {
@@ -2892,7 +3012,8 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 		if format == "" {
 			format = "%d"
 		}
-		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ID, int32(i))
 	}
 	r.drawDragLabel(props.Bounds, props.Label)
 	return changed
@@ -2911,16 +3032,25 @@ func (r *runtime) DragFloatRange2(props DragFloatRange2Props) bool {
 	values := [2]*float32{props.CurrentMin, props.CurrentMax}
 	formats := [2]string{props.Format, props.FormatMax}
 	for i := 0; i < 2; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), false)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/2, Y: props.Bounds.Y, Width: props.Bounds.Width / 2, Height: props.Bounds.Height}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, cell, props.Disabled); dragged {
+		low, high := props.Min, props.Max
+		if i == 0 && *props.CurrentMax < high {
+			high = *props.CurrentMax
+		}
+		if i == 1 && *props.CurrentMin > low {
+			low = *props.CurrentMin
+		}
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+			if next, keyboardChanged := r.dragFloatKeyboard(focusID, speed, low, high, *values[i]); keyboardChanged {
+				*values[i] = next
+				changed = true
+			}
+		}
+		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
 			value := *values[i] + delta*speed
-			low, high := props.Min, props.Max
-			if i == 0 && *props.CurrentMax < high {
-				high = *props.CurrentMax
-			}
-			if i == 1 && *props.CurrentMin > low {
-				low = *props.CurrentMin
-			}
 			if low < high {
 				if value < low {
 					value = low
@@ -2939,7 +3069,8 @@ func (r *runtime) DragFloatRange2(props DragFloatRange2Props) bool {
 		if format == "" {
 			format = "%.3f"
 		}
-		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), props.Disabled, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ID, int32(i))
 	}
 	if *props.CurrentMin > *props.CurrentMax {
 		*props.CurrentMin = *props.CurrentMax
@@ -2961,21 +3092,30 @@ func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
 	values := [2]*int32{props.CurrentMin, props.CurrentMax}
 	formats := [2]string{props.Format, props.FormatMax}
 	for i := 0; i < 2; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), true)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/2, Y: props.Bounds.Y, Width: props.Bounds.Width / 2, Height: props.Bounds.Height}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, cell, props.Disabled); dragged {
+		low, high := props.Min, props.Max
+		if i == 0 && *props.CurrentMax < high {
+			high = *props.CurrentMax
+		}
+		if i == 1 && *props.CurrentMin > low {
+			low = *props.CurrentMin
+		}
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+			if next, keyboardChanged := r.dragIntKeyboard(focusID, speed, low, high, *values[i]); keyboardChanged {
+				*values[i] = next
+				changed = true
+			}
+		}
+		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
 			scaled := delta * speed
 			step := int32(scaled + 0.5)
 			if scaled < 0 {
 				step = int32(scaled - 0.5)
 			}
 			value := *values[i] + step
-			low, high := props.Min, props.Max
-			if i == 0 && *props.CurrentMax < high {
-				high = *props.CurrentMax
-			}
-			if i == 1 && *props.CurrentMin > low {
-				low = *props.CurrentMin
-			}
 			if low < high {
 				value = clamp32(value, low, high)
 			}
@@ -2989,7 +3129,8 @@ func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
 		if format == "" {
 			format = "%d"
 		}
-		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), props.Disabled, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ID, int32(i))
 	}
 	if *props.CurrentMin > *props.CurrentMax {
 		*props.CurrentMin = *props.CurrentMax
@@ -2998,14 +3139,18 @@ func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
 	return changed
 }
 
-func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled bool, id, component int32) {
+func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, id, component int32) {
 	t := r.theme()
 	color := t.button
 	textColor := t.text
 	if disabled {
 		color, textColor = t.surface, t.icon
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Text: text, Color: color, BorderColor: t.border, TextColor: textColor, FontSize: Text14, ID: id, Row: component, Disabled: disabled, Pressed: r.drag.active && r.drag.token == id*16+component+1})
+	border := t.border
+	if focused {
+		border = t.focus
+	}
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: bounds, Text: text, Color: color, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: id, Row: component, Disabled: disabled, Pressed: r.drag.active && r.drag.token == id*16+component+1, Focused: focused})
 }
 
 func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
