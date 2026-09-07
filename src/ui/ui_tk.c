@@ -1608,6 +1608,102 @@ ui_numeric_focus_id(int id, int component, int integer)
 }
 
 static int ui_slider_keyboard_direction(int vertical);
+static int ui_numeric_input_filter(int codepoint, void *user_data);
+static UINumericInputState *ui_numeric_input_find(int kind, int widget_id,
+                                                   int component);
+
+enum {
+    UI_NUMERIC_EDIT_DRAG_FLOAT = 3,
+    UI_NUMERIC_EDIT_DRAG_INT,
+    UI_NUMERIC_EDIT_SLIDER_FLOAT,
+    UI_NUMERIC_EDIT_SLIDER_INT
+};
+
+static int
+ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
+                     int focus_id, void *value, const char *format,
+                     int disabled, int integer, int *editing)
+{
+    int enabled = !disabled && !UIContentDisabled();
+    int control = IsKeyDown(KEY_LEFT_CONTROL) ||
+                  IsKeyDown(KEY_RIGHT_CONTROL);
+    int activate = enabled && control &&
+                   IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui_hot(bounds);
+    UINumericInputState *state =
+        ui_numeric_input_find(kind, widget_id, component);
+    int commit = 0;
+    int changed = 0;
+
+    if(state == NULL && !activate) {
+        *editing = 0;
+        return 0;
+    }
+    if(state == NULL)
+        state = ui_numeric_input_state(kind, widget_id, component);
+    if(!enabled && state->focused) {
+        state->focused = 0;
+        ClearTextInputFocus();
+    }
+    if(activate) {
+        if(integer)
+            snprintf(state->text, sizeof(state->text),
+                     format != NULL ? format : "%d", *(int *)value);
+        else
+            snprintf(state->text, sizeof(state->text),
+                     format != NULL ? format : "%.3f", *(float *)value);
+        state->cursor = (int)strlen(state->text);
+        state->focused = 1;
+        SetUIFocus(focus_id);
+        g_drag_active = 0;
+        g_slider_active = 0;
+    }
+    if(!state->focused) {
+        *editing = 0;
+        return 0;
+    }
+
+    BeginDisabled(!enabled);
+    if(RenderTextField((TextFieldProps){
+            .bounds = bounds,
+            .text = state->text,
+            .text_size = sizeof(state->text),
+            .cursor_position = &state->cursor,
+            .focused = &state->focused,
+            .max_codepoints = 63,
+            .font = GetSmallFontSize(),
+            .focus_id = focus_id,
+            .style = kryon_zero_text_input_style,
+            .filter = ui_numeric_input_filter,
+            .commit_pressed = &commit,
+            .read_only = !enabled
+        })) {
+        char *end = NULL;
+        if(integer) {
+            long parsed = strtol(state->text, &end, 0);
+            if(end != state->text && *end == '\0' &&
+               parsed >= INT_MIN && parsed <= INT_MAX &&
+               *(int *)value != (int)parsed) {
+                *(int *)value = (int)parsed;
+                changed = 1;
+            }
+        } else {
+            float parsed = strtof(state->text, &end);
+            if(end != state->text && *end == '\0' &&
+               isfinite(parsed) && *(float *)value != parsed) {
+                *(float *)value = parsed;
+                changed = 1;
+            }
+        }
+    }
+    EndDisabled();
+    if(commit) {
+        state->focused = 0;
+        ClearTextInputFocus();
+        SetUIFocus(focus_id);
+    }
+    *editing = state->focused;
+    return changed;
+}
 
 static int
 ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
@@ -1719,7 +1815,13 @@ ui_update_drag_float(DragFloatProps drag)
                           drag.bounds.height};
         float delta;
         int enabled = !drag.disabled && !UIContentDisabled();
+        int editing = 0;
         if(enabled && focus_id > 0) RegisterUIFocus(focus_id,cell);
+        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_FLOAT,
+            drag.id, i, focus_id, &drag.values[i], drag.format,
+            drag.disabled, 0, &editing);
+        if(editing)
+            continue;
         if(enabled && ui_update_drag_float_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
@@ -1756,7 +1858,13 @@ ui_update_drag_int(DragIntProps drag)
                           drag.bounds.height};
         float delta;
         int enabled = !drag.disabled && !UIContentDisabled();
+        int editing = 0;
         if(enabled && focus_id > 0) RegisterUIFocus(focus_id,cell);
+        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_INT,
+            drag.id, i, focus_id, &drag.values[i], drag.format,
+            drag.disabled, 1, &editing);
+        if(editing)
+            continue;
         if(enabled && ui_update_drag_int_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
@@ -1810,7 +1918,11 @@ ui_paint_drag_float(DragFloatProps drag)
                           drag.bounds.height};
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
+        UINumericInputState *state = ui_numeric_input_find(
+            UI_NUMERIC_EDIT_DRAG_FLOAT, drag.id, i);
         int disabled = drag.disabled || UIContentDisabled();
+        if(state != NULL && state->focused)
+            continue;
         int focused = !disabled && focus_id > 0 && IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
@@ -1831,7 +1943,11 @@ ui_paint_drag_int(DragIntProps drag)
                           drag.bounds.height};
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
+        UINumericInputState *state = ui_numeric_input_find(
+            UI_NUMERIC_EDIT_DRAG_INT, drag.id, i);
         int disabled = drag.disabled || UIContentDisabled();
+        if(state != NULL && state->focused)
+            continue;
         int focused = !disabled && focus_id > 0 && IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
@@ -2010,8 +2126,14 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
                           slider.bounds.height};
         float ratio = range > 0.0f ? (slider.values[i] - slider.min) / range : 0.0f;
         int enabled = !slider.disabled && !UIContentDisabled();
+        int editing = 0;
         if(enabled && focus_id > 0)
             RegisterUIFocus(focus_id,cell);
+        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_SLIDER_FLOAT,
+            slider.id, i, focus_id, &slider.values[i], slider.format,
+            slider.disabled, 0, &editing);
+        if(editing)
+            continue;
         if(enabled && ui_update_slider_float_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
             ratio = (slider.values[i] - slider.min) / range;
@@ -2050,8 +2172,14 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
         float ratio = range > 0 ?
             (float)(((long long)slider.values[i] - slider.min) / (double)range) : 0.0f;
         int enabled = !slider.disabled && !UIContentDisabled();
+        int editing = 0;
         if(enabled && focus_id > 0)
             RegisterUIFocus(focus_id,cell);
+        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_SLIDER_INT,
+            slider.id, i, focus_id, &slider.values[i], slider.format,
+            slider.disabled, 1, &editing);
+        if(editing)
+            continue;
         if(enabled && ui_update_slider_int_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
             ratio = (float)(((long long)slider.values[i] - slider.min) /
@@ -2090,6 +2218,10 @@ ui_paint_slider_float(SliderFloatProps slider, int vertical)
         if(ratio > 1) ratio = 1;
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
+        UINumericInputState *state = ui_numeric_input_find(
+            UI_NUMERIC_EDIT_SLIDER_FLOAT, slider.id, i);
+        if(state != NULL && state->focused)
+            continue;
         int focused = !slider.disabled && focus_id > 0 &&
                       IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
@@ -2114,6 +2246,10 @@ ui_paint_slider_int(SliderIntProps slider, int vertical)
         if(ratio > 1) ratio = 1;
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
+        UINumericInputState *state = ui_numeric_input_find(
+            UI_NUMERIC_EDIT_SLIDER_INT, slider.id, i);
+        if(state != NULL && state->focused)
+            continue;
         int focused = !slider.disabled && focus_id > 0 &&
                       IsUIFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
@@ -2170,8 +2306,8 @@ ui_paint_slider_angle(SliderAngleProps slider)
 static UINumericInputState *g_numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
 static int g_numeric_next_token = 0x60000000;
 
-UINumericInputState *
-ui_numeric_input_state(int kind, int widget_id, int component)
+static UINumericInputState *
+ui_numeric_input_find(int kind, int widget_id, int component)
 {
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
                        (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
@@ -2180,6 +2316,18 @@ ui_numeric_input_state(int kind, int widget_id, int component)
         if(state->kind == kind && state->widget_id == widget_id &&
            state->component == component)
             return state;
+    return NULL;
+}
+
+UINumericInputState *
+ui_numeric_input_state(int kind, int widget_id, int component)
+{
+    unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
+                       (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
+    UINumericInputState *existing =
+        ui_numeric_input_find(kind, widget_id, component);
+    if(existing != NULL)
+        return existing;
 
     UINumericInputState *state = calloc(1, sizeof(*state));
     if(state == NULL)

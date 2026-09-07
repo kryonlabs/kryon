@@ -1633,6 +1633,13 @@ type numericInputState struct {
 	focused bool
 }
 
+const (
+	numericEditDragFloat int32 = 3 + iota
+	numericEditDragInt
+	numericEditSliderFloat
+	numericEditSliderInt
+)
+
 type dragDropState struct {
 	active   bool
 	sourceID int32
@@ -2017,7 +2024,7 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	}
 }
 func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
-func (r *runtime) Scale(px int32) int32                            { return px }
+func (r *runtime) Scale(px int32) int32                               { return px }
 func (r *runtime) GetScreenWidth() int32                              { return int32(r.config.Width) }
 func (r *runtime) GetScreenHeight() int32                             { return int32(r.config.Height) }
 func (r *runtime) GetThemeBackground() Color                          { return r.theme().background }
@@ -3163,6 +3170,15 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 		enabled := !props.Disabled && !r.contentDisabled()
 		if enabled {
 			r.registerField(focusID)
+		}
+		edited, editing := r.numericTempFloat(cell,
+			numericInputKey{kind: numericEditDragFloat, widgetID: props.ID, component: int32(i)},
+			focusID, props.Values, i, props.Format, props.Disabled)
+		changed = changed || edited
+		if editing {
+			continue
+		}
+		if enabled {
 			if next, keyboardChanged := r.dragFloatKeyboard(focusID, speed, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
 				changed = true
@@ -3212,6 +3228,15 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 		enabled := !props.Disabled && !r.contentDisabled()
 		if enabled {
 			r.registerField(focusID)
+		}
+		edited, editing := r.numericTempInt(cell,
+			numericInputKey{kind: numericEditDragInt, widgetID: props.ID, component: int32(i)},
+			focusID, props.Values, i, props.Format, props.Disabled)
+		changed = changed || edited
+		if editing {
+			continue
+		}
+		if enabled {
 			if next, keyboardChanged := r.dragIntKeyboard(focusID, speed, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
 				changed = true
@@ -3380,6 +3405,73 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 		return
 	}
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: r.theme().text, FontSize: Text14})
+}
+
+func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID int32, formatted string, disabled bool) (*numericInputState, bool, bool) {
+	enabled := !disabled && !r.contentDisabled()
+	control := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
+	activate := enabled && control && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds)
+	state := r.numericInputs[key]
+	if state == nil && !activate {
+		return nil, false, false
+	}
+	if state == nil {
+		state = r.numericInputState(key, formatted)
+	}
+	if !enabled && state.focused {
+		state.focused = false
+		if r.focusID == focusID {
+			r.setFocus(0)
+		}
+	}
+	if activate {
+		r.setNumericInputText(key, formatted)
+		state.focused = true
+		r.setFocus(focusID)
+		r.drag = scalarDrag{}
+		r.slider = scalarDrag{}
+	}
+	if !state.focused {
+		return state, false, false
+	}
+	commit := false
+	textChanged := r.editText(bounds, state.text, &state.cursor, &state.focused, &commit, focusID, 63, false, false)
+	r.recordTextInput(FrameOpTextField, bounds, state.text, &state.cursor, &state.focused, focusID, Text14, false, false)
+	if commit {
+		state.focused = false
+		r.setFocus(focusID)
+	}
+	return state, textChanged, state.focused
+}
+
+func (r *runtime) numericTempFloat(bounds Rectangle, key numericInputKey, focusID int32, values []float32, index int, format string, disabled bool) (bool, bool) {
+	if format == "" {
+		format = "%.3f"
+	}
+	state, textChanged, editing := r.numericTempEdit(bounds, key, focusID, fmt.Sprintf(format, values[index]), disabled)
+	if textChanged {
+		text := string(state.text[:zeroIndex(state.text)])
+		if parsed, err := strconv.ParseFloat(text, 32); err == nil && !math.IsInf(parsed, 0) && !math.IsNaN(parsed) && values[index] != float32(parsed) {
+			values[index] = float32(parsed)
+			return true, editing
+		}
+	}
+	return false, editing
+}
+
+func (r *runtime) numericTempInt(bounds Rectangle, key numericInputKey, focusID int32, values []int32, index int, format string, disabled bool) (bool, bool) {
+	if format == "" {
+		format = "%d"
+	}
+	state, textChanged, editing := r.numericTempEdit(bounds, key, focusID, fmt.Sprintf(format, values[index]), disabled)
+	if textChanged {
+		text := string(state.text[:zeroIndex(state.text)])
+		if parsed, err := strconv.ParseInt(text, 0, 32); err == nil && values[index] != int32(parsed) {
+			values[index] = int32(parsed)
+			return true, editing
+		}
+	}
+	return false, editing
 }
 
 func (r *runtime) sliderRatio(token, focusID int32, bounds Rectangle, disabled, vertical bool) (float32, bool) {
@@ -3585,6 +3677,13 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 		if enabled {
 			r.registerField(focusID)
 		}
+		edited, editing := r.numericTempFloat(cell,
+			numericInputKey{kind: numericEditSliderFloat, widgetID: props.ID, component: int32(i)},
+			focusID, props.Values, i, props.Format, props.Disabled)
+		changed = changed || edited
+		if editing {
+			continue
+		}
 		ratio := float32(0)
 		if rangeValue > 0 {
 			ratio = (props.Values[i] - props.Min) / rangeValue
@@ -3635,6 +3734,13 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 		enabled := !props.Disabled && !r.contentDisabled()
 		if enabled {
 			r.registerField(focusID)
+		}
+		edited, editing := r.numericTempInt(cell,
+			numericInputKey{kind: numericEditSliderInt, widgetID: props.ID, component: int32(i)},
+			focusID, props.Values, i, props.Format, props.Disabled)
+		changed = changed || edited
+		if editing {
+			continue
 		}
 		ratio := float32(0)
 		if rangeValue > 0 {

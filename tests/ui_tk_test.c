@@ -222,6 +222,89 @@ test_drag_keyboard_navigation(void)
 }
 
 static void
+draw_numeric_temporary_inputs(DragFloatProps drag, SliderIntProps slider)
+{
+    BeginUIFrame(320,160,1);
+    (void)DragFloat(drag);
+    (void)SliderInt(slider);
+    EndUIFrame();
+}
+
+static void
+test_numeric_ctrl_click_editing(void)
+{
+    float drag_value = 1.25f;
+    int slider_value = 4;
+    DragFloatProps drag = {.bounds={10,10,140,30},.id=634,
+        .values=&drag_value,.value_count=1,.speed=0.1f,.min=0,.max=10};
+    SliderIntProps slider = {.bounds={10,60,140,30},.id=635,
+        .values=&slider_value,.value_count=1,.min=0,.max=10};
+
+    InjectReset();
+    ClearTextInputFocus();
+    draw_numeric_temporary_inputs(drag,slider);
+
+    InjectMousePosition(30,20);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_A);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectText("7.25");
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    check_int("drag temporary input",(int)(drag_value*100),725);
+    InjectKeyTap(KEY_ENTER);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+
+    InjectMousePosition(30,70);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_A);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectText("19");
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    check_int("slider temporary input is unclamped",slider_value,19);
+
+    slider.disabled = 1;
+    InjectKeyTap(KEY_ENTER);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectMousePosition(30,70);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectText("8");
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    check_int("disabled slider temporary input",slider_value,19);
+}
+
+static void
 test_tab_bar_keyboard_navigation(void)
 {
     Tab tabs[] = {
@@ -3279,6 +3362,7 @@ main(void)
 
     check_int("topmost hit", CanvasHitTest((Vector2){15, 15}, hits, 3), 1);
     check_int("miss", CanvasHitTest((Vector2){80, 80}, hits, 3), -1);
+    test_numeric_ctrl_click_editing();
     test_menu_bar_switches_while_popup_captures_input();
     test_menu_keyboard_navigation();
     test_popup_menu_keyboard_navigation();

@@ -1004,6 +1004,73 @@ func TestNativeDragScalars(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
+	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
+	floats := []float32{2.5}
+	drag := DragFloatProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 520,
+		Values: floats, ValueCount: 1, Speed: 0.1, Min: 0, Max: 10}
+
+	r.QueueKey(KeyLeftControl)
+	r.QueueTap(40, 20)
+	r.BeginFrame()
+	if r.DragFloat(drag) || floats[0] != 2.5 {
+		t.Fatalf("Ctrl-click changed drag value before editing: %v", floats)
+	}
+	r.EndFrame()
+	foundEditor := false
+	for _, op := range r.FrameOps() {
+		if op.Kind == FrameOpTextField && op.FocusID == 520 && op.Focused {
+			foundEditor = true
+		}
+	}
+	if !foundEditor {
+		t.Fatal("Ctrl-click did not replace drag cell with a focused editor")
+	}
+
+	r.QueueShortcut(KeyA)
+	r.QueueText("7.25")
+	r.BeginFrame()
+	if !r.DragFloat(drag) || floats[0] != 7.25 {
+		t.Fatalf("edited drag value=%v, want 7.25", floats)
+	}
+	r.EndFrame()
+	r.QueueKey(KeyEnter)
+	r.BeginFrame()
+	r.DragFloat(drag)
+	r.EndFrame()
+	if r.numericInputs[numericInputKey{kind: numericEditDragFloat, widgetID: 520}].focused {
+		t.Fatal("Enter did not finish drag keyboard entry")
+	}
+
+	ints := []int32{4}
+	slider := SliderIntProps{Bounds: NewRectangle(10, 60, 120, 30), ID: 521,
+		Values: ints, ValueCount: 1, Min: 0, Max: 10}
+	r.QueueKey(KeyLeftControl)
+	r.QueueTap(40, 70)
+	r.BeginFrame()
+	r.SliderInt(slider)
+	r.EndFrame()
+	r.QueueShortcut(KeyA)
+	r.QueueText("19")
+	r.BeginFrame()
+	if !r.SliderInt(slider) || ints[0] != 19 {
+		t.Fatalf("temporary slider input should be unclamped: %v", ints)
+	}
+	r.EndFrame()
+
+	disabled := []int32{3}
+	r.QueueKey(KeyLeftControl)
+	r.QueueTap(40, 110)
+	r.BeginFrame()
+	r.DragInt(DragIntProps{Bounds: NewRectangle(10, 100, 120, 30), ID: 522,
+		Values: disabled, ValueCount: 1, Min: 0, Max: 10, Disabled: true})
+	r.EndFrame()
+	state := r.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 522}]
+	if state != nil && state.focused {
+		t.Fatal("disabled drag accepted Ctrl-click keyboard entry")
+	}
+}
+
 func TestNativeDragKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
 	floats := []float32{2, 5}

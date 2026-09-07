@@ -1082,6 +1082,26 @@ func main() {
 	if value := PlotsStateValue.SliderInts[0]; value != 3 {
 		panic(fmt.Sprintf("generated vertical int slider keyboard value=%d, want 3", value))
 	}
+	driver.QueueKey(kryon.KeyLeftControl)
+	driver.QueueTap(30, 190)
+	drawPlots()
+	driver.QueueShortcut(kryon.KeyA)
+	driver.QueueText("12.5")
+	drawPlots()
+	if value := PlotsStateValue.DragFloats[0]; value != 12.5 {
+		panic(fmt.Sprintf("generated float drag temporary input=%v, want 12.5", value))
+	}
+	driver.QueueKey(kryon.KeyEnter)
+	drawPlots()
+	driver.QueueKey(kryon.KeyLeftControl)
+	driver.QueueTap(150, 246)
+	drawPlots()
+	driver.QueueShortcut(kryon.KeyA)
+	driver.QueueText("19")
+	drawPlots()
+	if value := PlotsStateValue.SliderInts[0]; value != 19 {
+		panic(fmt.Sprintf("generated int slider temporary input=%d, want 19", value))
+	}
 	driver.SetFocus(0x60000008)
 	driver.QueueKey(kryon.KeySpace)
 	drawPlots()
@@ -2067,6 +2087,33 @@ int main(void)
     SetUIFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
     if(slider_ints[0] != 3) {
         fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
+                slider_ints[0]);
+        return 1;
+    }
+    InjectMousePosition(30,190); InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1); InjectPump(); draw_plots();
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_A);
+    InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectText("12.5");
+    InjectPump(); draw_plots();
+    if(drag_floats[0] != 12.5f) {
+        fprintf(stderr,"generated float drag temporary input=%f, want 12.5\n",
+                drag_floats[0]);
+        return 1;
+    }
+    InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();
+    InjectMousePosition(150,246); InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1); InjectPump(); draw_plots();
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_A);
+    InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectText("19");
+    InjectPump(); draw_plots();
+    if(slider_ints[0] != 19) {
+        fprintf(stderr,"generated int slider temporary input=%d, want 19\n",
                 slider_ints[0]);
         return 1;
     }
