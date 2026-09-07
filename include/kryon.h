@@ -95,7 +95,7 @@
  * layout or a public function changes signature; KryonAbiVersion() is
  * compiled into libkryon.a, while the macro is read from the current
  * headers — a mismatch means the archive is stale and must be rebuilt. */
-#define KRYON_ABI_VERSION 9
+#define KRYON_ABI_VERSION 10
 int KryonAbiVersion(void);
 
 #endif /* KRYON_H */

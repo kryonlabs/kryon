@@ -349,9 +349,9 @@ void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
 int Dropdown(int id, int x, int y, int w, int h,
                    const char **options, int option_count,
                    int *selected_index);
-int DropdownEx(int id, int x, int y, int w, int h,
-                     const UIDropdownOption *options, int option_count,
-                     int *selected_index);
+int DropdownOptions(int id, int x, int y, int w, int h,
+                    const DropdownOption *options, int option_count,
+                    int *selected_index);
 int Slider(int id, int x, int y, int w, const char *label,
                  int min, int max, int *value, const char *suffix,
                  const char *value_text_override);

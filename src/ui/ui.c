@@ -719,7 +719,7 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 {
     return ui_base_input_captures_click(point, include_pointer_drag) ||
            ui_popup_input_current_captures(point) ||
-           ui_dropdown_captures_click(point);
+           dropdown_captures(point);
 }
 
 int
@@ -727,7 +727,7 @@ ui_input_captures_snapshot(Vector2 point, UIPopupInputToken snapshot)
 {
     return UIContentDisabled() || UIInspectInputCapturesClick(point) ||
            ui_base_input_captures_click(point,1) ||
-           ui_dropdown_captures_click(point) ||
+           dropdown_captures(point) ||
            ui_popup_input_snapshot_captures(snapshot,point);
 }
 
@@ -1511,7 +1511,7 @@ ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
     ui_popup_input_register_focus(id,snapshot,
         !UIContentDisabled() && !UIInspectInputCapturesClick(focus_point) &&
         !ui_base_input_captures_click(focus_point,0) &&
-        !ui_dropdown_captures_click(focus_point) &&
+        !dropdown_captures(focus_point) &&
         !ui_popup_input_snapshot_captures(snapshot,focus_point));
     if(g_ui_focus_count < UI_FOCUS_MAX_ITEMS)
         g_ui_focus_ids[g_ui_focus_count++] = id;
@@ -4804,7 +4804,7 @@ DrawUIFrameOverlays(void)
         return;
     g_ui_overlays_drawn_frame = g_ui_frame_serial;
     ResetUIClip();
-    ui_draw_dropdown_overlays();
+    draw_dropdown_overlays();
     ui_draw_menu_overlays();
     ui_tab_bar_finish_frame();
     ui_text_draw_context_overlay();

@@ -1381,9 +1381,14 @@ include/ui_controls.h function RenderStyledButton
 include/ui_controls.h function ScoreControl
 include/ui_controls.h function SegmentedControl
 include/ui_controls.h function SetTextAreaSelection
-include/ui_controls.h function SetUIDropdownClipBottom
-include/ui_controls.h function SetUIDropdownClipTop
 include/ui_controls.h function SetUIStyleTokens
+include/ui_controls.h function TextAreaGutter
+include/ui_controls.h function TextBufferBracketMatch
+include/ui_controls.h function TextBufferColumnAtCursor
+include/ui_controls.h function TextBufferIndentLine
+include/ui_controls.h function TextBufferLineAtCursor
+include/ui_controls.h function TextBufferLineCount
+include/ui_controls.h function TextBufferToggleLineComment
 include/ui_controls.h macro RICH_TEXT_TOOLS_DEFAULT
 include/ui_controls.h typedef TextInputFilter
 include/ui_controls.h typedef UIVerticalSliderMarkCallback
@@ -1587,6 +1592,7 @@ include/ui_icons.h enum UI_ICON_SHEET_TILES
 include/ui_icons.h enum UI_ICON_SHEET_UI
 include/ui_icons.h function DrawIcon
 include/ui_icons.h function DrawIconByName
+include/ui_icons.h function DrawProfilePictureIcon
 include/ui_icons.h function GetUIIconAsset
 include/ui_icons.h function GetUIIconAssetByName
 include/ui_icons.h function LoadAllUIIconTextures
@@ -1964,7 +1970,7 @@ include/ui_tree.h function DragFloatRange2
 include/ui_tree.h function DragInt
 include/ui_tree.h function DragIntRange2
 include/ui_tree.h function Dropdown
-include/ui_tree.h function DropdownEx
+include/ui_tree.h function DropdownOptions
 include/ui_tree.h function End
 include/ui_tree.h function EndCombo
 include/ui_tree.h function EndDisabled

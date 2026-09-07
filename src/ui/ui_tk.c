@@ -2408,10 +2408,10 @@ DrawUICombobox(ComboboxProps combo)
     if(combo.disabled)
         MarkUIDisabled();
     BeginDisabled(combo.disabled);
-    changed = DrawUIDropdown(combo.id, (int)combo.bounds.x, (int)combo.bounds.y,
-                          (int)combo.bounds.width, (int)combo.bounds.height,
-                          combo.options, combo.option_count,
-                          combo.selected_index);
+    changed = draw_dropdown(combo.id, (int)combo.bounds.x,
+                            (int)combo.bounds.y, (int)combo.bounds.width,
+                            (int)combo.bounds.height, combo.options,
+                            combo.option_count, combo.selected_index);
     EndDisabled();
     return changed;
 }

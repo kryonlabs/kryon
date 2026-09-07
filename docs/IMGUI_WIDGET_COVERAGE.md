@@ -2,7 +2,7 @@
 
 This audit compares Kryon's clean native widget surface with Dear ImGui
 `imgui.h` at commit
-[`96b6eb7728d298decdc939d4c698502220190050`](https://github.com/ocornut/imgui/commit/96b6eb7728d298decdc939d4c698502220190050)
+[`53d421955fdb658e75b039b8210841ad691dafd1`](https://github.com/ocornut/imgui/commit/53d421955fdb658e75b039b8210841ad691dafd1)
 (`IMGUI_VERSION_NUM` 19295, `1.93.0 WIP`). It tracks widget behavior rather
 than copying overload names: Kryon's counted value arrays cover the ImGui
 `*2`, `*3`, `*4`, `Scalar`, and `ScalarN` fronts without adding aliases.
@@ -52,9 +52,10 @@ storage. Native tests select option 130, beyond the former 128-option cap.
 The C rendering test observes the real text renderer receiving a full owned
 512-byte overlay label after its caller buffer has been overwritten; Go checks
 the corresponding deferred text record. Visible-row painting avoids drawing
-every option in a large list. Process-global state in the option-list helper
-still needs consolidation; arbitrary popup composition uses the separate public
-combo scope.
+every option in a large list. The option-list helper's retained state is owned
+per render host; native C tests open the same numeric widget ID in independent
+stores and verify that popup visibility cannot cross windows. Arbitrary popup
+composition uses the separate public combo scope.
 
 Open native C/Go dropdowns support Up/Down, Home/End and Enter, keeping the
 highlight separate from committed selection. Native tests navigate a 131-option

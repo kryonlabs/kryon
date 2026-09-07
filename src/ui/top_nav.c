@@ -87,9 +87,9 @@ DrawUITopNav(TopNavProps nav)
         if(dropdown_w < 1)
             dropdown_w = 1;
         if(!nav.disabled)
-            DrawUIDropdown(nav.id, dropdown_x, dropdown_y, dropdown_w,
-                             dropdown_h, nav.options, nav.option_count,
-                             nav.selected_index);
+            draw_dropdown(nav.id, dropdown_x, dropdown_y, dropdown_w,
+                          dropdown_h, nav.options, nav.option_count,
+                          nav.selected_index);
         if(*nav.selected_index != previous)
             result.selected_menu_item = *nav.selected_index;
     } else {

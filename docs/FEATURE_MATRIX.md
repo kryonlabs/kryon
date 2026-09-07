@@ -118,7 +118,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ | ✅ via `Text` | ✅ `Text(TextProps)` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
-| Dropdown / DropdownEx | ✅ | ✅ | ✅ | ✅ `Dropdown` (Ex needs rich option arrays) | ✅ `Dropdown(Ex)` | ✅ DROPDOWN control |
+| Dropdown / DropdownOptions | ✅ | ✅ | ✅ | ✅ `Dropdown` (rich option arrays are native C only) | ✅ `Dropdown` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
 | Vertical sliders | ✅ | ✅ | ✅ | ✅ `VSliderFloat` / `VSliderInt` | ✅ | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
@@ -297,7 +297,7 @@ declaration pass (`src/ui/ui_tree.c`).
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control),
   with `.kry` array declarations lowering to Go slices at the use site.
   Remaining boundaries: a forward `goto` over declarations is a loud Go
-  compile error, `DropdownEx`'s rich option arrays are not expressible from
+  compile error, `DropdownOptions`' rich option arrays are not expressible from
   `.kry`, and C pointer/`Texture2D` values cannot be written (icons pass by
   `UIIconType`, option lists as joined strings or `[N]string`).
 - `k2js` emits ESM for the web recorder runtime. `make

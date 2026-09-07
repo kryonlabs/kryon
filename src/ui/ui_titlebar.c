@@ -126,7 +126,7 @@ DrawUIReturnDropdownTitleBar(Texture2D return_icon,
     DrawUITitleBarBackground(height);
     clicked = DrawUITitleBarReturnButton(return_icon, height);
     if(!dropdown.disabled)
-        DrawUIDropdown(dropdown.id, dropdown_x, dropdown_y,
+        draw_dropdown(dropdown.id, dropdown_x, dropdown_y,
                        dropdown_w, dropdown_h,
                        dropdown.options, dropdown.option_count,
                        dropdown.selected_index);

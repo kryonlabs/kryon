@@ -85,7 +85,7 @@ li{margin:.25rem 0}
 <tr><td class="">TextField</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.TextField(kryon.TextFieldProps)</code> / <code>kryon.TextField(&quot;Name&quot;, &amp;value)</code></td><td class="ok">✅ TEXTINPUT node</td></tr>
 <tr><td class="">Read-only text</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ via <code>Text</code></td><td class="ok">✅ <code>Text(TextProps)</code></td><td class="no">✗</td></tr>
 <tr><td class="">TextArea (selection, syntax highlight)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>NewTextArea</code>/<code>TextArea</code></td><td class="no">✗</td></tr>
-<tr><td class="">Dropdown / DropdownEx</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code> (Ex needs rich option arrays)</td><td class="ok">✅ <code>Dropdown(Ex)</code></td><td class="ok">✅ DROPDOWN control</td></tr>
+<tr><td class="">Dropdown / DropdownOptions</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Dropdown</code> (rich option arrays are native C only)</td><td class="ok">✅ <code>Dropdown</code></td><td class="ok">✅ DROPDOWN control</td></tr>
 <tr><td class="">Slider</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Slider</code>/<code>Slider</code></td><td class="ok">✅ SLIDER control</td></tr>
 <tr><td class="">Vertical sliders</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>VSliderFloat</code> / <code>VSliderInt</code></td><td class="ok">✅</td><td class="ok">✅ VSLIDER control</td></tr>
 <tr><td class="">Toggle (switch)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toggle</code></td><td class="ok">✅ node</td></tr>
@@ -243,7 +243,7 @@ li{margin:.25rem 0}
 <ul>
 <li><code>k2go</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
 </ul>
-<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownEx</code>&#x27;s rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
+<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, <code>DropdownOptions</code>&#x27; rich option arrays are not expressible from <code>.kry</code>, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
 <ul>
 <li><code>k2js</code> emits ESM for the web recorder runtime. `make</li>
 </ul>

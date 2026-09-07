@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "dropdown_store.h"
 #include "ui_widget.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -328,7 +329,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
                                      : "";
         int remove_hover = 0;
         DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
-        if(DrawUIDropdown(modal.id + i, frame.content_x,
+        if(draw_dropdown(modal.id + i, frame.content_x,
                           y + Scale(22),
                           frame.content_w - remove_w - Scale(8),
                           dropdown_h, option_labels, option_count,
@@ -353,11 +354,10 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     }
     EndUIScrollContainer(route_area, route_view);
 
-    SetUIDropdownClipTop(frame.content_y);
-    SetUIDropdownClipBottom(add_y - Scale(8));
+    dropdown_store_clip(frame.content_y, add_y - Scale(8));
 
     y = add_y;
-    dropdown_blocks_buttons = ui_dropdown_captures_click(ui_mouse_world());
+    dropdown_blocks_buttons = dropdown_captures(ui_mouse_world());
     if(route_count < max_route_count && modal.routes != NULL) {
         int add_hover = 0;
         add_w = frame.content_w < Scale(180) ? frame.content_w : Scale(180);
@@ -391,8 +391,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
             result.action = 2;
     }
 
-    SetUIDropdownClipTop(0);
-    SetUIDropdownClipBottom(0);
+    dropdown_store_clip(0, 0);
 
     return result;
 }

@@ -184,7 +184,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     if(show_mode) {
         DrawUIText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
                    settings.x, y, font, c_text);
-        if(DrawUIDropdown(settings.id_base + 1, settings.x, y + font + label_gap,
+        if(draw_dropdown(settings.id_base + 1, settings.x, y + font + label_gap,
                           settings.w, row_h, mode_options, mode_count,
                           &mode_index)) {
             *settings.theme_mode = mode_values[ui_clampi(mode_index, 0, mode_count - 1)];
@@ -195,7 +195,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         }
         y += font + label_gap + row_h + row_gap;
     } else {
-        ui_dropdown_close(settings.id_base + 1);
+        dropdown_close(settings.id_base + 1);
     }
 
     palette_count = ui_theme_palette_option_count(settings);
@@ -215,7 +215,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     }
     DrawUIText(ui_theme_settings_text(settings.palette_label, "theme_color_label", "Color"),
                settings.x, y, font, c_text);
-    if(DrawUIDropdown(settings.id_base + 2, settings.x, y + font + label_gap,
+    if(draw_dropdown(settings.id_base + 2, settings.x, y + font + label_gap,
                       settings.w, row_h, theme_options, palette_count,
                       state != NULL ? &state->palette_index : &palette_index)) {
         if(state != NULL)
@@ -247,7 +247,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         }
         DrawUIText(ui_theme_settings_text(settings.style_label, "theme_style_label", "Style"),
                    settings.x, y, font, c_text);
-        if(DrawUIDropdown(settings.id_base + 3,
+        if(draw_dropdown(settings.id_base + 3,
                           settings.x, y + font + label_gap,
                           settings.w, row_h, style_options, 3,
                           &style_index)) {
@@ -259,7 +259,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         }
         y += font + label_gap + row_h + row_gap;
     } else {
-        ui_dropdown_close(settings.id_base + 3);
+        dropdown_close(settings.id_base + 3);
     }
 
     return y - row_gap;

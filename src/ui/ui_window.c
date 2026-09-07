@@ -1588,9 +1588,8 @@ void ui_window_layers_begin(void)
 #if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
     UIWindow *window = ui_window_active;
     if(window == NULL) return;
-    if(window->paint_layers)
-        ui_paint_layers_frame(window->paint_layers,window->width,window->height);
-    else if(ui_popup_input_bound() != NULL)
-        (void)ui_window_paint_layers();
+    if(window->paint_layers == NULL)
+        window->paint_layers = ui_paint_layers_create();
+    ui_paint_layers_frame(window->paint_layers,window->width,window->height);
 #endif
 }

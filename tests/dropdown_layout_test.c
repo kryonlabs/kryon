@@ -1,6 +1,7 @@
 #include "kryon.h"
 #include "kry_inject.h"
 #include "kryon_test.h"
+#include "../src/ui/dropdown_store.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -244,8 +245,7 @@ main(void)
     /* App-style clip constraints (titlebar above, bottom nav below):
      * the flip must respect the clips; 10 options fit, so the bottom
      * visible row is option 9. */
-    SetUIDropdownClipTop(60);
-    SetUIDropdownClipBottom(660);
+    dropdown_store_clip(60,660);
     open_dropdown();
     check_int("clipped popup reports open", popup_open(), 1);
     tap(660);
@@ -258,8 +258,7 @@ main(void)
     open_dropdown();
     tap(582);
     check_int("clipped: button toggles closed", popup_open(), 0);
-    SetUIDropdownClipTop(0);
-    SetUIDropdownClipBottom(0);
+    dropdown_store_clip(0,0);
 
     printf("dropdown layout test ok\n");
     return 0;

@@ -7,6 +7,7 @@
 #include "../src/ui/ui_numeric_input_internal.h"
 #include "../src/ui/ui_tree_layout_internal.h"
 #include "../src/ui/ui_disabled_internal.h"
+#include "../src/ui/dropdown_store.h"
 #include "../src/ui/ui_input_clip_internal.h"
 #include "../src/ui/ui_popup_input_internal.h"
 
@@ -1103,6 +1104,46 @@ test_combo_popup_lifecycle(void)
 }
 
 static void
+test_dropdown_store_isolation(void)
+{
+    const char *options[] = {"One", "Two"};
+    DropdownStore *first = dropdown_store_new();
+    DropdownStore *second = dropdown_store_new();
+    DropdownStore *frame_store;
+    int selected = 0;
+
+    InjectReset();
+    InjectTap(20,20);
+    for(int frame = 0; frame < 3; frame++) {
+        InjectPump();
+        BeginUIFrame(240,240,1.0f);
+        frame_store = dropdown_store_swap(first);
+        draw_dropdown(9961,10,10,160,28,options,2,&selected);
+        draw_dropdown_overlays();
+        dropdown_store_swap(frame_store);
+        EndUIFrame();
+    }
+    frame_store = dropdown_store_swap(first);
+    check_int("first dropdown store owns popup",
+              dropdown_captures((Vector2){20,70}),1);
+
+    dropdown_store_swap(second);
+    check_int("second dropdown store does not inherit popup",
+              dropdown_captures((Vector2){20,70}),0);
+    draw_dropdown(9961,10,10,160,28,options,2,&selected);
+    check_int("same ID remains closed in second store",
+              dropdown_captures((Vector2){20,70}),0);
+
+    dropdown_store_swap(first);
+    check_int("first dropdown store restores popup",
+              dropdown_captures((Vector2){20,70}),1);
+    dropdown_store_swap(frame_store);
+
+    dropdown_store_free(second);
+    dropdown_store_free(first);
+}
+
+static void
 test_many_combo_identities(void)
 {
     const char *options[] = {"One", "Two"};
@@ -2133,7 +2174,7 @@ test_popup_combo_keyboard_ownership(void)
         SetUIFocus(25400);
         Combobox((ComboboxProps){.bounds={10,10,100,28},.id=25400,
             .options=options,.option_count=2,.selected_index=&selected});
-        check_int("only top popup may open a focused combo",ui_dropdown_captures_click((Vector2){20,60}),inside);
+        check_int("only top popup may open a focused combo",dropdown_captures((Vector2){20,60}),inside);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_close(context,1);
         check_int("child dismissal restores parent keyboard",ui_popup_input_keyboard_captures(),0);
@@ -2144,7 +2185,7 @@ test_popup_combo_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        ui_dropdown_close(25400);
+        dropdown_close(25400);
         EndUIFrame();
     }
     InjectReset();
@@ -2452,9 +2493,9 @@ test_combo_horizontal_viewport(void)
             EndUIFrame();
         }
         int x = i == 1 ? 92 : 12;
-        check_int("shifted popup captures row",ui_dropdown_captures_click((Vector2){x,80}),1);
-        check_int("popup left edge bounded",ui_dropdown_captures_click((Vector2){-1,80}),0);
-        check_int("popup right edge bounded",ui_dropdown_captures_click((Vector2){241,80}),0);
+        check_int("shifted popup captures row",dropdown_captures((Vector2){x,80}),1);
+        check_int("popup left edge bounded",dropdown_captures((Vector2){-1,80}),0);
+        check_int("popup right edge bounded",dropdown_captures((Vector2){241,80}),0);
         InjectTap(x,80);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1);
@@ -2495,7 +2536,7 @@ test_combo_scrollbar_dismissal(void)
                 .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
         EndUIFrame();
         check_int("dismissed combo scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
-        check_int("dismissed combo scrollbar released capture",ui_dropdown_captures_click((Vector2){20,70}),0);
+        check_int("dismissed combo scrollbar released capture",dropdown_captures((Vector2){20,70}),0);
         InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
     }
 }
@@ -3254,6 +3295,7 @@ main(void)
     test_closeable_collapsible();
     test_tree_header_keyboard_gates();
     test_combo_popup_lifecycle();
+    test_dropdown_store_isolation();
     test_many_combo_identities();
     test_large_combo_options();
     test_combo_keyboard_navigation();

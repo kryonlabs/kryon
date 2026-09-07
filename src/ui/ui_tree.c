@@ -2572,19 +2572,19 @@ Dropdown(int id, int x, int y, int w, int h,
 {
     ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
                 selected_index);
-    return DrawUIDropdown(id, x, y, w, h, options, option_count,
-                          selected_index);
+    return draw_dropdown(id, x, y, w, h, options, option_count,
+                         selected_index);
 }
 
 int
-DropdownEx(int id, int x, int y, int w, int h,
-                 const UIDropdownOption *options, int option_count,
-                 int *selected_index)
+DropdownOptions(int id, int x, int y, int w, int h,
+                const DropdownOption *options, int option_count,
+                int *selected_index)
 {
     ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
                 selected_index);
-    return DrawUIDropdownEx(id, x, y, w, h, options, option_count,
-                            selected_index);
+    return draw_dropdown_options(id, x, y, w, h, options, option_count,
+                                 selected_index);
 }
 
 int

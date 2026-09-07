@@ -72,7 +72,7 @@ DrawUIToolbar(ToolbarProps toolbar)
             dropdown_w = dropdown_available_w;
         if(dropdown_w < 0)
             dropdown_w = 0;
-        if(DrawUIDropdown(toolbar.id, dropdown_x, dropdown_y,
+        if(draw_dropdown(toolbar.id, dropdown_x, dropdown_y,
                           dropdown_w, dropdown_h,
                           toolbar.options, toolbar.option_count,
                           toolbar.selected_index))

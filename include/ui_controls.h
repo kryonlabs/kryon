@@ -227,7 +227,7 @@ typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
 typedef struct {
     const char *label;
     const char *font_name;
-} UIDropdownOption;
+} DropdownOption;
 
 typedef struct {
     const char *label;
@@ -307,7 +307,5 @@ SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 int GetScoreControlHeight(ScoreControlProps control);
 ScoreControlResult ScoreControl(ScoreControlProps control);
 
-void SetUIDropdownClipTop(int top);
-void SetUIDropdownClipBottom(int bottom);
 
 #endif

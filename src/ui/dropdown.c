@@ -1,20 +1,20 @@
 #include "ui_internal.h"
+#include "dropdown_store.h"
 #include "ui_popup_input_internal.h"
 
-#include "locale.h"
 #include <limits.h>
 
 
 /* Per-dropdown state to track open/closed and click handling */
 
-typedef struct UIDropdownState {
-    struct UIDropdownState *next;
+typedef struct DropdownState {
+    struct DropdownState *next;
     int id;
     int open;
     int just_opened;
     int scroll_offset;
     int x, y, w, h;
-    UIDropdownOption *options;
+    DropdownOption *options;
     int option_count;
     int selected_index;
     int highlight_index;
@@ -29,18 +29,71 @@ typedef struct UIDropdownState {
     int clip_bottom;
     unsigned long frame_seen;
     unsigned long opened_frame;
-} UIDropdownState;
+} DropdownState;
 
-static UIDropdownState *dropdown_states;
-static int dropdown_clip_top = 0;
-static int dropdown_clip_bottom = 0;
+struct DropdownStore {
+    DropdownState *states;
+    int clip_top;
+    int clip_bottom;
+    int previous_focused;
+};
 
-static UIDropdownOption *
+static DropdownStore fallback_store = {.previous_focused = 1};
+static DropdownStore *dropdown_store = &fallback_store;
+static void dropdown_resize_options(DropdownState *state, int count);
+
+static void
+free_dropdown_states(DropdownState *state)
+{
+    while(state != NULL) {
+        DropdownState *next = state->next;
+        dropdown_resize_options(state, 0);
+        free(state);
+        state = next;
+    }
+}
+
+DropdownStore *
+dropdown_store_new(void)
+{
+    DropdownStore *store = calloc(1, sizeof(*store));
+    if(store == NULL)
+        abort();
+    store->previous_focused = 1;
+    return store;
+}
+
+void
+dropdown_store_free(DropdownStore *store)
+{
+    if(store == NULL)
+        return;
+    if(store == dropdown_store || store == &fallback_store)
+        abort();
+    free_dropdown_states(store->states);
+    free(store);
+}
+
+DropdownStore *
+dropdown_store_swap(DropdownStore *store)
+{
+    DropdownStore *previous = dropdown_store;
+    dropdown_store = store != NULL ? store : &fallback_store;
+    return previous;
+}
+
+DropdownStore *
+dropdown_store_current(void)
+{
+    return dropdown_store;
+}
+
+static DropdownOption *
 dropdown_options_alloc(int count)
 {
     if(count <= 0) return NULL;
-    if((size_t)count > SIZE_MAX / sizeof(UIDropdownOption)) abort();
-    UIDropdownOption *options = calloc((size_t)count, sizeof(*options));
+    if((size_t)count > SIZE_MAX / sizeof(DropdownOption)) abort();
+    DropdownOption *options = calloc((size_t)count, sizeof(*options));
     if(options == NULL) abort();
     return options;
 }
@@ -58,10 +111,10 @@ dropdown_copy_text(const char **target, const char *text)
 }
 
 static void
-dropdown_resize_options(UIDropdownState *state, int count)
+dropdown_resize_options(DropdownState *state, int count)
 {
     if(state->option_count == count) return;
-    UIDropdownOption *options = dropdown_options_alloc(count);
+    DropdownOption *options = dropdown_options_alloc(count);
     int keep = count < state->option_count ? count : state->option_count;
     if(keep > 0) memcpy(options, state->options, (size_t)keep * sizeof(*options));
     for(int i = keep; i < state->option_count; i++) {
@@ -80,29 +133,15 @@ dropdown_content_height(int count, int row_height, int padding)
     return height > INT_MAX ? INT_MAX : (int)height;
 }
 
-static const char *
-locale_dropdown_font_name(const char *code)
-{
-    if(code == NULL)
-        return "ui-lang-latin";
-    if(strcmp(code, "ja") == 0)
-        return "ui-lang-ja";
-    if(strcmp(code, "ko") == 0)
-        return "ui-lang-ko";
-    if(strcmp(code, "zh") == 0)
-        return "ui-lang-zh";
-    return "ui-lang-latin";
-}
-
 static Color
-ui_dropdown_panel_color(int amount)
+dropdown_panel_color(int amount)
 {
     int luminance = ((int)c_bg.r + (int)c_bg.g + (int)c_bg.b) / 3;
     return luminance < 96 ? LightenUIColor(c_bg, amount) : DarkenUIColor(c_bg, amount);
 }
 
 static Color
-ui_dropdown_text_on(Color bg)
+dropdown_text_color(Color bg)
 {
     int luma = (int)bg.r * 299 + (int)bg.g * 587 + (int)bg.b * 114;
 
@@ -130,19 +169,14 @@ dropdown_draw_indicator(int center_x, int center_y, int size, int open,
 }
 
 void
-SetUIDropdownClipTop(int top)
+dropdown_store_clip(int top, int bottom)
 {
-    dropdown_clip_top = top > 0 ? top : 0;
-}
-
-void
-SetUIDropdownClipBottom(int bottom)
-{
-    dropdown_clip_bottom = bottom > 0 ? bottom : 0;
+    dropdown_store->clip_top = top > 0 ? top : 0;
+    dropdown_store->clip_bottom = bottom > 0 ? bottom : 0;
 }
 
 static void
-dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdown_h,
+dropdown_menu_layout(const DropdownState *state, int *dropdown_y, int *dropdown_h,
                      int *visible_options, int *open_up)
 {
     int option_h;
@@ -211,7 +245,7 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
 }
 
 static Rectangle
-dropdown_menu_bounds(const UIDropdownState *state)
+dropdown_menu_bounds(const DropdownState *state)
 {
     int y = 0, height = 0;
     dropdown_menu_layout(state, &y, &height, NULL, NULL);
@@ -221,9 +255,9 @@ dropdown_menu_bounds(const UIDropdownState *state)
 }
 
 int
-ui_dropdown_captures_click(Vector2 point)
+dropdown_captures(Vector2 point)
 {
-    for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next) {
+    for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next) {
         if(!state->open || state->option_count <= 0)
             continue;
         Rectangle bounds = dropdown_menu_bounds(state);
@@ -234,7 +268,7 @@ ui_dropdown_captures_click(Vector2 point)
 }
 
 static void
-close_dropdown_state(UIDropdownState *state)
+close_dropdown_state(DropdownState *state)
 {
     if(state == NULL)
         return;
@@ -247,9 +281,9 @@ close_dropdown_state(UIDropdownState *state)
 }
 
 void
-ui_dropdown_close(int id)
+dropdown_close(int id)
 {
-    for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next) {
+    for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next) {
         if(state->id == id) {
             close_dropdown_state(state);
             return;
@@ -260,54 +294,54 @@ ui_dropdown_close(int id)
 static void
 close_other_dropdowns(int id)
 {
-    for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next) {
+    for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next) {
         if(state->id != id)
             close_dropdown_state(state);
     }
 }
 
-static UIDropdownState *
+static DropdownState *
 get_or_create_dropdown_state(int id)
 {
-    for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next) {
+    for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next) {
         if(state->id == id)
             return state;
     }
     /* State and owned option strings never alias another control's ID. */
-    UIDropdownState *state = calloc(1, sizeof(*state));
+    DropdownState *state = calloc(1, sizeof(*state));
     if(state == NULL) abort();
     state->id = id;
-    state->next = dropdown_states;
-    dropdown_states = state;
+    state->next = dropdown_store->states;
+    dropdown_store->states = state;
     return state;
 }
 
 int
-DrawUIDropdown(int id, int x, int y, int w, int h,
+draw_dropdown(int id, int x, int y, int w, int h,
                const char **options, int option_count, int *selected_index)
 {
     if(option_count < 0)
         option_count = 0;
-    UIDropdownOption *dropdown_options = dropdown_options_alloc(option_count);
+    DropdownOption *dropdown_options = dropdown_options_alloc(option_count);
 
     for(int i = 0; i < option_count; i++) {
         dropdown_options[i].label = options != NULL ? options[i] : NULL;
         dropdown_options[i].font_name = NULL;
     }
 
-    int changed = DrawUIDropdownEx(id, x, y, w, h, dropdown_options,
-                                  option_count, selected_index);
+    int changed = draw_dropdown_options(id, x, y, w, h, dropdown_options,
+                                        option_count, selected_index);
     free(dropdown_options);
     return changed;
 }
 
 int
-DrawUIDropdownEx(int id, int x, int y, int w, int h,
-                 const UIDropdownOption *options, int option_count,
-                 int *selected_index)
+draw_dropdown_options(int id, int x, int y, int w, int h,
+                      const DropdownOption *options, int option_count,
+                      int *selected_index)
 {
     char editor_id[96];
-    UIDropdownState *state = get_or_create_dropdown_state(id);
+    DropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
     int font = GetFontSize();
     int arrow_pad = Scale(24);
@@ -372,8 +406,8 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     state->y = y;
     state->w = w;
     state->h = h;
-    state->clip_top = dropdown_clip_top;
-    state->clip_bottom = dropdown_clip_bottom;
+    state->clip_top = dropdown_store->clip_top;
+    state->clip_bottom = dropdown_store->clip_bottom;
     state->selected_index = selected_index != NULL ? *selected_index : state->selected_index;
     if(option_count < 0)
         option_count = 0;
@@ -411,8 +445,8 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     }
 
     /* Draw button background */
-    button_bg = state->open ? ui_dropdown_panel_color(28)
-                            : (hover ? c_button_hover : ui_dropdown_panel_color(16));
+    button_bg = state->open ? dropdown_panel_color(28)
+                            : (hover ? c_button_hover : dropdown_panel_color(16));
     if(can_draw) {
         if(ui_material_style()) {
             Color surface = ui_material_surface_container();
@@ -434,7 +468,7 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
                                     : DarkenUIColor(button_bg, 30));
         }
     }
-    button_text = ui_dropdown_text_on(button_bg);
+    button_text = dropdown_text_color(button_bg);
 
     /* Draw current selection text, clipped before the chevron. */
     int current_index = state->selected_index;
@@ -464,36 +498,10 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     return changed;
 }
 
-int
-DrawUILocaleDropdown(int id, int x, int y, int w, int h,
-                     int *selected_index)
-{
-    int count = GetLocaleCount();
-
-    if(selected_index == NULL)
-        return 0;
-    if(count < 0)
-        count = 0;
-    UIDropdownOption *options = dropdown_options_alloc(count);
-    for(int i = 0; i < count; i++) {
-        options[i].label = GetLocaleLabel(i);
-        options[i].font_name = locale_dropdown_font_name(GetLocaleCode(i));
-    }
-    if(count <= 0) {
-        const char *fallback[] = {"Language"};
-        return DrawUIDropdown(id, x, y, w, h, fallback, 1, selected_index);
-    }
-    if(*selected_index < 0 || *selected_index >= count)
-        *selected_index = 0;
-    int changed = DrawUIDropdownEx(id, x, y, w, h, options, count, selected_index);
-    free(options);
-    return changed;
-}
-
 static int
 draw_dropdown_menu(int id)
 {
-    UIDropdownState *state = get_or_create_dropdown_state(id);
+    DropdownState *state = get_or_create_dropdown_state(id);
     int changed = 0;
 
     if(!state->open)
@@ -510,9 +518,9 @@ draw_dropdown_menu(int id)
     int h = state->h;
     int option_h = h;
     int option_count = state->option_count;
-    const UIDropdownOption *options = state->options;
-    Color panel = ui_dropdown_panel_color(18);
-    Color option_text = ui_dropdown_text_on(panel);
+    const DropdownOption *options = state->options;
+    Color panel = dropdown_panel_color(18);
+    Color option_text = dropdown_text_color(panel);
     int can_draw = IsWindowReady();
     int clip_started = 0;
 
@@ -649,16 +657,16 @@ draw_dropdown_menu(int id)
             Color border = ui_material_outline();
 
             panel = ui_material_surface_container();
-            option_text = ui_dropdown_text_on(panel);
+            option_text = dropdown_text_color(panel);
             /* Use subtle radius for dropdown panels to prevent distortion during resize */
             ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
                                        panel, border, 0.06f);
         } else if(ui_modern_style()) {
             UIStyleTokens tokens = GetUIStyleTokens();
-            Color border = ui_dropdown_panel_color(36);
+            Color border = dropdown_panel_color(36);
             if(tokens.panel_alpha < panel.a)
                 panel.a = tokens.panel_alpha;
-            option_text = ui_dropdown_text_on(panel);
+            option_text = dropdown_text_color(panel);
             ui_draw_control_background(
                 (Rectangle){x, dropdown_y, w, dropdown_h}, panel, border,
                 ui_radius_px((Rectangle){x, dropdown_y, w, dropdown_h},
@@ -666,8 +674,8 @@ draw_dropdown_menu(int id)
         } else {
             DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
             DrawUIBevel(x, dropdown_y, w, dropdown_h,
-                        ui_dropdown_panel_color(32),
-                        ui_dropdown_panel_color(8));
+                        dropdown_panel_color(32),
+                        dropdown_panel_color(8));
         }
     }
 
@@ -797,23 +805,22 @@ draw_arrow:
 }
 
 void
-ui_draw_dropdown_overlays(void)
+draw_dropdown_overlays(void)
 {
     /* Escape and losing the window focus dismiss open popups, so a
      * dropdown can never trap the pointer state. */
-    static int prev_focused = 1;
     int focused = IsWindowFocused();
-    int lost_focus = prev_focused && !focused;
+    int lost_focus = dropdown_store->previous_focused && !focused;
     int escape_pressed = IsKeyPressed(KEY_ESCAPE);
 
-    prev_focused = focused;
+    dropdown_store->previous_focused = focused;
     if(lost_focus || escape_pressed) {
-        for(UIDropdownState *state = dropdown_states; state != NULL; state = state->next)
+        for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next)
             close_dropdown_state(state);
     }
-    UIDropdownState **link = &dropdown_states;
+    DropdownState **link = &dropdown_store->states;
     while(*link != NULL) {
-        UIDropdownState *state = *link;
+        DropdownState *state = *link;
         if(state->frame_seen != g_ui_frame_serial) {
             *link = state->next;
             close_dropdown_state(state);
