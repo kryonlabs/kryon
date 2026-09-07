@@ -1,4 +1,15 @@
 # Changelog
+## v0.1.69 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.69
+- Fix standalone DPI test on FreeBSD
+- Update public API snapshot for scaling helpers
+- Isolate native tab bar state by widget
+- Fix logical UI density scaling
+- Fix core UI scaling and picture bounds
+
 ## v0.1.68 - 2026-09-07
 
 ### Changed
