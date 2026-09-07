@@ -16,7 +16,7 @@ KrbSpec :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeSurface())
-        Text((TextProps){.bounds={ScaleUIPx(8), ScaleUIPx(8), 0, 0}, .text="KRB Spec Contract", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(8), Scale(8), 0, 0}, .text="KRB Spec Contract", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         count = count + 1
     }
 }

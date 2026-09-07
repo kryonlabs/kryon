@@ -412,9 +412,9 @@ parse_coord(const char *expr, int *value, int *scaled)
             }
         }
     }
-    if(strncmp(p, "ScaleUIPx(", 10) == 0) {
+    if(strncmp(p, "Scale(", 6) == 0) {
         *scaled = 1;
-        p += 10;
+        p += 6;
     }
     if(*p == '-' || (*p >= '0' && *p <= '9')) {
         *value = atoi(p);

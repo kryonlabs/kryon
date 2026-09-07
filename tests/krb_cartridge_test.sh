@@ -78,14 +78,14 @@ App :: () #ui {
     Screen root: {
         ClearBackground(GetThemeBackground())
         Background(GetThemeSurface())
-        Text((TextProps){.bounds={ScaleUIPx(4), ScaleUIPx(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(8), ScaleUIPx(20), ScaleUIPx(16), ScaleUIPx(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
-        Checkbox(1, ScaleUIPx(4), ScaleUIPx(40), "Flag", &cb_flag)
-        Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(56), ScaleUIPx(80), ScaleUIPx(20)}, "Pick", 0, radio_sel == 0, 0})
-        Progress((ProgressBarProps){.bounds = {ScaleUIPx(30), ScaleUIPx(42), ScaleUIPx(60), ScaleUIPx(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
-        LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(28), ScaleUIPx(56), ScaleUIPx(64), ScaleUIPx(20)}, .title = "PanelTitle"})
+        Text((TextProps){.bounds={Scale(4), Scale(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
+        Checkbox(1, Scale(4), Scale(40), "Flag", &cb_flag)
+        Radio((RadioButtonProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
+        Progress((ProgressBarProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
+        LabelFrame((LabelFrameProps){.bounds = {Scale(28), Scale(56), Scale(64), Scale(20)}, .title = "PanelTitle"})
         Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
-        Dropdown(3, ScaleUIPx(6), ScaleUIPx(84), ScaleUIPx(80), ScaleUIPx(24), "x;y", &dd_sel)
+        Dropdown(3, Scale(6), Scale(84), Scale(80), Scale(24), "x;y", &dd_sel)
     }
 }
 EOF

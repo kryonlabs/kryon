@@ -11,21 +11,21 @@ app "Kryon Pictures" {
 App :: () #ui {
     Screen root: {
         Background(GetThemeBackground())
-        Text((TextProps){.bounds={ScaleUIPx(32), ScaleUIPx(30), 0, 0}, .text="Pictures are image nodes", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Pictures are image nodes", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Stack picture_card: {
-            bounds = {ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210)}
+            bounds = {Scale(32), Scale(82), Scale(260), Scale(210)}
             key = Key("picture-card")
-            Rect(ScaleUIPx(32), ScaleUIPx(82), ScaleUIPx(260), ScaleUIPx(210),
+            Rect(Scale(32), Scale(82), Scale(260), Scale(210),
                        GetThemeSurface(), GetThemeButton())
             Picture((PictureProps){.asset_path = "tiles/tile.png",
-                     .bounds = {ScaleUIPx(52), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},
+                     .bounds = {Scale(52), Scale(104), Scale(96), Scale(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
                      .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
             Picture((PictureProps){.asset_path = "pfp/lotus.png",
-                     .bounds = {ScaleUIPx(168), ScaleUIPx(104), ScaleUIPx(96), ScaleUIPx(96)},
+                     .bounds = {Scale(168), Scale(104), Scale(96), Scale(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
                      .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
-            Text((TextProps){.bounds={ScaleUIPx(52), ScaleUIPx(226), 0, 0}, .text="Pictures keep their node bounds for editing", .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={Scale(52), Scale(226), 0, 0}, .text="Pictures keep their node bounds for editing", .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
         }
     }
 }

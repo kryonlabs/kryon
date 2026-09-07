@@ -45,7 +45,7 @@ scaffold_title(const char *title, int height, void *user_data)
     ScaffoldFixture *fixture = user_data;
 
     check_int("scaffold title text", strcmp(title, "Settings"), 0);
-    check_int("scaffold title height", height, ScaleUIPx(36));
+    check_int("scaffold title height", height, Scale(36));
     return fixture != NULL ? fixture->closed : 0;
 }
 
@@ -88,45 +88,45 @@ main(void)
 
     check_int("section label",
               GetNodeHeight(NodeSectionLabel(section, 0, 0)),
-              ScaleUIPx(24));
+              Scale(24));
     check_int("checkbox row",
               GetNodeHeight(NodeCheckboxRow(checkbox, 0, 0)),
-              ScaleUIPx(42));
+              Scale(42));
     check_int("label text field",
               GetNodeHeight(NodeLabelTextField(field, 0, 0, 240)),
-              ScaleUIPx(22) + ScaleUIPx(40) + ScaleUIPx(24));
+              Scale(22) + Scale(40) + Scale(24));
     check_int("button row",
               GetNodeHeight(NodeButtonRow(row)),
-              ScaleUIPx(40));
+              Scale(40));
     form = UIFormBegin(10, 20, 240);
-    taken = UIFormTakeRect(&form, ScaleUIPx(18));
+    taken = UIFormTakeRect(&form, Scale(18));
     check_int("form rect x", (int)taken.x, 10);
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
-    check_int("form advances", UIFormY(&form), 20 + ScaleUIPx(18));
+    check_int("form advances", UIFormY(&form), 20 + Scale(18));
     BeginTree(6);
     UIFormSection(&form, "Account");
     EndTree();
     check_int("form section helper advances", UIFormY(&form),
-              20 + ScaleUIPx(18) + ScaleUIPx(24));
+              20 + Scale(18) + Scale(24));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
-              ScaleUIPx(54));
+              Scale(54));
     check_int("bottom nav",
               GetNodeHeight(NodeBottomNav(nav)),
-              ScaleUIPx(40));
+              Scale(40));
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material bottom nav",
               GetNodeHeight(NodeBottomNav(nav)),
-              ScaleUIPx(80));
+              Scale(80));
     SetThemeStyle(THEME_STYLE_RETRO);
     check_int("retro tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
-              ScaleUIPx(36));
+              Scale(36));
     SetThemeStyle(THEME_STYLE_MATERIAL);
     check_int("material tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
-              ScaleUIPx(48));
+              Scale(48));
     check_int("title bar custom",
               GetNodeHeight(NodeTitleBar(64)),
               64);
@@ -237,9 +237,9 @@ main(void)
         .draw_title = scaffold_title
     });
     check_int("scaffold closed", scaffold.closed, 1);
-    check_int("scaffold content y", scaffold.content_y, ScaleUIPx(36));
+    check_int("scaffold content y", scaffold.content_y, Scale(36));
     check_int("scaffold content h", scaffold.content_h,
-              240 - ScaleUIPx(36) - 12);
+              240 - Scale(36) - 12);
     check_int("scaffold content w", scaffold.content_w,
               scaffold_fixture.seen_w);
     EndUIScreenScaffold(scaffold);

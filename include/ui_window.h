@@ -40,7 +40,7 @@ enum {
 
 /*
  * Open a window. ui_scale is the UI scale widgets inside the window should
- * use (ScaleUIPx etc.); pass the callers current combined DPI/user scale.
+ * use (Scale etc.); pass the callers current combined DPI/user scale.
  * Returns NULL when windows are unsupported or resources ran out.
  */
 UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,

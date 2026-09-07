@@ -118,8 +118,8 @@ button is clicked; Kryon should decide whether pointer input is captured.
 ## Custom Modal Pattern
 
 ```c
-int modal_w = ScaleUIPx(320);
-int modal_h = ScaleUIPx(240);
+int modal_w = Scale(320);
+int modal_h = Scale(240);
 int modal_x = (view_width - modal_w) / 2;
 int modal_y = (view_height - modal_h) / 2;
 

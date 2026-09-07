@@ -160,16 +160,16 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
         return;
 
     option_h = state->h;
-    menu_gap = ScaleUIPx(4);
-    padding_top = ScaleUIPx(4);
-    padding_bottom = ScaleUIPx(4);
+    menu_gap = Scale(4);
+    padding_top = Scale(4);
+    padding_bottom = Scale(4);
     total_h = dropdown_content_height(state->option_count, option_h, padding_top + padding_bottom);
     below_y = state->y + state->h + menu_gap;
     if(below_y < state->clip_top)
         below_y = state->clip_top;
     bottom_limit = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
-    below_space = bottom_limit - below_y - ScaleUIPx(16);
-    above_space = state->y - state->clip_top - ScaleUIPx(16);
+    below_space = bottom_limit - below_y - Scale(16);
+    above_space = state->y - state->clip_top - Scale(16);
 
     if(below_space < 0)
         below_space = 0;
@@ -181,10 +181,10 @@ dropdown_menu_layout(const UIDropdownState *state, int *dropdown_y, int *dropdow
 
     max_visible_h = (above_space > below_space) ? above_space : below_space;
     if(total_h > max_visible_h) {
-        int count = (max_visible_h - ScaleUIPx(8)) / option_h;
+        int count = (max_visible_h - Scale(8)) / option_h;
         if(count < 1)
             count = 1;
-        total_h = count * option_h + ScaleUIPx(8);
+        total_h = count * option_h + Scale(8);
         if(visible_options != NULL)
             *visible_options = count;
     } else if(visible_options != NULL) {
@@ -310,8 +310,8 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     UIDropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
     int font = GetFontSize();
-    int arrow_pad = ScaleUIPx(24);
-    int arrow_size = ScaleUIPx(6);
+    int arrow_pad = Scale(24);
+    int arrow_size = Scale(6);
     int changed = 0;
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
@@ -340,10 +340,10 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
     y = (int)btn_bounds.y;
     w = (int)btn_bounds.width;
     h = (int)btn_bounds.height;
-    if(w < ScaleUIPx(32))
-        w = ScaleUIPx(32);
-    if(h < ScaleUIPx(24))
-        h = ScaleUIPx(24);
+    if(w < Scale(32))
+        w = Scale(32);
+    if(h < Scale(24))
+        h = Scale(24);
     btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     UIWidgetSetBounds(&widget, btn_bounds);
     button_inside = CheckCollisionPointRec(mouse, btn_bounds);
@@ -442,8 +442,8 @@ DrawUIDropdownEx(int id, int x, int y, int w, int h,
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
     const char *current_font = option_count > 0 ? state->options[current_index].font_name : NULL;
-    int text_x = x + ScaleUIPx(12);
-    int text_w = arrow_x - arrow_size - ScaleUIPx(8) - text_x;
+    int text_x = x + Scale(12);
+    int text_w = arrow_x - arrow_size - Scale(8) - text_x;
     if(can_draw && text_w > 0) {
         int font_token = PushUIFont(current_font);
         BeginUIClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
@@ -518,11 +518,11 @@ draw_dropdown_menu(int id)
 
     int dropdown_y = 0;
     int dropdown_h = 0;
-    int padding_top = ScaleUIPx(4);
-    int padding_bottom = ScaleUIPx(4);
+    int padding_top = Scale(4);
+    int padding_bottom = Scale(4);
     int content_h = dropdown_content_height(option_count, option_h, padding_top + padding_bottom);
     int max_scroll;
-    int scrollbar_w = ScaleUIPx(8);
+    int scrollbar_w = Scale(8);
     Rectangle btn_bounds = {x, y, w, h};
     Rectangle menu_bounds = dropdown_menu_bounds(state);
     x = (int)menu_bounds.x;
@@ -538,7 +538,7 @@ draw_dropdown_menu(int id)
     if(state->scroll_offset < 0)
         state->scroll_offset = 0;
     if(max_scroll > 0)
-        option_w = w - scrollbar_w - ScaleUIPx(2);
+        option_w = w - scrollbar_w - Scale(2);
 
     Vector2 mouse = ui_mouse_world();
     int my = (int)mouse.y;
@@ -562,7 +562,7 @@ draw_dropdown_menu(int id)
              * when the list can actually scroll, otherwise a touchpad
              * clicks natural wobble would swallow every selection. */
             int dy = my - state->touch_press_start_y;
-            if(abs(dy) > ScaleUIPx(8) && max_scroll > 0) {
+            if(abs(dy) > Scale(8) && max_scroll > 0) {
                 state->touch_drag_active = 1;
             }
         }
@@ -674,8 +674,8 @@ draw_dropdown_menu(int id)
     /* Resolve thumb input before rows use the offset, so thumb and content
      * paint the same state on the drag frame. The panel is already painted. */
     if(max_scroll > 0)
-        ui_scrollbar(x + w - scrollbar_w, dropdown_y + ScaleUIPx(2),
-                     dropdown_h - ScaleUIPx(4), content_h, &state->scroll_offset, max_scroll, 1);
+        ui_scrollbar(x + w - scrollbar_w, dropdown_y + Scale(2),
+                     dropdown_h - Scale(4), content_h, &state->scroll_offset, max_scroll, 1);
 
     if(can_draw) {
         BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
@@ -711,33 +711,33 @@ draw_dropdown_menu(int id)
         if(can_draw && ui_material_style() && state->selected_index == i) {
             Color selected = c_circle;
             selected.a = 28;
-            DrawRectangleRounded((Rectangle){(float)(x + ScaleUIPx(4)),
-                                             (float)(visible_y + ScaleUIPx(2)),
-                                             (float)(option_w - ScaleUIPx(8)),
-                                             (float)(visible_h - ScaleUIPx(4))},
+            DrawRectangleRounded((Rectangle){(float)(x + Scale(4)),
+                                             (float)(visible_y + Scale(2)),
+                                             (float)(option_w - Scale(8)),
+                                             (float)(visible_h - Scale(4))},
                                  0.50f, 12, selected);
         }
 
         {
             if(can_draw && option_hover) {
                 if(ui_material_style()) {
-                    int inset = ScaleUIPx(4);
+                    int inset = Scale(4);
                     Rectangle hover_bounds = {
                         (float)(x + inset),
-                        (float)(visible_y + ScaleUIPx(2)),
+                        (float)(visible_y + Scale(2)),
                         (float)(option_w - inset * 2),
-                        (float)(visible_h - ScaleUIPx(4))
+                        (float)(visible_h - Scale(4))
                     };
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
                         ui_material_state_layer(hover_bounds, c_text, 1, 0, 0);
                 } else if(ui_modern_style()) {
                     UIStyleTokens tokens = GetUIStyleTokens();
-                    int inset = ScaleUIPx(4);
+                    int inset = Scale(4);
                     Rectangle hover_bounds = {
                         (float)(x + inset),
-                        (float)(visible_y + ScaleUIPx(2)),
+                        (float)(visible_y + Scale(2)),
                         (float)(option_w - inset * 2),
-                        (float)(visible_h - ScaleUIPx(4))
+                        (float)(visible_h - Scale(4))
                     };
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
                         DrawRectangleRounded(hover_bounds,
@@ -769,7 +769,7 @@ draw_dropdown_menu(int id)
 
         if(can_draw) {
             int font_token = PushUIFont(options[i].font_name);
-            DrawUIText(options[i].label, x + ScaleUIPx(12),
+            DrawUIText(options[i].label, x + Scale(12),
                        GetUIControlTextY(options[i].label, option_y, option_h, font),
                        font, option_text);
             PopUIFont(font_token);
@@ -785,8 +785,8 @@ draw_arrow:
     ;
 
     /* Redraw arrow on top of everything */
-    int arrow_pad = ScaleUIPx(24);
-    int arrow_size = ScaleUIPx(6);
+    int arrow_pad = Scale(24);
+    int arrow_size = Scale(6);
     int arrow_x = state->x + state->w - arrow_pad;
     int arrow_y = y + h / 2;
 

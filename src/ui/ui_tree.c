@@ -1306,7 +1306,7 @@ RouteInput(void)
             if(focused) {
                 int font = field->font > 0 ? field->font : GetFontSize();
                 int padding = field->style.padding_x > 0
-                    ? field->style.padding_x : ScaleUIPx(10);
+                    ? field->style.padding_x : Scale(10);
                 double now = GetTime();
                 KeyID click_key = field->focus_id > 0
                     ? (KeyID)field->focus_id : node->key;
@@ -1314,8 +1314,8 @@ RouteInput(void)
                 int click_dy = (int)mouse.y - ui_tree_text_last_click_y;
                 int double_click = ui_tree_text_last_click_key == click_key &&
                     now - ui_tree_text_last_click_time <= 0.45 &&
-                    abs(click_dx) <= ScaleUIPx(6) &&
-                    abs(click_dy) <= ScaleUIPx(6);
+                    abs(click_dx) <= Scale(6) &&
+                    abs(click_dy) <= Scale(6);
 
                 if(double_click) {
                     state->anchor = 0;
@@ -1360,7 +1360,7 @@ RouteInput(void)
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             int font = field->font > 0 ? field->font : GetFontSize();
             int padding = field->style.padding_x > 0
-                ? field->style.padding_x : ScaleUIPx(10);
+                ? field->style.padding_x : Scale(10);
             int cursor;
 
             if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
@@ -1618,7 +1618,7 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
-            .line_gap = ScaleUIPx(2), .color = color
+            .line_gap = Scale(2), .color = color
         };
         int height = ui_paragraph_height(paragraph);
         if(vertical_align == TextAlignCenter)
@@ -2190,8 +2190,8 @@ Picture(PictureProps picture)
     if(texture.id == 0) {
         DrawRectangleRec(picture.bounds, GetThemeSurface());
         DrawRectangleLinesEx(picture.bounds, 1.0f, GetThemeButtonHover());
-        DrawUIText("Missing image", (int)picture.bounds.x + ScaleUIPx(8),
-                   (int)picture.bounds.y + ScaleUIPx(8), Text12,
+        DrawUIText("Missing image", (int)picture.bounds.x + Scale(8),
+                   (int)picture.bounds.y + Scale(8), Text12,
                    GetThemeIcon());
         return;
     }
@@ -2234,7 +2234,7 @@ Text(TextProps text)
         if(bounded && text.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
-                .line_gap = ScaleUIPx(2), .color = text.color
+                .line_gap = Scale(2), .color = text.color
             };
             bounds.height = (float)ui_paragraph_height(paragraph);
         } else {
@@ -2281,7 +2281,7 @@ LabelText(const char *label, const char *value, Rectangle bounds,
           int font_size, Color color)
 {
     int label_width = TextWidth(label != NULL ? label : "", font_size);
-    int value_x = (int)bounds.x + label_width + ScaleUIPx(8);
+    int value_x = (int)bounds.x + label_width + Scale(8);
 
     Text((TextProps){.bounds={(int)bounds.x, (int)bounds.y, 0, 0}, .text=label != NULL ? label : "", .font=font_size, .color=Fade(color, 0.72f), .wrap=TextWrapNone});
     Text((TextProps){.bounds={value_x, (int)bounds.y, 0, 0}, .text=value != NULL ? value : "", .font=font_size, .color=color, .wrap=TextWrapNone});
@@ -2290,12 +2290,12 @@ LabelText(const char *label, const char *value, Rectangle bounds,
 void
 BulletText(const char *text, Rectangle bounds, int font_size, Color color)
 {
-    int bullet_size = ScaleUIPx(12);
+    int bullet_size = Scale(12);
     Rectangle bullet = {bounds.x, bounds.y, (float)bullet_size,
                         bounds.height > 0 ? bounds.height : (float)font_size};
 
     Bullet(bullet);
-    Text((TextProps){.bounds={(int)bounds.x + bullet_size + ScaleUIPx(4), (int)bounds.y, 0, 0}, .text=text != NULL ? text : "", .font=font_size, .color=color, .wrap=TextWrapNone});
+    Text((TextProps){.bounds={(int)bounds.x + bullet_size + Scale(4), (int)bounds.y, 0, 0}, .text=text != NULL ? text : "", .font=font_size, .color=color, .wrap=TextWrapNone});
 }
 
 void
@@ -2593,7 +2593,7 @@ Slider(int id, int x, int y, int w, const char *label,
              const char *value_text_override)
 {
     NodeId node = ui_tree_add(id, UI_WIDGET_SLIDER_NODE,
-                              (Rectangle){x, y, w, ScaleUIPx(56)}, NULL);
+                              (Rectangle){x, y, w, Scale(56)}, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.slider.value = value;
         ui_tree_nodes[node].data.slider.label = label;
@@ -2657,8 +2657,8 @@ Checkbox(int id, int x, int y, const char *label, int *value)
     int changed;
     NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
                               (Rectangle){x, y,
-                                  ScaleUIPx(30) + TextWidth(label, font),
-                                  ScaleUIPx(34)}, NULL);
+                                  Scale(30) + TextWidth(label, font),
+                                  Scale(34)}, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.checkbox.value = value;
         ui_tree_nodes[node].data.checkbox.label = label;
@@ -2666,7 +2666,7 @@ Checkbox(int id, int x, int y, const char *label, int *value)
     }
     changed = value != NULL && ui_focusable_pressed(
         node >= 0 ? ui_tree_nodes[node].bounds
-                  : (Rectangle){x,y,ScaleUIPx(30)+TextWidth(label,font),ScaleUIPx(34)},
+                  : (Rectangle){x,y,Scale(30)+TextWidth(label,font),Scale(34)},
         id, value == NULL, &focused);
     if(changed) {
         *value = !*value;
@@ -2683,7 +2683,7 @@ Checkbox(int id, int x, int y, const char *label, int *value)
         return changed;
     (void)DrawUICheckboxToggle(x, y, label, value);
     if(focused && IsWindowReady())
-        DrawUIFocus((Rectangle){x,y,ScaleUIPx(30)+TextWidth(label,font),ScaleUIPx(34)});
+        DrawUIFocus((Rectangle){x,y,Scale(30)+TextWidth(label,font),Scale(34)});
     return changed;
 }
 
@@ -2852,7 +2852,7 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
         int font = GetSmallFontSize();
-        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - font - ScaleUIPx(2), 0, 0}, .text=label, .font=font, .color=c_text, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .font=font, .color=c_text, .wrap=TextWrapNone});
     }
 }
 
@@ -3259,7 +3259,7 @@ ThemeSwitcher(int x, int y, int w, const char *label,
                     int *theme_id, int *dark_mode)
 {
     ui_tree_add(0, UI_WIDGET_THEME_SETTINGS_NODE,
-                (Rectangle){x, y, w, ScaleUIPx(58)}, theme_id);
+                (Rectangle){x, y, w, Scale(58)}, theme_id);
     return DrawUIThemeSwitcher(x, y, w, label, light_label, dark_label,
                                theme_id, dark_mode);
 }

@@ -325,7 +325,7 @@ Page((PageProps){
     .bounds = {0, 0, GetUIViewWidth(), GetUIViewHeight()},
     .title = "Kryon",
     .description = "Native-feeling apps across desktop and web.",
-    .gap = ScaleUIPx(16),
+    .gap = Scale(16),
     .padding = GetUIPageSidePadding(),
     .key = Key("home")
 });
@@ -388,12 +388,12 @@ Get the current DPI scale factor.
 float GetUIScale(void);
 ```
 
-#### `ScaleUIPx`
+#### `Scale`
 
 Scale a pixel value by the DPI factor.
 
 ```c
-int ScaleUIPx(int px);
+int Scale(int px);
 ```
 
 #### `ClampUIPx`

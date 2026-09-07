@@ -603,7 +603,7 @@ ui_update_pointer_gesture(void)
     Vector2 mouse = GetMousePosition();
     int mx = (int)mouse.x;
     int my = (int)mouse.y;
-    int drag_threshold = ScaleUIPx(5);
+    int drag_threshold = Scale(5);
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         g_ui_pointer_down = 1;
@@ -1268,7 +1268,7 @@ static int
 ui_control_height_for_font(int font)
 {
     int line_h = TextLineHeight(font);
-    int pad_y = ScaleUIPx(5);
+    int pad_y = Scale(5);
 
     if(line_h < font)
         line_h = font;
@@ -1295,26 +1295,26 @@ static int
 ui_control_cursor_height(int font, int box_h)
 {
     int h = TextLineHeight(font);
-    int max_h = box_h - ScaleUIPx(8);
+    int max_h = box_h - Scale(8);
 
     if(h < font)
         h = font;
-    if(max_h < ScaleUIPx(8))
+    if(max_h < Scale(8))
         max_h = box_h;
     if(h > max_h)
         h = max_h;
-    if(h < ScaleUIPx(8))
-        h = ScaleUIPx(8);
+    if(h < Scale(8))
+        h = Scale(8);
     return h;
 }
 
 static int
 ui_text_next_smaller_size(int font_size)
 {
-    int body = ScaleUIPx(Text16);
-    int small = ScaleUIPx(Text14);
-    int caption = ScaleUIPx(Text12);
-    int minimum = ScaleUIPx(Text8);
+    int body = Scale(Text16);
+    int small = Scale(Text14);
+    int caption = Scale(Text12);
+    int minimum = Scale(Text8);
 
     if(font_size > body)
         return body;
@@ -1328,10 +1328,10 @@ ui_text_next_smaller_size(int font_size)
 static int
 ui_text_normalize_size(int font_size)
 {
-    int minimum = ScaleUIPx(Text8);
-    int caption = ScaleUIPx(Text12);
-    int small = ScaleUIPx(Text14);
-    int body = ScaleUIPx(Text16);
+    int minimum = Scale(Text8);
+    int caption = Scale(Text12);
+    int small = Scale(Text14);
+    int body = Scale(Text16);
 
     if(font_size == Text8)
         return minimum;
@@ -1342,7 +1342,7 @@ ui_text_normalize_size(int font_size)
     if(font_size == Text16)
         return body;
     if(font_size == Text24)
-        return ScaleUIPx(Text24);
+        return Scale(Text24);
     if(font_size <= minimum)
         return minimum;
     if(font_size <= caption)
@@ -1351,7 +1351,7 @@ ui_text_normalize_size(int font_size)
         return small;
     if(font_size <= body)
         return body;
-    return ScaleUIPx(Text24);
+    return Scale(Text24);
 }
 
 int
@@ -1691,30 +1691,30 @@ SetUIFocusTextInputActive(int active)
 void
 DrawUIFocus(Rectangle bounds)
 {
-    DrawRectangleLinesEx((Rectangle){bounds.x - ScaleUIPx(3), bounds.y - ScaleUIPx(3),
-                                     bounds.width + ScaleUIPx(6), bounds.height + ScaleUIPx(6)},
-                         ScaleUIPx(2), c_button_hover);
+    DrawRectangleLinesEx((Rectangle){bounds.x - Scale(3), bounds.y - Scale(3),
+                                     bounds.width + Scale(6), bounds.height + Scale(6)},
+                         Scale(2), c_button_hover);
 }
 
 int
 GetFontSize(void)
 {
-    return ScaleUIPx(Text16);
+    return Scale(Text16);
 }
 
 int
 GetSmallFontSize(void)
 {
-    return ScaleUIPx(Text14);
+    return Scale(Text14);
 }
 
 int
 GetTitleFontSize(const char *title, int max_width)
 {
     const char *value = title != NULL ? title : "";
-    int large = ScaleUIPx(Text24);
-    int medium = ScaleUIPx(Text16);
-    int small = ScaleUIPx(Text14);
+    int large = Scale(Text24);
+    int medium = Scale(Text16);
+    int small = Scale(Text14);
 
     if(max_width <= 0 || TextWidth(value, large) <= max_width)
         return large;
@@ -1774,7 +1774,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     int y = (int)bounds.y;
     int w = (int)bounds.width;
     int h = (int)bounds.height;
-    int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
+    int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
     int clip_w = w - padding_x * 2;
     int clip_guard = 1;
     int text_x = x + padding_x - scroll_x;
@@ -1795,12 +1795,12 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
 
         DrawRectangleRounded(bounds, 0.18f, 12, background);
         DrawRectangleRoundedLinesEx(bounds, 0.18f, 12,
-                                    ScaleUIPx(focused ? 2 : 1), outline);
-        DrawRectangle((int)bounds.x + ScaleUIPx(8),
+                                    Scale(focused ? 2 : 1), outline);
+        DrawRectangle((int)bounds.x + Scale(8),
                       (int)(bounds.y + bounds.height) -
-                          ScaleUIPx(focused ? 2 : 1),
-                      (int)bounds.width - ScaleUIPx(16),
-                      ScaleUIPx(focused ? 2 : 1), outline);
+                          Scale(focused ? 2 : 1),
+                      (int)bounds.width - Scale(16),
+                      Scale(focused ? 2 : 1), outline);
     } else {
         ui_draw_box_background(bounds, radius, style.background, border);
     }
@@ -1833,8 +1833,8 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         selected_text[selected_len] = '\0';
         sel_x = text_x + TextWidth(prefix, font);
         sel_w = TextWidth(selected_text, font);
-        if(sel_w < ScaleUIPx(2))
-            sel_w = ScaleUIPx(2);
+        if(sel_w < Scale(2))
+            sel_w = Scale(2);
         DrawRectangle(sel_x, text_y, sel_w,
                       TextLineHeight(font),
                       ui_material_style() ? ui_alpha(c_circle, 82) :
@@ -1853,7 +1853,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
         before_cursor[copy_len] = '\0';
 
         int cursor_x = text_x + TextWidth(before_cursor, font);
-        DrawRectangle(cursor_x, cursor_y, ScaleUIPx(2), cursor_h,
+        DrawRectangle(cursor_x, cursor_y, Scale(2), cursor_h,
                       ui_material_style() ? c_circle : cursor_color);
     }
     EndUIClip();
@@ -2104,7 +2104,7 @@ DrawUIHref(HrefProps link)
                GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(hovered && text_w > 0) {
-        int underline_y = (int)(bounds.y + bounds.height) - ScaleUIPx(2);
+        int underline_y = (int)(bounds.y + bounds.height) - Scale(2);
         DrawLine((int)bounds.x, underline_y, (int)bounds.x + text_w,
                  underline_y, color);
     }
@@ -2638,9 +2638,9 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
     start_x = x + ui_text_column_x(text, line_start, start, font);
     end_x = x + ui_text_column_x(text, line_start, end, font);
     if(selection_start <= line_start && selection_end > line_end)
-        end_x += ScaleUIPx(6);
+        end_x += Scale(6);
     if(end_x <= start_x)
-        end_x = start_x + ScaleUIPx(4);
+        end_x = start_x + Scale(4);
     DrawRectangle(start_x, y, end_x - start_x, TextLineHeight(font),
                   color);
 }
@@ -2689,8 +2689,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     char line[1024];
     int len;
     int line_start = 0;
-    int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
-    int padding_y = style.padding_y > 0 ? style.padding_y : ScaleUIPx(8);
+    int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int text_x = (int)bounds.x + padding_x;
     int text_y = (int)bounds.y + padding_y - scroll_y;
     int draw_y = text_y;
@@ -2737,7 +2737,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        ui_caret_blink_visible()) {
                         int cursor_x = text_x + ui_text_column_x(
                             text, chunk_start, cursor, line_font);
-                        DrawRectangle(cursor_x, draw_y, ScaleUIPx(2),
+                        DrawRectangle(cursor_x, draw_y, Scale(2),
                                       TextLineHeight(line_font),
                                       style.cursor);
                     }
@@ -2760,16 +2760,16 @@ int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
     int font = area.font > 0 ? area.font : GetFontSize();
-    int line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : ScaleUIPx(10);
+        ? area.style.padding_x : Scale(10);
     int padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : ScaleUIPx(8);
+        ? area.style.padding_y : Scale(8);
     int wrap_width = area.wrap
         ? (int)area.bounds.width - padding_x * 2 : 0;
     int scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
-    if(wrap_width < ScaleUIPx(24))
+    if(wrap_width < Scale(24))
         wrap_width = 0;
     return ui_text_area_cursor_from_point(
         area.text, font, line_gap, wrap_width,
@@ -2795,13 +2795,13 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     if(area.text == NULL || area.scroll_y == NULL)
         return;
     font = area.font > 0 ? area.font : GetFontSize();
-    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : ScaleUIPx(10);
+        ? area.style.padding_x : Scale(10);
     padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : ScaleUIPx(8);
+        ? area.style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < ScaleUIPx(24))
+    if(wrap_width < Scale(24))
         wrap_width = 0;
     viewport_h = (int)area.bounds.height - padding_y * 2;
     if(viewport_h <= 0)
@@ -2841,14 +2841,14 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
         return;
     area.style = ui_resolve_text_input_style(area.style);
     font = area.font > 0 ? area.font : GetFontSize();
-    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : ScaleUIPx(10);
+        ? area.style.padding_x : Scale(10);
     padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : ScaleUIPx(8);
+        ? area.style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < ScaleUIPx(24))
+    if(wrap_width < Scale(24))
         wrap_width = 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
     {
@@ -2942,12 +2942,12 @@ RenderTextArea(TextAreaProps area)
     area.bounds = widget.bounds;
 
     font = area.font > 0 ? area.font : GetFontSize();
-    line_gap = area.line_gap >= 0 ? area.line_gap : ScaleUIPx(6);
+    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
-    padding_x = area.style.padding_x > 0 ? area.style.padding_x : ScaleUIPx(10);
-    padding_y = area.style.padding_y > 0 ? area.style.padding_y : ScaleUIPx(8);
+    padding_x = area.style.padding_x > 0 ? area.style.padding_x : Scale(10);
+    padding_y = area.style.padding_y > 0 ? area.style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < ScaleUIPx(24))
+    if(wrap_width < Scale(24))
         wrap_width = 0;
     first_line_y = GetUIControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
@@ -3006,7 +3006,7 @@ RenderTextArea(TextAreaProps area)
             double now = GetTime();
             int click_dx = (int)mouse_world.x - g_ui_text_area_last_click_x;
             int click_dy = (int)mouse_world.y - g_ui_text_area_last_click_y;
-            int double_click_slop = ScaleUIPx(6);
+            int double_click_slop = Scale(6);
 
             focused = 1;
             ClaimUITextAreaFocus(area.focused);
@@ -3569,9 +3569,9 @@ RichTextEditor(RichTextEditorProps editor)
         {RichTextToolLink, "link", 54},
     };
     unsigned int tools = editor.tools != 0 ? editor.tools : RICH_TEXT_TOOLS_DEFAULT;
-    int toolbar_h = ScaleUIPx(38);
-    int gap = ScaleUIPx(6);
-    int pad = ScaleUIPx(6);
+    int toolbar_h = Scale(38);
+    int gap = Scale(6);
+    int pad = Scale(6);
     int x = (int)editor.bounds.x + pad;
     int y = (int)editor.bounds.y + pad;
     int h = toolbar_h - pad * 2;
@@ -3581,7 +3581,7 @@ RichTextEditor(RichTextEditorProps editor)
     if(editor.text == NULL || editor.cursor_position == NULL ||
        editor.focused == NULL || editor.text_size == 0)
         return 0;
-    if(editor.bounds.height < (float)(toolbar_h + gap + ScaleUIPx(48))) {
+    if(editor.bounds.height < (float)(toolbar_h + gap + Scale(48))) {
         area.bounds = editor.bounds;
         area.text = editor.text;
         area.text_size = editor.text_size;
@@ -3631,13 +3631,13 @@ RichTextEditor(RichTextEditorProps editor)
 
         if((tools & (unsigned int)buttons[i].tool) == 0)
             continue;
-        bw = ScaleUIPx(buttons[i].width);
+        bw = Scale(buttons[i].width);
         if(x + bw > (int)(editor.bounds.x + editor.bounds.width) - pad)
             break;
         if(ui_rich_text_draw_tool(x, y, bw, h, buttons[i].label,
                                   editor.read_only))
             changed |= ui_rich_text_command(editor, buttons[i].tool);
-        x += bw + ScaleUIPx(4);
+        x += bw + Scale(4);
     }
 
     area.bounds = (Rectangle){editor.bounds.x, editor.bounds.y + toolbar_h + gap,
@@ -3806,7 +3806,7 @@ RenderTextField(TextFieldProps field)
     field.bounds = widget.bounds;
 
     font = field.font > 0 ? field.font : GetFontSize();
-    padding_x = field.style.padding_x > 0 ? field.style.padding_x : ScaleUIPx(10);
+    padding_x = field.style.padding_x > 0 ? field.style.padding_x : Scale(10);
     focused = *field.focused != 0;
     focused = IsUITextFocusOwner(field.focused) ? focused : 0;
     clip_w = (int)field.bounds.width - padding_x * 2;
@@ -3872,7 +3872,7 @@ RenderTextField(TextFieldProps field)
             int double_click = g_ui_text_field_last_click_owner == field.focused &&
                 g_ui_text_field_last_click_id == field.focus_id &&
                 now - g_ui_text_field_last_click_time <= 0.45 &&
-                abs(click_dx) <= ScaleUIPx(6) && abs(click_dy) <= ScaleUIPx(6);
+                abs(click_dx) <= Scale(6) && abs(click_dy) <= Scale(6);
             focused = 1;
             ClaimUITextFieldFocus(field.focused);
             g_ui_text_input_show_requested = 1;
@@ -3917,7 +3917,7 @@ RenderTextField(TextFieldProps field)
         g_ui_pointer_owner == UI_POINTER_OWNER_TEXT_FIELD_PAN)) {
         int dx = (int)mouse_world.x - g_ui_text_field_pan_start_x;
         int dy = (int)mouse_world.y - g_ui_text_field_pan_start_y;
-        int drag_threshold = ScaleUIPx(5);
+        int drag_threshold = Scale(5);
 
         if(g_ui_text_field_panning ||
            ((dx > drag_threshold || dx < -drag_threshold) &&
@@ -4138,7 +4138,7 @@ RenderTextField(TextFieldProps field)
     if(focused) {
         int cursor_text_x = ui_text_width_before_cursor(
             display_text, font, *field.cursor_position);
-        int margin = ScaleUIPx(8);
+        int margin = Scale(8);
 
         if(cursor_text_x < *scroll_x_ptr + margin)
             *scroll_x_ptr = cursor_text_x - margin;
@@ -4192,16 +4192,16 @@ ui_readonly_text_box_height(const char *text, int font, int width,
     int len;
     int offset = 0;
     int line_count = 0;
-    int padding_x = style.padding_x > 0 ? style.padding_x : ScaleUIPx(10);
-    int padding_y = style.padding_y > 0 ? style.padding_y : ScaleUIPx(8);
+    int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int content_w = width - padding_x * 2;
 
     if(font <= 0)
         font = GetFontSize();
     if(line_gap < 0)
         line_gap = 0;
-    if(content_w < ScaleUIPx(24))
-        content_w = ScaleUIPx(24);
+    if(content_w < Scale(24))
+        content_w = Scale(24);
     if(text == NULL)
         text = "";
 
@@ -4237,8 +4237,8 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     char line[1024];
     const char *text = box.text != NULL ? box.text : "";
     int font = box.font > 0 ? box.font : GetFontSize();
-    int padding_x = box.style.padding_x > 0 ? box.style.padding_x : ScaleUIPx(10);
-    int padding_y = box.style.padding_y > 0 ? box.style.padding_y : ScaleUIPx(8);
+    int padding_x = box.style.padding_x > 0 ? box.style.padding_x : Scale(10);
+    int padding_y = box.style.padding_y > 0 ? box.style.padding_y : Scale(8);
     int line_gap = box.line_gap > 0 ? box.line_gap : 0;
     int content_w = (int)box.bounds.width - padding_x * 2;
     int line_h = TextLineHeight(font);
@@ -4261,8 +4261,8 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
     active = CheckCollisionPointRec(mouse_world, box.bounds) &&
              !UIInputCapturesClick(mouse_world);
 
-    if(content_w < ScaleUIPx(24))
-        content_w = ScaleUIPx(24);
+    if(content_w < Scale(24))
+        content_w = Scale(24);
 
     ui_draw_box_background(box.bounds, radius, box.style.background, box.style.border);
 
@@ -4311,7 +4311,7 @@ static TextLayout
 ParagraphLayout(ParagraphSpec paragraph)
 {
     int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
-    int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : ScaleUIPx(4);
+    int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : Scale(4);
     int icon_size = paragraph.icon_size > 0 ? paragraph.icon_size : font;
     TextLayout layout = ParseTextLayout(paragraph.text ? paragraph.text : "",
                                                      paragraph.icon,
@@ -4394,11 +4394,11 @@ int
 GetUIIconBtnPadding(int size)
 {
     switch(size) {
-    case UI_ICON_SIZE_TINY: return ScaleUIPx(4);
-    case UI_ICON_SIZE_SMALL: return ScaleUIPx(5);
-    case UI_ICON_SIZE_MEDIUM: return ScaleUIPx(6);
-    case UI_ICON_SIZE_LARGE: return ScaleUIPx(7);
-    default: return ScaleUIPx(5);
+    case UI_ICON_SIZE_TINY: return Scale(4);
+    case UI_ICON_SIZE_SMALL: return Scale(5);
+    case UI_ICON_SIZE_MEDIUM: return Scale(6);
+    case UI_ICON_SIZE_LARGE: return Scale(7);
+    default: return Scale(5);
     }
 }
 
@@ -4422,7 +4422,7 @@ InitUI(int width, int height, float dpi)
 int
 IsUIDesktopMode(void)
 {
-    return ui_view_width >= ScaleUIPx(500);
+    return ui_view_width >= Scale(500);
 }
 
 static void
@@ -4749,7 +4749,7 @@ DrawUISubtabBar(SubtabBarProps bar)
         int tab_h = bar_h;
         int is_last = i == bar.count - 1;
         int draw_w = is_last ? bar_x + bar_w - tab_x : tab_w;
-        int label_pad = ScaleUIPx(4);
+        int label_pad = Scale(4);
         Rectangle tab_rect = {(float)tab_x, bar.bounds.y, (float)draw_w, bar.bounds.height};
         Rectangle label_rect = {(float)(tab_x + label_pad), bar.bounds.y,
                                 (float)(draw_w - label_pad * 2), bar.bounds.height};
@@ -4762,7 +4762,7 @@ DrawUISubtabBar(SubtabBarProps bar)
         Color text_color = c_text;
         const char *label = bar.tabs[i].label ? bar.tabs[i].label : "";
         Texture2D icon = bar.tabs[i].icon;
-        int icon_size = bar.tabs[i].icon_size > 0 ? bar.tabs[i].icon_size : ScaleUIPx(20);
+        int icon_size = bar.tabs[i].icon_size > 0 ? bar.tabs[i].icon_size : Scale(20);
 
         if(is_disabled) {
             text_color = DarkenUIColor(c_text, 70);
@@ -4770,24 +4770,24 @@ DrawUISubtabBar(SubtabBarProps bar)
         }
 
         if(is_hovered && !is_disabled && !is_selected)
-            DrawRectangle(tab_x, bar_y + ScaleUIPx(2), draw_w, tab_h - ScaleUIPx(4),
+            DrawRectangle(tab_x, bar_y + Scale(2), draw_w, tab_h - Scale(4),
                           cues ? LightenUIColor(DarkenUIColor(c_button_hover, 10), 6)
                                : DarkenUIColor(c_button_hover, 10));
 
         if(is_selected) {
-            int underline_h = ScaleUIPx(cues ? 4 : 3);
+            int underline_h = Scale(cues ? 4 : 3);
             if(cues) {
                 Color glow = accent;
                 glow.a = glow.a > 90 ? 90 : glow.a;
-                DrawRectangle(tab_x + ScaleUIPx(10), bar_y + tab_h - underline_h - ScaleUIPx(2),
-                              draw_w - ScaleUIPx(20), ScaleUIPx(2), glow);
+                DrawRectangle(tab_x + Scale(10), bar_y + tab_h - underline_h - Scale(2),
+                              draw_w - Scale(20), Scale(2), glow);
             }
-            DrawRectangle(tab_x + ScaleUIPx(10), bar_y + tab_h - underline_h,
-                          draw_w - ScaleUIPx(20), underline_h, accent);
+            DrawRectangle(tab_x + Scale(10), bar_y + tab_h - underline_h,
+                          draw_w - Scale(20), underline_h, accent);
         }
 
         if(i > 0)
-            DrawLine(tab_x, bar_y + ScaleUIPx(8), tab_x, bar_y + tab_h - ScaleUIPx(8),
+            DrawLine(tab_x, bar_y + Scale(8), tab_x, bar_y + tab_h - Scale(8),
                      DarkenUIColor(c_bg, 24));
 
         if(is_active) {
@@ -4831,7 +4831,7 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
     int mx = (int)mouse_world.x;
     int my = (int)mouse_world.y;
     int hover = 0;
-    int padding = ScaleUIPx(4);
+    int padding = Scale(4);
     int btn_w = icon_size + padding * 2;
     int btn_h = icon_size + padding * 2;
     int btn_x = x - padding;

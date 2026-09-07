@@ -48,9 +48,9 @@ void
 DrawUIToast(void)
 {
     int font = GetSmallFontSize();
-    int pad_x = ScaleUIPx(14);
-    int pad_y = ScaleUIPx(10);
-    int margin = ScaleUIPx(18);
+    int pad_x = Scale(14);
+    int pad_y = Scale(10);
+    int margin = Scale(18);
     int max_w = ui_view_width - margin * 2;
     int text_w;
     int content_w;
@@ -90,7 +90,7 @@ DrawUIToast(void)
     bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
 
     DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
-    DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, ScaleUIPx(1),
+    DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, Scale(1),
                                 DarkenUIColor(c_surface, 46));
     DrawUIText(display,
                x + (w - text_w) / 2,

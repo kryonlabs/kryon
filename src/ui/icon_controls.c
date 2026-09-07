@@ -32,9 +32,9 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
     popup_w = popup.popup_width > 0 ? popup.popup_width : button_w;
     if(popup_w < button_w)
         popup_w = button_w;
-    popup_h = popup.popup_height > 0 ? popup.popup_height : ScaleUIPx(200);
+    popup_h = popup.popup_height > 0 ? popup.popup_height : Scale(200);
     popup_x = popup.x + button_w / 2 - popup_w / 2;
-    popup_y = popup.y + popup.icon_size + popup.icon_padding * 2 + ScaleUIPx(4);
+    popup_y = popup.y + popup.icon_size + popup.icon_padding * 2 + Scale(4);
     mouse = ui_mouse_world();
 
     if(!icon_clicked && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
@@ -49,8 +49,8 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
                 LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     return ui_render_vertical_slider(popup.id, popup_x + popup_w / 2,
-                                     popup_y + ScaleUIPx(14),
-                                     popup_h - ScaleUIPx(24),
+                                     popup_y + Scale(14),
+                                     popup_h - Scale(24),
                                      popup.min, popup.max, popup.value);
 }
 
@@ -59,14 +59,14 @@ DrawUIBottomIconRow(BottomIconRowProps row)
 {
     IconRowResult result = {-1, 0, 0};
     int count = row.count;
-    int icon_size = row.icon_size > 0 ? row.icon_size : ScaleUIPx(24);
-    int icon_padding = row.icon_padding > 0 ? row.icon_padding : ScaleUIPx(10);
-    int gap = row.gap > 0 ? row.gap : ScaleUIPx(12);
-    int side_margin = row.side_margin > 0 ? row.side_margin : ScaleUIPx(24);
-    int bottom_margin = row.bottom_margin > 0 ? row.bottom_margin : ScaleUIPx(6);
-    int min_icon_size = row.min_icon_size > 0 ? row.min_icon_size : ScaleUIPx(16);
-    int min_icon_padding = row.min_icon_padding > 0 ? row.min_icon_padding : ScaleUIPx(6);
-    int min_gap = row.min_gap > 0 ? row.min_gap : ScaleUIPx(8);
+    int icon_size = row.icon_size > 0 ? row.icon_size : Scale(24);
+    int icon_padding = row.icon_padding > 0 ? row.icon_padding : Scale(10);
+    int gap = row.gap > 0 ? row.gap : Scale(12);
+    int side_margin = row.side_margin > 0 ? row.side_margin : Scale(24);
+    int bottom_margin = row.bottom_margin > 0 ? row.bottom_margin : Scale(6);
+    int min_icon_size = row.min_icon_size > 0 ? row.min_icon_size : Scale(16);
+    int min_icon_padding = row.min_icon_padding > 0 ? row.min_icon_padding : Scale(6);
+    int min_gap = row.min_gap > 0 ? row.min_gap : Scale(8);
     int available_w;
     int max_btn_w;
     int button_w;
@@ -77,8 +77,8 @@ DrawUIBottomIconRow(BottomIconRowProps row)
         return result;
 
     available_w = row.view_width - side_margin * 2;
-    if(available_w < ScaleUIPx(120))
-        available_w = ScaleUIPx(120);
+    if(available_w < Scale(120))
+        available_w = Scale(120);
 
     max_btn_w = row.max_button_width > 0 ? row.max_button_width : available_w;
     if(count > 1) {

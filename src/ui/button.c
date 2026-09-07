@@ -137,7 +137,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             hover_amount = anim->hover;
             press_amount = anim->press;
         }
-        draw_bounds.y += (float)ScaleUIPx(2) * press_amount;
+        draw_bounds.y += (float)Scale(2) * press_amount;
     } else {
         hover_amount = hovered ? 1.0f : 0.0f;
     }
@@ -168,7 +168,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             ui_material_focus(draw_bounds);
         }
         {
-            int inset = ScaleUIPx(12);
+            int inset = Scale(12);
             Rectangle label_bounds = draw_bounds;
 
             label_bounds.x += inset;
@@ -209,7 +209,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         Color cue = LightenUIColor(draw_background, 42);
         cue.a = cue.a > 170 ? 170 : cue.a;
         DrawRectangle((int)draw_bounds.x + 2, (int)draw_bounds.y + 1,
-                      (int)button.bounds.width - 4, ScaleUIPx(1), cue);
+                      (int)button.bounds.width - 4, Scale(1), cue);
     }
 
     if(focused) {
@@ -218,7 +218,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     }
 
     {
-        int inset = ScaleUIPx(8);
+        int inset = Scale(8);
         Rectangle label_bounds = draw_bounds;
 
         label_bounds.x += inset;
@@ -260,7 +260,7 @@ DrawUIIconButton(IconButtonProps button)
     int hovered;
     int focused;
     int clicked = 0;
-    int icon_padding = button.icon_padding > 0 ? button.icon_padding : ScaleUIPx(3);
+    int icon_padding = button.icon_padding > 0 ? button.icon_padding : Scale(3);
     int draw_size = button.icon_size;
     Color background = button.background.a != 0 ? button.background : c_button;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
@@ -357,7 +357,7 @@ DrawUIIconButton(IconButtonProps button)
             Color cue = LightenUIColor(draw_background, 42);
             cue.a = cue.a > 170 ? 170 : cue.a;
             DrawRectangle((int)button.bounds.x + 2, (int)button.bounds.y + 1,
-                          (int)button.bounds.width - 4, ScaleUIPx(1), cue);
+                          (int)button.bounds.width - 4, Scale(1), cue);
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
@@ -446,8 +446,8 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     Vector2 mouse_world = ui_mouse_world();
     int font = GetFontSize();
     const char *text = label != NULL ? label : "";
-    int w = (int)TextWidth(text, font) + ScaleUIPx(16);
-    int h = TextLineHeight(font) + ScaleUIPx(8);
+    int w = (int)TextWidth(text, font) + Scale(16);
+    int h = TextLineHeight(font) + Scale(8);
     Rectangle bounds;
     int hovered;
     ButtonSpec spec;
@@ -596,17 +596,17 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     spec.radius = 0.08f;
     clicked = RenderButton(spec);
     if(style == ButtonStyleOutline && ui_material_style()) {
-        DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, ScaleUIPx(1),
+        DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, Scale(1),
                                     ui_material_scheme().outline);
     }
 
     if(!ui_material_style() && UITransitionCuesEnabled() &&
        style == ButtonStyleTabSelected &&
-       !disabled && w > ScaleUIPx(18)) {
-        int cue_h = ScaleUIPx(2);
+       !disabled && w > Scale(18)) {
+        int cue_h = Scale(2);
         if(cue_h < 1)
             cue_h = 1;
-        DrawRectangle(x + ScaleUIPx(9), y + h - cue_h, w - ScaleUIPx(18),
+        DrawRectangle(x + Scale(9), y + h - cue_h, w - Scale(18),
                       cue_h, LightenUIColor(c_button_hover, 18));
     }
 
@@ -621,12 +621,12 @@ segmented_item_width(const SegmentOption *option, int font,
                                 ? option->label
                                 : "",
                             font);
-    int item_w = label_w + ScaleUIPx(20);
+    int item_w = label_w + Scale(20);
 
     if(min_item_width <= 0)
-        min_item_width = ScaleUIPx(72);
+        min_item_width = Scale(72);
     if(max_item_width <= 0)
-        max_item_width = ScaleUIPx(180);
+        max_item_width = Scale(180);
     if(item_w < min_item_width)
         item_w = min_item_width;
     if(max_item_width > 0 && item_w > max_item_width)
@@ -638,8 +638,8 @@ int
 GetSegmentedControlHeight(SegmentedControlProps control)
 {
     int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
-    int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
+    int gap = control.gap > 0 ? control.gap : Scale(6);
+    int row_h = control.height > 0 ? control.height : Scale(30);
     int row_w = 0;
     int rows = 1;
 
@@ -672,8 +672,8 @@ SegmentedControl(SegmentedControlProps control)
 {
     SegmentedControlResult result;
     int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
-    int row_h = control.height > 0 ? control.height : ScaleUIPx(30);
+    int gap = control.gap > 0 ? control.gap : Scale(6);
+    int row_h = control.height > 0 ? control.height : Scale(30);
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -792,11 +792,11 @@ score_control_count(ScoreControlProps control)
 int
 GetScoreControlHeight(ScoreControlProps control)
 {
-    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
-    int row_h = control.height > 0 ? control.height : ScaleUIPx(34);
+    int gap = control.gap > 0 ? control.gap : Scale(6);
+    int row_h = control.height > 0 ? control.height : Scale(34);
     int item_w = control.min_item_width > 0
                      ? control.min_item_width
-                     : ScaleUIPx(42);
+                     : Scale(42);
     int count = score_control_count(control);
     int per_row;
     int rows;
@@ -817,11 +817,11 @@ ScoreControl(ScoreControlProps control)
 {
     ScoreControlResult result;
     int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : ScaleUIPx(6);
-    int row_h = control.height > 0 ? control.height : ScaleUIPx(34);
+    int gap = control.gap > 0 ? control.gap : Scale(6);
+    int row_h = control.height > 0 ? control.height : Scale(34);
     int item_w = control.min_item_width > 0
                      ? control.min_item_width
-                     : ScaleUIPx(42);
+                     : Scale(42);
     int min_value = control.min_value;
     int max_value = control.max_value;
     int count;
@@ -922,7 +922,7 @@ int
 DrawUIInfoButton(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int min_touch = ScaleUIPx(32);
+    int min_touch = Scale(32);
     int radius;
     int active = 0;
     int hover = 0;
@@ -933,7 +933,7 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     int font;
 
     if(diameter <= 0)
-        diameter = ScaleUIPx(18);
+        diameter = Scale(18);
     radius = diameter / 2;
     hit = ui_centered_min_hit_rect(center_x - radius, center_y - radius,
                                   diameter, diameter, min_touch, min_touch);

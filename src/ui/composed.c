@@ -14,9 +14,9 @@ int CarouselControls(CarouselControlsProps p)
     if(!p.disabled)
         selected = (selected + p.move % p.count + p.count) % p.count;
 
-    int hit = ScaleUIPx(56);
-    int inset = ScaleUIPx(12);
-    int icon = ScaleUIPx(14);
+    int hit = Scale(56);
+    int inset = Scale(12);
+    int icon = Scale(14);
     if(p.bounds.width >= hit * 2 && p.bounds.height >= hit) {
         for(int i = 0; i < 2; i++) {
             Rectangle bounds = {
@@ -35,11 +35,11 @@ int CarouselControls(CarouselControlsProps p)
                 DrawCircleV(center, hit / 2, Fade(BLACK, 0.46f));
                 DrawLineEx((Vector2){center.x - d * icon / 2,
                                      center.y - icon},
-                           tip, ScaleUIPx(3), foreground);
+                           tip, Scale(3), foreground);
                 DrawLineEx(tip,
                            (Vector2){center.x - d * icon / 2,
                                      center.y + icon},
-                           ScaleUIPx(3), foreground);
+                           Scale(3), foreground);
             }
             if(InvisibleButton((InvisibleButtonProps){
                    .bounds = bounds,
@@ -51,7 +51,7 @@ int CarouselControls(CarouselControlsProps p)
         }
     }
 
-    int indicator_hit = ScaleUIPx(32);
+    int indicator_hit = Scale(32);
     if(p.indicators.width >= indicator_hit * p.count &&
        p.indicators.height >= indicator_hit) {
         float x = p.indicators.x +
@@ -71,7 +71,7 @@ int CarouselControls(CarouselControlsProps p)
             if(IsWindowReady()) {
                 DrawCircle((int)bounds.x + indicator_hit / 2,
                            (int)bounds.y + indicator_hit / 2,
-                           ScaleUIPx(i == selected ? 4 : 3),
+                           Scale(i == selected ? 4 : 3),
                            Fade(GetThemeText(),
                                 p.disabled ? 0.2f
                                            : (i == selected ? 1.0f : 0.28f)));

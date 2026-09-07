@@ -193,28 +193,28 @@ SidebarAccountHeaderResult
 DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
 {
     SidebarAccountHeaderResult result = {0};
-    int height = header.height > 0 ? header.height : ScaleUIPx(138);
-    int top_pad = ScaleUIPx(24);
-    int avatar_r = ScaleUIPx(28);
+    int height = header.height > 0 ? header.height : Scale(138);
+    int top_pad = Scale(24);
+    int avatar_r = Scale(28);
     int avatar_size = avatar_r * 2;
     int padding_x = header.content_padding_x > 0 ? header.content_padding_x
-                                                     : ScaleUIPx(16);
+                                                     : Scale(16);
     int avatar_x = header.x + padding_x + avatar_r;
     int avatar_y = header.y + top_pad + avatar_r;
-    int name_x = avatar_x + avatar_r + ScaleUIPx(14);
-    int name_y = avatar_y - ScaleUIPx(14);
+    int name_x = avatar_x + avatar_r + Scale(14);
+    int name_y = avatar_y - Scale(14);
     int name_font = GetFontSize();
     int small_font = GetSmallFontSize();
-    int count_y = avatar_y + avatar_r + ScaleUIPx(8);
+    int count_y = avatar_y + avatar_r + Scale(8);
     int click_enabled = header.current_frame == 0 ||
                         header.current_frame != header.block_click_frame;
     const char *username = header.username != NULL ? header.username : "";
     const char *subtitle = header.subtitle != NULL ? header.subtitle : "";
     const char *friends_text =
         header.friends_text != NULL ? header.friends_text : "";
-    int username_w = TextWidth(username, name_font) + ScaleUIPx(8);
-    int username_h = TextHeight(username, name_font) + ScaleUIPx(8);
-    int max_name_w = header.width - (name_x - header.x) - ScaleUIPx(12);
+    int username_w = TextWidth(username, name_font) + Scale(8);
+    int username_h = TextHeight(username, name_font) + Scale(8);
+    int max_name_w = header.width - (name_x - header.x) - Scale(12);
     Texture2D pfp_icon = header.pfp_icon;
     Rectangle pfp_bounds;
     Rectangle username_bounds;
@@ -223,8 +223,8 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     Vector2 mouse = ui_mouse_world();
     int released = click_enabled && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
-    if(max_name_w < ScaleUIPx(48))
-        max_name_w = ScaleUIPx(48);
+    if(max_name_w < Scale(48))
+        max_name_w = Scale(48);
     if(username_w > max_name_w)
         username_w = max_name_w;
     if(pfp_icon.id == 0 && header.icons != NULL &&
@@ -232,18 +232,18 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
        header.pfp_icon_type < UI_ICON_TYPE_COUNT)
         pfp_icon = header.icons[header.pfp_icon_type];
 
-    pfp_bounds.x = (float)(avatar_x - avatar_r - ScaleUIPx(4));
-    pfp_bounds.y = (float)(avatar_y - avatar_r - ScaleUIPx(4));
-    pfp_bounds.width = (float)(avatar_size + ScaleUIPx(8));
-    pfp_bounds.height = (float)(avatar_size + ScaleUIPx(8));
+    pfp_bounds.x = (float)(avatar_x - avatar_r - Scale(4));
+    pfp_bounds.y = (float)(avatar_y - avatar_r - Scale(4));
+    pfp_bounds.width = (float)(avatar_size + Scale(8));
+    pfp_bounds.height = (float)(avatar_size + Scale(8));
     username_bounds.x = (float)name_x;
-    username_bounds.y = (float)(name_y - ScaleUIPx(4));
+    username_bounds.y = (float)(name_y - Scale(4));
     username_bounds.width = (float)username_w;
     username_bounds.height = (float)username_h;
     friends_bounds.x = (float)header.x;
     friends_bounds.y = (float)count_y;
     friends_bounds.width = (float)header.width;
-    friends_bounds.height = (float)ScaleUIPx(36);
+    friends_bounds.height = (float)Scale(36);
     result.height = height;
 
     header_bounds.x = (float)header.x;
@@ -258,7 +258,7 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
             result.pfp_clicked = 1;
         }
     }
-    DrawCircle(avatar_x, avatar_y, (float)(avatar_r + ScaleUIPx(3)), c_surface);
+    DrawCircle(avatar_x, avatar_y, (float)(avatar_r + Scale(3)), c_surface);
     DrawCircle(avatar_x, avatar_y, (float)avatar_r,
                LightenUIColor(c_surface, 12));
     DrawCircleLines(avatar_x, avatar_y, (float)avatar_r,
@@ -280,7 +280,7 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     DrawFittedTextInRect(username, username_bounds, name_font,
                            Text8, c_text);
     if(subtitle[0] != '\0')
-        DrawUIText(subtitle, name_x, name_y + ScaleUIPx(22), small_font,
+        DrawUIText(subtitle, name_x, name_y + Scale(22), small_font,
                    DarkenUIColor(c_text, 34));
 
     if(CheckCollisionPointRec(mouse, friends_bounds) &&
@@ -294,8 +294,8 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
         }
     }
     if(friends_text[0] != '\0')
-        DrawUIText(friends_text, header.x + ScaleUIPx(12),
-                   count_y + ScaleUIPx(8), small_font, c_text);
+        DrawUIText(friends_text, header.x + Scale(12),
+                   count_y + Scale(8), small_font, c_text);
 
     return result;
 }
@@ -306,8 +306,8 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     ProfilePicturePickerResult result = {0};
     static int default_scroll_offset = 0;
     int count = GetUIProfilePictureIconCount();
-    int width = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(520);
-    int gap = ScaleUIPx(8);
+    int width = modal.max_width > 0 ? Scale(modal.max_width) : Scale(520);
+    int gap = Scale(8);
     int columns;
     int content_w;
     int cell;
@@ -328,13 +328,13 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     Vector2 mouse;
     int i;
 
-    if(width > ui_view_width - ScaleUIPx(24))
-        width = ui_view_width - ScaleUIPx(24);
-    if(width < ScaleUIPx(240))
-        width = ScaleUIPx(240);
+    if(width > ui_view_width - Scale(24))
+        width = ui_view_width - Scale(24);
+    if(width < Scale(240))
+        width = Scale(240);
 
-    content_w = width - ScaleUIPx(36);
-    columns = (content_w + gap) / (ScaleUIPx(64) + gap);
+    content_w = width - Scale(36);
+    columns = (content_w + gap) / (Scale(64) + gap);
     if(columns < 3)
         columns = 3;
     if(columns > count)
@@ -342,15 +342,15 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     if(columns < 1)
         columns = 1;
     cell = (content_w - (columns - 1) * gap) / columns;
-    if(cell > ScaleUIPx(64))
-        cell = ScaleUIPx(64);
-    if(cell < ScaleUIPx(52))
-        cell = ScaleUIPx(52);
+    if(cell > Scale(64))
+        cell = Scale(64);
+    if(cell < Scale(52))
+        cell = Scale(52);
     grid_w = columns * cell + (columns - 1) * gap;
     rows = columns > 0 ? (count + columns - 1) / columns : 0;
     content_h = rows > 0 ? rows * cell + (rows - 1) * gap : 0;
-    height = ScaleUIPx(74) + content_h + ScaleUIPx(18);
-    max_height = ui_view_height - ScaleUIPx(24);
+    height = Scale(74) + content_h + Scale(18);
+    max_height = ui_view_height - Scale(24);
     if(height > max_height)
         height = max_height;
 
@@ -375,7 +375,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     scroll_view = BeginUIScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
-    icon_inset = ScaleUIPx(12);
+    icon_inset = Scale(12);
     for(i = 0; i < count; i++) {
         int row = i / columns;
         int col = i % columns;
@@ -396,7 +396,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
                     LightenUIColor(c_surface, active ? 68 : 34),
                     DarkenUIColor(c_surface, active ? 68 : 34));
         if(active)
-            DrawRectangleLinesEx(bounds, ScaleUIPx(2), c_button_hover);
+            DrawRectangleLinesEx(bounds, Scale(2), c_button_hover);
         if(modal.icons != NULL && type > UI_ICON_TYPE_NONE &&
            type < UI_ICON_TYPE_COUNT)
             icon = modal.icons[type];

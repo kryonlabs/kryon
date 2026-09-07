@@ -229,21 +229,21 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "\n    Background(GetThemeBackground())\n");
     } else if(strcmp(type->name, "Text") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Text(\"Text\", ScaleUIPx(%d), ScaleUIPx(%d), Text16, GetThemeText())\n",
+                 "\n    Text(\"Text\", Scale(%d), Scale(%d), Text16, GetThemeText())\n",
                  x, y);
     } else if(strcmp(type->name, "Rect") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Rect(ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(160), ScaleUIPx(90), GetThemeButton(), GetThemeButtonHover())\n",
+                 "\n    Rect(Scale(%d), Scale(%d), Scale(160), Scale(90), GetThemeButton(), GetThemeButtonHover())\n",
                  x, y);
     } else if(strcmp(type->name, "Line") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Line(ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(%d), GetThemeLink())\n",
+                 "\n    Line(Scale(%d), Scale(%d), Scale(%d), Scale(%d), GetThemeLink())\n",
                  x, y, x + 160, y + 40);
     } else if(strcmp(type->name, "Image") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Image((PictureProps){\n"
                  "        .asset_path = \"assets/image.png\",\n"
-                 "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)},\n"
+                 "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n"
                  "        .tint = WHITE,\n"
                  "        .fit = PICTURE_FIT_CONTAIN,\n"
                  "    })\n",
@@ -251,7 +251,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Button") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    if Button((ButtonProps){\n"
-                 "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(140), ScaleUIPx(36)},\n"
+                 "        .bounds = {Scale(%d), Scale(%d), Scale(140), Scale(36)},\n"
                  "        .label = \"Button\",\n"
                  "        .style = ButtonStylePrimary,\n"
                  "        .font = Text16,\n"
@@ -265,7 +265,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "    field_cursor_%d: int = 0\n"
                  "    field_focused_%d: int = 0\n"
                  "    TextField((TextFieldProps){\n"
-                 "        .bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(34)},\n"
+                 "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(34)},\n"
                  "        .text = field_%d,\n"
                  "        .text_size = sizeof(field_%d),\n"
                  "        .cursor_position = &field_cursor_%d,\n"
@@ -275,35 +275,35 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .focus_id = %d,\n"
                  "        .style = (TextInputStyle){\n"
                  "            GetThemeSurface(), GetThemeButton(), GetThemeLink(),\n"
-                 "            GetThemeText(), GetThemeLink(), 0, ScaleUIPx(8), ScaleUIPx(6),\n"
+                 "            GetThemeText(), GetThemeLink(), 0, Scale(8), Scale(6),\n"
                  "        },\n"
                  "    })\n",
                  id, id, id, x, y, id, id, id, id, 5200 + (id % 1000));
     } else if(strcmp(type->name, "Toggle") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    toggle_%d: int = 0\n"
-                 "    Toggle(%d, ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(120), ScaleUIPx(28), &toggle_%d, \"Off\", \"On\")\n",
+                 "    Toggle(%d, Scale(%d), Scale(%d), Scale(120), Scale(28), &toggle_%d, \"Off\", \"On\")\n",
                  id, 6200 + (id % 1000), x, y, id);
     } else if(strcmp(type->name, "Slider") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    slider_%d: int = 50\n"
-                 "    Slider(%d, ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), \"Value\", 0, 100, &slider_%d, \"\", nil)\n",
+                 "    Slider(%d, Scale(%d), Scale(%d), Scale(180), \"Value\", 0, 100, &slider_%d, \"\", nil)\n",
                  id, 7200 + (id % 1000), x, y, id);
     } else if(strcmp(type->name, "Checkbox") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    check_%d: int = 0\n"
-                 "    Checkbox(%d, ScaleUIPx(%d), ScaleUIPx(%d), \"Checkbox\", &check_%d)\n",
+                 "    Checkbox(%d, Scale(%d), Scale(%d), \"Checkbox\", &check_%d)\n",
                  id, 8200 + (id % 1000), x, y, id);
     } else if(strcmp(type->name, "Dropdown") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    options_%d: [3] const char* = {\"One\", \"Two\", \"Three\"}\n"
                  "    selected_%d: int = 0\n"
-                 "    Dropdown(%d, ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(34), options_%d, 3, &selected_%d)\n",
+                 "    Dropdown(%d, Scale(%d), Scale(%d), Scale(180), Scale(34), options_%d, 3, &selected_%d)\n",
                  id, id, 9200 + (id % 1000), x, y, id, id);
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Stack((ColumnProps){.bounds = {ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110)}, .key = Key(\"group-%d\")})\n"
-                 "    Rect(ScaleUIPx(%d), ScaleUIPx(%d), ScaleUIPx(180), ScaleUIPx(110), Fade(GetThemeButton(), 0.45), GetThemeButtonHover())\n"
+                 "\n    Stack((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"
+                 "    Rect(Scale(%d), Scale(%d), Scale(180), Scale(110), Fade(GetThemeButton(), 0.45), GetThemeButtonHover())\n"
                  "    End()\n",
                  x, y, 10200 + (id % 1000), x, y);
     } else {

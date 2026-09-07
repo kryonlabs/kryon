@@ -62,8 +62,8 @@ UpdateUIReorderList(UIReorderList list)
     Vector2 mouse = ui_mouse_world();
     int pointer_y = (int)mouse.y;
     int captured = ui_input_captures_click_internal(mouse, 0);
-    int threshold = list.drag_threshold > 0 ? list.drag_threshold : ScaleUIPx(5);
-    int handle_w = list.handle_width > 0 ? list.handle_width : ScaleUIPx(36);
+    int threshold = list.drag_threshold > 0 ? list.drag_threshold : Scale(5);
+    int handle_w = list.handle_width > 0 ? list.handle_width : Scale(36);
 
     result.from_index = -1;
     result.to_index = -1;
@@ -121,10 +121,10 @@ UpdateUIReorderList(UIReorderList list)
                                       : (int)(list.bounds.y + list.bounds.height);
                 int margin = list.auto_scroll_margin > 0
                                  ? list.auto_scroll_margin
-                                 : ScaleUIPx(34);
+                                 : Scale(34);
                 int step = list.auto_scroll_step > 0
                                ? list.auto_scroll_step
-                               : ScaleUIPx(12);
+                               : Scale(12);
 
                 result.dragging = 1;
                 PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
@@ -201,9 +201,9 @@ UpdateUIReorderList(UIReorderList list)
 void
 DrawUIReorderHandle(int x, int y, int w, int h, int active)
 {
-    int dot = ScaleUIPx(3);
-    int gap = ScaleUIPx(4);
-    int col_gap = ScaleUIPx(8);
+    int dot = Scale(3);
+    int gap = Scale(4);
+    int col_gap = Scale(8);
     int total_w = dot * 2 + col_gap;
     int total_h = dot * 3 + gap * 2;
     int start_x = x + (w - total_w) / 2;
@@ -229,16 +229,16 @@ DrawUIReorderPlaceholder(Rectangle bounds)
     int y = (int)bounds.y;
     int w = (int)bounds.width;
     int h = (int)bounds.height;
-    int line_h = ScaleUIPx(2);
+    int line_h = Scale(2);
     Color color = LightenUIColor(c_button_hover, 10);
 
     if(w <= 0 || h <= 0)
         return;
-    if(h >= ScaleUIPx(32)) {
-        int inset = ScaleUIPx(3);
+    if(h >= Scale(32)) {
+        int inset = Scale(3);
         Rectangle slot = {(float)(x + inset), (float)(y + inset),
                           (float)(w - inset * 2), (float)(h - inset * 2)};
-        float stroke = (float)ScaleUIPx(2);
+        float stroke = (float)Scale(2);
 
         if(slot.width <= 0 || slot.height <= 0)
             return;

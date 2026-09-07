@@ -3,7 +3,7 @@
 int
 GetUIScrollbarReservedWidth(int max_scroll)
 {
-    return max_scroll > 0 ? ScaleUIPx(16) : 0;
+    return max_scroll > 0 ? Scale(16) : 0;
 }
 
 int
@@ -22,7 +22,7 @@ int
 GetUIScrollbarSafeContentWidth(int content_x, int content_width,
                                 int scrollbar_x, int max_scroll)
 {
-    int gap = ScaleUIPx(20);
+    int gap = Scale(20);
     int safe_width = content_width;
 
     if(max_scroll <= 0 || scrollbar_x <= 0)
@@ -44,7 +44,7 @@ MeasureUIScrollContainer(UIScrollArea area)
     int y = (int)area.bounds.y;
     int w = (int)area.bounds.width;
     int h = (int)area.bounds.height;
-    int scrollbar_w = ScaleUIPx(8);
+    int scrollbar_w = Scale(8);
     int scrollbar_x = area.scrollbar_x > 0
                           ? area.scrollbar_x
                           : x + w - scrollbar_w;
@@ -116,8 +116,8 @@ BeginUIScrollPage(UIScrollPageSpec spec)
         area.content_x = content_x;
         area.content_width = content_w;
         area.scroll_offset = spec.scroll_offset;
-        area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step : ScaleUIPx(42);
-        area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - ScaleUIPx(8);
+        area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step : Scale(42);
+        area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - Scale(8);
         measured = MeasureUIScrollContainer(area);
         if(measured.content_w == draw_w)
             break;
@@ -206,11 +206,11 @@ BeginUIScrollContainer(UIScrollArea area)
     UIScrollView view = MeasureUIScrollContainer(area);
     Vector2 mouse_world = ui_mouse_world();
     int y = (int)area.bounds.y;
-    int wheel_step = area.wheel_step > 0 ? area.wheel_step : ScaleUIPx(42);
+    int wheel_step = area.wheel_step > 0 ? area.wheel_step : Scale(42);
     int inside = CheckCollisionPointRec(mouse_world, area.bounds);
     int captured = UIInputCapturesClick(mouse_world);
-    int drag_threshold = ScaleUIPx(5);
-    int scrollbar_w = ScaleUIPx(8);
+    int drag_threshold = Scale(5);
+    int scrollbar_w = Scale(8);
     int scrollbar_x = area.scrollbar_x > 0
                           ? area.scrollbar_x
                           : (int)(area.bounds.x + area.bounds.width) - scrollbar_w;
@@ -283,7 +283,7 @@ BeginUIScrollContainer(UIScrollArea area)
         view.content_y = y;
     }
     {
-        int visual_bleed = ScaleUIPx(8);
+        int visual_bleed = Scale(8);
         Rectangle screen_bounds = {
             g_ui_camera.offset.x + area.bounds.x * g_ui_camera.zoom,
             g_ui_camera.offset.y + area.bounds.y * g_ui_camera.zoom,
@@ -351,7 +351,7 @@ BeginUIScrollContainer(UIScrollArea area)
 void
 EndUIScrollContainer(UIScrollArea area, UIScrollView view)
 {
-    int scrollbar_w = ScaleUIPx(8);
+    int scrollbar_w = Scale(8);
     int scrollbar_x;
 
     EndUIClip();
@@ -495,8 +495,8 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)
         return 0;
 
-    int scrollbar_width = ScaleUIPx(8);
-    int scrollbar_min_thumb = ScaleUIPx(24);
+    int scrollbar_width = Scale(8);
+    int scrollbar_min_thumb = Scale(24);
     int track_padding = 0;
 
     /* Calculate thumb size and position */
@@ -574,7 +574,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         thumb_bounds.y = y + (int)((float)*scroll_offset / max_scroll * track_span);
         DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
         DrawRectangleRec(thumb_bounds, thumb_color);
-        DrawRectangleLinesEx(thumb_bounds, (float)ScaleUIPx(1),
+        DrawRectangleLinesEx(thumb_bounds, (float)Scale(1),
                              ui_scrollbar_contrast_from(thumb_color, 34));
     }
 

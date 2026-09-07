@@ -6,16 +6,16 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                  const char *value_text_override)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
+    Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)Scale(56)};
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
     int label_font = GetFontSize();
     int value_font = GetFontSize();
-    int track_y = y + ScaleUIPx(28);
-    int track_h = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(12);
-    int knob_h = ScaleUIPx(22);
+    int track_y = y + Scale(28);
+    int track_h = Scale(8);
+    int knob_w = Scale(12);
+    int knob_h = Scale(22);
     int knob_y = track_y - (knob_h - track_h) / 2;
     int min_touch_h = ui_touch_target_min();
     int changed = 0;
@@ -35,12 +35,12 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
-    if(w < ScaleUIPx(32))
-        w = ScaleUIPx(32);
-    track_y = y + ScaleUIPx(28);
+    if(w < Scale(32))
+        w = Scale(32);
+    track_y = y + Scale(28);
     knob_y = track_y - (knob_h - track_h) / 2;
     hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
-    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)ScaleUIPx(56)};
+    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)Scale(56)};
     UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -115,20 +115,20 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             Color inactive = ui_material_surface_container();
             Color outline = ui_material_outline();
 
-            DrawRectangleRounded((Rectangle){x, track_y, w, ScaleUIPx(4)},
+            DrawRectangleRounded((Rectangle){x, track_y, w, Scale(4)},
                                  0.5f, 8, inactive);
-            DrawRectangleRounded((Rectangle){x, track_y, active_w, ScaleUIPx(4)},
+            DrawRectangleRounded((Rectangle){x, track_y, active_w, Scale(4)},
                                  0.5f, 8, c_circle);
             if(g_ui_slider_active_id == id)
-                ui_material_state_layer((Rectangle){knob_x - ScaleUIPx(10),
-                                                    knob_y - ScaleUIPx(5),
-                                                    knob_w + ScaleUIPx(20),
-                                                    knob_h + ScaleUIPx(10)},
+                ui_material_state_layer((Rectangle){knob_x - Scale(10),
+                                                    knob_y - Scale(5),
+                                                    knob_w + Scale(20),
+                                                    knob_h + Scale(10)},
                                         c_circle, 0, 0, 1);
             DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                       (float)ScaleUIPx(10), c_circle);
+                       (float)Scale(10), c_circle);
             DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                            (float)ScaleUIPx(10), outline);
+                            (float)Scale(10), outline);
         } else if(ui_modern_style()) {
             DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
                        (float)(knob_h / 2), c_button);
@@ -150,14 +150,14 @@ ui_render_vertical_slider(int id, int x, int y, int h,
                           int min, int max, int *value)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
-                               (float)ScaleUIPx(36), (float)h};
+    Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
+                               (float)Scale(36), (float)h};
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    int track_w = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(20);
-    int knob_h = ScaleUIPx(12);
+    int track_w = Scale(8);
+    int knob_w = Scale(20);
+    int knob_h = Scale(12);
     int track_x = x - track_w / 2;
     int min_touch_w = ui_touch_target_min();
     int changed = 0;
@@ -174,13 +174,13 @@ ui_render_vertical_slider(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < ScaleUIPx(32))
-        h = ScaleUIPx(32);
+    if(h < Scale(32))
+        h = Scale(32);
     track_x = x - track_w / 2;
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                    min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
-                                (float)ScaleUIPx(36), (float)h};
+    editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
+                                (float)Scale(36), (float)h};
     UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -270,14 +270,14 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                                      void *callback_user_data)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - ScaleUIPx(18)), (float)y,
-                               (float)ScaleUIPx(36), (float)h};
+    Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
+                               (float)Scale(36), (float)h};
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    int track_w = ScaleUIPx(8);
-    int knob_w = ScaleUIPx(20);
-    int knob_h = ScaleUIPx(12);
+    int track_w = Scale(8);
+    int knob_w = Scale(20);
+    int knob_h = Scale(12);
     int track_x = x - track_w / 2;
     int min_touch_w = ui_touch_target_min();
     int changed = 0;
@@ -295,13 +295,13 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < ScaleUIPx(32))
-        h = ScaleUIPx(32);
+    if(h < Scale(32))
+        h = Scale(32);
     track_x = x - track_w / 2;
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                    min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - ScaleUIPx(18)), (float)y,
-                                (float)ScaleUIPx(36), (float)h};
+    editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
+                                (float)Scale(36), (float)h};
     UIWidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -401,15 +401,15 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     int can_draw = IsWindowReady();
     int off_w = material_style ? 0 : TextWidth(off_label, font);
     int on_w = material_style ? 0 : TextWidth(on_label, font);
-    int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
-    int min_w = material_style ? ScaleUIPx(52) : min_half_w * 2 + ScaleUIPx(6);
+    int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
+    int min_w = material_style ? Scale(52) : min_half_w * 2 + Scale(6);
     Rectangle bounds;
     int enabled;
     int pressed;
     if(w < min_w)
         w = min_w;
-    if(h < ScaleUIPx(34))
-        h = ScaleUIPx(34);
+    if(h < Scale(34))
+        h = Scale(34);
 
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     widget = BeginUIWidget("toggle",
@@ -425,8 +425,8 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     h = (int)editor_bounds.height;
     if(w < min_w)
         w = min_w;
-    if(h < ScaleUIPx(34))
-        h = ScaleUIPx(34);
+    if(h < Scale(34))
+        h = Scale(34);
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     UIWidgetSetBounds(&widget, editor_bounds);
 
@@ -454,14 +454,14 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     }
 
     if(material_style) {
-        int track_w = ScaleUIPx(52);
-        int track_h = ScaleUIPx(32);
+        int track_w = Scale(52);
+        int track_h = Scale(32);
         int track_x = x + (w - track_w) / 2;
         int track_y = y + (h - track_h) / 2;
         int checked = value != NULL && *value;
-        int thumb_r = ScaleUIPx(checked ? 12 : 8);
-        int thumb_cx = checked ? track_x + track_w - ScaleUIPx(16)
-                              : track_x + ScaleUIPx(16);
+        int thumb_r = Scale(checked ? 12 : 8);
+        int thumb_cx = checked ? track_x + track_w - Scale(16)
+                              : track_x + Scale(16);
         int thumb_cy = track_y + track_h / 2;
         Color track = checked ? c_circle : ui_material_surface_container();
         Color thumb = checked ? ui_material_on_color(c_circle) : ui_material_outline();
@@ -472,15 +472,15 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         DrawRectangleRoundedLines((Rectangle){track_x, track_y, track_w, track_h},
                                   0.50f, 12, outline);
         if(CheckCollisionPointRec(mouse_world, bounds))
-            ui_material_state_layer((Rectangle){track_x - ScaleUIPx(8),
-                                                track_y - ScaleUIPx(8),
-                                                track_w + ScaleUIPx(16),
-                                                track_h + ScaleUIPx(16)},
+            ui_material_state_layer((Rectangle){track_x - Scale(8),
+                                                track_y - Scale(8),
+                                                track_w + Scale(16),
+                                                track_h + Scale(16)},
                                     c_circle, UIHoverEffectsEnabled(), 0,
                                     IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb);
         if(checked) {
-            int dot_r = ScaleUIPx(4);
+            int dot_r = Scale(4);
             Color dot = DarkenUIColor(thumb, 110);
             if(dot_r < 2)
                 dot_r = 2;
@@ -526,8 +526,8 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     char editor_id[96];
     UIWidget widget;
     int font = GetFontSize();
-    int box_size = ScaleUIPx(22);
-    int label_gap = ScaleUIPx(10);
+    int box_size = Scale(22);
+    int label_gap = Scale(10);
     int label_w = TextWidth(label, font);
     int label_h = TextLineHeight(font);
     int row_h = box_size > label_h ? box_size : label_h;
@@ -585,15 +585,15 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             mark_color = scheme.disabled_container;
             label_color = scheme.disabled_content;
         }
-        ui_material_state_layer((Rectangle){box.x - ScaleUIPx(12),
-                                            box.y - ScaleUIPx(12),
-                                            box.width + ScaleUIPx(24),
-                                            box.height + ScaleUIPx(24)},
+        ui_material_state_layer((Rectangle){box.x - Scale(12),
+                                            box.y - Scale(12),
+                                            box.width + Scale(24),
+                                            box.height + Scale(24)},
                                 state_color, hovered, 0,
                                 hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         if(fill.a != 0)
             DrawRectangleRounded(box, 0.12f, 8, fill);
-        DrawRectangleRoundedLinesEx(box, 0.12f, 8, ScaleUIPx(2), border);
+        DrawRectangleRoundedLinesEx(box, 0.12f, 8, Scale(2), border);
     } else if(ui_modern_style()) {
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         Color border = LightenUIColor(box_color, 22);
@@ -608,7 +608,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     }
 
     if(*value) {
-        int padding = ScaleUIPx(4);
+        int padding = Scale(4);
         int box_y = y + (row_h - box_size) / 2;
         DrawLine(x + padding, box_y + padding, x + box_size / 2,
                  box_y + box_size - padding, mark_color);

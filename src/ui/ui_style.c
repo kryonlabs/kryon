@@ -98,7 +98,7 @@ ui_radius_px(Rectangle bounds, float radius_px)
     min_side = bounds.height < bounds.width ? bounds.height : bounds.width;
     if(min_side <= 0.0f)
         return 0.0f;
-    radius = (float)ScaleUIPx(radius_px) / min_side;
+    radius = (float)Scale(radius_px) / min_side;
     return radius > 0.5f ? 0.5f : radius;
 }
 
@@ -111,7 +111,7 @@ ui_control_bevel_enabled(void)
 int
 ui_touch_target_min(void)
 {
-    return ScaleUIPx(GetUIStyleTokens().touch_target_min);
+    return Scale(GetUIStyleTokens().touch_target_min);
 }
 
 Color
@@ -269,10 +269,10 @@ ui_material_focus(Rectangle bounds)
     Color outline = c_circle;
 
     outline.a = 220;
-    DrawRectangleRoundedLines((Rectangle){bounds.x - ScaleUIPx(2),
-                                          bounds.y - ScaleUIPx(2),
-                                          bounds.width + ScaleUIPx(4),
-                                          bounds.height + ScaleUIPx(4)},
+    DrawRectangleRoundedLines((Rectangle){bounds.x - Scale(2),
+                                          bounds.y - Scale(2),
+                                          bounds.width + Scale(4),
+                                          bounds.height + Scale(4)},
                               0.50f, 12, outline);
 }
 
@@ -290,8 +290,8 @@ ui_material_elevation(Rectangle bounds, float radius, int level)
 
     shadow = BLACK;
     shadow.a = (unsigned char)(18 + level * 6);
-    y1 = ScaleUIPx(level);
-    y2 = ScaleUIPx(level * 2);
+    y1 = Scale(level);
+    y2 = Scale(level * 2);
     DrawRectangleRounded((Rectangle){bounds.x, bounds.y + (float)y2,
                                      bounds.width, bounds.height},
                          radius, 12, shadow);
@@ -351,8 +351,8 @@ ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 
     max_radius = sqrtf(bounds.width * bounds.width + bounds.height * bounds.height);
     radius = max_radius * (ripple->age / 0.32f);
-    if(radius < ScaleUIPx(8))
-        radius = (float)ScaleUIPx(8);
+    if(radius < Scale(8))
+        radius = (float)Scale(8);
     if(radius > max_radius)
         radius = max_radius;
     color.a = pressed ? 28 : (unsigned char)(28.0f * (1.0f - ripple->age / 0.32f));
@@ -388,7 +388,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
         Color shadow = DarkenUIColor(c_bg, 35);
         shadow.a = tokens.shadow_alpha;
         DrawRectangleRounded((Rectangle){bounds.x,
-                                         bounds.y + ScaleUIPx(tokens.shadow_offset_y),
+                                         bounds.y + Scale(tokens.shadow_offset_y),
                                          bounds.width, bounds.height},
                              radius, 12, shadow);
     }
@@ -403,11 +403,11 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(tokens.shine_alpha > 0) {
         Color shine = WHITE;
         shine.a = tokens.shine_alpha;
-        int inset = ScaleUIPx(2);
-        int shine_h = ScaleUIPx(3);
+        int inset = Scale(2);
+        int shine_h = Scale(3);
         if(bounds.width > (float)(inset * 2) && bounds.height > (float)(shine_h + inset))
             DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + ScaleUIPx(1),
+                                             bounds.y + Scale(1),
                                              bounds.width - (float)(inset * 2),
                                              (float)shine_h},
                                  radius, 8, shine);

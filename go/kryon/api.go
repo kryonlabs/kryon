@@ -181,13 +181,13 @@ func ValueFloat(prefix string, value float32, format string, bounds Rectangle, f
 	active().ValueFloat(prefix, value, format, bounds, fontSize, color)
 }
 func TextFormat(format string, args ...any) string { return active().TextFormat(format, args...) }
-func ScaleUIPx(px int32) int32                     { return active().ScaleUIPx(px) }
-func GetFontSize() int32                           { return ScaleUIPx(Text16) }
-func GetSmallFontSize() int32                      { return ScaleUIPx(Text14) }
+func Scale(px int32) int32        { return active().Scale(px) }
+func GetFontSize() int32          { return Scale(Text16) }
+func GetSmallFontSize() int32     { return Scale(Text14) }
 func GetTitleFontSize(title string, maxWidth int32) int32 {
-	large := ScaleUIPx(Text24)
-	medium := ScaleUIPx(Text16)
-	small := ScaleUIPx(Text14)
+	large := Scale(Text24)
+	medium := Scale(Text16)
+	small := Scale(Text14)
 	if maxWidth <= 0 || int32(runtimeTextWidth(title, large)) <= maxWidth {
 		return large
 	}
@@ -197,10 +197,10 @@ func GetTitleFontSize(title string, maxWidth int32) int32 {
 	return small
 }
 func FitFontSize(text string, maxWidth, preferredSize, minSize int32) int32 {
-	minimum := ScaleUIPx(Text8)
-	caption := ScaleUIPx(Text12)
-	small := ScaleUIPx(Text14)
-	body := ScaleUIPx(Text16)
+	minimum := Scale(Text8)
+	caption := Scale(Text12)
+	small := Scale(Text14)
+	body := Scale(Text16)
 	normalize := func(size int32) int32 {
 		switch size {
 		case Text8:
@@ -212,7 +212,7 @@ func FitFontSize(text string, maxWidth, preferredSize, minSize int32) int32 {
 		case Text16:
 			return body
 		case Text24:
-			return ScaleUIPx(Text24)
+			return Scale(Text24)
 		}
 		if size <= minimum {
 			return minimum
@@ -226,7 +226,7 @@ func FitFontSize(text string, maxWidth, preferredSize, minSize int32) int32 {
 		if size <= body {
 			return body
 		}
-		return ScaleUIPx(Text24)
+		return Scale(Text24)
 	}
 	fontSize := normalize(preferredSize)
 	minAllowed := normalize(minSize)

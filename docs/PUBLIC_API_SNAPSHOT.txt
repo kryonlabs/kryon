@@ -1727,7 +1727,7 @@ include/ui_rows.h function UIFormTextFieldEx
 include/ui_rows.h function UIFormY
 include/ui_scaling.h function ClampUIPx
 include/ui_scaling.h function GetUIScale
-include/ui_scaling.h function ScaleUIPx
+include/ui_scaling.h function Scale
 include/ui_scaling.h function SetUIScale
 include/ui_scroll.h function BeginUIScreenScaffold
 include/ui_scroll.h function BeginUIScrollContainer

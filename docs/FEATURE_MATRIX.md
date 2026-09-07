@@ -235,7 +235,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetUIStyleTokens` | ✗ |
 | Animation | ✅ transitions (smoothstep), ripple, keyframe scene anims | ✗ | ◐ `AnimNode` + `TIME` opcode |
 | Text/fonts | ◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi | ✅ `RegisterUIFont(Data)`, `Push/Pop/UseUIFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
-| DPI/scaling | ✅ viewport-derived scale, `ScaleUIPx` | ✅ `ScaleUIPx`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |
+| DPI/scaling | ✅ viewport-derived scale, `Scale` | ✅ `Scale`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |
 | Clipping | ✅ 16-deep scissor stack + input clip stack | ✅ `Begin/EndScissorMode` | ✅ 16-deep `clip_push/pop` in `kry_sw` |
 | Z-order/popups | ✅ overlay paint pass, modal capture, input-capture stack | ◐ dropdown popups internal to `Dropdown` | ◐ dropdown menus handled by the engine |
 | Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard, backend-neutral IME composition; no gamepad nav | ✅ native host key/mouse/text queues | ◐ vtable: mouse, press, wheel, text-key queue |

@@ -10,8 +10,8 @@ DrawUIInfoRows(InfoRowsProps rows)
                           ? rows.separator
                           : DarkenUIColor(c_bg, 30);
     Color default_text = rows.default_text.a != 0 ? rows.default_text : c_text;
-    int row_h = rows.row_height > 0 ? rows.row_height : ScaleUIPx(32);
-    int padding_x = rows.padding_x > 0 ? rows.padding_x : ScaleUIPx(10);
+    int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
+    int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
 
     if(rows.rows == NULL || rows.row_count <= 0 || rows.width <= 0 || row_h <= 0)
         return;
@@ -38,10 +38,10 @@ DrawUIInfoRows(InfoRowsProps rows)
 int
 ui_label_text_field_height(LabelTextFieldProps row)
 {
-    int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
-    int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
+    int label_h = row.label_h > 0 ? row.label_h : Scale(22);
+    int field_h = row.field_h > 0 ? row.field_h : Scale(40);
     int gap = row.gap > 0 ? row.gap : 0;
-    int bottom_gap = row.bottom_gap > 0 ? row.bottom_gap : ScaleUIPx(24);
+    int bottom_gap = row.bottom_gap > 0 ? row.bottom_gap : Scale(24);
 
     return label_h + gap + field_h + bottom_gap;
 }
@@ -56,8 +56,8 @@ int
 DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     int label_font = row.label_font > 0 ? row.label_font : GetSmallFontSize();
-    int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
-    int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
+    int label_h = row.label_h > 0 ? row.label_h : Scale(22);
+    int field_h = row.field_h > 0 ? row.field_h : Scale(40);
     int gap = row.gap > 0 ? row.gap : 0;
     Color label_color = row.label_color.a != 0 ? row.label_color : DarkenUIColor(c_text, 34);
     TextFieldProps field = row.field;
@@ -70,14 +70,14 @@ DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
 int
 ui_section_label_height(SectionLabelProps label)
 {
-    return label.height > 0 ? label.height : ScaleUIPx(24);
+    return label.height > 0 ? label.height : Scale(24);
 }
 
 int
 DrawUISectionLabel(SectionLabelProps label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetSmallFontSize();
-    int icon_d = label.icon_diameter > 0 ? label.icon_diameter : ScaleUIPx(18);
+    int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
     Color color = label.color.a != 0 ? label.color : DarkenUIColor(c_text, 34);
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
@@ -86,14 +86,14 @@ DrawUISectionLabel(SectionLabelProps label, int x, int y)
     if(!label.info_button)
         return 0;
     label_w = TextWidth(text, font);
-    return DrawUIInfoButton(x + label_w + ScaleUIPx(16),
-                               y + font / 2 + ScaleUIPx(1), icon_d);
+    return DrawUIInfoButton(x + label_w + Scale(16),
+                               y + font / 2 + Scale(1), icon_d);
 }
 
 int
 ui_checkbox_row_height(CheckboxRowProps row)
 {
-    return row.height > 0 ? row.height : ScaleUIPx(42);
+    return row.height > 0 ? row.height : Scale(42);
 }
 
 int
@@ -138,7 +138,7 @@ DrawUIOverlayButton(OverlayButtonProps button)
     if(background.a != 0)
         DrawRectangleRec(button.bounds, background);
     if(border.a != 0)
-        DrawRectangleLinesEx(button.bounds, ScaleUIPx(1), border);
+        DrawRectangleLinesEx(button.bounds, Scale(1), border);
     if(button.label != NULL) {
         text_w = TextWidth(button.label, font);
         DrawUIText(button.label,
@@ -159,8 +159,8 @@ DrawUIOverlayButton(OverlayButtonProps button)
 int
 GetUIButtonRowHeight(ButtonRowProps row)
 {
-    int height = row.height > 0 ? row.height : ScaleUIPx(30);
-    int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
+    int height = row.height > 0 ? row.height : Scale(30);
+    int gap = row.gap > 0 ? row.gap : Scale(6);
     int width = row.width;
     int row_w = 0;
     int rows = 1;
@@ -173,9 +173,9 @@ GetUIButtonRowHeight(ButtonRowProps row)
 
     for(int i = 0; i < row.count; i++) {
         int item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + ScaleUIPx(20);
-        int min_w = ScaleUIPx(76);
-        int max_w = ScaleUIPx(144);
+                                   font) + Scale(20);
+        int min_w = Scale(76);
+        int max_w = Scale(144);
         int next_w;
 
         if(item_w < min_w)
@@ -197,7 +197,7 @@ GetUIButtonRowHeight(ButtonRowProps row)
 int
 GetUISpinboxRowHeight(SpinboxRowProps row)
 {
-    return row.row_height > 0 ? row.row_height : ScaleUIPx(54);
+    return row.row_height > 0 ? row.row_height : Scale(54);
 }
 
 UIForm
@@ -301,8 +301,8 @@ UIFormLabelTextField(UIForm *form, LabelTextFieldProps row)
 
     field_bounds = row.field.bounds;
     if(field_bounds.width <= 0 || field_bounds.height <= 0) {
-        int label_h = row.label_h > 0 ? row.label_h : ScaleUIPx(22);
-        int field_h = row.field_h > 0 ? row.field_h : ScaleUIPx(40);
+        int label_h = row.label_h > 0 ? row.label_h : Scale(22);
+        int field_h = row.field_h > 0 ? row.field_h : Scale(40);
         int gap = row.gap > 0 ? row.gap : 0;
         field_bounds = (Rectangle){(float)form->x,
                                    (float)(y + label_h + gap),
@@ -345,12 +345,12 @@ UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
     UIFormTakeRect(form, height);
 
     label_font = row.label_font > 0 ? row.label_font : GetFontSize();
-    control_w = row.control_width > 0 ? row.control_width : ScaleUIPx(156);
+    control_w = row.control_width > 0 ? row.control_width : Scale(156);
     if(control_w > form->width)
         control_w = form->width;
     label_w = row.label_width > 0
                   ? row.label_width
-                  : form->width - control_w - ScaleUIPx(12);
+                  : form->width - control_w - Scale(12);
     if(label_w < 0)
         label_w = 0;
     label_color = row.label_color.a != 0 ? row.label_color : c_text;
@@ -363,7 +363,7 @@ UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
     if(spinbox.bounds.width <= 0)
         spinbox.bounds.width = (float)control_w;
     if(spinbox.bounds.height <= 0)
-        spinbox.bounds.height = (float)(height - ScaleUIPx(14));
+        spinbox.bounds.height = (float)(height - Scale(14));
     spinbox.bounds.x = (float)(form->x + form->width - (int)spinbox.bounds.width);
     spinbox.bounds.y = (float)(y + (height - (int)spinbox.bounds.height) / 2);
     return Spinbox(spinbox);
@@ -483,7 +483,7 @@ int
 DrawUIButtonRow(ButtonRowProps row)
 {
     int clicked = -1;
-    int gap = row.gap > 0 ? row.gap : ScaleUIPx(6);
+    int gap = row.gap > 0 ? row.gap : Scale(6);
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -491,7 +491,7 @@ DrawUIButtonRow(ButtonRowProps row)
     int font = GetSmallFontSize();
 
     if(row.height <= 0)
-        row.height = ScaleUIPx(30);
+        row.height = Scale(30);
     if(row.items == NULL || row.count <= 0 || row.width <= 0)
         return -1;
 
@@ -502,11 +502,11 @@ DrawUIButtonRow(ButtonRowProps row)
 
         if(!end_row) {
             item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + ScaleUIPx(20);
-            if(item_w < ScaleUIPx(76))
-                item_w = ScaleUIPx(76);
-            if(item_w > ScaleUIPx(144))
-                item_w = ScaleUIPx(144);
+                                   font) + Scale(20);
+            if(item_w < Scale(76))
+                item_w = Scale(76);
+            if(item_w > Scale(144))
+                item_w = Scale(144);
         }
         next_w = row_w > 0 ? row_w + gap + item_w : item_w;
 

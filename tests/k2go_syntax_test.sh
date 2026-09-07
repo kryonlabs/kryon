@@ -26,7 +26,7 @@ query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
 label_text :: (i: int) -> char* #extern "smoke.LabelText"
 tab_labels :: () -> char** #extern "smoke.TabLabels"
 store_secret :: (secret: const char*, site: const char*, login: const char*, a: int, b: int, c: int, d: int, e: int, f: int, exclude: const char*) -> int #extern "smoke.StoreSecret"
-direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.ScaleUIPx"
+direct_scale :: (value: int) -> int #extern "github.com/waozixyz/kryon/go/kryon.Scale"
 direct_queue_text :: (value: const char*) #extern "github.com/waozixyz/kryon/go/kryon.QueueText"
 c_abs :: (value: int) -> int #extern "host.Abs"
 
@@ -75,7 +75,7 @@ app "Smoke" {
 }
 
 local_value :: () -> int {
-    return ScaleUIPx(5)
+    return Scale(5)
 }
 
 relay_text :: (value: [64] char) {
@@ -89,12 +89,12 @@ App :: () #ui {
     menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
     rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
     if tab == TAB_JOBS {
-        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(20), 0, 0}, .text=label_text(tab), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text=label_text(tab), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     } else {
-        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     }
-    Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(38), 0, 0}, .text="small", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-    Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(56), 0, 0}, .text="large", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={Scale(10), Scale(38), 0, 0}, .text="small", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={Scale(10), Scale(56), 0, 0}, .text="large", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
     switch tab {
         case TAB_OVERVIEW: {
             scroll_off = 0
@@ -105,65 +105,65 @@ App :: () #ui {
             scroll_off = 1
     }
     for int i = 0; i < 3; i++ {
-        Rect(ScaleUIPx(4), ScaleUIPx(8), ScaleUIPx(2), ScaleUIPx(2), GetThemeText())
+        Rect(Scale(4), Scale(8), Scale(2), Scale(2), GetThemeText())
     }
     guard tab >= 0 {
         return
     }
-    tab = TabBar((TabBarProps){.bounds = {ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(200), ScaleUIPx(30)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .id = 140})
-    Checkbox(0, ScaleUIPx(4), ScaleUIPx(60), "Check", &check)
-    Dropdown(1, ScaleUIPx(4), ScaleUIPx(80), ScaleUIPx(120), ScaleUIPx(30), "a;b;c", &pick)
-    Progress((ProgressBarProps){{ScaleUIPx(4), ScaleUIPx(120), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, query_jobs(0, 10), ""})
-    Scroll(ScaleUIPx(4), ScaleUIPx(8), ScaleUIPx(200), ScaleUIPx(100), ScaleUIPx(400), &scroll_off)
-    DrawCircleV((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
-    DrawRing((Vector2){ScaleUIPx(120), ScaleUIPx(120)}, ScaleUIPx(36), ScaleUIPx(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
+    tab = TabBar((TabBarProps){.bounds = {Scale(4), Scale(4), Scale(200), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .id = 140})
+    Checkbox(0, Scale(4), Scale(60), "Check", &check)
+    Dropdown(1, Scale(4), Scale(80), Scale(120), Scale(30), "a;b;c", &pick)
+    Progress((ProgressBarProps){{Scale(4), Scale(120), Scale(100), Scale(10)}, 0, 100, query_jobs(0, 10), ""})
+    Scroll(Scale(4), Scale(8), Scale(200), Scale(100), Scale(400), &scroll_off)
+    DrawCircleV((Vector2){Scale(120), Scale(120)}, Scale(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
+    DrawRing((Vector2){Scale(120), Scale(120)}, Scale(36), Scale(40), 0.0f, 360.0f, 0, (Color){0x70, 0x90, 0xc0, 0xff})
     EndScroll()
-    Text((TextProps){.bounds = {ScaleUIPx(4), ScaleUIPx(130), ScaleUIPx(160), ScaleUIPx(20)}, .text = "in rect", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
-    TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
-    Bevel(ScaleUIPx(10), ScaleUIPx(10), ScaleUIPx(60), ScaleUIPx(20), GetThemeSurface(), GetThemeButton())
-    Icon(2, ScaleUIPx(200), ScaleUIPx(10), ScaleUIPx(24), 3, WHITE)
-    Picture((PictureProps){"tiles/tile.png", (Rectangle){ScaleUIPx(4), ScaleUIPx(150), ScaleUIPx(96), ScaleUIPx(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
-    Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = ScaleUIPx(16), .width = ScaleUIPx(200), .font = Text16, .line_gap = ScaleUIPx(4), .color = GetThemeText(), .align = TextAlignCenter}, ScaleUIPx(4), &lines_y)
-    IconButton((IconButtonProps){.bounds = {ScaleUIPx(210), ScaleUIPx(60), ScaleUIPx(36), ScaleUIPx(36)}, .icon_type = 2, .focus_id = 3})
-    Href((HrefProps){.bounds = {ScaleUIPx(210), ScaleUIPx(110), ScaleUIPx(90), ScaleUIPx(24)}, .text = "docs", .href = "https://example.com", .font = Text16, .color = GetThemeLink()})
+    Text((TextProps){.bounds = {Scale(4), Scale(130), Scale(160), Scale(20)}, .text = "in rect", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
+    TextLines("one;two;three", 3, Scale(4), &lines_y, Text16, Scale(18), GetThemeText())
+    Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
+    Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
+    Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
+    Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
+    IconButton((IconButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .focus_id = 3})
+    Href((HrefProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .href = "https://example.com", .font = Text16, .color = GetThemeLink()})
     SetPageTitle("Kryon Page")
     SetPageDescription("Generated page")
     SetPageCanonicalURL("https://example.com/page")
     SetPageThemeColor((Color){0x11, 0x22, 0x33, 0xff})
     ReplaceRoute("/page#top")
     route_version: int = GetRouteVersion()
-    Progress((ProgressBarProps){{ScaleUIPx(188), ScaleUIPx(204), ScaleUIPx(60), ScaleUIPx(10)}, 0, 10, route_version, ""})
-    Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page", .theme_color = (Color){0x11, 0x22, 0x33, 0xff}, .background = GetThemeBackground(), .gap = ScaleUIPx(6), .padding = ScaleUIPx(8)})
+    Progress((ProgressBarProps){{Scale(188), Scale(204), Scale(60), Scale(10)}, 0, 10, route_version, ""})
+    Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page", .theme_color = (Color){0x11, 0x22, 0x33, 0xff}, .background = GetThemeBackground(), .gap = Scale(6), .padding = Scale(8)})
     Heading((HeadingProps){.text = "Welcome", .level = 1, .font = Text24, .color = GetThemeText()})
-    ParagraphText((ParagraphTextProps){.bounds = {0, 0, ScaleUIPx(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = ScaleUIPx(4)})
-    Link((LinkProps){.bounds = {0, 0, ScaleUIPx(90), ScaleUIPx(24)}, .text = "More", .href = "/more", .font = Text16, .color = GetThemeLink()})
-    PagePicture((PictureProps){"hero.png", (Rectangle){0, 0, ScaleUIPx(96), ScaleUIPx(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_COVER}, "Hero")
+    ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = Scale(4)})
+    Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .href = "/more", .font = Text16, .color = GetThemeLink()})
+    PagePicture((PictureProps){"hero.png", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_COVER}, "Hero")
     End()
-    Section((SectionProps){.label = "Details", .gap = ScaleUIPx(4), .padding = ScaleUIPx(4)})
+    Section((SectionProps){.label = "Details", .gap = Scale(4), .padding = Scale(4)})
     Heading((HeadingProps){.text = "Details", .level = 2})
     End()
-    Flow((FlowProps){.bounds = {ScaleUIPx(4), ScaleUIPx(176), ScaleUIPx(180), ScaleUIPx(24)}, .gap = ScaleUIPx(4)})
+    Flow((FlowProps){.bounds = {Scale(4), Scale(176), Scale(180), Scale(24)}, .gap = Scale(4)})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="flow", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
-    PageGrid((GridProps){.bounds = {ScaleUIPx(4), ScaleUIPx(204), ScaleUIPx(180), ScaleUIPx(40)}, .columns = 2, .gap = ScaleUIPx(4), .padding = ScaleUIPx(4)})
+    PageGrid((GridProps){.bounds = {Scale(4), Scale(204), Scale(180), Scale(40)}, .columns = 2, .gap = Scale(4), .padding = Scale(4)})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="g1", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
-    Slider(9, ScaleUIPx(4), ScaleUIPx(170), ScaleUIPx(180), "S", 0, 100, &slider_val, "%", nil)
-    Toggle(10, ScaleUIPx(200), ScaleUIPx(170), ScaleUIPx(120), ScaleUIPx(32), &toggle_val, "Off", "On")
+    Slider(9, Scale(4), Scale(170), Scale(180), "S", 0, 100, &slider_val, "%", nil)
+    Toggle(10, Scale(200), Scale(170), Scale(120), Scale(32), &toggle_val, "Off", "On")
     Stack smoke_stack: {
-        bounds = {ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}
+        bounds = {Scale(4), Scale(190), Scale(100), Scale(40)}
         key = Key("smoke-stack")
-        Rect(ScaleUIPx(4), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
+        Rect(Scale(4), Scale(190), Scale(100), Scale(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
     }
     Row smoke_row: {
-        bounds = {ScaleUIPx(120), ScaleUIPx(190), ScaleUIPx(100), ScaleUIPx(40)}
+        bounds = {Scale(120), Scale(190), Scale(100), Scale(40)}
     }
     Modal("Title", "Message", "Cancel", "OK")
-    TitleBar("Smoke", ScaleUIPx(32))
-    TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = ScaleUIPx(320), .height = ScaleUIPx(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
-    Toolbar((ToolbarProps){.id = 1, .x = 0, .y = ScaleUIPx(40), .width = ScaleUIPx(300), .height = ScaleUIPx(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
-    BottomNav((BottomNavProps){.view_width = ScaleUIPx(320), .view_height = ScaleUIPx(240), .count = 0, .height = ScaleUIPx(56)})
+    TitleBar("Smoke", Scale(32))
+    TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = Scale(320), .height = Scale(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
+    Toolbar((ToolbarProps){.id = 1, .x = 0, .y = Scale(40), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
+    BottomNav((BottomNavProps){.view_width = Scale(320), .view_height = Scale(240), .count = 0, .height = Scale(56)})
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
     plot_values: [4] float = {0.0f, 0.25f, 1.0f, 0.5f}
@@ -173,98 +173,98 @@ App :: () #ui {
     tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     BeginDisabled(1)
     BeginScroll((Rectangle){0,0,320,240}, 400, &scroll_off)
-    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(8), ScaleUIPx(90), ScaleUIPx(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
+    Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
     EndDisabled()
     EndScroll()
-    Button((ButtonProps){.bounds = {ScaleUIPx(150), ScaleUIPx(40), ScaleUIPx(90), ScaleUIPx(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
-    Dropdown(22, ScaleUIPx(150), ScaleUIPx(70), ScaleUIPx(90), ScaleUIPx(24), choices, 3, &pick)
-    frame_box: FrameBox = BeginFrameBox((Rectangle){ScaleUIPx(4), ScaleUIPx(392), ScaleUIPx(160), ScaleUIPx(80)}, ScaleUIPx(8), ScaleUIPx(8), ScaleUIPx(4))
-    packed: Rectangle = FramePack(&frame_box, SideTop, ScaleUIPx(24))
-    layout_grid: Grid = {frame_box.bounds, 2, 2, ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(0), ScaleUIPx(0)}
+    Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
+    Dropdown(22, Scale(150), Scale(70), Scale(90), Scale(24), choices, 3, &pick)
+    frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
+    packed: Rectangle = FramePack(&frame_box, SideTop, Scale(24))
+    layout_grid: Grid = {frame_box.bounds, 2, 2, Scale(4), Scale(4), Scale(0), Scale(0)}
     grid_cell: Rectangle = GridCell(layout_grid, 1, 1, 1, 1)
-    placed: Rectangle = Place(packed, ScaleUIPx(4), ScaleUIPx(4), ScaleUIPx(24), ScaleUIPx(12))
+    placed: Rectangle = Place(packed, Scale(4), Scale(4), Scale(24), Scale(12))
     CanvasGrid(grid_cell, 8, GetThemeIcon())
     CanvasGrid(placed, 4, GetThemeButton())
-    canvas_result: CanvasResult = BeginCanvas((Canvas){{ScaleUIPx(180), ScaleUIPx(392), ScaleUIPx(100), ScaleUIPx(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-    DrawCircleV(canvas_result.world, ScaleUIPx(3), GetThemeSurface())
-    EndCanvas((Canvas){{ScaleUIPx(180), ScaleUIPx(392), ScaleUIPx(100), ScaleUIPx(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-    Slider(23, ScaleUIPx(250), ScaleUIPx(8), ScaleUIPx(60), "", 0, 10, &slider_val, "", nil)
-    CanvasGrid((Rectangle){ScaleUIPx(4), ScaleUIPx(230), ScaleUIPx(60), ScaleUIPx(40)}, 8, GetThemeIcon())
-    SelectableText("select me", ScaleUIPx(150), ScaleUIPx(100), Text16, GetThemeText())
+    canvas_result: CanvasResult = BeginCanvas((Canvas){{Scale(180), Scale(392), Scale(100), Scale(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+    DrawCircleV(canvas_result.world, Scale(3), GetThemeSurface())
+    EndCanvas((Canvas){{Scale(180), Scale(392), Scale(100), Scale(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+    Slider(23, Scale(250), Scale(8), Scale(60), "", 0, 10, &slider_val, "", nil)
+    CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
+    SelectableText("select me", Scale(150), Scale(100), Text16, GetThemeText())
     ShowToast("toast from kry")
-    TextField((TextFieldProps){.bounds = {ScaleUIPx(150), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
-    TextArea((TextAreaProps){.bounds = {ScaleUIPx(250), ScaleUIPx(124), ScaleUIPx(90), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+    TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
+    TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
-    Text((TextProps){.bounds={ScaleUIPx(150), ScaleUIPx(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-    Radio((RadioButtonProps){{ScaleUIPx(4), ScaleUIPx(270), ScaleUIPx(120), ScaleUIPx(24)}, "one", 1, pick == 1, 0})
-    Spinbox((SpinboxProps){{ScaleUIPx(140), ScaleUIPx(270), ScaleUIPx(90), ScaleUIPx(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
-    Combobox((ComboboxProps){{ScaleUIPx(240), ScaleUIPx(270), ScaleUIPx(70), ScaleUIPx(28)}, 25, choices, 3, &pick, 0})
-    LabelFrame((LabelFrameProps){.bounds = {ScaleUIPx(4), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .title = "frame"})
-    Notebook((NotebookProps){.bounds = {ScaleUIPx(140), ScaleUIPx(300), ScaleUIPx(120), ScaleUIPx(50)}, .tabs = choices[:], .selected_index = &pick})
-    ListBox((ListBoxProps){.bounds = {ScaleUIPx(280), ScaleUIPx(300), ScaleUIPx(60), ScaleUIPx(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
-    TreeView((TreeViewProps){.bounds = {ScaleUIPx(280), ScaleUIPx(356), ScaleUIPx(80), ScaleUIPx(50)}, .id = 27, .items = tree_items, .item_count = 2, .selected_id = &pick})
-    Collapsible((CollapsibleProps){.bounds = {ScaleUIPx(4), ScaleUIPx(360), ScaleUIPx(120), ScaleUIPx(30)}, .label = "sect", .open = NULL})
+    Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+    Radio((RadioButtonProps){{Scale(4), Scale(270), Scale(120), Scale(24)}, "one", 1, pick == 1, 0})
+    Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
+    Combobox((ComboboxProps){{Scale(240), Scale(270), Scale(70), Scale(28)}, 25, choices, 3, &pick, 0})
+    LabelFrame((LabelFrameProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
+    Notebook((NotebookProps){.bounds = {Scale(140), Scale(300), Scale(120), Scale(50)}, .tabs = choices[:], .selected_index = &pick})
+    ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
+    TreeView((TreeViewProps){.bounds = {Scale(280), Scale(356), Scale(80), Scale(50)}, .id = 27, .items = tree_items, .item_count = 2, .selected_id = &pick})
+    Collapsible((CollapsibleProps){.bounds = {Scale(4), Scale(360), Scale(120), Scale(30)}, .label = "sect", .open = NULL})
     SetThemeDarkMode(1)
     SetCurrentTheme(0, 1)
-    Dropdown(11, ScaleUIPx(4), ScaleUIPx(210), ScaleUIPx(120), ScaleUIPx(24), choices, 3, &pick)
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, nums[0] + scalar, ""})
-    PlotLines((PlotProps){.bounds = {ScaleUIPx(250), ScaleUIPx(210), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
-    PlotHistogram((PlotProps){.bounds = {ScaleUIPx(250), ScaleUIPx(254), ScaleUIPx(100), ScaleUIPx(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1})
-    DragFloat((DragFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(298), ScaleUIPx(100), ScaleUIPx(28)}, .id = 28, .label = "Float", .values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 1.0f})
-    DragInt((DragIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(330), ScaleUIPx(100), ScaleUIPx(28)}, .id = 29, .label = "Int", .values = nums, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
-    DragFloatRange2((DragFloatRange2Props){.bounds = {ScaleUIPx(250),ScaleUIPx(346),ScaleUIPx(100),ScaleUIPx(28)}, .id = 52, .label = "Float range", .current_min = &drag_float_min, .current_max = &drag_float_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format_max = "max %.1f"})
-    DragIntRange2((DragIntRange2Props){.bounds = {ScaleUIPx(250),ScaleUIPx(378),ScaleUIPx(100),ScaleUIPx(28)}, .id = 53, .label = "Int range", .current_min = &drag_int_min, .current_max = &drag_int_max, .min = 0, .max = 10, .format_max = "max %d"})
-    SliderFloat((SliderFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(362), ScaleUIPx(100), ScaleUIPx(28)}, .id = 30, .label = "Slider float", .values = plot_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
-    SliderInt((SliderIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(394), ScaleUIPx(100), ScaleUIPx(28)}, .id = 31, .label = "Slider int", .values = nums, .value_count = 2, .min = 0, .max = 10})
-    VSliderFloat((SliderFloatProps){.bounds = {ScaleUIPx(362), ScaleUIPx(298), ScaleUIPx(28), ScaleUIPx(100)}, .id = 32, .values = plot_values, .value_count = 1, .min = 0.0f, .max = 1.0f})
-    VSliderInt((SliderIntProps){.bounds = {ScaleUIPx(394), ScaleUIPx(298), ScaleUIPx(28), ScaleUIPx(100)}, .id = 33, .values = nums, .value_count = 1, .min = 0, .max = 10})
-    SliderAngle((SliderAngleProps){.bounds = {ScaleUIPx(250), ScaleUIPx(426), ScaleUIPx(100), ScaleUIPx(28)}, .id = 34, .value = &plot_values[0], .min_degrees = -180.0f, .max_degrees = 180.0f})
-    InputFloat((InputFloatProps){.bounds = {ScaleUIPx(250), ScaleUIPx(458), ScaleUIPx(100), ScaleUIPx(28)}, .id = 35, .values = plot_values, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
-    InputInt((InputIntProps){.bounds = {ScaleUIPx(250), ScaleUIPx(490), ScaleUIPx(100), ScaleUIPx(28)}, .id = 36, .values = nums, .value_count = 2, .step = 1, .step_fast = 10})
-    InputDouble((InputDoubleProps){.bounds = {ScaleUIPx(250), ScaleUIPx(522), ScaleUIPx(100), ScaleUIPx(28)}, .id = 37, .values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
-    SmallButton((ButtonProps){.bounds = {ScaleUIPx(250), ScaleUIPx(554), ScaleUIPx(70), ScaleUIPx(24)}, .label = "Small", .id = 38})
-    InvisibleButton((InvisibleButtonProps){.bounds = {ScaleUIPx(324), ScaleUIPx(554), ScaleUIPx(30), ScaleUIPx(24)}, .id = 39})
-    ArrowButton((ArrowButtonProps){.bounds = {ScaleUIPx(358), ScaleUIPx(554), ScaleUIPx(30), ScaleUIPx(24)}, .id = 40, .direction = 1})
-    Bullet((Rectangle){ScaleUIPx(392), ScaleUIPx(554), ScaleUIPx(20), ScaleUIPx(20)})
-    Separator((Rectangle){ScaleUIPx(250), ScaleUIPx(582), ScaleUIPx(160), ScaleUIPx(4)}, 0)
-    ColorEdit3((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(590), ScaleUIPx(160), ScaleUIPx(28)}, .id = 41, .values = edit_color, .value_count = 3})
-    ColorEdit4((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(622), ScaleUIPx(160), ScaleUIPx(28)}, .id = 42, .values = edit_color, .value_count = 4})
-    ColorPicker3((ColorEditProps){.bounds = {ScaleUIPx(250), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 43, .values = edit_color, .value_count = 3})
-    ColorPicker4((ColorEditProps){.bounds = {ScaleUIPx(324), ScaleUIPx(654), ScaleUIPx(70), ScaleUIPx(130)}, .id = 44, .values = edit_color, .value_count = 4})
-    ColorButton((ColorButtonProps){.bounds = {ScaleUIPx(398), ScaleUIPx(654), ScaleUIPx(60), ScaleUIPx(28)}, .id = 45, .label = "Tint", .color = (Color){51,102,153,204}})
-    Text((TextProps){.bounds = {ScaleUIPx(250), ScaleUIPx(690), 0, 0}, .text = "colored", .font = Text16, .color = {220,60,80,255}, .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {ScaleUIPx(250), ScaleUIPx(714), 0, 0}, .text = "disabled", .font = Text16, .wrap = TextWrapNone, .disabled = 1})
-    Text((TextProps){.bounds = {ScaleUIPx(250),ScaleUIPx(738),ScaleUIPx(160),ScaleUIPx(40)}, .text = "wrapped text", .font = Text16, .color = GetThemeText()})
-    LabelText("Status", "Ready", (Rectangle){ScaleUIPx(250),ScaleUIPx(782),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
-    BulletText("bullet text", (Rectangle){ScaleUIPx(250),ScaleUIPx(806),ScaleUIPx(160),ScaleUIPx(20)}, Text16, GetThemeText())
-    ValueBool("Enabled", check != 0, (Rectangle){ScaleUIPx(250),ScaleUIPx(1030),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
-    ValueInt("Count", scalar, (Rectangle){ScaleUIPx(250),ScaleUIPx(1054),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
-    ValueUInt("Mask", 42, (Rectangle){ScaleUIPx(250),ScaleUIPx(1078),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
-    ValueFloat("Rate", plot_values[0], "%.1f", (Rectangle){ScaleUIPx(250),ScaleUIPx(1102),ScaleUIPx(120),ScaleUIPx(20)}, Text14, GetThemeText())
-    MenuBar(46, (Rectangle){ScaleUIPx(4),ScaleUIPx(834),ScaleUIPx(220),ScaleUIPx(30)}, menus, 1, &menu_open)
-    PopupMenu(47, ScaleUIPx(4), ScaleUIPx(868), menu_items, 2)
-    ContextMenu((ContextMenuProps){.id = 48, .trigger = {ScaleUIPx(230),ScaleUIPx(834),ScaleUIPx(100),ScaleUIPx(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
-    if BeginPopup((PopupProps){.bounds={ScaleUIPx(220),ScaleUIPx(934),ScaleUIPx(176),ScaleUIPx(42)},.id=58,.trigger={ScaleUIPx(230),ScaleUIPx(900),ScaleUIPx(100),ScaleUIPx(30)},.flags=PopupTooltip}) {
-        Text((TextProps){.bounds={ScaleUIPx(228),ScaleUIPx(944),ScaleUIPx(160),ScaleUIPx(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+    Dropdown(11, Scale(4), Scale(210), Scale(120), Scale(24), choices, 3, &pick)
+    Progress((ProgressBarProps){{Scale(140), Scale(210), Scale(100), Scale(10)}, 0, 100, nums[0] + scalar, ""})
+    PlotLines((PlotProps){.bounds = {Scale(250), Scale(210), Scale(100), Scale(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
+    PlotHistogram((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1})
+    DragFloat((DragFloatProps){.bounds = {Scale(250), Scale(298), Scale(100), Scale(28)}, .id = 28, .label = "Float", .values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 1.0f})
+    DragInt((DragIntProps){.bounds = {Scale(250), Scale(330), Scale(100), Scale(28)}, .id = 29, .label = "Int", .values = nums, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
+    DragFloatRange2((DragFloatRange2Props){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .current_min = &drag_float_min, .current_max = &drag_float_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format_max = "max %.1f"})
+    DragIntRange2((DragIntRange2Props){.bounds = {Scale(250),Scale(378),Scale(100),Scale(28)}, .id = 53, .label = "Int range", .current_min = &drag_int_min, .current_max = &drag_int_max, .min = 0, .max = 10, .format_max = "max %d"})
+    SliderFloat((SliderFloatProps){.bounds = {Scale(250), Scale(362), Scale(100), Scale(28)}, .id = 30, .label = "Slider float", .values = plot_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
+    SliderInt((SliderIntProps){.bounds = {Scale(250), Scale(394), Scale(100), Scale(28)}, .id = 31, .label = "Slider int", .values = nums, .value_count = 2, .min = 0, .max = 10})
+    VSliderFloat((SliderFloatProps){.bounds = {Scale(362), Scale(298), Scale(28), Scale(100)}, .id = 32, .values = plot_values, .value_count = 1, .min = 0.0f, .max = 1.0f})
+    VSliderInt((SliderIntProps){.bounds = {Scale(394), Scale(298), Scale(28), Scale(100)}, .id = 33, .values = nums, .value_count = 1, .min = 0, .max = 10})
+    SliderAngle((SliderAngleProps){.bounds = {Scale(250), Scale(426), Scale(100), Scale(28)}, .id = 34, .value = &plot_values[0], .min_degrees = -180.0f, .max_degrees = 180.0f})
+    InputFloat((InputFloatProps){.bounds = {Scale(250), Scale(458), Scale(100), Scale(28)}, .id = 35, .values = plot_values, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
+    InputInt((InputIntProps){.bounds = {Scale(250), Scale(490), Scale(100), Scale(28)}, .id = 36, .values = nums, .value_count = 2, .step = 1, .step_fast = 10})
+    InputDouble((InputDoubleProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+    SmallButton((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .id = 38})
+    InvisibleButton((InvisibleButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39})
+    ArrowButton((ArrowButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .direction = 1})
+    Bullet((Rectangle){Scale(392), Scale(554), Scale(20), Scale(20)})
+    Separator((Rectangle){Scale(250), Scale(582), Scale(160), Scale(4)}, 0)
+    ColorEdit3((ColorEditProps){.bounds = {Scale(250), Scale(590), Scale(160), Scale(28)}, .id = 41, .values = edit_color, .value_count = 3})
+    ColorEdit4((ColorEditProps){.bounds = {Scale(250), Scale(622), Scale(160), Scale(28)}, .id = 42, .values = edit_color, .value_count = 4})
+    ColorPicker3((ColorEditProps){.bounds = {Scale(250), Scale(654), Scale(70), Scale(130)}, .id = 43, .values = edit_color, .value_count = 3})
+    ColorPicker4((ColorEditProps){.bounds = {Scale(324), Scale(654), Scale(70), Scale(130)}, .id = 44, .values = edit_color, .value_count = 4})
+    ColorButton((ColorButtonProps){.bounds = {Scale(398), Scale(654), Scale(60), Scale(28)}, .id = 45, .label = "Tint", .color = (Color){51,102,153,204}})
+    Text((TextProps){.bounds = {Scale(250), Scale(690), 0, 0}, .text = "colored", .font = Text16, .color = {220,60,80,255}, .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250), Scale(714), 0, 0}, .text = "disabled", .font = Text16, .wrap = TextWrapNone, .disabled = 1})
+    Text((TextProps){.bounds = {Scale(250),Scale(738),Scale(160),Scale(40)}, .text = "wrapped text", .font = Text16, .color = GetThemeText()})
+    LabelText("Status", "Ready", (Rectangle){Scale(250),Scale(782),Scale(160),Scale(20)}, Text16, GetThemeText())
+    BulletText("bullet text", (Rectangle){Scale(250),Scale(806),Scale(160),Scale(20)}, Text16, GetThemeText())
+    ValueBool("Enabled", check != 0, (Rectangle){Scale(250),Scale(1030),Scale(120),Scale(20)}, Text14, GetThemeText())
+    ValueInt("Count", scalar, (Rectangle){Scale(250),Scale(1054),Scale(120),Scale(20)}, Text14, GetThemeText())
+    ValueUInt("Mask", 42, (Rectangle){Scale(250),Scale(1078),Scale(120),Scale(20)}, Text14, GetThemeText())
+    ValueFloat("Rate", plot_values[0], "%.1f", (Rectangle){Scale(250),Scale(1102),Scale(120),Scale(20)}, Text14, GetThemeText())
+    MenuBar(46, (Rectangle){Scale(4),Scale(834),Scale(220),Scale(30)}, menus, 1, &menu_open)
+    PopupMenu(47, Scale(4), Scale(868), menu_items, 2)
+    ContextMenu((ContextMenuProps){.id = 48, .trigger = {Scale(230),Scale(834),Scale(100),Scale(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
+    if BeginPopup((PopupProps){.bounds={Scale(220),Scale(934),Scale(176),Scale(42)},.id=58,.trigger={Scale(230),Scale(900),Scale(100),Scale(30)},.flags=PopupTooltip}) {
+        Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
         EndPopup()
     }
-    choice_picture: PictureProps = {"tiles/tile.png",(Rectangle){ScaleUIPx(250),ScaleUIPx(934),ScaleUIPx(48),ScaleUIPx(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
-    Selectable((SelectableProps){.bounds = {ScaleUIPx(4),ScaleUIPx(934),ScaleUIPx(120),ScaleUIPx(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
-    CheckboxFlags((CheckboxFlagsProps){.bounds = {ScaleUIPx(4),ScaleUIPx(966),ScaleUIPx(160),ScaleUIPx(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
+    choice_picture: PictureProps = {"tiles/tile.png",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
+    Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
+    CheckboxFlags((CheckboxFlagsProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
     ImageWithBg((ImageWithBgProps){.picture = choice_picture, .background = GetThemeSurface()})
     ImageButton((ImageButtonProps){.picture = choice_picture, .background = GetThemeButton(), .id = 51})
-    SeparatorText((SeparatorTextProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1000),ScaleUIPx(160),ScaleUIPx(24)}, .label = "Section", .font = Text14})
-    TabItemButton((TabItemButtonProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1130),ScaleUIPx(60),ScaleUIPx(28)}, .id = 54, .label = "+", .font = Text14})
-    ClosableTabBar((ClosableTabBarProps){.bounds = {ScaleUIPx(314),ScaleUIPx(1130),ScaleUIPx(180),ScaleUIPx(28)}, .tabs = rich_tabs, .count = 2, .selected_index = &tab, .font = Text14, .closed_index = &closed_tab})
-    DragDropSource((DragDropSourceProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1162),ScaleUIPx(80),ScaleUIPx(28)}, .id = 55, .type = "TEXT", .data = field_text, .data_size = 64})
-    DragDropTarget((DragDropTargetProps){.bounds = {ScaleUIPx(334),ScaleUIPx(1162),ScaleUIPx(120),ScaleUIPx(28)}, .id = 56, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
-    MultiSelectList((MultiSelectListProps){.bounds = {ScaleUIPx(250),ScaleUIPx(1194),ScaleUIPx(180),ScaleUIPx(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(224), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, direct_scale(16), ""})
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(238), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, helper_value(), ""})
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(252), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, c_abs(-8), ""})
-    Progress((ProgressBarProps){{ScaleUIPx(140), ScaleUIPx(266), ScaleUIPx(100), ScaleUIPx(10)}, 0, 100, local_value(), ""})
+    SeparatorText((SeparatorTextProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section", .font = Text14})
+    TabItemButton((TabItemButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .font = Text14})
+    ClosableTabBar((ClosableTabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = &tab, .font = Text14, .closed_index = &closed_tab})
+    DragDropSource((DragDropSourceProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .type = "TEXT", .data = field_text, .data_size = 64})
+    DragDropTarget((DragDropTargetProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
+    MultiSelectList((MultiSelectListProps){.bounds = {Scale(250),Scale(1194),Scale(180),Scale(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
+    Progress((ProgressBarProps){{Scale(140), Scale(224), Scale(100), Scale(10)}, 0, 100, direct_scale(16), ""})
+    Progress((ProgressBarProps){{Scale(140), Scale(238), Scale(100), Scale(10)}, 0, 100, helper_value(), ""})
+    Progress((ProgressBarProps){{Scale(140), Scale(252), Scale(100), Scale(10)}, 0, 100, c_abs(-8), ""})
+    Progress((ProgressBarProps){{Scale(140), Scale(266), Scale(100), Scale(10)}, 0, 100, local_value(), ""})
     relay_text(field_text)
-    TextLines("one;two;three", 3, ScaleUIPx(4), &lines_y, Text16, ScaleUIPx(18), GetThemeText())
+    TextLines("one;two;three", 3, Scale(4), &lines_y, Text16, Scale(18), GetThemeText())
     attempts: int = 0
 retry:
     attempts += 1
@@ -299,7 +299,7 @@ cat > "$work/src/helper.kry" <<'EOF'
 #import "kryon.h"
 
 helper_value :: () -> int {
-    return ScaleUIPx(7)
+    return Scale(7)
 }
 EOF
 
@@ -352,7 +352,7 @@ grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'kryon.BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
-grep -q 'kryon.NewVector2(float32(kryon.ScaleUIPx(120)), float32(kryon.ScaleUIPx(120)))' "$out"
+grep -q 'kryon.NewVector2(float32(kryon.Scale(120)), float32(kryon.Scale(120)))' "$out"
 grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
@@ -380,14 +380,14 @@ grep -q 'QueryJobs(Since int64, Limit int32) int32' "$out"
 grep -q 'LabelText(I int32) string' "$out"
 grep -q 'TabLabels() \[\]string' "$out"
 grep -q 'StoreSecret(Secret string, Site string, Login string, A int32, B int32, C int32, D int32, E int32, F int32, Exclude string) int32' "$out"
-if grep -q 'ScaleUIPx(Value int32)' "$out"; then
+if grep -q 'Scale(Value int32)' "$out"; then
     echo "k2go placed a direct Go extern in the host interface" >&2
     exit 1
 fi
 grep -q 'validHost.QueryJobs(int64(0), int32(10))' "$out"
 grep -q 'validHost.LabelText(int32(st.Tab))' "$out"
 grep -q 'validHost.StoreSecret(kryon.CString(st.FieldText\[:\]), kryon.CString(st.AreaText\[:\]), "literal", int32(1), int32(2), int32(3), int32(4), int32(5), int32(6), kryon.CString(st.AreaText\[:\]))' "$out"
-grep -q 'kryonpkg.ScaleUIPx(int32(16))' "$out"
+grep -q 'kryonpkg.Scale(int32(16))' "$out"
 grep -q 'validHost.Abs(int32(-8))' "$out"
 grep -q 'Helper_HelperValue()' "$out"
 grep -q 'Valid_LocalValue(st)' "$out"
@@ -540,7 +540,7 @@ grep -q 'SetCurrentTheme(0, 1)' "$out"
 grep -q 'var scalar int32 = 5' "$out"
 grep -q 'var nums = \[4\]int32{1,2,3,4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'kryon.Dropdown(11, kryon.ScaleUIPx(4), kryon.ScaleUIPx(210), kryon.ScaleUIPx(120), kryon.ScaleUIPx(24), choices\[:\], 3, &st.Pick)' "$out"
+grep -q 'kryon.Dropdown(11, kryon.Scale(4), kryon.Scale(210), kryon.Scale(120), kryon.Scale(24), choices\[:\], 3, &st.Pick)' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 

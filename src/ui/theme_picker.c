@@ -115,8 +115,8 @@ ui_theme_settings_height(ThemeSettingsProps settings)
         return 0;
     if(ui_theme_settings_show_mode(settings))
         rows++;
-    return rows * (GetFontSize() + ScaleUIPx(8) + ScaleUIPx(UI_THEME_SETTINGS_ROW_H)) +
-           (rows - 1) * ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
+    return rows * (GetFontSize() + Scale(8) + Scale(UI_THEME_SETTINGS_ROW_H)) +
+           (rows - 1) * Scale(UI_THEME_SETTINGS_ROW_GAP);
 }
 
 int
@@ -126,9 +126,9 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     int mode_values[3];
     const char *theme_options[THEME_COUNT + 1];
     int y = settings.y;
-    int label_gap = ScaleUIPx(20);
-    int row_h = ScaleUIPx(UI_THEME_SETTINGS_ROW_H);
-    int row_gap = ScaleUIPx(UI_THEME_SETTINGS_ROW_GAP);
+    int label_gap = Scale(20);
+    int row_h = Scale(UI_THEME_SETTINGS_ROW_H);
+    int row_gap = Scale(UI_THEME_SETTINGS_ROW_GAP);
     int font = GetFontSize();
     int palette_count;
     int palette_index;
@@ -352,13 +352,13 @@ ui_theme_grid_layout(int w)
     UIThemeGridLayout layout = {0};
     int small_font = Text12;
 
-    int row_gap = ScaleUIPx(14);
-    layout.circle_size = ScaleUIPx(24);
-    layout.label_gap = ScaleUIPx(12);
-    layout.col_gap = ScaleUIPx(10);
+    int row_gap = Scale(14);
+    layout.circle_size = Scale(24);
+    layout.label_gap = Scale(12);
+    layout.col_gap = Scale(10);
     layout.cell_w = layout.circle_size;
     for(int i = 0; i < THEME_COUNT; i++) {
-        int name_w = TextWidth(ui_theme_label((ThemeId)i), small_font) + ScaleUIPx(8);
+        int name_w = TextWidth(ui_theme_label((ThemeId)i), small_font) + Scale(8);
         if(name_w > layout.cell_w)
             layout.cell_w = name_w;
     }
@@ -409,16 +409,16 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
         }
 
         Rectangle bounds = {
-            (float)(cx - layout.circle_size / 2 - ScaleUIPx(4)),
-            (float)(cy - layout.circle_size / 2 - ScaleUIPx(4)),
-            (float)(layout.circle_size + ScaleUIPx(8)),
-            (float)(layout.circle_size + ScaleUIPx(8))
+            (float)(cx - layout.circle_size / 2 - Scale(4)),
+            (float)(cy - layout.circle_size / 2 - Scale(4)),
+            (float)(layout.circle_size + Scale(8)),
+            (float)(layout.circle_size + Scale(8))
         };
         int is_hovered = CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world);
 
-        int draw_size = is_hovered ? layout.circle_size + ScaleUIPx(4) : layout.circle_size;
+        int draw_size = is_hovered ? layout.circle_size + Scale(4) : layout.circle_size;
         DrawCircle(cx, cy, draw_size / 2, theme_color);
-        DrawCircleLines(cx, cy, draw_size / 2 + (selected == (int)theme ? ScaleUIPx(2) : ScaleUIPx(1)),
+        DrawCircleLines(cx, cy, draw_size / 2 + (selected == (int)theme ? Scale(2) : Scale(1)),
                         selected == (int)theme ? c_text : DarkenUIColor(c_bg, 30));
 
         if(is_hovered) {
@@ -458,16 +458,16 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
     int max_label_w = light_w > dark_w ? light_w : dark_w;
     /* match DrawUIToggleSwitchs retro content minimum so the switch does
      * not silently grow past the computed rect */
-    int toggle_w = (max_label_w + ScaleUIPx(16)) * 2 + ScaleUIPx(6);
-    int min_toggle_w = ScaleUIPx(100);
+    int toggle_w = (max_label_w + Scale(16)) * 2 + Scale(6);
+    int min_toggle_w = Scale(100);
     if(toggle_w < min_toggle_w)
         toggle_w = min_toggle_w;
     if(toggle_w > w)
         toggle_w = w;
 
-    int toggle_h = ScaleUIPx(28);
-    int toggle_x = x + w - toggle_w - ScaleUIPx(8);
-    int toggle_y = y - ScaleUIPx(2);
+    int toggle_h = Scale(28);
+    int toggle_x = x + w - toggle_w - Scale(8);
+    int toggle_y = y - Scale(2);
     if(DrawUIToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
                              light_label ? light_label : "Light",
                              dark_label ? dark_label : "Dark")) {
@@ -476,7 +476,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
         changed = 1;
     }
 
-    if(ui_draw_theme_grid(x, y + ScaleUIPx(64), w, dark, theme_id))
+    if(ui_draw_theme_grid(x, y + Scale(64), w, dark, theme_id))
         changed = 1;
 
     return changed;
@@ -488,7 +488,7 @@ DrawUIThemePicker(int x, int y, int w, int dark_mode,
 {
     int changed = 0;
 
-    if(ui_draw_theme_grid(x, y + ScaleUIPx(12), w, dark_mode != 0, theme_id))
+    if(ui_draw_theme_grid(x, y + Scale(12), w, dark_mode != 0, theme_id))
         changed = 1;
 
     return changed;
@@ -497,5 +497,5 @@ DrawUIThemePicker(int x, int y, int w, int dark_mode,
 int
 ui_theme_picker_height(int w)
 {
-    return ScaleUIPx(12) + ui_theme_grid_layout(w).height;
+    return Scale(12) + ui_theme_grid_layout(w).height;
 }

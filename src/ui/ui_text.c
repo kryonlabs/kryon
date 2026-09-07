@@ -158,7 +158,7 @@ font_entry_alloc(const char *name)
 static int
 font_physical_size(int font_size)
 {
-    int size = ScaleUIPx(font_size);
+    int size = Scale(font_size);
 
     if(size <= 0)
         size = font_size > 0 ? font_size : TextBaseSize;
@@ -1012,7 +1012,7 @@ ui_text_normalize_token_size(int font_size)
     case Text24:
     case Text32:
     case Text48:
-        return ScaleUIPx(font_size);
+        return Scale(font_size);
     default:
         return font_size;
     }
@@ -1630,7 +1630,7 @@ DrawUISelectableTextBlock(SelectableTextBlock block)
             double now = GetTime();
             float dx = mouse.x - g_ui_text_block_last_click_position.x;
             float dy = mouse.y - g_ui_text_block_last_click_position.y;
-            int slop = ScaleUIPx(6);
+            int slop = Scale(6);
             int double_click = g_ui_text_block_last_click_id == block.id &&
                 g_ui_text_block_last_click_line == i &&
                 g_ui_text_block_last_click_time >= 0.0 &&

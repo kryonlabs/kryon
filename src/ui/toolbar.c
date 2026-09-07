@@ -7,14 +7,14 @@ DrawUIToolbar(ToolbarProps toolbar)
     int side_padding = toolbar.side_padding < 0
                            ? 0
                            : (toolbar.side_padding > 0 ? toolbar.side_padding
-                                                       : ScaleUIPx(12));
+                                                       : Scale(12));
     int action_icon_size = toolbar.action_icon_size > 0
                                ? toolbar.action_icon_size
-                               : ScaleUIPx(20);
+                               : Scale(20);
     int action_icon_padding = toolbar.action_icon_padding > 0
                                   ? toolbar.action_icon_padding
-                                  : ScaleUIPx(8);
-    int action_gap = toolbar.action_gap > 0 ? toolbar.action_gap : ScaleUIPx(6);
+                                  : Scale(8);
+    int action_gap = toolbar.action_gap > 0 ? toolbar.action_gap : Scale(6);
     int action_w = action_icon_size + action_icon_padding * 2;
     int action_y = toolbar.y + (toolbar.height - action_w) / 2;
     int controls_x = toolbar.x + toolbar.width - side_padding;
@@ -29,7 +29,7 @@ DrawUIToolbar(ToolbarProps toolbar)
     if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
         Color shine = WHITE;
         shine.a = GetUIStyleTokens().shine_alpha;
-        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, ScaleUIPx(1), shine);
+        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, Scale(1), shine);
     }
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
@@ -55,7 +55,7 @@ DrawUIToolbar(ToolbarProps toolbar)
        toolbar.selected_index != NULL) {
         int dropdown_h = toolbar.dropdown_height > 0
                              ? toolbar.dropdown_height
-                             : ScaleUIPx(36);
+                             : Scale(36);
         int dropdown_x = toolbar.x;
         int dropdown_y = toolbar.y;
         int dropdown_w = controls_x - dropdown_x;
@@ -89,15 +89,15 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
 {
     ToolbarHeaderResult result;
     ToolbarProps toolbar = header.toolbar;
-    int height = toolbar.height > 0 ? toolbar.height : ScaleUIPx(58);
-    int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : ScaleUIPx(20);
-    int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : ScaleUIPx(8);
+    int height = toolbar.height > 0 ? toolbar.height : Scale(58);
+    int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : Scale(20);
+    int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : Scale(8);
     int leading_w = header.leading_width;
     int hover = 0;
 
     memset(&result, 0, sizeof(result));
     if(leading_w <= 0 && header.leading_icon.id != 0)
-        leading_w = icon_size + icon_padding * 2 + ScaleUIPx(24);
+        leading_w = icon_size + icon_padding * 2 + Scale(24);
 
     if(!toolbar.draw_menu) {
         Color bar = DarkenUIColor(c_bg, 14);
@@ -110,12 +110,12 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
         if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
             Color shine = WHITE;
             shine.a = GetUIStyleTokens().shine_alpha;
-            DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
+            DrawRectangle(0, 0, ui_view_width, Scale(1), shine);
         }
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
-            result.leading_clicked = DrawUIPaddedIconBtn(ScaleUIPx(12), ScaleUIPx(12),
+            result.leading_clicked = DrawUIPaddedIconBtn(Scale(12), Scale(12),
                                                              icon_size, icon_padding,
                                                              header.leading_icon,
                                                              &hover);

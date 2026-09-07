@@ -71,7 +71,7 @@ ui_tab_bar_finish_frame(void)
 int
 ui_tab_bar_height(void)
 {
-    return ui_material_style() ? ScaleUIPx(48) : ScaleUIPx(36);
+    return ui_material_style() ? Scale(48) : Scale(36);
 }
 
 int
@@ -105,7 +105,7 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
         return min_tab_w;
 
     label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
-    w = label_w + ScaleUIPx(16);
+    w = label_w + Scale(16);
     if(w < min_tab_w)
         w = min_tab_w;
     if(w > max_tab_w)
@@ -223,7 +223,7 @@ static void
 ui_draw_tab_shape(int x, int y, int w, int h, int selected, Color fill,
                   Color border_light, Color border_dark)
 {
-    int top_y = selected ? y : y + ScaleUIPx(4);
+    int top_y = selected ? y : y + Scale(4);
     int bottom_y = y + h - 2;
 
     DrawRectangle(x, top_y, w, bottom_y - top_y + 1, fill);
@@ -253,7 +253,7 @@ ui_pane_tab_bar_tab_width(PaneTabBar bar, int index, int min_tab_w,
         return min_tab_w;
 
     label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
-    w = label_w + ScaleUIPx(16);
+    w = label_w + Scale(16);
     if(w < min_tab_w)
         w = min_tab_w;
     if(w > max_tab_w)
@@ -272,9 +272,9 @@ DrawUITabBar(TabBarProps bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_material_style() ? ScaleUIPx(6) : 0;
-    int default_min_tab_w = ui_material_style() ? ScaleUIPx(72) : ScaleUIPx(120);
-    int default_max_tab_w = ui_material_style() ? ScaleUIPx(168) : default_min_tab_w;
+    int tab_gap = ui_material_style() ? Scale(6) : 0;
+    int default_min_tab_w = ui_material_style() ? Scale(72) : Scale(120);
+    int default_max_tab_w = ui_material_style() ? Scale(168) : default_min_tab_w;
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
@@ -390,7 +390,7 @@ DrawUITabBar(TabBarProps bar)
         int dy = (int)(mouse_world.y - press_pos.y);
         int abs_dx = dx < 0 ? -dx : dx;
         int abs_dy = dy < 0 ? -dy : dy;
-        int threshold = ScaleUIPx(6);
+        int threshold = Scale(6);
 
         if(!drag_active && abs_dx >= threshold && abs_dx >= abs_dy) {
             drag_active = 1;
@@ -427,8 +427,8 @@ DrawUITabBar(TabBarProps bar)
         Color tab_fill;
         if(ui_material_style()) {
             UIMaterialScheme scheme = ui_material_scheme();
-            int indicator_w = ScaleUIPx(56);
-            int indicator_h = ScaleUIPx(28);
+            int indicator_w = Scale(56);
+            int indicator_h = Scale(28);
             int indicator_x;
             int indicator_y = bar_y + (bar_h - indicator_h) / 2;
 
@@ -439,8 +439,8 @@ DrawUITabBar(TabBarProps bar)
                                         is_hovered, 0,
                                         is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
             if(is_selected) {
-                if(indicator_w > tab_w - ScaleUIPx(24))
-                    indicator_w = tab_w - ScaleUIPx(24);
+                if(indicator_w > tab_w - Scale(24))
+                    indicator_w = tab_w - Scale(24);
                 if(indicator_w > 0) {
                     indicator_x = tab_x + (tab_w - indicator_w) / 2;
                     DrawRectangleRounded((Rectangle){(float)indicator_x,
@@ -470,12 +470,12 @@ DrawUITabBar(TabBarProps bar)
                      bar_y + bar_h - 1, c_link);
         } else if(!ui_material_style() && is_hovered && !is_disabled) {
             (void)cues;
-            DrawLine(tab_x + ScaleUIPx(4), bar_y + ScaleUIPx(5),
-                     tab_x + tab_w - ScaleUIPx(5), bar_y + ScaleUIPx(5),
+            DrawLine(tab_x + Scale(4), bar_y + Scale(5),
+                     tab_x + tab_w - Scale(5), bar_y + Scale(5),
                      LightenUIColor(tab_fill, 10));
         } else if(!ui_material_style() && !is_disabled) {
-            DrawLine(tab_x + tab_w - 1, bar_y + ScaleUIPx(8),
-                     tab_x + tab_w - 1, bar_y + bar_h - ScaleUIPx(4),
+            DrawLine(tab_x + tab_w - 1, bar_y + Scale(8),
+                     tab_x + tab_w - 1, bar_y + bar_h - Scale(4),
                      DarkenUIColor(c_bg, 14));
         }
 
@@ -484,20 +484,20 @@ DrawUITabBar(TabBarProps bar)
 
             if(drag_target > press_index)
                 marker_x = tab_x + tab_w;
-            DrawRectangle(marker_x - ScaleUIPx(1), bar_y + ScaleUIPx(4),
-                          ScaleUIPx(2), bar_h - ScaleUIPx(8), c_link);
+            DrawRectangle(marker_x - Scale(1), bar_y + Scale(4),
+                          Scale(2), bar_h - Scale(8), c_link);
         }
 
         // Draw tab text and icon
-        int text_pad = ui_material_style() ? ScaleUIPx(8) : ScaleUIPx(12);
-        int icon_size = tab->icon_size > 0 ? tab->icon_size : ScaleUIPx(16);
+        int text_pad = ui_material_style() ? Scale(8) : Scale(12);
+        int icon_size = tab->icon_size > 0 ? tab->icon_size : Scale(16);
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
-        int text_x = icon_x + icon_size + ScaleUIPx(4);
-        int content_h = bar_h - ScaleUIPx(8);
+        int text_x = icon_x + icon_size + Scale(4);
+        int content_h = bar_h - Scale(8);
         int content_y = bar_y + (bar_h - content_h) / 2;
-        int close_size = ScaleUIPx(18);
-        int close_pad = ScaleUIPx(6);
+        int close_size = Scale(18);
+        int close_pad = Scale(6);
         Rectangle close_rect = {
             (float)(tab_x + tab_w - text_pad - close_size),
             (float)(bar_y + (bar_h - close_size) / 2),
@@ -531,7 +531,7 @@ DrawUITabBar(TabBarProps bar)
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
             else if(ui_material_style()) {
-                int gap = ScaleUIPx(4);
+                int gap = Scale(4);
                 int label_w = TextWidth(tab->label, font);
                 int content_w = icon_size + gap + label_w;
                 if(content_w > tab_w - text_pad * 2)
@@ -547,7 +547,7 @@ DrawUITabBar(TabBarProps bar)
             };
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
             DrawTexturePro(tab->icon, icon_src, icon_rect, kryon_zero_vector2, 0, icon_tint);
-            text_x = icon_x + icon_size + ScaleUIPx(4);
+            text_x = icon_x + icon_size + Scale(4);
         } else {
             text_x = ui_material_style() && has_label
                          ? tab_x + (tab_w - TextWidth(tab->label, font)) / 2
@@ -744,8 +744,8 @@ DrawUIPaneTabBar(PaneTabBar bar)
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_material_style() ? 0 : ScaleUIPx(4);
-    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : ScaleUIPx(92);
+    int tab_gap = ui_material_style() ? 0 : Scale(4);
+    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : Scale(92);
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
     int scroll = bar.scroll_offset != NULL ? *bar.scroll_offset : 0;
@@ -754,7 +754,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
     int needs_scroll;
     int equal_tabs;
     int tab_x;
-    int drag_threshold = ScaleUIPx(6);
+    int drag_threshold = Scale(6);
     static Vector2 press_pos = {0};
     static int press_index = -1;
     static int drag_reported = 0;
@@ -846,7 +846,7 @@ GetPaneDropZone(Rectangle bounds, Vector2 mouse)
     if(!CheckCollisionPointRec(mouse, bounds))
         return PaneDropNone;
 
-    edge = ScaleUIPx(46);
+    edge = Scale(46);
     if(mouse.x < bounds.x + (float)edge)
         return PaneDropLeft;
     if(mouse.x > bounds.x + bounds.width - (float)edge)

@@ -20,7 +20,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     int tip_right = (int)(tip.x + tip.width);
     int tip_top = (int)tip.y;
     int tip_bottom = (int)(tip.y + tip.height);
-    int arrow_size = ScaleUIPx(10);
+    int arrow_size = Scale(10);
     Vector2 start, end;
     Vector2 tip0, tip1, tip2;
     Color color = GetThemeText();
@@ -30,7 +30,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)(anchor_cy + anchor.height / 2);
         end.x = (float)anchor_cx;
         end.y = (float)tip_top;
-        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
+        DrawLineEx(start, end, (float)Scale(2), color);
         tip0.x = end.x;
         tip0.y = end.y;
         tip1.x = end.x - arrow_size;
@@ -43,7 +43,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)(anchor_cy - anchor.height / 2);
         end.x = (float)anchor_cx;
         end.y = (float)tip_bottom;
-        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
+        DrawLineEx(start, end, (float)Scale(2), color);
         tip0.x = end.x;
         tip0.y = end.y;
         tip1.x = end.x + arrow_size;
@@ -56,7 +56,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)anchor_cy;
         end.x = (float)tip_left;
         end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
+        DrawLineEx(start, end, (float)Scale(2), color);
         tip0.x = end.x;
         tip0.y = end.y;
         tip1.x = end.x - arrow_size;
@@ -69,7 +69,7 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
         start.y = (float)anchor_cy;
         end.x = (float)tip_right;
         end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)ScaleUIPx(2), color);
+        DrawLineEx(start, end, (float)Scale(2), color);
         tip0.x = end.x;
         tip0.y = end.y;
         tip1.x = end.x + arrow_size;
@@ -84,8 +84,8 @@ static Rectangle
 guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
                  int reserved_top, int reserved_bottom)
 {
-    int margin = ScaleUIPx(12);
-    int gap = ScaleUIPx(20);
+    int margin = Scale(12);
+    int gap = Scale(20);
     int bottom = view_h - reserved_bottom;
     int x = (int)(anchor.x + anchor.width / 2) - w / 2;
     int y;
@@ -129,16 +129,16 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
     int view_h = guide.view_height > 0 ? guide.view_height : ui_view_height;
     int step;
-    int margin = ScaleUIPx(12);
+    int margin = Scale(12);
     int tip_w = view_w - margin * 2;
-    int pad = ScaleUIPx(12);
-    int button_size = ScaleUIPx(34);
-    int close_size = ScaleUIPx(28);
+    int pad = Scale(12);
+    int button_size = Scale(34);
+    int close_size = Scale(28);
     int page_font = Text12;
-    int line_gap = guide.line_gap > 0 ? guide.line_gap : ScaleUIPx(6);
-    int text_gap = ScaleUIPx(8);
-    int controls_gap = ScaleUIPx(12);
-    int text_guard = ScaleUIPx(8);
+    int line_gap = guide.line_gap > 0 ? guide.line_gap : Scale(6);
+    int text_gap = Scale(8);
+    int controls_gap = Scale(12);
+    int text_guard = Scale(8);
     int max_tip_h;
     char page_text[32];
     ParagraphSpec paragraph;
@@ -186,8 +186,8 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
 
     if(guide.max_width > 0 && tip_w > guide.max_width)
         tip_w = guide.max_width;
-    else if(tip_w > ScaleUIPx(300))
-        tip_w = ScaleUIPx(300);
+    else if(tip_w > Scale(300))
+        tip_w = Scale(300);
 
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = guide.steps[step].text;
@@ -197,11 +197,11 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     paragraph_h = ui_paragraph_height(paragraph);
     tip_h = pad + close_size + text_gap + paragraph_h + text_guard + controls_gap +
             button_size + pad;
-    if(tip_h < ScaleUIPx(112))
-        tip_h = ScaleUIPx(112);
+    if(tip_h < Scale(112))
+        tip_h = Scale(112);
     max_tip_h = view_h - guide.reserved_top - guide.reserved_bottom -
                 margin * 2;
-    if(max_tip_h < ScaleUIPx(112))
+    if(max_tip_h < Scale(112))
         max_tip_h = view_h - margin * 2;
     if(tip_h > max_tip_h)
         tip_h = max_tip_h;
@@ -214,7 +214,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     scrim.b = 0;
     scrim.a = 86;
     DrawRectangle(0, 0, view_w, view_h, scrim);
-    DrawRectangleLinesEx(guide.steps[step].anchor, (float)ScaleUIPx(2),
+    DrawRectangleLinesEx(guide.steps[step].anchor, (float)Scale(2),
                          GetThemeText());
     DrawRectangleRounded(tip, 0.08f, 8, GetThemeButton());
     DrawRectangleRoundedLines(tip, 0.08f, 8,
@@ -228,8 +228,8 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     close_button.height = (float)close_size;
     icon_props.bounds = close_button;
     icon_props.icon = guide.close_icon;
-    icon_props.icon_size = ScaleUIPx(16);
-    icon_props.icon_padding = ScaleUIPx(6);
+    icon_props.icon_size = Scale(16);
+    icon_props.icon_padding = Scale(6);
     if(DrawUIIconButton(icon_props)) {
         result.closed = 1;
         return result;
@@ -268,15 +268,15 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     finish = step >= guide.count - 1;
     if(step > 0) {
         memset(&icon_props, 0, sizeof(icon_props));
-        back_button.x = tip.x + tip.width - pad - button_size * 2 - ScaleUIPx(8);
+        back_button.x = tip.x + tip.width - pad - button_size * 2 - Scale(8);
         back_button.y = (float)controls_y;
         back_button.width = (float)button_size;
         back_button.height = (float)button_size;
         icon_props.bounds = back_button;
         g_ui_guide_debug.back_button = back_button;
         icon_props.icon = guide.back_icon;
-        icon_props.icon_size = ScaleUIPx(19);
-        icon_props.icon_padding = ScaleUIPx(7);
+        icon_props.icon_size = Scale(19);
+        icon_props.icon_padding = Scale(7);
         if(DrawUIIconButton(icon_props)) {
             *guide.step = step - 1;
             result.changed = 1;
@@ -291,8 +291,8 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     icon_props.bounds = next_button;
     g_ui_guide_debug.next_button = next_button;
     icon_props.icon = finish ? guide.done_icon : guide.next_icon;
-    icon_props.icon_size = ScaleUIPx(19);
-    icon_props.icon_padding = ScaleUIPx(7);
+    icon_props.icon_size = Scale(19);
+    icon_props.icon_padding = Scale(7);
     if(DrawUIIconButton(icon_props)) {
         if(finish) {
             result.finished = 1;

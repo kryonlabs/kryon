@@ -120,7 +120,7 @@ draw_time(void)
 static int
 draw_scale_px(int px)
 {
-    return ScaleUIPx(px);
+    return Scale(px);
 }
 
 static unsigned

@@ -65,36 +65,36 @@ ControlDemo :: (x: int, y: int, w: int) {
         GetThemeText(),
         GetThemeText(),
         0.08f,
-        ScaleUIPx(12),
-        ScaleUIPx(8)
+        Scale(12),
+        Scale(8)
     }
 
     Text((TextProps){.bounds={x, y, 0, 0}, .text="Live controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-    y += ScaleUIPx(46)
+    y += Scale(46)
     Button((ButtonProps){
-        .bounds = {x, y, ScaleUIPx(190), ScaleUIPx(44)},
+        .bounds = {x, y, Scale(190), Scale(44)},
         .label = "Primary",
         .style = ButtonStylePrimary,
         .id = 301,
     })
     Button((ButtonProps){
-        .bounds = {x + ScaleUIPx(210), y, ScaleUIPx(190), ScaleUIPx(44)},
+        .bounds = {x + Scale(210), y, Scale(190), Scale(44)},
         .label = "Secondary",
         .style = ButtonStyleSecondary,
         .id = 302,
     })
-    y += ScaleUIPx(70)
+    y += Scale(70)
 
-    TextField((TextFieldProps){{x, y, w, ScaleUIPx(44)}, text_value, sizeof(text_value),
+    TextField((TextFieldProps){{x, y, w, Scale(44)}, text_value, sizeof(text_value),
                                   &text_cursor, &text_focused, 80, Text16, 303,
                                   field_style, NULL, NULL, NULL})
-    y += ScaleUIPx(70)
-    Dropdown(304, x, y, w, ScaleUIPx(44), options, 3, &combo_index)
-    y += ScaleUIPx(72)
+    y += Scale(70)
+    Dropdown(304, x, y, w, Scale(44), options, 3, &combo_index)
+    y += Scale(72)
     Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "", nil)
-    y += ScaleUIPx(72)
-    Toggle(306, x, y, ScaleUIPx(180), ScaleUIPx(48), &toggle_value, "Off", "On")
-    Checkbox(307, x + ScaleUIPx(230), y + ScaleUIPx(12), "Checkbox", &check_value)
+    y += Scale(72)
+    Toggle(306, x, y, Scale(180), Scale(48), &toggle_value, "Off", "On")
+    Checkbox(307, x + Scale(230), y + Scale(12), "Checkbox", &check_value)
 }
 
 ThemeExample :: (viewport: Rectangle) #ui {
@@ -103,13 +103,13 @@ ThemeExample :: (viewport: Rectangle) #ui {
         ApplyThemeState()
         Background(GetThemeBackground())
     
-        margin: int = ScaleUIPx(26)
-        panel_w: int = ScaleUIPx(310)
-        right_x: int = margin + panel_w + ScaleUIPx(42)
+        margin: int = Scale(26)
+        panel_w: int = Scale(310)
+        right_x: int = margin + panel_w + Scale(42)
         settings := (ThemeSettingsProps){
             .id_base = 101,
             .x = margin,
-            .y = ScaleUIPx(64),
+            .y = Scale(64),
             .w = panel_w,
             .theme_source = &theme_source,
             .theme_mode = &theme_mode,
@@ -123,28 +123,28 @@ ThemeExample :: (viewport: Rectangle) #ui {
             .style_system_label = "System style"
         }
     
-        Text((TextProps){.bounds={margin, ScaleUIPx(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={right_x, ScaleUIPx(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={margin, Scale(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right_x, Scale(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
         result: UIThemeSettingsResult = {0}
         ThemeSettings(settings, &menu_state, &result)
     
-        ControlDemo(right_x, ScaleUIPx(88), ScaleUIPx(420))
+        ControlDemo(right_x, Scale(88), Scale(420))
     
         tokens := GetUIStyleTokens()
-        token_y: int = ScaleUIPx(520)
+        token_y: int = Scale(520)
         Text((TextProps){.bounds={right_x, token_y, 0, 0}, .text="Active style tokens", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        token_y += ScaleUIPx(30)
+        token_y += Scale(30)
         TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
-        TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
-        token_y += ScaleUIPx(28)
+        TokenValue("panel alpha", tokens.panel_alpha, right_x + Scale(150), token_y)
+        token_y += Scale(28)
         TokenValue("title bar alpha", tokens.title_bar_alpha,
-                   right_x + ScaleUIPx(150), token_y)
-        token_y += ScaleUIPx(24)
+                   right_x + Scale(150), token_y)
+        token_y += Scale(24)
         TokenValue("border alpha", tokens.border_alpha, right_x, token_y)
-        TokenValue("shadow alpha", tokens.shadow_alpha, right_x + ScaleUIPx(150), token_y)
-        token_y += ScaleUIPx(24)
+        TokenValue("shadow alpha", tokens.shadow_alpha, right_x + Scale(150), token_y)
+        token_y += Scale(24)
         TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
-        TokenValue("shadow y", tokens.shadow_offset_y, right_x + ScaleUIPx(150), token_y)
+        TokenValue("shadow y", tokens.shadow_offset_y, right_x + Scale(150), token_y)
     
         if result.changed {
             ApplyThemeState()

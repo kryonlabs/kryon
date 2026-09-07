@@ -225,7 +225,7 @@ ui_update_scroll(Rectangle bounds, int content_h, int *scroll_offset, int row_h)
 
     wheel = GetMouseWheelMove();
     if(wheel != 0.0f) {
-        int step = row_h > 0 ? row_h * 3 : ScaleUIPx(90);
+        int step = row_h > 0 ? row_h * 3 : Scale(90);
         *scroll_offset -= (int)(wheel * (float)step);
         if(*scroll_offset < 0)
             *scroll_offset = 0;
@@ -240,9 +240,9 @@ BeginFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap)
 {
     FrameBox frame;
     frame.bounds = bounds;
-    frame.pad_x = ScaleUIPx(pad_x);
-    frame.pad_y = ScaleUIPx(pad_y);
-    frame.gap = ScaleUIPx(gap);
+    frame.pad_x = Scale(pad_x);
+    frame.pad_y = Scale(pad_y);
+    frame.gap = Scale(gap);
     frame.cursor_x = (int)bounds.x + frame.pad_x;
     frame.cursor_y = (int)bounds.y + frame.pad_y;
     return frame;
@@ -252,7 +252,7 @@ Rectangle
 FramePack(FrameBox *frame, Side side, int size)
 {
     Rectangle item = {0};
-    int scaled = ScaleUIPx(size);
+    int scaled = Scale(size);
 
     if(frame == NULL)
         return item;
@@ -287,10 +287,10 @@ FramePack(FrameBox *frame, Side side, int size)
 Rectangle
 GridCell(Grid grid, int row, int col, int row_span, int col_span)
 {
-    float gx = (float)ScaleUIPx(grid.gap_x);
-    float gy = (float)ScaleUIPx(grid.gap_y);
-    float px = (float)ScaleUIPx(grid.pad_x);
-    float py = (float)ScaleUIPx(grid.pad_y);
+    float gx = (float)Scale(grid.gap_x);
+    float gy = (float)Scale(grid.gap_y);
+    float px = (float)Scale(grid.pad_x);
+    float py = (float)Scale(grid.pad_y);
     float cell_w;
     float cell_h;
 
@@ -317,8 +317,8 @@ GridCell(Grid grid, int row, int col, int row_span, int col_span)
 Rectangle
 Place(Rectangle parent, int x, int y, int w, int h)
 {
-    return (Rectangle){parent.x + ScaleUIPx(x), parent.y + ScaleUIPx(y),
-                       ScaleUIPx(w), ScaleUIPx(h)};
+    return (Rectangle){parent.x + Scale(x), parent.y + Scale(y),
+                       Scale(w), Scale(h)};
 }
 
 void
@@ -349,7 +349,7 @@ DrawUISeparatorText(SeparatorTextProps separator)
         return;
     if(label[0] != '\0') {
         DrawUIText(label, (int)separator.bounds.x, text_y, font, color);
-        line_x += text_width + ScaleUIPx(12);
+        line_x += text_width + Scale(12);
     }
     if(line_x < (int)(separator.bounds.x + separator.bounds.width))
         DrawLine(line_x, line_y,
@@ -445,7 +445,7 @@ int
 DrawUIMultiSelectList(MultiSelectListProps list)
 {
     Vector2 mouse = ui_mouse_world();
-    int row_height = list.row_height > 0 ? list.row_height : ScaleUIPx(28);
+    int row_height = list.row_height > 0 ? list.row_height : Scale(28);
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -507,7 +507,7 @@ DrawUIMultiSelectList(MultiSelectListProps list)
             if(list.selected[i] || hot)
                 DrawRectangleRec(row, list.selected[i] ? c_button_hover : c_button);
             DrawUIText(list.items[i] != NULL ? list.items[i] : "",
-                       (int)row.x + ScaleUIPx(8),
+                       (int)row.x + Scale(8),
                        ui_row_text_y(row, GetSmallFontSize()),
                        GetSmallFontSize(), disabled ? c_icon : c_text);
         }
@@ -596,7 +596,7 @@ DrawUISelectable(SelectableProps selectable)
                          selected ? GetThemeButton() : GetThemeButtonHover());
     if(IsWindowReady())
         DrawUIText(selectable.label != NULL ? selectable.label : "",
-                   (int)selectable.bounds.x + ScaleUIPx(8),
+                   (int)selectable.bounds.x + Scale(8),
                    ui_row_text_y(selectable.bounds, GetFontSize()),
                    GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
@@ -620,7 +620,7 @@ DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
     int pressed = ui_focusable_pressed(checkbox.bounds, checkbox.id,
                                        checkbox.disabled || checkbox.flags == NULL,
                                        &focused);
-    int box_size = ScaleUIPx(20);
+    int box_size = Scale(20);
     Rectangle box = {checkbox.bounds.x,
                      checkbox.bounds.y + (checkbox.bounds.height - box_size) * 0.5f,
                      (float)box_size, (float)box_size};
@@ -628,12 +628,12 @@ DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
     if(IsWindowReady()) {
         DrawRectangleLinesEx(box, 1.0f, GetThemeButton());
         if(checked)
-            DrawRectangle((int)box.x + ScaleUIPx(4),
-                          (int)box.y + ScaleUIPx(4),
-                          box_size - ScaleUIPx(8), box_size - ScaleUIPx(8),
+            DrawRectangle((int)box.x + Scale(4),
+                          (int)box.y + Scale(4),
+                          box_size - Scale(8), box_size - Scale(8),
                           GetThemeCircle());
         DrawUIText(checkbox.label != NULL ? checkbox.label : "",
-                   (int)box.x + box_size + ScaleUIPx(8),
+                   (int)box.x + box_size + Scale(8),
                    ui_row_text_y(checkbox.bounds, GetFontSize()),
                    GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
@@ -679,19 +679,19 @@ static int
 ui_color_picker_float(ColorEditProps picker, int channels)
 {
     int changed = 0;
-    float swatch_h = ScaleUIPx(36);
-    float gap = ScaleUIPx(4);
+    float swatch_h = Scale(36);
+    float gap = Scale(4);
     float row_h = (picker.bounds.height - swatch_h - gap) / channels;
     const char *labels[4] = {"R", "G", "B", "A"};
 
     if(picker.values == NULL || picker.value_count < channels)
         return 0;
-    if(row_h < ScaleUIPx(20))
-        row_h = ScaleUIPx(28);
+    if(row_h < Scale(20))
+        row_h = Scale(28);
     for(int i = 0; i < channels; i++) {
         SliderFloatProps channel = {
             {picker.bounds.x, picker.bounds.y + row_h * i,
-             picker.bounds.width, row_h - ScaleUIPx(2)},
+             picker.bounds.width, row_h - Scale(2)},
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
             0.0f, 1.0f, "%.3f", picker.disabled
         };
@@ -704,7 +704,7 @@ ui_color_picker_float(ColorEditProps picker, int channels)
         DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
         DrawRectangleLinesEx(swatch, 1.0f, c_button);
         if(picker.label != NULL)
-            DrawUIText(picker.label, (int)swatch.x + ScaleUIPx(6),
+            DrawUIText(picker.label, (int)swatch.x + Scale(6),
                        ui_row_text_y(swatch, GetSmallFontSize()),
                        GetSmallFontSize(), c_text);
     }
@@ -737,7 +737,7 @@ DrawUIColorButton(ColorButtonProps button)
     DrawRectangleLinesEx(button.bounds, 1.0f,
                          ui_hot(button.bounds) ? c_button_hover : c_button);
     if(button.label != NULL)
-        DrawUIText(button.label, (int)button.bounds.x + ScaleUIPx(6),
+        DrawUIText(button.label, (int)button.bounds.x + Scale(6),
                    ui_row_text_y(button.bounds, GetSmallFontSize()),
                    GetSmallFontSize(), c_text);
     if(!button.disabled && IsUIFocusActive(button.id) &&
@@ -789,10 +789,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 int focus_id, int depth)
 {
     int font = GetFontSize();
-    int row_h = ScaleUIPx(30);
-    int pad = ScaleUIPx(12);
-    int accel_w = ScaleUIPx(88);
-    int w = ScaleUIPx(180);
+    int row_h = Scale(30);
+    int pad = Scale(12);
+    int accel_w = Scale(88);
+    int w = Scale(180);
     int activated = 0;
     Rectangle panel;
     Vector2 mouse;
@@ -865,7 +865,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             w = text_w + accel + pad * 2;
     }
 
-    panel = (Rectangle){(float)x, (float)y, (float)w, (float)(row_h * item_count + ScaleUIPx(8))};
+    panel = (Rectangle){(float)x, (float)y, (float)w, (float)(row_h * item_count + Scale(8))};
     if(can_draw)
         ui_draw_menu_panel(panel);
     ui_menu_track_panel(panel);
@@ -907,10 +907,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         if(item->disabled && row_hot)
             MarkUIDisabled();
         if(can_draw && item->checked)
-            DrawUIText("*", (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font, GetThemeIcon());
+            DrawUIText("*", (int)row.x + Scale(8), ui_row_text_y(row, font), font, GetThemeIcon());
         if(can_draw)
             DrawUIText(item->label != NULL ? item->label : "",
-                       (int)row.x + ScaleUIPx(28), ui_row_text_y(row, font),
+                       (int)row.x + Scale(28), ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton()
                                             : GetThemeText());
         if(can_draw && item->accelerator != NULL)
@@ -918,7 +918,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(can_draw && item->kind == MenuSubmenu)
-            DrawUIText(">", (int)(row.x + row.width - ScaleUIPx(18)),
+            DrawUIText(">", (int)(row.x + row.width - Scale(18)),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(hot && item->kind == MenuSubmenu)
@@ -959,10 +959,10 @@ static Rectangle
 menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
 {
     int font = GetFontSize();
-    int row_h = ScaleUIPx(30);
-    int pad = ScaleUIPx(12);
-    int accel_w = ScaleUIPx(88);
-    int w = ScaleUIPx(180);
+    int row_h = Scale(30);
+    int pad = Scale(12);
+    int accel_w = Scale(88);
+    int w = Scale(180);
 
     if(items == NULL || item_count <= 0)
         return (Rectangle){(float)x, (float)y, 0.0f, 0.0f};
@@ -974,7 +974,7 @@ menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
             w = text_w + accel + pad * 2;
     }
     return (Rectangle){(float)x, (float)y, (float)w,
-                       (float)(row_h * item_count + ScaleUIPx(8))};
+                       (float)(row_h * item_count + Scale(8))};
 }
 
 static int
@@ -1040,7 +1040,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
 {
     MenuBarResult result = {0, -1};
     int font = GetFontSize();
-    int x = (int)bounds.x + ScaleUIPx(4);
+    int x = (int)bounds.x + Scale(4);
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
     int bar_capture_pushed = 0;
@@ -1130,8 +1130,8 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     }
 
     for(int i = 0; i < menu_count; i++) {
-        int w = TextWidth(menus[i].label != NULL ? menus[i].label : "", font) + ScaleUIPx(24);
-        Rectangle item = {(float)x, bounds.y + ScaleUIPx(3), (float)w, bounds.height - ScaleUIPx(6)};
+        int w = TextWidth(menus[i].label != NULL ? menus[i].label : "", font) + Scale(24);
+        Rectangle item = {(float)x, bounds.y + Scale(3), (float)w, bounds.height - Scale(6)};
         int menu_id = id + 1 + i;
         int open = g_menu_open_id == menu_id;
         int hot = !UIContentDisabled() && ui_hot(item);
@@ -1141,7 +1141,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
             MarkUIClickable();
         if(can_draw)
             DrawUIText(menus[i].label != NULL ? menus[i].label : "",
-                       x + ScaleUIPx(12), ui_row_text_y(item, font), font,
+                       x + Scale(12), ui_row_text_y(item, font), font,
                        c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
@@ -1172,7 +1172,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
             copy_menu_items(g_menu_overlay.items,&used,menus[i].items,
                             menus[i].item_count,&g_menu_overlay.item_count);
         }
-        x += w + ScaleUIPx(2);
+        x += w + Scale(2);
     }
     if(g_menu_open_id != 0 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !ui_contains(bounds, mouse) &&
@@ -1326,8 +1326,8 @@ int
 DrawUIRadioButton(RadioButtonProps radio)
 {
     int font = GetFontSize();
-    int diameter = ScaleUIPx(20);
-    int touch = ScaleUIPx(40);
+    int diameter = Scale(20);
+    int touch = Scale(40);
     Rectangle hit_bounds = radio.bounds;
     Vector2 center = {radio.bounds.x + touch / 2.0f,
                       radio.bounds.y + radio.bounds.height / 2.0f};
@@ -1369,7 +1369,7 @@ DrawUIRadioButton(RadioButtonProps radio)
         float selected;
         float press;
         float outer = (float)diameter / 2.0f;
-        float stroke = (float)ScaleUIPx(2);
+        float stroke = (float)Scale(2);
         float fill_radius;
         Color ring;
         Color fill;
@@ -1433,15 +1433,15 @@ DrawUIRadioButton(RadioButtonProps radio)
             DrawCircleV(center, fill_radius, fill);
         DrawRing(center, outer - stroke, outer, 0.0f, 360.0f, 48, ring);
         DrawUIText(radio.label != NULL ? radio.label : "",
-                   (int)radio.bounds.x + touch + ScaleUIPx(4),
+                   (int)radio.bounds.x + touch + Scale(4),
                    ui_row_text_y(radio.bounds, font), font, label);
     } else {
         center.x = radio.bounds.x + diameter / 2.0f;
         DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
         if(radio.checked)
-            DrawCircleV(center, (float)diameter / 2.0f - (float)ScaleUIPx(3),
+            DrawCircleV(center, (float)diameter / 2.0f - (float)Scale(3),
                         radio.disabled ? c_button : c_text);
-        DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + ScaleUIPx(8),
+        DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + Scale(8),
                    ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     }
     if(focused && IsWindowReady())
@@ -1475,7 +1475,7 @@ DrawUIProgressBar(ProgressBarProps progress)
     DrawRectangleRec(fill, fill_color);
     DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
     if(label != NULL) {
-        int pad = ScaleUIPx(6);
+        int pad = Scale(6);
         int text_w = TextWidth(label, font);
         int text_x = center_x - text_w / 2;
         int text_y = GetUIControlTextY(label, (int)progress.bounds.y,
@@ -1569,14 +1569,14 @@ ui_plot(PlotProps plot, int histogram)
     }
     EndUIClip();
     if(plot.label != NULL)
-        DrawUIText(plot.label, (int)plot.bounds.x + ScaleUIPx(6),
-                   (int)plot.bounds.y + ScaleUIPx(4), GetSmallFontSize(), c_text);
+        DrawUIText(plot.label, (int)plot.bounds.x + Scale(6),
+                   (int)plot.bounds.y + Scale(4), GetSmallFontSize(), c_text);
     if(plot.overlay != NULL) {
         int font = GetSmallFontSize();
         int width = TextWidth(plot.overlay, font);
         DrawUIText(plot.overlay,
-                   (int)(plot.bounds.x + plot.bounds.width) - width - ScaleUIPx(6),
-                   (int)plot.bounds.y + ScaleUIPx(4), font, c_text);
+                   (int)(plot.bounds.x + plot.bounds.width) - width - Scale(6),
+                   (int)plot.bounds.y + Scale(4), font, c_text);
     }
 }
 
@@ -1784,7 +1784,7 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused
 {
     DrawRectangleRec(bounds, disabled ? c_surface : c_button);
     DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
-    DrawUIText(text, (int)bounds.x + ScaleUIPx(6),
+    DrawUIText(text, (int)bounds.x + Scale(6),
                ui_row_text_y(bounds, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
     if(focused) DrawUIFocus(bounds);
@@ -1794,8 +1794,8 @@ static void
 ui_paint_drag_label(Rectangle bounds, const char *label)
 {
     if(label != NULL)
-        DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
-                   (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+        DrawUIText(label, (int)bounds.x + Scale(6),
+                   (int)bounds.y - GetSmallFontSize() - Scale(2),
                    GetSmallFontSize(), c_text);
 }
 
@@ -1968,17 +1968,17 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
                               cell.width, cell.height * ratio};
         DrawRectangleRec(progress, accent);
         float knob_y = cell.y + cell.height * (1.0f - ratio);
-        DrawRectangle((int)cell.x, (int)(knob_y - ScaleUIPx(2)),
-                      (int)cell.width, ScaleUIPx(4), c_text);
+        DrawRectangle((int)cell.x, (int)(knob_y - Scale(2)),
+                      (int)cell.width, Scale(4), c_text);
     } else {
         Rectangle progress = {cell.x, cell.y, cell.width * ratio, cell.height};
         DrawRectangleRec(progress, accent);
         float knob_x = cell.x + cell.width * ratio;
-        DrawRectangle((int)(knob_x - ScaleUIPx(2)), (int)cell.y,
-                      ScaleUIPx(4), (int)cell.height, c_text);
+        DrawRectangle((int)(knob_x - Scale(2)), (int)cell.y,
+                      Scale(4), (int)cell.height, c_text);
     }
     DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
-    DrawUIText(text, (int)cell.x + ScaleUIPx(6),
+    DrawUIText(text, (int)cell.x + Scale(6),
                ui_row_text_y(cell, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
     if(focused)
@@ -1989,8 +1989,8 @@ static void
 ui_draw_slider_label(Rectangle bounds, const char *label)
 {
     if(IsWindowReady() && label != NULL)
-        DrawUIText(label, (int)bounds.x + ScaleUIPx(6),
-                   (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2),
+        DrawUIText(label, (int)bounds.x + Scale(6),
+                   (int)bounds.y - GetSmallFontSize() - Scale(2),
                    GetSmallFontSize(), c_text);
 }
 
@@ -2263,7 +2263,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             state->cursor = (int)strlen(state->text);
         }
         if(step != 0.0) {
-            int button_w = ScaleUIPx(24);
+            int button_w = Scale(24);
             field_bounds.width -= button_w * 2;
             minus.x = field_bounds.x + field_bounds.width;
             minus.width = button_w;
@@ -2312,7 +2312,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         (void)commit;
     }
     if(IsWindowReady() && label != NULL)
-        Text((TextProps){.bounds={(int)bounds.x + ScaleUIPx(6), (int)bounds.y - GetSmallFontSize() - ScaleUIPx(2), 0, 0}, .text=label, .font=GetSmallFontSize(), .color=c_text, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - GetSmallFontSize() - Scale(2), 0, 0}, .text=label, .font=GetSmallFontSize(), .color=c_text, .wrap=TextWrapNone});
     EndDisabled();
     return changed;
 }
@@ -2344,7 +2344,7 @@ DrawUIInputDouble(InputDoubleProps input)
 int
 DrawUISpinbox(SpinboxProps spinbox)
 {
-    int button_w = ScaleUIPx(28);
+    int button_w = Scale(28);
     int changed = 0;
     char value_text[32];
     Rectangle left = spinbox.bounds;
@@ -2422,12 +2422,12 @@ DrawUILabelFrame(LabelFrameProps frame)
     int font = GetSmallFontSize();
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
     if(frame.title != NULL) {
-        int pad = ScaleUIPx(8);
+        int pad = Scale(8);
         int w = TextWidth(frame.title, font) + pad * 2;
-        DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - ScaleUIPx(8),
-                      w, ScaleUIPx(18), c_bg);
+        DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - Scale(8),
+                      w, Scale(18), c_bg);
         DrawUIText(frame.title, (int)frame.bounds.x + pad * 2,
-                   (int)frame.bounds.y - ScaleUIPx(9), font, c_text);
+                   (int)frame.bounds.y - Scale(9), font, c_text);
     }
 }
 
@@ -2458,7 +2458,7 @@ BeginListBox(ListBoxProps list)
         long long total = (long long)(list.item_count > 0 ? list.item_count : 0)*(list.row_height > 0 ? list.row_height : 30);
         height = total > INT_MAX ? INT_MAX : (int)total;
     }
-    return BeginScroll(inner,ScaleUIPx(height),list.scroll_offset);
+    return BeginScroll(inner,Scale(height),list.scroll_offset);
 }
 
 void
@@ -2475,7 +2475,7 @@ DrawUIListBox(ListBoxProps list)
     int font = GetFontSize();
     int disabled = list.disabled || UIContentDisabled();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
-    int row_h = list.row_height > 0 ? ScaleUIPx(list.row_height) : ScaleUIPx(30);
+    int row_h = list.row_height > 0 ? Scale(list.row_height) : Scale(30);
     int scroll_y;
     int first;
     int y_offset;
@@ -2540,7 +2540,7 @@ DrawUIListBox(ListBoxProps list)
             MarkUIClickable();
         if(paint)
             DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
-                       (int)row.x + ScaleUIPx(8), ui_row_text_y(row, font), font,
+                       (int)row.x + Scale(8), ui_row_text_y(row, font), font,
                        disabled ? DarkenUIColor(c_text, 38) : c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             UIConsumeRelease();
@@ -2551,7 +2551,7 @@ DrawUIListBox(ListBoxProps list)
     if(paint)
         EndUIClip();
     if(paint && list.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(list.bounds.x + list.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(list.bounds.x + list.bounds.width - Scale(8)),
                         (int)list.bounds.y, (int)list.bounds.height,
                         list.item_count * row_h, list.scroll_offset, max_scroll, 0);
     if(paint && focused)
@@ -2564,7 +2564,7 @@ DrawUITreeView(TreeViewProps tree)
 {
     int paint = IsWindowReady();
     int font = GetFontSize();
-    int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
+    int row_h = tree.row_height > 0 ? Scale(tree.row_height) : Scale(28);
     int scroll_y;
     int first;
     int y_offset;
@@ -2588,7 +2588,7 @@ DrawUITreeView(TreeViewProps tree)
         Rectangle row = {tree.bounds.x, tree.bounds.y + (float)(i * row_h - y_offset),
                          tree.bounds.width, (float)row_h};
         int hot = !tree.disabled && ui_hot(row);
-        int x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
+        int x = (int)row.x + Scale(8 + item->depth * 18);
         if(paint && tree.selected_id != NULL && *tree.selected_id == item->id)
             DrawRectangleRec(row, tree.disabled ? DarkenUIColor(c_button, 38) : c_button);
         else if(paint && hot)
@@ -2601,7 +2601,7 @@ DrawUITreeView(TreeViewProps tree)
                 DrawUIText(">", x, ui_row_text_y(row, font), font,
                            tree.disabled ? DarkenUIColor(c_icon, 38) : c_icon);
             DrawUIText(item->label != NULL ? item->label : "",
-                       x + ScaleUIPx(18), ui_row_text_y(row, font), font,
+                       x + Scale(18), ui_row_text_y(row, font), font,
                        tree.disabled ? DarkenUIColor(c_text, 38) : c_text);
         }
         if(hot)
@@ -2615,7 +2615,7 @@ DrawUITreeView(TreeViewProps tree)
     if(paint)
         EndUIClip();
     if(paint && tree.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - Scale(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         tree.item_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
@@ -2745,7 +2745,7 @@ ui_draw_tree_disclosure(Rectangle box, int expanded, int hot)
     Color mark = GetThemeIcon();
     int cx = (int)(box.x + box.width / 2.0f);
     int cy = (int)(box.y + box.height / 2.0f);
-    int pad = ScaleUIPx(4);
+    int pad = Scale(4);
 
     DrawRectangleRec(box, bg);
     DrawRectangleLinesEx(box, 1.0f, border);
@@ -2760,7 +2760,7 @@ static void
 ui_draw_tree_file_mark(Rectangle box, int hot)
 {
     Color border = hot ? GetThemeIcon() : GetThemeButton();
-    int inset = ScaleUIPx(3);
+    int inset = Scale(3);
 
     DrawRectangleLines((int)box.x + inset, (int)box.y + inset,
                        (int)box.width - inset * 2,
@@ -2775,7 +2775,7 @@ int
 DrawUICascadingTreeView(CascadingTreeViewProps tree)
 {
     int font = GetFontSize();
-    int row_h = tree.row_height > 0 ? ScaleUIPx(tree.row_height) : ScaleUIPx(28);
+    int row_h = tree.row_height > 0 ? Scale(tree.row_height) : Scale(28);
     Vector2 mouse = ui_mouse_world();
     int blocked = UIInputCapturesClick(mouse);
     int contains;
@@ -2811,8 +2811,8 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
         int expanded;
         int x;
         int y;
-        int mark_size = ScaleUIPx(16);
-        int gap = ScaleUIPx(8);
+        int mark_size = Scale(16);
+        int gap = Scale(8);
 
         if(!ui_tree_item_visible(tree.items, i, tree.expanded))
             continue;
@@ -2827,7 +2827,7 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
                           (float)row_h};
         hot = ui_contains(row, mouse) && !blocked;
         expanded = item->is_dir && ui_tree_is_expanded(tree.expanded, item->id);
-        x = (int)row.x + ScaleUIPx(8 + item->depth * 18);
+        x = (int)row.x + Scale(8 + item->depth * 18);
         if(tree.selected_id != NULL && *tree.selected_id == item->id)
             DrawRectangleRec(row, GetThemeButton());
         else if(hot)
@@ -2848,7 +2848,7 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
         text_rect = (Rectangle){
             mark.x + mark.width + (float)gap,
             row.y,
-            tree.bounds.x + tree.bounds.width - (float)ScaleUIPx(10) -
+            tree.bounds.x + tree.bounds.width - (float)Scale(10) -
                 (mark.x + mark.width + (float)gap),
             row.height
         };
@@ -2875,7 +2875,7 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
     }
     EndUIClip();
     if(tree.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - Scale(8)),
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         visible_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
@@ -2990,10 +2990,10 @@ DrawUISourceView(SourceViewProps source)
 {
     const char *text = source.text != NULL ? source.text : "";
     int font = source.font_size > 0 ? source.font_size : GetSmallFontSize();
-    int line_h = source.line_height > 0 ? ScaleUIPx(source.line_height)
-                                        : TextLineHeight(font) + ScaleUIPx(4);
-    int pad = ScaleUIPx(12);
-    int gutter_w = source.show_line_numbers ? ScaleUIPx(58) : 0;
+    int line_h = source.line_height > 0 ? Scale(source.line_height)
+                                        : TextLineHeight(font) + Scale(4);
+    int pad = Scale(12);
+    int gutter_w = source.show_line_numbers ? Scale(58) : 0;
     Rectangle view;
     int line_count = ui_source_line_count(text);
     int content_h;
@@ -3025,7 +3025,7 @@ DrawUISourceView(SourceViewProps source)
     }
 
     content_h = line_count * line_h;
-    content_w = gutter_w + ui_source_max_line_width(text, font) + ScaleUIPx(24);
+    content_w = gutter_w + ui_source_max_line_width(text, font) + Scale(24);
     max_scroll_y = ui_update_scroll(view, content_h, source.scroll_y, line_h);
     if(source.scroll_y != NULL)
         scroll_y = *source.scroll_y;
@@ -3063,7 +3063,7 @@ DrawUISourceView(SourceViewProps source)
                        GetThemeIcon());
         }
         BeginUIClip((int)view.x + gutter_w, y,
-                    (int)view.width - gutter_w - ScaleUIPx(10), line_h);
+                    (int)view.width - gutter_w - Scale(10), line_h);
         ui_draw_source_line(line, len,
                             (int)view.x + gutter_w - scroll_x, y, font,
                             GetThemeText());
@@ -3078,7 +3078,7 @@ DrawUISourceView(SourceViewProps source)
 
     if(source.scroll_y != NULL && max_scroll_y > 0)
         ui_scrollbar((int)(source.bounds.x + source.bounds.width -
-                              ScaleUIPx(8)),
+                              Scale(8)),
                         (int)source.bounds.y, (int)source.bounds.height,
                         content_h, source.scroll_y, max_scroll_y, 0);
     return max_scroll_x > 0 || max_scroll_y > 0;
@@ -3181,7 +3181,7 @@ ui_table_header_shift(TableViewProps table, float y)
     float angle = table.header_angle;
     if(!isfinite(angle) || angle == 0) return 0;
     angle = fmaxf(-89,fminf(89,angle));
-    float height = ScaleUIPx(table.header_height > 30 ? table.header_height : 30);
+    float height = Scale(table.header_height > 30 ? table.header_height : 30);
     return -(height-(y-table.bounds.y))/tanf(angle*3.14159265358979323846f/180);
 }
 
@@ -3367,8 +3367,8 @@ BeginTableCell(TableViewProps table, int row, int column)
     for(int slot = 0; slot < table.column_count; slot++)
         if(ui_table_display_column(table,slot) == column) found = 1;
     if(found && visible > 0 && row >= 0 && row < table.row_count) {
-        int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
-        int header_h = ScaleUIPx(table.header_height > 30 ? table.header_height : 30);
+        int row_h = table.row_height > 0 ? Scale(table.row_height) : Scale(28);
+        int header_h = Scale(table.header_height > 30 ? table.header_height : 30);
         int body_h = (int)table.bounds.height-header_h;
         if(body_h < 0) body_h = 0;
         int frozen = table.freeze_rows;
@@ -3412,9 +3412,9 @@ DrawUITableView(TableViewProps table)
     static UIPopupInputOwner resize_owner = {0};
     int paint = IsWindowReady();
     int font = GetSmallFontSize();
-    int row_h = table.row_height > 0 ? ScaleUIPx(table.row_height) : ScaleUIPx(28);
-    int header_h = ScaleUIPx(30);
-    if(table.header_height > 30) header_h = ScaleUIPx(table.header_height);
+    int row_h = table.row_height > 0 ? Scale(table.row_height) : Scale(28);
+    int header_h = Scale(30);
+    if(table.header_height > 30) header_h = Scale(table.header_height);
     int default_col_w;
     int scroll_y;
     int first;
@@ -3481,7 +3481,7 @@ DrawUITableView(TableViewProps table)
            ui_contains(header, mouse)) {
             int separator_x = 0;
             int column = ui_table_separator_at_x(table, (int)(mouse.x-ui_table_header_shift(table,mouse.y)),
-                                                  ScaleUIPx(5), default_col_w,
+                                                  Scale(5), default_col_w,
                                                   &separator_x);
             if(column >= 0) {
                 resize_table_id = table.id;
@@ -3495,7 +3495,7 @@ DrawUITableView(TableViewProps table)
         }
         if(resize_column >= 0 && resize_table_id == table.id) {
             int minimum = table.min_column_width > 0
-                ? ScaleUIPx(table.min_column_width) : ScaleUIPx(32);
+                ? Scale(table.min_column_width) : Scale(32);
             if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
                 int width = resize_start_width + (int)mouse.x - resize_start_x;
                 if(width < minimum)
@@ -3563,11 +3563,11 @@ DrawUITableView(TableViewProps table)
                     if(x1 <= x0) continue;
                     BeginUIClip(x0,(int)head.y+row,x1-x0,1);
                     DrawTextPro(GetUIFont(), label,
-                            (Vector2){head.x + (angle > 0 ? shift : 0) + ScaleUIPx(6), angle < 0 ? head.y + head.height - ScaleUIPx(6) : head.y + ScaleUIPx(6)},
+                            (Vector2){head.x + (angle > 0 ? shift : 0) + Scale(6), angle < 0 ? head.y + head.height - Scale(6) : head.y + Scale(6)},
                             (Vector2){0,0}, angle, font, 1, text_color);
                     EndUIClip();
                 }
-            } else DrawUIText(label, (int)head.x + ScaleUIPx(6), ui_row_text_y(head, font), font, text_color);
+            } else DrawUIText(label, (int)head.x + Scale(6), ui_row_text_y(head, font), font, text_color);
             if(table.resizable && table.column_widths != NULL) {
                 BeginUIClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
@@ -3655,7 +3655,7 @@ DrawUITableView(TableViewProps table)
                     text_color = table.rows[r].text_colors[c];
                 if(table.disabled)
                     text_color = DarkenUIColor(text_color, 38);
-                DrawUIText(text, x + ScaleUIPx(6), ui_row_text_y(row, font), font, text_color);
+                DrawUIText(text, x + Scale(6), ui_row_text_y(row, font), font, text_color);
                 EndUIClip();
             }
         }
@@ -3716,7 +3716,7 @@ DrawUITableView(TableViewProps table)
     if(paint)
         EndUIClip();
     if(paint && table.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(table.bounds.x + table.bounds.width - ScaleUIPx(8)),
+        ui_scrollbar((int)(table.bounds.x + table.bounds.width - Scale(8)),
                         (int)(table.bounds.y + header_h + frozen_rows * row_h),
                         scroll_body_h,
                         (table.row_count - frozen_rows) * row_h,
@@ -3800,7 +3800,7 @@ EndCanvas(Canvas canvas)
 void
 DrawUICanvasGrid(Rectangle bounds, int step, Color color)
 {
-    int scaled = ScaleUIPx(step);
+    int scaled = Scale(step);
     if(scaled < 4)
         scaled = 4;
     for(int x = (int)bounds.x; x < (int)(bounds.x + bounds.width); x += scaled)
@@ -3827,10 +3827,10 @@ DrawUINotebook(NotebookProps notebook)
     int font = GetFontSize();
     int changed = 0;
     int x = (int)notebook.bounds.x;
-    int tab_h = ScaleUIPx(34);
+    int tab_h = Scale(34);
 
     for(int i = 0; i < notebook.tab_count; i++) {
-        int w = TextWidth(notebook.tabs[i], font) + ScaleUIPx(28);
+        int w = TextWidth(notebook.tabs[i], font) + Scale(28);
         Rectangle tab = {(float)x, notebook.bounds.y, (float)w, (float)tab_h};
         int selected = notebook.selected_index != NULL && *notebook.selected_index == i;
         int hot = ui_hot(tab);
@@ -3838,7 +3838,7 @@ DrawUINotebook(NotebookProps notebook)
         if(hot)
             DrawRectangleRec(tab, c_button_hover);
         DrawRectangleLinesEx(tab, 1.0f, c_button);
-        DrawUIText(notebook.tabs[i], x + ScaleUIPx(14), ui_row_text_y(tab, font), font, c_text);
+        DrawUIText(notebook.tabs[i], x + Scale(14), ui_row_text_y(tab, font), font, c_text);
         if(hot)
             MarkUIClickable();
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && notebook.selected_index != NULL) {
@@ -3864,7 +3864,7 @@ DrawUIPanedView(PanedViewProps panes)
     if(limit < panes.min_first) limit = panes.min_first;
     int split = panes.split != NULL ? *panes.split : limit / 2;
     split = ui_clampi(split, panes.min_first, limit);
-    int grip = ScaleUIPx(8);
+    int grip = Scale(8);
     Rectangle handle = panes.vertical
         ? (Rectangle){panes.bounds.x + split - grip / 2, panes.bounds.y, grip, panes.bounds.height}
         : (Rectangle){panes.bounds.x, panes.bounds.y + split - grip / 2, panes.bounds.width, grip};
@@ -3948,9 +3948,9 @@ DrawUICollapsible(CollapsibleProps section)
     int font = GetFontSize();
     int changed = 0;
     Rectangle header = section.bounds;
-    header.height = ScaleUIPx(32);
+    header.height = Scale(32);
     if(section.tree && section.depth > 0) {
-        float indent = fminf((float)section.depth * ScaleUIPx(20), header.width);
+        float indent = fminf((float)section.depth * Scale(20), header.width);
         header.x += indent;
         header.width -= indent;
     }
@@ -3994,9 +3994,9 @@ DrawUICollapsible(CollapsibleProps section)
             DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
         if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
         DrawUIText(section.leaf ? "•" : section.open != NULL && *section.open ? "v" : ">",
-                   (int)header.x + ScaleUIPx(8), ui_row_text_y(header, font), font, icon);
+                   (int)header.x + Scale(8), ui_row_text_y(header, font), font, icon);
         DrawUIText(section.label != NULL ? section.label : "",
-                   (int)header.x + ScaleUIPx(28), ui_row_text_y(header, font), font, text);
+                   (int)header.x + Scale(28), ui_row_text_y(header, font), font, text);
         if(focused) DrawUIFocus(header);
     }
     return changed;
@@ -4015,7 +4015,7 @@ DrawUIMessageDialog(MessageDialogProps dialog)
     props.actions = &action;
     props.action_count = 1;
     props.close_icon = g_ui_x_icon;
-    props.max_width = ScaleUIPx(420);
+    props.max_width = Scale(420);
     return DrawUIActionModal(props);
 }
 
@@ -4034,7 +4034,7 @@ DrawUIConfirmDialog(ConfirmDialogProps dialog)
     props.actions = actions;
     props.action_count = 2;
     props.close_icon = g_ui_x_icon;
-    props.max_width = ScaleUIPx(460);
+    props.max_width = Scale(460);
     return DrawUIActionModal(props);
 }
 
@@ -4056,12 +4056,12 @@ DrawUIPromptDialog(PromptDialogProps dialog)
     props.actions = actions;
     props.action_count = 2;
     props.close_icon = g_ui_x_icon;
-    props.max_width = ScaleUIPx(460);
+    props.max_width = Scale(460);
     result = DrawUIActionModal(props);
     if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
-        Rectangle field = {(float)(ui_view_width / 2 - ScaleUIPx(190)),
-                           (float)(ui_view_height / 2 - ScaleUIPx(4)),
-                           (float)ScaleUIPx(380), (float)ScaleUIPx(38)};
+        Rectangle field = {(float)(ui_view_width / 2 - Scale(190)),
+                           (float)(ui_view_height / 2 - Scale(4)),
+                           (float)Scale(380), (float)Scale(38)};
         memset(&field_props, 0, sizeof(field_props));
         field_props.bounds = field;
         field_props.text = dialog.text;
@@ -4087,13 +4087,13 @@ DrawUITextPopover(TextPopoverProps popover)
     int result = 0;
     int font = GetFontSize();
     int small_font = GetSmallFontSize();
-    int pad = ScaleUIPx(10);
-    int gap = ScaleUIPx(8);
-    int close_size = ScaleUIPx(22);
-    int field_h = ScaleUIPx(34);
-    int popover_w = popover.width > 0 ? ScaleUIPx(popover.width) : ScaleUIPx(300);
+    int pad = Scale(10);
+    int gap = Scale(8);
+    int close_size = Scale(22);
+    int field_h = Scale(34);
+    int popover_w = popover.width > 0 ? Scale(popover.width) : Scale(300);
     int popover_h = pad * 2 + field_h;
-    int screen_pad = ScaleUIPx(6);
+    int screen_pad = Scale(6);
     int label_w;
     int field_x;
     int field_w;
@@ -4116,8 +4116,8 @@ DrawUITextPopover(TextPopoverProps popover)
        popover.cursor_position == NULL || popover.focused == NULL)
         return 1;
 
-    if(popover_w < ScaleUIPx(220))
-        popover_w = ScaleUIPx(220);
+    if(popover_w < Scale(220))
+        popover_w = Scale(220);
     if(popover_w > ui_view_width - screen_pad * 2)
         popover_w = ui_view_width - screen_pad * 2;
 
@@ -4125,9 +4125,9 @@ DrawUITextPopover(TextPopoverProps popover)
     popover_x = anchor_center - popover_w / 2;
     popover_x = ui_clampi(popover_x, screen_pad,
                           ui_view_width - screen_pad - popover_w);
-    popover_y = (int)(popover.anchor.y + popover.anchor.height) + ScaleUIPx(6);
+    popover_y = (int)(popover.anchor.y + popover.anchor.height) + Scale(6);
     if(popover_y + popover_h > ui_view_height - screen_pad)
-        popover_y = (int)popover.anchor.y - popover_h - ScaleUIPx(6);
+        popover_y = (int)popover.anchor.y - popover_h - Scale(6);
     popover_y = ui_clampi(popover_y, screen_pad,
                           ui_view_height - screen_pad - popover_h);
 
@@ -4147,11 +4147,11 @@ DrawUITextPopover(TextPopoverProps popover)
                                  panel.width, panel.height}, shadow);
     DrawRectangleRec(panel, surface);
     DrawRectangleLinesEx(panel, 1.0f, border);
-    if(anchor_center >= popover_x + ScaleUIPx(8) &&
-       anchor_center <= popover_x + popover_w - ScaleUIPx(8)) {
-        Vector2 tip = {(float)anchor_center, panel.y - (float)ScaleUIPx(6)};
-        Vector2 left = {(float)(anchor_center - ScaleUIPx(7)), panel.y};
-        Vector2 right = {(float)(anchor_center + ScaleUIPx(7)), panel.y};
+    if(anchor_center >= popover_x + Scale(8) &&
+       anchor_center <= popover_x + popover_w - Scale(8)) {
+        Vector2 tip = {(float)anchor_center, panel.y - (float)Scale(6)};
+        Vector2 left = {(float)(anchor_center - Scale(7)), panel.y};
+        Vector2 right = {(float)(anchor_center + Scale(7)), panel.y};
 
         DrawTriangle(tip, left, right, surface);
         DrawLine((int)tip.x, (int)tip.y, (int)left.x, (int)left.y, border);
@@ -4175,8 +4175,8 @@ DrawUITextPopover(TextPopoverProps popover)
     };
     field_x = popover_x + pad + label_w;
     field_w = (int)close_bounds.x - gap - field_x;
-    if(field_w < ScaleUIPx(80))
-        field_w = ScaleUIPx(80);
+    if(field_w < Scale(80))
+        field_w = Scale(80);
     field_bounds = (Rectangle){(float)field_x, (float)(popover_y + pad),
                                (float)field_w, (float)field_h};
 
@@ -4187,8 +4187,8 @@ DrawUITextPopover(TextPopoverProps popover)
     field_style.text = c_text;
     field_style.cursor = c_link;
     field_style.radius = 0.03f;
-    field_style.padding_x = ScaleUIPx(8);
-    field_style.padding_y = ScaleUIPx(6);
+    field_style.padding_x = Scale(8);
+    field_style.padding_y = Scale(6);
 
     if(*popover.focused)
         SetUIFocus(popover.id > 0 ? popover.id : 8401);
@@ -4210,7 +4210,7 @@ DrawUITextPopover(TextPopoverProps popover)
     RenderTextField(field);
 
     if(DrawUIPaddedIconBtn((int)close_bounds.x, (int)close_bounds.y,
-                           ScaleUIPx(14), ScaleUIPx(4), g_ui_x_icon, NULL))
+                           Scale(14), Scale(4), g_ui_x_icon, NULL))
         result = 1;
     if(g_ui_x_icon.id == 0) {
         int hover = 0;
@@ -4235,12 +4235,12 @@ DrawUITextPopover(TextPopoverProps popover)
 int
 DrawUIPickerDialog(PickerDialogProps picker)
 {
-    int pad = ScaleUIPx(14);
-    int title_h = ScaleUIPx(34);
-    int row_h = ScaleUIPx(40);
-    int button_h = ScaleUIPx(36);
-    int icon_size = row_h - ScaleUIPx(8);
-    int max_w = picker.max_width > 0 ? ScaleUIPx(picker.max_width) : ScaleUIPx(300);
+    int pad = Scale(14);
+    int title_h = Scale(34);
+    int row_h = Scale(40);
+    int button_h = Scale(36);
+    int icon_size = row_h - Scale(8);
+    int max_w = picker.max_width > 0 ? Scale(picker.max_width) : Scale(300);
     int w;
     int panel_h;
     int x;
@@ -4256,8 +4256,8 @@ DrawUIPickerDialog(PickerDialogProps picker)
         return 0;
 
     w = max_w;
-    if(w > ui_view_width - ScaleUIPx(32))
-        w = ui_view_width - ScaleUIPx(32);
+    if(w > ui_view_width - Scale(32))
+        w = ui_view_width - Scale(32);
     panel_h = title_h + picker.option_count * row_h + button_h + pad * 2;
     x = (ui_view_width - w) / 2;
     y = (ui_view_height - panel_h) / 2;
@@ -4283,7 +4283,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
     y += title_h;
     for(i = 0; i < picker.option_count; i++) {
         int has_icon = picker.icons != NULL && picker.icons[i].id != 0;
-        int text_x = x + pad + ScaleUIPx(12);
+        int text_x = x + pad + Scale(12);
 
         memset(&button, 0, sizeof(button));
         button.bounds.x = (float)(x + pad);
@@ -4306,12 +4306,12 @@ DrawUIPickerDialog(PickerDialogProps picker)
             icon_src.width = (float)picker.icons[i].width;
             icon_src.height = (float)picker.icons[i].height;
             icon_dst.x = (float)text_x;
-            icon_dst.y = (float)(y + ScaleUIPx(4));
+            icon_dst.y = (float)(y + Scale(4));
             icon_dst.width = (float)icon_size;
             icon_dst.height = (float)icon_size;
             DrawTexturePro(picker.icons[i], icon_src, icon_dst,
                            kryon_zero_vector2, 0.0f, WHITE);
-            text_x += icon_size + ScaleUIPx(12);
+            text_x += icon_size + Scale(12);
         }
         DrawCenteredUIText(picker.labels[i] != NULL ? picker.labels[i] : "",
                            (text_x + x + w - pad) / 2, y + row_h / 2,
@@ -4349,16 +4349,16 @@ DrawUIColorPicker(Rectangle bounds, Color *color)
     b = color->b;
     changed |= ui_render_slider(8101, (int)bounds.x, (int)bounds.y,
                             (int)bounds.width, "R", 0, 255, &r, "", NULL);
-    changed |= ui_render_slider(8102, (int)bounds.x, (int)bounds.y + ScaleUIPx(36),
+    changed |= ui_render_slider(8102, (int)bounds.x, (int)bounds.y + Scale(36),
                             (int)bounds.width, "G", 0, 255, &g, "", NULL);
-    changed |= ui_render_slider(8103, (int)bounds.x, (int)bounds.y + ScaleUIPx(72),
+    changed |= ui_render_slider(8103, (int)bounds.x, (int)bounds.y + Scale(72),
                             (int)bounds.width, "B", 0, 255, &b, "", NULL);
     if(changed)
         *color = (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color->a};
-    DrawRectangle((int)bounds.x, (int)bounds.y + ScaleUIPx(112),
-                  ScaleUIPx(80), ScaleUIPx(36), *color);
-    DrawRectangleLines((int)bounds.x, (int)bounds.y + ScaleUIPx(112),
-                       ScaleUIPx(80), ScaleUIPx(36), c_button);
+    DrawRectangle((int)bounds.x, (int)bounds.y + Scale(112),
+                  Scale(80), Scale(36), *color);
+    DrawRectangleLines((int)bounds.x, (int)bounds.y + Scale(112),
+                       Scale(80), Scale(36), c_button);
     return changed;
 }
 

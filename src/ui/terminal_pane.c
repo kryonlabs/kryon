@@ -93,13 +93,13 @@ MeasureTerminalPaneContent(Rectangle content, int font_size)
     TerminalPaneMetrics metrics = {0};
     int font;
 
-    font = font_size > 0 ? font_size : ScaleUIPx(13);
+    font = font_size > 0 ? font_size : Scale(13);
     metrics.cell_width = TextWidth("M", font);
     if(metrics.cell_width < 6)
         metrics.cell_width = font * 6 / 10;
     metrics.line_height = TextLineHeight(font);
     if(metrics.line_height < font + 2)
-        metrics.line_height = font + ScaleUIPx(2);
+        metrics.line_height = font + Scale(2);
     metrics.content = content;
     if(metrics.content.width < 0)
         metrics.content.width = 0;
@@ -122,7 +122,7 @@ Rectangle
 TerminalPaneContentBounds(Rectangle bounds, int top_inset, int padding)
 {
     int top = top_inset > 0 ? top_inset : 0;
-    int pad = padding >= 0 ? padding : ScaleUIPx(6);
+    int pad = padding >= 0 ? padding : Scale(6);
     Rectangle content = {
         bounds.x + (float)pad,
         bounds.y + (float)(top + pad),
@@ -168,13 +168,13 @@ MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
        FormatTerminalPaneScrollIndicatorLabel(label, (int)sizeof(label),
                                               indicator.scroll_offset) <= 0)
         return badge;
-    font = indicator.font_size > 0 ? indicator.font_size : ScaleUIPx(13);
+    font = indicator.font_size > 0 ? indicator.font_size : Scale(13);
     label_w = TextWidth(label, font);
     badge.x = indicator.viewport.x + indicator.viewport.width -
-              (float)label_w - (float)ScaleUIPx(16);
-    badge.y = indicator.viewport.y + (float)ScaleUIPx(6);
-    badge.width = (float)label_w + (float)ScaleUIPx(10);
-    badge.height = (float)ScaleUIPx(22);
+              (float)label_w - (float)Scale(16);
+    badge.y = indicator.viewport.y + (float)Scale(6);
+    badge.width = (float)label_w + (float)Scale(10);
+    badge.height = (float)Scale(22);
     if(badge.x < indicator.viewport.x)
         badge.x = indicator.viewport.x;
     if(badge.width > indicator.viewport.width)
@@ -196,12 +196,12 @@ DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
                                               indicator.scroll_offset) <= 0)
         return badge;
     colors = ResolveTerminalPaneThemeColors(indicator.colors);
-    font = indicator.font_size > 0 ? indicator.font_size : ScaleUIPx(13);
+    font = indicator.font_size > 0 ? indicator.font_size : Scale(13);
     DrawRectangleRec(badge, colors.scroll_indicator);
     DrawRectangleLines((int)badge.x, (int)badge.y, (int)badge.width,
                        (int)badge.height, colors.border);
-    DrawUIText(label, (int)badge.x + ScaleUIPx(5),
-               (int)badge.y + ScaleUIPx(4), font,
+    DrawUIText(label, (int)badge.x + Scale(5),
+               (int)badge.y + Scale(4), font,
                colors.scroll_indicator_text);
     return badge;
 }
@@ -284,7 +284,7 @@ DrawTerminalPane(TerminalPane pane)
     text = pane_color(pane.colors.text, theme.text);
     cursor = pane_color(pane.colors.cursor, theme.cursor);
     border = pane_color(pane.colors.border, theme.border);
-    font = pane.font_size > 0 ? pane.font_size : ScaleUIPx(13);
+    font = pane.font_size > 0 ? pane.font_size : Scale(13);
 
     DrawRectangleRec(pane.bounds, background);
     DrawRectangleLinesEx(pane.bounds, 1.0f, border);

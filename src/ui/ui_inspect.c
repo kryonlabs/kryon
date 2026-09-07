@@ -609,7 +609,7 @@ EndUIWidget(UIWidget *widget)
 static int
 ui_inspect_point_in_resize_handle(Rectangle bounds, Vector2 point)
 {
-    int handle = ScaleUIPx(12);
+    int handle = Scale(12);
     Rectangle rect = {
         bounds.x + bounds.width - (float)handle,
         bounds.y + bounds.height - (float)handle,
@@ -777,7 +777,7 @@ DrawUIInspectOverlay(void)
                              color);
         if(i == g_ui_inspect.selected &&
            (widget->flags & UI_WIDGET_RESIZABLE) != 0) {
-            int s = ScaleUIPx(10);
+            int s = Scale(10);
 
             DrawRectangle((int)(screen_bounds.x + screen_bounds.width - s),
                           (int)(screen_bounds.y + screen_bounds.height - s),

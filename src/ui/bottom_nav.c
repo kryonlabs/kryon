@@ -12,8 +12,8 @@ int
 ui_bottom_nav_height(void)
 {
     if(ui_material_style())
-        return ScaleUIPx(80);
-    return ScaleUIPx(40);
+        return Scale(80);
+    return Scale(40);
 }
 
 static int
@@ -64,7 +64,7 @@ DrawUIBottomNav(BottomNavProps nav)
     int height = nav.height > 0 ? nav.height : ui_bottom_nav_height();
     int bottom_margin = nav.bottom_margin > 0 ? nav.bottom_margin : 0;
     int side_margin = nav.side_margin > 0 ? nav.side_margin : 0;
-    int icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(24);
+    int icon_size = nav.icon_size > 0 ? nav.icon_size : Scale(24);
     int y = nav.view_height - bottom_margin - height;
     int available_w = nav.view_width - side_margin * 2;
     int tab_w;
@@ -85,12 +85,12 @@ DrawUIBottomNav(BottomNavProps nav)
         return result;
     if(count > 8)
         count = 8;
-    if(available_w < ScaleUIPx(96))
-        available_w = ScaleUIPx(96);
+    if(available_w < Scale(96))
+        available_w = Scale(96);
 
     tab_w = available_w / count;
-    if(tab_w < ScaleUIPx(56))
-        tab_w = ScaleUIPx(56);
+    if(tab_w < Scale(56))
+        tab_w = Scale(56);
     group_w = tab_w * count;
     if(group_w > available_w)
         group_w = available_w;
@@ -131,22 +131,22 @@ DrawUIBottomNav(BottomNavProps nav)
             Rectangle item_bounds = {(float)x, (float)y, (float)w, (float)height};
             int label_font = GetSmallFontSize();
             int label_h = TextLineHeight(label_font);
-            int indicator_w = ScaleUIPx(64);
-            int indicator_h = ScaleUIPx(32);
+            int indicator_w = Scale(64);
+            int indicator_h = Scale(32);
             int indicator_x = x + (w - indicator_w) / 2;
-            int label_gap = ScaleUIPx(4);
+            int label_gap = Scale(4);
             int content_h = indicator_h + label_gap + label_h;
             int indicator_y = y + (height - content_h) / 2;
             int label_y = indicator_y + indicator_h + label_gap;
-            int label_pad = ScaleUIPx(4);
+            int label_pad = Scale(4);
             Color text_tint = item->active ? scheme.on_surface :
                                              scheme.on_surface_variant;
             Color state_tint = item->active ? scheme.on_secondary :
                                               scheme.on_surface_variant;
 
-            icon_size = nav.icon_size > 0 ? nav.icon_size : ScaleUIPx(26);
-            if(indicator_y < y + ScaleUIPx(4))
-                indicator_y = y + ScaleUIPx(4);
+            icon_size = nav.icon_size > 0 ? nav.icon_size : Scale(26);
+            if(indicator_y < y + Scale(4))
+                indicator_y = y + Scale(4);
             label_y = indicator_y + indicator_h + label_gap;
             icon_x = x + (w - icon_size) / 2;
             icon_y = indicator_y + (indicator_h - icon_size) / 2;
@@ -195,12 +195,12 @@ DrawUIBottomNav(BottomNavProps nav)
         }
 
         if(!ui_material_style() && cues && item->active &&
-           !item->disabled && w > ScaleUIPx(20)) {
-            int cue_h = ScaleUIPx(2);
+           !item->disabled && w > Scale(20)) {
+            int cue_h = Scale(2);
             if(cue_h < 1)
                 cue_h = 1;
-            DrawRectangle(x + ScaleUIPx(10), y + height - cue_h,
-                          w - ScaleUIPx(20), cue_h,
+            DrawRectangle(x + Scale(10), y + height - cue_h,
+                          w - Scale(20), cue_h,
                           LightenUIColor(c_button_hover, 18));
         }
 
@@ -249,12 +249,12 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     int route_count = modal.route_count != NULL ? *modal.route_count : 0;
     int max_route_count = modal.max_route_count > 0 ? modal.max_route_count : route_count;
     int selected[16] = {0};
-    int row_h = ScaleUIPx(58);
-    int dropdown_h = ScaleUIPx(36);
-    int remove_w = ScaleUIPx(36);
-    int add_h = ScaleUIPx(34);
-    int button_h = ScaleUIPx(36);
-    int button_gap = ScaleUIPx(8);
+    int row_h = Scale(58);
+    int dropdown_h = Scale(36);
+    int remove_w = Scale(36);
+    int add_h = Scale(34);
+    int button_h = Scale(36);
+    int button_gap = Scale(8);
     int y;
     int button_w;
     int total_button_w;
@@ -284,8 +284,8 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         selected[i] = bottom_nav_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
-    frame = DrawUIModalFrame(ScaleUIPx(340),
-                                ScaleUIPx(128) + row_h * route_count + add_h + ScaleUIPx(58),
+    frame = DrawUIModalFrame(Scale(340),
+                                Scale(128) + row_h * route_count + add_h + Scale(58),
                                 modal.title,
                                 kryon_zero_texture2d,
                                 modal.close_icon);
@@ -295,18 +295,18 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     }
 
     button_w = (frame.content_w - button_gap * 2) / 3;
-    if(button_w > ScaleUIPx(92))
-        button_w = ScaleUIPx(92);
+    if(button_w > Scale(92))
+        button_w = Scale(92);
     total_button_w = button_w * 3 + button_gap * 2;
-    button_y = frame.y + frame.h - button_h - ScaleUIPx(16);
+    button_y = frame.y + frame.h - button_h - Scale(16);
     add_y = button_y - button_gap - add_h;
-    route_view_h = add_y - frame.content_y - ScaleUIPx(12);
+    route_view_h = add_y - frame.content_y - Scale(12);
     if(route_view_h < row_h)
         route_view_h = row_h;
-    if(frame.content_y + route_view_h > add_y - ScaleUIPx(8))
-        route_view_h = add_y - frame.content_y - ScaleUIPx(8);
-    if(route_view_h < ScaleUIPx(48))
-        route_view_h = ScaleUIPx(48);
+    if(frame.content_y + route_view_h > add_y - Scale(8))
+        route_view_h = add_y - frame.content_y - Scale(8);
+    if(route_view_h < Scale(48))
+        route_view_h = Scale(48);
     route_content_h = row_h * route_count;
     memset(&route_area, 0, sizeof(route_area));
     route_area.bounds.x = (float)frame.content_x;
@@ -318,7 +318,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     route_area.content_width = frame.content_w;
     route_area.scroll_offset = &route_scroll_offset;
     route_area.wheel_step = row_h;
-    route_area.scrollbar_x = frame.content_x + frame.content_w - ScaleUIPx(8);
+    route_area.scrollbar_x = frame.content_x + frame.content_w - Scale(8);
 
     route_view = BeginUIScrollContainer(route_area);
     y = route_view.content_y;
@@ -329,8 +329,8 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         int remove_hover = 0;
         DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
         if(DrawUIDropdown(modal.id + i, frame.content_x,
-                          y + ScaleUIPx(22),
-                          frame.content_w - remove_w - ScaleUIPx(8),
+                          y + Scale(22),
+                          frame.content_w - remove_w - Scale(8),
                           dropdown_h, option_labels, option_count,
                           &selected[i]) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
@@ -338,8 +338,8 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
             result.changed = 1;
         }
         if(DrawUIPaddedIconBtn(frame.content_x + frame.content_w - remove_w,
-                                  y + ScaleUIPx(22), ScaleUIPx(20),
-                                  ScaleUIPx(8), modal.close_icon,
+                                  y + Scale(22), Scale(20),
+                                  Scale(8), modal.close_icon,
                                   &remove_hover)) {
             for(j = i; j < route_count - 1; j++)
                 modal.routes[j] = modal.routes[j + 1];
@@ -354,13 +354,13 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     EndUIScrollContainer(route_area, route_view);
 
     SetUIDropdownClipTop(frame.content_y);
-    SetUIDropdownClipBottom(add_y - ScaleUIPx(8));
+    SetUIDropdownClipBottom(add_y - Scale(8));
 
     y = add_y;
     dropdown_blocks_buttons = ui_dropdown_captures_click(ui_mouse_world());
     if(route_count < max_route_count && modal.routes != NULL) {
         int add_hover = 0;
-        add_w = frame.content_w < ScaleUIPx(180) ? frame.content_w : ScaleUIPx(180);
+        add_w = frame.content_w < Scale(180) ? frame.content_w : Scale(180);
         if(RenderStyledButton(frame.content_x + (frame.content_w - add_w) / 2,
                                   y, add_w, add_h, modal.add_label,
                                   ButtonStyleSecondary,

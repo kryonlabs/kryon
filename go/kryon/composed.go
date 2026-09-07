@@ -18,7 +18,7 @@ func CarouselControls(p CarouselControlsProps) int32 {
 	if !p.Disabled {
 		s = (s + p.Move%p.Count + p.Count) % p.Count
 	}
-	hit, inset, icon := ScaleUIPx(48), ScaleUIPx(12), ScaleUIPx(10)
+	hit, inset, icon := Scale(48), Scale(12), Scale(10)
 	if p.Bounds.Width >= float32(hit*2) && p.Bounds.Height >= float32(hit) {
 		for i := int32(0); i < 2; i++ {
 			x := p.Bounds.X + float32(inset)
@@ -61,7 +61,7 @@ func CarouselControls(p CarouselControlsProps) int32 {
 			if p.Disabled {
 				c.A = 51
 			}
-			DrawCircleV(Vector2{X: b.X + float32(hit)/2, Y: b.Y + float32(hit)/2}, ScaleUIPx(r), c)
+			DrawCircleV(Vector2{X: b.X + float32(hit)/2, Y: b.Y + float32(hit)/2}, Scale(r), c)
 		}
 	}
 	return s

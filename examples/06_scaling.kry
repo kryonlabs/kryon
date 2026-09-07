@@ -18,7 +18,7 @@ ScalingExample :: (viewport: Rectangle) #ui {
         bounds = viewport
         SetUIScale(scales[scale_index])
         Background(GetThemeBackground())
-        box_size: int = ScaleUIPx(100)
+        box_size: int = Scale(100)
         Text((TextProps){.bounds={50, 20, 0, 0}, .text=TextFormat("DPI Scale:%.1f",scales[scale_index]), .font=20, .color=GetThemeText(), .wrap=TextWrapNone})
         Rect(box_x, box_y, box_size, box_size, GetThemeButton(), GetThemeIcon())
         Text((TextProps){.bounds={box_x + 10, box_y + 10, 0, 0}, .text="Scaled Box", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})

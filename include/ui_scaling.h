@@ -10,7 +10,7 @@ void SetUIScale(float scale);
 float GetUIScale(void);
 
 // Scale a pixel value by the DPI factor
-int ScaleUIPx(int px);
+int Scale(int px);
 
 // Scale and clamp a pixel value between min and max
 int ClampUIPx(int px, int min_px, int max_px);

@@ -18,7 +18,7 @@ GetUIScale(void)
 }
 
 int
-ScaleUIPx(int px)
+Scale(int px)
 {
     return (int)(px * g_dpi_scale + 0.5f);
 }

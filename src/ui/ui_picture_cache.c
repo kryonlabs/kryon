@@ -353,7 +353,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
         *radius = 0.0f;
         *roundness = 0.0f;
         *segments = 1;
-        *outline_px = ScaleUIPx(2);
+        *outline_px = Scale(2);
         style->surface_overlay.a = 0;
         style->scrim_top.a = 0;
         if(style->scrim_bottom.a > 30)
@@ -369,7 +369,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
         UIMaterialScheme scheme = ui_material_scheme();
 
         if(*radius <= 0.0f)
-            *radius = (float)ScaleUIPx((int)tokens.panel_radius);
+            *radius = (float)Scale((int)tokens.panel_radius);
         *roundness = picture_roundness_from_radius(bounds, *radius);
         *segments = *segments < 12 ? 12 : *segments;
         style->background = scheme.surface_container;

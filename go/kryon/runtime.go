@@ -1298,7 +1298,7 @@ type Runtime interface {
 	Background(Color)
 	Text(TextProps)
 	TextFormat(string, ...any) string
-	ScaleUIPx(int32) int32
+	Scale(int32) int32
 	GetScreenWidth() int32
 	GetScreenHeight() int32
 	GetThemeBackground() Color
@@ -2016,7 +2016,7 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	}
 }
 func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
-func (r *runtime) ScaleUIPx(px int32) int32                           { return px }
+func (r *runtime) Scale(px int32) int32                            { return px }
 func (r *runtime) GetScreenWidth() int32                              { return int32(r.config.Width) }
 func (r *runtime) GetScreenHeight() int32                             { return int32(r.config.Height) }
 func (r *runtime) GetThemeBackground() Color                          { return r.theme().background }
@@ -5110,7 +5110,7 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 }
 func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 	bounds = r.layoutRect(bounds)
-	spacing := r.ScaleUIPx(step)
+	spacing := r.Scale(step)
 	if spacing < 4 {
 		spacing = 4
 	}

@@ -50,9 +50,9 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
     unsigned int directions = ui_swipe_directions(spec);
     float min_distance = spec.min_distance > 0.0f
                              ? spec.min_distance
-                             : (float)ScaleUIPx(48);
+                             : (float)Scale(48);
     float axis_bias = spec.axis_bias >= 1.0f ? spec.axis_bias : 1.25f;
-    float decision_distance = (float)ScaleUIPx(8);
+    float decision_distance = (float)Scale(8);
     double now = GetTime();
 
     if(gesture == NULL || spec.bounds.width <= 0.0f ||

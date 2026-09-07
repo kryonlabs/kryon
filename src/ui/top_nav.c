@@ -28,8 +28,8 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
 
     if(title == NULL)
         title = "";
-    if(max_w < ScaleUIPx(48))
-        max_w = (int)bounds.width - ScaleUIPx(16);
+    if(max_w < Scale(48))
+        max_w = (int)bounds.width - Scale(16);
     title_w = TextWidth(title, font);
     while(font > Text12 && title_w > max_w) {
         font--;
@@ -49,16 +49,16 @@ DrawUITopNav(TopNavProps nav)
     int y = nav.y;
     int w = nav.width > 0 ? nav.width : ui_view_width;
     int h = nav.height > 0 ? nav.height : ui_tab_bar_height();
-    int pad = nav.side_padding > 0 ? nav.side_padding : ScaleUIPx(8);
+    int pad = nav.side_padding > 0 ? nav.side_padding : Scale(8);
     int action_icon = nav.action_icon_size > 0 ? nav.action_icon_size
-                                               : ScaleUIPx(18);
+                                               : Scale(18);
     int action_pad = nav.action_icon_padding > 0 ? nav.action_icon_padding
-                                                 : ScaleUIPx(6);
-    int action_gap = nav.action_gap > 0 ? nav.action_gap : ScaleUIPx(4);
+                                                 : Scale(6);
+    int action_gap = nav.action_gap > 0 ? nav.action_gap : Scale(4);
     int action_total = action_icon + action_pad * 2;
     int actions_w = 0;
     int dropdown_h = nav.dropdown_height > 0 ? nav.dropdown_height
-                                             : ScaleUIPx(32);
+                                             : Scale(32);
     int dropdown_x = x + pad;
     int dropdown_y = y + (h - dropdown_h) / 2;
     int previous = nav.selected_index != NULL ? *nav.selected_index : -1;

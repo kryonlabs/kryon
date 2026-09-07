@@ -54,9 +54,9 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 static int
 ui_modal_action_width(const char *label, int font)
 {
-    int width = TextWidth(label != NULL ? label : "", font) + ScaleUIPx(24);
-    int min_width = ScaleUIPx(88);
-    int max_width = ScaleUIPx(150);
+    int width = TextWidth(label != NULL ? label : "", font) + Scale(24);
+    int min_width = Scale(88);
+    int max_width = Scale(150);
 
     return ui_clampi(width, min_width, max_width);
 }
@@ -140,24 +140,24 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 int
 DrawUIActionModal(ModalProps modal)
 {
-    int screen_pad = ScaleUIPx(24);
-    int modal_min_w = ScaleUIPx(280);
-    int modal_max_w = modal.max_width > 0 ? ScaleUIPx(modal.max_width) : ScaleUIPx(420);
+    int screen_pad = Scale(24);
+    int modal_min_w = Scale(280);
+    int modal_max_w = modal.max_width > 0 ? Scale(modal.max_width) : Scale(420);
     int modal_w;
     int modal_x;
     int modal_y;
     int title_font;
     int msg_font = GetFontSize();
     int btn_font = GetFontSize();
-    int btn_h = ScaleUIPx(44);
-    int btn_gap = ScaleUIPx(8);
-    int title_h = ScaleUIPx(48);
-    int padding_x = ScaleUIPx(18);
-    int padding_bottom = ScaleUIPx(18);
+    int btn_h = Scale(44);
+    int btn_gap = Scale(8);
+    int title_h = Scale(48);
+    int padding_x = Scale(18);
+    int padding_bottom = Scale(18);
     int msg_x;
     int msg_y;
     int msg_w;
-    int msg_gap = ScaleUIPx(18);
+    int msg_gap = Scale(18);
     int modal_h;
     int btn_y;
     int button_rows;
@@ -173,15 +173,15 @@ DrawUIActionModal(ModalProps modal)
         modal_w = ui_view_width - screen_pad;
     if(modal_w < modal_min_w)
         modal_w = modal_min_w;
-    if(modal_w > ui_view_width - ScaleUIPx(8))
-        modal_w = ui_view_width - ScaleUIPx(8);
+    if(modal_w > ui_view_width - Scale(8))
+        modal_w = ui_view_width - Scale(8);
     msg_w = modal_w - padding_x * 2;
-    if(msg_w < ScaleUIPx(120))
-        msg_w = ScaleUIPx(120);
+    if(msg_w < Scale(120))
+        msg_w = Scale(120);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 UI_ICON_TYPE_GEAR, msg_font);
-    ReflowTextLayout(&msg_layout, msg_w, msg_font, ScaleUIPx(4));
+    ReflowTextLayout(&msg_layout, msg_w, msg_font, Scale(4));
 
     button_rows = ui_modal_measure_action_rows(modal.actions, modal.action_count,
                                                msg_w, btn_gap, btn_font);
@@ -189,10 +189,10 @@ DrawUIActionModal(ModalProps modal)
                 button_rows * btn_h + (button_rows - 1) * btn_gap : 0;
     modal_h = title_h + GetTextLayoutHeight(&msg_layout) +
               (buttons_h > 0 ? msg_gap + buttons_h : 0) + padding_bottom;
-    if(modal_h < ScaleUIPx(160))
-        modal_h = ScaleUIPx(160);
-    if(modal_h > ui_view_height - ScaleUIPx(24))
-        modal_h = ui_view_height - ScaleUIPx(24);
+    if(modal_h < Scale(160))
+        modal_h = Scale(160);
+    if(modal_h > ui_view_height - Scale(24))
+        modal_h = ui_view_height - Scale(24);
     modal_x = (ui_view_width - modal_w) / 2;
     modal_y = (ui_view_height - modal_h) / 2;
     capture.x = (float)modal_x;
@@ -230,23 +230,23 @@ DrawUIActionModal(ModalProps modal)
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
-    title_font = GetTitleFontSize(modal.title, modal_w - ScaleUIPx(92));
+    title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     DrawUIText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
-               modal_y + ScaleUIPx(14), title_font, c_text);
+               modal_y + Scale(14), title_font, c_text);
 
     DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
     FreeTextLayout(&msg_layout);
 
     if(result == 0 && modal.close_icon.id != 0) {
-        int icon_size = ScaleUIPx(20);
-        int icon_padding = ScaleUIPx(8);
+        int icon_size = Scale(20);
+        int icon_padding = Scale(8);
         int icon_w = icon_size + icon_padding * 2;
         int hover = 0;
 
-        if(ui_modal_icon_button(modal_x + modal_w - icon_w - ScaleUIPx(6),
-                               modal_y + ScaleUIPx(6), icon_size,
+        if(ui_modal_icon_button(modal_x + modal_w - icon_w - Scale(6),
+                               modal_y + Scale(6), icon_size,
                                icon_padding, modal.close_icon, &hover))
             result = -1;
     }
@@ -301,10 +301,10 @@ DrawUIModal3Button(const char *title, const char *message,
 int
 ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
 {
-    int width = measure.width > 0 ? measure.width : ScaleUIPx(320);
-    int header_h = measure.header_h > 0 ? measure.header_h : ScaleUIPx(58);
-    int button_h = measure.button_h > 0 ? measure.button_h : ScaleUIPx(36);
-    int line_gap = measure.line_gap > 0 ? measure.line_gap : ScaleUIPx(4);
+    int width = measure.width > 0 ? measure.width : Scale(320);
+    int header_h = measure.header_h > 0 ? measure.header_h : Scale(58);
+    int button_h = measure.button_h > 0 ? measure.button_h : Scale(36);
+    int line_gap = measure.line_gap > 0 ? measure.line_gap : Scale(4);
     int font = measure.font > 0 ? measure.font : GetFontSize();
     int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
     int min_h = measure.min_height > 0 ? measure.min_height : 0;
@@ -312,13 +312,13 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
     ParagraphSpec paragraph;
     int height;
 
-    if(width > ui_view_width - ScaleUIPx(24))
-        width = ui_view_width - ScaleUIPx(24);
-    if(width < ScaleUIPx(160))
-        width = ScaleUIPx(160);
-    content_w = width - ScaleUIPx(36);
-    if(content_w < ScaleUIPx(120))
-        content_w = ScaleUIPx(120);
+    if(width > ui_view_width - Scale(24))
+        width = ui_view_width - Scale(24);
+    if(width < Scale(160))
+        width = Scale(160);
+    content_w = width - Scale(36);
+    if(content_w < Scale(120))
+        content_w = Scale(120);
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = measure.message;
     paragraph.width = content_w;
@@ -328,7 +328,7 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
              ui_paragraph_height(paragraph) +
              extra_lines * (font + line_gap) +
              button_h +
-             ScaleUIPx(18);
+             Scale(18);
     if(height < min_h)
         height = min_h;
     return height;
@@ -343,8 +343,8 @@ DrawUIModalFrame(int width, int height, const char *title,
     UIPanelFrame frame = {0};
     UIWidget widget;
     int title_font;
-    int icon_size = ScaleUIPx(20);
-    int icon_padding = ScaleUIPx(8);
+    int icon_size = Scale(20);
+    int icon_padding = Scale(8);
     int icon_w = icon_size + icon_padding * 2;
     int title_w;
     int hover = 0;
@@ -352,10 +352,10 @@ DrawUIModalFrame(int width, int height, const char *title,
     Rectangle capture;
     Color scrim;
 
-    if(width > ui_view_width - ScaleUIPx(24))
-        width = ui_view_width - ScaleUIPx(24);
-    if(height > ui_view_height - ScaleUIPx(24))
-        height = ui_view_height - ScaleUIPx(24);
+    if(width > ui_view_width - Scale(24))
+        width = ui_view_width - Scale(24);
+    if(height > ui_view_height - Scale(24))
+        height = ui_view_height - Scale(24);
 
     frame.w = width;
     frame.h = height;
@@ -374,21 +374,21 @@ DrawUIModalFrame(int width, int height, const char *title,
         frame.y = (int)bounds.y;
         frame.w = (int)bounds.width;
         frame.h = (int)bounds.height;
-        if(frame.w < ScaleUIPx(120))
-            frame.w = ScaleUIPx(120);
-        if(frame.h < ScaleUIPx(96))
-            frame.h = ScaleUIPx(96);
+        if(frame.w < Scale(120))
+            frame.w = Scale(120);
+        if(frame.h < Scale(96))
+            frame.h = Scale(96);
         bounds.x = (float)frame.x;
         bounds.y = (float)frame.y;
         bounds.width = (float)frame.w;
         bounds.height = (float)frame.h;
         UIWidgetSetBounds(&widget, bounds);
     }
-    frame.content_x = frame.x + ScaleUIPx(18);
-    frame.content_y = frame.y + ScaleUIPx(58);
-    frame.content_w = frame.w - ScaleUIPx(36);
-    frame.content_h = frame.h - ScaleUIPx(74);
-    title_font = GetTitleFontSize(title, frame.w - icon_w * 2 - ScaleUIPx(24));
+    frame.content_x = frame.x + Scale(18);
+    frame.content_y = frame.y + Scale(58);
+    frame.content_w = frame.w - Scale(36);
+    frame.content_h = frame.h - Scale(74);
+    title_font = GetTitleFontSize(title, frame.w - icon_w * 2 - Scale(24));
     title_w = TextWidth(title, title_font);
     capture.x = (float)frame.x;
     capture.y = (float)frame.y;
@@ -423,17 +423,17 @@ DrawUIModalFrame(int width, int height, const char *title,
     }
 
     DrawUIText(title, frame.x + (frame.w - title_w) / 2,
-                    frame.y + ScaleUIPx(14), title_font, c_text);
+                    frame.y + Scale(14), title_font, c_text);
 
     if(left_icon.id != 0) {
-        frame.left_clicked = ui_modal_icon_button(frame.x + ScaleUIPx(6),
-                                                     frame.y + ScaleUIPx(6),
+        frame.left_clicked = ui_modal_icon_button(frame.x + Scale(6),
+                                                     frame.y + Scale(6),
                                                      icon_size, icon_padding,
                                                      left_icon, &hover);
     }
     if(frame.right_clicked == 0 && right_icon.id != 0) {
-        frame.right_clicked = ui_modal_icon_button(frame.x + frame.w - icon_w - ScaleUIPx(6),
-                                                      frame.y + ScaleUIPx(6),
+        frame.right_clicked = ui_modal_icon_button(frame.x + frame.w - icon_w - Scale(6),
+                                                      frame.y + Scale(6),
                                                       icon_size, icon_padding,
                                                       right_icon, &hover);
     }

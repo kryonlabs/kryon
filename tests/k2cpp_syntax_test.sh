@@ -50,25 +50,25 @@ Valid :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text((TextProps){.bounds={ScaleUIPx(10), ScaleUIPx(10), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(10), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Column form: {
-            bounds = {ScaleUIPx(4), ScaleUIPx(40), ScaleUIPx(180), ScaleUIPx(120)}
-            gap = ScaleUIPx(4)
-            padding = ScaleUIPx(6)
+            bounds = {Scale(4), Scale(40), Scale(180), Scale(120)}
+            gap = Scale(4)
+            padding = Scale(6)
             key = Key("form")
-            TextField((TextFieldProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
-            TextArea((TextAreaProps){.bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = ScaleUIPx(4), .focus_id = 102, .placeholder = "Notes"})
+            TextField((TextFieldProps){.bounds = {0, 0, Scale(160), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
+            TextArea((TextAreaProps){.bounds = {0, 0, Scale(160), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 102, .placeholder = "Notes"})
             Row actions: {
-                bounds = {0, 0, ScaleUIPx(160), ScaleUIPx(32)}
-                gap = ScaleUIPx(4)
+                bounds = {0, 0, Scale(160), Scale(32)}
+                gap = Scale(4)
                 padding = 0
                 key = Key("actions")
-                Button((ButtonProps){.bounds = {0, 0, ScaleUIPx(70), ScaleUIPx(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
+                Button((ButtonProps){.bounds = {0, 0, Scale(70), Scale(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
             }
         }
         menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
         menus: [1] Menu = {{{0},"File",menu_items,2}}
-        menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,ScaleUIPx(200),ScaleUIPx(30)},menus,1,&menu_open)
+        menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,Scale(200),Scale(30)},menus,1,&menu_open)
         if menu_result.activated_id != 0 {
             count = menu_result.activated_id
         }
@@ -76,12 +76,12 @@ Valid :: (viewport: Rectangle) #ui {
             count = 302
         }
         nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
-        nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = ScaleUIPx(200), .view_height = ScaleUIPx(120), .count = 1, .items = nav_items, .height = ScaleUIPx(40)})
+        nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
         if nav_result.clicked_route != -1 {
             count = nav_result.clicked_route
         }
         tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
-        count = TabBar((TabBarProps){.bounds = {0, ScaleUIPx(32), ScaleUIPx(120), ScaleUIPx(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
+        count = TabBar((TabBarProps){.bounds = {0, Scale(32), Scale(120), Scale(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
         count = c_abs(-3)
         value := count + 1
         unused value

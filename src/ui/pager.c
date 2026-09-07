@@ -34,9 +34,9 @@ DrawUIGuidePager(UIGuidePagerProps pager)
     UIGuidePagerResult result = {0};
     int page_count = pager.page_count > 0 ? pager.page_count : 1;
     int page = ui_clampi(pager.page, 0, page_count - 1);
-    int pad = ScaleUIPx(12);
-    int gap = ScaleUIPx(12);
-    int button_h = ScaleUIPx(48);
+    int pad = Scale(12);
+    int gap = Scale(12);
+    int button_h = Scale(48);
     int footer_y = (int)pager.footer_bounds.y;
     int footer_h = (int)pager.footer_bounds.height;
     int footer_x = (int)pager.footer_bounds.x;
@@ -53,7 +53,7 @@ DrawUIGuidePager(UIGuidePagerProps pager)
         result.swipe = UpdateUISwipe(pager.swipe, (UISwipeSpec){
             .bounds = pager.content_bounds,
             .directions = UI_SWIPE_HORIZONTAL,
-            .min_distance = (float)ScaleUIPx(48),
+            .min_distance = (float)Scale(48),
             .axis_bias = 1.25f,
             .max_duration = 0.8f
         });

@@ -75,10 +75,10 @@ test_semantic_font_sizes_follow_ui_scale(void)
     check_int("fitted font preserves body", FitFontSize("Day", 1000, Text16, Text8), 28);
     check_int("fitted caption token scales", FitFontSize("", 1000, Text12, Text8), 21);
     {
-        int fitted = FitFontSize("Delete Habit", ScaleUIPx(64),
+        int fitted = FitFontSize("Delete Habit", Scale(64),
                                  GetFontSize(), Text8);
         check_int("button label fit stays inside content width",
-                  TextWidth("Delete Habit", fitted) <= ScaleUIPx(64), 1);
+                  TextWidth("Delete Habit", fitted) <= Scale(64), 1);
     }
     EndUIFrame();
 }
@@ -685,8 +685,8 @@ test_menu_bar_switches_while_popup_captures_input(void)
     InjectReset();
     BeginUIFrame(640, 480, 1.0f);
     font = GetFontSize();
-    edit_x = ScaleUIPx(4) + TextWidth("File", font) + ScaleUIPx(24) +
-             ScaleUIPx(2) + ScaleUIPx(8);
+    edit_x = Scale(4) + TextWidth("File", font) + Scale(24) +
+             Scale(2) + Scale(8);
     EndUIFrame();
 
     InjectTap((float)edit_x, 14.0f);

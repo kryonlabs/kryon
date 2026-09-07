@@ -17,10 +17,10 @@ App :: () #ui {
     Screen root: {
         ClearBackground(GetThemeBackground())
         Background(GetThemeSurface())
-        Text((TextProps){.bounds={ScaleUIPx(8), ScaleUIPx(8), 0, 0}, .text="Spec Contract", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(8), Scale(8), 0, 0}, .text="Spec Contract", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         if count < 42 {
             count = count + 1
         }
-        Text((TextProps){.bounds={ScaleUIPx(8), ScaleUIPx(32), 0, 0}, .text="ready", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(8), Scale(32), 0, 0}, .text="ready", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }
