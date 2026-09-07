@@ -2886,6 +2886,259 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
 }
 
 int
+TextBufferLineAtCursor(const char *text, int cursor)
+{
+    int line = 1;
+
+    if(text == NULL)
+        return 1;
+    for(int i = 0; text[i] != '\0' && i < cursor; i++) {
+        if(text[i] == '\n')
+            line++;
+    }
+    return line;
+}
+
+int
+TextBufferColumnAtCursor(const char *text, int cursor)
+{
+    int col = 1;
+
+    if(text == NULL)
+        return 1;
+    for(int i = 0; text[i] != '\0' && i < cursor; i++) {
+        if(text[i] == '\n')
+            col = 1;
+        else
+            col++;
+    }
+    return col;
+}
+
+int
+TextBufferLineCount(const char *text)
+{
+    int lines = 1;
+
+    if(text == NULL)
+        return 1;
+    for(int i = 0; text[i] != '\0'; i++) {
+        if(text[i] == '\n')
+            lines++;
+    }
+    return lines;
+}
+
+static int
+text_buffer_line_start(const char *text, int cursor)
+{
+    int start = cursor;
+
+    if(text == NULL)
+        return 0;
+    if(start < 0)
+        start = 0;
+    while(start > 0 && text[start - 1] != '\n')
+        start--;
+    return start;
+}
+
+static int
+text_buffer_insert(char *text, int text_size, int at, const char *bytes,
+                   int len)
+{
+    int used;
+
+    if(text == NULL || bytes == NULL || text_size <= 0 || len <= 0)
+        return 0;
+    used = (int)strlen(text);
+    if(at < 0 || at > used || used + len >= text_size)
+        return 0;
+    memmove(text + at + len, text + at, (size_t)(used - at + 1));
+    memcpy(text + at, bytes, (size_t)len);
+    return 1;
+}
+
+static int
+text_buffer_delete(char *text, int at, int len)
+{
+    int used;
+
+    if(text == NULL || len <= 0)
+        return 0;
+    used = (int)strlen(text);
+    if(at < 0 || at + len > used)
+        return 0;
+    memmove(text + at, text + at + len, (size_t)(used - at - len + 1));
+    return 1;
+}
+
+int
+TextBufferToggleLineComment(char *text, int text_size, int *cursor)
+{
+    int start;
+    int p;
+
+    if(text == NULL || cursor == NULL)
+        return 0;
+    start = text_buffer_line_start(text, *cursor);
+    p = start;
+    while(text[p] == ' ' || text[p] == '\t')
+        p++;
+    if(text[p] == '/' && text[p + 1] == '/') {
+        if(!text_buffer_delete(text, p, 2))
+            return 0;
+        if(*cursor >= p + 2)
+            *cursor -= 2;
+        else if(*cursor > p)
+            *cursor = p;
+        return 1;
+    }
+    if(!text_buffer_insert(text, text_size, p, "//", 2))
+        return 0;
+    if(*cursor >= p)
+        *cursor += 2;
+    return 1;
+}
+
+int
+TextBufferIndentLine(char *text, int text_size, int *cursor, int outdent)
+{
+    int start;
+    int remove = 0;
+
+    if(text == NULL || cursor == NULL)
+        return 0;
+    start = text_buffer_line_start(text, *cursor);
+    if(outdent) {
+        while(remove < 4 && text[start + remove] == ' ')
+            remove++;
+        if(remove == 0 && text[start] == '\t')
+            remove = 1;
+        if(remove == 0)
+            return 0;
+        if(!text_buffer_delete(text, start, remove))
+            return 0;
+        if(*cursor >= start + remove)
+            *cursor -= remove;
+        else if(*cursor > start)
+            *cursor = start;
+        return 1;
+    }
+    if(!text_buffer_insert(text, text_size, start, "    ", 4))
+        return 0;
+    if(*cursor >= start)
+        *cursor += 4;
+    return 1;
+}
+
+int
+TextBufferBracketMatch(const char *text, int cursor)
+{
+    const char *opens = "([{";
+    const char *closes = ")]}";
+    int len;
+    int pos;
+    const char *p;
+    int dir;
+    char open;
+    char close;
+    int depth = 0;
+
+    if(text == NULL)
+        return -1;
+    len = (int)strlen(text);
+    if(len <= 0)
+        return -1;
+    if(cursor < 0)
+        cursor = 0;
+    if(cursor >= len)
+        cursor = len - 1;
+    pos = cursor;
+    if(pos > 0 && strchr(opens, text[pos]) == NULL &&
+       strchr(closes, text[pos]) == NULL)
+        pos--;
+    p = strchr(opens, text[pos]);
+    if(p != NULL) {
+        open = *p;
+        close = closes[p - opens];
+        dir = 1;
+    } else {
+        p = strchr(closes, text[pos]);
+        if(p == NULL)
+            return -1;
+        close = *p;
+        open = opens[p - closes];
+        dir = -1;
+    }
+    for(int i = pos; i >= 0 && i < len; i += dir) {
+        if(text[i] == open)
+            depth += dir > 0 ? 1 : -1;
+        else if(text[i] == close)
+            depth += dir > 0 ? -1 : 1;
+        if(depth == 0 && i != pos)
+            return i;
+    }
+    return -1;
+}
+
+Rectangle
+TextAreaGutter(TextAreaProps area, int gutter_width)
+{
+    int font;
+    int line_gap;
+    int line_h;
+    int scroll_y;
+    int first;
+    int rows;
+    int active;
+    int total;
+    int y;
+    Rectangle gutter;
+
+    if(gutter_width <= 0)
+        return area.bounds;
+    area.style = ui_resolve_text_input_style(area.style);
+    font = area.font > 0 ? area.font : GetFontSize();
+    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    line_h = TextLineHeight(font) + line_gap;
+    if(line_h <= 0)
+        return area.bounds;
+    scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
+    first = scroll_y / line_h;
+    rows = ((int)area.bounds.height / line_h) + 3;
+    active = TextBufferLineAtCursor(area.text, area.cursor_position != NULL
+        ? *area.cursor_position : 0);
+    total = TextBufferLineCount(area.text);
+    gutter = (Rectangle){area.bounds.x, area.bounds.y, (float)gutter_width,
+                         area.bounds.height};
+    DrawRectangleRec(gutter, area.style.background);
+    DrawLine((int)(gutter.x + gutter.width) - 1, (int)gutter.y,
+             (int)(gutter.x + gutter.width) - 1,
+             (int)(gutter.y + gutter.height), area.style.border);
+    y = (int)gutter.y + Scale(10) - (scroll_y % line_h);
+    for(int row = 0; row < rows; row++) {
+        int line_no = first + row + 1;
+        char label[24];
+
+        if(line_no > total)
+            break;
+        if(line_no == active)
+            DrawRectangle((int)gutter.x, y - Scale(2), (int)gutter.width,
+                          line_h, area.style.border);
+        snprintf(label, sizeof(label), "%d", line_no);
+        DrawUIText(label, (int)gutter.x + Scale(6), y, Scale(10),
+                   line_no == active ? area.style.text : GetThemeIcon());
+        y += line_h;
+        if(y > (int)(gutter.y + gutter.height))
+            break;
+    }
+    area.bounds.x += gutter_width;
+    area.bounds.width -= gutter_width;
+    return area.bounds;
+}
+
+int
 RenderTextArea(TextAreaProps area)
 {
     char editor_id[96];

@@ -286,6 +286,13 @@ int EditText(TextEdit edit);
 void QueueTextInputCodepoint(int codepoint);
 void QueueTextInputBackspace(void);
 void QueueTextInputEnter(void);
+int TextBufferLineAtCursor(const char *text, int cursor);
+int TextBufferColumnAtCursor(const char *text, int cursor);
+int TextBufferLineCount(const char *text);
+int TextBufferToggleLineComment(char *text, int text_size, int *cursor);
+int TextBufferIndentLine(char *text, int text_size, int *cursor, int outdent);
+int TextBufferBracketMatch(const char *text, int cursor);
+Rectangle TextAreaGutter(TextAreaProps area, int gutter_width);
 int GetTextAreaSelection(int focus_id, int *start, int *end);
 void SetTextAreaSelection(int focus_id, int anchor, int cursor);
 
