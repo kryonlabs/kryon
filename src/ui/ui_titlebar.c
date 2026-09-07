@@ -7,22 +7,27 @@
 static void
 DrawUITitleBarBackground(int height)
 {
-    Color bar = DarkenUIColor(c_bg, 14);
+    Color top = DarkenUIColor(c_bg, 8);
+    Color bottom = c_bg;
+    Color divider = GetThemeText();
     UIStyleTokens tokens = GetUIStyleTokens();
 
     if(ui_material_style()) {
-        bar = ui_material_surface_container();
+        top = ui_material_surface_container();
+        bottom = c_bg;
     }
-    if(tokens.title_bar_alpha < bar.a)
-        bar.a = tokens.title_bar_alpha;
-    DrawRectangle(0, 0, ui_view_width, height, bar);
+    if(tokens.title_bar_alpha < top.a)
+        top.a = tokens.title_bar_alpha;
+    if(tokens.title_bar_alpha < bottom.a)
+        bottom.a = tokens.title_bar_alpha;
+    DrawRectangleGradientV(0, 0, ui_view_width, height, top, bottom);
     if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
         Color shine = WHITE;
         shine.a = GetUIStyleTokens().shine_alpha;
         DrawRectangle(0, 0, ui_view_width, ScaleUIPx(1), shine);
     }
-    DrawLine(0, height - 1, ui_view_width, height - 1,
-             DarkenUIColor(c_bg, 42));
+    divider.a = 34;
+    DrawLine(0, height - 1, ui_view_width, height - 1, divider);
 }
 
 static int
