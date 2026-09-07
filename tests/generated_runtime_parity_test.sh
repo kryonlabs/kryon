@@ -1048,6 +1048,12 @@ func main() {
 	if value := PlotsStateValue.SliderInts[0]; value != 3 {
 		panic(fmt.Sprintf("generated vertical int slider keyboard value=%d, want 3", value))
 	}
+	driver.SetFocus(0x60000008)
+	driver.QueueKey(kryon.KeySpace)
+	drawPlots()
+	if value := PlotsStateValue.InputInts[0]; value != 5 {
+		panic(fmt.Sprintf("generated input step keyboard value=%d, want 5", value))
+	}
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
 		kryon.FrameOpRect: 2,
 		kryon.FrameOpText: 1,
@@ -2002,6 +2008,12 @@ int main(void)
     if(slider_ints[0] != 3) {
         fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
                 slider_ints[0]);
+        return 1;
+    }
+    SetUIFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();
+    if(input_ints[0] != 5) {
+        fprintf(stderr,"generated input step keyboard value=%d, want 5\n",
+                input_ints[0]);
         return 1;
     }
 

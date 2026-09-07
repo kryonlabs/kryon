@@ -295,6 +295,42 @@ test_popup_tab_bar_keyboard_ownership(void)
 }
 
 static void
+test_step_button_keyboard_navigation(void)
+{
+    int value = 2;
+    int input = 4;
+    SpinboxProps spin = {.bounds={10,10,120,30},.id=635,.min=0,.max=5,
+        .step=1,.value=&value};
+    InputIntProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
+        .value_count=1,.step=2,.step_fast=10};
+
+    InjectReset();
+    BeginUIFrame(240,140,1); DrawUISpinbox(spin); DrawUIInputInt(field); EndUIFrame();
+    SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(240,140,1);
+    check_int("spinbox keyboard changed",DrawUISpinbox(spin),1);
+    DrawUIInputInt(field); EndUIFrame();
+    check_int("spinbox keyboard increment",value,3);
+
+    {
+        UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
+        SetUIFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+        BeginUIFrame(240,140,1); DrawUISpinbox(spin);
+        check_int("numeric step keyboard changed",DrawUIInputInt(field),1);
+        EndUIFrame();
+        check_int("numeric step keyboard increment",input,6);
+    }
+
+    spin.disabled = 1;
+    SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginUIFrame(240,140,1);
+    check_int("disabled spinbox keyboard",DrawUISpinbox(spin),0);
+    EndUIFrame();
+    check_int("disabled spinbox value",value,3);
+    InjectReset();
+}
+
+static void
 draw_focusable_choices(int *checkbox, int *selected, int *flags,
                        int disable_flags, int *checkbox_activated,
                        int *selectable_activated, int *flags_activated,
@@ -3206,5 +3242,6 @@ main(void)
     test_drag_keyboard_navigation();
     test_tab_bar_keyboard_navigation();
     test_popup_tab_bar_keyboard_ownership();
+    test_step_button_keyboard_navigation();
     return 0;
 }

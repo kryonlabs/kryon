@@ -2361,14 +2361,17 @@ DrawUISpinbox(SpinboxProps spinbox)
 
     if(spinbox.disabled)
         MarkUIDisabled();
-    DrawRectangleRec(text, c_surface);
-    DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
     if(spinbox.value_text != NULL)
         snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
     else
         snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
-    DrawCenteredUIText(value_text, (int)(text.x + text.width / 2), (int)(text.y + text.height / 2),
-                       GetFontSize(), c_text);
+    if(IsWindowReady()) {
+        DrawRectangleRec(text, c_surface);
+        DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
+        DrawCenteredUIText(value_text, (int)(text.x + text.width / 2),
+                           (int)(text.y + text.height / 2), GetFontSize(),
+                           c_text);
+    }
     if(RenderButton((ButtonSpec){left, "-", GetFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
                                c_button, c_button_hover, c_text, c_button, 0.0f}) &&
        spinbox.value != NULL) {

@@ -2089,8 +2089,15 @@ func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
 	return Rectangle{X: x, Y: y, Width: max(float32(0), min(bounds.X+bounds.Width, clip.X+clip.Width)-x), Height: max(float32(0), min(bounds.Y+bounds.Height, clip.Y+clip.Height)-y)}
 }
 func (r *runtime) Button(props ButtonProps) bool {
-	theme := r.theme()
 	props.Bounds = r.layoutRect(props.Bounds)
+	return r.buttonAt(props)
+}
+
+// buttonAt applies the canonical Button interaction and paint contract to an
+// already-laid-out rectangle. Composite widgets use it for embedded buttons
+// without advancing their parent's layout a second time.
+func (r *runtime) buttonAt(props ButtonProps) bool {
+	theme := r.theme()
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	fill := theme.button
 	if props.Style == ButtonStyleSecondary {
@@ -3701,16 +3708,10 @@ func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, format
 	if step == 0 {
 		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
 	}
-	t := r.theme()
-	minusPressed := !disabled && r.consumeTap(minus)
-	plusPressed := !disabled && r.consumeTap(plus)
-	for index, button := range []struct {
-		bounds  Rectangle
-		label   string
-		pressed bool
-	}{{minus, "-", minusPressed}, {plus, "+", plusPressed}} {
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: button.bounds, Text: button.label, Color: t.button, BorderColor: t.border, TextColor: t.text, FontSize: Text14, ID: token + 1 + int32(index), Disabled: disabled, Pressed: button.pressed})
-	}
+	minusPressed := r.buttonAt(ButtonProps{Bounds: minus, Label: "-", Font: Text14,
+		ID: token + 1, Disabled: disabled})
+	plusPressed := r.buttonAt(ButtonProps{Bounds: plus, Label: "+", Font: Text14,
+		ID: token + 2, Disabled: disabled})
 	if !minusPressed && !plusPressed {
 		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
 	}
@@ -5162,7 +5163,10 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	}
 	l := Rectangle{X: p.Bounds.X, Y: p.Bounds.Y, Width: bw, Height: p.Bounds.Height}
 	rr := Rectangle{X: p.Bounds.X + p.Bounds.Width - bw, Y: p.Bounds.Y, Width: bw, Height: p.Bounds.Height}
-	minus, plus := !p.Disabled && r.consumeTap(l), !p.Disabled && r.consumeTap(rr)
+	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-", Font: Text16,
+		ID: p.ID*10 + 1, Disabled: p.Disabled})
+	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+", Font: Text16,
+		ID: p.ID*10 + 2, Disabled: p.Disabled})
 	step := p.Step
 	if step <= 0 {
 		step = 1
@@ -5197,8 +5201,6 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	}
 	t := r.theme()
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: center, Color: t.surface, BorderColor: t.border, ID: p.ID, Disabled: p.Disabled})
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: l, Text: "-", Color: t.button, BorderColor: t.border, TextColor: t.text, FontSize: Text16, Pressed: minus, Disabled: p.Disabled})
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: rr, Text: "+", Color: t.button, BorderColor: t.border, TextColor: t.text, FontSize: Text16, Pressed: plus, Disabled: p.Disabled})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: t.text, FontSize: Text16})
 	return changed
 }

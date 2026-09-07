@@ -1248,6 +1248,14 @@ func TestNativeNumericInputs(t *testing.T) {
 		t.Fatalf("InputInt step value=%d, want 6", ints[0])
 	}
 	r.EndFrame()
+	state := r.numericInputState(numericInputKey{kind: 1, widgetID: 71, component: 0}, "6")
+	r.SetFocus(state.token + 2)
+	r.QueueKey(KeySpace)
+	r.BeginFrame()
+	if !r.InputInt(intProps) || ints[0] != 8 {
+		t.Fatalf("InputInt keyboard step value=%d, want 8", ints[0])
+	}
+	r.EndFrame()
 
 	doubles := []float64{1}
 	doubleProps := InputDoubleProps{Bounds: NewRectangle(10, 90, 200, 30), ID: 72, Values: doubles}
@@ -1262,6 +1270,49 @@ func TestNativeNumericInputs(t *testing.T) {
 		t.Fatalf("InputDouble value=%f, want 2.125", doubles[0])
 	}
 	r.EndFrame()
+}
+
+func TestNativeSpinboxUsesButtonInteraction(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	value := int32(2)
+	props := SpinboxProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 73,
+		Min: 0, Max: 4, Step: 1, Value: &value}
+	draw := func(disabled bool) bool {
+		r.BeginFrame()
+		r.BeginDisabled(disabled)
+		changed := r.Spinbox(props)
+		r.EndDisabled()
+		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 74, Label: "Next"})
+		r.EndFrame()
+		return changed
+	}
+
+	draw(false)
+	r.SetFocus(props.ID*10 + 2)
+	r.QueueKey(KeyEnter)
+	if !draw(false) || value != 3 {
+		t.Fatalf("Spinbox keyboard value=%d, want 3", value)
+	}
+	focused := false
+	for _, op := range r.FrameOps() {
+		if op.ID == props.ID*10+2 && op.Focused {
+			focused = true
+		}
+	}
+	if !focused {
+		t.Fatal("Spinbox increment button lacks focus presentation")
+	}
+	r.QueueKey(KeySpace)
+	if draw(true) || value != 3 {
+		t.Fatalf("disabled Spinbox changed value=%d", value)
+	}
+	draw(false)
+	r.SetFocus(props.ID*10 + 1)
+	r.QueueKey(KeyTab)
+	draw(false)
+	if r.Focus() != props.ID*10+2 {
+		t.Fatalf("Spinbox Tab focus=%d, want %d", r.Focus(), props.ID*10+2)
+	}
 }
 
 func TestNativeBasicImGuiWidgets(t *testing.T) {
