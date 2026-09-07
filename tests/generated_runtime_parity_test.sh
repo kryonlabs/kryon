@@ -908,6 +908,23 @@ func main() {
 		panic(fmt.Sprintf("controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1",
 			controls.SliderValue, controls.ToggleValue, controls.CheckboxValue, controls.Selected))
 	}
+	driver.SetFocus(802)
+	driver.QueueKey(kryon.KeySpace)
+	drawControls()
+	if controls.ToggleValue != 0 {
+		panic("controls: generated Toggle rejected keyboard toggle")
+	}
+	driver.QueueKey(kryon.KeySpace)
+	drawControls()
+	if controls.ToggleValue != 1 {
+		panic("controls: generated Toggle did not restore state")
+	}
+	driver.SetFocus(802)
+	driver.QueueKey(kryon.KeyTab)
+	drawControls()
+	if driver.Focus() != 803 {
+		panic(fmt.Sprintf("controls: generated Toggle Tab focus=%d, want 803", driver.Focus()))
+	}
 	driver.SetFocus(803)
 	driver.QueueKey(kryon.KeySpace)
 	drawControls()
@@ -1815,6 +1832,21 @@ int main(void)
         fprintf(stderr,
                 "controls: got slider=%d toggle=%d checkbox=%d selected=%d, want 70,1,1,1\n",
                 slider_value, toggle_value, checkbox_value, selected);
+        return 1;
+    }
+    SetUIFocus(802); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    if(toggle_value != 0) {
+        fprintf(stderr,"controls: generated Toggle rejected keyboard toggle\n");
+        return 1;
+    }
+    InjectPump(); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    if(toggle_value != 1) {
+        fprintf(stderr,"controls: generated Toggle did not restore state\n");
+        return 1;
+    }
+    SetUIFocus(802); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(GetUIFocus() != 803) {
+        fprintf(stderr,"controls: generated Toggle Tab focus=%d, want 803\n",GetUIFocus());
         return 1;
     }
     SetUIFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();

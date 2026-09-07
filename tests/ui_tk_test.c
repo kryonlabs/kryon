@@ -232,6 +232,43 @@ test_focusable_choice_keyboard_navigation(void)
 }
 
 static void
+test_toggle_keyboard_navigation(void)
+{
+    int value = 0;
+    int activated;
+
+    InjectReset();
+    BeginUIFrame(240,120,1);
+    (void)Toggle(613,10,10,120,34,&value,"Off","On");
+    (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
+    EndUIFrame();
+
+    SetUIFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginUIFrame(240,120,1);
+    activated = Toggle(613,10,10,120,34,&value,"Off","On");
+    (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
+    EndUIFrame();
+    check_int("toggle Space activation",activated,1);
+    check_int("toggle Space state",value,1);
+
+    SetUIFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
+    BeginUIFrame(240,120,1);
+    (void)Toggle(613,10,10,120,34,&value,"Off","On");
+    (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
+    EndUIFrame();
+    check_int("toggle Tab traversal",GetUIFocus(),614);
+
+    SetUIFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginUIFrame(240,120,1);
+    BeginDisabled(1);
+    activated = Toggle(613,10,10,120,34,&value,"Off","On");
+    EndDisabled();
+    EndUIFrame();
+    check_int("disabled toggle rejects activation",activated,0);
+    check_int("disabled toggle preserves state",value,1);
+}
+
+static void
 test_focusable_image_keyboard_navigation(void)
 {
     PictureProps picture = {
@@ -2791,6 +2828,7 @@ main(void)
     test_nested_disabled_scope();
     test_disabled_scalar_cancels_gesture();
     test_focusable_choice_keyboard_navigation();
+    test_toggle_keyboard_navigation();
     test_focusable_image_keyboard_navigation();
     test_deep_disabled_scopes();
     test_collapsible_composes_children();

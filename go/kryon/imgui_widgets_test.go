@@ -1312,6 +1312,50 @@ func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 	}
 }
 
+func TestToggleKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	value := int32(0)
+	draw := func(disabled bool) bool {
+		r.BeginFrame()
+		r.BeginDisabled(disabled)
+		activated := r.Toggle(907, 10, 10, 120, 34, &value, "Off", "On")
+		r.EndDisabled()
+		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 908, Label: "Next"})
+		r.EndFrame()
+		return activated
+	}
+
+	draw(false)
+	r.SetFocus(907)
+	r.QueueKey(KeySpace)
+	activated := draw(false)
+	if !activated || value != 1 {
+		t.Fatalf("toggle Space activation/state = %v/%d, want true/1", activated, value)
+	}
+	focused := false
+	for _, op := range r.FrameOps() {
+		if op.ID == 907 && op.Focused && op.BorderColor == r.theme().focus {
+			focused = true
+		}
+	}
+	if !focused {
+		t.Fatal("focused toggle has no focus presentation")
+	}
+
+	r.SetFocus(907)
+	r.QueueKey(KeyTab)
+	draw(false)
+	if r.Focus() != 908 {
+		t.Fatalf("toggle Tab focus=%d, want 908", r.Focus())
+	}
+
+	r.SetFocus(907)
+	r.QueueKey(KeyEnter)
+	if draw(true) || value != 1 {
+		t.Fatalf("disabled toggle activation/state = true/%d, want false/1", value)
+	}
+}
+
 func TestNativeSeparatorText(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.BeginFrame()

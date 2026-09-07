@@ -404,6 +404,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     int min_half_w = (off_w > on_w ? off_w : on_w) + ScaleUIPx(16);
     int min_w = material_style ? ScaleUIPx(52) : min_half_w * 2 + ScaleUIPx(6);
     Rectangle bounds;
+    int enabled;
     int pressed;
     if(w < min_w)
         w = min_w;
@@ -430,16 +431,21 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     UIWidgetSetBounds(&widget, editor_bounds);
 
     bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
+    enabled = value != NULL && !UIContentDisabled();
 
-    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world))
-        MarkUIClickable();
+    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
+        if(enabled)
+            MarkUIClickable();
+        else
+            MarkUIDisabled();
+    }
 
-    pressed = CheckCollisionPointRec(mouse_world, bounds) &&
+    pressed = enabled && CheckCollisionPointRec(mouse_world, bounds) &&
               !UIInputCapturesClick(mouse_world) &&
               IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
     if(pressed) {
-        *value = !(*value);
+        *value = !*value;
         UIConsumeRelease();
     }
     if(!can_draw) {
@@ -452,13 +458,14 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         int track_h = ScaleUIPx(32);
         int track_x = x + (w - track_w) / 2;
         int track_y = y + (h - track_h) / 2;
-        int thumb_r = ScaleUIPx(*value ? 12 : 8);
-        int thumb_cx = *value ? track_x + track_w - ScaleUIPx(16)
+        int checked = value != NULL && *value;
+        int thumb_r = ScaleUIPx(checked ? 12 : 8);
+        int thumb_cx = checked ? track_x + track_w - ScaleUIPx(16)
                               : track_x + ScaleUIPx(16);
         int thumb_cy = track_y + track_h / 2;
-        Color track = *value ? c_circle : ui_material_surface_container();
-        Color thumb = *value ? ui_material_on_color(c_circle) : ui_material_outline();
-        Color outline = *value ? c_circle : ui_material_outline();
+        Color track = checked ? c_circle : ui_material_surface_container();
+        Color thumb = checked ? ui_material_on_color(c_circle) : ui_material_outline();
+        Color outline = checked ? c_circle : ui_material_outline();
 
         DrawRectangleRounded((Rectangle){track_x, track_y, track_w, track_h},
                              0.50f, 12, track);
@@ -472,7 +479,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                                     c_circle, UIHoverEffectsEnabled(), 0,
                                     IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb);
-        if(*value) {
+        if(checked) {
             int dot_r = ScaleUIPx(4);
             Color dot = DarkenUIColor(thumb, 110);
             if(dot_r < 2)
@@ -488,7 +495,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         int track_h = h - 6;
         int track_y = y + 3;
         int active_w = (w - 6) / 2;
-        int active_x = *value ? x + w - active_w - 3 : x + 3;
+        int active_x = value != NULL && *value ? x + w - active_w - 3 : x + 3;
         Color label_color = c_text;
         int off_x = x + w / 4 - off_w / 2;
         int on_x = x + w * 3 / 4 - on_w / 2;

@@ -4045,7 +4045,7 @@ func (r *runtime) Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel s
 		w = minW
 	}
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
-	pressed := r.consumeTap(bounds)
+	pressed, focused := r.focusablePress(bounds, id, false)
 	if pressed {
 		if *value == 0 {
 			*value = 1
@@ -4053,7 +4053,11 @@ func (r *runtime) Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel s
 			*value = 0
 		}
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: theme.border, ID: id})
+	border := theme.border
+	if focused {
+		border = theme.focus
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: border, ID: id, Focused: focused})
 	activeW := (bounds.Width - 6) / 2
 	activeX := bounds.X + 3
 	if *value != 0 {

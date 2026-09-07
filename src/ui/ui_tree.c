@@ -1869,6 +1869,10 @@ DrawTree(void)
                     (int)node->bounds.width, (int)node->bounds.height,
                     value, node->data.toggle.off_label,
                     node->data.toggle.on_label);
+                if(IsUIFocusActive(node->id) &&
+                   !ui_popup_input_snapshot_keyboard_captures(
+                       ui_tree_input_snapshot(node)) && IsWindowReady())
+                    DrawUIFocus(node->bounds);
             } else {
                 changed = DrawUICheckboxToggle(
                     (int)node->bounds.x, (int)node->bounds.y,
@@ -2612,6 +2616,8 @@ int
 Toggle(int id, int x, int y, int w, int h, int *value,
              const char *off_label, const char *on_label)
 {
+    int focused = 0;
+    int changed;
     NodeId node = ui_tree_add(id, UI_WIDGET_TOGGLE_NODE,
                               (Rectangle){x, y, w, h}, NULL);
     if(node >= 0) {
@@ -2620,10 +2626,27 @@ Toggle(int id, int x, int y, int w, int h, int *value,
         ui_tree_nodes[node].data.toggle.on_label = on_label;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
+    changed = value != NULL && ui_focusable_pressed(
+        node >= 0 ? ui_tree_nodes[node].bounds
+                  : (Rectangle){x,y,w,h},
+        id, value == NULL, &focused);
+    if(changed) {
+        *value = !*value;
+        if(node >= 0) {
+            UIEvent event = {0};
+            event.key = ui_tree_nodes[node].key;
+            event.kind = UI_EVENT_VALUE_CHANGED;
+            event.timestamp = GetTime();
+            event.data.value = *value;
+            ui_event_push(event);
+        }
+    }
     if(ui_tree_building)
-        return 0;
-    (void)id;
-    return DrawUIToggleSwitch(x, y, w, h, value, off_label, on_label);
+        return changed;
+    (void)DrawUIToggleSwitch(x, y, w, h, value, off_label, on_label);
+    if(focused && IsWindowReady())
+        DrawUIFocus((Rectangle){x,y,w,h});
+    return changed;
 }
 
 int
