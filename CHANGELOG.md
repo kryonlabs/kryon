@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.62 - 2026-09-07
+
+### Changed
+
+- Update theme example runtime snapshot
+- Expose title bar opacity as a style token
+- Release: bump version to v0.1.62
+- Add native menu keyboard navigation
+
 ## v0.1.61 - 2026-09-06
 
 ### Changed
