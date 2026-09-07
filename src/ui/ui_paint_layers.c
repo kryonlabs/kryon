@@ -287,7 +287,7 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
         rlSetMatrixModelview(layers->modelview);
     }
     ResetUIClip();
-    BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+    BeginBlendMode(BLEND_ALPHA);
     for(int i = 0; i < layers->count; i++) {
         UIPaintLayer *layer = &layers->items[i];
         if(layer->parent >= 0 && !layers->items[layer->parent].visible) layer->visible = 0;
