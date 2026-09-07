@@ -2518,6 +2518,8 @@ static int
 ui_syntax_kry_keyword(const char *text, int len)
 {
     static const char *keywords[] = {
+        "#defined", "#else", "#enum", "#extern", "#export", "#global", "#if",
+        "#import", "#module", "#private", "#type", "#ui",
         "app", "args", "background", "button", "c", "c_rect", "call",
         "cimport", "clamp_max", "clamp_min", "do", "draw", "else", "endraw",
         "event", "fn", "font", "for", "fps", "global", "goto", "guard", "icon_button", "if",
@@ -2581,7 +2583,8 @@ ui_syntax_token_color(SyntaxMode syntax, const char *text, int len,
     if(len <= 0)
         return style.text;
     if((syntax == SyntaxKry || syntax == SyntaxMake) &&
-       first_token && text[0] == '#')
+       first_token && text[0] == '#' &&
+       !(syntax == SyntaxKry && ui_syntax_kry_keyword(text, len)))
         return comment;
     if(text[0] == '"')
         return string;
@@ -2614,6 +2617,13 @@ ui_syntax_token_len(const char *line, int len, int index, SyntaxMode syntax,
         return 0;
     if(line[i] == ' ' || line[i] == '\t') {
         while(i < len && (line[i] == ' ' || line[i] == '\t'))
+            i++;
+        return i - index;
+    }
+    if(syntax == SyntaxKry && first_token && line[i] == '#' &&
+       ui_syntax_is_ident_start(line[i + 1])) {
+        i++;
+        while(i < len && ui_syntax_is_ident(line[i]))
             i++;
         return i - index;
     }

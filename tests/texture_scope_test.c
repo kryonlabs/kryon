@@ -18,6 +18,9 @@ static int check_window_readback;
 static int window_readbacks;
 static const char *expected_dropdown_text;
 static int full_dropdown_text_draws;
+static int syntax_directive_tokens;
+static int syntax_string_tokens;
+static int syntax_comment_lines;
 
 static void check_invalid_layer_end(UIPaintLayerToken token, const char *label)
 {
@@ -53,6 +56,13 @@ void __wrap_DrawUIText(const char *text, int x, int y, int font, Color color)
     if(expected_dropdown_text != NULL && text != NULL &&
        strcmp(text, expected_dropdown_text) == 0)
         full_dropdown_text_draws++;
+    if(text != NULL && strcmp(text, "#import") == 0)
+        syntax_directive_tokens++;
+    if(text != NULL && strcmp(text, "\"kryon.h\"") == 0)
+        syntax_string_tokens++;
+    if(text != NULL && strcmp(text, "# a comment") == 0)
+        syntax_comment_lines++;
+    (void)color;
     __real_DrawUIText(text, x, y, font, color);
 }
 
@@ -133,6 +143,34 @@ int main(void)
     check_pixel(b,9,9,YELLOW,"inner drawing after leaf scope");
     check_pixel(c,1,1,MAGENTA,"leaf independent target");
     UnloadImage(a); UnloadImage(b); UnloadImage(c);
+
+    char syntax_text[] = "#import \"kryon.h\"\n# a comment\n";
+    int syntax_cursor = 0;
+    int syntax_focused = 0;
+    int syntax_scroll = 0;
+    BeginTextureMode(outer);
+    ClearBackground(BLACK);
+    TextArea((TextAreaProps){
+        .bounds = {0, 0, 64, 48},
+        .text = syntax_text,
+        .text_size = sizeof(syntax_text),
+        .cursor_position = &syntax_cursor,
+        .focused = &syntax_focused,
+        .scroll_y = &syntax_scroll,
+        .max_codepoints = 128,
+        .font = 16,
+        .line_gap = 0,
+        .focus_id = 7771,
+        .syntax = SyntaxKry,
+        .style = (TextInputStyle){BLACK, BLACK, WHITE, WHITE, WHITE, 0, 0, 0}
+    });
+    EndTextureMode();
+    if(syntax_directive_tokens == 0 || syntax_string_tokens == 0 ||
+       syntax_comment_lines == 0) {
+        fprintf(stderr,
+                "kry syntax highlighting did not split directive/string/comment tokens\n");
+        failures++;
+    }
 
     /* Ordinary source-alpha blending also multiplies the alpha channel by
      * source alpha on this backend. Transparent layer capture instead needs
