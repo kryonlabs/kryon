@@ -159,7 +159,6 @@ DrawUIBottomNav(BottomNavProps nav)
 
         if(item->disabled) {
             text_tint = ui_alpha(inactive, 112);
-            icon_tint = ui_alpha(inactive, 112);
         }
         if(ui_bottom_nav_hit(item_bounds, item->disabled, &hover)) {
             result.clicked_index = i;
