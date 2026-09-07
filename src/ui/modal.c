@@ -148,8 +148,8 @@ DrawUIActionModal(ModalProps modal)
     int modal_y;
     int title_font;
     int msg_font = GetFontSize();
-    int btn_font = GetSmallFontSize();
-    int btn_h = ClampUIPx(30, 28, 32);
+    int btn_font = GetFontSize();
+    int btn_h = ScaleUIPx(44);
     int btn_gap = ScaleUIPx(8);
     int title_h = ScaleUIPx(48);
     int padding_x = ScaleUIPx(18);

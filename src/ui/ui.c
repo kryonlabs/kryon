@@ -4327,7 +4327,11 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
     int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     TextLayout layout = ParagraphLayout(paragraph);
-    DrawTextLayout(&layout, x, y, font, color);
+    if(paragraph.align != TextAlignStart)
+        DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width,
+                              paragraph.align);
+    else
+        DrawTextLayout(&layout, x, y, font, color);
     FreeTextLayout(&layout);
 }
 

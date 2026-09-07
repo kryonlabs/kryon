@@ -885,7 +885,7 @@ props_field_at(const char *type, int index)
         {"HrefProps", {"Bounds", "Text", "Href", "Font", "FocusID",
                        "Disabled", "Color", "HoverColor"}},
         {"ParagraphSpec", {"Text", "IconType", "IconSize", "Width",
-                             "Font", "LineGap", "Color"}},
+                             "Font", "LineGap", "Color", "Align"}},
         {"ButtonProps", {"Bounds", "Label", "Style", "Font", "ID",
                          "Disabled"}},
         {"SelectableProps", {"Bounds", "ID", "Label", "Selected", "Disabled"}},

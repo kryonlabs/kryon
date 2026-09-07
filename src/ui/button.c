@@ -176,7 +176,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             if(label_bounds.width < 1)
                 label_bounds.width = 1;
             DrawFittedTextInRect(button.label ? button.label : "",
-                                 label_bounds, font, Text8, text);
+                                 label_bounds, font, GetSmallFontSize(),
+                                 text);
         }
         if(handle_input)
             EndUIWidget(&widget);
@@ -225,7 +226,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         if(label_bounds.width < 1)
             label_bounds.width = 1;
         DrawFittedTextInRect(button.label ? button.label : "",
-                             label_bounds, font, Text8, text);
+                             label_bounds, font, GetSmallFontSize(), text);
     }
     if(handle_input)
         EndUIWidget(&widget);
@@ -443,7 +444,7 @@ int
 RenderTextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = GetSmallFontSize();
+    int font = GetFontSize();
     const char *text = label != NULL ? label : "";
     int w = (int)TextWidth(text, font) + ScaleUIPx(16);
     int h = TextLineHeight(font) + ScaleUIPx(8);
@@ -523,7 +524,7 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
                        ButtonStyle style, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = GetSmallFontSize();
+    int font = GetFontSize();
     Rectangle bounds = {x, y, w, h};
     int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     int captured = UIInputCapturesClick(mouse_world);

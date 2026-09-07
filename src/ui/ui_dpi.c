@@ -70,7 +70,10 @@ UpdateUIDPI(int view_width, int view_height)
         float viewport_scale = view_height > 0
                                    ? (float)view_height / (float)base_height
                                    : 1.0f;
-        float real_dpi = viewport_scale;
+        float real_dpi = 1.0f;
+#if !defined(PLATFORM_ANDROID) && !defined(__ANDROID__) && !defined(PLATFORM_WEB)
+        (void)viewport_scale;
+#endif
 
 #if defined(PLATFORM_ANDROID) || defined(__ANDROID__)
         /* Android view dimensions are physical pixels. DisplayMetrics density
@@ -78,21 +81,20 @@ UpdateUIDPI(int view_width, int view_height)
          * makes controls grow with aspect ratio and can push anchored chrome
          * off-screen. Keep the viewport fallback for early startup, before
          * the activity has delivered its density. */
-        if(g_device_density > 0.0f)
-            real_dpi = g_device_density;
+        real_dpi = g_device_density > 0.0f ? g_device_density : viewport_scale;
+#elif defined(PLATFORM_WEB)
+        /* Web view dimensions are CSS pixels, so viewport scale remains a
+         * useful density-independent fallback there. */
+        real_dpi = viewport_scale;
 #else
         if(g_device_density > real_dpi)
             real_dpi = g_device_density;
 #endif
 
 #if !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID) && !defined(__ANDROID__)
-        /* Native windows are sized in physical pixels, so the monitor scale
-         * factor is a legitimate additional scaling input. The web is
-         * different: the viewport IS CSS pixels (density-independent by
-         * definition) and the canvas backing store already absorbs
-         * devicePixelRatio — raylibs web GetWindowScaleDPI() returns exactly
-         * that ratio, and taking it here scaled phone UIs by dpr (~3x) on
-         * top of an already-correct viewport ratio. */
+        /* Native desktop window size is layout space, not density. A taller
+         * window must show more content instead of making every token larger.
+         * Use the monitor DPI only when the OS reports an actual scale. */
         Vector2 dpi_scale = GetWindowScaleDPI();
         float window_dpi = (dpi_scale.x > 1.0f) ? dpi_scale.x : dpi_scale.y;
         if(window_dpi > real_dpi)

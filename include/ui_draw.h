@@ -13,6 +13,7 @@ typedef struct {
     int font;
     int line_gap;
     Color color;
+    int align;
 } ParagraphSpec;
 
 int GetFontSize(void);

@@ -2,6 +2,14 @@
 
 #include <stdio.h>
 
+#if !defined(PLATFORM_ANDROID) && !defined(__ANDROID__) && !defined(PLATFORM_WEB)
+Vector2
+GetWindowScaleDPI(void)
+{
+    return (Vector2){1.0f, 1.0f};
+}
+#endif
+
 static int failures;
 
 static void
@@ -21,7 +29,11 @@ main(void)
 {
     InitUIDPI();
     UpdateUIDPI(720, 1400);
-    check_scale_hundredths("viewport scale without density", GetUIDPIScale(), 250);
+#if defined(PLATFORM_ANDROID) || defined(__ANDROID__)
+    check_scale_hundredths("android startup viewport fallback", GetUIDPIScale(), 250);
+#else
+    check_scale_hundredths("desktop ignores viewport height", GetUIDPIScale(), 100);
+#endif
 
     SetUIDeviceDensity(1.75f);
     UpdateUIDPI(720, 1400);

@@ -19,6 +19,26 @@ typedef struct PictureCacheEntry {
 
 static PictureCacheEntry picture_cache[KRY_PICTURE_CACHE_MAX];
 
+static Rectangle
+picture_world_rect_to_screen(Rectangle rect)
+{
+    return (Rectangle){
+        g_ui_camera.offset.x + rect.x * g_ui_camera.zoom,
+        g_ui_camera.offset.y + rect.y * g_ui_camera.zoom,
+        rect.width * g_ui_camera.zoom,
+        rect.height * g_ui_camera.zoom
+    };
+}
+
+static void
+picture_begin_bounds_clip(Rectangle bounds)
+{
+    Rectangle screen = picture_world_rect_to_screen(bounds);
+
+    BeginUIClip((int)screen.x, (int)screen.y,
+                (int)screen.width, (int)screen.height);
+}
+
 static const char *
 picture_file_ext(const char *path)
 {
@@ -387,8 +407,10 @@ PictureTexture(Texture2D texture, PictureProps picture)
     picture.tint = picture.tint.a == 0 ? WHITE : picture.tint;
 
     if(!picture.style.enabled) {
+        picture_begin_bounds_clip(picture.bounds);
         DrawTexturePro(texture, source, dst, picture.origin, picture.rotation,
                        picture.tint);
+        EndUIClip();
         return;
     }
 

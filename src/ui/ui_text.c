@@ -999,10 +999,30 @@ UIFontMemoryReport(const char *tag)
     fflush(stderr);
 }
 
+static int
+ui_text_normalize_token_size(int font_size)
+{
+    switch(font_size) {
+    case Text8:
+    case Text12:
+    case Text14:
+    case Text16:
+    case Text18:
+    case Text20:
+    case Text24:
+    case Text32:
+    case Text48:
+        return ScaleUIPx(font_size);
+    default:
+        return font_size;
+    }
+}
+
 int
 TextWidth(const char *text, int font_size)
 {
-    Font font = active_font_for_size(font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
     int width = 0;
 
     if(text == NULL || !UIFontReady(font))
@@ -1023,15 +1043,15 @@ TextWidth(const char *text, int font_size)
 
         if(codepoint == '\n')
             break;
-        glyph_font = font_for_codepoint(codepoint, font_size);
+        glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
-                     codepoint, font_size, glyph_font.baseSize,
+                     codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)UIFontGlyph(glyph_font, codepoint).advanceX);
         }
         width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
-                       font_size_scale(glyph_font, font_size) + 0.5f);
+                       font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
     return width;
@@ -1079,7 +1099,8 @@ ui_text_line_byte_len(const char *text)
 static int
 ui_text_width_bytes(const char *text, int byte_len, int font_size)
 {
-    Font font = active_font_for_size(font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
     int width = 0;
 
     if(text == NULL || byte_len <= 0 || !UIFontReady(font))
@@ -1099,15 +1120,15 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
             codepoint_byte_count = 1;
         if(i + codepoint_byte_count > byte_len)
             break;
-        glyph_font = font_for_codepoint(codepoint, font_size);
+        glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
-                     codepoint, font_size, glyph_font.baseSize,
+                     codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)UIFontGlyph(glyph_font, codepoint).advanceX);
         }
         width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
-                       font_size_scale(glyph_font, font_size) + 0.5f);
+                       font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
 
@@ -1117,6 +1138,7 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
 static int
 ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
 {
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
     int byte_len = ui_text_line_byte_len(text);
     int cursor_x = 0;
 
@@ -1133,15 +1155,15 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
             codepoint_byte_count = 1;
         if(i + codepoint_byte_count > byte_len)
             return i;
-        glyph_font = font_for_codepoint(codepoint, font_size);
+        glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
-                     codepoint, font_size, glyph_font.baseSize,
+                     codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)UIFontGlyph(glyph_font, codepoint).advanceX);
         }
         advance = (int)((float)UIFontAdvance(glyph_font, codepoint) *
-                        font_size_scale(glyph_font, font_size) + 0.5f);
+                        font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         if(target_x < cursor_x + advance / 2)
             return i;
         cursor_x += advance;
@@ -1209,22 +1231,23 @@ ui_text_mod_key_down(void)
 int
 TextHeight(const char *text, int font_size)
 {
-    Font font = active_font_for_size(font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
     float scale;
     float min_top = 0.0f;
     float max_bottom = 0.0f;
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || !UIFontReady(font))
-        return font_size;
+        return normalized_font_size;
 
     if(UIFontHasNativeText(font)) {
         int native_h = UIFontNativeTextHeight(font);
 
-        return native_h > 0 ? native_h : font_size;
+        return native_h > 0 ? native_h : normalized_font_size;
     }
 
-    scale = font_size_scale(font, font_size);
+    scale = font_size_scale(font, normalized_font_size);
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
         int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
@@ -1232,10 +1255,10 @@ TextHeight(const char *text, int font_size)
         if(codepoint == '\n')
             break;
         if(codepoint != ' ' && codepoint != '\t') {
-            Font glyph_font = font_for_codepoint(codepoint, font_size);
+            Font glyph_font = font_for_codepoint(codepoint, normalized_font_size);
             GlyphInfo glyph = UIFontGlyph(glyph_font, codepoint);
             Rectangle rec = UIFontAtlasRec(glyph_font, codepoint);
-            float glyph_scale = font_size_scale(glyph_font, font_size);
+            float glyph_scale = font_size_scale(glyph_font, normalized_font_size);
             int padding = UIFontGlyphPadding(glyph_font);
             float glyph_top = (float)glyph.offsetY * glyph_scale - (float)padding * glyph_scale;
             float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)padding) * glyph_scale;
@@ -1262,8 +1285,9 @@ TextHeight(const char *text, int font_size)
 int
 TextLineHeight(int font_size)
 {
-    Font font = active_font_for_size(font_size);
-    float scale = font_size_scale(font, font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
+    float scale = font_size_scale(font, normalized_font_size);
     int base = UIFontBaseSize(font);
 
     if(UIFontHasNativeText(font)) {
@@ -1309,20 +1333,21 @@ ScaledTextWidth(const char *text, int scale)
 Font
 GetUIFontForCodepoint(int codepoint, int font_size)
 {
-    return font_for_codepoint(codepoint, font_size);
+    return font_for_codepoint(codepoint, ui_text_normalize_token_size(font_size));
 }
 
 float
 GetUIFontScale(Font font, int font_size)
 {
-    return font_size_scale(font, font_size);
+    return font_size_scale(font, ui_text_normalize_token_size(font_size));
 }
 
 void
 DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
              int selectable_arg)
 {
-    Font font = active_font_for_size(font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
     int cursor_x = x;
     int selectable;
     int id;
@@ -1335,6 +1360,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
     if(text == NULL || !UIFontReady(font))
         return;
 
+    font_size = normalized_font_size;
     selectable = selectable_arg && g_ui_text_selectable && text[0] != '\0';
     byte_len = ui_text_line_byte_len(text);
     text_w = TextWidth(text, font_size);
@@ -1860,13 +1886,16 @@ ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale)
 int
 TextBaselineY(const char *text, int box_y, int box_h, int font_size)
 {
-    Font font = active_font_for_size(font_size);
+    int normalized_font_size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(normalized_font_size);
     float min_top = 0.0f;
     float max_bottom = 0.0f;
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || !UIFontReady(font))
-        return box_y + (int)(((float)box_h - (float)TextLineHeight(font_size)) * 0.5f + 0.5f);
+        return box_y + (int)(((float)box_h -
+                              (float)TextLineHeight(normalized_font_size)) *
+                             0.5f + 0.5f);
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1876,10 +1905,10 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
             break;
 
         if(codepoint != ' ' && codepoint != '\t') {
-            Font glyph_font = font_for_codepoint(codepoint, font_size);
+            Font glyph_font = font_for_codepoint(codepoint, normalized_font_size);
             GlyphInfo glyph = UIFontGlyph(glyph_font, codepoint);
             Rectangle rec = UIFontAtlasRec(glyph_font, codepoint);
-            float glyph_scale = font_size_scale(glyph_font, font_size);
+            float glyph_scale = font_size_scale(glyph_font, normalized_font_size);
             int padding = UIFontGlyphPadding(glyph_font);
             float glyph_top = (float)glyph.offsetY * glyph_scale - (float)padding * glyph_scale;
             float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)padding) * glyph_scale;
@@ -1900,7 +1929,9 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
     }
 
     if(!seen_glyph)
-        return box_y + (int)(((float)box_h - (float)font_size) * 0.5f + 0.5f);
+        return box_y + (int)(((float)box_h -
+                              (float)normalized_font_size) *
+                             0.5f + 0.5f);
 
     return box_y + (int)(((float)box_h - (max_bottom - min_top)) * 0.5f - min_top + 0.5f);
 }

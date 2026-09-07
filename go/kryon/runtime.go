@@ -755,6 +755,7 @@ type ParagraphSpec struct {
 	Font     int32
 	LineGap  int32
 	Color    Color
+	Align    TextAlign
 }
 
 type PictureProps struct {
