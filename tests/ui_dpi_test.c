@@ -10,6 +10,21 @@ GetWindowScaleDPI(void)
 }
 #endif
 
+#if defined(__FreeBSD__) && !defined(PLATFORM_ANDROID) && \
+    !defined(__ANDROID__) && !defined(PLATFORM_WEB)
+bool
+IsWindowReady(void)
+{
+    return false;
+}
+
+void
+glDisable(unsigned int capability)
+{
+    (void)capability;
+}
+#endif
+
 static int failures;
 
 static void
