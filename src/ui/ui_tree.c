@@ -4,7 +4,6 @@
 #include "ui_blend_internal.h"
 #include "ui_tree_layout_internal.h"
 #include "ui_popup_input_internal.h"
-#include "dropdown_store.h"
 #include "embedded_assets.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -2586,37 +2585,6 @@ DropdownOptions(int id, int x, int y, int w, int h,
                 selected_index);
     return draw_dropdown_options(id, x, y, w, h, options, option_count,
                                  selected_index);
-}
-
-int
-DrawUILocaleDropdown(int id, int x, int y, int w, int h, int *selected_index)
-{
-    const char *labels[64];
-    int count = GetLocaleCount();
-    int max_count = (int)(sizeof(labels) / sizeof(labels[0]));
-
-    if(count > max_count)
-        count = max_count;
-    if(count <= 0) {
-        labels[0] = GetLocaleText("language_system_label");
-        count = 1;
-    } else {
-        for(int i = 0; i < count; i++)
-            labels[i] = GetLocaleLabel(i);
-    }
-    return Dropdown(id, x, y, w, h, labels, count, selected_index);
-}
-
-void
-SetUIDropdownClipTop(int top)
-{
-    dropdown_store_clip(top, dropdown_store_clip_bottom());
-}
-
-void
-SetUIDropdownClipBottom(int bottom)
-{
-    dropdown_store_clip(dropdown_store_clip_top(), bottom);
 }
 
 int

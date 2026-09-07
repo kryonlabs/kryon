@@ -10,8 +10,6 @@ DropdownStore *dropdown_store_new(void);
 void dropdown_store_free(DropdownStore *store);
 DropdownStore *dropdown_store_swap(DropdownStore *store);
 DropdownStore *dropdown_store_current(void);
-int dropdown_store_clip_top(void);
-int dropdown_store_clip_bottom(void);
 void dropdown_store_clip(int top, int bottom);
 
 #endif

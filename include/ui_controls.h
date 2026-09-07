@@ -40,11 +40,6 @@ typedef struct {
     int padding_y;
 } TextInputStyle;
 
-int DrawUILocaleDropdown(int id, int x, int y, int w, int h,
-                         int *selected_index);
-void SetUIDropdownClipTop(int top);
-void SetUIDropdownClipBottom(int bottom);
-
 typedef struct {
     Rectangle bounds;
     const char *label;
