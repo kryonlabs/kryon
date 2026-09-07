@@ -998,6 +998,48 @@ test_tree_header_modes(void)
 }
 
 static void
+test_closeable_collapsible(void)
+{
+    bool open = false;
+    bool visible = true;
+    CollapsibleProps p = {.bounds = {10,10,180,32}, .label = "Closeable",
+                          .open = &open, .id = 9961, .visible = &visible};
+    int changed = 0;
+
+    InjectReset();
+    InjectTap(180,20);
+    for(int frame = 0; frame < 2; frame++) {
+        InjectPump();
+        BeginUIFrame(240,240,1.0f);
+        changed |= Collapsible(p);
+        EndUIFrame();
+    }
+    check_int("collapsible close changed", changed, 1);
+    check_int("collapsible close visible", visible, 0);
+    check_int("collapsible close preserves open", open, 0);
+
+    InjectTap(20,20);
+    for(int frame = 0; frame < 2; frame++) {
+        InjectPump();
+        BeginUIFrame(240,240,1.0f);
+        Collapsible(p);
+        EndUIFrame();
+    }
+    check_int("hidden collapsible ignores input", open, 0);
+
+    visible = true;
+    p.disabled = 1;
+    InjectTap(180,20);
+    for(int frame = 0; frame < 2; frame++) {
+        InjectPump();
+        BeginUIFrame(240,240,1.0f);
+        Collapsible(p);
+        EndUIFrame();
+    }
+    check_int("disabled collapsible cannot close", visible, 1);
+}
+
+static void
 test_tree_header_keyboard_gates(void)
 {
     bool open = false;
@@ -3209,6 +3251,7 @@ main(void)
     test_deep_disabled_scopes();
     test_collapsible_composes_children();
     test_tree_header_modes();
+    test_closeable_collapsible();
     test_tree_header_keyboard_gates();
     test_combo_popup_lifecycle();
     test_many_combo_identities();

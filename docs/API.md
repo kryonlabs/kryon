@@ -2243,6 +2243,9 @@ changed. Render child widgets conditionally on the open state. Set `tree` for
 an unframed tree header, `depth` for 20-pixel-per-level header indentation,
 `leaf` to show a non-expanding leaf marker, and `selected` for highlighting.
 `disabled` prevents toggling and dims the label; `id` identifies the header.
+Set optional `visible` / `Visible` state to show an ImGui-style close affordance.
+When that state is false the header consumes no layout or input; closing sets it
+false and returns changed without toggling `open`.
 Children retain their own widget IDs and explicitly supplied bounds. Collapsing
 a parent does not reset the caller's nested open state. Headers with a positive
 ID participate in focus traversal: Left closes, Right opens, and Enter/Space

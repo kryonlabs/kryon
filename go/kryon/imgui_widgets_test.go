@@ -170,6 +170,40 @@ func TestTreeHeaderModes(t *testing.T) {
 	}
 }
 
+func TestCloseableCollapsible(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	open, visible := false, true
+	p := CollapsibleProps{Bounds: NewRectangle(10, 10, 180, 32), Label: "A label long enough to need clipping", Open: &open, Visible: &visible, ID: 9961}
+	r.QueueTap(180, 20)
+	r.BeginFrame()
+	changed := r.Collapsible(p)
+	r.EndFrame()
+	if changed != 1 || visible || open {
+		t.Fatalf("close changed=%d visible=%v open=%v", changed, visible, open)
+	}
+	ops := r.FrameOps()
+	if len(ops) != 2 || ops[0].Kind != FrameOpButton || ops[1].Kind != FrameOpText || ops[1].Text != "×" || !ops[1].Pressed {
+		t.Fatalf("closeable collapsible ops: %+v", ops)
+	}
+
+	r.QueueTap(20, 20)
+	r.BeginFrame()
+	if r.Collapsible(p) != 0 || len(r.FrameOps()) != 0 || open {
+		t.Fatal("hidden collapsible emitted output or accepted input")
+	}
+	r.EndFrame()
+
+	visible = true
+	p.Disabled = true
+	r.QueueTap(180, 20)
+	r.BeginFrame()
+	changed = r.Collapsible(p)
+	r.EndFrame()
+	if changed != 0 || !visible || !r.FrameOps()[1].Disabled {
+		t.Fatal("disabled collapsible close was active")
+	}
+}
+
 func TestTreeHeaderKeyboardGates(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	open := false

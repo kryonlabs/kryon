@@ -24,7 +24,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, and slow/fast modifiers are covered |
 | Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
 | Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered; `ColorButton` shares ordinary focus and keyboard activation |
-| Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
+| Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, optional close/visibility state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
 | Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including shared focus/Enter/Space activation, Tab traversal, arrow/Home/End navigation, and Ctrl/Shift range selection |
 | List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll, plus a framed scrolling scope for arbitrary native children |
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |

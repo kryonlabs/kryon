@@ -555,6 +555,9 @@ typedef struct {
     int selected;
     int disabled;
     int id;
+    /* Optional ImGui-style close state. A false value hides the header;
+       activating the close affordance sets it false without toggling open. */
+    bool *visible;
 } CollapsibleProps;
 
 typedef struct {

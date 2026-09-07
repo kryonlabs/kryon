@@ -213,7 +213,7 @@ function splitTopLevel(text) {
 function numberValue(text, fallback = 0) {
   if (typeof text === "number") return text;
   let s = String(text || "").trim();
-  while (/^ScaleUIPx\s*\(/.test(s) && s.endsWith(")"))
+  while (/^Scale\s*\(/.test(s) && s.endsWith(")"))
     s = s.slice(s.indexOf("(") + 1, -1).trim();
   s = s.replace(/[fF]\b/g, "");
   if (/^0x[0-9a-f]+$/i.test(s)) return parseInt(s, 16);
@@ -679,7 +679,7 @@ export function Key(value) {
   return String(value);
 }
 
-export function ScaleUIPx(value) {
+export function Scale(value) {
   return value | 0;
 }
 
@@ -696,7 +696,7 @@ export function GetUIViewWidth() {
 }
 
 export function GetUIPageSidePadding() {
-  return ScaleUIPx(24);
+  return Scale(24);
 }
 
 export function GetThemeBackground() { return Color(247, 244, 236, 255); }

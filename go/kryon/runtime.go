@@ -1223,6 +1223,7 @@ type CollapsibleProps struct {
 	Selected bool
 	Disabled bool
 	ID       int32
+	Visible  *bool
 }
 
 type MessageDialogProps struct {
@@ -5385,6 +5386,9 @@ func (r *runtime) treeHeaderTarget(p CollapsibleProps, key int32) int32 {
 }
 
 func (r *runtime) Collapsible(p CollapsibleProps) int32 {
+	if p.Visible != nil && !*p.Visible {
+		return 0
+	}
 	p.Bounds.Height = 32
 	p.Bounds = r.layoutRect(p.Bounds)
 	if p.Tree && p.Depth > 0 {
@@ -5399,7 +5403,20 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 			r.treeHeaders = append(r.treeHeaders, treeHeaderNav{p.ID, max(p.Depth, 0)})
 		}
 	}
-	tapped := enabled && r.consumeTap(p.Bounds)
+	header := p.Bounds
+	closeBounds := Rectangle{}
+	body := header
+	closed := false
+	if p.Visible != nil {
+		closeWidth := min(float32(28), header.Width)
+		closeBounds = Rectangle{X: header.X + header.Width - closeWidth, Y: header.Y, Width: closeWidth, Height: header.Height}
+		body.Width = max(float32(0), body.Width-closeWidth)
+		closed = enabled && r.consumeTap(closeBounds)
+		if closed {
+			*p.Visible = false
+		}
+	}
+	tapped := enabled && !closed && r.consumeTap(body)
 	if tapped && p.ID != 0 {
 		r.setFocus(p.ID)
 	}
@@ -5457,11 +5474,15 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	if p.Selected {
 		bg = t.buttonHover
 	}
-	if p.Disabled {
+	if !enabled {
 		fg.A = uint8(float32(fg.A) * 0.45)
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: p.Bounds, Text: mark + "  " + p.Label, Color: bg, BorderColor: border, TextColor: fg, FontSize: Text16, Pressed: pressed, Selected: p.Selected, ID: p.ID, Focused: enabled && p.ID != 0 && r.focusID == p.ID})
-	if pressed {
+	label := elideText(mark+"  "+p.Label, body.Width-12, Text16)
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: header, Text: label, Color: bg, BorderColor: border, TextColor: fg, FontSize: Text16, Pressed: pressed, Selected: p.Selected, ID: p.ID, Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
+	if p.Visible != nil {
+		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: fg, FontSize: Text16, Pressed: closed, Disabled: !enabled})
+	}
+	if pressed || closed {
 		return 1
 	}
 	return 0

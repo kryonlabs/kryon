@@ -3948,17 +3948,34 @@ DrawUICollapsible(CollapsibleProps section)
     int font = GetFontSize();
     int changed = 0;
     Rectangle header = section.bounds;
+    Rectangle body;
+    Rectangle close_bounds = {0};
+    int close_hover = 0;
+    int closed = 0;
+    if(section.visible != NULL && !*section.visible) return 0;
     header.height = Scale(32);
     if(section.tree && section.depth > 0) {
         float indent = fminf((float)section.depth * Scale(20), header.width);
         header.x += indent;
         header.width -= indent;
     }
+    body = header;
+    if(section.visible != NULL) {
+        float close_width = fminf((float)Scale(28), header.width);
+        close_bounds = (Rectangle){header.x + header.width - close_width,
+                                   header.y, close_width, header.height};
+        body.width -= close_width;
+    }
     int enabled = !section.disabled && !UIContentDisabled();
     ui_tree_header_register(section, enabled);
     int focused = enabled && section.id > 0 && RegisterUIFocus(section.id, header);
     if(focused) SetUIFocusTextInputActive(0);
-    if(enabled && ui_hot(header)) {
+    if(section.visible != NULL &&
+       UIHandleClick(close_bounds, !enabled, &close_hover)) {
+        *section.visible = false;
+        changed = closed = 1;
+    }
+    if(enabled && !closed && ui_hot(body)) {
         MarkUIClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
@@ -3989,14 +4006,23 @@ DrawUICollapsible(CollapsibleProps section)
     focused = enabled && section.id > 0 && IsUIFocusActive(section.id);
     if(IsWindowReady()) {
         Color text = c_text, icon = c_icon;
-        if(section.disabled) { text.a = (unsigned char)(text.a * 0.45f); icon.a = (unsigned char)(icon.a * 0.45f); }
+        if(!enabled) { text.a = (unsigned char)(text.a * 0.45f); icon.a = (unsigned char)(icon.a * 0.45f); }
         if(!section.tree || section.selected)
             DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
         if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
         DrawUIText(section.leaf ? "•" : section.open != NULL && *section.open ? "v" : ">",
                    (int)header.x + Scale(8), ui_row_text_y(header, font), font, icon);
+        BeginUIClip((int)header.x + Scale(28), (int)header.y,
+                    (int)fmaxf(0.0f, body.width - Scale(28)), (int)header.height);
         DrawUIText(section.label != NULL ? section.label : "",
                    (int)header.x + Scale(28), ui_row_text_y(header, font), font, text);
+        EndUIClip();
+        if(section.visible != NULL)
+            DrawUIText("x",
+                       (int)(close_bounds.x +
+                             (close_bounds.width - TextWidth("x", font)) * 0.5f),
+                       ui_row_text_y(close_bounds, font), font,
+                       close_hover ? c_link : text);
         if(focused) DrawUIFocus(header);
     }
     return changed;

@@ -434,6 +434,18 @@ func main() {
 			kryon.EndFrame()
 		})
 	}
+	drawCloseableCollapsible := func() {
+		host.Draw(func() {
+			kryon.BeginFrame()
+			ScrollContent_CloseableCollapsibleFrame(ScrollContentStateValue)
+			kryon.EndFrame()
+		})
+	}
+	driver.QueueTap(180, 20)
+	drawCloseableCollapsible()
+	if ScrollContentStateValue.CloseableVisible || ScrollContentStateValue.CloseableOpen {
+		panic("closeable collapsible: close did not hide without opening")
+	}
 	driver.QueueTap(20, 90)
 	drawScroll()
 	if ScrollContentStateValue.ScrollingActions != 100 {
@@ -1309,6 +1321,11 @@ static void draw_table_view(void)
     draw_ui(table_frame);
 }
 
+static void draw_closeable_collapsible(void)
+{
+    draw_ui(closeable_collapsible_frame);
+}
+
 static unsigned long long checksum(const char *text)
 {
     unsigned long long hash = 1469598103934665603ULL;
@@ -1339,6 +1356,13 @@ int main(void)
        composed_result(2, 1, 1) != 2)
         return 1;
     EndUIFrame();
+    InjectTap(180,20);
+    InjectPump(); draw_closeable_collapsible();
+    InjectPump(); draw_closeable_collapsible();
+    if(closeable_visible || closeable_open) {
+        fprintf(stderr,"closeable collapsible: close did not hide without opening\n");
+        return 1;
+    }
     draw_tab_scope();
     InjectTap(60,84); InjectPump(); draw_tab_scope();
     InjectPump(); draw_tab_scope();

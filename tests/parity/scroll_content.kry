@@ -11,6 +11,8 @@ state {
     branch_open: bool = false
     nested_open: bool = false
     branch_actions: int = 0
+    closeable_visible: bool = true
+    closeable_open: bool = false
     overlay_selected: int = 0
     overlay_actions: int = 0
     overlay_background_offset: int = 0
@@ -29,6 +31,10 @@ state {
     custom_text: [64] char = "cell"
     custom_cursor: int = 4
     custom_disabled: int = 0
+}
+
+closeable_collapsible_frame :: () #ui {
+    Collapsible((CollapsibleProps){.bounds = {10,10,180,32}, .label = "Closeable generated header", .open = &closeable_open, .id = 9961, .visible = &closeable_visible})
 }
 
 scroll_scope_return :: () {

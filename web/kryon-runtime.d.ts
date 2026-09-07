@@ -85,7 +85,7 @@ export function NewRectangle(x?: number, y?: number, width?: number, height?: nu
   height: number;
 };
 export function Key(value: unknown): string;
-export function ScaleUIPx(value: number): number;
+export function Scale(value: number): number;
 export function GetScreenWidth(): number;
 export function GetScreenHeight(): number;
 export function GetUIViewWidth(): number;
