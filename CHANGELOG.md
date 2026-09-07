@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.67 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.67
+- Add keyboard controls to native drag widgets
+
 ## v0.1.66 - 2026-09-07
 
 ### Changed
