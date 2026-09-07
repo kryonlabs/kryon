@@ -21,7 +21,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Images | `Picture`, `ImageWithBg`, `ImageButton` | covered |
 | Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
 | Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values |
-| Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | covered, including counted N-component values |
+| Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, and slow/fast modifiers are covered |
 | Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
 | Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered |
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
@@ -68,6 +68,15 @@ the selection, and reject opening under both property and scope disabling.
 Go also checks the focused paint record and focus border. General popup
 keyboard-focus isolation remains a gap; these tests do not prove complete ImGui
 navigation semantics.
+
+Native C and Go sliders now register each counted component as a focus target.
+Left/Right adjust horizontal sliders, Up/Down adjust vertical sliders, Home/End
+select the range limits, Alt slows adjustment, and Shift accelerates it. Pointer
+presses focus the exact component, disabled sliders reject keys, popup ownership
+gates keyboard input, and the focused component receives the ordinary focus
+presentation. Matching native tests cover component Tab traversal and the
+generated `plots.kry` fixture verifies horizontal float and vertical integer
+adjustment through k2c and k2go.
 
 Native Go now constrains and flips long dropdowns using the same placement
 rules as C, reusing its ordinary scroll container for clipping, wheel input and

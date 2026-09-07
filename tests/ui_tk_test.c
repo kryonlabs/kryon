@@ -84,6 +84,73 @@ test_semantic_font_sizes_follow_ui_scale(void)
 }
 
 static void
+test_slider_keyboard_navigation(void)
+{
+    float floats[2] = {0.25f,0.75f};
+    int ints[1] = {5};
+    SliderFloatProps horizontal = {
+        .bounds = {10,10,200,30}, .id = 600, .values = floats,
+        .value_count = 2, .min = 0.0f, .max = 1.0f
+    };
+    SliderIntProps vertical = {
+        .bounds = {10,60,30,120}, .id = 601, .values = ints,
+        .value_count = 1, .min = 0, .max = 10
+    };
+    int second_focus;
+
+    InjectReset();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    SetUIFocus(600); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(640,480,1.0f);
+    check_int("slider Right changed",SliderFloat(horizontal),1);
+    EndUIFrame();
+    check_int("slider Right value",(int)(floats[0]*1000.0f+0.5f),260);
+
+    InjectPump();
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    check_int("slider Shift fast value",(int)(floats[0]*1000.0f+0.5f),360);
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    InjectKey(KEY_LEFT_ALT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    check_int("slider Alt slow value",(int)(floats[0]*1000.0f+0.5f),361);
+    InjectKey(KEY_LEFT_ALT,0); InjectPump();
+
+    InjectKeyTap(KEY_TAB); InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    second_focus = GetUIFocus();
+    check_int("slider Tab reaches second component",second_focus != 600,1);
+    InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(640,480,1.0f);
+    check_int("second slider component changed",SliderFloat(horizontal),1);
+    EndUIFrame();
+    check_int("second slider component value",
+              (int)(floats[1]*1000.0f+0.5f),740);
+
+    SetUIFocus(601); InjectKeyTap(KEY_UP); InjectPump();
+    BeginUIFrame(640,480,1.0f);
+    check_int("vertical slider Up changed",VSliderInt(vertical),1);
+    EndUIFrame();
+    check_int("vertical slider Up value",ints[0],6);
+    InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    check_int("vertical slider Down value",ints[0],5);
+    InjectKeyTap(KEY_HOME); InjectPump();
+    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    check_int("vertical slider Home value",ints[0],0);
+    InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    check_int("vertical slider End value",ints[0],10);
+
+    vertical.disabled = 1;
+    SetUIFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(640,480,1.0f);
+    check_int("disabled slider unchanged",VSliderInt(vertical),0);
+    EndUIFrame();
+    check_int("disabled slider value",ints[0],10);
+}
+
+static void
 test_reorder_uses_item_center_and_header_handle(void)
 {
     UIReorderItem items[2] = {
@@ -2663,5 +2730,6 @@ main(void)
     }
 
     test_reorder_uses_item_center_and_header_handle();
+    test_slider_keyboard_navigation();
     return 0;
 }

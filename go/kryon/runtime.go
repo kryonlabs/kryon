@@ -2900,7 +2900,7 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: r.theme().text, FontSize: Text14})
 }
 
-func (r *runtime) sliderRatio(token int32, bounds Rectangle, disabled, vertical bool) (float32, bool) {
+func (r *runtime) sliderRatio(token, focusID int32, bounds Rectangle, disabled, vertical bool) (float32, bool) {
 	disabled = disabled || r.contentDisabled()
 	if r.slider.active && r.popupInputOwnerCaptures(r.slider.owner) {
 		r.slider = scalarDrag{}
@@ -2911,6 +2911,9 @@ func (r *runtime) sliderRatio(token int32, bounds Rectangle, disabled, vertical 
 	pressed := !disabled && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds)
 	if pressed {
 		r.slider = scalarDrag{active: true, token: token, owner: r.currentPopupInputOwner()}
+		if focusID > 0 {
+			r.setFocus(focusID)
+		}
 	}
 	if r.slider.active && r.slider.token == token && (pressed || r.mouseDown[MouseButtonLeft]) {
 		var ratio float32
@@ -2934,13 +2937,134 @@ func (r *runtime) sliderRatio(token int32, bounds Rectangle, disabled, vertical 
 	return 0, false
 }
 
-func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical bool, id, component int32) {
+func sliderFocusID(id, component int32, integer bool) int32 {
+	if id <= 0 {
+		return 0
+	}
+	if component == 0 {
+		return id
+	}
+	prefix := int32(0x40000000)
+	if integer {
+		prefix = 0x50000000
+	}
+	return (prefix ^ (id*16 + component + 1)) & 0x7fffffff
+}
+
+func (r *runtime) sliderKeyboardDirection(vertical bool, key int32) int32 {
+	if vertical {
+		if key == KeyUp {
+			return 1
+		}
+		if key == KeyDown {
+			return -1
+		}
+	} else {
+		if key == KeyRight {
+			return 1
+		}
+		if key == KeyLeft {
+			return -1
+		}
+	}
+	return 0
+}
+
+func (r *runtime) sliderFloatKeyboard(focusID int32, vertical bool, minimum, maximum, value float32) (float32, bool) {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) || maximum <= minimum {
+		return value, false
+	}
+	next := value
+	remaining := r.inputEvents[:0]
+	for _, event := range r.inputEvents {
+		handled := false
+		if !event.shortcut {
+			switch event.key {
+			case KeyHome:
+				next, handled = minimum, true
+			case KeyEnd:
+				next, handled = maximum, true
+			default:
+				if direction := r.sliderKeyboardDirection(vertical, event.key); direction != 0 {
+					step := (maximum - minimum) * 0.01
+					if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
+						step *= 0.1
+					}
+					if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
+						step *= 10
+					}
+					next = min(maximum, max(minimum, next+float32(direction)*step))
+					handled = true
+				}
+			}
+		}
+		if !handled {
+			remaining = append(remaining, event)
+		}
+	}
+	r.inputEvents = remaining
+	return next, next != value
+}
+
+func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maximum, value int32) (int32, bool) {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) || maximum <= minimum {
+		return value, false
+	}
+	next := int64(value)
+	rangeValue := int64(maximum) - int64(minimum)
+	remaining := r.inputEvents[:0]
+	for _, event := range r.inputEvents {
+		handled := false
+		if !event.shortcut {
+			switch event.key {
+			case KeyHome:
+				next, handled = int64(minimum), true
+			case KeyEnd:
+				next, handled = int64(maximum), true
+			default:
+				if direction := r.sliderKeyboardDirection(vertical, event.key); direction != 0 {
+					step := int64(1)
+					if rangeValue > 100 {
+						step = (rangeValue + 50) / 100
+					}
+					if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
+						step /= 10
+						if step < 1 {
+							step = 1
+						}
+					}
+					if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
+						step *= 10
+					}
+					next += int64(direction) * step
+					if next < int64(minimum) {
+						next = int64(minimum)
+					} else if next > int64(maximum) {
+						next = int64(maximum)
+					}
+					handled = true
+				}
+			}
+		}
+		if !handled {
+			remaining = append(remaining, event)
+		}
+	}
+	r.inputEvents = remaining
+	return int32(next), int32(next) != value
+}
+
+func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical, focused bool, id, component int32) {
 	t := r.theme()
 	base, accent, textColor := t.button, t.buttonHover, t.text
 	if disabled {
 		base, accent, textColor = t.surface, t.icon, t.icon
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: base, BorderColor: t.border, ID: id, Row: component, Disabled: disabled})
+	border := t.border
+	if focused {
+		border = t.focus
+	}
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: base, BorderColor: border, ID: id, Row: component, Disabled: disabled, Focused: focused})
 	if vertical {
 		fill := Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height*(1-ratio), Width: bounds.Width, Height: bounds.Height * ratio}
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: accent, ID: id, Row: component, Selected: true, Disabled: disabled})
@@ -2973,7 +3097,12 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 	rangeValue := props.Max - props.Min
 	changed := false
 	for i := 0; i < count; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), false)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+		}
 		ratio := float32(0)
 		if rangeValue > 0 {
 			ratio = (props.Values[i] - props.Min) / rangeValue
@@ -2983,7 +3112,14 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 		} else if ratio > 1 {
 			ratio = 1
 		}
-		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), cell, props.Disabled, vertical); active && rangeValue > 0 {
+		if enabled {
+			if next, keyboardChanged := r.sliderFloatKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
+				props.Values[i] = next
+				ratio = (next - props.Min) / rangeValue
+				changed = true
+			}
+		}
+		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && rangeValue > 0 {
 			ratio = next
 			value := props.Min + ratio*rangeValue
 			changed = changed || value != props.Values[i]
@@ -2993,7 +3129,8 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 		if format == "" {
 			format = "%.3f"
 		}
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
 	}
 	r.drawSliderLabel(props.Bounds, props.Label)
 	return changed
@@ -3008,22 +3145,34 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 	if count == 0 {
 		return false
 	}
-	rangeValue := props.Max - props.Min
+	rangeValue := int64(props.Max) - int64(props.Min)
 	changed := false
 	for i := 0; i < count; i++ {
+		focusID := sliderFocusID(props.ID, int32(i), true)
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
+		enabled := !props.Disabled && !r.contentDisabled()
+		if enabled {
+			r.registerField(focusID)
+		}
 		ratio := float32(0)
 		if rangeValue > 0 {
-			ratio = float32(props.Values[i]-props.Min) / float32(rangeValue)
+			ratio = float32(float64(int64(props.Values[i])-int64(props.Min)) / float64(rangeValue))
 		}
 		if ratio < 0 {
 			ratio = 0
 		} else if ratio > 1 {
 			ratio = 1
 		}
-		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), cell, props.Disabled, vertical); active && rangeValue > 0 {
+		if enabled {
+			if next, keyboardChanged := r.sliderIntKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
+				props.Values[i] = next
+				ratio = float32(float64(int64(next)-int64(props.Min)) / float64(rangeValue))
+				changed = true
+			}
+		}
+		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && rangeValue > 0 {
 			ratio = next
-			value := props.Min + int32(ratio*float32(rangeValue)+0.5)
+			value := int32(int64(props.Min) + int64(float64(ratio)*float64(rangeValue)+0.5))
 			changed = changed || value != props.Values[i]
 			props.Values[i] = value
 		}
@@ -3031,7 +3180,8 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 		if format == "" {
 			format = "%d"
 		}
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, props.ID, int32(i))
+		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
+		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
 	}
 	r.drawSliderLabel(props.Bounds, props.Label)
 	return changed

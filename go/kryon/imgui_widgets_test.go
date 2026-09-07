@@ -1005,6 +1005,88 @@ func TestNativeSliders(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestNativeSliderKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
+	floats := []float32{0.25, 0.75}
+	floatProps := SliderFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 600,
+		Values: floats, ValueCount: 2, Min: 0, Max: 1}
+
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
+	r.SetFocus(600)
+	r.QueueKey(KeyRight)
+	r.BeginFrame()
+	if !r.SliderFloat(floatProps) || floats[0] < 0.2599 || floats[0] > 0.2601 {
+		t.Fatalf("horizontal slider Right values=%v, want first value 0.26", floats)
+	}
+	r.EndFrame()
+	focusedPaint := false
+	for _, op := range r.FrameOps() {
+		if op.Kind == FrameOpRect && op.ID == 600 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+			focusedPaint = true
+		}
+	}
+	if !focusedPaint {
+		t.Fatal("focused slider component lacks focus paint")
+	}
+	r.QueueShiftKey(KeyRight)
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
+	if floats[0] < 0.3599 || floats[0] > 0.3601 {
+		t.Fatalf("Shift slider value=%v, want 0.36", floats[0])
+	}
+	r.QueueKey(KeyLeftAlt)
+	r.QueueKey(KeyRight)
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
+	if floats[0] < 0.3609 || floats[0] > 0.3611 {
+		t.Fatalf("Alt slider value=%v, want 0.361", floats[0])
+	}
+
+	r.QueueKey(KeyTab)
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
+	secondFocus := sliderFocusID(600, 1, false)
+	if r.Focus() != secondFocus {
+		t.Fatalf("slider component Tab focus=%d, want %d", r.Focus(), secondFocus)
+	}
+	r.QueueKey(KeyLeft)
+	r.BeginFrame()
+	if !r.SliderFloat(floatProps) || floats[1] < 0.7399 || floats[1] > 0.7401 {
+		t.Fatalf("second slider component Left values=%v, want second value 0.74", floats)
+	}
+	r.EndFrame()
+
+	ints := []int32{5}
+	intProps := SliderIntProps{Bounds: NewRectangle(10, 60, 30, 120), ID: 601,
+		Values: ints, ValueCount: 1, Min: 0, Max: 10}
+	r.SetFocus(601)
+	for _, step := range []struct {
+		key  int32
+		want int32
+	}{{KeyUp, 6}, {KeyDown, 5}, {KeyHome, 0}, {KeyEnd, 10}} {
+		r.QueueKey(step.key)
+		r.BeginFrame()
+		if !r.VSliderInt(intProps) || ints[0] != step.want {
+			t.Fatalf("vertical slider key %d value=%d, want %d", step.key, ints[0], step.want)
+		}
+		r.EndFrame()
+	}
+
+	intProps.Disabled = true
+	r.SetFocus(601)
+	r.QueueKey(KeyLeft)
+	r.BeginFrame()
+	if r.VSliderInt(intProps) || ints[0] != 10 {
+		t.Fatalf("disabled slider accepted keyboard input: value=%d", ints[0])
+	}
+	r.EndFrame()
+}
+
 func TestNativeDragRangesKeepOrderedEndpoints(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floatMin, floatMax := float32(2), float32(4)

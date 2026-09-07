@@ -952,6 +952,18 @@ func main() {
 		kryon.FrameOpLine: 3,
 		kryon.FrameOpText: 3,
 	})
+	driver.SetFocus(922)
+	driver.QueueKey(kryon.KeyRight)
+	drawPlots()
+	if value := PlotsStateValue.SliderFloats[0]; value < 0.2599 || value > 0.2601 {
+		panic(fmt.Sprintf("generated float slider keyboard value=%v, want 0.26", value))
+	}
+	driver.SetFocus(925)
+	driver.QueueKey(kryon.KeyUp)
+	drawPlots()
+	if value := PlotsStateValue.SliderInts[0]; value != 3 {
+		panic(fmt.Sprintf("generated vertical int slider keyboard value=%d, want 3", value))
+	}
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
 		kryon.FrameOpRect: 2,
 		kryon.FrameOpText: 1,
@@ -1822,6 +1834,18 @@ int main(void)
 
     draw_progress();
     draw_plots();
+    SetUIFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if((int)(slider_floats[0]*1000.0f+0.5f) != 260) {
+        fprintf(stderr,"generated float slider keyboard value=%f, want 0.26\n",
+                slider_floats[0]);
+        return 1;
+    }
+    SetUIFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
+    if(slider_ints[0] != 3) {
+        fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
+                slider_ints[0]);
+        return 1;
+    }
 
     draw_table_view();
     InjectTap(116, 62);

@@ -1675,9 +1675,103 @@ ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
     return 0;
 }
 
+static int
+ui_slider_focus_id(int id, int component, int integer)
+{
+    unsigned int token;
+
+    if(id <= 0)
+        return 0;
+    if(component == 0)
+        return id;
+    token = (integer ? 0x50000000u : 0x40000000u) ^
+            ((unsigned int)id << 4) ^ (unsigned int)(component + 1);
+    token &= (unsigned int)INT_MAX;
+    return token != 0 ? (int)token : id;
+}
+
+static int
+ui_slider_keyboard_direction(int vertical)
+{
+    if(vertical) {
+        if(IsKeyPressed(KEY_UP)) return 1;
+        if(IsKeyPressed(KEY_DOWN)) return -1;
+    } else {
+        if(IsKeyPressed(KEY_RIGHT)) return 1;
+        if(IsKeyPressed(KEY_LEFT)) return -1;
+    }
+    return 0;
+}
+
+static int
+ui_update_slider_float_keyboard(int focus_id, int vertical, float minimum,
+                                float maximum, float *value)
+{
+    float next = *value;
+    float range = maximum - minimum;
+    int direction;
+
+    if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id) ||
+       range <= 0.0f)
+        return 0;
+    if(IsKeyPressed(KEY_HOME))
+        next = minimum;
+    else if(IsKeyPressed(KEY_END))
+        next = maximum;
+    else if((direction = ui_slider_keyboard_direction(vertical)) != 0) {
+        float step = range * 0.01f;
+        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
+            step *= 0.1f;
+        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+            step *= 10.0f;
+        next += direction * step;
+        if(next < minimum) next = minimum;
+        if(next > maximum) next = maximum;
+    }
+    if(next == *value)
+        return 0;
+    *value = next;
+    return 1;
+}
+
+static int
+ui_update_slider_int_keyboard(int focus_id, int vertical, int minimum,
+                              int maximum, int *value)
+{
+    long long next = *value;
+    long long range = (long long)maximum - minimum;
+    int direction;
+
+    if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id) ||
+       range <= 0)
+        return 0;
+    if(IsKeyPressed(KEY_HOME))
+        next = minimum;
+    else if(IsKeyPressed(KEY_END))
+        next = maximum;
+    else if((direction = ui_slider_keyboard_direction(vertical)) != 0) {
+        long long step = range <= 100 ? 1 : (range + 50) / 100;
+        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) {
+            step /= 10;
+            if(step < 1) step = 1;
+        }
+        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
+            step *= 10;
+        next += direction * step;
+        if(next < minimum) next = minimum;
+        if(next > maximum) next = maximum;
+    }
+    if(next == *value)
+        return 0;
+    *value = (int)next;
+    return 1;
+}
+
 static void
 ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
-                    int disabled, int vertical)
+                    int disabled, int vertical, int focused)
 {
     if(!IsWindowReady())
         return;
@@ -1702,6 +1796,8 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     DrawUIText(text, (int)cell.x + ScaleUIPx(6),
                ui_row_text_y(cell, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
+    if(focused)
+        DrawUIFocus(cell);
 }
 
 static void
@@ -1723,13 +1819,24 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
     if(slider.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
+        int focus_id = ui_slider_focus_id(slider.id,i,0);
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
         float ratio = range > 0.0f ? (slider.values[i] - slider.min) / range : 0.0f;
+        int enabled = !slider.disabled && !UIContentDisabled();
+        if(enabled && focus_id > 0)
+            RegisterUIFocus(focus_id,cell);
+        if(enabled && ui_update_slider_float_keyboard(focus_id,vertical,
+                    slider.min,slider.max,&slider.values[i])) {
+            ratio = (slider.values[i] - slider.min) / range;
+            changed = 1;
+        }
         if(ratio < 0.0f) ratio = 0.0f;
         if(ratio > 1.0f) ratio = 1.0f;
-        if(range > 0.0f && ui_slider_ratio(0x40000000 ^ (slider.id << 4) ^ (i + 1),
+        if(range > 0.0f && ui_slider_ratio((int)(0x40000000u ^
+                                           ((unsigned int)slider.id << 4) ^
+                                           (unsigned int)(i + 1)),
                                            cell, slider.disabled, vertical, &ratio)) {
             float value = slider.min + ratio * range;
             if(value != slider.values[i]) {
@@ -1746,20 +1853,34 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
-    int range = slider.max - slider.min;
+    long long range = (long long)slider.max - slider.min;
 
     if(slider.values == NULL || count <= 0)
         return 0;
     for(int i = 0; i < count; i++) {
+        int focus_id = ui_slider_focus_id(slider.id,i,1);
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
-        float ratio = range > 0 ? (float)(slider.values[i] - slider.min) / range : 0.0f;
+        float ratio = range > 0 ?
+            (float)(((long long)slider.values[i] - slider.min) / (double)range) : 0.0f;
+        int enabled = !slider.disabled && !UIContentDisabled();
+        if(enabled && focus_id > 0)
+            RegisterUIFocus(focus_id,cell);
+        if(enabled && ui_update_slider_int_keyboard(focus_id,vertical,
+                    slider.min,slider.max,&slider.values[i])) {
+            ratio = (float)(((long long)slider.values[i] - slider.min) /
+                            (double)range);
+            changed = 1;
+        }
         if(ratio < 0.0f) ratio = 0.0f;
         if(ratio > 1.0f) ratio = 1.0f;
-        if(range > 0 && ui_slider_ratio(0x50000000 ^ (slider.id << 4) ^ (i + 1),
+        if(range > 0 && ui_slider_ratio((int)(0x50000000u ^
+                                        ((unsigned int)slider.id << 4) ^
+                                        (unsigned int)(i + 1)),
                                         cell, slider.disabled, vertical, &ratio)) {
-            int value = slider.min + (int)(ratio * range + 0.5f);
+            int value = (int)((long long)slider.min +
+                              (long long)(ratio * (double)range + 0.5));
             if(value != slider.values[i]) {
                 slider.values[i] = value;
                 changed = 1;
@@ -1783,8 +1904,12 @@ ui_paint_slider_float(SliderFloatProps slider, int vertical)
         if(ratio < 0) ratio = 0;
         if(ratio > 1) ratio = 1;
         char text[64];
+        int focus_id = ui_slider_focus_id(slider.id,i,0);
+        int focused = !slider.disabled && focus_id > 0 &&
+                      IsUIFocusActive(focus_id) &&
+                      !ui_popup_input_focus_captures(focus_id);
         snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%.3f",slider.values[i]);
-        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused);
     }
     ui_draw_slider_label(slider.bounds,slider.label);
 }
@@ -1803,8 +1928,12 @@ ui_paint_slider_int(SliderIntProps slider, int vertical)
         if(ratio < 0) ratio = 0;
         if(ratio > 1) ratio = 1;
         char text[64];
+        int focus_id = ui_slider_focus_id(slider.id,i,1);
+        int focused = !slider.disabled && focus_id > 0 &&
+                      IsUIFocusActive(focus_id) &&
+                      !ui_popup_input_focus_captures(focus_id);
         snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%d",slider.values[i]);
-        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused);
     }
     ui_draw_slider_label(slider.bounds,slider.label);
 }
