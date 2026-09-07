@@ -12,6 +12,8 @@ static const Vector2 kryon_zero_vector2;
 int
 ui_bottom_nav_height(void)
 {
+    if(ui_retro_style())
+        return Scale(40);
     return Scale(106);
 }
 

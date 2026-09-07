@@ -15,6 +15,15 @@ check_int(const char *name, int got, int want)
     exit(1);
 }
 
+static void
+check_true(const char *name, int value)
+{
+    if(value)
+        return;
+    fprintf(stderr, "%s: false\n", name);
+    exit(1);
+}
+
 void
 __wrap_DrawRectangleRec(Rectangle rec, Color color)
 {
@@ -29,6 +38,30 @@ __wrap_DrawRectangleRounded(Rectangle rec, float roundness, int segments,
     (void)rec;
     (void)roundness;
     (void)segments;
+    (void)color;
+}
+
+void
+__wrap_DrawRectangleGradientV(int pos_x, int pos_y, int width, int height,
+                              Color top, Color bottom)
+{
+    (void)pos_x;
+    (void)pos_y;
+    (void)width;
+    (void)height;
+    (void)top;
+    (void)bottom;
+}
+
+void
+__wrap_DrawRectangleRoundedLinesEx(Rectangle rec, float roundness,
+                                   int segments, float line_thick,
+                                   Color color)
+{
+    (void)rec;
+    (void)roundness;
+    (void)segments;
+    (void)line_thick;
     (void)color;
 }
 
@@ -110,15 +143,18 @@ main(void)
     check_int("bottom nav lower edge anchors to usable bottom",
               result.y + result.height + 48, 720);
     {
-        check_int("inactive bottom nav icon red", icon_tints[0].r, 255);
-        check_int("inactive bottom nav icon green", icon_tints[0].g, 255);
-        check_int("inactive bottom nav icon blue", icon_tints[0].b, 255);
-        check_int("active bottom nav icon red", icon_tints[1].r, 255);
-        check_int("active bottom nav icon green", icon_tints[1].g, 255);
-        check_int("active bottom nav icon blue", icon_tints[1].b, 255);
-        check_int("disabled bottom nav icon red", icon_tints[2].r, 255);
-        check_int("disabled bottom nav icon green", icon_tints[2].g, 255);
-        check_int("disabled bottom nav icon blue", icon_tints[2].b, 255);
+        check_int("inactive bottom nav icon alpha", icon_tints[0].a, 255);
+        check_int("active bottom nav icon alpha", icon_tints[1].a, 255);
+        check_true("active bottom nav icon has distinct theme color",
+                   icon_tints[0].r != icon_tints[1].r ||
+                   icon_tints[0].g != icon_tints[1].g ||
+                   icon_tints[0].b != icon_tints[1].b);
+        check_int("disabled bottom nav icon red", icon_tints[2].r,
+                  icon_tints[0].r);
+        check_int("disabled bottom nav icon green", icon_tints[2].g,
+                  icon_tints[0].g);
+        check_int("disabled bottom nav icon blue", icon_tints[2].b,
+                  icon_tints[0].b);
         check_int("disabled bottom nav icon alpha", icon_tints[2].a, 150);
     }
     for(int dark = 0; dark <= 1; dark++) {

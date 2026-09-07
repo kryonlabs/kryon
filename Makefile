@@ -896,6 +896,8 @@ $(BOTTOM_NAV_ICON_COLOR_TEST): tests/bottom_nav_icon_color_test.c $(LIB) $(KRYON
 		-Wl,--wrap=DrawTexturePro \
 		-Wl,--wrap=DrawRectangleRec \
 		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=DrawRectangleGradientV \
+		-Wl,--wrap=DrawRectangleRoundedLinesEx \
 		-Wl,--wrap=SetMouseCursor \
 		-Wl,--wrap=GetMousePosition \
 		-Wl,--wrap=IsMouseButtonReleased \
