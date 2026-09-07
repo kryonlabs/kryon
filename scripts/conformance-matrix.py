@@ -493,6 +493,7 @@ WIDGETS = {
     "Spinbox",
     "Stack",
     "TabBar",
+    "TabItem",
     "TableView",
     "Text",
     "TextArea",
@@ -508,6 +509,7 @@ WIDGETS = {
 
 WIDGET_ALIASES = {
     "Toast": {"ShowToast", "ShowToastFor"},
+    "TabItem": {"BeginTabItem"},
 }
 
 CALL_RE = re.compile(r"\b([A-Z][A-Za-z0-9_]*)\s*\(")

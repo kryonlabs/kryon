@@ -32,7 +32,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | nested submenus plus focus, disabled/separator skipping, arrow/Home/End traversal, submenu entry/backout, activation, and Escape dismissal in native C and Go |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
-| Tabs | `TabBar`, `ClosableTabBar`, `TabItemButton` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; omitted scroll state is owned independently by stable tab-bar ID |
+| Tabs | `TabBar`, `BeginTabBar` / `BeginTabItem` / `EndTabItem` / `EndTabBar`, `ClosableTabBar`, `TabItemButton` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; the scope submits arbitrary native children only for the selected item, and omitted scroll state is owned independently by stable tab-bar ID |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
 | Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
 
@@ -334,3 +334,13 @@ slanted glyph clipping, while Go clips its software rasterization directly.
 `header_angle` is in degrees, clamped to -89 through 89, with
 non-finite values treated as zero. `header_height` defaults to 30 and cannot
 reduce the header below that height.
+
+Native C and Go now expose the missing composed tab contract through
+`BeginTabBar`, `BeginTabItem`, `EndTabItem`, and `EndTabBar`. The bar delegates
+all header interaction and painting to the canonical `TabBar`; the scope only
+controls arbitrary child submission, so there is no second tab renderer.
+Selection changes are written to caller state before item scopes are evaluated
+in the same frame. Direct C and Go tests plus generated C, Go, and JavaScript
+tests switch tabs by keyboard, activate overlapping child buttons, and verify
+that only the selected item's child can receive input. Invalid bars do not open
+a scope, and unbalanced item or bar endings are rejected.

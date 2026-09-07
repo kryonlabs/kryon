@@ -283,6 +283,50 @@ test_tab_bar_owned_scroll_state(void)
 }
 
 static void
+test_composed_tab_bar_scope(void)
+{
+    Tab tabs[] = {{.label="One"},{.label="Two"}};
+    TabBarProps props = {.bounds={10,10,200,30},.tabs=tabs,.count=2,
+        .id=637};
+    int selected = 0;
+    int visible = -1;
+
+    InjectReset();
+    BeginUIFrame(260,140,1);
+    check_int("composed tab bar begins",BeginTabBar(props,&selected),1);
+    if(BeginTabItem(0)) {
+        visible = 0;
+        Button((ButtonProps){.bounds={20,60,80,28},.label="First",
+                             .id=638});
+        EndTabItem();
+    }
+    check_int("unselected composed tab hidden",BeginTabItem(1),0);
+    EndTabBar();
+    EndUIFrame();
+    check_int("first composed tab content",visible,0);
+
+    SetUIFocus(props.id);
+    InjectKeyTap(KEY_RIGHT);
+    InjectPump();
+    BeginUIFrame(260,140,1);
+    check_int("composed tab bar reopens",BeginTabBar(props,&selected),1);
+    check_int("old composed tab hidden",BeginTabItem(0),0);
+    if(BeginTabItem(1)) {
+        visible = 1;
+        Checkbox(639,20,60,"Second",&visible);
+        EndTabItem();
+    }
+    EndTabBar();
+    EndUIFrame();
+    check_int("composed tab writes selection",selected,1);
+    check_int("selected composed tab content",visible,1);
+
+    check_int("invalid composed tab bar stays closed",
+              BeginTabBar((TabBarProps){0},&selected),0);
+    InjectReset();
+}
+
+static void
 test_popup_tab_bar_keyboard_ownership(void)
 {
     Tab tabs[] = {{.label="One"},{.label="Two"}};
@@ -3261,6 +3305,7 @@ main(void)
     test_drag_keyboard_navigation();
     test_tab_bar_keyboard_navigation();
     test_tab_bar_owned_scroll_state();
+    test_composed_tab_bar_scope();
     test_popup_tab_bar_keyboard_ownership();
     test_step_button_keyboard_navigation();
     return 0;

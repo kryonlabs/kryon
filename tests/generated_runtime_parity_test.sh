@@ -262,6 +262,14 @@ func drawMultiSelect() {
 	})
 }
 
+func drawTabScope() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		SelectionImages_TabScopeFrame(SelectionImagesStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawListBox() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -974,6 +982,20 @@ func main() {
 	if SelectionImagesStateValue.MultiAnchor != 2 || SelectionImagesStateValue.MultiCount != 2 || SelectionImagesStateValue.MultiSelected != [3]int32{0, 1, 1} {
 		panic(fmt.Sprintf("multi_select: generated MultiSelectList Shift+Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
 	}
+	drawTabScope()
+	driver.QueueTap(60, 84)
+	drawTabScope()
+	if SelectionImagesStateValue.TabFirstActions != 1 || SelectionImagesStateValue.TabSecondActions != 0 {
+		panic("tab scope: selected first child did not own input")
+	}
+	driver.SetFocus(958)
+	driver.QueueKey(kryon.KeyRight)
+	drawTabScope()
+	driver.QueueTap(60, 84)
+	drawTabScope()
+	if SelectionImagesStateValue.TabScopeSelected != 1 || SelectionImagesStateValue.TabFirstActions != 1 || SelectionImagesStateValue.TabSecondActions != 1 {
+		panic("tab scope: selection did not switch arbitrary child content")
+	}
 
 	drawListBox()
 	requireFrameOps("list_box", map[kryon.FrameOpKind]int{
@@ -1233,6 +1255,7 @@ static void draw_buttons(void)
 }
 
 static void draw_composition(void) { draw_ui(composition_frame); }
+static void draw_tab_scope(void) { draw_ui(tab_scope_frame); }
 static void draw_composed_combo(void) { draw_ui(composed_combo_frame); }
 static void draw_composed_popup(void) { draw_ui(composed_popup_frame); }
 static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
@@ -1316,6 +1339,19 @@ int main(void)
        composed_result(2, 1, 1) != 2)
         return 1;
     EndUIFrame();
+    draw_tab_scope();
+    InjectTap(60,84); InjectPump(); draw_tab_scope();
+    InjectPump(); draw_tab_scope();
+    if(tab_first_actions != 1 || tab_second_actions != 0) {
+        fprintf(stderr,"tab scope: selected first child did not own input\n"); return 1;
+    }
+    SetUIFocus(958); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_tab_scope();
+    InjectTap(60,84); InjectPump(); draw_tab_scope();
+    InjectPump(); draw_tab_scope();
+    if(tab_scope_selected != 1 || tab_first_actions != 1 ||
+       tab_second_actions != 1) {
+        fprintf(stderr,"tab scope: selection did not switch arbitrary child content\n"); return 1;
+    }
     draw_composed_combo();
     if(!combo_open) { fprintf(stderr,"generated composed combo did not open\n"); return 1; }
     InjectTap(30,70); InjectPump(); draw_composed_combo();
@@ -2136,6 +2172,7 @@ import * as treeViewMod from "./js/tests/parity/tree_view.js";
 import * as progressMod from "./js/tests/parity/progress.js";
 import * as plotsMod from "./js/tests/parity/plots.js";
 import * as tableMod from "./js/tests/parity/table_view.js";
+import * as selectionMod from "./js/tests/parity/selection_images.js";
 import * as kryon from "./js/kryon-runtime.js";
 
 const rt = kryon.createRuntime();
@@ -2148,6 +2185,7 @@ const controls = controlsMod.createState();
 const listBox = listBoxMod.createState();
 const treeView = treeViewMod.createState();
 const table = tableMod.createState();
+const selection = selectionMod.createState();
 
 const drawForm = () => formMod.frame(rt, form);
 const drawFields = () => fieldsMod.frame(rt, fields);
@@ -2160,6 +2198,7 @@ const drawTreeView = () => treeViewMod.frame(rt, treeView);
 const drawProgress = () => progressMod.frame(rt, progressMod.createState());
 const drawPlots = () => plotsMod.frame(rt, plotsMod.createState());
 const drawTableView = () => tableMod.frame(rt, table);
+const drawTabScope = () => selectionMod.SelectionImages_TabScopeFrame(rt, selection);
 
 drawForm();
 rt.SetFocus(101);
@@ -2280,6 +2319,20 @@ if (treeView.tree_selected !== 2 || treeView.tree_scroll !== 0)
 
 drawProgress();
 drawPlots();
+
+drawTabScope();
+rt.QueueTap(60, 84);
+drawTabScope();
+if (selection.tab_first_actions !== 1 || selection.tab_second_actions !== 0)
+  throw new Error("tab scope: selected first child did not own input");
+rt.SetFocus(958);
+rt.QueueKey(kryon.KeyRight);
+drawTabScope();
+rt.QueueTap(60, 84);
+drawTabScope();
+if (selection.tab_scope_selected !== 1 || selection.tab_first_actions !== 1 ||
+    selection.tab_second_actions !== 1)
+  throw new Error("tab scope: selection did not switch arbitrary child content");
 
 drawTableView();
 rt.QueueTap(116, 62);

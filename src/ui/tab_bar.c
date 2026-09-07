@@ -54,6 +54,7 @@ ui_tab_bar_finish_frame(void)
 {
     UITabBarState **link = &tab_bar_states;
 
+    ui_tab_scope_finish_frame();
     while(*link != NULL) {
         UITabBarState *state = *link;
 

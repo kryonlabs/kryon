@@ -4271,7 +4271,9 @@
         }
       },
       "widgets": [
-        "Screen"
+        "Button",
+        "Screen",
+        "TabItem"
       ]
     },
     {
@@ -4880,8 +4882,8 @@
     "visual_comparison_rows": 6,
     "web_canvas_c_visual_cases": 28,
     "web_canvas_c_visual_gaps": 17,
-    "widgets_declared": 53,
-    "widgets_detected": 53,
+    "widgets_declared": 54,
+    "widgets_detected": 54,
     "widgets_missing": 0
   },
   "visual_comparisons": [
@@ -4983,7 +4985,7 @@
     "Background": 21,
     "Bevel": 2,
     "BottomNav": 2,
-    "Button": 14,
+    "Button": 15,
     "Canvas": 3,
     "CanvasGrid": 3,
     "Checkbox": 6,
@@ -5021,6 +5023,7 @@
     "Spinbox": 3,
     "Stack": 3,
     "TabBar": 2,
+    "TabItem": 1,
     "TableView": 5,
     "Text": 25,
     "TextArea": 7,
@@ -5104,9 +5107,10 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/composed_combo.kry",
         "tests/parity/generated_form.kry",
-        "tests/parity/scroll_content.kry"
+        "tests/parity/scroll_content.kry",
+        "tests/parity/selection_images.kry"
       ],
-      "source_count": 14,
+      "source_count": 15,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -5121,6 +5125,7 @@
         "tests/parity/composed_combo.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/scroll_content.kry",
+        "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5659,6 +5664,18 @@
       "sources": [
         "examples/15_containers.kry",
         "examples/26_widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "TabItem",
+      "semantic_sources": [
+        "tests/parity/selection_images.kry"
+      ],
+      "source_count": 1,
+      "sources": [
+        "tests/parity/selection_images.kry"
       ],
       "status": "covered",
       "status_class": "ok"

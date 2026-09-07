@@ -86,6 +86,7 @@ export function createRuntime(options = {}) {
     hostCalls: [],
     mounted: false,
     disabledStack: [],
+    tabBarScopes: [],
     input: {
       events: [],
       focus: 0,
@@ -112,6 +113,8 @@ export function createRuntime(options = {}) {
 }
 
 export function beginFrame(rt) {
+  if (rt.tabBarScopes.length !== 0)
+    throw new Error("unclosed tab bar scope at frame boundary");
   rt.frame = [];
   rt.statements = [];
   rt.hostCalls = [];
@@ -122,6 +125,8 @@ export function beginFrame(rt) {
 }
 
 export function endFrame(rt) {
+  if (rt.tabBarScopes.length !== 0)
+    throw new Error("unclosed tab bar scope at frame boundary");
   if (rt.input) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
     rt.input.events = [];
@@ -525,9 +530,74 @@ function handleTableView(rt, state, args) {
   return true;
 }
 
+function handleTabBar(rt, state, args, interactive = true) {
+  const bounds = parseBounds(args);
+  const count = propNumber(args, "count", 0);
+  const id = propNumber(args, "id", 0);
+  const selectedRef = firstRef(args);
+  const selectedName = propIdent(args, "selected_index");
+  let selected = state && selectedRef ? Number(state[selectedRef]) :
+    state && selectedName ? Number(state[selectedName]) : 0;
+  if (count <= 0 || bounds.width <= 0 || bounds.height <= 0)
+    return { open: false, count: 0, selected: 0 };
+  if (selected < 0 || selected >= count)
+    selected = 0;
+  if (interactive && id && !rt.input.focusOrder.includes(id))
+    rt.input.focusOrder.push(id);
+  const tap = interactive ? consumeFirstEvent(rt, (ev) =>
+    ev.type === "tap" && hit(bounds, ev.x, ev.y)) : null;
+  if (tap) {
+    selected = Math.min(count - 1,
+      Math.max(0, Math.floor((tap.x - bounds.x) * count / bounds.width)));
+    if (id)
+      rt.input.focus = id;
+  }
+  if (interactive && id && rt.input.focus === id) {
+    const key = consumeFirstEvent(rt, (ev) => ev.type === "key" &&
+      (Number(ev.key) === KeyLeft || Number(ev.key) === KeyRight));
+    if (key)
+      selected = Number(key.key) === KeyRight ?
+        (selected + 1) % count : (selected + count - 1) % count;
+  }
+  if (state && selectedRef)
+    state[selectedRef] = selected;
+  return { open: true, count, selected };
+}
+
 function handleWidget(rt, name, args, state) {
   if (!rt.input)
     return false;
+  if (name === "EndTabItem") {
+    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
+    if (!scope || !scope.itemOpen)
+      throw new Error("EndTabItem without selected BeginTabItem");
+    scope.itemOpen = false;
+    return false;
+  }
+  if (name === "EndTabBar") {
+    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
+    if (!scope || scope.itemOpen)
+      throw new Error("unbalanced EndTabBar");
+    rt.tabBarScopes.pop();
+    return false;
+  }
+  if (name === "BeginTabBar") {
+    const scope = handleTabBar(rt, state, args,
+      !rt.disabledStack.some(Boolean));
+    if (scope.open)
+      rt.tabBarScopes.push(scope);
+    return scope.open;
+  }
+  if (name === "BeginTabItem") {
+    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
+    if (!scope || scope.itemOpen)
+      throw new Error("unbalanced BeginTabItem");
+    const index = numberValue(args, -1);
+    if (index < 0 || index >= scope.count || index !== scope.selected)
+      return false;
+    scope.itemOpen = true;
+    return true;
+  }
   if (name === "BeginDisabled") {
     rt.disabledStack.push(numberValue(args) !== 0);
     return false;
@@ -561,6 +631,8 @@ function handleWidget(rt, name, args, state) {
     return handleTreeView(rt, state, args);
   case "TableView":
     return handleTableView(rt, state, args);
+  case "TabBar":
+    return handleTabBar(rt, state, args).selected;
   default:
     return false;
   }

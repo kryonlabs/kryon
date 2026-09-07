@@ -517,6 +517,12 @@ type ClosableTabBarProps struct {
 	Disabled      bool
 }
 
+type tabBarScope struct {
+	count    int32
+	selected int32
+	itemOpen bool
+}
+
 type InvisibleButtonProps struct {
 	Bounds   Rectangle
 	ID       int32
@@ -1282,6 +1288,10 @@ type Runtime interface {
 	BeginPopup(PopupProps) bool
 	EndPopup()
 	ClosePopup()
+	BeginTabBar(TabBarProps, *int32) bool
+	BeginTabItem(int32) bool
+	EndTabItem()
+	EndTabBar()
 	AcceleratorPressed(Accelerator) int32
 	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)
@@ -1495,6 +1505,7 @@ type runtime struct {
 	openCombos        map[int32]*bool
 	combosSeen        map[int32]bool
 	popupScopes       []popupScope
+	tabBarScopes      []tabBarScope
 	openPopups        map[int32]*bool
 	popupsSeen        map[int32]bool
 	tooltipPopupsSeen map[int32]bool
@@ -1838,6 +1849,9 @@ func (r *runtime) EndFrame() {
 	}
 	if len(r.popupScopes) != 0 {
 		panic("unclosed popup scope at frame boundary")
+	}
+	if len(r.tabBarScopes) != 0 {
+		panic("unclosed tab bar scope at frame boundary")
 	}
 	for id, open := range r.openCombos {
 		if !r.combosSeen[id] {

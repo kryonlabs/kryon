@@ -1701,6 +1701,73 @@ func TestNativeTabBarsOwnIndependentDefaultScroll(t *testing.T) {
 	}
 }
 
+func TestNativeComposedTabBarScope(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	tabs := []Tab{{Label: "One"}, {Label: "Two"}}
+	selected := int32(0)
+	props := TabBarProps{Bounds: NewRectangle(10, 10, 200, 30), Tabs: tabs,
+		Count: 2, ID: 926}
+	visible := int32(-1)
+
+	r.BeginFrame()
+	if !r.BeginTabBar(props, &selected) {
+		t.Fatal("BeginTabBar rejected valid props")
+	}
+	if r.BeginTabItem(0) {
+		visible = 0
+		r.Button(ButtonProps{Bounds: NewRectangle(20, 60, 80, 28), ID: 927, Label: "First"})
+		r.EndTabItem()
+	}
+	if r.BeginTabItem(1) {
+		t.Fatal("BeginTabItem exposed an unselected tab")
+	}
+	r.EndTabBar()
+	r.EndFrame()
+	if visible != 0 {
+		t.Fatalf("visible tab=%d, want 0", visible)
+	}
+
+	r.QueueTap(160, 20)
+	r.BeginFrame()
+	if !r.BeginTabBar(props, &selected) {
+		t.Fatal("BeginTabBar rejected second frame")
+	}
+	if r.BeginTabItem(0) {
+		t.Fatal("old tab remained visible after header selection")
+	}
+	if r.BeginTabItem(1) {
+		visible = 1
+		r.Checkbox(928, 20, 60, "Second", &visible)
+		r.EndTabItem()
+	}
+	r.EndTabBar()
+	r.EndFrame()
+	if selected != 1 || visible != 1 {
+		t.Fatalf("selected/visible=%d/%d, want 1/1", selected, visible)
+	}
+
+	if r.BeginTabBar(TabBarProps{}, &selected) {
+		t.Fatal("BeginTabBar accepted invalid props")
+	}
+	mustPanic := func(call func()) {
+		t.Helper()
+		defer func() {
+			if recover() == nil {
+				t.Fatal("unbalanced tab scope did not panic")
+			}
+		}()
+		call()
+	}
+	mustPanic(func() { r.BeginTabItem(0) })
+	mustPanic(func() { r.EndTabItem() })
+	mustPanic(func() { r.EndTabBar() })
+	if !r.BeginTabBar(props, &selected) {
+		t.Fatal("BeginTabBar rejected frame-balance fixture")
+	}
+	mustPanic(func() { r.EndFrame() })
+	r.EndTabBar()
+}
+
 func TestNativeTypedDragDrop(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	payload := []byte("item-42")

@@ -660,7 +660,8 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
 {
     static const char *const widgets[] = {
         "Button", "IconButton", "Checkbox", "Dropdown", "ListBox",
-        "Radio", "Slider", "TableView", "TextField", "Toggle"
+        "Radio", "Slider", "TableView", "TextField", "Toggle",
+        "BeginTabBar", "BeginTabItem"
     };
     char name[K2JS_NAME_MAX];
 
@@ -899,6 +900,14 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 } else {
                     fprintf(f, "kryon.widget(rt, \"EndDisabled\", \"\", state);\n");
                 }
+                break;
+            }
+            if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+               (strcmp(name, "EndTabItem") == 0 || strcmp(name, "EndTabBar") == 0)) {
+                emit_indent(f, indent);
+                fprintf(f, "kryon.widget(rt, ");
+                js_string(f, name);
+                fprintf(f, ", \"\", state);\n");
                 break;
             }
             if(strncmp(raw, "BeginTree", 9) == 0 ||

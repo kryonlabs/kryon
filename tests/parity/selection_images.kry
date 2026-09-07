@@ -16,6 +16,9 @@ state {
     multi_selected: [3] int = {1,0,0}
     multi_count: int = 1
     multi_anchor: int = 0
+    tab_scope_selected: int = 0
+    tab_first_actions: int = 0
+    tab_second_actions: int = 0
 }
 
 selection_images_frame :: () #ui {
@@ -35,6 +38,31 @@ selection_images_frame :: () #ui {
         DragDropTarget((DragDropTargetProps){.bounds = {120,245,120,28}, .id = 956, .type = "ITEM", .output = received, .output_size = 8, .accepted_size = &accepted_size})
         multi_items: [3] const char * = {"Alpha","Beta","Gamma"}
         MultiSelectList((MultiSelectListProps){.bounds = {20,280,220,84}, .id = 957, .items = multi_items, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
+    }
+}
+
+tab_scope_frame :: () #ui {
+    Screen tab_scope_root: {
+        bounds = {0,0,320,180}
+        scope_tabs: [2] Tab = {
+            {"First",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0},
+            {"Second",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0}
+        }
+        if BeginTabBar((TabBarProps){.bounds={20,20,240,32},.tabs=scope_tabs,.count=2,.selected_index=tab_scope_selected,.id=958}, &tab_scope_selected) {
+            if BeginTabItem(0) {
+                if Button((ButtonProps){.bounds={30,70,120,30},.label="First action",.id=959}) {
+                    tab_first_actions += 1
+                }
+                EndTabItem()
+            }
+            if BeginTabItem(1) {
+                if Button((ButtonProps){.bounds={30,70,120,30},.label="Second action",.id=960}) {
+                    tab_second_actions += 1
+                }
+                EndTabItem()
+            }
+            EndTabBar()
+        }
     }
 }
 

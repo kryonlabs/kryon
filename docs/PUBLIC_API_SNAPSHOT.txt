@@ -1925,6 +1925,8 @@ include/ui_tree.h function BeginDisabled
 include/ui_tree.h function BeginListBox
 include/ui_tree.h function BeginPopup
 include/ui_tree.h function BeginScroll
+include/ui_tree.h function BeginTabBar
+include/ui_tree.h function BeginTabItem
 include/ui_tree.h function BeginTableCell
 include/ui_tree.h function BeginTree
 include/ui_tree.h function Bevel
@@ -1969,6 +1971,8 @@ include/ui_tree.h function EndDisabled
 include/ui_tree.h function EndListBox
 include/ui_tree.h function EndPopup
 include/ui_tree.h function EndScroll
+include/ui_tree.h function EndTabBar
+include/ui_tree.h function EndTabItem
 include/ui_tree.h function EndTableCell
 include/ui_tree.h function EndTree
 include/ui_tree.h function Focus

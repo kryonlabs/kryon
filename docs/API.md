@@ -1399,10 +1399,23 @@ typedef struct {
     int max_tab_width;
     int *scroll_offset;
     int focus_selected;
-} TabBar;
+} TabBarProps;
 
-int TabBar(TabBar bar);
+int TabBar(TabBarProps bar);
+int BeginTabBar(TabBarProps bar, int *selected_index);
+int BeginTabItem(int index);
+void EndTabItem(void);
+void EndTabBar(void);
 ```
+
+Use `TabBar` when only the header interaction result is needed. Use
+`BeginTabBar` for arbitrary tab contents: pass the same canonical
+`TabBarProps` plus caller-owned selection state, conditionally submit each
+item's children when `BeginTabItem(index)` returns true, and balance successful
+item and bar beginnings with their corresponding endings. A header selection
+updates `selected_index` before the item checks in that frame. The scope does
+not introduce a second renderer; it delegates the complete header behavior to
+`TabBar`.
 
 #### Dropdown
 

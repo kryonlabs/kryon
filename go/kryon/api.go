@@ -89,6 +89,12 @@ func CloseCombo()                      { active().CloseCombo() }
 func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
 func EndPopup()                        { active().EndPopup() }
 func ClosePopup()                      { active().ClosePopup() }
+func BeginTabBar(props TabBarProps, selectedIndex *int32) bool {
+	return active().BeginTabBar(props, selectedIndex)
+}
+func BeginTabItem(index int32) bool { return active().BeginTabItem(index) }
+func EndTabItem()                   { active().EndTabItem() }
+func EndTabBar()                    { active().EndTabBar() }
 func AcceleratorPressed(accelerator Accelerator) int32 {
 	return active().AcceleratorPressed(accelerator)
 }

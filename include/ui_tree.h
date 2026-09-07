@@ -446,6 +446,13 @@ ToolbarResult Toolbar(ToolbarProps toolbar);
 ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
 int SubtabBar(SubtabBarProps bar);
 int TabBar(TabBarProps bar);
+/* Render a canonical tab bar and begin its arbitrary-content scope. The
+ * caller owns selected_index; a tab selected by pointer or keyboard is
+ * written before BeginTabItem is evaluated in the same frame. */
+int BeginTabBar(TabBarProps bar, int *selected_index);
+int BeginTabItem(int index);
+void EndTabItem(void);
+void EndTabBar(void);
 PaneTabBarResult PaneTabs(PaneTabBar bar);
 void PaneDropPreview(Rectangle bounds, PaneDropZone zone);
 SidebarAccountHeaderResult SidebarAccountHeader(SidebarAccountHeaderProps header);
