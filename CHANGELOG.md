@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.75 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.75
+- Enforce premultiplied paint layer output
+- Highlight Kry directives in text areas
+- Keep paint layer text on straight alpha
+
 ## v0.1.74 - 2026-09-07
 
 ### Changed
