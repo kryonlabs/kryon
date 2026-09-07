@@ -1,4 +1,20 @@
 # Changelog
+## v0.1.73 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.73
+- Preserve synthetic tap activation
+- Suppress control activation after drag
+- Fix translucent paint layer compositing
+- Harden modern bottom navigation tests
+- Keep disabled bottom nav icons visible
+- Use normal alpha for paint layer compositing
+- Preserve retro style tokens
+- Remove stale locale dropdown compatibility
+- Expose locale dropdown controls
+- Modernize default nav styling
+
 ## v0.1.72 - 2026-09-07
 
 ### Changed
