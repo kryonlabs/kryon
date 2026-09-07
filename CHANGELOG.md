@@ -1,4 +1,18 @@
 # Changelog
+## v0.1.71 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.71
+- Remove stale scaling compatibility alias
+- Keep ScaleUIPx compatibility
+- Add closeable collapsible headers
+- Ignore mod-wheel in text area scroll
+- Rename UI scaler API
+- Use semantic title font in title bar
+- Clamp retained text area scroll
+- Soften title bar surface
+
 ## v0.1.70 - 2026-09-07
 
 ### Changed
