@@ -195,6 +195,7 @@ typedef struct UIStyleTokens {
     float panel_radius;
     unsigned char control_alpha;
     unsigned char panel_alpha;
+    unsigned char title_bar_alpha;
     unsigned char border_alpha;
     unsigned char shadow_alpha;
     unsigned char shine_alpha;

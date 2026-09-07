@@ -32,6 +32,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     tokens.panel_radius = 0.0f;
     tokens.control_alpha = 255;
     tokens.panel_alpha = 255;
+    tokens.title_bar_alpha = 255;
     tokens.border_alpha = 255;
     tokens.shadow_alpha = 0;
     tokens.shine_alpha = 0;
@@ -44,6 +45,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
         tokens.control_radius = 4.0f;
         tokens.panel_radius = 6.0f;
         tokens.shadow_alpha = 36;
+        tokens.title_bar_alpha = 204;
         tokens.bevel_enabled = 0;
         tokens.touch_target_min = 48;
         tokens.shadow_offset_y = 2;

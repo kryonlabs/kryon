@@ -8,14 +8,13 @@ static void
 DrawUITitleBarBackground(int height)
 {
     Color bar = DarkenUIColor(c_bg, 14);
+    UIStyleTokens tokens = GetUIStyleTokens();
+
     if(ui_material_style()) {
         bar = ui_material_surface_container();
-        bar.a = 224;
-    } else if(ui_modern_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
-        if(tokens.panel_alpha < bar.a)
-            bar.a = tokens.panel_alpha;
     }
+    if(tokens.title_bar_alpha < bar.a)
+        bar.a = tokens.title_bar_alpha;
     DrawRectangle(0, 0, ui_view_width, height, bar);
     if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
         Color shine = WHITE;

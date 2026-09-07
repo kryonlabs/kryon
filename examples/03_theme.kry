@@ -136,6 +136,9 @@ ThemeExample :: (viewport: Rectangle) #ui {
         token_y += ScaleUIPx(30)
         TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
         TokenValue("panel alpha", tokens.panel_alpha, right_x + ScaleUIPx(150), token_y)
+        token_y += ScaleUIPx(28)
+        TokenValue("title bar alpha", tokens.title_bar_alpha,
+                   right_x + ScaleUIPx(150), token_y)
         token_y += ScaleUIPx(24)
         TokenValue("border alpha", tokens.border_alpha, right_x, token_y)
         TokenValue("shadow alpha", tokens.shadow_alpha, right_x + ScaleUIPx(150), token_y)
