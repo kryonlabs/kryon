@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.66 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.66
+- Add native multi-select keyboard navigation
+
 ## v0.1.65 - 2026-09-07
 
 ### Changed
