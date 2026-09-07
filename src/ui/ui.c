@@ -2240,7 +2240,7 @@ ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int t
     return end;
 }
 
-static int
+int
 ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 {
     int start;
@@ -2267,6 +2267,24 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
         other_end = ui_text_line_end(text, other_start);
     }
     return ui_text_cursor_from_line_x(text, other_start, other_end, font, target_x);
+}
+
+int
+ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
+{
+    int font = area.font > 0 ? area.font : GetFontSize();
+    int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    int padding_y = area.style.padding_y > 0
+        ? area.style.padding_y : Scale(8);
+    int line_h = TextLineHeight(font) + line_gap;
+    int page_rows = line_h > 0
+        ? ((int)area.bounds.height - padding_y * 2) / line_h : 1;
+
+    if(page_rows < 1)
+        page_rows = 1;
+    for(int row = 0; row < page_rows; row++)
+        cursor = ui_text_move_vertical(area.text, cursor, font, direction);
+    return cursor;
 }
 
 static int
@@ -3590,9 +3608,15 @@ RenderTextArea(TextAreaProps area)
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
         if(IsKeyPressed(KEY_DOWN))
             *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
+        if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
+            int direction = IsKeyPressed(KEY_PAGE_UP) ? -1 : 1;
+            *area.cursor_position = ui_text_area_move_page(
+                area, *area.cursor_position, direction);
+        }
         if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN)) {
+           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+           IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
             if(!g_ui_text_area_selection.dragging) {
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, *area.cursor_position,
@@ -3624,7 +3648,8 @@ RenderTextArea(TextAreaProps area)
     reveal_cursor = focused &&
         (changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
          IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-         IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN));
+         IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+         IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN));
     if(reveal_cursor) {
         int cursor_h = TextLineHeight(font);
         int cursor_y = ui_text_area_cursor_y(

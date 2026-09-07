@@ -1717,6 +1717,37 @@ test_popup_text_keyboard_ownership(void)
 }
 
 static void
+test_text_area_page_navigation(void)
+{
+    char text[64] = "a0\nb1\nc2\nd3\ne4\nf5";
+    int cursor = 4;
+    int focused = 1;
+    TextAreaProps area = {
+        .bounds = {10,10,160,60}, .text = text, .text_size = sizeof(text),
+        .cursor_position = &cursor, .focused = &focused,
+        .focus_id = 25510, .font = Text16
+    };
+
+    InjectReset();
+    SetUIFocus(area.focus_id);
+    InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Down advances one line",cursor > 4,1);
+
+    int before_page = cursor;
+    InjectKeyTap(KEY_PAGE_DOWN); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea PageDown moves more than one line",cursor >= before_page + 4,1);
+
+    before_page = cursor;
+    InjectKeyTap(KEY_PAGE_UP); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea PageUp moves more than one line",cursor <= before_page - 4,1);
+    ClearTextInputFocus();
+    InjectReset();
+}
+
+static void
 test_composed_combo_scope(void)
 {
     bool open = true;
@@ -3425,6 +3456,7 @@ main(void)
     test_composed_popup_focus_lifecycle();
     test_popup_active_drag_ownership();
     test_popup_text_keyboard_ownership();
+    test_text_area_page_navigation();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();

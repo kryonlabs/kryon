@@ -1453,6 +1453,28 @@ RouteInput(void)
             end = state->anchor > state->cursor
                 ? state->anchor : state->cursor;
         }
+        if(node->kind == UI_WIDGET_TEXT_AREA_NODE &&
+           (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+            IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+            int direction = (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_PAGE_UP))
+                ? -1 : 1;
+            int font = field->font > 0 ? field->font : GetFontSize();
+
+            if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))
+                state->cursor = ui_text_area_move_page(
+                    node->data.text_area, state->cursor, direction);
+            else
+                state->cursor = ui_text_move_vertical(
+                    field->text, state->cursor, font, direction);
+            if(!shift)
+                state->anchor = state->cursor;
+            selection_changed = 1;
+            start = state->anchor < state->cursor
+                ? state->anchor : state->cursor;
+            end = state->anchor > state->cursor
+                ? state->anchor : state->cursor;
+        }
         codepoint = GetCharPressed();
         while(codepoint > 0) {
             if(field->read_only) { codepoint = GetCharPressed(); continue; }

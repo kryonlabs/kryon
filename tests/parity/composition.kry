@@ -10,6 +10,8 @@ state {
     composition_cursor: int = 4
     composition_area: [64] char = "area"
     composition_area_cursor: int = 4
+    composition_page_area: [64] char = "a0\nb1\nc2\nd3\ne4\nf5"
+    composition_page_cursor: int = 4
     composition_read_only: bool = false
 }
 
@@ -17,5 +19,6 @@ composition_frame :: () #ui {
     Screen root: {
         TextField((TextFieldProps){.bounds = {20,20,220,32}, .text = composition_text, .text_size = sizeof(composition_text), .cursor_position = &composition_cursor, .focus_id = 26100, .read_only = composition_read_only})
         TextArea((TextAreaProps){.bounds = {20,70,220,80}, .text = composition_area, .text_size = sizeof(composition_area), .cursor_position = &composition_area_cursor, .focus_id = 26101, .read_only = composition_read_only})
+        TextArea((TextAreaProps){.bounds = {20,70,160,60}, .text = composition_page_area, .text_size = sizeof(composition_page_area), .cursor_position = &composition_page_cursor, .focus_id = 26102, .font = Text16, .line_gap = 4})
     }
 }

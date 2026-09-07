@@ -258,6 +258,13 @@ deletion and IME commits cannot mutate buffers. C retained mutation paths now
 enforce the property; Go text props expose ReadOnly and retain focus styling
 while suppressing the insertion caret. Go tests cover preedit cancellation,
 buffer preservation, rejected-input expiry and fresh editing after re-enabling.
+Multiline TextArea navigation now handles Up/Down and PageUp/PageDown in native
+C and Go, with page movement derived from the visible editor height. The C
+immediate and retained paths share the same internal line/page movement helpers,
+so generated code no longer loses vertical navigation when submitted through
+the retained tree. Enter inserts a newline in Go TextArea instead of following
+the single-line commit path. Direct runtime tests and the generated composition
+fixture exercise these behaviors through k2c and k2go.
 
 Native C and Go list boxes now register with ordinary Tab focus, expose a
 visible focus presentation, and move selection with Up/Down/Home/End while

@@ -78,6 +78,7 @@ import (
 	"fmt"
 	"image/color"
 	"os"
+	"strings"
 
 	kryon "github.com/waozixyz/kryon/go/kryon"
 )
@@ -772,6 +773,19 @@ func main() {
 		}
 	}
 	CompositionStateValue.CompositionReadOnly = false
+	driver.SetFocus(26102)
+	driver.QueueKey(kryon.KeyDown); drawComposition()
+	if CompositionStateValue.CompositionPageCursor <= 4 { panic("generated TextArea Down did not move") }
+	beforePage := CompositionStateValue.CompositionPageCursor
+	driver.QueueKey(kryon.KeyPageDown); drawComposition()
+	if CompositionStateValue.CompositionPageCursor < beforePage+4 { panic("generated TextArea PageDown did not move a page") }
+	beforePage = CompositionStateValue.CompositionPageCursor
+	driver.QueueKey(kryon.KeyPageUp); drawComposition()
+	if CompositionStateValue.CompositionPageCursor > beforePage-4 { panic("generated TextArea PageUp did not move a page") }
+	pageTextBefore := text64(CompositionStateValue.CompositionPageArea)
+	driver.QueueKey(kryon.KeyEnter); drawComposition()
+	pageTextAfter := text64(CompositionStateValue.CompositionPageArea)
+	if len(pageTextAfter) != len(pageTextBefore)+1 || strings.Count(pageTextAfter, "\n") != strings.Count(pageTextBefore, "\n")+1 { panic("generated TextArea Enter did not insert newline") }
 	fields := FieldsStateValue
 	focus := FocusStateValue
 	buttons := ButtonsLayoutStateValue
@@ -1553,6 +1567,28 @@ int main(void)
         InjectReset();
     }
     composition_read_only = 0;
+    SetUIFocus(26102);
+    InjectKeyTap(KEY_DOWN); InjectPump(); draw_composition();
+    if(composition_page_cursor <= 4) {
+        fprintf(stderr,"generated TextArea Down did not move\n"); return 1;
+    }
+    int composition_before_page = composition_page_cursor;
+    InjectKeyTap(KEY_PAGE_DOWN); InjectPump(); draw_composition();
+    if(composition_page_cursor < composition_before_page + 4) {
+        fprintf(stderr,"generated TextArea PageDown did not move a page\n"); return 1;
+    }
+    composition_before_page = composition_page_cursor;
+    InjectKeyTap(KEY_PAGE_UP); InjectPump(); draw_composition();
+    if(composition_page_cursor > composition_before_page - 4) {
+        fprintf(stderr,"generated TextArea PageUp did not move a page\n"); return 1;
+    }
+    int composition_page_length = (int)strlen(composition_page_area);
+    int composition_page_lines = TextBufferLineCount(composition_page_area);
+    InjectKeyTap(KEY_ENTER); InjectPump(); draw_composition();
+    if((int)strlen(composition_page_area) != composition_page_length + 1 ||
+       TextBufferLineCount(composition_page_area) != composition_page_lines + 1) {
+        fprintf(stderr,"generated TextArea Enter did not insert newline\n"); return 1;
+    }
     InjectMousePosition(20,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump(); draw_ui(drag_drop_frame);

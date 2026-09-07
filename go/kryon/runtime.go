@@ -74,6 +74,8 @@ const (
 	KeyLeft         int32 = 263
 	KeyDown         int32 = 264
 	KeyUp           int32 = 265
+	KeyPageUp       int32 = 266
+	KeyPageDown     int32 = 267
 	KeyHome         int32 = 268
 	KeyEnd          int32 = 269
 	KeyF2           int32 = 291
@@ -3455,7 +3457,7 @@ func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID
 		return state, false, false
 	}
 	commit := false
-	textChanged := r.editText(bounds, state.text, &state.cursor, &state.focused, &commit, focusID, 63, false, false)
+	textChanged := r.editText(bounds, state.text, &state.cursor, &state.focused, &commit, focusID, textEditOptions{maxCodepoints: 63})
 	r.recordTextInput(FrameOpTextField, bounds, state.text, &state.cursor, &state.focused, focusID, Text14, false, false)
 	if commit {
 		state.focused = false
@@ -3865,7 +3867,7 @@ func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, format
 		state.focused = false
 	} else {
 		var commit bool
-		textChanged = r.editText(field, state.text, &state.cursor, &state.focused, &commit, token, 63, false, false)
+		textChanged = r.editText(field, state.text, &state.cursor, &state.focused, &commit, token, textEditOptions{maxCodepoints: 63})
 	}
 	r.recordTextInput(FrameOpTextField, field, state.text, &state.cursor, &state.focused, token, Text14, false, false)
 	if step == 0 {
@@ -5296,10 +5298,37 @@ func (r *runtime) recordToast() {
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, props.MaxCodepoints, false, props.ReadOnly)
+	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, textEditOptions{
+		maxCodepoints: props.MaxCodepoints,
+		pageRows:      textAreaPageRows(props),
+		readOnly:      props.ReadOnly,
+		multiline:     true,
+	})
 	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, false, props.ReadOnly)
 	return changed
 }
+
+func textAreaPageRows(props TextAreaProps) int {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	lineGap := props.LineGap
+	if lineGap < 0 {
+		lineGap = 6
+	}
+	paddingY := props.Style.PaddingY
+	if paddingY <= 0 {
+		paddingY = 8
+	}
+	lineHeight := font + lineGap
+	visibleHeight := int32(props.Bounds.Height) - paddingY*2
+	if lineHeight <= 0 || visibleHeight < lineHeight {
+		return 1
+	}
+	return int(visibleHeight / lineHeight)
+}
+
 func (r *runtime) Radio(props RadioButtonProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
@@ -6069,7 +6098,7 @@ func (r *runtime) PromptDialog(props PromptDialogProps) int32 {
 	result, field := r.drawActionModal(props.Title, "", []string{props.CancelLabel, props.ConfirmLabel}, 38)
 	commit := false
 	if props.Text != nil && props.Cursor != nil && props.Focused != nil {
-		r.editText(field, props.Text, props.Cursor, props.Focused, &commit, 7301, int32(len(props.Text)-1), false, false)
+		r.editText(field, props.Text, props.Cursor, props.Focused, &commit, 7301, textEditOptions{maxCodepoints: int32(len(props.Text) - 1)})
 		r.recordTextInput(FrameOpTextField, field, props.Text, props.Cursor, props.Focused, 7301, Text16, false, false)
 	}
 	if result == 0 && commit {
@@ -6341,7 +6370,11 @@ func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result
 
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, props.MaxCodepoints, props.Secure, props.ReadOnly)
+	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
+		maxCodepoints: props.MaxCodepoints,
+		secure:        props.Secure,
+		readOnly:      props.ReadOnly,
+	})
 	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure, props.ReadOnly)
 }
 
@@ -6572,8 +6605,16 @@ func pageBoundsOrView(bounds Rectangle, viewWidth, viewHeight int32) Rectangle {
 	return bounds
 }
 
-func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, maxCodepoints int32, secure, readOnly bool) bool {
-	if readOnly {
+type textEditOptions struct {
+	maxCodepoints int32
+	pageRows      int
+	secure        bool
+	readOnly      bool
+	multiline     bool
+}
+
+func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused *bool, commit *bool, focusID int32, options textEditOptions) bool {
+	if options.readOnly {
 		delete(r.preedit, focusID)
 	}
 	if len(buf) == 0 {
@@ -6620,11 +6661,11 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	changed := false
 	for _, event := range r.inputEvents {
 		if event.text != "" {
-			if readOnly {
+			if options.readOnly {
 				continue
 			}
 			var inserted bool
-			text, pos, inserted = insertText(text, pos, sel, event.text, textLimit(buf, maxCodepoints))
+			text, pos, inserted = insertText(text, pos, sel, event.text, textLimit(buf, options.maxCodepoints))
 			if inserted {
 				changed = true
 				sel = selection{Anchor: pos, Cursor: pos}
@@ -6636,15 +6677,15 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			case KeyA:
 				sel = selection{Anchor: 0, Cursor: len(text)}
 			case KeyC:
-				if !secure && sel.Anchor != sel.Cursor {
+				if !options.secure && sel.Anchor != sel.Cursor {
 					start, end := selectionRange(sel)
 					r.clipboard = text[start:end]
 				}
 			case KeyX:
-				if readOnly {
+				if options.readOnly {
 					continue
 				}
-				if !secure && sel.Anchor != sel.Cursor {
+				if !options.secure && sel.Anchor != sel.Cursor {
 					start, end := selectionRange(sel)
 					r.clipboard = text[start:end]
 					text = text[:start] + text[end:]
@@ -6653,11 +6694,11 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					changed = true
 				}
 			case KeyV:
-				if readOnly {
+				if options.readOnly {
 					continue
 				}
 				var inserted bool
-				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, maxCodepoints))
+				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, options.maxCodepoints))
 				if inserted {
 					changed = true
 					sel = selection{Anchor: pos, Cursor: pos}
@@ -6681,8 +6722,20 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		case KeyEnd:
 			pos = len(text)
 			sel = selection{Anchor: pos, Cursor: pos}
+		case KeyUp, KeyDown, KeyPageUp, KeyPageDown:
+			if options.multiline {
+				direction, rows := -1, 1
+				if event.key == KeyDown || event.key == KeyPageDown {
+					direction = 1
+				}
+				if event.key == KeyPageUp || event.key == KeyPageDown {
+					rows = max(1, options.pageRows)
+				}
+				pos = textMoveVertical(text, pos, direction, rows)
+				sel = selection{Anchor: pos, Cursor: pos}
+			}
 		case KeyBackspace:
-			if readOnly {
+			if options.readOnly {
 				continue
 			}
 			if sel.Anchor != sel.Cursor {
@@ -6699,7 +6752,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyDelete:
-			if readOnly {
+			if options.readOnly {
 				continue
 			}
 			if sel.Anchor != sel.Cursor {
@@ -6715,7 +6768,12 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyEnter:
-			if commit != nil {
+			if options.multiline && !options.readOnly {
+				var inserted bool
+				text, pos, inserted = insertText(text, pos, sel, "\n", textLimit(buf, options.maxCodepoints))
+				changed = changed || inserted
+				sel = selection{Anchor: pos, Cursor: pos}
+			} else if commit != nil {
 				*commit = true
 			}
 		}
@@ -6724,13 +6782,13 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		r.inputEvents = nil
 	}
 	var composed bool
-	if readOnly {
+	if options.readOnly {
 		r.ClearTextComposition()
 	} else {
-		text, pos, sel, composed = r.editComposition(focusID, text, pos, sel, textLimit(buf, maxCodepoints))
+		text, pos, sel, composed = r.editComposition(focusID, text, pos, sel, textLimit(buf, options.maxCodepoints))
 	}
 	changed = changed || composed
-	if !readOnly {
+	if !options.readOnly {
 		clear(buf)
 		copy(buf, text)
 	}
@@ -7117,6 +7175,49 @@ func nextRune(text string, pos int) int {
 	}
 	_, size := utf8.DecodeRuneInString(text[pos:])
 	return pos + size
+}
+
+func textLineStart(text string, pos int) int {
+	pos = clampCursor(text, pos)
+	if start := strings.LastIndexByte(text[:pos], '\n'); start >= 0 {
+		return start + 1
+	}
+	return 0
+}
+
+func textLineEnd(text string, pos int) int {
+	pos = clampCursor(text, pos)
+	if end := strings.IndexByte(text[pos:], '\n'); end >= 0 {
+		return pos + end
+	}
+	return len(text)
+}
+
+func textMoveVertical(text string, pos, direction, rows int) int {
+	start := textLineStart(text, pos)
+	column := utf8.RuneCountInString(text[start:clampCursor(text, pos)])
+	for step := 0; step < max(1, rows); step++ {
+		if direction < 0 {
+			if start == 0 {
+				break
+			}
+			pos = start - 1
+			start = textLineStart(text, pos)
+		} else {
+			end := textLineEnd(text, start)
+			if end == len(text) {
+				break
+			}
+			start = end + 1
+		}
+	}
+	pos = start
+	end := textLineEnd(text, start)
+	for column > 0 && pos < end {
+		pos = nextRune(text, pos)
+		column--
+	}
+	return pos
 }
 
 func cellW(grid Grid) float32 {

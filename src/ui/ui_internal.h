@@ -120,6 +120,8 @@ int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(ParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+int ui_text_move_vertical(const char *text, int cursor, int font, int direction);
+int ui_text_area_move_page(TextAreaProps area, int cursor, int direction);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
 void DrawUITextStyled(const char *text, int x, int y, TextStyle style);
