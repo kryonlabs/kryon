@@ -88,6 +88,18 @@ dropdown_store_current(void)
     return dropdown_store;
 }
 
+int
+dropdown_store_clip_top(void)
+{
+    return dropdown_store->clip_top;
+}
+
+int
+dropdown_store_clip_bottom(void)
+{
+    return dropdown_store->clip_bottom;
+}
+
 static DropdownOption *
 dropdown_options_alloc(int count)
 {
