@@ -1,4 +1,12 @@
 # Changelog
+## v0.1.64 - 2026-09-07
+
+### Changed
+
+- Unify keyboard interaction for choice widgets
+- Release: bump version to v0.1.64
+- Add native slider keyboard navigation
+
 ## v0.1.63 - 2026-09-07
 
 ### Changed
