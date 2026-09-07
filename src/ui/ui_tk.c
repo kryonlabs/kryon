@@ -3662,7 +3662,7 @@ DrawUITableView(TableViewProps table)
         if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
             int clicked_col = -1;
             double now = GetTime();
-            Vector2 mouse = GetMousePosition();
+            Vector2 mouse = ui_mouse_world();
             UIConsumeRelease();
             *table.selected_row = r;
             for(int slot = 0; slot < table.column_count; slot++) {
@@ -3694,7 +3694,7 @@ DrawUITableView(TableViewProps table)
         }
         if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
             int clicked_col = -1;
-            Vector2 mouse = GetMousePosition();
+            Vector2 mouse = ui_mouse_world();
             for(int slot = 0; slot < table.column_count; slot++) {
                 int c = ui_table_display_column(table, slot);
                 if(c < 0)

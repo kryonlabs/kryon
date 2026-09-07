@@ -12,10 +12,15 @@ void
 InitUIDPI(void)
 {
     FixUIDPIFramebufferColor();
+    ui_dpi_state.physical_width = UI_DPI_BASE_WIDTH;
+    ui_dpi_state.physical_height = UI_DPI_BASE_HEIGHT;
     ui_dpi_state.view_width = UI_DPI_BASE_WIDTH;
     ui_dpi_state.view_height = UI_DPI_BASE_HEIGHT;
+    ui_dpi_state.layout_width = UI_DPI_BASE_WIDTH;
+    ui_dpi_state.layout_height = UI_DPI_BASE_HEIGHT;
     ui_dpi_state.ui_scale = 1.0f;
     ui_dpi_state.ui_scale_clamped = 1.0f;
+    ui_dpi_state.render_scale = 1.0f;
     ui_dpi_state.camera_zoom = 1.0f;
     ui_dpi_state.base_width = UI_DPI_BASE_WIDTH;
     ui_dpi_state.base_height = UI_DPI_BASE_HEIGHT;
@@ -35,8 +40,12 @@ FixUIDPIFramebufferColor(void)
 void
 InvalidateUIDPI(void)
 {
+    ui_dpi_state.physical_width = -1;
+    ui_dpi_state.physical_height = -1;
     ui_dpi_state.view_width = -1;
     ui_dpi_state.view_height = -1;
+    ui_dpi_state.layout_width = -1;
+    ui_dpi_state.layout_height = -1;
     ui_dpi_state.needs_update = 1;
 }
 
@@ -47,6 +56,8 @@ SetUIDeviceDensity(float density)
         g_device_density = density;
         /* Force a recompute on the next UpdateUIDPI call so the new density
          * actually takes effect, even when the viewport size hasnt changed. */
+        ui_dpi_state.physical_width = -1;
+        ui_dpi_state.physical_height = -1;
         ui_dpi_state.view_width = -1;
         ui_dpi_state.view_height = -1;
     }
@@ -55,8 +66,8 @@ SetUIDeviceDensity(float density)
 void
 UpdateUIDPI(int view_width, int view_height)
 {
-    int previous_width = ui_dpi_state.view_width;
-    int previous_height = ui_dpi_state.view_height;
+    int previous_width = ui_dpi_state.physical_width;
+    int previous_height = ui_dpi_state.physical_height;
     int base_height = ui_dpi_state.base_height;
 
     if(base_height <= 0)
@@ -64,8 +75,11 @@ UpdateUIDPI(int view_width, int view_height)
     base_height = ui_dpi_state.base_height > 0 ? ui_dpi_state.base_height : UI_DPI_BASE_HEIGHT;
 
     if(previous_width != view_width || previous_height != view_height) {
-        ui_dpi_state.view_width = view_width;
-        ui_dpi_state.view_height = view_height;
+        int layout_width;
+        int layout_height;
+
+        ui_dpi_state.physical_width = view_width;
+        ui_dpi_state.physical_height = view_height;
 
         float viewport_scale = view_height > 0
                                    ? (float)view_height / (float)base_height
@@ -105,6 +119,22 @@ UpdateUIDPI(int view_width, int view_height)
         if(!(ui_dpi_state.ui_scale > 0.0f) || ui_dpi_state.ui_scale > 8.0f)
             ui_dpi_state.ui_scale = 1.0f;
         ui_dpi_state.ui_scale_clamped = (ui_dpi_state.ui_scale < 1.0f) ? 1.0f : ui_dpi_state.ui_scale;
+        ui_dpi_state.render_scale = ui_dpi_state.ui_scale_clamped;
+        layout_width = view_width;
+        layout_height = view_height;
+        if(ui_dpi_state.render_scale > 1.0f) {
+            layout_width = (int)((float)view_width / ui_dpi_state.render_scale + 0.5f);
+            layout_height = (int)((float)view_height / ui_dpi_state.render_scale + 0.5f);
+        }
+        if(layout_width < 1)
+            layout_width = 1;
+        if(layout_height < 1)
+            layout_height = 1;
+        ui_dpi_state.layout_width = layout_width;
+        ui_dpi_state.layout_height = layout_height;
+        ui_dpi_state.view_width = layout_width;
+        ui_dpi_state.view_height = layout_height;
+        ui_dpi_state.camera_zoom = ui_dpi_state.render_scale;
         ui_dpi_state.needs_update = 1;
     } else {
         ui_dpi_state.needs_update = 0;
@@ -115,4 +145,25 @@ int
 IsUIDPIDirty(void)
 {
     return ui_dpi_state.needs_update;
+}
+
+int
+GetLayoutWidth(void)
+{
+    return ui_dpi_state.layout_width > 0
+        ? ui_dpi_state.layout_width : ui_dpi_state.view_width;
+}
+
+int
+GetLayoutHeight(void)
+{
+    return ui_dpi_state.layout_height > 0
+        ? ui_dpi_state.layout_height : ui_dpi_state.view_height;
+}
+
+float
+GetRenderScale(void)
+{
+    return ui_dpi_state.render_scale > 0.0f
+        ? ui_dpi_state.render_scale : ui_dpi_state.ui_scale_clamped;
 }

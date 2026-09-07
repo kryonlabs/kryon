@@ -100,15 +100,15 @@ void kryon_run_post_frame_callbacks(void)
 
 int GetFrameWidth(void)
 {
-    return frame_width > 0 ? frame_width : GetScreenWidth();
+    return GetLayoutWidth();
 }
 
 int GetFrameHeight(void)
 {
-    return frame_height > 0 ? frame_height : GetScreenHeight();
+    return GetLayoutHeight();
 }
 
 float GetFrameScale(void)
 {
-    return frame_scale > 0.0f ? frame_scale : GetUIScale();
+    return GetRenderScale();
 }

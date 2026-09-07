@@ -1188,7 +1188,7 @@ RouteInput(void)
         if(node->has_input_clip) PopUIInputClip();
     }
 
-    mouse = GetMousePosition();
+    mouse = ui_mouse_world();
     hit = HitTestNode(mouse);
     pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     for(i = 0; i < ui_committed_node_count; i++) {
