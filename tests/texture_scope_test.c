@@ -284,7 +284,7 @@ int main(void)
         EndTextureMode();
         Image owned = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&owned);
-        check_pixel(owned,1,1,frame == 0 ? (Color){255,127,127,255} : WHITE,"owned translucent layer");
+        check_pixel(owned,1,1,frame == 0 ? (Color){191,127,127,191} : WHITE,"owned translucent layer");
         check_pixel(owned,5,5,frame == 0 ? GREEN : WHITE,"owned nested layer above later parent paint");
         check_pixel(owned,21,1,frame == 0 ? YELLOW : WHITE,"owned retained layer above later main paint");
         check_pixel(owned,41,41,ORANGE,"owned layer restores caller clip and destination");

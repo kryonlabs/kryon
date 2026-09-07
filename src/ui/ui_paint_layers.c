@@ -287,9 +287,11 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
         rlSetMatrixModelview(layers->modelview);
     }
     ResetUIClip();
-    /* Capture stores source-over RGB premultiplied by alpha. Compositing it
-     * with ordinary alpha would multiply translucent pixels a second time. */
-    BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);
+    /* Keep paint-layer compositing on the same straight-alpha path as normal
+     * UI drawing. Android font atlases are straight-alpha textures; treating
+     * the captured layer as premultiplied makes glyph edges render as blocky
+     * white rectangles on device. */
+    BeginBlendMode(BLEND_ALPHA);
     for(int i = 0; i < layers->count; i++) {
         UIPaintLayer *layer = &layers->items[i];
         if(layer->parent >= 0 && !layers->items[layer->parent].visible) layer->visible = 0;
