@@ -18,12 +18,6 @@ SHEETS = (
     ("logos", "UI_ICON_SHEET_LOGOS", "ui_logos_atlas_png"),
 )
 
-EXTRA_PNGS = (
-    ("pfp-dark.png", "ui_pfp_dark_atlas_png"),
-    ("pfp-light.png", "ui_pfp_light_atlas_png"),
-)
-
-
 def enum_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "_", name).upper()
 
@@ -59,10 +53,6 @@ def main() -> None:
         arrays.append(byte_array(symbol, (icon_dir / manifest["image"]).read_bytes()))
         for icon in manifest["icons"]:
             records.append({**icon, "sheet": sheet_enum})
-    for filename, symbol in EXTRA_PNGS:
-        path = icon_dir / filename
-        if path.is_file():
-            arrays.append(byte_array(symbol, path.read_bytes()))
     records.sort(key=lambda icon: icon["name"])
 
     assets = [
