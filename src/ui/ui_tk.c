@@ -25,6 +25,15 @@ static float g_drag_last_x = 0.0f;
 static UIPopupInputOwner g_drag_owner = {0};
 static int g_slider_active = 0;
 static UIPopupInputOwner g_slider_owner = {0};
+typedef struct UINumericClickState {
+    int valid;
+    int kind;
+    int widget_id;
+    int component;
+    Vector2 position;
+    double time;
+} UINumericClickState;
+static UINumericClickState g_numeric_click = {0};
 typedef struct UIDragDropState {
     int active;
     int source_id;
@@ -1627,12 +1636,32 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     int enabled = !disabled && !UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) ||
                   IsKeyDown(KEY_RIGHT_CONTROL);
-    int activate = enabled && control &&
-                   IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && ui_hot(bounds);
+    int pressed = enabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+                  ui_hot(bounds);
+    Vector2 mouse = ui_mouse_world();
+    double now = GetTime();
+    int slop = Scale(6);
+    float dx = mouse.x - g_numeric_click.position.x;
+    float dy = mouse.y - g_numeric_click.position.y;
+    int double_click = pressed && g_numeric_click.valid &&
+        g_numeric_click.kind == kind &&
+        g_numeric_click.widget_id == widget_id &&
+        g_numeric_click.component == component &&
+        now - g_numeric_click.time <= 0.30 &&
+        dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
+    int activate = pressed && (control || double_click);
     UINumericInputState *state =
         ui_numeric_input_find(kind, widget_id, component);
     int commit = 0;
     int changed = 0;
+
+    if(pressed) {
+        g_numeric_click = (UINumericClickState){
+            1, kind, widget_id, component, mouse, now
+        };
+        if(activate)
+            g_numeric_click.valid = 0;
+    }
 
     if(state == NULL && !activate) {
         *editing = 0;

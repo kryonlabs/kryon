@@ -1069,6 +1069,26 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	if state != nil && state.focused {
 		t.Fatal("disabled drag accepted Ctrl-click keyboard entry")
 	}
+
+	doubleRuntime := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	doubleValues := []int32{6}
+	doubleDrag := DragIntProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 523,
+		Values: doubleValues, ValueCount: 1, Speed: 1, Min: 0, Max: 10}
+	doubleRuntime.QueueTap(40, 20)
+	doubleRuntime.BeginFrame()
+	doubleRuntime.DragInt(doubleDrag)
+	doubleRuntime.EndFrame()
+	if state := doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 523}]; state != nil {
+		t.Fatal("single click created a temporary drag editor")
+	}
+	doubleRuntime.QueueTap(40, 20)
+	doubleRuntime.BeginFrame()
+	doubleRuntime.DragInt(doubleDrag)
+	doubleRuntime.EndFrame()
+	state = doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 523}]
+	if state == nil || !state.focused {
+		t.Fatal("double-click did not open temporary drag editor")
+	}
 }
 
 func TestNativeDragKeyboardNavigation(t *testing.T) {

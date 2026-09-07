@@ -1093,6 +1093,18 @@ func main() {
 	}
 	driver.QueueKey(kryon.KeyEnter)
 	drawPlots()
+	driver.QueueTap(145, 190)
+	drawPlots()
+	driver.QueueTap(145, 190)
+	drawPlots()
+	driver.QueueShortcut(kryon.KeyA)
+	driver.QueueText("17")
+	drawPlots()
+	if value := PlotsStateValue.DragInts[0]; value != 17 {
+		panic(fmt.Sprintf("generated int drag double-click input=%d, want 17", value))
+	}
+	driver.QueueKey(kryon.KeyEnter)
+	drawPlots()
 	driver.QueueKey(kryon.KeyLeftControl)
 	driver.QueueTap(150, 246)
 	drawPlots()
@@ -2101,6 +2113,22 @@ int main(void)
     if(drag_floats[0] != 12.5f) {
         fprintf(stderr,"generated float drag temporary input=%f, want 12.5\n",
                 drag_floats[0]);
+        return 1;
+    }
+    InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();
+    InjectMousePosition(145,190);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1); InjectPump(); draw_plots();
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectPump(); draw_plots();
+    InjectMousePosition(145,190);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1); InjectPump(); draw_plots();
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_A);
+    InjectPump(); draw_plots();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectText("17");
+    InjectPump(); draw_plots();
+    if(drag_ints[0] != 17) {
+        fprintf(stderr,"generated int drag double-click input=%d, want 17\n",
+                drag_ints[0]);
         return 1;
     }
     InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();

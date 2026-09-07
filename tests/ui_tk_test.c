@@ -266,6 +266,28 @@ test_numeric_ctrl_click_editing(void)
     InjectPump();
     draw_numeric_temporary_inputs(drag,slider);
 
+    InjectMousePosition(30,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    check_int("single click has no temporary input",
+              ui_numeric_input_state(3,634,0)->focused,0);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectMousePosition(30,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    check_int("double-click opens temporary input",
+              ui_numeric_input_state(3,634,0)->focused,1);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+    InjectKeyTap(KEY_ENTER);
+    InjectPump();
+    draw_numeric_temporary_inputs(drag,slider);
+
     InjectMousePosition(30,70);
     InjectKey(KEY_LEFT_CONTROL,1);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);

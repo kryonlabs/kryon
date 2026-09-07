@@ -20,8 +20,8 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Progress and links | `Progress`, `Href` | covered; `Href` represents both clickable text and open-URL links |
 | Images | `Picture`, `ImageWithBg`, `ImageButton` | covered; `ImageButton` shares ordinary focus and keyboard activation |
 | Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
-| Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values, component focus/Tab traversal, Left/Right adjustment, Home/End bounds, Shift/Alt step modifiers, and Ctrl-click temporary keyboard entry |
-| Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, slow/fast modifiers, and Ctrl-click temporary keyboard entry are covered |
+| Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values, component focus/Tab traversal, Left/Right adjustment, Home/End bounds, Shift/Alt step modifiers, and Ctrl-click/double-click temporary keyboard entry |
+| Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, slow/fast modifiers, and Ctrl-click/double-click temporary keyboard entry are covered |
 | Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
 | Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered; `ColorButton` shares ordinary focus and keyboard activation |
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, optional close/visibility state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
@@ -79,11 +79,11 @@ gates keyboard input, and the focused component receives the ordinary focus
 presentation. Matching native tests cover component Tab traversal and the
 generated `plots.kry` fixture verifies horizontal float and vertical integer
 adjustment through k2c and k2go.
-Ctrl-clicking a drag or slider component temporarily replaces that component
-with the canonical text editor in native C and Go. Valid edits update live,
+Ctrl-clicking or double-clicking a drag or slider component temporarily
+replaces that component with the canonical text editor in native C and Go. Valid edits update live,
 Enter returns to the numeric control, and typed values remain unclamped like
 Dear ImGui's default temporary-input behavior. The generated `plots.kry`
-fixture exercises float drag and integer slider entry through k2c and k2go.
+fixture exercises Ctrl-click and double-click entry through k2c and k2go.
 
 Native Go now constrains and flips long dropdowns using the same placement
 rules as C, reusing its ordinary scroll container for clipping, wheel input and

@@ -1485,6 +1485,7 @@ type runtime struct {
 	tableDrag         tableDrag
 	tableResize       tableResize
 	lastTabClick      tabClick
+	lastNumericClick  numericClick
 	tabDrag           tabDrag
 	tabScroll         map[int32]int32
 	tabBarsSeen       map[int32]bool
@@ -1606,6 +1607,12 @@ type tabClick struct {
 	index  int32
 	when   time.Time
 	bounds Rectangle
+}
+
+type numericClick struct {
+	key  numericInputKey
+	x, y float32
+	when time.Time
 }
 
 type tabDrag struct {
@@ -3410,7 +3417,20 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID int32, formatted string, disabled bool) (*numericInputState, bool, bool) {
 	enabled := !disabled && !r.contentDisabled()
 	control := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
-	activate := enabled && control && r.mousePressed[MouseButtonLeft] && r.consumeTap(bounds)
+	pressed := enabled && r.mousePressed[MouseButtonLeft] && r.hasTap(bounds)
+	now := time.Now()
+	dx := r.mousePos.X - r.lastNumericClick.x
+	dy := r.mousePos.Y - r.lastNumericClick.y
+	doubleClick := pressed && r.lastNumericClick.key == key &&
+		now.Sub(r.lastNumericClick.when) <= 300*time.Millisecond &&
+		dx >= -6 && dx <= 6 && dy >= -6 && dy <= 6
+	activate := pressed && (control || doubleClick) && r.consumeTap(bounds)
+	if pressed {
+		r.lastNumericClick = numericClick{key: key, x: r.mousePos.X, y: r.mousePos.Y, when: now}
+		if activate {
+			r.lastNumericClick = numericClick{}
+		}
+	}
 	state := r.numericInputs[key]
 	if state == nil && !activate {
 		return nil, false, false
@@ -6730,6 +6750,20 @@ func (r *runtime) pointerCanReach(bounds Rectangle) bool {
 	return !r.contentDisabled() &&
 		!r.popupCaptures(r.mousePos.X, r.mousePos.Y) &&
 		pointInRect(r.mousePos.X, r.mousePos.Y, r.scrollClip(bounds))
+}
+
+func (r *runtime) hasTap(bounds Rectangle) bool {
+	bounds = r.scrollClip(bounds)
+	if r.contentDisabled() {
+		return false
+	}
+	for i := range r.taps {
+		if !r.taps[i].consumed && !r.popupCaptures(r.taps[i].x, r.taps[i].y) &&
+			pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
