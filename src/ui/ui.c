@@ -53,6 +53,7 @@ int g_ui_pointer_dragging = 0;
 static int g_ui_pointer_dragged_this_click = 0;
 static int g_ui_pointer_start_x = 0;
 static int g_ui_pointer_start_y = 0;
+static Vector2 g_ui_pointer_start_world = {0};
 static int g_ui_transition_cues_enabled = 0;
 static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
@@ -329,6 +330,14 @@ ui_mouse_world(void)
     if(g_ui_mouse_world_override_enabled)
         return g_ui_mouse_world_override;
     return GetScreenToWorld2D(GetMousePosition(), g_ui_camera);
+}
+
+static Vector2
+screen_to_world_for_input(Vector2 screen)
+{
+    if(g_ui_mouse_world_override_enabled)
+        return g_ui_mouse_world_override;
+    return GetScreenToWorld2D(screen, g_ui_camera);
 }
 
 void
@@ -614,6 +623,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
         g_ui_pointer_start_x = mx;
         g_ui_pointer_start_y = my;
+        g_ui_pointer_start_world = screen_to_world_for_input(mouse);
     } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && g_ui_pointer_down) {
         int dx = ui_pointer_dx();
         int dy = ui_pointer_dy();
@@ -762,6 +772,31 @@ UIConsumePointerRelease(void)
     UIConsumeRelease();
 }
 
+static int
+press_started_inside(Rectangle bounds)
+{
+    return CheckCollisionPointRec(g_ui_pointer_start_world, bounds);
+}
+
+static int
+press_started_inside_circle(Vector2 center, float radius)
+{
+    float dx = g_ui_pointer_start_world.x - center.x;
+    float dy = g_ui_pointer_start_world.y - center.y;
+
+    return dx * dx + dy * dy <= radius * radius;
+}
+
+int
+mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active)
+{
+    return active &&
+           IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+           !g_ui_release_consumed &&
+           !UIInputCapturesClick(mouse) &&
+           press_started_inside(bounds);
+}
+
 int
 UIPointerReleaseAvailable(Vector2 point)
 {
@@ -783,8 +818,7 @@ UIHandleClick(Rectangle bounds, int disabled, int *hover)
         MarkUIDisabled();
     if(active)
         MarkUIClickable();
-    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !UIPointerReleaseConsumed()) {
+    if(mouse_release_activates_rect(bounds, mouse_world, active)) {
         UIConsumeRelease();
         return 1;
     }
@@ -808,7 +842,9 @@ UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
     if(active)
         MarkUIClickable();
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !UIPointerReleaseConsumed()) {
+       !g_ui_release_consumed &&
+       !UIInputCapturesClick(mouse_world) &&
+       press_started_inside_circle(center, radius)) {
         UIConsumeRelease();
         return 1;
     }
@@ -4891,6 +4927,9 @@ RestoreUIFrameState(UIFrameState state)
     g_ui_pointer_dragged_this_click = state.pointer_dragged_this_click;
     g_ui_pointer_start_x = state.pointer_start_x;
     g_ui_pointer_start_y = state.pointer_start_y;
+    g_ui_pointer_start_world =
+        screen_to_world_for_input((Vector2){(float)g_ui_pointer_start_x,
+                                            (float)g_ui_pointer_start_y});
     g_ui_pointer_owner = state.pointer_owner;
     g_ui_release_consumed = state.release_consumed;
     g_ui_focus_active_id = state.focus_active_id;

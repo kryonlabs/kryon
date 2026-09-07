@@ -57,6 +57,7 @@ int UIPointerReleaseConsumed(void);
 void UIConsumePointerRelease(void);
 int UIPointerReleaseAvailable(Vector2 point);
 int UIPointerReleaseOutside(Rectangle bounds);
+int mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active);
 void ClearTextInputFocus(void);
 int UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);

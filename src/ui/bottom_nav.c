@@ -33,7 +33,7 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
         else
             MarkUIClickable();
     }
-    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    if(mouse_release_activates_rect(bounds, mouse, active)) {
         UIConsumeRelease();
         return 1;
     }

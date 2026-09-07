@@ -120,7 +120,7 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
         MarkUIClickable();
     else if(inside && !captured && !enabled)
         MarkUIDisabled();
-    if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    if(mouse_release_activates_rect(bounds, mouse, hot)) {
         UIConsumeRelease();
         if(id > 0)
             SetUIFocus(id);
