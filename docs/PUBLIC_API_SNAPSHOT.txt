@@ -1439,6 +1439,9 @@ include/ui_core.h function UIReleaseConsumed
 include/ui_core.h function UITransitionCuesEnabled
 include/ui_core.h typedef TextInputPlatformCallback
 include/ui_dpi.h function FixUIDPIFramebufferColor
+include/ui_dpi.h function GetLayoutHeight
+include/ui_dpi.h function GetLayoutWidth
+include/ui_dpi.h function GetRenderScale
 include/ui_dpi.h function InitUIDPI
 include/ui_dpi.h function InvalidateUIDPI
 include/ui_dpi.h function IsUIDPIDirty
