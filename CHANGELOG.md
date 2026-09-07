@@ -1,4 +1,13 @@
 # Changelog
+## v0.1.72 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.72
+- Isolate and clean dropdown state
+- Modernize profile picture icons
+- Add text editor buffer helpers
+
 ## v0.1.71 - 2026-09-07
 
 ### Changed
