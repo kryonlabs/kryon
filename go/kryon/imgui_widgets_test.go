@@ -1617,6 +1617,70 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r.EndFrame()
 }
 
+func TestNativeMultiSelectListKeyboardNavigation(t *testing.T) {
+	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	selected := []int32{1, 0, 0}
+	selectedCount, anchor := int32(1), int32(0)
+	props := MultiSelectListProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
+	draw := func() int32 {
+		r.BeginFrame()
+		clicked := r.MultiSelectList(props)
+		r.Button(ButtonProps{Bounds: NewRectangle(10, 110, 80, 28), ID: 90, Label: "Next"})
+		r.EndFrame()
+		return clicked
+	}
+
+	draw()
+	r.SetFocus(89)
+	r.QueueKey(KeyDown)
+	if clicked := draw(); clicked != 1 || anchor != 1 || selectedCount != 1 || selected[1] != 1 || selected[0] != 0 {
+		t.Fatalf("Down selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.QueueKey(KeyLeftShift)
+	r.QueueKey(KeyDown)
+	if clicked := draw(); clicked != 2 || anchor != 2 || selectedCount != 2 || selected[1] != 1 || selected[2] != 1 {
+		t.Fatalf("Shift+Down range clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.QueueKey(KeySpace)
+	if clicked := draw(); clicked != 2 || selectedCount != 1 || selected[2] != 0 || selected[1] != 1 {
+		t.Fatalf("Space toggle clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.QueueKey(KeyLeftControl)
+	r.QueueKey(KeyHome)
+	if clicked := draw(); clicked != -1 || anchor != 0 || selectedCount != 1 || selected[1] != 1 {
+		t.Fatalf("Control+Home cursor clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	r.QueueKey(KeyEnter)
+	if clicked := draw(); clicked != 0 || selectedCount != 1 || selected[0] != 1 || selected[1] != 0 {
+		t.Fatalf("Enter selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
+	}
+	foundFocus := false
+	for _, op := range r.ops {
+		if op.ID == 89 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+			foundFocus = true
+		}
+	}
+	if !foundFocus {
+		t.Fatal("focused multi-select row lacks focus presentation")
+	}
+	r.QueueKey(KeyTab)
+	draw()
+	if r.Focus() != 90 {
+		t.Fatalf("Tab focus=%d, want 90", r.Focus())
+	}
+
+	r.SetFocus(89)
+	r.QueueKey(KeySpace)
+	r.BeginFrame()
+	r.BeginDisabled(true)
+	clicked := r.MultiSelectList(props)
+	r.EndDisabled()
+	r.EndFrame()
+	if clicked != -1 || selectedCount != 1 || selected[0] != 1 {
+		t.Fatalf("disabled keyboard changed selection: clicked=%d selected=%v count=%d", clicked, selected, selectedCount)
+	}
+}
+
 func TestNativeColorWidgets(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	rgb := []float32{0, 0.25, 0.75}

@@ -417,17 +417,87 @@ DrawUIDragDropTarget(DragDropTargetProps target)
     return 1;
 }
 
+static void
+ui_multi_select_apply(MultiSelectListProps list, int index, int control,
+                      int shift, int range_anchor)
+{
+    int anchor = range_anchor >= 0 ? range_anchor :
+                 list.anchor != NULL ? *list.anchor : -1;
+    if(shift && anchor >= 0 && anchor < list.item_count) {
+        int first = anchor < index ? anchor : index;
+        int last = anchor > index ? anchor : index;
+        if(!control)
+            memset(list.selected,0,
+                   (size_t)list.item_count * sizeof(*list.selected));
+        for(int j = first; j <= last; j++) list.selected[j] = 1;
+    } else if(control) {
+        list.selected[index] = !list.selected[index];
+        if(list.anchor != NULL) *list.anchor = index;
+    } else {
+        memset(list.selected,0,
+               (size_t)list.item_count * sizeof(*list.selected));
+        list.selected[index] = 1;
+        if(list.anchor != NULL) *list.anchor = index;
+    }
+}
+
 int
 DrawUIMultiSelectList(MultiSelectListProps list)
 {
     Vector2 mouse = ui_mouse_world();
     int row_height = list.row_height > 0 ? list.row_height : ScaleUIPx(28);
     int clicked = -1;
+    int disabled = list.disabled || UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    int focused;
+    int range_anchor = -1;
 
     if(list.items == NULL || list.selected == NULL || list.item_count <= 0)
         return -1;
+    focused = !disabled && list.id > 0 && RegisterUIFocus(list.id,list.bounds) &&
+              !ui_popup_input_focus_captures(list.id);
+    if(focused)
+        SetUIFocusTextInputActive(0);
+    if(focused) {
+        int cursor = -1;
+        int next;
+        int navigate = 1;
+        if(list.anchor != NULL && *list.anchor >= 0 &&
+           *list.anchor < list.item_count)
+            cursor = *list.anchor;
+        else
+            for(int i = 0; i < list.item_count; i++)
+                if(list.selected[i]) { cursor = i; break; }
+        if(cursor < 0) cursor = 0;
+        next = cursor;
+        if(IsKeyPressed(KEY_HOME)) next = 0;
+        else if(IsKeyPressed(KEY_END)) next = list.item_count - 1;
+        else if(IsKeyPressed(KEY_UP)) { if(next > 0) next--; }
+        else if(IsKeyPressed(KEY_DOWN)) {
+            if(next + 1 < list.item_count) next++;
+        } else if(IsKeyPressed(KEY_SPACE)) {
+            clicked = cursor;
+            control = 1;
+            shift = 0;
+            navigate = 0;
+        } else if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+            clicked = cursor;
+            control = 0;
+            shift = 0;
+            navigate = 0;
+        } else navigate = 0;
+        if(navigate) {
+            if(shift) {
+                range_anchor = cursor;
+                control = 1;
+            }
+            if(list.anchor != NULL) *list.anchor = next;
+            if(!control || shift) clicked = next;
+        }
+    }
+    if(clicked >= 0)
+        ui_multi_select_apply(list,clicked,control,shift,range_anchor);
     for(int i = 0; i < list.item_count; i++) {
         Rectangle row = {list.bounds.x, list.bounds.y + i * row_height,
                          list.bounds.width, (float)row_height};
@@ -439,36 +509,23 @@ DrawUIMultiSelectList(MultiSelectListProps list)
             DrawUIText(list.items[i] != NULL ? list.items[i] : "",
                        (int)row.x + ScaleUIPx(8),
                        ui_row_text_y(row, GetSmallFontSize()),
-                       GetSmallFontSize(), list.disabled ? c_icon : c_text);
+                       GetSmallFontSize(), disabled ? c_icon : c_text);
         }
         if(hot)
-            list.disabled ? MarkUIDisabled() : MarkUIClickable();
-        if(hot && !list.disabled &&
+            disabled ? MarkUIDisabled() : MarkUIClickable();
+        if(hot && !disabled &&
            IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            if(shift && list.anchor != NULL && *list.anchor >= 0 &&
-               *list.anchor < list.item_count) {
-                int first = *list.anchor < i ? *list.anchor : i;
-                int last = *list.anchor > i ? *list.anchor : i;
-                if(!control)
-                    memset(list.selected, 0,
-                           (size_t)list.item_count * sizeof(*list.selected));
-                for(int j = first; j <= last; j++)
-                    list.selected[j] = 1;
-            } else if(control) {
-                list.selected[i] = !list.selected[i];
-                if(list.anchor != NULL)
-                    *list.anchor = i;
-            } else {
-                memset(list.selected, 0,
-                       (size_t)list.item_count * sizeof(*list.selected));
-                list.selected[i] = 1;
-                if(list.anchor != NULL)
-                    *list.anchor = i;
-            }
             UIConsumeRelease();
+            if(list.id > 0) {
+                SetUIFocus(list.id);
+                focused = 1;
+            }
             clicked = i;
+            ui_multi_select_apply(list,clicked,control,shift,-1);
         }
     }
+    if(IsWindowReady() && focused)
+        DrawUIFocus(list.bounds);
     if(list.selected_count != NULL) {
         int count = 0;
         for(int i = 0; i < list.item_count; i++)

@@ -197,6 +197,40 @@ func TestPopupChoiceKeyboardOwnership(t *testing.T) {
 	}
 }
 
+func TestPopupMultiSelectKeyboardOwnership(t *testing.T) {
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		selected := []int32{1, 0}
+		count, anchor := int32(1), int32(0)
+		props := MultiSelectListProps{
+			Bounds: NewRectangle(10, 10, 120, 56), ID: 25706,
+			Items: []string{"Alpha", "Beta"}, ItemCount: 2, Selected: selected,
+			SelectedCount: &count, Anchor: &anchor, RowHeight: 28,
+		}
+		r.QueueKey(KeyDown)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(props.ID)
+		clicked := r.MultiSelectList(props)
+		wantClicked, wantAnchor, wantSelected := int32(-1), int32(0), int32(0)
+		if inside {
+			wantClicked, wantAnchor, wantSelected = 1, 1, 1
+		}
+		if clicked != wantClicked || anchor != wantAnchor || selected[1] != wantSelected {
+			t.Fatalf("inside=%v: clicked=%d anchor=%d selected=%v", inside, clicked, anchor, selected)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+}
+
 func TestPopupMenuKeyboardOwnership(t *testing.T) {
 	items := []MenuItem{{Kind: MenuCommand, Label: "Run", ID: 25710}}
 	for _, inside := range []bool{false, true} {

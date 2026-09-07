@@ -268,6 +268,70 @@ test_toggle_keyboard_navigation(void)
     check_int("disabled toggle preserves state",value,1);
 }
 
+static int
+draw_multi_select_keyboard(MultiSelectListProps list)
+{
+    int clicked;
+    BeginUIFrame(320,240,1);
+    clicked = MultiSelectList(list);
+    (void)Button((ButtonProps){.bounds={10,110,80,28},.id=619,.label="Next"});
+    EndUIFrame();
+    return clicked;
+}
+
+static void
+test_multi_select_keyboard_navigation(void)
+{
+    const char *items[] = {"Alpha","Beta","Gamma"};
+    int selected[] = {1,0,0};
+    int count = 1;
+    int anchor = 0;
+    MultiSelectListProps list = {
+        .bounds={10,10,180,84},.id=618,.items=items,.item_count=3,
+        .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
+    };
+
+    InjectReset();
+    draw_multi_select_keyboard(list);
+    SetUIFocus(618); InjectKeyTap(KEY_DOWN); InjectPump();
+    check_int("multi Down clicked",draw_multi_select_keyboard(list),1);
+    check_int("multi Down anchor",anchor,1);
+    check_int("multi Down count",count,1);
+    check_int("multi Down selection",selected[1],1);
+
+    InjectPump();
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_DOWN); InjectPump();
+    check_int("multi Shift Down clicked",draw_multi_select_keyboard(list),2);
+    check_int("multi Shift Down count",count,2);
+    check_int("multi Shift Down selection",selected[2],1);
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+
+    InjectKeyTap(KEY_SPACE); InjectPump();
+    check_int("multi Space clicked",draw_multi_select_keyboard(list),2);
+    check_int("multi Space count",count,1);
+    check_int("multi Space toggle",selected[2],0);
+
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_HOME); InjectPump();
+    check_int("multi Control Home cursor",draw_multi_select_keyboard(list),-1);
+    check_int("multi Control Home anchor",anchor,0);
+    check_int("multi Control Home selection",selected[1],1);
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+
+    InjectKeyTap(KEY_ENTER); InjectPump();
+    check_int("multi Enter clicked",draw_multi_select_keyboard(list),0);
+    check_int("multi Enter selection",selected[0],1);
+    check_int("multi Enter count",count,1);
+
+    InjectKeyTap(KEY_TAB); InjectPump();
+    draw_multi_select_keyboard(list);
+    check_int("multi Tab traversal",GetUIFocus(),619);
+
+    list.disabled = 1;
+    SetUIFocus(618); InjectKeyTap(KEY_SPACE); InjectPump();
+    check_int("disabled multi rejects keyboard",draw_multi_select_keyboard(list),-1);
+    check_int("disabled multi preserves selection",selected[0],1);
+}
+
 static void
 test_focusable_image_keyboard_navigation(void)
 {
@@ -1069,6 +1133,42 @@ test_popup_choice_keyboard_ownership(void)
         check_int("only top popup choice activates from keyboard",
                   activated,inside);
         check_int("blocked popup choice preserves state",selected,inside);
+        if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
+test_popup_multi_select_keyboard_ownership(void)
+{
+    const char *items[] = {"Alpha","Beta"};
+    for(int inside = 0; inside < 2; inside++) {
+        int selected[] = {1,0};
+        int count = 1;
+        int anchor = 0;
+        InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
+        BeginUIFrame(240,240,1);
+        UIPopupInput *context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        UIPopupInput *previous = ui_popup_input_bind(context);
+        UIPopupInputToken parent = ui_popup_input_begin(
+            context,0,(Rectangle){180,180,40,40});
+        UIPopupInputToken child = ui_popup_input_begin(
+            context,1,(Rectangle){190,190,20,20});
+        if(!inside) ui_popup_input_end(child);
+        SetUIFocus(25706);
+        int clicked = MultiSelectList((MultiSelectListProps){
+            .bounds={10,10,120,56},.id=25706,.items=items,.item_count=2,
+            .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
+        });
+        check_int("only top popup multi-select navigates",clicked,inside ? 1 : -1);
+        check_int("blocked popup multi-select preserves anchor",anchor,inside ? 1 : 0);
+        check_int("blocked popup multi-select preserves selection",selected[1],inside);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);
@@ -2829,6 +2929,7 @@ main(void)
     test_disabled_scalar_cancels_gesture();
     test_focusable_choice_keyboard_navigation();
     test_toggle_keyboard_navigation();
+    test_multi_select_keyboard_navigation();
     test_focusable_image_keyboard_navigation();
     test_deep_disabled_scopes();
     test_collapsible_composes_children();
@@ -2861,6 +2962,7 @@ main(void)
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();
+    test_popup_multi_select_keyboard_ownership();
     test_popup_tab_missing_owner();
     test_popup_text_dismissal_replay();
     test_popup_composition_dismissal_replay();

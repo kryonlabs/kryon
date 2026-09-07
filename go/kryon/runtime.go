@@ -2333,22 +2333,89 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 	if rowHeight <= 0 {
 		rowHeight = 28
 	}
+	disabled := props.Disabled || r.contentDisabled()
+	if !disabled {
+		r.registerField(props.ID)
+	}
 	clicked := int32(-1)
-	if !props.Disabled {
+	rangeAnchor := int32(-1)
+	if !disabled {
 		for i := 0; i < count; i++ {
 			row := Rectangle{X: bounds.X, Y: bounds.Y + float32(i*int(rowHeight)), Width: bounds.Width, Height: float32(rowHeight)}
 			if r.consumeTap(row) {
 				clicked = int32(i)
+				if props.ID > 0 {
+					r.setFocus(props.ID)
+				}
 				break
 			}
 		}
 	}
+	focused := !disabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
+	control := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
+	shift := r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
+	if focused && clicked < 0 {
+		cursor := int32(-1)
+		if props.Anchor != nil && *props.Anchor >= 0 && int(*props.Anchor) < count {
+			cursor = *props.Anchor
+		} else {
+			for i := 0; i < count; i++ {
+				if props.Selected[i] != 0 {
+					cursor = int32(i)
+					break
+				}
+			}
+		}
+		if cursor < 0 {
+			cursor = 0
+		}
+		next := cursor
+		navigate := true
+		switch {
+		case r.keyDown[KeyHome]:
+			next = 0
+		case r.keyDown[KeyEnd]:
+			next = int32(count - 1)
+		case r.keyDown[KeyUp]:
+			if next > 0 {
+				next--
+			}
+		case r.keyDown[KeyDown]:
+			if int(next)+1 < count {
+				next++
+			}
+		case r.keyDown[KeySpace]:
+			clicked, control, shift = cursor, true, false
+			navigate = false
+		case r.keyDown[KeyEnter]:
+			clicked, control, shift = cursor, false, false
+			navigate = false
+		default:
+			navigate = false
+		}
+		if navigate {
+			if shift {
+				rangeAnchor = cursor
+				control = true
+			}
+			if props.Anchor != nil {
+				*props.Anchor = next
+			}
+			if !control || shift {
+				clicked = next
+			}
+		}
+	}
 	if clicked >= 0 {
-		control := r.keyDown[KeyLeftControl] || r.keyDown[KeyRightControl]
-		shift := r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		i := int(clicked)
-		if shift && props.Anchor != nil && *props.Anchor >= 0 && int(*props.Anchor) < count {
-			first, last := int(*props.Anchor), i
+		anchor := int32(-1)
+		if rangeAnchor >= 0 {
+			anchor = rangeAnchor
+		} else if props.Anchor != nil {
+			anchor = *props.Anchor
+		}
+		if shift && anchor >= 0 && int(anchor) < count {
+			first, last := int(anchor), i
 			if first > last {
 				first, last = last, first
 			}
@@ -2377,6 +2444,22 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 	}
 	theme := r.theme()
 	selectedCount := int32(0)
+	focusRow := int32(-1)
+	if focused {
+		if props.Anchor != nil && *props.Anchor >= 0 && int(*props.Anchor) < count {
+			focusRow = *props.Anchor
+		} else {
+			for i := 0; i < count; i++ {
+				if props.Selected[i] != 0 {
+					focusRow = int32(i)
+					break
+				}
+			}
+			if focusRow < 0 {
+				focusRow = 0
+			}
+		}
+	}
 	for i := 0; i < count; i++ {
 		selected := props.Selected[i] != 0
 		if selected {
@@ -2388,10 +2471,15 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 			fill = theme.buttonHover
 		}
 		textColor := theme.text
-		if props.Disabled {
+		if disabled {
 			textColor = r.Fade(textColor, 0.45)
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: row, Text: props.Items[i], Color: fill, BorderColor: theme.border, TextColor: textColor, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: props.Disabled, Pressed: int32(i) == clicked})
+		rowFocused := focusRow == int32(i)
+		border := theme.border
+		if rowFocused {
+			border = theme.focus
+		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: row, Text: props.Items[i], Color: fill, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: int32(i) == clicked, Focused: rowFocused})
 	}
 	if props.SelectedCount != nil {
 		*props.SelectedCount = selectedCount

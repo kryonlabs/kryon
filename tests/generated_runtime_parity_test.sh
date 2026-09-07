@@ -254,6 +254,14 @@ func drawControls() {
 	})
 }
 
+func drawMultiSelect() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		SelectionImages_MultiSelectKeyboardFrame(SelectionImagesStateValue)
+		kryon.EndFrame()
+	})
+}
+
 func drawListBox() {
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -953,6 +961,19 @@ func main() {
 	if driver.Focus() != 806 {
 		panic(fmt.Sprintf("controls: generated choice Tab focus=%d, want 806", driver.Focus()))
 	}
+	drawMultiSelect()
+	driver.SetFocus(957)
+	driver.QueueKey(kryon.KeyDown)
+	drawMultiSelect()
+	if SelectionImagesStateValue.MultiAnchor != 1 || SelectionImagesStateValue.MultiCount != 1 || SelectionImagesStateValue.MultiSelected != [3]int32{0, 1, 0} {
+		panic(fmt.Sprintf("multi_select: generated MultiSelectList Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
+	}
+	driver.QueueKey(kryon.KeyLeftShift)
+	driver.QueueKey(kryon.KeyDown)
+	drawMultiSelect()
+	if SelectionImagesStateValue.MultiAnchor != 2 || SelectionImagesStateValue.MultiCount != 2 || SelectionImagesStateValue.MultiSelected != [3]int32{0, 1, 1} {
+		panic(fmt.Sprintf("multi_select: generated MultiSelectList Shift+Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
+	}
 
 	drawListBox()
 	requireFrameOps("list_box", map[kryon.FrameOpKind]int{
@@ -1144,6 +1165,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/progress.c"
 #include "$work/c/tests/parity/plots.c"
 #include "$work/c/tests/parity/menus.c"
+#include "$work/c/tests/parity/selection_images.c"
 #include "$work/c/tests/parity/table_view.c"
 #include "$work/c/tests/parity/scroll_content.c"
 #include "$work/c/tests/parity/drag_drop.c"
@@ -1203,6 +1225,11 @@ static void draw_long_text(void)
 static void draw_controls(void)
 {
     draw_ui(controls_frame);
+}
+
+static void draw_multi_select(void)
+{
+    draw_ui(multi_select_keyboard_frame);
 }
 
 static void draw_list_box(void)
@@ -1867,6 +1894,23 @@ int main(void)
     SetUIFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
     if(GetUIFocus() != 806) {
         fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetUIFocus());
+        return 1;
+    }
+    draw_multi_select();
+    SetUIFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
+    if(multi_anchor != 1 || multi_count != 1 ||
+       multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 0) {
+        fprintf(stderr,"multi_select: generated MultiSelectList Down state=%d%d%d/%d/%d\n",
+                multi_selected[0],multi_selected[1],multi_selected[2],multi_count,multi_anchor);
+        return 1;
+    }
+    InjectPump(); InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_DOWN); InjectPump();
+    draw_multi_select();
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    if(multi_anchor != 2 || multi_count != 2 ||
+       multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 1) {
+        fprintf(stderr,"multi_select: generated MultiSelectList Shift+Down state=%d%d%d/%d/%d\n",
+                multi_selected[0],multi_selected[1],multi_selected[2],multi_count,multi_anchor);
         return 1;
     }
 

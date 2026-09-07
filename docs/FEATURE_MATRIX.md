@@ -162,7 +162,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard/clipboard, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
 | SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
-| MultiSelectList (Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| MultiSelectList (focus, keyboard navigation, Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Nested disabled scope | ✅ | ✅ | ✅ | ✅ | ✅ `BeginDisabled` / `EndDisabled` | ✗ |
 
 ### UI/Navigation
