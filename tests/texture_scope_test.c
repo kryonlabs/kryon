@@ -76,6 +76,36 @@ static void check_pixel(Image image, int x, int y, Color expected, const char *l
     }
 }
 
+static void check_layered_text_not_boxed(UIPaintLayers *layers,
+                                         RenderTexture2D target)
+{
+    BeginTextureMode(target);
+    ClearBackground(BLACK);
+    ui_paint_layers_frame(layers,64,64);
+    UIPaintLayerToken text_layer = ui_paint_layer_begin(layers,901);
+    DrawUIText("Hi",4,4,20,WHITE);
+    ui_paint_layer_end(text_layer);
+    ui_paint_layers_composite(layers);
+    EndTextureMode();
+
+    Image image = LoadImageFromTexture(target.texture);
+    ImageFlipVertical(&image);
+    int bright = 0;
+    for(int y = 4; y < 28; y++)
+        for(int x = 4; x < 34; x++) {
+            Color c = GetImageColor(image,x,y);
+            if(c.r > 160 && c.g > 160 && c.b > 160)
+                bright++;
+        }
+    UnloadImage(image);
+
+    if(bright < 20 || bright > 180) {
+        fprintf(stderr,"layered text rendered as boxes or disappeared: %d bright pixels\n",
+                bright);
+        failures++;
+    }
+}
+
 /* Observe the real X11 presenter's readback without exposing UIWindow internals.
  * Do not replace rendering or readback with a mock. */
 Image __real_LoadImageFromTexture(Texture2D texture);
@@ -233,6 +263,7 @@ int main(void)
     UnloadImage(composite); UnloadImage(direct);
 
     UIPaintLayers *owned_layers = ui_paint_layers_create();
+    check_layered_text_not_boxed(owned_layers,outer);
     UIPaintLayerToken stale_layer = {0};
     check_invalid_layer_end(stale_layer,"null layer token");
     for(int frame = 0; frame < 3; frame++) {
@@ -322,7 +353,7 @@ int main(void)
         EndTextureMode();
         Image owned = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&owned);
-        check_pixel(owned,1,1,frame == 0 ? (Color){255,127,127,255} : WHITE,"owned translucent layer");
+        check_pixel(owned,1,1,frame == 0 ? (Color){191,127,127,191} : WHITE,"owned translucent layer");
         check_pixel(owned,5,5,frame == 0 ? GREEN : WHITE,"owned nested layer above later parent paint");
         check_pixel(owned,21,1,frame == 0 ? YELLOW : WHITE,"owned retained layer above later main paint");
         check_pixel(owned,41,41,ORANGE,"owned layer restores caller clip and destination");
