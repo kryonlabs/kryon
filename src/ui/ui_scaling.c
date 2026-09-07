@@ -24,6 +24,12 @@ Scale(int px)
 }
 
 int
+ScaleUIPx(int px)
+{
+    return Scale(px);
+}
+
+int
 ClampUIPx(int px, int min_px, int max_px)
 {
     int value = (int)(px * g_dpi_scale + 0.5f);
