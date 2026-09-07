@@ -588,6 +588,23 @@ ui_tree_mark_painted_immediate(NodeId id)
 }
 
 static int
+ui_tree_node_uses_retained_layout(NodeId id)
+{
+    UIWidgetNode *node = ui_tree_node(id);
+    UIWidgetNode *parent;
+
+    if(node == NULL || node->parent < 0)
+        return 0;
+    parent = ui_tree_node(node->parent);
+    if(parent == NULL)
+        return 0;
+    return parent->kind == UI_WIDGET_COLUMN_NODE ||
+           parent->kind == UI_WIDGET_ROW_NODE ||
+           parent->kind == UI_WIDGET_GRID_NODE ||
+           parent->kind == UI_WIDGET_STACK_NODE;
+}
+
+static int
 ui_measure_bounds_height(UIWidgetNode node)
 {
     return (int)ceilf(node.bounds.height);
@@ -2227,7 +2244,8 @@ Text(TextProps text)
         ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
-    if(ui_tree_building && IsWindowReady()) {
+    if(ui_tree_building && IsWindowReady() &&
+       !ui_tree_node_uses_retained_layout(node)) {
         ui_paint_text_box(value, bounds, font, text.color, text.wrap,
                           text.align, text.vertical_align,
                           ui_active_font_token());
