@@ -169,6 +169,8 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int controls_y;
     int finish;
     Color scrim;
+    Color panel;
+    Color panel_border;
     IconButtonProps icon_props;
 
     g_ui_guide_debug.valid = 0;
@@ -240,10 +242,13 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     guide_draw_scrim(view_w, view_h, guide.steps[step].anchor, scrim);
     DrawRectangleLinesEx(guide.steps[step].anchor, (float)Scale(2),
                          GetThemeText());
-    DrawRectangleRounded(tip, 0.08f, 8, GetThemeButton());
-    DrawRectangleRoundedLines(tip, 0.08f, 8,
-                              DarkenUIColor(GetThemeButton(), 35));
     guide_draw_arrow(tip, guide.steps[step].anchor);
+
+    panel = GetThemeSurface();
+    panel.a = 255;
+    panel_border = Fade(GetThemeText(), 0.22f);
+    DrawRectangleRounded(tip, 0.08f, 8, panel);
+    DrawRectangleRoundedLines(tip, 0.08f, 8, panel_border);
 
     memset(&icon_props, 0, sizeof(icon_props));
     close_button.x = tip.x + tip.width - pad - close_size;
