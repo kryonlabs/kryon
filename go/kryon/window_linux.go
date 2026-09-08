@@ -20,10 +20,12 @@ import (
 
 type windowRuntime struct {
 	Runtime
-	window *x11Window
-	fps    int
-	last   time.Time
-	closed bool
+	window  *x11Window
+	ime     *ibusInputMethod
+	fps     int
+	last    time.Time
+	closed  bool
+	focused bool
 
 	// frame *image.RGBA     reused target image (reallocation only on resize)
 	// prevOps/nextOps       double buffer for change detection
@@ -55,11 +57,21 @@ func openWindowRuntime(config AppConfig) (Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &windowRuntime{Runtime: base, window: win, fps: config.FPS}, nil
+	wr := &windowRuntime{Runtime: base, window: win, fps: config.FPS}
+	if im, imErr := openIBusInputMethod(); imErr == nil {
+		wr.ime = im
+	} else if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "kryon: native input method unavailable: %v\n", imErr)
+	}
+	return wr, nil
 }
 
 func (r *windowRuntime) Close() {
 	r.closed = true
+	if r.ime != nil {
+		r.ime.close()
+		r.ime = nil
+	}
 	if r.window != nil {
 		r.window.close()
 	}
@@ -83,6 +95,7 @@ func (r *windowRuntime) EndFrame() {
 	if fr, ok := r.Runtime.(frameOpController); ok {
 		ops = fr.FrameOps()
 	}
+	r.updateInputMethod(ops)
 	if os.Getenv("KRYON_OPS_DEBUG") != "" {
 		n := len(ops)
 		if n > 80 {
@@ -164,6 +177,13 @@ func (r *windowRuntime) pumpEvents() {
 
 		case x11EventExposeKind:
 			r.dirty = true // server asks for a repaint after occlusion
+		case x11EventFocusIn:
+			r.focused = true
+		case x11EventFocusOut:
+			r.focused = false
+			if r.ime != nil {
+				r.ime.focusOut()
+			}
 		case x11EventTap:
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
@@ -186,23 +206,98 @@ func (r *windowRuntime) pumpEvents() {
 				c.QueueMouseWheel(ev.wheel)
 			}
 		case x11EventKey:
-			if c, ok := r.Runtime.(inputController); ok {
-				if ev.shortcut != 0 {
-					if modified, ok := r.Runtime.(modifiedInputController); ok {
-						modified.queueModifiedKey(ev.shortcut, ev.shift, true)
-					} else {
-						c.QueueShortcut(ev.shortcut)
-					}
-				} else if ev.shift && ev.key != 0 {
-					c.QueueShiftKey(ev.key)
-				} else if ev.key != 0 {
-					c.QueueKey(ev.key)
-				} else if ev.text != "" {
-					c.QueueText(ev.text)
-				}
+			if r.ime != nil && r.hasFocusedTextInput() &&
+				r.ime.processKey(ev.keysym, ev.keycode, ev.state) {
+				continue
+			}
+			r.queueDecodedKey(ev)
+		case x11EventKeyRelease:
+			if r.ime != nil && r.hasFocusedTextInput() {
+				_ = r.ime.processKey(ev.keysym, ev.keycode, ev.state|ibusReleaseMask)
 			}
 		}
 	}
+	if r.ime != nil {
+		if c, ok := r.Runtime.(interface {
+			SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
+		}); ok {
+			for _, event := range r.ime.drain() {
+				c.SubmitTextComposition(event.Phase, event.Text, event.Cursor, event.SelectionLength)
+			}
+		}
+		for _, key := range r.ime.drainForwarded() {
+			if key.state&ibusReleaseMask == 0 {
+				r.queueDecodedKey(x11EventFromKeysym(key.keyval, key.state))
+			}
+		}
+	}
+}
+
+func (r *windowRuntime) queueDecodedKey(event x11Event) {
+	c, ok := r.Runtime.(inputController)
+	if !ok {
+		return
+	}
+	if event.shortcut != 0 {
+		if modified, ok := r.Runtime.(modifiedInputController); ok {
+			modified.queueModifiedKey(event.shortcut, event.shift, true)
+		} else {
+			c.QueueShortcut(event.shortcut)
+		}
+	} else if event.shift && event.key != 0 {
+		c.QueueShiftKey(event.key)
+	} else if event.key != 0 {
+		c.QueueKey(event.key)
+	} else if event.text != "" {
+		c.QueueText(event.text)
+	}
+}
+
+func (r *windowRuntime) hasFocusedTextInput() bool {
+	if !r.focused {
+		return false
+	}
+	for _, op := range r.FrameOps() {
+		if editableTextInput(op) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *windowRuntime) updateInputMethod(ops []FrameOp) {
+	if r.ime == nil {
+		return
+	}
+	if !r.focused {
+		r.ime.focusOut()
+		return
+	}
+	for _, op := range ops {
+		if !editableTextInput(op) {
+			continue
+		}
+		r.ime.focusIn()
+		cursor := clampCursor(op.Text, int(op.Cursor))
+		prefix := op.Text[:cursor]
+		line := strings.Count(prefix, "\n")
+		if newline := strings.LastIndexByte(prefix, '\n'); newline >= 0 {
+			prefix = prefix[newline+1:]
+		}
+		x := op.Bounds.X + 6 + float32(runtimeTextWidth(prefix, op.FontSize))
+		y := op.Bounds.Y + float32(line+1)*float32(max(op.FontSize+4, int32(1)))
+		if y > op.Bounds.Y+op.Bounds.Height {
+			y = op.Bounds.Y + op.Bounds.Height
+		}
+		r.ime.setCursor(int32(x), int32(y), 1, max(op.FontSize, int32(1)))
+		return
+	}
+	r.ime.focusOut()
+}
+
+func editableTextInput(op FrameOp) bool {
+	return op.Focused && !op.ReadOnly && !op.Secure &&
+		(op.Kind == FrameOpTextField || op.Kind == FrameOpTextArea)
 }
 
 func (r *windowRuntime) QueueTap(x, y float32) {
@@ -315,31 +410,37 @@ func (r *windowRuntime) CharPressed() int32 {
 }
 
 const (
-	x11EventKeyPress        = 2
-	x11EventButtonPress     = 4
-	x11EventButtonRelease   = 5
-	x11EventMotionNotify    = 6
-	x11EventExpose          = 12
-	x11EventConfigureNotify = 22
-	x11EventClientMessage   = 33
+	x11EventKeyPress         = 2
+	x11EventKeyReleaseNotify = 3
+	x11EventButtonPress      = 4
+	x11EventButtonRelease    = 5
+	x11EventMotionNotify     = 6
+	x11EventFocusInNotify    = 9
+	x11EventFocusOutNotify   = 10
+	x11EventExpose           = 12
+	x11EventConfigureNotify  = 22
+	x11EventClientMessage    = 33
 
 	x11InputOutput = 1
 	x11ZPixmap     = 2
 
 	x11EventMaskKeyPress        = 1 << 0
+	x11EventMaskKeyRelease      = 1 << 1
 	x11EventMaskButtonPress     = 1 << 2
 	x11EventMaskButtonRelease   = 1 << 3
 	x11EventMaskPointerMotion   = 1 << 6
 	x11EventMaskExposure        = 1 << 15
 	x11EventMaskStructureNotify = 1 << 17
+	x11EventMaskFocusChange     = 1 << 21
 
 	x11CWBackPixel = 1 << 1
 	x11CWEventMask = 1 << 11
 
 	x11AtomAtom = 4
 
-	x11ShiftMask   = 1
-	x11ControlMask = 4
+	x11ShiftMask    = 1
+	x11ControlMask  = 4
+	ibusReleaseMask = uint32(1 << 30)
 )
 
 type x11Window struct {
@@ -388,7 +489,10 @@ const (
 	x11EventRelease
 	x11EventWheel
 	x11EventKey
+	x11EventKeyRelease
 	x11EventExposeKind
+	x11EventFocusIn
+	x11EventFocusOut
 )
 
 type x11Event struct {
@@ -400,6 +504,9 @@ type x11Event struct {
 	shortcut int32
 	shift    bool
 	text     string
+	keysym   uint32
+	keycode  uint8
+	state    uint32
 }
 
 func openX11Window(config AppConfig) (*x11Window, error) {
@@ -622,7 +729,7 @@ func (w *x11Window) create(config AppConfig) error {
 
 	values := []uint32{
 		0xffffff,
-		x11EventMaskKeyPress | x11EventMaskButtonPress | x11EventMaskButtonRelease | x11EventMaskPointerMotion | x11EventMaskExposure | x11EventMaskStructureNotify,
+		x11EventMaskKeyPress | x11EventMaskKeyRelease | x11EventMaskButtonPress | x11EventMaskButtonRelease | x11EventMaskPointerMotion | x11EventMaskExposure | x11EventMaskStructureNotify | x11EventMaskFocusChange,
 	}
 	req := make([]byte, 32+len(values)*4)
 	req[0] = 1
@@ -998,6 +1105,16 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 		if ev, ok := w.decodeKey(buf[1], get16(buf[28:])); ok {
 			return ev, true
 		}
+	case x11EventKeyReleaseNotify:
+		if ev, ok := w.decodeKey(buf[1], get16(buf[28:])); ok {
+			ev.kind = x11EventKeyRelease
+			ev.key, ev.shortcut, ev.text = 0, 0, ""
+			return ev, true
+		}
+	case x11EventFocusInNotify:
+		return x11Event{kind: x11EventFocusIn}, true
+	case x11EventFocusOutNotify:
+		return x11Event{kind: x11EventFocusOut}, true
 	case x11EventExpose:
 		return x11Event{}, false
 	}
@@ -1013,35 +1130,35 @@ func (w *x11Window) decodeKey(keycode uint8, state uint16) (x11Event, bool) {
 		return x11Event{}, false
 	}
 	shift := state&x11ShiftMask != 0
-	ctrl := state&x11ControlMask != 0
 	ks := syms[0]
 	if shift && len(syms) > 1 && syms[1] != 0 {
 		ks = syms[1]
 	}
-	if ctrl {
-		if k := shortcutKey(ks); k != 0 {
-			if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
-				fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x shortcut=%d\n", keycode, state, ks, k)
-			}
-			return x11Event{kind: x11EventKey, shortcut: k, shift: shift}, true
-		}
-	}
-	if key := specialKey(ks); key != 0 {
-		if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
-			fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x special=%d\n", keycode, state, ks, key)
-		}
-		return x11Event{kind: x11EventKey, key: key}, true
-	}
-	if text := keysymText(ks); text != "" {
-		if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
-			fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x text=%q\n", keycode, state, ks, text)
-		}
-		return x11Event{kind: x11EventKey, text: text}, true
-	}
+	event := x11EventFromKeysym(ks, uint32(state))
+	event.keycode = keycode
 	if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x ignored\n", keycode, state, ks)
+		fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x key=%d shortcut=%d text=%q\n",
+			keycode, state, ks, event.key, event.shortcut, event.text)
 	}
-	return x11Event{}, false
+	return event, true
+}
+
+func x11EventFromKeysym(keysym, state uint32) x11Event {
+	event := x11Event{
+		kind: x11EventKey, keysym: keysym, state: state,
+		shift: state&x11ShiftMask != 0,
+	}
+	if state&x11ControlMask != 0 {
+		event.shortcut = shortcutKey(keysym)
+		if event.shortcut != 0 {
+			return event
+		}
+	}
+	if event.key = specialKey(keysym); event.key != 0 {
+		return event
+	}
+	event.text = keysymText(keysym)
+	return event
 }
 
 func (w *x11Window) close() {

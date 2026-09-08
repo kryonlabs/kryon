@@ -261,7 +261,16 @@ one commit operation; retained widget state no longer duplicates preedit text,
 cursor or selection fields. Immediate TextField/TextArea tests cover UTF-8
 preedit without caller-buffer mutation, commits, selection replacement and
 read-only cancellation.
-OS-window Go IME delivery remains unfinished.
+The pure-Go Linux/X11 window backend now connects directly to the desktop's
+IBus daemon without cgo. Each window owns one input context; X11 press/release
+and focus events pass through it before the ordinary keysym fallback, and
+CommitText/UpdatePreeditText signals feed the existing runtime-local
+composition queue. Cursor positions are converted from IBus codepoints to the
+runtime's UTF-8 byte offsets, and candidate placement follows the focused
+TextField/TextArea caret. A fake-daemon protocol test covers context setup,
+key forwarding and Unicode preedit/commit, while an opt-in test verifies the
+real desktop daemon. Other Linux input-method protocols and device-level
+Android/Win32 IME delivery remain unverified.
 Read-only TextField/TextArea behavior is now covered by the native generated
 composition fixture: selection/copy remains usable while text, cut/paste,
 deletion and IME commits cannot mutate buffers. C retained mutation paths now

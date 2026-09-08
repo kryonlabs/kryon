@@ -129,6 +129,10 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	if !ok || ev.kind != x11EventKey || ev.key != KeyUp {
 		t.Fatalf("decode up = %#v ok=%v, want KeyUp", ev, ok)
 	}
+	ev, ok = win.decodeKey(111, x11ShiftMask)
+	if !ok || ev.key != KeyUp || !ev.shift {
+		t.Fatalf("decode shift-up = %#v", ev)
+	}
 
 	win.keysyms[113] = []uint32{0xffbf, 0}
 	ev, ok = win.decodeKey(113, 0)
@@ -144,6 +148,41 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	ev, ok = win.decodeKey(55, x11ControlMask|x11ShiftMask)
 	if !ok || ev.kind != x11EventKey || ev.shortcut != KeyLeft || !ev.shift {
 		t.Fatalf("decode ctrl-shift-left = %#v ok=%v, want shifted shortcut KeyLeft", ev, ok)
+	}
+}
+
+func TestX11DecodeKeyboardCarriesNativeIMEData(t *testing.T) {
+	win := &x11Window{keysyms: map[uint8][]uint32{38: {'a', 'A'}}}
+	event, ok := win.decodeKey(38, x11ShiftMask)
+	if !ok {
+		t.Fatal("shifted key was not decoded")
+	}
+	if event.keysym != uint32('A') || event.keycode != 38 || event.state != x11ShiftMask {
+		t.Fatalf("native key data = %+v", event)
+	}
+
+	buf := make([]byte, 32)
+	buf[0] = x11EventKeyReleaseNotify
+	buf[1] = 38
+	put16(buf[28:], x11ShiftMask)
+	event, ok = win.decodeEvent(buf)
+	if !ok || event.kind != x11EventKeyRelease || event.keysym != uint32('A') {
+		t.Fatalf("release event = %+v, ok=%v", event, ok)
+	}
+}
+
+func TestX11DecodeWindowFocusEvents(t *testing.T) {
+	win := &x11Window{}
+	for raw, want := range map[byte]x11EventKind{
+		x11EventFocusInNotify:  x11EventFocusIn,
+		x11EventFocusOutNotify: x11EventFocusOut,
+	} {
+		buf := make([]byte, 32)
+		buf[0] = raw
+		event, ok := win.decodeEvent(buf)
+		if !ok || event.kind != want {
+			t.Fatalf("focus event %d = %+v, ok=%v", raw, event, ok)
+		}
 	}
 }
 
