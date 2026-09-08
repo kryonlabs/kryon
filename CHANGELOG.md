@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.81 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.81
+- Add native word text editing
+
 ## v0.1.80 - 2026-09-08
 
 ### Changed
