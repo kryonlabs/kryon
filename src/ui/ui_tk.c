@@ -2,7 +2,7 @@
 #include "ui_tk.h"
 #include "ui_numeric_input_internal.h"
 #include "ui_popup_input_internal.h"
-#include "menu_store.h"
+#include "toolkit_store.h"
 #include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -17,11 +17,6 @@ static const TextInputStyle kryon_zero_text_input_style;
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
 #define UI_DRAG_DROP_DATA_MAX 1024
-static int g_drag_active = 0;
-static float g_drag_last_x = 0.0f;
-static UIPopupInputOwner g_drag_owner = {0};
-static int g_slider_active = 0;
-static UIPopupInputOwner g_slider_owner = {0};
 typedef struct UINumericClickState {
     int valid;
     int kind;
@@ -30,7 +25,6 @@ typedef struct UINumericClickState {
     Vector2 position;
     double time;
 } UINumericClickState;
-static UINumericClickState g_numeric_click = {0};
 typedef struct UIDragDropState {
     int active;
     int source_id;
@@ -38,7 +32,6 @@ typedef struct UIDragDropState {
     unsigned char data[UI_DRAG_DROP_DATA_MAX];
     int data_size;
 } UIDragDropState;
-static UIDragDropState g_drag_drop = {0};
 static int ui_slider_float(SliderFloatProps slider, int vertical);
 typedef struct UIMenuOverlayState {
     int active;
@@ -72,7 +65,14 @@ typedef struct UIMenuNavigation {
     unsigned long key_frame;
 } UIMenuNavigation;
 
-struct MenuStore {
+struct ToolkitStore {
+    int drag_active;
+    float drag_last_x;
+    UIPopupInputOwner drag_owner;
+    int slider_active;
+    UIPopupInputOwner slider_owner;
+    UINumericClickState numeric_click;
+    UIDragDropState drag_drop;
     int open_id;
     int submenu_id;
     Rectangle panel_bounds;
@@ -89,13 +89,13 @@ struct MenuStore {
     UIMenuNavigation navigation;
 };
 
-static MenuStore fallback_menu_store;
-static MenuStore *current_menu_store = &fallback_menu_store;
+static ToolkitStore fallback_toolkit_store;
+static ToolkitStore *current_toolkit_store = &fallback_toolkit_store;
 
-MenuStore *
-menu_store_new(void)
+ToolkitStore *
+toolkit_store_new(void)
 {
-    MenuStore *store = calloc(1, sizeof(*store));
+    ToolkitStore *store = calloc(1, sizeof(*store));
 
     if(store == NULL)
         abort();
@@ -103,34 +103,34 @@ menu_store_new(void)
 }
 
 void
-menu_store_free(MenuStore *store)
+toolkit_store_free(ToolkitStore *store)
 {
     if(store == NULL)
         return;
-    if(store == current_menu_store || store == &fallback_menu_store)
+    if(store == current_toolkit_store || store == &fallback_toolkit_store)
         abort();
     free(store);
 }
 
-MenuStore *
-menu_store_swap(MenuStore *store)
+ToolkitStore *
+toolkit_store_swap(ToolkitStore *store)
 {
-    MenuStore *previous = current_menu_store;
+    ToolkitStore *previous = current_toolkit_store;
 
-    current_menu_store = store != NULL ? store : &fallback_menu_store;
+    current_toolkit_store = store != NULL ? store : &fallback_toolkit_store;
     return previous;
 }
 
-MenuStore *
-menu_store_current(void)
+ToolkitStore *
+toolkit_store_current(void)
 {
-    return current_menu_store;
+    return current_toolkit_store;
 }
 
-static MenuStore *
-menu_state(void)
+static ToolkitStore *
+toolkit_state(void)
 {
-    return current_menu_store;
+    return current_toolkit_store;
 }
 
 typedef struct UIRadioAnimState {
@@ -191,7 +191,7 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
 static int
 ui_menu_bar_owns_open_menu(int id, int menu_count)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
 
     return state->open_id >= id + 1 && state->open_id <= id + menu_count;
 }
@@ -232,7 +232,7 @@ ui_draw_menu_panel(Rectangle bounds)
 static void
 ui_menu_track_panel(Rectangle bounds)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     float x1;
     float y1;
     float x2;
@@ -419,12 +419,13 @@ DrawUISeparatorText(SeparatorTextProps separator)
 int
 DrawUIDragDropSource(DragDropSourceProps source)
 {
+    ToolkitStore *toolkit = toolkit_state();
     int hot;
 
-    if(g_drag_drop.active && g_drag_drop.source_id == source.id &&
+    if(toolkit->drag_drop.active && toolkit->drag_drop.source_id == source.id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_drag_drop = (UIDragDropState){0};
+        toolkit->drag_drop = (UIDragDropState){0};
     if(source.disabled || UIContentDisabled() || source.type == NULL || source.type[0] == '\0' ||
        source.data_size < 0 || source.data_size > UI_DRAG_DROP_DATA_MAX ||
        (source.data_size > 0 && source.data == NULL))
@@ -433,15 +434,17 @@ DrawUIDragDropSource(DragDropSourceProps source)
     if(hot)
         MarkUIClickable();
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        g_drag_drop = (UIDragDropState){0};
-        g_drag_drop.active = 1;
-        g_drag_drop.source_id = source.id;
-        snprintf(g_drag_drop.type, sizeof(g_drag_drop.type), "%s", source.type);
-        g_drag_drop.data_size = source.data_size;
+        toolkit->drag_drop = (UIDragDropState){0};
+        toolkit->drag_drop.active = 1;
+        toolkit->drag_drop.source_id = source.id;
+        snprintf(toolkit->drag_drop.type, sizeof(toolkit->drag_drop.type),
+                 "%s", source.type);
+        toolkit->drag_drop.data_size = source.data_size;
         if(source.data_size > 0)
-            memcpy(g_drag_drop.data, source.data, (size_t)source.data_size);
+            memcpy(toolkit->drag_drop.data, source.data,
+                   (size_t)source.data_size);
     }
-    return g_drag_drop.active && g_drag_drop.source_id == source.id &&
+    return toolkit->drag_drop.active && toolkit->drag_drop.source_id == source.id &&
            (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ||
             IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
 }
@@ -449,12 +452,13 @@ DrawUIDragDropSource(DragDropSourceProps source)
 int
 DrawUIDragDropTarget(DragDropTargetProps target)
 {
+    ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
     int hot = CheckCollisionPointRec(mouse, target.bounds) &&
               !UIContentDisabled() && !UIInspectInputCapturesClick(mouse) &&
               !ui_input_captures_click_internal(mouse, 0);
-    int matches = g_drag_drop.active && target.type != NULL &&
-                  strcmp(g_drag_drop.type, target.type) == 0;
+    int matches = toolkit->drag_drop.active && target.type != NULL &&
+                  strcmp(toolkit->drag_drop.type, target.type) == 0;
 
     if(target.accepted_size != NULL)
         *target.accepted_size = 0;
@@ -465,13 +469,13 @@ DrawUIDragDropTarget(DragDropTargetProps target)
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         return 0;
     if(target.output != NULL && target.output_size > 0) {
-        int copied = g_drag_drop.data_size < target.output_size
-                         ? g_drag_drop.data_size : target.output_size;
-        memcpy(target.output, g_drag_drop.data, (size_t)copied);
+        int copied = toolkit->drag_drop.data_size < target.output_size
+                         ? toolkit->drag_drop.data_size : target.output_size;
+        memcpy(target.output, toolkit->drag_drop.data, (size_t)copied);
         if(target.accepted_size != NULL)
             *target.accepted_size = copied;
     }
-    g_drag_drop = (UIDragDropState){0};
+    toolkit->drag_drop = (UIDragDropState){0};
     UIConsumeRelease();
     return 1;
 }
@@ -826,7 +830,7 @@ static int menu_last_item(const MenuItem *items, int count)
 static void
 menu_navigation_begin_frame(void)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
 
     if(state->navigation.key_frame == g_ui_frame_serial)
         return;
@@ -837,7 +841,7 @@ menu_navigation_begin_frame(void)
 static void
 menu_navigation_reset(int focus_id, const MenuItem *items, int item_count)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
 
     state->navigation.focus_id = focus_id;
     state->navigation.top = 0;
@@ -851,7 +855,7 @@ static int
 draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 int focus_id, int depth)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     int font = GetFontSize();
     int row_h = Scale(30);
     int pad = Scale(12);
@@ -1081,7 +1085,7 @@ copy_menu_items(MenuItem *arena, int *used, const MenuItem *items,
 static void
 queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     int count = 0;
     int used = 0;
 
@@ -1103,7 +1107,7 @@ queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
 MenuBarResult
 DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     MenuBarResult result = {0, -1};
     int font = GetFontSize();
     int x = (int)bounds.x + Scale(4);
@@ -1261,7 +1265,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
 void
 ui_draw_menu_overlays(void)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     int activated;
 
     if(state->overlay.active && state->open_id != 0) {
@@ -1323,7 +1327,7 @@ DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 int
 DrawUIContextMenu(ContextMenuProps menu)
 {
-    MenuStore *state = menu_state();
+    ToolkitStore *state = toolkit_state();
     Vector2 mouse = ui_mouse_world();
     int open_local = 0;
     int x_local = 0;
@@ -1693,6 +1697,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
                      int focus_id, void *value, const char *format,
                      int disabled, int integer, int *editing)
 {
+    ToolkitStore *toolkit = toolkit_state();
     int enabled = !disabled && !UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) ||
                   IsKeyDown(KEY_RIGHT_CONTROL);
@@ -1701,13 +1706,13 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     Vector2 mouse = ui_mouse_world();
     double now = GetTime();
     int slop = Scale(6);
-    float dx = mouse.x - g_numeric_click.position.x;
-    float dy = mouse.y - g_numeric_click.position.y;
-    int double_click = pressed && g_numeric_click.valid &&
-        g_numeric_click.kind == kind &&
-        g_numeric_click.widget_id == widget_id &&
-        g_numeric_click.component == component &&
-        now - g_numeric_click.time <= 0.30 &&
+    float dx = mouse.x - toolkit->numeric_click.position.x;
+    float dy = mouse.y - toolkit->numeric_click.position.y;
+    int double_click = pressed && toolkit->numeric_click.valid &&
+        toolkit->numeric_click.kind == kind &&
+        toolkit->numeric_click.widget_id == widget_id &&
+        toolkit->numeric_click.component == component &&
+        now - toolkit->numeric_click.time <= 0.30 &&
         dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
     int activate = pressed && (control || double_click);
     UINumericInputState *state =
@@ -1716,11 +1721,11 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     int changed = 0;
 
     if(pressed) {
-        g_numeric_click = (UINumericClickState){
+        toolkit->numeric_click = (UINumericClickState){
             1, kind, widget_id, component, mouse, now
         };
         if(activate)
-            g_numeric_click.valid = 0;
+            toolkit->numeric_click.valid = 0;
     }
 
     if(state == NULL && !activate) {
@@ -1743,8 +1748,8 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
         state->cursor = (int)strlen(state->text);
         state->focused = 1;
         SetUIFocus(focus_id);
-        g_drag_active = 0;
-        g_slider_active = 0;
+        toolkit->drag_active = 0;
+        toolkit->slider_active = 0;
     }
     if(!state->focused) {
         *editing = 0;
@@ -1798,30 +1803,31 @@ static int
 ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
               float *delta)
 {
+    ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
     disabled = disabled || UIContentDisabled();
     int hot = !disabled && ui_hot(bounds);
 
     *delta = 0.0f;
-    if(g_drag_active && ui_popup_input_owner_captures(g_drag_owner))
-        g_drag_active = 0;
-    if(disabled && g_drag_active == token)
-        g_drag_active = 0;
+    if(toolkit->drag_active && ui_popup_input_owner_captures(toolkit->drag_owner))
+        toolkit->drag_active = 0;
+    if(disabled && toolkit->drag_active == token)
+        toolkit->drag_active = 0;
     if(hot)
         MarkUIClickable();
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        g_drag_active = token;
-        g_drag_last_x = mouse.x;
-        g_drag_owner = ui_popup_input_owner();
+        toolkit->drag_active = token;
+        toolkit->drag_last_x = mouse.x;
+        toolkit->drag_owner = ui_popup_input_owner();
         if(focus_id > 0)
             SetUIFocus(focus_id);
     }
-    if(!disabled && g_drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        *delta = mouse.x - g_drag_last_x;
-        g_drag_last_x = mouse.x;
+    if(!disabled && toolkit->drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        *delta = mouse.x - toolkit->drag_last_x;
+        toolkit->drag_last_x = mouse.x;
     }
-    if(g_drag_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_drag_active = 0;
+    if(toolkit->drag_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        toolkit->drag_active = 0;
     return *delta != 0.0f;
 }
 
@@ -2050,24 +2056,26 @@ static int
 ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
                 int vertical, float *ratio)
 {
+    ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
     disabled = disabled || UIContentDisabled();
     int hot = !disabled && ui_hot(bounds);
     int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
-    if(g_slider_active && ui_popup_input_owner_captures(g_slider_owner))
-        g_slider_active = 0;
-    if(disabled && g_slider_active == token)
-        g_slider_active = 0;
+    if(toolkit->slider_active &&
+       ui_popup_input_owner_captures(toolkit->slider_owner))
+        toolkit->slider_active = 0;
+    if(disabled && toolkit->slider_active == token)
+        toolkit->slider_active = 0;
     if(hot)
         MarkUIClickable();
     if(pressed) {
-        g_slider_active = token;
-        g_slider_owner = ui_popup_input_owner();
+        toolkit->slider_active = token;
+        toolkit->slider_owner = ui_popup_input_owner();
         if(focus_id > 0)
             SetUIFocus(focus_id);
     }
-    if(!disabled && g_slider_active == token &&
+    if(!disabled && toolkit->slider_active == token &&
        (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
         float span = vertical ? bounds.height : bounds.width;
         float position = vertical ? bounds.y + bounds.height - mouse.y
@@ -2077,8 +2085,8 @@ ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
         if(*ratio > 1.0f) *ratio = 1.0f;
         return 1;
     }
-    if(g_slider_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        g_slider_active = 0;
+    if(toolkit->slider_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        toolkit->slider_active = 0;
     return 0;
 }
 

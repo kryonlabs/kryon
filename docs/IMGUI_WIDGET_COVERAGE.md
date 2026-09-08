@@ -144,11 +144,14 @@ process-global statics. Interleaved graphical hosts use the same tab ID without
 sharing omitted scroll state, and restoring the outer host restores its state
 immediately. Menu open state, submenu navigation, deferred overlays, and
 activation results are host-owned as well; an interleaved-host regression uses
-the same menu-bar ID without exposing one host's open menu to the other. Native
+the same menu-bar ID without exposing one host's open menu to the other. Drag,
+slider, numeric double-click, and copied drag/drop payload state share that
+private host owner. A release in one host cannot observe another host's active
+drag source, while restoring the source host exposes it immediately. Native
 auxiliary windows also retain their own active focus ID
 and restore the caller's focus on exit. A real-window regression reopens one
-across frames and checks both directions of focus isolation. The broader C
-pointer and text-edit state is still shared.
+across frames and checks both directions of focus isolation. The broader C text-edit
+state is still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real
 pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background

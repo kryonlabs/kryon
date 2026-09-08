@@ -370,6 +370,42 @@ int main(void)
     ui_paint_layers_composite(replacement_host);
     ui_paint_layers_destroy(replacement_host);
 
+    UIPaintLayers *gesture_a = ui_paint_layers_create();
+    UIPaintLayers *gesture_b = ui_paint_layers_create();
+    int drag_payload = 73;
+    DragDropSourceProps drag_source = {
+        .bounds = {0,0,8,8},
+        .id = 41250,
+        .type = "host-payload",
+        .data = &drag_payload,
+        .data_size = sizeof(drag_payload)
+    };
+    InjectReset();
+    InjectMousePosition(4,4);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    ui_paint_layers_frame(gesture_a,64,64);
+    if(!DrawUIDragDropSource(drag_source)) {
+        fprintf(stderr,"first host did not retain its drag payload\n");
+        failures++;
+    }
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    ui_paint_layers_frame(gesture_b,64,64);
+    if(DrawUIDragDropSource(drag_source)) {
+        fprintf(stderr,"drag payload crossed render hosts\n");
+        failures++;
+    }
+    ui_paint_layers_composite(gesture_b);
+    if(!DrawUIDragDropSource(drag_source)) {
+        fprintf(stderr,"restored host lost its drag payload\n");
+        failures++;
+    }
+    ui_paint_layers_composite(gesture_a);
+    ui_paint_layers_destroy(gesture_b);
+    ui_paint_layers_destroy(gesture_a);
+    InjectReset();
+
     UIPaintLayers *host_a = ui_paint_layers_create();
     UIPaintLayers *host_b = ui_paint_layers_create();
     Menu host_menus[] = {{.label = "Host"}};
