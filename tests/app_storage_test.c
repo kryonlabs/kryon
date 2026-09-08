@@ -38,18 +38,18 @@ main(void)
     snprintf(path, sizeof(path), ".kryon_%s_count.txt", scope);
     remove(path);
 
-    check_int("missing string", KryAppStorageGetString(scope, "name", "fallback",
+    check_int("missing string", AppStorageGetString(scope, "name", "fallback",
                                                        out, sizeof(out)), 0);
     check_str("missing fallback", out, "fallback");
-    check_int("set string", KryAppStorageSetString(scope, "name", "stored"), 1);
-    check_int("get string", KryAppStorageGetString(scope, "name", "fallback",
+    check_int("set string", AppStorageSetString(scope, "name", "stored"), 1);
+    check_int("get string", AppStorageGetString(scope, "name", "fallback",
                                                    out, sizeof(out)), 1);
     check_str("stored string", out, "stored");
 
-    check_int("set int", KryAppStorageSetInt(scope, "count", 42), 1);
-    check_int("get int", KryAppStorageGetInt(scope, "count", 7, &value), 1);
+    check_int("set int", AppStorageSetInt(scope, "count", 42), 1);
+    check_int("get int", AppStorageGetInt(scope, "count", 7, &value), 1);
     check_int("stored int", value, 42);
-    check_int("missing int", KryAppStorageGetInt(scope, "missing", 7, &value), 0);
+    check_int("missing int", AppStorageGetInt(scope, "missing", 7, &value), 0);
     check_int("missing int fallback", value, 7);
 
     snprintf(path, sizeof(path), ".kryon_%s_name.txt", scope);

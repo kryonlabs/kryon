@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 typedef struct ThreadTestState {
-    KryMutex mutex;
+    Mutex mutex;
     int value;
 } ThreadTestState;
 
@@ -12,9 +12,9 @@ thread_main(void *userdata)
 {
     ThreadTestState *state = (ThreadTestState *)userdata;
 
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     state->value = 42;
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     return NULL;
 }
 
@@ -22,22 +22,22 @@ int
 main(void)
 {
     ThreadTestState state = {0};
-    KryThread thread = {0};
+    Thread thread = {0};
 
-    KryMutexInit(&state.mutex);
-    if(!KryThreadStart(&thread, thread_main, &state)) {
-        fprintf(stderr, "KryThreadStart failed\n");
+    MutexInit(&state.mutex);
+    if(!ThreadStart(&thread, thread_main, &state)) {
+        fprintf(stderr, "ThreadStart failed\n");
         return 1;
     }
-    KryThreadJoin(&thread);
+    ThreadJoin(&thread);
 
-    KryMutexLock(&state.mutex);
+    MutexLock(&state.mutex);
     if(state.value != 42) {
         fprintf(stderr, "thread value mismatch: %d\n", state.value);
-        KryMutexUnlock(&state.mutex);
+        MutexUnlock(&state.mutex);
         return 1;
     }
-    KryMutexUnlock(&state.mutex);
+    MutexUnlock(&state.mutex);
 
     return 0;
 }

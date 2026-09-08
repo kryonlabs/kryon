@@ -50,7 +50,7 @@ extern KryRaylibCoreData CORE;
 
 static int g_android_surface_w;
 static int g_android_surface_h;
-static KryMutex g_android_window_insets_mutex = KRY_MUTEX_INIT;
+static Mutex g_android_window_insets_mutex = MUTEX_INIT;
 static AndroidWindowInsets g_android_window_insets;
 static int g_android_window_insets_ready;
 static AndroidViewportPolicy g_android_viewport_policy;
@@ -104,7 +104,7 @@ SetAndroidWindowInsets(int system_left, int system_top,
                        int cutout_left, int cutout_top,
                        int cutout_right, int cutout_bottom)
 {
-    KryMutexLock(&g_android_window_insets_mutex);
+    MutexLock(&g_android_window_insets_mutex);
     g_android_window_insets.system_left = android_nonnegative(system_left);
     g_android_window_insets.system_top = android_nonnegative(system_top);
     g_android_window_insets.system_right = android_nonnegative(system_right);
@@ -115,7 +115,7 @@ SetAndroidWindowInsets(int system_left, int system_top,
     g_android_window_insets.cutout_right = android_nonnegative(cutout_right);
     g_android_window_insets.cutout_bottom = android_nonnegative(cutout_bottom);
     g_android_window_insets_ready = 1;
-    KryMutexUnlock(&g_android_window_insets_mutex);
+    MutexUnlock(&g_android_window_insets_mutex);
 }
 
 int
@@ -123,11 +123,11 @@ GetAndroidWindowInsets(AndroidWindowInsets *out)
 {
     int ready;
 
-    KryMutexLock(&g_android_window_insets_mutex);
+    MutexLock(&g_android_window_insets_mutex);
     if(out != NULL)
         memcpy(out, &g_android_window_insets, sizeof(*out));
     ready = g_android_window_insets_ready;
-    KryMutexUnlock(&g_android_window_insets_mutex);
+    MutexUnlock(&g_android_window_insets_mutex);
     return ready;
 }
 

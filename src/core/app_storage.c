@@ -133,7 +133,7 @@ done:
 }
 
 int
-KryAppStorageGetString(const char *scope, const char *key,
+AppStorageGetString(const char *scope, const char *key,
                        const char *fallback, char *out, int out_size)
 {
     JavaVM *jvm;
@@ -192,7 +192,7 @@ done:
 }
 
 int
-KryAppStorageSetString(const char *scope, const char *key, const char *value)
+AppStorageSetString(const char *scope, const char *key, const char *value)
 {
     JavaVM *jvm;
     JNIEnv *env = NULL;
@@ -249,7 +249,7 @@ storage_path(char *dst, size_t dst_size, const char *scope, const char *key)
 #endif
 
 const char *
-KryAppDataRoot(const char *app_id)
+AppDataRoot(const char *app_id)
 {
     static char root[512];
     const char *home;
@@ -298,7 +298,7 @@ KryAppDataRoot(const char *app_id)
 
 #if !ANDROID_BUILD
 int
-KryAppStorageGetString(const char *scope, const char *key,
+AppStorageGetString(const char *scope, const char *key,
                        const char *fallback, char *out, int out_size)
 {
     char path[256];
@@ -324,7 +324,7 @@ KryAppStorageGetString(const char *scope, const char *key,
 }
 
 int
-KryAppStorageSetString(const char *scope, const char *key, const char *value)
+AppStorageSetString(const char *scope, const char *key, const char *value)
 {
     char path[256];
     FILE *f;
@@ -345,7 +345,7 @@ KryAppStorageSetString(const char *scope, const char *key, const char *value)
 #endif
 
 int
-KryAppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
+AppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
 {
     char text[64];
     char *end;
@@ -355,7 +355,7 @@ KryAppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
     if(out == NULL)
         return 0;
     *out = fallback;
-    found = KryAppStorageGetString(scope, key, "", text, sizeof(text));
+    found = AppStorageGetString(scope, key, "", text, sizeof(text));
     if(!found || text[0] == '\0')
         return 0;
     value = strtol(text, &end, 10);
@@ -366,10 +366,10 @@ KryAppStorageGetInt(const char *scope, const char *key, int fallback, int *out)
 }
 
 int
-KryAppStorageSetInt(const char *scope, const char *key, int value)
+AppStorageSetInt(const char *scope, const char *key, int value)
 {
     char text[64];
 
     snprintf(text, sizeof(text), "%d", value);
-    return KryAppStorageSetString(scope, key, text);
+    return AppStorageSetString(scope, key, text);
 }

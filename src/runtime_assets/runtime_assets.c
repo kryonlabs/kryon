@@ -54,8 +54,8 @@ EM_ASYNC_JS(int, runtime_assets_web_init, (const char *root_ptr), {
 static RuntimeAssetDownloadBackend g_download_backend = NULL;
 
 typedef struct RuntimeAssetDownloadState {
-    KryThread thread;
-    KryMutex mutex;
+    Thread thread;
+    Mutex mutex;
     int started;
     int abandoned;
     RuntimeAssetStatus status;
@@ -74,7 +74,7 @@ runtime_asset_state_new(const char *url, const char *path)
 
     if(state == NULL)
         return NULL;
-    KryMutexInit(&state->mutex);
+    MutexInit(&state->mutex);
     state->status = RUNTIME_ASSET_DOWNLOADING;
     snprintf(state->url, sizeof(state->url), "%s", url != NULL ? url : "");
     snprintf(state->path, sizeof(state->path), "%s", path != NULL ? path : "");
@@ -100,10 +100,10 @@ runtime_asset_state_progress(RuntimeAssetDownloadState *state, size_t bytes,
 {
     if(state == NULL)
         return;
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     state->bytes = bytes;
     state->total_bytes = total_bytes;
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
 }
 
 static void
@@ -112,11 +112,11 @@ runtime_asset_state_finish(RuntimeAssetDownloadState *state,
 {
     if(state == NULL)
         return;
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     state->status = status;
     if(error != NULL)
         snprintf(state->error, sizeof(state->error), "%s", error);
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
 }
 
 static int
@@ -255,10 +255,10 @@ fetch_done(emscripten_fetch_t *fetch)
         return;
     }
 
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     state->http_status = fetch->status;
     state->bytes = (size_t)fetch->numBytes;
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     file = fopen(state->path, "wb");
     if(file == NULL) {
         char msg[320];
@@ -266,12 +266,12 @@ fetch_done(emscripten_fetch_t *fetch)
         snprintf(msg, sizeof(msg), "failed to open %s", state->path);
         runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
         emscripten_fetch_close(fetch);
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         if(state->abandoned) {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
             free(state);
         } else {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
         }
         return;
     }
@@ -283,12 +283,12 @@ fetch_done(emscripten_fetch_t *fetch)
         fclose(file);
         runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
         emscripten_fetch_close(fetch);
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         if(state->abandoned) {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
             free(state);
         } else {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
         }
         return;
     }
@@ -297,12 +297,12 @@ fetch_done(emscripten_fetch_t *fetch)
     runtime_asset_state_finish(state, RUNTIME_ASSET_READY, NULL);
     SyncRuntimeAssets();
     emscripten_fetch_close(fetch);
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     if(state->abandoned) {
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
         free(state);
     } else {
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
     }
 }
 
@@ -314,20 +314,20 @@ fetch_failed(emscripten_fetch_t *fetch)
     if(state != NULL) {
         char msg[64];
 
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         state->http_status = fetch->status;
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
         snprintf(msg, sizeof(msg), "HTTP %d", fetch->status);
         runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
     }
     emscripten_fetch_close(fetch);
     if(state != NULL) {
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         if(state->abandoned) {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
             free(state);
         } else {
-            KryMutexUnlock(&state->mutex);
+            MutexUnlock(&state->mutex);
         }
     }
 }
@@ -401,9 +401,9 @@ windows_download_thread_main(void *user_data)
 
     if(HttpQueryInfoA(request, HTTP_QUERY_STATUS_CODE, status_buf, &status_len, &status_index)) {
         status_buf[sizeof(status_buf) - 1] = '\0';
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         state->http_status = strtol(status_buf, NULL, 10);
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
     }
     if(state->http_status < 200 || state->http_status >= 300) {
         char msg[64];
@@ -419,9 +419,9 @@ windows_download_thread_main(void *user_data)
 
     if(HttpQueryInfoA(request, HTTP_QUERY_CONTENT_LENGTH, length_buf, &length_len, &length_index)) {
         length_buf[sizeof(length_buf) - 1] = '\0';
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         state->total_bytes = (size_t)strtoull(length_buf, NULL, 10);
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
     }
 
     while((read_ok = InternetReadFile(request, buffer, sizeof(buffer), &bytes_read)) && bytes_read > 0) {
@@ -436,9 +436,9 @@ windows_download_thread_main(void *user_data)
             runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR, msg);
             return NULL;
         }
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         state->bytes += (size_t)bytes_read;
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
     }
 
     if(!read_ok) {
@@ -453,10 +453,10 @@ windows_download_thread_main(void *user_data)
     fclose(file);
     InternetCloseHandle(request);
     InternetCloseHandle(internet);
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     if(state->total_bytes == 0)
         state->total_bytes = state->bytes;
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     runtime_asset_state_finish(state, RUNTIME_ASSET_READY, NULL);
     return NULL;
 }
@@ -525,17 +525,17 @@ curl_thread_main(void *user_data)
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, state);
 
     res = curl_easy_perform(curl);
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &state->http_status);
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     if(curl_easy_getinfo(curl, CURLINFO_SIZE_DOWNLOAD_T, &downloaded) == CURLE_OK &&
        downloaded > 0)
         runtime_asset_state_progress(state, (size_t)downloaded,
                                      state->total_bytes);
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     if(state->total_bytes == 0 && downloaded > 0)
         state->total_bytes = (size_t)downloaded;
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     curl_easy_cleanup(curl);
     fclose(file);
 
@@ -624,7 +624,7 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
             return 0;
         }
         download->platform = state;
-        if(!KryThreadStart(&state->thread, windows_download_thread_main, state)) {
+        if(!ThreadStart(&state->thread, windows_download_thread_main, state)) {
             download->platform = NULL;
             runtime_asset_state_finish(state, RUNTIME_ASSET_ERROR,
                                        "failed to create download thread");
@@ -644,7 +644,7 @@ DownloadRuntimeAsset(RuntimeAssetDownload *download,
             return 0;
         }
         download->platform = state;
-        if(!KryThreadStart(&state->thread, curl_thread_main, state)) {
+        if(!ThreadStart(&state->thread, curl_thread_main, state)) {
             download->platform = NULL;
             snprintf(download->error, sizeof(download->error), "failed to create download thread");
             download->status = RUNTIME_ASSET_ERROR;
@@ -671,9 +671,9 @@ PollRuntimeAssetDownload(RuntimeAssetDownload *download)
     state = (RuntimeAssetDownloadState *)download->platform;
     if(state == NULL)
         return download->status;
-    KryMutexLock(&state->mutex);
+    MutexLock(&state->mutex);
     runtime_asset_state_copy(download, state);
-    KryMutexUnlock(&state->mutex);
+    MutexUnlock(&state->mutex);
     return download->status;
 }
 
@@ -691,15 +691,15 @@ FreeRuntimeAssetDownload(RuntimeAssetDownload *download)
 #if defined(__EMSCRIPTEN__)
     status = PollRuntimeAssetDownload(download);
     if(status == RUNTIME_ASSET_DOWNLOADING) {
-        KryMutexLock(&state->mutex);
+        MutexLock(&state->mutex);
         state->abandoned = 1;
-        KryMutexUnlock(&state->mutex);
+        MutexUnlock(&state->mutex);
         download->platform = NULL;
         return;
     }
 #else
     if(state->started)
-        KryThreadJoin(&state->thread);
+        ThreadJoin(&state->thread);
     status = PollRuntimeAssetDownload(download);
     (void)status;
 #endif

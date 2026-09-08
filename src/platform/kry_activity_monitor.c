@@ -169,7 +169,7 @@ session_is_wayland(void)
 }
 
 void
-KryActivityMonitorInit(void)
+ActivityMonitorInit(void)
 {
     static const char *const x11_names[] = {"libX11.so.6", "libX11.so", 0};
     static const char *const xss_names[] = {"libXss.so.1", "libXss.so", 0};
@@ -211,26 +211,26 @@ KryActivityMonitorInit(void)
 }
 
 int
-KryActivityIsWayland(void)
+ActivityIsWayland(void)
 {
     return session_is_wayland();
 }
 
 int
-KryActivityAvailable(void)
+ActivityAvailable(void)
 {
     if(!g_inited)
-        KryActivityMonitorInit();
+        ActivityMonitorInit();
     return g_available;
 }
 
 long
-KryActivityGetIdleMilliseconds(void)
+ActivityGetIdleMilliseconds(void)
 {
     KryXScreenSaverInfo *info;
     long idle;
 
-    if(!KryActivityAvailable())
+    if(!ActivityAvailable())
         return -1;
 #if defined(KRYON_NOTIFICATION_GDBUS)
     if(session_is_wayland())
@@ -252,11 +252,11 @@ KryActivityGetIdleMilliseconds(void)
 }
 
 int
-KryActivitySetInputBlocked(int on)
+ActivitySetInputBlocked(int on)
 {
     int ok;
 
-    if(!KryActivityAvailable() || session_is_wayland() || g_display == 0 ||
+    if(!ActivityAvailable() || session_is_wayland() || g_display == 0 ||
        g_root_window == 0 || g_grab_keyboard == 0 || g_ungrab_keyboard == 0)
         return 0;
     if(on) {
@@ -283,18 +283,18 @@ KryActivitySetInputBlocked(int on)
 }
 
 int
-KryActivityInputBlocked(void)
+ActivityInputBlocked(void)
 {
     return g_blocked;
 }
 
 #else
 
-void KryActivityMonitorInit(void) {}
-int KryActivityIsWayland(void) { return 0; }
-int KryActivityAvailable(void) { return 0; }
-long KryActivityGetIdleMilliseconds(void) { return -1; }
-int KryActivitySetInputBlocked(int on) { (void)on; return 0; }
-int KryActivityInputBlocked(void) { return 0; }
+void ActivityMonitorInit(void) {}
+int ActivityIsWayland(void) { return 0; }
+int ActivityAvailable(void) { return 0; }
+long ActivityGetIdleMilliseconds(void) { return -1; }
+int ActivitySetInputBlocked(int on) { (void)on; return 0; }
+int ActivityInputBlocked(void) { return 0; }
 
 #endif

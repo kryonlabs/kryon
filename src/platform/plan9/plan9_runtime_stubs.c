@@ -10,7 +10,7 @@
 #include "platform.h"
 
 int
-KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata)
+ThreadStart(Thread *thread, ThreadMain fn, void *userdata)
 {
     (void)thread;
     (void)fn;
@@ -18,12 +18,12 @@ KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata)
     return 0;
 }
 
-void KryThreadDetach(KryThread *thread) { (void)thread; }
-void KryThreadJoin(KryThread *thread) { (void)thread; }
-void KrySleepSeconds(int seconds) { if(seconds > 0) sleep(seconds * 1000); }
-void KryMutexInit(KryMutex *mutex) { if(mutex != nil) mutex->lock = 0; }
-void KryMutexLock(KryMutex *mutex) { (void)mutex; }
-void KryMutexUnlock(KryMutex *mutex) { (void)mutex; }
+void ThreadDetach(Thread *thread) { (void)thread; }
+void ThreadJoin(Thread *thread) { (void)thread; }
+void SleepSeconds(int seconds) { if(seconds > 0) sleep(seconds * 1000); }
+void MutexInit(Mutex *mutex) { if(mutex != nil) mutex->lock = 0; }
+void MutexLock(Mutex *mutex) { (void)mutex; }
+void MutexUnlock(Mutex *mutex) { (void)mutex; }
 
 void KryonRaylibBackend_rlDrawRenderBatch(void) { }
 

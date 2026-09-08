@@ -23,7 +23,7 @@ extern struct android_app *GetAndroidApp(void);
 
 #define LOG_TAG "KRYON_ANDROID_HOST"
 
-static KryMutex g_android_host_mutex = KRY_MUTEX_INIT;
+static Mutex g_android_host_mutex = MUTEX_INIT;
 static float g_device_density;
 
 static int
@@ -39,9 +39,9 @@ current_device_density(void)
 {
     float density;
 
-    KryMutexLock(&g_android_host_mutex);
+    MutexLock(&g_android_host_mutex);
     density = g_device_density;
-    KryMutexUnlock(&g_android_host_mutex);
+    MutexUnlock(&g_android_host_mutex);
     return density;
 }
 
@@ -189,9 +189,9 @@ done:
 void
 AndroidHostInit(void)
 {
-    KryMutexLock(&g_android_host_mutex);
+    MutexLock(&g_android_host_mutex);
     g_device_density = 0.0f;
-    KryMutexUnlock(&g_android_host_mutex);
+    MutexUnlock(&g_android_host_mutex);
 }
 
 void
@@ -544,9 +544,9 @@ Java_com_kryonlabs_kryon_KryonActivity_nativeSetDeviceDensity(JNIEnv *env,
 
     if(density <= 0.0f)
         return;
-    KryMutexLock(&g_android_host_mutex);
+    MutexLock(&g_android_host_mutex);
     g_device_density = density;
-    KryMutexUnlock(&g_android_host_mutex);
+    MutexUnlock(&g_android_host_mutex);
     SetUIDeviceDensity(density);
 }
 

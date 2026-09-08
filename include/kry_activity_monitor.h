@@ -5,12 +5,12 @@
 extern "C" {
 #endif
 
-void KryActivityMonitorInit(void);
-int KryActivityIsWayland(void);
-int KryActivityAvailable(void);
-long KryActivityGetIdleMilliseconds(void);
-int KryActivitySetInputBlocked(int on);
-int KryActivityInputBlocked(void);
+void ActivityMonitorInit(void);
+int ActivityIsWayland(void);
+int ActivityAvailable(void);
+long ActivityGetIdleMilliseconds(void);
+int ActivitySetInputBlocked(int on);
+int ActivityInputBlocked(void);
 
 #ifdef __cplusplus
 }

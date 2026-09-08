@@ -33,8 +33,8 @@ typedef struct InspectState {
     int listen_fd;
     int running;
     int port;
-    KryThread thread;
-    KryMutex lock;
+    Thread thread;
+    Mutex lock;
     char *snapshot;
     size_t snapshot_len;
     char *next;         /* snapshot being built by Poll (game thread only) */
@@ -244,14 +244,14 @@ SceneInspectPoll(Scene *scene)
     }
     buf_str(st, "]}");
 
-    KryMutexLock(&st->lock);
+    MutexLock(&st->lock);
     free(st->snapshot);
     st->snapshot = st->next;
     st->snapshot_len = st->next_len;
     st->next = NULL;
     st->next_cap = 0;
     st->next_len = 0;
-    KryMutexUnlock(&st->lock);
+    MutexUnlock(&st->lock);
 }
 
 /* --- socket thread ------------------------------------------------------ */
@@ -277,7 +277,7 @@ inspect_thread(void *userdata)
             continue;
         /* drain the request (browsers/curl send a GET first) */
         recv(client, request, sizeof(request), 0);
-        KryMutexLock(&st->lock);
+        MutexLock(&st->lock);
         if(st->snapshot != NULL && st->snapshot_len > 0) {
             size_t head_len = sizeof(HTTP_HEAD) - 1;
 
@@ -288,7 +288,7 @@ inspect_thread(void *userdata)
                 memcpy(body + head_len, st->snapshot, st->snapshot_len);
             }
         }
-        KryMutexUnlock(&st->lock);
+        MutexUnlock(&st->lock);
         if(body != NULL) {
             size_t sent = 0;
 
@@ -349,17 +349,17 @@ SceneInspectServe(Scene *scene, int port)
         st->listen_fd = -1;
         return 0;
     }
-    KryMutexInit(&st->lock);
+    MutexInit(&st->lock);
     st->scene = scene;
     st->port = port;
     st->running = 1;
-    if(KryThreadStart(&st->thread, inspect_thread, st) == 0) {
+    if(ThreadStart(&st->thread, inspect_thread, st) == 0) {
         st->running = 0;
         INSPECT_CLOSE(st->listen_fd);
         st->listen_fd = -1;
         return 0;
     }
-    KryThreadDetach(&st->thread);
+    ThreadDetach(&st->thread);
     SceneInspectPoll(scene);
     return 1;
 }
@@ -374,9 +374,9 @@ SceneInspectStop(void)
         INSPECT_CLOSE(st->listen_fd);   /* unblocks accept() */
         st->listen_fd = -1;
     }
-    KryMutexLock(&st->lock);
+    MutexLock(&st->lock);
     free(st->snapshot);
     st->snapshot = NULL;
     st->snapshot_len = 0;
-    KryMutexUnlock(&st->lock);
+    MutexUnlock(&st->lock);
 }

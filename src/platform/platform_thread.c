@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 typedef struct KryWinThreadArgs {
-    KryThreadMain fn;
+    ThreadMain fn;
     void *userdata;
 } KryWinThreadArgs;
 
@@ -14,7 +14,7 @@ static DWORD WINAPI
 kry_win_thread_entry(void *userdata)
 {
     KryWinThreadArgs *args = (KryWinThreadArgs *)userdata;
-    KryThreadMain fn;
+    ThreadMain fn;
     void *fn_userdata;
 
     if(args == NULL)
@@ -32,7 +32,7 @@ kry_win_thread_entry(void *userdata)
 #endif
 
 int
-KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata)
+ThreadStart(Thread *thread, ThreadMain fn, void *userdata)
 {
     if(thread == NULL || fn == NULL)
         return 0;
@@ -60,7 +60,7 @@ KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata)
 }
 
 void
-KryThreadDetach(KryThread *thread)
+ThreadDetach(Thread *thread)
 {
     if(thread == NULL)
         return;
@@ -77,7 +77,7 @@ KryThreadDetach(KryThread *thread)
 }
 
 void
-KryThreadJoin(KryThread *thread)
+ThreadJoin(Thread *thread)
 {
     if(thread == NULL)
         return;
@@ -95,7 +95,7 @@ KryThreadJoin(KryThread *thread)
 }
 
 void
-KrySleepSeconds(int seconds)
+SleepSeconds(int seconds)
 {
     if(seconds <= 0)
         return;
@@ -109,7 +109,7 @@ KrySleepSeconds(int seconds)
 }
 
 void
-KryMutexInit(KryMutex *mutex)
+MutexInit(Mutex *mutex)
 {
     if(mutex == NULL)
         return;
@@ -123,7 +123,7 @@ KryMutexInit(KryMutex *mutex)
 }
 
 void
-KryMutexLock(KryMutex *mutex)
+MutexLock(Mutex *mutex)
 {
     if(mutex == NULL)
         return;
@@ -137,7 +137,7 @@ KryMutexLock(KryMutex *mutex)
 }
 
 void
-KryMutexUnlock(KryMutex *mutex)
+MutexUnlock(Mutex *mutex)
 {
     if(mutex == NULL)
         return;

@@ -29,9 +29,9 @@
 #include <pthread.h>
 #endif
 
-typedef void *(*KryThreadMain)(void *userdata);
+typedef void *(*ThreadMain)(void *userdata);
 
-typedef struct KryThread {
+typedef struct Thread {
 #if defined(_WIN32)
     HANDLE handle;
 #elif defined(KRYON_PLATFORM_NO_THREADS)
@@ -39,9 +39,9 @@ typedef struct KryThread {
 #else
     pthread_t handle;
 #endif
-} KryThread;
+} Thread;
 
-typedef struct KryMutex {
+typedef struct Mutex {
 #if defined(_WIN32)
     SRWLOCK lock;
 #elif defined(KRYON_PLATFORM_NO_THREADS)
@@ -49,22 +49,22 @@ typedef struct KryMutex {
 #else
     pthread_mutex_t lock;
 #endif
-} KryMutex;
+} Mutex;
 
 #if defined(_WIN32)
-#define KRY_MUTEX_INIT { SRWLOCK_INIT }
+#define MUTEX_INIT { SRWLOCK_INIT }
 #elif defined(KRYON_PLATFORM_NO_THREADS)
-#define KRY_MUTEX_INIT { 0 }
+#define MUTEX_INIT { 0 }
 #else
-#define KRY_MUTEX_INIT { PTHREAD_MUTEX_INITIALIZER }
+#define MUTEX_INIT { PTHREAD_MUTEX_INITIALIZER }
 #endif
 
-int KryThreadStart(KryThread *thread, KryThreadMain fn, void *userdata);
-void KryThreadDetach(KryThread *thread);
-void KryThreadJoin(KryThread *thread);
-void KrySleepSeconds(int seconds);
-void KryMutexInit(KryMutex *mutex);
-void KryMutexLock(KryMutex *mutex);
-void KryMutexUnlock(KryMutex *mutex);
+int ThreadStart(Thread *thread, ThreadMain fn, void *userdata);
+void ThreadDetach(Thread *thread);
+void ThreadJoin(Thread *thread);
+void SleepSeconds(int seconds);
+void MutexInit(Mutex *mutex);
+void MutexLock(Mutex *mutex);
+void MutexUnlock(Mutex *mutex);
 
 #endif

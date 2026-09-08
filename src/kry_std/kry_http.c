@@ -15,8 +15,8 @@
 #endif
 
 struct KryHttpRequest {
-    KryThread thread;
-    KryMutex mutex;
+    Thread thread;
+    Mutex mutex;
     int started;
     int finished;
     /* immutable after construction */
@@ -42,17 +42,17 @@ write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
     size_t have;
     char *next;
 
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     have = r->response != NULL ? strlen(r->response) : 0;
     next = realloc(r->response, have + n + 1);
     if(next == NULL) {
-        KryMutexUnlock(&r->mutex);
+        MutexUnlock(&r->mutex);
         return 0;   /* out of memory: curl aborts the transfer */
     }
     r->response = next;
     memcpy(r->response + have, ptr, n);
     r->response[have + n] = '\0';
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     return n;
 }
 
@@ -65,11 +65,11 @@ worker(void *userdata)
     CURLcode rc;
 
     if(curl == NULL) {
-        KryMutexLock(&r->mutex);
+        MutexLock(&r->mutex);
         r->state = KRY_HTTP_FAILED;
         r->response = strdup("curl_easy_init failed");
         r->finished = 1;
-        KryMutexUnlock(&r->mutex);
+        MutexUnlock(&r->mutex);
         return NULL;
     }
     if(r->body != NULL) {
@@ -100,7 +100,7 @@ worker(void *userdata)
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, r);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon/1");
     rc = curl_easy_perform(curl);
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     if(rc == CURLE_OK) {
         long code = 0;
 
@@ -127,7 +127,7 @@ worker(void *userdata)
         r->state = KRY_HTTP_FAILED;
     }
     r->finished = 1;
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
     return NULL;
@@ -168,8 +168,8 @@ request_new(const char *url, const char *authorization, const char *body,
     }
     r->timeout_s = timeout_s > 0 ? timeout_s : 60;
     r->state = KRY_HTTP_PENDING;
-    KryMutexInit(&r->mutex);
-    if(!KryThreadStart(&r->thread, worker, r)) {
+    MutexInit(&r->mutex);
+    if(!ThreadStart(&r->thread, worker, r)) {
         free(r->url);
         free(r->authorization);
         free(r->body);
@@ -227,9 +227,9 @@ kry_http_poll(KryHttpRequest *r)
 
     if(r == NULL)
         return KRY_HTTP_FAILED;
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     s = r->finished ? r->state : KRY_HTTP_RUNNING;
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     return s;
 }
 
@@ -240,9 +240,9 @@ kry_http_status_code(KryHttpRequest *r)
 
     if(r == NULL)
         return 0;
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     code = r->finished ? r->status_code : 0;
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     return code;
 }
 
@@ -253,10 +253,10 @@ kry_http_response(KryHttpRequest *r)
 
     if(r == NULL)
         return NULL;
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     if(r->finished)
         body = r->response != NULL ? r->response : "";
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     return body;
 }
 
@@ -270,7 +270,7 @@ kry_http_partial(KryHttpRequest *r, char *buf, size_t size)
 
     if(r == NULL)
         return 0;
-    KryMutexLock(&r->mutex);
+    MutexLock(&r->mutex);
     if(r->response != NULL) {
         avail = strlen(r->response);
         if(buf != NULL && size > 0) {
@@ -280,7 +280,7 @@ kry_http_partial(KryHttpRequest *r, char *buf, size_t size)
             buf[take] = '\0';
         }
     }
-    KryMutexUnlock(&r->mutex);
+    MutexUnlock(&r->mutex);
     return avail;
 }
 
@@ -292,7 +292,7 @@ kry_http_free(KryHttpRequest *r)
     if(r == NULL)
         return;
     if(r->started)
-        KryThreadJoin(&r->thread);
+        ThreadJoin(&r->thread);
     free(r->url);
     free(r->authorization);
     free(r->body);
@@ -306,8 +306,8 @@ kry_http_free(KryHttpRequest *r)
 /* --- streaming download -------------------------------------------------- */
 
 struct KryHttpDownload {
-    KryThread thread;
-    KryMutex mutex;
+    Thread thread;
+    Mutex mutex;
     int started;
     int finished;
     /* immutable after construction */
@@ -331,7 +331,7 @@ download_write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
     size_t wrote;
 
     wrote = fwrite(ptr, 1, n, d->file);
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     d->bytes_done += wrote;
     if(d->total < 0.0) {
         curl_off_t len = -1;
@@ -340,7 +340,7 @@ download_write_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
                              &len) == CURLE_OK && len > 0)
             d->total = (double)len;
     }
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     if(wrote != n)
         return 0;   /* disk full / IO error: curl aborts the transfer */
     return n;
@@ -353,15 +353,15 @@ download_worker(void *userdata)
     CURL *curl = curl_easy_init();
     CURLcode rc;
 
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     d->curl = curl;
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     if(curl == NULL) {
-        KryMutexLock(&d->mutex);
+        MutexLock(&d->mutex);
         d->error = strdup("curl_easy_init failed");
         d->state = KRY_HTTP_FAILED;
         d->finished = 1;
-        KryMutexUnlock(&d->mutex);
+        MutexUnlock(&d->mutex);
         fclose(d->file);
         d->file = NULL;
         return NULL;
@@ -375,7 +375,7 @@ download_worker(void *userdata)
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, d);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "kryon/1");
     rc = curl_easy_perform(curl);
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     if(rc == CURLE_OK) {
         long code = 0;
         int flushed;
@@ -410,7 +410,7 @@ download_worker(void *userdata)
         d->file = NULL;
     }
     d->finished = 1;
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     curl_easy_cleanup(curl);
     return NULL;
 }
@@ -443,8 +443,8 @@ kry_http_download(const char *url, const char *dest_path, int timeout_s)
     d->timeout_s = timeout_s > 0 ? timeout_s : 600;
     d->state = KRY_HTTP_PENDING;
     d->total = -1.0;
-    KryMutexInit(&d->mutex);
-    if(!KryThreadStart(&d->thread, download_worker, d)) {
+    MutexInit(&d->mutex);
+    if(!ThreadStart(&d->thread, download_worker, d)) {
         fclose(d->file);
         free(d->url);
         free(d->dest_path);
@@ -462,9 +462,9 @@ kry_http_download_poll(KryHttpDownload *d)
 
     if(d == NULL)
         return KRY_HTTP_FAILED;
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     s = d->finished ? d->state : KRY_HTTP_RUNNING;
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     return s;
 }
 
@@ -475,11 +475,11 @@ kry_http_download_progress(KryHttpDownload *d)
 
     if(d == NULL)
         return -1.0;
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     fraction = d->total > 0.0 && d->bytes_done <= (unsigned long)d->total
                  ? (double)d->bytes_done / d->total
                  : -1.0;
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     return fraction;
 }
 
@@ -490,9 +490,9 @@ kry_http_download_bytes(KryHttpDownload *d)
 
     if(d == NULL)
         return 0;
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     bytes = d->bytes_done;
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     return bytes;
 }
 
@@ -503,10 +503,10 @@ kry_http_download_error(KryHttpDownload *d)
 
     if(d == NULL)
         return NULL;
-    KryMutexLock(&d->mutex);
+    MutexLock(&d->mutex);
     if(d->finished && d->state == KRY_HTTP_FAILED)
         error = d->error != NULL ? d->error : "download failed";
-    KryMutexUnlock(&d->mutex);
+    MutexUnlock(&d->mutex);
     return error;
 }
 
@@ -516,7 +516,7 @@ kry_http_download_free(KryHttpDownload *d)
     if(d == NULL)
         return;
     if(d->started)
-        KryThreadJoin(&d->thread);
+        ThreadJoin(&d->thread);
     if(d->file != NULL)
         fclose(d->file);
     free(d->url);
