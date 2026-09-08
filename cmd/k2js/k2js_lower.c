@@ -953,12 +953,54 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             emit_indent(f, indent);
             fprintf(f, "%s;\n", KirStmtKindName(st->kind));
             break;
+        case KIR_STMT_FOR: {
+            char clause[K2JS_TEXT_MAX];
+            char init[K2JS_TEXT_MAX];
+            char condition[K2JS_TEXT_MAX];
+            char step[K2JS_TEXT_MAX];
+            char init_out[K2JS_TEXT_MAX];
+            char condition_out[K2JS_TEXT_MAX];
+            char step_out[K2JS_TEXT_MAX];
+            char *first;
+            char *second;
+            const char *body = kir_skip_ws(raw + 3);
+
+            snprintf(clause, sizeof(clause), "%s", body);
+            kir_strip_block_brace(clause);
+            first = strchr(clause, ';');
+            second = first != NULL ? strchr(first + 1, ';') : NULL;
+            if(first == NULL || second == NULL) {
+                emit_statement_record(f, indent, raw);
+                if(raw[strlen(raw) ? strlen(raw) - 1 : 0] == '{' &&
+                   block_top < (int)(sizeof(block_stack) /
+                                     sizeof(block_stack[0])))
+                    block_stack[block_top++] = 0;
+                break;
+            }
+            *first = '\0';
+            *second = '\0';
+            snprintf(init, sizeof(init), "%s", kir_skip_ws(clause));
+            snprintf(condition, sizeof(condition), "%s", kir_skip_ws(first + 1));
+            snprintf(step, sizeof(step), "%s", kir_skip_ws(second + 1));
+            if(strncmp(init, "int ", 4) == 0)
+                snprintf(init_out, sizeof(init_out), "let %s", init + 4);
+            else
+                tx_expr(m, init, init_out, sizeof(init_out));
+            tx_expr(m, condition, condition_out, sizeof(condition_out));
+            tx_expr(m, step, step_out, sizeof(step_out));
+            emit_indent(f, indent);
+            fprintf(f, "for (%s; %s; %s) {\n",
+                    init_out, condition_out, step_out);
+            if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
+                block_stack[block_top++] = 1;
+            indent++;
+            break;
+        }
         case KIR_STMT_UNUSED:
             break;
         case KIR_STMT_DEFER:
             fprintf(stderr, "internal error: cleanup was not lowered\n");
             exit(1);
-        case KIR_STMT_FOR:
         case KIR_STMT_LABEL:
         case KIR_STMT_GOTO:
         case KIR_STMT_RAW:

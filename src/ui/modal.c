@@ -23,30 +23,19 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
 
 static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,
-                ButtonStyle style, Vector2 mouse_world)
+                ButtonTone tone, ButtonEmphasis emphasis, int disabled,
+                Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
                  !UIInputCapturesClick(mouse_world);
-    Color background = style == ButtonStylePrimary ? c_button : c_surface;
-    Color hover_background = style == ButtonStylePrimary ? c_button_hover :
-                             LightenUIColor(c_surface, 14);
-    Color text = c_text;
-    ButtonSpec spec;
 
     if(active)
         MarkUIClickable();
 
-    memset(&spec, 0, sizeof(spec));
-    spec.bounds = bounds;
-    spec.label = label;
-    spec.font = font;
-    spec.background = background;
-    spec.hover_background = hover_background;
-    spec.text = text;
-    spec.border = DarkenUIColor(background, 28);
-    spec.radius = 0.08f;
-    if(RenderButton(spec))
+    if(Button((ButtonProps){.bounds= bounds, .label=label, .font=font,
+                            .tone=tone, .emphasis=emphasis,
+                            .disabled=disabled}))
         return 1;
     return 0;
 }
@@ -121,7 +110,9 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 
                 if(ui_modal_button(draw_x, y, equal_w, button_h,
                                    actions[action_index].label, font,
-                                   actions[action_index].style,
+                                   actions[action_index].tone,
+                                   actions[action_index].emphasis,
+                                   actions[action_index].disabled,
                                    mouse_world))
                     result = action_index + 1;
                 draw_x += equal_w + gap;
@@ -216,7 +207,7 @@ DrawUIActionModal(ModalProps modal)
     scrim.a = 180;
     DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
     if(ui_modern_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
+        ThemeMetrics tokens = GetThemeMetrics();
         Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
         Color surface = c_surface;
         Color border = LightenUIColor(c_surface, 24);
@@ -264,8 +255,8 @@ DrawUIModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
     ModalAction actions[2] = {
-        { cancel_btn, ButtonStyleSecondary, 0 },
-        { confirm_btn, ButtonStylePrimary, 0 }
+        { cancel_btn, ButtonToneNeutral, ButtonEmphasisSoft, 0 },
+        { confirm_btn, ButtonToneAccent, ButtonEmphasisFilled, 0 }
     };
     ModalProps props;
 
@@ -283,9 +274,9 @@ DrawUIModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
     ModalAction actions[3] = {
-        { left_btn, ButtonStyleSecondary, 0 },
-        { middle_btn, ButtonStylePrimary, 0 },
-        { right_btn, ButtonStyleDanger, 0 }
+        { left_btn, ButtonToneNeutral, ButtonEmphasisSoft, 0 },
+        { middle_btn, ButtonToneAccent, ButtonEmphasisFilled, 0 },
+        { right_btn, ButtonToneDanger, ButtonEmphasisFilled, 0 }
     };
     ModalProps props;
 
@@ -408,7 +399,7 @@ DrawUIModalFrame(int width, int height, const char *title,
     scrim.a = 180;
     DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
     if(ui_modern_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
+        ThemeMetrics tokens = GetThemeMetrics();
         Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};
         Color surface = c_surface;
         Color border = LightenUIColor(c_surface, 24);

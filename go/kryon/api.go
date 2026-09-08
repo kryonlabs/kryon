@@ -185,9 +185,9 @@ func ValueFloat(prefix string, value float32, format string, bounds Rectangle, f
 	active().ValueFloat(prefix, value, format, bounds, fontSize, color)
 }
 func TextFormat(format string, args ...any) string { return active().TextFormat(format, args...) }
-func Scale(px int32) int32        { return active().Scale(px) }
-func GetFontSize() int32          { return Scale(Text16) }
-func GetSmallFontSize() int32     { return Scale(Text14) }
+func Scale(px int32) int32                         { return active().Scale(px) }
+func GetFontSize() int32                           { return Scale(Text16) }
+func GetSmallFontSize() int32                      { return Scale(Text14) }
 func GetTitleFontSize(title string, maxWidth int32) int32 {
 	large := Scale(Text24)
 	medium := Scale(Text16)
@@ -280,7 +280,12 @@ func EndTableCell() { active().EndTableCell() }
 func BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	return active().BeginScroll(bounds, contentHeight, offset)
 }
-func Button(args ...any) bool                          { return button(args...) }
+func Button(args ...any) bool                { return button(args...) }
+func BeginButton(props ButtonProps)          { active().BeginButton(props) }
+func MenuButton(props MenuButtonProps) int32 { return active().MenuButton(props) }
+func SplitButton(props SplitButtonProps) SplitButtonResult {
+	return active().SplitButton(props)
+}
 func Selectable(props SelectableProps) bool            { return active().Selectable(props) }
 func CheckboxFlags(props CheckboxFlagsProps) bool      { return active().CheckboxFlags(props) }
 func ImageWithBg(props ImageWithBgProps)               { active().ImageWithBg(props) }
@@ -441,9 +446,13 @@ func Place(parent Rectangle, x, y, w, h int32) Rectangle {
 	return active().Place(parent, x, y, w, h)
 }
 func SetCurrentTheme(themeID, darkMode int32) { active().SetCurrentTheme(themeID, darkMode) }
+func SetTheme(theme Theme)                    { active().SetTheme(theme) }
+func SetThemeFamily(family ThemeFamily)       { active().SetThemeFamily(family) }
+func GetThemeFamily() ThemeFamily             { return active().GetThemeFamily() }
+func GetTheme() Theme                         { return active().GetTheme() }
 func SetThemeDarkMode(dark int32)             { active().SetThemeDarkMode(dark) }
 func SetThemeStyle(style ThemeStyle)          { active().SetThemeStyle(style) }
 func SetThemeSource(source ThemeSource)       { active().SetThemeSource(source) }
 func SetThemeMode(mode ThemeMode)             { active().SetThemeMode(mode) }
-func GetUIDefaultScheme() DefaultScheme     { return active().GetUIDefaultScheme() }
+func GetThemeScheme() DefaultScheme           { return active().GetThemeScheme() }
 func SystemThemePrefersDark() bool            { return systemPrefersDark() }

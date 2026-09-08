@@ -155,7 +155,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Line(Scale(220), Scale(76), Scale(220), (int)viewport.height - Scale(24), GetThemeButton())
         i: int = 0
         for i = 0; i < 10; i++ {
-            if Button((ButtonProps){.bounds = {Scale(16),Scale(86 + i * 46),Scale(190),Scale(38)}, .label = category_names[i], .font = Text14, .id = 900 + i, .style = category == i ? ButtonStylePrimary : ButtonStyleSecondary}) {
+            if Button((ButtonProps){.bounds = {Scale(16),Scale(86 + i * 46),Scale(190),Scale(38)}, .label = category_names[i], .font = Text14, .id = 900 + i, .tone = category == i ? ButtonToneAccent : ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .selected = category == i}) {
                 category = i
                 scroll_off = 0
                 open_menu = -1
@@ -554,7 +554,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             dialog = 0
         }
         if dialog == 4 {
-            actions: [2] ModalAction = {{"Cancel",ButtonStyleSecondary,0},{"Continue",ButtonStylePrimary,0}}
+            actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Continue",ButtonToneAccent,ButtonEmphasisFilled,0}}
             if ActionModal((ModalProps){"Action modal","Choose a simple action.",actions,2,{0},Scale(420)}) != 0 {
                 dialog = 0
             }

@@ -154,7 +154,8 @@ typedef union UIWidgetData {
     } primitive;
     struct {
         ButtonSpec spec;
-        ButtonStyle style;
+        ButtonTone tone;
+        ButtonEmphasis emphasis;
     } button;
     TextFieldProps text_field;
     TextAreaProps text_area;
@@ -251,11 +252,45 @@ UIWidgetNode NodeTitleBar(int height);
 typedef struct ButtonProps {
     Rectangle bounds;
     const char *label;
-    ButtonStyle style;
     int font;
     int id;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
+    ControlSize size;
     int disabled;
+    int loading;
+    int selected;
+    int full_width;
+    int pill;
+    Texture2D icon;
+    int icon_type;
+    IconPlacement icon_placement;
+    int icon_only;
+    int square;
+    ButtonState state;
+    const ButtonPaint *paint;
 } ButtonProps;
+
+typedef struct MenuButtonProps {
+    ButtonProps button;
+    int menu_id;
+    const MenuItem *items;
+    int item_count;
+    int *open;
+} MenuButtonProps;
+
+typedef struct SplitButtonProps {
+    ButtonProps button;
+    int menu_id;
+    const MenuItem *items;
+    int item_count;
+    int *open;
+} SplitButtonProps;
+
+typedef struct SplitButtonResult {
+    int clicked;
+    int activated_id;
+} SplitButtonResult;
 
 void BeginDisabled(int disabled);
 void EndDisabled(void);
@@ -345,8 +380,6 @@ int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
                   int *hover);
 int PaddedIconBtn(int id, int x, int y, int size, int padding,
                         Texture2D icon, int *hover);
-int StyledButton(int x, int y, int w, int h, const char *label,
-                 ButtonStyle style, int disabled, int *hover);
 int InfoButton(int id, int center_x, int center_y, int diameter);
 void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                     const char *url);
@@ -477,6 +510,9 @@ UIPanelFrame ModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
 
 int Button(ButtonProps button);
+NodeId BeginButton(ButtonProps button);
+int MenuButton(MenuButtonProps button);
+SplitButtonResult SplitButton(SplitButtonProps button);
 int Selectable(SelectableProps selectable);
 int CheckboxFlags(CheckboxFlagsProps checkbox);
 void ImageWithBg(ImageWithBgProps image);

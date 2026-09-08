@@ -74,13 +74,12 @@ ControlDemo :: (x: int, y: int, w: int) {
     Button((ButtonProps){
         .bounds = {x, y, Scale(190), Scale(44)},
         .label = "Primary",
-        .style = ButtonStylePrimary,
         .id = 301,
     })
     Button((ButtonProps){
         .bounds = {x + Scale(210), y, Scale(190), Scale(44)},
         .label = "Secondary",
-        .style = ButtonStyleSecondary,
+        .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
         .id = 302,
     })
     y += Scale(70)
@@ -130,7 +129,7 @@ ThemeExample :: (viewport: Rectangle) #ui {
     
         ControlDemo(right_x, Scale(88), Scale(420))
     
-        tokens := GetUIStyleTokens()
+        tokens := GetThemeMetrics()
         token_y: int = Scale(520)
         Text((TextProps){.bounds={right_x, token_y, 0, 0}, .text="Active style tokens", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         token_y += Scale(30)

@@ -63,7 +63,7 @@ Valid :: (viewport: Rectangle) #ui {
                 gap = Scale(4)
                 padding = 0
                 key = Key("actions")
-                Button((ButtonProps){.bounds = {0, 0, Scale(70), Scale(28)}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 103})
+                Button((ButtonProps){.bounds = {0, 0, Scale(70), Scale(28)}, .label = "Save",  .font = Text16, .id = 103})
             }
         }
         menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
@@ -173,7 +173,8 @@ Main :: (viewport: Rectangle) #ui {
             Button {
                 bounds = {8, 40, 96, 28}
                 label = "Block"
-                style = ButtonStyleSecondary
+                tone = ButtonToneNeutral
+                emphasis = ButtonEmphasisSoft
                 font = Text16
                 id = 77
             }
@@ -348,7 +349,7 @@ grep -Fq 'EndDisabled();' "$hc"
 grep -Fq 'BeginScroll(viewport, 480, NULL)' "$hc"
 grep -Fq 'BeginScroll(content, 0, NULL)' "$hc"
 grep -Fq 'EndScroll();' "$hc"
-grep -Fq 'Button((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .style = ButtonStyleSecondary, .font = Text16, .id = 77, });' "$hc"
+grep -Fq 'BeginButton((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 77, });' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
 grep -Fq 'host = CreateAppHost(APP_HOST_ABI_VERSION, ".");' "$project"

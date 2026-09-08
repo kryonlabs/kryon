@@ -150,8 +150,11 @@ private host owner. A release in one host cannot observe another host's active
 drag source, while restoring the source host exposes it immediately. Native
 auxiliary windows also retain their own active focus ID
 and restore the caller's focus on exit. A real-window regression reopens one
-across frames and checks both directions of focus isolation. The broader C text-edit
-state is still shared.
+across frames and checks both directions of focus isolation. The same toolkit
+owner now contains radio animation, numeric editor storage, table interaction,
+paned-view dragging, canvas scope depth, and tree navigation; `ui_tk.c` has no
+remaining process-global widget state. Text editing outside numeric controls is
+still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real
 pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background

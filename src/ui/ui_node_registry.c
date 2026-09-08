@@ -253,7 +253,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "\n    if Button((ButtonProps){\n"
                  "        .bounds = {Scale(%d), Scale(%d), Scale(140), Scale(36)},\n"
                  "        .label = \"Button\",\n"
-                 "        .style = ButtonStylePrimary,\n"
+                 "        \n"
                  "        .font = Text16,\n"
                  "        .id = %d,\n"
                  "    }) {\n"

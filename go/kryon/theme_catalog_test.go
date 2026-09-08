@@ -134,7 +134,7 @@ func TestRuntimeAppliesSweetThemeAndScheme(t *testing.T) {
 	if got := rt.GetThemeBackground(); got != (Color{0x16, 0x19, 0x25, 0xFF}) {
 		t.Fatalf("GetThemeBackground = %#v, want Sweet dark background", got)
 	}
-	scheme := rt.GetUIDefaultScheme()
+	scheme := rt.GetThemeScheme()
 	if scheme.Primary != (Color{0xC5, 0x0E, 0xD2, 0xFF}) {
 		t.Fatalf("scheme.Primary = %#v, want the Sweet accent", scheme.Primary)
 	}

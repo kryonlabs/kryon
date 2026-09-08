@@ -348,12 +348,15 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
     y = add_y;
     dropdown_blocks_buttons = dropdown_captures(ui_mouse_world());
     if(route_count < max_route_count && modal.routes != NULL) {
-        int add_hover = 0;
         add_w = frame.content_w < Scale(180) ? frame.content_w : Scale(180);
-        if(RenderStyledButton(frame.content_x + (frame.content_w - add_w) / 2,
-                                  y, add_w, add_h, modal.add_label,
-                                  ButtonStyleSecondary,
-                                  dropdown_blocks_buttons, &add_hover)) {
+        if(Button((ButtonProps){
+               .bounds = {(float)(frame.content_x + (frame.content_w - add_w) / 2),
+                          (float)y, (float)add_w, (float)add_h},
+               .label = modal.add_label,
+               .tone = ButtonToneNeutral,
+               .emphasis = ButtonEmphasisSoft,
+               .disabled = dropdown_blocks_buttons
+           })) {
             modal.routes[route_count] = option_count > 0 ? modal.options[0].route : 0;
             route_count++;
             if(modal.route_count != NULL)
@@ -364,19 +367,18 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
 
     {
         int x = frame.x + (frame.w - total_button_w) / 2;
-        if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.reset_label, ButtonStyleSecondary,
-                                  dropdown_blocks_buttons, &reset_hover))
+        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+                               .label=modal.reset_label,.tone=ButtonToneNeutral,
+                               .emphasis=ButtonEmphasisSoft,.disabled=dropdown_blocks_buttons}))
             result.action = 3;
         x += button_w + button_gap;
-        if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.cancel_label, ButtonStyleSecondary,
-                                  dropdown_blocks_buttons, &cancel_hover))
+        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+                               .label=modal.cancel_label,.tone=ButtonToneNeutral,
+                               .emphasis=ButtonEmphasisSoft,.disabled=dropdown_blocks_buttons}))
             result.action = 1;
         x += button_w + button_gap;
-        if(RenderStyledButton(x, button_y, button_w, button_h,
-                                  modal.save_label, ButtonStylePrimary,
-                                  dropdown_blocks_buttons, &save_hover))
+        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+                               .label=modal.save_label,.disabled=dropdown_blocks_buttons}))
             result.action = 2;
     }
 

@@ -65,7 +65,15 @@ INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
 GENERATED_INCLUDE_DIR = $(BUILD_DIR)/generated/include
 GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
-CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
+BUTTON_POLICY_KRY = runtime/button.kry
+BUTTON_POLICY_C = $(GENERATED_SRC_DIR)/runtime/button.c
+BUTTON_POLICY_H = $(GENERATED_SRC_DIR)/runtime/button.h
+BUTTON_POLICY_STAMP = $(GENERATED_SRC_DIR)/runtime/.button.stamp
+THEME_RUNTIME_KRY = runtime/theme.kry
+THEME_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/theme.c
+THEME_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/theme.h
+THEME_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.theme.stamp
+CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
 ICON_ASSETS_C = $(GENERATED_SRC_DIR)/ui/ui_icon_assets.c
@@ -248,7 +256,7 @@ ifneq ($(KRYON_BACKEND),termi)
 SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
-SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
+SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) $(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
@@ -631,6 +639,27 @@ K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
 
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
+
+$(BUTTON_POLICY_STAMP): $(BUTTON_POLICY_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(BUTTON_POLICY_KRY)
+	touch $@
+
+$(BUTTON_POLICY_C) $(BUTTON_POLICY_H): $(BUTTON_POLICY_STAMP)
+	@test -f $@
+
+$(THEME_RUNTIME_STAMP): $(THEME_RUNTIME_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(THEME_RUNTIME_KRY)
+	touch $@
+
+$(THEME_RUNTIME_C) $(THEME_RUNTIME_H): $(THEME_RUNTIME_STAMP)
+	@test -f $@
+
+.PHONY: generate-button-policy
+generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) $(THEME_RUNTIME_C) $(THEME_RUNTIME_H) $(K2GO)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(THEME_RUNTIME_KRY)
+	gofmt -w go/kryon/button.go
+	gofmt -w go/kryon/theme.go
 
 K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
 K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)

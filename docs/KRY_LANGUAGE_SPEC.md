@@ -160,11 +160,25 @@ unused-statement= "unused" , expr-text ;
 ```
 
 Plain call statements are UI declarations when they call Kryon widget/runtime
-functions. Property-block widgets lower to the existing `WidgetProps` C-style
-call shape, so `Button { label = "Save" ... }` is equivalent to
-`Button((ButtonProps){.label = "Save", ...})`. Layout nodes (`Screen`,
-`Column`, `Row`, `Stack`) still open retained UI scopes and therefore emit a
-matching `End()`.
+functions. Leaf property-block widgets lower to the existing `WidgetProps`
+C-style call shape. Layout nodes (`Screen`, `Column`, `Row`, `Stack`) open
+retained UI scopes and therefore emit a matching `End()`.
+
+`Button` is also a child-bearing scope. The compiler lowers it through the
+runtime's Button-content entry and emits `End()`. Its label property creates an
+ordinary child `Text`, so these declarations are equivalent:
+
+```kry
+Button save: { label = "Save" }
+
+Button save: {
+    Text { text = "Save" }
+}
+```
+
+Button may contain non-interactive visual/layout nodes such as `Text`, `Icon`,
+`Picture`, `Row`, `Column`, and `Spacer`. Nested interactive controls are not a
+valid Button content tree.
 
 ## Tooling
 

@@ -146,7 +146,7 @@ int BeginCombo(ComboProps combo)
     if(combo.flags & ComboNoArrowButton) memcpy(label,preview,n+1);
     else snprintf(label,n+4,"%s v",preview);
     int pressed = Button((ButtonProps){.bounds=trigger,.label=label,
-                         .style=ButtonStyleSecondary,.id=combo.id,
+                         .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,.id=combo.id,
                          .disabled=combo.disabled});
     free(label);
     if(pressed) *combo.open = !*combo.open;

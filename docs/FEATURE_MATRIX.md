@@ -232,7 +232,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Feature | C | Go | KRB |
 |---|---|---|---|---|
 | Theming | ✅ 6 palettes × light/dark INI, scopes, vars, runtime loader | ✅ `SetCurrentTheme`/`SetThemeDarkMode`/`GetTheme*` | ◐ theme color slots (`KrySwSetTheme`); light/dark env knobs on hosts |
-| Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetUIStyleTokens` | ✗ |
+| Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetThemeMetrics` | ✗ |
 | Animation | ✅ transitions (smoothstep), ripple, keyframe scene anims | ✗ | ◐ `AnimNode` + `TIME` opcode |
 | Text/fonts | ◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi | ✅ `RegisterUIFont(Data)`, `Push/Pop/UseUIFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
 | DPI/scaling | ✅ viewport-derived scale, `Scale` | ✅ `Scale`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |

@@ -92,6 +92,24 @@ lookup(Checker *c, const char *name)
         if(!strcmp(c->module->state_fields[i].name, name)) return c->module->state_fields[i].type;
     for(int i = 0; i < c->module->global_count; i++)
         if(!strcmp(c->module->globals[i].name, name)) return c->module->globals[i].type;
+    for(int i = 0; i < c->module->type_count; i++) {
+        const KirType *type = &c->module->types[i];
+        const char *line = type->body;
+
+        if(!type->is_enum && strcmp(type->name, "#enum")) continue;
+        while(line && *line) {
+            const char *end = strchr(line, '\n');
+            const char *start = line;
+            const char *stop;
+            while(*start == ' ' || *start == '\t') start++;
+            stop = start;
+            while(isalnum((unsigned char)*stop) || *stop == '_') stop++;
+            if((size_t)(stop - start) == strlen(name) &&
+               !strncmp(start, name, (size_t)(stop - start)))
+                return "integer";
+            line = end ? end + 1 : NULL;
+        }
+    }
     return "";
 }
 

@@ -120,7 +120,64 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	}
 	fillRect(img, op.Bounds, fill)
 	strokeRect(img, op.Bounds, border)
-	drawTextInBox(img, op.Text, op.Bounds, op.FontSize, text, op.FontID)
+	if op.Focused {
+		focus := Rectangle{X: op.Bounds.X - 2, Y: op.Bounds.Y - 2,
+			Width: op.Bounds.Width + 4, Height: op.Bounds.Height + 4}
+		strokeRect(img, focus, opaque(op.BorderColor, Color{6, 108, 255, 255}))
+	}
+	if op.Loading {
+		renderSpinner(img, op.Bounds, text)
+		return
+	}
+	iconSize := int32(16)
+	if op.FontSize >= Text16 {
+		iconSize = 18
+	}
+	hasIcon := op.IconType != UIIconTypeNone
+	labelWidth := runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)
+	gap := 0
+	if hasIcon && !op.IconOnly && op.Text != "" {
+		gap = 8
+	}
+	contentWidth := labelWidth + gap
+	if hasIcon {
+		contentWidth += int(iconSize)
+	}
+	x := op.Bounds.X + (op.Bounds.Width-float32(contentWidth))/2
+	if hasIcon {
+		iconX := x
+		if op.IconPlacement == int32(IconPlacementTrailing) {
+			iconX += float32(labelWidth + gap)
+		}
+		renderIcon(img, FrameOp{Bounds: Rectangle{X: iconX,
+			Y:     op.Bounds.Y + (op.Bounds.Height-float32(iconSize))/2,
+			Width: float32(iconSize), Height: float32(iconSize)},
+			Color: text, IconType: op.IconType, IconSize: iconSize})
+	}
+	if !op.IconOnly && op.Text != "" {
+		textX := x
+		if hasIcon && op.IconPlacement == int32(IconPlacementLeading) {
+			textX += float32(iconSize) + float32(gap)
+		}
+		textBounds := op.Bounds
+		textBounds.X = textX
+		textBounds.Width = float32(labelWidth)
+		drawTextInBox(img, op.Text, textBounds, op.FontSize, text, op.FontID)
+	}
+}
+
+func renderSpinner(img *image.RGBA, bounds Rectangle, c Color) {
+	cx := bounds.X + bounds.Width/2
+	cy := bounds.Y + bounds.Height/2
+	radius := float32(7)
+	for i := 0; i < 8; i++ {
+		angle := float64(i) * math.Pi / 4
+		x := int(round(cx + radius*float32(math.Cos(angle))))
+		y := int(round(cy + radius*float32(math.Sin(angle))))
+		shade := c
+		shade.A = uint8(64 + i*24)
+		fillRectPixels(img, x-1, y-1, 3, 3, shade)
+	}
 }
 
 func renderIcon(img *image.RGBA, op FrameOp) {

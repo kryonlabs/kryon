@@ -25,15 +25,15 @@ FileDialogExample :: (viewport: Rectangle) #ui {
         }
         Text((TextProps){.bounds={Scale(32), Scale(28), 0, 0}, .text="Kryon File Dialog", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={Scale(32), Scale(66), 0, 0}, .text="Dialog backend and result state", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
-        if Button((ButtonProps){.bounds = {Scale(32), Scale(116), Scale(180), Scale(42)}, .label = "Open File", .style = ButtonStylePrimary, .font = Text16, .id = 101}) {
+        if Button((ButtonProps){.bounds = {Scale(32), Scale(116), Scale(180), Scale(42)}, .label = "Open File",  .font = Text16, .id = 101}) {
             BeginLoadFileDialog(&dlg,"Open File")
             snprintf(status,sizeof(status),"Open file requested.")
         }
-        if Button((ButtonProps){.bounds = {Scale(226), Scale(116), Scale(180), Scale(42)}, .label = "Save File", .style = ButtonStyleSecondary, .font = Text16, .id = 102}) {
+        if Button((ButtonProps){.bounds = {Scale(226), Scale(116), Scale(180), Scale(42)}, .label = "Save File", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 102}) {
             BeginSaveFileDialog(&dlg,"Save File","untitled.kry")
             snprintf(status,sizeof(status),"Save file requested.")
         }
-        if Button((ButtonProps){.bounds = {Scale(420), Scale(116), Scale(180), Scale(42)}, .label = "Select Folder", .style = ButtonStyleSecondary, .font = Text16, .id = 103}) {
+        if Button((ButtonProps){.bounds = {Scale(420), Scale(116), Scale(180), Scale(42)}, .label = "Select Folder", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 103}) {
             BeginSelectFileDialogFolder(&dlg,"Select Folder")
             snprintf(status,sizeof(status),"Folder selection requested.")
         }

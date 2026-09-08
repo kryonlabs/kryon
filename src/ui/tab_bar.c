@@ -490,7 +490,7 @@ DrawUITabBar(TabBarProps bar)
 
         Color tab_fill;
         if(ui_default_style()) {
-            UIDefaultScheme scheme = ui_default_scheme();
+            ThemeScheme scheme = ui_default_scheme();
             int indicator_w = Scale(56);
             int indicator_h = Scale(28);
             int indicator_x;

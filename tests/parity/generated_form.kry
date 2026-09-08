@@ -41,10 +41,10 @@ form_frame :: () #ui {
                 gap = 8
                 padding = 0
                 key = Key("form-actions")
-                if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 201}) {
+                if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Save",  .font = Text16, .id = 201}) {
                     form_action += 1
                 }
-                if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = Text16, .id = 202}) {
+                if Button((ButtonProps){.bounds = {0,0,80,32}, .label = "Cancel", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 202}) {
                     form_action += 10
                 }
             }

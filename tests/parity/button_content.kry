@@ -1,0 +1,33 @@
+#import "kryon.h"
+
+app "Button Content Parity" {
+    size 420 180
+    font examples
+}
+
+button_content_frame :: () #ui {
+    Screen root: {
+        bounds = {0, 0, 420, 180}
+        padding = 16
+
+        Row actions: {
+            gap = 12
+
+            Button shorthand: {
+                bounds = {0, 0, 120, 40}
+                label = "Save"
+                id = 7101
+            }
+
+            Button composed: {
+                bounds = {0, 0, 120, 40}
+                id = 7102
+
+                Text {
+                    text = "Save"
+                    wrap = TextWrapNone
+                }
+            }
+        }
+    }
+}

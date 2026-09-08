@@ -17,6 +17,7 @@ static const TextInputStyle kryon_zero_text_input_style;
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
 #define UI_DRAG_DROP_DATA_MAX 1024
+#define UI_NUMERIC_INPUT_BUCKETS 128
 typedef struct UINumericClickState {
     int valid;
     int kind;
@@ -53,9 +54,6 @@ typedef struct UIContextMenuOverlayState {
     MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
 } UIContextMenuOverlayState;
 
-static int g_canvas_depth = 0;
-static int g_canvas_mode_depth = 0;
-
 typedef struct UIMenuNavigation {
     int focus_id;
     int top;
@@ -65,6 +63,18 @@ typedef struct UIMenuNavigation {
     unsigned long key_frame;
 } UIMenuNavigation;
 
+typedef struct UIRadioAnimState {
+    unsigned int key;
+    float selected;
+    float press;
+    unsigned long frame_seen;
+} UIRadioAnimState;
+
+typedef struct UITreeHeaderNav {
+    int id;
+    int depth;
+} UITreeHeaderNav;
+
 struct ToolkitStore {
     int drag_active;
     float drag_last_x;
@@ -73,6 +83,30 @@ struct ToolkitStore {
     UIPopupInputOwner slider_owner;
     UINumericClickState numeric_click;
     UIDragDropState drag_drop;
+    int canvas_depth;
+    int canvas_mode_depth;
+    UIRadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
+    int last_table_id;
+    int last_table_row;
+    int last_table_column;
+    double last_table_click_time;
+    int resize_table_id;
+    int resize_column;
+    int resize_start_x;
+    int resize_start_width;
+    UIPopupInputOwner resize_owner;
+    int *active_split;
+    UIPopupInputOwner active_split_owner;
+    UINumericInputState *numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
+    int numeric_next_token;
+    UITreeHeaderNav *tree_headers;
+    UITreeHeaderNav *tree_previous;
+    int tree_header_count;
+    int tree_previous_count;
+    int tree_header_capacity;
+    int tree_previous_capacity;
+    unsigned long tree_header_frame;
+    unsigned long tree_key_frame;
     int open_id;
     int submenu_id;
     Rectangle panel_bounds;
@@ -89,7 +123,12 @@ struct ToolkitStore {
     UIMenuNavigation navigation;
 };
 
-static ToolkitStore fallback_toolkit_store;
+static ToolkitStore fallback_toolkit_store = {
+    .last_table_row = -1,
+    .last_table_column = -1,
+    .resize_column = -1,
+    .numeric_next_token = 0x60000000
+};
 static ToolkitStore *current_toolkit_store = &fallback_toolkit_store;
 
 ToolkitStore *
@@ -99,6 +138,10 @@ toolkit_store_new(void)
 
     if(store == NULL)
         abort();
+    store->last_table_row = -1;
+    store->last_table_column = -1;
+    store->resize_column = -1;
+    store->numeric_next_token = 0x60000000;
     return store;
 }
 
@@ -109,6 +152,18 @@ toolkit_store_free(ToolkitStore *store)
         return;
     if(store == current_toolkit_store || store == &fallback_toolkit_store)
         abort();
+    for(int i = 0; i < UI_NUMERIC_INPUT_BUCKETS; i++) {
+        UINumericInputState *state = store->numeric_inputs[i];
+
+        while(state != NULL) {
+            UINumericInputState *next = state->next;
+
+            free(state);
+            state = next;
+        }
+    }
+    free(store->tree_headers);
+    free(store->tree_previous);
     free(store);
 }
 
@@ -132,15 +187,6 @@ toolkit_state(void)
 {
     return current_toolkit_store;
 }
-
-typedef struct UIRadioAnimState {
-    unsigned int key;
-    float selected;
-    float press;
-    unsigned long frame_seen;
-} UIRadioAnimState;
-
-static UIRadioAnimState g_ui_radio_anim[UI_RADIO_ANIM_MAX];
 
 static int
 ui_contains(Rectangle bounds, Vector2 point)
@@ -1398,6 +1444,7 @@ DrawUIContextMenu(ContextMenuProps menu)
 int
 DrawUIRadioButton(RadioButtonProps radio)
 {
+    ToolkitStore *toolkit = toolkit_state();
     int font = GetFontSize();
     int diameter = Scale(20);
     int touch = Scale(40);
@@ -1428,7 +1475,7 @@ DrawUIRadioButton(RadioButtonProps radio)
     if(!IsWindowReady())
         return activated ? radio.id : 0;
     if(ui_default_style()) {
-        UIDefaultScheme scheme = ui_default_scheme();
+        ThemeScheme scheme = ui_default_scheme();
         UIRadioAnimState *anim;
         Rectangle state_bounds = {
             center.x - (float)touch / 2.0f,
@@ -1456,7 +1503,7 @@ DrawUIRadioButton(RadioButtonProps radio)
         key = (key ^ (unsigned int)(int)radio.bounds.height) * 16777619u;
         while(*text != '\0')
             key = (key ^ (unsigned char)*text++) * 16777619u;
-        anim = &g_ui_radio_anim[key % UI_RADIO_ANIM_MAX];
+        anim = &toolkit->radio_anim[key % UI_RADIO_ANIM_MAX];
         if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
             memset(anim, 0, sizeof(*anim));
             anim->key = key;
@@ -2403,16 +2450,13 @@ ui_paint_slider_angle(SliderAngleProps slider)
     ui_paint_slider_float(value_slider, 0);
 }
 
-#define UI_NUMERIC_INPUT_BUCKETS 128
-static UINumericInputState *g_numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
-static int g_numeric_next_token = 0x60000000;
-
 static UINumericInputState *
 ui_numeric_input_find(int kind, int widget_id, int component)
 {
+    ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
                        (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
-    for(UINumericInputState *state = g_numeric_inputs[bucket];
+    for(UINumericInputState *state = toolkit->numeric_inputs[bucket];
         state != NULL; state = state->next)
         if(state->kind == kind && state->widget_id == widget_id &&
            state->component == component)
@@ -2423,6 +2467,7 @@ ui_numeric_input_find(int kind, int widget_id, int component)
 UINumericInputState *
 ui_numeric_input_state(int kind, int widget_id, int component)
 {
+    ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
                        (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
     UINumericInputState *existing =
@@ -2433,15 +2478,15 @@ ui_numeric_input_state(int kind, int widget_id, int component)
     UINumericInputState *state = calloc(1, sizeof(*state));
     if(state == NULL)
         abort();
-    if(g_numeric_next_token > INT_MAX - 3)
+    if(toolkit->numeric_next_token > INT_MAX - 3)
         abort();
-    state->token = g_numeric_next_token;
-    g_numeric_next_token += 3; /* field, decrement, increment */
+    state->token = toolkit->numeric_next_token;
+    toolkit->numeric_next_token += 3; /* field, decrement, increment */
     state->kind = kind;
     state->widget_id = widget_id;
     state->component = component;
-    state->next = g_numeric_inputs[bucket];
-    g_numeric_inputs[bucket] = state;
+    state->next = toolkit->numeric_inputs[bucket];
+    toolkit->numeric_inputs[bucket] = state;
     return state;
 }
 
@@ -3650,15 +3695,7 @@ EndTableCell(void)
 int
 DrawUITableView(TableViewProps table)
 {
-    static int last_table_id = 0;
-    static int last_table_row = -1;
-    static int last_table_column = -1;
-    static double last_table_click_time = 0.0;
-    static int resize_table_id = 0;
-    static int resize_column = -1;
-    static int resize_start_x = 0;
-    static int resize_start_width = 0;
-    static UIPopupInputOwner resize_owner = {0};
+    ToolkitStore *toolkit = toolkit_state();
     int paint = IsWindowReady();
     int font = GetSmallFontSize();
     int row_h = table.row_height > 0 ? Scale(table.row_height) : Scale(28);
@@ -3676,18 +3713,18 @@ DrawUITableView(TableViewProps table)
 
     table.disabled = table.disabled || UIContentDisabled();
 
-    if(resize_column >= 0 &&
-       ui_popup_input_owner_captures(resize_owner)) {
-        resize_table_id = 0;
-        resize_column = -1;
+    if(toolkit->resize_column >= 0 &&
+       ui_popup_input_owner_captures(toolkit->resize_owner)) {
+        toolkit->resize_table_id = 0;
+        toolkit->resize_column = -1;
     }
 
-    if(resize_column >= 0 &&
+    if(toolkit->resize_column >= 0 &&
        (UIContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       (UIContentDisabled() || resize_table_id != table.id || table.disabled || !table.resizable ||
+       (UIContentDisabled() || toolkit->resize_table_id != table.id || table.disabled || !table.resizable ||
         table.column_widths == NULL)) {
-        resize_table_id = 0;
-        resize_column = -1;
+        toolkit->resize_table_id = 0;
+        toolkit->resize_column = -1;
     }
     if(table.column_count < 1)
         return 0;
@@ -3726,39 +3763,39 @@ DrawUITableView(TableViewProps table)
         Vector2 mouse = ui_mouse_world();
         Rectangle header = {table.bounds.x, table.bounds.y,
                             table.bounds.width, (float)header_h};
-        if(resize_column < 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+        if(toolkit->resize_column < 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
            ui_contains(header, mouse)) {
             int separator_x = 0;
             int column = ui_table_separator_at_x(table, (int)(mouse.x-ui_table_header_shift(table,mouse.y)),
                                                   Scale(5), default_col_w,
                                                   &separator_x);
             if(column >= 0) {
-                resize_table_id = table.id;
-                resize_column = column;
-                resize_start_x = (int)mouse.x;
-                resize_start_width = ui_table_column_width(table, column,
+                toolkit->resize_table_id = table.id;
+                toolkit->resize_column = column;
+                toolkit->resize_start_x = (int)mouse.x;
+                toolkit->resize_start_width = ui_table_column_width(table, column,
                                                            default_col_w);
-                resize_owner = ui_popup_input_owner();
+                toolkit->resize_owner = ui_popup_input_owner();
                 MarkUIClickable();
             }
         }
-        if(resize_column >= 0 && resize_table_id == table.id) {
+        if(toolkit->resize_column >= 0 && toolkit->resize_table_id == table.id) {
             int minimum = table.min_column_width > 0
                 ? Scale(table.min_column_width) : Scale(32);
             if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                int width = resize_start_width + (int)mouse.x - resize_start_x;
+                int width = toolkit->resize_start_width + (int)mouse.x - toolkit->resize_start_x;
                 if(width < minimum)
                     width = minimum;
-                if(table.column_widths[resize_column] != width) {
-                    table.column_widths[resize_column] = width;
+                if(table.column_widths[toolkit->resize_column] != width) {
+                    table.column_widths[toolkit->resize_column] = width;
                     changed = 1;
                 }
                 MarkUIClickable();
             }
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                 UIConsumeRelease();
-                resize_table_id = 0;
-                resize_column = -1;
+                toolkit->resize_table_id = 0;
+                toolkit->resize_column = -1;
             }
         }
     }
@@ -3927,18 +3964,18 @@ DrawUITableView(TableViewProps table)
             }
             if(clicked_col >= 0 && table.selected_column != NULL)
                 *table.selected_column = clicked_col;
-            if(clicked_col >= 0 && last_table_id == table.id &&
-               last_table_row == r && last_table_column == clicked_col &&
-               now - last_table_click_time <= 0.45) {
+            if(clicked_col >= 0 && toolkit->last_table_id == table.id &&
+               toolkit->last_table_row == r && toolkit->last_table_column == clicked_col &&
+               now - toolkit->last_table_click_time <= 0.45) {
                 if(table.activated_row != NULL)
                     *table.activated_row = r;
                 if(table.activated_column != NULL)
                     *table.activated_column = clicked_col;
             }
-            last_table_id = table.id;
-            last_table_row = r;
-            last_table_column = clicked_col;
-            last_table_click_time = now;
+            toolkit->last_table_id = table.id;
+            toolkit->last_table_row = r;
+            toolkit->last_table_column = clicked_col;
+            toolkit->last_table_click_time = now;
             changed = 1;
         }
         if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
@@ -3999,6 +4036,7 @@ CanvasRectToScreen(Canvas canvas, Rectangle rect)
 CanvasResult
 BeginCanvas(Canvas canvas)
 {
+    ToolkitStore *toolkit = toolkit_state();
     CanvasResult result = {0};
     Vector2 mouse = ui_mouse_world();
 
@@ -4017,7 +4055,7 @@ BeginCanvas(Canvas canvas)
         result.dragging = 1;
     BeginUIClip((int)canvas.bounds.x, (int)canvas.bounds.y,
                 (int)canvas.bounds.width, (int)canvas.bounds.height);
-    g_canvas_depth++;
+    toolkit->canvas_depth++;
     if(canvas.scroll_x != NULL || canvas.scroll_y != NULL ||
        (canvas.zoom != NULL && *canvas.zoom > 0.01f && *canvas.zoom != 1.0f)) {
         Camera2D camera = {0};
@@ -4027,7 +4065,7 @@ BeginCanvas(Canvas canvas)
         camera.rotation = 0.0f;
         camera.zoom = canvas.zoom != NULL && *canvas.zoom > 0.01f ? *canvas.zoom : 1.0f;
         BeginMode2D(camera);
-        g_canvas_mode_depth++;
+        toolkit->canvas_mode_depth++;
     }
     return result;
 }
@@ -4035,12 +4073,14 @@ BeginCanvas(Canvas canvas)
 void
 EndCanvas(Canvas canvas)
 {
-    if(g_canvas_depth > 0) {
-        if(g_canvas_mode_depth > 0) {
-            g_canvas_mode_depth--;
+    ToolkitStore *toolkit = toolkit_state();
+
+    if(toolkit->canvas_depth > 0) {
+        if(toolkit->canvas_mode_depth > 0) {
+            toolkit->canvas_mode_depth--;
             EndMode2D();
         }
-        g_canvas_depth--;
+        toolkit->canvas_depth--;
         EndUIClip();
     }
     DrawRectangleLinesEx(canvas.bounds, 1.0f, c_button);
@@ -4106,8 +4146,7 @@ DrawUINotebook(NotebookProps notebook)
 int
 DrawUIPanedView(PanedViewProps panes)
 {
-    static int *active_split;
-    static UIPopupInputOwner active_owner;
+    ToolkitStore *toolkit = toolkit_state();
     int changed = 0;
     int limit = (int)(panes.vertical ? panes.bounds.width : panes.bounds.height) - panes.min_second;
     if(limit < panes.min_first) limit = panes.min_first;
@@ -4117,18 +4156,21 @@ DrawUIPanedView(PanedViewProps panes)
     Rectangle handle = panes.vertical
         ? (Rectangle){panes.bounds.x + split - grip / 2, panes.bounds.y, grip, panes.bounds.height}
         : (Rectangle){panes.bounds.x, panes.bounds.y + split - grip / 2, panes.bounds.width, grip};
-    if(active_split != NULL && ui_popup_input_owner_captures(active_owner))
-        active_split = NULL;
-    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) active_split = NULL;
-    if(UIContentDisabled() && active_split == panes.split) active_split = NULL;
+    if(toolkit->active_split != NULL &&
+       ui_popup_input_owner_captures(toolkit->active_split_owner))
+        toolkit->active_split = NULL;
+    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+        toolkit->active_split = NULL;
+    if(UIContentDisabled() && toolkit->active_split == panes.split)
+        toolkit->active_split = NULL;
     if(!UIContentDisabled() && ui_hot(handle)) {
         MarkUIClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            active_split = panes.split;
-            active_owner = ui_popup_input_owner();
+            toolkit->active_split = panes.split;
+            toolkit->active_split_owner = ui_popup_input_owner();
         }
     }
-    if(active_split != NULL && active_split == panes.split) {
+    if(toolkit->active_split != NULL && toolkit->active_split == panes.split) {
         Vector2 mouse = ui_mouse_world();
         int next = panes.vertical ? (int)(mouse.x - panes.bounds.x) : (int)(mouse.y - panes.bounds.y);
         split = ui_clampi(next, panes.min_first, limit);
@@ -4143,49 +4185,58 @@ DrawUIPanedView(PanedViewProps panes)
     return changed;
 }
 
-typedef struct UITreeHeaderNav { int id, depth; } UITreeHeaderNav;
-static UITreeHeaderNav *g_tree_headers, *g_tree_previous;
-static int g_tree_header_count, g_tree_previous_count;
-static int g_tree_header_capacity, g_tree_previous_capacity;
-static unsigned long g_tree_header_frame, g_tree_key_frame;
-
 static void
 ui_tree_header_register(CollapsibleProps section, int enabled)
 {
-    if(g_tree_header_frame != g_ui_frame_serial) {
-        UITreeHeaderNav *swap = g_tree_previous;
-        int capacity = g_tree_previous_capacity;
-        g_tree_previous = g_tree_headers;
-        g_tree_previous_count = g_tree_header_frame + 1 == g_ui_frame_serial ? g_tree_header_count : 0;
-        g_tree_previous_capacity = g_tree_header_capacity;
-        g_tree_headers = swap;
-        g_tree_header_capacity = capacity;
-        g_tree_header_count = 0;
-        g_tree_header_frame = g_ui_frame_serial;
+    ToolkitStore *toolkit = toolkit_state();
+
+    if(toolkit->tree_header_frame != g_ui_frame_serial) {
+        UITreeHeaderNav *swap = toolkit->tree_previous;
+        int capacity = toolkit->tree_previous_capacity;
+        toolkit->tree_previous = toolkit->tree_headers;
+        toolkit->tree_previous_count =
+            toolkit->tree_header_frame + 1 == g_ui_frame_serial
+                ? toolkit->tree_header_count : 0;
+        toolkit->tree_previous_capacity = toolkit->tree_header_capacity;
+        toolkit->tree_headers = swap;
+        toolkit->tree_header_capacity = capacity;
+        toolkit->tree_header_count = 0;
+        toolkit->tree_header_frame = g_ui_frame_serial;
     }
     if(!enabled || !section.tree || section.id <= 0) return;
-    if(g_tree_header_count == g_tree_header_capacity) {
-        int capacity = g_tree_header_capacity ? g_tree_header_capacity * 2 : 32;
-        UITreeHeaderNav *items = realloc(g_tree_headers, sizeof(*items) * capacity);
+    if(toolkit->tree_header_count == toolkit->tree_header_capacity) {
+        int capacity = toolkit->tree_header_capacity
+            ? toolkit->tree_header_capacity * 2 : 32;
+        UITreeHeaderNav *items = realloc(toolkit->tree_headers,
+                                        sizeof(*items) * capacity);
         if(items == NULL) return;
-        g_tree_headers = items;
-        g_tree_header_capacity = capacity;
+        toolkit->tree_headers = items;
+        toolkit->tree_header_capacity = capacity;
     }
-    g_tree_headers[g_tree_header_count++] = (UITreeHeaderNav){section.id, section.depth > 0 ? section.depth : 0};
+    toolkit->tree_headers[toolkit->tree_header_count++] =
+        (UITreeHeaderNav){section.id, section.depth > 0 ? section.depth : 0};
 }
 
 static int
 ui_tree_header_target(int id, int key)
 {
-    for(int i = 0; i < g_tree_previous_count; i++) {
-        if(g_tree_previous[i].id != id) continue;
-        if(key == KEY_DOWN && i + 1 < g_tree_previous_count) return g_tree_previous[i+1].id;
-        if(key == KEY_UP && i > 0) return g_tree_previous[i-1].id;
-        if(key == KEY_RIGHT && i + 1 < g_tree_previous_count &&
-           g_tree_previous[i+1].depth > g_tree_previous[i].depth) return g_tree_previous[i+1].id;
+    ToolkitStore *toolkit = toolkit_state();
+
+    for(int i = 0; i < toolkit->tree_previous_count; i++) {
+        if(toolkit->tree_previous[i].id != id) continue;
+        if(key == KEY_DOWN && i + 1 < toolkit->tree_previous_count)
+            return toolkit->tree_previous[i+1].id;
+        if(key == KEY_UP && i > 0)
+            return toolkit->tree_previous[i-1].id;
+        if(key == KEY_RIGHT && i + 1 < toolkit->tree_previous_count &&
+           toolkit->tree_previous[i+1].depth >
+               toolkit->tree_previous[i].depth)
+            return toolkit->tree_previous[i+1].id;
         if(key == KEY_LEFT)
             for(int j = i - 1; j >= 0; j--)
-                if(g_tree_previous[j].depth < g_tree_previous[i].depth) return g_tree_previous[j].id;
+                if(toolkit->tree_previous[j].depth <
+                   toolkit->tree_previous[i].depth)
+                    return toolkit->tree_previous[j].id;
         break;
     }
     return id;
@@ -4194,6 +4245,7 @@ ui_tree_header_target(int id, int key)
 int
 DrawUICollapsible(CollapsibleProps section)
 {
+    ToolkitStore *toolkit = toolkit_state();
     int font = GetFontSize();
     int changed = 0;
     Rectangle header = section.bounds;
@@ -4236,20 +4288,21 @@ DrawUICollapsible(CollapsibleProps section)
         }
     }
     if(focused && !ui_popup_input_focus_captures(section.id) &&
-       g_tree_key_frame != g_ui_frame_serial) {
+       toolkit->tree_key_frame != g_ui_frame_serial) {
         int key = IsKeyPressed(KEY_DOWN) ? KEY_DOWN : IsKeyPressed(KEY_UP) ? KEY_UP :
                   IsKeyPressed(KEY_RIGHT) ? KEY_RIGHT : IsKeyPressed(KEY_LEFT) ? KEY_LEFT : 0;
         int open = section.open != NULL && *section.open;
         if(section.tree && (key == KEY_DOWN || key == KEY_UP ||
            (key == KEY_RIGHT && open && !section.leaf) || (key == KEY_LEFT && (!open || section.leaf)))) {
             SetUIFocus(ui_tree_header_target(section.id,key));
-            g_tree_key_frame = g_ui_frame_serial;
+            toolkit->tree_key_frame = g_ui_frame_serial;
         } else if(!section.leaf && section.open != NULL) {
             if(key == KEY_RIGHT) *section.open = true;
             if(key == KEY_LEFT) *section.open = false;
             if(IsUIFocusActivatePressed(section.id)) *section.open = !*section.open;
             changed |= open != *section.open;
-            if(key != 0 || IsUIFocusActivatePressed(section.id)) g_tree_key_frame = g_ui_frame_serial;
+            if(key != 0 || IsUIFocusActivatePressed(section.id))
+                toolkit->tree_key_frame = g_ui_frame_serial;
         }
     }
     focused = enabled && section.id > 0 && IsUIFocusActive(section.id);
@@ -4281,7 +4334,7 @@ int
 DrawUIMessageDialog(MessageDialogProps dialog)
 {
     const ModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
-                                  ButtonStylePrimary, 0};
+                                  ButtonToneAccent, ButtonEmphasisFilled, 0};
     ModalProps props;
 
     memset(&props, 0, sizeof(props));
@@ -4298,8 +4351,8 @@ int
 DrawUIConfirmDialog(ConfirmDialogProps dialog)
 {
     ModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
+        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
+        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonToneAccent, ButtonEmphasisFilled, 0}
     };
     ModalProps props;
 
@@ -4319,8 +4372,8 @@ DrawUIPromptDialog(PromptDialogProps dialog)
     int result;
     int commit_pressed = 0;
     ModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonStyleSecondary, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonStylePrimary, 0}
+        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
+        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonToneAccent, ButtonEmphasisFilled, 0}
     };
     ModalProps props;
     TextFieldProps field_props;

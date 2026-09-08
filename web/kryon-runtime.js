@@ -37,11 +37,24 @@ export const BROWN = Color(127, 106, 79, 255);
 export const DARKBROWN = Color(76, 63, 47, 255);
 export const MAGENTA = Color(255, 0, 255, 255);
 
-export const ButtonStylePrimary = 0;
-export const ButtonStyleSecondary = 1;
-export const ButtonStyleDanger = 2;
-export const ButtonStyleTab = 3;
-export const ButtonStyleTabSelected = 4;
+export const ButtonToneNeutral = 0;
+export const ButtonToneAccent = 1;
+export const ButtonToneDanger = 2;
+export const ButtonToneSuccess = 3;
+export const ButtonToneWarning = 4;
+export const ButtonEmphasisFilled = 0;
+export const ButtonEmphasisSoft = 1;
+export const ButtonEmphasisOutline = 2;
+export const ButtonEmphasisGhost = 3;
+export const ButtonEmphasisLink = 4;
+export const ButtonStateAuto = 0;
+export const ButtonStateNormal = 1;
+export const ButtonStateHover = 2;
+export const ButtonStatePressed = 3;
+export const ButtonStateFocus = 4;
+export const ButtonStateDisabled = 5;
+export const ButtonStateLoading = 6;
+export const ButtonStateSelected = 7;
 export const SideTop = 0;
 export const SideBottom = 1;
 export const SideLeft = 2;
@@ -61,6 +74,64 @@ export const KEY_LEFT = KeyLeft;
 export const KEY_DOWN = 264;
 export const KEY_UP = 265;
 export const MOUSE_BUTTON_LEFT = MouseButtonLeft;
+
+let activeTheme = null;
+let activeThemeFamily = null;
+let activeThemeMode = 1;
+
+export function ThemeDefaultLight() {
+  return {
+    name: "Default light",
+    mode: 1,
+    colors: {
+      background: Color(245, 248, 252, 255), surface: Color(255, 255, 255, 255),
+      text: Color(16, 35, 58, 255), textDisabled: Color(140, 154, 169, 255),
+      icon: Color(24, 60, 99, 255), border: Color(197, 212, 227, 255),
+      focus: Color(6, 108, 255, 255), selection: Color(216, 233, 255, 255),
+      accent: Color(23, 105, 232, 255), onAccent: WHITE,
+      accentHover: Color(15, 94, 216, 255), accentPressed: Color(10, 77, 184, 255),
+      success: Color(7, 128, 90, 255), warning: Color(181, 109, 0, 255),
+      danger: Color(214, 36, 69, 255), link: Color(7, 95, 209, 255),
+    },
+    metrics: GetThemeMetrics(),
+  };
+}
+
+export function ThemeDefaultDark() {
+  return {
+    name: "Default dark",
+    mode: 2,
+    colors: {
+      background: Color(7, 20, 38, 255),
+      surface: Color(13, 33, 56, 255),
+      text: Color(245, 248, 255, 255),
+      textDisabled: Color(114, 131, 154, 255),
+      icon: Color(216, 229, 245, 255),
+      border: Color(49, 80, 111, 255), focus: Color(77, 163, 255, 255),
+      accent: Color(20, 120, 255, 255),
+      onAccent: WHITE, accentHover: Color(45, 140, 255, 255),
+      accentPressed: Color(8, 98, 217, 255),
+      success: Color(7, 150, 105, 255), warning: Color(200, 135, 0, 255),
+      danger: Color(220, 47, 79, 255),
+      link: Color(89, 168, 255, 255),
+    },
+    metrics: GetThemeMetrics(),
+  };
+}
+
+export function SetTheme(theme) {
+  activeThemeFamily = null;
+  activeTheme = theme;
+  activeThemeMode = theme?.mode === 2 ? 2 : 1;
+}
+export function SetThemeFamily(family) {
+  activeThemeFamily = family;
+  activeTheme = activeThemeMode === 2 ? family.dark : family.light;
+}
+export function GetThemeFamily() { return activeThemeFamily; }
+export function GetTheme() {
+  return activeTheme || (activeThemeMode === 2 ? ThemeDefaultDark() : ThemeDefaultLight());
+}
 export const THEME_SKY = 0;
 export const THEME_COUNT = 6;
 export const THEME_MODE_SYSTEM = 0;
@@ -699,12 +770,12 @@ export function GetUIPageSidePadding() {
   return Scale(24);
 }
 
-export function GetThemeBackground() { return Color(247, 244, 236, 255); }
-export function GetThemeSurface() { return Color(255, 254, 249, 255); }
-export function GetThemeText() { return Color(42, 59, 64, 255); }
-export function GetThemeButton() { return Color(35, 101, 125, 255); }
-export function GetThemeIcon() { return Color(31, 83, 102, 255); }
-export function GetThemeLink() { return Color(13, 93, 120, 255); }
+export function GetThemeBackground() { return GetTheme().colors.background; }
+export function GetThemeSurface() { return GetTheme().colors.surface; }
+export function GetThemeText() { return GetTheme().colors.text; }
+export function GetThemeButton() { return GetTheme().colors.accent; }
+export function GetThemeIcon() { return GetTheme().colors.icon; }
+export function GetThemeLink() { return GetTheme().colors.link; }
 
 export function SystemThemePrefersDark() { return false; }
 
@@ -749,8 +820,18 @@ export function IsKeyDown(_key) { return false; }
 
 export function IsMouseButtonReleased(_button) { return false; }
 
-export function GetUIStyleTokens() {
-  return { radius: 4, border: 1, shadow: 0 };
+export function GetThemeMetrics() {
+  return {
+    radiusSmall: 4, radiusMedium: 8, radiusLarge: 12, radiusPill: 999,
+    borderWidth: 1, focusWidth: 2, focusGap: 2,
+    space1: 4, space2: 8, space3: 12, space4: 16, space5: 24, space6: 32,
+    controlHeightSmall: 32, controlHeightMedium: 40, controlHeightLarge: 48,
+    controlPaddingSmall: 12, controlPaddingMedium: 16, controlPaddingLarge: 20,
+    controlGap: 8, fontSizeSmall: 13, fontSizeMedium: 14, fontSizeLarge: 16,
+    iconSizeSmall: 14, iconSizeMedium: 16, iconSizeLarge: 20,
+    shadowOffsetY: 2, shadowBlur: 8, disabledOpacity: 0.58,
+    transitionFastMS: 80, transitionNormalMS: 140,
+  };
 }
 
 export function BeginFrameBox(bounds) {
@@ -781,11 +862,11 @@ const runtimeCallNames = [
   "Background", "BeginDisabled", "Bevel", "BottomNav", "Button", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "Combobox", "Dropdown", "EndCanvas",
   "EndDisabled", "EndScroll", "Href", "Icon", "IconButton", "LabelFrame", "ListBox",
-  "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
+  "MenuButton", "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
   "Text", "TextArea", "TextField", "TextLines", "TitleBar",
-  "Toggle", "Toolbar", "TopNav"
+  "SplitButton", "Toggle", "Toolbar", "TopNav"
 ];
 
 for (const name of runtimeCallNames) {
@@ -800,6 +881,7 @@ export function BeginDisabled(...args) { return struct("BeginDisabled", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function BottomNav(...args) { return struct("BottomNav", args); }
 export function Button(...args) { return struct("Button", args); }
+export function BeginButton(...args) { return struct("BeginButton", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
 export function ClearBackground(...args) { return struct("ClearBackground", args); }
@@ -815,6 +897,7 @@ export function IconButton(...args) { return struct("IconButton", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function LabelFrame(...args) { return struct("LabelFrame", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
+export function MenuButton(...args) { return struct("MenuButton", args); }
 export function Modal(...args) { return struct("Modal", args); }
 export function Notebook(...args) { return struct("Notebook", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
@@ -827,10 +910,17 @@ export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
 export function SelectableText(...args) { return struct("SelectableText", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
-export function SetThemeDarkMode(...args) { return struct("SetThemeDarkMode", args); }
+export function SetThemeDarkMode(dark) {
+  activeThemeMode = dark ? 2 : 1;
+  if (activeThemeFamily) {
+    activeTheme = activeThemeMode === 2 ? activeThemeFamily.dark : activeThemeFamily.light;
+  }
+  return struct("SetThemeDarkMode", [dark]);
+}
 export function ShowToast(...args) { return struct("ShowToast", args); }
 export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }
+export function SplitButton(...args) { return struct("SplitButton", args); }
 export function Stack(...args) { return struct("Stack", args); }
 export function TabBar(...args) { return struct("TabBar", args); }
 export function Text(...args) { return struct("Text", args); }

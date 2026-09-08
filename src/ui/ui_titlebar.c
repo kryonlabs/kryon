@@ -10,7 +10,7 @@ DrawUITitleBarBackground(int height)
     Color top = DarkenUIColor(c_bg, 8);
     Color bottom = c_bg;
     Color divider = GetThemeText();
-    UIStyleTokens tokens = GetUIStyleTokens();
+    ThemeMetrics tokens = GetThemeMetrics();
 
     if(ui_default_style()) {
         top = ui_default_surface_container();
@@ -21,9 +21,9 @@ DrawUITitleBarBackground(int height)
     if(tokens.title_bar_alpha < bottom.a)
         bottom.a = tokens.title_bar_alpha;
     DrawRectangleGradientV(0, 0, ui_view_width, height, top, bottom);
-    if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+    if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
         Color shine = WHITE;
-        shine.a = GetUIStyleTokens().shine_alpha;
+        shine.a = GetThemeMetrics().shine_alpha;
         DrawRectangle(0, 0, ui_view_width, Scale(1), shine);
     }
     divider.a = 34;

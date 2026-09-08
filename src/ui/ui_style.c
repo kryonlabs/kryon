@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 #include "theme.h"
 
-static UIStyleTokens g_ui_style_override;
+static ThemeMetrics g_ui_style_override;
 static int g_ui_style_override_enabled = 0;
 
 #if !defined(KRYON_BACKEND_TERMI)
@@ -18,13 +18,45 @@ typedef struct {
 static UIDefaultRipple g_default_ripples[UI_DEFAULT_RIPPLE_MAX];
 #endif
 
-UIStyleTokens
-GetUIStyleTokensForThemeStyle(ThemeStyle style)
+ThemeMetrics
+GetThemeMetricsForThemeStyle(ThemeStyle style)
 {
-    UIStyleTokens tokens;
+    ThemeMetrics tokens;
 
     if(style == THEME_STYLE_SYSTEM)
         style = GetDefaultPlatformThemeStyle();
+
+    memset(&tokens, 0, sizeof(tokens));
+    tokens.radius_small = 4.0f;
+    tokens.radius_medium = 8.0f;
+    tokens.radius_large = 12.0f;
+    tokens.radius_pill = 999.0f;
+    tokens.border_width = 1.0f;
+    tokens.focus_width = 2.0f;
+    tokens.focus_gap = 2.0f;
+    tokens.space_1 = 4.0f;
+    tokens.space_2 = 8.0f;
+    tokens.space_3 = 12.0f;
+    tokens.space_4 = 16.0f;
+    tokens.space_5 = 24.0f;
+    tokens.space_6 = 32.0f;
+    tokens.control_height_small = 32.0f;
+    tokens.control_height_medium = 40.0f;
+    tokens.control_height_large = 48.0f;
+    tokens.control_padding_small = 12.0f;
+    tokens.control_padding_medium = 16.0f;
+    tokens.control_padding_large = 20.0f;
+    tokens.control_gap = 8.0f;
+    tokens.font_size_small = 13.0f;
+    tokens.font_size_medium = 14.0f;
+    tokens.font_size_large = 16.0f;
+    tokens.icon_size_small = 14.0f;
+    tokens.icon_size_medium = 16.0f;
+    tokens.icon_size_large = 20.0f;
+    tokens.shadow_blur = 8.0f;
+    tokens.disabled_opacity = 0.58f;
+    tokens.transition_fast_ms = 80.0f;
+    tokens.transition_normal_ms = 140.0f;
 
     /* Field-wise assembly (rather than a designated compound literal) so
      * the same source builds with the strict native Plan 9 compiler. */
@@ -55,23 +87,23 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     return tokens;
 }
 
-UIStyleTokens
-GetUIStyleTokens(void)
+ThemeMetrics
+GetThemeMetrics(void)
 {
     if(g_ui_style_override_enabled)
         return g_ui_style_override;
-    return GetUIStyleTokensForThemeStyle(GetEffectiveThemeStyle());
+    return GetThemeMetricsForThemeStyle(GetEffectiveThemeStyle());
 }
 
 void
-SetUIStyleTokens(UIStyleTokens tokens)
+SetThemeMetrics(ThemeMetrics tokens)
 {
     g_ui_style_override = tokens;
     g_ui_style_override_enabled = 1;
 }
 
 void
-ClearUIStyleTokensOverride(void)
+ClearThemeMetricsOverride(void)
 {
     memset(&g_ui_style_override, 0, sizeof(g_ui_style_override));
     g_ui_style_override_enabled = 0;
@@ -80,7 +112,7 @@ ClearUIStyleTokensOverride(void)
 int
 ui_classic_style(void)
 {
-    return GetUIStyleTokens().bevel_enabled != 0;
+    return GetThemeMetrics().bevel_enabled != 0;
 }
 
 int
@@ -107,13 +139,13 @@ ui_radius_px(Rectangle bounds, float radius_px)
 int
 ui_control_bevel_enabled(void)
 {
-    return GetUIStyleTokens().bevel_enabled != 0;
+    return GetThemeMetrics().bevel_enabled != 0;
 }
 
 int
 ui_touch_target_min(void)
 {
-    return Scale(GetUIStyleTokens().touch_target_min);
+    return Scale(GetThemeMetrics().touch_target_min);
 }
 
 Color
@@ -165,20 +197,20 @@ ui_default_tone(Color base, int light_delta, int dark_delta)
     return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, base.a};
 }
 
-UIDefaultScheme
+ThemeScheme
 ui_default_scheme(void)
 {
     /* Every themed widget asks for the scheme on every frame (the Go
      * bindings fetch it per draw call). The computation is pure given the
      * current theme colors and dark mode, so memoize it on those inputs
      * instead of re-deriving tones and dark-mode queries each time. */
-    static UIDefaultScheme cache;
+    static ThemeScheme cache;
     static int cache_valid = 0;
     static Color key_bg, key_surface, key_text, key_circle, key_button;
     static int key_dark;
     Color input_surface = c_surface.a != 0 ? c_surface : c_bg;
     int dark = GetEffectiveThemeDarkMode();
-    UIDefaultScheme scheme;
+    ThemeScheme scheme;
     Color disabled = c_text;
 
     if(cache_valid && dark == key_dark &&
@@ -224,8 +256,8 @@ ui_default_scheme(void)
     return scheme;
 }
 
-UIDefaultScheme
-GetUIDefaultScheme(void)
+ThemeScheme
+GetThemeScheme(void)
 {
     return ui_default_scheme();
 }
@@ -253,7 +285,7 @@ ui_default_state_layer(Rectangle bounds, Color on_color,
                         int hovered, int focused, int pressed)
 {
     Color layer = on_color;
-    float radius = ui_radius_px(bounds, GetUIStyleTokens().control_radius);
+    float radius = ui_radius_px(bounds, GetThemeMetrics().control_radius);
 
     if(pressed)
         layer.a = 31;
@@ -278,7 +310,7 @@ ui_default_focus(Rectangle bounds)
                                bounds.y - Scale(2),
                                bounds.width + Scale(4),
                                bounds.height + Scale(4)};
-    radius = ui_radius_px(focus_bounds, GetUIStyleTokens().control_radius + 2.0f);
+    radius = ui_radius_px(focus_bounds, GetThemeMetrics().control_radius + 2.0f);
     DrawRectangleRoundedLines(focus_bounds, radius, 12, outline);
 }
 
@@ -370,7 +402,7 @@ void
 ui_draw_control_background(Rectangle bounds, Color background, Color border,
                            float classic_radius)
 {
-    UIStyleTokens tokens = GetUIStyleTokens();
+    ThemeMetrics tokens = GetThemeMetrics();
     float radius = tokens.bevel_enabled ? classic_radius
                                         : ui_radius_px(bounds, tokens.control_radius);
 

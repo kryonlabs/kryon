@@ -104,7 +104,7 @@ if [ -n "$stale_tree_api_matches" ]; then
 fi
 
 button_style_matches="$(
-    rg -n '\b(UIButtonStyle[A-Za-z0-9_]*|UI_BUTTON_STYLE_[A-Z_]+)\b' \
+    rg -n '\b(UIButtonStyle[A-Za-z0-9_]*|UI_BUTTON_STYLE_[A-Z_]+|ButtonStyle|StyledButton|RenderStyledButton)\b' \
         include \
         src/ui \
         go/kryon \
@@ -120,7 +120,7 @@ button_style_matches="$(
 )"
 
 if [ -n "$button_style_matches" ]; then
-    echo "Button style APIs must use clean ButtonStyle names without stale UI prefixes:"
+    echo "Buttons must use semantic tone/emphasis/state properties, with no named-style legacy API:"
     echo "$button_style_matches"
     exit 1
 fi

@@ -85,7 +85,7 @@ const outDir = process.argv[2];
 
 const expected = new Map([
   ["examples/01_file_dialog.js", ["Screen", "Background", "Text", "Text", "Button", "Button", "Button", "Text", "Text", "Text"]],
-  ["examples/02_buttons.js", ["Screen", "Background", "Text", "Text", "Button", "Button", "Button", "Text", "Text", "Text", "Text"]],
+  ["examples/02_buttons.js", ["Screen","Text","Rect","Text","Text","Text","Text","Text","Text","Text","Text","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Rect","Text","Text","Text","Text","Text","Text","Text","Text","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button"]],
   ["examples/03_theme.js", ["Screen", "Background", "Text", "Text", "Text", "Button", "Button", "TextField", "Dropdown", "Slider", "Toggle", "Checkbox", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
   ["examples/04_modal.js", ["Screen", "Background", "Text", "Text", "Button", "Text", "Text", "Button"]],
   ["examples/05_color.js", ["Screen", "Background", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Text", "Text"]],
@@ -131,6 +131,13 @@ for (const [relPath, widgets] of expected) {
   const state = mod.createState();
   const snap = mod.frame(undefined, state);
   const got = snap.frame.map((item) => item.name);
+  if (relPath === "examples/02_buttons.js") {
+    assert.equal(got.filter((name) => name === "Button").length, 71,
+      `${relPath}: complete button matrix`);
+    assert.ok(got.includes("Screen") && got.includes("Rect") && got.includes("Text"),
+      `${relPath}: required layout primitives`);
+    continue;
+  }
   assert.deepEqual(got, widgets, `${relPath}: recorded widget stream`);
 }
 

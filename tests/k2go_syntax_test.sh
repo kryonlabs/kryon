@@ -173,10 +173,10 @@ App :: () #ui {
     tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     BeginDisabled(1)
     BeginScroll((Rectangle){0,0,320,240}, 400, &scroll_off)
-    Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .style = ButtonStyleSecondary, .font = Text16, .id = 20})
+    Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
     EndDisabled()
     EndScroll()
-    Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .style = ButtonStyleSecondary, .font = Text16, .id = 21})
+    Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
     Dropdown(22, Scale(150), Scale(70), Scale(90), Scale(24), choices, 3, &pick)
     frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
     packed: Rectangle = FramePack(&frame_box, SideTop, Scale(24))

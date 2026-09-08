@@ -18,16 +18,16 @@ ModalExample :: (viewport: Rectangle) #ui {
         Background(GetThemeBackground())
         Text((TextProps){.bounds={32, 32, 0, 0}, .text="Modal capture example", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={32, 72, 0, 0}, .text="Open the modal and background clicks are blocked.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
-        if Button((ButtonProps){.bounds = {32, 120, 220, 42}, .label = "Background Button", .style = ButtonStyleSecondary, .font = Text16, .id = 101}) {
+        if Button((ButtonProps){.bounds = {32, 120, 220, 42}, .label = "Background Button", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 101}) {
             background_clicks++
         }
         Text((TextProps){.bounds={32, 176, 0, 0}, .text=TextFormat("Background clicks:%d",background_clicks), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={32, 204, 0, 0}, .text=TextFormat("Last modal result:%s",last_label), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        if Button((ButtonProps){.bounds = {32, 240, 220, 42}, .label = "Open Modal", .style = ButtonStylePrimary, .font = Text16, .id = 102}) {
+        if Button((ButtonProps){.bounds = {32, 240, 220, 42}, .label = "Open Modal",  .font = Text16, .id = 102}) {
             modal_open = 1
         }
         if modal_open {
-            actions: [3] ModalAction = {{"Cancel",ButtonStyleSecondary,0},{"Confirm",ButtonStylePrimary,0},{"Delete",ButtonStyleDanger,0}}
+            actions: [3] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Confirm",ButtonToneAccent,ButtonEmphasisFilled,0},{"Delete",ButtonToneDanger,ButtonEmphasisFilled,0}}
             result: int = ActionModal((ModalProps){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
             if result == 1 {
                 modal_open = 0

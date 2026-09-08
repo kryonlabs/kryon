@@ -347,7 +347,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
                     float *roundness, int *segments, int *outline_px)
 {
     ThemeStyle theme_style = GetEffectiveThemeStyle();
-    UIStyleTokens tokens = GetUIStyleTokens();
+    ThemeMetrics tokens = GetThemeMetrics();
 
     if(theme_style == THEME_STYLE_CLASSIC) {
         *radius = 0.0f;
@@ -366,7 +366,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
     }
 
     if(theme_style == THEME_STYLE_DEFAULT) {
-        UIDefaultScheme scheme = ui_default_scheme();
+        ThemeScheme scheme = ui_default_scheme();
 
         if(*radius <= 0.0f)
             *radius = (float)Scale((int)tokens.panel_radius);
@@ -424,7 +424,7 @@ PictureTexture(Texture2D texture, PictureProps picture)
 
     if(theme_style == THEME_STYLE_DEFAULT)
         ui_default_elevation(picture.bounds, roundness,
-                              GetUIStyleTokens().shadow_offset_y);
+                              GetThemeMetrics().shadow_offset_y);
 
     if(picture.style.background.a > 0) {
         if(roundness > 0.0f)

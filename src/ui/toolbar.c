@@ -21,14 +21,14 @@ DrawUIToolbar(ToolbarProps toolbar)
 
     Color bar = DarkenUIColor(c_bg, 14);
     if(ui_modern_style()) {
-        UIStyleTokens tokens = GetUIStyleTokens();
+        ThemeMetrics tokens = GetThemeMetrics();
         if(tokens.panel_alpha < bar.a)
             bar.a = tokens.panel_alpha;
     }
     DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height, bar);
-    if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+    if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
         Color shine = WHITE;
-        shine.a = GetUIStyleTokens().shine_alpha;
+        shine.a = GetThemeMetrics().shine_alpha;
         DrawRectangle(toolbar.x, toolbar.y, toolbar.width, Scale(1), shine);
     }
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
@@ -102,14 +102,14 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
     if(!toolbar.draw_menu) {
         Color bar = DarkenUIColor(c_bg, 14);
         if(ui_modern_style()) {
-            UIStyleTokens tokens = GetUIStyleTokens();
+            ThemeMetrics tokens = GetThemeMetrics();
             if(tokens.panel_alpha < bar.a)
                 bar.a = tokens.panel_alpha;
         }
         DrawRectangle(0, 0, ui_view_width, height, bar);
-        if(ui_modern_style() && GetUIStyleTokens().shine_alpha > 0) {
+        if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
             Color shine = WHITE;
-            shine.a = GetUIStyleTokens().shine_alpha;
+            shine.a = GetThemeMetrics().shine_alpha;
             DrawRectangle(0, 0, ui_view_width, Scale(1), shine);
         }
         DrawLine(0, height - 1, ui_view_width, height - 1,

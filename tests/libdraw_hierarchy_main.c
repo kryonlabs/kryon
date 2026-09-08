@@ -92,7 +92,7 @@ main(void)
     Text((TextProps){.bounds={72, 86, 0, 0}, .text="TOP", .font=24, .color=WHITE, .wrap=TextWrapNone});
     Button((ButtonProps){.bounds = {54, 134, 110, 28},
                          .label = "BUTTON-LEAK",
-                         .style = ButtonStyleSecondary,
+                         .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                          .font = Text12,
                          .id = 901});
     DrawRectangle(44, 128, 160, 42, cover);

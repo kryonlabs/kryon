@@ -1,0 +1,13 @@
+#module "theme"
+
+Mode :: enum {
+    PolicyModeSystem = 0
+    PolicyModeLight = 1
+    PolicyModeDark = 2
+}
+
+ResolveDark :: (mode: i32, system_dark: bool) -> bool #export {
+    if mode == PolicyModeLight { return false }
+    if mode == PolicyModeDark { return true }
+    return system_dark
+}

@@ -1009,8 +1009,8 @@ test_circle_click_uses_ui_release_path(void)
 static void
 test_nested_disabled_scope(void)
 {
-    ButtonProps button = {{10, 10, 80, 28}, "Blocked", ButtonStylePrimary,
-                          14, 145, 0};
+    ButtonProps button = {.bounds={10,10,80,28},.label="Blocked",
+                          .font=14,.id=145};
     Color text = GetThemeText();
 
     BeginDisabled(1);
@@ -1108,7 +1108,8 @@ test_collapsible_composes_children(void)
     bool open = false;
     int actions = 0;
     CollapsibleProps section = {.bounds = {10, 10, 180, 200}, .label = "Details", .open = &open};
-    ButtonProps child = {{10, 46, 100, 28}, "Child", ButtonStylePrimary, 14, 983, 0};
+    ButtonProps child = {.bounds={10,46,100,28},.label="Child",
+                         .font=14,.id=983};
     int ys[] = {20, 50, 20, 50};
 
     InjectReset();
@@ -3617,7 +3618,7 @@ main(void)
     SetThemeStyle(THEME_STYLE_CLASSIC);
     check_int("classic style", GetThemeStyle(), THEME_STYLE_CLASSIC);
     check_int("classic effective style", GetEffectiveThemeStyle(), THEME_STYLE_CLASSIC);
-    check_int("retro bevel", GetUIStyleTokens().bevel_enabled, 1);
+    check_int("retro bevel", GetThemeMetrics().bevel_enabled, 1);
 
     /* Theme-section locale keys must resolve to real strings (the
      * settings picker wires these as fallbacks). */
@@ -3644,8 +3645,8 @@ main(void)
     SetThemeStyle(THEME_STYLE_DEFAULT);
     check_int("default style", GetThemeStyle(), THEME_STYLE_DEFAULT);
     check_int("default effective style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
-    check_int("material bevel", GetUIStyleTokens().bevel_enabled, 0);
-    check_int("material touch target", GetUIStyleTokens().touch_target_min, 48);
+    check_int("material bevel", GetThemeMetrics().bevel_enabled, 0);
+    check_int("material touch target", GetThemeMetrics().touch_target_min, 48);
 
     SetThemeStyle((ThemeStyle)3);
     check_int("out-of-range style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);

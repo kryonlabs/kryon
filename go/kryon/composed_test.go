@@ -30,8 +30,8 @@ func TestSecondaryButtonUsesQuietSurface(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 480}).(*runtime)
 	r.SetCurrentTheme(int32(ThemeCobalt), 1)
 	r.SetThemeSource(ThemeSourceApp)
-	r.Button(ButtonProps{Bounds: Rectangle{Width: 100, Height: 48}, Style: ButtonStylePrimary})
-	r.Button(ButtonProps{Bounds: Rectangle{Y: 60, Width: 100, Height: 48}, Style: ButtonStyleSecondary})
+	r.Button(ButtonProps{Bounds: Rectangle{Width: 100, Height: 48}, })
+	r.Button(ButtonProps{Bounds: Rectangle{Y: 60, Width: 100, Height: 48}, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft,})
 	ops := r.FrameOps()
 	if len(ops) != 2 || ops[0].Color == ops[1].Color {
 		t.Fatalf("secondary button must use the quiet surface: %+v; surface=%+v button=%+v", ops, r.theme().surface, r.theme().button)

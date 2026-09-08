@@ -42,6 +42,60 @@ typedef enum {
     THEME_MODE_DARK = 2
 } ThemeMode;
 
+typedef struct ThemeColors {
+    Color background;
+    Color surface;
+    Color surface_raised;
+    Color surface_sunken;
+    Color overlay;
+    Color text;
+    Color text_muted;
+    Color text_disabled;
+    Color icon;
+    Color icon_muted;
+    Color border;
+    Color border_strong;
+    Color divider;
+    Color focus;
+    Color selection;
+    Color accent;
+    Color on_accent;
+    Color accent_hover;
+    Color accent_pressed;
+    Color success;
+    Color on_success;
+    Color warning;
+    Color on_warning;
+    Color danger;
+    Color on_danger;
+    Color info;
+    Color on_info;
+    Color link;
+    Color link_hover;
+    Color shadow;
+} ThemeColors;
+
+typedef struct Theme {
+    const char *name;
+    ThemeMode mode;
+    ThemeColors colors;
+    ThemeMetrics metrics;
+} Theme;
+
+typedef struct ThemeFamily {
+    const char *name;
+    Theme light;
+    Theme dark;
+} ThemeFamily;
+
+Theme ThemeDefaultLight(void);
+Theme ThemeDefaultDark(void);
+void SetTheme(Theme theme);
+void SetThemeFamily(ThemeFamily family);
+ThemeFamily GetThemeFamily(void);
+Theme GetTheme(void);
+const Theme *GetThemeRef(void);
+
 void ResetTheme(void);
 ThemeScope *RegisterThemeScope(const char *name, const char *path);
 ThemeScope *RegisterDarkThemeScope(const char *name, const char *path, const char *dark_path);

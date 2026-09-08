@@ -805,8 +805,8 @@ state layers/ripple feedback, elevation shadows, and theme-derived Default color
 roles. Classic keeps the original beveled Kryon look.
 
 ```c
-UIStyleTokens GetUIStyleTokens(void);
-UIDefaultScheme GetUIDefaultScheme(void);
+ThemeMetrics GetThemeMetrics(void);
+ThemeScheme GetThemeScheme(void);
 ```
 
 ---
@@ -1186,10 +1186,18 @@ decoded-image-in-memory struct type.
 typedef struct {
     Rectangle bounds;
     const char *label;
-    ButtonStyle style;
     int font;
     int id;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
+    ControlSize size;
     int disabled;
+    int loading;
+    int selected;
+    int full_width;
+    int pill;
+    ButtonState state;
+    const ButtonPaint *paint;
 } ButtonProps;
 ```
 
@@ -1610,7 +1618,8 @@ three action buttons.
 ```c
 typedef struct {
     const char *label;
-    ButtonStyle style;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
     int disabled;
 } ModalAction;
 
@@ -1817,9 +1826,10 @@ void UIInfoRowsNode(InfoRows rows);
 ```c
 typedef struct {
     const char *label;
-    ButtonStyle style;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
     int disabled;
-} UIButtonRowItem;
+} ButtonRowItem;
 
 typedef struct {
     int x;
@@ -1827,7 +1837,7 @@ typedef struct {
     int width;
     int height;
     int gap;
-    const UIButtonRowItem *items;
+    const ButtonRowItem *items;
     int count;
 } ButtonRow;
 
@@ -2088,17 +2098,40 @@ void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, 
 
 ---
 
-## Button Styles
+## Button Properties
 
 ```c
 typedef enum {
-    ButtonStylePrimary,
-    ButtonStyleSecondary,
-    ButtonStyleDanger,
-    ButtonStyleTab,
-    ButtonStyleTabSelected
-} ButtonStyle;
+    ButtonToneAccent,
+    ButtonToneNeutral,
+    ButtonToneDanger,
+    ButtonToneSuccess,
+    ButtonToneWarning
+} ButtonTone;
+
+typedef enum {
+    ButtonEmphasisFilled,
+    ButtonEmphasisSoft,
+    ButtonEmphasisOutline,
+    ButtonEmphasisGhost,
+    ButtonEmphasisLink
+} ButtonEmphasis;
+
+typedef enum {
+    ButtonStateAuto,
+    ButtonStateNormal,
+    ButtonStateHover,
+    ButtonStatePressed,
+    ButtonStateFocus,
+    ButtonStateDisabled,
+    ButtonStateLoading,
+    ButtonStateSelected
+} ButtonState;
 ```
+
+The zero-value button is the default neutral, filled, medium button. Applications
+set one `Theme` for every widget and vary buttons with semantic properties;
+there are no named button-style presets.
 
 ---
 
@@ -2287,7 +2320,6 @@ int main(void) {
         if (Button((ButtonProps){
                 .bounds = {10, 10, 100, 36},
                 .label = "Click Me",
-                .style = ButtonStylePrimary,
                 .id = 1,
         })) {
             // Button clicked

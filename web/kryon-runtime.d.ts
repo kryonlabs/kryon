@@ -59,6 +59,19 @@ export interface ColorValue {
   a: number;
 }
 
+export interface ThemeValue {
+  name?: string;
+  mode: number;
+  colors: Record<string, ColorValue>;
+  metrics: Record<string, number>;
+}
+
+export interface ThemeFamilyValue {
+  name?: string;
+  light: ThemeValue;
+  dark: ThemeValue;
+}
+
 export function createRuntime(options?: RuntimeOptions): Runtime;
 export function beginFrame(rt: Runtime): Runtime;
 export function endFrame(rt: Runtime): ReturnType<typeof snapshot>;
@@ -93,6 +106,12 @@ export function GetUIPageSidePadding(): number;
 export function GetThemeBackground(): ColorValue;
 export function GetThemeSurface(): ColorValue;
 export function GetThemeText(): ColorValue;
+export function ThemeDefaultLight(): ThemeValue;
+export function ThemeDefaultDark(): ThemeValue;
+export function SetTheme(theme: ThemeValue): void;
+export function SetThemeFamily(family: ThemeFamilyValue): void;
+export function GetThemeFamily(): ThemeFamilyValue | null;
+export function GetTheme(): ThemeValue;
 export function GetThemeButton(): ColorValue;
 export function GetThemeIcon(): ColorValue;
 export function GetThemeLink(): ColorValue;
@@ -106,7 +125,7 @@ export function UpdateFileDialog(...args: unknown[]): number;
 export function IsKeyPressed(key: number): boolean;
 export function IsKeyDown(key: number): boolean;
 export function IsMouseButtonReleased(button: number): boolean;
-export function GetUIStyleTokens(): Record<string, unknown>;
+export function GetThemeMetrics(): Record<string, unknown>;
 export function BeginFrameBox(bounds: unknown): Record<string, unknown>;
 export function FramePack(frame: unknown, side: number, size: number): Record<string, unknown>;
 export function GridCell(grid: unknown, column: number, row: number, columnSpan?: number, rowSpan?: number): Record<string, unknown>;
@@ -149,11 +168,24 @@ export const BEIGE: ColorValue;
 export const BROWN: ColorValue;
 export const DARKBROWN: ColorValue;
 export const MAGENTA: ColorValue;
-export const ButtonStylePrimary: number;
-export const ButtonStyleSecondary: number;
-export const ButtonStyleDanger: number;
-export const ButtonStyleTab: number;
-export const ButtonStyleTabSelected: number;
+export const ButtonToneAccent: number;
+export const ButtonToneNeutral: number;
+export const ButtonToneDanger: number;
+export const ButtonToneSuccess: number;
+export const ButtonToneWarning: number;
+export const ButtonEmphasisFilled: number;
+export const ButtonEmphasisSoft: number;
+export const ButtonEmphasisOutline: number;
+export const ButtonEmphasisGhost: number;
+export const ButtonEmphasisLink: number;
+export const ButtonStateAuto: number;
+export const ButtonStateNormal: number;
+export const ButtonStateHover: number;
+export const ButtonStatePressed: number;
+export const ButtonStateFocus: number;
+export const ButtonStateDisabled: number;
+export const ButtonStateLoading: number;
+export const ButtonStateSelected: number;
 export const SideTop: number;
 export const SideBottom: number;
 export const SideLeft: number;
@@ -186,6 +218,7 @@ export function Background(...args: unknown[]): unknown;
 export function Bevel(...args: unknown[]): unknown;
 export function BottomNav(...args: unknown[]): unknown;
 export function Button(...args: unknown[]): unknown;
+export function BeginButton(...args: unknown[]): unknown;
 export function CanvasGrid(...args: unknown[]): unknown;
 export function Checkbox(...args: unknown[]): unknown;
 export function ClearBackground(...args: unknown[]): unknown;
@@ -200,6 +233,7 @@ export function IconButton(...args: unknown[]): unknown;
 export function Icon(...args: unknown[]): unknown;
 export function LabelFrame(...args: unknown[]): unknown;
 export function ListBox(...args: unknown[]): unknown;
+export function MenuButton(...args: unknown[]): unknown;
 export function Modal(...args: unknown[]): unknown;
 export function Notebook(...args: unknown[]): unknown;
 export function Paragraph(...args: unknown[]): unknown;
@@ -216,6 +250,7 @@ export function SetThemeDarkMode(...args: unknown[]): unknown;
 export function ShowToast(...args: unknown[]): unknown;
 export function Slider(...args: unknown[]): unknown;
 export function Spinbox(...args: unknown[]): unknown;
+export function SplitButton(...args: unknown[]): unknown;
 export function Stack(...args: unknown[]): unknown;
 export function TabBar(...args: unknown[]): unknown;
 export function Text(...args: unknown[]): unknown;

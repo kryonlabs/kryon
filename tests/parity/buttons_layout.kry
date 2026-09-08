@@ -49,12 +49,12 @@ buttons_frame :: () #ui {
                     when = 2 >= 1
                     Disabled {
                         when = false
-                        if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save", .style = ButtonStylePrimary, .font = Text16, .id = 501}) {
+                        if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save",  .font = Text16, .id = 501}) {
                             buttons_action += 1
                         }
                     }
                 }
-                if Button((ButtonProps){.bounds = {120,120,80,32}, .label = "Cancel", .style = ButtonStyleSecondary, .font = Text16, .id = 502}) {
+                if Button((ButtonProps){.bounds = {120,120,80,32}, .label = "Cancel", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 502}) {
                     buttons_action += 10
                 }
             }

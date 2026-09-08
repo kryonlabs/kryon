@@ -442,11 +442,11 @@ font_size_of(const char *expr)
 }
 
 static int
-button_style_of(const char *expr)
+button_tone_of(const char *expr)
 {
-    if(strstr(expr, "ButtonStyleDanger") != NULL)
+    if(strstr(expr, "ButtonToneDanger") != NULL)
         return 2;
-    if(strstr(expr, "ButtonStyleSecondary") != NULL)
+    if(strstr(expr, "ButtonToneNeutral") != NULL)
         return 1;
     return 0;
 }
@@ -903,7 +903,7 @@ parse_button(KrbBuild *b, const char *call)
         extract_string(p, n->text, sizeof(n->text));
     p = strstr(props, ".style");
     if(p != NULL)
-        n->style = button_style_of(p);
+        n->style = button_tone_of(p);
     p = strstr(props, ".bounds");
     if(p == NULL)
         p = strstr(props, "Rectangle){"); /* positional form */

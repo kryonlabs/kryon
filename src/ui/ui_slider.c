@@ -573,7 +573,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
                       !UIInputCapturesClick(mouse_world) &&
                       UIHoverEffectsEnabled();
-        UIDefaultScheme scheme = ui_default_scheme();
+        ThemeScheme scheme = ui_default_scheme();
         Color fill = *value ? scheme.primary : BLANK;
         Color border = *value ? scheme.primary : scheme.on_surface_variant;
         Color state_color = *value ? scheme.primary : scheme.on_surface_variant;
@@ -598,7 +598,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         Color border = LightenUIColor(box_color, 22);
         border.a = border.a > 150 ? 150 : border.a;
-        float radius = ui_radius_px(box, GetUIStyleTokens().control_radius);
+        float radius = ui_radius_px(box, GetThemeMetrics().control_radius);
         DrawRectangleRounded(box, radius, 8, box_color);
         DrawRectangleRoundedLines(box, radius, 8, border);
     } else {

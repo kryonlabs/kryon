@@ -191,7 +191,7 @@ li{margin:.25rem 0}
 <table>
 <tr><th>Feature</th><th>C</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Theming</td><td class="ok">✅ 6 palettes × light/dark INI, scopes, vars, runtime loader</td><td class="ok">✅ <code>SetCurrentTheme</code>/<code>SetThemeDarkMode</code>/<code>GetTheme*</code></td><td class="part">◐ theme color slots (<code>KrySwSetTheme</code>); light/dark env knobs on hosts</td></tr>
-<tr><td class="">Style tokens</td><td class="ok">✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles</td><td class="ok">✅ <code>Get/SetUIStyleTokens</code></td><td class="no">✗</td></tr>
+<tr><td class="">Style tokens</td><td class="ok">✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles</td><td class="ok">✅ <code>Get/SetThemeMetrics</code></td><td class="no">✗</td></tr>
 <tr><td class="">Animation</td><td class="ok">✅ transitions (smoothstep), ripple, keyframe scene anims</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode</td></tr>
 <tr><td class="">Text/fonts</td><td class="part">◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi</td><td class="ok">✅ <code>RegisterUIFont(Data)</code>, <code>Push/Pop/UseUIFont</code>, input queue</td><td class="part">◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization</td></tr>
 <tr><td class="">DPI/scaling</td><td class="ok">✅ viewport-derived scale, <code>Scale</code></td><td class="ok">✅ <code>Scale</code>, <code>GetWindowScaleDPI</code></td><td class="part">◐ per-mille UI scale (<code>KRB_RUN_UI_SCALE</code>)</td></tr>

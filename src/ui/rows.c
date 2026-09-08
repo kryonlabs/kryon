@@ -428,14 +428,15 @@ DrawUIButtonRow(ButtonRowProps row)
             if(button_w <= 0)
                 return clicked;
             for(int j = 0; j < row_count; j++) {
-                int hover = 0;
                 int item_index = row_start + j;
-
-                if(RenderStyledButton(x, y, button_w, row.height,
-                                          row.items[item_index].label,
-                                          row.items[item_index].style,
-                                          row.items[item_index].disabled,
-                                          &hover))
+                if(Button((ButtonProps){
+                       .bounds = {(float)x, (float)y,
+                                  (float)button_w, (float)row.height},
+                       .label = row.items[item_index].label,
+                       .tone = row.items[item_index].tone,
+                       .emphasis = row.items[item_index].emphasis,
+                       .disabled = row.items[item_index].disabled
+                   }))
                     clicked = item_index;
                 x += button_w + gap;
             }

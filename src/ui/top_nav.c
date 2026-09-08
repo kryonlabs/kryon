@@ -4,7 +4,7 @@ static void
 ui_top_nav_background(Rectangle bounds)
 {
     if(ui_default_style()) {
-        UIDefaultScheme scheme = ui_default_scheme();
+        ThemeScheme scheme = ui_default_scheme();
         DrawRectangleRec(bounds, scheme.surface_container);
         DrawLine((int)bounds.x, (int)(bounds.y + bounds.height - 1),
                  (int)(bounds.x + bounds.width),

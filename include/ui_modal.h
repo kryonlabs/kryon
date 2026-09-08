@@ -27,7 +27,8 @@ typedef struct {
 
 typedef struct {
     const char *label;
-    ButtonStyle style;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
     int disabled;
 } ModalAction;
 

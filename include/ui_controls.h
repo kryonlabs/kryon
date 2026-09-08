@@ -13,14 +13,52 @@ typedef enum {
     UI_ICON_SIZE_LARGE
 } UIIconSize;
 
-typedef enum {
-    ButtonStylePrimary,
-    ButtonStyleSecondary,
-    ButtonStyleOutline,
-    ButtonStyleDanger,
-    ButtonStyleTab,
-    ButtonStyleTabSelected
-} ButtonStyle;
+typedef enum ButtonTone {
+    ButtonToneNeutral,
+    ButtonToneAccent,
+    ButtonToneDanger,
+    ButtonToneSuccess,
+    ButtonToneWarning
+} ButtonTone;
+
+typedef enum ButtonEmphasis {
+    ButtonEmphasisFilled,
+    ButtonEmphasisSoft,
+    ButtonEmphasisOutline,
+    ButtonEmphasisGhost,
+    ButtonEmphasisLink
+} ButtonEmphasis;
+
+typedef enum ControlSize {
+    ControlSizeSmall,
+    ControlSizeMedium,
+    ControlSizeLarge
+} ControlSize;
+
+typedef enum IconPlacement {
+    IconPlacementLeading,
+    IconPlacementTrailing
+} IconPlacement;
+
+typedef enum ButtonState {
+    ButtonStateAuto,
+    ButtonStateNormal,
+    ButtonStateHover,
+    ButtonStatePressed,
+    ButtonStateFocus,
+    ButtonStateDisabled,
+    ButtonStateLoading,
+    ButtonStateSelected
+} ButtonState;
+
+typedef struct ButtonPaint {
+    Color background;
+    Color foreground;
+    Color border;
+    Color focus;
+    float radius;
+    float border_width;
+} ButtonPaint;
 
 typedef enum {
     SyntaxNone,
@@ -51,6 +89,16 @@ typedef struct {
     Color text;
     Color border;
     float radius;
+    ButtonState state;
+    int loading;
+    int selected;
+    int paint_resolved;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
+    Texture2D icon;
+    UIIconType icon_type;
+    IconPlacement icon_placement;
+    int icon_only;
 } ButtonSpec;
 
 typedef struct {
@@ -187,7 +235,37 @@ typedef struct {
 
 /* Public control style ABI. Apps can select a named ThemeStyle or override
  * these tokens directly when they need full control. */
-typedef struct UIStyleTokens {
+typedef struct ThemeMetrics {
+    float radius_small;
+    float radius_medium;
+    float radius_large;
+    float radius_pill;
+    float border_width;
+    float focus_width;
+    float focus_gap;
+    float space_1;
+    float space_2;
+    float space_3;
+    float space_4;
+    float space_5;
+    float space_6;
+    float control_height_small;
+    float control_height_medium;
+    float control_height_large;
+    float control_padding_small;
+    float control_padding_medium;
+    float control_padding_large;
+    float control_gap;
+    float font_size_small;
+    float font_size_medium;
+    float font_size_large;
+    float icon_size_small;
+    float icon_size_medium;
+    float icon_size_large;
+    float shadow_blur;
+    float disabled_opacity;
+    float transition_fast_ms;
+    float transition_normal_ms;
     /* Corner radii in unscaled UI pixels (DPI-scaled at draw time), NOT the
      * 0..0.5 normalized fraction DrawRectangleRounded takes. A fixed radius
      * keeps tall controls from rounding into pills. */
@@ -202,9 +280,9 @@ typedef struct UIStyleTokens {
     int bevel_enabled;
     int touch_target_min;
     int shadow_offset_y;
-} UIStyleTokens;
+} ThemeMetrics;
 
-typedef struct UIDefaultScheme {
+typedef struct ThemeScheme {
     Color primary;
     Color on_primary;
     Color secondary;
@@ -219,7 +297,7 @@ typedef struct UIDefaultScheme {
     Color on_error;
     Color disabled_container;
     Color disabled_content;
-} UIDefaultScheme;
+} ThemeScheme;
 
 typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
                                              int h, int min, int max, int value);
@@ -276,11 +354,11 @@ typedef struct {
     int height;
 } ScoreControlResult;
 
-UIStyleTokens GetUIStyleTokens(void);
-UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
-UIDefaultScheme GetUIDefaultScheme(void);
-void SetUIStyleTokens(UIStyleTokens tokens);
-void ClearUIStyleTokensOverride(void);
+ThemeMetrics GetThemeMetrics(void);
+ThemeMetrics GetThemeMetricsForThemeStyle(ThemeStyle style);
+ThemeScheme GetThemeScheme(void);
+void SetThemeMetrics(ThemeMetrics tokens);
+void ClearThemeMetricsOverride(void);
 
 int EditText(TextEdit edit);
 void QueueTextInputCodepoint(int codepoint);
@@ -300,8 +378,6 @@ int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 
 int RenderButton(ButtonSpec button);
-int RenderStyledButton(int x, int y, int w, int h, const char *label,
-                       ButtonStyle style, int disabled, int *hover);
 int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 int GetScoreControlHeight(ScoreControlProps control);

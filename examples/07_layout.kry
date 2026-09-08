@@ -16,11 +16,7 @@ LayoutInfo :: (label: const char *, value: int, x: int, y: int) {
 }
 
 WidthButton :: (label: const char *, x: int, y: int, value: int) -> int {
-    style: int = ButtonStyleSecondary
-    if max_width == value {
-        style = ButtonStylePrimary
-    }
-    return Button((ButtonProps){.bounds = {x,y,Scale(110),Scale(34)}, .label = label, .style = style, .font = Text16, .id = 1000 + x + y})
+    return Button((ButtonProps){.bounds = {x,y,Scale(110),Scale(34)}, .label = label, .tone = max_width == value ? ButtonToneAccent : ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .selected = max_width == value, .font = Text16, .id = 1000 + x + y})
 }
 
 LayoutNote :: (label: const char *, x: int, y: int, color: Color) {

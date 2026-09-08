@@ -92,6 +92,59 @@ main(void)
 
     SetThemeStyle(THEME_STYLE_CLASSIC);
 
+    BeginTree(7000);
+    BeginButton((ButtonProps){
+        .bounds = {10, 10, 120, 40},
+        .label = "Save",
+        .id = 7001
+    });
+    End();
+    BeginButton((ButtonProps){
+        .bounds = {150, 10, 120, 40},
+        .id = 7002
+    });
+    Text((TextProps){.text = "Save", .wrap = TextWrapNone});
+    End();
+    EndTree();
+    nodes = GetTreeNodes(&count);
+    {
+        const UIWidgetNode *short_button = NULL;
+        const UIWidgetNode *child_button = NULL;
+        const UIWidgetNode *short_text = NULL;
+        const UIWidgetNode *child_text = NULL;
+
+        for(int i = 0; i < count; i++) {
+            if(nodes[i].kind == UI_WIDGET_BUTTON_NODE && nodes[i].id == 7001)
+                short_button = &nodes[i];
+            else if(nodes[i].kind == UI_WIDGET_BUTTON_NODE && nodes[i].id == 7002)
+                child_button = &nodes[i];
+        }
+        if(short_button != NULL && short_button->first_child >= 0)
+            short_text = &nodes[short_button->first_child];
+        if(child_button != NULL && child_button->first_child >= 0)
+            child_text = &nodes[child_button->first_child];
+        check_int("button shorthand has Text child",
+                  short_text != NULL &&
+                  short_text->kind == UI_WIDGET_TEXT_NODE, 1);
+        check_int("button composition has Text child",
+                  child_text != NULL &&
+                  child_text->kind == UI_WIDGET_TEXT_NODE, 1);
+        if(short_text != NULL && child_text != NULL) {
+            check_int("button Text font parity",
+                      short_text->data.primitive.font,
+                      child_text->data.primitive.font);
+            check_int("button Text color parity",
+                      (int)ColorToInt(short_text->data.primitive.color),
+                      (int)ColorToInt(child_text->data.primitive.color));
+            check_int("button Text width parity",
+                      (int)short_text->bounds.width,
+                      (int)child_text->bounds.width);
+            check_int("button Text height parity",
+                      (int)short_text->bounds.height,
+                      (int)child_text->bounds.height);
+        }
+    }
+
     check_int("section label",
               GetNodeHeight(NodeSectionLabel(section, 0, 0)),
               Scale(24));

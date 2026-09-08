@@ -466,7 +466,8 @@ static int
 is_layout_widget(const char *name)
 {
     return strcmp(name, "Screen") == 0 || strcmp(name, "Column") == 0 ||
-           strcmp(name, "Row") == 0 || strcmp(name, "Stack") == 0;
+           strcmp(name, "Row") == 0 || strcmp(name, "Stack") == 0 ||
+           strcmp(name, "Button") == 0;
 }
 
 static const char *
@@ -583,7 +584,8 @@ parse_ui_block_header(const char *text, char *widget, size_t widget_size,
         p++;
     if(p[0] != '{' || p[1] != '\0')
         return 0;
-    return name[0] != '\0' || !is_layout_widget(widget);
+    return name[0] != '\0' || !is_layout_widget(widget) ||
+           strcmp(widget, "Button") == 0;
 }
 
 static int
@@ -684,6 +686,13 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
         KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", span);
         snprintf(call,sizeof(call),"defer End%s()",block->widget);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "Button") == 0) {
+        snprintf(args, sizeof(args), "(ButtonProps){%.3800s}", block->props);
+        snprintf(call, sizeof(call), "BeginButton(%.3900s)", args);
+        KirFunctionAddWidget(fn, "BeginButton", args, call, span);
         block->opened = 1;
         return;
     }

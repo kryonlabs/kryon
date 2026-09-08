@@ -48,7 +48,7 @@ min3(int a, int b, int c)
 static void
 check_material_android_outline_neutral(void)
 {
-    UIDefaultScheme scheme;
+    ThemeScheme scheme;
 
     SetThemeSource(THEME_SOURCE_SYSTEM);
     SetThemeMode(THEME_MODE_LIGHT);
@@ -65,7 +65,7 @@ check_material_android_outline_neutral(void)
                           false,
                           true);
     ApplyCurrentUITheme();
-    scheme = GetUIDefaultScheme();
+    scheme = GetThemeScheme();
 
     check_int("android material outline remains neutral",
               max3(scheme.outline.r, scheme.outline.g, scheme.outline.b) -

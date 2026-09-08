@@ -27,9 +27,10 @@ typedef struct {
 
 typedef struct {
     const char *label;
-    ButtonStyle style;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
     int disabled;
-} UIButtonRowItem;
+} ButtonRowItem;
 
 typedef struct {
     int x;
@@ -37,7 +38,7 @@ typedef struct {
     int width;
     int height;
     int gap;
-    const UIButtonRowItem *items;
+    const ButtonRowItem *items;
     int count;
 } ButtonRowProps;
 

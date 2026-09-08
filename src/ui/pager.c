@@ -7,25 +7,15 @@ ui_pager_label(const char *label)
 }
 
 static int
-ui_pager_button(Rectangle bounds, const char *label, ButtonStyle style,
+ui_pager_button(Rectangle bounds, const char *label, ButtonEmphasis emphasis,
                 int focus_id)
 {
-    int hover = 0;
-    int clicked;
-    int focused = focus_id > 0 && RegisterUIFocus(focus_id, bounds);
-
-    clicked = RenderStyledButton((int)bounds.x, (int)bounds.y,
-                                 (int)bounds.width, (int)bounds.height,
-                                 ui_pager_label(label), style, 0, &hover);
-    if(focused) {
-        if(IsWindowReady())
-            DrawUIFocus(bounds);
-        if(IsUIFocusActivatePressed(focus_id)) {
-            UIConsumeRelease();
-            clicked = 1;
-        }
-    }
-    return clicked;
+    return Button((ButtonProps){
+        .bounds = bounds,
+        .label = ui_pager_label(label),
+        .id = focus_id,
+        .emphasis = emphasis
+    });
 }
 
 UIGuidePagerResult
@@ -93,7 +83,7 @@ DrawUIGuidePager(UIGuidePagerProps pager)
 
     if(ui_pager_button(left,
                        page == 0 ? pager.close_label : pager.back_label,
-                       ButtonStyleOutline, pager.focus_id)) {
+                       ButtonEmphasisOutline, pager.focus_id)) {
         if(page == 0)
             result.closed = 1;
         else
@@ -103,7 +93,7 @@ DrawUIGuidePager(UIGuidePagerProps pager)
                        page == page_count - 1
                            ? pager.finish_label
                            : pager.next_label,
-                       ButtonStylePrimary,
+                       ButtonEmphasisFilled,
                        pager.focus_id > 0 ? pager.focus_id + 1 : 0)) {
         if(page == page_count - 1)
             result.finished = 1;

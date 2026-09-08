@@ -23,7 +23,7 @@ bounds={0,0,320,240}
 Button {
 id=1
 label=t("app.save")
-style=ButtonStylePrimary
+tone=ButtonToneAccent
 font=Text16
 bounds={8,8,96,28}
 }

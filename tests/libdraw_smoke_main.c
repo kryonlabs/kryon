@@ -222,7 +222,6 @@ main(void)
         BeginTree(0x19c01);
         Button((ButtonProps){.bounds = {18, 96, 96, 34},
                              .label = "Button",
-                             .style = ButtonStylePrimary,
                              .font = Text16,
                              .id = 1001});
         TextField((TextFieldProps){.bounds = {124, 96, 138, 34},

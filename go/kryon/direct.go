@@ -86,7 +86,6 @@ func defaultButtonProps(label string) ButtonProps {
 	return ButtonProps{
 		Bounds: Rectangle{Width: directButtonWidth, Height: directButtonHeight},
 		Label:  label,
-		Style:  ButtonStyleSecondary,
 		Font:   Text16,
 		ID:     int32(uint64(Key("Button:"+label)) & 0x7fffffff),
 	}

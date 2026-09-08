@@ -82,7 +82,7 @@ Rectangle ui_centered_min_hit_rect(int x, int y, int w, int h,
                                    int min_w, int min_h);
 int ui_default_style(void);
 Color ui_default_on_color(Color color);
-UIDefaultScheme ui_default_scheme(void);
+ThemeScheme ui_default_scheme(void);
 Color ui_default_surface_container(void);
 Color ui_default_surface_variant(void);
 Color ui_default_outline(void);
@@ -169,7 +169,7 @@ void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
-void ui_button_style_colors(ButtonStyle style, Color *background, Color *hover_background, Color *text_color);
+ButtonPaint ResolveButtonPaint(ButtonProps button, ButtonState state);
 int HandleButton(ButtonSpec button);
 void PaintButton(ButtonSpec button, int hovered, int pressed);
 int DrawUIIconButton(IconButtonProps button);
@@ -195,8 +195,6 @@ int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
                         int *hover);
 int DrawUIInfoButton(int center_x, int center_y, int diameter);
 int RenderTextButton(int x, int y, const char *label, int *hover);
-int RenderStyledButton(int x, int y, int w, int h, const char *label,
-                        ButtonStyle style, int disabled, int *hover);
 void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);
 int ui_render_slider(int id, int x, int y, int w, const char *label, int min,

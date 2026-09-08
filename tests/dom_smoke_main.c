@@ -80,8 +80,9 @@ int main(void)
         DrawText("hello dom", 12, 146, 16, (Color){245, 245, 245, 255});
         EndScissorMode();
         DrawTexture(tex, 180, 142, WHITE);
-        if(StyledButton(24, 150, 104, 36, "Click", ButtonStyleSecondary,
-                        0, NULL))
+        if(Button((ButtonProps){.bounds={24,150,104,36},.label="Click",
+                                .tone=ButtonToneNeutral,
+                                .emphasis=ButtonEmphasisSoft}))
             clicked = 1;
         if(clicked)
             DrawText("clicked", 24, 194, 16, (Color){255, 255, 255, 255});

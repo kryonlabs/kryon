@@ -2,7 +2,9 @@
 
 CC ?= cc
 CFLAGS_BASE ?= -Wall -Wextra -O2
-CFLAGS = $(CFLAGS_BASE) -I. -I../include
+CFLAGS = $(CFLAGS_BASE) -I. -I../include \
+	-I$(KRYON_BUILD_DIR)/generated/include \
+	-I$(KRYON_BUILD_DIR)/generated/src
 LDFLAGS = -L$(KRYON_BUILD_DIR) -lkryon
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)

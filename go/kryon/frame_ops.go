@@ -56,6 +56,10 @@ type FrameOp struct {
 	Row               int32
 	Column            int32
 	Selected          bool
+	Loading           bool
+	Pill              bool
+	IconOnly          bool
+	IconPlacement     int32
 	SelectionStartRow int32
 	SelectionStartCol int32
 	SelectionEndRow   int32

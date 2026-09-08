@@ -1793,7 +1793,7 @@ ui_resolve_text_input_style(TextInputStyle style)
     Color background = c_surface.a != 0 ? c_surface : c_bg;
 
     if(ui_default_style()) {
-        UIDefaultScheme scheme = ui_default_scheme();
+        ThemeScheme scheme = ui_default_scheme();
 
         background = scheme.surface_container;
         if(style.border.a == 0)
@@ -4181,8 +4181,13 @@ static int
 ui_rich_text_draw_tool(int x, int y, int w, int h, const char *label,
                        int disabled)
 {
-    return RenderStyledButton(x, y, w, h, label, ButtonStyleSecondary,
-                              disabled, NULL);
+    return Button((ButtonProps){
+        .bounds = {(float)x, (float)y, (float)w, (float)h},
+        .label = label,
+        .tone = ButtonToneNeutral,
+        .emphasis = ButtonEmphasisSoft,
+        .disabled = disabled
+    });
 }
 
 int

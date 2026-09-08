@@ -667,7 +667,7 @@ draw_dropdown_menu(int id)
             ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
                                        panel, border, 0.06f);
         } else if(ui_modern_style()) {
-            UIStyleTokens tokens = GetUIStyleTokens();
+            ThemeMetrics tokens = GetThemeMetrics();
             Color border = dropdown_panel_color(36);
             if(tokens.panel_alpha < panel.a)
                 panel.a = tokens.panel_alpha;
@@ -744,7 +744,7 @@ draw_dropdown_menu(int id)
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
                         ui_default_state_layer(hover_bounds, c_text, 1, 0, 0);
                 } else if(ui_modern_style()) {
-                    UIStyleTokens tokens = GetUIStyleTokens();
+                    ThemeMetrics tokens = GetThemeMetrics();
                     int inset = Scale(4);
                     Rectangle hover_bounds = {
                         (float)(x + inset),

@@ -1,0 +1,143 @@
+#module "button"
+
+Tone :: enum {
+    PolicyToneNeutral = 0
+    PolicyToneAccent = 1
+    PolicyToneDanger = 2
+    PolicyToneSuccess = 3
+    PolicyToneWarning = 4
+}
+
+Emphasis :: enum {
+    PolicyEmphasisFilled = 0
+    PolicyEmphasisSoft = 1
+    PolicyEmphasisOutline = 2
+    PolicyEmphasisGhost = 3
+    PolicyEmphasisLink = 4
+}
+
+State :: enum {
+    PolicyStateNormal = 1
+    PolicyStateHover = 2
+    PolicyStatePressed = 3
+    PolicyStateFocus = 4
+    PolicyStateDisabled = 5
+    PolicyStateLoading = 6
+    PolicyStateSelected = 7
+}
+
+MixByte :: (from: u32, to: u32, amount: u32) -> u32 #export {
+    return (from * ((u32)100 - amount) + to * amount + (u32)50) / (u32)100
+}
+
+MixColor :: (from: u32, to: u32, amount: u32) -> u32 #export {
+    fr: u32 = (from >> (u32)24) & (u32)255
+    fg: u32 = (from >> (u32)16) & (u32)255
+    fb: u32 = (from >> (u32)8) & (u32)255
+    fa: u32 = from & (u32)255
+    tr: u32 = (to >> (u32)24) & (u32)255
+    tg: u32 = (to >> (u32)16) & (u32)255
+    tb: u32 = (to >> (u32)8) & (u32)255
+    ta: u32 = to & (u32)255
+    return (MixByte(fr, tr, amount) << (u32)24) |
+           (MixByte(fg, tg, amount) << (u32)16) |
+           (MixByte(fb, tb, amount) << (u32)8) |
+           MixByte(fa, ta, amount)
+}
+
+ToneColor :: (
+    tone: i32,
+    accent: u32,
+    neutral: u32,
+    danger: u32,
+    success: u32,
+    warning: u32
+) -> u32 #export {
+    if tone == PolicyToneAccent { return accent }
+    if tone == PolicyToneDanger { return danger }
+    if tone == PolicyToneSuccess { return success }
+    if tone == PolicyToneWarning { return warning }
+    return neutral
+}
+
+ButtonBackground :: (
+    tone: i32,
+    emphasis: i32,
+    state: i32,
+    surface: u32,
+    accent: u32,
+    accent_hover: u32,
+    accent_pressed: u32,
+    neutral: u32,
+    danger: u32,
+    success: u32,
+    warning: u32
+) -> u32 #export {
+    base: u32 = ToneColor(tone, accent, neutral, danger, success, warning)
+    background: u32 = base
+    if emphasis == PolicyEmphasisSoft { background = MixColor(surface, base, 14) }
+    if emphasis == PolicyEmphasisOutline { background = surface }
+    if emphasis == PolicyEmphasisGhost { background = surface }
+    if emphasis == PolicyEmphasisLink { background = surface }
+    if state == PolicyStateHover {
+        if tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+            return accent_hover
+        }
+        return MixColor(background, base, 8)
+    }
+    if state == PolicyStatePressed {
+        if tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+            return accent_pressed
+        }
+        return MixColor(background, base, 14)
+    }
+    if state == PolicyStateSelected { return MixColor(background, base, 22) }
+    if state == PolicyStateDisabled { return MixColor(surface, background, 45) }
+    return background
+}
+
+ButtonForeground :: (
+    tone: i32,
+    emphasis: i32,
+    state: i32,
+    on_accent: u32,
+    text: u32,
+    danger: u32,
+    on_danger: u32,
+    success: u32,
+    on_success: u32,
+    warning: u32,
+    on_warning: u32,
+    link: u32,
+    disabled_text: u32
+) -> u32 #export {
+    if state == PolicyStateDisabled { return disabled_text }
+    if emphasis == PolicyEmphasisLink { return link }
+    if emphasis != PolicyEmphasisFilled {
+        return ToneColor(tone, on_accent, text, danger, success, warning)
+    }
+    if tone == PolicyToneDanger { return on_danger }
+    if tone == PolicyToneSuccess { return on_success }
+    if tone == PolicyToneWarning { return on_warning }
+    if tone == PolicyToneNeutral { return text }
+    return on_accent
+}
+
+ButtonBorder :: (
+    tone: i32,
+    emphasis: i32,
+    state: i32,
+    surface: u32,
+    accent: u32,
+    neutral: u32,
+    danger: u32,
+    success: u32,
+    warning: u32
+) -> u32 #export {
+    if emphasis == PolicyEmphasisGhost { return (u32)0 }
+    if emphasis == PolicyEmphasisLink { return (u32)0 }
+    base: u32 = ToneColor(tone, accent, neutral, danger, success, warning)
+    if state == PolicyStateDisabled { return MixColor(surface, base, 45) }
+    if emphasis == PolicyEmphasisSoft { return MixColor(surface, base, 28) }
+    return base
+}

@@ -49,7 +49,11 @@ type Font struct {
 
 type KeyID uint64
 type Side int32
-type ButtonStyle int32
+type ButtonTone int32
+type ButtonEmphasis int32
+type ControlSize int32
+type ButtonState int32
+type IconPlacement int32
 type SyntaxMode int32
 type ThemeId int32
 type ThemeStyle int32
@@ -101,11 +105,41 @@ const (
 	SideLeft
 	SideRight
 
-	ButtonStylePrimary ButtonStyle = iota
-	ButtonStyleSecondary
-	ButtonStyleDanger
-	ButtonStyleTab
-	ButtonStyleTabSelected
+	ButtonToneNeutral ButtonTone = 0
+	ButtonToneAccent  ButtonTone = 1
+	ButtonToneDanger  ButtonTone = 2
+	ButtonToneSuccess ButtonTone = 3
+	ButtonToneWarning ButtonTone = 4
+)
+
+const (
+	ButtonEmphasisFilled ButtonEmphasis = iota
+	ButtonEmphasisSoft
+	ButtonEmphasisOutline
+	ButtonEmphasisGhost
+	ButtonEmphasisLink
+)
+
+const (
+	ControlSizeSmall ControlSize = iota
+	ControlSizeMedium
+	ControlSizeLarge
+)
+
+const (
+	IconPlacementLeading IconPlacement = iota
+	IconPlacementTrailing
+)
+
+const (
+	ButtonStateAuto ButtonState = iota
+	ButtonStateNormal
+	ButtonStateHover
+	ButtonStatePressed
+	ButtonStateFocus
+	ButtonStateDisabled
+	ButtonStateLoading
+	ButtonStateSelected
 
 	SyntaxNone SyntaxMode = 0
 	SyntaxKry  SyntaxMode = 1
@@ -433,12 +467,75 @@ type UIThemeSettingsResult struct {
 }
 
 type ButtonProps struct {
-	Bounds   Rectangle
-	Label    string
-	Style    ButtonStyle
-	Font     int32
-	ID       int32
-	Disabled bool
+	Bounds        Rectangle
+	Label         string
+	Font          int32
+	ID            int32
+	Tone          ButtonTone
+	Emphasis      ButtonEmphasis
+	Size          ControlSize
+	Disabled      bool
+	Loading       bool
+	Selected      bool
+	FullWidth     bool
+	Pill          bool
+	Icon          Texture2D
+	IconType      int32
+	IconPlacement IconPlacement
+	IconOnly      bool
+	Square        bool
+	State         ButtonState
+}
+
+type MenuButtonProps struct {
+	Button    ButtonProps
+	MenuID    int32
+	Items     []MenuItem
+	ItemCount int32
+	Open      *bool
+}
+
+type SplitButtonProps = MenuButtonProps
+
+type SplitButtonResult struct {
+	Clicked     bool
+	ActivatedID int32
+}
+
+type ThemeColors struct {
+	Background, Surface, SurfaceRaised, SurfaceSunken, Overlay Color
+	Text, MutedText, DisabledText, Icon, MutedIcon             Color
+	Border, BorderStrong, Divider, Focus, Selection            Color
+	Accent, OnAccent, AccentHover, AccentPressed               Color
+	Success, OnSuccess, Warning, OnWarning                     Color
+	Danger, OnDanger, Info, OnInfo                             Color
+	Link, LinkHover, Shadow                                    Color
+}
+
+type ThemeMetrics struct {
+	RadiusSmall, RadiusMedium, RadiusLarge, RadiusPill             float32
+	BorderWidth, FocusWidth, FocusGap                              float32
+	Space1, Space2, Space3, Space4, Space5, Space6                 float32
+	ControlHeightSmall, ControlHeightMedium, ControlHeightLarge    float32
+	ControlPaddingSmall, ControlPaddingMedium, ControlPaddingLarge float32
+	ControlGap                                                     float32
+	FontSizeSmall, FontSizeMedium, FontSizeLarge                   float32
+	IconSizeSmall, IconSizeMedium, IconSizeLarge                   float32
+	ShadowOffsetY, ShadowBlur, DisabledOpacity                     float32
+	TransitionFastMS, TransitionNormalMS                           float32
+}
+
+type Theme struct {
+	Name    string
+	Mode    ThemeMode
+	Colors  ThemeColors
+	Metrics ThemeMetrics
+}
+
+type ThemeFamily struct {
+	Name  string
+	Light Theme
+	Dark  Theme
 }
 
 type SelectableProps struct {
@@ -1317,6 +1414,9 @@ type Runtime interface {
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Button(ButtonProps) bool
+	BeginButton(ButtonProps)
+	MenuButton(MenuButtonProps) int32
+	SplitButton(SplitButtonProps) SplitButtonResult
 	Selectable(SelectableProps) bool
 	CheckboxFlags(CheckboxFlagsProps) bool
 	ImageWithBg(ImageWithBgProps)
@@ -1388,7 +1488,11 @@ type Runtime interface {
 	GetThemePrimary() Color
 	GetThemeOnPrimary() Color
 	GetThemeSurfaceVariant() Color
-	GetUIDefaultScheme() DefaultScheme
+	GetThemeScheme() DefaultScheme
+	SetTheme(Theme)
+	SetThemeFamily(ThemeFamily)
+	GetThemeFamily() ThemeFamily
+	GetTheme() Theme
 	LabelText(label, value string, bounds Rectangle, fontSize int32, color Color)
 	BulletText(text string, bounds Rectangle, fontSize int32, color Color)
 	ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color)
@@ -1526,6 +1630,8 @@ type runtime struct {
 	themeSource       ThemeSource
 	themeMode         ThemeMode
 	themeStyle        ThemeStyle
+	activeTheme       *Theme
+	activeThemeFamily *ThemeFamily
 	disabledStack     []bool
 	scrollClips       []Rectangle
 	scrollDragOffset  *int32
@@ -1560,6 +1666,10 @@ type layoutFrame struct {
 	cellIndex  int32
 	rowHeight  float32
 	noLayout   bool
+	center     bool
+	textFont   int32
+	textColor  Color
+	disabled   bool
 }
 
 type inputEvent struct {
@@ -1991,14 +2101,30 @@ func (r *runtime) Text(props TextProps) {
 }
 func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	font := props.Font
+	var inheritedColor Color
+	var inheritedDisabled bool
+	for i := len(r.layout) - 1; i >= 0; i-- {
+		context := r.layout[i]
+		if context.textFont > 0 || context.textColor.A != 0 || context.disabled {
+			if font <= 0 {
+				font = context.textFont
+			}
+			inheritedColor = context.textColor
+			inheritedDisabled = context.disabled
+			break
+		}
+	}
 	if font <= 0 {
 		font = Text16
 	}
 	color := props.Color
 	if color.A == 0 {
-		color = r.GetThemeText()
+		color = inheritedColor
+		if color.A == 0 {
+			color = r.GetThemeText()
+		}
 	}
-	if props.Disabled {
+	if props.Disabled || inheritedDisabled {
 		color = r.Fade(color, 0.45)
 	}
 	bounded := props.Bounds.Width > 0
@@ -2143,36 +2269,214 @@ func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
 	return Rectangle{X: x, Y: y, Width: max(float32(0), min(bounds.X+bounds.Width, clip.X+clip.Width)-x), Height: max(float32(0), min(bounds.Y+bounds.Height, clip.Y+clip.Height)-y)}
 }
 func (r *runtime) Button(props ButtonProps) bool {
+	props = r.resolveButtonProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	return r.buttonAt(props)
+}
+
+func (r *runtime) BeginButton(props ButtonProps) {
+	label := props.Label
+	props = r.resolveButtonProps(props)
+	props.Bounds = r.layoutRect(props.Bounds)
+	props.Label = ""
+	r.buttonAt(props)
+	paint := resolveButtonPaint(r.theme(), r.effectiveDark(), r.activeTheme,
+		props, props.State)
+	inset := float32(8)
+	bounds := props.Bounds
+	r.layout = append(r.layout, layoutFrame{
+		bounds: Rectangle{
+			X: bounds.X + inset, Y: bounds.Y + inset,
+			Width:  max(float32(0), bounds.Width-inset*2),
+			Height: max(float32(0), bounds.Height-inset*2),
+		},
+		center: true, textFont: props.Font, textColor: paint.foreground,
+	})
+	if label != "" {
+		r.Text(TextProps{Text: label, Wrap: TextWrapNone})
+	}
+}
+
+func (r *runtime) MenuButton(props MenuButtonProps) int32 {
+	open := false
+	if props.Open == nil {
+		props.Open = &open
+	}
+	props.Button.IconType = UIIconTypeRight
+	props.Button.IconPlacement = IconPlacementTrailing
+	if r.Button(props.Button) {
+		*props.Open = !*props.Open
+	}
+	if !*props.Open {
+		return 0
+	}
+	activated := r.PopupMenu(props.MenuID, int32(props.Button.Bounds.X),
+		int32(props.Button.Bounds.Y+props.Button.Bounds.Height),
+		props.Items, props.ItemCount)
+	if activated != 0 {
+		*props.Open = false
+	}
+	return activated
+}
+
+func (r *runtime) SplitButton(props SplitButtonProps) SplitButtonResult {
+	open := false
+	if props.Open == nil {
+		props.Open = &open
+	}
+	action := r.resolveButtonProps(props.Button)
+	menuWidth := action.Bounds.Height
+	if action.Bounds.Width < menuWidth*2 {
+		action.Bounds.Width = menuWidth * 2
+	}
+	fullBounds := action.Bounds
+	action.Bounds.Width -= menuWidth
+	menu := action
+	menu.Bounds = Rectangle{X: action.Bounds.X + action.Bounds.Width,
+		Y: action.Bounds.Y, Width: menuWidth, Height: action.Bounds.Height}
+	menu.Label = "Open menu"
+	menu.ID = action.ID + 1
+	menu.IconType = UIIconTypeRight
+	menu.IconOnly = true
+	menu.Square = true
+	result := SplitButtonResult{Clicked: r.buttonAt(action)}
+	if r.buttonAt(menu) {
+		*props.Open = !*props.Open
+	}
+	if *props.Open {
+		result.ActivatedID = r.PopupMenu(props.MenuID, int32(fullBounds.X),
+			int32(fullBounds.Y+fullBounds.Height), props.Items, props.ItemCount)
+		if result.ActivatedID != 0 {
+			*props.Open = false
+		}
+	}
+	return result
 }
 
 // buttonAt applies the canonical Button interaction and paint contract to an
 // already-laid-out rectangle. Composite widgets use it for embedded buttons
 // without advancing their parent's layout a second time.
 func (r *runtime) buttonAt(props ButtonProps) bool {
+	props = r.resolveButtonProps(props)
 	if props.ID == 0 {
 		props.ID = r.autoFocusID
 		r.autoFocusID++
 	}
 	theme := r.theme()
-	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
-	fill := theme.button
-	if props.Style == ButtonStyleSecondary {
-		fill = theme.surface
+	loading := props.Loading || props.State == ButtonStateLoading
+	pressed, focused := r.focusablePress(props.Bounds, props.ID,
+		props.Disabled || loading)
+	state := props.State
+	if state == ButtonStateAuto {
+		if props.Disabled {
+			state = ButtonStateDisabled
+		} else if pressed {
+			state = ButtonStatePressed
+		} else if focused {
+			state = ButtonStateFocus
+		} else {
+			state = ButtonStateNormal
+		}
 	}
-	if props.Disabled {
-		fill = mixColor(theme.surface, theme.button, 0.5)
+	paint := resolveButtonPaint(theme, r.effectiveDark(), r.activeTheme, props, state)
+	label := props.Label
+	loading = loading || state == ButtonStateLoading
+	if loading {
+		label = ""
 	}
-	if pressed {
-		fill = theme.buttonHover
-	}
-	textColor := theme.text
-	if props.Disabled {
-		textColor = theme.icon
-	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label, Color: fill, BorderColor: theme.buttonHover, TextColor: textColor, ID: props.ID, FontSize: props.Font, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: label, Color: paint.background, BorderColor: paint.border, TextColor: paint.foreground, ID: props.ID, FontSize: props.Font, Disabled: props.Disabled || state == ButtonStateDisabled || loading, Pressed: pressed || state == ButtonStatePressed, Focused: focused || state == ButtonStateFocus, Selected: props.Selected || state == ButtonStateSelected, Loading: loading, Pill: props.Pill, IconOnly: props.IconOnly, IconType: props.IconType, IconPlacement: int32(props.IconPlacement)})
 	return pressed
+}
+
+func (r *runtime) resolveButtonProps(props ButtonProps) ButtonProps {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	height := float32(40)
+	padding := float32(16)
+	if props.Size == ControlSizeSmall {
+		height, padding = 32, 12
+	} else if props.Size == ControlSizeLarge {
+		height, padding = 48, 20
+	}
+	if props.Bounds.Height <= 0 {
+		props.Bounds.Height = height
+	}
+	if props.FullWidth && props.Bounds.Width <= 0 {
+		right := float32(r.GetScreenWidth())
+		if len(r.layout) > 0 {
+			parent := r.layout[len(r.layout)-1].bounds
+			if parent.Width > 0 {
+				right = parent.X + parent.Width
+			}
+		}
+		props.Bounds.Width = max(props.Bounds.Height, right-props.Bounds.X)
+	}
+	if props.Bounds.Width <= 0 {
+		if props.IconOnly || props.Square {
+			props.Bounds.Width = props.Bounds.Height
+		} else {
+			props.Bounds.Width = float32(runtimeTextWidth(props.Label, font)) + padding*2
+			if props.Icon.ID != 0 || props.IconType != UIIconTypeNone {
+				props.Bounds.Width += float32(font) + 8
+			}
+		}
+	}
+	if props.Square {
+		props.Bounds.Width = props.Bounds.Height
+	}
+	props.Font = font
+	return props
+}
+
+type buttonPaint struct {
+	background Color
+	foreground Color
+	border     Color
+}
+
+func resolveButtonPaint(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState) buttonPaint {
+	scheme := materialScheme(theme, dark)
+	accent, accentHover, accentPressed := scheme.Primary, theme.buttonHover, mixColor(scheme.Primary, Black, 0.14)
+	danger, onDanger := scheme.Error, scheme.OnError
+	success, onSuccess := Color{7, 128, 90, 255}, White
+	warning, onWarning := Color{181, 109, 0, 255}, White
+	text, link, disabledText := scheme.OnSurface, theme.link, scheme.DisabledContent
+	if dark {
+		success = Color{7, 150, 105, 255}
+		warning, onWarning = Color{200, 135, 0, 255}, Black
+	}
+	if active != nil {
+		accent, accentHover, accentPressed = active.Colors.Accent, active.Colors.AccentHover, active.Colors.AccentPressed
+		danger, onDanger = active.Colors.Danger, active.Colors.OnDanger
+		success, onSuccess = active.Colors.Success, active.Colors.OnSuccess
+		warning, onWarning = active.Colors.Warning, active.Colors.OnWarning
+		text, link, disabledText = active.Colors.Text, active.Colors.Link, active.Colors.DisabledText
+	}
+	policyState := state
+	if props.Disabled {
+		policyState = ButtonStateDisabled
+	} else if props.Selected {
+		policyState = ButtonStateSelected
+	}
+	onAccent := scheme.OnPrimary
+	if active != nil {
+		onAccent = active.Colors.OnAccent
+	}
+	return buttonPaint{
+		background: unpackRGBA(Button_ButtonBackground(int32(props.Tone), int32(props.Emphasis), int32(policyState), packRGBA(scheme.Surface), packRGBA(accent), packRGBA(accentHover), packRGBA(accentPressed), packRGBA(scheme.SurfaceVariant), packRGBA(danger), packRGBA(success), packRGBA(warning))),
+		foreground: unpackRGBA(Button_ButtonForeground(int32(props.Tone), int32(props.Emphasis), int32(policyState), packRGBA(onAccent), packRGBA(text), packRGBA(danger), packRGBA(onDanger), packRGBA(success), packRGBA(onSuccess), packRGBA(warning), packRGBA(onWarning), packRGBA(link), packRGBA(disabledText))),
+		border:     unpackRGBA(Button_ButtonBorder(int32(props.Tone), int32(props.Emphasis), int32(policyState), packRGBA(scheme.Surface), packRGBA(accent), packRGBA(scheme.SurfaceVariant), packRGBA(danger), packRGBA(success), packRGBA(warning))),
+	}
+}
+
+func packRGBA(c Color) uint32 {
+	return uint32(c.R)<<24 | uint32(c.G)<<16 | uint32(c.B)<<8 | uint32(c.A)
+}
+
+func unpackRGBA(c uint32) Color {
+	return Color{uint8(c >> 24), uint8(c >> 16), uint8(c >> 8), uint8(c)}
 }
 
 // focusablePress is the common interaction contract for button-like widgets:
@@ -2293,7 +2597,7 @@ func (r *runtime) TabItemButton(props TabItemButtonProps) bool {
 	if font <= 0 {
 		font = Text14
 	}
-	return r.Button(ButtonProps{Bounds: props.Bounds, Label: props.Label, Style: ButtonStyleSecondary, Font: font, ID: props.ID, Disabled: props.Disabled})
+	return r.Button(ButtonProps{Bounds: props.Bounds, Label: props.Label, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisGhost, Font: font, ID: props.ID, Disabled: props.Disabled})
 }
 
 func (r *runtime) SmallButton(props ButtonProps) bool {
@@ -4388,7 +4692,7 @@ func (r *runtime) GetThemeOnPrimary() Color { return materialOnColor(r.theme().c
 func (r *runtime) GetThemeSurfaceVariant() Color {
 	return materialTone(r.theme().background, 10, 18, r.effectiveDark())
 }
-func (r *runtime) GetUIDefaultScheme() DefaultScheme {
+func (r *runtime) GetThemeScheme() DefaultScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
 }
 func (r *runtime) LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
@@ -6180,6 +6484,8 @@ func (r *runtime) Place(parent Rectangle, x, y, w, h int32) Rectangle {
 	return Rectangle{X: parent.X + float32(x), Y: parent.Y + float32(y), Width: float32(w), Height: float32(h)}
 }
 func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
+	r.activeTheme = nil
+	r.activeThemeFamily = nil
 	r.currentThemeID = normalizeTheme(themeID)
 	if darkMode != 0 {
 		r.themeMode = ThemeModeDark
@@ -6187,12 +6493,56 @@ func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
 		r.themeMode = ThemeModeLight
 	}
 }
+
+func (r *runtime) SetTheme(theme Theme) {
+	copy := theme
+	r.activeThemeFamily = nil
+	r.activeTheme = &copy
+	r.themeMode = theme.Mode
+}
+
+func (r *runtime) SetThemeFamily(family ThemeFamily) {
+	copy := family
+	copy.Light.Mode = ThemeModeLight
+	copy.Dark.Mode = ThemeModeDark
+	r.activeThemeFamily = &copy
+	r.applyThemeFamily()
+}
+
+func (r *runtime) GetThemeFamily() ThemeFamily {
+	if r.activeThemeFamily == nil {
+		return ThemeFamily{}
+	}
+	return *r.activeThemeFamily
+}
+
+func (r *runtime) applyThemeFamily() {
+	if r.activeThemeFamily == nil {
+		return
+	}
+	selected := r.activeThemeFamily.Light
+	if r.effectiveDark() {
+		selected = r.activeThemeFamily.Dark
+	}
+	r.activeTheme = &selected
+}
+
+func (r *runtime) GetTheme() Theme {
+	if r.activeTheme != nil {
+		return *r.activeTheme
+	}
+	if r.effectiveDark() {
+		return ThemeDefaultDark()
+	}
+	return ThemeDefaultLight()
+}
 func (r *runtime) SetThemeDarkMode(dark int32) {
 	if dark != 0 {
 		r.themeMode = ThemeModeDark
 	} else {
 		r.themeMode = ThemeModeLight
 	}
+	r.applyThemeFamily()
 }
 func (r *runtime) SetThemeStyle(style ThemeStyle) {
 	if style < ThemeStyleSystem || style > ThemeStyleDefault {
@@ -6211,6 +6561,7 @@ func (r *runtime) SetThemeMode(mode ThemeMode) {
 		mode = ThemeModeSystem
 	}
 	r.themeMode = mode
+	r.applyThemeFamily()
 }
 
 func themeSettingsText(value, fallback string) string {
@@ -6298,9 +6649,9 @@ func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result
 		pressed := Button(ButtonProps{
 			Bounds: NewRectangle(float32(x), float32(y+labelGap), float32(w), float32(rowH)),
 			Label:  value,
-			Style:  ButtonStyleSecondary,
-			Font:   Text14,
-			ID:     buttonID,
+			Tone:   ButtonToneNeutral, Emphasis: ButtonEmphasisSoft,
+			Font: Text14,
+			ID:   buttonID,
 		})
 		y += labelGap + rowH + rowGap
 		return pressed
@@ -6406,6 +6757,22 @@ func (r *runtime) TextField(props TextFieldProps) {
 }
 
 func (r *runtime) theme() themePalette {
+	if r.activeTheme != nil {
+		colors := r.activeTheme.Colors
+		return completeThemePalette(themePalette{
+			background:  colors.Background,
+			surface:     colors.Surface,
+			text:        colors.Text,
+			circle:      colors.Accent,
+			button:      colors.Accent,
+			buttonHover: colors.AccentHover,
+			icon:        colors.Icon,
+			link:        colors.Link,
+			border:      colors.Border,
+			focus:       colors.Focus,
+			selected:    colors.Selection,
+		})
+	}
 	dark := r.effectiveDark()
 	if r.themeSource == ThemeSourceSystem {
 		if palette, ok := currentSystemTheme(dark); ok {
@@ -6416,13 +6783,7 @@ func (r *runtime) theme() themePalette {
 }
 
 func (r *runtime) effectiveDark() bool {
-	switch r.themeMode {
-	case ThemeModeLight:
-		return false
-	case ThemeModeDark:
-		return true
-	}
-	return systemPrefersDark()
+	return Theme_ResolveDark(int32(r.themeMode), systemPrefersDark())
 }
 
 func systemPrefersDark() bool {
@@ -6562,6 +6923,12 @@ func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 	frame := &r.layout[len(r.layout)-1]
 	if frame.noLayout {
 		return bounds
+	}
+	if frame.center {
+		out := bounds
+		out.X = frame.bounds.X + (frame.bounds.Width-out.Width)/2
+		out.Y = frame.bounds.Y + (frame.bounds.Height-out.Height)/2
+		return out
 	}
 	if frame.columns > 0 {
 		out := bounds

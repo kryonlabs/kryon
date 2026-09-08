@@ -1,126 +1,205 @@
 #import "kryon.h"
 
-app "UI Buttons Example" {
-    size 800 600
+app "Button states" {
+    size 800 1010
     fps 60
     font examples
 }
 
 state {
-    click_count: int = 0
-    last_action: [128] char = "No button clicked yet."
+    menu_open: int = 0
+    split_open: int = 0
 }
 
-ExampleHeading :: (text: const char *, x: int, y: int, font: int) {
+ConfigureTheme :: () {
+    light := ThemeDefaultLight()
+    dark := ThemeDefaultDark()
+    family := (ThemeFamily){
+        .name = "Button example",
+        .light = light,
+        .dark = dark,
+    }
+    SetThemeFamily(family)
+}
+
+Label :: (text: const char *, x: int, y: int, font: int, color: Color) {
     Text((TextProps){
         .bounds = {Scale(x), Scale(y), 0, 0},
-        .text = text,
-        .font = font,
-        .color = GetThemeText(),
-        .wrap = TextWrapNone,
+        .text = text, .font = font, .color = color, .wrap = TextWrapNone,
     })
-}
-
-SupportingText :: (text: const char *, x: int, y: int) {
-    Text((TextProps){
-        .bounds = {Scale(x), Scale(y), 0, 0},
-        .text = text,
-        .font = Text16,
-        .color = GetThemeIcon(),
-        .wrap = TextWrapNone,
-    })
-}
-
-RecordClick :: (message: const char *) {
-    click_count++
-    snprintf(
-        last_action,
-        sizeof(last_action),
-        "%s",
-        message
-    )
-}
-
-PrimaryButton :: () {
-    if Button((ButtonProps){
-        .bounds = {
-            Scale(20),
-            Scale(100),
-            Scale(200),
-            Scale(40),
-        },
-        .label = "Primary Button",
-        .style = ButtonStylePrimary,
-    }) {
-        RecordClick("Primary Button clicked.")
-    }
-}
-
-SecondaryButton :: () {
-    if Button((ButtonProps){
-        .bounds = {
-            Scale(20),
-            Scale(150),
-            Scale(200),
-            Scale(40),
-        },
-        .label = "Secondary Button",
-        .style = ButtonStyleSecondary,
-    }) {
-        RecordClick("Secondary Button clicked.")
-    }
-}
-
-DangerButton :: () {
-    if Button((ButtonProps){
-        .bounds = {
-            Scale(20),
-            Scale(200),
-            Scale(200),
-            Scale(40),
-        },
-        .label = "Danger Button",
-        .style = ButtonStyleDanger,
-    }) {
-        RecordClick("Danger Button clicked.")
-    }
-}
-
-InteractionStatus :: () {
-    Text((TextProps){
-        .bounds = {Scale(20), Scale(260), 0, 0},
-        .text = TextFormat("Clicks: %d", click_count),
-        .font = Text16,
-        .color = GetThemeText(),
-        .wrap = TextWrapNone,
-    })
-
-    SupportingText(last_action, 20, 290)
 }
 
 ButtonsExample :: (viewport: Rectangle) #ui {
+    menu_items: [2] MenuItem = {
+        {MenuCommand, "Open", "", 1, 0, 0, nil, 0},
+        {MenuCommand, "Save", "", 2, 0, 0, nil, 0}
+    }
+    state_names: [7] const char* = {
+        "Normal", "Hover", "Pressed", "Focus", "Disabled", "Loading", "Selected"
+    }
+    states: [7] ButtonState = {
+        ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus,
+        ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected
+    }
+    style_names: [8] const char* = {
+        "Primary", "Secondary", "Outline", "Ghost",
+        "Danger", "Success", "Warning", "Link"
+    }
+    tones: [8] ButtonTone = {
+        ButtonToneAccent, ButtonToneNeutral, ButtonToneAccent,
+        ButtonToneNeutral, ButtonToneDanger, ButtonToneSuccess,
+        ButtonToneWarning, ButtonToneAccent
+    }
+    styles: [8] ButtonEmphasis = {
+        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
+        ButtonEmphasisGhost, ButtonEmphasisFilled, ButtonEmphasisFilled,
+        ButtonEmphasisFilled, ButtonEmphasisLink
+    }
+    emphasis_names: [5] const char* = {
+        "Filled", "Soft", "Outline", "Ghost", "Link"
+    }
+    emphases: [5] ButtonEmphasis = {
+        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
+        ButtonEmphasisGhost, ButtonEmphasisLink
+    }
+
     Screen root: {
         bounds = viewport
+        ConfigureTheme()
+        ClearBackground(GetThemeBackground())
+        Rect(Scale(28), Scale(78), Scale(744), Scale(772),
+             GetThemeSurface(), GetThemeBorder())
+        Label("Button widget — complete canonical contract", 28, 24,
+              Text32, GetThemeText())
+        Label("One ButtonProps API; use Krait's Light / Dark toggle to test themes.",
+              30, 58, Text14, GetThemeIcon())
 
-        Background(GetThemeBackground())
+        Label("STATE / TONE", 50, 100, Text16, GetThemeText())
+        for int tone = 0; tone < 8; tone++ {
+            Label(style_names[tone], 122 + tone * 80, 130,
+                  Text12, GetThemeIcon())
+        }
+        for int row = 0; row < 7; row++ {
+            y := 154 + row * 44
+            Label(state_names[row], 50, y + 9, Text14, GetThemeIcon())
+            for int tone = 0; tone < 8; tone++ {
+                Button((ButtonProps){
+                    .bounds = {Scale(118 + tone * 80), Scale(y),
+                               Scale(74), Scale(36)},
+                    .label = "Run",
+                    .id = 1000 + row * 10 + tone,
+                    .tone = tones[tone],
+                    .emphasis = styles[tone],
+                    .state = states[row],
+                })
+            }
+        }
 
-        ExampleHeading("UI Buttons Example", 20, 20, Text24)
-        SupportingText(
-            "Click the buttons below to test interactions",
-            20,
-            54
-        )
+        Label("EMPHASIS", 50, 484, Text16, GetThemeText())
+        for int emphasis = 0; emphasis < 5; emphasis++ {
+            Button((ButtonProps){
+                .bounds = {Scale(50 + emphasis * 136), Scale(514),
+                           Scale(128), Scale(38)},
+                .label = emphasis_names[emphasis],
+                .id = 2000 + emphasis,
+                .emphasis = emphases[emphasis],
+            })
+        }
 
-        PrimaryButton()
-        SecondaryButton()
-        DangerButton()
-        InteractionStatus()
+        Label("SIZE AND SHAPE", 50, 584, Text16, GetThemeText())
+        Button((ButtonProps){
+            .bounds = {Scale(50), Scale(614), Scale(96), Scale(32)},
+            .label = "Small",
+            .id = 3001,
+            .size = ControlSizeSmall,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(156), Scale(610), Scale(112), Scale(40)},
+            .label = "Medium",
+            .id = 3002,
+            .size = ControlSizeMedium,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(278), Scale(606), Scale(132), Scale(48)},
+            .label = "Large",
+            .id = 3003,
+            .size = ControlSizeLarge,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(420), Scale(610), Scale(116), Scale(40)},
+            .label = "Pill",
+            .id = 3004,
+            .pill = true,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(546), Scale(610), Scale(176), Scale(40)},
+            .label = "Full width",
+            .id = 3005,
+            .full_width = true,
+        })
 
-        ExampleHeading("Button Styles", 300, 100, Text18)
-        SupportingText(
-            "Primary, secondary, and danger styles use the active theme.",
-            300,
-            130
-        )
+        Label("SIMPLE DEFAULT", 50, 686, Text16, GetThemeText())
+        Button((ButtonProps){
+            .bounds = {Scale(50), Scale(716), Scale(672), Scale(44)},
+            .label = "Only bounds and label are required",
+            .id = 4001,
+        })
+
+        Label("CONTENT", 50, 790, Text16, GetThemeText())
+        Button((ButtonProps){
+            .bounds = {Scale(50), Scale(820), Scale(150), 0},
+            .label = "Run",
+            .id = 5001,
+            .tone = ButtonToneAccent,
+            .icon_type = 31,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(214), Scale(820), Scale(150), 0},
+            .label = "Next",
+            .id = 5002,
+            .emphasis = ButtonEmphasisOutline,
+            .icon_type = 34,
+            .icon_placement = IconPlacementTrailing,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(378), Scale(820), 0, 0},
+            .label = "Add item",
+            .id = 5003,
+            .emphasis = ButtonEmphasisSoft,
+            .icon_type = 32,
+            .icon_only = true,
+            .square = true,
+        })
+        MenuButton((MenuButtonProps){
+            .button = {
+                .bounds = {Scale(442), Scale(820), Scale(130), 0},
+                .label = "More",
+                .id = 5010,
+                .emphasis = ButtonEmphasisOutline,
+            },
+            .menu_id = 5011,
+            .items = menu_items,
+            .item_count = 2,
+            .open = &menu_open,
+        })
+        SplitButton((SplitButtonProps){
+            .button = {
+                .bounds = {Scale(586), Scale(820), Scale(136), 0},
+                .label = "Add",
+                .id = 5020,
+                .tone = ButtonToneAccent,
+            },
+            .menu_id = 5022,
+            .items = menu_items,
+            .item_count = 2,
+            .open = &split_open,
+        })
+        Button((ButtonProps){
+            .bounds = {Scale(50), Scale(878), 0, 0},
+            .label = "Uses the remaining row width",
+            .id = 5004,
+            .full_width = true,
+            .emphasis = ButtonEmphasisSoft,
+        })
     }
 }

@@ -19,10 +19,10 @@ TextEditorExample :: (viewport: Rectangle) #ui {
         Background(GetThemeBackground())
         TextArea((TextAreaProps){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,Text16,6,401,"Write here",SyntaxNone,{0},NULL,NULL})
         Text((TextProps){.bounds={40, 260, 0, 0}, .text="Ctrl/Cmd+C, X, and V work in the text area.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        if Button((ButtonProps){.bounds = {40, 300, 110, 34}, .label = "Copy", .style = ButtonStyleSecondary, .font = Text16, .id = 101}) {
+        if Button((ButtonProps){.bounds = {40, 300, 110, 34}, .label = "Copy", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 101}) {
             SetUIClipboardTextValue(text_value)
         }
-        if Button((ButtonProps){.bounds = {170, 300, 110, 34}, .label = "Paste", .style = ButtonStyleSecondary, .font = Text16, .id = 102}) {
+        if Button((ButtonProps){.bounds = {170, 300, 110, 34}, .label = "Paste", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 102}) {
             clip: const char * = GetUIClipboardTextValue()
             snprintf(text_value,sizeof(text_value),"%s",clip)
         }

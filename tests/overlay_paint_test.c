@@ -16,7 +16,7 @@ int main(void)
     char text[32] = "Value";
     int cursor = 5, focused = 0;
     const char *choices[] = {"One", "Two"};
-    ModalAction actions[] = {{"Close", ButtonStylePrimary, 0}};
+    ModalAction actions[] = {{"Close", ButtonToneAccent, ButtonEmphasisFilled, 0}};
     SetUIClipboardTextValue("");
     InjectReset();
     for(int frame = 0; frame < 5; frame++) {
