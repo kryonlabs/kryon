@@ -1770,6 +1770,52 @@ test_text_area_page_navigation(void)
     BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
     InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     check_int("TextArea Ctrl+End moves to buffer end",cursor,(int)strlen(text));
+
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Ctrl+Left moves by word",cursor,15);
+    InjectPump();
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Ctrl+Shift+Left moves by separator",cursor,14);
+    check_int("TextArea Ctrl+Shift+Left keeps anchor",
+              GetTextAreaSelection(area.focus_id, &selection_start,
+                                   &selection_end),1);
+    check_int("TextArea word selection start",selection_start,14);
+    check_int("TextArea word selection end",selection_end,15);
+    InjectKey(KEY_LEFT_SHIFT,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    ClearTextInputFocus();
+    InjectReset();
+}
+
+static void
+test_secure_text_field_word_navigation(void)
+{
+    char text[32] = "alpha beta";
+    int cursor = 5;
+    int focused = 1;
+    TextFieldProps field = {
+        .bounds = {10,10,180,32}, .text = text, .text_size = sizeof(text),
+        .cursor_position = &cursor, .focused = &focused,
+        .focus_id = 25511, .secure = 1
+    };
+
+    InjectReset();
+    SetUIFocus(field.focus_id);
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Left hides word boundaries",cursor,0);
+
+    InjectPump(); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Right hides word boundaries",
+              cursor,(int)strlen(text));
+
+    InjectPump(); InjectKeyTap(KEY_BACKSPACE); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Backspace clears opaque span",
+              strcmp(text,""),0);
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     ClearTextInputFocus();
     InjectReset();
 }
@@ -3484,6 +3530,7 @@ main(void)
     test_popup_active_drag_ownership();
     test_popup_text_keyboard_ownership();
     test_text_area_page_navigation();
+    test_secure_text_field_word_navigation();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();

@@ -47,6 +47,10 @@ type inputController interface {
 	QueueShortcut(int32)
 }
 
+type modifiedInputController interface {
+	queueModifiedKey(int32, bool, bool)
+}
+
 type clipboardController interface {
 	SetClipboardText(string)
 	ClipboardText() string

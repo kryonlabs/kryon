@@ -46,6 +46,98 @@ ui_utf8_prev_offset(const char *text, int offset)
     return offset;
 }
 
+static int
+ui_text_codepoint_at(const char *text, int offset)
+{
+    int codepoint_size = 0;
+
+    if(text == NULL || offset < 0 || text[offset] == '\0')
+        return 0;
+    return GetCodepointNext(text + offset, &codepoint_size);
+}
+
+static int
+ui_text_is_blank(int codepoint)
+{
+    return codepoint == ' ' || codepoint == '\t' || codepoint == 0x3000;
+}
+
+static int
+ui_text_is_separator(int codepoint)
+{
+    switch(codepoint) {
+    case ',': case 0x3001:
+    case '.': case 0x3002:
+    case ';': case 0xff1b:
+    case '(': case 0xff08:
+    case ')': case 0xff09:
+    case '{': case 0xff5b:
+    case '}': case 0xff5d:
+    case '[': case 0x300c:
+    case ']': case 0x300d:
+    case '|': case 0xff5c:
+    case '!': case 0xff01:
+    case '\\': case 0xffe5:
+    case '/': case 0x30fb: case 0xff0f:
+    case '\n': case '\r':
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static int
+ui_text_is_word_boundary(const char *text, int offset)
+{
+    int previous_offset;
+    int previous;
+    int current;
+    int previous_blank;
+    int previous_separator;
+    int current_blank;
+    int current_separator;
+
+    if(text == NULL || offset <= 0)
+        return 0;
+    previous_offset = ui_utf8_prev_offset(text, offset);
+    previous = ui_text_codepoint_at(text, previous_offset);
+    current = ui_text_codepoint_at(text, offset);
+    previous_blank = ui_text_is_blank(previous);
+    previous_separator = ui_text_is_separator(previous);
+    current_blank = ui_text_is_blank(current);
+    current_separator = ui_text_is_separator(current);
+    return ((previous_blank || previous_separator) &&
+            !(current_separator || current_blank)) ||
+           (current_separator && !previous_separator);
+}
+
+int
+ui_text_word_left(const char *text, int cursor)
+{
+    if(text == NULL)
+        return 0;
+    cursor = ui_clampi(cursor, 0, (int)strlen(text));
+    cursor = ui_utf8_prev_offset(text, cursor);
+    while(cursor > 0 && !ui_text_is_word_boundary(text, cursor))
+        cursor = ui_utf8_prev_offset(text, cursor);
+    return cursor;
+}
+
+int
+ui_text_word_right(const char *text, int cursor)
+{
+    int len;
+
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    cursor = ui_clampi(cursor, 0, len);
+    cursor = ui_utf8_next_offset(text, cursor);
+    while(cursor < len && !ui_text_is_word_boundary(text, cursor))
+        cursor = ui_utf8_next_offset(text, cursor);
+    return cursor;
+}
+
 int
 ui_utf8_codepoint_count(const char *text)
 {
@@ -111,6 +203,39 @@ ui_text_delete_range(char *text, size_t text_size, int *cursor, int start, int e
         return 0;
     memmove(text + start, text + end, (size_t)(len - end + 1));
     *cursor = start;
+    return 1;
+}
+
+int
+ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
+                   int key, int modifier, int secure)
+{
+    int start;
+    int end;
+
+    if(text == NULL || anchor == NULL || cursor == NULL)
+        return 0;
+    start = *anchor < *cursor ? *anchor : *cursor;
+    end = *anchor > *cursor ? *anchor : *cursor;
+    if(start == end) {
+        if(key == KEY_BACKSPACE) {
+            if(modifier)
+                start = secure ? 0 : ui_text_word_left(text, *cursor);
+            else
+                start = ui_utf8_prev_offset(text, *cursor);
+        } else if(key == KEY_DELETE) {
+            if(modifier)
+                end = secure
+                    ? (int)strlen(text) : ui_text_word_right(text, *cursor);
+            else
+                end = ui_utf8_next_offset(text, *cursor);
+        } else {
+            return 0;
+        }
+    }
+    if(!ui_text_delete_range(text, text_size, cursor, start, end))
+        return 0;
+    *anchor = *cursor;
     return 1;
 }
 

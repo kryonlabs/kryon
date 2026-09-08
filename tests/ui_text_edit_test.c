@@ -12,8 +12,12 @@ int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
 int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
+int ui_text_word_left(const char *text, int cursor);
+int ui_text_word_right(const char *text, int cursor);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
+int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
+                       int key, int modifier, int secure);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
@@ -23,6 +27,11 @@ int ui_text_insert_text(char *text, size_t text_size, int *cursor,
                         const char *input, int allow_newlines,
                         TextInputFilter filter, void *filter_user_data,
                         int max_codepoints);
+
+enum {
+    TEST_KEY_BACKSPACE = 259,
+    TEST_KEY_DELETE = 261
+};
 
 static int failures = 0;
 
@@ -127,6 +136,67 @@ test_utf8_prev_offset(void)
     check_int("prev to é", ui_utf8_prev_offset(s, 3), 1);
     check_int("prev to a", ui_utf8_prev_offset(s, 1), 0);
     check_int("prev at 0 stays 0", ui_utf8_prev_offset(s, 0), 0);
+}
+
+static void
+test_word_navigation(void)
+{
+    const char *text = "alpha beta.gamma";
+    const char *unicode = "one\xe3\x80\x80two";
+
+    check_int("word left finds final word", ui_text_word_left(text, 16), 11);
+    check_int("word left treats punctuation as a stop",
+              ui_text_word_left(text, 11), 10);
+    check_int("word left crosses separator to word",
+              ui_text_word_left(text, 10), 6);
+    check_int("word right finds punctuation", ui_text_word_right(text, 6), 10);
+    check_int("word right crosses punctuation",
+              ui_text_word_right(text, 10), 11);
+    check_int("word right handles full-width blank",
+              ui_text_word_right(unicode, 0), 6);
+}
+
+static void
+test_delete_key(void)
+{
+    char text[32] = "alpha beta.gamma";
+    int cursor = 16;
+    int anchor = cursor;
+
+    check_true("word backspace deletes final word",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 0));
+    check_str("word backspace result", text, "alpha beta.");
+    check_int("word backspace cursor", cursor, 11);
+    check_true("word backspace deletes separator",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 0));
+    check_str("word separator deletion result", text, "alpha beta");
+
+    cursor = 6;
+    anchor = cursor;
+    check_true("word delete removes next word",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_DELETE, 1, 0));
+    check_str("word delete result", text, "alpha ");
+
+    strcpy(text, "alpha beta");
+    anchor = 0;
+    cursor = 5;
+    check_true("selection deletion takes precedence",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_DELETE, 1, 0));
+    check_str("selection deletion result", text, " beta");
+    check_int("selection deletion collapses anchor", anchor, 0);
+    check_int("selection deletion collapses cursor", cursor, 0);
+
+    strcpy(text, "alpha beta");
+    cursor = 5;
+    anchor = cursor;
+    check_true("secure word backspace hides boundaries",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 1));
+    check_str("secure word backspace result", text, " beta");
 }
 
 static void
@@ -274,11 +344,13 @@ main(void)
 {
     test_utf8_next_offset();
     test_utf8_prev_offset();
+    test_word_navigation();
     test_utf8_codepoint_count();
     test_utf8_encode();
     test_insert_ascii();
     test_insert_codepoint();
     test_delete_range();
+    test_delete_key();
     test_insert_text_bulk();
     if(failures != 0) {
         fprintf(stderr, "%d text-edit test(s) failed\n", failures);

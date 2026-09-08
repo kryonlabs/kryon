@@ -127,11 +127,14 @@ typedef struct TextNavigationInput {
     int key;
     int shift;
     int modifier;
+    int secure;
 } TextNavigationInput;
 int ui_text_line_start(const char *text, int cursor);
 int ui_text_line_end(const char *text, int cursor);
 int ui_text_move_vertical(const char *text, int cursor, int font, int direction);
 int ui_text_area_move_page(TextAreaProps area, int cursor, int direction);
+int ui_text_word_left(const char *text, int cursor);
+int ui_text_word_right(const char *text, int cursor);
 int ui_text_navigation_key(int multiline);
 int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
@@ -346,6 +349,8 @@ int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
+int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
+                       int key, int modifier, int secure);
 int ui_text_copy_range(const char *text, int start, int end);
 int ui_text_paste_clipboard(TextEdit edit, int allow_newlines);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,

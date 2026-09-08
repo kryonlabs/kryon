@@ -268,7 +268,14 @@ Direct runtime tests and the generated composition fixture exercise these
 behaviors through k2c and k2go. Shift extends selections across horizontal,
 vertical, page and Home/End navigation; an unmodified arrow collapses an active
 selection toward that edge. Multiline Home/End target the current line, while
-the platform modifier plus Home/End targets the whole buffer.
+the platform modifier plus Home/End targets the whole buffer. Modifier plus
+Left/Right now uses Dear ImGui-compatible UTF-8 word boundaries, including
+punctuation separators and full-width blanks, and Shift extends those word
+selections. Modifier plus Backspace/Delete uses the same boundary helpers and
+the same selection-first deletion primitive in immediate C, retained C, and
+Go. The generated composition fixture covers word movement, selection, and
+deletion through k2c and k2go. Native Go's X11 input path also preserves Shift
+on special keys and routes Ctrl+Arrow/Backspace/Delete as modifier shortcuts.
 
 Native C and Go list boxes now register with ordinary Tab focus, expose a
 visible focus presentation, and move selection with Up/Down/Home/End while

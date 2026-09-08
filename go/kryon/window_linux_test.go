@@ -96,6 +96,7 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 		36: {0xff0d, 0},
 		38: {'a', 'A'},
 		54: {'c', 'C'},
+		55: {0xff51, 0},
 	}}
 
 	ev, ok := win.decodeKey(38, 0)
@@ -138,6 +139,11 @@ func TestX11DecodeKeyEvents(t *testing.T) {
 	ev, ok = win.decodeKey(54, x11ControlMask)
 	if !ok || ev.kind != x11EventKey || ev.shortcut != KeyC {
 		t.Fatalf("decode ctrl-c = %#v ok=%v, want shortcut KeyC", ev, ok)
+	}
+
+	ev, ok = win.decodeKey(55, x11ControlMask|x11ShiftMask)
+	if !ok || ev.kind != x11EventKey || ev.shortcut != KeyLeft || !ev.shift {
+		t.Fatalf("decode ctrl-shift-left = %#v ok=%v, want shifted shortcut KeyLeft", ev, ok)
 	}
 }
 

@@ -1709,9 +1709,18 @@ func (r *runtime) QueueShiftKey(key int32) {
 	r.keyDown[key] = true
 }
 func (r *runtime) QueueShortcut(key int32) {
-	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shortcut: true})
+	r.queueModifiedKey(key, false, true)
+}
+
+func (r *runtime) queueModifiedKey(key int32, shift, shortcut bool) {
+	r.inputEvents = append(r.inputEvents, inputEvent{
+		key:      key,
+		shift:    shift,
+		shortcut: shortcut,
+	})
 	r.keyDown[key] = true
 }
+
 func (r *runtime) QueueTap(x, y float32) {
 	r.QueueMouseButton(MouseButtonLeft, x, y)
 }
@@ -6672,6 +6681,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 			continue
 		}
+		textSelection := event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		if event.shortcut {
 			switch event.key {
 			case KeyA:
@@ -6704,13 +6714,39 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					sel = selection{Anchor: pos, Cursor: pos}
 				}
 			case KeyHome:
-				pos, sel = textMoveSelection(sel, pos, 0, event.shift)
+				pos, sel = textMoveSelection(sel, pos, 0, textSelection)
 			case KeyEnd:
-				pos, sel = textMoveSelection(sel, pos, len(text), event.shift)
+				pos, sel = textMoveSelection(sel, pos, len(text), textSelection)
+			case KeyLeft:
+				target := 0
+				if !options.secure {
+					target = textWordLeft(text, pos)
+				}
+				if !textSelection && sel.Anchor != sel.Cursor {
+					target, _ = selectionRange(sel)
+				}
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
+			case KeyRight:
+				target := len(text)
+				if !options.secure {
+					target = textWordRight(text, pos)
+				}
+				if !textSelection && sel.Anchor != sel.Cursor {
+					_, target = selectionRange(sel)
+				}
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
+			case KeyBackspace, KeyDelete:
+				if options.readOnly {
+					continue
+				}
+				var deleted bool
+				text, pos, sel, deleted = textDeleteKey(
+					text, pos, sel, event.key, true, options.secure,
+				)
+				changed = changed || deleted
 			}
 			continue
 		}
-		textSelection := event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		switch event.key {
 		case KeyTab:
 			r.setFocus(r.nextFocus(focusID, event.shift))
@@ -6755,35 +6791,20 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			if options.readOnly {
 				continue
 			}
-			if sel.Anchor != sel.Cursor {
-				var deleted bool
-				text, pos, deleted = deleteSelection(text, sel)
-				if deleted {
-					changed = true
-				}
-			} else if pos > 0 {
-				prev := prevRune(text, pos)
-				text = text[:prev] + text[pos:]
-				pos = prev
-				changed = true
-			}
-			sel = selection{Anchor: pos, Cursor: pos}
+			var deleted bool
+			text, pos, sel, deleted = textDeleteKey(
+				text, pos, sel, KeyBackspace, false, options.secure,
+			)
+			changed = changed || deleted
 		case KeyDelete:
 			if options.readOnly {
 				continue
 			}
-			if sel.Anchor != sel.Cursor {
-				var deleted bool
-				text, pos, deleted = deleteSelection(text, sel)
-				if deleted {
-					changed = true
-				}
-			} else if pos < len(text) {
-				next := nextRune(text, pos)
-				text = text[:pos] + text[next:]
-				changed = true
-			}
-			sel = selection{Anchor: pos, Cursor: pos}
+			var deleted bool
+			text, pos, sel, deleted = textDeleteKey(
+				text, pos, sel, KeyDelete, false, options.secure,
+			)
+			changed = changed || deleted
 		case KeyEnter:
 			if options.multiline && !options.readOnly {
 				var inserted bool
@@ -7192,6 +7213,103 @@ func nextRune(text string, pos int) int {
 	}
 	_, size := utf8.DecodeRuneInString(text[pos:])
 	return pos + size
+}
+
+func textCodepointAt(text string, pos int) rune {
+	pos = clampCursor(text, pos)
+	if pos >= len(text) {
+		return 0
+	}
+	codepoint, _ := utf8.DecodeRuneInString(text[pos:])
+	return codepoint
+}
+
+func textIsBlank(codepoint rune) bool {
+	return codepoint == ' ' || codepoint == '\t' || codepoint == '\u3000'
+}
+
+func textIsSeparator(codepoint rune) bool {
+	switch codepoint {
+	case ',', '\u3001', '.', '\u3002', ';', '\uff1b',
+		'(', '\uff08', ')', '\uff09', '{', '\uff5b', '}', '\uff5d',
+		'[', '\u300c', ']', '\u300d', '|', '\uff5c', '!', '\uff01',
+		'\\', '\uffe5', '/', '\u30fb', '\uff0f', '\n', '\r':
+		return true
+	default:
+		return false
+	}
+}
+
+func textIsWordBoundary(text string, pos int) bool {
+	if pos <= 0 {
+		return false
+	}
+	previous := textCodepointAt(text, prevRune(text, pos))
+	current := textCodepointAt(text, pos)
+	previousBlank := textIsBlank(previous)
+	previousSeparator := textIsSeparator(previous)
+	currentBlank := textIsBlank(current)
+	currentSeparator := textIsSeparator(current)
+	return ((previousBlank || previousSeparator) &&
+		!(currentSeparator || currentBlank)) ||
+		(currentSeparator && !previousSeparator)
+}
+
+func textWordLeft(text string, pos int) int {
+	pos = prevRune(text, pos)
+	for pos > 0 && !textIsWordBoundary(text, pos) {
+		pos = prevRune(text, pos)
+	}
+	return pos
+}
+
+func textWordRight(text string, pos int) int {
+	pos = nextRune(text, pos)
+	for pos < len(text) && !textIsWordBoundary(text, pos) {
+		pos = nextRune(text, pos)
+	}
+	return pos
+}
+
+func textDeleteKey(
+	text string,
+	pos int,
+	current selection,
+	key int32,
+	word bool,
+	secure bool,
+) (string, int, selection, bool) {
+	start, end := selectionRange(current)
+	if start == end {
+		switch key {
+		case KeyBackspace:
+			if word && secure {
+				start = 0
+			} else if word {
+				start = textWordLeft(text, pos)
+			} else {
+				start = prevRune(text, pos)
+			}
+			end = pos
+		case KeyDelete:
+			start = pos
+			if word && secure {
+				end = len(text)
+			} else if word {
+				end = textWordRight(text, pos)
+			} else {
+				end = nextRune(text, pos)
+			}
+		default:
+			return text, pos, current, false
+		}
+	}
+	if end <= start {
+		return text, pos, current, false
+	}
+	text = text[:start] + text[end:]
+	current = selection{Anchor: start, Cursor: start}
+	return text, start, current, true
 }
 
 func textLineStart(text string, pos int) int {

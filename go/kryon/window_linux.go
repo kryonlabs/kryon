@@ -188,7 +188,13 @@ func (r *windowRuntime) pumpEvents() {
 		case x11EventKey:
 			if c, ok := r.Runtime.(inputController); ok {
 				if ev.shortcut != 0 {
-					c.QueueShortcut(ev.shortcut)
+					if modified, ok := r.Runtime.(modifiedInputController); ok {
+						modified.queueModifiedKey(ev.shortcut, ev.shift, true)
+					} else {
+						c.QueueShortcut(ev.shortcut)
+					}
+				} else if ev.shift && ev.key != 0 {
+					c.QueueShiftKey(ev.key)
 				} else if ev.key != 0 {
 					c.QueueKey(ev.key)
 				} else if ev.text != "" {
@@ -392,6 +398,7 @@ type x11Event struct {
 	wheel    float32
 	key      int32
 	shortcut int32
+	shift    bool
 	text     string
 }
 
@@ -1016,7 +1023,7 @@ func (w *x11Window) decodeKey(keycode uint8, state uint16) (x11Event, bool) {
 			if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
 				fmt.Fprintf(os.Stderr, "kryon: x11 key keycode=%d state=%#x keysym=%#x shortcut=%d\n", keycode, state, ks, k)
 			}
-			return x11Event{kind: x11EventKey, shortcut: k}, true
+			return x11Event{kind: x11EventKey, shortcut: k, shift: shift}, true
 		}
 	}
 	if key := specialKey(ks); key != 0 {
@@ -1084,6 +1091,18 @@ func shortcutKey(ks uint32) int32 {
 		return KeyV
 	case 'x', 'X':
 		return KeyX
+	case 0xff08:
+		return KeyBackspace
+	case 0xffff:
+		return KeyDelete
+	case 0xff50:
+		return KeyHome
+	case 0xff51:
+		return KeyLeft
+	case 0xff53:
+		return KeyRight
+	case 0xff57:
+		return KeyEnd
 	}
 	return 0
 }

@@ -1983,6 +1983,7 @@ EditText(TextEdit edit)
     int changed = 0;
     int len;
     int codepoint;
+    int anchor;
 
     if(edit.commit_pressed != NULL)
         *edit.commit_pressed = 0;
@@ -1994,17 +1995,15 @@ EditText(TextEdit edit)
     if(!UIKeyboardInputEnabled())
         return 0;
 
-    if(IsKeyPressed(KEY_LEFT)) {
-        *edit.cursor_position = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
-    }
-    if(IsKeyPressed(KEY_RIGHT)) {
-        *edit.cursor_position = ui_utf8_next_offset(edit.text, *edit.cursor_position);
-    }
-    if(IsKeyPressed(KEY_HOME)) {
-        *edit.cursor_position = 0;
-    }
-    if(IsKeyPressed(KEY_END)) {
-        *edit.cursor_position = (int)strlen(edit.text);
+    {
+        TextNavigationInput navigation = {
+            .text = edit.text,
+            .key = ui_text_navigation_key(0),
+            .modifier = ui_mod_key_down()
+        };
+
+        anchor = *edit.cursor_position;
+        (void)ui_text_navigate(navigation, &anchor, edit.cursor_position);
     }
 
     if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
@@ -2022,20 +2021,20 @@ EditText(TextEdit edit)
 
     {
         int repeat = g_ui_text_input_backspace_count + ui_backspace_repeat_count();
-        for(int i = 0; i < repeat; i++) {
-            int start = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
-            changed |= ui_text_delete_range(edit.text, edit.text_size,
-                                            edit.cursor_position, start,
-                                            *edit.cursor_position);
-        }
+
+        anchor = *edit.cursor_position;
+        for(int i = 0; i < repeat; i++)
+            changed |= ui_text_delete_key(
+                edit.text, edit.text_size, &anchor, edit.cursor_position,
+                KEY_BACKSPACE, ui_mod_key_down(), 0);
         g_ui_text_input_backspace_count = 0;
     }
 
     if(IsKeyPressed(KEY_DELETE)) {
-        int end = ui_utf8_next_offset(edit.text, *edit.cursor_position);
-        changed |= ui_text_delete_range(edit.text, edit.text_size,
-                                        edit.cursor_position,
-                                        *edit.cursor_position, end);
+        anchor = *edit.cursor_position;
+        changed |= ui_text_delete_key(
+            edit.text, edit.text_size, &anchor, edit.cursor_position,
+            KEY_DELETE, ui_mod_key_down(), 0);
     }
 
     if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
@@ -2355,12 +2354,22 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
 
     switch(input.key) {
     case KEY_LEFT:
-        target = !input.shift && end > start
-            ? start : ui_utf8_prev_offset(input.text, target);
+        if(!input.shift && end > start)
+            target = start;
+        else if(input.modifier)
+            target = input.secure ? 0 : ui_text_word_left(input.text, target);
+        else
+            target = ui_utf8_prev_offset(input.text, target);
         break;
     case KEY_RIGHT:
-        target = !input.shift && end > start
-            ? end : ui_utf8_next_offset(input.text, target);
+        if(!input.shift && end > start)
+            target = end;
+        else if(input.modifier)
+            target = input.secure
+                ? (int)strlen(input.text)
+                : ui_text_word_right(input.text, target);
+        else
+            target = ui_utf8_next_offset(input.text, target);
         break;
     case KEY_HOME:
         target = input.area != NULL && !input.modifier
@@ -3609,16 +3618,25 @@ RenderTextArea(TextAreaProps area)
             selection_key_handled = 1;
         }
         if(!area.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
-           selection_end > selection_start) {
-            if(ui_text_delete_range(area.text, area.text_size,
-                                    area.cursor_position, selection_start,
-                                    selection_end)) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
-                changed = 1;
-            }
+           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
+            g_ui_text_input_backspace_count > 0)) {
+            int anchor = has_selection
+                ? g_ui_text_area_selection.anchor : *area.cursor_position;
+            int backspace_count = g_ui_text_input_backspace_count +
+                                  ui_backspace_repeat_count();
+            int delete_count = IsKeyPressed(KEY_DELETE) ? 1 : 0;
+
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    area.text, area.text_size, &anchor, area.cursor_position,
+                    KEY_BACKSPACE, ui_mod_key_down(), 0);
+            while(delete_count-- > 0)
+                changed |= ui_text_delete_key(
+                    area.text, area.text_size, &anchor, area.cursor_position,
+                    KEY_DELETE, ui_mod_key_down(), 0);
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, *area.cursor_position,
+                                  *area.cursor_position, 0);
             g_ui_text_input_backspace_count = 0;
             selection_key_handled = 1;
         }
@@ -4496,18 +4514,57 @@ RenderTextField(TextFieldProps field)
             selection_handled = 1;
         }
         if(!field.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
-           selection_end > selection_start) {
-            if(ui_text_delete_range(field.text, field.text_size,
-                                    field.cursor_position, selection_start,
-                                    selection_end))
-                changed = 1;
+           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
+            g_ui_text_input_backspace_count > 0)) {
+            int anchor = ui_text_selection_matches(
+                g_ui_text_field_selection, field.focus_id, field.focused)
+                ? g_ui_text_field_selection.anchor : *field.cursor_position;
+            int backspace_count = g_ui_text_input_backspace_count +
+                                  ui_backspace_repeat_count();
+            int delete_count = IsKeyPressed(KEY_DELETE) ? 1 : 0;
+
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field.text, field.text_size, &anchor,
+                    field.cursor_position, KEY_BACKSPACE, ui_mod_key_down(),
+                    field.secure);
+            while(delete_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field.text, field.text_size, &anchor,
+                    field.cursor_position, KEY_DELETE, ui_mod_key_down(),
+                    field.secure);
             g_ui_text_input_backspace_count = 0;
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
                                   field.focused, *field.cursor_position,
                                   *field.cursor_position, 0);
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
+        }
+        if(!selection_handled) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                        IsKeyDown(KEY_RIGHT_SHIFT);
+            int cursor = *field.cursor_position;
+            int anchor = cursor;
+            TextNavigationInput navigation = {
+                .text = field.text,
+                .key = ui_text_navigation_key(0),
+                .shift = shift,
+                .modifier = ui_mod_key_down(),
+                .secure = field.secure
+            };
+
+            if(ui_text_selection_matches(g_ui_text_field_selection,
+                                         field.focus_id, field.focused))
+                anchor = g_ui_text_field_selection.anchor;
+            if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                *field.cursor_position = cursor;
+                ui_text_selection_set(&g_ui_text_field_selection,
+                                      field.focus_id, field.focused,
+                                      anchor, cursor, 0);
+                selection_start = anchor < cursor ? anchor : cursor;
+                selection_end = anchor > cursor ? anchor : cursor;
+                selection_handled = 1;
+            }
         }
         if(!field.read_only && !selection_handled &&
            selection_end > selection_start &&
@@ -4561,6 +4618,13 @@ RenderTextField(TextFieldProps field)
         }
         if(!field.read_only && !selection_handled) {
             changed = EditText(field_edit);
+        }
+        if(!field.read_only && selection_handled &&
+           (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+            g_ui_text_input_enter_count > 0)) {
+            if(field.commit_pressed != NULL)
+                *field.commit_pressed = 1;
+            g_ui_text_input_enter_count = 0;
         }
         if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {

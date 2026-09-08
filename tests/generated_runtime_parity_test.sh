@@ -774,6 +774,29 @@ func main() {
 	}
 	CompositionStateValue.CompositionReadOnly = false
 	driver.SetFocus(26102)
+	driver.QueueShortcut(kryon.KeyRight)
+	drawComposition()
+	if CompositionStateValue.CompositionPageCursor != 5 {
+		panic("generated TextArea Ctrl+Right did not stop at separator")
+	}
+	driver.QueueShiftKey(kryon.KeyLeftShift)
+	driver.QueueShortcut(kryon.KeyRight)
+	drawComposition()
+	if CompositionStateValue.CompositionPageCursor != 6 {
+		panic("generated TextArea Ctrl+Shift+Right did not extend by word")
+	}
+	driver.QueueShortcut(kryon.KeyC)
+	drawComposition()
+	if driver.ClipboardText() != "\n" {
+		panic("generated TextArea Ctrl+Shift+Right selection failed")
+	}
+	driver.QueueKey(kryon.KeyLeft)
+	drawComposition()
+	driver.QueueKey(kryon.KeyLeft)
+	drawComposition()
+	if CompositionStateValue.CompositionPageCursor != 4 {
+		panic(fmt.Sprintf("generated TextArea word-navigation reset cursor=%d, want 4", CompositionStateValue.CompositionPageCursor))
+	}
 	driver.QueueShiftKey(kryon.KeyDown)
 	drawComposition()
 	if CompositionStateValue.CompositionPageCursor != 7 {
@@ -801,6 +824,12 @@ func main() {
 	driver.QueueKey(kryon.KeyEnter); drawComposition()
 	pageTextAfter := text64(CompositionStateValue.CompositionPageArea)
 	if len(pageTextAfter) != len(pageTextBefore)+1 || strings.Count(pageTextAfter, "\n") != strings.Count(pageTextBefore, "\n")+1 { panic("generated TextArea Enter did not insert newline") }
+	driver.QueueShortcut(kryon.KeyEnd); drawComposition()
+	driver.QueueShortcut(kryon.KeyBackspace); drawComposition()
+	wordDeletedText := text64(CompositionStateValue.CompositionPageArea)
+	if len(wordDeletedText) != len(pageTextAfter)-2 || !strings.HasSuffix(wordDeletedText, "\n") {
+		panic("generated TextArea Ctrl+Backspace did not delete final word")
+	}
 	fields := FieldsStateValue
 	focus := FocusStateValue
 	buttons := ButtonsLayoutStateValue
@@ -1583,6 +1612,45 @@ int main(void)
     }
     composition_read_only = 0;
     SetUIFocus(26102);
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_RIGHT);
+    InjectPump();
+    draw_composition();
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
+    if(composition_page_cursor != 5) {
+        fprintf(stderr,"generated TextArea Ctrl+Right did not stop at separator\n");
+        return 1;
+    }
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKey(KEY_LEFT_SHIFT,1);
+    InjectKeyTap(KEY_RIGHT);
+    InjectPump();
+    draw_composition();
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectKey(KEY_LEFT_SHIFT,0);
+    InjectPump();
+    if(composition_page_cursor != 6) {
+        fprintf(stderr,"generated TextArea Ctrl+Shift+Right did not extend by word\n");
+        return 1;
+    }
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_C);
+    InjectPump();
+    draw_composition();
+    InjectKey(KEY_LEFT_CONTROL,0);
+    InjectPump();
+    if(strcmp(GetUIClipboardTextValue(),"\n") != 0) {
+        fprintf(stderr,"generated TextArea Ctrl+Shift+Right selection failed\n");
+        return 1;
+    }
+    InjectKeyTap(KEY_LEFT); InjectPump(); draw_composition(); InjectPump();
+    InjectKeyTap(KEY_LEFT); InjectPump(); draw_composition();
+    if(composition_page_cursor != 4) {
+        fprintf(stderr,"generated TextArea word-navigation reset cursor=%d, want 4\n",
+                composition_page_cursor);
+        return 1;
+    }
     InjectKey(KEY_LEFT_SHIFT,1);
     InjectKeyTap(KEY_DOWN);
     InjectPump();
@@ -1631,6 +1699,15 @@ int main(void)
     if((int)strlen(composition_page_area) != composition_page_length + 1 ||
        TextBufferLineCount(composition_page_area) != composition_page_lines + 1) {
         fprintf(stderr,"generated TextArea Enter did not insert newline\n"); return 1;
+    }
+    InjectKey(KEY_LEFT_CONTROL,1);
+    InjectKeyTap(KEY_END); InjectPump(); draw_composition();
+    InjectKeyTap(KEY_BACKSPACE); InjectPump(); draw_composition();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    if((int)strlen(composition_page_area) != composition_page_length - 1 ||
+       composition_page_area[strlen(composition_page_area) - 1] != '\n') {
+        fprintf(stderr,"generated TextArea Ctrl+Backspace did not delete final word\n");
+        return 1;
     }
     InjectMousePosition(20,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);

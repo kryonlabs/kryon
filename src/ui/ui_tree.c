@@ -1442,7 +1442,8 @@ RouteInput(void)
                 .font = font,
                 .key = navigation_key,
                 .shift = shift,
-                .modifier = modifier
+                .modifier = modifier,
+                .secure = field->secure
             };
 
             if(ui_text_navigate(navigation, &state->anchor, &state->cursor)) {
@@ -1514,30 +1515,16 @@ RouteInput(void)
             }
         }
         if(backspace_count > 0 && !field->read_only) {
-            if(end > start) {
-                changed |= ui_text_delete_range(field->text, field->text_size,
-                                                 &state->cursor, start, end);
-                backspace_count--;
-            }
-            while(backspace_count-- > 0 && state->cursor > 0)
-                changed |= ui_text_delete_range(
-                    field->text, field->text_size, &state->cursor,
-                    ui_utf8_prev_offset(field->text, state->cursor),
-                    state->cursor);
-            state->anchor = state->cursor;
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field->text, field->text_size, &state->anchor,
+                    &state->cursor, KEY_BACKSPACE, modifier, field->secure);
             selection_changed = changed;
         } else if(delete_count > 0 && !field->read_only) {
-            if(end > start) {
-                changed |= ui_text_delete_range(field->text, field->text_size,
-                                                 &state->cursor, start, end);
-                delete_count--;
-            }
             while(delete_count-- > 0)
-                changed |= ui_text_delete_range(
-                    field->text, field->text_size, &state->cursor,
-                    state->cursor,
-                    ui_utf8_next_offset(field->text, state->cursor));
-            state->anchor = state->cursor;
+                changed |= ui_text_delete_key(
+                    field->text, field->text_size, &state->anchor,
+                    &state->cursor, KEY_DELETE, modifier, field->secure);
             selection_changed = changed;
         }
         if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
