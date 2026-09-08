@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.84 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.84
+- Remove legacy UIForm aliases
+
 ## v0.1.83 - 2026-09-08
 
 ### Changed
