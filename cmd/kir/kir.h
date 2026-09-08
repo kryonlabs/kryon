@@ -162,7 +162,7 @@ typedef struct KirGlobal {
     KirSourceSpan span;
 } KirGlobal;
 
-/* A `Name :: #define value` module constant — emitted as a real C #define. */
+/* A Kry `Name :: value` constant emitted into generated target interfaces. */
 typedef struct KirDefine {
     char name[KIR_NAME_MAX];
     char value[KIR_TEXT_MAX];

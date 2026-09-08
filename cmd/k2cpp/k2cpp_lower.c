@@ -1255,7 +1255,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     }
     /* Generated decls keep C linkage; includes above guard themselves. */
     fprintf(h, "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n");
-    /* 'Name :: #define value' constants first: headers reference them in
+    /* Kry constants first: headers reference them in
      * array bounds and extern declarations, and other modules use them
      * through the generated header -- a .c-only emission starves those. */
     for(i = 0; i < m->define_count; i++) {
@@ -1467,7 +1467,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     fprintf(c, "\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n");
-    /* 'Name :: #define value' module constants. */
+    /* Kry module constants lowered to C++ preprocessor constants. */
     for(i = 0; i < m->define_count; i++) {
         const KirDefine *d = &m->defines[i];
 

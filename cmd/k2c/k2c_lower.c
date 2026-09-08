@@ -1252,7 +1252,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         } else if(imp->kind == KIR_IMPORT_MODULE)
             fprintf(h, "#include \"%s.h\"\n", imp->target);
     }
-    /* 'Name :: #define value' constants first: headers reference them in
+    /* Kry constants first: headers reference them in
      * array bounds and extern declarations, and other modules use them
      * through the generated header -- a .c-only emission starves those. */
     for(i = 0; i < m->define_count; i++) {
@@ -1462,7 +1462,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         emit_guard_close(c, imp->guard);
     }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
-    /* 'Name :: #define value' module constants. */
+    /* Kry module constants lowered to C preprocessor constants. */
     for(i = 0; i < m->define_count; i++) {
         const KirDefine *d = &m->defines[i];
 

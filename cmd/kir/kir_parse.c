@@ -2355,10 +2355,10 @@ kir_parse_file(const char *path, const char *root)
         } else if(mode == TOP && strstr(t, "::") != NULL &&
                   strchr(t, '{') == NULL &&
                   !looks_like_function_header(t)) {
-            /* 'Name :: expr' — a compile-time constant ('WEB :: #defined(X)'),
-             * expanded inside '#if' conditions; never emitted as C. The
-             * '#define' form ('TAG :: #define "X"') becomes a real C
-             * #define instead. */
+            /* 'Name :: expr' is the single Kry constant declaration. Ordinary
+             * constants are also emitted into generated interfaces so public
+             * types can use them in array bounds. Platform predicates remain
+             * frontend-only because #defined is not a C expression. */
             const char *colons = strstr(t, "::");
             const char *expr = colons + 2;
             char cname[KIR_NAME_MAX];
@@ -2372,18 +2372,12 @@ kir_parse_file(const char *path, const char *root)
             while(*expr == ' ' || *expr == '\t')
                 expr++;
             if(cname[0] != '\0' && *expr != '\0') {
-                if(starts_word(expr, "#define")) {
-                    char value[KIR_TEXT_MAX];
-                    KirDefine *def;
-
-                    snprintf(value, sizeof(value), "%s", expr + 7);
-                    def = KirModuleAddDefine(module, cname, kir_trim(value),
-                                             KirSpan(rel, line_no, 1));
-                    if(def != NULL)
-                        snprintf(def->guard, sizeof(def->guard), "%s",
-                                 cur_guard);
-                } else {
+                if(starts_word(expr, "#define"))
+                    die("%s:%d: use '%s :: value'; #define is not Kry syntax",
+                        rel, line_no, cname);
+                else {
                     char run_value[KIR_TEXT_MAX];
+                    KirDefine *def;
 
                     if(consts.count >= 16)
                         die("%s:%d: too many compile-time constants",
@@ -2399,6 +2393,13 @@ kir_parse_file(const char *path, const char *root)
                                 rel, line_no, expanded);
                         snprintf(run_value, sizeof(run_value), "%ld", value);
                         expr = run_value;
+                    }
+                    if(!starts_word(expr, "#defined")) {
+                        def = KirModuleAddDefine(module, cname, expr,
+                                                 KirSpan(rel, line_no, 1));
+                        if(def != NULL)
+                            snprintf(def->guard, sizeof(def->guard), "%s",
+                                     cur_guard);
                     }
                     snprintf(consts.names[consts.count],
                              sizeof(consts.names[0]), "%s", cname);

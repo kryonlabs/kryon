@@ -116,6 +116,11 @@ WEB :: #defined(PLATFORM_WEB)
 ANDROID :: ANDROID_BUILD
 ALWAYS :: 1
 ANSWER :: #run 6 * 7
+PUBLIC_ARRAY_SIZE :: 4
+
+PublicConstantArray :: struct {
+    values: [PUBLIC_ARRAY_SIZE]int
+}
 #assert ANSWER == 42, "valid #run assertion failed"
 #assert ALWAYS, "valid fixture assertion failed"
 #if WEB {
@@ -202,6 +207,8 @@ grep -Fq 'FixtureLimit = 12,' "$h"
 
 # source: preamble
 grep -Fq '#include "src/valid.h"' "$c"
+grep -Fq '#define PUBLIC_ARRAY_SIZE 4' "$h"
+grep -Fq 'int values[PUBLIC_ARRAY_SIZE];' "$h"
 grep -Fq '#include "ui_inspect.h"' "$c"
 grep -Fq 'int abs(int value);' "$c"
 grep -Fq 'static int' "$c"
@@ -338,5 +345,15 @@ if "$k2c" --root "$work" -o "$work/out" "$work/src/assert_fail.kry" 2>"$work/ass
     exit 1
 fi
 grep -Fq 'intentional assertion failure' "$work/assert_fail.err"
+
+cat > "$work/src/c_define_fail.kry" <<'EOF'
+INVALID :: #define 4
+EOF
+
+if "$k2c" --root "$work" -o "$work/out" "$work/src/c_define_fail.kry" 2>"$work/c_define_fail.err"; then
+    echo "C #define syntax was accepted as Kry" >&2
+    exit 1
+fi
+grep -Fq "use 'INVALID :: value'; #define is not Kry syntax" "$work/c_define_fail.err"
 
 echo "k2c ok"
