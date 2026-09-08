@@ -156,8 +156,9 @@ DrawUIBottomNav(BottomNavProps nav)
         int content_y = y + Scale(19);
         int label_y = content_y + icon_size + label_gap;
         int label_pad = Scale(3);
-        Color text_tint = item->active ? LightenUIColor(accent, 42) : inactive;
-        Color icon_tint = item->active ? LightenUIColor(accent, 48) : inactive;
+        Color active_foreground = GetThemeButtonText();
+        Color text_tint = item->active ? active_foreground : inactive;
+        Color icon_tint = item->active ? active_foreground : inactive;
 
         if(item->disabled) {
             text_tint = ui_alpha(inactive, 112);

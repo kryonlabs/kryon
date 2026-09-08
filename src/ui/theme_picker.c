@@ -115,7 +115,7 @@ ui_theme_settings_height(ThemeSettingsProps settings)
         return 0;
     if(ui_theme_settings_show_mode(settings))
         rows++;
-    return rows * (GetFontSize() + Scale(8) + Scale(UI_THEME_SETTINGS_ROW_H)) +
+    return rows * (GetFontSize() + Scale(20) + Scale(UI_THEME_SETTINGS_ROW_H)) +
            (rows - 1) * Scale(UI_THEME_SETTINGS_ROW_GAP);
 }
 
