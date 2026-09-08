@@ -1748,6 +1748,29 @@ test_text_area_page_navigation(void)
 }
 
 static void
+test_text_area_wheel_scroll(void)
+{
+    char text[256] =
+        "a0\nb1\nc2\nd3\ne4\nf5\ng6\nh7\ni8\nj9\nk10\nl11\nm12\nn13";
+    int cursor = 0;
+    int focused = 0;
+    int scroll = 0;
+    TextAreaProps area = {
+        .bounds = {10,10,160,60}, .text = text, .text_size = sizeof(text),
+        .cursor_position = &cursor, .focused = &focused,
+        .scroll_y = &scroll, .focus_id = 25511, .font = Text16
+    };
+
+    InjectReset();
+    InjectMousePosition(40, 40);
+    InjectWheel(-1);
+    InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea wheel scrolls down", scroll > 0, 1);
+    InjectReset();
+}
+
+static void
 test_composed_combo_scope(void)
 {
     bool open = true;
@@ -3457,6 +3480,7 @@ main(void)
     test_popup_active_drag_ownership();
     test_popup_text_keyboard_ownership();
     test_text_area_page_navigation();
+    test_text_area_wheel_scroll();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();
