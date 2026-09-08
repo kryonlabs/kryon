@@ -51,8 +51,8 @@ state {
     theme_source: int = 0
     theme_mode: int = 2
     theme_style: int = 1
-    theme_state: UIThemeSettingsState = {0}
-    theme_result: UIThemeSettingsResult = {0}
+    theme_state: ThemeSettingsState = {0}
+    theme_result: ThemeSettingsResult = {0}
     theme_initialized: int = 0
     menu_command: int = 0
     picker_choice: int = -1

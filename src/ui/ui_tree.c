@@ -2775,20 +2775,20 @@ Checkbox(int id, int x, int y, const char *label, int *value)
 }
 
 int
-ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
-                    UIThemeSettingsResult *result)
+ThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state,
+                    ThemeSettingsResult *result)
 {
     UIWidgetNode node;
     NodeId id;
-    UIThemeSettingsResult next = {0};
+    ThemeSettingsResult next = {0};
 
     id = ui_tree_add(settings.id_base, UI_WIDGET_THEME_SETTINGS_NODE,
                      (Rectangle){settings.x, settings.y, settings.w, 0},
                      NULL);
     node = NodeThemeSettings(settings);
     ui_tree_store_node(id, node);
-    DrawUIThemeSettings(settings, state);
-    next = DrawUIThemeSettingsMenus(settings, state);
+    DrawThemeSettings(settings, state);
+    next = DrawThemeSettingsMenus(settings, state);
     if(result != NULL)
         *result = next;
     return next.changed;
@@ -3656,7 +3656,7 @@ resolve_button_bounds(ButtonProps button)
             bounds.width = bounds.height;
     }
     if(bounds.width <= 0) {
-        if(button.icon_only || button.square)
+        if(button.icon_only || button.square || button.circle)
             bounds.width = bounds.height;
         else {
             bounds.width = (float)(TextWidth(button.label != NULL
@@ -3664,7 +3664,7 @@ resolve_button_bounds(ButtonProps button)
                                    + padding * 2 + (has_icon ? icon_size + Scale(8) : 0));
         }
     }
-    if(button.square)
+    if(button.square || button.circle)
         bounds.width = bounds.height;
     return bounds;
 }

@@ -262,6 +262,7 @@ typedef struct ButtonProps {
     int selected;
     int full_width;
     int pill;
+    int circle;
     Texture2D icon;
     int icon_type;
     IconPlacement icon_placement;
@@ -395,8 +396,8 @@ int Slider(int id, int x, int y, int w, const char *label,
 int Toggle(int id, int x, int y, int w, int h, int *value,
                  const char *off_label, const char *on_label);
 int Checkbox(int id, int x, int y, const char *label, int *value);
-int ThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state,
-                        UIThemeSettingsResult *result);
+int ThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state,
+                        ThemeSettingsResult *result);
 void Separator(Rectangle bounds, int vertical);
 void SeparatorText(SeparatorTextProps separator);
 int DragDropSource(DragDropSourceProps source);

@@ -54,7 +54,7 @@ typedef struct {
     int draw_palette_menu;
     int draw_style_menu;
     int palette_index;
-} UIThemeSettingsState;
+} ThemeSettingsState;
 
 typedef struct {
     int id_base;
@@ -91,7 +91,7 @@ typedef struct {
     int mode_changed;
     int palette_changed;
     int style_changed;
-} UIThemeSettingsResult;
+} ThemeSettingsResult;
 
 typedef struct {
     Rectangle bounds;

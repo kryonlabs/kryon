@@ -423,7 +423,7 @@ type TextInputStyle struct {
 	PaddingY    int32
 }
 
-type UIThemeSettingsState struct {
+type ThemeSettingsState struct {
 	DrawSourceMenu  int32
 	DrawModeMenu    int32
 	DrawPaletteMenu int32
@@ -458,7 +458,7 @@ type ThemeSettingsProps struct {
 	SystemThemeLabel      string
 }
 
-type UIThemeSettingsResult struct {
+type ThemeSettingsResult struct {
 	Changed        int32
 	SourceChanged  int32
 	ModeChanged    int32
@@ -479,6 +479,7 @@ type ButtonProps struct {
 	Selected      bool
 	FullWidth     bool
 	Pill          bool
+	Circle        bool
 	Icon          Texture2D
 	IconType      int32
 	IconPlacement IconPlacement
@@ -2378,7 +2379,7 @@ func (r *runtime) buttonAt(props ButtonProps) bool {
 	if loading {
 		label = ""
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: label, Color: paint.background, BorderColor: paint.border, TextColor: paint.foreground, ID: props.ID, FontSize: props.Font, Disabled: props.Disabled || state == ButtonStateDisabled || loading, Pressed: pressed || state == ButtonStatePressed, Focused: focused || state == ButtonStateFocus, Selected: props.Selected || state == ButtonStateSelected, Loading: loading, Pill: props.Pill, IconOnly: props.IconOnly, IconType: props.IconType, IconPlacement: int32(props.IconPlacement)})
+	r.record(FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: label, Color: paint.background, BorderColor: paint.border, TextColor: paint.foreground, ID: props.ID, FontSize: props.Font, Disabled: props.Disabled || state == ButtonStateDisabled || loading, Pressed: pressed || state == ButtonStatePressed, Focused: focused || state == ButtonStateFocus, Selected: props.Selected || state == ButtonStateSelected, Loading: loading, Pill: props.Pill || props.Circle, IconOnly: props.IconOnly, IconType: props.IconType, IconPlacement: int32(props.IconPlacement)})
 	return pressed
 }
 
@@ -2408,7 +2409,7 @@ func (r *runtime) resolveButtonProps(props ButtonProps) ButtonProps {
 		props.Bounds.Width = max(props.Bounds.Height, right-props.Bounds.X)
 	}
 	if props.Bounds.Width <= 0 {
-		if props.IconOnly || props.Square {
+		if props.IconOnly || props.Square || props.Circle {
 			props.Bounds.Width = props.Bounds.Height
 		} else {
 			props.Bounds.Width = float32(runtimeTextWidth(props.Label, font)) + padding*2
@@ -2417,7 +2418,7 @@ func (r *runtime) resolveButtonProps(props ButtonProps) ButtonProps {
 			}
 		}
 	}
-	if props.Square {
+	if props.Square || props.Circle {
 		props.Bounds.Width = props.Bounds.Height
 	}
 	props.Font = font
@@ -6613,9 +6614,9 @@ func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
 	}
 }
 
-func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result *UIThemeSettingsResult) bool {
+func ThemeSettings(props ThemeSettingsProps, state *ThemeSettingsState, result *ThemeSettingsResult) bool {
 	if result != nil {
-		*result = UIThemeSettingsResult{}
+		*result = ThemeSettingsResult{}
 	}
 	if props.ThemeSource == nil || props.ThemeMode == nil || props.ThemeId == nil || props.W <= 0 {
 		return false

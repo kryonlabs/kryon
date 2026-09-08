@@ -120,7 +120,7 @@ ui_theme_settings_height(ThemeSettingsProps settings)
 }
 
 int
-DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
+DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
 {
     const char *mode_options[3];
     int mode_values[3];
@@ -265,10 +265,10 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     return y - row_gap;
 }
 
-UIThemeSettingsResult
-DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *state)
+ThemeSettingsResult
+DrawThemeSettingsMenus(ThemeSettingsProps settings, ThemeSettingsState *state)
 {
-    UIThemeSettingsResult result = {0};
+    ThemeSettingsResult result = {0};
 
 #if defined(KRYON_BACKEND_LIBDRAW)
     settings.allow_system_source = 0;

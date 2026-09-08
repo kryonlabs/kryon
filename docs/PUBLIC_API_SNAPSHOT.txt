@@ -1417,7 +1417,7 @@ include/ui_controls.h function TextBufferToggleLineComment
 include/ui_controls.h macro RICH_TEXT_TOOLS_DEFAULT
 include/ui_controls.h typedef TextInputFilter
 include/ui_controls.h typedef UIVerticalSliderMarkCallback
-include/ui_core.h function ApplyCurrentUITheme
+include/ui_core.h function ApplyCurrentTheme
 include/ui_core.h function BeginUIFocus
 include/ui_core.h function BeginUIFrame
 include/ui_core.h function BeginUIModalLayer

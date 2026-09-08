@@ -629,7 +629,7 @@ ResolveButtonPaint(ButtonProps button, ButtonState state)
     paint.radius = ui_radius_px(button.bounds,
                                 GetThemeMetrics().radius_medium);
     paint.border_width = GetThemeMetrics().border_width;
-    if(button.pill)
+    if(button.pill || button.circle)
         paint.radius = 0.5f;
     if(button.paint != NULL)
         paint = *button.paint;

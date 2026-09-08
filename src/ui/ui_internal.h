@@ -295,9 +295,9 @@ int DrawUIPickerDialog(PickerDialogProps picker);
 int DrawUIColorPicker(Rectangle bounds, Color *color);
 void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
 UIGuideResult DrawUIGuideOverlay(GuideOverlayProps guide);
-int DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state);
-UIThemeSettingsResult DrawUIThemeSettingsMenus(ThemeSettingsProps settings,
-                                               UIThemeSettingsState *state);
+int DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state);
+ThemeSettingsResult DrawThemeSettingsMenus(ThemeSettingsProps settings,
+                                               ThemeSettingsState *state);
 int DrawUIThemeSwitcher(int x, int y, int w, const char *label,
                         const char *light_label, const char *dark_label,
                         int *theme_id, int *dark_mode);

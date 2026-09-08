@@ -20,7 +20,7 @@ static int source_sel = 0;
 static int mode_sel = 0;
 static int palette_sel = 10;
 static int style_sel = 2;
-static UIThemeSettingsState menu_state = {0};
+static ThemeSettingsState menu_state = {0};
 
 static void
 check_int(const char *name, int got, int want)
@@ -64,7 +64,7 @@ check_material_android_outline_neutral(void)
                           (Color){0x67, 0x50, 0xA4, 0xFF},
                           false,
                           true);
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
     scheme = GetThemeScheme();
 
     check_int("android material outline remains neutral",
@@ -97,7 +97,7 @@ theme_props(void)
 static void
 step(void)
 {
-    UIThemeSettingsResult result;
+    ThemeSettingsResult result;
 
     InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);

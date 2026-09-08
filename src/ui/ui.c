@@ -444,7 +444,7 @@ BeginDisabled(int disabled)
         return;
     g_ui_disabled_start = g_ui_disabled_depth;
     g_theme_content_alpha = 0.45f;
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
 }
 
 void
@@ -456,7 +456,7 @@ EndDisabled(void)
         return;
     g_ui_disabled_start = 0;
     g_theme_content_alpha = 1.0f;
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
 }
 
 static void
@@ -5161,7 +5161,7 @@ InitUI(int width, int height, float dpi)
     ui_view_width = width;
     ui_view_height = height;
     SetUIScale(dpi);
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
     if(ui_default_font_auto_load)
         EnsureUIDefaultFont();
 }
@@ -5193,7 +5193,7 @@ SetUILinkColor(Color link)
 }
 
 void
-ApplyCurrentUITheme(void)
+ApplyCurrentTheme(void)
 {
     ui_set_theme_colors(GetThemeText(),
                         GetThemeBackground(),

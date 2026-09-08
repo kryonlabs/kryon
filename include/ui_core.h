@@ -43,7 +43,7 @@ typedef struct UIFrameState {
 void InitUI(int width, int height, float dpi);
 void SetUIDefaultFontAutoLoad(int enabled);
 void SetUILinkColor(Color link);
-void ApplyCurrentUITheme(void);
+void ApplyCurrentTheme(void);
 int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);

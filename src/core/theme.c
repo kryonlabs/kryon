@@ -716,7 +716,7 @@ SetThemeMode(ThemeMode mode)
         active_theme.mode = dark_mode ? THEME_MODE_DARK : THEME_MODE_LIGHT;
         active_theme_set = 1;
         SetThemeMetrics(active_theme.metrics);
-        ApplyCurrentUITheme();
+        ApplyCurrentTheme();
     }
 }
 
@@ -732,7 +732,7 @@ SetThemeStyle(ThemeStyle style)
     if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_DEFAULT)
         style = THEME_STYLE_SYSTEM;
     theme_style = style;
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
 }
 
 ThemeStyle
@@ -847,7 +847,7 @@ SetCurrentTheme(int theme_id, int current_dark_mode)
     active_theme_set = 0;
     current_theme_id = NormalizeTheme(theme_id);
     dark_mode = current_dark_mode != 0;
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
 }
 
 Color
@@ -959,7 +959,7 @@ SetTheme(Theme theme)
     theme_mode = theme.mode == THEME_MODE_DARK
         ? THEME_MODE_DARK : THEME_MODE_LIGHT;
     SetThemeMetrics(theme.metrics);
-    ApplyCurrentUITheme();
+    ApplyCurrentTheme();
 }
 
 void

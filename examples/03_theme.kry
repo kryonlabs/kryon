@@ -11,7 +11,7 @@ state {
     theme_mode: int = THEME_MODE_SYSTEM
     theme_id: int = THEME_SKY
     theme_style: int = THEME_STYLE_SYSTEM
-    menu_state: UIThemeSettingsState = {0}
+    menu_state: ThemeSettingsState = {0}
     slider_value: int = 64
     toggle_value: int = 1
     check_value: int = 1
@@ -124,7 +124,7 @@ ThemeExample :: (viewport: Rectangle) #ui {
     
         Text((TextProps){.bounds={margin, Scale(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right_x, Scale(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
-        result: UIThemeSettingsResult = {0}
+        result: ThemeSettingsResult = {0}
         ThemeSettings(settings, &menu_state, &result)
     
         ControlDemo(right_x, Scale(88), Scale(420))
