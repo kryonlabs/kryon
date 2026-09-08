@@ -142,7 +142,10 @@ C tab-bar owned scroll and its bar-local click, reorder, and pane-drag
 bookkeeping now belong to that same render-host context instead of
 process-global statics. Interleaved graphical hosts use the same tab ID without
 sharing omitted scroll state, and restoring the outer host restores its state
-immediately. The broader C focus and pointer state is still shared.
+immediately. Native auxiliary windows also retain their own active focus ID
+and restore the caller's focus on exit. A real-window regression reopens one
+across frames and checks both directions of focus isolation. The broader C
+pointer and text-edit state is still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real
 pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background

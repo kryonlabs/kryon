@@ -414,8 +414,17 @@ int main(void)
         fprintf(stderr,"UIWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
+        SetUIFocus(42001);
         for(int frame = 0; frame < 4; frame++) {
             BeginUIWindow(window);
+            if(GetUIFocus() != (frame == 0 ? 0 : 42002)) {
+                fprintf(stderr,"UIWindow restored wrong owned focus: %d\n",
+                        GetUIFocus());
+                failures++;
+            }
+            SetUIFocus(42002);
+            if(frame == 2)
+                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
             BeginTextureMode(inner);
             ClearBackground(BLUE);
             BeginTextureMode(leaf);
@@ -426,6 +435,7 @@ int main(void)
                 UIPaintLayers *window_layers = ui_window_paint_layers();
                 if(window_layers == NULL) return 1;
                 UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
+                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
                 BeginTree(Key("UIWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
@@ -439,6 +449,11 @@ int main(void)
             if(frame == 3) CloseUIWindow(window);
             else EndUIWindow();
             check_window_readback = 0;
+            if(GetUIFocus() != 42001) {
+                fprintf(stderr,"UIWindow leaked focus into caller: %d\n",
+                        GetUIFocus());
+                failures++;
+            }
             if(ui_window_paint_layers() != NULL) {
                 fprintf(stderr,"ended UIWindow retained an active layer owner\n");
                 failures++;
