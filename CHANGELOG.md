@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.86 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.86
+- Focus native sliders from pointer presses
+
 ## v0.1.85 - 2026-09-08
 
 ### Changed
