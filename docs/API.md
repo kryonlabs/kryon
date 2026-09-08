@@ -1850,19 +1850,20 @@ typedef struct {
     Rectangle last_bounds;
     int focused_rect_valid;
     Rectangle focused_rect;
-} UIForm;
+} Form;
 
-UIForm UIFormBegin(int x, int y, int width);
-int UIFormY(const UIForm *form);
-Rectangle UIFormTakeRect(UIForm *form, int height);
-int UIFormLabelTextField(UIForm *form, LabelTextFieldProps row);
-int UIFormCheckboxRow(UIForm *form, CheckboxRowProps row);
-int UIFormSpinboxRow(UIForm *form, SpinboxRowProps row);
-int UIFormButtonRow(UIForm *form, ButtonRowProps row);
-int UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin);
+Form FormBegin(int x, int y, int width);
+int FormY(const Form *form);
+Rectangle FormTakeRect(Form *form, int height);
+int FormSection(Form *form, SectionLabelProps row);
+int FormTextField(Form *form, LabelTextFieldProps row);
+int FormCheckbox(Form *form, CheckboxRowProps row);
+int FormSpinbox(Form *form, SpinboxRowProps row);
+int FormButtons(Form *form, ButtonRowProps row);
+int FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin);
 ```
 
-`UIForm` is a small immediate-mode cursor for settings and data-entry pages.
+`Form` is a small immediate-mode cursor for settings and data-entry pages.
 It centralizes row advancement, default row heights, and focused-field
 scrolling so apps do not need parallel `draw_*` and `content_height_*`
 arithmetic for simple forms.

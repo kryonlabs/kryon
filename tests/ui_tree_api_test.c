@@ -71,7 +71,7 @@ main(void)
     SectionLabelProps section = {0};
     CheckboxRowProps checkbox = {0};
     ButtonRowProps row = {.width = 240, .height = 40};
-    UIForm form;
+    Form form;
     Rectangle taken;
     UIScreenScaffold scaffold;
     BottomNavProps nav = {0};
@@ -104,16 +104,16 @@ main(void)
     check_int("button row",
               GetNodeHeight(NodeButtonRow(row)),
               Scale(40));
-    form = UIFormBegin(10, 20, 240);
-    taken = UIFormTakeRect(&form, Scale(18));
+    form = FormBegin(10, 20, 240);
+    taken = FormTakeRect(&form, Scale(18));
     check_int("form rect x", (int)taken.x, 10);
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
-    check_int("form advances", UIFormY(&form), 20 + Scale(18));
+    check_int("form advances", FormY(&form), 20 + Scale(18));
     BeginTree(6);
-    UIFormSection(&form, "Account");
+    FormSection(&form, (SectionLabelProps){.label = "Account"});
     EndTree();
-    check_int("form section helper advances", UIFormY(&form),
+    check_int("form section helper advances", FormY(&form),
               20 + Scale(18) + Scale(24));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),

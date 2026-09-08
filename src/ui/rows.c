@@ -200,10 +200,10 @@ GetUISpinboxRowHeight(SpinboxRowProps row)
     return row.row_height > 0 ? row.row_height : Scale(54);
 }
 
-UIForm
-UIFormBegin(int x, int y, int width)
+Form
+FormBegin(int x, int y, int width)
 {
-    UIForm form;
+    Form form;
 
     memset(&form, 0, sizeof(form));
     form.x = x;
@@ -215,13 +215,13 @@ UIFormBegin(int x, int y, int width)
 }
 
 int
-UIFormY(const UIForm *form)
+FormY(const Form *form)
 {
     return form != NULL ? form->cursor_y : 0;
 }
 
 int
-UIFormAdvance(UIForm *form, int height)
+FormAdvance(Form *form, int height)
 {
     int y;
 
@@ -236,7 +236,7 @@ UIFormAdvance(UIForm *form, int height)
 }
 
 Rectangle
-UIFormTakeRect(UIForm *form, int height)
+FormTakeRect(Form *form, int height)
 {
     Rectangle bounds = {0};
 
@@ -245,12 +245,12 @@ UIFormTakeRect(UIForm *form, int height)
     bounds = (Rectangle){(float)form->x, (float)form->cursor_y,
                          (float)form->width, (float)(height > 0 ? height : 0)};
     form->last_bounds = bounds;
-    UIFormAdvance(form, height);
+    FormAdvance(form, height);
     return bounds;
 }
 
 void
-UIFormNoteFocus(UIForm *form, int focus_id, Rectangle bounds)
+FormNoteFocus(Form *form, int focus_id, Rectangle bounds)
 {
     if(form == NULL || focus_id <= 0)
         return;
@@ -261,7 +261,7 @@ UIFormNoteFocus(UIForm *form, int focus_id, Rectangle bounds)
 }
 
 int
-UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin)
+FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin)
 {
     if(form == NULL || !form->focused_rect_valid)
         return 0;
@@ -271,7 +271,7 @@ UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin)
 }
 
 int
-UIFormSectionLabel(UIForm *form, SectionLabelProps label)
+FormSection(Form *form, SectionLabelProps label)
 {
     int y;
     int height;
@@ -280,12 +280,12 @@ UIFormSectionLabel(UIForm *form, SectionLabelProps label)
         return 0;
     y = form->cursor_y;
     height = ui_section_label_height(label);
-    UIFormTakeRect(form, height);
+    FormTakeRect(form, height);
     return SectionLabel(label, form->x, y);
 }
 
 int
-UIFormLabelTextField(UIForm *form, LabelTextFieldProps row)
+FormTextField(Form *form, LabelTextFieldProps row)
 {
     int y;
     int height;
@@ -296,7 +296,7 @@ UIFormLabelTextField(UIForm *form, LabelTextFieldProps row)
         return 0;
     y = form->cursor_y;
     height = ui_label_text_field_height(row);
-    UIFormTakeRect(form, height);
+    FormTakeRect(form, height);
     result = LabelTextField(row, form->x, y, form->width);
 
     field_bounds = row.field.bounds;
@@ -309,12 +309,12 @@ UIFormLabelTextField(UIForm *form, LabelTextFieldProps row)
                                    (float)form->width,
                                    (float)field_h};
     }
-    UIFormNoteFocus(form, row.field.focus_id, field_bounds);
+    FormNoteFocus(form, row.field.focus_id, field_bounds);
     return result;
 }
 
 int
-UIFormCheckboxRow(UIForm *form, CheckboxRowProps row)
+FormCheckbox(Form *form, CheckboxRowProps row)
 {
     int y;
     int height;
@@ -323,12 +323,12 @@ UIFormCheckboxRow(UIForm *form, CheckboxRowProps row)
         return 0;
     y = form->cursor_y;
     height = ui_checkbox_row_height(row);
-    UIFormTakeRect(form, height);
+    FormTakeRect(form, height);
     return CheckboxRow(row, form->x, y);
 }
 
 int
-UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
+FormSpinbox(Form *form, SpinboxRowProps row)
 {
     int y;
     int height;
@@ -342,7 +342,7 @@ UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
         return 0;
     y = form->cursor_y;
     height = GetUISpinboxRowHeight(row);
-    UIFormTakeRect(form, height);
+    FormTakeRect(form, height);
 
     label_font = row.label_font > 0 ? row.label_font : GetFontSize();
     control_w = row.control_width > 0 ? row.control_width : Scale(156);
@@ -370,7 +370,7 @@ UIFormSpinboxRow(UIForm *form, SpinboxRowProps row)
 }
 
 int
-UIFormButtonRow(UIForm *form, ButtonRowProps row)
+FormButtons(Form *form, ButtonRowProps row)
 {
     int height;
 
@@ -380,103 +380,8 @@ UIFormButtonRow(UIForm *form, ButtonRowProps row)
     row.y = form->cursor_y;
     row.width = form->width;
     height = GetUIButtonRowHeight(row);
-    UIFormTakeRect(form, height);
+    FormTakeRect(form, height);
     return ButtonRow(row);
-}
-
-int
-UIFormSection(UIForm *form, const char *label)
-{
-    SectionLabelProps section;
-
-    memset(&section, 0, sizeof(section));
-    section.label = label;
-    return UIFormSectionLabel(form, section);
-}
-
-int
-UIFormSectionEx(UIForm *form, SectionLabelProps label)
-{
-    return UIFormSectionLabel(form, label);
-}
-
-int
-UIFormTextField(UIForm *form, const char *label, char *text,
-                size_t text_size, int *cursor_position, int *focused,
-                int focus_id)
-{
-    LabelTextFieldProps row;
-
-    memset(&row, 0, sizeof(row));
-    row.label = label;
-    row.field.text = text;
-    row.field.text_size = text_size;
-    row.field.cursor_position = cursor_position;
-    row.field.focused = focused;
-    row.field.focus_id = focus_id;
-    return UIFormLabelTextField(form, row);
-}
-
-int
-UIFormTextFieldEx(UIForm *form, LabelTextFieldProps row)
-{
-    return UIFormLabelTextField(form, row);
-}
-
-int
-UIFormCheckbox(UIForm *form, const char *label, int *value)
-{
-    CheckboxRowProps row;
-
-    memset(&row, 0, sizeof(row));
-    row.label = label;
-    row.value = value;
-    return UIFormCheckboxRow(form, row);
-}
-
-int
-UIFormCheckboxEx(UIForm *form, CheckboxRowProps row)
-{
-    return UIFormCheckboxRow(form, row);
-}
-
-int
-UIFormSpinbox(UIForm *form, const char *label, int id, int min, int max,
-              int step, int *value)
-{
-    SpinboxRowProps row;
-
-    memset(&row, 0, sizeof(row));
-    row.label = label;
-    row.spinbox.id = id;
-    row.spinbox.min = min;
-    row.spinbox.max = max;
-    row.spinbox.step = step;
-    row.spinbox.value = value;
-    return UIFormSpinboxRow(form, row);
-}
-
-int
-UIFormSpinboxEx(UIForm *form, SpinboxRowProps row)
-{
-    return UIFormSpinboxRow(form, row);
-}
-
-int
-UIFormButtons(UIForm *form, const UIButtonRowItem *items, int count)
-{
-    ButtonRowProps row;
-
-    memset(&row, 0, sizeof(row));
-    row.items = items;
-    row.count = count;
-    return UIFormButtonRow(form, row);
-}
-
-int
-UIFormButtonsEx(UIForm *form, ButtonRowProps row)
-{
-    return UIFormButtonRow(form, row);
 }
 
 int
