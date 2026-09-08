@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.90 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.90
+- Isolate auxiliary window focus state
+
 ## v0.1.89 - 2026-09-08
 
 ### Changed
