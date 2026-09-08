@@ -730,6 +730,27 @@ func TestDirectPackageTextFieldStateIsFrameScoped(t *testing.T) {
 	}
 }
 
+func TestButtonsAssignStableAutomaticIDs(t *testing.T) {
+	rt := New(AppConfig{Width: 320, Height: 200}).(*runtime)
+	draw := func() (int32, int32) {
+		rt.BeginFrame()
+		rt.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30}, Label: "First"})
+		rt.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 50, Width: 80, Height: 30}, Label: "Second"})
+		ops := rt.FrameOps()
+		rt.EndFrame()
+		return ops[0].ID, ops[1].ID
+	}
+
+	first, second := draw()
+	if first == 0 || second == 0 || first == second {
+		t.Fatalf("automatic IDs must be non-zero and unique: %d, %d", first, second)
+	}
+	nextFirst, nextSecond := draw()
+	if first != nextFirst || second != nextSecond {
+		t.Fatalf("automatic IDs changed between frames: (%d, %d) then (%d, %d)", first, second, nextFirst, nextSecond)
+	}
+}
+
 func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 	text := make([]byte, 32)

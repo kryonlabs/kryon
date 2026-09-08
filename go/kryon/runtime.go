@@ -164,14 +164,14 @@ const (
 	Text32 int32 = 32
 	Text48 int32 = 48
 
-	THEME_STYLE_SYSTEM   = 0
-	THEME_STYLE_CLASSIC    = 1
+	THEME_STYLE_SYSTEM  = 0
+	THEME_STYLE_CLASSIC = 1
 	THEME_STYLE_DEFAULT = 2
-	THEME_SOURCE_APP     = 0
-	THEME_SOURCE_SYSTEM  = 1
-	THEME_MODE_SYSTEM    = 0
-	THEME_MODE_LIGHT     = 1
-	THEME_MODE_DARK      = 2
+	THEME_SOURCE_APP    = 0
+	THEME_SOURCE_SYSTEM = 1
+	THEME_MODE_SYSTEM   = 0
+	THEME_MODE_LIGHT    = 1
+	THEME_MODE_DARK     = 2
 
 	THEME_SKY      = 0
 	THEME_OCEAN    = 1
@@ -416,8 +416,8 @@ type ThemeSettingsProps struct {
 	PaletteLabel          string
 	StyleLabel            string
 	StyleSystemLabel      string
-	StyleClassicLabel       string
-	StyleDefaultLabel    string
+	StyleClassicLabel     string
+	StyleDefaultLabel     string
 	StyleFluentLabel      string
 	StyleAdwaitaLabel     string
 	StyleLiquidGlassLabel string
@@ -1454,6 +1454,7 @@ type runtime struct {
 	closed            bool
 	frames            int
 	focusID           int32
+	autoFocusID       int32
 	clipboard         string
 	inputEvents       []inputEvent
 	compositionEvents []KryTextCompositionEvent
@@ -1840,6 +1841,7 @@ func (r *runtime) BeginFrame() {
 		panic("unclosed popup input scope at frame boundary")
 	}
 	r.resetPaintLayers()
+	r.autoFocusID = 0x40000000
 	if r.dropdownsSeen == nil {
 		r.dropdownsSeen = make(map[int32]bool)
 	}
@@ -2149,6 +2151,10 @@ func (r *runtime) Button(props ButtonProps) bool {
 // already-laid-out rectangle. Composite widgets use it for embedded buttons
 // without advancing their parent's layout a second time.
 func (r *runtime) buttonAt(props ButtonProps) bool {
+	if props.ID == 0 {
+		props.ID = r.autoFocusID
+		r.autoFocusID++
+	}
 	theme := r.theme()
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
 	fill := theme.button

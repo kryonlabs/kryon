@@ -3556,6 +3556,7 @@ ModalFrame(int width, int height, const char *title,
 int
 Button(ButtonProps button)
 {
+    button.id = ResolveUIFocusID(button.id);
     ButtonSpec spec = {
         .bounds = button.bounds,
         .label = button.label,

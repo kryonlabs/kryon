@@ -163,6 +163,7 @@ static int *g_ui_text_context_owner = NULL;
 static int g_ui_text_context_x = 0;
 static int g_ui_text_context_y = 0;
 unsigned long g_ui_frame_serial = 0;
+static int g_ui_auto_focus_id = 0x40000000;
 static unsigned long g_ui_text_context_target_frame = 0;
 static char *g_ui_text_context_text = NULL;
 static size_t g_ui_text_context_text_size = 0;
@@ -5256,6 +5257,7 @@ SetUIFrame(Camera2D camera)
     EndUIFocus();
     BeginUIFocus();
     g_ui_frame_serial++;
+    g_ui_auto_focus_id = 0x40000000;
     ui_text_begin_frame();
 
     g_ui_text_input_requested = 0;
@@ -5283,6 +5285,14 @@ SetUIFrame(Camera2D camera)
     ResetUIClip();
     BeginUIInspectFrame(NULL);
     ui_frame_layers_begin();
+}
+
+int
+ResolveUIFocusID(int id)
+{
+    if(id != 0)
+        return id;
+    return g_ui_auto_focus_id++;
 }
 
 void
@@ -5354,6 +5364,7 @@ SaveUIFrameState(void)
     state.mouse_world_override_enabled = g_ui_mouse_world_override_enabled;
     state.mouse_world_override = g_ui_mouse_world_override;
     state.frame_serial = g_ui_frame_serial;
+    state.auto_focus_id = g_ui_auto_focus_id;
     state.ui_scale = GetUIScale();
     return state;
 }
@@ -5396,6 +5407,7 @@ RestoreUIFrameState(UIFrameState state)
             (Vector2){(float)g_ui_pointer_start_x,
                       (float)g_ui_pointer_start_y});
     g_ui_frame_serial = state.frame_serial;
+    g_ui_auto_focus_id = state.auto_focus_id;
     SetUIScale(state.ui_scale);
     ResetUIClip();
 }

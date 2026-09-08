@@ -11,42 +11,116 @@ state {
     last_action: [128] char = "No button clicked yet."
 }
 
+ExampleHeading :: (text: const char *, x: int, y: int, font: int) {
+    Text((TextProps){
+        .bounds = {Scale(x), Scale(y), 0, 0},
+        .text = text,
+        .font = font,
+        .color = GetThemeText(),
+        .wrap = TextWrapNone,
+    })
+}
+
+SupportingText :: (text: const char *, x: int, y: int) {
+    Text((TextProps){
+        .bounds = {Scale(x), Scale(y), 0, 0},
+        .text = text,
+        .font = Text16,
+        .color = GetThemeIcon(),
+        .wrap = TextWrapNone,
+    })
+}
+
+RecordClick :: (message: const char *) {
+    click_count++
+    snprintf(
+        last_action,
+        sizeof(last_action),
+        "%s",
+        message
+    )
+}
+
+PrimaryButton :: () {
+    if Button((ButtonProps){
+        .bounds = {
+            Scale(20),
+            Scale(100),
+            Scale(200),
+            Scale(40),
+        },
+        .label = "Primary Button",
+        .style = ButtonStylePrimary,
+    }) {
+        RecordClick("Primary Button clicked.")
+    }
+}
+
+SecondaryButton :: () {
+    if Button((ButtonProps){
+        .bounds = {
+            Scale(20),
+            Scale(150),
+            Scale(200),
+            Scale(40),
+        },
+        .label = "Secondary Button",
+        .style = ButtonStyleSecondary,
+    }) {
+        RecordClick("Secondary Button clicked.")
+    }
+}
+
+DangerButton :: () {
+    if Button((ButtonProps){
+        .bounds = {
+            Scale(20),
+            Scale(200),
+            Scale(200),
+            Scale(40),
+        },
+        .label = "Danger Button",
+        .style = ButtonStyleDanger,
+    }) {
+        RecordClick("Danger Button clicked.")
+    }
+}
+
+InteractionStatus :: () {
+    Text((TextProps){
+        .bounds = {Scale(20), Scale(260), 0, 0},
+        .text = TextFormat("Clicks: %d", click_count),
+        .font = Text16,
+        .color = GetThemeText(),
+        .wrap = TextWrapNone,
+    })
+
+    SupportingText(last_action, 20, 290)
+}
+
 ButtonsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
+
         Background(GetThemeBackground())
-        Text((TextProps){.bounds={Scale(20), Scale(20), 0, 0}, .text="UI Buttons Example", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(20), Scale(54), 0, 0}, .text="Click the buttons below to test interactions", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        if Button((ButtonProps){
-            .bounds = {Scale(20), Scale(100), Scale(200), Scale(40)},
-            .label = "Primary Button",
-            .style = ButtonStylePrimary,
-            .id = 101,
-        }) {
-            click_count++
-            snprintf(last_action,sizeof(last_action),"Primary Button clicked.")
-        }
-        if Button((ButtonProps){
-            .bounds = {Scale(20), Scale(150), Scale(200), Scale(40)},
-            .label = "Secondary Button",
-            .style = ButtonStyleSecondary,
-            .id = 102,
-        }) {
-            click_count++
-            snprintf(last_action,sizeof(last_action),"Secondary Button clicked.")
-        }
-        if Button((ButtonProps){
-            .bounds = {Scale(20), Scale(200), Scale(200), Scale(40)},
-            .label = "Danger Button",
-            .style = ButtonStyleDanger,
-            .id = 103,
-        }) {
-            click_count++
-            snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
-        }
-        Text((TextProps){.bounds={Scale(20), Scale(260), 0, 0}, .text=TextFormat("Clicks:%d",click_count), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(20), Scale(290), 0, 0}, .text=last_action, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(300), Scale(100), 0, 0}, .text="Button Styles", .font=18, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(300), Scale(130), 0, 0}, .text="Primary,secondary,and danger styles use the active theme.", .font=14, .color=GetThemeIcon(), .wrap=TextWrapNone})
+
+        ExampleHeading("UI Buttons Example", 20, 20, Text24)
+        SupportingText(
+            "Click the buttons below to test interactions",
+            20,
+            54
+        )
+
+        PrimaryButton()
+        SecondaryButton()
+        DangerButton()
+        InteractionStatus()
+
+        ExampleHeading("Button Styles", 300, 100, Text18)
+        SupportingText(
+            "Primary, secondary, and danger styles use the active theme.",
+            300,
+            130
+        )
     }
 }

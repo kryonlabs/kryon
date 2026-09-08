@@ -36,6 +36,7 @@ typedef struct UIFrameState {
     int mouse_world_override_enabled;
     Vector2 mouse_world_override;
     unsigned long frame_serial;
+    int auto_focus_id;
     float ui_scale;
 } UIFrameState;
 
@@ -47,6 +48,8 @@ int IsUIDesktopMode(void);
 Camera2D GetUIDefaultCamera(void);
 void BeginUIFrame(int width, int height, float dpi);
 void EndUIFrame(void);
+/* Zero means "automatic": stable for a widget's call order within a frame. */
+int ResolveUIFocusID(int id);
 void SetUIFrame(Camera2D camera);
 UIFrameState SaveUIFrameState(void);
 void RestoreUIFrameState(UIFrameState state);
