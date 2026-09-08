@@ -5170,7 +5170,7 @@ func (r *runtime) PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) i
 		r.registerField(id)
 	}
 	state := r.menuNav(id)
-	if r.focusID == id && r.keyDown[KeyEscape] {
+	if r.focusID == id && !r.popupFocusCaptures(id) && r.keyDown[KeyEscape] {
 		state.Path = state.Path[:0]
 		r.setFocus(0)
 		return 0

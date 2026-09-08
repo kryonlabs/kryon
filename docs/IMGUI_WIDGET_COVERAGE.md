@@ -194,7 +194,9 @@ Generic native accelerators now have matching C and Go APIs and top-popup
 ownership. Generated k2c/k2cpp/k2go coverage proves Ctrl+C dispatch inside the
 active popup, suppression of the same background chord, and restoration after
 the popup is explicitly closed. Widget-specific shortcut paths still require
-their own ownership coverage.
+their own ownership coverage. Popup menus apply that ownership to Escape as
+well as navigation and activation, so an obscured menu cannot clear focus
+belonging to the active popup branch.
 Collapsible/tree-header arrows now have matching native and generated popup
 ownership coverage, including background restoration after close.
 Selectable-text copy is likewise ownership-gated in C and Go; native Go tests

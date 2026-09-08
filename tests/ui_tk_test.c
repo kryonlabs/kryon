@@ -937,6 +937,38 @@ test_popup_menu_keyboard_ownership(void)
         ui_popup_input_destroy(context);
         EndUIFrame();
     }
+    for(int inside = 0; inside < 2; inside++) {
+        UIPopupInput *context;
+        UIPopupInput *previous;
+        UIPopupInputToken parent;
+        UIPopupInputToken child;
+        int expected_focus = inside ? 0 : 25711;
+
+        InjectReset();
+        InjectKeyTap(KEY_ESCAPE);
+        InjectPump();
+        BeginUIFrame(320,240,1);
+        context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        previous = ui_popup_input_bind(context);
+        parent = ui_popup_input_begin(
+            context,25700,(Rectangle){180,180,40,40});
+        child = ui_popup_input_begin(
+            context,25701,(Rectangle){190,190,20,20});
+        if(!inside)
+            ui_popup_input_end(child);
+        SetUIFocus(25711);
+        (void)PopupMenu(25711,10,10,items,1);
+        check_int("only top popup menu handles Escape",
+                  GetUIFocus(),expected_focus);
+        if(inside)
+            ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
     InjectReset();
 }
 

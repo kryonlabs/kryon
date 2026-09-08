@@ -1252,7 +1252,8 @@ DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 {
     Rectangle panel = menu_items_panel_bounds(x,y,items,item_count);
     int focused = !UIContentDisabled() && id > 0 && RegisterUIFocus(id,panel);
-    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+    if(focused && !ui_popup_input_focus_captures(id) &&
+       IsKeyPressed(KEY_ESCAPE)) {
         menu_navigation_reset(0,NULL,0);
         SetUIFocus(0);
         return 0;
