@@ -33,6 +33,15 @@ public final class TextInputBridge {
         }
     };
 
+    private static int compositionCursor(String value, int relativePosition) {
+        int utf16Cursor = relativePosition > 0
+            ? value.length() + relativePosition - 1
+            : relativePosition;
+        utf16Cursor = Math.max(0, Math.min(value.length(), utf16Cursor));
+        return value.substring(0, utf16Cursor)
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    }
+
     public TextInputBridge(Context context, Callbacks callbacks) {
         this.callbacks = callbacks;
         this.view = new BridgeView(context);
@@ -184,7 +193,7 @@ public final class TextInputBridge {
                                                 int newCursorPosition) {
                     String value = text == null ? "" : text.toString();
                     callbacks.composition(composing ? 2 : 1, value,
-                        Math.max(0, newCursorPosition - 1), 0);
+                        compositionCursor(value, newCursorPosition), 0);
                     composing = true;
                     return true;
                 }
@@ -201,8 +210,9 @@ public final class TextInputBridge {
                 @Override
                 public boolean commitText(CharSequence text, int newCursorPosition) {
                     if (composing) {
-                        callbacks.composition(3, text == null ? "" : text.toString(),
-                            Math.max(0, newCursorPosition - 1), 0);
+                        String value = text == null ? "" : text.toString();
+                        callbacks.composition(3, value,
+                            compositionCursor(value, newCursorPosition), 0);
                         composing = false;
                     } else {
                         TextInputBridge.this.commitText(text);

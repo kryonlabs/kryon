@@ -250,8 +250,15 @@ preedit for TextField/TextArea. Tests cover queue isolation/limits, preedit
 persistence without buffer mutation, UTF-8 commit, cancellation, editor removal,
 focus loss, disabling and popup dismissal. `composition.kry` is executed through
 generated C and Go to verify preedit/commit/cancel behavior; it is not executed
-by the JavaScript runner. OS-window Go IME delivery and detailed preedit
-cursor/selection rendering remain unfinished.
+by the JavaScript runner. Retained C and native Go now build the visible preedit
+through one UTF-8 composition-view primitive per runtime: it visually replaces
+the committed selection without mutating the caller buffer, positions the caret
+at the IME cursor, highlights the IME-selected subrange, and underlines the full
+composition in both TextField and TextArea. C previously omitted TextArea
+preedit entirely. The DOM and Android adapters now normalize the composition
+cursor to the runtime's documented UTF-8 byte-offset contract, and retained C
+editors preserve their declaration-time Kryon font through deferred painting.
+OS-window Go IME delivery remains unfinished.
 Read-only TextField/TextArea behavior is now covered by the native generated
 composition fixture: selection/copy remains usable while text, cut/paste,
 deletion and IME commits cannot mutate buffers. C retained mutation paths now

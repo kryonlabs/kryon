@@ -184,6 +184,10 @@ int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);
 void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);
 void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                         int selection_start, int selection_end);
+void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
+                                    int selection_start, int selection_end,
+                                    int composition_start,
+                                    int composition_end);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
@@ -336,6 +340,20 @@ void ui_paint_text_input(Rectangle bounds, const char *text,
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
+typedef struct TextCompositionView {
+    char *text;
+    int cursor;
+    int selection_start;
+    int selection_end;
+    int composition_start;
+    int composition_end;
+} TextCompositionView;
+int ui_text_composition_view(const char *text, int selection_start,
+                             int selection_end, const char *preedit,
+                             int preedit_cursor,
+                             int preedit_selection_length,
+                             TextCompositionView *view);
+void ui_text_composition_view_free(TextCompositionView *view);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);

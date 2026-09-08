@@ -397,14 +397,14 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
             if (!claimEvent(e, 'compositionupdate')) return;
             var text = e.data || "";
             K.compositions.push({phase: 2, text: text,
-                                 cursor: Array.from(text).length,
+                                 cursor: lengthBytesUTF8(text),
                                  selectionLength: 0});
         });
         target.addEventListener('compositionend', function (e) {
             if (!claimEvent(e, 'compositionend')) return;
             var text = e.data || "";
             K.compositions.push({phase: text ? 3 : 4, text: text,
-                                 cursor: Array.from(text).length,
+                                 cursor: lengthBytesUTF8(text),
                                  selectionLength: 0});
         });
         target.addEventListener('touchstart', function (e) {

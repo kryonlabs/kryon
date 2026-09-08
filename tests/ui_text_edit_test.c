@@ -14,6 +14,20 @@ int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
 int ui_text_word_left(const char *text, int cursor);
 int ui_text_word_right(const char *text, int cursor);
+typedef struct TextCompositionView {
+    char *text;
+    int cursor;
+    int selection_start;
+    int selection_end;
+    int composition_start;
+    int composition_end;
+} TextCompositionView;
+int ui_text_composition_view(const char *text, int selection_start,
+                             int selection_end, const char *preedit,
+                             int preedit_cursor,
+                             int preedit_selection_length,
+                             TextCompositionView *view);
+void ui_text_composition_view_free(TextCompositionView *view);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
 int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
@@ -154,6 +168,33 @@ test_word_navigation(void)
               ui_text_word_right(text, 10), 11);
     check_int("word right handles full-width blank",
               ui_text_word_right(unicode, 0), 6);
+}
+
+static void
+test_composition_view(void)
+{
+    TextCompositionView view;
+
+    check_true("composition view builds",
+               ui_text_composition_view("aXYZz", 1, 4,
+                                        "\xe6\x97\xa5" "ab", 3, 1,
+                                        &view));
+    check_str("composition replaces committed selection", view.text,
+              "a\xe6\x97\xa5" "abz");
+    check_int("composition cursor uses UTF-8 byte offset", view.cursor, 4);
+    check_int("composition selection start", view.selection_start, 4);
+    check_int("composition selection end", view.selection_end, 5);
+    check_int("composition underline start", view.composition_start, 1);
+    check_int("composition underline end", view.composition_end, 6);
+    ui_text_composition_view_free(&view);
+    check_true("composition view free clears ownership", view.text == NULL);
+
+    check_true("composition clamps inside UTF-8 sequence",
+               ui_text_composition_view("ab", 1, 1,
+                                        "\xe6\x97\xa5", 2, 8, &view));
+    check_int("composition cursor clamps to rune boundary", view.cursor, 1);
+    check_int("composition selection clamps to preedit", view.selection_end, 4);
+    ui_text_composition_view_free(&view);
 }
 
 static void
@@ -345,6 +386,7 @@ main(void)
     test_utf8_next_offset();
     test_utf8_prev_offset();
     test_word_navigation();
+    test_composition_view();
     test_utf8_codepoint_count();
     test_utf8_encode();
     test_insert_ascii();

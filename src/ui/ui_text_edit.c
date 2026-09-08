@@ -47,6 +47,86 @@ ui_utf8_prev_offset(const char *text, int offset)
 }
 
 static int
+ui_utf8_clamp_offset(const char *text, int offset)
+{
+    int len;
+
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    offset = ui_clampi(offset, 0, len);
+    while(offset > 0 && offset < len &&
+          (((unsigned char)text[offset] & 0xc0) == 0x80))
+        offset--;
+    return offset;
+}
+
+int
+ui_text_composition_view(const char *text, int selection_start,
+                         int selection_end, const char *preedit,
+                         int preedit_cursor, int preedit_selection_length,
+                         TextCompositionView *view)
+{
+    int text_len;
+    int preedit_len;
+    int start;
+    int end;
+    int cursor;
+    int selected_end;
+    size_t view_len;
+
+    if(view == NULL)
+        return 0;
+    memset(view, 0, sizeof(*view));
+    if(text == NULL)
+        text = "";
+    if(preedit == NULL || preedit[0] == '\0')
+        return 0;
+
+    text_len = (int)strlen(text);
+    preedit_len = (int)strlen(preedit);
+    start = ui_utf8_clamp_offset(text, selection_start);
+    end = ui_utf8_clamp_offset(text, selection_end);
+    if(start > end) {
+        int swap = start;
+        start = end;
+        end = swap;
+    }
+    cursor = ui_utf8_clamp_offset(preedit, preedit_cursor);
+    if(preedit_selection_length < 0)
+        preedit_selection_length = 0;
+    if(preedit_selection_length > preedit_len - cursor)
+        preedit_selection_length = preedit_len - cursor;
+    selected_end = ui_utf8_clamp_offset(
+        preedit, cursor + preedit_selection_length);
+
+    view_len = (size_t)text_len - (size_t)(end - start) +
+               (size_t)preedit_len;
+    view->text = malloc(view_len + 1);
+    if(view->text == NULL)
+        return 0;
+    memcpy(view->text, text, (size_t)start);
+    memcpy(view->text + start, preedit, (size_t)preedit_len);
+    memcpy(view->text + start + preedit_len, text + end,
+           (size_t)(text_len - end + 1));
+    view->cursor = start + cursor;
+    view->selection_start = start + cursor;
+    view->selection_end = start + selected_end;
+    view->composition_start = start;
+    view->composition_end = start + preedit_len;
+    return 1;
+}
+
+void
+ui_text_composition_view_free(TextCompositionView *view)
+{
+    if(view == NULL)
+        return;
+    free(view->text);
+    memset(view, 0, sizeof(*view));
+}
+
+static int
 ui_text_codepoint_at(const char *text, int offset)
 {
     int codepoint_size = 0;

@@ -6442,12 +6442,24 @@ func intersectRectangles(a, b Rectangle) Rectangle {
 
 func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool) {
 	text := string(buf[:zeroIndex(buf)])
+	pos := len(text)
+	if cursor != nil {
+		pos = clampCursor(text, int(*cursor))
+	}
+	selectionStart, selectionEnd := pos, pos
+	if sel, ok := r.selection[focusID]; ok {
+		selectionStart, selectionEnd = selectionRange(sel)
+	}
+	compositionStart, compositionEnd := 0, 0
 	if preedit, ok := r.preedit[focusID]; ok && r.focusID == focusID && !secure {
-		pos := len(text)
-		if cursor != nil {
-			pos = clampCursor(text, int(*cursor))
+		if view, visible := makeTextCompositionView(text, selectionStart, selectionEnd, preedit); visible {
+			text = view.text
+			pos = view.cursor
+			selectionStart = view.selectionStart
+			selectionEnd = view.selectionEnd
+			compositionStart = view.compositionStart
+			compositionEnd = view.compositionEnd
 		}
-		text = text[:pos] + preedit.Text + text[pos:]
 	}
 	if secure {
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
@@ -6469,20 +6481,17 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		CursorColor:       theme.focus,
 		FontSize:          font,
 		FocusID:           focusID,
+		Cursor:            int32(pos),
+		SelectionStart:    int32(selectionStart),
+		SelectionEnd:      int32(selectionEnd),
+		CompositionStart:  int32(compositionStart),
+		CompositionEnd:    int32(compositionEnd),
 		Focused:           r.focusID == focusID,
 		Secure:            secure,
 		ReadOnly:          readOnly,
 	}
-	if cursor != nil {
-		op.Cursor = *cursor
-	}
 	if focused != nil {
 		op.Focused = *focused
-	}
-	if sel, ok := r.selection[focusID]; ok {
-		start, end := selectionRange(sel)
-		op.SelectionStart = int32(start)
-		op.SelectionEnd = int32(end)
 	}
 	r.record(op)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestCompositionQueueOwnership(t *testing.T) {
@@ -30,6 +31,11 @@ func TestCompositionQueueOwnership(t *testing.T) {
 	r.ClearTextComposition()
 	if r.PollTextComposition(&event) != 0 {
 		t.Fatal("clear retained events")
+	}
+	truncated := strings.Repeat("x", 254) + "日"
+	if r.SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, truncated, 254, 0) != 1 ||
+		r.PollTextComposition(&event) != 1 || len(event.Text) != 254 || !utf8.ValidString(event.Text) {
+		t.Fatalf("composition queue retained partial UTF-8: %q", event.Text)
 	}
 }
 
@@ -63,6 +69,7 @@ func TestCompositionPreeditCommitAndCancel(t *testing.T) {
 			r.BeginFrame()
 			compositionEditor(r, area, text, &cursor)
 			r.EndFrame()
+			op := r.FrameOps()[0]
 			want, display := "a", "ani"
 			if frame >= 2 {
 				want, display = "a日", "a日"
@@ -70,10 +77,14 @@ func TestCompositionPreeditCommitAndCancel(t *testing.T) {
 			if got := string(text[:zeroIndex(text)]); got != want {
 				t.Fatalf("area=%v frame=%d buffer=%q want=%q", area, frame, got, want)
 			}
-			if got := r.FrameOps()[0].Text; got != display {
+			if got := op.Text; got != display {
 				t.Fatalf("area=%v frame=%d display=%q want=%q", area, frame, got, display)
 			}
 			if frame == 0 {
+				if op.Cursor != 3 || op.SelectionStart != 3 || op.SelectionEnd != 3 ||
+					op.CompositionStart != 1 || op.CompositionEnd != 3 {
+					t.Fatalf("area=%v: bad preedit paint metadata: %+v", area, op)
+				}
 				withPreedit := RenderFrame(160, 120, r.FrameOps())
 				plain := append([]FrameOp(nil), r.FrameOps()...)
 				plain[0].Text = want
@@ -86,6 +97,45 @@ func TestCompositionPreeditCommitAndCancel(t *testing.T) {
 				t.Fatalf("commit cursor=%d want UTF-8 byte offset 4", cursor)
 			}
 		}
+	}
+}
+
+func TestCompositionPaintReplacesSelectionAndUsesUTF8Offsets(t *testing.T) {
+	for _, area := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		text := make([]byte, 32)
+		copy(text, "aXYZz")
+		cursor := int32(4)
+		r.setFocus(26100)
+		r.selection[26100] = selection{Anchor: 1, Cursor: 4}
+		r.SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, "日ab", 3, 1)
+		r.BeginFrame()
+		compositionEditor(r, area, text, &cursor)
+		r.EndFrame()
+
+		if got := string(text[:zeroIndex(text)]); got != "aXYZz" {
+			t.Fatalf("area=%v: preedit mutated committed text: %q", area, got)
+		}
+		op := r.FrameOps()[0]
+		if op.Text != "a日abz" || op.Cursor != 4 ||
+			op.SelectionStart != 4 || op.SelectionEnd != 5 ||
+			op.CompositionStart != 1 || op.CompositionEnd != 6 {
+			t.Fatalf("area=%v: bad selected preedit paint metadata: %+v", area, op)
+		}
+		withUnderline := RenderFrame(180, 120, r.FrameOps())
+		withoutUnderlineOps := append([]FrameOp(nil), r.FrameOps()...)
+		withoutUnderlineOps[0].CompositionStart = 0
+		withoutUnderlineOps[0].CompositionEnd = 0
+		withoutUnderline := RenderFrame(180, 120, withoutUnderlineOps)
+		if bytes.Equal(withUnderline.Pix, withoutUnderline.Pix) {
+			t.Fatalf("area=%v: renderer omitted composition underline", area)
+		}
+	}
+
+	view, ok := makeTextCompositionView("ab", 1, 1,
+		KryTextCompositionEvent{Text: "日", Cursor: 2, SelectionLength: 8})
+	if !ok || view.cursor != 1 || view.selectionEnd != 4 {
+		t.Fatalf("composition view did not clamp UTF-8 offsets: %+v", view)
 	}
 }
 

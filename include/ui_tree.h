@@ -97,6 +97,8 @@ typedef struct UIWidgetTextInputPaint {
     int font_token;
     int selection_start;
     int selection_end;
+    int composition_start;
+    int composition_end;
     int scroll_x;
 } UIWidgetTextInputPaint;
 
@@ -194,6 +196,8 @@ typedef struct UIWidgetNode {
     unsigned paint_capture;
     /* Internal declaration snapshot for deferred popup hit testing. */
     unsigned popup_input_capture;
+    /* Internal declaration-time font snapshot for deferred text painting. */
+    int font_token;
     int parent;
     int first_child;
     int next_sibling;

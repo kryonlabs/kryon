@@ -334,6 +334,17 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		}
 		drawText(img, sliceTextByByteCursor(op.Text, start, end), sx, y, op.FontSize, selected, op.FontID)
 	}
+	if op.CompositionStart != op.CompositionEnd {
+		start, end := orderedInt32(op.CompositionStart, op.CompositionEnd)
+		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
+		ex := x + textAdvance(op.Text, end, op.FontSize, op.FontID)
+		composition := border
+		if op.CursorColor.A != 0 {
+			composition = op.CursorColor
+		}
+		fillRectPixels(img, sx, y+int(textHeight(op.FontSize, op.FontID))-2,
+			maxInt(2, ex-sx), 2, composition)
+	}
 	if op.Focused && !op.ReadOnly {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5

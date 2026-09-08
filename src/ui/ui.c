@@ -1812,11 +1812,15 @@ ui_resolve_text_input_style(TextInputStyle style)
     return style;
 }
 
+static int ui_text_width_before_cursor(const char *text, int font,
+                                       int cursor_position);
+
 static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
-                  int selection_end, int scroll_x)
+                  int selection_end, int composition_start,
+                  int composition_end, int scroll_x)
 {
     style = ui_resolve_text_input_style(style);
     const char *value = text ? text : "";
@@ -1892,6 +1896,31 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     }
     DrawUIText(value, text_x, text_y, font, text_color);
 
+    if(composition_end > composition_start) {
+        char composition[1024];
+        int len = (int)strlen(value);
+        int composition_len;
+        int composition_x;
+        int composition_w;
+
+        composition_start = ui_clampi(composition_start, 0, len);
+        composition_end = ui_clampi(composition_end, 0, len);
+        composition_len = composition_end - composition_start;
+        if(composition_len >= (int)sizeof(composition))
+            composition_len = (int)sizeof(composition) - 1;
+        memcpy(composition, value + composition_start,
+               (size_t)composition_len);
+        composition[composition_len] = '\0';
+        composition_x = text_x +
+            ui_text_width_before_cursor(value, font, composition_start);
+        composition_w = TextWidth(composition, font);
+        if(composition_w < Scale(2))
+            composition_w = Scale(2);
+        DrawRectangle(composition_x,
+                      text_y + TextLineHeight(font) - Scale(2),
+                      composition_w, Scale(2), cursor_color);
+    }
+
     if(focused && cursor_visible) {
         char before_cursor[1024];
         int len = (int)strlen(value);
@@ -1915,7 +1944,7 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          TextInputStyle style)
 {
     DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0, 0);
+                      cursor_visible, font, style, 0, 0, 0, 0, 0);
 }
 
 static int
@@ -1974,7 +2003,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int selection_start, int selection_end)
 {
     DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
-                      selection_start, selection_end, 0);
+                      selection_start, selection_end, 0, 0, 0);
 }
 
 int
@@ -2841,6 +2870,30 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 }
 
 static void
+ui_draw_text_area_composition(const char *text, int line_start, int line_end,
+                              int x, int y, int font, Color color,
+                              int composition_start, int composition_end)
+{
+    int start;
+    int end;
+    int start_x;
+    int end_x;
+
+    if(text == NULL || composition_end <= composition_start)
+        return;
+    start = composition_start > line_start ? composition_start : line_start;
+    end = composition_end < line_end ? composition_end : line_end;
+    if(end <= start)
+        return;
+    start_x = x + ui_text_column_x(text, line_start, start, font);
+    end_x = x + ui_text_column_x(text, line_start, end, font);
+    if(end_x <= start_x)
+        end_x = start_x + Scale(2);
+    DrawRectangle(start_x, y + TextLineHeight(font) - Scale(2),
+                  end_x - start_x, Scale(2), color);
+}
+
+static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                     SyntaxMode syntax, TextInputStyle style)
 {
@@ -2876,7 +2929,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, int wrap_width, SyntaxMode syntax,
                        TextInputStyle style, int selection_start,
-                       int selection_end)
+                       int selection_end, int composition_start,
+                       int composition_end)
 {
     // The editor owns selection; rendered lines must not claim it or copy
     // a second, single-line selection over the editor clipboard contents.
@@ -2927,6 +2981,10 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                     else
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                             line_font, syntax, style);
+                    ui_draw_text_area_composition(
+                        text, chunk_start, chunk_end, text_x, draw_y,
+                        line_font, style.cursor, composition_start,
+                        composition_end);
                     if(focused && cursor >= chunk_start && cursor <= chunk_end &&
                        (cursor < chunk_end || chunk_end == i) &&
                        ui_caret_blink_visible()) {
@@ -3017,9 +3075,10 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     *area.scroll_y = ui_clampi(scroll_y, 0, max_scroll);
 }
 
-void
-ui_paint_text_area(TextAreaProps area, int cursor, int focused,
-                   int selection_start, int selection_end)
+static void
+ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
+                            int selection_start, int selection_end,
+                            int composition_start, int composition_end)
 {
     int font;
     int line_gap;
@@ -3076,8 +3135,27 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width, area.syntax, area.style,
-                               selection_start, selection_end);
+                               selection_start, selection_end,
+                               composition_start, composition_end);
     EndUIClip();
+}
+
+void
+ui_paint_text_area(TextAreaProps area, int cursor, int focused,
+                   int selection_start, int selection_end)
+{
+    ui_paint_text_area_internal(area, cursor, focused, selection_start,
+                                selection_end, 0, 0);
+}
+
+void
+ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
+                               int selection_start, int selection_end,
+                               int composition_start, int composition_end)
+{
+    ui_paint_text_area_internal(area, cursor, focused, selection_start,
+                                selection_end, composition_start,
+                                composition_end);
 }
 
 int
@@ -3827,7 +3905,7 @@ RenderTextArea(TextAreaProps area)
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width,
                                area.syntax, area.style, selection_start,
-                               selection_end);
+                               selection_end, 0, 0);
     EndUIClip();
     EndUIWidget(&widget);
     return changed;
@@ -4705,7 +4783,9 @@ ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint p
     PopUIFont(paint.font_token);
     DrawUITextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
                       paint.caret, paint.font, paint.style,
-                      paint.selection_start, paint.selection_end, paint.scroll_x);
+                      paint.selection_start, paint.selection_end,
+                      paint.composition_start, paint.composition_end,
+                      paint.scroll_x);
     PopUIFont(previous_font);
 }
 
