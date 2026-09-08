@@ -40,7 +40,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     tokens.touch_target_min = 36;
     tokens.shadow_offset_y = 0;
     if(style != THEME_STYLE_CLASSIC) {
-        tokens.control_radius = 12.0f;
+        tokens.control_radius = 4.0f;
         tokens.panel_radius = 14.0f;
         tokens.control_alpha = 222;
         tokens.panel_alpha = 235;

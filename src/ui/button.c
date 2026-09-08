@@ -137,18 +137,15 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             hover_amount = anim->hover;
             press_amount = anim->press;
         }
-        draw_bounds.y += (float)Scale(2) * press_amount;
     } else {
         hover_amount = hovered ? 1.0f : 0.0f;
     }
 
     if(default_controls) {
         int pressed = retained_pressed;
-        int ripple_key = button.focus_id != 0 ? button.focus_id :
-                         (int)(button.bounds.x * 3 + button.bounds.y * 5 +
-                               button.bounds.width * 7 + button.bounds.height * 11);
 
-        border = BLANK;
+        border = ui_default_scheme().outline;
+        border.a = GetUIStyleTokens().border_alpha;
         if(button.disabled) {
             UIDefaultScheme scheme = ui_default_scheme();
             background = scheme.disabled_container;
@@ -157,18 +154,17 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             background = button.background.a != 0 ? button.background : c_circle;
             text = button.text.a != 0 ? button.text : ui_default_on_color(background);
         }
-        radius = 0.50f;
+        radius = ui_radius_px(draw_bounds, GetUIStyleTokens().control_radius);
         ui_draw_control_background(draw_bounds, background, border, radius);
         if(!button.disabled) {
             ui_default_state_layer(draw_bounds, text, hovered, focused, pressed);
-            ui_default_ripple(draw_bounds, text, ripple_key, pressed);
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
             ui_default_focus(draw_bounds);
         }
         {
-            int inset = Scale(12);
+            int inset = Scale(8);
             Rectangle label_bounds = draw_bounds;
 
             label_bounds.x += inset;
@@ -289,15 +285,14 @@ DrawUIIconButton(IconButtonProps button)
 
     if(default_controls) {
         int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        int ripple_key = button.focus_id != 0 ? button.focus_id :
-                         (int)(button.bounds.x * 13 + button.bounds.y * 17);
         UIDefaultScheme scheme = ui_default_scheme();
 
         if(button.background.a == 0) {
             background = BLANK;
             border = BLANK;
         } else {
-            border = BLANK;
+            border = scheme.outline;
+            border.a = GetUIStyleTokens().border_alpha;
         }
         if(button.icon_color.a != 0)
             icon_tint = button.icon_color;
@@ -308,7 +303,8 @@ DrawUIIconButton(IconButtonProps button)
             icon_tint = scheme.disabled_content;
         }
         if(background.a != 0) {
-            radius = 0.50f;
+            radius = ui_radius_px(button.bounds,
+                                  GetUIStyleTokens().control_radius);
             ui_draw_control_background(button.bounds, background, border, radius);
         }
         if(!button.disabled) {
@@ -319,7 +315,6 @@ DrawUIIconButton(IconButtonProps button)
                                                        ui_touch_target_min(),
                                                        ui_touch_target_min());
             ui_default_state_layer(state, icon_tint, hovered, focused, pressed);
-            ui_default_ripple(state, icon_tint, ripple_key, pressed);
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
