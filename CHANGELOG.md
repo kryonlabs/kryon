@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.88 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.88
+- Keep dropdown keys within popup ownership
+
 ## v0.1.87 - 2026-09-08
 
 ### Changed
