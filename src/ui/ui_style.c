@@ -54,7 +54,7 @@ GetThemeMetricsForThemeStyle(ThemeStyle style)
     tokens.icon_size_medium = 16.0f;
     tokens.icon_size_large = 20.0f;
     tokens.shadow_blur = 8.0f;
-    tokens.disabled_opacity = 0.58f;
+    tokens.disabled_opacity = 0.45f;
     tokens.transition_fast_ms = 80.0f;
     tokens.transition_normal_ms = 140.0f;
 
@@ -78,11 +78,11 @@ GetThemeMetricsForThemeStyle(ThemeStyle style)
         tokens.panel_alpha = 235;
         tokens.title_bar_alpha = 222;
         tokens.border_alpha = 118;
-        tokens.shadow_alpha = 0;
+        tokens.shadow_alpha = 28;
         tokens.shine_alpha = 0;
         tokens.bevel_enabled = 0;
         tokens.touch_target_min = 48;
-        tokens.shadow_offset_y = 0;
+        tokens.shadow_offset_y = 2;
     }
     return tokens;
 }

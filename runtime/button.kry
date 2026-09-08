@@ -91,7 +91,7 @@ ButtonBackground :: (
         }
         return MixColor(background, base, 14)
     }
-    if state == PolicyStateSelected { return MixColor(background, base, 22) }
+    if state == PolicyStateSelected { return MixColor(background, base, 12) }
     if state == PolicyStateDisabled { return MixColor(surface, background, 45) }
     return background
 }

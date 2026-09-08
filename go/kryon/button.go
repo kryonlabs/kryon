@@ -380,7 +380,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_76 uint32 = value_75
 		var value_77 uint32 = base
 		var value_78 uint32 = value_77
-		var value_79 uint32 = 22
+		var value_79 uint32 = 12
 		var value_80 uint32 = value_79
 		var value_81 uint32 = Button_MixColor(value_76, value_78, value_80)
 		return value_81

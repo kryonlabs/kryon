@@ -1,0 +1,15 @@
+#module "split_button"
+
+# A split button always reserves one square control at the trailing edge.
+ResolvedWidth :: (width: float, height: float) -> float #export {
+    if width < height * 2.0 { return height * 2.0 }
+    return width
+}
+
+ActionWidth :: (width: float, height: float) -> float #export {
+    return ResolvedWidth(width, height) - height
+}
+
+MenuX :: (x: float, width: float, height: float) -> float #export {
+    return x + ActionWidth(width, height)
+}

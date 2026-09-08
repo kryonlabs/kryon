@@ -130,6 +130,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Color draw_border;
     UIButtonAnimState *anim = NULL;
     float hover_amount = 0.0f;
+    float press_amount = 0.0f;
     Rectangle draw_bounds;
     int termi_button = ui_termi_backend();
     int default_controls = ui_default_style() && !termi_button;
@@ -196,8 +197,13 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             float dt = GetFrameTime();
             float hover_target = hovered ? 1.0f : 0.0f;
             float press_target = retained_pressed ? 1.0f : 0.0f;
-            float hover_step = dt * 10.0f;
-            float press_step = dt * 16.0f;
+            ThemeMetrics metrics = GetThemeMetrics();
+            float hover_ms = metrics.transition_normal_ms > 0.0f
+                ? metrics.transition_normal_ms : 140.0f;
+            float press_ms = metrics.transition_fast_ms > 0.0f
+                ? metrics.transition_fast_ms : 80.0f;
+            float hover_step = dt * 1000.0f / hover_ms;
+            float press_step = dt * 1000.0f / press_ms;
 
             if(hover_step > 1.0f)
                 hover_step = 1.0f;
@@ -206,9 +212,11 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             anim->hover += (hover_target - anim->hover) * hover_step;
             anim->press += (press_target - anim->press) * press_step;
             hover_amount = anim->hover;
+            press_amount = anim->press;
         }
     } else {
         hover_amount = hovered ? 1.0f : 0.0f;
+        press_amount = retained_pressed ? 1.0f : 0.0f;
     }
 
     if(default_controls) {
@@ -244,6 +252,34 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                     state = ButtonStateNormal;
             }
             resolved = ResolveButtonPaint(props, state);
+            if(button.state == ButtonStateAuto && !button.disabled &&
+               !button.loading && !button.selected) {
+                ButtonPaint normal = ResolveButtonPaint(props,
+                                                        ButtonStateNormal);
+                ButtonPaint hover_paint = ResolveButtonPaint(props,
+                                                             ButtonStateHover);
+                ButtonPaint press_paint = ResolveButtonPaint(props,
+                                                             ButtonStatePressed);
+
+                resolved.background = ColorLerp(normal.background,
+                                                hover_paint.background,
+                                                hover_amount);
+                resolved.foreground = ColorLerp(normal.foreground,
+                                                hover_paint.foreground,
+                                                hover_amount);
+                resolved.border = ColorLerp(normal.border,
+                                            hover_paint.border,
+                                            hover_amount);
+                resolved.background = ColorLerp(resolved.background,
+                                                press_paint.background,
+                                                press_amount);
+                resolved.foreground = ColorLerp(resolved.foreground,
+                                                press_paint.foreground,
+                                                press_amount);
+                resolved.border = ColorLerp(resolved.border,
+                                            press_paint.border,
+                                            press_amount);
+            }
             background = resolved.background;
             text = resolved.foreground;
             border = resolved.border;
@@ -567,7 +603,7 @@ ResolveButtonPaint(ButtonProps button, ButtonState state)
     ButtonState policy_state = button.disabled ? ButtonStateDisabled
         : button.selected ? ButtonStateSelected : state;
     Color disabled_text = theme != NULL
-        ? MixThemeColor(theme->colors.text_disabled, theme->colors.text, 0.35f)
+        ? theme->colors.text_disabled
         : Fade(scheme.on_surface, 0.58f);
 
     memset(&paint, 0, sizeof(paint));

@@ -2304,18 +2304,14 @@ func (r *runtime) MenuButton(props MenuButtonProps) int32 {
 	}
 	props.Button.IconType = UIIconTypeRight
 	props.Button.IconPlacement = IconPlacementTrailing
-	if r.Button(props.Button) {
-		*props.Open = !*props.Open
-	}
+	*props.Open = MenuButton_ToggleOpen(*props.Open, r.Button(props.Button))
 	if !*props.Open {
 		return 0
 	}
 	activated := r.PopupMenu(props.MenuID, int32(props.Button.Bounds.X),
 		int32(props.Button.Bounds.Y+props.Button.Bounds.Height),
 		props.Items, props.ItemCount)
-	if activated != 0 {
-		*props.Open = false
-	}
+	*props.Open = MenuButton_CloseAfterActivation(*props.Open, activated)
 	return activated
 }
 
@@ -2326,13 +2322,14 @@ func (r *runtime) SplitButton(props SplitButtonProps) SplitButtonResult {
 	}
 	action := r.resolveButtonProps(props.Button)
 	menuWidth := action.Bounds.Height
-	if action.Bounds.Width < menuWidth*2 {
-		action.Bounds.Width = menuWidth * 2
-	}
 	fullBounds := action.Bounds
-	action.Bounds.Width -= menuWidth
+	fullBounds.Width = SplitButton_ResolvedWidth(fullBounds.Width,
+		fullBounds.Height)
+	action.Bounds.Width = SplitButton_ActionWidth(action.Bounds.Width,
+		action.Bounds.Height)
 	menu := action
-	menu.Bounds = Rectangle{X: action.Bounds.X + action.Bounds.Width,
+	menu.Bounds = Rectangle{X: SplitButton_MenuX(fullBounds.X,
+		fullBounds.Width, fullBounds.Height),
 		Y: action.Bounds.Y, Width: menuWidth, Height: action.Bounds.Height}
 	menu.Label = "Open menu"
 	menu.ID = action.ID + 1
@@ -2340,15 +2337,12 @@ func (r *runtime) SplitButton(props SplitButtonProps) SplitButtonResult {
 	menu.IconOnly = true
 	menu.Square = true
 	result := SplitButtonResult{Clicked: r.buttonAt(action)}
-	if r.buttonAt(menu) {
-		*props.Open = !*props.Open
-	}
+	*props.Open = MenuButton_ToggleOpen(*props.Open, r.buttonAt(menu))
 	if *props.Open {
 		result.ActivatedID = r.PopupMenu(props.MenuID, int32(fullBounds.X),
 			int32(fullBounds.Y+fullBounds.Height), props.Items, props.ItemCount)
-		if result.ActivatedID != 0 {
-			*props.Open = false
-		}
+		*props.Open = MenuButton_CloseAfterActivation(*props.Open,
+			result.ActivatedID)
 	}
 	return result
 }

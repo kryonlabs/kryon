@@ -201,11 +201,17 @@ the next theme mutation.
 
 ## 5.1 Runtime source of truth
 
-Pure widget policy is authored in `runtime/button.kry`. The build runs
-that module through strict `k2c` and `k2go`; native C and Go renderers call the
-generated functions. Input collection, focus routing, font measurement, and
-drawing remain thin platform/runtime primitives. This is the first vertical
-slice of the same architecture for layout and the remaining widgets.
+Each public button widget has one canonical Kry source module:
+
+- `runtime/button.kry` owns tone, emphasis, state, and color policy.
+- `runtime/menu_button.kry` owns menu-button state transitions.
+- `runtime/split_button.kry` owns split geometry.
+- `runtime/theme.kry` owns light, dark, and system mode resolution.
+
+The build runs every module through strict `k2c` and `k2go`; native C and Go
+renderers call the generated functions. Input collection, focus routing, popup
+storage, font measurement, and drawing remain thin platform adapters. New
+widget policy belongs in its widget's `.kry` file, not duplicated in a backend.
 
 ## 6. Required default values
 

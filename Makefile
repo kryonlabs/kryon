@@ -73,6 +73,14 @@ THEME_RUNTIME_KRY = runtime/theme.kry
 THEME_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/theme.c
 THEME_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/theme.h
 THEME_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.theme.stamp
+MENU_BUTTON_RUNTIME_KRY = runtime/menu_button.kry
+MENU_BUTTON_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/menu_button.c
+MENU_BUTTON_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/menu_button.h
+MENU_BUTTON_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.menu_button.stamp
+SPLIT_BUTTON_RUNTIME_KRY = runtime/split_button.kry
+SPLIT_BUTTON_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/split_button.c
+SPLIT_BUTTON_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/split_button.h
+SPLIT_BUTTON_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.split_button.stamp
 CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
@@ -256,7 +264,9 @@ ifneq ($(KRYON_BACKEND),termi)
 SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
-SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) $(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(KRYON_BACKEND_SRCS)
+SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) \
+	$(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(MENU_BUTTON_RUNTIME_C) \
+	$(SPLIT_BUTTON_RUNTIME_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
@@ -654,15 +664,37 @@ $(THEME_RUNTIME_STAMP): $(THEME_RUNTIME_KRY) $(K2C)
 $(THEME_RUNTIME_C) $(THEME_RUNTIME_H): $(THEME_RUNTIME_STAMP)
 	@test -f $@
 
+$(MENU_BUTTON_RUNTIME_STAMP): $(MENU_BUTTON_RUNTIME_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(MENU_BUTTON_RUNTIME_KRY)
+	touch $@
+
+$(MENU_BUTTON_RUNTIME_C) $(MENU_BUTTON_RUNTIME_H): $(MENU_BUTTON_RUNTIME_STAMP)
+	@test -f $@
+
+$(SPLIT_BUTTON_RUNTIME_STAMP): $(SPLIT_BUTTON_RUNTIME_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(SPLIT_BUTTON_RUNTIME_KRY)
+	touch $@
+
+$(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H): $(SPLIT_BUTTON_RUNTIME_STAMP)
+	@test -f $@
+
 $(BUILD_DIR)/core/theme.o: $(THEME_RUNTIME_H)
 $(BUILD_DIR)/ui/button.o: $(BUTTON_POLICY_H)
+$(BUILD_DIR)/ui/ui_tree.o: $(MENU_BUTTON_RUNTIME_H) $(SPLIT_BUTTON_RUNTIME_H)
 
 .PHONY: generate-button-policy
-generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) $(THEME_RUNTIME_C) $(THEME_RUNTIME_H) $(K2GO)
+generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) \
+	$(THEME_RUNTIME_C) $(THEME_RUNTIME_H) \
+	$(MENU_BUTTON_RUNTIME_C) $(MENU_BUTTON_RUNTIME_H) \
+	$(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H) $(K2GO)
 	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY)
 	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(THEME_RUNTIME_KRY)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(MENU_BUTTON_RUNTIME_KRY)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(SPLIT_BUTTON_RUNTIME_KRY)
 	gofmt -w go/kryon/button.go
 	gofmt -w go/kryon/theme.go
+	gofmt -w go/kryon/menu_button.go
+	gofmt -w go/kryon/split_button.go
 
 K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
 K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)

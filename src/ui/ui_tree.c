@@ -1,4 +1,6 @@
 #include "ui_internal.h"
+#include "runtime/menu_button.h"
+#include "runtime/split_button.h"
 #include "ui_picture_internal.h"
 #include "ui_clip_internal.h"
 #include "ui_blend_internal.h"
@@ -3776,16 +3778,14 @@ MenuButton(MenuButtonProps menu)
         menu.open = &open_local;
     menu.button.icon_placement = IconPlacementTrailing;
     menu.button.icon_type = UI_ICON_TYPE_RIGHT;
-    if(Button(menu.button))
-        *menu.open = !*menu.open;
+    *menu.open = ToggleOpen(*menu.open, Button(menu.button));
     if(*menu.open) {
         activated = PopupMenu(menu.menu_id,
                               (int)menu.button.bounds.x,
                               (int)(menu.button.bounds.y +
                                     menu.button.bounds.height),
                               menu.items, menu.item_count);
-        if(activated != 0)
-            *menu.open = 0;
+        *menu.open = CloseAfterActivation(*menu.open, activated);
     }
     return activated;
 }
@@ -3796,6 +3796,7 @@ SplitButton(SplitButtonProps split)
     SplitButtonResult result = {0};
     int open_local = 0;
     float menu_width;
+    float full_width;
     ButtonProps action = split.button;
     ButtonProps menu = split.button;
 
@@ -3803,10 +3804,12 @@ SplitButton(SplitButtonProps split)
         split.open = &open_local;
     action.bounds = resolve_button_bounds(action);
     menu_width = action.bounds.height;
-    if(action.bounds.width < menu_width * 2.0f)
-        action.bounds.width = menu_width * 2.0f;
-    action.bounds.width -= menu_width;
-    menu.bounds = (Rectangle){action.bounds.x + action.bounds.width,
+    full_width = ResolvedWidth(action.bounds.width, action.bounds.height);
+    action.bounds.width = ActionWidth(action.bounds.width,
+                                      action.bounds.height);
+    menu.bounds = (Rectangle){MenuX(action.bounds.x,
+                                    full_width,
+                                    action.bounds.height),
                               action.bounds.y, menu_width,
                               action.bounds.height};
     menu.label = "Open menu";
@@ -3815,15 +3818,14 @@ SplitButton(SplitButtonProps split)
     menu.icon_only = 1;
     menu.square = 1;
     result.clicked = Button(action);
-    if(Button(menu))
-        *split.open = !*split.open;
+    *split.open = ToggleOpen(*split.open, Button(menu));
     if(*split.open) {
         result.activated_id = PopupMenu(
             split.menu_id, (int)action.bounds.x,
             (int)(action.bounds.y + action.bounds.height),
             split.items, split.item_count);
-        if(result.activated_id != 0)
-            *split.open = 0;
+        *split.open = CloseAfterActivation(*split.open,
+                                           result.activated_id);
     }
     return result;
 }
