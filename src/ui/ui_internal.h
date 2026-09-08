@@ -120,8 +120,23 @@ int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(ParagraphSpec paragraph);
 void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+typedef struct TextNavigationInput {
+    const char *text;
+    const TextAreaProps *area;
+    int font;
+    int key;
+    int shift;
+    int modifier;
+    int secure;
+} TextNavigationInput;
+int ui_text_line_start(const char *text, int cursor);
+int ui_text_line_end(const char *text, int cursor);
 int ui_text_move_vertical(const char *text, int cursor, int font, int direction);
 int ui_text_area_move_page(TextAreaProps area, int cursor, int direction);
+int ui_text_word_left(const char *text, int cursor);
+int ui_text_word_right(const char *text, int cursor);
+int ui_text_navigation_key(int multiline);
+int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
 void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
 void DrawUITextStyled(const char *text, int x, int y, TextStyle style);
@@ -169,6 +184,10 @@ int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);
 void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);
 void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                         int selection_start, int selection_end);
+void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
+                                    int selection_start, int selection_end,
+                                    int composition_start,
+                                    int composition_end);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
 int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
@@ -321,6 +340,31 @@ void ui_paint_text_input(Rectangle bounds, const char *text,
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
+typedef struct TextCompositionView {
+    char *text;
+    int cursor;
+    int selection_start;
+    int selection_end;
+    int composition_start;
+    int composition_end;
+} TextCompositionView;
+typedef struct TextCompositionResult {
+    int text_changed;
+    int presentation_changed;
+    int selection_changed;
+} TextCompositionResult;
+int ui_text_composition_view(const char *text, int selection_start,
+                             int selection_end, const char *preedit,
+                             int preedit_cursor,
+                             int preedit_selection_length,
+                             TextCompositionView *view);
+void ui_text_composition_view_free(TextCompositionView *view);
+TextCompositionResult ui_text_composition_apply(
+    TextEdit edit, int *anchor, const void *owner, int focused,
+    int read_only, int allow_newlines);
+int ui_text_composition_get(const void *owner, const char **text,
+                            int *cursor, int *selection_length);
+int ui_text_composition_cancel(const void *owner);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);
@@ -334,6 +378,8 @@ int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
+int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
+                       int key, int modifier, int secure);
 int ui_text_copy_range(const char *text, int start, int end);
 int ui_text_paste_clipboard(TextEdit edit, int allow_newlines);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,

@@ -20,10 +20,6 @@ typedef struct TextFieldState {
     int anchor;
     int focused;
     int dragging;
-    int composing;
-    int composition_cursor;
-    int composition_selection_length;
-    char composition[KRY_TEXT_COMPOSITION_MAX];
 } TextFieldState;
 
 static UIWidgetNode *ui_tree_nodes = NULL;
@@ -220,32 +216,6 @@ ui_tree_key_repeat_count(int key, double *next_repeat_at)
     return count;
 }
 
-static int
-ui_text_insert_utf8(TextFieldProps *field, TextFieldState *state,
-                    const char *text)
-{
-    int changed = 0;
-    int bytes;
-    int codepoint;
-
-    if(field == NULL || state == NULL || text == NULL)
-        return 0;
-    while(*text != '\0') {
-        bytes = 0;
-        codepoint = GetCodepointNext(text, &bytes);
-        if(bytes <= 0)
-            break;
-        if((field->filter == NULL ||
-            field->filter(codepoint, field->filter_user_data)) &&
-           ui_text_insert_codepoint(field->text, field->text_size,
-                                    &state->cursor, codepoint,
-                                    field->max_codepoints))
-            changed = 1;
-        text += bytes;
-    }
-    return changed;
-}
-
 static char *
 ui_tree_strdup(const char *text)
 {
@@ -419,6 +389,8 @@ ui_reconcile_node_changed(const UIWidgetNode *old_node,
         return 1;
     if(old_node->paint_capture != new_node->paint_capture)
         return 1;
+    if(old_node->font_token != new_node->font_token)
+        return 1;
     if(old_node->id != new_node->id ||
        old_node->key != new_node->key ||
        old_node->kind != new_node->kind ||
@@ -513,6 +485,7 @@ ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
     node->has_input_clip = ui_current_input_clip(&node->input_clip);
     node->paint_capture = ui_tree_capture_paint();
     node->popup_input_capture = ui_tree_capture_input();
+    node->font_token = ui_active_font_token();
     if(UIContentDisabled()) node->flags |= UI_NODE_SCOPE_DISABLED;
     node->props = props;
     node->parent = -1;
@@ -1290,6 +1263,11 @@ RouteInput(void)
                after the editor is enabled again. */
             if(id > 0 && IsUIFocusActive(id))
                 while(GetCharPressed() != 0) {}
+            if(ui_text_composition_cancel(node->state)) {
+                ui_text_field_event(node, UI_EVENT_COMPOSITION_CHANGED,
+                                    GetTime());
+                ui_tree_invalid |= UI_INVALIDATE_PAINT;
+            }
             continue;
         }
         if(node->kind == UI_WIDGET_TEXT_FIELD_NODE) {
@@ -1374,11 +1352,8 @@ RouteInput(void)
         if(field->focused != NULL)
             *field->focused = state->focused;
         int keyboard_captured = ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node));
-        if(state->composing && (!state->focused || field->read_only || keyboard_captured)) {
-            state->composing = 0;
-            state->composition[0] = '\0';
-            state->composition_cursor = 0;
-            state->composition_selection_length = 0;
+        if((!state->focused || field->read_only || keyboard_captured) &&
+           ui_text_composition_cancel(state)) {
             ui_text_field_event(node,UI_EVENT_COMPOSITION_CHANGED,GetTime());
             ui_tree_invalid |= UI_INVALIDATE_PAINT;
         }
@@ -1459,49 +1434,28 @@ RouteInput(void)
             selection_changed = 1;
             start = end = state->cursor;
         }
-        if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
+        {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            int cursor = state->cursor;
-
-            if(IsKeyPressed(KEY_HOME))
-                cursor = 0;
-            else if(IsKeyPressed(KEY_END))
-                cursor = (int)strlen(field->text);
-            else if(IsKeyPressed(KEY_LEFT))
-                cursor = ui_utf8_prev_offset(field->text, cursor);
-            else
-                cursor = ui_utf8_next_offset(field->text, cursor);
-            state->cursor = cursor;
-            if(!shift)
-                state->anchor = cursor;
-            selection_changed = 1;
-            start = state->anchor < state->cursor
-                ? state->anchor : state->cursor;
-            end = state->anchor > state->cursor
-                ? state->anchor : state->cursor;
-        }
-        if(node->kind == UI_WIDGET_TEXT_AREA_NODE &&
-           (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-            IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))) {
-            int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            int direction = (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_PAGE_UP))
-                ? -1 : 1;
+            int multiline = node->kind == UI_WIDGET_TEXT_AREA_NODE;
+            int navigation_key = ui_text_navigation_key(multiline);
             int font = field->font > 0 ? field->font : GetFontSize();
+            TextNavigationInput navigation = {
+                .text = field->text,
+                .area = multiline ? &node->data.text_area : NULL,
+                .font = font,
+                .key = navigation_key,
+                .shift = shift,
+                .modifier = modifier,
+                .secure = field->secure
+            };
 
-            if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN))
-                state->cursor = ui_text_area_move_page(
-                    node->data.text_area, state->cursor, direction);
-            else
-                state->cursor = ui_text_move_vertical(
-                    field->text, state->cursor, font, direction);
-            if(!shift)
-                state->anchor = state->cursor;
-            selection_changed = 1;
-            start = state->anchor < state->cursor
-                ? state->anchor : state->cursor;
-            end = state->anchor > state->cursor
-                ? state->anchor : state->cursor;
+            if(ui_text_navigate(navigation, &state->anchor, &state->cursor)) {
+                selection_changed = 1;
+                start = state->anchor < state->cursor
+                    ? state->anchor : state->cursor;
+                end = state->anchor > state->cursor
+                    ? state->anchor : state->cursor;
+            }
         }
         codepoint = GetCharPressed();
         while(codepoint > 0) {
@@ -1524,70 +1478,37 @@ RouteInput(void)
             codepoint = GetCharPressed();
         }
         {
-            KryTextCompositionEvent composition;
+            TextEdit edit = {
+                .text = field->text,
+                .text_size = field->text_size,
+                .cursor_position = &state->cursor,
+                .max_codepoints = field->max_codepoints,
+                .filter = field->filter,
+                .filter_user_data = field->filter_user_data
+            };
+            TextCompositionResult composition = ui_text_composition_apply(
+                edit, &state->anchor, state, state->focused,
+                field->read_only, node->kind == UI_WIDGET_TEXT_AREA_NODE);
 
-            while(PollTextComposition(&composition)) {
-                if(field->read_only) continue;
-                if(composition.phase == KRY_TEXT_COMPOSITION_START ||
-                   composition.phase == KRY_TEXT_COMPOSITION_UPDATE) {
-                    state->composing = 1;
-                    strncpy(state->composition, composition.text,
-                            sizeof(state->composition) - 1);
-                    state->composition[sizeof(state->composition) - 1] = '\0';
-                    state->composition_cursor = composition.cursor;
-                    state->composition_selection_length =
-                        composition.selection_length;
-                    ui_text_field_event(node,
-                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
-                    ui_tree_invalid |= UI_INVALIDATE_PAINT;
-                } else if(composition.phase == KRY_TEXT_COMPOSITION_COMMIT) {
-                    if(end > start) {
-                        changed |= ui_text_delete_range(
-                            field->text, field->text_size, &state->cursor,
-                            start, end);
-                    }
-                    changed |= ui_text_insert_utf8(field, state,
-                                                   composition.text);
-                    state->anchor = state->cursor;
-                    state->composing = 0;
-                    state->composition[0] = '\0';
-                    selection_changed = 1;
-                    ui_text_field_event(node,
-                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
-                } else if(composition.phase == KRY_TEXT_COMPOSITION_CANCEL) {
-                    state->composing = 0;
-                    state->composition[0] = '\0';
-                    ui_text_field_event(node,
-                        UI_EVENT_COMPOSITION_CHANGED, GetTime());
-                    ui_tree_invalid |= UI_INVALIDATE_PAINT;
-                }
+            changed |= composition.text_changed;
+            selection_changed |= composition.selection_changed;
+            if(composition.presentation_changed) {
+                ui_text_field_event(node, UI_EVENT_COMPOSITION_CHANGED,
+                                    GetTime());
+                ui_tree_invalid |= UI_INVALIDATE_PAINT;
             }
         }
         if(backspace_count > 0 && !field->read_only) {
-            if(end > start) {
-                changed |= ui_text_delete_range(field->text, field->text_size,
-                                                 &state->cursor, start, end);
-                backspace_count--;
-            }
-            while(backspace_count-- > 0 && state->cursor > 0)
-                changed |= ui_text_delete_range(
-                    field->text, field->text_size, &state->cursor,
-                    ui_utf8_prev_offset(field->text, state->cursor),
-                    state->cursor);
-            state->anchor = state->cursor;
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field->text, field->text_size, &state->anchor,
+                    &state->cursor, KEY_BACKSPACE, modifier, field->secure);
             selection_changed = changed;
         } else if(delete_count > 0 && !field->read_only) {
-            if(end > start) {
-                changed |= ui_text_delete_range(field->text, field->text_size,
-                                                 &state->cursor, start, end);
-                delete_count--;
-            }
             while(delete_count-- > 0)
-                changed |= ui_text_delete_range(
-                    field->text, field->text_size, &state->cursor,
-                    state->cursor,
-                    ui_utf8_next_offset(field->text, state->cursor));
-            state->anchor = state->cursor;
+                changed |= ui_text_delete_key(
+                    field->text, field->text_size, &state->anchor,
+                    &state->cursor, KEY_DELETE, modifier, field->secure);
             selection_changed = changed;
         }
         if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
@@ -1827,14 +1748,41 @@ DrawTree(void)
         }
         case UI_WIDGET_TEXT_AREA_NODE: {
             TextFieldState *state = node->state;
+            TextAreaProps area = node->data.text_area;
             int cursor = state != NULL ? state->cursor : 0;
             int anchor = state != NULL ? state->anchor : cursor;
+            int previous_font = ui_active_font_token();
+            TextCompositionView composition = {0};
+            const char *preedit = NULL;
+            int preedit_cursor = 0;
+            int preedit_selection_length = 0;
+            int composing = state != NULL && ui_text_composition_get(
+                state, &preedit, &preedit_cursor,
+                &preedit_selection_length);
 
-            node->data.text_area.bounds = node->bounds;
-            ui_paint_text_area(node->data.text_area, cursor,
-                state != NULL ? state->focused : 0,
-                anchor < cursor ? anchor : cursor,
-                anchor > cursor ? anchor : cursor);
+            area.bounds = node->bounds;
+            PopUIFont(node->font_token);
+            if(composing && ui_text_composition_view(
+                    area.text,
+                    anchor < cursor ? anchor : cursor,
+                    anchor > cursor ? anchor : cursor,
+                    preedit, preedit_cursor,
+                    preedit_selection_length, &composition)) {
+                area.text = composition.text;
+                area.content_version = 0;
+                ui_paint_text_area_composition(
+                    area, composition.cursor,
+                    state->focused, composition.selection_start,
+                    composition.selection_end, composition.composition_start,
+                    composition.composition_end);
+                ui_text_composition_view_free(&composition);
+            } else {
+                ui_paint_text_area(area, cursor,
+                    state != NULL ? state->focused : 0,
+                    anchor < cursor ? anchor : cursor,
+                    anchor > cursor ? anchor : cursor);
+            }
+            PopUIFont(previous_font);
             break;
         }
         case UI_WIDGET_TEXT_FIELD_NODE: {
@@ -1842,26 +1790,37 @@ DrawTree(void)
             TextFieldState *state = node->state;
             const char *display;
             char *masked = NULL;
+            TextCompositionView composition = {0};
+            int cursor;
+            int selection_start;
+            int selection_end;
+            int composition_start = 0;
+            int composition_end = 0;
+            const char *preedit = NULL;
+            int preedit_cursor = 0;
+            int preedit_selection_length = 0;
 
             field = node->data.text_field;
             display = field.text != NULL ? field.text : "";
+            cursor = state != NULL ? state->cursor : 0;
+            selection_start = state != NULL && state->anchor < cursor
+                ? state->anchor : cursor;
+            selection_end = state != NULL && state->anchor > cursor
+                ? state->anchor : cursor;
 
-            if(state != NULL && state->composing && !field.secure &&
-               state->composition[0] != '\0') {
-                size_t base_len = strlen(display);
-                size_t preedit_len = strlen(state->composition);
-                size_t cursor = (size_t)ui_clampi(state->cursor, 0,
-                                                  (int)base_len);
-                char *composed = malloc(base_len + preedit_len + 1);
-
-                if(composed != NULL) {
-                    memcpy(composed, display, cursor);
-                    memcpy(composed + cursor, state->composition, preedit_len);
-                    memcpy(composed + cursor + preedit_len, display + cursor,
-                           base_len - cursor + 1);
-                    display = composed;
-                    masked = composed;
-                }
+            if(state != NULL && !field.secure &&
+               ui_text_composition_get(state, &preedit, &preedit_cursor,
+                                       &preedit_selection_length) &&
+               ui_text_composition_view(
+                   display, selection_start, selection_end,
+                   preedit, preedit_cursor, preedit_selection_length,
+                   &composition)) {
+                display = composition.text;
+                cursor = composition.cursor;
+                selection_start = composition.selection_start;
+                selection_end = composition.selection_end;
+                composition_start = composition.composition_start;
+                composition_end = composition.composition_end;
             }
 
             if(field.secure) {
@@ -1869,21 +1828,31 @@ DrawTree(void)
 
                 char *secure_mask = malloc(length + 1);
                 if(secure_mask != NULL) {
-                    free(masked);
                     masked = secure_mask;
-                    memset(masked, '*', length);
-                    masked[length] = '\0';
-                    display = masked;
+                    memset(secure_mask, '*', length);
+                    secure_mask[length] = '\0';
+                    display = secure_mask;
                 }
             }
-            ui_draw_text_input_selection(
-                node->bounds, display, state != NULL ? state->cursor : 0,
-                state != NULL ? state->focused : 0, field.font, field.style,
-                state != NULL && state->anchor < state->cursor
-                    ? state->anchor : (state != NULL ? state->cursor : 0),
-                state != NULL && state->anchor > state->cursor
-                    ? state->anchor : (state != NULL ? state->cursor : 0));
+            {
+                UIWidgetTextInputPaint paint = {
+                    .style = field.style,
+                    .cursor = cursor,
+                    .focused = state != NULL ? state->focused : 0,
+                    .editable = !field.read_only,
+                    .caret = state != NULL && state->focused &&
+                             !field.read_only,
+                    .font = field.font,
+                    .font_token = node->font_token,
+                    .selection_start = selection_start,
+                    .selection_end = selection_end,
+                    .composition_start = composition_start,
+                    .composition_end = composition_end
+                };
+                ui_paint_text_input(node->bounds, display, paint);
+            }
             free(masked);
+            ui_text_composition_view_free(&composition);
             break;
         }
         case UI_WIDGET_SLIDER_NODE: {

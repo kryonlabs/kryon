@@ -1239,7 +1239,17 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	r.BeginFrame()
 	r.SliderFloat(floatProps)
 	r.EndFrame()
-	r.SetFocus(600)
+	r.QueueMouseButtonDown(MouseButtonLeft, 35, 20)
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
+	if r.Focus() != 600 {
+		t.Fatalf("clicked slider focus=%d, want 600", r.Focus())
+	}
+	r.QueueMouseButtonUp(MouseButtonLeft, 35, 20)
+	r.BeginFrame()
+	r.SliderFloat(floatProps)
+	r.EndFrame()
 	r.QueueKey(KeyRight)
 	r.BeginFrame()
 	if !r.SliderFloat(floatProps) || floats[0] < 0.2599 || floats[0] > 0.2601 {

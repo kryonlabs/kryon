@@ -296,8 +296,9 @@ events expire at frame end alongside other unhandled text, preventing delayed
 commit after dismissal. Commits cannot mutate read-only TextField/TextArea
 buffers. Preedit is cancelled when the retained editor loses focus, becomes
 read-only or is blocked by popup keyboard ownership; tests check cancellation
-events and no revival after re-enabling. Immediate C composition and device-level
-IME delivery remain unfinished.
+events and no revival after re-enabling. Immediate and retained C editors now
+share the same composition session and commit operation. Device-level Android
+IME delivery remains unverified.
 
 Native Go now has runtime-local composition queues and per-editor preedit state.
 TextField/TextArea display preedit without mutating caller buffers, and commits
@@ -305,9 +306,12 @@ use UTF-8 insertion/cursor handling. Tests cover queue isolation and limits,
 multi-frame preedit, commits, cancellation, removed/disabled/unfocused editors,
 and popup dismissal without replay. The native generated `composition.kry`
 fixture verifies non-mutating preedit, UTF-8 commit and cancellation through C
-and Go; the JavaScript runner does not execute it. Go OS-window event delivery,
-detailed preedit cursor/selection rendering and C TextArea preedit rendering
-are still incomplete.
+and Go; the JavaScript runner does not execute it. The pure-Go Linux/X11 window
+backend now routes native IBus key/focus events and preedit/commit signals into
+that same composition queue, including UTF-8 cursor conversion and focused
+caret placement. Detailed preedit rendering is shared by TextField and TextArea
+in both native runtimes. Other Linux input-method protocols and device-level
+Android/Win32 delivery remain unverified.
 
 Read-only editing now has matching native generated coverage. The composition
 fixture declares read-only TextField and TextArea in C and Go, checks copying,

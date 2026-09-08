@@ -27,6 +27,7 @@ typedef struct DropdownState {
     int scrollbar_pressed;
     int clip_top;
     int clip_bottom;
+    UIPopupInputToken input_snapshot;
     unsigned long frame_seen;
     unsigned long opened_frame;
 } DropdownState;
@@ -360,6 +361,7 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     int can_draw = IsWindowReady();
 
     state->frame_seen = g_ui_frame_serial;
+    state->input_snapshot = ui_popup_input_snapshot();
     if(UIContentDisabled()) {
         close_dropdown_state(state);
         state->pending_changed = 0;
@@ -503,6 +505,7 @@ draw_dropdown_menu(int id)
 {
     DropdownState *state = get_or_create_dropdown_state(id);
     int changed = 0;
+    int keyboard_available;
 
     if(!state->open)
         return 0;
@@ -510,6 +513,8 @@ draw_dropdown_menu(int id)
         close_dropdown_state(state);
         return 0;
     }
+    keyboard_available =
+        !ui_popup_input_snapshot_keyboard_captures(state->input_snapshot);
 
     int font = GetFontSize();
     int x = state->x;
@@ -607,13 +612,13 @@ draw_dropdown_menu(int id)
     int navigating = 1;
     if(state->opened_frame == g_ui_frame_serial)
         navigating = 0;
-    else if(IsKeyPressed(KEY_UP))
+    else if(keyboard_available && IsKeyPressed(KEY_UP))
         state->highlight_index = ui_clampi(state->highlight_index - 1, 0, option_count - 1);
-    else if(IsKeyPressed(KEY_DOWN))
+    else if(keyboard_available && IsKeyPressed(KEY_DOWN))
         state->highlight_index = ui_clampi(state->highlight_index + 1, 0, option_count - 1);
-    else if(IsKeyPressed(KEY_HOME))
+    else if(keyboard_available && IsKeyPressed(KEY_HOME))
         state->highlight_index = 0;
-    else if(IsKeyPressed(KEY_END))
+    else if(keyboard_available && IsKeyPressed(KEY_END))
         state->highlight_index = option_count - 1;
     else
         navigating = 0;
@@ -628,7 +633,7 @@ draw_dropdown_menu(int id)
         if(scroll > max_scroll) scroll = max_scroll;
         state->scroll_offset = (int)scroll;
     }
-    if(state->opened_frame != g_ui_frame_serial &&
+    if(keyboard_available && state->opened_frame != g_ui_frame_serial &&
        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
         state->pending_index = state->highlight_index;
         state->pending_changed = state->selected_index != state->highlight_index;
@@ -815,8 +820,14 @@ draw_dropdown_overlays(void)
 
     dropdown_store->previous_focused = focused;
     if(lost_focus || escape_pressed) {
-        for(DropdownState *state = dropdown_store->states; state != NULL; state = state->next)
+        for(DropdownState *state = dropdown_store->states;
+            state != NULL; state = state->next) {
+            if(escape_pressed && !lost_focus &&
+               ui_popup_input_snapshot_keyboard_captures(
+                   state->input_snapshot))
+                continue;
             close_dropdown_state(state);
+        }
     }
     DropdownState **link = &dropdown_store->states;
     while(*link != NULL) {

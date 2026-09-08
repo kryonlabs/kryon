@@ -37,9 +37,11 @@ typedef struct KryTextCompositionEvent {
     char text[KRY_TEXT_COMPOSITION_MAX];
 } KryTextCompositionEvent;
 
-/* Platform adapters submit UTF-8 composition events here. Focused text
- * controls consume them during input routing. Events are copied, so callers
- * do not need to retain `text`. Returns zero only when the queue is full. */
+/* Platform adapters submit UTF-8 composition events here. Cursor and selection
+ * length are UTF-8 byte offsets within `text`; controls clamp them to codepoint
+ * boundaries before painting. Focused text controls consume events during
+ * input routing. Events are copied, so callers do not need to retain `text`.
+ * Returns zero only when the queue is full. */
 int SubmitTextComposition(KryTextCompositionPhase phase, const char *text,
                           int cursor, int selection_length);
 int PollTextComposition(KryTextCompositionEvent *event);

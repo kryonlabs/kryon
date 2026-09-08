@@ -1709,9 +1709,18 @@ func (r *runtime) QueueShiftKey(key int32) {
 	r.keyDown[key] = true
 }
 func (r *runtime) QueueShortcut(key int32) {
-	r.inputEvents = append(r.inputEvents, inputEvent{key: key, shortcut: true})
+	r.queueModifiedKey(key, false, true)
+}
+
+func (r *runtime) queueModifiedKey(key int32, shift, shortcut bool) {
+	r.inputEvents = append(r.inputEvents, inputEvent{
+		key:      key,
+		shift:    shift,
+		shortcut: shortcut,
+	})
 	r.keyDown[key] = true
 }
+
 func (r *runtime) QueueTap(x, y float32) {
 	r.QueueMouseButton(MouseButtonLeft, x, y)
 }
@@ -4047,6 +4056,14 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
 	return r.dropdownAt(id, bounds, labels, selected)
 }
+
+func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
+	if _, openPopup := r.popupPanels[id]; openPopup {
+		return !r.popupKeyboardCapturesOwner(id, true)
+	}
+	return !r.popupFocusCaptures(id)
+}
+
 func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32) bool {
 	if r.dropdownsSeen == nil {
 		r.dropdownsSeen = make(map[int32]bool)
@@ -4088,6 +4105,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		}
 	}
 	open := r.openDropdowns[id]
+	keyboardAvailable := r.dropdownKeyboardAvailable(id)
 	panel := r.dropdownPanel(bounds, len(labels))
 	if open && !pressed {
 		if r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel) {
@@ -4099,11 +4117,12 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 			}
 		}
 	}
-	if len(labels) == 0 || bounds.Height <= 0 || r.keyDown[KeyEscape] {
+	if len(labels) == 0 || bounds.Height <= 0 ||
+		keyboardAvailable && r.keyDown[KeyEscape] {
 		open = false
 	}
 	changed := false
-	if open && !pressed {
+	if open && !pressed && keyboardAvailable {
 		highlight := clamp32(r.dropdownHighlight[id], 0, int32(len(labels)-1))
 		if r.keyDown[KeyUp] {
 			highlight = max32(0, highlight-1)
@@ -4158,7 +4177,9 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	viewport := panel
 	viewport.Y += 4
 	viewport.Height = max(float32(0), viewport.Height-8)
-	if pressed || r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd] {
+	if pressed || keyboardAvailable &&
+		(r.keyDown[KeyUp] || r.keyDown[KeyDown] ||
+			r.keyDown[KeyHome] || r.keyDown[KeyEnd]) {
 		top := float32(r.dropdownHighlight[id]) * itemH
 		if top < float32(*offset) {
 			*offset = int32(top)
@@ -5161,7 +5182,7 @@ func (r *runtime) PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) i
 		r.registerField(id)
 	}
 	state := r.menuNav(id)
-	if r.focusID == id && r.keyDown[KeyEscape] {
+	if r.focusID == id && !r.popupFocusCaptures(id) && r.keyDown[KeyEscape] {
 		state.Path = state.Path[:0]
 		r.setFocus(0)
 		return 0
@@ -6433,12 +6454,24 @@ func intersectRectangles(a, b Rectangle) Rectangle {
 
 func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool) {
 	text := string(buf[:zeroIndex(buf)])
+	pos := len(text)
+	if cursor != nil {
+		pos = clampCursor(text, int(*cursor))
+	}
+	selectionStart, selectionEnd := pos, pos
+	if sel, ok := r.selection[focusID]; ok {
+		selectionStart, selectionEnd = selectionRange(sel)
+	}
+	compositionStart, compositionEnd := 0, 0
 	if preedit, ok := r.preedit[focusID]; ok && r.focusID == focusID && !secure {
-		pos := len(text)
-		if cursor != nil {
-			pos = clampCursor(text, int(*cursor))
+		if view, visible := makeTextCompositionView(text, selectionStart, selectionEnd, preedit); visible {
+			text = view.text
+			pos = view.cursor
+			selectionStart = view.selectionStart
+			selectionEnd = view.selectionEnd
+			compositionStart = view.compositionStart
+			compositionEnd = view.compositionEnd
 		}
-		text = text[:pos] + preedit.Text + text[pos:]
 	}
 	if secure {
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
@@ -6460,20 +6493,17 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		CursorColor:       theme.focus,
 		FontSize:          font,
 		FocusID:           focusID,
+		Cursor:            int32(pos),
+		SelectionStart:    int32(selectionStart),
+		SelectionEnd:      int32(selectionEnd),
+		CompositionStart:  int32(compositionStart),
+		CompositionEnd:    int32(compositionEnd),
 		Focused:           r.focusID == focusID,
 		Secure:            secure,
 		ReadOnly:          readOnly,
 	}
-	if cursor != nil {
-		op.Cursor = *cursor
-	}
 	if focused != nil {
 		op.Focused = *focused
-	}
-	if sel, ok := r.selection[focusID]; ok {
-		start, end := selectionRange(sel)
-		op.SelectionStart = int32(start)
-		op.SelectionEnd = int32(end)
 	}
 	r.record(op)
 }
@@ -6672,6 +6702,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 			continue
 		}
+		textSelection := event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		if event.shortcut {
 			switch event.key {
 			case KeyA:
@@ -6703,6 +6734,37 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					changed = true
 					sel = selection{Anchor: pos, Cursor: pos}
 				}
+			case KeyHome:
+				pos, sel = textMoveSelection(sel, pos, 0, textSelection)
+			case KeyEnd:
+				pos, sel = textMoveSelection(sel, pos, len(text), textSelection)
+			case KeyLeft:
+				target := 0
+				if !options.secure {
+					target = textWordLeft(text, pos)
+				}
+				if !textSelection && sel.Anchor != sel.Cursor {
+					target, _ = selectionRange(sel)
+				}
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
+			case KeyRight:
+				target := len(text)
+				if !options.secure {
+					target = textWordRight(text, pos)
+				}
+				if !textSelection && sel.Anchor != sel.Cursor {
+					_, target = selectionRange(sel)
+				}
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
+			case KeyBackspace, KeyDelete:
+				if options.readOnly {
+					continue
+				}
+				var deleted bool
+				text, pos, sel, deleted = textDeleteKey(
+					text, pos, sel, event.key, true, options.secure,
+				)
+				changed = changed || deleted
 			}
 			continue
 		}
@@ -6711,17 +6773,29 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			r.setFocus(r.nextFocus(focusID, event.shift))
 			sel = selection{Anchor: pos, Cursor: pos}
 		case KeyLeft:
-			pos = prevRune(text, pos)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := prevRune(text, pos)
+			if !textSelection && sel.Anchor != sel.Cursor {
+				target, _ = selectionRange(sel)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyRight:
-			pos = nextRune(text, pos)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := nextRune(text, pos)
+			if !textSelection && sel.Anchor != sel.Cursor {
+				_, target = selectionRange(sel)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyHome:
-			pos = 0
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := 0
+			if options.multiline {
+				target = textLineStart(text, pos)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyEnd:
-			pos = len(text)
-			sel = selection{Anchor: pos, Cursor: pos}
+			target := len(text)
+			if options.multiline {
+				target = textLineEnd(text, pos)
+			}
+			pos, sel = textMoveSelection(sel, pos, target, textSelection)
 		case KeyUp, KeyDown, KeyPageUp, KeyPageDown:
 			if options.multiline {
 				direction, rows := -1, 1
@@ -6731,42 +6805,27 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 				if event.key == KeyPageUp || event.key == KeyPageDown {
 					rows = max(1, options.pageRows)
 				}
-				pos = textMoveVertical(text, pos, direction, rows)
-				sel = selection{Anchor: pos, Cursor: pos}
+				target := textMoveVertical(text, pos, direction, rows)
+				pos, sel = textMoveSelection(sel, pos, target, textSelection)
 			}
 		case KeyBackspace:
 			if options.readOnly {
 				continue
 			}
-			if sel.Anchor != sel.Cursor {
-				var deleted bool
-				text, pos, deleted = deleteSelection(text, sel)
-				if deleted {
-					changed = true
-				}
-			} else if pos > 0 {
-				prev := prevRune(text, pos)
-				text = text[:prev] + text[pos:]
-				pos = prev
-				changed = true
-			}
-			sel = selection{Anchor: pos, Cursor: pos}
+			var deleted bool
+			text, pos, sel, deleted = textDeleteKey(
+				text, pos, sel, KeyBackspace, false, options.secure,
+			)
+			changed = changed || deleted
 		case KeyDelete:
 			if options.readOnly {
 				continue
 			}
-			if sel.Anchor != sel.Cursor {
-				var deleted bool
-				text, pos, deleted = deleteSelection(text, sel)
-				if deleted {
-					changed = true
-				}
-			} else if pos < len(text) {
-				next := nextRune(text, pos)
-				text = text[:pos] + text[next:]
-				changed = true
-			}
-			sel = selection{Anchor: pos, Cursor: pos}
+			var deleted bool
+			text, pos, sel, deleted = textDeleteKey(
+				text, pos, sel, KeyDelete, false, options.secure,
+			)
+			changed = changed || deleted
 		case KeyEnter:
 			if options.multiline && !options.readOnly {
 				var inserted bool
@@ -7177,6 +7236,103 @@ func nextRune(text string, pos int) int {
 	return pos + size
 }
 
+func textCodepointAt(text string, pos int) rune {
+	pos = clampCursor(text, pos)
+	if pos >= len(text) {
+		return 0
+	}
+	codepoint, _ := utf8.DecodeRuneInString(text[pos:])
+	return codepoint
+}
+
+func textIsBlank(codepoint rune) bool {
+	return codepoint == ' ' || codepoint == '\t' || codepoint == '\u3000'
+}
+
+func textIsSeparator(codepoint rune) bool {
+	switch codepoint {
+	case ',', '\u3001', '.', '\u3002', ';', '\uff1b',
+		'(', '\uff08', ')', '\uff09', '{', '\uff5b', '}', '\uff5d',
+		'[', '\u300c', ']', '\u300d', '|', '\uff5c', '!', '\uff01',
+		'\\', '\uffe5', '/', '\u30fb', '\uff0f', '\n', '\r':
+		return true
+	default:
+		return false
+	}
+}
+
+func textIsWordBoundary(text string, pos int) bool {
+	if pos <= 0 {
+		return false
+	}
+	previous := textCodepointAt(text, prevRune(text, pos))
+	current := textCodepointAt(text, pos)
+	previousBlank := textIsBlank(previous)
+	previousSeparator := textIsSeparator(previous)
+	currentBlank := textIsBlank(current)
+	currentSeparator := textIsSeparator(current)
+	return ((previousBlank || previousSeparator) &&
+		!(currentSeparator || currentBlank)) ||
+		(currentSeparator && !previousSeparator)
+}
+
+func textWordLeft(text string, pos int) int {
+	pos = prevRune(text, pos)
+	for pos > 0 && !textIsWordBoundary(text, pos) {
+		pos = prevRune(text, pos)
+	}
+	return pos
+}
+
+func textWordRight(text string, pos int) int {
+	pos = nextRune(text, pos)
+	for pos < len(text) && !textIsWordBoundary(text, pos) {
+		pos = nextRune(text, pos)
+	}
+	return pos
+}
+
+func textDeleteKey(
+	text string,
+	pos int,
+	current selection,
+	key int32,
+	word bool,
+	secure bool,
+) (string, int, selection, bool) {
+	start, end := selectionRange(current)
+	if start == end {
+		switch key {
+		case KeyBackspace:
+			if word && secure {
+				start = 0
+			} else if word {
+				start = textWordLeft(text, pos)
+			} else {
+				start = prevRune(text, pos)
+			}
+			end = pos
+		case KeyDelete:
+			start = pos
+			if word && secure {
+				end = len(text)
+			} else if word {
+				end = textWordRight(text, pos)
+			} else {
+				end = nextRune(text, pos)
+			}
+		default:
+			return text, pos, current, false
+		}
+	}
+	if end <= start {
+		return text, pos, current, false
+	}
+	text = text[:start] + text[end:]
+	current = selection{Anchor: start, Cursor: start}
+	return text, start, current, true
+}
+
 func textLineStart(text string, pos int) int {
 	pos = clampCursor(text, pos)
 	if start := strings.LastIndexByte(text[:pos], '\n'); start >= 0 {
@@ -7218,6 +7374,17 @@ func textMoveVertical(text string, pos, direction, rows int) int {
 		column--
 	}
 	return pos
+}
+
+func textMoveSelection(current selection, cursor, target int, extend bool) (int, selection) {
+	if extend {
+		if current.Anchor == current.Cursor {
+			current.Anchor = cursor
+		}
+		current.Cursor = target
+		return target, current
+	}
+	return target, selection{Anchor: target, Cursor: target}
 }
 
 func cellW(grid Grid) float32 {

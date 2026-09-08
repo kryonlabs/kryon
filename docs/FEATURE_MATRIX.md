@@ -149,7 +149,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
 | Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| UIForm cursor (`UIForm*`) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Form cursor (`Form*`) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
 
 ### UI/Collections

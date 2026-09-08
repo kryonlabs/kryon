@@ -43,6 +43,30 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		}
 		r.EndFrame()
 	}
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.openDropdowns[25400] = true
+		r.QueueKey(KeyEscape)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(25400)
+		var selected int32
+		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
+			Options: []string{"One", "Two"}, SelectedIndex: &selected})
+		if r.openDropdowns[25400] == inside {
+			t.Fatalf("inside=%v: obscured combo handled Escape", inside)
+		}
+		r.closeDropdown(25400)
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
 }
 
 func TestPopupTextKeyboardOwnership(t *testing.T) {
@@ -307,6 +331,31 @@ func TestPopupMenuKeyboardOwnership(t *testing.T) {
 		}
 		if got != want {
 			t.Fatalf("inside=%v: popup menu activation=%d want=%d", inside, got, want)
+		}
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.QueueKey(KeyEscape)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(25711)
+		r.PopupMenu(25711, 10, 10, items, 1)
+		wantFocus := int32(25711)
+		if inside {
+			wantFocus = 0
+		}
+		if r.Focus() != wantFocus {
+			t.Fatalf("inside=%v: popup menu Escape focus=%d want=%d",
+				inside, r.Focus(), wantFocus)
 		}
 		if inside {
 			r.endPopupInput(child)

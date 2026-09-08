@@ -1590,8 +1590,10 @@ ClaimUITextFocus(int *focused)
      * disappears immediately this frame even though it has not re-run yet. */
     if(g_ui_text_focus_owner != NULL && g_ui_text_focus_owner != focused)
         *g_ui_text_focus_owner = 0;
-    if(g_ui_text_focus_owner != focused)
+    if(g_ui_text_focus_owner != focused) {
+        ui_text_composition_cancel(g_ui_text_focus_owner);
         ui_text_context_close();
+    }
     g_ui_text_focus_owner = focused;
     g_ui_text_focus_owner_this_frame = focused;
     g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
@@ -1623,8 +1625,10 @@ ReleaseUITextFocus(int *focused, int focus_id)
 {
     if(focused == NULL)
         return;
-    if(g_ui_text_focus_owner == focused)
+    if(g_ui_text_focus_owner == focused) {
+        ui_text_composition_cancel(focused);
         g_ui_text_focus_owner = NULL;
+    }
     if(g_ui_text_focus_owner_this_frame == focused)
         g_ui_text_focus_owner_this_frame = NULL;
     if(focus_id > 0 && g_ui_focus_active_id == focus_id)
@@ -1654,6 +1658,8 @@ ClearTextInputFocus(void)
     g_ui_focus_text_input_active = 0;
     g_ui_text_input_requested = 0;
     g_ui_text_input_show_requested = 0;
+    ui_text_composition_cancel(NULL);
+    ClearTextComposition();
     ui_text_context_close();
     ui_clear_text_field_selection();
     ui_clear_text_area_selection();
@@ -1812,11 +1818,15 @@ ui_resolve_text_input_style(TextInputStyle style)
     return style;
 }
 
+static int ui_text_width_before_cursor(const char *text, int font,
+                                       int cursor_position);
+
 static void
 DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
-                  int selection_end, int scroll_x)
+                  int selection_end, int composition_start,
+                  int composition_end, int scroll_x)
 {
     style = ui_resolve_text_input_style(style);
     const char *value = text ? text : "";
@@ -1892,6 +1902,31 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     }
     DrawUIText(value, text_x, text_y, font, text_color);
 
+    if(composition_end > composition_start) {
+        char composition[1024];
+        int len = (int)strlen(value);
+        int composition_len;
+        int composition_x;
+        int composition_w;
+
+        composition_start = ui_clampi(composition_start, 0, len);
+        composition_end = ui_clampi(composition_end, 0, len);
+        composition_len = composition_end - composition_start;
+        if(composition_len >= (int)sizeof(composition))
+            composition_len = (int)sizeof(composition) - 1;
+        memcpy(composition, value + composition_start,
+               (size_t)composition_len);
+        composition[composition_len] = '\0';
+        composition_x = text_x +
+            ui_text_width_before_cursor(value, font, composition_start);
+        composition_w = TextWidth(composition, font);
+        if(composition_w < Scale(2))
+            composition_w = Scale(2);
+        DrawRectangle(composition_x,
+                      text_y + TextLineHeight(font) - Scale(2),
+                      composition_w, Scale(2), cursor_color);
+    }
+
     if(focused && cursor_visible) {
         char before_cursor[1024];
         int len = (int)strlen(value);
@@ -1915,7 +1950,7 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          TextInputStyle style)
 {
     DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0, 0);
+                      cursor_visible, font, style, 0, 0, 0, 0, 0);
 }
 
 static int
@@ -1974,7 +2009,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int selection_start, int selection_end)
 {
     DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
-                      selection_start, selection_end, 0);
+                      selection_start, selection_end, 0, 0, 0);
 }
 
 int
@@ -1983,6 +2018,7 @@ EditText(TextEdit edit)
     int changed = 0;
     int len;
     int codepoint;
+    int anchor;
 
     if(edit.commit_pressed != NULL)
         *edit.commit_pressed = 0;
@@ -1994,17 +2030,15 @@ EditText(TextEdit edit)
     if(!UIKeyboardInputEnabled())
         return 0;
 
-    if(IsKeyPressed(KEY_LEFT)) {
-        *edit.cursor_position = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
-    }
-    if(IsKeyPressed(KEY_RIGHT)) {
-        *edit.cursor_position = ui_utf8_next_offset(edit.text, *edit.cursor_position);
-    }
-    if(IsKeyPressed(KEY_HOME)) {
-        *edit.cursor_position = 0;
-    }
-    if(IsKeyPressed(KEY_END)) {
-        *edit.cursor_position = (int)strlen(edit.text);
+    {
+        TextNavigationInput navigation = {
+            .text = edit.text,
+            .key = ui_text_navigation_key(0),
+            .modifier = ui_mod_key_down()
+        };
+
+        anchor = *edit.cursor_position;
+        (void)ui_text_navigate(navigation, &anchor, edit.cursor_position);
     }
 
     if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
@@ -2022,20 +2056,20 @@ EditText(TextEdit edit)
 
     {
         int repeat = g_ui_text_input_backspace_count + ui_backspace_repeat_count();
-        for(int i = 0; i < repeat; i++) {
-            int start = ui_utf8_prev_offset(edit.text, *edit.cursor_position);
-            changed |= ui_text_delete_range(edit.text, edit.text_size,
-                                            edit.cursor_position, start,
-                                            *edit.cursor_position);
-        }
+
+        anchor = *edit.cursor_position;
+        for(int i = 0; i < repeat; i++)
+            changed |= ui_text_delete_key(
+                edit.text, edit.text_size, &anchor, edit.cursor_position,
+                KEY_BACKSPACE, ui_mod_key_down(), 0);
         g_ui_text_input_backspace_count = 0;
     }
 
     if(IsKeyPressed(KEY_DELETE)) {
-        int end = ui_utf8_next_offset(edit.text, *edit.cursor_position);
-        changed |= ui_text_delete_range(edit.text, edit.text_size,
-                                        edit.cursor_position,
-                                        *edit.cursor_position, end);
+        anchor = *edit.cursor_position;
+        changed |= ui_text_delete_key(
+            edit.text, edit.text_size, &anchor, edit.cursor_position,
+            KEY_DELETE, ui_mod_key_down(), 0);
     }
 
     if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
@@ -2173,7 +2207,7 @@ DrawUIHref(HrefProps link)
     return 0;
 }
 
-static int
+int
 ui_text_line_start(const char *text, int cursor)
 {
     int i;
@@ -2187,7 +2221,7 @@ ui_text_line_start(const char *text, int cursor)
     return 0;
 }
 
-static int
+int
 ui_text_line_end(const char *text, int cursor)
 {
     int len;
@@ -2240,6 +2274,22 @@ ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int t
     return end;
 }
 
+static int
+ui_text_cursor_from_line_column(const char *text, int start, int end,
+                                int column)
+{
+    int cursor = start;
+
+    while(column-- > 0 && cursor < end) {
+        int next = ui_utf8_next_offset(text, cursor);
+
+        if(next <= cursor)
+            break;
+        cursor = next;
+    }
+    return cursor;
+}
+
 int
 ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 {
@@ -2266,6 +2316,21 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
         other_start = end + 1;
         other_end = ui_text_line_end(text, other_start);
     }
+    if(target_x <= 0 && cursor > start) {
+        int column = 0;
+        int column_cursor = start;
+
+        while(column_cursor < cursor) {
+            int next = ui_utf8_next_offset(text, column_cursor);
+
+            if(next <= column_cursor)
+                break;
+            column_cursor = next;
+            column++;
+        }
+        return ui_text_cursor_from_line_column(
+            text, other_start, other_end, column);
+    }
     return ui_text_cursor_from_line_x(text, other_start, other_end, font, target_x);
 }
 
@@ -2285,6 +2350,93 @@ ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
     for(int row = 0; row < page_rows; row++)
         cursor = ui_text_move_vertical(area.text, cursor, font, direction);
     return cursor;
+}
+
+int
+ui_text_navigation_key(int multiline)
+{
+    if(IsKeyPressed(KEY_LEFT))
+        return KEY_LEFT;
+    if(IsKeyPressed(KEY_RIGHT))
+        return KEY_RIGHT;
+    if(IsKeyPressed(KEY_HOME))
+        return KEY_HOME;
+    if(IsKeyPressed(KEY_END))
+        return KEY_END;
+    if(multiline && IsKeyPressed(KEY_UP))
+        return KEY_UP;
+    if(multiline && IsKeyPressed(KEY_DOWN))
+        return KEY_DOWN;
+    if(multiline && IsKeyPressed(KEY_PAGE_UP))
+        return KEY_PAGE_UP;
+    if(multiline && IsKeyPressed(KEY_PAGE_DOWN))
+        return KEY_PAGE_DOWN;
+    return 0;
+}
+
+int
+ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
+{
+    int start;
+    int end;
+    int target;
+
+    if(input.text == NULL || anchor == NULL || cursor == NULL)
+        return 0;
+    start = *anchor < *cursor ? *anchor : *cursor;
+    end = *anchor > *cursor ? *anchor : *cursor;
+    target = *cursor;
+
+    switch(input.key) {
+    case KEY_LEFT:
+        if(!input.shift && end > start)
+            target = start;
+        else if(input.modifier)
+            target = input.secure ? 0 : ui_text_word_left(input.text, target);
+        else
+            target = ui_utf8_prev_offset(input.text, target);
+        break;
+    case KEY_RIGHT:
+        if(!input.shift && end > start)
+            target = end;
+        else if(input.modifier)
+            target = input.secure
+                ? (int)strlen(input.text)
+                : ui_text_word_right(input.text, target);
+        else
+            target = ui_utf8_next_offset(input.text, target);
+        break;
+    case KEY_HOME:
+        target = input.area != NULL && !input.modifier
+            ? ui_text_line_start(input.text, target) : 0;
+        break;
+    case KEY_END:
+        target = input.area != NULL && !input.modifier
+            ? ui_text_line_end(input.text, target)
+            : (int)strlen(input.text);
+        break;
+    case KEY_UP:
+    case KEY_DOWN:
+        if(input.area == NULL)
+            return 0;
+        target = ui_text_move_vertical(
+            input.text, target, input.font,
+            input.key == KEY_UP ? -1 : 1);
+        break;
+    case KEY_PAGE_UP:
+    case KEY_PAGE_DOWN:
+        if(input.area == NULL)
+            return 0;
+        target = ui_text_area_move_page(
+            *input.area, target, input.key == KEY_PAGE_UP ? -1 : 1);
+        break;
+    default:
+        return 0;
+    }
+    *cursor = target;
+    if(!input.shift)
+        *anchor = target;
+    return 1;
 }
 
 static int
@@ -2724,6 +2876,30 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 }
 
 static void
+ui_draw_text_area_composition(const char *text, int line_start, int line_end,
+                              int x, int y, int font, Color color,
+                              int composition_start, int composition_end)
+{
+    int start;
+    int end;
+    int start_x;
+    int end_x;
+
+    if(text == NULL || composition_end <= composition_start)
+        return;
+    start = composition_start > line_start ? composition_start : line_start;
+    end = composition_end < line_end ? composition_end : line_end;
+    if(end <= start)
+        return;
+    start_x = x + ui_text_column_x(text, line_start, start, font);
+    end_x = x + ui_text_column_x(text, line_start, end, font);
+    if(end_x <= start_x)
+        end_x = start_x + Scale(2);
+    DrawRectangle(start_x, y + TextLineHeight(font) - Scale(2),
+                  end_x - start_x, Scale(2), color);
+}
+
+static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                     SyntaxMode syntax, TextInputStyle style)
 {
@@ -2759,7 +2935,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, int wrap_width, SyntaxMode syntax,
                        TextInputStyle style, int selection_start,
-                       int selection_end)
+                       int selection_end, int composition_start,
+                       int composition_end)
 {
     // The editor owns selection; rendered lines must not claim it or copy
     // a second, single-line selection over the editor clipboard contents.
@@ -2810,6 +2987,10 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                     else
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                             line_font, syntax, style);
+                    ui_draw_text_area_composition(
+                        text, chunk_start, chunk_end, text_x, draw_y,
+                        line_font, style.cursor, composition_start,
+                        composition_end);
                     if(focused && cursor >= chunk_start && cursor <= chunk_end &&
                        (cursor < chunk_end || chunk_end == i) &&
                        ui_caret_blink_visible()) {
@@ -2900,9 +3081,10 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     *area.scroll_y = ui_clampi(scroll_y, 0, max_scroll);
 }
 
-void
-ui_paint_text_area(TextAreaProps area, int cursor, int focused,
-                   int selection_start, int selection_end)
+static void
+ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
+                            int selection_start, int selection_end,
+                            int composition_start, int composition_end)
 {
     int font;
     int line_gap;
@@ -2959,8 +3141,27 @@ ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width, area.syntax, area.style,
-                               selection_start, selection_end);
+                               selection_start, selection_end,
+                               composition_start, composition_end);
     EndUIClip();
+}
+
+void
+ui_paint_text_area(TextAreaProps area, int cursor, int focused,
+                   int selection_start, int selection_end)
+{
+    ui_paint_text_area_internal(area, cursor, focused, selection_start,
+                                selection_end, 0, 0);
+}
+
+void
+ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
+                               int selection_start, int selection_end,
+                               int composition_start, int composition_end)
+{
+    ui_paint_text_area_internal(area, cursor, focused, selection_start,
+                                selection_end, composition_start,
+                                composition_end);
 }
 
 int
@@ -3252,6 +3453,13 @@ RenderTextArea(TextAreaProps area)
     int cut_pressed = 0;
     int paste_pressed = 0;
     TextEdit area_edit;
+    TextCompositionView composition = {0};
+    const char *display_text;
+    int display_cursor;
+    int composition_start = 0;
+    int composition_end = 0;
+    int committed_selection_start;
+    int committed_selection_end;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
@@ -3451,6 +3659,22 @@ RenderTextArea(TextAreaProps area)
         selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
         selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
     }
+    {
+        int anchor = has_selection
+            ? g_ui_text_area_selection.anchor : *area.cursor_position;
+        TextCompositionResult composition_result = ui_text_composition_apply(
+            area_edit, &anchor, area.focused, focused,
+            area.read_only || !UIKeyboardInputEnabled(), 1);
+
+        changed |= composition_result.text_changed;
+        if(composition_result.selection_changed) {
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, anchor,
+                                  *area.cursor_position, 0);
+            has_selection = 1;
+            selection_start = selection_end = *area.cursor_position;
+        }
+    }
     if(focused && UIKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(area.text);
@@ -3502,16 +3726,25 @@ RenderTextArea(TextAreaProps area)
             selection_key_handled = 1;
         }
         if(!area.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
-           selection_end > selection_start) {
-            if(ui_text_delete_range(area.text, area.text_size,
-                                    area.cursor_position, selection_start,
-                                    selection_end)) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
-                changed = 1;
-            }
+           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
+            g_ui_text_input_backspace_count > 0)) {
+            int anchor = has_selection
+                ? g_ui_text_area_selection.anchor : *area.cursor_position;
+            int backspace_count = g_ui_text_input_backspace_count +
+                                  ui_backspace_repeat_count();
+            int delete_count = IsKeyPressed(KEY_DELETE) ? 1 : 0;
+
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    area.text, area.text_size, &anchor, area.cursor_position,
+                    KEY_BACKSPACE, ui_mod_key_down(), 0);
+            while(delete_count-- > 0)
+                changed |= ui_text_delete_key(
+                    area.text, area.text_size, &anchor, area.cursor_position,
+                    KEY_DELETE, ui_mod_key_down(), 0);
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, *area.cursor_position,
+                                  *area.cursor_position, 0);
             g_ui_text_input_backspace_count = 0;
             selection_key_handled = 1;
         }
@@ -3589,6 +3822,33 @@ RenderTextArea(TextAreaProps area)
                 selection_key_handled = 1;
             }
         }
+        if(!selection_key_handled) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                        IsKeyDown(KEY_RIGHT_SHIFT);
+            int cursor = *area.cursor_position;
+            int anchor = cursor;
+            int navigation_key = ui_text_navigation_key(1);
+            TextNavigationInput navigation = {
+                .text = area.text,
+                .area = &area,
+                .font = font,
+                .key = navigation_key,
+                .shift = shift,
+                .modifier = ui_mod_key_down()
+            };
+
+            if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                         area.focused))
+                anchor = g_ui_text_area_selection.anchor;
+            if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                *area.cursor_position = cursor;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, anchor, cursor, 0);
+                selection_start = anchor < cursor ? anchor : cursor;
+                selection_end = anchor > cursor ? anchor : cursor;
+                selection_key_handled = 1;
+            }
+        }
         if(!area.read_only && !selection_key_handled) {
             changed |= EditText(area_edit);
         }
@@ -3605,19 +3865,7 @@ RenderTextArea(TextAreaProps area)
             }
             g_ui_text_input_enter_count = 0;
         }
-        if(IsKeyPressed(KEY_UP))
-            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, -1);
-        if(IsKeyPressed(KEY_DOWN))
-            *area.cursor_position = ui_text_move_vertical(area.text, *area.cursor_position, font, 1);
-        if(IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
-            int direction = IsKeyPressed(KEY_PAGE_UP) ? -1 : 1;
-            *area.cursor_position = ui_text_area_move_page(
-                area, *area.cursor_position, direction);
-        }
-        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-           IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-           IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN)) {
+        if(changed && !selection_key_handled) {
             if(!g_ui_text_area_selection.dragging) {
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, *area.cursor_position,
@@ -3629,17 +3877,51 @@ RenderTextArea(TextAreaProps area)
         *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
     }
 
+    if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                 area.focused))
+        ui_selection_range(g_ui_text_area_selection, area.text,
+                           &selection_start, &selection_end);
+    else
+        selection_start = selection_end = *area.cursor_position;
+
+    committed_selection_start = selection_start;
+    committed_selection_end = selection_end;
+
+    display_text = area.text;
+    display_cursor = *area.cursor_position;
+    {
+        const char *preedit = NULL;
+        int preedit_cursor = 0;
+        int preedit_selection_length = 0;
+
+        if(ui_text_composition_get(area.focused, &preedit, &preedit_cursor,
+                                   &preedit_selection_length) &&
+           ui_text_composition_view(
+               area.text, selection_start, selection_end, preedit,
+               preedit_cursor, preedit_selection_length, &composition)) {
+            display_text = composition.text;
+            display_cursor = composition.cursor;
+            selection_start = composition.selection_start;
+            selection_end = composition.selection_end;
+            composition_start = composition.composition_start;
+            composition_end = composition.composition_end;
+        }
+    }
+
     ui_text_context_register_target(UI_TEXT_CONTEXT_AREA, drag_id,
                                     area.focused, area.text, area.text_size,
                                     area.cursor_position,
                                     area.max_codepoints, area.filter,
                                     area.filter_user_data,
                                     &g_ui_text_area_selection,
-                                    selection_start, selection_end, 1, 0,
+                                    committed_selection_start,
+                                    committed_selection_end, 1, 0,
                                     area.read_only);
 
-    content_h = ui_text_area_content_height(area.text, font, line_gap,
-                                            wrap_width, area.content_version,
+    content_h = ui_text_area_content_height(display_text, font, line_gap,
+                                            wrap_width,
+                                            composition.text != NULL
+                                                ? 0 : area.content_version,
                                             changed);
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
@@ -3655,7 +3937,7 @@ RenderTextArea(TextAreaProps area)
     if(reveal_cursor) {
         int cursor_h = TextLineHeight(font);
         int cursor_y = ui_text_area_cursor_y(
-            area.text, *area.cursor_position, font, line_gap, wrap_width,
+            display_text, display_cursor, font, line_gap, wrap_width,
             &cursor_h);
         int viewport_h = (int)area.bounds.height - padding_y * 2;
 
@@ -3670,6 +3952,7 @@ RenderTextArea(TextAreaProps area)
 
     /* Keep editing usable without a renderer, as TextField already does. */
     if(!IsWindowReady()) {
+        ui_text_composition_view_free(&composition);
         EndUIWidget(&widget);
         return changed;
     }
@@ -3684,12 +3967,13 @@ RenderTextArea(TextAreaProps area)
         DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
-        ui_draw_text_area_text(area.text, *area.cursor_position,
+        ui_draw_text_area_text(display_text, display_cursor,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width,
                                area.syntax, area.style, selection_start,
-                               selection_end);
+                               selection_end, composition_start,
+                               composition_end);
     EndUIClip();
     if(area.scroll_y != NULL && max_scroll > 0) {
         ui_scrollbar((int)(area.bounds.x + area.bounds.width - scrollbar_w),
@@ -3700,6 +3984,7 @@ RenderTextArea(TextAreaProps area)
                      max_scroll,
                      0);
     }
+    ui_text_composition_view_free(&composition);
     EndUIWidget(&widget);
     return changed;
 }
@@ -4084,6 +4369,12 @@ RenderTextField(TextFieldProps field)
     int max_scroll_x;
     int text_origin_x;
     int panning_field = 0;
+    TextCompositionView composition = {0};
+    int paint_cursor;
+    int composition_start = 0;
+    int composition_end = 0;
+    int committed_selection_start;
+    int committed_selection_end;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -4332,6 +4623,23 @@ RenderTextField(TextFieldProps field)
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
 
+    {
+        int anchor = ui_text_selection_matches(
+            g_ui_text_field_selection, field.focus_id, field.focused)
+            ? g_ui_text_field_selection.anchor : *field.cursor_position;
+        TextCompositionResult composition_result = ui_text_composition_apply(
+            field_edit, &anchor, field.focused, focused,
+            field.read_only || !UIKeyboardInputEnabled(), 0);
+
+        changed |= composition_result.text_changed;
+        if(composition_result.selection_changed) {
+            ui_text_selection_set(&g_ui_text_field_selection,
+                                  field.focus_id, field.focused, anchor,
+                                  *field.cursor_position, 0);
+            selection_start = selection_end = *field.cursor_position;
+        }
+    }
+
     if(focused && UIKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(field.text);
@@ -4385,18 +4693,57 @@ RenderTextField(TextFieldProps field)
             selection_handled = 1;
         }
         if(!field.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) &&
-           selection_end > selection_start) {
-            if(ui_text_delete_range(field.text, field.text_size,
-                                    field.cursor_position, selection_start,
-                                    selection_end))
-                changed = 1;
+           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
+            g_ui_text_input_backspace_count > 0)) {
+            int anchor = ui_text_selection_matches(
+                g_ui_text_field_selection, field.focus_id, field.focused)
+                ? g_ui_text_field_selection.anchor : *field.cursor_position;
+            int backspace_count = g_ui_text_input_backspace_count +
+                                  ui_backspace_repeat_count();
+            int delete_count = IsKeyPressed(KEY_DELETE) ? 1 : 0;
+
+            while(backspace_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field.text, field.text_size, &anchor,
+                    field.cursor_position, KEY_BACKSPACE, ui_mod_key_down(),
+                    field.secure);
+            while(delete_count-- > 0)
+                changed |= ui_text_delete_key(
+                    field.text, field.text_size, &anchor,
+                    field.cursor_position, KEY_DELETE, ui_mod_key_down(),
+                    field.secure);
             g_ui_text_input_backspace_count = 0;
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
                                   field.focused, *field.cursor_position,
                                   *field.cursor_position, 0);
             selection_start = selection_end = *field.cursor_position;
             selection_handled = 1;
+        }
+        if(!selection_handled) {
+            int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
+                        IsKeyDown(KEY_RIGHT_SHIFT);
+            int cursor = *field.cursor_position;
+            int anchor = cursor;
+            TextNavigationInput navigation = {
+                .text = field.text,
+                .key = ui_text_navigation_key(0),
+                .shift = shift,
+                .modifier = ui_mod_key_down(),
+                .secure = field.secure
+            };
+
+            if(ui_text_selection_matches(g_ui_text_field_selection,
+                                         field.focus_id, field.focused))
+                anchor = g_ui_text_field_selection.anchor;
+            if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                *field.cursor_position = cursor;
+                ui_text_selection_set(&g_ui_text_field_selection,
+                                      field.focus_id, field.focused,
+                                      anchor, cursor, 0);
+                selection_start = anchor < cursor ? anchor : cursor;
+                selection_end = anchor > cursor ? anchor : cursor;
+                selection_handled = 1;
+            }
         }
         if(!field.read_only && !selection_handled &&
            selection_end > selection_start &&
@@ -4449,7 +4796,14 @@ RenderTextField(TextFieldProps field)
             }
         }
         if(!field.read_only && !selection_handled) {
-            changed = EditText(field_edit);
+            changed |= EditText(field_edit);
+        }
+        if(!field.read_only && selection_handled &&
+           (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+            g_ui_text_input_enter_count > 0)) {
+            if(field.commit_pressed != NULL)
+                *field.commit_pressed = 1;
+            g_ui_text_input_enter_count = 0;
         }
         if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
@@ -4464,6 +4818,37 @@ RenderTextField(TextFieldProps field)
     } else {
         int len = (int)strlen(field.text);
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
+    }
+
+    if(ui_text_selection_matches(g_ui_text_field_selection,
+                                 field.focus_id, field.focused))
+        ui_selection_range(g_ui_text_field_selection, field.text,
+                           &selection_start, &selection_end);
+    else
+        selection_start = selection_end = *field.cursor_position;
+
+    committed_selection_start = selection_start;
+    committed_selection_end = selection_end;
+
+    display_text = field.text;
+    paint_cursor = *field.cursor_position;
+    if(!field.secure) {
+        const char *preedit = NULL;
+        int preedit_cursor = 0;
+        int preedit_selection_length = 0;
+
+        if(ui_text_composition_get(field.focused, &preedit, &preedit_cursor,
+                                   &preedit_selection_length) &&
+           ui_text_composition_view(
+               field.text, selection_start, selection_end, preedit,
+               preedit_cursor, preedit_selection_length, &composition)) {
+            display_text = composition.text;
+            paint_cursor = composition.cursor;
+            selection_start = composition.selection_start;
+            selection_end = composition.selection_end;
+            composition_start = composition.composition_start;
+            composition_end = composition.composition_end;
+        }
     }
 
     if(field.secure) {
@@ -4487,7 +4872,7 @@ RenderTextField(TextFieldProps field)
     *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
     if(focused) {
         int cursor_text_x = ui_text_width_before_cursor(
-            display_text, font, *field.cursor_position);
+            display_text, font, paint_cursor);
         int margin = Scale(8);
 
         if(cursor_text_x < *scroll_x_ptr + margin)
@@ -4504,18 +4889,22 @@ RenderTextField(TextFieldProps field)
                                         field.max_codepoints, field.filter,
                                         field.filter_user_data,
                                         &g_ui_text_field_selection,
-                                        selection_start, selection_end, 0, 1,
+                                        committed_selection_start,
+                                        committed_selection_end, 0, 1,
                                         field.read_only);
 
     UIWidgetTextInputPaint paint = {
-        .style = field.style, .cursor = *field.cursor_position, .focused = focused,
+        .style = field.style, .cursor = paint_cursor, .focused = focused,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
         .font = font, .font_token = ui_active_font_token(),
         .selection_start = selection_start, .selection_end = selection_end,
+        .composition_start = composition_start,
+        .composition_end = composition_end,
         .scroll_x = *scroll_x_ptr
     };
     ui_tree_submit_text_input(field.bounds, display_text, paint, field.focus_id);
+    ui_text_composition_view_free(&composition);
     free(masked_text);
     EndUIWidget(&widget);
     return changed;
@@ -4530,7 +4919,9 @@ ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint p
     PopUIFont(paint.font_token);
     DrawUITextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
                       paint.caret, paint.font, paint.style,
-                      paint.selection_start, paint.selection_end, paint.scroll_x);
+                      paint.selection_start, paint.selection_end,
+                      paint.composition_start, paint.composition_end,
+                      paint.scroll_x);
     PopUIFont(previous_font);
 }
 

@@ -36,6 +36,31 @@ static KryTextCompositionEvent
 static int g_text_composition_head;
 static int g_text_composition_count;
 
+static void
+kry_text_composition_trim_utf8(char *text)
+{
+    size_t len;
+    size_t start;
+    int expected = 1;
+    unsigned char lead;
+
+    if(text == NULL || text[0] == '\0')
+        return;
+    len = strlen(text);
+    start = len - 1;
+    while(start > 0 && (((unsigned char)text[start] & 0xc0) == 0x80))
+        start--;
+    lead = (unsigned char)text[start];
+    if((lead & 0xe0) == 0xc0)
+        expected = 2;
+    else if((lead & 0xf0) == 0xe0)
+        expected = 3;
+    else if((lead & 0xf8) == 0xf0)
+        expected = 4;
+    if(start + (size_t)expected > len)
+        text[start] = '\0';
+}
+
 int
 SubmitTextComposition(KryTextCompositionPhase phase, const char *text,
                       int cursor, int selection_length)
@@ -57,6 +82,7 @@ SubmitTextComposition(KryTextCompositionPhase phase, const char *text,
     if(text != NULL) {
         strncpy(event->text, text, sizeof(event->text) - 1);
         event->text[sizeof(event->text) - 1] = '\0';
+        kry_text_composition_trim_utf8(event->text);
     }
     g_text_composition_count++;
     return 1;

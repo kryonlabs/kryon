@@ -1,4 +1,88 @@
 # Changelog
+## v0.1.89 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.89
+- Isolate native tab state per render host
+
+## v0.1.88 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.88
+- Keep dropdown keys within popup ownership
+
+## v0.1.87 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.87
+- Keep popup menu Escape within its owner
+
+## v0.1.86 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.86
+- Focus native sliders from pointer presses
+
+## v0.1.85 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.85
+- Add native Linux IBus text composition
+
+## v0.1.84 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.84
+- Remove legacy UIForm aliases
+
+## v0.1.83 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.83
+- Unify C text composition handling
+
+## v0.1.82 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.82
+- Render native IME preedit accurately
+
+## v0.1.81 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.81
+- Add native word text editing
+
+## v0.1.80 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.80
+- Centralize C text navigation
+
+## v0.1.79 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.79
+- Unify text selection navigation
+
+## v0.1.78 - 2026-09-07
+
+### Changed
+
+- Release: bump version to v0.1.78
+- Add multiline TextArea page navigation
+
 ## v0.1.77 - 2026-09-07
 
 ### Changed

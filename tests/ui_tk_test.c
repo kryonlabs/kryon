@@ -98,10 +98,23 @@ test_slider_keyboard_navigation(void)
         .value_count = 1, .min = 0, .max = 10
     };
     int second_focus;
+    int inspect_enabled;
 
     InjectReset();
     BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
-    SetUIFocus(600); InjectKeyTap(KEY_RIGHT); InjectPump();
+    inspect_enabled = UIInspectEnabled();
+    SetUIInspectEnabled(0);
+    InjectMousePosition(35,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    check_int("click focuses slider component",GetUIFocus(),600);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    SetUIInspectEnabled(inspect_enabled);
+
+    InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginUIFrame(640,480,1.0f);
     check_int("slider Right changed",SliderFloat(horizontal),1);
     EndUIFrame();
@@ -918,6 +931,38 @@ test_popup_menu_keyboard_ownership(void)
         check_int("only top popup menu handles keyboard",
                   PopupMenu(25711,10,10,items,1),inside ? 25710 : 0);
         if(inside) ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+    }
+    for(int inside = 0; inside < 2; inside++) {
+        UIPopupInput *context;
+        UIPopupInput *previous;
+        UIPopupInputToken parent;
+        UIPopupInputToken child;
+        int expected_focus = inside ? 0 : 25711;
+
+        InjectReset();
+        InjectKeyTap(KEY_ESCAPE);
+        InjectPump();
+        BeginUIFrame(320,240,1);
+        context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        previous = ui_popup_input_bind(context);
+        parent = ui_popup_input_begin(
+            context,25700,(Rectangle){180,180,40,40});
+        child = ui_popup_input_begin(
+            context,25701,(Rectangle){190,190,20,20});
+        if(!inside)
+            ui_popup_input_end(child);
+        SetUIFocus(25711);
+        (void)PopupMenu(25711,10,10,items,1);
+        check_int("only top popup menu handles Escape",
+                  GetUIFocus(),expected_focus);
+        if(inside)
+            ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
@@ -1743,6 +1788,173 @@ test_text_area_page_navigation(void)
     InjectKeyTap(KEY_PAGE_UP); InjectPump();
     BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
     check_int("TextArea PageUp moves more than one line",cursor <= before_page - 4,1);
+
+    int selection_start = 0;
+    int selection_end = 0;
+    before_page = cursor;
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_PAGE_DOWN); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
+    check_int("TextArea Shift+PageDown keeps anchor",
+              GetTextAreaSelection(area.focus_id, &selection_start,
+                                   &selection_end),1);
+    check_int("TextArea Shift+PageDown selection start",
+              selection_start,before_page);
+    check_int("TextArea Shift+PageDown selection end",selection_end,cursor);
+
+    InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Left collapses selection",cursor,before_page);
+    check_int("TextArea collapsed selection is empty",
+              GetTextAreaSelection(area.focus_id, NULL, NULL),0);
+
+    InjectKeyTap(KEY_HOME); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Home moves to line start",cursor,6);
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_END); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    check_int("TextArea Ctrl+End moves to buffer end",cursor,(int)strlen(text));
+
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Ctrl+Left moves by word",cursor,15);
+    InjectPump();
+    InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    check_int("TextArea Ctrl+Shift+Left moves by separator",cursor,14);
+    check_int("TextArea Ctrl+Shift+Left keeps anchor",
+              GetTextAreaSelection(area.focus_id, &selection_start,
+                                   &selection_end),1);
+    check_int("TextArea word selection start",selection_start,14);
+    check_int("TextArea word selection end",selection_end,15);
+    InjectKey(KEY_LEFT_SHIFT,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    ClearTextInputFocus();
+    InjectReset();
+}
+
+static void
+test_secure_text_field_word_navigation(void)
+{
+    char text[32] = "alpha beta";
+    int cursor = 5;
+    int focused = 1;
+    TextFieldProps field = {
+        .bounds = {10,10,180,32}, .text = text, .text_size = sizeof(text),
+        .cursor_position = &cursor, .focused = &focused,
+        .focus_id = 25511, .secure = 1
+    };
+
+    InjectReset();
+    SetUIFocus(field.focus_id);
+    InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Left hides word boundaries",cursor,0);
+
+    InjectPump(); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Right hides word boundaries",
+              cursor,(int)strlen(text));
+
+    InjectPump(); InjectKeyTap(KEY_BACKSPACE); InjectPump();
+    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    check_int("secure TextField Ctrl+Backspace clears opaque span",
+              strcmp(text,""),0);
+    InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
+    ClearTextInputFocus();
+    InjectReset();
+}
+
+static void
+test_immediate_text_composition(void)
+{
+    char field_text[64] = "ab";
+    char area_text[64] = "aZZb";
+    int field_cursor = 1;
+    int area_cursor = 3;
+    int field_focused = 1;
+    int area_focused = 1;
+    const char *preedit = NULL;
+    int preedit_cursor = 0;
+    int preedit_selection = 0;
+    TextFieldProps field = {
+        .bounds = {10,10,180,32}, .text = field_text,
+        .text_size = sizeof(field_text), .cursor_position = &field_cursor,
+        .focused = &field_focused, .focus_id = 25520
+    };
+    TextAreaProps area = {
+        .bounds = {10,50,180,80}, .text = area_text,
+        .text_size = sizeof(area_text), .cursor_position = &area_cursor,
+        .focused = &area_focused, .focus_id = 25521
+    };
+
+    InjectReset();
+    ClearTextInputFocus();
+    field_focused = 1;
+    SetUIFocus(field.focus_id);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 3, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextField preedit is not committed",
+              TextField(field), 0);
+    EndUIFrame();
+    check_int("immediate TextField preserves committed buffer",
+              strcmp(field_text,"ab"), 0);
+    check_int("immediate TextField owns shared preedit",
+              ui_text_composition_get(&field_focused, &preedit,
+                                      &preedit_cursor,
+                                      &preedit_selection), 1);
+    check_int("immediate TextField preedit UTF-8 cursor",
+              preedit_cursor, 3);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextField commit reports change",
+              TextField(field), 1);
+    EndUIFrame();
+    check_int("immediate TextField commits UTF-8 at caret",
+              strcmp(field_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+    check_int("immediate TextField clears preedit after commit",
+              ui_text_composition_get(&field_focused, NULL, NULL, NULL), 0);
+
+    ClearTextInputFocus();
+    area_focused = 1;
+    SetUIFocus(area.focus_id);
+    SetTextAreaSelection(area.focus_id, 1, 3);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                          "\xE3\x81\xAB", 3, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextArea preedit is not committed",
+              TextArea(area), 0);
+    EndUIFrame();
+    check_int("immediate TextArea preserves selected text during preedit",
+              strcmp(area_text,"aZZb"), 0);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextArea commit reports change",
+              TextArea(area), 1);
+    EndUIFrame();
+    check_int("immediate TextArea composition replaces selection",
+              strcmp(area_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"blocked",7,0);
+    BeginUIFrame(240,160,1);
+    TextArea(area);
+    EndUIFrame();
+    area.read_only = 1;
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"x",1,0);
+    BeginUIFrame(240,160,1);
+    check_int("read-only immediate editor ignores IME commit",
+              TextArea(area), 0);
+    EndUIFrame();
+    check_int("read-only immediate editor cancels preedit",
+              ui_text_composition_get(&area_focused, NULL, NULL, NULL), 0);
+    check_int("read-only immediate editor does not mutate text",
+              strcmp(area_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+
     ClearTextInputFocus();
     InjectReset();
 }
@@ -2346,6 +2558,61 @@ test_popup_combo_keyboard_ownership(void)
         ui_popup_input_destroy(context);
         dropdown_close(25400);
         EndUIFrame();
+    }
+    for(int inside = 0; inside < 2; inside++) {
+        UIPopupInput *context;
+        UIPopupInput *previous;
+        UIPopupInputToken parent;
+        UIPopupInputToken child;
+        int selected = 0;
+
+        InjectReset();
+        InjectKeyTap(KEY_SPACE);
+        InjectPump();
+        BeginUIFrame(240,240,1);
+        SetUIFocus(25400);
+        (void)Combobox((ComboboxProps){
+            .bounds={10,10,100,28},
+            .id=25400,
+            .options=options,
+            .option_count=2,
+            .selected_index=&selected
+        });
+        EndUIFrame();
+        check_int("combo opens before Escape ownership test",
+                  dropdown_captures((Vector2){20,50}),1);
+
+        InjectKeyTap(KEY_ESCAPE);
+        InjectPump();
+        BeginUIFrame(240,240,1);
+        context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        previous = ui_popup_input_bind(context);
+        parent = ui_popup_input_begin(
+            context,25700,(Rectangle){180,180,40,40});
+        child = ui_popup_input_begin(
+            context,25701,(Rectangle){190,190,20,20});
+        if(!inside)
+            ui_popup_input_end(child);
+        SetUIFocus(25400);
+        (void)Combobox((ComboboxProps){
+            .bounds={10,10,100,28},
+            .id=25400,
+            .options=options,
+            .option_count=2,
+            .selected_index=&selected
+        });
+        if(inside)
+            ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        DrawUIFrameOverlays();
+        check_int("obscured combo ignores Escape",
+                  dropdown_captures((Vector2){20,50}),!inside);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+        dropdown_close(25400);
     }
     InjectReset();
 }
@@ -3481,6 +3748,8 @@ main(void)
     test_popup_text_keyboard_ownership();
     test_text_area_page_navigation();
     test_text_area_wheel_scroll();
+    test_secure_text_field_word_navigation();
+    test_immediate_text_composition();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();

@@ -1,6 +1,9 @@
 package kryon
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // These phases and queue limits match the native C input front-end.
 type KryTextCompositionPhase int32
@@ -14,8 +17,9 @@ const (
 )
 
 type KryTextCompositionEvent struct {
-	Phase           KryTextCompositionPhase
-	Text            string
+	Phase KryTextCompositionPhase
+	Text  string
+	// Cursor and SelectionLength are UTF-8 byte offsets within Text.
 	Cursor          int32
 	SelectionLength int32
 }
@@ -29,6 +33,9 @@ func (r *runtime) SubmitTextComposition(phase KryTextCompositionPhase, text stri
 	}
 	if len(text) >= KRY_TEXT_COMPOSITION_MAX {
 		text = text[:KRY_TEXT_COMPOSITION_MAX-1]
+	}
+	for !utf8.ValidString(text) {
+		text = text[:len(text)-1]
 	}
 	r.compositionEvents = append(r.compositionEvents, KryTextCompositionEvent{phase, text, max(cursor, 0), max(selectionLength, 0)})
 	return 1
@@ -59,6 +66,36 @@ func PollTextComposition(event *KryTextCompositionEvent) int32 {
 }
 
 func ClearTextComposition() { active().ClearTextComposition() }
+
+type textCompositionView struct {
+	text             string
+	cursor           int
+	selectionStart   int
+	selectionEnd     int
+	compositionStart int
+	compositionEnd   int
+}
+
+func makeTextCompositionView(text string, selectionStart, selectionEnd int, preedit KryTextCompositionEvent) (textCompositionView, bool) {
+	if preedit.Text == "" {
+		return textCompositionView{}, false
+	}
+	selectionStart = clampCursor(text, selectionStart)
+	selectionEnd = clampCursor(text, selectionEnd)
+	if selectionStart > selectionEnd {
+		selectionStart, selectionEnd = selectionEnd, selectionStart
+	}
+	preeditCursor := clampCursor(preedit.Text, int(preedit.Cursor))
+	preeditSelectionEnd := clampCursor(preedit.Text, preeditCursor+int(preedit.SelectionLength))
+	return textCompositionView{
+		text:             text[:selectionStart] + preedit.Text + text[selectionEnd:],
+		cursor:           selectionStart + preeditCursor,
+		selectionStart:   selectionStart + preeditCursor,
+		selectionEnd:     selectionStart + preeditSelectionEnd,
+		compositionStart: selectionStart,
+		compositionEnd:   selectionStart + len(preedit.Text),
+	}, true
+}
 
 func (r *runtime) editComposition(id int32, text string, pos int, sel selection, limit int) (string, int, selection, bool) {
 	changed := false

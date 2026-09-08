@@ -165,6 +165,8 @@ enum { InbeCWOverrideRedirect = 1 << 9 };
 struct UIWindow {
     Window window;
     UIPaintLayers *paint_layers;
+    int focus_id;
+    int previous_focus_id;
     int width;
     int height;
     float scale;
@@ -481,6 +483,8 @@ BeginUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
+    window->previous_focus_id = GetUIFocus();
+    SetUIFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -628,6 +632,8 @@ EndUIWindow(void)
         return;
     EndUIFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
+    window->focus_id = GetUIFocus();
+    SetUIFocus(window->previous_focus_id);
     ui_window_active = NULL;
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
@@ -750,6 +756,8 @@ StealUICoreWindowClose(void)
 struct UIWindow {
     HWND window;
     UIPaintLayers *paint_layers;
+    int focus_id;
+    int previous_focus_id;
     int width, height;
     float scale;
     Color background;
@@ -908,7 +916,10 @@ void CloseUIWindow(UIWindow *window)
 
 void BeginUIWindow(UIWindow *window)
 {
-    if(!window) return;
+    if(!window)
+        return;
+    window->previous_focus_id = GetUIFocus();
+    SetUIFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -917,11 +928,21 @@ void BeginUIWindow(UIWindow *window)
 }
 void EndUIWindow(void)
 {
-    UIWindow *window=ui_window_active; Image image; BITMAPINFO info; HDC dc; size_t count,i;
-    if(!window)return;
+    UIWindow *window = ui_window_active;
+    Image image;
+    BITMAPINFO info;
+    HDC dc;
+    size_t count;
+    size_t i;
+
+    if(window == NULL)
+        return;
     EndUIFrame();
-    if(window->paint_layers)ui_paint_layers_composite(window->paint_layers);
-    ui_window_active=NULL;
+    if(window->paint_layers != NULL)
+        ui_paint_layers_composite(window->paint_layers);
+    window->focus_id = GetUIFocus();
+    SetUIFocus(window->previous_focus_id);
+    ui_window_active = NULL;
     EndTextureMode();
     image=ui_paint_readback(window->target.texture); if(!image.data)return;
     ImageFormat(&image,PIXELFORMAT_UNCOMPRESSED_R8G8B8A8); count=(size_t)window->width*window->height;
@@ -958,6 +979,8 @@ int StealUICoreWindowClose(void)
 struct UIWindow {
     SDL_Window *window;
     UIPaintLayers *paint_layers;
+    int focus_id;
+    int previous_focus_id;
     SDL_GLContext context;
     Uint32 window_id;
     int width;
@@ -1317,6 +1340,8 @@ BeginUIWindow(UIWindow *window)
 {
     if(window == NULL)
         return;
+    window->previous_focus_id = GetUIFocus();
+    SetUIFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
@@ -1328,10 +1353,13 @@ void
 EndUIWindow(void)
 {
     UIWindow *window = ui_window_active;
+
     if(window == NULL)
         return;
     EndUIFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
+    window->focus_id = GetUIFocus();
+    SetUIFocus(window->previous_focus_id);
     ui_window_active = NULL;
     EndTextureMode();
 #if defined(__linux__) || defined(__FreeBSD__)

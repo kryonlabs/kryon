@@ -12,8 +12,26 @@ int ui_utf8_next_offset(const char *text, int offset);
 int ui_utf8_prev_offset(const char *text, int offset);
 int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
+int ui_text_word_left(const char *text, int cursor);
+int ui_text_word_right(const char *text, int cursor);
+typedef struct TextCompositionView {
+    char *text;
+    int cursor;
+    int selection_start;
+    int selection_end;
+    int composition_start;
+    int composition_end;
+} TextCompositionView;
+int ui_text_composition_view(const char *text, int selection_start,
+                             int selection_end, const char *preedit,
+                             int preedit_cursor,
+                             int preedit_selection_length,
+                             TextCompositionView *view);
+void ui_text_composition_view_free(TextCompositionView *view);
 int ui_text_delete_range(char *text, size_t text_size, int *cursor,
                          int start, int end);
+int ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
+                       int key, int modifier, int secure);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
@@ -23,6 +41,11 @@ int ui_text_insert_text(char *text, size_t text_size, int *cursor,
                         const char *input, int allow_newlines,
                         TextInputFilter filter, void *filter_user_data,
                         int max_codepoints);
+
+enum {
+    TEST_KEY_BACKSPACE = 259,
+    TEST_KEY_DELETE = 261
+};
 
 static int failures = 0;
 
@@ -127,6 +150,94 @@ test_utf8_prev_offset(void)
     check_int("prev to é", ui_utf8_prev_offset(s, 3), 1);
     check_int("prev to a", ui_utf8_prev_offset(s, 1), 0);
     check_int("prev at 0 stays 0", ui_utf8_prev_offset(s, 0), 0);
+}
+
+static void
+test_word_navigation(void)
+{
+    const char *text = "alpha beta.gamma";
+    const char *unicode = "one\xe3\x80\x80two";
+
+    check_int("word left finds final word", ui_text_word_left(text, 16), 11);
+    check_int("word left treats punctuation as a stop",
+              ui_text_word_left(text, 11), 10);
+    check_int("word left crosses separator to word",
+              ui_text_word_left(text, 10), 6);
+    check_int("word right finds punctuation", ui_text_word_right(text, 6), 10);
+    check_int("word right crosses punctuation",
+              ui_text_word_right(text, 10), 11);
+    check_int("word right handles full-width blank",
+              ui_text_word_right(unicode, 0), 6);
+}
+
+static void
+test_composition_view(void)
+{
+    TextCompositionView view;
+
+    check_true("composition view builds",
+               ui_text_composition_view("aXYZz", 1, 4,
+                                        "\xe6\x97\xa5" "ab", 3, 1,
+                                        &view));
+    check_str("composition replaces committed selection", view.text,
+              "a\xe6\x97\xa5" "abz");
+    check_int("composition cursor uses UTF-8 byte offset", view.cursor, 4);
+    check_int("composition selection start", view.selection_start, 4);
+    check_int("composition selection end", view.selection_end, 5);
+    check_int("composition underline start", view.composition_start, 1);
+    check_int("composition underline end", view.composition_end, 6);
+    ui_text_composition_view_free(&view);
+    check_true("composition view free clears ownership", view.text == NULL);
+
+    check_true("composition clamps inside UTF-8 sequence",
+               ui_text_composition_view("ab", 1, 1,
+                                        "\xe6\x97\xa5", 2, 8, &view));
+    check_int("composition cursor clamps to rune boundary", view.cursor, 1);
+    check_int("composition selection clamps to preedit", view.selection_end, 4);
+    ui_text_composition_view_free(&view);
+}
+
+static void
+test_delete_key(void)
+{
+    char text[32] = "alpha beta.gamma";
+    int cursor = 16;
+    int anchor = cursor;
+
+    check_true("word backspace deletes final word",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 0));
+    check_str("word backspace result", text, "alpha beta.");
+    check_int("word backspace cursor", cursor, 11);
+    check_true("word backspace deletes separator",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 0));
+    check_str("word separator deletion result", text, "alpha beta");
+
+    cursor = 6;
+    anchor = cursor;
+    check_true("word delete removes next word",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_DELETE, 1, 0));
+    check_str("word delete result", text, "alpha ");
+
+    strcpy(text, "alpha beta");
+    anchor = 0;
+    cursor = 5;
+    check_true("selection deletion takes precedence",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_DELETE, 1, 0));
+    check_str("selection deletion result", text, " beta");
+    check_int("selection deletion collapses anchor", anchor, 0);
+    check_int("selection deletion collapses cursor", cursor, 0);
+
+    strcpy(text, "alpha beta");
+    cursor = 5;
+    anchor = cursor;
+    check_true("secure word backspace hides boundaries",
+               ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                                  TEST_KEY_BACKSPACE, 1, 1));
+    check_str("secure word backspace result", text, " beta");
 }
 
 static void
@@ -274,11 +385,14 @@ main(void)
 {
     test_utf8_next_offset();
     test_utf8_prev_offset();
+    test_word_navigation();
+    test_composition_view();
     test_utf8_codepoint_count();
     test_utf8_encode();
     test_insert_ascii();
     test_insert_codepoint();
     test_delete_range();
+    test_delete_key();
     test_insert_text_bulk();
     if(failures != 0) {
         fprintf(stderr, "%d text-edit test(s) failed\n", failures);

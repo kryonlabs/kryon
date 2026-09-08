@@ -87,6 +87,34 @@ func dbusSession() (*dbusConn, error) {
 	if addr == "" {
 		return nil, errors.New("dbus: no session bus address")
 	}
+	return dbusOpen(addr)
+}
+
+// dbusOpen connects to a D-Bus address and completes the standard bus
+// handshake. Desktop services such as IBus publish their own private bus
+// address rather than living on DBUS_SESSION_BUS_ADDRESS.
+func dbusOpen(addr string) (*dbusConn, error) {
+	// An address may contain fallbacks separated by semicolons. Keep this
+	// client deliberately small, but try every advertised Unix transport.
+	var lastErr error
+	for _, candidate := range strings.Split(addr, ";") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		conn, err := dbusOpenOne(candidate)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = errors.New("dbus: empty address")
+	}
+	return nil, lastErr
+}
+
+func dbusOpenOne(addr string) (*dbusConn, error) {
 	transport, rest, ok := strings.Cut(addr, ":")
 	if !ok {
 		return nil, fmt.Errorf("dbus: bad address %q", addr)

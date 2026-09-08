@@ -46,6 +46,8 @@ type FrameOp struct {
 	Cursor            int32
 	SelectionStart    int32
 	SelectionEnd      int32
+	CompositionStart  int32
+	CompositionEnd    int32
 	Focused           bool
 	Pressed           bool
 	Disabled          bool

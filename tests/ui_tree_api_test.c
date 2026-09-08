@@ -5,6 +5,7 @@
 #include <string.h>
 
 static int failures;
+static int draw_rectangle_calls;
 
 static void
 check_int(const char *name, int got, int want);
@@ -23,6 +24,11 @@ void __wrap_EndScissorMode(void);
 
 void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
                         int selection_start, int selection_end);
+void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
+                                    int selection_start, int selection_end,
+                                    int composition_start,
+                                    int composition_end);
+int ui_active_font_token(void);
 
 typedef struct ScaffoldFixture {
     int seen_w;
@@ -65,7 +71,7 @@ main(void)
     SectionLabelProps section = {0};
     CheckboxRowProps checkbox = {0};
     ButtonRowProps row = {.width = 240, .height = 40};
-    UIForm form;
+    Form form;
     Rectangle taken;
     UIScreenScaffold scaffold;
     BottomNavProps nav = {0};
@@ -98,16 +104,16 @@ main(void)
     check_int("button row",
               GetNodeHeight(NodeButtonRow(row)),
               Scale(40));
-    form = UIFormBegin(10, 20, 240);
-    taken = UIFormTakeRect(&form, Scale(18));
+    form = FormBegin(10, 20, 240);
+    taken = FormTakeRect(&form, Scale(18));
     check_int("form rect x", (int)taken.x, 10);
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
-    check_int("form advances", UIFormY(&form), 20 + Scale(18));
+    check_int("form advances", FormY(&form), 20 + Scale(18));
     BeginTree(6);
-    UIFormSection(&form, "Account");
+    FormSection(&form, (SectionLabelProps){.label = "Account"});
     EndTree();
-    check_int("form section helper advances", UIFormY(&form),
+    check_int("form section helper advances", FormY(&form),
               20 + Scale(18) + Scale(24));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
@@ -604,10 +610,34 @@ main(void)
         check_int("retained textarea clamps negative scroll", scroll_y, 0);
     }
 
+    {
+        char value[64] = "a\xe6\x97\xa5\xe6\x9c\xacz";
+        int cursor = 7;
+        int scroll_y = 0;
+        int ordinary_rectangles;
+
+        draw_rectangle_calls = 0;
+        ui_paint_text_area((TextAreaProps){
+            .bounds = {20,30,180,80}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .scroll_y = &scroll_y, .font = 16, .line_gap = 4
+        }, cursor, 0, cursor, cursor);
+        ordinary_rectangles = draw_rectangle_calls;
+        draw_rectangle_calls = 0;
+        ui_paint_text_area_composition((TextAreaProps){
+            .bounds = {20,30,180,80}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .scroll_y = &scroll_y, .font = 16, .line_gap = 4
+        }, cursor, 0, cursor, cursor, 1, 7);
+        check_int("textarea composition adds underline paint",
+                  draw_rectangle_calls, ordinary_rectangles + 1);
+    }
+
     /* Composition events preserve preedit separately and commit UTF-8 only
      * when the platform IME finalizes it. */
     {
         KryTextCompositionEvent event;
+        char long_preedit[300];
 
         ClearTextComposition();
         check_int("submit composition update",
@@ -618,6 +648,15 @@ main(void)
                   KRY_TEXT_COMPOSITION_UPDATE);
         check_int("composition update text", strcmp(event.text, "nihon"), 0);
         check_int("composition queue drained", PollTextComposition(&event), 0);
+        memset(long_preedit, 'x', 254);
+        memcpy(long_preedit + 254, "\xe6\x97\xa5", 4);
+        check_int("submit truncated UTF-8 composition",
+                  SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                                        long_preedit, 254, 0), 1);
+        check_int("poll truncated UTF-8 composition",
+                  PollTextComposition(&event), 1);
+        check_int("composition drops partial UTF-8 tail",
+                  (int)strlen(event.text), 254);
     }
 
     /* The retained tree exposes a backend-neutral accessibility snapshot. */
@@ -664,12 +703,61 @@ main(void)
         }
         check_int("boxed text typed node", boxed_count, 1);
     }
+    {
+        Font font = {0};
+        Rectangle font_rec = {0};
+        GlyphInfo font_glyph = {0};
+        char field_text[8] = "a";
+        char area_text[8] = "b";
+        int field_cursor = 1;
+        int area_cursor = 1;
+        int scroll_y = 0;
+        int previous;
+        int text_inputs = 0;
+
+        ClearUIFonts();
+        font.baseSize = 16;
+        font.glyphCount = 1;
+        font.texture.id = 1;
+        font.recs = &font_rec;
+        font.glyphs = &font_glyph;
+        check_int("register retained font base probe",
+                  RegisterUIFont("retained-base", font), 1);
+        check_int("register retained font snapshot probe",
+                  RegisterUIFont("retained-probe", font), 1);
+        previous = PushUIFont("retained-probe");
+        check_int("font probe preserves prior font", previous, 0);
+        BeginTree(1500);
+        TextField((TextFieldProps){.bounds = {10,10,80,24},
+            .text = field_text, .text_size = sizeof(field_text),
+            .cursor_position = &field_cursor, .focus_id = 1501});
+        TextArea((TextAreaProps){.bounds = {10,40,80,40},
+            .text = area_text, .text_size = sizeof(area_text),
+            .cursor_position = &area_cursor, .scroll_y = &scroll_y,
+            .focus_id = 1502});
+        EndTree();
+        nodes = GetTreeNodes(&count);
+        for(int i = 0; i < count; i++) {
+            if(nodes[i].kind != UI_WIDGET_TEXT_FIELD_NODE &&
+               nodes[i].kind != UI_WIDGET_TEXT_AREA_NODE)
+                continue;
+            text_inputs++;
+            check_int("retained text captures declaration font",
+                      nodes[i].font_token, 1);
+        }
+        check_int("both retained text widgets capture fonts", text_inputs, 2);
+        PopUIFont(previous);
+        check_int("font token restores prior font",
+                  ui_active_font_token(), 0);
+        ClearUIFonts();
+    }
     return failures == 0 ? 0 : 1;
 }
 
 void
 __wrap_DrawRectangle(int posX, int posY, int width, int height, Color color)
 {
+    draw_rectangle_calls++;
     (void)posX;
     (void)posY;
     (void)width;

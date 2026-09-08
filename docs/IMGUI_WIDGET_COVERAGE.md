@@ -77,8 +77,8 @@ select the range limits, Alt slows adjustment, and Shift accelerates it. Pointer
 presses focus the exact component, disabled sliders reject keys, popup ownership
 gates keyboard input, and the focused component receives the ordinary focus
 presentation. Matching native tests cover component Tab traversal and the
-generated `plots.kry` fixture verifies horizontal float and vertical integer
-adjustment through k2c and k2go.
+pointer-to-keyboard transition; the generated `plots.kry` fixture verifies
+horizontal float and vertical integer adjustment through k2c and k2go.
 Ctrl-clicking or double-clicking a drag or slider component temporarily
 replaces that component with the canonical text editor in native C and Go. Valid edits update live,
 Enter returns to the numeric control, and typed values remain unclamped like
@@ -138,6 +138,14 @@ the surrounding layout cursor.
 C layer disabled scopes now inherit the parent's state without allowing child
 scope endings to unwind the parent. Headless nested-scope tests and the real
 layer test cover restoration, with invalid-scope checks for an unclosed child.
+C tab-bar owned scroll and its bar-local click, reorder, and pane-drag
+bookkeeping now belong to that same render-host context instead of
+process-global statics. Interleaved graphical hosts use the same tab ID without
+sharing omitted scroll state, and restoring the outer host restores its state
+immediately. Native auxiliary windows also retain their own active focus ID
+and restore the caller's focus on exit. A real-window regression reopens one
+across frames and checks both directions of focus isolation. The broader C
+pointer and text-edit state is still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real
 pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background
@@ -194,7 +202,13 @@ Generic native accelerators now have matching C and Go APIs and top-popup
 ownership. Generated k2c/k2cpp/k2go coverage proves Ctrl+C dispatch inside the
 active popup, suppression of the same background chord, and restoration after
 the popup is explicitly closed. Widget-specific shortcut paths still require
-their own ownership coverage.
+their own ownership coverage. Popup menus apply that ownership to Escape as
+well as navigation and activation, so an obscured menu cannot clear focus
+belonging to the active popup branch.
+Dropdown/Combobox stores the declaration's popup-owner snapshot for its
+deferred overlay pass. Escape, arrows, Home/End, and Enter are ignored while a
+newer child branch owns the keyboard, then work again as soon as that branch
+closes.
 Collapsible/tree-header arrows now have matching native and generated popup
 ownership coverage, including background restoration after close.
 Selectable-text copy is likewise ownership-gated in C and Go; native Go tests
@@ -239,19 +253,38 @@ reject captured text, remain unchanged on the next frame without input, and
 accept fresh text later. C covers both injected and platform-queued characters,
 same-frame dismissal, and queued Backspace/Enter for TextField. Popup-captured
 leftovers now expire at frame end. Go's existing frame cleanup passes the matching
-text test. IME composition and device-level Android delivery remain unverified.
-C retained IME now has separate regressions: blocked commits do not replay,
+text test. Device-level Android IME delivery remains unverified.
+C IME now has separate regressions: blocked commits do not replay,
 read-only TextField/TextArea reject commits, and TextField preedit cancels on
-focus loss, a read-only transition or popup capture without revival. This does
-not establish immediate C editor composition, native Go composition events or
-device-level IME delivery.
+focus loss, a read-only transition or popup capture without revival.
 Native Go now implements runtime-local composition events and per-editor
 preedit for TextField/TextArea. Tests cover queue isolation/limits, preedit
 persistence without buffer mutation, UTF-8 commit, cancellation, editor removal,
 focus loss, disabling and popup dismissal. `composition.kry` is executed through
 generated C and Go to verify preedit/commit/cancel behavior; it is not executed
-by the JavaScript runner. OS-window Go IME delivery and detailed preedit
-cursor/selection rendering remain unfinished.
+by the JavaScript runner. Retained C and native Go now build the visible preedit
+through one UTF-8 composition-view primitive per runtime: it visually replaces
+the committed selection without mutating the caller buffer, positions the caret
+at the IME cursor, highlights the IME-selected subrange, and underlines the full
+composition in both TextField and TextArea. C previously omitted TextArea
+preedit entirely. The DOM and Android adapters now normalize the composition
+cursor to the runtime's documented UTF-8 byte-offset contract, and retained C
+editors preserve their declaration-time Kryon font through deferred painting.
+Immediate and retained C editors now share one private composition session and
+one commit operation; retained widget state no longer duplicates preedit text,
+cursor or selection fields. Immediate TextField/TextArea tests cover UTF-8
+preedit without caller-buffer mutation, commits, selection replacement and
+read-only cancellation.
+The pure-Go Linux/X11 window backend now connects directly to the desktop's
+IBus daemon without cgo. Each window owns one input context; X11 press/release
+and focus events pass through it before the ordinary keysym fallback, and
+CommitText/UpdatePreeditText signals feed the existing runtime-local
+composition queue. Cursor positions are converted from IBus codepoints to the
+runtime's UTF-8 byte offsets, and candidate placement follows the focused
+TextField/TextArea caret. A fake-daemon protocol test covers context setup,
+key forwarding and Unicode preedit/commit, while an opt-in test verifies the
+real desktop daemon. Other Linux input-method protocols and device-level
+Android/Win32 IME delivery remain unverified.
 Read-only TextField/TextArea behavior is now covered by the native generated
 composition fixture: selection/copy remains usable while text, cut/paste,
 deletion and IME commits cannot mutate buffers. C retained mutation paths now
@@ -260,11 +293,22 @@ while suppressing the insertion caret. Go tests cover preedit cancellation,
 buffer preservation, rejected-input expiry and fresh editing after re-enabling.
 Multiline TextArea navigation now handles Up/Down and PageUp/PageDown in native
 C and Go, with page movement derived from the visible editor height. The C
-immediate and retained paths share the same internal line/page movement helpers,
-so generated code no longer loses vertical navigation when submitted through
-the retained tree. Enter inserts a newline in Go TextArea instead of following
-the single-line commit path. Direct runtime tests and the generated composition
-fixture exercise these behaviors through k2c and k2go.
+immediate and retained paths route every navigation key through one internal
+selection-navigation routine, including the shared line/page movement helpers,
+so generated code cannot drift from the direct widget behavior. Enter inserts
+a newline in Go TextArea instead of following the single-line commit path.
+Direct runtime tests and the generated composition fixture exercise these
+behaviors through k2c and k2go. Shift extends selections across horizontal,
+vertical, page and Home/End navigation; an unmodified arrow collapses an active
+selection toward that edge. Multiline Home/End target the current line, while
+the platform modifier plus Home/End targets the whole buffer. Modifier plus
+Left/Right now uses Dear ImGui-compatible UTF-8 word boundaries, including
+punctuation separators and full-width blanks, and Shift extends those word
+selections. Modifier plus Backspace/Delete uses the same boundary helpers and
+the same selection-first deletion primitive in immediate C, retained C, and
+Go. The generated composition fixture covers word movement, selection, and
+deletion through k2c and k2go. Native Go's X11 input path also preserves Shift
+on special keys and routes Ctrl+Arrow/Backspace/Delete as modifier shortcuts.
 
 Native C and Go list boxes now register with ordinary Tab focus, expose a
 visible focus presentation, and move selection with Up/Down/Home/End while

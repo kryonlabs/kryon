@@ -380,6 +380,15 @@ int main(void)
         BeginTextureMode(host_target);
         ClearBackground(BLACK);
         ui_paint_layers_frame(host_a,size,size);
+        int fallback_scroll = 0;
+        int *host_a_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(frame == 0)
+            *host_a_scroll = 17;
+        else if(*host_a_scroll != 17) {
+            fprintf(stderr,"first host lost its owned tab scroll: %d\n",
+                    *host_a_scroll);
+            failures++;
+        }
         UIPaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
         DrawRectangle(0,0,size,size,RED);
         Rect(size-4,size-4,4,4,YELLOW,BLANK);
@@ -388,6 +397,12 @@ int main(void)
         BeginTextureMode(inner);
         ClearBackground(BLUE);
         ui_paint_layers_frame(host_b,16,16);
+        int *host_b_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(*host_b_scroll != (frame == 0 ? 0 : 9)) {
+            fprintf(stderr,"tab scroll crossed hosts: %d\n",*host_b_scroll);
+            failures++;
+        }
+        *host_b_scroll = 9;
         UIPaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
         DrawRectangle(0,0,4,4,GREEN);
         Rect(8,8,4,4,MAGENTA,BLANK);
@@ -397,6 +412,12 @@ int main(void)
         BeginTextureMode(inner);
         ui_paint_layers_composite(host_b);
         EndTextureMode();
+        host_a_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(*host_a_scroll != 17) {
+            fprintf(stderr,"restored host has wrong tab scroll: %d\n",
+                    *host_a_scroll);
+            failures++;
+        }
         BeginTextureMode(host_target);
         ui_paint_layers_composite(host_a);
         if(frame == 1) ui_paint_layers_destroy(host_b);
@@ -424,8 +445,17 @@ int main(void)
         fprintf(stderr,"UIWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
+        SetUIFocus(42001);
         for(int frame = 0; frame < 4; frame++) {
             BeginUIWindow(window);
+            if(GetUIFocus() != (frame == 0 ? 0 : 42002)) {
+                fprintf(stderr,"UIWindow restored wrong owned focus: %d\n",
+                        GetUIFocus());
+                failures++;
+            }
+            SetUIFocus(42002);
+            if(frame == 2)
+                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
             BeginTextureMode(inner);
             ClearBackground(BLUE);
             BeginTextureMode(leaf);
@@ -436,6 +466,7 @@ int main(void)
                 UIPaintLayers *window_layers = ui_window_paint_layers();
                 if(window_layers == NULL) return 1;
                 UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
+                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
                 BeginTree(Key("UIWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
@@ -449,6 +480,11 @@ int main(void)
             if(frame == 3) CloseUIWindow(window);
             else EndUIWindow();
             check_window_readback = 0;
+            if(GetUIFocus() != 42001) {
+                fprintf(stderr,"UIWindow leaked focus into caller: %d\n",
+                        GetUIFocus());
+                failures++;
+            }
             if(ui_window_paint_layers() != NULL) {
                 fprintf(stderr,"ended UIWindow retained an active layer owner\n");
                 failures++;

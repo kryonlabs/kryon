@@ -89,7 +89,7 @@ typedef struct {
     Rectangle last_bounds;
     int focused_rect_valid;
     Rectangle focused_rect;
-} UIForm;
+} Form;
 
 typedef struct {
     const char *label;
@@ -105,29 +105,16 @@ int GetUILabelTextFieldHeight(LabelTextFieldProps row);
 int GetUIButtonRowHeight(ButtonRowProps row);
 int GetUISpinboxRowHeight(SpinboxRowProps row);
 
-UIForm UIFormBegin(int x, int y, int width);
-int UIFormY(const UIForm *form);
-int UIFormAdvance(UIForm *form, int height);
-Rectangle UIFormTakeRect(UIForm *form, int height);
-void UIFormNoteFocus(UIForm *form, int focus_id, Rectangle bounds);
-int UIFormEnsureFocusedVisible(UIForm *form, UIScrollArea area, int margin);
-int UIFormSectionLabel(UIForm *form, SectionLabelProps label);
-int UIFormLabelTextField(UIForm *form, LabelTextFieldProps row);
-int UIFormCheckboxRow(UIForm *form, CheckboxRowProps row);
-int UIFormSpinboxRow(UIForm *form, SpinboxRowProps row);
-int UIFormButtonRow(UIForm *form, ButtonRowProps row);
-int UIFormSection(UIForm *form, const char *label);
-int UIFormSectionEx(UIForm *form, SectionLabelProps label);
-int UIFormTextField(UIForm *form, const char *label, char *text,
-                    size_t text_size, int *cursor_position, int *focused,
-                    int focus_id);
-int UIFormTextFieldEx(UIForm *form, LabelTextFieldProps row);
-int UIFormCheckbox(UIForm *form, const char *label, int *value);
-int UIFormCheckboxEx(UIForm *form, CheckboxRowProps row);
-int UIFormSpinbox(UIForm *form, const char *label, int id, int min, int max,
-                  int step, int *value);
-int UIFormSpinboxEx(UIForm *form, SpinboxRowProps row);
-int UIFormButtons(UIForm *form, const UIButtonRowItem *items, int count);
-int UIFormButtonsEx(UIForm *form, ButtonRowProps row);
+Form FormBegin(int x, int y, int width);
+int FormY(const Form *form);
+int FormAdvance(Form *form, int height);
+Rectangle FormTakeRect(Form *form, int height);
+void FormNoteFocus(Form *form, int focus_id, Rectangle bounds);
+int FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin);
+int FormSection(Form *form, SectionLabelProps row);
+int FormTextField(Form *form, LabelTextFieldProps row);
+int FormCheckbox(Form *form, CheckboxRowProps row);
+int FormSpinbox(Form *form, SpinboxRowProps row);
+int FormButtons(Form *form, ButtonRowProps row);
 
 #endif

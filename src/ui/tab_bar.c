@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_popup_input_internal.h"
+#include "tab_bar_store.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -13,7 +14,79 @@ typedef struct UITabBarState {
     unsigned long frame_seen;
 } UITabBarState;
 
-static UITabBarState *tab_bar_states;
+struct TabBarStore {
+    UITabBarState *states;
+    Vector2 last_drag_position;
+    int dragging_scroll;
+    int scroll_drag_bar_id;
+    Rectangle scroll_drag_bar_bounds;
+    int last_clicked_tab;
+    int last_clicked_bar_id;
+    Rectangle last_clicked_bar_bounds;
+    double last_click_time;
+    Vector2 press_position;
+    int press_index;
+    int press_bar_id;
+    Rectangle press_bar_bounds;
+    int reorder_drag_active;
+    Vector2 pane_press_position;
+    int pane_press_index;
+    int pane_drag_reported;
+};
+
+static TabBarStore fallback_store = {
+    .last_clicked_tab = -1,
+    .press_index = -1,
+    .pane_press_index = -1
+};
+static TabBarStore *tab_bar_store = &fallback_store;
+
+TabBarStore *
+tab_bar_store_new(void)
+{
+    TabBarStore *store = calloc(1, sizeof(*store));
+
+    if(store == NULL)
+        abort();
+    store->last_clicked_tab = -1;
+    store->press_index = -1;
+    store->pane_press_index = -1;
+    return store;
+}
+
+void
+tab_bar_store_free(TabBarStore *store)
+{
+    UITabBarState *state;
+
+    if(store == NULL)
+        return;
+    if(store == tab_bar_store || store == &fallback_store)
+        abort();
+    state = store->states;
+    while(state != NULL) {
+        UITabBarState *next = state->next;
+
+        free(state);
+        state = next;
+    }
+    free(store);
+}
+
+TabBarStore *
+tab_bar_store_swap(TabBarStore *store)
+{
+    TabBarStore *previous = tab_bar_store;
+
+    tab_bar_store = store != NULL ? store : &fallback_store;
+    return previous;
+}
+
+TabBarStore *
+tab_bar_store_current(void)
+{
+    return tab_bar_store;
+}
 
 static int
 ui_tab_bar_same_identity(int id, Rectangle bounds, int other_id,
@@ -33,7 +106,7 @@ ui_tab_bar_owned_scroll(int id, int *fallback)
 
     if(id <= 0)
         return fallback;
-    for(state = tab_bar_states; state != NULL; state = state->next) {
+    for(state = tab_bar_store->states; state != NULL; state = state->next) {
         if(state->id == id) {
             state->frame_seen = g_ui_frame_serial;
             return &state->scroll;
@@ -44,15 +117,15 @@ ui_tab_bar_owned_scroll(int id, int *fallback)
         abort();
     state->id = id;
     state->frame_seen = g_ui_frame_serial;
-    state->next = tab_bar_states;
-    tab_bar_states = state;
+    state->next = tab_bar_store->states;
+    tab_bar_store->states = state;
     return &state->scroll;
 }
 
 void
 ui_tab_bar_finish_frame(void)
 {
-    UITabBarState **link = &tab_bar_states;
+    UITabBarState **link = &tab_bar_store->states;
 
     ui_tab_scope_finish_frame();
     while(*link != NULL) {
@@ -282,19 +355,6 @@ DrawUITabBar(TabBarProps bar)
     int disabled = bar.disabled || UIContentDisabled();
     int focused = 0;
     int default_scroll_offset = 0;
-    static Vector2 last_drag_pos = {0};
-    static int is_dragging = 0;
-    static int scroll_drag_bar_id = 0;
-    static Rectangle scroll_drag_bar_bounds = {0};
-    static int last_clicked_tab = -1;
-    static int last_clicked_bar_id = 0;
-    static Rectangle last_clicked_bar_bounds = {0};
-    static double last_click_time = 0.0;
-    static Vector2 press_pos = {0};
-    static int press_index = -1;
-    static int press_bar_id = 0;
-    static Rectangle press_bar_bounds = {0};
-    static int drag_active = 0;
     int *scroll_offset = bar.scroll_offset != NULL
                              ? bar.scroll_offset
                              : ui_tab_bar_owned_scroll(bar.id,
@@ -381,24 +441,28 @@ DrawUITabBar(TabBarProps bar)
     int drag_target = -1;
 
     int owns_press = ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                               press_bar_id,press_bar_bounds);
-    int owns_drag = drag_active && owns_press;
+                                               tab_bar_store->press_bar_id,
+                                               tab_bar_store->press_bar_bounds);
+    int owns_drag = tab_bar_store->reorder_drag_active && owns_press;
     if(!disabled && reorder_enabled && owns_press &&
-       press_index >= 0 && press_index < bar.count &&
+       tab_bar_store->press_index >= 0 &&
+       tab_bar_store->press_index < bar.count &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        int dx = (int)(mouse_world.x - press_pos.x);
-        int dy = (int)(mouse_world.y - press_pos.y);
+        int dx = (int)(mouse_world.x - tab_bar_store->press_position.x);
+        int dy = (int)(mouse_world.y - tab_bar_store->press_position.y);
         int abs_dx = dx < 0 ? -dx : dx;
         int abs_dy = dy < 0 ? -dy : dy;
         int threshold = Scale(6);
 
-        if(!drag_active && abs_dx >= threshold && abs_dx >= abs_dy) {
-            drag_active = 1;
+        if(!tab_bar_store->reorder_drag_active &&
+           abs_dx >= threshold && abs_dx >= abs_dy) {
+            tab_bar_store->reorder_drag_active = 1;
             g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
         }
-        if(drag_active) {
+        if(tab_bar_store->reorder_drag_active) {
             drag_target = ui_tab_bar_reorder_target(
-                bar, press_index, min_tab_w, max_tab_w, icon_tab_w, tab_gap,
+                bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
+                icon_tab_w, tab_gap,
                 *scroll_offset, equal_tabs, (int)mouse_world.x);
             PushUIInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
@@ -482,7 +546,7 @@ DrawUITabBar(TabBarProps bar)
         if(!ui_default_style() && owns_drag && drag_target == i) {
             int marker_x = tab_x;
 
-            if(drag_target > press_index)
+            if(drag_target > tab_bar_store->press_index)
                 marker_x = tab_x + tab_w;
             DrawRectangle(marker_x - Scale(1), bar_y + Scale(4),
                           Scale(2), bar_h - Scale(8), c_link);
@@ -608,42 +672,42 @@ DrawUITabBar(TabBarProps bar)
 
             if(!is_disabled && !close_active &&
                IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                press_index = i;
-                press_bar_id = bar.id;
-                press_bar_bounds = bar.bounds;
-                press_pos = mouse_world;
-                drag_active = 0;
+                tab_bar_store->press_index = i;
+                tab_bar_store->press_bar_id = bar.id;
+                tab_bar_store->press_bar_bounds = bar.bounds;
+                tab_bar_store->press_position = mouse_world;
+                tab_bar_store->reorder_drag_active = 0;
             }
 
             if(close_active && released && !owns_drag) {
                 clicked_tab = -1;
                 if(bar.closed_index != NULL)
                     *bar.closed_index = i;
-                last_clicked_tab = -1;
-                last_clicked_bar_id = 0;
-                last_clicked_bar_bounds =
+                tab_bar_store->last_clicked_tab = -1;
+                tab_bar_store->last_clicked_bar_id = 0;
+                tab_bar_store->last_clicked_bar_bounds =
                     (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
-                last_click_time = 0.0;
+                tab_bar_store->last_click_time = 0.0;
                 UIConsumeRelease();
             } else if(!close_active && released && !owns_drag &&
-                      (press_index < 0 ||
+                      (tab_bar_store->press_index < 0 ||
                        (ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                                 press_bar_id,
-                                                 press_bar_bounds) &&
-                        press_index == i))) {
+                                                 tab_bar_store->press_bar_id,
+                                                 tab_bar_store->press_bar_bounds) &&
+                        tab_bar_store->press_index == i))) {
                 double now = GetTime();
 
                 if(bar.double_clicked_index != NULL &&
                    ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                            last_clicked_bar_id,
-                                            last_clicked_bar_bounds) &&
-                   last_clicked_tab == i &&
-                   now - last_click_time <= 0.45)
+                                            tab_bar_store->last_clicked_bar_id,
+                                            tab_bar_store->last_clicked_bar_bounds) &&
+                   tab_bar_store->last_clicked_tab == i &&
+                   now - tab_bar_store->last_click_time <= 0.45)
                     *bar.double_clicked_index = i;
-                last_clicked_tab = i;
-                last_clicked_bar_id = bar.id;
-                last_clicked_bar_bounds = bar.bounds;
-                last_click_time = now;
+                tab_bar_store->last_clicked_tab = i;
+                tab_bar_store->last_clicked_bar_id = bar.id;
+                tab_bar_store->last_clicked_bar_bounds = bar.bounds;
+                tab_bar_store->last_click_time = now;
                 clicked_tab = i;
                 if(bar.id > 0) {
                     SetUIFocus(bar.id);
@@ -662,28 +726,33 @@ DrawUITabBar(TabBarProps bar)
     EndUIClip();
 
     owns_press = ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                           press_bar_id,press_bar_bounds);
-    owns_drag = drag_active && owns_press;
+                                           tab_bar_store->press_bar_id,
+                                           tab_bar_store->press_bar_bounds);
+    owns_drag = tab_bar_store->reorder_drag_active && owns_press;
     if(!disabled && reorder_enabled && owns_drag && released &&
-       press_index >= 0 && press_index < bar.count) {
+       tab_bar_store->press_index >= 0 &&
+       tab_bar_store->press_index < bar.count) {
         int target = drag_target;
 
         if(target < 0)
             target = ui_tab_bar_reorder_target(
-                bar, press_index, min_tab_w, max_tab_w, icon_tab_w, tab_gap,
+                bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
+                icon_tab_w, tab_gap,
                 *scroll_offset, equal_tabs, (int)mouse_world.x);
-        if(target >= 0 && target < bar.count && target != press_index) {
-            *bar.reordered_from_index = press_index;
+        if(target >= 0 && target < bar.count &&
+           target != tab_bar_store->press_index) {
+            *bar.reordered_from_index = tab_bar_store->press_index;
             *bar.reordered_to_index = target;
         }
         clicked_tab = -1;
         UIConsumeRelease();
     }
     if((released || !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) && owns_press) {
-        press_index = -1;
-        press_bar_id = 0;
-        press_bar_bounds = (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
-        drag_active = 0;
+        tab_bar_store->press_index = -1;
+        tab_bar_store->press_bar_id = 0;
+        tab_bar_store->press_bar_bounds =
+            (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
+        tab_bar_store->reorder_drag_active = 0;
         if(g_ui_pointer_owner == UI_POINTER_OWNER_REORDER)
             g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
     }
@@ -698,19 +767,21 @@ DrawUITabBar(TabBarProps bar)
         int is_over_bar = CheckCollisionPointRec(current_pos, scroll_area);
 
         int owns_scroll_drag = ui_tab_bar_same_identity(
-            bar.id,bar.bounds,scroll_drag_bar_id,scroll_drag_bar_bounds);
+            bar.id,bar.bounds,tab_bar_store->scroll_drag_bar_id,
+            tab_bar_store->scroll_drag_bar_bounds);
 
-        if(is_mouse_down && is_over_bar && !is_dragging) {
-            is_dragging = 1;
-            scroll_drag_bar_id = bar.id;
-            scroll_drag_bar_bounds = bar.bounds;
-            last_drag_pos = current_pos;
+        if(is_mouse_down && is_over_bar && !tab_bar_store->dragging_scroll) {
+            tab_bar_store->dragging_scroll = 1;
+            tab_bar_store->scroll_drag_bar_id = bar.id;
+            tab_bar_store->scroll_drag_bar_bounds = bar.bounds;
+            tab_bar_store->last_drag_position = current_pos;
             owns_scroll_drag = 1;
         }
 
-        if(is_dragging && owns_scroll_drag) {
+        if(tab_bar_store->dragging_scroll && owns_scroll_drag) {
             if(is_mouse_down) {
-                float dx = current_pos.x - last_drag_pos.x;
+                float dx = current_pos.x -
+                           tab_bar_store->last_drag_position.x;
                 *scroll_offset -= (int)dx;
 
                 // Clamp scroll offset
@@ -719,11 +790,11 @@ DrawUITabBar(TabBarProps bar)
                 if(*scroll_offset > max_scroll)
                     *scroll_offset = max_scroll;
 
-                last_drag_pos = current_pos;
+                tab_bar_store->last_drag_position = current_pos;
             } else {
-                is_dragging = 0;
-                scroll_drag_bar_id = 0;
-                scroll_drag_bar_bounds =
+                tab_bar_store->dragging_scroll = 0;
+                tab_bar_store->scroll_drag_bar_id = 0;
+                tab_bar_store->scroll_drag_bar_bounds =
                     (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
             }
         }
@@ -755,9 +826,6 @@ DrawUIPaneTabBar(PaneTabBar bar)
     int equal_tabs;
     int tab_x;
     int drag_threshold = Scale(6);
-    static Vector2 press_pos = {0};
-    static int press_index = -1;
-    static int drag_reported = 0;
 
     if(bar.dragged_index != NULL)
         *bar.dragged_index = -1;
@@ -807,14 +875,16 @@ DrawUIPaneTabBar(PaneTabBar bar)
         if(CheckCollisionPointRec(mouse, tab_rect) &&
            !UIInputCapturesClick(mouse)) {
             if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                press_index = i;
-                press_pos = mouse;
-                drag_reported = 0;
+                tab_bar_store->pane_press_index = i;
+                tab_bar_store->pane_press_position = mouse;
+                tab_bar_store->pane_drag_reported = 0;
             } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-                      press_index == i &&
-                      !drag_reported) {
-                int dx = (int)(mouse.x - press_pos.x);
-                int dy = (int)(mouse.y - press_pos.y);
+                      tab_bar_store->pane_press_index == i &&
+                      !tab_bar_store->pane_drag_reported) {
+                int dx = (int)(mouse.x -
+                               tab_bar_store->pane_press_position.x);
+                int dy = (int)(mouse.y -
+                               tab_bar_store->pane_press_position.y);
                 if(dx < 0)
                     dx = -dx;
                 if(dy < 0)
@@ -823,7 +893,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
                     result.dragged_index = i;
                     if(bar.dragged_index != NULL)
                         *bar.dragged_index = i;
-                    drag_reported = 1;
+                    tab_bar_store->pane_drag_reported = 1;
                 }
             }
             MarkUIClickable();
@@ -831,8 +901,8 @@ DrawUIPaneTabBar(PaneTabBar bar)
         tab_x += tab_w + tab_gap;
     }
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        press_index = -1;
-        drag_reported = 0;
+        tab_bar_store->pane_press_index = -1;
+        tab_bar_store->pane_drag_reported = 0;
     }
 
     return result;
