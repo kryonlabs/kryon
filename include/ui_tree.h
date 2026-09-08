@@ -269,8 +269,10 @@ typedef struct ButtonProps {
     int icon_only;
     int square;
     ButtonState state;
-    const ButtonPaint *paint;
+    ControlStyle style;
 } ButtonProps;
+
+Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 
 typedef struct MenuButtonProps {
     ButtonProps button;
@@ -347,7 +349,7 @@ typedef struct {
 } ClosableTabBarProps;
 
 void Background(Color color);
-void Text(TextProps text);
+void Text(TextProps props);
 void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);
 void BulletText(const char *text, Rectangle bounds, int font_size,

@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "runtime/menu_button.h"
 #include "runtime/split_button.h"
+#include "runtime/button.h"
 #include "ui_picture_internal.h"
 #include "ui_clip_internal.h"
 #include "ui_blend_internal.h"
@@ -2295,12 +2296,12 @@ Background(Color color)
 }
 
 void
-Text(TextProps text)
+Text(TextProps props)
 {
-    const char *value = text.text != NULL ? text.text : "";
-    int font = text.font > 0 ? text.font : GetFontSize();
-    int bounded = text.bounds.width > 0;
-    Rectangle bounds = text.bounds;
+    const char *value = props.text != NULL ? props.text : "";
+    int font = props.font > 0 ? props.font : GetFontSize();
+    int bounded = props.bounds.width > 0;
+    Rectangle bounds = props.bounds;
     NodeId node;
 
     if(ui_tree_building && ui_tree_stack_depth > 0) {
@@ -2310,25 +2311,25 @@ Text(TextProps text)
         if(parent != NULL && parent->kind == UI_WIDGET_BUTTON_NODE) {
             ButtonSpec *button = &parent->data.button.spec;
 
-            if(text.font <= 0)
-                text.font = button->font;
-            if(text.color.a == 0)
-                text.color = button->text;
+            if(props.font <= 0)
+                props.font = button->font;
+            if(props.color.a == 0)
+                props.color = button->text;
         }
     }
-    if(text.color.a == 0)
-        text.color = GetThemeText();
-    if(text.disabled)
-        text.color = Fade(text.color, 0.45f);
+    if(props.color.a == 0)
+        props.color = GetThemeText();
+    if(props.disabled)
+        props.color = Fade(props.color, 0.45f);
     if(bounds.width <= 0) {
         bounds.width = (float)TextWidth(value, font);
-        text.wrap = TextWrapNone;
+        props.wrap = TextWrapNone;
     }
     if(bounds.height <= 0) {
-        if(bounded && text.wrap == TextWrapAuto) {
+        if(bounded && props.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
-                .line_gap = Scale(2), .color = text.color
+                .line_gap = Scale(2), .color = props.color
             };
             bounds.height = (float)ui_paragraph_height(paragraph);
         } else {
@@ -2340,21 +2341,21 @@ Text(TextProps text)
         ui_tree_nodes[node].owned_text = ui_tree_strdup(value);
         ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
-        ui_tree_nodes[node].data.primitive.color = text.color;
-        ui_tree_nodes[node].data.primitive.wrap = text.wrap;
-        ui_tree_nodes[node].data.primitive.align = text.align;
-        ui_tree_nodes[node].data.primitive.vertical_align = text.vertical_align;
+        ui_tree_nodes[node].data.primitive.color = props.color;
+        ui_tree_nodes[node].data.primitive.wrap = props.wrap;
+        ui_tree_nodes[node].data.primitive.align = props.align;
+        ui_tree_nodes[node].data.primitive.vertical_align = props.vertical_align;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
     if(ui_tree_building && IsWindowReady() &&
        !ui_tree_node_uses_retained_layout(node)) {
-        ui_paint_text_box(value, bounds, font, text.color, text.wrap,
-                          text.align, text.vertical_align,
+        ui_paint_text_box(value, bounds, font, props.color, props.wrap,
+                          props.align, props.vertical_align,
                           ui_active_font_token());
         ui_tree_mark_painted_immediate(node);
     } else if(!ui_tree_building) {
-        ui_paint_text_box(value, bounds, font, text.color, text.wrap,
-                          text.align, text.vertical_align,
+        ui_paint_text_box(value, bounds, font, props.color, props.wrap,
+                          props.align, props.vertical_align,
                           ui_active_font_token());
     }
 }
@@ -3626,19 +3627,29 @@ resolve_button_bounds(ButtonProps button)
 {
     Rectangle bounds = button.bounds;
     ThemeMetrics metrics = GetThemeMetrics();
+    Style style = ResolveButtonStyle(button, ButtonStateNormal);
     int height = button.size == ControlSizeSmall
         ? Scale(metrics.control_height_small)
         : button.size == ControlSizeLarge
             ? Scale(metrics.control_height_large)
             : Scale(metrics.control_height_medium);
     int font = button.font > 0 ? button.font : GetFontSize();
-    int icon_size = font > Scale(14) ? font : Scale(14);
+    int icon_size = style.icon_size > 0.0f ? Scale(style.icon_size)
+                                           : (font > Scale(14) ? font : Scale(14));
     int padding = button.size == ControlSizeSmall
         ? Scale(metrics.control_padding_small)
         : button.size == ControlSizeLarge
             ? Scale(metrics.control_padding_large)
             : Scale(metrics.control_padding_medium);
+    int gap = style.gap > 0.0f ? Scale(style.gap) : Scale(8);
     int has_icon = button.icon.id != 0 || button.icon_type != UI_ICON_TYPE_NONE;
+    float available_width = 0.0f;
+    float measured_width;
+
+    if(button.style.normal.fields & StyleFontSize)
+        font = Scale(style.font_size);
+    if(button.style.normal.fields & StylePaddingX)
+        padding = Scale(style.padding_x);
 
     if(bounds.height <= 0)
         bounds.height = (float)height;
@@ -3651,28 +3662,22 @@ resolve_button_bounds(ButtonProps button)
             if(parent.width > 0)
                 right = parent.x + parent.width;
         }
-        bounds.width = right - bounds.x;
-        if(bounds.width < bounds.height)
-            bounds.width = bounds.height;
+        available_width = right - bounds.x;
     }
-    if(bounds.width <= 0) {
-        if(button.icon_only || button.square || button.circle)
-            bounds.width = bounds.height;
-        else {
-            bounds.width = (float)(TextWidth(button.label != NULL
-                                                  ? button.label : "", font)
-                                   + padding * 2 + (has_icon ? icon_size + Scale(8) : 0));
-        }
-    }
-    if(button.square || button.circle)
-        bounds.width = bounds.height;
+    measured_width = (float)(TextWidth(button.label != NULL
+                                           ? button.label : "", font)
+                             + padding * 2 +
+                             (has_icon ? icon_size + gap : 0));
+    bounds.width = ShapeWidth(
+        bounds.width, bounds.height, measured_width, available_width,
+        button.full_width, button.square || button.icon_only, button.circle);
     return bounds;
 }
 
 int
 Button(ButtonProps button)
 {
-    ButtonPaint paint;
+    Style paint;
     button.bounds = resolve_button_bounds(button);
     button.id = ResolveUIFocusID(button.id);
     ButtonSpec spec = {
@@ -3686,9 +3691,10 @@ Button(ButtonProps button)
         .state = button.state,
         .loading = button.loading,
         .selected = button.selected,
-        .paint_resolved = 1,
+        .style_resolved = 1,
         .tone = button.tone,
         .emphasis = button.emphasis,
+        .style = button.style,
         .icon = button.icon,
         .icon_type = button.icon_type,
         .icon_placement = button.icon_placement,
@@ -3698,14 +3704,21 @@ Button(ButtonProps button)
                                 button.bounds, NULL);
     int clicked;
 
-    paint = ResolveButtonPaint(button, button.state);
+    paint = ResolveButtonStyle(button, button.state);
     spec.background = paint.background;
     spec.hover_background = paint.background;
     spec.text = paint.foreground;
     spec.border = paint.border;
+    spec.focus = paint.focus;
     spec.radius = paint.radius;
+    spec.border_width = paint.border_width;
+    spec.opacity = paint.opacity;
+    spec.gap = paint.gap;
+    spec.icon_size = paint.icon_size;
+    spec.content_offset = paint.content_offset;
     if(spec.font <= 0)
-        spec.font = GetFontSize();
+        spec.font = button.style.normal.fields & StyleFontSize
+            ? Scale(paint.font_size) : GetFontSize();
     if(node >= 0) {
         spec.bounds = ui_tree_nodes[node].bounds;
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
@@ -3722,17 +3735,19 @@ Button(ButtonProps button)
 NodeId
 BeginButton(ButtonProps button)
 {
-    ButtonPaint paint;
+    Style paint;
     ButtonSpec spec;
     NodeId node;
 
     memset(&spec, 0, sizeof(spec));
     button.bounds = resolve_button_bounds(button);
     button.id = ResolveUIFocusID(button.id);
-    paint = ResolveButtonPaint(button, button.state);
+    paint = ResolveButtonStyle(button, button.state);
     spec.bounds = button.bounds;
     spec.label = "";
-    spec.font = button.font > 0 ? button.font : GetFontSize();
+    spec.font = button.font > 0 ? button.font
+        : button.style.normal.fields & StyleFontSize
+            ? Scale(paint.font_size) : GetFontSize();
     spec.focus_id = button.id;
     spec.disabled = button.disabled || button.loading ||
                     button.state == ButtonStateDisabled ||
@@ -3741,13 +3756,20 @@ BeginButton(ButtonProps button)
     spec.hover_background = paint.background;
     spec.text = paint.foreground;
     spec.border = paint.border;
+    spec.focus = paint.focus;
     spec.radius = paint.radius;
+    spec.border_width = paint.border_width;
+    spec.opacity = paint.opacity;
+    spec.gap = paint.gap;
+    spec.icon_size = paint.icon_size;
+    spec.content_offset = paint.content_offset;
     spec.state = button.state;
     spec.loading = button.loading;
     spec.selected = button.selected;
-    spec.paint_resolved = 1;
+    spec.style_resolved = 1;
     spec.tone = button.tone;
     spec.emphasis = button.emphasis;
+    spec.style = button.style;
     spec.icon = button.icon;
     spec.icon_type = button.icon_type;
     spec.icon_placement = button.icon_placement;
@@ -3819,6 +3841,15 @@ SplitButton(SplitButtonProps split)
     menu.square = 1;
     result.clicked = Button(action);
     *split.open = ToggleOpen(*split.open, Button(menu));
+    {
+        Color divider = GetThemeBorder();
+        int inset = Scale(8);
+        divider.a = GetThemeMetrics().border_alpha;
+        Line((int)menu.bounds.x, (int)menu.bounds.y + inset,
+             (int)menu.bounds.x,
+             (int)(menu.bounds.y + menu.bounds.height) - inset,
+             divider);
+    }
     if(*split.open) {
         result.activated_id = PopupMenu(
             split.menu_id, (int)action.bounds.x,

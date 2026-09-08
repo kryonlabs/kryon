@@ -168,7 +168,7 @@ ButtonsExample :: (viewport: Rectangle) #ui {
             .emphasis = ButtonEmphasisSoft,
             .icon_type = 32,
             .icon_only = true,
-            .square = true,
+            .circle = true,
         })
         MenuButton((MenuButtonProps){
             .button = {

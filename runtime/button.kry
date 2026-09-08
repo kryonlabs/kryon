@@ -26,6 +26,61 @@ State :: enum {
     PolicyStateSelected = 7
 }
 
+ResolveState :: (
+    explicit_state: i32,
+    disabled: bool,
+    loading: bool,
+    pressed: bool,
+    hovered: bool,
+    focused: bool,
+    selected: bool
+) -> i32 #export {
+    if disabled { return PolicyStateDisabled }
+    if loading { return PolicyStateLoading }
+    if explicit_state != (i32)0 { return explicit_state }
+    if pressed { return PolicyStatePressed }
+    if hovered { return PolicyStateHover }
+    if focused { return PolicyStateFocus }
+    if selected { return PolicyStateSelected }
+    return PolicyStateNormal
+}
+
+ShapeWidth :: (
+    width: float,
+    height: float,
+    measured_width: float,
+    available_width: float,
+    full_width: bool,
+    square: bool,
+    circle: bool
+) -> float #export {
+    if square || circle { return height }
+    if full_width && width <= 0.0 {
+        if available_width < height { return height }
+        return available_width
+    }
+    if width <= 0.0 { return measured_width }
+    return width
+}
+
+ShapeRadius :: (
+    normal_radius: float,
+    pill_radius: float,
+    pill: bool,
+    circle: bool
+) -> float #export {
+    if pill || circle { return pill_radius }
+    return normal_radius
+}
+
+TransitionStep :: (elapsed_ms: float, duration_ms: float) -> float #export {
+    if duration_ms <= 0.0 { return 1.0 }
+    step: float = elapsed_ms / duration_ms
+    if step < 0.0 { return 0.0 }
+    if step > 1.0 { return 1.0 }
+    return step
+}
+
 MixByte :: (from: u32, to: u32, amount: u32) -> u32 #export {
     return (from * ((u32)100 - amount) + to * amount + (u32)50) / (u32)100
 }

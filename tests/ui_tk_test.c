@@ -3482,9 +3482,39 @@ test_drag_drop_accepts_dragged_release(void)
     RestoreUIFrameState(saved);
 }
 
+static void
+test_control_style_resolution(void)
+{
+    Style base;
+    ControlStyle control;
+    Style got;
+
+    memset(&base, 0, sizeof(base));
+    memset(&control, 0, sizeof(control));
+    base.fields = StyleBackground | StyleForeground | StyleRadius;
+    base.background = (Color){10, 20, 30, 255};
+    base.foreground = (Color){240, 240, 240, 255};
+    base.radius = 8.0f;
+    control.normal.fields = StyleBackground | StyleRadius;
+    control.normal.background = BLANK;
+    control.normal.radius = 0.0f;
+    control.hover.fields = StyleForeground | StyleContentOffset;
+    control.hover.foreground = (Color){1, 2, 3, 4};
+    control.hover.content_offset = (Vector2){2, 3};
+
+    got = ResolveControlStyle(base, control, ButtonStateHover);
+    check_color("style transparent background", got.background, BLANK);
+    check_color("style state foreground", got.foreground,
+                (Color){1, 2, 3, 4});
+    check_int("style zero radius", (int)got.radius, 0);
+    check_int("style content offset x", (int)got.content_offset.x, 2);
+    check_int("style content offset y", (int)got.content_offset.y, 3);
+}
+
 int
 main(void)
 {
+    test_control_style_resolution();
     {
         int value = 10;
         BeginUIFrame(220,120,1);

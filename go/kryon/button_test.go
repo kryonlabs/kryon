@@ -28,6 +28,49 @@ func TestButtonLabelAndTextChildUseSameTextPath(t *testing.T) {
 	}
 }
 
+func TestGeneratedButtonGeometryAndStatePolicy(t *testing.T) {
+	if got := Button_ShapeWidth(120, 48, 96, 300, false, false, true); got != 48 {
+		t.Fatalf("circle width = %v, want 48", got)
+	}
+	if got := Button_ShapeRadius(0.16, 0.5, false, true); got != 0.5 {
+		t.Fatalf("circle radius = %v, want 0.5", got)
+	}
+	if got := Button_ResolveState(int32(ButtonStateAuto), false, true,
+		true, true, true, true); got != int32(ButtonStateLoading) {
+		t.Fatalf("loading precedence = %v, want %v", got, ButtonStateLoading)
+	}
+	if got := Button_ResolveState(int32(ButtonStateAuto), true, false,
+		true, true, true, true); got != int32(ButtonStateDisabled) {
+		t.Fatalf("disabled precedence = %v, want %v", got, ButtonStateDisabled)
+	}
+	if got := Button_TransitionStep(40, 80); got != 0.5 {
+		t.Fatalf("transition step = %v, want 0.5", got)
+	}
+}
+
+func TestButtonControlStyleLayersTransparentAndStateValues(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	transparent := Color{}
+	hoverText := Color{R: 103, G: 232, B: 249, A: 255}
+	r.Button(ButtonProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 140, Height: 40},
+		Label:  "Custom", State: ButtonStateHover,
+		Style: ControlStyle{
+			Normal: Style{Fields: StyleBackground | StyleRadius,
+				Background: transparent, Radius: 0},
+			Hover: Style{Fields: StyleForeground | StyleContentOffset,
+				Foreground: hoverText, ContentOffset: Vector2{X: 2, Y: 1}},
+		},
+	})
+	op := r.ops[len(r.ops)-1]
+	if op.Color != transparent || op.TextColor != hoverText {
+		t.Fatalf("custom colors = %#v/%#v", op.Color, op.TextColor)
+	}
+	if op.Radius != 0 || op.ContentOffset != (Vector2{X: 2, Y: 1}) {
+		t.Fatalf("custom geometry = radius %v offset %#v", op.Radius, op.ContentOffset)
+	}
+}
+
 func TestGeneratedButtonThemePolicy(t *testing.T) {
 	if ButtonStateHover != 2 || StatePolicyStateHover != 2 ||
 		ButtonToneAccent != 1 || TonePolicyToneAccent != 1 ||

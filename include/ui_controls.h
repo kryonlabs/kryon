@@ -51,14 +51,52 @@ typedef enum ButtonState {
     ButtonStateSelected
 } ButtonState;
 
-typedef struct ButtonPaint {
+typedef enum StyleField {
+    StyleBackground    = 1u << 0,
+    StyleForeground    = 1u << 1,
+    StyleBorder        = 1u << 2,
+    StyleFocus         = 1u << 3,
+    StyleRadius        = 1u << 4,
+    StyleBorderWidth   = 1u << 5,
+    StyleOpacity       = 1u << 6,
+    StylePaddingX      = 1u << 7,
+    StylePaddingY      = 1u << 8,
+    StyleGap           = 1u << 9,
+    StyleFontSize      = 1u << 10,
+    StyleIconSize      = 1u << 11,
+    StyleContentOffset = 1u << 12
+} StyleField;
+
+/* A typed, renderer-independent set of visual properties. `fields` says
+ * which values are present, so zero and transparent remain valid overrides. */
+typedef struct Style {
+    unsigned int fields;
     Color background;
     Color foreground;
     Color border;
     Color focus;
     float radius;
     float border_width;
-} ButtonPaint;
+    float opacity;
+    float padding_x;
+    float padding_y;
+    float gap;
+    float font_size;
+    float icon_size;
+    Vector2 content_offset;
+} Style;
+
+/* State entries are partial Style values layered over `normal`. This type is
+ * shared by buttons and future interactive nodes. */
+typedef struct ControlStyle {
+    Style normal;
+    Style hover;
+    Style pressed;
+    Style focused;
+    Style disabled;
+    Style loading;
+    Style selected;
+} ControlStyle;
 
 typedef enum {
     SyntaxNone,
@@ -88,18 +126,29 @@ typedef struct {
     Color hover_background;
     Color text;
     Color border;
+    Color focus;
     float radius;
+    float border_width;
+    float opacity;
+    float gap;
+    float icon_size;
+    Vector2 content_offset;
     ButtonState state;
     int loading;
     int selected;
-    int paint_resolved;
+    int style_resolved;
     ButtonTone tone;
     ButtonEmphasis emphasis;
+    ControlStyle style;
     Texture2D icon;
     UIIconType icon_type;
     IconPlacement icon_placement;
     int icon_only;
 } ButtonSpec;
+
+Style MergeStyle(Style base, Style overrides);
+Style ResolveControlStyle(Style base, ControlStyle control,
+                          ButtonState state);
 
 typedef struct {
     Rectangle bounds;

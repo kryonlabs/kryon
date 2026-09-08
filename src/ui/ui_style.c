@@ -121,6 +121,44 @@ ui_modern_style(void)
     return !ui_classic_style();
 }
 
+Style
+MergeStyle(Style base, Style overrides)
+{
+#define APPLY_STYLE(field, bit) \
+    do { if(overrides.fields & (bit)) base.field = overrides.field; } while(0)
+    APPLY_STYLE(background, StyleBackground);
+    APPLY_STYLE(foreground, StyleForeground);
+    APPLY_STYLE(border, StyleBorder);
+    APPLY_STYLE(focus, StyleFocus);
+    APPLY_STYLE(radius, StyleRadius);
+    APPLY_STYLE(border_width, StyleBorderWidth);
+    APPLY_STYLE(opacity, StyleOpacity);
+    APPLY_STYLE(padding_x, StylePaddingX);
+    APPLY_STYLE(padding_y, StylePaddingY);
+    APPLY_STYLE(gap, StyleGap);
+    APPLY_STYLE(font_size, StyleFontSize);
+    APPLY_STYLE(icon_size, StyleIconSize);
+    APPLY_STYLE(content_offset, StyleContentOffset);
+#undef APPLY_STYLE
+    base.fields |= overrides.fields;
+    return base;
+}
+
+Style
+ResolveControlStyle(Style base, ControlStyle control, ButtonState state)
+{
+    base = MergeStyle(base, control.normal);
+    switch(state) {
+    case ButtonStateHover: return MergeStyle(base, control.hover);
+    case ButtonStatePressed: return MergeStyle(base, control.pressed);
+    case ButtonStateFocus: return MergeStyle(base, control.focused);
+    case ButtonStateDisabled: return MergeStyle(base, control.disabled);
+    case ButtonStateLoading: return MergeStyle(base, control.loading);
+    case ButtonStateSelected: return MergeStyle(base, control.selected);
+    default: return base;
+    }
+}
+
 float
 ui_radius_px(Rectangle bounds, float radius_px)
 {

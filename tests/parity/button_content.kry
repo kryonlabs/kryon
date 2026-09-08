@@ -6,6 +6,18 @@ app "Button Content Parity" {
 }
 
 button_content_frame :: () #ui {
+    custom_normal: Style = (Style){
+        .fields = StyleBackground | StyleForeground | StyleRadius,
+        .background = (Color){18, 24, 38, 255},
+        .foreground = (Color){103, 232, 249, 255},
+        .radius = 3,
+    }
+    custom_hover: Style = (Style){
+        .fields = StyleBackground | StyleContentOffset,
+        .background = (Color){22, 78, 99, 255},
+        .content_offset = (Vector2){0, 1},
+    }
+    custom_style: ControlStyle = (ControlStyle){custom_normal, custom_hover}
     Screen root: {
         bounds = {0, 0, 420, 180}
         padding = 16
@@ -28,6 +40,20 @@ button_content_frame :: () #ui {
                     wrap = TextWrapNone
                 }
             }
+
+            Button circle: {
+                bounds = {0, 0, 0, 48}
+                label = "Create"
+                icon_type = 32
+                icon_only = true
+                circle = true
+            }
+
+            Button((ButtonProps){
+                .bounds = {0, 0, 180, 44},
+                .label = "Custom style",
+                .style = custom_style,
+            })
         }
     }
 }

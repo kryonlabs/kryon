@@ -1399,10 +1399,12 @@ include/ui_controls.h function GetThemeMetricsForThemeStyle
 include/ui_controls.h function GetThemeScheme
 include/ui_controls.h function GetUIIconButtonPadding
 include/ui_controls.h function GetUIIconButtonSize
+include/ui_controls.h function MergeStyle
 include/ui_controls.h function QueueTextInputBackspace
 include/ui_controls.h function QueueTextInputCodepoint
 include/ui_controls.h function QueueTextInputEnter
 include/ui_controls.h function RenderButton
+include/ui_controls.h function ResolveControlStyle
 include/ui_controls.h function ScoreControl
 include/ui_controls.h function SegmentedControl
 include/ui_controls.h function SetTextAreaSelection
@@ -2073,6 +2075,7 @@ include/ui_tree.h function ReconcileTree
 include/ui_tree.h function Rect
 include/ui_tree.h function ReorderHandle
 include/ui_tree.h function ReorderPlaceholder
+include/ui_tree.h function ResolveButtonStyle
 include/ui_tree.h function ReturnDropdownTitleBar
 include/ui_tree.h function ReturnTitleBar
 include/ui_tree.h function RichTextEditor

@@ -1196,8 +1196,9 @@ typedef struct {
     int selected;
     int full_width;
     int pill;
+    int circle;
     ButtonState state;
-    const ButtonPaint *paint;
+    ControlStyle style;
 } ButtonProps;
 ```
 

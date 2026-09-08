@@ -81,7 +81,7 @@ All new public names use direct domain names:
 | `ButtonTone` | `UIButtonStyle` |
 | `SetTheme` | `SetUITheme` |
 | `GetTheme` | `GetUITheme` |
-| `ResolveButtonPaint` | `UIResolveButtonStyle` |
+| `ResolveButtonStyle` | `UIResolveButtonStyle` |
 
 Existing `UI*` names are migration inputs, not names to preserve or expand.
 
@@ -357,14 +357,32 @@ typedef enum IconPlacement {
     IconPlacementTrailing
 } IconPlacement;
 
-typedef struct ButtonPaint {
+typedef struct Style {
+    unsigned int fields;
     Color background;
     Color foreground;
     Color border;
     Color focus;
     float radius;
     float border_width;
-} ButtonPaint;
+    float opacity;
+    float padding_x;
+    float padding_y;
+    float gap;
+    float font_size;
+    float icon_size;
+    Vector2 content_offset;
+} Style;
+
+typedef struct ControlStyle {
+    Style normal;
+    Style hover;
+    Style pressed;
+    Style focused;
+    Style disabled;
+    Style loading;
+    Style selected;
+} ControlStyle;
 
 typedef struct ButtonProps {
     Rectangle bounds;
@@ -380,12 +398,13 @@ typedef struct ButtonProps {
     int icon_only;
     int full_width;
     int pill;
+    int circle;
 
     int disabled;
     int loading;
     int selected;
 
-    const ButtonPaint *paint;
+    ControlStyle style;
 } ButtonProps;
 
 int Button(ButtonProps props);
@@ -397,18 +416,19 @@ Zero-value behavior is deliberately useful:
 - `emphasis = ButtonEmphasisFilled`
 - `size = ControlSizeMedium`
 - leading icon placement
-- not disabled, loading, selected, pill, icon-only, or full-width
-- `paint = NULL`, therefore inherit the theme completely
+- not disabled, loading, selected, pill, circle, icon-only, or full-width
+- an empty `style`, therefore inherit the theme completely
 
 `tone` is semantic color intent. `emphasis` is visual hierarchy. Their product
 replaces a growing list of named button styles. For example, a destructive
 secondary action is `.tone = ButtonToneDanger` plus
 `.emphasis = ButtonEmphasisOutline`; it does not require another enum member.
 
-`paint` is an escape hatch for genuinely local rendering. A non-null field
-overrides only the supplied resolved paint. It shall not affect metrics,
-interaction, accessibility, or other widgets. Product themes should use
-`SetTheme()` instead.
+`style` is the typed local customization surface shared by interactive nodes.
+Its explicit field mask makes transparent colors and numeric zero valid
+overrides. `normal` layers over the semantic theme recipe, then the active
+state layers over `normal`. Styling never changes interaction or accessibility.
+Product-wide styling should still use `SetTheme()`.
 
 Tabs, segmented items, menu entries, and toolbar actions may reuse the internal
 button interaction primitive, but their public APIs remain their real domain
@@ -447,9 +467,9 @@ Pointer contract:
 - release activates only according to the shared Kryon activation policy;
 - disabled and loading buttons do not capture activation.
 
-## 10. Button paint resolution
+## 10. Button style resolution
 
-`ResolveButtonPaint(theme, props, state)` is the only resolver used by C, Go,
+`ResolveButtonStyle(theme, props, state)` is the only resolver used by C, Go,
 web, software, and composed widgets.
 
 | Emphasis | Background | Foreground | Border |
@@ -493,7 +513,8 @@ the selected size token.
 Content order is icon, gap, label for leading placement and label, gap, icon for
 trailing placement. Icon-only buttons require a non-empty accessible label even
 when the visual label is hidden. Pill buttons use `radius_pill`. Square
-icon-only buttons use the resolved control height as width.
+icon-only buttons use the resolved control height as width. Circle buttons
+always resolve to equal width and height and use an exact 50% radius.
 
 Text truncates with an ellipsis only when the caller supplies a constrained
 width. The label never silently scales below the theme's small font size.
@@ -589,7 +610,7 @@ approved.
 | `include/ui_tree.h` `ButtonProps.style` | replace with `tone`, `emphasis`, `size`, state/content props |
 | `src/core/theme.c` catalog getters | produce/activate complete `Theme` values |
 | `src/ui/ui_style.c` style branches | replace with theme validation and shared resolvers |
-| `src/ui/button.c` `ui_button_style_colors` | replace with `ResolveButtonPaint` |
+| `src/ui/button.c` `ui_button_style_colors` | replace with `ResolveButtonStyle` |
 | `src/ui/button.c` `RenderStyledButton` | remove after callers use canonical `Button`/private primitive |
 | `src/ui/modal.c`, `rows.c`, `pager.c`, navigation | migrate from named styles to semantic props |
 | `go/kryon/runtime.go` theme/button enums | mirror the exact C schema and resolver behavior |
@@ -661,5 +682,5 @@ Before implementation, approve or amend these deliberate choices:
 3. the default button is neutral + filled + medium; accent is always explicit.
 4. app themes are complete copied values installed once with `SetTheme()`.
 5. system theme following resolves outside widget drawing.
-6. local `ButtonPaint` is allowed only as an explicit escape hatch.
+6. local `Style` is allowed only as an explicit escape hatch.
 7. the default palettes and metrics in sections 6 and 10 are the baseline.

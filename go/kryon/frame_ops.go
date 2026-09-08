@@ -40,6 +40,10 @@ type FrameOp struct {
 	CursorColor       Color
 	FontSize          int32
 	Rotation          float32
+	Radius            float32
+	BorderWidth       float32
+	Opacity           float32
+	ContentOffset     Vector2
 	FontID            uint32
 	ID                int32
 	FocusID           int32

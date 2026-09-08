@@ -112,6 +112,135 @@ const (
 	StatePolicyStateSelected = 7
 )
 
+func Button_ResolveState(explicit_state int32, disabled bool, loading bool, pressed bool, hovered bool, focused bool, selected bool) int32 {
+	var value_0 bool = disabled
+	if value_0 {
+		var value_1 int32 = StatePolicyStateDisabled
+		return value_1
+	}
+	var value_2 bool = loading
+	if value_2 {
+		var value_3 int32 = StatePolicyStateLoading
+		return value_3
+	}
+	var value_4 int32 = explicit_state
+	var value_5 int32 = 0
+	var value_6 int32 = int32(number_533abbd6_bits(uint64(value_5), uint64(0), 32, true, 0))
+	var value_7 bool = value_4 != value_6
+	if value_7 {
+		var value_8 int32 = explicit_state
+		return value_8
+	}
+	var value_9 bool = pressed
+	if value_9 {
+		var value_10 int32 = StatePolicyStatePressed
+		return value_10
+	}
+	var value_11 bool = hovered
+	if value_11 {
+		var value_12 int32 = StatePolicyStateHover
+		return value_12
+	}
+	var value_13 bool = focused
+	if value_13 {
+		var value_14 int32 = StatePolicyStateFocus
+		return value_14
+	}
+	var value_15 bool = selected
+	if value_15 {
+		var value_16 int32 = StatePolicyStateSelected
+		return value_16
+	}
+	var value_17 int32 = StatePolicyStateNormal
+	return value_17
+}
+
+func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {
+	var value_0 bool = square
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = circle
+		value_1 = value_2
+	}
+	if value_1 {
+		var value_3 float32 = height
+		return value_3
+	}
+	var value_4 bool = full_width
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 float32 = width
+		var value_7 float32 = 0.0
+		var value_8 bool = value_6 <= value_7
+		value_5 = value_8
+	}
+	if value_5 {
+		var value_9 float32 = available_width
+		var value_10 float32 = height
+		var value_11 bool = value_9 < value_10
+		if value_11 {
+			var value_12 float32 = height
+			return value_12
+		}
+		var value_13 float32 = available_width
+		return value_13
+	}
+	var value_14 float32 = width
+	var value_15 float32 = 0.0
+	var value_16 bool = value_14 <= value_15
+	if value_16 {
+		var value_17 float32 = measured_width
+		return value_17
+	}
+	var value_18 float32 = width
+	return value_18
+}
+
+func Button_ShapeRadius(normal_radius float32, pill_radius float32, pill bool, circle bool) float32 {
+	var value_0 bool = pill
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = circle
+		value_1 = value_2
+	}
+	if value_1 {
+		var value_3 float32 = pill_radius
+		return value_3
+	}
+	var value_4 float32 = normal_radius
+	return value_4
+}
+
+func Button_TransitionStep(elapsed_ms float32, duration_ms float32) float32 {
+	var value_0 float32 = duration_ms
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		return value_3
+	}
+	var value_4 float32 = elapsed_ms
+	var value_5 float32 = duration_ms
+	var value_6 float32 = value_4 / value_5
+	var step float32 = value_6
+	var value_7 float32 = step
+	var value_8 float32 = 0.0
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 float32 = 0.0
+		return value_10
+	}
+	var value_11 float32 = step
+	var value_12 float32 = 1.0
+	var value_13 bool = value_11 > value_12
+	if value_13 {
+		var value_14 float32 = 1.0
+		return value_14
+	}
+	var value_15 float32 = step
+	return value_15
+}
+
 func Button_MixByte(from uint32, to uint32, amount uint32) uint32 {
 	var value_0 uint32 = from
 	var value_1 int32 = 100

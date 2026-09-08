@@ -169,7 +169,7 @@ void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
-ButtonPaint ResolveButtonPaint(ButtonProps button, ButtonState state);
+Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 int HandleButton(ButtonSpec button);
 void PaintButton(ButtonSpec button, int hovered, int pressed);
 int DrawUIIconButton(IconButtonProps button);
