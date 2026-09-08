@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.80 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.80
+- Centralize C text navigation
+
 ## v0.1.79 - 2026-09-07
 
 ### Changed
