@@ -10,7 +10,7 @@
 
 #if defined(__EMSCRIPTEN__) || defined(PLATFORM_WEB)
 #include <emscripten.h>
-#elif defined(__ANDROID__) || defined(PLATFORM_ANDROID) || defined(ANDROID)
+#elif defined(__ANDROID__) || defined(PLATFORM_ANDROID)
 #include <android_native_app_glue.h>
 #include <jni.h>
 extern struct android_app *GetAndroidApp(void);
@@ -24,7 +24,7 @@ extern struct android_app *GetAndroidApp(void);
 #include <unistd.h>
 #endif
 
-#if defined(__ANDROID__) || defined(PLATFORM_ANDROID) || defined(ANDROID)
+#if defined(__ANDROID__) || defined(PLATFORM_ANDROID)
 #define KRY_OPEN_URI_ANDROID 1
 #else
 #define KRY_OPEN_URI_ANDROID 0

@@ -734,7 +734,7 @@ GetDefaultPlatformThemeStyle(void)
     return GetSystemThemeStyle();
 #elif defined(ANDROID_BUILD) && ANDROID_BUILD
     return THEME_STYLE_DEFAULT;
-#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
+#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__)
     return THEME_STYLE_DEFAULT;
 #else
     return THEME_STYLE_SYSTEM;

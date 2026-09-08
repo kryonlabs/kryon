@@ -66,7 +66,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Color draw_border;
     UIButtonAnimState *anim = NULL;
     float hover_amount = 0.0f;
-    float press_amount = 0.0f;
     Rectangle draw_bounds;
     int termi_button = ui_termi_backend();
     int default_controls = ui_default_style() && !termi_button;
@@ -135,7 +134,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             anim->hover += (hover_target - anim->hover) * hover_step;
             anim->press += (press_target - anim->press) * press_step;
             hover_amount = anim->hover;
-            press_amount = anim->press;
         }
     } else {
         hover_amount = hovered ? 1.0f : 0.0f;
