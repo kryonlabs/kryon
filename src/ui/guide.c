@@ -3,6 +3,21 @@
 
 static UIGuideOverlayDebug g_ui_guide_debug;
 
+static void
+guide_draw_scrim(int view_w, int view_h, Rectangle anchor, Color scrim)
+{
+    int padding = Scale(4);
+    int left = ui_clampi((int)anchor.x - padding, 0, view_w);
+    int top = ui_clampi((int)anchor.y - padding, 0, view_h);
+    int right = ui_clampi((int)(anchor.x + anchor.width) + padding, 0, view_w);
+    int bottom = ui_clampi((int)(anchor.y + anchor.height) + padding, 0, view_h);
+
+    DrawRectangle(0, 0, view_w, top, scrim);
+    DrawRectangle(0, bottom, view_w, view_h - bottom, scrim);
+    DrawRectangle(0, top, left, bottom - top, scrim);
+    DrawRectangle(right, top, view_w - right, bottom - top, scrim);
+}
+
 int
 GetUIGuideOverlayDebug(UIGuideOverlayDebug *out)
 {
@@ -139,6 +154,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     int text_gap = Scale(8);
     int controls_gap = Scale(12);
     int text_guard = Scale(8);
+    int tip_chrome_h;
     int max_tip_h;
     char page_text[32];
     ParagraphSpec paragraph;
@@ -189,20 +205,28 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     else if(tip_w > Scale(300))
         tip_w = Scale(300);
 
-    memset(&paragraph, 0, sizeof(paragraph));
-    paragraph.text = guide.steps[step].text;
-    paragraph.width = tip_w - pad * 2;
-    paragraph.font = guide.paragraph_font;
-    paragraph.line_gap = line_gap;
-    paragraph_h = ui_paragraph_height(paragraph);
-    tip_h = pad + close_size + text_gap + paragraph_h + text_guard + controls_gap +
-            button_size + pad;
-    if(tip_h < Scale(112))
-        tip_h = Scale(112);
     max_tip_h = view_h - guide.reserved_top - guide.reserved_bottom -
                 margin * 2;
     if(max_tip_h < Scale(112))
         max_tip_h = view_h - margin * 2;
+    tip_chrome_h = pad + close_size + text_gap + text_guard + controls_gap +
+                   button_size + pad;
+
+    memset(&paragraph, 0, sizeof(paragraph));
+    paragraph.text = guide.steps[step].text;
+    paragraph.width = tip_w - pad * 2;
+    paragraph.font = guide.paragraph_font > 0 ? guide.paragraph_font : Text16;
+    paragraph.line_gap = line_gap;
+    paragraph_h = ui_paragraph_height(paragraph);
+    while(paragraph.font > Text12 &&
+          paragraph_h > max_tip_h - tip_chrome_h) {
+        paragraph.font--;
+        paragraph_h = ui_paragraph_height(paragraph);
+    }
+
+    tip_h = tip_chrome_h + paragraph_h;
+    if(tip_h < Scale(112))
+        tip_h = Scale(112);
     if(tip_h > max_tip_h)
         tip_h = max_tip_h;
     tip = guide_tip_bounds(guide.steps[step].anchor, tip_w, tip_h, view_w, view_h,
@@ -213,7 +237,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     scrim.g = 0;
     scrim.b = 0;
     scrim.a = 86;
-    DrawRectangle(0, 0, view_w, view_h, scrim);
+    guide_draw_scrim(view_w, view_h, guide.steps[step].anchor, scrim);
     DrawRectangleLinesEx(guide.steps[step].anchor, (float)Scale(2),
                          GetThemeText());
     DrawRectangleRounded(tip, 0.08f, 8, GetThemeButton());
