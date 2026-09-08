@@ -654,6 +654,9 @@ $(THEME_RUNTIME_STAMP): $(THEME_RUNTIME_KRY) $(K2C)
 $(THEME_RUNTIME_C) $(THEME_RUNTIME_H): $(THEME_RUNTIME_STAMP)
 	@test -f $@
 
+$(BUILD_DIR)/core/theme.o: $(THEME_RUNTIME_H)
+$(BUILD_DIR)/ui/button.o: $(BUTTON_POLICY_H)
+
 .PHONY: generate-button-policy
 generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) $(THEME_RUNTIME_C) $(THEME_RUNTIME_H) $(K2GO)
 	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY)
