@@ -3688,6 +3688,15 @@ RenderTextArea(TextAreaProps area)
                                area.syntax, area.style, selection_start,
                                selection_end);
     EndUIClip();
+    if(area.scroll_y != NULL && max_scroll > 0) {
+        ui_scrollbar((int)(area.bounds.x + area.bounds.width - Scale(8)),
+                     (int)area.bounds.y,
+                     (int)area.bounds.height,
+                     content_h + padding_y * 2,
+                     area.scroll_y,
+                     max_scroll,
+                     0);
+    }
     EndUIWidget(&widget);
     return changed;
 }
