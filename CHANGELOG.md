@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.87 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.87
+- Keep popup menu Escape within its owner
+
 ## v0.1.86 - 2026-09-08
 
 ### Changed
