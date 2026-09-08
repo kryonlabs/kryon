@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.89 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.89
+- Isolate native tab state per render host
+
 ## v0.1.88 - 2026-09-08
 
 ### Changed
