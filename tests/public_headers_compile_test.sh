@@ -12,6 +12,12 @@ cd "$root"
 work_dir="$build_dir/tests/public-headers"
 rm -rf "$work_dir"
 mkdir -p "$work_dir"
+generated_include="$work_dir/generated/include"
+generated_src="$work_dir/generated/src"
+
+python3 scripts/embed-icon-sheets.py icons "$generated_src/ui/ui_icon_assets.c" \
+    --types-output "$generated_include/ui_icon_types.h" \
+    --names-output "$generated_src/ui/ui_icon_names.c"
 
 status=0
 
@@ -35,7 +41,7 @@ for header in include/*.h; do
         printf 'int main(void) { return 0; }\n'
     } > "$source"
 
-    if ! $cc_cmd $cppflags $cflags -Iinclude -c "$source" -o "$object" >"$log" 2>&1; then
+    if ! $cc_cmd $cppflags $cflags -I"$generated_include" -Iinclude -c "$source" -o "$object" >"$log" 2>&1; then
         echo "Public header does not compile for a normal consumer after kryon.h: $name" >&2
         cat "$log" >&2
         status=1

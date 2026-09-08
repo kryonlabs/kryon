@@ -63,10 +63,14 @@ KRB_WEB_KRY ?= examples/02_buttons.kry
 BINDIR ?= $(PREFIX)/bin
 INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
-CPPFLAGS_BASE = -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
+GENERATED_INCLUDE_DIR = $(BUILD_DIR)/generated/include
+GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
+CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
-ICON_ASSETS_C = src/ui/ui_icon_assets.c
+ICON_ASSETS_C = $(GENERATED_SRC_DIR)/ui/ui_icon_assets.c
+ICON_NAMES_C = $(GENERATED_SRC_DIR)/ui/ui_icon_names.c
+ICON_TYPES_H = $(GENERATED_INCLUDE_DIR)/ui_icon_types.h
 # Default embedded assets: themes + the regular UI font. The CJK Noto faces
 # (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
 # the default UI loads them. Apps that need CJK can override:
@@ -221,9 +225,10 @@ CPPFLAGS += $(KRYON_SYNC_CPPFLAGS) \
 	-DHAS_LIBCURL=1 $(KRYON_CURL_CFLAGS) \
 	$(KRYON_MARKDOWN_CFLAGS)
 CPPFLAGS += $(KRYON_NOTIFICATION_CPPFLAGS) $(KRYON_NOTIFICATION_CFLAGS)
-LDLIBS += $(KRYON_NOTIFICATION_LDLIBS)
+LDLIBS += $(KRYON_NOTIFICATION_LDLIBS) $(KRYON_ZLIB_LDLIB)
 
 SRCS := $(shell find src -type f -name '*.c' | LC_ALL=C sort)
+SRCS := $(filter-out src/ui/ui_icon_assets.c src/ui/ui_icon_names.c,$(SRCS))
 KRYON_SYNC_SRCS_REL := $(wildcard src/sync/*.c)
 
 # Browser-only backend sources compile to empty translation units under native
@@ -243,8 +248,8 @@ ifneq ($(KRYON_BACKEND),termi)
 SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
-SRCS += $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
-KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h)
+SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) $(KRYON_BACKEND_SRCS)
+KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
 # Keep in sync with KRYON_PHYSICS_SRCS in mk/vendor.mk.
@@ -318,6 +323,7 @@ KRB_MOUNT_TEST = $(BUILD_DIR)/tests/krb_mount_test
 TERMINAL_TEST = $(BUILD_DIR)/tests/terminal_test
 KRY_JSON_TEST = $(BUILD_DIR)/tests/kry_json_test
 KRY_XML_TEST = $(BUILD_DIR)/tests/kry_xml_test
+KRY_ARCHIVE_TEST = $(BUILD_DIR)/tests/kry_archive_test
 KRY_GZIP_TEST = $(BUILD_DIR)/tests/kry_gzip_test
 KRY_ZLIB_TEST = $(BUILD_DIR)/tests/kry_zlib_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
@@ -499,7 +505,7 @@ preflight: submodule-urls-check kryon-compat-check kryon-boundary-check clean-te
 clean-text-api-check:
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -519,6 +525,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-ap
 	$(TERMINAL_TEST)
 	$(KRY_JSON_TEST)
 	$(KRY_XML_TEST)
+	$(KRY_ARCHIVE_TEST)
 	$(KRY_GZIP_TEST)
 	$(KRY_ZLIB_TEST)
 	$(KRY_HTTP_TEST)
@@ -593,8 +600,8 @@ kryon-boundary-check:
 public-api-names-check:
 	sh tests/public_api_names_test.sh .
 
-public-api-snapshot-check:
-	python3 scripts/public-api-snapshot.py --check
+public-api-snapshot-check: $(ICON_TYPES_H)
+	KRYON_GENERATED_INCLUDE_DIR="$(GENERATED_INCLUDE_DIR)" python3 scripts/public-api-snapshot.py --check
 
 public-headers-compile-check: | $(BUILD_DIR)
 	sh tests/public_headers_compile_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)"
@@ -693,10 +700,11 @@ install-static: $(STATIC_DIST_ARCHIVE)
 	mkdir -p $(DESTDIR)$(PREFIX)
 	tar -xzf $(STATIC_DIST_ARCHIVE) -C $(DESTDIR)$(PREFIX) --strip-components=1
 
-$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
+$(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) $(ICON_TYPES_H) README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md docs/API.md examples/package/minimal.c examples/package/markdown.c scripts/check-static-package.sh
 	rm -rf $(STATIC_DIST_ROOT)
 	mkdir -p $(STATIC_DIST_ROOT)/include $(STATIC_DIST_ROOT)/lib $(STATIC_DIST_ROOT)/lib/pkgconfig $(STATIC_DIST_ROOT)/lib/cmake/kryon $(STATIC_DIST_ROOT)/share/doc/kryon $(STATIC_DIST_ROOT)/share/licenses/kryon $(STATIC_DIST_ROOT)/examples $(DIST_DIR)
 	cp -R include/. $(STATIC_DIST_ROOT)/include/
+	cp $(ICON_TYPES_H) $(STATIC_DIST_ROOT)/include/ui_icon_types.h
 	cp $(LIB) $(RAYLIB_A) $(KRYON_STATIC_PACKAGE_SYNC_FILES) $(KRYON_CURL_A) $(KRYON_MARKDOWN_DEPS) $(STATIC_DIST_ROOT)/lib/
 	cp README.md $(STATIC_DIST_ROOT)/
 	cp LICENSE $(STATIC_DIST_ROOT)/
@@ -1120,6 +1128,10 @@ $(KRY_XML_TEST): tests/kry_xml_test.c src/kry_std/kry_xml.c include/kry_xml.h | 
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_xml_test.c src/kry_std/kry_xml.c -o $@
 
+$(KRY_ARCHIVE_TEST): tests/kry_archive_test.c src/kry_std/kry_archive.c include/kry_archive.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_archive_test.c src/kry_std/kry_archive.c $(KRYON_ZLIB_LDLIB) -o $@
+
 $(KRY_GZIP_TEST): tests/kry_gzip_test.c src/kry_std/kry_gzip.c include/kry_gzip.h include/kry_zlib.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_gzip_test.c src/kry_std/kry_gzip.c -o $@
@@ -1153,19 +1165,22 @@ $(LOCALE_TEST): tests/locale_test.c src/core/locale.c include/locale.h include/e
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/locale_test.c src/core/locale.c -o $@
 
 
-$(ICON_ASSETS_C): $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icons.h
-	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $@
-
-src/ui/ui_icon_names.c: $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icon_types.h
-	@$(MAKE) --quiet $(ICON_ASSETS_C)
+$(ICON_ASSETS_C) $(ICON_NAMES_C) $(ICON_TYPES_H): $(ICON_FILES) scripts/embed-icon-sheets.py include/ui_icons.h
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(ICON_ASSETS_C)" \
+		--types-output "$(ICON_TYPES_H)" \
+		--names-output "$(ICON_NAMES_C)"
 
 icons-embed: scripts/embed-icon-sheets.py $(ICON_FILES)
-	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $(ICON_ASSETS_C)
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(ICON_ASSETS_C)" \
+		--types-output "$(ICON_TYPES_H)" \
+		--names-output "$(ICON_NAMES_C)"
 
 icons-import-mingcute: scripts/import-mingcute-icons.py
 	@[ -n "$(MINGCUTE_DIR)" ] || { echo "set MINGCUTE_DIR to a MingCute checkout" >&2; exit 2; }
 	python3 scripts/import-mingcute-icons.py "$(MINGCUTE_DIR)"
-	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" $(ICON_ASSETS_C)
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(ICON_ASSETS_C)" \
+		--types-output "$(ICON_TYPES_H)" \
+		--names-output "$(ICON_NAMES_C)"
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)

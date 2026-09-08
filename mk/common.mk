@@ -16,7 +16,12 @@ CORE_A = $(if $(strip $(CORE_SRCS)),$(NATIVE_OBJ_DIR)/$(ARCH)/native/lib$(APP_NA
 KRYON_DIR ?= vendor/kryon
 RAYLIB_BUILD_DIR = $(NATIVE_OBJ_DIR)/$(ARCH)/native/raylib
 RAYLIB_A = $(RAYLIB_BUILD_DIR)/libraylib.a
-KRYON_ICON_ASSETS_C = $(KRYON_DIR)/src/ui/ui_icon_assets.c
+KRYON_GENERATED_INCLUDE_DIR = $(NATIVE_OBJ_DIR)/$(ARCH)/native/kryon/generated/include
+KRYON_GENERATED_SRC_DIR = $(NATIVE_OBJ_DIR)/$(ARCH)/native/kryon/generated/src
+KRYON_ICON_ASSETS_C = $(KRYON_GENERATED_SRC_DIR)/ui/ui_icon_assets.c
+KRYON_ICON_NAMES_C = $(KRYON_GENERATED_SRC_DIR)/ui/ui_icon_names.c
+KRYON_ICON_TYPES_H = $(KRYON_GENERATED_INCLUDE_DIR)/ui_icon_types.h
+KRYON_ICON_FILES = $(wildcard $(KRYON_DIR)/icons/*.png $(KRYON_DIR)/icons/*.json)
 
 # Graphics/input backend, same meaning as Kryon's own Makefile: selects the
 # backend TU compiled with kryon's sources and its link inputs. Only the
@@ -61,7 +66,7 @@ else ifeq ($(KRYON_BACKEND),null)
 else
   $(error Unknown KRYON_BACKEND '$(KRYON_BACKEND)' (expected raylib, canvas, dom, libdraw, termi, or null))
 endif
-KRYON_ALL_SRCS = $(filter-out $(KRYON_ICON_ASSETS_C),$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort))
+KRYON_ALL_SRCS = $(filter-out $(KRYON_DIR)/src/ui/ui_icon_assets.c $(KRYON_DIR)/src/ui/ui_icon_names.c,$(shell find $(KRYON_DIR)/src -type f -name '*.c' | LC_ALL=C sort))
 KRYON_WITH_SYNC ?= 0
 KRYON_SYNC_SRCS = $(wildcard $(KRYON_DIR)/src/sync/*.c)
 KRYON_SYNC_CFLAGS = $(if $(filter 1,$(KRYON_WITH_SYNC)),-DKRYON_WITH_SYNC=1,-DKRYON_WITH_SYNC=0)
@@ -84,8 +89,8 @@ endif
 ifneq ($(KRYON_WITH_SYNC),1)
 KRYON_ALL_SRCS := $(filter-out $(KRYON_SYNC_SRCS),$(KRYON_ALL_SRCS))
 endif
-KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_BACKEND_SRCS)
-KRYON_INCLUDE = -I$(KRYON_DIR)/include
+KRYON_SRCS = $(KRYON_ALL_SRCS) $(KRYON_ICON_ASSETS_C) $(KRYON_ICON_NAMES_C) $(KRYON_BACKEND_SRCS)
+KRYON_INCLUDE = -I$(KRYON_GENERATED_INCLUDE_DIR) -I$(KRYON_DIR)/include
 ifeq ($(KRYON_WITH_SYNC),1)
 KRYON_INCLUDE += -I$(KRYON_DIR)/vendor/monocypher/src
 KRYON_INCLUDE += -I$(KRYON_DIR)/vendor/monocypher/src/optional
@@ -100,6 +105,8 @@ endif
 KRYON_NATIVE_DEPS ?=
 KRYON_NATIVE_CFLAGS ?=
 KRYON_NATIVE_LDLIBS ?=
+KRYON_NATIVE_DEPS += $(KRYON_ICON_ASSETS_C) $(KRYON_ICON_NAMES_C) $(KRYON_ICON_TYPES_H)
+KRYON_NATIVE_LDLIBS += -lz
 ifeq ($(KRYON_WITH_SYNC),1)
 KRYON_NATIVE_DEPS += $(KRYON_LIBOQS_A)
 KRYON_NATIVE_CFLAGS += $(KRYON_LIBOQS_INCLUDE) -DHAS_LIBOQS=1 -DKRYON_HAS_LIBOQS=1
@@ -315,3 +322,8 @@ $(WEB_DIST_DIR): | $(BUILD_DIST_DIR)
 
 $(RAYLIB_BUILD_DIR): | build
 	mkdir -p $@
+
+$(KRYON_ICON_ASSETS_C) $(KRYON_ICON_NAMES_C) $(KRYON_ICON_TYPES_H): $(KRYON_ICON_FILES) $(KRYON_DIR)/scripts/embed-icon-sheets.py $(KRYON_DIR)/include/ui_icons.h | $(NATIVE_OBJ_DIR)
+	python3 $(KRYON_DIR)/scripts/embed-icon-sheets.py "$(KRYON_DIR)/icons" "$(KRYON_ICON_ASSETS_C)" \
+		--types-output "$(KRYON_ICON_TYPES_H)" \
+		--names-output "$(KRYON_ICON_NAMES_C)"
