@@ -138,6 +138,11 @@ the surrounding layout cursor.
 C layer disabled scopes now inherit the parent's state without allowing child
 scope endings to unwind the parent. Headless nested-scope tests and the real
 layer test cover restoration, with invalid-scope checks for an unclosed child.
+C tab-bar owned scroll and its bar-local click, reorder, and pane-drag
+bookkeeping now belong to that same render-host context instead of
+process-global statics. Interleaved graphical hosts use the same tab ID without
+sharing omitted scroll state, and restoring the outer host restores its state
+immediately. The broader C focus and pointer state is still shared.
 C layers also isolate input clips and scroll depth from the owner. Ordinary
 button tests verify escaped clipping without bypassing modal capture, and real
 pixels verify mixed content outside a 1x1 scrolling owner. Popup-to-background

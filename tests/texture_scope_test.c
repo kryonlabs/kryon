@@ -349,6 +349,15 @@ int main(void)
         BeginTextureMode(host_target);
         ClearBackground(BLACK);
         ui_paint_layers_frame(host_a,size,size);
+        int fallback_scroll = 0;
+        int *host_a_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(frame == 0)
+            *host_a_scroll = 17;
+        else if(*host_a_scroll != 17) {
+            fprintf(stderr,"first host lost its owned tab scroll: %d\n",
+                    *host_a_scroll);
+            failures++;
+        }
         UIPaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
         DrawRectangle(0,0,size,size,RED);
         Rect(size-4,size-4,4,4,YELLOW,BLANK);
@@ -357,6 +366,12 @@ int main(void)
         BeginTextureMode(inner);
         ClearBackground(BLUE);
         ui_paint_layers_frame(host_b,16,16);
+        int *host_b_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(*host_b_scroll != (frame == 0 ? 0 : 9)) {
+            fprintf(stderr,"tab scroll crossed hosts: %d\n",*host_b_scroll);
+            failures++;
+        }
+        *host_b_scroll = 9;
         UIPaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
         DrawRectangle(0,0,4,4,GREEN);
         Rect(8,8,4,4,MAGENTA,BLANK);
@@ -366,6 +381,12 @@ int main(void)
         BeginTextureMode(inner);
         ui_paint_layers_composite(host_b);
         EndTextureMode();
+        host_a_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
+        if(*host_a_scroll != 17) {
+            fprintf(stderr,"restored host has wrong tab scroll: %d\n",
+                    *host_a_scroll);
+            failures++;
+        }
         BeginTextureMode(host_target);
         ui_paint_layers_composite(host_a);
         if(frame == 1) ui_paint_layers_destroy(host_b);
