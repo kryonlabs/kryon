@@ -77,8 +77,8 @@ select the range limits, Alt slows adjustment, and Shift accelerates it. Pointer
 presses focus the exact component, disabled sliders reject keys, popup ownership
 gates keyboard input, and the focused component receives the ordinary focus
 presentation. Matching native tests cover component Tab traversal and the
-generated `plots.kry` fixture verifies horizontal float and vertical integer
-adjustment through k2c and k2go.
+pointer-to-keyboard transition; the generated `plots.kry` fixture verifies
+horizontal float and vertical integer adjustment through k2c and k2go.
 Ctrl-clicking or double-clicking a drag or slider component temporarily
 replaces that component with the canonical text editor in native C and Go. Valid edits update live,
 Enter returns to the numeric control, and typed values remain unclamped like

@@ -98,10 +98,23 @@ test_slider_keyboard_navigation(void)
         .value_count = 1, .min = 0, .max = 10
     };
     int second_focus;
+    int inspect_enabled;
 
     InjectReset();
     BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
-    SetUIFocus(600); InjectKeyTap(KEY_RIGHT); InjectPump();
+    inspect_enabled = UIInspectEnabled();
+    SetUIInspectEnabled(0);
+    InjectMousePosition(35,20);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,1);
+    InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    check_int("click focuses slider component",GetUIFocus(),600);
+    InjectMouseButton(MOUSE_BUTTON_LEFT,0);
+    InjectPump();
+    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    SetUIInspectEnabled(inspect_enabled);
+
+    InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginUIFrame(640,480,1.0f);
     check_int("slider Right changed",SliderFloat(horizontal),1);
     EndUIFrame();

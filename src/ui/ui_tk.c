@@ -1987,8 +1987,8 @@ ui_paint_drag_int(DragIntProps drag)
 }
 
 static int
-ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
-                float *ratio)
+ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
+                int vertical, float *ratio)
 {
     Vector2 mouse = ui_mouse_world();
     disabled = disabled || UIContentDisabled();
@@ -2004,6 +2004,8 @@ ui_slider_ratio(int token, Rectangle bounds, int disabled, int vertical,
     if(pressed) {
         g_slider_active = token;
         g_slider_owner = ui_popup_input_owner();
+        if(focus_id > 0)
+            SetUIFocus(focus_id);
     }
     if(!disabled && g_slider_active == token &&
        (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
@@ -2173,7 +2175,8 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
         if(range > 0.0f && ui_slider_ratio((int)(0x40000000u ^
                                            ((unsigned int)slider.id << 4) ^
                                            (unsigned int)(i + 1)),
-                                           cell, slider.disabled, vertical, &ratio)) {
+                                           focus_id, cell, slider.disabled,
+                                           vertical, &ratio)) {
             float value = slider.min + ratio * range;
             if(value != slider.values[i]) {
                 slider.values[i] = value;
@@ -2220,7 +2223,8 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
         if(range > 0 && ui_slider_ratio((int)(0x50000000u ^
                                         ((unsigned int)slider.id << 4) ^
                                         (unsigned int)(i + 1)),
-                                        cell, slider.disabled, vertical, &ratio)) {
+                                        focus_id, cell, slider.disabled,
+                                        vertical, &ratio)) {
             int value = (int)((long long)slider.min +
                               (long long)(ratio * (double)range + 0.5));
             if(value != slider.values[i]) {
