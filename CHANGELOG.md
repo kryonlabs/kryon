@@ -1,4 +1,11 @@
 # Changelog
+## v0.1.85 - 2026-09-08
+
+### Changed
+
+- Release: bump version to v0.1.85
+- Add native Linux IBus text composition
+
 ## v0.1.84 - 2026-09-08
 
 ### Changed
