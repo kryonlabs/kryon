@@ -2536,6 +2536,61 @@ test_popup_combo_keyboard_ownership(void)
         dropdown_close(25400);
         EndUIFrame();
     }
+    for(int inside = 0; inside < 2; inside++) {
+        UIPopupInput *context;
+        UIPopupInput *previous;
+        UIPopupInputToken parent;
+        UIPopupInputToken child;
+        int selected = 0;
+
+        InjectReset();
+        InjectKeyTap(KEY_SPACE);
+        InjectPump();
+        BeginUIFrame(240,240,1);
+        SetUIFocus(25400);
+        (void)Combobox((ComboboxProps){
+            .bounds={10,10,100,28},
+            .id=25400,
+            .options=options,
+            .option_count=2,
+            .selected_index=&selected
+        });
+        EndUIFrame();
+        check_int("combo opens before Escape ownership test",
+                  dropdown_captures((Vector2){20,50}),1);
+
+        InjectKeyTap(KEY_ESCAPE);
+        InjectPump();
+        BeginUIFrame(240,240,1);
+        context = ui_popup_input_create();
+        ui_popup_input_frame(context);
+        previous = ui_popup_input_bind(context);
+        parent = ui_popup_input_begin(
+            context,25700,(Rectangle){180,180,40,40});
+        child = ui_popup_input_begin(
+            context,25701,(Rectangle){190,190,20,20});
+        if(!inside)
+            ui_popup_input_end(child);
+        SetUIFocus(25400);
+        (void)Combobox((ComboboxProps){
+            .bounds={10,10,100,28},
+            .id=25400,
+            .options=options,
+            .option_count=2,
+            .selected_index=&selected
+        });
+        if(inside)
+            ui_popup_input_end(child);
+        ui_popup_input_end(parent);
+        DrawUIFrameOverlays();
+        check_int("obscured combo ignores Escape",
+                  dropdown_captures((Vector2){20,50}),!inside);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        ui_popup_input_destroy(context);
+        EndUIFrame();
+        dropdown_close(25400);
+    }
     InjectReset();
 }
 

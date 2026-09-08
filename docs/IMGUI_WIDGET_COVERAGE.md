@@ -197,6 +197,10 @@ the popup is explicitly closed. Widget-specific shortcut paths still require
 their own ownership coverage. Popup menus apply that ownership to Escape as
 well as navigation and activation, so an obscured menu cannot clear focus
 belonging to the active popup branch.
+Dropdown/Combobox stores the declaration's popup-owner snapshot for its
+deferred overlay pass. Escape, arrows, Home/End, and Enter are ignored while a
+newer child branch owns the keyboard, then work again as soon as that branch
+closes.
 Collapsible/tree-header arrows now have matching native and generated popup
 ownership coverage, including background restoration after close.
 Selectable-text copy is likewise ownership-gated in C and Go; native Go tests

@@ -43,6 +43,30 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		}
 		r.EndFrame()
 	}
+	for _, inside := range []bool{false, true} {
+		r := New(AppConfig{}).(*runtime)
+		r.openDropdowns[25400] = true
+		r.QueueKey(KeyEscape)
+		r.BeginFrame()
+		parent := r.beginPopupInput(0, NewRectangle(180, 180, 40, 40))
+		child := r.beginPopupInput(1, NewRectangle(190, 190, 20, 20))
+		if !inside {
+			r.endPopupInput(child)
+		}
+		r.setFocus(25400)
+		var selected int32
+		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
+			Options: []string{"One", "Two"}, SelectedIndex: &selected})
+		if r.openDropdowns[25400] == inside {
+			t.Fatalf("inside=%v: obscured combo handled Escape", inside)
+		}
+		r.closeDropdown(25400)
+		if inside {
+			r.endPopupInput(child)
+		}
+		r.endPopupInput(parent)
+		r.EndFrame()
+	}
 }
 
 func TestPopupTextKeyboardOwnership(t *testing.T) {

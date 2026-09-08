@@ -4056,6 +4056,14 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
 	return r.dropdownAt(id, bounds, labels, selected)
 }
+
+func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
+	if _, openPopup := r.popupPanels[id]; openPopup {
+		return !r.popupKeyboardCapturesOwner(id, true)
+	}
+	return !r.popupFocusCaptures(id)
+}
+
 func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32) bool {
 	if r.dropdownsSeen == nil {
 		r.dropdownsSeen = make(map[int32]bool)
@@ -4097,6 +4105,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		}
 	}
 	open := r.openDropdowns[id]
+	keyboardAvailable := r.dropdownKeyboardAvailable(id)
 	panel := r.dropdownPanel(bounds, len(labels))
 	if open && !pressed {
 		if r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel) {
@@ -4108,11 +4117,12 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 			}
 		}
 	}
-	if len(labels) == 0 || bounds.Height <= 0 || r.keyDown[KeyEscape] {
+	if len(labels) == 0 || bounds.Height <= 0 ||
+		keyboardAvailable && r.keyDown[KeyEscape] {
 		open = false
 	}
 	changed := false
-	if open && !pressed {
+	if open && !pressed && keyboardAvailable {
 		highlight := clamp32(r.dropdownHighlight[id], 0, int32(len(labels)-1))
 		if r.keyDown[KeyUp] {
 			highlight = max32(0, highlight-1)
@@ -4167,7 +4177,9 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	viewport := panel
 	viewport.Y += 4
 	viewport.Height = max(float32(0), viewport.Height-8)
-	if pressed || r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd] {
+	if pressed || keyboardAvailable &&
+		(r.keyDown[KeyUp] || r.keyDown[KeyDown] ||
+			r.keyDown[KeyHome] || r.keyDown[KeyEnd]) {
 		top := float32(r.dropdownHighlight[id]) * itemH
 		if top < float32(*offset) {
 			*offset = int32(top)
