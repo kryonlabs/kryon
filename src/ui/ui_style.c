@@ -41,16 +41,16 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     tokens.shadow_offset_y = 0;
     if(style != THEME_STYLE_CLASSIC) {
         tokens.control_radius = 4.0f;
-        tokens.panel_radius = 14.0f;
+        tokens.panel_radius = 8.0f;
         tokens.control_alpha = 222;
         tokens.panel_alpha = 235;
         tokens.title_bar_alpha = 222;
         tokens.border_alpha = 118;
-        tokens.shadow_alpha = 44;
-        tokens.shine_alpha = 34;
+        tokens.shadow_alpha = 0;
+        tokens.shine_alpha = 0;
         tokens.bevel_enabled = 0;
         tokens.touch_target_min = 48;
-        tokens.shadow_offset_y = 3;
+        tokens.shadow_offset_y = 0;
     }
     return tokens;
 }
@@ -253,6 +253,7 @@ ui_default_state_layer(Rectangle bounds, Color on_color,
                         int hovered, int focused, int pressed)
 {
     Color layer = on_color;
+    float radius = ui_radius_px(bounds, GetUIStyleTokens().control_radius);
 
     if(pressed)
         layer.a = 31;
@@ -262,20 +263,23 @@ ui_default_state_layer(Rectangle bounds, Color on_color,
         layer.a = 20;
     else
         return;
-    DrawRectangleRounded(bounds, 0.50f, 12, layer);
+    DrawRectangleRounded(bounds, radius, 12, layer);
 }
 
 void
 ui_default_focus(Rectangle bounds)
 {
     Color outline = c_circle;
+    Rectangle focus_bounds;
+    float radius;
 
     outline.a = 220;
-    DrawRectangleRoundedLines((Rectangle){bounds.x - Scale(2),
-                                          bounds.y - Scale(2),
-                                          bounds.width + Scale(4),
-                                          bounds.height + Scale(4)},
-                              0.50f, 12, outline);
+    focus_bounds = (Rectangle){bounds.x - Scale(2),
+                               bounds.y - Scale(2),
+                               bounds.width + Scale(4),
+                               bounds.height + Scale(4)};
+    radius = ui_radius_px(focus_bounds, GetUIStyleTokens().control_radius + 2.0f);
+    DrawRectangleRoundedLines(focus_bounds, radius, 12, outline);
 }
 
 void

@@ -143,16 +143,17 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
     if(default_controls) {
         int pressed = retained_pressed;
+        UIDefaultScheme scheme = ui_default_scheme();
 
-        border = ui_default_scheme().outline;
+        border = scheme.outline;
         border.a = GetUIStyleTokens().border_alpha;
         if(button.disabled) {
-            UIDefaultScheme scheme = ui_default_scheme();
             background = scheme.disabled_container;
             text = scheme.disabled_content;
         } else {
-            background = button.background.a != 0 ? button.background : c_circle;
-            text = button.text.a != 0 ? button.text : ui_default_on_color(background);
+            background = button.background.a != 0 ? button.background
+                                                  : scheme.surface_variant;
+            text = button.text.a != 0 ? button.text : scheme.on_surface_variant;
         }
         radius = ui_radius_px(draw_bounds, GetUIStyleTokens().control_radius);
         ui_draw_control_background(draw_bounds, background, border, radius);
@@ -577,16 +578,13 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     spec.background = bg;
     spec.hover_background = hover_bg;
     spec.text = text_color;
-    spec.border = style == ButtonStyleOutline
-        ? (ui_default_style() ? ui_default_scheme().outline
-                               : Fade(text_color, 0.45f))
-        : LightenUIColor(bg, 32);
+    if(ui_default_style())
+        spec.border = ui_default_scheme().outline;
+    else
+        spec.border = style == ButtonStyleOutline ? Fade(text_color, 0.45f)
+                                                  : LightenUIColor(bg, 32);
     spec.radius = 0.08f;
     clicked = RenderButton(spec);
-    if(style == ButtonStyleOutline && ui_default_style()) {
-        DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, Scale(1),
-                                    ui_default_scheme().outline);
-    }
 
     return clicked;
 }
