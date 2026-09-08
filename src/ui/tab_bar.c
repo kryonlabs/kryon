@@ -71,7 +71,7 @@ ui_tab_bar_finish_frame(void)
 int
 ui_tab_bar_height(void)
 {
-    return ui_material_style() ? Scale(48) : Scale(36);
+    return ui_default_style() ? Scale(48) : Scale(36);
 }
 
 int
@@ -272,9 +272,9 @@ DrawUITabBar(TabBarProps bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_material_style() ? Scale(6) : 0;
-    int default_min_tab_w = ui_material_style() ? Scale(72) : Scale(120);
-    int default_max_tab_w = ui_material_style() ? Scale(168) : default_min_tab_w;
+    int tab_gap = ui_default_style() ? Scale(6) : 0;
+    int default_min_tab_w = ui_default_style() ? Scale(72) : Scale(120);
+    int default_max_tab_w = ui_default_style() ? Scale(168) : default_min_tab_w;
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
@@ -320,9 +320,9 @@ DrawUITabBar(TabBarProps bar)
     focused = !disabled && bar.id > 0 && GetUIFocus() == bar.id &&
               !ui_popup_input_focus_captures(bar.id);
 
-    if(ui_material_style())
+    if(ui_default_style())
         DrawRectangle(bar_x, bar_y, bar_w, bar_h,
-                      ui_material_scheme().surface_container);
+                      ui_default_scheme().surface_container);
     else {
         DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
         DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
@@ -374,7 +374,7 @@ DrawUITabBar(TabBarProps bar)
             *scroll_offset = max_scroll;
     }
 
-    // Material top tabs are distributed equally across the full app bar.
+    // Default top tabs are distributed equally across the full app bar.
     int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - *scroll_offset;
     int reorder_enabled = bar.reordered_from_index != NULL &&
                           bar.reordered_to_index != NULL;
@@ -425,15 +425,15 @@ DrawUITabBar(TabBarProps bar)
             *bar.selected_tab_bounds = tab_rect;
 
         Color tab_fill;
-        if(ui_material_style()) {
-            UIMaterialScheme scheme = ui_material_scheme();
+        if(ui_default_style()) {
+            UIDefaultScheme scheme = ui_default_scheme();
             int indicator_w = Scale(56);
             int indicator_h = Scale(28);
             int indicator_x;
             int indicator_y = bar_y + (bar_h - indicator_h) / 2;
 
             if(!is_disabled)
-                ui_material_state_layer(tab_rect,
+                ui_default_state_layer(tab_rect,
                                         is_selected ? scheme.on_secondary :
                                                       scheme.on_surface_variant,
                                         is_hovered, 0,
@@ -465,21 +465,21 @@ DrawUITabBar(TabBarProps bar)
                               DarkenUIColor(tab_fill, 18));
         }
 
-        if(!ui_material_style() && is_selected) {
+        if(!ui_default_style() && is_selected) {
             DrawLine(tab_x, bar_y + bar_h - 1, tab_x + tab_w - 1,
                      bar_y + bar_h - 1, c_link);
-        } else if(!ui_material_style() && is_hovered && !is_disabled) {
+        } else if(!ui_default_style() && is_hovered && !is_disabled) {
             (void)cues;
             DrawLine(tab_x + Scale(4), bar_y + Scale(5),
                      tab_x + tab_w - Scale(5), bar_y + Scale(5),
                      LightenUIColor(tab_fill, 10));
-        } else if(!ui_material_style() && !is_disabled) {
+        } else if(!ui_default_style() && !is_disabled) {
             DrawLine(tab_x + tab_w - 1, bar_y + Scale(8),
                      tab_x + tab_w - 1, bar_y + bar_h - Scale(4),
                      DarkenUIColor(c_bg, 14));
         }
 
-        if(!ui_material_style() && owns_drag && drag_target == i) {
+        if(!ui_default_style() && owns_drag && drag_target == i) {
             int marker_x = tab_x;
 
             if(drag_target > press_index)
@@ -489,7 +489,7 @@ DrawUITabBar(TabBarProps bar)
         }
 
         // Draw tab text and icon
-        int text_pad = ui_material_style() ? Scale(8) : Scale(12);
+        int text_pad = ui_default_style() ? Scale(8) : Scale(12);
         int icon_size = tab->icon_size > 0 ? tab->icon_size : Scale(16);
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
@@ -509,8 +509,8 @@ DrawUITabBar(TabBarProps bar)
                            !input_captured;
         int close_hovered = close_active && UIHoverEffectsEnabled();
 
-        Color text_color = ui_material_style()
-                               ? ui_material_scheme().on_surface_variant
+        Color text_color = ui_default_style()
+                               ? ui_default_scheme().on_surface_variant
                                : c_text;
         Color icon_tint = WHITE;
 
@@ -519,8 +519,8 @@ DrawUITabBar(TabBarProps bar)
             text_color.a = text_color.a > 150 ? 150 : text_color.a;
             icon_tint.a = 150;
         } else if(is_selected) {
-            if(ui_material_style()) {
-                text_color = ui_material_scheme().primary;
+            if(ui_default_style()) {
+                text_color = ui_default_scheme().primary;
             } else {
                 text_color = LightenUIColor(c_text, 10);
             }
@@ -530,7 +530,7 @@ DrawUITabBar(TabBarProps bar)
         if(tab->icon.id != 0) {
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
-            else if(ui_material_style()) {
+            else if(ui_default_style()) {
                 int gap = Scale(4);
                 int label_w = TextWidth(tab->label, font);
                 int content_w = icon_size + gap + label_w;
@@ -549,7 +549,7 @@ DrawUITabBar(TabBarProps bar)
             DrawTexturePro(tab->icon, icon_src, icon_rect, kryon_zero_vector2, 0, icon_tint);
             text_x = icon_x + icon_size + Scale(4);
         } else {
-            text_x = ui_material_style() && has_label
+            text_x = ui_default_style() && has_label
                          ? tab_x + (tab_w - TextWidth(tab->label, font)) / 2
                          : tab_x + text_pad;
         }
@@ -572,7 +572,7 @@ DrawUITabBar(TabBarProps bar)
                 DrawUITextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
-            } else if(ui_material_style()) {
+            } else if(ui_default_style()) {
                 ui_paint_text_box(tab->label, text_rect, font, text_color,
                                   TextWrapNone, TextAlignCenter,
                                   TextAlignCenter, ui_active_font_token());
@@ -584,7 +584,7 @@ DrawUITabBar(TabBarProps bar)
             Color close_color = close_hovered ? c_link : icon_tint;
             if(close_hovered)
                 DrawRectangleRounded(close_rect, 0.40f, 6,
-                                     ui_material_style() ? ui_material_scheme().surface_variant
+                                     ui_default_style() ? ui_default_scheme().surface_variant
                                                          : DarkenUIColor(c_button_hover, 8));
             DrawUIText("x",
                          (int)(close_rect.x + (close_rect.width -
@@ -744,7 +744,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_material_style() ? 0 : Scale(4);
+    int tab_gap = ui_default_style() ? 0 : Scale(4);
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : Scale(92);
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
@@ -789,7 +789,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
         total_tabs_w += ui_pane_tab_bar_tab_width(bar, i, min_tab_w,
                                                   max_tab_w, icon_tab_w);
     needs_scroll = total_tabs_w > (int)bar.bounds.width;
-    equal_tabs = ui_material_style() && !needs_scroll;
+    equal_tabs = ui_default_style() && !needs_scroll;
 
     if(bar.scroll_offset != NULL)
         scroll = *bar.scroll_offset;

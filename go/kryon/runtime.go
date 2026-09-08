@@ -134,8 +134,8 @@ const (
 
 const (
 	ThemeStyleSystem ThemeStyle = iota
-	ThemeStyleRetro
-	ThemeStyleMaterial
+	ThemeStyleClassic
+	ThemeStyleDefault
 )
 
 const (
@@ -165,8 +165,8 @@ const (
 	Text48 int32 = 48
 
 	THEME_STYLE_SYSTEM   = 0
-	THEME_STYLE_RETRO    = 1
-	THEME_STYLE_MATERIAL = 2
+	THEME_STYLE_CLASSIC    = 1
+	THEME_STYLE_DEFAULT = 2
 	THEME_SOURCE_APP     = 0
 	THEME_SOURCE_SYSTEM  = 1
 	THEME_MODE_SYSTEM    = 0
@@ -416,8 +416,8 @@ type ThemeSettingsProps struct {
 	PaletteLabel          string
 	StyleLabel            string
 	StyleSystemLabel      string
-	StyleRetroLabel       string
-	StyleMaterialLabel    string
+	StyleClassicLabel       string
+	StyleDefaultLabel    string
 	StyleFluentLabel      string
 	StyleAdwaitaLabel     string
 	StyleLiquidGlassLabel string
@@ -1388,7 +1388,7 @@ type Runtime interface {
 	GetThemePrimary() Color
 	GetThemeOnPrimary() Color
 	GetThemeSurfaceVariant() Color
-	GetUIMaterialScheme() MaterialScheme
+	GetUIDefaultScheme() DefaultScheme
 	LabelText(label, value string, bounds Rectangle, fontSize int32, color Color)
 	BulletText(text string, bounds Rectangle, fontSize int32, color Color)
 	ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color)
@@ -4353,7 +4353,7 @@ func (r *runtime) GetThemeButton() Color      { return r.theme().button }
 func (r *runtime) GetThemeButtonHover() Color { return r.theme().buttonHover }
 func (r *runtime) GetThemeLink() Color        { return r.theme().link }
 
-// The primary trio mirrors the Material mapping in theme_runtime.go: the
+// The primary trio mirrors the Default mapping in theme_runtime.go: the
 // palette's circle color is Primary, its contrast color OnPrimary, and a
 // background tone serves as SurfaceVariant.
 func (r *runtime) GetThemePrimary() Color   { return r.theme().circle }
@@ -4361,7 +4361,7 @@ func (r *runtime) GetThemeOnPrimary() Color { return materialOnColor(r.theme().c
 func (r *runtime) GetThemeSurfaceVariant() Color {
 	return materialTone(r.theme().background, 10, 18, r.effectiveDark())
 }
-func (r *runtime) GetUIMaterialScheme() MaterialScheme {
+func (r *runtime) GetUIDefaultScheme() DefaultScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
 }
 func (r *runtime) LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
@@ -6168,7 +6168,7 @@ func (r *runtime) SetThemeDarkMode(dark int32) {
 	}
 }
 func (r *runtime) SetThemeStyle(style ThemeStyle) {
-	if style < ThemeStyleSystem || style > ThemeStyleMaterial {
+	if style < ThemeStyleSystem || style > ThemeStyleDefault {
 		style = ThemeStyleSystem
 	}
 	r.themeStyle = style
@@ -6232,9 +6232,9 @@ func themeSettingsThemeLabel(id int32) string {
 // palette an app should pair with a widget style when it has no opinion.
 func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
 	switch style {
-	case ThemeStyleRetro:
+	case ThemeStyleClassic:
 		return ThemeMono
-	case ThemeStyleMaterial:
+	case ThemeStyleDefault:
 		return ThemeSweet
 	default:
 		return ThemeMono
@@ -6341,15 +6341,15 @@ func ThemeSettings(props ThemeSettingsProps, state *UIThemeSettingsState, result
 	}
 
 	if props.ThemeStyle != nil {
-		if *props.ThemeStyle < int32(ThemeStyleSystem) || *props.ThemeStyle > int32(ThemeStyleMaterial) {
+		if *props.ThemeStyle < int32(ThemeStyleSystem) || *props.ThemeStyle > int32(ThemeStyleDefault) {
 			*props.ThemeStyle = int32(ThemeStyleSystem)
 		}
 		styleValue := themeSettingsText(props.StyleSystemLabel, "System style")
 		switch ThemeStyle(*props.ThemeStyle) {
-		case ThemeStyleRetro:
-			styleValue = themeSettingsText(props.StyleRetroLabel, "Retro")
-		case ThemeStyleMaterial:
-			styleValue = themeSettingsText(props.StyleMaterialLabel, "Material")
+		case ThemeStyleClassic:
+			styleValue = themeSettingsText(props.StyleClassicLabel, "Classic")
+		case ThemeStyleDefault:
+			styleValue = themeSettingsText(props.StyleDefaultLabel, "Default")
 		}
 		if rowButton(id+3, themeSettingsText(props.StyleLabel, "Style"), styleValue) {
 			previous := *props.ThemeStyle

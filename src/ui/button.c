@@ -69,7 +69,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     float press_amount = 0.0f;
     Rectangle draw_bounds;
     int termi_button = ui_termi_backend();
-    int material_controls = ui_material_style() && !termi_button;
+    int default_controls = ui_default_style() && !termi_button;
 
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {
@@ -104,7 +104,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             ? clicked || IsUIFocusActivatePressed(button.focus_id) : 0;
     }
 
-    if(material_controls && !button.disabled) {
+    if(default_controls && !button.disabled) {
         unsigned int key = 2166136261u;
         const char *label = button.label != NULL ? button.label : "";
 
@@ -142,7 +142,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         hover_amount = hovered ? 1.0f : 0.0f;
     }
 
-    if(material_controls) {
+    if(default_controls) {
         int pressed = retained_pressed;
         int ripple_key = button.focus_id != 0 ? button.focus_id :
                          (int)(button.bounds.x * 3 + button.bounds.y * 5 +
@@ -150,22 +150,22 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
         border = BLANK;
         if(button.disabled) {
-            UIMaterialScheme scheme = ui_material_scheme();
+            UIDefaultScheme scheme = ui_default_scheme();
             background = scheme.disabled_container;
             text = scheme.disabled_content;
         } else {
             background = button.background.a != 0 ? button.background : c_circle;
-            text = button.text.a != 0 ? button.text : ui_material_on_color(background);
+            text = button.text.a != 0 ? button.text : ui_default_on_color(background);
         }
         radius = 0.50f;
         ui_draw_control_background(draw_bounds, background, border, radius);
         if(!button.disabled) {
-            ui_material_state_layer(draw_bounds, text, hovered, focused, pressed);
-            ui_material_ripple(draw_bounds, text, ripple_key, pressed);
+            ui_default_state_layer(draw_bounds, text, hovered, focused, pressed);
+            ui_default_ripple(draw_bounds, text, ripple_key, pressed);
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
-            ui_material_focus(draw_bounds);
+            ui_default_focus(draw_bounds);
         }
         {
             int inset = Scale(12);
@@ -264,7 +264,7 @@ DrawUIIconButton(IconButtonProps button)
     Color draw_background;
     Color draw_border;
     int termi_button = ui_termi_backend();
-    int material_controls = ui_material_style() && !termi_button;
+    int default_controls = ui_default_style() && !termi_button;
 
     widget = BeginUIWidget("icon_button",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -287,11 +287,11 @@ DrawUIIconButton(IconButtonProps button)
     if(draw_size < 1)
         draw_size = 1;
 
-    if(material_controls) {
+    if(default_controls) {
         int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         int ripple_key = button.focus_id != 0 ? button.focus_id :
                          (int)(button.bounds.x * 13 + button.bounds.y * 17);
-        UIMaterialScheme scheme = ui_material_scheme();
+        UIDefaultScheme scheme = ui_default_scheme();
 
         if(button.background.a == 0) {
             background = BLANK;
@@ -318,12 +318,12 @@ DrawUIIconButton(IconButtonProps button)
                                                        (int)button.bounds.height,
                                                        ui_touch_target_min(),
                                                        ui_touch_target_min());
-            ui_material_state_layer(state, icon_tint, hovered, focused, pressed);
-            ui_material_ripple(state, icon_tint, ripple_key, pressed);
+            ui_default_state_layer(state, icon_tint, hovered, focused, pressed);
+            ui_default_ripple(state, icon_tint, ripple_key, pressed);
         }
         if(focused) {
             SetUIFocusTextInputActive(0);
-            ui_material_focus(button.bounds);
+            ui_default_focus(button.bounds);
         }
     } else {
         if(button.disabled) {
@@ -529,8 +529,8 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     ButtonSpec spec;
 
     ui_button_style_colors(style, &bg, &hover_bg, &text_color);
-    if(ui_material_style()) {
-        UIMaterialScheme scheme = ui_material_scheme();
+    if(ui_default_style()) {
+        UIDefaultScheme scheme = ui_default_scheme();
 
         switch(style) {
         case ButtonStyleOutline:
@@ -583,14 +583,14 @@ RenderStyledButton(int x, int y, int w, int h, const char *label,
     spec.hover_background = hover_bg;
     spec.text = text_color;
     spec.border = style == ButtonStyleOutline
-        ? (ui_material_style() ? ui_material_scheme().outline
+        ? (ui_default_style() ? ui_default_scheme().outline
                                : Fade(text_color, 0.45f))
         : LightenUIColor(bg, 32);
     spec.radius = 0.08f;
     clicked = RenderButton(spec);
-    if(style == ButtonStyleOutline && ui_material_style()) {
+    if(style == ButtonStyleOutline && ui_default_style()) {
         DrawRectangleRoundedLinesEx(bounds, 0.50f, 12, Scale(1),
-                                    ui_material_scheme().outline);
+                                    ui_default_scheme().outline);
     }
 
     return clicked;
@@ -927,13 +927,13 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
         MarkUIClickable();
     }
 
-    if(ui_material_style()) {
-        UIMaterialScheme scheme = ui_material_scheme();
+    if(ui_default_style()) {
+        UIDefaultScheme scheme = ui_default_scheme();
 
         fill = BLANK;
         stroke = scheme.outline;
         text = scheme.primary;
-        ui_material_state_layer(hit, text, hover, 0,
+        ui_default_state_layer(hit, text, hover, 0,
                                 active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
     } else {
         fill = hover ? c_button_hover : DarkenUIColor(c_bg, 8);

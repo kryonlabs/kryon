@@ -187,7 +187,7 @@ func materialSystemPalette(dark bool) systemThemePalette {
 		}
 	}
 	p = completeThemePalette(p)
-	return systemThemePalette{themePalette: p, name: "Material", available: true, prefersDark: dark, supportsMode: true}
+	return systemThemePalette{themePalette: p, name: "Default", available: true, prefersDark: dark, supportsMode: true}
 }
 
 func gtkCSSPalette() (systemThemePalette, bool) {
@@ -701,9 +701,9 @@ func resetSystemThemeForTest() {
 	systemThemeRefreshes = 0
 }
 
-// MaterialScheme mirrors the C UIMaterialScheme: the Material color roles
-// derived from the live theme palette (src/ui/ui_style.c ui_material_scheme).
-type MaterialScheme struct {
+// DefaultScheme mirrors the C UIDefaultScheme: the Default color roles
+// derived from the live theme palette (src/ui/ui_style.c ui_default_scheme).
+type DefaultScheme struct {
 	Primary           Color
 	OnPrimary         Color
 	Secondary         Color
@@ -735,7 +735,7 @@ func materialTone(base Color, lightDelta, darkDelta int, dark bool) Color {
 	return Color{clampByte(int(base.R) + delta), clampByte(int(base.G) + delta), clampByte(int(base.B) + delta), base.A}
 }
 
-func materialScheme(p themePalette, dark bool) MaterialScheme {
+func materialScheme(p themePalette, dark bool) DefaultScheme {
 	surface := p.surface
 	if surface.A == 0 {
 		surface = p.background
@@ -748,7 +748,7 @@ func materialScheme(p themePalette, dark bool) MaterialScheme {
 	disabledContainer.A = 96
 	disabledContent := p.text
 	disabledContent.A = 96
-	return MaterialScheme{
+	return DefaultScheme{
 		Primary:           p.circle,
 		OnPrimary:         materialOnColor(p.circle),
 		Secondary:         p.button,

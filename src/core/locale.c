@@ -510,8 +510,8 @@ load_base_locale(void)
     } defaults[] = {
         {"theme_style_label", "Style"},
         {"theme_style_system", "System"},
-        {"theme_style_retro", "Retro"},
-        {"theme_style_material", "Material"},
+        {"theme_style_classic", "Classic"},
+        {"theme_style_default", "Default"},
         {"theme_style_fluent", "Fluent"},
         {"theme_style_adwaita", "Adwaita"},
         {"theme_style_liquid_glass", "Liquid Glass"},

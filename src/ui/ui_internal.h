@@ -72,7 +72,7 @@ int *ui_tab_bar_owned_scroll(int id, int *fallback);
 void PushUIInputClip(Rectangle bounds);
 void PopUIInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
-int ui_retro_style(void);
+int ui_classic_style(void);
 int ui_modern_style(void);
 float ui_radius_px(Rectangle bounds, float radius_px);
 int ui_control_bevel_enabled(void);
@@ -80,17 +80,17 @@ int ui_touch_target_min(void);
 Color ui_alpha(Color color, unsigned char alpha);
 Rectangle ui_centered_min_hit_rect(int x, int y, int w, int h,
                                    int min_w, int min_h);
-int ui_material_style(void);
-Color ui_material_on_color(Color color);
-UIMaterialScheme ui_material_scheme(void);
-Color ui_material_surface_container(void);
-Color ui_material_surface_variant(void);
-Color ui_material_outline(void);
-void ui_material_state_layer(Rectangle bounds, Color on_color,
+int ui_default_style(void);
+Color ui_default_on_color(Color color);
+UIDefaultScheme ui_default_scheme(void);
+Color ui_default_surface_container(void);
+Color ui_default_surface_variant(void);
+Color ui_default_outline(void);
+void ui_default_state_layer(Rectangle bounds, Color on_color,
                              int hovered, int focused, int pressed);
-void ui_material_focus(Rectangle bounds);
-void ui_material_elevation(Rectangle bounds, float radius, int level);
-void ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed);
+void ui_default_focus(Rectangle bounds);
+void ui_default_elevation(Rectangle bounds, float radius, int level);
+void ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed);
 void ui_draw_control_background(Rectangle bounds, Color background,
                                 Color border, float classic_radius);
 

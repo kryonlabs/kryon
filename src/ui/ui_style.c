@@ -11,11 +11,11 @@ typedef struct {
     float age;
     int active;
     unsigned long frame_seen;
-} UIMaterialRipple;
+} UIDefaultRipple;
 
-#define UI_MATERIAL_RIPPLE_MAX 64
+#define UI_DEFAULT_RIPPLE_MAX 64
 
-static UIMaterialRipple g_material_ripples[UI_MATERIAL_RIPPLE_MAX];
+static UIDefaultRipple g_default_ripples[UI_DEFAULT_RIPPLE_MAX];
 #endif
 
 UIStyleTokens
@@ -39,7 +39,7 @@ GetUIStyleTokensForThemeStyle(ThemeStyle style)
     tokens.bevel_enabled = 1;
     tokens.touch_target_min = 36;
     tokens.shadow_offset_y = 0;
-    if(style != THEME_STYLE_RETRO) {
+    if(style != THEME_STYLE_CLASSIC) {
         tokens.control_radius = 12.0f;
         tokens.panel_radius = 14.0f;
         tokens.control_alpha = 222;
@@ -78,7 +78,7 @@ ClearUIStyleTokensOverride(void)
 }
 
 int
-ui_retro_style(void)
+ui_classic_style(void)
 {
     return GetUIStyleTokens().bevel_enabled != 0;
 }
@@ -86,7 +86,7 @@ ui_retro_style(void)
 int
 ui_modern_style(void)
 {
-    return !ui_retro_style();
+    return !ui_classic_style();
 }
 
 float
@@ -124,9 +124,9 @@ ui_alpha(Color color, unsigned char alpha)
 }
 
 int
-ui_material_style(void)
+ui_default_style(void)
 {
-    return GetEffectiveThemeStyle() == THEME_STYLE_MATERIAL;
+    return GetEffectiveThemeStyle() == THEME_STYLE_DEFAULT;
 }
 
 static int
@@ -136,13 +136,13 @@ ui_color_luminance(Color color)
 }
 
 Color
-ui_material_on_color(Color color)
+ui_default_on_color(Color color)
 {
     return ui_color_luminance(color) < 128 ? RAYWHITE : (Color){0x1D, 0x1B, 0x20, 0xFF};
 }
 
 static Color
-ui_material_tone(Color base, int light_delta, int dark_delta)
+ui_default_tone(Color base, int light_delta, int dark_delta)
 {
     int delta = GetEffectiveThemeDarkMode() ? dark_delta : -light_delta;
     int r = (int)base.r + delta;
@@ -165,20 +165,20 @@ ui_material_tone(Color base, int light_delta, int dark_delta)
     return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, base.a};
 }
 
-UIMaterialScheme
-ui_material_scheme(void)
+UIDefaultScheme
+ui_default_scheme(void)
 {
     /* Every themed widget asks for the scheme on every frame (the Go
      * bindings fetch it per draw call). The computation is pure given the
      * current theme colors and dark mode, so memoize it on those inputs
      * instead of re-deriving tones and dark-mode queries each time. */
-    static UIMaterialScheme cache;
+    static UIDefaultScheme cache;
     static int cache_valid = 0;
     static Color key_bg, key_surface, key_text, key_circle, key_button;
     static int key_dark;
     Color input_surface = c_surface.a != 0 ? c_surface : c_bg;
     int dark = GetEffectiveThemeDarkMode();
-    UIMaterialScheme scheme;
+    UIDefaultScheme scheme;
     Color disabled = c_text;
 
     if(cache_valid && dark == key_dark &&
@@ -195,20 +195,20 @@ ui_material_scheme(void)
         return cache;
 
     scheme.primary = c_circle;
-    scheme.on_primary = ui_material_on_color(scheme.primary);
+    scheme.on_primary = ui_default_on_color(scheme.primary);
     scheme.secondary = c_button;
-    scheme.on_secondary = ui_material_on_color(scheme.secondary);
+    scheme.on_secondary = ui_default_on_color(scheme.secondary);
     scheme.surface = input_surface;
     scheme.on_surface = c_text;
-    scheme.surface_container = ui_material_tone(c_bg, 4, 10);
-    scheme.surface_variant = ui_material_tone(c_bg, 10, 18);
-    scheme.on_surface_variant = ui_material_tone(c_text, 34, 28);
-    scheme.outline = ui_material_tone(c_bg, 44, 42);
+    scheme.surface_container = ui_default_tone(c_bg, 4, 10);
+    scheme.surface_variant = ui_default_tone(c_bg, 10, 18);
+    scheme.on_surface_variant = ui_default_tone(c_text, 34, 28);
+    scheme.outline = ui_default_tone(c_bg, 44, 42);
     scheme.error = dark
                        ? (Color){0xF2, 0xB8, 0xB5, 0xFF}
                        : (Color){0xBA, 0x1A, 0x1A, 0xFF};
-    scheme.on_error = ui_material_on_color(scheme.error);
-    scheme.disabled_container = ui_material_tone(c_bg, 14, 14);
+    scheme.on_error = ui_default_on_color(scheme.error);
+    scheme.disabled_container = ui_default_tone(c_bg, 14, 14);
     scheme.disabled_container.a = 96;
     disabled.a = 96;
     scheme.disabled_content = disabled;
@@ -224,32 +224,32 @@ ui_material_scheme(void)
     return scheme;
 }
 
-UIMaterialScheme
-GetUIMaterialScheme(void)
+UIDefaultScheme
+GetUIDefaultScheme(void)
 {
-    return ui_material_scheme();
+    return ui_default_scheme();
 }
 
 Color
-ui_material_surface_container(void)
+ui_default_surface_container(void)
 {
-    return ui_material_scheme().surface_container;
+    return ui_default_scheme().surface_container;
 }
 
 Color
-ui_material_surface_variant(void)
+ui_default_surface_variant(void)
 {
-    return ui_material_scheme().surface_variant;
+    return ui_default_scheme().surface_variant;
 }
 
 Color
-ui_material_outline(void)
+ui_default_outline(void)
 {
-    return ui_material_scheme().outline;
+    return ui_default_scheme().outline;
 }
 
 void
-ui_material_state_layer(Rectangle bounds, Color on_color,
+ui_default_state_layer(Rectangle bounds, Color on_color,
                         int hovered, int focused, int pressed)
 {
     Color layer = on_color;
@@ -266,7 +266,7 @@ ui_material_state_layer(Rectangle bounds, Color on_color,
 }
 
 void
-ui_material_focus(Rectangle bounds)
+ui_default_focus(Rectangle bounds)
 {
     Color outline = c_circle;
 
@@ -279,7 +279,7 @@ ui_material_focus(Rectangle bounds)
 }
 
 void
-ui_material_elevation(Rectangle bounds, float radius, int level)
+ui_default_elevation(Rectangle bounds, float radius, int level)
 {
     Color shadow;
     int y1;
@@ -304,7 +304,7 @@ ui_material_elevation(Rectangle bounds, float radius, int level)
 }
 
 void
-ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
+ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 {
 #if defined(KRYON_BACKEND_TERMI)
     (void)bounds;
@@ -313,7 +313,7 @@ ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     (void)pressed;
     return;
 #else
-    UIMaterialRipple *ripple;
+    UIDefaultRipple *ripple;
     Vector2 mouse;
     float dt;
     float max_radius;
@@ -323,7 +323,7 @@ ui_material_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 
     if(key == 0)
         return;
-    ripple = &g_material_ripples[hash % UI_MATERIAL_RIPPLE_MAX];
+    ripple = &g_default_ripples[hash % UI_DEFAULT_RIPPLE_MAX];
     if(ripple->key != hash || g_ui_frame_serial - ripple->frame_seen > 20) {
         memset(ripple, 0, sizeof(*ripple));
         ripple->key = hash;
@@ -384,8 +384,8 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(classic_radius > 0.0f)
         radius = classic_radius;
 
-    if(ui_material_style()) {
-        ui_material_elevation(bounds, radius, tokens.shadow_offset_y);
+    if(ui_default_style()) {
+        ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
     } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
         Color shadow = DarkenUIColor(c_bg, 35);
         shadow.a = tokens.shadow_alpha;
@@ -421,7 +421,7 @@ ui_draw_box_background(Rectangle bounds, float radius, Color background,
                        Color border)
 {
     if(ui_modern_style()) {
-        /* Text fields use the Material pixel radius. A normalized legacy
+        /* Text fields use the Default pixel radius. A normalized legacy
          * radius scales with height and turns large text areas into pills. */
         ui_draw_control_background(bounds, background, border, 0.0f);
         return;

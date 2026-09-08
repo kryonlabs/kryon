@@ -74,7 +74,7 @@ func TestPlan9AndXfcePalettesMatchCCatalog(t *testing.T) {
 	}
 }
 
-func TestMaterialSchemeMirrorsCDerivation(t *testing.T) {
+func TestDefaultSchemeMirrorsCDerivation(t *testing.T) {
 	s := materialScheme(themeCatalogPalette(ThemeSweet, true), true)
 	if s.Primary != (Color{0xC5, 0x0E, 0xD2, 0xFF}) {
 		t.Fatalf("Primary = %#v, want the Sweet circle", s.Primary)
@@ -114,11 +114,11 @@ func TestMaterialSchemeMirrorsCDerivation(t *testing.T) {
 }
 
 func TestDefaultThemeForThemeStylePairsPaletteWithStyle(t *testing.T) {
-	if DefaultThemeForThemeStyle(ThemeStyleMaterial) != ThemeSweet {
-		t.Fatal("Material style should pair with the Sweet palette")
+	if DefaultThemeForThemeStyle(ThemeStyleDefault) != ThemeSweet {
+		t.Fatal("Default style should pair with the Sweet palette")
 	}
-	if DefaultThemeForThemeStyle(ThemeStyleRetro) != ThemeMono {
-		t.Fatal("Retro style should pair with the Mono palette")
+	if DefaultThemeForThemeStyle(ThemeStyleClassic) != ThemeMono {
+		t.Fatal("Classic style should pair with the Mono palette")
 	}
 	if DefaultThemeForThemeStyle(ThemeStyleSystem) != ThemeMono {
 		t.Fatal("System style should fall back to the Mono palette")
@@ -134,7 +134,7 @@ func TestRuntimeAppliesSweetThemeAndScheme(t *testing.T) {
 	if got := rt.GetThemeBackground(); got != (Color{0x16, 0x19, 0x25, 0xFF}) {
 		t.Fatalf("GetThemeBackground = %#v, want Sweet dark background", got)
 	}
-	scheme := rt.GetUIMaterialScheme()
+	scheme := rt.GetUIDefaultScheme()
 	if scheme.Primary != (Color{0xC5, 0x0E, 0xD2, 0xFF}) {
 		t.Fatalf("scheme.Primary = %#v, want the Sweet accent", scheme.Primary)
 	}

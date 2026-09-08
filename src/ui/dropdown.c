@@ -448,13 +448,13 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     button_bg = state->open ? dropdown_panel_color(28)
                             : (hover ? c_button_hover : dropdown_panel_color(16));
     if(can_draw) {
-        if(ui_material_style()) {
-            Color surface = ui_material_surface_container();
-            Color border = state->open ? c_circle : ui_material_outline();
+        if(ui_default_style()) {
+            Color surface = ui_default_surface_container();
+            Color border = state->open ? c_circle : ui_default_outline();
 
             button_bg = surface;
             ui_draw_control_background(btn_bounds, surface, border, 0.18f);
-            ui_material_state_layer(btn_bounds, c_text, hover || state->open,
+            ui_default_state_layer(btn_bounds, c_text, hover || state->open,
                                     0, 0);
         } else if(ui_modern_style()) {
             Color border = LightenUIColor(button_bg, 20);
@@ -653,10 +653,10 @@ draw_dropdown_menu(int id)
 
     /* Draw dropdown background */
     if(can_draw) {
-        if(ui_material_style()) {
-            Color border = ui_material_outline();
+        if(ui_default_style()) {
+            Color border = ui_default_outline();
 
-            panel = ui_material_surface_container();
+            panel = ui_default_surface_container();
             option_text = dropdown_text_color(panel);
             /* Use subtle radius for dropdown panels to prevent distortion during resize */
             ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
@@ -716,7 +716,7 @@ draw_dropdown_menu(int id)
         int option_hover = state->highlight_index == i ||
                            (option_active && UIHoverEffectsEnabled());
 
-        if(can_draw && ui_material_style() && state->selected_index == i) {
+        if(can_draw && ui_default_style() && state->selected_index == i) {
             Color selected = c_circle;
             selected.a = 28;
             DrawRectangleRounded((Rectangle){(float)(x + Scale(4)),
@@ -728,7 +728,7 @@ draw_dropdown_menu(int id)
 
         {
             if(can_draw && option_hover) {
-                if(ui_material_style()) {
+                if(ui_default_style()) {
                     int inset = Scale(4);
                     Rectangle hover_bounds = {
                         (float)(x + inset),
@@ -737,7 +737,7 @@ draw_dropdown_menu(int id)
                         (float)(visible_h - Scale(4))
                     };
                     if(hover_bounds.width > 0 && hover_bounds.height > 0)
-                        ui_material_state_layer(hover_bounds, c_text, 1, 0, 0);
+                        ui_default_state_layer(hover_bounds, c_text, 1, 0, 0);
                 } else if(ui_modern_style()) {
                     UIStyleTokens tokens = GetUIStyleTokens();
                     int inset = Scale(4);

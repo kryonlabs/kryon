@@ -12,7 +12,7 @@ static const Vector2 kryon_zero_vector2;
 int
 ui_bottom_nav_height(void)
 {
-    if(ui_retro_style())
+    if(ui_classic_style())
         return Scale(40);
     return Scale(106);
 }
@@ -129,7 +129,7 @@ DrawUIBottomNav(BottomNavProps nav)
     bar.y = (float)(y + Scale(8));
     bar.width = (float)available_w;
     bar.height = (float)(height - Scale(16));
-    ui_material_elevation(bar, 0.38f, 3);
+    ui_default_elevation(bar, 0.38f, 3);
     DrawRectangleRounded(bar, 0.38f, 18, ui_alpha(BLACK, GetEffectiveThemeDarkMode() ? 70 : 22));
     DrawRectangleRounded(bar, 0.38f, 18, glass_bottom);
     DrawRectangleGradientV((int)bar.x, (int)bar.y, (int)bar.width,

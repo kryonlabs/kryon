@@ -787,8 +787,8 @@ Kryon supports three concrete widget styles plus a system selector:
 ```c
 typedef enum ThemeStyle {
     THEME_STYLE_SYSTEM = 0,
-    THEME_STYLE_RETRO,
-    THEME_STYLE_MATERIAL
+    THEME_STYLE_CLASSIC,
+    THEME_STYLE_DEFAULT
 } ThemeStyle;
 
 void SetThemeStyle(ThemeStyle style);
@@ -799,14 +799,14 @@ int GetDefaultThemeForThemeStyle(ThemeStyle style);
 const char *GetThemeStyleLabel(ThemeStyle style);
 ```
 
-`THEME_STYLE_SYSTEM` resolves to Material on Android builds and Retro elsewhere.
-Material uses Material 3 style tokens: 48px touch targets, rounded controls,
-state layers/ripple feedback, elevation shadows, and theme-derived Material color
-roles. Retro keeps the original beveled Kryon look.
+`THEME_STYLE_SYSTEM` resolves to Default on Android builds and Classic elsewhere.
+Default uses Default 3 style tokens: 48px touch targets, rounded controls,
+state layers/ripple feedback, elevation shadows, and theme-derived Default color
+roles. Classic keeps the original beveled Kryon look.
 
 ```c
 UIStyleTokens GetUIStyleTokens(void);
-UIMaterialScheme GetUIMaterialScheme(void);
+UIDefaultScheme GetUIDefaultScheme(void);
 ```
 
 ---

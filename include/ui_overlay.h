@@ -77,8 +77,8 @@ typedef struct {
     const char *palette_label;
     const char *style_label;
     const char *style_system_label;
-    const char *style_retro_label;
-    const char *style_material_label;
+    const char *style_classic_label;
+    const char *style_default_label;
     const char *style_fluent_label;
     const char *style_adwaita_label;
     const char *style_liquid_glass_label;

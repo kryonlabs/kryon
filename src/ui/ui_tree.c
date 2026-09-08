@@ -3603,7 +3603,7 @@ Button(ButtonProps button)
     if(spec.font <= 0)
         spec.font = GetFontSize();
     if(button.style == ButtonStyleSecondary) {
-        spec.background = ui_material_style() ? ui_material_surface_variant() : GetThemeSurface();
+        spec.background = ui_default_style() ? ui_default_surface_variant() : GetThemeSurface();
         spec.hover_background = GetThemeButtonHover();
         spec.text = GetThemeText();
     }

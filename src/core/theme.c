@@ -707,7 +707,7 @@ GetThemeMode(void)
 void
 SetThemeStyle(ThemeStyle style)
 {
-    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_MATERIAL)
+    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_DEFAULT)
         style = THEME_STYLE_SYSTEM;
     theme_style = style;
     ApplyCurrentUITheme();
@@ -733,9 +733,9 @@ GetDefaultPlatformThemeStyle(void)
 #if defined(KRYON_PLATFORM_PLAN9)
     return GetSystemThemeStyle();
 #elif defined(ANDROID_BUILD) && ANDROID_BUILD
-    return THEME_STYLE_MATERIAL;
+    return THEME_STYLE_DEFAULT;
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
-    return THEME_STYLE_MATERIAL;
+    return THEME_STYLE_DEFAULT;
 #else
     return THEME_STYLE_SYSTEM;
 #endif
@@ -769,9 +769,9 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
         style = GetDefaultPlatformThemeStyle();
 
     switch(style) {
-    case THEME_STYLE_RETRO:
+    case THEME_STYLE_CLASSIC:
         return THEME_MONO;
-    case THEME_STYLE_MATERIAL:
+    case THEME_STYLE_DEFAULT:
         return THEME_SWEET;
     case THEME_STYLE_SYSTEM:
     default:
@@ -791,13 +791,13 @@ GetThemeStyleLabel(ThemeStyle style)
         key = "theme_style_system";
         fallback = "System";
         break;
-    case THEME_STYLE_RETRO:
-        key = "theme_style_retro";
-        fallback = "Retro";
+    case THEME_STYLE_CLASSIC:
+        key = "theme_style_classic";
+        fallback = "Classic";
         break;
-    case THEME_STYLE_MATERIAL:
-        key = "theme_style_material";
-        fallback = "Material";
+    case THEME_STYLE_DEFAULT:
+        key = "theme_style_default";
+        fallback = "Default";
         break;
     default:
         return "System";

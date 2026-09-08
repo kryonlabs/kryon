@@ -157,7 +157,7 @@
 - Add native list box keyboard parity
 - Clip Text only when its bounds require it
 - Preserve outlined icons and live Text layering
-- Refine Material guides and warning artwork
+- Refine Default guides and warning artwork
 
 ## v0.1.60 - 2026-09-06
 
@@ -168,7 +168,7 @@
 - Add canonical MingCute warning icon
 - Release: bump version to v0.1.60
 - Share one canonical text painter
-- Use a clean Material return affordance
+- Use a clean Default return affordance
 - Preserve canonical Text paint order on native screens
 - Make Text the canonical centered label API
 
@@ -340,7 +340,7 @@
 ### Changed
 
 - Multiline text areas now start at the top, accept new lines with Enter, and keep the caret visible as text wraps.
-- Large Material text areas keep normal field corners without changing button shapes.
+- Large Default text areas keep normal field corners without changing button shapes.
 - Added an interactive text-area and color-slider example.
 
 ## v0.1.43 - 2026-09-04
@@ -692,7 +692,7 @@
 - Fix modal release handling
 - Allow scroll viewport visual bleed
 - Match Sweet theme colors
-- Add Sweet Material theme palette
+- Add Sweet Default theme palette
 - Add Android secure store helper
 - Fix termi partial frame writes
 - Blend translucent termi cell backgrounds
@@ -732,13 +732,13 @@
 - Preserve BottomNav icon colors
 - Add generated progress parity coverage
 - Prepare monochrome UI icons as masks
-- Restore Material bottom nav icon colors
+- Restore Default bottom nav icon colors
 - Add generated list box parity coverage
 - Normalize UI icon textures to RGBA
 - Add generated table parity coverage
 - Preserve bottom nav icon colors
 - Remove native Plan 9 terminal stubs
-- Restore Material bottom nav icon tint
+- Restore Default bottom nav icon tint
 - Add generated controls parity coverage
 - Stub legacy terminal helpers on native Plan 9
 - Fix native Plan 9 terminal pane color resolution
@@ -811,7 +811,7 @@
 - K2g fix local helper calls
 - K2g resolve cross-file helper calls
 - K2g support direct Go extern calls
-- Keep Material neutral tones unsaturated
+- Keep Default neutral tones unsaturated
 - Update generated icon assets
 - Revalidate site deploys
 - Expose theme settings in Go runtime
@@ -1078,7 +1078,7 @@
 - Support sticky UI windows on X11
 - Fix menu bar switching between open menus
 - Allow apps to provide system theme palettes
-- Fix Material bottom nav icon contrast
+- Fix Default bottom nav icon contrast
 - Apply Canvas cursor to document targets
 - Fix material tab bar spacing
 - Consolidate Kry language documentation
@@ -1136,14 +1136,14 @@
 - Add an Android secure-store helper that saves and unlocks secrets with
   biometric/user-authenticated Android Keystore keys.
 - Add a Sweet app palette, with dark colors matched to the Sweet-Dark GTK
-  theme, and make it the default Material app palette.
+  theme, and make it the default Default app palette.
 - Expose the Plan9, Xfce and Sweet palettes in the Go runtime: the bindings
   previously stopped at Cobalt and clamped every other id to Mono. Also keep
-  the circle/accent catalog bytes, add `GetUIMaterialScheme` with the full
-  Material color roles, and `DefaultThemeForThemeStyle` for pairing a widget
+  the circle/accent catalog bytes, add `GetUIDefaultScheme` with the full
+  Default color roles, and `DefaultThemeForThemeStyle` for pairing a widget
   style with its default palette.
 - Let scroll containers render a small visual bleed around their viewport so
-  control borders, focus rings, and Material state layers are not clipped.
+  control borders, focus rings, and Default state layers are not clipped.
 
 ### Removed
 
@@ -1378,7 +1378,7 @@
 - Renderers: web player opens any .krb + CI builds per-platform downloads
 - K2b: embed referenced assets into the cartridge
 - Krb v2: embedded asset section + texture_rgba blit
-- Material style: subtle control rounding instead of full pills
+- Default style: subtle control rounding instead of full pills
 - K2b: compile .kry state updates and if-guards into v2 VM programs
 - Scene_inspect: set SO_REUSEADDR so quick restarts rebind
 - Kry_json: expose kry_json_type
@@ -1542,7 +1542,7 @@
 - Document and enforce canonical app api
 - Fix sprite example syntax
 - Clean kryon app api
-- Add Material theme style widgets
+- Add Default theme style widgets
 - Restore stable tool targets
 - Preserve icon texture colors
 - Use host-specific root build directories

@@ -441,5 +441,5 @@ func SetThemeDarkMode(dark int32)             { active().SetThemeDarkMode(dark) 
 func SetThemeStyle(style ThemeStyle)          { active().SetThemeStyle(style) }
 func SetThemeSource(source ThemeSource)       { active().SetThemeSource(source) }
 func SetThemeMode(mode ThemeMode)             { active().SetThemeMode(mode) }
-func GetUIMaterialScheme() MaterialScheme     { return active().GetUIMaterialScheme() }
+func GetUIDefaultScheme() DefaultScheme     { return active().GetUIDefaultScheme() }
 func SystemThemePrefersDark() bool            { return systemPrefersDark() }

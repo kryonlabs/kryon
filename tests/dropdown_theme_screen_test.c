@@ -48,11 +48,11 @@ min3(int a, int b, int c)
 static void
 check_material_android_outline_neutral(void)
 {
-    UIMaterialScheme scheme;
+    UIDefaultScheme scheme;
 
     SetThemeSource(THEME_SOURCE_SYSTEM);
     SetThemeMode(THEME_MODE_LIGHT);
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetSystemThemePalette("Android",
                           (Color){0xFF, 0xFB, 0xFE, 0xFF},
                           (Color){0xF7, 0xF2, 0xFA, 0xFF},
@@ -65,7 +65,7 @@ check_material_android_outline_neutral(void)
                           false,
                           true);
     ApplyCurrentUITheme();
-    scheme = GetUIMaterialScheme();
+    scheme = GetUIDefaultScheme();
 
     check_int("android material outline remains neutral",
               max3(scheme.outline.r, scheme.outline.g, scheme.outline.b) -
@@ -149,7 +149,7 @@ main(void)
     InitUI(VIEW_W, VIEW_H, 1.0f);
     check_material_android_outline_neutral();
     SetThemeSource(THEME_SOURCE_APP);
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
 
     for(int i = 0; i < 3; i++)
@@ -203,10 +203,10 @@ main(void)
      * may flip upward across the other fields. */
     style_sel = 0;
     tap(450, style_row);
-    /* Material is the third option: field bottom + gap + padding + 2.5 rows */
+    /* Default is the third option: field bottom + gap + padding + 2.5 rows */
     tap(450, style_row + 15 + 4 + 4 + 75);
-    check_int("Material selectable from style popup", style_sel,
-              THEME_STYLE_MATERIAL);
+    check_int("Default selectable from style popup", style_sel,
+              THEME_STYLE_DEFAULT);
     check_int("style popup closed", popup_covers(style_row - 60) == 0 &&
                              popup_covers(style_row + 60) == 0, 1);
 

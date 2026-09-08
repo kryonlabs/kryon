@@ -1785,8 +1785,8 @@ ui_resolve_text_input_style(TextInputStyle style)
 {
     Color background = c_surface.a != 0 ? c_surface : c_bg;
 
-    if(ui_material_style()) {
-        UIMaterialScheme scheme = ui_material_scheme();
+    if(ui_default_style()) {
+        UIDefaultScheme scheme = ui_default_scheme();
 
         background = scheme.surface_container;
         if(style.border.a == 0)
@@ -1839,8 +1839,8 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
     if(focused && text_input_active)
         SetUIFocusTextInputActive(1);
 
-    if(ui_material_style()) {
-        Color background = ui_material_surface_container();
+    if(ui_default_style()) {
+        Color background = ui_default_surface_container();
         Color outline = focused ? c_circle : Fade(c_text, 0.36f);
 
         DrawRectangleRounded(bounds, 0.18f, 12, background);
@@ -1887,7 +1887,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
             sel_w = Scale(2);
         DrawRectangle(sel_x, text_y, sel_w,
                       TextLineHeight(font),
-                      ui_material_style() ? ui_alpha(c_circle, 82) :
+                      ui_default_style() ? ui_alpha(c_circle, 82) :
                                             (Color){78, 132, 196, 135});
     }
     DrawUIText(value, text_x, text_y, font, text_color);
@@ -1904,7 +1904,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
 
         int cursor_x = text_x + TextWidth(before_cursor, font);
         DrawRectangle(cursor_x, cursor_y, Scale(2), cursor_h,
-                      ui_material_style() ? c_circle : cursor_color);
+                      ui_default_style() ? c_circle : cursor_color);
     }
     EndUIClip();
 }
@@ -3960,7 +3960,7 @@ RichTextEditor(RichTextEditorProps editor)
                                : 0.10f,
                            editor.toolbar_style.background.a != 0
                                ? editor.toolbar_style.background
-                               : ui_material_surface_container(),
+                               : ui_default_surface_container(),
                            editor.toolbar_style.border.a != 0
                                ? editor.toolbar_style.border
                                : Fade(GetThemeText(), 0.22f));

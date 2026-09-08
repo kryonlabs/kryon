@@ -1348,8 +1348,8 @@ include/theme_meta.h function GetThemeMeta
 include/theme_meta.h function GetThemeScopeName
 include/theme_meta.h function NormalizeTheme
 include/theme_meta.h macro THEME_COUNT
-include/theme_style.h enum THEME_STYLE_MATERIAL
-include/theme_style.h enum THEME_STYLE_RETRO
+include/theme_style.h enum THEME_STYLE_DEFAULT
+include/theme_style.h enum THEME_STYLE_CLASSIC
 include/theme_style.h enum THEME_STYLE_SYSTEM
 include/ui_clip.h function BeginUIClip
 include/ui_clip.h function EndUIClip
@@ -1370,7 +1370,7 @@ include/ui_controls.h function GetSegmentedControlHeight
 include/ui_controls.h function GetTextAreaSelection
 include/ui_controls.h function GetUIIconButtonPadding
 include/ui_controls.h function GetUIIconButtonSize
-include/ui_controls.h function GetUIMaterialScheme
+include/ui_controls.h function GetUIDefaultScheme
 include/ui_controls.h function GetUIStyleTokens
 include/ui_controls.h function GetUIStyleTokensForThemeStyle
 include/ui_controls.h function QueueTextInputBackspace

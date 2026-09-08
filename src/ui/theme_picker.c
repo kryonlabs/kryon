@@ -144,7 +144,7 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
     if(settings.theme_mode != NULL && *settings.theme_mode == THEME_MODE_SYSTEM)
         *settings.theme_mode = THEME_MODE_LIGHT;
     if(settings.theme_style != NULL && *settings.theme_style == THEME_STYLE_SYSTEM)
-        *settings.theme_style = THEME_STYLE_RETRO;
+        *settings.theme_style = THEME_STYLE_CLASSIC;
 #endif
 
     if(state != NULL)
@@ -229,18 +229,18 @@ DrawUIThemeSettings(ThemeSettingsProps settings, UIThemeSettingsState *state)
         const char *style_options[3];
         int style_values[3] = {
             THEME_STYLE_SYSTEM,
-            THEME_STYLE_RETRO,
-            THEME_STYLE_MATERIAL
+            THEME_STYLE_CLASSIC,
+            THEME_STYLE_DEFAULT
         };
         int style_index = 0;
 
         style_options[0] = ui_theme_settings_text(settings.style_system_label,
                                                   "theme_style_system", "System style");
         /* Style names localize through GetThemeStyleLabel already. */
-        style_options[1] = ui_theme_settings_text(settings.style_retro_label,
-                                                  NULL, GetThemeStyleLabel(THEME_STYLE_RETRO));
-        style_options[2] = ui_theme_settings_text(settings.style_material_label,
-                                                  NULL, GetThemeStyleLabel(THEME_STYLE_MATERIAL));
+        style_options[1] = ui_theme_settings_text(settings.style_classic_label,
+                                                  NULL, GetThemeStyleLabel(THEME_STYLE_CLASSIC));
+        style_options[2] = ui_theme_settings_text(settings.style_default_label,
+                                                  NULL, GetThemeStyleLabel(THEME_STYLE_DEFAULT));
         for(int i = 0; i < 3; i++) {
             if(*settings.theme_style == style_values[i])
                 style_index = i;
@@ -278,7 +278,7 @@ DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *stat
     if(settings.theme_mode != NULL && *settings.theme_mode == THEME_MODE_SYSTEM)
         *settings.theme_mode = THEME_MODE_LIGHT;
     if(settings.theme_style != NULL && *settings.theme_style == THEME_STYLE_SYSTEM)
-        *settings.theme_style = THEME_STYLE_RETRO;
+        *settings.theme_style = THEME_STYLE_CLASSIC;
 #endif
 
     if(state == NULL)
@@ -336,8 +336,8 @@ DrawUIThemeSettingsMenus(ThemeSettingsProps settings, UIThemeSettingsState *stat
                                              THEME_COUNT - 1);
     if(settings.theme_style != NULL) {
         if(*settings.theme_style != THEME_STYLE_SYSTEM &&
-           *settings.theme_style != THEME_STYLE_RETRO &&
-           *settings.theme_style != THEME_STYLE_MATERIAL) {
+           *settings.theme_style != THEME_STYLE_CLASSIC &&
+           *settings.theme_style != THEME_STYLE_DEFAULT) {
             *settings.theme_style = THEME_STYLE_SYSTEM;
             result.style_changed = 1;
             result.changed = 1;
@@ -456,7 +456,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
     int light_w = TextWidth(light_label ? light_label : "Light", font);
     int dark_w = TextWidth(dark_label ? dark_label : "Dark", font);
     int max_label_w = light_w > dark_w ? light_w : dark_w;
-    /* match DrawUIToggleSwitchs retro content minimum so the switch does
+        /* Match DrawUIToggleSwitchs classic content minimum so the switch does
      * not silently grow past the computed rect */
     int toggle_w = (max_label_w + Scale(16)) * 2 + Scale(6);
     int min_toggle_w = Scale(100);

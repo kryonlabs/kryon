@@ -204,7 +204,7 @@ typedef struct UIStyleTokens {
     int shadow_offset_y;
 } UIStyleTokens;
 
-typedef struct UIMaterialScheme {
+typedef struct UIDefaultScheme {
     Color primary;
     Color on_primary;
     Color secondary;
@@ -219,7 +219,7 @@ typedef struct UIMaterialScheme {
     Color on_error;
     Color disabled_container;
     Color disabled_content;
-} UIMaterialScheme;
+} UIDefaultScheme;
 
 typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
                                              int h, int min, int max, int value);
@@ -278,7 +278,7 @@ typedef struct {
 
 UIStyleTokens GetUIStyleTokens(void);
 UIStyleTokens GetUIStyleTokensForThemeStyle(ThemeStyle style);
-UIMaterialScheme GetUIMaterialScheme(void);
+UIDefaultScheme GetUIDefaultScheme(void);
 void SetUIStyleTokens(UIStyleTokens tokens);
 void ClearUIStyleTokensOverride(void);
 

@@ -349,7 +349,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
     ThemeStyle theme_style = GetEffectiveThemeStyle();
     UIStyleTokens tokens = GetUIStyleTokens();
 
-    if(theme_style == THEME_STYLE_RETRO) {
+    if(theme_style == THEME_STYLE_CLASSIC) {
         *radius = 0.0f;
         *roundness = 0.0f;
         *segments = 1;
@@ -365,8 +365,8 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
         return;
     }
 
-    if(theme_style == THEME_STYLE_MATERIAL) {
-        UIMaterialScheme scheme = ui_material_scheme();
+    if(theme_style == THEME_STYLE_DEFAULT) {
+        UIDefaultScheme scheme = ui_default_scheme();
 
         if(*radius <= 0.0f)
             *radius = (float)Scale((int)tokens.panel_radius);
@@ -422,8 +422,8 @@ PictureTexture(Texture2D texture, PictureProps picture)
     picture_apply_style(picture.bounds, &picture.style, &radius, &roundness, &segments,
                         &outline_px);
 
-    if(theme_style == THEME_STYLE_MATERIAL)
-        ui_material_elevation(picture.bounds, roundness,
+    if(theme_style == THEME_STYLE_DEFAULT)
+        ui_default_elevation(picture.bounds, roundness,
                               GetUIStyleTokens().shadow_offset_y);
 
     if(picture.style.background.a > 0) {
@@ -446,7 +446,7 @@ PictureTexture(Texture2D texture, PictureProps picture)
         picture_draw_rounded_gradient(picture.bounds, radius,
                                       picture.style.scrim_top,
                                       picture.style.scrim_bottom);
-    if(theme_style == THEME_STYLE_RETRO) {
+    if(theme_style == THEME_STYLE_CLASSIC) {
         DrawUIBevel((int)picture.bounds.x, (int)picture.bounds.y,
                     (int)picture.bounds.width, (int)picture.bounds.height,
                     LightenUIColor(GetThemeBackground(), 52),

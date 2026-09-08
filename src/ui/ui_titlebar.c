@@ -12,8 +12,8 @@ DrawUITitleBarBackground(int height)
     Color divider = GetThemeText();
     UIStyleTokens tokens = GetUIStyleTokens();
 
-    if(ui_material_style()) {
-        top = ui_material_surface_container();
+    if(ui_default_style()) {
+        top = ui_default_surface_container();
         bottom = c_bg;
     }
     if(tokens.title_bar_alpha < top.a)

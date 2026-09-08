@@ -59,7 +59,7 @@ static SystemThemePalette system_light_palette;
 static SystemThemePalette system_dark_palette;
 static int system_prefers_dark = 0;
 #if defined(KRYON_PLATFORM_PLAN9)
-static ThemeStyle system_theme_style = THEME_STYLE_RETRO;
+static ThemeStyle system_theme_style = THEME_STYLE_CLASSIC;
 #else
 static ThemeStyle system_theme_style = THEME_STYLE_SYSTEM;
 #endif
@@ -126,7 +126,7 @@ system_theme_auto_refresh(void)
     RefreshSystemTheme();
 }
 
-static const SystemThemePalette material_light_palette = {
+static const SystemThemePalette default_light_palette = {
     .background = {0xFF, 0xFB, 0xFE, 0xFF},
     .surface = {0xF7, 0xF2, 0xFA, 0xFF},
     .text = {0x1D, 0x1B, 0x20, 0xFF},
@@ -137,10 +137,10 @@ static const SystemThemePalette material_light_palette = {
     .link = {0x67, 0x50, 0xA4, 0xFF},
     .available = 1,
     .prefers_dark = 0,
-    .name = "Material"
+    .name = "Default"
 };
 
-static const SystemThemePalette material_dark_palette = {
+static const SystemThemePalette default_dark_palette = {
     .background = {0x14, 0x12, 0x18, 0xFF},
     .surface = {0x21, 0x1F, 0x26, 0xFF},
     .text = {0xE6, 0xE0, 0xE9, 0xFF},
@@ -151,17 +151,17 @@ static const SystemThemePalette material_dark_palette = {
     .link = {0xD0, 0xBC, 0xFF, 0xFF},
     .available = 1,
     .prefers_dark = 1,
-    .name = "Material"
+    .name = "Default"
 };
 
 static void
-apply_material_palette(bool dark)
+apply_default_palette(bool dark)
 {
-    system_palette = dark ? material_dark_palette : material_light_palette;
+    system_palette = dark ? default_dark_palette : default_light_palette;
     system_palette.supports_mode = 1;
     system_prefers_dark = dark ? 1 : 0;
-    system_light_palette = material_light_palette;
-    system_dark_palette = material_dark_palette;
+    system_light_palette = default_light_palette;
+    system_dark_palette = default_dark_palette;
     system_light_palette.supports_mode = 1;
     system_dark_palette.supports_mode = 1;
 }
@@ -187,7 +187,7 @@ windows_system_theme_refresh(void)
     }
     if(status != ERROR_SUCCESS)
         return 0;
-    apply_material_palette(use_light == 0);
+    apply_default_palette(use_light == 0);
     snprintf(system_palette.name, sizeof(system_palette.name), "Windows");
     snprintf(system_light_palette.name, sizeof(system_light_palette.name), "Windows");
     snprintf(system_dark_palette.name, sizeof(system_dark_palette.name), "Windows");
@@ -1234,14 +1234,14 @@ plan9_system_theme_refresh(void)
     if(strcmp(mode, "dark") == 0)
         dark = 1;
     if(plan9_theme_file_value(text, "style", style, sizeof(style))) {
-        if(strcmp(style, "material") == 0)
-            system_theme_style = THEME_STYLE_MATERIAL;
-        else if(strcmp(style, "retro") == 0)
-            system_theme_style = THEME_STYLE_RETRO;
+        if(strcmp(style, "default") == 0)
+            system_theme_style = THEME_STYLE_DEFAULT;
+        else if(strcmp(style, "classic") == 0)
+            system_theme_style = THEME_STYLE_CLASSIC;
         else
-            system_theme_style = THEME_STYLE_RETRO;
+            system_theme_style = THEME_STYLE_CLASSIC;
     } else {
-        system_theme_style = THEME_STYLE_RETRO;
+        system_theme_style = THEME_STYLE_CLASSIC;
     }
 
     for(i = 0; i < THEME_COUNT; i++) {
@@ -1296,13 +1296,13 @@ RefreshSystemTheme(void)
 {
 #if defined(PLATFORM_WEB)
     /* Browsers expose no desktop palette, but they do expose the users
-       light/dark preference; map it onto the material palettes. */
+       light/dark preference; map it onto the default palettes. */
     {
         int prefers_dark = EM_ASM_INT_V(
             return (typeof matchMedia === 'function' &&
                     matchMedia('(prefers-color-scheme: dark)').matches) ? 1 : 0;
         );
-        apply_material_palette(prefers_dark != 0);
+        apply_default_palette(prefers_dark != 0);
         snprintf(system_palette.name, sizeof(system_palette.name), "System");
         return true;
     }
@@ -1416,8 +1416,8 @@ SetSystemThemeDarkMode(bool dark)
 {
     if(!system_palette.available ||
        strcmp(system_palette.name, "System") == 0 ||
-       strcmp(system_palette.name, "Material") == 0) {
-        apply_material_palette(dark);
+       strcmp(system_palette.name, "Default") == 0) {
+        apply_default_palette(dark);
         return;
     }
     if(system_palette.supports_mode) {

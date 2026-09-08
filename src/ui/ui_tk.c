@@ -1345,12 +1345,12 @@ DrawUIRadioButton(RadioButtonProps radio)
     int focused = 0;
     int activated;
 
-    if(ui_material_style() && hit_bounds.height < touch &&
+    if(ui_default_style() && hit_bounds.height < touch &&
        radio.bounds.height >= touch) {
         hit_bounds.y -= ((float)touch - hit_bounds.height) * 0.5f;
         hit_bounds.height = (float)touch;
     }
-    if(ui_material_style() && hit_bounds.width < touch)
+    if(ui_default_style() && hit_bounds.width < touch)
         hit_bounds.width = (float)touch;
     activated = ui_focusable_pressed(hit_bounds, radio.id, radio.disabled,
                                      &focused);
@@ -1363,8 +1363,8 @@ DrawUIRadioButton(RadioButtonProps radio)
         MarkUIDisabled();
     if(!IsWindowReady())
         return activated ? radio.id : 0;
-    if(ui_material_style()) {
-        UIMaterialScheme scheme = ui_material_scheme();
+    if(ui_default_style()) {
+        UIDefaultScheme scheme = ui_default_scheme();
         UIRadioAnimState *anim;
         Rectangle state_bounds = {
             center.x - (float)touch / 2.0f,
@@ -1436,7 +1436,7 @@ DrawUIRadioButton(RadioButtonProps radio)
             layer.a = 31;
             DrawCircleV(center, (float)touch / 2.0f, layer);
         }
-        ui_material_ripple(state_bounds, ring, (int)key, down);
+        ui_default_ripple(state_bounds, ring, (int)key, down);
         fill_radius = radio.checked ? outer - stroke : (outer - stroke * 1.5f) * selected;
         if(fill_radius > 0.2f)
             DrawCircleV(center, fill_radius, fill);
@@ -1498,7 +1498,7 @@ DrawUIProgressBar(ProgressBarProps progress)
             text_color = c_text;
         } else if(fill.width >= (float)(text_w + pad * 2)) {
             text_x = (int)fill_end - text_w - pad;
-            text_color = ui_material_on_color(fill_color);
+            text_color = ui_default_on_color(fill_color);
         }
         DrawUIText(label, text_x, text_y, font, text_color);
     }

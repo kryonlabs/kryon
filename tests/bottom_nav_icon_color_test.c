@@ -124,7 +124,7 @@ main(void)
     SetUIScale(1.0f);
     SetUIDefaultFontAutoLoad(0);
     SetThemeSource(THEME_SOURCE_APP);
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
 
     BeginUIFrame(900, 720, 1.0f);

@@ -62,10 +62,10 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     knob_x = x + (int)(t * (float)w) - knob_w / 2;
 
     if(can_draw) {
-        if(!ui_material_style() && ui_modern_style()) {
+        if(!ui_default_style() && ui_modern_style()) {
             DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
                                  0.5f, 8, DarkenUIColor(c_bg, 20));
-        } else if(!ui_material_style()) {
+        } else if(!ui_default_style()) {
             DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
             DrawUIBevel(x, track_y, w, track_h,
                         DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
@@ -110,17 +110,17 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     knob_x = x + (int)(t * (float)w) - knob_w / 2;
 
     if(can_draw) {
-        if(ui_material_style()) {
+        if(ui_default_style()) {
             int active_w = (int)(t * (float)w);
-            Color inactive = ui_material_surface_container();
-            Color outline = ui_material_outline();
+            Color inactive = ui_default_surface_container();
+            Color outline = ui_default_outline();
 
             DrawRectangleRounded((Rectangle){x, track_y, w, Scale(4)},
                                  0.5f, 8, inactive);
             DrawRectangleRounded((Rectangle){x, track_y, active_w, Scale(4)},
                                  0.5f, 8, c_circle);
             if(g_ui_slider_active_id == id)
-                ui_material_state_layer((Rectangle){knob_x - Scale(10),
+                ui_default_state_layer((Rectangle){knob_x - Scale(10),
                                                     knob_y - Scale(5),
                                                     knob_w + Scale(20),
                                                     knob_h + Scale(10)},
@@ -397,12 +397,12 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ui_touch_target_min();
     int font = GetFontSize();
-    int material_style = ui_material_style();
+    int default_style = ui_default_style();
     int can_draw = IsWindowReady();
-    int off_w = material_style ? 0 : TextWidth(off_label, font);
-    int on_w = material_style ? 0 : TextWidth(on_label, font);
+    int off_w = default_style ? 0 : TextWidth(off_label, font);
+    int on_w = default_style ? 0 : TextWidth(on_label, font);
     int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
-    int min_w = material_style ? Scale(52) : min_half_w * 2 + Scale(6);
+    int min_w = default_style ? Scale(52) : min_half_w * 2 + Scale(6);
     Rectangle bounds;
     int enabled;
     int pressed;
@@ -453,7 +453,7 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         return pressed;
     }
 
-    if(material_style) {
+    if(default_style) {
         int track_w = Scale(52);
         int track_h = Scale(32);
         int track_x = x + (w - track_w) / 2;
@@ -463,16 +463,16 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
         int thumb_cx = checked ? track_x + track_w - Scale(16)
                               : track_x + Scale(16);
         int thumb_cy = track_y + track_h / 2;
-        Color track = checked ? c_circle : ui_material_surface_container();
-        Color thumb = checked ? ui_material_on_color(c_circle) : ui_material_outline();
-        Color outline = checked ? c_circle : ui_material_outline();
+        Color track = checked ? c_circle : ui_default_surface_container();
+        Color thumb = checked ? ui_default_on_color(c_circle) : ui_default_outline();
+        Color outline = checked ? c_circle : ui_default_outline();
 
         DrawRectangleRounded((Rectangle){track_x, track_y, track_w, track_h},
                              0.50f, 12, track);
         DrawRectangleRoundedLines((Rectangle){track_x, track_y, track_w, track_h},
                                   0.50f, 12, outline);
         if(CheckCollisionPointRec(mouse_world, bounds))
-            ui_material_state_layer((Rectangle){track_x - Scale(8),
+            ui_default_state_layer((Rectangle){track_x - Scale(8),
                                                 track_y - Scale(8),
                                                 track_w + Scale(16),
                                                 track_h + Scale(16)},
@@ -568,12 +568,12 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         return pressed;
     }
 
-    if(ui_material_style()) {
+    if(ui_default_style()) {
         Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
         int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
                       !UIInputCapturesClick(mouse_world) &&
                       UIHoverEffectsEnabled();
-        UIMaterialScheme scheme = ui_material_scheme();
+        UIDefaultScheme scheme = ui_default_scheme();
         Color fill = *value ? scheme.primary : BLANK;
         Color border = *value ? scheme.primary : scheme.on_surface_variant;
         Color state_color = *value ? scheme.primary : scheme.on_surface_variant;
@@ -585,7 +585,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             mark_color = scheme.disabled_container;
             label_color = scheme.disabled_content;
         }
-        ui_material_state_layer((Rectangle){box.x - Scale(12),
+        ui_default_state_layer((Rectangle){box.x - Scale(12),
                                             box.y - Scale(12),
                                             box.width + Scale(24),
                                             box.height + Scale(24)},

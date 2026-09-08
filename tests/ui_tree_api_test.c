@@ -84,7 +84,7 @@ main(void)
     int count = 0;
     ScaffoldFixture scaffold_fixture = {.closed = 1};
 
-    SetThemeStyle(THEME_STYLE_RETRO);
+    SetThemeStyle(THEME_STYLE_CLASSIC);
 
     check_int("section label",
               GetNodeHeight(NodeSectionLabel(section, 0, 0)),
@@ -115,15 +115,15 @@ main(void)
     check_int("bottom nav",
               GetNodeHeight(NodeBottomNav(nav)),
               Scale(40));
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
     check_int("material bottom nav",
               GetNodeHeight(NodeBottomNav(nav)),
               Scale(106));
-    SetThemeStyle(THEME_STYLE_RETRO);
+    SetThemeStyle(THEME_STYLE_CLASSIC);
     check_int("retro tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
               Scale(36));
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
     check_int("material tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
               Scale(48));
@@ -225,7 +225,7 @@ main(void)
     check_int("route fallback version", GetRouteVersion(), 0);
 
     SetUIViewSize(320, 240);
-    SetThemeStyle(THEME_STYLE_RETRO);
+    SetThemeStyle(THEME_STYLE_CLASSIC);
     BeginTree(37);
     scaffold = BeginUIScreenScaffold((UIScreenScaffoldSpec){
         .title = "Settings",

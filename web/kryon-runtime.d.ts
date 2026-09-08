@@ -180,7 +180,7 @@ export const THEME_MODE_DARK: number;
 export const THEME_SOURCE_SYSTEM: number;
 export const THEME_SOURCE_APP: number;
 export const THEME_STYLE_SYSTEM: number;
-export const THEME_STYLE_MATERIAL: number;
+export const THEME_STYLE_DEFAULT: number;
 
 export function Background(...args: unknown[]): unknown;
 export function Bevel(...args: unknown[]): unknown;

@@ -17,7 +17,7 @@ state {
 
 TextAreaSliderExample :: (viewport: Rectangle) #ui {
     if !material_ready {
-        SetThemeStyle(THEME_STYLE_MATERIAL)
+        SetThemeStyle(THEME_STYLE_DEFAULT)
         material_ready = 1
     }
     bg: Color = ColorFromHSV((float)hue, 0.12f, 0.96f)

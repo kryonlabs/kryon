@@ -3324,17 +3324,17 @@ main(void)
     test_semantic_font_sizes_follow_ui_scale();
     test_circle_click_uses_ui_release_path();
 
-    SetThemeStyle(THEME_STYLE_RETRO);
-    check_int("retro style", GetThemeStyle(), THEME_STYLE_RETRO);
-    check_int("retro effective style", GetEffectiveThemeStyle(), THEME_STYLE_RETRO);
+    SetThemeStyle(THEME_STYLE_CLASSIC);
+    check_int("classic style", GetThemeStyle(), THEME_STYLE_CLASSIC);
+    check_int("classic effective style", GetEffectiveThemeStyle(), THEME_STYLE_CLASSIC);
     check_int("retro bevel", GetUIStyleTokens().bevel_enabled, 1);
 
     /* Theme-section locale keys must resolve to real strings (the
      * settings picker wires these as fallbacks). */
     {
         static const char *keys[] = {
-            "theme_style_label", "theme_style_system", "theme_style_retro",
-            "theme_style_material", "theme_label",
+            "theme_style_label", "theme_style_system", "theme_style_classic",
+            "theme_style_default", "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"
@@ -3351,9 +3351,9 @@ main(void)
         }
     }
 
-    SetThemeStyle(THEME_STYLE_MATERIAL);
-    check_int("material style", GetThemeStyle(), THEME_STYLE_MATERIAL);
-    check_int("material effective style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
+    check_int("default style", GetThemeStyle(), THEME_STYLE_DEFAULT);
+    check_int("default effective style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
     check_int("material bevel", GetUIStyleTokens().bevel_enabled, 0);
     check_int("material touch target", GetUIStyleTokens().touch_target_min, 48);
 
@@ -3368,8 +3368,8 @@ main(void)
      * settings picker wires these as fallbacks). */
     {
         static const char *keys[] = {
-            "theme_style_label", "theme_style_system", "theme_style_retro",
-            "theme_style_material", "theme_label",
+            "theme_style_label", "theme_style_system", "theme_style_classic",
+            "theme_style_default", "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"
@@ -3386,15 +3386,15 @@ main(void)
         }
     }
 
-    SetThemeStyle(THEME_STYLE_MATERIAL);
+    SetThemeStyle(THEME_STYLE_DEFAULT);
 
     SetThemeStyle((ThemeStyle)99);
     check_int("invalid style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
     SetThemeStyle(THEME_STYLE_SYSTEM);
 #if defined(ANDROID_BUILD) && ANDROID_BUILD
-    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
-    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_MATERIAL);
+    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
 #else
     check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_SYSTEM);
 #endif
