@@ -6,6 +6,7 @@
 #include "ui_disabled_internal.h"
 #include "dropdown_store.h"
 #include "tab_bar_store.h"
+#include "menu_store.h"
 #include "ui_input_clip_internal.h"
 #include <stdlib.h>
 #include <limits.h>
@@ -62,6 +63,7 @@ struct UIPaintLayers {
     UIPopupInput *input, *previous_input;
     DropdownStore *dropdowns, *previous_dropdowns;
     TabBarStore *tab_bars, *previous_tab_bars;
+    MenuStore *menus, *previous_menus;
 };
 
 static UIPaintLayers *main_layers;
@@ -72,6 +74,7 @@ static int main_frame_open;
 static UIPopupInput *headless_input, *headless_previous_input;
 static DropdownStore *headless_dropdowns, *headless_previous_dropdowns;
 static TabBarStore *headless_tab_bars, *headless_previous_tab_bars;
+static MenuStore *headless_menus, *headless_previous_menus;
 static int headless_input_open;
 /* Graphics scopes form one stack even when their textures belong to separate
  * host contexts. Validate it before restoring any backend or borrowed state. */
@@ -90,12 +93,15 @@ void ui_frame_layers_begin(void)
             headless_dropdowns = dropdown_store_new();
         if(!headless_tab_bars)
             headless_tab_bars = tab_bar_store_new();
+        if(!headless_menus)
+            headless_menus = menu_store_new();
         ui_popup_input_frame(headless_input);
         headless_previous_input = ui_popup_input_bind(headless_input);
         headless_previous_dropdowns =
             dropdown_store_swap(headless_dropdowns);
         headless_previous_tab_bars =
             tab_bar_store_swap(headless_tab_bars);
+        headless_previous_menus = menu_store_swap(headless_menus);
         headless_input_open = 1;
     }
     main_frame_open = 1;
@@ -120,18 +126,22 @@ void ui_frame_layers_end(void)
         /* Input routing happens before the next frame redeclares owners. */
         dropdown_store_swap(main_layers->dropdowns);
         tab_bar_store_swap(main_layers->tab_bars);
+        menu_store_swap(main_layers->menus);
     }
     if(headless_input_open) {
         ui_popup_input_finish(headless_input);
         ui_popup_input_bind(headless_previous_input);
         dropdown_store_swap(headless_previous_dropdowns);
         tab_bar_store_swap(headless_previous_tab_bars);
+        menu_store_swap(headless_previous_menus);
         headless_previous_input = NULL;
         headless_previous_dropdowns = NULL;
         headless_previous_tab_bars = NULL;
+        headless_previous_menus = NULL;
         headless_input_open = 0;
         dropdown_store_swap(headless_dropdowns);
         tab_bar_store_swap(headless_tab_bars);
+        menu_store_swap(headless_menus);
     }
     main_frame_open = 0;
 }
@@ -145,6 +155,8 @@ void ui_paint_layers_shutdown(void)
             dropdown_store_swap(NULL);
         if(tab_bar_store_current() == main_layers->tab_bars)
             tab_bar_store_swap(NULL);
+        if(menu_store_current() == main_layers->menus)
+            menu_store_swap(NULL);
         ui_paint_layers_destroy(main_layers);
         main_layers = NULL;
     }
@@ -154,6 +166,7 @@ void ui_paint_layers_shutdown(void)
             ui_popup_input_bind(headless_previous_input);
             dropdown_store_swap(headless_previous_dropdowns);
             tab_bar_store_swap(headless_previous_tab_bars);
+            menu_store_swap(headless_previous_menus);
             headless_input_open = 0;
         }
         ui_popup_input_destroy(headless_input);
@@ -161,6 +174,7 @@ void ui_paint_layers_shutdown(void)
         headless_previous_input = NULL;
         headless_previous_dropdowns = NULL;
         headless_previous_tab_bars = NULL;
+        headless_previous_menus = NULL;
     }
     if(headless_dropdowns) {
         if(dropdown_store_current() == headless_dropdowns)
@@ -174,6 +188,12 @@ void ui_paint_layers_shutdown(void)
         tab_bar_store_free(headless_tab_bars);
         headless_tab_bars = NULL;
     }
+    if(headless_menus) {
+        if(menu_store_current() == headless_menus)
+            menu_store_swap(NULL);
+        menu_store_free(headless_menus);
+        headless_menus = NULL;
+    }
     main_frame_open = 0;
 }
 
@@ -186,6 +206,7 @@ UIPaintLayers *ui_paint_layers_create(void)
     layers->input = ui_popup_input_create();
     layers->dropdowns = dropdown_store_new();
     layers->tab_bars = tab_bar_store_new();
+    layers->menus = menu_store_new();
     return layers;
 }
 
@@ -202,6 +223,7 @@ void ui_paint_layers_destroy(UIPaintLayers *layers)
     ui_popup_input_destroy(layers->input);
     dropdown_store_free(layers->dropdowns);
     tab_bar_store_free(layers->tab_bars);
+    menu_store_free(layers->menus);
     free(layers->items);
     free(layers);
 }
@@ -221,6 +243,7 @@ void ui_paint_layers_frame(UIPaintLayers *layers, int width, int height)
     layers->previous_input = ui_popup_input_bind(layers->input);
     layers->previous_dropdowns = dropdown_store_swap(layers->dropdowns);
     layers->previous_tab_bars = tab_bar_store_swap(layers->tab_bars);
+    layers->previous_menus = menu_store_swap(layers->menus);
 }
 
 UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)
@@ -333,4 +356,5 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
     ui_popup_input_bind(layers->previous_input);
     dropdown_store_swap(layers->previous_dropdowns);
     tab_bar_store_swap(layers->previous_tab_bars);
+    menu_store_swap(layers->previous_menus);
 }

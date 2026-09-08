@@ -142,7 +142,10 @@ C tab-bar owned scroll and its bar-local click, reorder, and pane-drag
 bookkeeping now belong to that same render-host context instead of
 process-global statics. Interleaved graphical hosts use the same tab ID without
 sharing omitted scroll state, and restoring the outer host restores its state
-immediately. Native auxiliary windows also retain their own active focus ID
+immediately. Menu open state, submenu navigation, deferred overlays, and
+activation results are host-owned as well; an interleaved-host regression uses
+the same menu-bar ID without exposing one host's open menu to the other. Native
+auxiliary windows also retain their own active focus ID
 and restore the caller's focus on exit. A real-window regression reopens one
 across frames and checks both directions of focus isolation. The broader C
 pointer and text-edit state is still shared.

@@ -372,6 +372,7 @@ int main(void)
 
     UIPaintLayers *host_a = ui_paint_layers_create();
     UIPaintLayers *host_b = ui_paint_layers_create();
+    Menu host_menus[] = {{.label = "Host"}};
     for(int frame = 0; frame < 2; frame++) {
         int size = frame == 0 ? 32 : 64;
         RenderTexture2D host_target = LoadRenderTexture(size,size);
@@ -380,6 +381,14 @@ int main(void)
         BeginTextureMode(host_target);
         ClearBackground(BLACK);
         ui_paint_layers_frame(host_a,size,size);
+        int host_a_open = frame == 0 ? 0 : -1;
+        MenuBarResult host_a_menu = DrawUIMenuBar(
+            41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
+        if(host_a_menu.open_index != 0) {
+            fprintf(stderr,"first host lost its open menu: %d\n",
+                    host_a_menu.open_index);
+            failures++;
+        }
         int fallback_scroll = 0;
         int *host_a_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
         if(frame == 0)
@@ -397,6 +406,14 @@ int main(void)
         BeginTextureMode(inner);
         ClearBackground(BLUE);
         ui_paint_layers_frame(host_b,16,16);
+        int host_b_open = -1;
+        MenuBarResult host_b_menu = DrawUIMenuBar(
+            41300, (Rectangle){0,0,16,12}, host_menus, 1, &host_b_open);
+        if(host_b_menu.open_index != -1) {
+            fprintf(stderr,"open menu crossed hosts: %d\n",
+                    host_b_menu.open_index);
+            failures++;
+        }
         int *host_b_scroll = ui_tab_bar_owned_scroll(41200,&fallback_scroll);
         if(*host_b_scroll != (frame == 0 ? 0 : 9)) {
             fprintf(stderr,"tab scroll crossed hosts: %d\n",*host_b_scroll);
@@ -419,6 +436,14 @@ int main(void)
             failures++;
         }
         BeginTextureMode(host_target);
+        host_a_open = -1;
+        host_a_menu = DrawUIMenuBar(
+            41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
+        if(host_a_menu.open_index != 0) {
+            fprintf(stderr,"restored host has wrong open menu: %d\n",
+                    host_a_menu.open_index);
+            failures++;
+        }
         ui_paint_layers_composite(host_a);
         if(frame == 1) ui_paint_layers_destroy(host_b);
         DrawRectangle(0,0,1,1,WHITE);
