@@ -45,6 +45,19 @@ starts_word(const char *s, const char *word)
 }
 
 static int
+is_identifier_text(const char *text)
+{
+    const unsigned char *cursor = (const unsigned char *)text;
+
+    if(cursor == NULL || (!isalpha(*cursor) && *cursor != '_'))
+        return 0;
+    cursor++;
+    while(isalnum(*cursor) || *cursor == '_')
+        cursor++;
+    return *cursor == '\0';
+}
+
+static int
 parse_symbol_before_colons(const char *s, char *out, size_t out_size)
 {
     const char *p;
@@ -2394,7 +2407,8 @@ kir_parse_file(const char *path, const char *root)
                         snprintf(run_value, sizeof(run_value), "%ld", value);
                         expr = run_value;
                     }
-                    if(!starts_word(expr, "#defined")) {
+                    if(!starts_word(expr, "#defined") &&
+                       !is_identifier_text(expr)) {
                         def = KirModuleAddDefine(module, cname, expr,
                                                  KirSpan(rel, line_no, 1));
                         if(def != NULL)

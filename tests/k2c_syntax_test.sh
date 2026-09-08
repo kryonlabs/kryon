@@ -209,6 +209,10 @@ grep -Fq 'FixtureLimit = 12,' "$h"
 grep -Fq '#include "src/valid.h"' "$c"
 grep -Fq '#define PUBLIC_ARRAY_SIZE 4' "$h"
 grep -Fq 'int values[PUBLIC_ARRAY_SIZE];' "$h"
+if grep -Fq '#define ANDROID ANDROID_BUILD' "$h"; then
+    echo "frontend build alias leaked into the generated interface" >&2
+    exit 1
+fi
 grep -Fq '#include "ui_inspect.h"' "$c"
 grep -Fq 'int abs(int value);' "$c"
 grep -Fq 'static int' "$c"
