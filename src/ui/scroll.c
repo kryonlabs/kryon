@@ -495,7 +495,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)
         return 0;
 
-    int scrollbar_width = Scale(8);
+    int scrollbar_width = Scale(12);
     int scrollbar_min_thumb = Scale(24);
     int track_padding = 0;
 
@@ -561,7 +561,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     }
 
     Color track_color = ui_scrollbar_ensure_visible(
-        ui_scrollbar_contrast_from(c_bg, 22), c_bg, 34, 36, 16);
+        ui_scrollbar_contrast_from(c_bg, 42), c_bg, 46, 48, 22);
     Color thumb_color = thumb_hover ||
                         (scrollbar_drag_active &&
                          scrollbar_drag_offset == scroll_offset)

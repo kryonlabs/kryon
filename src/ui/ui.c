@@ -3233,6 +3233,7 @@ RenderTextArea(TextAreaProps area)
     int wrap_width;
     int content_h;
     int max_scroll;
+    int scrollbar_w;
     int reveal_cursor = 0;
     Vector2 mouse_world;
     int mouse_inside;
@@ -3643,6 +3644,7 @@ RenderTextArea(TextAreaProps area)
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
         max_scroll = 0;
+    scrollbar_w = area.scroll_y != NULL && max_scroll > 0 ? Scale(12) : 0;
     if(mouse_inside && !captured && !ui_mod_key_down())
         scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
     reveal_cursor = focused &&
@@ -3676,7 +3678,8 @@ RenderTextArea(TextAreaProps area)
     ui_draw_box_background(area.bounds, radius, area.style.background, border);
 
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
-                                    area.bounds.width - padding_x * 2, area.bounds.height - padding_y * 2});
+                                    area.bounds.width - padding_x * 2 - scrollbar_w,
+                                    area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
         DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
@@ -3689,7 +3692,7 @@ RenderTextArea(TextAreaProps area)
                                selection_end);
     EndUIClip();
     if(area.scroll_y != NULL && max_scroll > 0) {
-        ui_scrollbar((int)(area.bounds.x + area.bounds.width - Scale(8)),
+        ui_scrollbar((int)(area.bounds.x + area.bounds.width - scrollbar_w),
                      (int)area.bounds.y,
                      (int)area.bounds.height,
                      content_h + padding_y * 2,
