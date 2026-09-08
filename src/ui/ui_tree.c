@@ -32,6 +32,12 @@ static int ui_tree_node_capacity = 0;
 static UIWidgetNode *ui_committed_nodes = NULL;
 static int ui_committed_node_count = 0;
 static int ui_committed_node_capacity = 0;
+static UIWidgetNode *ui_reconcile_old_nodes = NULL;
+static int ui_reconcile_old_node_capacity = 0;
+static int *ui_reconcile_slots = NULL;
+static int ui_reconcile_slot_capacity = 0;
+static int *ui_reconcile_matched_old = NULL;
+static int ui_reconcile_matched_old_capacity = 0;
 static int ui_tree_screen_id = 0;
 static KeyID ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
@@ -333,6 +339,28 @@ ui_tree_reserve(UIWidgetNode **nodes, int *capacity, int needed)
     if(grown == NULL)
         return 0;
     *nodes = grown;
+    *capacity = next;
+    return 1;
+}
+
+static int
+ui_tree_reserve_ints(int **items, int *capacity, int needed)
+{
+    int *grown;
+    int next;
+
+    if(needed <= *capacity)
+        return 1;
+    next = *capacity > 0 ? *capacity : 64;
+    while(next < needed) {
+        if(next > 0x3fffffff)
+            return 0;
+        next *= 2;
+    }
+    grown = realloc(*items, (size_t)next * sizeof(*grown));
+    if(grown == NULL)
+        return 0;
+    *items = grown;
     *capacity = next;
     return 1;
 }
@@ -935,9 +963,9 @@ SetSelection(KeyID key, int anchor, int cursor)
 void
 ReconcileTree(void)
 {
-    int *slots = NULL;
-    int *matched_old = NULL;
-    UIWidgetNode *old_nodes = NULL;
+    int *slots;
+    int *matched_old;
+    UIWidgetNode *old_nodes;
     int old_count = ui_committed_node_count;
     int slot_count = 1;
     int tree_changed;
@@ -949,28 +977,31 @@ ReconcileTree(void)
         return;
     tree_changed = old_count != ui_tree_node_count;
     if(old_count > 0) {
-        old_nodes = malloc((size_t)old_count * sizeof(*old_nodes));
-        if(old_nodes == NULL)
+        if(!ui_tree_reserve(&ui_reconcile_old_nodes,
+                            &ui_reconcile_old_node_capacity, old_count))
             return;
+        old_nodes = ui_reconcile_old_nodes;
         memcpy(old_nodes, ui_committed_nodes,
                (size_t)old_count * sizeof(*old_nodes));
+    } else {
+        old_nodes = NULL;
     }
     while(slot_count < old_count * 2 + 1)
         slot_count *= 2;
-    slots = malloc((size_t)slot_count * sizeof(*slots));
-    if(slots == NULL) {
-        free(old_nodes);
+    if(!ui_tree_reserve_ints(&ui_reconcile_slots,
+                             &ui_reconcile_slot_capacity, slot_count))
         return;
-    }
+    slots = ui_reconcile_slots;
     if(ui_tree_node_count > 0) {
-        matched_old = malloc((size_t)ui_tree_node_count * sizeof(*matched_old));
-        if(matched_old == NULL) {
-            free(slots);
-            free(old_nodes);
+        if(!ui_tree_reserve_ints(&ui_reconcile_matched_old,
+                                 &ui_reconcile_matched_old_capacity,
+                                 ui_tree_node_count))
             return;
-        }
+        matched_old = ui_reconcile_matched_old;
         for(i = 0; i < ui_tree_node_count; i++)
             matched_old[i] = -1;
+    } else {
+        matched_old = NULL;
     }
     for(i = 0; i < slot_count; i++)
         slots[i] = -1;
@@ -1057,9 +1088,6 @@ ReconcileTree(void)
             }
         }
     }
-    free(matched_old);
-    free(slots);
-    free(old_nodes);
     /* Keep the displayed tree's snapshots intact while its replacement is
      * being declared. HitTestNode may still query that committed tree. */
     if(ui_committed_input_capture_capacity < ui_tree_input_capture_count) {
