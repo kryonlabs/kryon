@@ -1821,6 +1821,100 @@ test_secure_text_field_word_navigation(void)
 }
 
 static void
+test_immediate_text_composition(void)
+{
+    char field_text[64] = "ab";
+    char area_text[64] = "aZZb";
+    int field_cursor = 1;
+    int area_cursor = 3;
+    int field_focused = 1;
+    int area_focused = 1;
+    const char *preedit = NULL;
+    int preedit_cursor = 0;
+    int preedit_selection = 0;
+    TextFieldProps field = {
+        .bounds = {10,10,180,32}, .text = field_text,
+        .text_size = sizeof(field_text), .cursor_position = &field_cursor,
+        .focused = &field_focused, .focus_id = 25520
+    };
+    TextAreaProps area = {
+        .bounds = {10,50,180,80}, .text = area_text,
+        .text_size = sizeof(area_text), .cursor_position = &area_cursor,
+        .focused = &area_focused, .focus_id = 25521
+    };
+
+    InjectReset();
+    ClearTextInputFocus();
+    field_focused = 1;
+    SetUIFocus(field.focus_id);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 3, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextField preedit is not committed",
+              TextField(field), 0);
+    EndUIFrame();
+    check_int("immediate TextField preserves committed buffer",
+              strcmp(field_text,"ab"), 0);
+    check_int("immediate TextField owns shared preedit",
+              ui_text_composition_get(&field_focused, &preedit,
+                                      &preedit_cursor,
+                                      &preedit_selection), 1);
+    check_int("immediate TextField preedit UTF-8 cursor",
+              preedit_cursor, 3);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextField commit reports change",
+              TextField(field), 1);
+    EndUIFrame();
+    check_int("immediate TextField commits UTF-8 at caret",
+              strcmp(field_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+    check_int("immediate TextField clears preedit after commit",
+              ui_text_composition_get(&field_focused, NULL, NULL, NULL), 0);
+
+    ClearTextInputFocus();
+    area_focused = 1;
+    SetUIFocus(area.focus_id);
+    SetTextAreaSelection(area.focus_id, 1, 3);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
+                          "\xE3\x81\xAB", 3, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextArea preedit is not committed",
+              TextArea(area), 0);
+    EndUIFrame();
+    check_int("immediate TextArea preserves selected text during preedit",
+              strcmp(area_text,"aZZb"), 0);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
+                          "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
+    BeginUIFrame(240,160,1);
+    check_int("immediate TextArea commit reports change",
+              TextArea(area), 1);
+    EndUIFrame();
+    check_int("immediate TextArea composition replaces selection",
+              strcmp(area_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"blocked",7,0);
+    BeginUIFrame(240,160,1);
+    TextArea(area);
+    EndUIFrame();
+    area.read_only = 1;
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"x",1,0);
+    BeginUIFrame(240,160,1);
+    check_int("read-only immediate editor ignores IME commit",
+              TextArea(area), 0);
+    EndUIFrame();
+    check_int("read-only immediate editor cancels preedit",
+              ui_text_composition_get(&area_focused, NULL, NULL, NULL), 0);
+    check_int("read-only immediate editor does not mutate text",
+              strcmp(area_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
+
+    ClearTextInputFocus();
+    InjectReset();
+}
+
+static void
 test_composed_combo_scope(void)
 {
     bool open = true;
@@ -3531,6 +3625,7 @@ main(void)
     test_popup_text_keyboard_ownership();
     test_text_area_page_navigation();
     test_secure_text_field_word_navigation();
+    test_immediate_text_composition();
     test_popup_tab_ownership();
     test_popup_button_keyboard_ownership();
     test_popup_choice_keyboard_ownership();

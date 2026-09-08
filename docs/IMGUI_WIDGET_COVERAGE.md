@@ -239,12 +239,10 @@ reject captured text, remain unchanged on the next frame without input, and
 accept fresh text later. C covers both injected and platform-queued characters,
 same-frame dismissal, and queued Backspace/Enter for TextField. Popup-captured
 leftovers now expire at frame end. Go's existing frame cleanup passes the matching
-text test. IME composition and device-level Android delivery remain unverified.
-C retained IME now has separate regressions: blocked commits do not replay,
+text test. Device-level Android IME delivery remains unverified.
+C IME now has separate regressions: blocked commits do not replay,
 read-only TextField/TextArea reject commits, and TextField preedit cancels on
-focus loss, a read-only transition or popup capture without revival. This does
-not establish immediate C editor composition, native Go composition events or
-device-level IME delivery.
+focus loss, a read-only transition or popup capture without revival.
 Native Go now implements runtime-local composition events and per-editor
 preedit for TextField/TextArea. Tests cover queue isolation/limits, preedit
 persistence without buffer mutation, UTF-8 commit, cancellation, editor removal,
@@ -258,6 +256,11 @@ composition in both TextField and TextArea. C previously omitted TextArea
 preedit entirely. The DOM and Android adapters now normalize the composition
 cursor to the runtime's documented UTF-8 byte-offset contract, and retained C
 editors preserve their declaration-time Kryon font through deferred painting.
+Immediate and retained C editors now share one private composition session and
+one commit operation; retained widget state no longer duplicates preedit text,
+cursor or selection fields. Immediate TextField/TextArea tests cover UTF-8
+preedit without caller-buffer mutation, commits, selection replacement and
+read-only cancellation.
 OS-window Go IME delivery remains unfinished.
 Read-only TextField/TextArea behavior is now covered by the native generated
 composition fixture: selection/copy remains usable while text, cut/paste,

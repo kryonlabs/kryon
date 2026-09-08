@@ -348,12 +348,23 @@ typedef struct TextCompositionView {
     int composition_start;
     int composition_end;
 } TextCompositionView;
+typedef struct TextCompositionResult {
+    int text_changed;
+    int presentation_changed;
+    int selection_changed;
+} TextCompositionResult;
 int ui_text_composition_view(const char *text, int selection_start,
                              int selection_end, const char *preedit,
                              int preedit_cursor,
                              int preedit_selection_length,
                              TextCompositionView *view);
 void ui_text_composition_view_free(TextCompositionView *view);
+TextCompositionResult ui_text_composition_apply(
+    TextEdit edit, int *anchor, const void *owner, int focused,
+    int read_only, int allow_newlines);
+int ui_text_composition_get(const void *owner, const char **text,
+                            int *cursor, int *selection_length);
+int ui_text_composition_cancel(const void *owner);
 int ui_active_font_token(void);
 void ui_draw_text_with_font_token(const char *text, int x, int y,
                                   int font_size, Color color, int token);

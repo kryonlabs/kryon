@@ -1590,8 +1590,10 @@ ClaimUITextFocus(int *focused)
      * disappears immediately this frame even though it has not re-run yet. */
     if(g_ui_text_focus_owner != NULL && g_ui_text_focus_owner != focused)
         *g_ui_text_focus_owner = 0;
-    if(g_ui_text_focus_owner != focused)
+    if(g_ui_text_focus_owner != focused) {
+        ui_text_composition_cancel(g_ui_text_focus_owner);
         ui_text_context_close();
+    }
     g_ui_text_focus_owner = focused;
     g_ui_text_focus_owner_this_frame = focused;
     g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
@@ -1623,8 +1625,10 @@ ReleaseUITextFocus(int *focused, int focus_id)
 {
     if(focused == NULL)
         return;
-    if(g_ui_text_focus_owner == focused)
+    if(g_ui_text_focus_owner == focused) {
+        ui_text_composition_cancel(focused);
         g_ui_text_focus_owner = NULL;
+    }
     if(g_ui_text_focus_owner_this_frame == focused)
         g_ui_text_focus_owner_this_frame = NULL;
     if(focus_id > 0 && g_ui_focus_active_id == focus_id)
@@ -1654,6 +1658,8 @@ ClearTextInputFocus(void)
     g_ui_focus_text_input_active = 0;
     g_ui_text_input_requested = 0;
     g_ui_text_input_show_requested = 0;
+    ui_text_composition_cancel(NULL);
+    ClearTextComposition();
     ui_text_context_close();
     ui_clear_text_field_selection();
     ui_clear_text_area_selection();
@@ -3446,6 +3452,13 @@ RenderTextArea(TextAreaProps area)
     int cut_pressed = 0;
     int paste_pressed = 0;
     TextEdit area_edit;
+    TextCompositionView composition = {0};
+    const char *display_text;
+    int display_cursor;
+    int composition_start = 0;
+    int composition_end = 0;
+    int committed_selection_start;
+    int committed_selection_end;
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
@@ -3644,6 +3657,22 @@ RenderTextArea(TextAreaProps area)
         }
         selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
         selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
+    }
+    {
+        int anchor = has_selection
+            ? g_ui_text_area_selection.anchor : *area.cursor_position;
+        TextCompositionResult composition_result = ui_text_composition_apply(
+            area_edit, &anchor, area.focused, focused,
+            area.read_only || !UIKeyboardInputEnabled(), 1);
+
+        changed |= composition_result.text_changed;
+        if(composition_result.selection_changed) {
+            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                  area.focused, anchor,
+                                  *area.cursor_position, 0);
+            has_selection = 1;
+            selection_start = selection_end = *area.cursor_position;
+        }
     }
     if(focused && UIKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
@@ -3847,17 +3876,51 @@ RenderTextArea(TextAreaProps area)
         *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
     }
 
+    if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
+                                 area.focused))
+        ui_selection_range(g_ui_text_area_selection, area.text,
+                           &selection_start, &selection_end);
+    else
+        selection_start = selection_end = *area.cursor_position;
+
+    committed_selection_start = selection_start;
+    committed_selection_end = selection_end;
+
+    display_text = area.text;
+    display_cursor = *area.cursor_position;
+    {
+        const char *preedit = NULL;
+        int preedit_cursor = 0;
+        int preedit_selection_length = 0;
+
+        if(ui_text_composition_get(area.focused, &preedit, &preedit_cursor,
+                                   &preedit_selection_length) &&
+           ui_text_composition_view(
+               area.text, selection_start, selection_end, preedit,
+               preedit_cursor, preedit_selection_length, &composition)) {
+            display_text = composition.text;
+            display_cursor = composition.cursor;
+            selection_start = composition.selection_start;
+            selection_end = composition.selection_end;
+            composition_start = composition.composition_start;
+            composition_end = composition.composition_end;
+        }
+    }
+
     ui_text_context_register_target(UI_TEXT_CONTEXT_AREA, drag_id,
                                     area.focused, area.text, area.text_size,
                                     area.cursor_position,
                                     area.max_codepoints, area.filter,
                                     area.filter_user_data,
                                     &g_ui_text_area_selection,
-                                    selection_start, selection_end, 1, 0,
+                                    committed_selection_start,
+                                    committed_selection_end, 1, 0,
                                     area.read_only);
 
-    content_h = ui_text_area_content_height(area.text, font, line_gap,
-                                            wrap_width, area.content_version,
+    content_h = ui_text_area_content_height(display_text, font, line_gap,
+                                            wrap_width,
+                                            composition.text != NULL
+                                                ? 0 : area.content_version,
                                             changed);
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
@@ -3872,7 +3935,7 @@ RenderTextArea(TextAreaProps area)
     if(reveal_cursor) {
         int cursor_h = TextLineHeight(font);
         int cursor_y = ui_text_area_cursor_y(
-            area.text, *area.cursor_position, font, line_gap, wrap_width,
+            display_text, display_cursor, font, line_gap, wrap_width,
             &cursor_h);
         int viewport_h = (int)area.bounds.height - padding_y * 2;
 
@@ -3887,6 +3950,7 @@ RenderTextArea(TextAreaProps area)
 
     /* Keep editing usable without a renderer, as TextField already does. */
     if(!IsWindowReady()) {
+        ui_text_composition_view_free(&composition);
         EndUIWidget(&widget);
         return changed;
     }
@@ -3900,13 +3964,15 @@ RenderTextArea(TextAreaProps area)
         DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
-        ui_draw_text_area_text(area.text, *area.cursor_position,
+        ui_draw_text_area_text(display_text, display_cursor,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width,
                                area.syntax, area.style, selection_start,
-                               selection_end, 0, 0);
+                               selection_end, composition_start,
+                               composition_end);
     EndUIClip();
+    ui_text_composition_view_free(&composition);
     EndUIWidget(&widget);
     return changed;
 }
@@ -4291,6 +4357,12 @@ RenderTextField(TextFieldProps field)
     int max_scroll_x;
     int text_origin_x;
     int panning_field = 0;
+    TextCompositionView composition = {0};
+    int paint_cursor;
+    int composition_start = 0;
+    int composition_end = 0;
+    int committed_selection_start;
+    int committed_selection_end;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -4539,6 +4611,23 @@ RenderTextField(TextFieldProps field)
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
 
+    {
+        int anchor = ui_text_selection_matches(
+            g_ui_text_field_selection, field.focus_id, field.focused)
+            ? g_ui_text_field_selection.anchor : *field.cursor_position;
+        TextCompositionResult composition_result = ui_text_composition_apply(
+            field_edit, &anchor, field.focused, focused,
+            field.read_only || !UIKeyboardInputEnabled(), 0);
+
+        changed |= composition_result.text_changed;
+        if(composition_result.selection_changed) {
+            ui_text_selection_set(&g_ui_text_field_selection,
+                                  field.focus_id, field.focused, anchor,
+                                  *field.cursor_position, 0);
+            selection_start = selection_end = *field.cursor_position;
+        }
+    }
+
     if(focused && UIKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(field.text);
@@ -4695,7 +4784,7 @@ RenderTextField(TextFieldProps field)
             }
         }
         if(!field.read_only && !selection_handled) {
-            changed = EditText(field_edit);
+            changed |= EditText(field_edit);
         }
         if(!field.read_only && selection_handled &&
            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
@@ -4719,6 +4808,37 @@ RenderTextField(TextFieldProps field)
         *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
     }
 
+    if(ui_text_selection_matches(g_ui_text_field_selection,
+                                 field.focus_id, field.focused))
+        ui_selection_range(g_ui_text_field_selection, field.text,
+                           &selection_start, &selection_end);
+    else
+        selection_start = selection_end = *field.cursor_position;
+
+    committed_selection_start = selection_start;
+    committed_selection_end = selection_end;
+
+    display_text = field.text;
+    paint_cursor = *field.cursor_position;
+    if(!field.secure) {
+        const char *preedit = NULL;
+        int preedit_cursor = 0;
+        int preedit_selection_length = 0;
+
+        if(ui_text_composition_get(field.focused, &preedit, &preedit_cursor,
+                                   &preedit_selection_length) &&
+           ui_text_composition_view(
+               field.text, selection_start, selection_end, preedit,
+               preedit_cursor, preedit_selection_length, &composition)) {
+            display_text = composition.text;
+            paint_cursor = composition.cursor;
+            selection_start = composition.selection_start;
+            selection_end = composition.selection_end;
+            composition_start = composition.composition_start;
+            composition_end = composition.composition_end;
+        }
+    }
+
     if(field.secure) {
         size_t len = strlen(field.text);
 
@@ -4740,7 +4860,7 @@ RenderTextField(TextFieldProps field)
     *scroll_x_ptr = ui_clampi(*scroll_x_ptr, 0, max_scroll_x);
     if(focused) {
         int cursor_text_x = ui_text_width_before_cursor(
-            display_text, font, *field.cursor_position);
+            display_text, font, paint_cursor);
         int margin = Scale(8);
 
         if(cursor_text_x < *scroll_x_ptr + margin)
@@ -4757,18 +4877,22 @@ RenderTextField(TextFieldProps field)
                                         field.max_codepoints, field.filter,
                                         field.filter_user_data,
                                         &g_ui_text_field_selection,
-                                        selection_start, selection_end, 0, 1,
+                                        committed_selection_start,
+                                        committed_selection_end, 0, 1,
                                         field.read_only);
 
     UIWidgetTextInputPaint paint = {
-        .style = field.style, .cursor = *field.cursor_position, .focused = focused,
+        .style = field.style, .cursor = paint_cursor, .focused = focused,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
         .font = font, .font_token = ui_active_font_token(),
         .selection_start = selection_start, .selection_end = selection_end,
+        .composition_start = composition_start,
+        .composition_end = composition_end,
         .scroll_x = *scroll_x_ptr
     };
     ui_tree_submit_text_input(field.bounds, display_text, paint, field.focus_id);
+    ui_text_composition_view_free(&composition);
     free(masked_text);
     EndUIWidget(&widget);
     return changed;
