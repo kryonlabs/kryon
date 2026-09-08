@@ -2637,6 +2637,7 @@ Toggle(int id, int x, int y, int w, int h, int *value,
 {
     int focused = 0;
     int changed;
+    int paint_value;
     NodeId node = ui_tree_add(id, UI_WIDGET_TOGGLE_NODE,
                               (Rectangle){x, y, w, h}, NULL);
     if(node >= 0) {
@@ -2662,7 +2663,10 @@ Toggle(int id, int x, int y, int w, int h, int *value,
     }
     if(ui_tree_building)
         return changed;
-    (void)DrawUIToggleSwitch(x, y, w, h, value, off_label, on_label);
+    paint_value = value != NULL ? *value : 0;
+    (void)DrawUIToggleSwitch(x, y, w, h,
+                             value != NULL ? &paint_value : NULL,
+                             off_label, on_label);
     if(focused && IsWindowReady())
         DrawUIFocus((Rectangle){x,y,w,h});
     return changed;
@@ -2674,6 +2678,7 @@ Checkbox(int id, int x, int y, const char *label, int *value)
     int font = GetFontSize();
     int focused = 0;
     int changed;
+    int paint_value;
     NodeId node = ui_tree_add(id, UI_WIDGET_CHECKBOX_NODE,
                               (Rectangle){x, y,
                                   Scale(30) + TextWidth(label, font),
@@ -2700,7 +2705,9 @@ Checkbox(int id, int x, int y, const char *label, int *value)
     }
     if(ui_tree_building)
         return changed;
-    (void)DrawUICheckboxToggle(x, y, label, value);
+    paint_value = value != NULL ? *value : 0;
+    (void)DrawUICheckboxToggle(x, y, label,
+                               value != NULL ? &paint_value : NULL);
     if(focused && IsWindowReady())
         DrawUIFocus((Rectangle){x,y,Scale(30)+TextWidth(label,font),Scale(34)});
     return changed;
