@@ -276,6 +276,7 @@ INSTANCE_LOCK_TEST = $(BUILD_DIR)/tests/instance_lock_test
 LINUX_DESKTOP_PACKAGE_TEST = $(BUILD_DIR)/tests/linux_desktop_package.ok
 MARKDOWN_TEST = $(BUILD_DIR)/tests/markdown_test
 ANDROID_SURFACE_TEST = $(BUILD_DIR)/tests/android_surface_test
+FRAME_PACING_TEST = $(BUILD_DIR)/tests/frame_pacing_test
 UI_DPI_TEST = $(BUILD_DIR)/tests/ui_dpi_test
 UI_DPI_DESKTOP_TEST = $(BUILD_DIR)/tests/ui_dpi_desktop_test
 RAYLIB_COMPAT_TEST = $(BUILD_DIR)/tests/raylib_compat_test
@@ -498,7 +499,7 @@ preflight: submodule-urls-check kryon-compat-check kryon-boundary-check clean-te
 clean-text-api-check:
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -791,6 +792,11 @@ $(ANDROID_SURFACE_TEST): tests/android_surface_test.c src/platform/android_surfa
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/android_surface_test.c \
 		src/platform/android_surface.c src/platform/platform_thread.c -o $@
+
+$(FRAME_PACING_TEST): tests/frame_pacing_test.c src/core/kryon_frame_pacing.c include/kryon_frame.h include/kryon_compat.generated.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/frame_pacing_test.c \
+		src/core/kryon_frame_pacing.c -o $@
 
 $(UI_DPI_TEST): tests/ui_dpi_test.c src/ui/ui_dpi.c include/ui_dpi.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
