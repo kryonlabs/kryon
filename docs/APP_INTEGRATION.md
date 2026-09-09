@@ -1,6 +1,6 @@
-# Kryon Agent Guide
+# Kryon App Integration
 
-This document is for agents and maintainers using Kryon inside applications. It
+This document is for developers using Kryon inside applications. It
 describes the behavior Kryon owns, what application code should keep, and how to
 update downstream projects without editing vendored copies by hand.
 
@@ -15,25 +15,6 @@ theme, and DPI logic in each project.
 See `docs/BOUNDARIES.md` for the architectural line between reusable Kryon
 runtime behavior and downstream application behavior. See `docs/ARCHITECTURE.md`
 for the current subsystem map.
-
-Do not add compatibility wrappers or alias layers when the app API changes. Migrate
-Kryon itself first, then update downstream apps to the
-canonical names directly. Generated app code must use clean names such as
-`BeginFrame`, `EndFrame`, `Background`, `Text`, `Rect`, `Button`, `TextField`,
-`TextArea`, `Row`, `Column`, and `Picture`. Do not reintroduce duplicate public
-widget names such as `WidgetText`, `UIText`, or `UITextNode` for the same
-behavior. New public widget constructors must not use a `UI` prefix. If a stale
-prefixed widget constructor still exists, migrate callers to the canonical
-unprefixed widget name instead of adding another alias.
-Do not add public picture/widget helpers with `DrawUI*`, `UIText*`, or reversed
-UI-draw prefix names when the behavior belongs on the simple widget API. Extend
-`PictureProps`, `ButtonProps`, or the relevant unprefixed widget props instead,
-and leave no compatibility alias behind.
-
-Kryon owns live preview rendering, preview PNG capture, and hot-reload
-verification. Do not use Krait as the capture test harness for `.kry` files.
-Use Kryon-owned tooling directly, for example `kryon-preview`, to prove that a
-project source file renders, exports a PNG, and reloads safely.
 
 Keep application code focused on product state and domain behavior. Move repeated UI
 interaction rules into Kryon when more than one screen or project needs them.
@@ -199,11 +180,3 @@ Use this flow:
    Kryon API.
 
 This keeps Kryon reusable and prevents project-local vendor edits from diverging.
-
-## Documentation Rules
-
-Keep `docs/API.md` as the public API reference. Keep this guide as the operational
-guidance for agents and maintainers. Keep `docs/BOUNDARIES.md` current with the
-repo guardrails, and keep `docs/ARCHITECTURE.md` current when subsystems move.
-Documentation in Kryon should describe current APIs, current behavior, and the
-expected downstream workflow.

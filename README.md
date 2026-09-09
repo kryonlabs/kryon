@@ -196,8 +196,9 @@ stay private to `src/` unless a downstream app needs the API in `include/`.
 - `docs/PUBLIC_API_SNAPSHOT.txt` tracks public Kryon identifiers for API drift
   checks.
 - `docs/site/` contains the static documentation website.
-- `docs/AGENTS.md` documents how downstream apps should use Kryon, including
-  modal/input capture and submodule update rules.
+- `AGENTS.md` contains repository-wide agent and contributor instructions.
+- `docs/APP_INTEGRATION.md` documents downstream app integration, including
+  modal/input capture and dependency updates.
 
 ## Toolkit Direction
 

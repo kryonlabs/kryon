@@ -3,6 +3,22 @@
 Kryon is the canonical runtime. Keep it small, direct, and free of stale
 surfaces.
 
+## Instruction Location
+
+Keep repository-wide agent and contributor rules in this root `AGENTS.md`.
+Documentation under `docs/` describes API behavior, integration, and design;
+do not put agent policy there or maintain a duplicate instruction file there.
+Keep `docs/API.md`, `docs/BOUNDARIES.md`, and `docs/ARCHITECTURE.md` current
+when their corresponding APIs or subsystem boundaries change.
+
+## Upstream and Preview Workflow
+
+Make Kryon changes here on `master`, commit and push them here, then update
+downstream apps' submodule pointers. Never edit a downstream `vendor/kryon`.
+
+Kryon owns live preview, PNG capture, and hot-reload verification. Use
+Kryon-owned tooling, not Krait, to verify `.kry` rendering and reload behavior.
+
 ## Clean API Rule
 
 Do not introduce new public generated-runtime APIs with stale prefixes or
