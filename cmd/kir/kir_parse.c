@@ -1001,6 +1001,45 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
 }
 
 static int
+paren_params_are_typed(const char *body)
+{
+    const char *inner = NULL;
+    const char *end = NULL;
+    const char *p;
+    size_t depth = 0;
+
+    /* Find the top-level parameter list and its matching close. */
+    for(p = body; *p != '\0'; p++) {
+        if(*p == '(') {
+            if(depth == 0)
+                inner = p + 1;
+            depth++;
+        } else if(*p == ')') {
+            depth--;
+            if(depth == 0) {
+                end = p;
+                break;
+            }
+        }
+    }
+    if(inner == NULL || end == NULL)
+        return 0;
+    while(inner < end && (*inner == ' ' || *inner == '\t'))
+        inner++;
+    if(inner >= end)
+        return 1; /* () — empty parameter list */
+    /* Jai-style rule: a binding like 'X :: (expr)' stays a constant unless
+     * the parenthesized text is a typed parameter list. Parameter lists
+     * name their arguments ('name: Type'); bare expressions — numbers,
+     * arithmetic, ternaries, literals — do not. */
+    if(*inner == '"' || *inner == '\'' || isdigit((unsigned char)*inner))
+        return 0;
+    if(strchr(inner, '?') != NULL)
+        return 0;
+    return strchr(inner, ':') != NULL;
+}
+
+static int
 looks_like_function_header(const char *line)
 {
     char tmp[K2KIR_LINE_MAX];
@@ -1018,7 +1057,12 @@ looks_like_function_header(const char *line)
         return 0;
     if(strstr(body, "#type") != NULL)
         return 0;
-    return strchr(body, '(') != NULL;
+    if(body[0] != '(')
+        return 0;
+    /* A body or return type makes it a procedure regardless of params. */
+    if(strchr(body, '{') != NULL || strstr(body, "->") != NULL)
+        return 1;
+    return paren_params_are_typed(body);
 }
 
 
