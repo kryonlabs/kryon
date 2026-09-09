@@ -1,7 +1,11 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/menu_button.h"
 #include "runtime/split_button.h"
 #include "runtime/button.h"
+#include "runtime/style.h"
+#include "runtime/surface.h"
+#include "runtime/text.h"
 #include "ui_picture_internal.h"
 #include "ui_clip_internal.h"
 #include "ui_blend_internal.h"
@@ -10,6 +14,15 @@
 #include "embedded_assets.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+static void
+ui_paint_surface(Rectangle bounds, Style style)
+{
+    ui_draw_material(bounds, (Rectangle){0}, style.background, style.border,
+        style.border, style.radius, style.border_width, 0, 0, 0,
+        style.focus, 0, style.opacity, ui_style_fill(style), style.material);
+}
 
 #define UI_TREE_MAX_DEPTH UI_TREE_LAYOUT_DEPTH
 #define UI_NODE_HOVERED (1U << 28)
@@ -17,6 +30,8 @@
 #define UI_NODE_OWNS_STATE (1U << 30)
 #define UI_NODE_PAINTED_IMMEDIATE (1U << 27)
 #define UI_NODE_SCOPE_DISABLED (1U << 26)
+#define UI_NODE_INHERIT_FOREGROUND (1U << 25)
+#define UI_NODE_TEXT_DISABLED (1U << 24)
 
 typedef struct TextFieldState {
     int cursor;
@@ -406,6 +421,9 @@ ui_reconcile_node_changed(const UIWidgetNode *old_node,
         return 1;
     old_data = old_node->data;
     if((old_node->flags & UI_NODE_SCOPE_DISABLED) != (new_node->flags & UI_NODE_SCOPE_DISABLED)) return 1;
+    unsigned text_flags = UI_NODE_INHERIT_FOREGROUND | UI_NODE_TEXT_DISABLED;
+    if((old_node->flags & text_flags) != (new_node->flags & text_flags))
+        return 1;
     if(old_node->has_input_clip != new_node->has_input_clip ||
        (new_node->has_input_clip && memcmp(&old_node->input_clip,&new_node->input_clip,sizeof(new_node->input_clip)) != 0))
         return 1;
@@ -605,7 +623,8 @@ ui_tree_node_uses_retained_layout(NodeId id)
     return parent->kind == UI_WIDGET_COLUMN_NODE ||
            parent->kind == UI_WIDGET_ROW_NODE ||
            parent->kind == UI_WIDGET_GRID_NODE ||
-           parent->kind == UI_WIDGET_STACK_NODE;
+           parent->kind == UI_WIDGET_STACK_NODE ||
+           parent->kind == UI_WIDGET_BUTTON_NODE;
 }
 
 static int
@@ -1110,12 +1129,19 @@ LayoutTree(void)
            parent->kind != UI_WIDGET_BUTTON_NODE)
             continue;
         if(parent->kind == UI_WIDGET_BUTTON_NODE) {
-            float padding = (float)Scale(8);
-
-            content_x = parent->bounds.x + padding;
-            content_y = parent->bounds.y + padding;
-            content_w = parent->bounds.width - padding * 2;
-            content_h = parent->bounds.height - padding * 2;
+            ButtonSpec *button = &parent->data.button.spec;
+            float scale = (float)Scale(1000) / 1000.0f;
+            if(scale <= 0.0f)
+                scale = 1.0f;
+            Style style = {.padding_x = 8, .padding_y = 8};
+            if(button->style_resolved)
+                style = ResolveButtonStyle(ui_button_style_props(*button), button->state);
+            ContentBox content = ContentBounds(parent->bounds.width / scale,
+                parent->bounds.height / scale, style.padding_x, style.padding_y);
+            content_x = parent->bounds.x + content.x * scale;
+            content_y = parent->bounds.y + content.y * scale;
+            content_w = content.width * scale;
+            content_h = content.height * scale;
         } else {
             content_x = parent->bounds.x + parent->data.layout.padding;
             content_y = parent->bounds.y + parent->data.layout.padding;
@@ -1212,7 +1238,7 @@ RouteInput(void)
         else if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
             focus_id = node->data.text_area.focus_id;
         else if(node->kind == UI_WIDGET_BUTTON_NODE &&
-                !node->data.button.spec.disabled)
+                CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading))
             focus_id = node->data.button.spec.focus_id;
         if(node->has_input_clip) PushUIInputClip(node->input_clip);
         if(UIFocusFrameOpen() && focus_id > 0)
@@ -1232,7 +1258,7 @@ RouteInput(void)
             continue;
         before = node->flags;
         node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
-        if(!node->data.button.spec.disabled &&
+        if(CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading) &&
            (node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
            !ui_tree_input_blocked(node,mouse) &&
            (!node->has_input_clip || CheckCollisionPointRec(mouse,node->input_clip)) &&
@@ -1246,7 +1272,8 @@ RouteInput(void)
     }
     target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ? hit : -1;
     if(target >= 0 && ui_committed_nodes[target].kind == UI_WIDGET_BUTTON_NODE &&
-       !ui_committed_nodes[target].data.button.spec.disabled) {
+       CanActivate(ui_committed_nodes[target].data.button.spec.disabled,
+                   ui_committed_nodes[target].data.button.spec.loading)) {
         UIEvent event;
 
         memset(&event, 0, sizeof(event));
@@ -1262,7 +1289,7 @@ RouteInput(void)
 
         if(!UIFocusFrameOpen() ||
            node->kind != UI_WIDGET_BUTTON_NODE ||
-           node->data.button.spec.disabled ||
+           !CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading) ||
            !IsUIFocusActivatePressed(node->data.button.spec.focus_id))
             continue;
         memset(&event, 0, sizeof(event));
@@ -1600,9 +1627,10 @@ UpdateTree(void)
 
 void
 ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
-                  int wrap, int align, int vertical_align, int font_token)
+                  int wrap, int align, int vertical_align, int font_token, int letter_spacing)
 {
     int previous_font = ui_active_font_token();
+    int previous_spacing = ui_set_text_letter_spacing(Scale(letter_spacing));
     int y = (int)bounds.y;
     int text_width;
     int text_height;
@@ -1624,26 +1652,43 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
             .line_gap = Scale(2), .color = color
         };
         int height = ui_paragraph_height(paragraph);
-        if(vertical_align == TextAlignCenter)
-            y += ((int)bounds.height - height) / 2;
-        else if(vertical_align == TextAlignEnd)
-            y += (int)bounds.height - height;
+        y += (int)TextAlignmentOffset((int)bounds.height, height, vertical_align);
         ui_draw_paragraph_aligned(paragraph, (int)bounds.x, &y, align);
     } else {
         int x = (int)bounds.x;
-        if(align == TextAlignCenter)
-            x += ((int)bounds.width - text_width) / 2;
-        else if(align == TextAlignEnd)
-            x += (int)bounds.width - text_width;
+        x += (int)TextAlignmentOffset((int)bounds.width, text_width, align);
         if(vertical_align == TextAlignCenter)
             y = TextBaselineY(value, (int)bounds.y, (int)bounds.height, font);
-        else if(vertical_align == TextAlignEnd)
-            y += (int)bounds.height - TextHeight(value, font);
+        else
+            y += (int)TextAlignmentOffset((int)bounds.height, text_height, vertical_align);
         DrawUIText(value, x, y, font, color);
     }
     if(needs_clip)
         EndUIClip();
     PopUIFont(previous_font);
+    ui_set_text_letter_spacing(previous_spacing);
+}
+
+static void
+ui_tree_inherit_foreground(int parent, Color foreground, bool disabled)
+{
+    for(int child = ui_committed_nodes[parent].first_child; child >= 0;
+        child = ui_committed_nodes[child].next_sibling) {
+        UIWidgetNode *node = &ui_committed_nodes[child];
+        /* Nested buttons establish their own style when they are painted. */
+        if(node->kind == UI_WIDGET_BUTTON_NODE)
+            continue;
+        if(node->kind == UI_WIDGET_TEXT_NODE &&
+           (node->flags & UI_NODE_INHERIT_FOREGROUND) != 0) {
+            TextAppearance appearance = ResolveTextStyle(0, 0, 16, 0,
+                ColorToInt(foreground), 0, true, false,
+                (node->flags & UI_NODE_TEXT_DISABLED) != 0, disabled, 0);
+            node->data.primitive.color = GetColor(Opacity(appearance.color,
+                node->data.primitive.style.opacity));
+        }
+        if(node->first_child >= 0)
+            ui_tree_inherit_foreground(child, foreground, disabled);
+    }
 }
 
 static void
@@ -1654,6 +1699,8 @@ DrawTree(void)
 
     if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
         return;
+    /* Requests made while painting belong to the next animation frame. */
+    ui_tree_invalid &= ~UI_INVALIDATE_PAINT;
     for(i = 0; i < ui_committed_node_count; i++) {
         UIWidgetNode *node = &ui_committed_nodes[i];
         UIClipState parent_clip = {0};
@@ -1751,9 +1798,13 @@ DrawTree(void)
                 node->data.primitive.font, node->data.primitive.color,
                 node->data.primitive.wrap, node->data.primitive.align,
                 node->data.primitive.vertical_align,
-                node->data.primitive.font_token);
+                node->data.primitive.font_token, node->data.primitive.letter_spacing);
             break;
         case UI_WIDGET_RECT_NODE:
+            if(node->data.primitive.styled) {
+                ui_paint_surface(node->bounds, node->data.primitive.style);
+                break;
+            }
             DrawRectangleRec(node->bounds, node->data.primitive.color);
             if(node->data.primitive.border.a != 0)
                 DrawRectangleLinesEx(node->bounds, 1.0f,
@@ -1776,7 +1827,8 @@ DrawTree(void)
                 (node->owned_text != NULL ? node->owned_text : "");
             hovered = (node->flags & UI_NODE_HOVERED) != 0;
             pressed = (node->flags & UI_NODE_PRESSED) != 0;
-            PaintButton(spec, hovered, pressed);
+            Color foreground = ui_paint_button(spec, hovered, pressed);
+            ui_tree_inherit_foreground(i, foreground, node->data.button.spec.disabled);
             break;
         }
         case UI_WIDGET_TEXT_AREA_NODE: {
@@ -1958,7 +2010,6 @@ DrawTree(void)
             ui_clip_restore(parent_clip);
         }
     }
-    ui_tree_invalid &= ~UI_INVALIDATE_PAINT;
 }
 
 void
@@ -2096,7 +2147,7 @@ GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
                 node->state != NULL &&
                 ((TextFieldState *)node->state)->focused;
             nodes[count].disabled = node->kind == UI_WIDGET_BUTTON_NODE &&
-                node->data.button.spec.disabled;
+                !CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading);
             nodes[count].checked = node->kind == UI_WIDGET_CHECKBOX_NODE &&
                 node->data.checkbox.value != NULL &&
                 *node->data.checkbox.value != 0;
@@ -2298,66 +2349,98 @@ Background(Color color)
 void
 Text(TextProps props)
 {
+    int previous_typeface = PushUIFont(props.typeface);
+    int previous_spacing;
     const char *value = props.text != NULL ? props.text : "";
-    int font = props.font > 0 ? props.font : GetFontSize();
+    int font;
+    int inherited_font = 0;
+    bool inherit_foreground = props.color.a == 0 &&
+        (props.style.fields & StyleForeground) == 0;
+    Color inherited_color = {0};
+    bool inherited_color_set = false;
+    int inherited_disabled = 0;
     int bounded = props.bounds.width > 0;
     Rectangle bounds = props.bounds;
+    float measured_width = 0;
+    float measured_height = 0;
     NodeId node;
 
-    if(ui_tree_building && ui_tree_stack_depth > 0) {
-        UIWidgetNode *parent = ui_tree_node(
-            ui_tree_stack[ui_tree_stack_depth - 1]);
+    if(ui_tree_building) {
+        for(int i = ui_tree_stack_depth - 1; i >= 0; i--) {
+            UIWidgetNode *parent = ui_tree_node(ui_tree_stack[i]);
 
-        if(parent != NULL && parent->kind == UI_WIDGET_BUTTON_NODE) {
-            ButtonSpec *button = &parent->data.button.spec;
+            if(parent != NULL && parent->kind == UI_WIDGET_BUTTON_NODE) {
+                ButtonSpec *button = &parent->data.button.spec;
 
-            if(props.font <= 0)
-                props.font = button->font;
-            if(props.color.a == 0)
-                props.color = button->text;
+                inherited_font = button->font;
+                if(inherited_font <= 0) {
+                    Style style = ResolveButtonStyle(ui_button_style_props(*button), button->state);
+                    inherited_font = ResolveFont(button->font, Scale(style.font_size), GetFontSize());
+                }
+                inherited_color = button->text;
+                inherited_color_set = true;
+                inherited_disabled = button->disabled;
+                break;
+            }
         }
     }
-    if(props.color.a == 0)
-        props.color = GetThemeText();
-    if(props.disabled)
-        props.color = Fade(props.color, 0.45f);
-    if(bounds.width <= 0) {
-        bounds.width = (float)TextWidth(value, font);
-        props.wrap = TextWrapNone;
-    }
+    props.disabled = props.disabled || (UIContentDisabled() && !inherited_disabled);
+    Style style = MergeStyle((Style){.foreground = props.color, .opacity = 1}, props.style);
+    if((props.style.fields & StyleFontSize) != 0)
+        props.font = Scale((int)style.font_size);
+    TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
+        ColorToInt(style.foreground), ColorToInt(inherited_color), ColorToInt(GetThemeText()),
+        inherited_color_set, !inherit_foreground, props.disabled, inherited_disabled, props.letter_spacing);
+    font = appearance.font;
+    props.color = GetColor(Opacity(appearance.color, style.opacity));
+    props.letter_spacing = appearance.letter_spacing;
+    previous_spacing = ui_set_text_letter_spacing(Scale(props.letter_spacing));
+    props.wrap = (TextWrap)TextWrapPolicy(bounds.width, props.wrap);
+    if(!bounded)
+        measured_width = (float)TextWidth(value, font);
+    bounds.width = TextExtent(bounds.width, measured_width);
     if(bounds.height <= 0) {
         if(bounded && props.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
                 .line_gap = Scale(2), .color = props.color
             };
-            bounds.height = (float)ui_paragraph_height(paragraph);
+            measured_height = (float)ui_paragraph_height(paragraph);
         } else {
-            bounds.height = (float)TextHeight(value, font);
+            measured_height = (float)TextHeight(value, font);
         }
     }
+    bounds.height = TextExtent(bounds.height, measured_height);
     node = ui_tree_add(0, UI_WIDGET_TEXT_NODE, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(value);
         ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
+        ui_tree_nodes[node].data.primitive.letter_spacing = props.letter_spacing;
         ui_tree_nodes[node].data.primitive.color = props.color;
+        ui_tree_nodes[node].data.primitive.style = style;
         ui_tree_nodes[node].data.primitive.wrap = props.wrap;
         ui_tree_nodes[node].data.primitive.align = props.align;
         ui_tree_nodes[node].data.primitive.vertical_align = props.vertical_align;
+        if(inherit_foreground && inherited_color_set)
+            ui_tree_nodes[node].flags |= UI_NODE_INHERIT_FOREGROUND;
+        if(props.disabled)
+            ui_tree_nodes[node].flags |= UI_NODE_TEXT_DISABLED;
         ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
     if(ui_tree_building && IsWindowReady() &&
        !ui_tree_node_uses_retained_layout(node)) {
         ui_paint_text_box(value, bounds, font, props.color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token());
+                          ui_active_font_token(), props.letter_spacing);
         ui_tree_mark_painted_immediate(node);
     } else if(!ui_tree_building) {
         ui_paint_text_box(value, bounds, font, props.color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token());
+                          ui_active_font_token(), props.letter_spacing);
     }
+    ui_set_text_letter_spacing(previous_spacing);
+    PopUIFont(previous_typeface);
 }
 
 void
@@ -2450,6 +2533,26 @@ TextLines(const char **lines, int count, int x, int *y, int font,
     ui_tree_add(0, UI_WIDGET_TEXT_NODE,
                 (Rectangle){x, start_y, 0, count * line_h}, lines);
     DrawUITextLines(lines, count, x, y, font, line_h, color);
+}
+
+void
+Surface(Rectangle bounds, Style style)
+{
+    Style defaults = {0};
+    defaults.fields = StyleBackground | StyleRadius | StyleBorderWidth | StyleOpacity | StyleMaterial;
+    defaults.material = MaterialFlat;
+    defaults.background = GetThemeSurface();
+    defaults.radius = GetThemeMetrics().radius_medium;
+    defaults.border_width = GetThemeMetrics().border_width;
+    defaults.opacity = 1.0f;
+    style = MergeStyle(defaults, style);
+    NodeId node = ui_tree_add(0, UI_WIDGET_RECT_NODE, bounds, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.primitive.styled = 1;
+        ui_tree_nodes[node].data.primitive.style = style;
+    }
+    if(!ui_tree_building)
+        ui_paint_surface(bounds, style);
 }
 
 static void
@@ -3623,36 +3726,24 @@ ModalFrame(int width, int height, const char *title,
 }
 
 static Rectangle
-resolve_button_bounds(ButtonProps button)
+resolve_button_bounds(ButtonProps button, int disclosure)
 {
+    button.disabled = button.disabled || UIContentDisabled();
     Rectangle bounds = button.bounds;
     ThemeMetrics metrics = GetThemeMetrics();
-    Style style = ResolveButtonStyle(button, ButtonStateNormal);
-    int height = button.size == ControlSizeSmall
-        ? Scale(metrics.control_height_small)
-        : button.size == ControlSizeLarge
-            ? Scale(metrics.control_height_large)
-            : Scale(metrics.control_height_medium);
-    int font = button.font > 0 ? button.font : GetFontSize();
-    int icon_size = style.icon_size > 0.0f ? Scale(style.icon_size)
-                                           : (font > Scale(14) ? font : Scale(14));
-    int padding = button.size == ControlSizeSmall
-        ? Scale(metrics.control_padding_small)
-        : button.size == ControlSizeLarge
-            ? Scale(metrics.control_padding_large)
-            : Scale(metrics.control_padding_medium);
-    int gap = style.gap > 0.0f ? Scale(style.gap) : Scale(8);
-    int has_icon = button.icon.id != 0 || button.icon_type != UI_ICON_TYPE_NONE;
+    Style style = ResolveButtonStyle(button, button.state);
+    int height = Scale(SizeValue(button.size, metrics.control_height_small,
+        metrics.control_height_medium, metrics.control_height_large));
+    int font = ResolveFont(button.font, Scale(style.font_size), GetFontSize());
+    int has_icon = disclosure || button.icon.id != 0 || button.icon_type != UI_ICON_TYPE_NONE;
     float available_width = 0.0f;
-    float measured_width;
+    float scale = (float)Scale(1000) / 1000.0f;
+    if(scale <= 0.0f)
+        scale = 1.0f;
 
-    if(button.style.normal.fields & StyleFontSize)
-        font = Scale(style.font_size);
-    if(button.style.normal.fields & StylePaddingX)
-        padding = Scale(style.padding_x);
-
-    if(bounds.height <= 0)
-        bounds.height = (float)height;
+    float text_height = 0.0f;
+    if(button.label != NULL && button.label[0] != '\0' && !button.icon_only)
+        text_height = (float)font;
     if(button.full_width && bounds.width <= 0) {
         float right = (float)GetUIViewWidth();
 
@@ -3664,34 +3755,46 @@ resolve_button_bounds(ButtonProps button)
         }
         available_width = right - bounds.x;
     }
-    measured_width = (float)(TextWidth(button.label != NULL
-                                           ? button.label : "", font)
-                             + padding * 2 +
-                             (has_icon ? icon_size + gap : 0));
-    bounds.width = ShapeWidth(
-        bounds.width, bounds.height, measured_width, available_width,
-        button.full_width, button.square || button.icon_only, button.circle);
+    int typeface_token = PushUIFont(style.typeface);
+    float label_width = (float)TextWidth(button.label != NULL ? button.label : "", font);
+    PopUIFont(typeface_token);
+    MeasuredSize measured = MeasureSize((ButtonMeasure){
+        .width = bounds.width / scale, .height = bounds.height / scale,
+        .minimum_height = (float)height / scale,
+        .label_width = label_width / scale, .label_height = text_height / scale,
+        .available_width = available_width / scale,
+        .padding_x = style.padding_x, .padding_y = style.padding_y,
+        .icon_size = style.icon_size, .gap = style.gap,
+        .has_icon = has_icon, .icon_only = button.icon_only,
+        .full_width = button.full_width, .square = button.square, .circle = button.circle,
+    });
+    /* Explicit physical bounds must not acquire logical-roundtrip error. */
+    if(bounds.height <= 0)
+        bounds.height = measured.height * scale;
+    if(button.square || button.circle || button.icon_only)
+        bounds.width = bounds.height;
+    else if(bounds.width <= 0)
+        bounds.width = measured.width * scale;
     return bounds;
 }
 
-int
-Button(ButtonProps button)
+static ButtonSpec
+ui_tree_button_spec(ButtonProps button, Rectangle surface_bounds, int disclosure)
 {
     Style paint;
-    button.bounds = resolve_button_bounds(button);
-    button.id = ResolveUIFocusID(button.id);
     ButtonSpec spec = {
         .bounds = button.bounds,
+        .surface_bounds = surface_bounds,
+        .disclosure = disclosure,
         .label = button.label,
         .font = button.font,
         .focus_id = button.id,
-        .disabled = button.disabled || button.loading ||
-                    button.state == ButtonStateDisabled ||
-                    button.state == ButtonStateLoading || UIContentDisabled(),
+        .disabled = button.disabled || button.state == ButtonStateDisabled || UIContentDisabled(),
         .state = button.state,
-        .loading = button.loading,
+        .loading = button.loading || button.state == ButtonStateLoading,
         .selected = button.selected,
         .style_resolved = 1,
+        .size = button.size,
         .tone = button.tone,
         .emphasis = button.emphasis,
         .style = button.style,
@@ -3700,25 +3803,33 @@ Button(ButtonProps button)
         .icon_placement = button.icon_placement,
         .icon_only = button.icon_only
     };
-    NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
-                                button.bounds, NULL);
-    int clicked;
-
+    button.disabled = spec.disabled;
     paint = ResolveButtonStyle(button, button.state);
     spec.background = paint.background;
     spec.hover_background = paint.background;
     spec.text = paint.foreground;
     spec.border = paint.border;
     spec.focus = paint.focus;
-    spec.radius = paint.radius;
+    spec.radius = ui_radius_px(button.bounds, paint.radius);
     spec.border_width = paint.border_width;
     spec.opacity = paint.opacity;
+    spec.material = paint.material;
     spec.gap = paint.gap;
     spec.icon_size = paint.icon_size;
     spec.content_offset = paint.content_offset;
-    if(spec.font <= 0)
-        spec.font = button.style.normal.fields & StyleFontSize
-            ? Scale(paint.font_size) : GetFontSize();
+    return spec;
+}
+
+static int
+ui_tree_surface_button(ButtonProps button, Rectangle surface_bounds, int disclosure)
+{
+    button.bounds = resolve_button_bounds(button, disclosure);
+    button.id = ResolveUIFocusID(button.id);
+    ButtonSpec spec = ui_tree_button_spec(button, surface_bounds, disclosure);
+    NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE,
+                                button.bounds, NULL);
+    int clicked;
+
     if(node >= 0) {
         spec.bounds = ui_tree_nodes[node].bounds;
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
@@ -3732,48 +3843,22 @@ Button(ButtonProps button)
     return clicked;
 }
 
+int
+Button(ButtonProps button)
+{
+    return ui_tree_surface_button(button, (Rectangle){0}, 0);
+}
+
 NodeId
 BeginButton(ButtonProps button)
 {
-    Style paint;
     ButtonSpec spec;
     NodeId node;
 
-    memset(&spec, 0, sizeof(spec));
-    button.bounds = resolve_button_bounds(button);
+    button.bounds = resolve_button_bounds(button, 0);
     button.id = ResolveUIFocusID(button.id);
-    paint = ResolveButtonStyle(button, button.state);
-    spec.bounds = button.bounds;
+    spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
     spec.label = "";
-    spec.font = button.font > 0 ? button.font
-        : button.style.normal.fields & StyleFontSize
-            ? Scale(paint.font_size) : GetFontSize();
-    spec.focus_id = button.id;
-    spec.disabled = button.disabled || button.loading ||
-                    button.state == ButtonStateDisabled ||
-                    button.state == ButtonStateLoading || UIContentDisabled();
-    spec.background = paint.background;
-    spec.hover_background = paint.background;
-    spec.text = paint.foreground;
-    spec.border = paint.border;
-    spec.focus = paint.focus;
-    spec.radius = paint.radius;
-    spec.border_width = paint.border_width;
-    spec.opacity = paint.opacity;
-    spec.gap = paint.gap;
-    spec.icon_size = paint.icon_size;
-    spec.content_offset = paint.content_offset;
-    spec.state = button.state;
-    spec.loading = button.loading;
-    spec.selected = button.selected;
-    spec.style_resolved = 1;
-    spec.tone = button.tone;
-    spec.emphasis = button.emphasis;
-    spec.style = button.style;
-    spec.icon = button.icon;
-    spec.icon_type = button.icon_type;
-    spec.icon_placement = button.icon_placement;
-    spec.icon_only = button.icon_only;
 
     node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, NULL);
     if(node < 0)
@@ -3799,8 +3884,10 @@ MenuButton(MenuButtonProps menu)
     if(menu.open == NULL)
         menu.open = &open_local;
     menu.button.icon_placement = IconPlacementTrailing;
-    menu.button.icon_type = UI_ICON_TYPE_RIGHT;
-    *menu.open = ToggleOpen(*menu.open, Button(menu.button));
+    menu.button.icon_type = UI_ICON_TYPE_NONE;
+    menu.button.bounds = resolve_button_bounds(menu.button, 1);
+    *menu.open = ToggleOpen(*menu.open,
+        ui_tree_surface_button(menu.button, (Rectangle){0}, 1));
     if(*menu.open) {
         activated = PopupMenu(menu.menu_id,
                               (int)menu.button.bounds.x,
@@ -3817,33 +3904,34 @@ SplitButton(SplitButtonProps split)
 {
     SplitButtonResult result = {0};
     int open_local = 0;
-    float menu_width;
-    float full_width;
     ButtonProps action = split.button;
     ButtonProps menu = split.button;
 
     if(split.open == NULL)
         split.open = &open_local;
-    action.bounds = resolve_button_bounds(action);
-    menu_width = action.bounds.height;
-    full_width = ResolvedWidth(action.bounds.width, action.bounds.height);
-    action.bounds.width = ActionWidth(action.bounds.width,
-                                      action.bounds.height);
-    menu.bounds = (Rectangle){MenuX(action.bounds.x,
-                                    full_width,
-                                    action.bounds.height),
-                              action.bounds.y, menu_width,
+    if(action.id == 0) {
+        action.id = ResolveUIFocusID(0);
+        menu.id = ResolveUIFocusID(0);
+    } else {
+        menu.id = action.id + 1;
+    }
+    action.bounds = resolve_button_bounds(action, 0);
+    SplitLayout layout = ResolveLayout(action.bounds.width, action.bounds.height);
+    action.bounds.width = layout.action_width;
+    menu.bounds = (Rectangle){action.bounds.x + layout.menu_offset,
+                              action.bounds.y, layout.menu_width,
                               action.bounds.height};
     menu.label = "Open menu";
-    menu.id = action.id + 1;
-    menu.icon_type = UI_ICON_TYPE_RIGHT;
+    menu.icon_type = UI_ICON_TYPE_NONE;
     menu.icon_only = 1;
     menu.square = 1;
-    result.clicked = Button(action);
-    *split.open = ToggleOpen(*split.open, Button(menu));
+    Rectangle surface_bounds = {action.bounds.x, action.bounds.y,
+                                layout.width, action.bounds.height};
+    result.clicked = ui_tree_surface_button(action, surface_bounds, 0);
+    *split.open = ToggleOpen(*split.open, ui_tree_surface_button(menu, surface_bounds, 1));
     {
         Color divider = GetThemeBorder();
-        int inset = Scale(8);
+        int inset = Scale((int)layout.divider_inset);
         divider.a = GetThemeMetrics().border_alpha;
         Line((int)menu.bounds.x, (int)menu.bounds.y + inset,
              (int)menu.bounds.x,
@@ -3943,16 +4031,6 @@ ClosableTabBar(ClosableTabBarProps bar)
     clicked = DrawUITabBar(props);
     if(clicked >= 0 && bar.selected_index != NULL)
         *bar.selected_index = clicked;
-    return clicked;
-}
-
-int
-SmallButton(ButtonProps button)
-{
-    NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    int clicked = DrawUISmallButton(button);
-
-    ui_tree_mark_painted_immediate(node);
     return clicked;
 }
 

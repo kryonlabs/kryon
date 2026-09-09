@@ -1,4 +1,209 @@
 #module "button"
+#import "style"
+#import "theme"
+#import "surface"
+
+# Widget defaults produce the shared Style value. Hosts adapt theme records;
+# they must not independently assemble button colors, sizing, or presence bits.
+DefaultButtonStyle :: (tone: i32, emphasis: i32, state: i32, size: i32,
+    pill: bool, circle: bool, palette: Palette, metrics: Metrics) -> StyleData #export {
+    style: StyleData
+    style.background = ButtonBackground(tone, emphasis, state, palette.surface,
+        palette.accent, palette.accent_hover, palette.accent_pressed,
+        palette.surface_raised, palette.danger, palette.success, palette.warning)
+    style.foreground = ButtonForeground(tone, emphasis, state, palette.surface,
+        palette.on_accent, palette.text, palette.danger, palette.on_danger,
+        palette.success, palette.on_success, palette.warning, palette.on_warning,
+        palette.link, palette.text_disabled, palette.accent)
+    style.border = ButtonBorder(tone, emphasis, state, palette.surface,
+        palette.accent, palette.surface_raised, palette.danger, palette.success, palette.warning)
+    style.focus = ButtonFocus(tone, emphasis, palette.surface, palette.focus,
+        palette.success)
+    radius: float = metrics.radius_medium
+    # Standard resting faces are softer than the compact interaction edge.
+    # Small and large size variants retain their own compact silhouette.
+    if state == PolicyStateNormal || state == PolicyStateHover {
+        radius = SizeValue(size, metrics.radius_medium,
+            (metrics.radius_medium + metrics.radius_large) * 0.5, metrics.radius_medium)
+    }
+    # Resting outlines have a softer silhouette. Focus and press use the
+    # compact edge; Style transitions interpolate this change with the face.
+    if emphasis == PolicyEmphasisOutline &&
+       (state == PolicyStateNormal || state == PolicyStateHover) {
+        radius = SizeValue(size, metrics.radius_medium, metrics.radius_large, metrics.radius_large)
+    }
+    style.radius = ShapeRadius(radius, metrics.radius_pill, pill, circle)
+    style.border_width = metrics.border_width
+    style.opacity = 1.0
+    style.padding_x = SizeValue(size, metrics.control_padding_small,
+        metrics.control_padding_medium, metrics.control_padding_large)
+    style.padding_y = 8.0
+    style.gap = metrics.control_gap
+    style.font_size = SizeValue(size, metrics.font_size_small,
+        metrics.font_size_medium, metrics.font_size_large)
+    style.icon_size = SizeValue(size, metrics.icon_size_small,
+        metrics.icon_size_medium, metrics.icon_size_large)
+    # All basic fields are present; the optional gradient endpoint is absent.
+    style.material = 0
+    style.fields = DefaultFields()
+    if size == PolicySizeLarge && !LightSurface(palette.surface) {
+        style.typeface = "semibold"
+        style.fields = style.fields | (u32)FieldTypeface
+    }
+    return style
+}
+
+CanActivate :: (disabled: bool, loading: bool) -> bool #export {
+    return !disabled && !loading
+}
+
+# One resolution path for every host: effective state selects both the
+# material defaults and the matching override from the same style record.
+ResolveAppearance :: (tone: i32, emphasis: i32, state: i32, size: i32,
+    pill: bool, circle: bool, disabled: bool, loading: bool, selected: bool,
+    palette: Palette, metrics: Metrics, styles: StyleStates) -> StyleData #export {
+    flags: StateFlags = ResolveFlags(state, disabled, loading, selected)
+    effective: i32 = ResolveState(state, flags.disabled, flags.loading, false, false, false, flags.selected)
+    base: StyleData = DefaultButtonStyle(tone, emphasis, effective, size,
+        pill, circle, palette, metrics)
+    return ResolveValues(base, styles, effective)
+}
+
+# Layout and paint can consume one resolved frame. The host supplies motion
+# amounts, but state override selection and transition eligibility live here.
+ResolveFrame :: (tone: i32, emphasis: i32, state: i32, size: i32,
+    pill: bool, circle: bool, disabled: bool, loading: bool, selected: bool,
+    palette: Palette, metrics: Metrics, styles: StyleStates,
+    automatic: bool, h: float, p: float, f: float) -> StyleFrame #export {
+    flags: StateFlags = ResolveFlags(state, disabled, loading, selected)
+    frame: StyleFrame
+    frame.value = ResolveAppearance(tone, emphasis, state, size, pill, circle,
+        disabled, loading, selected, palette, metrics, styles)
+    frame.fill = FillState(frame.value.fields, frame.value.background, frame.value.background_end)
+    if automatic && !flags.disabled && !flags.loading && !flags.selected {
+        normal: StyleData = ResolveAppearance(tone, emphasis, PolicyStateNormal, size,
+            pill, circle, false, false, false, palette, metrics, styles)
+        hover: StyleData = ResolveAppearance(tone, emphasis, PolicyStateHover, size,
+            pill, circle, false, false, false, palette, metrics, styles)
+        press: StyleData = ResolveAppearance(tone, emphasis, PolicyStatePressed, size,
+            pill, circle, false, false, false, palette, metrics, styles)
+        focus: StyleData = ResolveAppearance(tone, emphasis, PolicyStateFocus, size,
+            pill, circle, false, false, false, palette, metrics, styles)
+        frame = TransitionFrame(frame.value, normal, hover, press, focus, h, p, f)
+    }
+    return frame
+}
+
+
+# Hosts supply measured text and execute these bounds. All coordinates are
+# local logical pixels so scale, font rasterization and texture APIs stay out
+# of the widget definition.
+ContentSize :: struct {
+    width: float
+    text_width: float
+    icon_size: float
+    gap: float
+}
+
+# Hosts provide glyph measurements and available space in logical pixels.
+# Widget sizing, including explicit bounds and shape precedence, lives here.
+ButtonMeasure :: struct {
+    width: float
+    height: float
+    minimum_height: float
+    label_width: float
+    label_height: float
+    available_width: float
+    padding_x: float
+    padding_y: float
+    icon_size: float
+    gap: float
+    has_icon: bool
+    icon_only: bool
+    full_width: bool
+    square: bool
+    circle: bool
+}
+
+MeasuredSize :: struct {
+    width: float
+    height: float
+}
+
+MeasureSize :: (request: ButtonMeasure) -> MeasuredSize #export {
+    result: MeasuredSize
+    text_height: float = request.label_height
+    if request.icon_only { text_height = 0.0 }
+    result.height = FitHeight(request.height, request.minimum_height,
+        text_height, request.padding_y)
+    content: ContentSize = MeasureContent(result.height, request.label_width,
+        request.icon_size, request.gap, request.padding_x,
+        request.has_icon, request.icon_only)
+    result.width = ShapeWidth(request.width, result.height, content.width,
+        request.available_width, request.full_width,
+        request.square || request.icon_only, request.circle)
+    return result
+}
+
+# Measurement and placement share the same content rules. An absent label
+# consumes neither text width nor a gap; icons fit the available face height.
+# Style resolution already supplies theme defaults. Small sizes stay small;
+# zero hides the icon and its gap instead of restoring a font-sized fallback.
+MeasureContent :: (height: float, label_width: float,
+    requested_icon_size: float, gap: float, padding_x: float,
+    has_icon: bool, icon_only: bool) -> ContentSize #export {
+    result: ContentSize
+    # Match Style.ContentBounds: negative padding never shrinks the area
+    # required by content, while explicit zero remains a valid override.
+    if padding_x < 0.0 { padding_x = 0.0 }
+    icon_size: float = requested_icon_size
+    if icon_size > height - 12.0 { icon_size = height - 12.0 }
+    if icon_size < 0.0 { icon_size = 0.0 }
+    if icon_only { label_width = 0.0 }
+    if !has_icon || icon_size == 0.0 || icon_only || label_width <= 0.0 { gap = 0.0 }
+    result.text_width = label_width
+    result.icon_size = icon_size
+    result.gap = gap
+    result.width = label_width + gap + 2.0 * padding_x
+    if has_icon { result.width += icon_size }
+    return result
+}
+
+ButtonContent :: struct {
+    icon_x: float
+    icon_y: float
+    icon_size: float
+    text_x: float
+    text_y: float
+    text_width: float
+    text_height: float
+}
+
+ContentLayout :: (
+    width: float, height: float, label_width: float,
+    requested_icon_size: float, gap: float, has_icon: bool, icon_only: bool,
+    trailing: bool, offset_x: float, offset_y: float
+) -> ButtonContent #export {
+    result: ButtonContent
+    measured: ContentSize = MeasureContent(height, label_width,
+        requested_icon_size, gap, 0.0, has_icon, icon_only)
+    icon_size: float = measured.icon_size
+    label_width = measured.text_width
+    gap = measured.gap
+    x: float = (width - measured.width) * 0.5 + offset_x
+    result.icon_x = x
+    result.icon_y = (height - icon_size) * 0.5 + offset_y
+    result.icon_size = icon_size
+    result.text_x = x
+    result.text_y = offset_y
+    result.text_width = label_width
+    result.text_height = height
+    if has_icon {
+        if trailing { result.icon_x += label_width + gap }
+        else { result.text_x += icon_size + gap }
+    }
+    return result
+}
 
 Tone :: enum {
     PolicyToneNeutral = 0
@@ -16,34 +221,6 @@ Emphasis :: enum {
     PolicyEmphasisLink = 4
 }
 
-State :: enum {
-    PolicyStateNormal = 1
-    PolicyStateHover = 2
-    PolicyStatePressed = 3
-    PolicyStateFocus = 4
-    PolicyStateDisabled = 5
-    PolicyStateLoading = 6
-    PolicyStateSelected = 7
-}
-
-ResolveState :: (
-    explicit_state: i32,
-    disabled: bool,
-    loading: bool,
-    pressed: bool,
-    hovered: bool,
-    focused: bool,
-    selected: bool
-) -> i32 #export {
-    if disabled { return PolicyStateDisabled }
-    if loading { return PolicyStateLoading }
-    if explicit_state != (i32)0 { return explicit_state }
-    if pressed { return PolicyStatePressed }
-    if hovered { return PolicyStateHover }
-    if focused { return PolicyStateFocus }
-    if selected { return PolicyStateSelected }
-    return PolicyStateNormal
-}
 
 ShapeWidth :: (
     width: float,
@@ -71,14 +248,6 @@ ShapeRadius :: (
 ) -> float #export {
     if pill || circle { return pill_radius }
     return normal_radius
-}
-
-TransitionStep :: (elapsed_ms: float, duration_ms: float) -> float #export {
-    if duration_ms <= 0.0 { return 1.0 }
-    step: float = elapsed_ms / duration_ms
-    if step < 0.0 { return 0.0 }
-    if step > 1.0 { return 1.0 }
-    return step
 }
 
 MixByte :: (from: u32, to: u32, amount: u32) -> u32 #export {
@@ -115,6 +284,13 @@ ToneColor :: (
     return neutral
 }
 
+LightSurface :: (color: u32) -> bool #export {
+    r: u32 = (color >> (u32)24) & (u32)255
+    g: u32 = (color >> (u32)16) & (u32)255
+    b: u32 = (color >> (u32)8) & (u32)255
+    return r * (u32)299 + g * (u32)587 + b * (u32)114 > (u32)150000
+}
+
 ButtonBackground :: (
     tone: i32,
     emphasis: i32,
@@ -130,24 +306,156 @@ ButtonBackground :: (
 ) -> u32 #export {
     base: u32 = ToneColor(tone, accent, neutral, danger, success, warning)
     background: u32 = base
-    if emphasis == PolicyEmphasisSoft { background = MixColor(surface, base, 14) }
-    if emphasis == PolicyEmphasisOutline { background = surface }
+    light: bool = LightSurface(surface)
+    # Dark semantic controls carry their color in the edge and light field;
+    # the resting face stays deep rather than becoming a flat signal swatch.
+    if !light && emphasis == PolicyEmphasisFilled && tone != PolicyToneAccent && tone != PolicyToneNeutral {
+        background = MixColor(surface, base, 32)
+        if tone == PolicyToneDanger { background = MixColor(surface, base, 57) }
+        if tone == PolicyToneWarning { background = MixColor(surface, base, 18) }
+    }
+    if light && emphasis == PolicyEmphasisFilled && tone != PolicyToneAccent {
+        background = MixColor(surface, base, 16)
+        if tone == PolicyToneDanger || tone == PolicyToneWarning {
+            amount: u32 = (u32)18
+            # Available warning material carries a little more body color;
+            # unavailable faces retain their quieter tint.
+            if tone == PolicyToneWarning && state != PolicyStateDisabled { amount = (u32)20 }
+            background = MixColor(surface, ChromaColor(base, (u32)255), amount)
+        }
+        if tone == PolicyToneSuccess {
+            background = MixColor(surface, ChromaColor(base, (u32)200), 20)
+        }
+    }
+    if emphasis == PolicyEmphasisSoft {
+        background = MixColor(surface, base, 14)
+        if light { background = MixColor(surface, base, 6) }
+        if light && tone == PolicyToneNeutral { background = base }
+        if !light && tone == PolicyToneNeutral { background = MixColor(surface, base, 85) }
+    }
+    if emphasis == PolicyEmphasisOutline {
+        background = surface
+        if light {
+            # A trace of the outline tone gives pale material a visible body;
+            # it must not make an explicitly transparent surface opaque.
+            tinted: u32 = MixColor(surface, base, 4)
+            background = ((tinted >> (u32)8) << (u32)8) | (surface & (u32)255)
+        }
+    }
     if emphasis == PolicyEmphasisGhost { background = surface }
     if emphasis == PolicyEmphasisLink { background = surface }
     if state == PolicyStateHover {
+        # Neutral raised material catches the same cool light as the accent;
+        # mixing it with its own base barely changes the resting surface.
+        if !light && tone == PolicyToneNeutral && emphasis == PolicyEmphasisSoft {
+            # Keep the cool reflection restrained so neutral material does
+            # not turn into another saturated accent face on hover.
+            return MixColor(background, accent_hover, 12)
+        }
+        if !light && emphasis == PolicyEmphasisFilled && tone != PolicyToneAccent && tone != PolicyToneNeutral {
+            # Retain a deep material body; the surface policy supplies the
+            # luminous lower edge instead of flooding the whole face.
+            if tone == PolicyToneDanger { return MixColor(surface, base, 65) }
+            if tone == PolicyToneWarning { return MixColor(surface, base, 36) }
+            return MixColor(surface, base, 58)
+        }
         if tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
-            return accent_hover
+            # Keep the pale hover body chromatic; inward surface illumination
+            # supplies the highlight rather than washing out the base color.
+            if light { return MixColor(accent_hover, surface, 46) }
+            # A small body lift leaves room for the lower surface reflection;
+            # using the full hover tint makes the entire face a flat bright tile.
+            return MixColor(accent, accent_hover, 15)
+        }
+        if light {
+            # Light material catches illumination on hover. Mixing a pastel
+            # face toward its dark label tone instead makes it look dirty.
+            if emphasis == PolicyEmphasisGhost {
+                # A borderless face needs a little body tint to remain visible
+                # as the hover reflection lifts its lower shading.
+                tinted: u32 = MixColor(surface, base, 5)
+                return ((tinted >> (u32)8) << (u32)8) | (surface & (u32)255)
+            }
+            if emphasis == PolicyEmphasisOutline || emphasis == PolicyEmphasisLink {
+                return MixColor(surface, base, 3)
+            }
+            return MixColor(background, surface, 16)
         }
         return MixColor(background, base, 8)
     }
     if state == PolicyStatePressed {
+        if light {
+            # Press removes elevation in the surface policy; preserve each
+            # emphasis here so an outline does not become a filled button.
+            if tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+                return MixColor(surface, MixColor(base, accent_pressed, 30), 18)
+            }
+            if emphasis == PolicyEmphasisOutline || emphasis == PolicyEmphasisLink {
+                return MixColor(surface, base, 3)
+            }
+            if tone == PolicyToneDanger && emphasis == PolicyEmphasisFilled {
+                return MixColor(background, surface, 20)
+            }
+            return background
+        }
+        if emphasis == PolicyEmphasisFilled && tone != PolicyToneNeutral && tone != PolicyToneAccent {
+            if tone == PolicyToneWarning { return MixColor(surface, base, 10) }
+            return MixColor(surface, base, 18)
+        }
         if tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
-            return accent_pressed
+            return MixColor(surface, accent_pressed, 22)
+        }
+        if emphasis == PolicyEmphasisOutline {
+            # Press adds a restrained tint inside the outline; its inner
+            # reflection supplies depth without turning it into a filled face.
+            return MixColor(background, base, 12)
         }
         return MixColor(background, base, 14)
     }
+    if light && state == PolicyStateFocus && tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+        # The focus edge carries the accent; its pale face keeps only a trace.
+        return MixColor(surface, base, 10)
+    }
+    if !light && state == PolicyStateFocus && tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+        return accent_pressed
+    }
+    if !light && state == PolicyStateFocus && tone == PolicyToneNeutral && emphasis == PolicyEmphasisSoft {
+        # A neutral face picks up a little diffuse light under focus, while
+        # the surface supplies the sharper blue edge. Keep its own alpha.
+        white: u32 = ((u32)16777215 << (u32)8) | (background & (u32)255)
+        return MixColor(background, white, 5)
+    }
+    if !light && state == PolicyStateFocus && tone == PolicyToneDanger && emphasis == PolicyEmphasisFilled {
+        return MixColor(surface, base, 38)
+    }
+    if !light && state == PolicyStateFocus && tone == PolicyToneWarning && emphasis == PolicyEmphasisFilled {
+        return MixColor(surface, base, 22)
+    }
+    if state == PolicyStateFocus && emphasis == PolicyEmphasisLink {
+        # A focused link gathers a faint trace of its tone in the face;
+        # the borderless ghost remains neutral and the focus rim stays separate.
+        tinted: u32 = MixColor(surface, base, 8)
+        return ((tinted >> (u32)8) << (u32)8) | (surface & (u32)255)
+    }
     if state == PolicyStateSelected { return MixColor(background, base, 12) }
-    if state == PolicyStateDisabled { return MixColor(surface, background, 45) }
+    if state == PolicyStateLoading {
+        if light { return MixColor(surface, background, 4) }
+        if emphasis == PolicyEmphasisFilled && tone != PolicyToneAccent && tone != PolicyToneNeutral {
+            # Loading material uses one subdued tint from its source hue;
+            # dimming an already subdued face twice erases semantic color.
+            return MixColor(surface, base, 14)
+        }
+        return MixColor(surface, background, 18)
+    }
+    if state == PolicyStateDisabled {
+        if light && tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+            return MixColor(surface, background, 8)
+        }
+        if !light && tone == PolicyToneAccent && emphasis == PolicyEmphasisFilled {
+            return MixColor(surface, background, 20)
+        }
+        return MixColor(surface, background, 45)
+    }
     return background
 }
 
@@ -155,6 +463,7 @@ ButtonForeground :: (
     tone: i32,
     emphasis: i32,
     state: i32,
+    surface: u32,
     on_accent: u32,
     text: u32,
     danger: u32,
@@ -164,18 +473,73 @@ ButtonForeground :: (
     warning: u32,
     on_warning: u32,
     link: u32,
-    disabled_text: u32
+    disabled_text: u32,
+    accent: u32
 ) -> u32 #export {
-    if state == PolicyStateDisabled { return disabled_text }
+    if state == PolicyStateDisabled {
+        if LightSurface(surface) {
+            if tone != PolicyToneNeutral {
+                amount: u32 = (u32)70
+                if tone == PolicyToneDanger { amount = (u32)55 }
+                return MixColor(disabled_text, ToneColor(tone, link, text, danger, success, warning), amount)
+            }
+            return MixColor(disabled_text, text, 35)
+        }
+        # Unavailable controls retain readable labels. The subdued material
+        # and disabled input policy communicate state without erasing text.
+        if emphasis == PolicyEmphasisLink { return MixColor(link, text, 35) }
+        return MixColor(disabled_text, text, 90)
+    }
+    if state == PolicyStateLoading { return ToneColor(tone, accent, text, danger, success, warning) }
+    if LightSurface(surface) {
+        # Pale semantic faces need deeper ink than their border and activity
+        # colors. Darken within the tone without changing its supplied alpha.
+        success = MixColor(success, success & (u32)255, 50)
+        warning = MixColor(warning, warning & (u32)255, 60)
+    }
     if emphasis == PolicyEmphasisLink { return link }
     if emphasis != PolicyEmphasisFilled {
-        return ToneColor(tone, on_accent, text, danger, success, warning)
+        if !LightSurface(surface) && tone == PolicyToneAccent { return text }
+        return ToneColor(tone, link, text, danger, success, warning)
     }
+    if LightSurface(surface) && tone != PolicyToneAccent {
+        return ToneColor(tone, link, text, danger, success, warning)
+    }
+    if LightSurface(surface) && (state == PolicyStatePressed || state == PolicyStateHover || state == PolicyStateFocus) { return link }
     if tone == PolicyToneDanger { return on_danger }
     if tone == PolicyToneSuccess { return on_success }
-    if tone == PolicyToneWarning { return on_warning }
+    if tone == PolicyToneWarning {
+        if state == PolicyStatePressed {
+            # Pressed amber material warms its ink without changing opacity.
+            warm: u32 = ((warning >> (u32)8) << (u32)8) | (on_warning & (u32)255)
+            return MixColor(on_warning, warm, 15)
+        }
+        return on_warning
+    }
     if tone == PolicyToneNeutral { return text }
     return on_accent
+}
+
+# Focus stays distinct from the material border. Light low-emphasis controls
+# use a quiet edge; dark success controls retain their luminous green edge.
+# ResolveAppearance merges explicit styles, including transparent focus.
+ButtonFocus :: (tone: i32, emphasis: i32, surface: u32,
+                focus: u32, success: u32) -> u32 #export {
+    alpha: u32 = focus & (u32)255
+    if !LightSurface(surface) {
+        if tone == PolicyToneSuccess {
+            luminous: u32 = ChromaColor(success, (u32)255)
+            return ((luminous >> (u32)8) << (u32)8) | alpha
+        }
+        return focus
+    }
+    if emphasis == PolicyEmphasisSoft || emphasis == PolicyEmphasisGhost || emphasis == PolicyEmphasisLink {
+        alpha = alpha * (u32)18 / (u32)100
+    }
+    if tone == PolicyToneSuccess {
+        return ((success >> (u32)8) << (u32)8) | alpha
+    }
+    return ((focus >> (u32)8) << (u32)8) | alpha
 }
 
 ButtonBorder :: (
@@ -192,7 +556,49 @@ ButtonBorder :: (
     if emphasis == PolicyEmphasisGhost { return (u32)0 }
     if emphasis == PolicyEmphasisLink { return (u32)0 }
     base: u32 = ToneColor(tone, accent, neutral, danger, success, warning)
-    if state == PolicyStateDisabled { return MixColor(surface, base, 45) }
-    if emphasis == PolicyEmphasisSoft { return MixColor(surface, base, 28) }
+    if LightSurface(surface) && emphasis == PolicyEmphasisFilled && tone != PolicyToneAccent {
+        base = MixColor(surface, base, 28)
+    }
+    if state == PolicyStateDisabled {
+        # Colored disabled rims recede into the surrounding surface. Neutral
+        # material already has low contrast and retains its quiet boundary.
+        amount: u32 = (u32)25
+        if tone == PolicyToneNeutral { amount = (u32)45 }
+        return MixColor(surface, base, amount)
+    }
+    if LightSurface(surface) && state == PolicyStatePressed && tone == PolicyToneAccent {
+        # A pressed pale face loses the resting luminous rim. Its recessed
+        # edge retains the accent hue without looking like a focus outline.
+        return MixColor(surface, base, 25)
+    }
+    if state == PolicyStateLoading && LightSurface(surface) {
+        # Activity belongs to the spinner. The light surface keeps a quiet
+        # hairline, with outline controls retaining slightly more definition.
+        if emphasis == PolicyEmphasisOutline { return MixColor(surface, base, 25) }
+        return MixColor(surface, base, 12)
+    }
+    if state == PolicyStateLoading && !LightSurface(surface) {
+        # Neutral and outlined activity surfaces have no hard rim. Filled
+        # chromatic material retains a subdued edge to contain its light.
+        border: u32 = MixColor(surface, base, 16)
+        if tone == PolicyToneNeutral || emphasis == PolicyEmphasisOutline {
+            return Opacity(border, 0.0)
+        }
+        return border
+    }
+    if emphasis == PolicyEmphasisSoft {
+        if LightSurface(surface) {
+            # Neutral pale material reflects the accent at its edge instead
+            # of outlining itself in white. Semantic tones keep their hue.
+            if tone == PolicyToneNeutral { base = accent }
+            return MixColor(surface, base, 14)
+        }
+        # Raised neutral material catches the accent field on hover. Its
+        # resting edge stays quiet; the shared Style transition fades the tint.
+        if tone == PolicyToneNeutral && state == PolicyStateHover {
+            return MixColor(base, accent, 45)
+        }
+        return MixColor(surface, base, 28)
+    }
     return base
 }

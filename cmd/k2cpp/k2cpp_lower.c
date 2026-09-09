@@ -11,6 +11,7 @@
 #include "kir_check.h"
 
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -120,15 +121,16 @@ static size_t
 resolve_module_fn(const KirModule *m, const char *ident, size_t len,
                   char *dst, size_t dst_size)
 {
-    int i;
-
-    for(i = 0; i < m->function_count; i++) {
-        const KirFunction *fn = &m->functions[i];
-
-        if(strlen(fn->name) == len && strncmp(fn->name, ident, len) == 0) {
-            function_c_name(m, fn, dst, dst_size);
-            return strlen(dst);
-        }
+    char name[KIR_NAME_MAX];
+    const KirModule *owner = NULL;
+    const KirFunction *fn = NULL;
+    if(len >= sizeof(name))
+        return 0;
+    memcpy(name, ident, len);
+    name[len] = '\0';
+    if(KirResolveFunction(m, name, &owner, &fn) == 1) {
+        function_c_name(owner, fn, dst, dst_size);
+        return strlen(dst);
     }
     return 0;
 }
@@ -197,6 +199,115 @@ name_is_shadowed(const char *shadow, const char *ident, size_t len)
     return 0;
 }
 
+static void rewrite_body2(const KirModule *m, const K2cppModuleSyms *restab,
+                         int restab_count, const char *src, char *dst,
+                         size_t dst_size, const char *shadow);
+
+static void
+append_initializer(char *dst, size_t size, size_t *used, const char *format, ...)
+{
+    va_list args;
+    int written;
+
+    va_start(args, format);
+    written = vsnprintf(dst + *used, size - *used, format, args);
+    va_end(args);
+    if(written < 0 || (size_t)written >= size - *used) {
+        fprintf(stderr, "k2cpp: named initializer exceeds output limit\n");
+        exit(1);
+    }
+    *used += (size_t)written;
+}
+
+/* Named fields are assignments, not C++ designated initializers: their source
+ * order must not depend on the native struct layout or reorder side effects. */
+static const char *
+rewrite_named_initializer(const KirModule *m, const K2cppModuleSyms *restab,
+                          int restab_count, const char *src, char *dst,
+                          size_t dst_size, const char *shadow)
+{
+    const char *p = kir_skip_ws(src + 1);
+    const char *type_start = p;
+    const char *body;
+    char type[LOWER_NAME_MAX];
+    char mapped_type[LOWER_NAME_MAX];
+    char raw[LOWER_TEXT_MAX];
+    char parts[33][LOWER_TEXT_MAX];
+    char temporary[64];
+    size_t used = 0;
+    size_t length;
+    int depth = 1;
+    int count;
+    unsigned serial = 0;
+
+    if(!isalpha((unsigned char)*p) && *p != '_')
+        return NULL;
+    while(kir_is_ident_char((unsigned char)*p) || *p == '.')
+        p++;
+    length = (size_t)(p - type_start);
+    if(length >= sizeof(type) || *kir_skip_ws(p) != ')')
+        return NULL;
+    memcpy(type, type_start, length);
+    type[length] = '\0';
+    p = kir_skip_ws(kir_skip_ws(p) + 1);
+    if(*p != '{' || *kir_skip_ws(p + 1) != '.')
+        return NULL;
+    body = ++p;
+    while(*p && depth > 0) {
+        if(*p == '"' || *p == '\'') {
+            char quote = *p++;
+            while(*p && *p != quote) {
+                if(*p == '\\' && p[1])
+                    p++;
+                p++;
+            }
+            if(!*p)
+                return NULL;
+        } else if(*p == '{') {
+            depth++;
+        } else if(*p == '}') {
+            if(--depth == 0)
+                break;
+        }
+        p++;
+    }
+    length = (size_t)(p - body);
+    if(depth != 0 || length >= sizeof(raw))
+        return NULL;
+    memcpy(raw, body, length);
+    raw[length] = '\0';
+    count = kir_split_top(raw, parts[0], 33, sizeof(parts[0]));
+    if(count >= 33) {
+        fprintf(stderr, "k2cpp: too many named initializer fields\n");
+        exit(1);
+    }
+    do {
+        snprintf(temporary, sizeof(temporary), "record_value_%u", serial++);
+    } while(strstr(src, temporary) != NULL);
+    rewrite_body2(m, restab, restab_count, type, mapped_type, sizeof(mapped_type), shadow);
+    append_initializer(dst, dst_size, &used, "([%s]() { %s %s{}; ",
+                       shadow ? "&" : "", mapped_type, temporary);
+    for(int i = 0; i < count; i++) {
+        char *field = kir_trim(parts[i]);
+        char *equals = strchr(field, '=');
+        char value[LOWER_TEXT_MAX];
+
+        if(!*field)
+            continue;
+        if(*field != '.' || equals == NULL) {
+            fprintf(stderr, "k2cpp: expected named initializer field\n");
+            exit(1);
+        }
+        *equals = '\0';
+        kir_trim_in_place(field);
+        rewrite_body2(m, restab, restab_count, kir_skip_ws(equals + 1),
+                      value, sizeof(value), shadow);
+        append_initializer(dst, dst_size, &used, "%s%s = %s; ", temporary, field, value);
+    }
+    append_initializer(dst, dst_size, &used, "return %s; }())", temporary);
+    return p;
+}
+
 static void
 rewrite_body2(const KirModule *m, const K2cppModuleSyms *restab,
               int restab_count, const char *src, char *dst, size_t dst_size,
@@ -205,7 +316,28 @@ rewrite_body2(const KirModule *m, const K2cppModuleSyms *restab,
     size_t n = 0;
 
     for(const char *p = src; *p != '\0' && n + 6 < dst_size; p++) {
-        if(strncmp(p, "nil", 3) == 0 &&
+        if(*p == '(') {
+            const char *end = rewrite_named_initializer(m, restab, restab_count,
+                                                       p, dst + n, dst_size - n, shadow);
+            if(end != NULL) {
+                n += strlen(dst + n);
+                p = end;
+                continue;
+            }
+            dst[n++] = *p;
+        } else if(*p == '"' || *p == '\'') {
+            char quote = *p;
+            dst[n++] = *p++;
+            while(*p && n + 2 < dst_size) {
+                char ch = *p++;
+                dst[n++] = ch;
+                if(ch == '\\' && *p)
+                    dst[n++] = *p++;
+                else if(ch == quote)
+                    break;
+            }
+            p--;
+        } else if(strncmp(p, "nil", 3) == 0 &&
            (p == src || !isalnum((unsigned char)p[-1])) &&
            !isalnum((unsigned char)p[3]) && p[3] != '_') {
             dst[n++] = 'N';
@@ -1230,6 +1362,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
         return;
     fprintf(h, "/* Generated by k2cpp from %s. */\n", m->source_path);
     fprintf(h, "#ifndef %s\n#define %s\n\n#include <stdint.h>\n#include <stdbool.h>\n", guard, guard);
+    KirEmitStringType(h);
     for(i = 0; i < m->import_count; i++) {
         const KirImport *imp = &m->imports[i];
 
@@ -1317,8 +1450,8 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
             continue;
         emit_guard_open(h, ty->guard);
         if(ty->is_enum) {
-            /* 'Name :: enum { A, B }' — emit a named C enum. */
-            fprintf(h, "\ntypedef enum {\n");
+            /* A fixed underlying type makes every i32 cast well-defined. */
+            fprintf(h, "\nenum %s : int32_t {\n", ty->name);
             {
                 const char *line = ty->body;
 
@@ -1342,7 +1475,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
                     line = nl ? nl + 1 : NULL;
                 }
             }
-            fprintf(h, "} %s;\n", ty->name);
+            fprintf(h, "};\n");
             continue;
         }
         fprintf(h, "\ntypedef struct {\n");
@@ -1448,7 +1581,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     fprintf(c, "#include <stdio.h>\n");
     int needs_inspection = 0;
     for(int fi = 0; fi < m->function_count; fi++)
-        if(!m->functions[fi].is_extern && !KirCanEmitBody(&m->functions[fi])) needs_inspection = 1;
+        if(!m->functions[fi].is_extern && !KirCanEmitBody(m, &m->functions[fi])) needs_inspection = 1;
     if(needs_inspection)
         fprintf(c, "#include \"ui_inspect.h\"\n");
     KirEmitNumbers(c, m, KIR_CPP);
@@ -1537,7 +1670,8 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
             char initw[LOWER_TEXT_MAX];
 
             /* initializers carry 'nil' and module-local function refs */
-            rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw), NULL);
+            if(!KirScalarLiteral(g->type, g->init, KIR_CPP, g->span, initw, sizeof(initw)))
+                rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw), NULL);
             emit_guard_open(c, g->guard);
             fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
                     base, g->name, suffix,

@@ -204,7 +204,6 @@ func render(native, cleanC methodSet) (string, bool) {
 		"CheckboxFlags",
 		"ImageWithBg",
 		"ImageButton",
-		"SmallButton",
 		"InvisibleButton",
 		"ArrowButton",
 		"Bullet",

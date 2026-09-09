@@ -3509,11 +3509,67 @@ test_control_style_resolution(void)
     check_int("style zero radius", (int)got.radius, 0);
     check_int("style content offset x", (int)got.content_offset.x, 2);
     check_int("style content offset y", (int)got.content_offset.y, 3);
+
+    Theme original = GetTheme();
+    Theme custom = original;
+    custom.colors.surface = (Color){12, 23, 34, 0};
+    custom.colors.surface_raised = (Color){45, 56, 67, 89};
+    custom.colors.border = (Color){23, 45, 67, 0};
+    custom.colors.text_muted = (Color){34, 56, 78, 0};
+    custom.colors.selection = (Color){45, 67, 89, 128};
+    custom.colors.on_accent = (Color){56, 78, 90, 0};
+    custom.colors.icon = (Color){67, 89, 101, 0};
+    SetTheme(custom);
+    check_color("theme preserves transparent border", GetThemeBorder(), custom.colors.border);
+    check_color("theme preserves muted text", GetThemeMutedText(), custom.colors.text_muted);
+    check_color("theme preserves selection", GetThemeSelection(), custom.colors.selection);
+    check_color("theme preserves button text", GetThemeButtonText(), custom.colors.on_accent);
+    check_color("theme preserves icon", GetThemeIcon(), custom.colors.icon);
+    ButtonProps button = {.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisFilled};
+    got = ResolveButtonStyle(button, ButtonStateNormal);
+    check_color("button uses declared raised surface", got.background, custom.colors.surface_raised);
+    button.emphasis = ButtonEmphasisOutline;
+    got = ResolveButtonStyle(button, ButtonStateNormal);
+    check_color("button preserves transparent theme surface", got.background, custom.colors.surface);
+    Theme light = ThemeDefaultLight();
+    SetTheme(light);
+    button.tone = ButtonToneAccent;
+    button.emphasis = ButtonEmphasisFilled;
+    got = ResolveButtonStyle(button, ButtonStateFocus);
+    check_color("light focus blue ink", got.foreground, light.colors.link);
+    check_int("light focus pale face", got.background.r >= 220 && got.background.g >= 230, 1);
+    got = ResolveButtonStyle(button, ButtonStateHover);
+    check_color("light hover blue ink", got.foreground, light.colors.link);
+    SetTheme(original);
+    ClearThemeMetricsOverride();
 }
 
 int
 main(void)
 {
+    check_int("default control style", GetThemeStyle(), THEME_STYLE_DEFAULT);
+    SetThemeMode(THEME_MODE_LIGHT);
+    check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
+    check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);
+    check_color("default light muted text", GetThemeMutedText(), ThemeDefaultLight().colors.text_muted);
+    check_color("default light selection", GetThemeSelection(), ThemeDefaultLight().colors.selection);
+    check_color("default light button text", GetThemeButtonText(), ThemeDefaultLight().colors.on_accent);
+    check_color("default light icon", GetThemeIcon(), ThemeDefaultLight().colors.icon);
+    SetThemeMode(THEME_MODE_DARK);
+    check_color("default dark background", GetThemeBackground(), ThemeDefaultDark().colors.background);
+    check_color("default dark border", GetThemeBorder(), ThemeDefaultDark().colors.border);
+    check_color("default dark muted text", GetThemeMutedText(), ThemeDefaultDark().colors.text_muted);
+    check_color("default dark selection", GetThemeSelection(), ThemeDefaultDark().colors.selection);
+    check_color("default dark button text", GetThemeButtonText(), ThemeDefaultDark().colors.on_accent);
+    check_color("default dark icon", GetThemeIcon(), ThemeDefaultDark().colors.icon);
+    SetThemeMode(THEME_MODE_LIGHT);
+#if !defined(KRYON_BACKEND_TERMI)
+    check_int("motion enabled by default", UITransitionCuesEnabled(), 1);
+    SetUITransitionCuesEnabled(0);
+    check_int("motion opt-out", UITransitionCuesEnabled(), 0);
+    SetUITransitionCuesEnabled(1);
+    check_int("motion re-enabled", UITransitionCuesEnabled(), 1);
+#endif
     test_control_style_resolution();
     {
         int value = 10;

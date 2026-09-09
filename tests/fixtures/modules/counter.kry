@@ -1,0 +1,26 @@
+#module "counter"
+
+Phase :: enum {
+    PhaseRest = 0
+    PhaseRaised = 1
+}
+
+SignedPhase :: enum {
+    SignedPhaseLow = -3
+    SignedPhaseNext
+    SignedPhaseLastNegative
+    SignedPhaseZero
+    SignedPhaseExpression = (2 * 3)
+    SignedPhaseAfterExpression
+    SignedPhaseReset = -2
+    SignedPhaseAfterReset
+}
+
+state {
+    count: i32 = 10
+}
+
+NextTick :: () -> i32 #export {
+    count += 1
+    return count
+}

@@ -110,6 +110,7 @@ void ui_frame_layers_begin(void)
             headless_tab_bars = tab_bar_store_new();
         if(!headless_toolkit)
             headless_toolkit = toolkit_store_new();
+        toolkit_store_frame(headless_toolkit);
         ui_popup_input_frame(headless_input);
         headless_previous_input = ui_popup_input_bind(headless_input);
         headless_previous_dropdowns =
@@ -276,6 +277,7 @@ void ui_paint_layers_frame(UIPaintLayers *layers, int width, int height)
     layers->previous_dropdowns = dropdown_store_swap(layers->dropdowns);
     layers->previous_tab_bars = tab_bar_store_swap(layers->tab_bars);
     layers->previous_toolkit = toolkit_store_swap(layers->toolkit);
+    toolkit_store_frame(layers->toolkit);
 }
 
 UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)

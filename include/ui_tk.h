@@ -2,6 +2,7 @@
 #define UI_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_controls.h"
 
 #define UI_CLIPBOARD_BUFFER_SIZE 4096
 
@@ -265,6 +266,9 @@ typedef struct {
     TextAlign align;
     TextAlign vertical_align;
     int disabled;
+    int letter_spacing;
+    const char *typeface;
+    Style style;
 } TextProps;
 
 typedef struct {

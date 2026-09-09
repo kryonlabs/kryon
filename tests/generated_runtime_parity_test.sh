@@ -914,12 +914,31 @@ func main() {
 		kryon.FrameOpColumn: 1,
 		kryon.FrameOpRow:    1,
 		kryon.FrameOpText:   1,
-		kryon.FrameOpButton: 2,
+		kryon.FrameOpButton: 3,
 	})
 	requireRenderedFrame("buttons", 1000)
 	driver.QueueTap(30, 130)
 	drawButtons()
 	driver.QueueTap(130, 130)
+	drawButtons()
+	if buttons.ButtonsAction != 10 {
+		panic("first widget instance action was not isolated")
+	}
+	driver.QueueTap(230, 130)
+	drawButtons()
+	if buttons.ButtonsAction != 110 {
+		panic("second widget instance action was not isolated")
+	}
+	buttons.ButtonsReverse = true
+	drawButtons()
+	driver.QueueTap(130, 130)
+	drawButtons()
+	driver.QueueTap(230, 130)
+	drawButtons()
+	if buttons.ButtonsAction != 220 {
+		panic("widget instance actions changed after reordering")
+	}
+	buttons.ButtonsReverse = false
 	drawButtons()
 	// Native keyboard parity; preserve the shared C/Go/JS pointer result below.
 	buttonPointerAction := buttons.ButtonsAction
@@ -2055,6 +2074,37 @@ int main(void)
     draw_buttons();
 
     /* Native keyboard parity; retain the shared pointer-only JSON result. */
+    if(buttons_action != 10) {
+        fprintf(stderr, "first widget instance action was not isolated\n");
+        return 1;
+    }
+    InjectTap(230, 130);
+    InjectPump();
+    draw_buttons();
+    InjectPump();
+    draw_buttons();
+    if(buttons_action != 110) {
+        fprintf(stderr, "second widget instance action was not isolated\n");
+        return 1;
+    }
+    buttons_reverse = true;
+    draw_buttons();
+    InjectTap(130, 130);
+    InjectPump();
+    draw_buttons();
+    InjectPump();
+    draw_buttons();
+    InjectTap(230, 130);
+    InjectPump();
+    draw_buttons();
+    InjectPump();
+    draw_buttons();
+    if(buttons_action != 220) {
+        fprintf(stderr, "widget instance actions changed after reordering\n");
+        return 1;
+    }
+    buttons_reverse = false;
+    draw_buttons();
     int button_pointer_action = buttons_action;
     SetUIFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
@@ -2514,6 +2564,22 @@ drawButtons();
 rt.QueueTap(30, 130);
 drawButtons();
 rt.QueueTap(130, 130);
+drawButtons();
+if (buttons.buttons_action !== 10)
+  throw new Error("first widget instance action was not isolated");
+rt.QueueTap(230, 130);
+drawButtons();
+if (buttons.buttons_action !== 110)
+  throw new Error("second widget instance action was not isolated");
+buttons.buttons_reverse = true;
+drawButtons();
+rt.QueueTap(130, 130);
+drawButtons();
+rt.QueueTap(230, 130);
+drawButtons();
+if (buttons.buttons_action !== 220)
+  throw new Error("widget instance actions changed after reordering");
+buttons.buttons_reverse = false;
 drawButtons();
 
 drawLongText();

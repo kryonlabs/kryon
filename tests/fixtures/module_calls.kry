@@ -1,0 +1,23 @@
+#module "module_calls"
+#import "counter"
+
+Step :: enum {
+    First = 3
+    Second
+    Last = Second + 4
+}
+
+EnumCheck :: () -> i32 #export {
+    return First + Second + Last
+}
+
+state {
+    count: i32 = 100
+}
+
+# Source parameters must not collide with JavaScript's host context arguments.
+Check :: (rt: i32, state: i32, host: i32) -> i32 #export {
+    first: i32 = NextTick()
+    second: i32 = NextTick()
+    return first + second + rt + state + host
+}

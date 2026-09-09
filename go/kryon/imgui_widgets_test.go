@@ -1450,8 +1450,8 @@ func TestNativeBasicImGuiWidgets(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if !r.SmallButton(ButtonProps{Bounds: NewRectangle(10, 10, 80, 24), Label: "Small", ID: 80}) {
-		t.Fatal("SmallButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 10, 80, 24), Label: "Small", Size: ControlSizeSmall, ID: 80}) {
+		t.Fatal("small Button did not consume its tap")
 	}
 	r.EndFrame()
 

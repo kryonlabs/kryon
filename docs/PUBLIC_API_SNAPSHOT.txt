@@ -2093,12 +2093,12 @@ include/ui_tree.h function Slider
 include/ui_tree.h function SliderAngle
 include/ui_tree.h function SliderFloat
 include/ui_tree.h function SliderInt
-include/ui_tree.h function SmallButton
 include/ui_tree.h function SourceView
 include/ui_tree.h function Spinbox
 include/ui_tree.h function SplitButton
 include/ui_tree.h function Stack
 include/ui_tree.h function SubtabBar
+include/ui_tree.h function Surface
 include/ui_tree.h function TabBar
 include/ui_tree.h function TabItemButton
 include/ui_tree.h function TableView

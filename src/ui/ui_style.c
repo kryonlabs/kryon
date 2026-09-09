@@ -1,5 +1,70 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "theme.h"
+#include "runtime/theme.h"
+#include "runtime/style.h"
+#include <math.h>
+
+/* Execute the portable layer description generated from runtime/surface.kry. */
+
+Rectangle
+ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, Color border,
+                          Color light, float radius, float border_width,
+                          float hover, float press, int disabled,
+                          Color focus, float focused, float opacity,
+                          FillStates fill_states, MaterialKind material)
+{
+    Rectangle face = bounds;
+    Rectangle segment = bounds;
+    if(surface_bounds.width > 0.0f && surface_bounds.height > 0.0f)
+        bounds = surface_bounds;
+    float scale = (float)Scale(1000) / 1000.0f;
+    if(scale <= 0.0f) scale = 1.0f;
+    for(int i = 0; i < MaterialLayerCount(material); i++) {
+        SurfaceLayer layer = MaterialLayer(material, i, bounds.width / scale,
+            bounds.height / scale, radius, border_width,
+            ColorToInt(background), ColorToInt(border), ColorToInt(light),
+            ColorToInt(focus), hover, press, focused, disabled, opacity,
+            ColorToInt(GetThemeSurface()));
+        if(layer.is_face)
+            layer = ApplyFillStates(layer, fill_states, opacity);
+        Rectangle rect = {bounds.x + layer.x * scale, bounds.y + layer.y * scale,
+                          layer.width * scale, layer.height * scale};
+        Color color = GetColor(layer.color);
+        if((color.a == 0 && (!layer.gradient || (layer.end_color & 255) == 0)) ||
+           rect.width <= 0 || rect.height <= 0) continue;
+        float blur = layer.blur * scale;
+        int left = (int)floorf(rect.x - blur);
+        int right = (int)ceilf(rect.x + rect.width + blur);
+        int top = (int)floorf(rect.y - blur);
+        int bottom = (int)ceilf(rect.y + rect.height + blur);
+        for(int y = top; y < bottom; y++) {
+            unsigned int shade = SampleColor(layer,
+                ((float)y + 0.5f - rect.y) / rect.height);
+            int run_start = left;
+            unsigned int run_color = 0;
+            for(int x = left; x <= right; x++) {
+                unsigned int pixel = 0;
+                if(x < right) {
+                    float coverage = SampleCoverage(layer, (float)x - rect.x,
+                        (float)y - rect.y, scale);
+                    coverage *= SegmentCoverage((float)x - bounds.x,
+                        segment.x - bounds.x, segment.width, bounds.width);
+                    pixel = Opacity(shade, coverage);
+                }
+                if(x == left) run_color = pixel;
+                if(pixel != run_color || x == right) {
+                    if((run_color & 255) != 0)
+                        DrawRectangle(run_start, y, x - run_start, 1, GetColor(run_color));
+                    run_start = x;
+                    run_color = pixel;
+                }
+            }
+        }
+    }
+    face.y += MaterialOffset(material, hover, press, disabled) * scale;
+    return face;
+}
 
 static ThemeMetrics g_ui_style_override;
 static int g_ui_style_override_enabled = 0;
@@ -27,36 +92,38 @@ GetThemeMetricsForThemeStyle(ThemeStyle style)
         style = GetDefaultPlatformThemeStyle();
 
     memset(&tokens, 0, sizeof(tokens));
-    tokens.radius_small = 4.0f;
-    tokens.radius_medium = 8.0f;
-    tokens.radius_large = 12.0f;
-    tokens.radius_pill = 999.0f;
-    tokens.border_width = 1.0f;
-    tokens.focus_width = 2.0f;
-    tokens.focus_gap = 2.0f;
-    tokens.space_1 = 4.0f;
-    tokens.space_2 = 8.0f;
-    tokens.space_3 = 12.0f;
-    tokens.space_4 = 16.0f;
-    tokens.space_5 = 24.0f;
-    tokens.space_6 = 32.0f;
-    tokens.control_height_small = 32.0f;
-    tokens.control_height_medium = 40.0f;
-    tokens.control_height_large = 48.0f;
-    tokens.control_padding_small = 12.0f;
-    tokens.control_padding_medium = 16.0f;
-    tokens.control_padding_large = 20.0f;
-    tokens.control_gap = 8.0f;
-    tokens.font_size_small = 13.0f;
-    tokens.font_size_medium = 14.0f;
-    tokens.font_size_large = 16.0f;
-    tokens.icon_size_small = 14.0f;
-    tokens.icon_size_medium = 16.0f;
-    tokens.icon_size_large = 20.0f;
-    tokens.shadow_blur = 8.0f;
-    tokens.disabled_opacity = 0.45f;
-    tokens.transition_fast_ms = 80.0f;
-    tokens.transition_normal_ms = 140.0f;
+    Metrics defaults = DefaultMetrics();
+    tokens.radius_small = defaults.radius_small;
+    tokens.radius_medium = defaults.radius_medium;
+    tokens.radius_large = defaults.radius_large;
+    tokens.radius_pill = defaults.radius_pill;
+    tokens.border_width = defaults.border_width;
+    tokens.focus_width = defaults.focus_width;
+    tokens.focus_gap = defaults.focus_gap;
+    tokens.space_1 = defaults.space_1;
+    tokens.space_2 = defaults.space_2;
+    tokens.space_3 = defaults.space_3;
+    tokens.space_4 = defaults.space_4;
+    tokens.space_5 = defaults.space_5;
+    tokens.space_6 = defaults.space_6;
+    tokens.control_height_small = defaults.control_height_small;
+    tokens.control_height_medium = defaults.control_height_medium;
+    tokens.control_height_large = defaults.control_height_large;
+    tokens.control_padding_small = defaults.control_padding_small;
+    tokens.control_padding_medium = defaults.control_padding_medium;
+    tokens.control_padding_large = defaults.control_padding_large;
+    tokens.control_gap = defaults.control_gap;
+    tokens.font_size_small = defaults.font_size_small;
+    tokens.font_size_medium = defaults.font_size_medium;
+    tokens.font_size_large = defaults.font_size_large;
+    tokens.icon_size_small = defaults.icon_size_small;
+    tokens.icon_size_medium = defaults.icon_size_medium;
+    tokens.icon_size_large = defaults.icon_size_large;
+    tokens.shadow_offset_y = defaults.shadow_offset_y;
+    tokens.shadow_blur = defaults.shadow_blur;
+    tokens.disabled_opacity = defaults.disabled_opacity;
+    tokens.transition_fast_ms = defaults.transition_fast_ms;
+    tokens.transition_normal_ms = defaults.transition_normal_ms;
 
     /* Field-wise assembly (rather than a designated compound literal) so
      * the same source builds with the strict native Plan 9 compiler. */
@@ -121,42 +188,98 @@ ui_modern_style(void)
     return !ui_classic_style();
 }
 
+static StyleData
+pack_style(Style value)
+{
+    return (StyleData){
+        .fields = value.fields,
+        .material = value.material,
+        .typeface = StringView(value.typeface, value.typeface ? strlen(value.typeface) : 0),
+        .background = ColorToInt(value.background),
+        .background_end = ColorToInt(value.background_end),
+        .foreground = ColorToInt(value.foreground),
+        .border = ColorToInt(value.border),
+        .focus = ColorToInt(value.focus),
+        .radius = value.radius,
+        .border_width = value.border_width,
+        .opacity = value.opacity,
+        .padding_x = value.padding_x,
+        .padding_y = value.padding_y,
+        .gap = value.gap,
+        .font_size = value.font_size,
+        .icon_size = value.icon_size,
+        .offset_x = value.content_offset.x,
+        .offset_y = value.content_offset.y
+    };
+}
+
+Style
+ui_unpack_style(StyleData value)
+{
+    return (Style){
+        .material = (MaterialKind)value.material,
+        .typeface = value.typeface.data,
+        .fields = value.fields,
+        .background = GetColor(value.background),
+        .background_end = GetColor(value.background_end),
+        .foreground = GetColor(value.foreground),
+        .border = GetColor(value.border),
+        .focus = GetColor(value.focus),
+        .radius = value.radius,
+        .border_width = value.border_width,
+        .opacity = value.opacity,
+        .padding_x = value.padding_x,
+        .padding_y = value.padding_y,
+        .gap = value.gap,
+        .font_size = value.font_size,
+        .icon_size = value.icon_size,
+        .content_offset = {value.offset_x, value.offset_y}
+    };
+}
+
 Style
 MergeStyle(Style base, Style overrides)
 {
-#define APPLY_STYLE(field, bit) \
-    do { if(overrides.fields & (bit)) base.field = overrides.field; } while(0)
-    APPLY_STYLE(background, StyleBackground);
-    APPLY_STYLE(foreground, StyleForeground);
-    APPLY_STYLE(border, StyleBorder);
-    APPLY_STYLE(focus, StyleFocus);
-    APPLY_STYLE(radius, StyleRadius);
-    APPLY_STYLE(border_width, StyleBorderWidth);
-    APPLY_STYLE(opacity, StyleOpacity);
-    APPLY_STYLE(padding_x, StylePaddingX);
-    APPLY_STYLE(padding_y, StylePaddingY);
-    APPLY_STYLE(gap, StyleGap);
-    APPLY_STYLE(font_size, StyleFontSize);
-    APPLY_STYLE(icon_size, StyleIconSize);
-    APPLY_STYLE(content_offset, StyleContentOffset);
-#undef APPLY_STYLE
-    base.fields |= overrides.fields;
-    return base;
+    return ui_unpack_style(MergeValues(pack_style(base), pack_style(overrides)));
+}
+
+Style
+ui_style_transition(Style resolved, Style normal, Style hover,
+                    Style press, Style focus, float h, float p, float f,
+                    FillStates *fill)
+{
+    StyleFrame frame = TransitionFrame(pack_style(resolved), pack_style(normal),
+        pack_style(hover), pack_style(press), pack_style(focus), h, p, f);
+    *fill = frame.fill;
+    return ui_unpack_style(frame.value);
+}
+
+FillStates
+ui_style_fill(Style value)
+{
+    return FillState(value.fields, ColorToInt(value.background),
+        ColorToInt(value.background_end));
+}
+
+StyleStates
+ui_pack_style_states(ControlStyle control)
+{
+    StyleStates states = {
+        .normal = pack_style(control.normal),
+        .hover = pack_style(control.hover),
+        .pressed = pack_style(control.pressed),
+        .focused = pack_style(control.focused),
+        .disabled = pack_style(control.disabled),
+        .loading = pack_style(control.loading),
+        .selected = pack_style(control.selected)
+    };
+    return states;
 }
 
 Style
 ResolveControlStyle(Style base, ControlStyle control, ButtonState state)
 {
-    base = MergeStyle(base, control.normal);
-    switch(state) {
-    case ButtonStateHover: return MergeStyle(base, control.hover);
-    case ButtonStatePressed: return MergeStyle(base, control.pressed);
-    case ButtonStateFocus: return MergeStyle(base, control.focused);
-    case ButtonStateDisabled: return MergeStyle(base, control.disabled);
-    case ButtonStateLoading: return MergeStyle(base, control.loading);
-    case ButtonStateSelected: return MergeStyle(base, control.selected);
-    default: return base;
-    }
+    return ui_unpack_style(ResolveValues(pack_style(base), ui_pack_style_states(control), state));
 }
 
 float

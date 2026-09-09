@@ -48,6 +48,15 @@ item hides navigation. `disabled` blocks both taps and movement. `id` reserves
 
 ## Initialization
 
+### Native Go frame clock
+
+`AppConfig.FrameClock` optionally supplies a `func() time.Time` to `New` or
+`Open` for deterministic animation playback and capture. It is called once per
+`BeginFrame`; the first frame has zero elapsed time, and subsequent frame
+deltas drive the shared `.kry` motion policy. Supply nondecreasing timestamps.
+Leaving it nil uses `time.Now`. This callback is per runtime and does not
+replace wall-clock timing of input events or platform services.
+
 ### `InitUI`
 
 Initialize the UI system with viewport dimensions and DPI scale.
@@ -267,6 +276,35 @@ Settings :: (viewport: Rectangle) #ui {
     }
 }
 ```
+
+Custom stateless widgets can also use named blocks. Declare a void `#ui`
+function with one record parameter, then supply its fields as block properties:
+
+```kry
+CounterProps :: struct {
+    value: i32
+}
+Counter :: (props: CounterProps) #ui {
+    // Compose the widget using props.value here.
+}
+Counters :: () #ui {
+    Counter first: {
+        value = 3
+    }
+}
+```
+
+For C, C++, Go, and JavaScript, this resolves to the same declaration as an
+ordinary `Counter(props)` call. Omitted fields are zero-initialized, props are
+passed by value, and unknown, duplicate, or incorrectly typed properties are
+errors. Declarations can appear later in the file or in an explicitly imported
+module; imported declarations must be public and their props record must be
+directly visible without a conflicting local type. Custom blocks currently
+accept properties only: child slots and automatic per-instance state are not
+implemented. Their block names do not yet allocate persistent widget identity.
+Interactive compositions must therefore receive distinct stable control IDs
+from their caller; reusing a declaration does not automatically scope IDs in
+its body.
 
 Migrate callers to the current Kryon API directly so the backend boundary stays
 simple.
@@ -524,6 +562,12 @@ void ResetUIClip(void);
 
 ### Text
 
+Text font/color inheritance, disabled opacity, nonnegative letter spacing,
+automatic extents, wrap-mode selection, and alignment offsets are defined in
+`runtime/text.kry` and consumed by both native hosts. Inherited fonts are
+resolved before measuring a Text child. Typeface lookup, shaping, glyph
+measurement, and drawing remain backend services.
+
 #### Font Management
 
 ```c
@@ -583,6 +627,9 @@ typedef struct {
     TextAlign align;
     TextAlign vertical_align;
     int disabled;
+    int letter_spacing;
+    const char *typeface;
+    Style style;
 } TextProps;
 
 void Text(TextProps text);
@@ -595,6 +642,31 @@ placement inside the bounds.
 Zero width measures the line intrinsically. Zero font and transparent color
 select the current UI defaults. Color and disabled presentation are properties,
 not separate widget entry points.
+
+`style` uses the shared `StyleForeground`, `StyleFontSize`, and `StyleOpacity`
+fields. Present style fields override `color` and `font`; other style fields
+do not paint a text surface. `StyleForeground` preserves every alpha value,
+including transparent black, instead of selecting an inherited color.
+Opacity multiplies the resolved foreground alpha after disabled presentation;
+an explicit zero opacity hides the text without removing its layout space.
+When foreground is absent, text continues to inherit its containing button's
+animated foreground, with the text node's opacity applied afterward.
+An inherited disabled foreground is already resolved and is not faded again.
+Explicit child colors receive disabled presentation when their button or scope
+is disabled.
+
+`typeface` selects a registered font by name for this node's measurement,
+wrapping, and painting in C and native Go. Empty or unknown names keep the
+current face. The selection does not change subsequent text nodes. The bundled
+Noto font setup also registers `"semibold"`; use `.typeface="semibold"` for real
+semibold outlines, or register your own named face. `font` remains the size.
+
+`letter_spacing` adds a non-negative number of logical pixels between Unicode
+codepoints (not UTF-8 bytes), with no trailing gap. Zero preserves the font's
+normal spacing; negative values are treated as zero. C and native Go include
+the spacing in intrinsic width, wrapping, alignment, and painting. C text
+selection uses the same spaced positions. This is codepoint tracking, not
+grapheme-cluster shaping; use zero for scripts that require joined shaping.
 
 Native `.kry` can use the same properties without a compound literal:
 
@@ -1209,6 +1281,12 @@ Draw and handle a button.
 ```c
 int Button(ButtonProps button);
 ```
+
+Native Go uses the same props-only contract: `Button(ButtonProps) bool`.
+For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
+measurement and font defaults. There is no string overload, fixed-size
+shorthand, or label-derived identity; supply `ID` when stable explicit identity
+is needed.
 
 **Returns:** 1 if clicked, 0 otherwise
 
@@ -2090,6 +2168,64 @@ int UIIconBtnNode(int id, int x, int y, UIIconSize size, Texture2D icon, int *ho
 int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D icon, int *hover);
 ```
 
+### Styled Surfaces
+
+Buttons accept `StyleTypeface` with `typeface = "semibold"` (or another
+registered typeface name) in any `ControlStyle` entry. The shared `.kry`
+policy owns inheritance and state selection; native C and Go use the selected
+face for both natural-width measurement and painting. Typeface changes are
+discrete, like font size, rather than interpolated. An absent field inherits;
+an explicitly empty name restores the host's default/current face. Unknown
+names fall back to that face. Large dark buttons default to `semibold`;
+other sizes and the light theme retain their existing face.
+
+`Surface(Rectangle bounds, Style style)` paints a non-interactive rounded
+surface in the C and native Go runtimes. Set `StyleBackground`, `StyleBorder`,
+`StyleRadius`, `StyleBorderWidth`, and `StyleOpacity` in `style.fields` to
+override those values. An explicitly flagged zero remains zero, including
+transparent colors, square corners, no border, and zero opacity.
+
+Set `StyleBackgroundEnd` and `background_end` to fill from `background` at
+the top to `background_end` at the bottom. The gradient follows the rounded
+clip, interpolates RGBA channels, and respects `opacity`. A transparent
+endpoint is valid; absence is determined only by the field flag. Use the same
+color at both ends to replace an inherited gradient with a solid fill.
+Buttons accept this same field in their `ControlStyle` entries; it replaces
+the face fill while retaining the material rim, lighting, and interaction
+effects. Endpoints inherited from `normal` can be overridden per state.
+For automatic button states, custom gradients fade with the same hover,
+press, and focus tracks as the material. A state without a custom endpoint
+uses its live material fill throughout the transition, including on exit;
+it is not treated as a transparent endpoint. Explicit states remain immediate.
+
+Modern buttons also accept `StyleMaterial` with `material = MaterialFlat` to use an
+unshaded fill, border, and a simple inward focus edge. Flat material has no
+Lightfield glow, bevel, contact shadow, or elevation offset; labels, icons,
+loading indicators, activation, and state-color transitions remain available.
+`MaterialLightfield` is the default. Material selection is discrete at the
+resolved state, like layout metrics; colors and custom gradient endpoints
+still interpolate. Set `StyleMaterial` even when selecting the zero-valued
+`MaterialLightfield`, so it explicitly replaces an inherited flat selection.
+The selector and geometry live in `runtime/surface.kry`, shared by C and Go.
+
+Without overrides, the surface uses the active theme's surface color, medium
+radius, border width, and full opacity; its border is transparent. Radius and
+border width are logical pixels. The shape and inset border coverage are
+defined in `runtime/surface.kry`. `Surface` defaults to `MaterialFlat`; set
+`StyleMaterial` and `material = MaterialLightfield` to opt into the shared
+Lightfield shading and depth. A surface has no button input state, so it does
+not acquire hover, focus, or press behavior. Custom gradient endpoints work
+with either material.
+
+```c
+Surface((Rectangle){24, 74, 720, 920}, (Style){
+    .fields = StyleBackground | StyleBackgroundEnd | StyleRadius,
+    .background = GetThemeBackground(),
+    .background_end = GetThemeSurface(),
+    .radius = 12,
+});
+```
+
 ### Text Drawing Helpers
 
 ```c
@@ -2103,8 +2239,8 @@ void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, 
 
 ```c
 typedef enum {
-    ButtonToneAccent,
     ButtonToneNeutral,
+    ButtonToneAccent,
     ButtonToneDanger,
     ButtonToneSuccess,
     ButtonToneWarning
@@ -2133,6 +2269,79 @@ typedef enum {
 The zero-value button is the default neutral, filled, medium button. Applications
 set one `Theme` for every widget and vary buttons with semantic properties;
 there are no named button-style presets.
+
+`ButtonStateAuto` follows live interaction. An explicit state fixes the visual
+preview, including hover, press, and focus motion; activation does not add a
+second visual state. Enabled previews still return activation events. Disabled
+and loading states remain non-interactive.
+
+Standard-size buttons use a softer resting and hover silhouette, midway between
+the theme's medium and large radii. Press, focus, disabled, and loading states
+use the medium radius; small and large size variants keep that compact radius.
+Resting outlines retain their large-radius treatment. Shared style transitions
+interpolate state changes, and an explicit `StyleRadius` overrides these defaults.
+
+The default material includes a restrained contact shadow, an inset rim, and
+light that fades inward from the rounded edge. This inner light is clipped to
+the face and leaves the center clear; hover strengthens it and press reduces
+it. Ghost and link controls retain a softer treatment. Geometry and falloff
+are shared through `runtime/surface.kry` rather than separate renderer effects.
+In dark surroundings, focus reduces face whitening and deepens the material
+while retaining a bright rim. That absorption fades with the focus track;
+hover and press take precedence over it.
+The dark focus indicator pairs a crisp focus edge with chromatic light that
+fades inward over 12 logical pixels. The soft focus light is clipped to the
+rounded face, rather than spreading fog outside the button; its center stays
+clear. A soft crown reflection and lower interior light give the resting face
+depth without covering its label.
+In light surroundings, hovering a pastel face adds light instead of mixing in
+its darker semantic color. Pressing removes elevation while preserving the
+material's emphasis: outlined and link buttons keep a faint tint rather than
+becoming filled buttons, and neutral soft buttons retain their surface color.
+Press also introduces a soft upper inset shadow, clipped inside the rounded
+face and fading toward the clear center. Its strength follows the press track,
+including interrupted presses and releases. Disabled and transparent faces
+do not acquire this shadow.
+
+Automatic buttons animate hover and focus over `transition_normal_ms` (140 ms
+by default), and press over `transition_fast_ms` (80 ms). The shared `.kry`
+policy uses cubic ease-out, retargeting from the current value when an
+interaction reverses. Focus changes the resting fill, text, border, and focus-edge colors;
+hover and press take precedence while active. Focus rings fade on the same
+focus track. Custom focus-edge colors (including their alpha) also blend through
+hover, press, focus entry, and focus exit rather than switching at the input
+boundary. Setting either duration to zero makes that transition immediate.
+In light surroundings, default soft, ghost, and link focus edges use 18% of
+the theme focus alpha; success buttons use the success hue with that same
+alpha policy. Filled and outline edges retain full focus alpha. Dark
+surroundings use luminous semantic hues for danger, success, and warning,
+preserving the theme focus alpha; neutral and accent keep the theme focus color.
+The default light palette uses a translucent violet-blue focus color. Pale
+surfaces draw one focus edge and soften the resting border beneath it, avoiding
+stacked strong outlines. A transparent focus leaves the resting border unchanged.
+An explicit `StyleFocus` replaces
+these defaults unchanged, including a transparent value.
+Explicit `ButtonState` values snap to the requested state for previews.
+Custom radius, border width, opacity, and content offset follow these same
+tracks and state precedence. Their settled values are exact, including
+explicitly flagged zeros. These paint transitions do not move or resize the
+button's hit bounds; layout metrics such as padding and font size are not
+interpolated.
+Style-property interpolation lives in `runtime/style.kry`; gradient-state
+assembly and interaction timing live in `runtime/surface.kry`. Both native
+hosts call these shared operations rather than maintaining their own lists
+of animated properties or gradient-presence rules. Disabled and loading
+controls immediately clear their interaction tracks.
+
+Loading replaces the label with a centered ring rotating at 240 degrees per
+second (a continuous 1.5-second cycle). In light surroundings it has a
+270-degree arc, icon-size diameter, and two-logical-pixel stroke. In dark
+surroundings it has a 315-degree arc, icon-size-plus-two diameter, 2.5-pixel
+stroke, and a 110-degree phase offset. Both use a faint track, a fading arc,
+and a rounded leading highlight whose paint bounds include the complete cap.
+Accent indicators use the theme accent rather than the link color. Geometry,
+light falloff, and wrapping are defined in `runtime/surface.kry`; highlights
+preserve the resolved foreground opacity. Loading buttons do not activate.
 
 ---
 

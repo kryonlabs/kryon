@@ -13,6 +13,11 @@ SOURCE_SUFFIXES = {".c", ".h", ".kry"}
 SKIPPED_DIRECTORIES = {".git", "build", "dist", "vendor", "vendor-builds"}
 TEXT_CALL = re.compile(r"\bText\s*\(")
 TEXT_PROPS_ARGUMENT = re.compile(r"\s*\(\s*TextProps\s*\)\s*\{")
+TEXT_NAMED_ARGUMENT = re.compile(r"\s*([A-Za-z_]\w*)\s*\)")
+TEXT_PROPS_VARIABLE = re.compile(
+    r"\bTextProps\s+([A-Za-z_]\w*)\b(?!\s*\()|\b([A-Za-z_]\w*)\s*:\s*TextProps\b"
+)
+TEXT_DECLARATION = re.compile(r"\bvoid\s+Text\s*\(\s*TextProps\s+[A-Za-z_]\w*\s*\)")
 TEXT_VARIANT = re.compile(r"\bText(?:Wrapped|Colored|Disabled|InRect)\s*\(")
 
 
@@ -107,12 +112,23 @@ def line_number(source: str, offset: int) -> int:
 
 def violations(path: Path) -> list[str]:
     source = path.read_text(encoding="utf-8")
+    return violations_in_source(source, path)
+
+
+def violations_in_source(source: str, path: Path) -> list[str]:
     code = code_without_comments_or_strings(source)
+    code = TEXT_DECLARATION.sub(lambda match: " " * len(match.group(0)), code)
+    declarations: dict[str, int] = {}
+    for declaration in TEXT_PROPS_VARIABLE.finditer(code):
+        name = declaration.group(1) or declaration.group(2)
+        declarations.setdefault(name, declaration.start())
     findings: list[str] = []
 
     for match in TEXT_CALL.finditer(code):
         argument_start = match.end()
-        if TEXT_PROPS_ARGUMENT.match(code, argument_start) is None:
+        named = TEXT_NAMED_ARGUMENT.match(code, argument_start)
+        declared = named is not None and declarations.get(named.group(1), len(code)) < match.start()
+        if TEXT_PROPS_ARGUMENT.match(code, argument_start) is None and not declared:
             findings.append(
                 f"{path}:{line_number(source, match.start())}: "
                 "Text must receive one TextProps value"

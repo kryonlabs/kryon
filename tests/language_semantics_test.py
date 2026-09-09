@@ -261,7 +261,89 @@ assert.equal(m.Cleanup_EvaluateOnce(null, s), 1); assert.equal(s.trace, 19);
 ''')
     run("node", str(work / "js/test.mjs"))
 
+    # Function visibility must follow imports, not the order of input files.
+    first_provider = work / "first_provider.kry"
+    second_provider = work / "second_provider.kry"
+    first_provider.write_text('''#module "first_provider"
+Shared :: () -> i32 {
+    return 1
+}
+Hidden :: () -> i32 #private {
+    return 2
+}
+''')
+    second_provider.write_text('''#module "second_provider"
+Shared :: (value: bool) -> bool {
+    return value
+}
+''')
+    function_cases = {
+        "unimported_function": ('', 'Shared()', 'unresolved function'),
+        "private_function": ('#import "first_provider"\n', 'Hidden()', 'unresolved function'),
+        "ambiguous_function": ('#import "first_provider"\n#import "second_provider"\n', 'Shared()', 'ambiguous imported function'),
+        "imported_function": ('#import "first_provider"\n', 'Shared()', None),
+        "local_function": ('#import "second_provider"\nShared :: () -> i32 {\n return 3\n}\n', 'Shared()', None),
+    }
+    for name, (prefix, expression, diagnostic) in function_cases.items():
+        caller = work / f"{name}.kry"
+        caller.write_text(f'#module "{name}"\n' + prefix + f'Check :: () -> i32 {{\n return {expression}\n}}\n')
+        for target in ("c", "cpp", "go", "js"):
+            for providers in ((first_provider, second_provider), (second_provider, first_provider)):
+                output = work / "function_scope" / target
+                flags = ["--runtime", "./kryon-runtime.js"] if target == "js" else []
+                result = subprocess.run(
+                    [str(BUILD / "bin" / f"k2{target}"), "--strict", "--no-main", *flags, "--root", str(work),
+                     "-o", str(output),
+                     str(caller), *(str(path) for path in providers)], text=True, capture_output=True)
+                if diagnostic is None:
+                    assert result.returncode == 0, (name, target, result.stderr)
+                    expected = 3 if name == "local_function" else 1
+                    symbol = ''.join(part.capitalize() for part in name.split('_')) + '_Check'
+                    if target in ("c", "cpp"):
+                        shutil.copyfile(work / "c/ui_inspect.h", output / "ui_inspect.h")
+                        driver = output / f"driver.{target}"
+                        header = "h" if target == "c" else "hpp"
+                        driver.write_text(f'#include "{name}.{header}"\nint main(void) {{ return {name}_Check() != {expected}; }}\n')
+                        compiler = os.environ.get("CC", "cc") if target == "c" else os.environ.get("CXX", "c++")
+                        run(compiler, str(driver), str(output / f"{name}.{target}"),
+                            str(output / f"first_provider.{target}"), str(output / f"second_provider.{target}"),
+                            "-o", str(output / "scope_test"))
+                        run(str(output / "scope_test"))
+                    elif target == "go":
+                        driver = output / "scope_test.go"
+                        driver.write_text(f'package krygen\nimport "testing"\nfunc TestScope(t *testing.T) {{ if {symbol}() != {expected} {{ t.Fatal("wrong provider") }} }}\n')
+                        run("go", "test", str(output / f"{name}.go"), str(output / "first_provider.go"),
+                            str(output / "second_provider.go"), str(driver))
+                    else:
+                        shutil.copyfile(ROOT / "web/kryon-runtime.js", output / "kryon-runtime.js")
+                        (output / "package.json").write_text('{"type":"module"}\n')
+                        driver = output / "scope_test.mjs"
+                        driver.write_text(f'import {{ {symbol} }} from "./{name}.js";\nif ({symbol}(null) !== {expected}) throw new Error("wrong provider");\n')
+                        run("node", str(driver))
+                else:
+                    assert result.returncode != 0, (name, target, result.stdout)
+                    assert diagnostic in result.stderr, (name, target, result.stderr)
+
+    invalid_records = {
+        "duplicate_field": ('Props :: struct {\n count: i32\n count: bool\n}\n', "duplicate record field"),
+        "void_field": ('Props :: struct {\n value: void\n}\n', "record field cannot have void type"),
+        "missing_field_type": ('Props :: struct {\n value:\n}\n', "malformed record field"),
+        "duplicate_type": ('Props :: struct {\n count: i32\n}\nProps :: struct {\n active: bool\n}\n', "duplicate type declaration"),
+    }
+    for name, (text, diagnostic) in invalid_records.items():
+        path = work / f"{name}.kry"
+        path.write_text(text)
+        for target in ("c", "cpp", "go", "js"):
+            for flags in ([], ["--strict"]):
+                result = subprocess.run(
+                    [str(BUILD / "bin" / f"k2{target}"), *flags, "--root", str(work),
+                     "-o", str(work / "invalid"), str(path)], text=True, capture_output=True)
+                assert result.returncode != 0, (name, target, flags, result.stdout)
+                assert diagnostic in result.stderr, (name, target, flags, result.stderr)
+                assert f"{name}.kry:" in result.stderr
+
     invalid = {
+        "recursive_record": ('First :: struct {\n second: Second\n}\nSecond :: struct {\n first: First\n}\nbad :: () -> int {\n value: First\n unused value\n return 0\n}\n', "function is not supported by portable scalar emission"),
         "literal_range": ('bad :: () -> i8 {\n return 128\n}\n', "integer literal does not fit"),
         "undefined": ('bad :: () -> int {\n return missing\n}\n', "unresolved name"),
         "return_type": ('bad :: () -> bool {\n return 123\n}\n', "return type mismatch"),

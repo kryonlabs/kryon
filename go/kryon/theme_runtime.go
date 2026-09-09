@@ -15,41 +15,92 @@ import (
 
 const systemThemeRetry = 30 * time.Second
 
+func (r *runtime) themeMetrics() ThemeMetrics {
+	if r.activeTheme != nil {
+		return r.activeTheme.Metrics
+	}
+	return defaultThemeMetrics()
+}
+
 func defaultThemeMetrics() ThemeMetrics {
-	return ThemeMetrics{RadiusSmall: 4, RadiusMedium: 8, RadiusLarge: 12, RadiusPill: 999,
-		BorderWidth: 1, FocusWidth: 2, FocusGap: 2,
-		Space1: 4, Space2: 8, Space3: 12, Space4: 16, Space5: 24, Space6: 32,
-		ControlHeightSmall: 32, ControlHeightMedium: 40, ControlHeightLarge: 48,
-		ControlPaddingSmall: 12, ControlPaddingMedium: 16, ControlPaddingLarge: 20,
-		ControlGap: 8, FontSizeSmall: 13, FontSizeMedium: 14, FontSizeLarge: 16,
-		IconSizeSmall: 14, IconSizeMedium: 16, IconSizeLarge: 20,
-		ShadowOffsetY: 2, ShadowBlur: 8, DisabledOpacity: .45,
-		TransitionFastMS: 80, TransitionNormalMS: 140}
+	defaults := Theme_DefaultMetrics()
+	return ThemeMetrics{
+		RadiusSmall:          defaults.RadiusSmall,
+		RadiusMedium:         defaults.RadiusMedium,
+		RadiusLarge:          defaults.RadiusLarge,
+		RadiusPill:           defaults.RadiusPill,
+		BorderWidth:          defaults.BorderWidth,
+		FocusWidth:           defaults.FocusWidth,
+		FocusGap:             defaults.FocusGap,
+		Space1:               defaults.Space1,
+		Space2:               defaults.Space2,
+		Space3:               defaults.Space3,
+		Space4:               defaults.Space4,
+		Space5:               defaults.Space5,
+		Space6:               defaults.Space6,
+		ControlHeightSmall:   defaults.ControlHeightSmall,
+		ControlHeightMedium:  defaults.ControlHeightMedium,
+		ControlHeightLarge:   defaults.ControlHeightLarge,
+		ControlPaddingSmall:  defaults.ControlPaddingSmall,
+		ControlPaddingMedium: defaults.ControlPaddingMedium,
+		ControlPaddingLarge:  defaults.ControlPaddingLarge,
+		ControlGap:           defaults.ControlGap,
+		FontSizeSmall:        defaults.FontSizeSmall,
+		FontSizeMedium:       defaults.FontSizeMedium,
+		FontSizeLarge:        defaults.FontSizeLarge,
+		IconSizeSmall:        defaults.IconSizeSmall,
+		IconSizeMedium:       defaults.IconSizeMedium,
+		IconSizeLarge:        defaults.IconSizeLarge,
+		ShadowOffsetY:        defaults.ShadowOffsetY,
+		ShadowBlur:           defaults.ShadowBlur,
+		DisabledOpacity:      defaults.DisabledOpacity,
+		TransitionFastMS:     defaults.TransitionFastMs,
+		TransitionNormalMS:   defaults.TransitionNormalMs,
+	}
 }
 
 func ThemeDefaultDark() Theme {
-	return Theme{Name: "Default dark", Mode: ThemeModeDark, Metrics: defaultThemeMetrics(), Colors: ThemeColors{
-		Background: Color{0x07, 0x14, 0x26, 0xff}, Surface: Color{0x0d, 0x21, 0x38, 0xff},
-		SurfaceRaised: Color{0x12, 0x2b, 0x48, 0xff}, SurfaceSunken: Color{0x08, 0x1a, 0x2e, 0xff},
-		Text: Color{0xf5, 0xf8, 0xff, 0xff}, MutedText: Color{0xa9, 0xbb, 0xd1, 0xff}, DisabledText: Color{0x72, 0x83, 0x9a, 0xff},
-		Icon: Color{0xd8, 0xe5, 0xf5, 0xff}, MutedIcon: Color{0x8e, 0xa3, 0xbc, 0xff}, Border: Color{0x31, 0x50, 0x6f, 0xff},
-		Focus: Color{0x4d, 0xa3, 0xff, 0xff}, Selection: Color{0x1e, 0x6d, 0xe0, 0xff},
-		Accent: Color{0x14, 0x78, 0xff, 0xff}, OnAccent: White, AccentHover: Color{0x2d, 0x8c, 0xff, 0xff}, AccentPressed: Color{0x08, 0x62, 0xd9, 0xff},
-		Success: Color{0x07, 0x96, 0x69, 0xff}, OnSuccess: White, Warning: Color{0xc8, 0x87, 0, 0xff}, OnWarning: Black,
-		Danger: Color{0xdc, 0x2f, 0x4f, 0xff}, OnDanger: White, Info: Color{0x16, 0x8b, 0xd2, 0xff}, OnInfo: White,
-		Link: Color{0x59, 0xa8, 0xff, 0xff}, LinkHover: Color{0x8a, 0xc2, 0xff, 0xff}, Shadow: Color{0, 8, 0x15, 0x80}}}
+	return Theme{Name: "Default dark", Mode: ThemeModeDark, Metrics: defaultThemeMetrics(), Colors: defaultThemeColors(true)}
 }
 
 func ThemeDefaultLight() Theme {
-	return Theme{Name: "Default light", Mode: ThemeModeLight, Metrics: defaultThemeMetrics(), Colors: ThemeColors{
-		Background: Color{0xf5, 0xf8, 0xfc, 0xff}, Surface: White, SurfaceRaised: White, SurfaceSunken: Color{0xea, 0xf1, 0xf8, 0xff},
-		Text: Color{0x10, 0x23, 0x3a, 0xff}, MutedText: Color{0x53, 0x6a, 0x83, 0xff}, DisabledText: Color{0x8c, 0x9a, 0xa9, 0xff},
-		Icon: Color{0x18, 0x3c, 0x63, 0xff}, MutedIcon: Color{0x6e, 0x82, 0x98, 0xff}, Border: Color{0xc5, 0xd4, 0xe3, 0xff},
-		Focus: Color{0x06, 0x6c, 0xff, 0xff}, Selection: Color{0xd8, 0xe9, 0xff, 0xff},
-		Accent: Color{0x17, 0x69, 0xe8, 0xff}, OnAccent: White, AccentHover: Color{0x0f, 0x5e, 0xd8, 0xff}, AccentPressed: Color{0x0a, 0x4d, 0xb8, 0xff},
-		Success: Color{0x07, 0x80, 0x5a, 0xff}, OnSuccess: White, Warning: Color{0xb5, 0x6d, 0, 0xff}, OnWarning: White,
-		Danger: Color{0xd6, 0x24, 0x45, 0xff}, OnDanger: White, Info: Color{0x08, 0x7c, 0xbf, 0xff}, OnInfo: White,
-		Link: Color{0x07, 0x5f, 0xd1, 0xff}, LinkHover: Color{0x03, 0x4b, 0xa9, 0xff}, Shadow: Color{0x17, 0x32, 0x4d, 0x24}}}
+	return Theme{Name: "Default light", Mode: ThemeModeLight, Metrics: defaultThemeMetrics(), Colors: defaultThemeColors(false)}
+}
+
+func defaultThemeColors(dark bool) ThemeColors {
+	palette := Theme_DefaultPalette(dark)
+	return ThemeColors{
+		Background:    unpackRGBA(palette.Background),
+		Surface:       unpackRGBA(palette.Surface),
+		SurfaceRaised: unpackRGBA(palette.SurfaceRaised),
+		SurfaceSunken: unpackRGBA(palette.SurfaceSunken),
+		Overlay:       unpackRGBA(palette.Overlay),
+		Text:          unpackRGBA(palette.Text),
+		MutedText:     unpackRGBA(palette.TextMuted),
+		DisabledText:  unpackRGBA(palette.TextDisabled),
+		Icon:          unpackRGBA(palette.Icon),
+		MutedIcon:     unpackRGBA(palette.IconMuted),
+		Border:        unpackRGBA(palette.Border),
+		BorderStrong:  unpackRGBA(palette.BorderStrong),
+		Divider:       unpackRGBA(palette.Divider),
+		Focus:         unpackRGBA(palette.Focus),
+		Selection:     unpackRGBA(palette.Selection),
+		Accent:        unpackRGBA(palette.Accent),
+		OnAccent:      unpackRGBA(palette.OnAccent),
+		AccentHover:   unpackRGBA(palette.AccentHover),
+		AccentPressed: unpackRGBA(palette.AccentPressed),
+		Success:       unpackRGBA(palette.Success),
+		OnSuccess:     unpackRGBA(palette.OnSuccess),
+		Warning:       unpackRGBA(palette.Warning),
+		OnWarning:     unpackRGBA(palette.OnWarning),
+		Danger:        unpackRGBA(palette.Danger),
+		OnDanger:      unpackRGBA(palette.OnDanger),
+		Info:          unpackRGBA(palette.Info),
+		OnInfo:        unpackRGBA(palette.OnInfo),
+		Link:          unpackRGBA(palette.Link),
+		LinkHover:     unpackRGBA(palette.LinkHover),
+		Shadow:        unpackRGBA(palette.Shadow),
+	}
 }
 
 type systemThemePalette struct {
@@ -656,17 +707,23 @@ func completeThemePalette(p themePalette) themePalette {
 	if p.selected.A == 0 {
 		p.selected = mixColor(p.surface, p.link, 0.35)
 	}
-	if p.selectedHot.A == 0 {
-		p.selectedHot = mixColor(p.surface, p.link, 0.55)
-	}
-	if p.selectedText.A == 0 {
-		p.selectedText = readableTextOn(p.selectedHot, p.text, p.background)
-	}
 	if p.border.A == 0 {
 		p.border = mixColor(p.surface, p.text, 0.18)
 	}
 	if p.focus.A == 0 {
 		p.focus = p.link
+	}
+	return themeSelectionDefaults(p)
+}
+
+// These two legacy selection roles have no explicit ThemeColors fields.
+// Derive only those roles; never fill over a declared transparent theme color.
+func themeSelectionDefaults(p themePalette) themePalette {
+	if p.selectedHot.A == 0 {
+		p.selectedHot = mixColor(p.surface, p.link, 0.55)
+	}
+	if p.selectedText.A == 0 {
+		p.selectedText = readableTextOn(p.selectedHot, p.text, p.background)
 	}
 	return p
 }

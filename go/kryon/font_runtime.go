@@ -23,6 +23,37 @@ type uiFontSource struct {
 	faces  map[int32]xfont.Face
 }
 
+// Keep advance truncation in font units. Rounding to 26.6 pixels first can
+// promote a 7.99-pixel advance to 8, unlike the C rasterizer's integer atlas.
+type pixelFontFace struct {
+	xfont.Face
+	parsed   *opentype.Font
+	units    fixed.Int26_6
+	scale    float32
+	advances map[rune]fixed.Int26_6
+}
+
+func (face *pixelFontFace) GlyphAdvance(glyph rune) (fixed.Int26_6, bool) {
+	if advance, ok := face.advances[glyph]; ok {
+		return advance, true
+	}
+	index, err := face.parsed.GlyphIndex(nil, glyph)
+	if err != nil {
+		return 0, false
+	}
+	advance, err := face.parsed.GlyphAdvance(nil, index, face.units, xfont.HintingNone)
+	if err != nil {
+		return 0, false
+	}
+	pixels := fontUnitAdvance(advance, face.scale)
+	face.advances[glyph] = pixels
+	return pixels, true
+}
+
+func fontUnitAdvance(advance fixed.Int26_6, scale float32) fixed.Int26_6 {
+	return fixed.I(int(float32(advance) / 64 * scale))
+}
+
 var (
 	fontMu           sync.Mutex
 	nextFontID       uint32 = 1
@@ -66,10 +97,23 @@ func ensureDefaultUIFont() {
 			continue
 		}
 		if _, ok := registerFontData(defaultUIFontName, ".ttf", data); ok {
+			semiboldPath := filepath.Join(filepath.Dir(path), "NotoSans-SemiBold.ttf")
+			if semibold, err := os.ReadFile(semiboldPath); err == nil && registeredTypeface("semibold") == 0 {
+				registerFontData("semibold", ".ttf", semibold)
+			}
 			useUIFont(defaultUIFontName)
 			return
 		}
 	}
+}
+
+func registeredTypeface(name string) uint32 {
+	fontMu.Lock()
+	defer fontMu.Unlock()
+	if source := fontsByName[name]; source != nil {
+		return source.id
+	}
+	return 0
 }
 
 func registerFontData(name, typ string, data []byte) (uint32, bool) {
@@ -135,31 +179,67 @@ func faceForFont(id uint32, size int32) xfont.Face {
 	if face := source.faces[size]; face != nil {
 		return face
 	}
+	// C's font rasterizer interprets size as ascent-to-descent pixel height,
+	// not pixels per em. Convert that contract before creating the Go face.
+	em := float64(source.parsed.UnitsPerEm())
+	metrics, err := source.parsed.Metrics(nil, fixed.Int26_6(em*64), xfont.HintingNone)
+	if err != nil {
+		return nil
+	}
+	span := float64(metrics.Ascent+metrics.Descent) / 64
+	if span <= 0 {
+		return nil
+	}
 	face, err := opentype.NewFace(source.parsed, &opentype.FaceOptions{
-		Size:    float64(size),
+		Size:    float64(size) * em / span,
 		DPI:     72,
-		Hinting: xfont.HintingFull,
+		Hinting: xfont.HintingNone,
 	})
 	if err != nil {
 		return nil
 	}
-	source.faces[size] = face
-	return face
+	pixelFace := &pixelFontFace{Face: face, parsed: source.parsed,
+		units: fixed.Int26_6(em * 64), scale: float32(size) / float32(span),
+		advances: make(map[rune]fixed.Int26_6)}
+	source.faces[size] = pixelFace
+	return pixelFace
 }
 
-func drawFontText(img draw.Image, text string, x, y int, fontSize int32, c Color, fontID uint32) bool {
+func fontTextBaseline(text string, boxY, boxHeight int, fontSize int32, fontID uint32) int {
+	face := faceForFont(fontID, fontSize)
+	if face == nil {
+		return boxY + (boxHeight-7*glyphScale(fontSize))/2
+	}
+	bounds, _ := xfont.BoundString(face, text)
+	inkTop := bounds.Min.Y.Floor()
+	inkHeight := bounds.Max.Y.Ceil() - inkTop
+	// Match TextBaselineY: round the complete offset, including the glyph's
+	// atlas-relative top. Integer division loses the half-pixel tie.
+	return boxY + int(float64(boxHeight-inkHeight)*0.5-float64(inkTop+fontAscent(face))+0.5)
+}
+
+func drawFontText(img draw.Image, text string, x, y int, fontSize int32, c Color, fontID uint32, letterSpacing ...int32) bool {
+	spacing := int32(0)
+	if len(letterSpacing) > 0 {
+		spacing = max(letterSpacing[0], 0)
+	}
 	face := faceForFont(fontID, fontSize)
 	if face == nil {
 		return false
 	}
 	d := &xfont.Drawer{
 		Dst:  img,
-		Src:  image.NewUniform(color.RGBA{R: c.R, G: c.G, B: c.B, A: c.A}),
+		Src:  image.NewUniform(color.NRGBA{R: c.R, G: c.G, B: c.B, A: c.A}),
 		Face: face,
 		Dot:  fixed.P(x, y+fontAscent(face)),
 	}
 	for _, line := range splitLines(text) {
-		d.DrawString(line)
+		for _, glyph := range line {
+			start := d.Dot.X
+			d.DrawString(string(glyph))
+			advance, _ := face.GlyphAdvance(glyph)
+			d.Dot.X = start + fixed.I(advance.Floor()+int(spacing))
+		}
 		d.Dot.X = fixed.I(x)
 		d.Dot.Y += fixed.I(fontLineHeight(face))
 	}
@@ -171,16 +251,16 @@ func measureFontText(text string, fontSize int32, fontID uint32) (Vector2, bool)
 	if face == nil {
 		return Vector2{}, false
 	}
-	maxW := fixed.Int26_6(0)
+	maxW := 0
 	lines := splitLines(text)
 	for _, line := range lines {
-		w := xfont.MeasureString(face, line)
+		w := fontPixelAdvance(face, line)
 		if w > maxW {
 			maxW = w
 		}
 	}
 	return Vector2{
-		X: float32(maxW.Ceil()),
+		X: float32(maxW),
 		Y: float32(maxInt(1, len(lines)) * fontLineHeight(face)),
 	}, true
 }
@@ -191,7 +271,18 @@ func fontTextAdvance(text string, cursor int32, fontSize int32, fontID uint32) (
 		return 0, false
 	}
 	pos := clampByteCursor(text, int(cursor))
-	return xfont.MeasureString(face, text[:pos]).Round(), true
+	return fontPixelAdvance(face, text[:pos]), true
+}
+
+// The C atlas stores truncated advances and does not apply pair kerning.
+// Use that same pixel grid for drawing, measurement, and caret positioning.
+func fontPixelAdvance(face xfont.Face, text string) int {
+	width := 0
+	for _, glyph := range text {
+		advance, _ := face.GlyphAdvance(glyph)
+		width += advance.Floor()
+	}
+	return width
 }
 
 func fontTextHeight(fontSize int32, fontID uint32) (int32, bool) {
@@ -203,7 +294,7 @@ func fontTextHeight(fontSize int32, fontID uint32) (int32, bool) {
 }
 
 func fontAscent(face xfont.Face) int {
-	return face.Metrics().Ascent.Ceil()
+	return face.Metrics().Ascent.Floor()
 }
 
 func fontLineHeight(face xfont.Face) int {

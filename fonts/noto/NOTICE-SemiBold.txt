@@ -1,0 +1,7 @@
+NotoSans-SemiBold.ttf
+Noto Sans SemiBold, version 2.004 (unmodified).
+Copyright 2015 Google LLC. All Rights Reserved.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The complete license is reproduced in LICENSE.txt in this directory.
+Source: Debian fonts-noto-core, upstream https://github.com/googlei18n/noto-fonts

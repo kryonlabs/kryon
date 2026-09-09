@@ -80,40 +80,42 @@ func number_e3d2cb77_bits(a, b uint64, w uint, sign bool, op int) uint64 {
 	panic("invalid numeric operation")
 }
 
-func SplitButton_ResolvedWidth(width float32, height float32) float32 {
-	var value_0 float32 = width
-	var value_1 float32 = height
-	var value_2 float32 = 2.0
-	var value_3 float32 = value_1 * value_2
-	var value_4 bool = value_0 < value_3
-	if value_4 {
-		var value_5 float32 = height
-		var value_6 float32 = 2.0
-		var value_7 float32 = value_5 * value_6
-		return value_7
-	}
-	var value_8 float32 = width
-	return value_8
+type SplitLayout struct {
+	Width        float32
+	ActionWidth  float32
+	MenuOffset   float32
+	MenuWidth    float32
+	DividerInset float32
 }
 
-func SplitButton_ActionWidth(width float32, height float32) float32 {
+func SplitButton_ResolveLayout(width float32, height float32) SplitLayout {
+	var layout SplitLayout = SplitLayout{}
 	var value_0 float32 = width
-	var value_1 float32 = value_0
-	var value_2 float32 = height
-	var value_3 float32 = value_2
-	var value_4 float32 = SplitButton_ResolvedWidth(value_1, value_3)
-	var value_5 float32 = height
-	var value_6 float32 = value_4 - value_5
-	return value_6
-}
-
-func SplitButton_MenuX(x float32, width float32, height float32) float32 {
-	var value_0 float32 = x
-	var value_1 float32 = width
-	var value_2 float32 = value_1
+	layout.Width = value_0
+	var value_1 SplitLayout = layout
+	var value_2 float32 = value_1.Width
 	var value_3 float32 = height
-	var value_4 float32 = value_3
-	var value_5 float32 = SplitButton_ActionWidth(value_2, value_4)
-	var value_6 float32 = value_0 + value_5
-	return value_6
+	var value_4 float32 = 2.0
+	var value_5 float32 = value_3 * value_4
+	var value_6 bool = value_2 < value_5
+	if value_6 {
+		var value_7 float32 = height
+		var value_8 float32 = 2.0
+		var value_9 float32 = value_7 * value_8
+		layout.Width = value_9
+	}
+	var value_10 SplitLayout = layout
+	var value_11 float32 = value_10.Width
+	var value_12 float32 = height
+	var value_13 float32 = value_11 - value_12
+	layout.ActionWidth = value_13
+	var value_14 SplitLayout = layout
+	var value_15 float32 = value_14.ActionWidth
+	layout.MenuOffset = value_15
+	var value_16 float32 = height
+	layout.MenuWidth = value_16
+	var value_17 float32 = 8.0
+	layout.DividerInset = value_17
+	var value_18 SplitLayout = layout
+	return value_18
 }

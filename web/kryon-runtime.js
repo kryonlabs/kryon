@@ -55,6 +55,31 @@ export const ButtonStateFocus = 4;
 export const ButtonStateDisabled = 5;
 export const ButtonStateLoading = 6;
 export const ButtonStateSelected = 7;
+export const ControlSizeMedium = 0;
+export const ControlSizeSmall = 1;
+export const ControlSizeLarge = 2;
+export const IconPlacementLeading = 0;
+export const IconPlacementTrailing = 1;
+
+// Public Style field-presence ABI, shared with the native host bindings.
+export const StyleBackground = 1 << 0;
+export const StyleForeground = 1 << 1;
+export const StyleBorder = 1 << 2;
+export const StyleFocus = 1 << 3;
+export const StyleRadius = 1 << 4;
+export const StyleBorderWidth = 1 << 5;
+export const StyleOpacity = 1 << 6;
+export const StylePaddingX = 1 << 7;
+export const StylePaddingY = 1 << 8;
+export const StyleGap = 1 << 9;
+export const StyleFontSize = 1 << 10;
+export const StyleIconSize = 1 << 11;
+export const StyleContentOffset = 1 << 12;
+export const StyleBackgroundEnd = 1 << 13;
+export const StyleMaterial = 1 << 14;
+export const StyleTypeface = 1 << 15;
+export const MaterialLightfield = 0;
+export const MaterialFlat = 1;
 export const SideTop = 0;
 export const SideBottom = 1;
 export const SideLeft = 2;
@@ -126,15 +151,29 @@ export function SetTheme(theme) {
 }
 export function SetThemeFamily(family) {
   activeThemeFamily = family;
-  activeTheme = activeThemeMode === 2 ? family.dark : family.light;
+  activeTheme = effectiveThemeDark() ? family.dark : family.light;
 }
 export function GetThemeFamily() { return activeThemeFamily; }
+function effectiveThemeDark() {
+  return activeThemeMode === 2 || (activeThemeMode === 0 &&
+    typeof globalThis.matchMedia === "function" &&
+    globalThis.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+export function SetThemeMode(mode) {
+  activeThemeMode = Number.isInteger(mode) && mode >= 0 && mode <= 2 ? mode : 0;
+  if (activeThemeFamily)
+    activeTheme = effectiveThemeDark() ? activeThemeFamily.dark : activeThemeFamily.light;
+}
+export function GetThemeMode() { return activeThemeMode; }
 export function GetTheme() {
-  return activeTheme || (activeThemeMode === 2 ? ThemeDefaultDark() : ThemeDefaultLight());
+  if (activeThemeFamily)
+    return effectiveThemeDark() ? activeThemeFamily.dark : activeThemeFamily.light;
+  return activeTheme || (effectiveThemeDark() ? ThemeDefaultDark() : ThemeDefaultLight());
 }
 export const THEME_SKY = 0;
 export const THEME_COUNT = 6;
 export const THEME_MODE_SYSTEM = 0;
+export const THEME_MODE_LIGHT = 1;
 export const THEME_MODE_DARK = 2;
 export const THEME_SOURCE_SYSTEM = 0;
 export const THEME_SOURCE_APP = 1;
@@ -214,6 +253,20 @@ export function snapshot(rt) {
   };
 }
 
+export function viewport(rt, app = null) {
+  const target = typeof rt.target === "string" && typeof document !== "undefined"
+    ? document.querySelector(rt.target) : rt.target;
+  const metadata = rt.app || app || {};
+  const width = Number(target?.clientWidth);
+  const height = Number(target?.clientHeight);
+  return {
+    x: 0,
+    y: 0,
+    width: Number.isFinite(width) && width > 0 ? width : numberValue(metadata.width, 800),
+    height: Number.isFinite(height) && height > 0 ? height : numberValue(metadata.height, 600)
+  };
+}
+
 export function widget(rt, name, args, state = null) {
   const item = { kind: "widget", name, args };
   rt.frame.push(item);
@@ -234,8 +287,64 @@ export function struct(type, value) {
   return { type, value };
 }
 
+const references = new WeakSet();
+const valueRecords = new WeakMap();
+const recordFields = {
+  Vector2: ["x", "y"],
+  Vector3: ["x", "y", "z"],
+  Vector4: ["x", "y", "z", "w"],
+  Rectangle: ["x", "y", "width", "height"],
+  Color: ["r", "g", "b", "a"]
+};
+
+// Retain the compact positional representation used by widget adapters while
+// giving generated source its declared record-field semantics.
+export function recordValue(type, value) {
+  const fields = recordFields[type];
+  if (!fields) {
+    throw new TypeError(`Unknown positional record: ${type}`);
+  }
+  if (!Array.isArray(value)) {
+    for (const field of fields) {
+      if (!Object.prototype.hasOwnProperty.call(value, field)) {
+        value[field] = 0;
+      }
+    }
+    return value;
+  }
+  fields.forEach((field, index) => {
+    if (index >= value.length) {
+      value[index] = 0;
+    }
+    Object.defineProperty(value, field, {
+      get() { return this[index]; },
+      set(next) { this[index] = next; }
+    });
+  });
+  valueRecords.set(value, type);
+  return value;
+}
+
+// Generated value declarations and assignments own their records and arrays. Explicit
+// references remain shared, just as pointer fields do in C and Go.
+export function copyValue(value) {
+  if (value === null || typeof value !== "object" || references.has(value)) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const copied = value.map(copyValue);
+    const type = valueRecords.get(value);
+    return type ? recordValue(type, copied) : copied;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    return value;
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, field]) => [key, copyValue(field)]));
+}
+
 export function ref(object, key) {
-  return {
+  const reference = {
     get value() { return object ? object[key] : undefined; },
     set value(next) {
       if (object) object[key] = next;
@@ -243,6 +352,8 @@ export function ref(object, key) {
     object,
     key
   };
+  references.add(reference);
+  return reference;
 }
 
 export function stateForModule() {
@@ -300,6 +411,15 @@ function stringValue(text, fallback = "") {
 }
 
 function parseBounds(args) {
+  if (args && typeof args === "object") {
+    const bounds = args.bounds || {};
+    return {
+      x: numberValue(bounds.x ?? bounds[0]),
+      y: numberValue(bounds.y ?? bounds[1]),
+      width: numberValue(bounds.width ?? bounds[2]),
+      height: numberValue(bounds.height ?? bounds[3])
+    };
+  }
   const prop = String(args || "").match(/\.bounds\s*=\s*(?:\([^)]+\))?\{([^{}]+)\}/);
   if (prop) {
     const p = splitTopLevel(prop[1]);
@@ -333,6 +453,8 @@ function parseBounds(args) {
 }
 
 function propNumber(args, prop, fallback = 0) {
+  if (args && typeof args === "object")
+    return numberValue(args[prop], fallback);
   const m = String(args || "").match(new RegExp("\\." + prop + "\\s*=\\s*([^,}]+)"));
   return m ? numberValue(m[1], fallback) : fallback;
 }
@@ -726,7 +848,10 @@ export function mount(rt, target) {
   for (const item of rt.frame) {
     const el = document.createElement(item.name === "Button" ? "button" : "div");
     el.className = "kryon-widget kryon-widget-" + item.name.toLowerCase();
-    el.textContent = item.name + (item.args ? "(" + item.args + ")" : "");
+    const args = item.args && typeof item.args === "object"
+      ? JSON.stringify(item.args, (_, value) => typeof value === "bigint" ? String(value) : value)
+      : item.args;
+    el.textContent = item.name + (args ? "(" + args + ")" : "");
     root.appendChild(el);
   }
   node.appendChild(root);

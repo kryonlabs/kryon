@@ -234,7 +234,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Progress((ProgressBarProps){{right, y + Scale(140), Scale(220), Scale(24)}, 0, 100, slider_value, "Progress"})
         ColorPicker((Rectangle){right + Scale(240), y, Scale(120), Scale(120)}, &color_value)
 
-        if SmallButton((ButtonProps){.bounds = {x,y + Scale(204),Scale(120),Scale(28)}, .label = "SmallButton", .id = 200}) {
+        if Button((ButtonProps){.bounds = {x,y + Scale(204),Scale(120),Scale(28)}, .label = "Small", .size = ControlSizeSmall, .id = 200}) {
             action_count += 1
         }
         if ArrowButton((ArrowButtonProps){.bounds = {x + Scale(140),y + Scale(204),Scale(32),Scale(28)}, .id = 201, .direction = ARROW_RIGHT}) {

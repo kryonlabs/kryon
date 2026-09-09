@@ -2,6 +2,40 @@ package kryon
 
 import "testing"
 
+func TestLightfieldLinkInkIsDistinctFromAccent(t *testing.T) {
+	light := ThemeDefaultLight()
+	dark := ThemeDefaultDark()
+	if light.Colors.Link != (Color{0, 51, 255, 255}) ||
+		light.Colors.Accent != (Color{0, 108, 255, 255}) {
+		t.Fatalf("light link and material colors: %+v", light.Colors)
+	}
+	if dark.Colors.Link != (Color{0, 187, 255, 255}) {
+		t.Fatalf("dark link ink changed: %+v", dark.Colors.Link)
+	}
+}
+
+func TestExplicitThemeColorsPreserveTransparency(t *testing.T) {
+	for _, base := range []Theme{ThemeDefaultLight(), ThemeDefaultDark()} {
+		for _, alpha := range []uint8{0, 128, 255} {
+			theme := base
+			theme.Colors.Border = Color{23, 45, 67, alpha}
+			theme.Colors.Focus = Color{34, 56, 78, alpha}
+			theme.Colors.Link = Color{45, 67, 89, alpha}
+			theme.Colors.Accent = Color{56, 78, 90, alpha}
+			theme.Colors.Selection = Color{67, 89, 101, alpha}
+			theme.Colors.Icon = Color{78, 90, 112, alpha}
+			r := New(AppConfig{}).(*runtime)
+			r.SetTheme(theme)
+			palette := r.theme()
+			if r.GetThemeBorder() != theme.Colors.Border || palette.focus != theme.Colors.Focus ||
+				r.GetThemeLink() != theme.Colors.Link || r.GetThemePrimary() != theme.Colors.Accent ||
+				palette.selected != theme.Colors.Selection || r.GetThemeIcon() != theme.Colors.Icon {
+				t.Fatalf("alpha %d: declared colors were replaced by inferred defaults: %+v", alpha, palette)
+			}
+		}
+	}
+}
+
 // Absolute ids matter: they match the C THEME_* enum and the THEME_* aliases,
 // and the ThemeSettings picker cycles through them.
 func TestThemeCatalogIncludesPlan9XfceSweet(t *testing.T) {
@@ -140,5 +174,19 @@ func TestRuntimeAppliesSweetThemeAndScheme(t *testing.T) {
 	}
 	if themeSettingsThemeLabel(int32(ThemeSweet)) != "Sweet" {
 		t.Fatalf("picker label for Sweet = %q", themeSettingsThemeLabel(int32(ThemeSweet)))
+	}
+}
+
+func TestThemeModePreservesConfiguredPreference(t *testing.T) {
+	rt := New(AppConfig{Width: 100, Height: 100})
+	for _, mode := range []ThemeMode{ThemeModeSystem, ThemeModeLight, ThemeModeDark} {
+		rt.SetThemeMode(mode)
+		if got := rt.GetThemeMode(); got != mode {
+			t.Fatalf("GetThemeMode = %v, want configured mode %v", got, mode)
+		}
+	}
+	rt.SetThemeMode(ThemeMode(-1))
+	if got := rt.GetThemeMode(); got != ThemeModeSystem {
+		t.Fatalf("invalid mode should normalize to system, got %v", got)
 	}
 }

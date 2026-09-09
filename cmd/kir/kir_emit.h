@@ -9,8 +9,12 @@ typedef void (*KirResolveTarget)(void *context, const char *text, char *out, siz
 const char *KirTargetType(const char *type, KirTarget target);
 int KirScalarLiteral(const char *type, const char *text, KirTarget target,
                       KirSourceSpan span, char *out, size_t size);
-int KirCanEmitBody(const KirFunction *fn);
+int KirCanEmitBody(const KirModule *module, const KirFunction *fn);
+/* Stream a portable record's zero value or deep copy; no output if unsupported. */
+int KirEmitJsRecordValue(FILE *out, const KirModule *module, const char *type,
+                         const char *source);
 void KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target);
+void KirEmitStringType(FILE *out);
 int KirEmitBody(FILE *out, const KirModule *module, const KirFunction *fn,
                 KirTarget target, KirResolveTarget resolve, void *context);
 #endif

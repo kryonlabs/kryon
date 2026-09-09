@@ -72,7 +72,8 @@ typedef enum KirExprKind {
     KIR_EXPR_SIZEOF,
     KIR_EXPR_CHAR,
     KIR_EXPR_CONDITIONAL,
-    KIR_EXPR_POSTFIX
+    KIR_EXPR_POSTFIX,
+    KIR_EXPR_FIELD_INIT
 } KirExprKind;
 
 typedef struct KirSourceSpan {
@@ -101,6 +102,7 @@ typedef struct KirImport {
     int required;
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
+    const struct KirModule *resolved_module; /* borrowed from the checked program set */
 } KirImport;
 
 typedef struct KirStmt {
@@ -108,6 +110,8 @@ typedef struct KirStmt {
     char text[KIR_TEXT_MAX];
     char widget[KIR_NAME_MAX];
     char args[KIR_TEXT_MAX];
+    int declared_widget; /* typed #ui block invocation, resolved after imports */
+    int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int expr_root;      /* index into enclosing function exprs, or -1 */
     int lhs_root;       /* structured assignment destination, or -1 */
     char name[KIR_NAME_MAX]; /* declaration binding */
@@ -189,6 +193,15 @@ typedef struct KirType {
     KirSourceSpan span;
 } KirType;
 
+typedef struct KirTypeField {
+    char name[KIR_NAME_MAX];
+    char type[KIR_NAME_MAX];
+} KirTypeField;
+
+/* Start offset at zero. Returns 1 for a field, 0 at end, -1 for malformed
+ * record syntax. Names/types are trimmed without truncating source tokens. */
+int KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field);
+
 typedef struct KirAppMeta {
     int has_app;
     char title[KIR_NAME_MAX];
@@ -249,6 +262,15 @@ typedef struct KirProgram {
     int module_count;
     int module_cap;
 } KirProgram;
+
+/* Local records and direct unqualified Kry imports; owner supplies field scope. */
+/* Local declarations shadow imports. Returns 1 found, 0 absent, -1 ambiguous. */
+int KirResolveFunction(const KirModule *module, const char *name,
+                       const KirModule **owner, const KirFunction **function);
+const KirType *KirFindType(const KirModule *module, const char *name,
+                          const KirModule **owner);
+int KirResolveEnumMember(const KirModule *module, const char *name,
+                         const KirModule **owner, const KirType **type);
 
 KirProgram *KirProgramNew(void);
 void KirProgramFree(KirProgram *program);

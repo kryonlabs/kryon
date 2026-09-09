@@ -1,0 +1,260 @@
+#module "style"
+#import "surface"
+
+# Interaction styling is shared by widgets, independent of activation logic.
+State :: enum {
+    PolicyStateAuto = 0
+    PolicyStateNormal = 1
+    PolicyStateHover = 2
+    PolicyStatePressed = 3
+    PolicyStateFocus = 4
+    PolicyStateDisabled = 5
+    PolicyStateLoading = 6
+    PolicyStateSelected = 7
+}
+
+StateFlags :: struct {
+    disabled: bool
+    loading: bool
+    selected: bool
+}
+
+# Explicit terminal states carry the same flags as their boolean props.
+# Normalize before input, motion, or appearance so hosts cannot disagree.
+ResolveFlags :: (state: i32, disabled: bool, loading: bool, selected: bool) -> StateFlags #export {
+    flags: StateFlags
+    flags.disabled = disabled || state == PolicyStateDisabled
+    flags.loading = loading || state == PolicyStateLoading
+    flags.selected = selected || state == PolicyStateSelected
+    return flags
+}
+
+ResolveState :: (
+    explicit_state: i32,
+    disabled: bool,
+    loading: bool,
+    pressed: bool,
+    hovered: bool,
+    focused: bool,
+    selected: bool
+) -> i32 #export {
+    if disabled { return PolicyStateDisabled }
+    if loading { return PolicyStateLoading }
+    if explicit_state != PolicyStateAuto { return explicit_state }
+    if pressed { return PolicyStatePressed }
+    if hovered { return PolicyStateHover }
+    if focused { return PolicyStateFocus }
+    if selected { return PolicyStateSelected }
+    return PolicyStateNormal
+}
+
+InteractionState :: struct {
+    state: i32
+    hovered: bool
+    pressed: bool
+    focused: bool
+}
+
+# Activation is an action result, not a visual-state override. Explicit
+# previews keep their resolved state even when a user activates the control.
+ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
+    pressed: bool, hovered: bool, focused: bool, selected: bool) -> InteractionState #export {
+    state: i32 = ResolveState(explicit_state, disabled, loading,
+        pressed, hovered, focused, selected)
+    interaction: InteractionState = (InteractionState){.state = state,
+        .hovered = hovered, .pressed = pressed, .focused = focused}
+    if explicit_state != PolicyStateAuto {
+        interaction.hovered = state == PolicyStateHover
+        interaction.pressed = state == PolicyStatePressed
+        interaction.focused = state == PolicyStateFocus
+    }
+    return interaction
+}
+
+# Presence is separate from value: zero and transparent are valid overrides.
+Field :: enum {
+    FieldBackground = 1
+    FieldForeground = 2
+    FieldBorder = 4
+    FieldFocus = 8
+    FieldRadius = 16
+    FieldBorderWidth = 32
+    FieldOpacity = 64
+    FieldPaddingX = 128
+    FieldPaddingY = 256
+    FieldGap = 512
+    FieldFontSize = 1024
+    FieldIconSize = 2048
+    FieldContentOffset = 4096
+    FieldBackgroundEnd = 8192
+    FieldMaterial = 16384
+    FieldTypeface = 32768
+}
+
+# Default styles initialize all basic properties, without a gradient endpoint.
+DefaultFields :: () -> u32 #export {
+    return (u32)FieldBackground | (u32)FieldForeground | (u32)FieldBorder |
+        (u32)FieldFocus | (u32)FieldRadius | (u32)FieldBorderWidth | (u32)FieldOpacity |
+        (u32)FieldPaddingX | (u32)FieldPaddingY | (u32)FieldGap | (u32)FieldFontSize |
+        (u32)FieldIconSize | (u32)FieldContentOffset | (u32)FieldMaterial
+}
+
+Size :: enum {
+    PolicySizeMedium = 0
+    PolicySizeSmall = 1
+    PolicySizeLarge = 2
+}
+
+# Zero-initialized props use medium sizing. Unknown sizes use the same fallback.
+# Selection belongs to shared style policy, not an individual widget.
+SizeValue :: (size: i32, small: float, medium: float, large: float) -> float #export {
+    if size == PolicySizeSmall { return small }
+    if size == PolicySizeLarge { return large }
+    return medium
+}
+
+# Resolve at the point of use. Preserve the original request so an inherited
+# or styled size is not mistaken for an explicit font on the next frame.
+ResolveFont :: (requested: i32, inherited: i32, fallback: i32) -> i32 #export {
+    if requested > 0 { return requested }
+    if inherited > 0 { return inherited }
+    if fallback > 0 { return fallback }
+    return 16
+}
+
+# Explicit dimensions win. Natural dimensions retain the theme minimum but
+# expand to fit content and padding. Hosts pass all values in the same units.
+FitHeight :: (requested: float, minimum: float, content: float, padding: float) -> float #export {
+    if requested > 0.0 { return requested }
+    if padding < 0.0 { padding = 0.0 }
+    if content < 0.0 { content = 0.0 }
+    height: float = content + 2.0 * padding
+    if height < minimum { height = minimum }
+    return height
+}
+
+ContentBox :: struct {
+    x: float
+    y: float
+    width: float
+    height: float
+}
+
+# Padding defines the child layout area independently of the painted face.
+# Explicit zero removes an inset; oversized padding leaves an empty area.
+ContentBounds :: (width: float, height: float, padding_x: float, padding_y: float) -> ContentBox #export {
+    box: ContentBox
+    if padding_x < 0.0 { padding_x = 0.0 }
+    if padding_y < 0.0 { padding_y = 0.0 }
+    box.x = padding_x
+    box.y = padding_y
+    box.width = width - 2.0 * padding_x
+    box.height = height - 2.0 * padding_y
+    if box.width < 0.0 { box.width = 0.0 }
+    if box.height < 0.0 { box.height = 0.0 }
+    return box
+}
+
+# Packed colors and scalar values keep style policy independent of host types.
+# A present field may contain zero or transparent; absence is only a mask bit.
+StyleData :: struct {
+    fields: u32
+    background: u32
+    foreground: u32
+    border: u32
+    focus: u32
+    radius: float
+    border_width: float
+    opacity: float
+    padding_x: float
+    padding_y: float
+    gap: float
+    font_size: float
+    icon_size: float
+    offset_x: float
+    offset_y: float
+    background_end: u32
+    material: i32
+    typeface: string
+}
+
+# Layout metrics remain those of the resolved state. Paint properties use
+# the same focus -> hover -> press precedence on every host.
+TransitionValues :: (resolved: StyleData, normal: StyleData, hover: StyleData,
+                     press: StyleData, focus: StyleData,
+                     h: float, p: float, f: float) -> StyleData #export {
+    resolved.background = InteractionColor(normal.background, hover.background, press.background, focus.background, h, p, f)
+    resolved.foreground = InteractionColor(normal.foreground, hover.foreground, press.foreground, focus.foreground, h, p, f)
+    resolved.border = InteractionColor(normal.border, hover.border, press.border, focus.border, h, p, f)
+    resolved.focus = InteractionColor(normal.focus, hover.focus, press.focus, focus.focus, h, p, f)
+    resolved.radius = InteractionValue(normal.radius, hover.radius, press.radius, focus.radius, h, p, f)
+    resolved.border_width = InteractionValue(normal.border_width, hover.border_width, press.border_width, focus.border_width, h, p, f)
+    resolved.opacity = InteractionValue(normal.opacity, hover.opacity, press.opacity, focus.opacity, h, p, f)
+    resolved.offset_x = InteractionValue(normal.offset_x, hover.offset_x, press.offset_x, focus.offset_x, h, p, f)
+    resolved.offset_y = InteractionValue(normal.offset_y, hover.offset_y, press.offset_y, focus.offset_y, h, p, f)
+    return resolved
+}
+
+# A frame keeps the interpolated values and stateful gradient presence together.
+# Hosts convert colors and submit drawing; they do not assemble two policies.
+StyleFrame :: struct {
+    value: StyleData
+    fill: FillStates
+}
+
+TransitionFrame :: (resolved: StyleData, normal: StyleData, hover: StyleData,
+                    press: StyleData, focus: StyleData,
+                    h: float, p: float, f: float) -> StyleFrame #export {
+    result: StyleFrame
+    result.value = TransitionValues(resolved, normal, hover, press, focus, h, p, f)
+    result.fill = FillTransition(
+        FillState(normal.fields, normal.background, normal.background_end),
+        FillState(hover.fields, hover.background, hover.background_end),
+        FillState(press.fields, press.background, press.background_end),
+        FillState(focus.fields, focus.background, focus.background_end), h, p, f)
+    return result
+}
+
+MergeValues :: (base: StyleData, override: StyleData) -> StyleData #export {
+    if (override.fields & (u32)FieldBackground) != (u32)0 { base.background = override.background }
+    if (override.fields & (u32)FieldForeground) != (u32)0 { base.foreground = override.foreground }
+    if (override.fields & (u32)FieldBorder) != (u32)0 { base.border = override.border }
+    if (override.fields & (u32)FieldFocus) != (u32)0 { base.focus = override.focus }
+    if (override.fields & (u32)FieldRadius) != (u32)0 { base.radius = override.radius }
+    if (override.fields & (u32)FieldBorderWidth) != (u32)0 { base.border_width = override.border_width }
+    if (override.fields & (u32)FieldOpacity) != (u32)0 { base.opacity = override.opacity }
+    if (override.fields & (u32)FieldPaddingX) != (u32)0 { base.padding_x = override.padding_x }
+    if (override.fields & (u32)FieldPaddingY) != (u32)0 { base.padding_y = override.padding_y }
+    if (override.fields & (u32)FieldGap) != (u32)0 { base.gap = override.gap }
+    if (override.fields & (u32)FieldFontSize) != (u32)0 { base.font_size = override.font_size }
+    if (override.fields & (u32)FieldIconSize) != (u32)0 { base.icon_size = override.icon_size }
+    if (override.fields & (u32)FieldContentOffset) != (u32)0 { base.offset_x = override.offset_x }
+    if (override.fields & (u32)FieldContentOffset) != (u32)0 { base.offset_y = override.offset_y }
+    if (override.fields & (u32)FieldBackgroundEnd) != (u32)0 { base.background_end = override.background_end }
+    if (override.fields & (u32)FieldMaterial) != (u32)0 { base.material = override.material }
+    if (override.fields & (u32)FieldTypeface) != (u32)0 { base.typeface = override.typeface }
+    base.fields = base.fields | override.fields
+    return base
+}
+
+StyleStates :: struct {
+    normal: StyleData
+    hover: StyleData
+    pressed: StyleData
+    focused: StyleData
+    disabled: StyleData
+    loading: StyleData
+    selected: StyleData
+}
+
+# A widget carries one state-style value, independent of host representation.
+ResolveValues :: (base: StyleData, states: StyleStates, state: i32) -> StyleData #export {
+    base = MergeValues(base, states.normal)
+    if state == PolicyStateHover { return MergeValues(base, states.hover) }
+    if state == PolicyStatePressed { return MergeValues(base, states.pressed) }
+    if state == PolicyStateFocus { return MergeValues(base, states.focused) }
+    if state == PolicyStateDisabled { return MergeValues(base, states.disabled) }
+    if state == PolicyStateLoading { return MergeValues(base, states.loading) }
+    if state == PolicyStateSelected { return MergeValues(base, states.selected) }
+    return base
+}

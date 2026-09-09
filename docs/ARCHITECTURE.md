@@ -23,12 +23,234 @@ Discovery may add candidates, but only explicit pairing grants trusted status.
 
 ## Runtime Implementation
 
-Runtime code lives in `src/`. It owns widget behavior, rendering helpers,
-platform adapters, serialization, sync/update primitives, and backend-specific
-translation. Internal helpers should stay private to `src/` unless an unrelated
-downstream application demonstrably needs the behavior.
+Portable widget policy lives in `runtime/` as `.kry` source. C runtime code in
+`src/` still contains widget orchestration alongside rendering helpers, platform
+adapters, serialization, sync/update primitives, and backend-specific translation.
+The native Go runtime lives in `go/kryon/`. Internal host helpers should remain
+private unless an unrelated downstream application demonstrably needs them.
 
 ### Widget lifecycle consolidation
+
+#### Canonical `.kry` widget declarations — migration target
+
+Declared records have portable typed initializers, for example
+`(Props){.value = 5, .appearance = (Appearance){.inset = 7}}`.
+Positional initialization such as `(Props){5}` is also supported; named and
+positional fields cannot be mixed. Omitted fields are zero-initialized, and
+explicit field expressions run once in source order. Imported records, nested
+records, and passing initializers directly to declared widgets use the same
+value-copy semantics across C, C++, Go, and JavaScript. Strict checking rejects
+unknown, duplicate, excessive, or incorrectly typed fields. This applies to
+declared `.kry` records, not arbitrary host-language aggregate syntax.
+
+Portable policy records now support immutable UTF-8 `string` values, including
+empty initialization, field assignment, copying, parameters, returns,
+conditionals, and content equality (`==` / `!=`). Literals preserve embedded
+nulls and normalize escapes across C, C++, Go, and JavaScript. Invalid UTF-8,
+invalid Unicode scalar escapes, arithmetic, ordering, and numeric casts are
+diagnosed rather than emitted as host-dependent operations. String creation,
+concatenation, slicing, and a general ownership model are not implemented by
+this change; this is not a claim of language completeness.
+
+C/C++ generated headers expose `String { data, length }`, `StringView`, and
+`StringEqual`; views borrow immutable storage which the caller must keep alive.
+Zero-length views may have a null data pointer. Nonempty views must address
+their declared number of valid UTF-8 bytes. Go and JavaScript use native string
+values. Portable calls do not silently convert these views to null-terminated
+foreign parameters. `runtime/style.kry` uses this support for typeface names;
+native style adapters bridge registered, null-terminated host names.
+
+This is the intended ownership boundary, not a claim that the migration is
+complete. The parser currently recognizes built-in widget names and props
+types in `cmd/kir/kir_parse.c`; native Go also carries a props-field mapping in
+`cmd/k2go/k2go_lower.c`. Shared functions in `runtime/button.kry`,
+`runtime/text.kry`, `runtime/style.kry`, and `runtime/surface.kry` remove some
+duplicated policy, but do not yet constitute complete widget declarations.
+
+Go's public Button tone, emphasis, state, and control-size constants take their
+values from generated `.kry` enums, while retaining their public Go types. The
+size enum and `SizeValue` selector belong to `runtime/style.kry`, so measurement
+and future widgets can use them without depending on button policy. C's public
+enum declarations remain separate ABI declarations; parity checks verify every
+member against `.kry`. Moving those public type declarations into the shared
+source is still pending.
+
+`runtime/style.kry` owns `StyleData` and the nested `StyleStates` record used
+by state resolution. C and Go convert their public `ControlStyle` values into
+that record; state selection and merging remain in `.kry`. Button's
+`ResolveAppearance` selects one effective state for both its defaults and
+overrides, so hosts no longer assemble that resolution sequence. Likewise,
+`MeasureContent` in `runtime/button.kry` supplies both natural measurement and
+content placement with the same fitted icon size and gap rules. These are
+shared data and policy building blocks, not a substitute for declaration
+resolution or per-instance widget state.
+
+`ResolveInteraction` returns the effective control state together with its
+hover, press, and focus signals. C and Go consume this shared result for button
+appearance and motion instead of assembling state precedence and explicit
+preview behavior independently. Input collection and instance storage remain
+host responsibilities; this is not yet a per-instance `.kry` lifecycle.
+
+`runtime/surface.kry` separates the inward material volume from dark focus
+edge bloom. The latter uses a finite blurred stroke with an `outside_only`
+coverage mask, leaving the face and label center untouched. Both hosts execute
+the same mask and focus track; light themes and disabled controls suppress this
+layer, and an explicit transparent focus color remains transparent.
+Tall saturated faces in light surroundings gather a lifted chromatic lower
+reflection inside the face. Height and chroma blend its strength continuously;
+pressure attenuates it on the shared motion track. Pale and compact surfaces
+retain their restrained reflection, without an added external fog layer.
+The layer record also identifies the material face with `is_face`. C and Go
+apply custom fill styles to that role, not a hard-coded position in the layer
+sequence; the `.kry` material remains authoritative when layers are reordered.
+
+Ordinary function resolution is shared in KIR: local functions shadow imports,
+only public functions of explicitly imported modules are visible, and competing
+imports are diagnosed as ambiguous. C, C++, Go, and JavaScript lowering use the
+same resolved owner instead of searching a process-wide function-name table.
+Tests execute same-named providers in both input-file orders. Stateless custom
+blocks now resolve through that same lookup to `#ui` functions with one
+record parameter. KIR lowers their props to an ordinary typed record initializer
+and call before backend lowering. Blocks and record-valued calls share field
+validation, omitted-field defaults, and value-copy semantics; there is no
+separate per-field widget assignment path. A local holds the initialized props
+before the call so mixed host-control-flow bodies preserve evaluation order.
+Leaf blocks with built-in names participate in that same lookup: an explicit
+local or imported `Button` or `Text` declaration owns its props type. Host
+props are a fallback only when no declaration resolves; an invalid declaration
+is an error, not a reason to silently select the host widget. Composed scope
+blocks still use the built-in parser path and need migration with child slots.
+Unknown, duplicate, and incorrectly typed props are errors even without strict
+mode. Tests execute local and imported declarations in both source orders in
+C, C++, Go, and JavaScript, including ordinary calls and record value semantics.
+Declarations may return an action result. A block invocation discards that
+result, like a call used as a statement; an ordinary expression call can consume
+it. Cross-target tests exercise true and false results, discarded results,
+props copying, and imported declaration order without a second widget entry point.
+JavaScript's direct action-call lowering also uses the widget runtime when a
+result is initialized, assigned, or returned, rather than constructing an inert
+description object. Button tests cover activation and evaluated lexical bounds
+in each form. Arbitrary nested action-call expressions still need migration.
+Ordinary calls to resolved `#ui` declarations also reject known argument-type
+and argument-count mismatches without strict mode. Using function syntax does
+not bypass the declaration's signature. Unresolved host-header APIs do not yet
+provide that declaration metadata to KIR; their migration remains necessary.
+Braced `case` and `default` labels remain control flow, not widget declarations;
+cross-target tests execute both switch paths around ordinary widget calls.
+This initial path does not provide child slots or per-instance state; child
+content is rejected explicitly. Built-in widget migration is still pending.
+Portable `#ui` bodies use the same checked emitter as ordinary functions;
+the annotation does not force backend-specific arithmetic or record handling.
+Strict tests execute narrow-integer overflow inside a declared widget through
+both block and ordinary-call syntax in C, C++, Go, and JavaScript. Bodies with
+unsupported host operations still require the existing backend path.
+The built-in path also accepts `SplitButton` and `MenuButton` blocks. The
+Lightfield example uses those blocks with explicit IDs and shared Button props.
+Its display Buttons also use named blocks. Childless Button blocks lower to
+the ordinary `Button` call; only blocks with child content open a
+`BeginButton`/`End` scope. Explicit IDs remain necessary for stable identity;
+the block name does not yet supply instance identity.
+JavaScript diagnostics record their evaluated nested props and geometry; menu
+interaction and material raster parity in that host are not implemented by
+this registration.
+The indexed open-state references retain their backing state-array elements.
+Uninitialized state arrays receive independent zero-initialized elements,
+including nested arrays and declared records, instead of scalar placeholders.
+The generated-runtime parity fixture also composes actual themed Buttons
+inside two instances of a props-taking declaration, with distinct IDs and
+action amounts. C, Go, and JavaScript check that activation remains independent
+after declaration order reverses; native keyboard checks remain enabled.
+This covers explicit stable IDs, not automatic instance-key scoping.
+JavaScript emits evaluated Button initializer objects so lexical props reach
+the runtime as values, rather than unevaluated source text. Its automatic frame
+selection accepts zero-argument screens or a single host `Rectangle` viewport;
+other props-taking helpers are not screen entry points. The JavaScript host
+supplies current target dimensions, falling back to application dimensions for
+headless or zero-sized targets. Local initializer declarations and assignments
+now use the same evaluated initializer lowering as Button props. Named fields
+become objects and positional initializers become arrays. The actual Lightfield
+source is checked for finite Button geometry and representative font sizes.
+The check clicks its actual Light/Dark controls and verifies light-to-dark-to-light
+switching, including the per-theme geometry and icon-button emphasis.
+JavaScript Style presence-bit bindings are checked against the shared `.kry`
+merge policy, including zero-valued overrides. This is not browser visual
+parity or complete typed-record lowering: remaining host enum coverage,
+positional record field access, other widget argument lowering, and rendering
+still need migration.
+
+Strict portable emission supports declared `.kry` enum values in function
+parameters, returns, locals, conditionals, and record fields, including imported
+types. Values use signed 32-bit storage: C emits an `int32_t` typedef, C++ a
+fixed-underlying-type enum, Go a named `int32` type, and JavaScript checked
+numeric values. Explicit numeric casts use the shared integer conversion rules;
+zero initialization and record copies preserve enum fields. The shared checker
+rejects implicit integer-to-enum and cross-enum assignments, record-to-enum
+casts, and enum compound arithmetic. Enum member constants retain their existing
+integer expression behavior; use an explicit enum cast when assigning them to
+a named enum property. `tests/imported_cast_test.py` executes this contract in
+strict mode on all four targets.
+
+JavaScript fallback expressions resolve casts to declared `.kry` enums through
+the shared type lookup, including runtime-call arguments. Numeric operands are
+truncated toward zero. This does not supply metadata for host-only C enums
+such as `ThemeMode`; those declarations still need migration before the theme
+catalog's C-style casts can execute in JavaScript.
+
+Each widget must have one canonical declaration in `.kry`. That declaration
+owns its typed props and defaults, per-instance state, events, measurement and
+layout policy, child composition, and appearance. Generated C and native Go
+must consume the same declaration. Adding an application-defined widget must
+not require editing compiler name lists, backend props tables, or handwritten
+widget implementations.
+
+Button size is a prop, not another widget: compact callers use `Button` with
+`ControlSizeSmall`. The separate small-button entry points have been removed
+from C, native Go, and the compiler's built-in call registry.
+
+Shared abstractions beneath declarations have separate responsibilities:
+
+- `Style` describes material and typography, with explicit field presence so
+  transparent colors and zero dimensions are not mistaken for missing values.
+- Surface and motion primitives describe reusable drawing and transitions;
+  there is no separate public button-paint abstraction.
+- Text measurement and text editing are distinct services. TextField and
+  TextArea remain separate widgets but share editing, selection, and composition
+  behavior rather than duplicating an editor.
+- Hosts provide font shaping/rasterization, drawing, input delivery, clipboard,
+  IME, time, and storage. Widget policy decides how these services are used.
+
+The compiler must represent declarations and typed child slots in KIR before
+backend lowering. Declaration resolution must work across modules and source
+order, with diagnostics for unknown props, invalid event/slot types, duplicate
+declarations, and invalid state access. A block invocation and a function-style
+invocation must resolve to the same widget; a second implementation or alias
+does not satisfy this requirement.
+
+State belongs to a stable widget instance within a window, not to a declaration
+global. Reordering keyed children must preserve their state; separate windows
+and separate instances must not share interaction or animation tracks.
+
+C button motion now uses the host-owned `ToolkitStore`, which existing frame
+bindings switch for native windows, nested rendering hosts, and headless UI
+frames. Store destruction releases the tracks with the host; equal button IDs
+in separate stores no longer share motion. Dynamically allocated entries retain
+all live tracks, including hash-bucket collisions, rather than evicting live
+buttons at a fixed capacity. Each host frame advances and sweeps its own store,
+even when no buttons are drawn. C and Go use `MotionExpired` in
+`runtime/surface.kry` for the shared twelve-frame retention rule; frames from
+another host cannot expire these entries. This is not yet the completed generic
+widget-instance lifetime model. Go keeps button tracks in its runtime instance.
+
+Migrate Button end-to-end as the first composition/state test, followed by Text.
+Do not call this complete merely because a new declaration parses: tests must
+prove user-defined widgets compile without name-table changes, generated C/Go
+props agree, two instances remain independent, children inherit and clip
+correctly, and existing input, transparency, theme, and motion behavior remains
+covered. Remove each old implementation only after its maintained callers have
+migrated. TextField/TextArea implementation follows this foundation; visual
+proposals are not evidence that their declarations or editing behavior exist.
+
+#### Current retained runtime
 
 Captured C retained paint includes blend state through the private
 `ui_blend_internal.h` snapshot. OpenGL 3.3/GLES2 backend hooks preserve both

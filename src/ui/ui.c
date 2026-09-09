@@ -7,6 +7,7 @@
 #include "ui_tk.h"
 #include "platform.h"
 #include "theme.h"
+#include "runtime/surface.h"
 #include "kry_uri.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -55,7 +56,8 @@ static int g_ui_pointer_dragged_this_click = 0;
 static int g_ui_pointer_start_x = INT_MIN;
 static int g_ui_pointer_start_y = INT_MIN;
 static Vector2 g_ui_pointer_start_world = {0};
-static int g_ui_transition_cues_enabled = 0;
+/* Negative means use the shared default; explicit user choices are retained. */
+static int g_ui_transition_cues_enabled = -1;
 static int g_ui_release_consumed = 0;
 static int g_ui_keyboard_input_enabled = 1;
 static int g_ui_disabled_depth = 0;
@@ -897,6 +899,8 @@ UITransitionCuesEnabled(void)
 #if defined(KRYON_BACKEND_TERMI)
     return 0;
 #else
+    if(g_ui_transition_cues_enabled < 0)
+        return DefaultMotionEnabled();
     return g_ui_transition_cues_enabled;
 #endif
 }
@@ -1313,17 +1317,6 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
                                     rect.width, rect.height + guard * 2});
     DrawUIText(value, x, y, font_size, color);
     EndUIClip();
-}
-
-static int
-ui_control_height_for_font(int font)
-{
-    int line_h = TextLineHeight(font);
-    int pad_y = Scale(5);
-
-    if(line_h < font)
-        line_h = font;
-    return line_h + pad_y * 2;
 }
 
 const char *

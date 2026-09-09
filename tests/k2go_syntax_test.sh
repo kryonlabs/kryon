@@ -18,8 +18,54 @@ mkdir -p "$work/src" "$work/out" "$work/hierarchy-out" "$work/pure-out"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
+#import "src/helper"
 
 ANSWER :: #run 21 * 2
+cast_operand_index :: () -> int {
+    return 2
+}
+
+cast_operand_value :: () -> float {
+    values: [3] int = {10, 20, 30}
+    point: Vector2 = (Vector2){5, 7}
+    return (float)values[cast_operand_index() - 1] + (float)cast_operand_index() * 3.0f + (float)point.x
+}
+
+typed_geometry_value :: () -> float {
+    values: [3] int = {10, 20, 30}
+    point: Vector2 = {values[0], values[1] + 2}
+    bounds: Rectangle = {values[0], values[1], values[2], cast_operand_index()}
+    partial: Rectangle = {values[0], values[1]}
+    empty: Vector2 = {}
+    return point.x + point.y + bounds.width + bounds.height + partial.x + partial.y + partial.width + partial.height + empty.x + empty.y
+}
+
+gradient_end_style :: () -> Style {
+    return (Style){StyleBackgroundEnd, BLANK, BLANK, BLANK, BLANK,
+        0, 0, 1, 0, 0, 0, 0, 0, (Vector2){0, 0}, (Color){17, 34, 51, 0}}
+}
+
+Badge :: struct {
+    count: i32
+    label: const char*
+    disabled: i32
+    text_size: i32
+    id: i32
+}
+
+source_badge :: () -> Badge {
+    return (Badge){17, "Ready", 2, 23, 41}
+}
+
+designated_badge :: () -> Badge {
+    return (Badge){.count=19, .label="Custom", .disabled=3, .text_size=29, .id=43}
+}
+
+updated_badge_id :: () -> i32 {
+    badge: Badge = source_badge()
+    badge.id += 2
+    return badge.id
+}
 #assert ANSWER == 42, "k2go #run assertion failed"
 #assert 1 + 1 == 2, "k2go fixture assertion failed"
 query_jobs :: (since: long, limit: int) -> int #extern "smoke.QueryJobs"
@@ -222,7 +268,7 @@ App :: () #ui {
     InputFloat((InputFloatProps){.bounds = {Scale(250), Scale(458), Scale(100), Scale(28)}, .id = 35, .values = plot_values, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
     InputInt((InputIntProps){.bounds = {Scale(250), Scale(490), Scale(100), Scale(28)}, .id = 36, .values = nums, .value_count = 2, .step = 1, .step_fast = 10})
     InputDouble((InputDoubleProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
-    SmallButton((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .id = 38})
+    Button((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .size = ControlSizeSmall, .id = 38})
     InvisibleButton((InvisibleButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39})
     ArrowButton((ArrowButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .direction = 1})
     Bullet((Rectangle){Scale(392), Scale(554), Scale(20), Scale(20)})
@@ -396,9 +442,9 @@ grep -q 'kryonpkg.QueueText(kryon.CString(value\[:\]))' "$out"
 # enums: typed constants with C counter semantics, rewritten at use sites.
 grep -q 'type TabMode int32' "$out"
 grep -q 'TabModeTAB_OVERVIEW = 0' "$out"
-grep -q 'TabModeTAB_NETWORK = 1' "$out"
+grep -q 'TabModeTAB_NETWORK = TabModeTAB_OVERVIEW + 1' "$out"
 grep -q 'TabModeTAB_JOBS = 5' "$out"
-grep -q 'TabModeTAB_AFTER = 6' "$out"
+grep -q 'TabModeTAB_AFTER = TabModeTAB_JOBS + 1' "$out"
 grep -q 'Tab: TabModeTAB_OVERVIEW' "$out"
 grep -q 'st.Tab == TabModeTAB_JOBS' "$out"
 
@@ -498,7 +544,7 @@ grep -q 'kryon.SliderAngle(kryon.SliderAngleProps{.*Value: &plot_values\[0\]' "$
 grep -q 'kryon.InputFloat(kryon.InputFloatProps{.*Values: plot_values\[:\].*ValueCount: 2' "$out"
 grep -q 'kryon.InputInt(kryon.InputIntProps{.*Values: nums\[:\].*ValueCount: 2' "$out"
 grep -q 'kryon.InputDouble(kryon.InputDoubleProps{.*Values: plot_doubles\[:\].*ValueCount: 2' "$out"
-grep -q 'kryon.SmallButton(kryon.ButtonProps{' "$out"
+grep -q 'Size: kryon.ControlSizeSmall' "$out"
 grep -q 'kryon.InvisibleButton(kryon.InvisibleButtonProps{' "$out"
 grep -q 'kryon.ArrowButton(kryon.ArrowButtonProps{.*Direction: 1' "$out"
 grep -q 'kryon.Bullet(kryon.NewRectangle' "$out"
@@ -560,7 +606,60 @@ require (
 replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon
 EOF
 cp "$root/go/kryon/go.sum" "$work/out/go.sum"
+cat > "$work/out/cast_operand_test.go" <<'EOF'
+package krygen
+
+import (
+    "testing"
+    "github.com/waozixyz/kryon/go/kryon"
+)
+
+func TestCastOperandPrecedence(t *testing.T) {
+    if got := Valid_CastOperandValue(&ValidState{}); got != 31 {
+        t.Fatalf("cast consumed the wrong operand: got %g, want 31", got)
+    }
+}
+
+func TestTypedGeometryInitializers(t *testing.T) {
+    if got := Valid_TypedGeometryValue(&ValidState{}); got != 94 {
+        t.Fatalf("typed geometry lost field conversions: got %g, want 94", got)
+    }
+}
+
+func TestPositionalGradientEndpoint(t *testing.T) {
+    got := Valid_GradientEndStyle(&ValidState{})
+    if got.Fields != kryon.StyleBackgroundEnd || got.BackgroundEnd != (kryon.Color{R: 17, G: 34, B: 51, A: 0}) {
+        t.Fatalf("transparent gradient endpoint was dropped: %+v", got)
+    }
+}
+
+func TestSourceRecordWithoutCompilerNameEntry(t *testing.T) {
+    got := Valid_SourceBadge(&ValidState{})
+    if got.Count != 17 || got.Label != "Ready" || got.Disabled != 2 || got.TextSize != 23 || got.ID != 41 {
+        t.Fatalf("source-defined record fields were dropped: %+v", got)
+    }
+    named := Valid_DesignatedBadge(&ValidState{})
+    if named.Count != 19 || named.Label != "Custom" || named.Disabled != 3 || named.TextSize != 29 || named.ID != 43 {
+        t.Fatalf("source-defined fields inherited native widget rules: %+v", named)
+    }
+    if id := Valid_UpdatedBadgeId(&ValidState{}); id != 43 {
+        t.Fatalf("source-defined field access disagrees with initialization: %d", id)
+    }
+}
+EOF
 (cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
+
+cat > "$work/src/geometry_extra.kry" <<'EOF'
+#import "kryon.h"
+Main :: () {
+    bounds: Rectangle = {1, 2, 3, 4, 5}
+}
+EOF
+if "$k2go" --root "$work" -o "$work/out" "$work/src/geometry_extra.kry" 2>"$work/geometry_extra.err"; then
+    echo "extra geometry fields were silently discarded" >&2
+    exit 1
+fi
+grep -q 'Rectangle initializer accepts at most 4 fields' "$work/geometry_extra.err"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"

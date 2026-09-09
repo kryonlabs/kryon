@@ -6,6 +6,7 @@ const (
 	FrameOpBackground FrameOpKind = "background"
 	FrameOpText       FrameOpKind = "text"
 	FrameOpRect       FrameOpKind = "rect"
+	FrameOpSurface    FrameOpKind = "surface"
 	FrameOpLine       FrameOpKind = "line"
 	FrameOpButton     FrameOpKind = "button"
 	FrameOpIcon       FrameOpKind = "icon"
@@ -26,6 +27,10 @@ const (
 type FrameOp struct {
 	Kind              FrameOpKind
 	Bounds            Rectangle
+	SurfaceBounds     Rectangle
+	ContentBounds     Rectangle
+	AmbientColor      Color
+	Disclosure        bool
 	Polygon           [4]Vector2
 	HasPolygon        bool
 	Clip              Rectangle
@@ -33,17 +38,25 @@ type FrameOp struct {
 	Text              string
 	Color             Color
 	SecondaryColor    Color
+	BackgroundEnd     Color
+	HasBackgroundEnd  bool
+	FillStates        FillStates
+	FillStatesValid   bool
 	BorderColor       Color
+	FocusColor        Color
 	TextColor         Color
 	SelectionColor    Color
 	SelectedTextColor Color
 	CursorColor       Color
 	FontSize          int32
+	LetterSpacing     int32
 	Rotation          float32
 	Radius            float32
 	BorderWidth       float32
 	Opacity           float32
+	Material          MaterialKind
 	ContentOffset     Vector2
+	Gap               float32
 	FontID            uint32
 	ID                int32
 	FocusID           int32
@@ -53,6 +66,12 @@ type FrameOp struct {
 	CompositionStart  int32
 	CompositionEnd    int32
 	Focused           bool
+	Hovered           bool
+	MotionValid       bool
+	HoverAmount       float32
+	PressAmount       float32
+	FocusAmount       float32
+	ElapsedMS         float64
 	Pressed           bool
 	Disabled          bool
 	Secure            bool
@@ -69,7 +88,7 @@ type FrameOp struct {
 	SelectionEndRow   int32
 	SelectionEndCol   int32
 	IconType          int32
-	IconSize          int32
+	IconSize          float32
 	Semantic          UISemanticKind
 	Href              string
 	Role              string

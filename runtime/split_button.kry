@@ -1,15 +1,24 @@
 #module "split_button"
 
-# A split button always reserves one square control at the trailing edge.
-ResolvedWidth :: (width: float, height: float) -> float #export {
-    if width < height * 2.0 { return height * 2.0 }
-    return width
+SplitLayout :: struct {
+    width: float
+    action_width: float
+    menu_offset: float
+    menu_width: float
+    divider_inset: float
 }
 
-ActionWidth :: (width: float, height: float) -> float #export {
-    return ResolvedWidth(width, height) - height
-}
-
-MenuX :: (x: float, width: float, height: float) -> float #export {
-    return x + ActionWidth(width, height)
+# Segment dimensions use the host's measured bounds; divider inset is logical.
+# The trailing menu segment is square and the action is at least as wide.
+ResolveLayout :: (width: float, height: float) -> SplitLayout #export {
+    layout: SplitLayout
+    layout.width = width
+    if layout.width < height * 2.0 {
+        layout.width = height * 2.0
+    }
+    layout.action_width = layout.width - height
+    layout.menu_offset = layout.action_width
+    layout.menu_width = height
+    layout.divider_inset = 8.0
+    return layout
 }

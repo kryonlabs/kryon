@@ -1,0 +1,1345 @@
+#module "surface"
+
+# Shared visual primitives returned as data. Hosts execute these instructions;
+# material geometry, layer order, colors and motion are defined here.
+DefaultMotionEnabled :: () -> bool #export {
+    return true
+}
+
+MotionTrack :: struct {
+    value: float
+    origin: float
+    target: float
+    elapsed_ms: float
+}
+
+Ring :: struct {
+    x: float
+    y: float
+    inner_radius: float
+    outer_radius: float
+    start_angle: float
+    end_angle: float
+    color: u32
+    track_color: u32
+    tip_color: u32
+    trail_opacity: float
+    glow_blur: float
+}
+
+LoadingRing :: (width: float, height: float, icon_size: float,
+                elapsed_ms: f64, color: u32, ambient: u32) -> Ring #export {
+    ring: Ring
+    ring.x = width * 0.5
+    ring.y = height * 0.5
+    if icon_size <= 0.0 { return ring }
+    brightness: u32 = ((ambient >> (u32)24) & (u32)255) +
+        ((ambient >> (u32)16) & (u32)255) + ((ambient >> (u32)8) & (u32)255)
+    light_surroundings: bool = brightness > (u32)450
+    ring.outer_radius = icon_size * 0.5
+    if !light_surroundings { ring.outer_radius += 1.0 }
+    if ring.outer_radius < 3.0 { ring.outer_radius = 3.0 }
+    ring.inner_radius = ring.outer_radius - 2.5
+    if light_surroundings { ring.inner_radius = ring.outer_radius - 2.0 }
+    # Keep the long-running clock wide until it has been reduced to one cycle.
+    # Geometry only needs a float; the original elapsed time must not lose its
+    # fractional milliseconds before this reduction.
+    phase_ms: float = (float)(elapsed_ms - (f64)((i64)(elapsed_ms / 1500.0)) * 1500.0)
+    angle: float = phase_ms * 0.24
+    if !light_surroundings { angle += 110.0 }
+    angle -= (float)((i32)(angle / 360.0)) * 360.0
+    ring.start_angle = angle
+    ring.end_angle = angle + 315.0
+    if light_surroundings { ring.end_angle = angle + 270.0 }
+    ring.color = color
+    ring.track_color = Opacity(color, 0.22)
+    white: u32 = ((u32)16777215 << (u32)8) | (color & (u32)255)
+    ring.tip_color = white
+    if light_surroundings { ring.tip_color = GradientColor(color, white, 0.88) }
+    ring.trail_opacity = 0.55
+    if !light_surroundings {
+        # Chromatic light stays visible around the dark ring. Neutral and
+        # pale-surface indicators retain a quieter trail beneath the bright tip.
+        ring.trail_opacity += 0.25 * Unit(((float)ColorChroma(color) - 64.0) / 64.0)
+        ring.glow_blur = 6.0 * Unit(((float)ColorChroma(color) - 64.0) / 64.0)
+    }
+    return ring
+}
+
+# Light gathers at the leading end of the rotating arc. Distance-based
+# falloff is continuous across angle wrapping and needs no host trigonometry.
+LoadingArcColor :: (ring: Ring, x: float, y: float) -> u32 #export {
+    radius: float = (ring.inner_radius + ring.outer_radius) * 0.5
+    tip_x: float = radius * SinDegrees(ring.end_angle + 90.0)
+    tip_y: float = radius * SinDegrees(ring.end_angle)
+    dx: float = x - tip_x
+    dy: float = y - tip_y
+    near_tip: float = 0.0
+    if radius > 0.0 { near_tip = Unit(1.0 - (dx * dx + dy * dy) / (radius * radius * 3.5)) }
+    near_tip *= near_tip
+    # Bring the trail close to the specular cap before it reaches the tip.
+    # Color brightening and coverage remain separate, preserving source alpha.
+    return Opacity(GradientColor(ring.color, ring.tip_color, near_tip * 0.75),
+        ring.trail_opacity + (1.0 - ring.trail_opacity) * near_tip)
+}
+
+LoadingTipCoverage :: (ring: Ring, x: float, y: float) -> float #export {
+    radius: float = (ring.inner_radius + ring.outer_radius) * 0.5
+    tip_radius: float = (ring.outer_radius - ring.inner_radius) * 0.625
+    tip_x: float = radius * SinDegrees(ring.end_angle + 90.0)
+    tip_y: float = radius * SinDegrees(ring.end_angle)
+    return RoundedCoverage(x - tip_x + tip_radius, y - tip_y + tip_radius,
+        tip_radius * 2.0, tip_radius * 2.0, tip_radius)
+}
+
+LoadingPaintRadius :: (ring: Ring) -> float #export {
+    # Include the small specular cap beyond the nominal ring radius.
+    extension: float = (ring.outer_radius - ring.inner_radius) * 0.125
+    if ring.glow_blur > extension { extension = ring.glow_blur }
+    return ring.outer_radius + extension
+}
+
+# Preserve separate source-over samples: combining them before the backend
+# blends would change rounding and partially transparent spinner colors.
+RingSample :: struct {
+    glow: u32
+    track: u32
+    arc: u32
+    tip: u32
+}
+
+LoadingSample :: (ring: Ring, x: float, y: float) -> RingSample #export {
+    sample: RingSample
+    if ring.glow_blur > 0.0 {
+        # Only the rotating arc emits light; keep the unlit gap and central
+        # opening clear. Both hosts blend this before the crisp ring samples.
+        glow: float = BlurStrokeCoverage(x + ring.outer_radius, y + ring.outer_radius,
+            ring.outer_radius * 2.0, ring.outer_radius * 2.0, ring.outer_radius,
+            ring.outer_radius - ring.inner_radius, ring.glow_blur)
+        glow *= ArcCoverage(x, y, ring.inner_radius, ring.outer_radius + ring.glow_blur,
+            ring.start_angle, ring.end_angle)
+        sample.glow = Opacity(LoadingArcColor(ring, x + 0.5, y + 0.5), glow * 0.35)
+    }
+    track: float = ArcCoverage(x, y, ring.inner_radius, ring.outer_radius, 0.0, 360.0)
+    arc: float = ArcCoverage(x, y, ring.inner_radius, ring.outer_radius,
+        ring.start_angle, ring.end_angle)
+    tip: float = LoadingTipCoverage(ring, x, y)
+    sample.track = Opacity(ring.track_color, track)
+    sample.arc = Opacity(LoadingArcColor(ring, x + 0.5, y + 0.5), arc)
+    sample.tip = Opacity(ring.tip_color, tip)
+    return sample
+}
+
+# Portable sine for arc endpoints. Reduce to [-pi/2, pi/2] before the
+# Taylor polynomial so its error stays well below subpixel coverage.
+SinDegrees :: (degrees: float) -> float #export {
+    degrees -= (float)((i32)(degrees / 360.0)) * 360.0
+    if degrees > 180.0 { degrees -= 360.0 }
+    if degrees < -180.0 { degrees += 360.0 }
+    if degrees > 90.0 { degrees = 180.0 - degrees }
+    if degrees < -90.0 { degrees = -180.0 - degrees }
+    x: float = degrees * 0.01745329252
+    square: float = x * x
+    return x * (1.0 - square * (0.1666666667 - square *
+        (0.0083333333 - square * (0.0001984127 - square * 0.0000027557))))
+}
+
+ArcCoverage :: (x: float, y: float, inner: float, outer: float,
+                start: float, end: float) -> float #export {
+    if outer <= 0.0 || inner >= outer || end <= start { return 0.0 }
+    if inner < 0.0 { inner = 0.0 }
+    sx: float = SinDegrees(start + 90.0)
+    sy: float = SinDegrees(start)
+    ex: float = SinDegrees(end + 90.0)
+    ey: float = SinDegrees(end)
+    coverage: float = 0.0
+    row: i32 = 0
+    while row < 4 {
+        column: i32 = 0
+        while column < 4 {
+            px: float = x + ((float)column + 0.5) * 0.25
+            py: float = y + ((float)row + 0.5) * 0.25
+            distance: float = px * px + py * py
+            after_start: bool = sx * py - sy * px >= 0.0
+            before_end: bool = px * ey - py * ex >= 0.0
+            in_arc: bool = after_start && before_end
+            if end - start > 180.0 { in_arc = after_start || before_end }
+            if end - start >= 360.0 { in_arc = true }
+            if distance >= inner * inner && distance <= outer * outer && in_arc {
+                coverage += 0.0625
+            }
+            column += 1
+        }
+        row += 1
+    }
+    return coverage
+}
+
+# Each host stores this value by node identity and supplies elapsed frame time.
+# Retargeting starts at the currently displayed value, including mid-flight.
+AdvanceMotion :: (track: MotionTrack, target: float, delta_ms: float,
+                  duration_ms: float, immediate: bool) -> MotionTrack #export {
+    if immediate || duration_ms <= 0.0 {
+        track.value = target
+        track.origin = target
+        track.target = target
+        track.elapsed_ms = 0.0
+        return track
+    }
+    if target != track.target {
+        track.origin = track.value
+        track.target = target
+        track.elapsed_ms = 0.0
+    }
+    if delta_ms > 0.0 { track.elapsed_ms += delta_ms }
+    if track.elapsed_ms > duration_ms { track.elapsed_ms = duration_ms }
+    track.value = Transition(track.origin, track.target, track.elapsed_ms, duration_ms)
+    return track
+}
+
+MotionActive :: (track: MotionTrack) -> bool #export {
+    return track.value != track.target
+}
+
+# Channels are hover, press, focus. Hosts retain tracks by node identity;
+# target suppression, timing and snap policy are shared here.
+AdvanceInteraction :: (track: MotionTrack, channel: i32,
+    hovered: bool, pressed: bool, focused: bool, enabled: bool,
+    explicit_state: bool, disabled: bool, loading: bool,
+    delta_ms: float, normal_ms: float, fast_ms: float) -> MotionTrack #export {
+    active: bool = hovered
+    duration: float = normal_ms
+    if channel == 1 {
+        active = pressed
+        duration = fast_ms
+    }
+    if channel == 2 { active = focused }
+    if disabled || loading { active = false }
+    target: float = 0.0
+    if active { target = 1.0 }
+    immediate: bool = !enabled || explicit_state || disabled || loading
+    return AdvanceMotion(track, target, delta_ms, duration, immediate)
+}
+
+InteractionMotion :: struct {
+    hover: MotionTrack
+    press: MotionTrack
+    focus: MotionTrack
+    active: bool
+}
+
+# Advance the complete interaction state once per frame. Channel timing and
+# redraw eligibility belong together, not in each host's widget implementation.
+AdvanceInteractionMotion :: (motion: InteractionMotion,
+    hovered: bool, pressed: bool, focused: bool, enabled: bool,
+    explicit_state: bool, disabled: bool, loading: bool,
+    delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
+    motion.hover = AdvanceInteraction(motion.hover, 0, hovered, pressed, focused,
+        enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms)
+    motion.press = AdvanceInteraction(motion.press, 1, hovered, pressed, focused,
+        enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms)
+    motion.focus = AdvanceInteraction(motion.focus, 2, hovered, pressed, focused,
+        enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms)
+    motion.active = MotionActive(motion.hover) || MotionActive(motion.press) || MotionActive(motion.focus)
+    return motion
+}
+
+SurfaceLayer :: struct {
+    x: float
+    y: float
+    width: float
+    height: float
+    radius: float
+    stroke: float
+    blur: float
+    inner_blur: float
+    outside_only: bool
+    is_face: bool
+    color: u32
+    end_color: u32
+    gradient: bool
+    gradient_bias: float
+}
+
+# Hosts supply normalized vertical position at the pixel center. Material
+# sampling, including transparent endpoints and clamping, belongs to .kry.
+# Coverage is separate so the same color policy works with any rasterizer.
+SampleColor :: (layer: SurfaceLayer, position: float) -> u32 #export {
+    if !layer.gradient { return layer.color }
+    # Zero is linear. One concentrates the endpoint near the lower edge.
+    # This monotonic quadratic keeps both endpoints exact throughout motion.
+    if layer.gradient_bias > 0.0 {
+        position = Unit(position)
+        position += Unit(layer.gradient_bias) * position * (position - 1.0)
+    }
+    return GradientColor(layer.color, layer.end_color, position)
+}
+
+# Missing custom endpoints mean the live material, not transparent black.
+# Keep every state's presence through the fade, including when leaving it.
+FillStates :: struct {
+    normal: bool
+    hover: bool
+    press: bool
+    focus: bool
+    normal_start: u32
+    normal_end: u32
+    hover_start: u32
+    hover_end: u32
+    press_start: u32
+    press_end: u32
+    focus_start: u32
+    focus_end: u32
+    hover_amount: float
+    press_amount: float
+    focus_amount: float
+}
+
+FillEndpoint :: (material: u32, enabled: bool, custom: u32, opacity: float) -> u32 {
+    if enabled { return Opacity(custom, opacity) }
+    return material
+}
+
+FillState :: (fields: u32, start: u32, end: u32) -> FillStates #export {
+    state: FillStates
+    state.normal = (fields & (u32)8192) != (u32)0
+    state.normal_start = start
+    state.normal_end = end
+    return state
+}
+
+FillTransition :: (normal: FillStates, hover: FillStates, press: FillStates,
+                   focus: FillStates, h: float, p: float, f: float) -> FillStates #export {
+    normal.hover = hover.normal
+    normal.press = press.normal
+    normal.focus = focus.normal
+    normal.hover_start = hover.normal_start
+    normal.hover_end = hover.normal_end
+    normal.press_start = press.normal_start
+    normal.press_end = press.normal_end
+    normal.focus_start = focus.normal_start
+    normal.focus_end = focus.normal_end
+    normal.hover_amount = h
+    normal.press_amount = p
+    normal.focus_amount = f
+    return normal
+}
+
+FillBias :: (material: float, custom: bool) -> float {
+    if custom { return 0.0 }
+    return material
+}
+
+ApplyFillStates :: (layer: SurfaceLayer, states: FillStates, opacity: float) -> SurfaceLayer #export {
+    if !states.normal && !states.hover && !states.press && !states.focus { return layer }
+    end: u32 = layer.color
+    if layer.gradient { end = layer.end_color }
+    layer.end_color = InteractionColor(
+        FillEndpoint(end, states.normal, states.normal_end, opacity),
+        FillEndpoint(end, states.hover, states.hover_end, opacity),
+        FillEndpoint(end, states.press, states.press_end, opacity),
+        FillEndpoint(end, states.focus, states.focus_end, opacity),
+        states.hover_amount, states.press_amount, states.focus_amount)
+    layer.color = InteractionColor(
+        FillEndpoint(layer.color, states.normal, states.normal_start, opacity),
+        FillEndpoint(layer.color, states.hover, states.hover_start, opacity),
+        FillEndpoint(layer.color, states.press, states.press_start, opacity),
+        FillEndpoint(layer.color, states.focus, states.focus_start, opacity),
+        states.hover_amount, states.press_amount, states.focus_amount)
+    layer.gradient = true
+    layer.gradient_bias = InteractionValue(
+        FillBias(layer.gradient_bias, states.normal),
+        FillBias(layer.gradient_bias, states.hover),
+        FillBias(layer.gradient_bias, states.press),
+        FillBias(layer.gradient_bias, states.focus),
+        states.hover_amount, states.press_amount, states.focus_amount)
+    return layer
+}
+
+# A plain styled surface uses the same geometry as controls, without their
+# interaction lighting. Explicit transparent colors stay transparent.
+FlatLayer :: (index: i32, width: float, height: float, radius: float,
+              border_width: float, background: u32, border: u32,
+              opacity: float) -> SurfaceLayer #export {
+    layer: SurfaceLayer
+    layer.width = width
+    layer.height = height
+    layer.radius = radius
+    if index == 0 { layer.color = Opacity(background, opacity) }
+    if index == 1 && border_width > 0.0 {
+        layer.color = Opacity(border, opacity)
+        layer.stroke = border_width
+    }
+    return layer
+}
+
+# Explicit fill endpoints replace the material fill, not its geometry.
+FillGradient :: (layer: SurfaceLayer, enabled: bool, start: u32, end: u32,
+                 opacity: float) -> SurfaceLayer #export {
+    if enabled {
+        layer.color = Opacity(start, opacity)
+        layer.end_color = Opacity(end, opacity)
+        layer.gradient = true
+        layer.gradient_bias = 0.0
+    }
+    return layer
+}
+
+# Coordinates are in physical pixels. Coverage is shared by every renderer,
+# including fractional bounds and an inset stroke (never an outside stroke).
+RoundedContains :: (x: float, y: float, width: float, height: float, radius: float) -> bool #export {
+    if width <= 0.0 || height <= 0.0 || x < 0.0 || y < 0.0 || x > width || y > height { return false }
+    if radius < 0.0 { radius = 0.0 }
+    if radius > width * 0.5 { radius = width * 0.5 }
+    if radius > height * 0.5 { radius = height * 0.5 }
+    dx: float = 0.0
+    dy: float = 0.0
+    if x < radius { dx = radius - x }
+    if x > width - radius { dx = x - width + radius }
+    if y < radius { dy = radius - y }
+    if y > height - radius { dy = y - height + radius }
+    return dx * dx + dy * dy <= radius * radius
+}
+
+RoundedCoverage :: (x: float, y: float, width: float, height: float, radius: float) -> float #export {
+    if x + 1.0 <= 0.0 || y + 1.0 <= 0.0 || x >= width || y >= height { return 0.0 }
+    if RoundedContains(x, y, width, height, radius) &&
+       RoundedContains(x + 1.0, y, width, height, radius) &&
+       RoundedContains(x, y + 1.0, width, height, radius) &&
+       RoundedContains(x + 1.0, y + 1.0, width, height, radius) { return 1.0 }
+    covered: float = 0.0
+    row: i32 = 0
+    while row < 4 {
+        column: i32 = 0
+        while column < 4 {
+            if RoundedContains(x + ((float)column + 0.5) * 0.25,
+                y + ((float)row + 0.5) * 0.25, width, height, radius) { covered += 0.0625 }
+            column += 1
+        }
+        row += 1
+    }
+    return covered
+}
+
+LayerCoverage :: (x: float, y: float, width: float, height: float, radius: float, stroke: float) -> float #export {
+    coverage: float = RoundedCoverage(x, y, width, height, radius)
+    if stroke > 0.0 {
+        coverage -= RoundedCoverage(x - stroke, y - stroke,
+            width - 2.0 * stroke, height - 2.0 * stroke, radius - stroke)
+    }
+    return Unit(coverage)
+}
+
+# Compact smooth falloff: zero slope at the source edge and at the support
+# boundary. Unlike concentric filled contours, this has no visible steps.
+BlurFalloff :: (distance: float, blur: float) -> float #export {
+    if distance <= 0.0 { return 1.0 }
+    if blur <= 0.0 || distance >= blur { return 0.0 }
+    t: float = distance / blur
+    remaining: float = 1.0 - t
+    return remaining * remaining * remaining * remaining * (1.0 + 4.0 * t)
+}
+
+RoundedDistance :: (x: float, y: float, width: float, height: float, radius: float) -> float #export {
+    if radius < 0.0 { radius = 0.0 }
+    if radius > width * 0.5 { radius = width * 0.5 }
+    if radius > height * 0.5 { radius = height * 0.5 }
+    dx: float = x + 0.5 - width * 0.5
+    dy: float = y + 0.5 - height * 0.5
+    if dx < 0.0 { dx = -dx }
+    if dy < 0.0 { dy = -dy }
+    dx -= width * 0.5 - radius
+    dy -= height * 0.5 - radius
+    inside: float = dx
+    if dy > inside { inside = dy }
+    if inside > 0.0 { inside = 0.0 }
+    if dx < 0.0 { dx = 0.0 }
+    if dy < 0.0 { dy = 0.0 }
+    largest: float = dx
+    if dy > largest { largest = dy }
+    if largest <= 0.0 { return inside - radius }
+    # Normalize before Newton iteration so every input lies in [1, 2].
+    # This keeps the distance calculation portable without a host math hook.
+    nx: float = dx / largest
+    ny: float = dy / largest
+    square: float = nx * nx + ny * ny
+    root: float = 1.0
+    iteration: i32 = 0
+    while iteration < 4 {
+        root = (root + square / root) * 0.5
+        iteration += 1
+    }
+    return largest * root + inside - radius
+}
+
+BlurCoverage :: (x: float, y: float, width: float, height: float, radius: float, blur: float) -> float #export {
+    if width <= 0.0 || height <= 0.0 { return 0.0 }
+    if blur <= 0.0 { return RoundedCoverage(x, y, width, height, radius) }
+    return BlurFalloff(RoundedDistance(x, y, width, height, radius), blur)
+}
+
+# Light fades inward from the rounded boundary. Coverage clips every sample
+# to the face, including partially covered corner pixels; nothing spills out.
+InnerBlurCoverage :: (x: float, y: float, width: float, height: float, radius: float, blur: float) -> float #export {
+    if width <= 0.0 || height <= 0.0 || blur <= 0.0 { return 0.0 }
+    coverage: float = RoundedCoverage(x, y, width, height, radius)
+    if coverage <= 0.0 { return 0.0 }
+    return coverage * BlurFalloff(-RoundedDistance(x, y, width, height, radius), blur)
+}
+
+# A blurred stroke is a light band around the boundary, never a blurred fill.
+# Signed distance keeps the center clear and provides the same compact
+# falloff on either side of the stroke for every native renderer.
+BlurStrokeCoverage :: (x: float, y: float, width: float, height: float,
+                       radius: float, stroke: float, blur: float) -> float #export {
+    if width <= 0.0 || height <= 0.0 || stroke <= 0.0 { return 0.0 }
+    if blur <= 0.0 { return LayerCoverage(x, y, width, height, radius, stroke) }
+    distance: float = RoundedDistance(x, y, width, height, radius) + stroke * 0.5
+    if distance < 0.0 { distance = -distance }
+    return BlurFalloff(distance - stroke * 0.5, blur)
+}
+
+# Hosts provide sample coordinates relative to the layer in physical pixels.
+# Selecting the mask (especially inward vs outward blur) is surface policy.
+SampleCoverage :: (layer: SurfaceLayer, x: float, y: float, scale: float) -> float #export {
+    width: float = layer.width * scale
+    height: float = layer.height * scale
+    radius: float = layer.radius * scale
+    stroke: float = layer.stroke * scale
+    blur: float = layer.blur * scale
+    coverage: float = 0.0
+    if blur > 0.0 && stroke > 0.0 {
+        coverage = BlurStrokeCoverage(x, y, width, height, radius, stroke, blur)
+    } else if blur > 0.0 {
+        coverage = BlurCoverage(x, y, width, height, radius, blur)
+    } else if layer.inner_blur > 0.0 {
+        coverage = InnerBlurCoverage(x, y, width, height, radius, layer.inner_blur * scale)
+    } else {
+        coverage = LayerCoverage(x, y, width, height, radius, stroke)
+    }
+    if layer.outside_only {
+        coverage *= 1.0 - RoundedCoverage(x, y, width, height, radius)
+    }
+    return coverage
+}
+
+GradientColor :: (top: u32, bottom: u32, position: float) -> u32 #export {
+    t: float = Unit(position)
+    result: u32 = (u32)0
+    shift: u32 = (u32)0
+    while shift <= (u32)24 {
+        a: float = (float)((top >> shift) & (u32)255)
+        b: float = (float)((bottom >> shift) & (u32)255)
+        result = result | ((u32)(a + (b - a) * t) << shift)
+        shift += (u32)8
+    }
+    return result
+}
+
+StrokeContains :: (x: float, y: float, ax: float, ay: float, bx: float, by: float, radius: float) -> bool #export {
+    dx: float = bx - ax
+    dy: float = by - ay
+    length_squared: float = dx * dx + dy * dy
+    position: float = 0.0
+    if length_squared > 0.0 { position = Unit(((x - ax) * dx + (y - ay) * dy) / length_squared) }
+    dx = x - ax - position * dx
+    dy = y - ay - position * dy
+    return dx * dx + dy * dy <= radius * radius
+}
+
+ChevronCoverage :: (x: float, y: float, size: float) -> float #export {
+    if size <= 0.0 { return 0.0 }
+    radius: float = size / 24.0
+    if radius < 0.5 { radius = 0.5 }
+    coverage: float = 0.0
+    row: i32 = 0
+    while row < 4 {
+        column: i32 = 0
+        while column < 4 {
+            px: float = x + ((float)column + 0.5) * 0.25
+            py: float = y + ((float)row + 0.5) * 0.25
+            if StrokeContains(px, py, size * 0.22, size * 0.36, size * 0.5, size * 0.64, radius) ||
+               StrokeContains(px, py, size * 0.5, size * 0.64, size * 0.78, size * 0.36, radius) { coverage += 0.0625 }
+            column += 1
+        }
+        row += 1
+    }
+    return coverage
+}
+
+# Focus establishes the resting material; hover and press take precedence as
+# their motion tracks advance. Releasing the pointer reveals focused material.
+MixValue :: (from: float, to: float, amount: float) -> float {
+    if amount <= 0.0 { return from }
+    if amount >= 1.0 { return to }
+    return from + (to - from) * amount
+}
+
+# Paint geometry follows the same precedence as color. Return exact endpoints
+# so a completed transition does not leave a fractional radius or opacity.
+InteractionValue :: (normal: float, hover: float, press: float, focus: float,
+                     hover_amount: float, press_amount: float, focus_amount: float) -> float #export {
+    resting: float = MixValue(normal, focus, focus_amount)
+    return MixValue(MixValue(resting, hover, hover_amount), press, press_amount)
+}
+
+InteractionColor :: (normal: u32, hover: u32, press: u32, focus: u32,
+                     hover_amount: float, press_amount: float, focus_amount: float) -> u32 #export {
+    resting: u32 = GradientColor(normal, focus, focus_amount)
+    return GradientColor(GradientColor(resting, hover, hover_amount), press, press_amount)
+}
+
+# Common control symbols on a 24-unit grid: plus, play, trash, save.
+# Hosts map their catalog identifiers to these shapes; geometry stays here.
+IconContains :: (kind: i32, x: float, y: float) -> bool #export {
+    if kind == 1 {
+        return StrokeContains(x, y, 12.0, 3.0, 12.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 3.0, 12.0, 21.0, 12.0, 1.0)
+    }
+    if kind == 2 {
+        return x >= 5.0 && x <= 21.0 && y >= 3.0 + (x - 5.0) * 0.5625 &&
+               y <= 21.0 - (x - 5.0) * 0.5625
+    }
+    if kind == 3 {
+        return StrokeContains(x, y, 3.0, 6.0, 21.0, 6.0, 1.0) ||
+               StrokeContains(x, y, 9.0, 3.0, 15.0, 3.0, 1.0) ||
+               StrokeContains(x, y, 9.0, 3.0, 9.0, 6.0, 1.0) ||
+               StrokeContains(x, y, 15.0, 3.0, 15.0, 6.0, 1.0) ||
+               StrokeContains(x, y, 5.0, 6.0, 6.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 19.0, 6.0, 18.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 6.0, 21.0, 18.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 10.0, 10.0, 10.0, 17.0, 0.8) ||
+               StrokeContains(x, y, 14.0, 10.0, 14.0, 17.0, 0.8)
+    }
+    if kind == 4 {
+        return StrokeContains(x, y, 3.0, 3.0, 17.0, 3.0, 1.0) ||
+               StrokeContains(x, y, 17.0, 3.0, 21.0, 7.0, 1.0) ||
+               StrokeContains(x, y, 21.0, 7.0, 21.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 21.0, 21.0, 3.0, 21.0, 1.0) ||
+               StrokeContains(x, y, 3.0, 21.0, 3.0, 3.0, 1.0) ||
+               StrokeContains(x, y, 7.0, 3.0, 7.0, 9.0, 1.0) ||
+               StrokeContains(x, y, 7.0, 9.0, 16.0, 9.0, 1.0) ||
+               StrokeContains(x, y, 16.0, 9.0, 16.0, 3.0, 1.0) ||
+               StrokeContains(x, y, 7.0, 21.0, 7.0, 14.0, 1.0) ||
+               StrokeContains(x, y, 7.0, 14.0, 17.0, 14.0, 1.0) ||
+               StrokeContains(x, y, 17.0, 14.0, 17.0, 21.0, 1.0)
+    }
+    return false
+}
+
+IconCoverage :: (kind: i32, x: float, y: float, width: float, height: float) -> float #export {
+    if width <= 0.0 || height <= 0.0 { return 0.0 }
+    coverage: float = 0.0
+    row: i32 = 0
+    while row < 4 {
+        column: i32 = 0
+        while column < 4 {
+            px: float = (x + ((float)column + 0.5) * 0.25) * 24.0 / width
+            py: float = (y + ((float)row + 0.5) * 0.25) * 24.0 / height
+            if IconContains(kind, px, py) { coverage += 0.0625 }
+            column += 1
+        }
+        row += 1
+    }
+    return coverage
+}
+
+# Absorption reduces secondary channels while retaining the strongest color
+# channel. Multiplying every channel by black makes luminous colors muddy.
+# Recover the hue for a luminous face tint without brightening label colors.
+# Neutral colors have no chroma and keep their original value and opacity.
+ChromaColor :: (color: u32, peak: u32) -> u32 #export {
+    r: u32 = (color >> (u32)24) & (u32)255
+    g: u32 = (color >> (u32)16) & (u32)255
+    b: u32 = (color >> (u32)8) & (u32)255
+    minimum: u32 = r
+    maximum: u32 = r
+    if g < minimum { minimum = g }
+    if b < minimum { minimum = b }
+    if g > maximum { maximum = g }
+    if b > maximum { maximum = b }
+    if maximum == minimum { return color }
+    if peak > (u32)255 { peak = (u32)255 }
+    chroma: u32 = maximum - minimum
+    r = (r - minimum) * peak / chroma
+    g = (g - minimum) * peak / chroma
+    b = (b - minimum) * peak / chroma
+    return (r << (u32)24) | (g << (u32)16) | (b << (u32)8) | (color & (u32)255)
+}
+
+# Lift intermediate channels toward the existing peak without introducing
+# white into an absent channel. Neutral colors and source opacity are stable.
+LiftColor :: (color: u32, amount: float) -> u32 #export {
+    peak: float = 0.0
+    shift: u32 = (u32)8
+    while shift <= (u32)24 {
+        channel: float = (float)((color >> shift) & (u32)255)
+        if channel > peak { peak = channel }
+        shift += (u32)8
+    }
+    if peak <= 0.0 { return color }
+    result: u32 = color & (u32)255
+    shift = (u32)8
+    while shift <= (u32)24 {
+        channel: float = (float)((color >> shift) & (u32)255)
+        channel += Unit(amount) * channel * (1.0 - channel / peak)
+        result = result | ((u32)channel << shift)
+        shift += (u32)8
+    }
+    return result
+}
+
+DepthColor :: (color: u32, amount: float) -> u32 #export {
+    peak: float = 0.0
+    shift: u32 = (u32)8
+    while shift <= (u32)24 {
+        channel: float = (float)((color >> shift) & (u32)255)
+        if channel > peak { peak = channel }
+        shift += (u32)8
+    }
+    if peak <= 0.0 { return color }
+    result: u32 = color & (u32)255
+    shift = (u32)8
+    while shift <= (u32)24 {
+        channel: float = (float)((color >> shift) & (u32)255)
+        channel *= 1.0 - Unit(amount) * (1.0 - channel / peak)
+        result = result | ((u32)channel << shift)
+        shift += (u32)8
+    }
+    return result
+}
+
+Unit :: (value: float) -> float #export {
+    if value < 0.0 { return 0.0 }
+    if value > 1.0 { return 1.0 }
+    return value
+}
+
+ColorChroma :: (color: u32) -> u32 #export {
+    lowest: u32 = (u32)255
+    highest: u32 = (u32)0
+    shift: u32 = (u32)8
+    while shift <= (u32)24 {
+        channel: u32 = (color >> shift) & (u32)255
+        if channel < lowest { lowest = channel }
+        if channel > highest { highest = channel }
+        shift += (u32)8
+    }
+    return highest - lowest
+}
+
+Opacity :: (color: u32, opacity: float) -> u32 #export {
+    alpha: u32 = (u32)((float)(color & (u32)255) * Unit(opacity))
+    return ((color >> (u32)8) << (u32)8) | alpha
+}
+
+# Cubic ease-out with an exact endpoint; elapsed is measured from the last
+# target change. Starting from the current value makes reversals continuous.
+Transition :: (from: float, to: float, elapsed_ms: float, duration_ms: float) -> float #export {
+    if duration_ms <= 0.0 { return to }
+    t: float = Unit(elapsed_ms / duration_ms)
+    remaining: float = 1.0 - t
+    return from + (to - from) * (1.0 - remaining * remaining * remaining)
+}
+
+FaceOffset :: (hover: float, press: float, disabled: bool) -> float #export {
+    if disabled { return 0.0 }
+    return 2.0 * Unit(press) - Unit(hover)
+}
+
+MaterialLayerCount :: (material: i32) -> i32 #export {
+    if material == 1 { return 3 }
+    return 12
+}
+
+# Age is measured in the owning host's frames, never another window's clock.
+MotionExpired :: (age: i64) -> bool #export {
+    return age < 0 || age > 12
+}
+
+# Joined segments share one outer surface. Only interior seams clip the
+# paint; the outermost edges retain their complete external glow.
+SegmentCoverage :: (pixel_x: float, segment_x: float, segment_width: float, surface_width: float) -> float #export {
+    coverage: float = 1.0
+    if segment_x > 0.0 { coverage = Unit(pixel_x + 1.0 - segment_x) }
+    if segment_x + segment_width < surface_width {
+        coverage *= Unit(segment_x + segment_width - pixel_x)
+    }
+    return coverage
+}
+
+MaterialOffset :: (material: i32, hover: float, press: float, disabled: bool) -> float #export {
+    if material == 1 { return 0.0 }
+    return FaceOffset(hover, press, disabled)
+}
+
+MaterialLayer :: (
+    material: i32, index: i32, width: float, height: float, radius: float,
+    border_width: float, background: u32, border: u32, light: u32,
+    focus_color: u32, hover: float, press: float, focused: float,
+    disabled: bool, opacity: float, ambient: u32
+) -> SurfaceLayer #export {
+    if material != 1 {
+        return LightfieldLayer(index, width, height, radius, border_width,
+            background, border, light, focus_color, hover, press, focused,
+            disabled, opacity, ambient)
+    }
+    layer: SurfaceLayer
+    if index == 0 || index == 1 {
+        layer = FlatLayer(index, width, height, radius, border_width,
+            background, border, opacity)
+        layer.is_face = index == 0
+    }
+    if index == 2 && !disabled {
+        layer = FlatLayer(1, width, height, radius, 1.0, background,
+            focus_color, opacity * Unit(focused))
+    }
+    return layer
+}
+
+LightfieldLayer :: (
+    index: i32, width: float, height: float, radius: float,
+    border_width: float, background: u32, border: u32, light: u32,
+    focus_color: u32, hover: float, press: float, focused: float,
+    disabled: bool, opacity: float, ambient: u32
+) -> SurfaceLayer #export {
+    if (light & (u32)255) == (u32)0 { light = focus_color }
+    layer: SurfaceLayer
+    layer.x = 0.0
+    layer.y = FaceOffset(hover, press, disabled)
+    layer.width = width
+    layer.height = height
+    layer.radius = radius
+    layer.stroke = 0.0
+    layer.color = (u32)0
+    layer.end_color = (u32)0
+    layer.gradient = false
+    h: float = Unit(hover)
+    p: float = Unit(press)
+    ambient_brightness: u32 = ((ambient >> (u32)24) & (u32)255) +
+        ((ambient >> (u32)16) & (u32)255) + ((ambient >> (u32)8) & (u32)255)
+    light_surroundings: bool = ambient_brightness > (u32)450
+    broad: float = 0.0
+    if height > 0.0 { broad = Unit((width / height - 4.0) / 12.0) }
+    tall: float = Unit((height - 32.0) / 16.0)
+    if disabled {
+        h = 0.0
+        p = 0.0
+    }
+    broad_light: float = broad * Unit(((float)ColorChroma(light) - 128.0) / 64.0) * (1.0 - p)
+    # Keep the outside field restrained: material light belongs inside the face.
+    if index == 0 {
+        layer.y += 3.0 + h
+        layer.blur = 4.0 + 2.0 * h
+        strength: float = (0.025 + 0.025 * broad + 0.08 * h + 0.06 * Unit(focused)) * (1.0 - p * 0.8)
+        if !light_surroundings {
+            # Wide saturated faces emit a broader contact field. Muted
+            # material retains its quiet shadow; pressure extinguishes the
+            # added light continuously as the face meets the surface.
+            strength += 0.25 * broad_light
+        }
+        if light_surroundings { strength *= 0.6 }
+        if disabled { strength = 0.0 }
+        layer.color = Opacity(light, strength * opacity)
+        return layer
+    }
+    index -= 1
+    if index == 0 {
+        layer.x = 1.0
+        layer.y = 2.0 + 2.0 * p
+        layer.width = width - 2.0
+        layer.blur = 3.0 + 2.0 * h
+        alpha: float = 32.0 + 18.0 * h - 24.0 * p
+        if light_surroundings {
+            layer.blur = 5.0 + 2.0 * h
+            # Pale neutral material catches light on hover instead of adding
+            # a gray ledge. Colored or dark faces keep their grounding shadow;
+            # pressing restores contact along the same continuous track.
+            brightness: u32 = ((background >> (u32)24) & (u32)255) +
+                ((background >> (u32)16) & (u32)255) + ((background >> (u32)8) & (u32)255)
+            pale: float = Unit((32.0 - (float)ColorChroma(background)) / 16.0) *
+                Unit(((float)brightness - 576.0) / 96.0)
+            alpha = 24.0 + 10.0 * h - 20.0 * h * (1.0 - p) * pale - 18.0 * p
+            # Focus light softens the neutral contact shadow continuously.
+            # Resting and pressed faces retain their grounding contrast.
+            alpha *= 1.0 - 0.5 * Unit(focused)
+            # Borderless pale faces float on a lighter contact shadow. Restore
+            # contact as the face presses down, without changing raised edges.
+            if (border & (u32)255) == (u32)0 {
+                alpha *= 0.5 + 0.5 * p
+            }
+        }
+        if disabled { alpha = 8.0 }
+        layer.color = (u32)alpha
+    }
+    if index == 1 {
+        layer.x = 1.0
+        # Hover pulls the contact light toward the face and softens its tail.
+        # Shifting a filled glow downward leaves a solid ledge before the blur.
+        layer.y += 2.0 - h - 2.0 * p
+        layer.width = width - 2.0
+        layer.blur = 2.0 + 5.0 * h
+        if !light_surroundings && !disabled && (border & (u32)255) != (u32)0 {
+            # Resting raised material casts a soft contact field. Press brings
+            # it back against the surface; hover retains the wider falloff.
+            layer.blur = 2.0 + (3.0 + 2.0 * h) * (1.0 - p)
+        }
+        alpha: float = 34.0 + 90.0 * h - 26.0 * p
+        if !light_surroundings && !disabled && (border & (u32)255) != (u32)0 {
+            # Taller raised faces cast a broader lower reflection. Its
+            # quadratic onset preserves compact controls; pressure draws
+            # the light back into contact with the surface.
+            raised: float = Unit((height - 40.0) / 8.0)
+            raised *= raised * (1.0 - p)
+            alpha += 70.0 * raised
+            layer.blur += 3.0 * raised
+        }
+        if disabled { alpha = 8.0 }
+        rim_light: u32 = light
+        if light_surroundings {
+            # A soft chromatic contact shadow replaces the hard white-gray
+            # ledge. The face covers its interior; only the lower falloff shows.
+            layer.y = FaceOffset(hover, press, disabled) + 1.0
+            # Active light spreads while the resting contact remains compact.
+            # Blend the width on the same tracks as its color and opacity.
+            layer.blur = 8.0 + 4.0 * Unit(h + focused)
+            # Hover spreads light inside the face while softening its contact
+            # shadow; it must not add a darker ledge beneath pale material.
+            # Taller controls carry more light beneath the face without
+            # deepening the contact band on compact state and icon controls.
+            raised: float = Unit((height - 40.0) / 8.0)
+            # Focus supplies its own edge light; soften the underlying contact
+            # reflection along that same continuous track to avoid doubling it.
+            alpha = (110.0 + 40.0 * raised - 10.0 * h - 40.0 * Unit(focused)) * (1.0 - 0.85 * p) * (1.0 - 0.85 * broad)
+            if (border & (u32)255) == (u32)0 { alpha *= 0.30 }
+            if disabled { alpha = 8.0 }
+            # Active edge light brightens the contact reflection gradually;
+            # resting material keeps its deeper grounding color.
+            rim_light = DepthColor(light, 0.65 - 0.30 * Unit(h + focused))
+        }
+        layer.color = ((rim_light >> (u32)8) << (u32)8) | (u32)alpha
+        if light_surroundings {
+            layer.end_color = layer.color
+            layer.color = Opacity(layer.color, 0.0)
+            layer.gradient = true
+        }
+    }
+    if index == 2 {
+        layer.is_face = true
+        # Focus concentrates light at the rim rather than washing the face.
+        # Hover and press retain their own material response while active.
+        focus_depth: float = Unit(focused) * (1.0 - h) * (1.0 - p)
+        if disabled { focus_depth = 0.0 }
+        if !light_surroundings {
+            # Broad, low-chroma surfaces collect a little surrounding light
+            # inside their face. Saturated material retains its own hue;
+            # press and focus supply their own depth response.
+            if !disabled {
+                reflected: u32 = GradientColor(background, focus_color,
+                    broad * 0.11 * (1.0 - (float)ColorChroma(background) / 255.0) *
+                    (1.0 - p) * (1.0 - Unit(focused)) *
+                    (float)(focus_color & (u32)255) / 255.0)
+                background = ((reflected >> (u32)8) << (u32)8) | (background & (u32)255)
+            }
+            # Retain the face's hue under focus; the inward rim provides the
+            # extra contrast without absorbing the center into a dark patch.
+            # Borderless faces keep their resting body instead of darkening
+            # further beneath a focus edge that is already restrained.
+            if (border & (u32)255) != (u32)0 {
+                background = DepthColor(background, 0.30 * focus_depth)
+            }
+        }
+        white: u32 = ((u32)16777215 << (u32)8) | (background & (u32)255)
+        black: u32 = background & (u32)255
+        # The upper face catches light; the lower face absorbs it. Keep the
+        # highlight in the material's hue instead of washing it with white.
+        highlight: float = 0.38 - h * 0.06
+        if light_surroundings {
+            highlight = 0.50 - h * 0.40
+            # Broad saturated material keeps its hue at the crown instead of
+            # spreading a white wash across the face. Compact controls and
+            # hover retain their existing highlight response.
+            saturation: float = Unit(((float)ColorChroma(background) - 128.0) / 64.0)
+            highlight -= 0.50 * broad * saturation * (1.0 - h)
+        }
+        face_light: u32 = GradientColor(background, white, 0.30)
+        if !light_surroundings {
+            # Dark faces reflect mostly their own hue. Too much white makes
+            # semantic colors look pastel before the narrow rim lights up.
+            face_light = GradientColor(light, white, 0.06)
+            face_light = ((face_light >> (u32)8) << (u32)8) | (background & (u32)255)
+        }
+        shade: float = 0.12 + p * 0.22
+        brightness: u32 = ((background >> (u32)24) & (u32)255) +
+            ((background >> (u32)16) & (u32)255) + ((background >> (u32)8) & (u32)255)
+        # Low-emphasis dark faces retain their depth. A focus-colored light
+        # must not turn an outline or ghost control into a filled blue tile.
+        if !light_surroundings {
+            highlight *= Unit(((float)brightness - 90.0) / 80.0)
+            highlight *= 1.0 - 0.70 * focus_depth
+        }
+        if brightness > (u32)600 {
+            tint: float = 0.35
+            if light_surroundings && (border & (u32)255) == (u32)0 {
+                # Pressing a borderless pale face removes part of the lower
+                # colored reflection while the upper inset shadow deepens.
+                tint -= 0.10 * p
+            }
+            black = GradientColor(background, light, tint)
+            black = ((black >> (u32)8) << (u32)8) | (background & (u32)255)
+            shade = 0.22 + p * 0.10
+        }
+        if disabled {
+            highlight = 0.02
+            shade = 0.02
+        }
+        layer.color = GradientColor(background, face_light, highlight * (1.0 - p))
+        depth: float = 0.48
+        if light_surroundings {
+            # Compact saturated faces retain more light at their lower edge.
+            # Wide surfaces keep a deeper gradient across their larger body.
+            depth = 0.35 + 0.13 * broad
+        }
+        layer.end_color = GradientColor(DepthColor(background, depth + p * 0.24), black, p * 0.18)
+        if !light_surroundings && !disabled {
+            # Hover gathers light in the lower face, rather than merely
+            # brightening the crown. Pressing extinguishes that light.
+            layer.end_color = GradientColor(layer.end_color, face_light,
+                h * 0.65 * Unit(((float)brightness - 90.0) / 80.0) * (1.0 - p))
+            layer.gradient_bias = h * (1.0 - p)
+        }
+        if brightness > (u32)600 || disabled {
+            layer.end_color = GradientColor(background, black, shade)
+        }
+        if disabled && !light_surroundings && ColorChroma(background) > (u32)64 &&
+           ((background >> (u32)8) & (u32)255) > ((background >> (u32)24) & (u32)255) &&
+           ((background >> (u32)8) & (u32)255) > ((background >> (u32)16) & (u32)255) {
+            # Deep blue disabled material retains a quiet lower reflection,
+            # without restoring hover light or an active outer bloom.
+            layer.color = GradientColor(background, black, 0.15)
+            layer.end_color = GradientColor(background, light, 0.30)
+            layer.end_color = ((layer.end_color >> (u32)8) << (u32)8) | (background & (u32)255)
+        }
+        if light_surroundings && !disabled {
+            # Hover light spreads through pale material instead of making
+            # the lower face darker. Press keeps its recessed shading.
+            layer.end_color = GradientColor(layer.end_color,
+                GradientColor(background, white, 0.12), h * (1.0 - p))
+            if brightness > (u32)600 {
+                # Focus concentrates depth at the rim. Balance the pale face
+                # around its existing midpoint so its lower half stays clear.
+                middle: u32 = GradientColor(layer.color, layer.end_color, 0.5)
+                balance: float = 0.75 * focus_depth
+                layer.color = GradientColor(layer.color, middle, balance)
+                layer.end_color = GradientColor(layer.end_color, middle, balance)
+            }
+        }
+        layer.gradient = true
+    }
+    if index == 3 {
+        layer.stroke = border_width
+        if border_width > 0.0 {
+            layer.color = border
+            if light_surroundings && !disabled {
+                # The focus edge replaces part of the resting hairline rather
+                # than stacking two equally strong outlines. Preserve its hue.
+                focus_edge: float = Unit(focused) * (float)(focus_color & (u32)255) / 255.0
+                # Hover softens the upper edge into the face while the lower
+                # rim catches light. Press restores the compact uniform edge.
+                # Both endpoints retain the caller's border alpha.
+                edge_hover: float = h * (1.0 - p)
+                face_tint: u32 = ((background >> (u32)8) << (u32)8) | (border & (u32)255)
+                white: u32 = ((u32)16777215 << (u32)8) | (border & (u32)255)
+                layer.color = Opacity(GradientColor(border, face_tint, 0.65 * edge_hover),
+                    1.0 - 0.5 * focus_edge)
+                layer.end_color = Opacity(GradientColor(border, white, 0.30 * edge_hover),
+                    1.0 - 0.5 * focus_edge)
+                layer.gradient = true
+            }
+            if !light_surroundings && !disabled {
+                white: u32 = ((u32)16777215 << (u32)8) | (border & (u32)255)
+                layer.end_color = GradientColor(border, white, h * 0.30 * (1.0 - p))
+                layer.gradient = true
+            }
+        }
+    }
+    if index == 4 {
+        # Hover raises the crown to the face edge without moving the lower
+        # bevel. Borderless and pale controls retain their softer silhouette.
+        edge_hover: float = 0.0
+        if !light_surroundings && !disabled && (border & (u32)255) != (u32)0 {
+            edge_hover = h
+        }
+        layer.x = 1.0
+        layer.y += 1.0 - edge_hover * (1.0 - p)
+        layer.width -= 2.0
+        layer.height -= 2.0 - edge_hover * (1.0 - p)
+        layer.radius = radius - 1.0
+        if layer.radius < 0.0 { layer.radius = 0.0 }
+        layer.stroke = 1.0
+        white: u32 = ((u32)16777215 << (u32)8) | (u32)255
+        top: float = (0.12 + 0.12 * h) * (1.0 - p * 0.8)
+        # The tall face catches an additional lower reflection above the
+        # standard control height, without brightening compact focus rings.
+        raised: float = Unit((height - 40.0) / 8.0)
+        raised *= raised
+        # Low-luminance chromatic light needs more reflection to read as a
+        # raised edge. Green/yellow and neutral material already carry that
+        # brightness; adding the same white rim would wash their hue away.
+        luminance: float = (float)((light >> (u32)24) & (u32)255) * 0.2126 +
+            (float)((light >> (u32)16) & (u32)255) * 0.7152 +
+            (float)((light >> (u32)8) & (u32)255) * 0.0722
+        reflection: float = Unit(((float)ColorChroma(light) - 128.0) / 64.0) *
+            Unit((160.0 - luminance) / 96.0)
+        bottom: float = (0.20 + 0.28 * tall + (0.17 + 0.33 * reflection) * raised + 0.30 * broad + 0.50 * h + 0.25 * edge_hover + 0.40 * Unit(focused)) * (1.0 - p)
+        if light_surroundings {
+            bottom = (0.08 + 0.28 * tall + 0.20 * h) * (1.0 - p)
+        }
+        if !light_surroundings && (border & (u32)255) == (u32)0 {
+            # Borderless material catches a faint reflection, not the bright
+            # white bevel used by raised controls. Keep its focus edge separate.
+            top *= 0.25
+            bottom *= 0.25 + 0.50 * h
+        }
+        if disabled {
+            top = 0.02
+            bottom = 0.02
+        }
+        layer.color = Opacity(white, top)
+        rim_light: u32 = light
+        whitening: float = 0.72
+        if !light_surroundings && !disabled {
+            # The lower hover reflection gathers the material's chromatic
+            # light before catching white. Pressure returns it to rest.
+            hover_light: float = edge_hover * (1.0 - p)
+            rim_light = GradientColor(light, ChromaColor(light, (u32)255), hover_light)
+            rim_light = LiftColor(rim_light, hover_light)
+            rim_light = LiftColor(LiftColor(rim_light, broad_light), broad_light)
+            whitening -= 0.40 * broad_light
+            bottom += 0.40 * broad_light
+            if (border & (u32)255) == (u32)0 {
+                # Borderless hover collects a chromatic lower edge rather
+                # than a gray bevel. Pressure fades this reflection together
+                # with the existing edge strength; resting faces stay quiet.
+                borderless_hover: float = h * (1.0 - p)
+                rim_light = GradientColor(rim_light, ChromaColor(light, (u32)255), borderless_hover)
+                whitening *= 1.0 - borderless_hover
+            }
+        }
+        layer.end_color = Opacity(GradientColor(rim_light, white, whitening), bottom)
+        layer.gradient = true
+    }
+    if index == 5 || index == 6 {
+        gap: float = 1.0
+        if index == 5 { gap = 2.0 }
+        if index == 5 && !light_surroundings { gap = 0.0 }
+        layer.x -= gap
+        layer.y -= gap
+        layer.width += 2.0 * gap
+        layer.height += 2.0 * gap
+        layer.radius += gap
+        layer.stroke = 1.0
+        strength: float = Unit(focused)
+        if disabled { strength = 0.0 }
+        if index == 5 { strength *= 0.28235294 }
+        if light_surroundings {
+            # Pale material needs one crisp ring, not a second offset outline.
+            if index == 5 { strength = 0.0 }
+        }
+        if index == 5 && !light_surroundings {
+            brightness: u32 = ((background >> (u32)24) & (u32)255) +
+                ((background >> (u32)16) & (u32)255) + ((background >> (u32)8) & (u32)255)
+            strength = Unit(focused) * (0.35 + 0.65 * Unit(((float)brightness - 140.0) / 140.0))
+            if (border & (u32)255) == (u32)0 { strength *= 0.35 }
+            if disabled { strength = 0.0 }
+            # Keep the material volume inward. The separate crisp edge and
+            # restrained outside-only bloom must not blur this filled region.
+            layer.stroke = 0.0
+            layer.inner_blur = 12.0
+        }
+        rim_color: u32 = focus_color
+        if index == 5 && !light_surroundings {
+            # Semantic material keeps its own inward light. The focus color
+            # controls the separate outer edge, not the hue of the whole face.
+            if ColorChroma(light) > (u32)64 &&
+               (((light >> (u32)24) & (u32)255) > ((light >> (u32)8) & (u32)255) ||
+                ((light >> (u32)16) & (u32)255) > ((light >> (u32)8) & (u32)255)) {
+                material: u32 = ChromaColor(light, (u32)255)
+                rim_color = ((material >> (u32)8) << (u32)8) | (focus_color & (u32)255)
+            }
+            rim_color = DepthColor(DepthColor(rim_color, 1.0), 0.4)
+        }
+        if index == 6 && !light_surroundings && (border & (u32)255) != (u32)0 && ColorChroma(border) > (u32)64 {
+            # Concentrated light on the inner edge; the outer field retains
+            # its hue. Preserve explicit alpha, including transparent focus.
+            white: u32 = ((u32)16777215 << (u32)8) | (focus_color & (u32)255)
+            # Saturated faces need a whiter highlight to separate the edge
+            # from the body; subdued faces keep more of the focus hue.
+            edge_white: float = 0.50 + 0.22 * Unit(((float)ColorChroma(background) - 128.0) / 64.0)
+            rim_color = GradientColor(focus_color, white, edge_white)
+            # A fractional inner edge catches light without becoming a solid
+            # two-pixel frame. The outer bounds and inward volume stay fixed.
+            layer.stroke = 1.5
+        }
+        layer.color = Opacity(rim_color, strength)
+    }
+    # A translucent light volume sits behind the content, inset from the rim.
+    # Its rounded coverage is the clip: no blur can leak onto the surroundings.
+    if index == 7 {
+        # Neutral borderless faces need more chromatic hover reflection than
+        # already-tinted faces. Fade the boost with chroma and press amount.
+        borderless_hover: float = h * (1.0 - p) *
+            Unit((64.0 - (float)ColorChroma(background)) / 16.0)
+        inset: float = 1.5
+        # Leave the rising hover bevel exposed instead of tinting over it.
+        # A fractional inset keeps the reflection's movement continuous.
+        if !light_surroundings { inset += 0.5 * h }
+        layer.x = inset
+        layer.y += inset
+        layer.width -= 2.0 * inset
+        layer.height -= 2.0 * inset
+        layer.radius = radius - inset
+        if layer.radius < 0.0 { layer.radius = 0.0 }
+        # Broad, inward-only falloff makes the rim feel embedded in the
+        # material instead of another outline drawn around a flat tile.
+        layer.inner_blur = 18.0 + 6.0 * h + 4.0 * tall
+        if !light_surroundings {
+            # Large faces and inward pressure/focus spread reflection through
+            # the body. Keep resting and raised-hover edges concentrated.
+            layer.inner_blur += 12.0 * Unit(p + focused + Unit((height - 40.0) / 8.0))
+        }
+        strength: float = (0.38 + 0.32 * h + 0.05 * Unit(focused)) * (1.0 - p * 0.85)
+        if !light_surroundings {
+            # Focus already supplies a chromatic inner volume. Attenuate the
+            # resting reflection beneath it instead of stacking two bright rims.
+            strength *= 1.0 - 0.55 * Unit(focused) * (1.0 - h)
+        }
+        if (border & (u32)255) == (u32)0 {
+            borderless_light: float = 0.15
+            if !light_surroundings { borderless_light += 0.45 * borderless_hover }
+            strength *= borderless_light
+        }
+        raised_light: float = 0.0
+        # Tall saturated faces gather a chromatic lower reflection in light
+        # surroundings. Pale material and compact controls retain their quiet
+        # volume; the existing pressure track extinguishes the added light.
+        if light_surroundings && (border & (u32)255) != (u32)0 {
+            raised_light = Unit((height - 40.0) / 8.0)
+            raised_light *= raised_light * Unit(((float)ColorChroma(background) - 128.0) / 64.0)
+        }
+        if light_surroundings { strength *= 0.12 + 1.88 * raised_light }
+        if disabled { strength = 0.0 }
+        strength *= (float)(background & (u32)255) / 255.0
+        layer.color = Opacity(light, 0.0)
+        white: u32 = ((u32)16777215 << (u32)8) | (light & (u32)255)
+        whitening: float = 0.22
+        if !light_surroundings && (border & (u32)255) != (u32)0 {
+            # Resting compact faces reflect their hue rather than a pale wash.
+            # Active surfaces retain a stronger reflection; broad material
+            # receives its lifted hue below instead of extra white.
+            whitening *= 1.0 - 0.64 * Unit(((float)ColorChroma(light) - 64.0) / 64.0) *
+                (1.0 - h) * (1.0 - p) * (1.0 - broad)
+        }
+        reflected_light: u32 = light
+        if light_surroundings {
+            reflected_light = LiftColor(LiftColor(reflected_light, raised_light), raised_light)
+        }
+        if !light_surroundings && (border & (u32)255) == (u32)0 {
+            whitening *= 1.0 - borderless_hover
+            # Remove the pale component as hover light enters neutral material,
+            # retaining the supplied hue and source alpha.
+            reflected_light = GradientColor(light, ChromaColor(light, (u32)255), borderless_hover)
+        }
+        if !light_surroundings && (border & (u32)255) != (u32)0 {
+            # Broad saturated material carries the lifted lower-rim hue
+            # through its inward reflection, without a milky white wash.
+            reflected_light = LiftColor(LiftColor(reflected_light, broad_light), broad_light)
+            whitening *= 1.0 - 0.5 * broad_light
+        }
+        layer.end_color = Opacity(GradientColor(reflected_light, white, whitening), strength)
+        layer.gradient = true
+        # A chromatic edge around a subdued dark face gathers reflection at
+        # the base. Filled and borderless faces keep their broader volume;
+        # pressing removes the directional reflection continuously.
+        if !light_surroundings && (border & (u32)255) != (u32)0 {
+            body_chroma: float = (float)ColorChroma(background)
+            edge_contrast: float = Unit(((float)ColorChroma(border) - body_chroma - 64.0) / 64.0)
+            layer.gradient_bias = edge_contrast * Unit((96.0 - body_chroma) / 32.0) * (1.0 - p)
+        }
+    }
+    # A broad crown reflection gives the face volume without a hard gloss
+    # stripe. It is clipped inside the same rounded face as the lower light.
+    if index == 8 {
+        layer.x = 1.5
+        layer.y += 1.5
+        layer.width -= 3.0
+        layer.height -= 3.0
+        layer.radius = radius - 1.5
+        if layer.radius < 0.0 { layer.radius = 0.0 }
+        layer.inner_blur = 18.0 + 4.0 * h
+        strength: float = (0.14 + 0.04 * h) * (1.0 - p)
+        if !light_surroundings {
+            # Dark material catches a restrained crown reflection; a broad
+            # white rim makes the face look milky instead of luminous.
+            strength *= 0.30
+            strength *= 1.0 - 0.65 * Unit(focused) * (1.0 - h)
+        }
+        if light_surroundings { strength *= 0.65 }
+        if (border & (u32)255) == (u32)0 { strength *= 0.25 }
+        if disabled { strength = 0.0 }
+        white: u32 = ((u32)16777215 << (u32)8) | (background & (u32)255)
+        layer.color = Opacity(white, strength)
+        layer.end_color = Opacity(white, 0.0)
+        layer.gradient = true
+    }
+    # Pressing places the upper edge above the recessed face. This inward
+    # shadow follows the same continuous press track as the face displacement;
+    # it never adds a second drop shadow outside the control.
+    if index == 9 {
+        layer.x = 1.0
+        layer.y += 1.0
+        layer.width -= 2.0
+        layer.height -= 2.0
+        layer.radius = radius - 1.0
+        if layer.radius < 0.0 { layer.radius = 0.0 }
+        layer.inner_blur = 8.0
+        strength: float = 0.20 * p
+        if light_surroundings { strength = 0.08 * p }
+        if (border & (u32)255) == (u32)0 { strength *= 0.35 }
+        if disabled { strength = 0.0 }
+        layer.color = Opacity(background & (u32)255, strength)
+        layer.end_color = (u32)0
+        layer.gradient = true
+    }
+    # Optical bloom belongs to the narrow focus edge, not a blurred face.
+    # A stroked field leaves the label center clear; the material volume above
+    # remains clipped inward. Light surfaces retain their crisp focus outline.
+    if index == 10 && !light_surroundings && !disabled {
+        layer.x -= 1.0
+        layer.y -= 1.0
+        layer.width += 2.0
+        layer.height += 2.0
+        layer.radius += 1.0
+        layer.stroke = 2.0
+        layer.blur = 8.0
+        layer.outside_only = true
+        edge_light: float = 0.15
+        if (border & (u32)255) != (u32)0 {
+            # A saturated rim casts a stronger optical field. Quiet and
+            # borderless surfaces retain their restrained focus treatment.
+            edge_light += 0.15 * Unit(((float)ColorChroma(border) - 128.0) / 64.0)
+        }
+        strength: float = Unit(focused) * edge_light
+        if (border & (u32)255) == (u32)0 { strength *= 0.35 }
+        layer.color = Opacity(DepthColor(focus_color, 1.0), strength)
+    }
+    # Face-derived shadow and rim must not resurrect a transparent surface.
+    if index == 0 || index == 1 || index == 4 {
+        face_opacity: float = (float)(background & (u32)255) / 255.0
+        layer.color = Opacity(layer.color, face_opacity)
+        layer.end_color = Opacity(layer.end_color, face_opacity)
+    }
+    layer.color = Opacity(layer.color, opacity)
+    layer.end_color = Opacity(layer.end_color, opacity)
+    return layer
+}

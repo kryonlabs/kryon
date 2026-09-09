@@ -1,0 +1,127 @@
+#module "record_values"
+#import "record_types"
+
+default_name :: string = "semibold" #global
+
+Named :: struct {
+    name: string
+}
+
+Rename :: (value: Named, name: string) -> Named #export {
+    value.name = name
+    return value
+}
+
+CheckStrings :: () -> i32 #export {
+    empty: string
+    original: Named
+    if empty != "" { return 41 }
+    if original.name != empty { return 42 }
+    changed: Named = Rename(original, "semibold")
+    if original.name != "" { return 43 }
+    if changed.name != "semibold" { return 44 }
+    copy: Named = changed
+    copy.name = "日本語 café"
+    if changed.name != "semibold" { return 45 }
+    selected: string = true ? copy.name : changed.name
+    if selected != "日本語 café" { return 46 }
+    if "a\x00Z" == "a" { return 47 }
+    if "a\x00Z" == "a\x00Y" { return 48 }
+    if "a\x00A" != "a\0A" { return 49 }
+    if "\u00e9" != "é" { return 50 }
+    if "\xC3\xA9" != "é" { return 51 }
+    if "\U0001F642" != "🙂" { return 52 }
+    if (string)changed.name != "semibold" { return 53 }
+    if changed.name != default_name { return 54 }
+    return 0
+}
+
+Changed :: (value: Sample) -> Sample #export {
+    value.count += 7
+    value.active = true
+    value.id = 41
+    value.canonical_url = 17
+    return value
+}
+
+ChangedFrame :: (value: Frame) -> Frame #export {
+    value.content.first.count = 31
+    value.content.first.wide = (u64)99
+    value.content.second.active = true
+    return value
+}
+
+CheckNested :: () -> i32 #export {
+    original: Frame
+    if original.active { return 21 }
+    if original.content.first.count != 0 { return 22 }
+    if original.content.first.wide != (u64)0 { return 23 }
+    if original.content.second.active { return 24 }
+    changed: Frame = ChangedFrame(original)
+    if original.content.first.count != 0 { return 25 }
+    if original.content.second.active { return 26 }
+    if changed.content.first.count != 31 { return 27 }
+    if changed.content.first.wide != (u64)99 { return 28 }
+    if !changed.content.second.active { return 29 }
+    copy: Frame = changed
+    copy.content.first.count++
+    if changed.content.first.count != 31 { return 30 }
+    original = copy
+    original.content.first.count += 2
+    if copy.content.first.count != 32 { return 31 }
+    original.content.second = copy.content.first
+    original.content.second.count = 40
+    if original.content.first.count != 34 { return 32 }
+    if copy.content.first.count != 32 { return 33 }
+    if original.content.second.count != 40 { return 34 }
+    return 0
+}
+
+Check :: () -> i32 #export {
+    literal_result: i32 = CheckLiterals()
+    if literal_result != 0 { return literal_result }
+    original: Sample
+    if original.count != 0 { return 1 }
+    if original.active { return 2 }
+    if original.wide != (u64)0 { return 3 }
+    if original.offset != 0.0 { return 4 }
+    changed: Sample = Changed(original)
+    if original.count != 0 { return 5 }
+    if changed.count != 7 { return 6 }
+    copy: Sample = changed
+    copy.count = 19
+    if changed.count != 7 { return 7 }
+    original = copy
+    original.count++
+    if copy.count != 19 { return 8 }
+    if original.count != 20 { return 9 }
+    if original.id != 41 { return 10 }
+    if original.canonical_url != 17 { return 11 }
+    if copy.id != 41 { return 12 }
+    if CheckNested() != 0 { return 40 }
+    return CheckStrings()
+}
+
+CheckLiterals :: () -> i32 #export {
+    empty: Sample = (Sample){}
+    if empty.count != 0 || empty.active || empty.wide != (u64)0 { return 60 }
+    positional: Sample = (Sample){7, true,}
+    if positional.count != 7 || !positional.active || positional.wide != (u64)0 { return 61 }
+    sequence: i32 = 1
+    ordered: Sample = (Sample){.id=sequence++, .count=sequence++, .wide=(u64)sequence++}
+    if ordered.id != 1 || ordered.count != 2 || ordered.wide != (u64)3 || sequence != 4 { return 62 }
+    nested: Frame = (Frame){.content=(Pair){.first=ordered, .second=(Sample){.count=9}}}
+    ordered.count = 99
+    if nested.content.first.count != 2 || nested.content.second.count != 9 || nested.active { return 63 }
+    if nested.content.second.wide != (u64)0 { return 64 }
+    changed: Sample = Changed((Sample){.count=10})
+    if changed.count != 17 { return 65 }
+    named: Named = (Named){.name="a\0b"}
+    if named.name != "a\0b" { return 66 }
+    named = (Named){}
+    if named.name != "" { return 67 }
+    selected: Sample = true ? (Sample){.count=11} : (Sample){.count=12}
+    if selected.count != 11 { return 68 }
+    if ((Sample){.count=13}).count != 13 { return 69 }
+    return 0
+}

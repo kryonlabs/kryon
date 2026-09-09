@@ -88,6 +88,78 @@ const (
 	ModePolicyModeDark   = 2
 )
 
+type Palette struct {
+	Background    uint32
+	Surface       uint32
+	SurfaceRaised uint32
+	SurfaceSunken uint32
+	Overlay       uint32
+	Text          uint32
+	TextMuted     uint32
+	TextDisabled  uint32
+	Icon          uint32
+	IconMuted     uint32
+	Border        uint32
+	BorderStrong  uint32
+	Divider       uint32
+	Focus         uint32
+	Selection     uint32
+	Accent        uint32
+	OnAccent      uint32
+	AccentHover   uint32
+	AccentPressed uint32
+	Success       uint32
+	OnSuccess     uint32
+	Warning       uint32
+	OnWarning     uint32
+	Danger        uint32
+	OnDanger      uint32
+	Info          uint32
+	OnInfo        uint32
+	Link          uint32
+	LinkHover     uint32
+	Shadow        uint32
+}
+
+type Metrics struct {
+	RadiusSmall          float32
+	RadiusMedium         float32
+	RadiusLarge          float32
+	RadiusPill           float32
+	BorderWidth          float32
+	FocusWidth           float32
+	FocusGap             float32
+	Space1               float32
+	Space2               float32
+	Space3               float32
+	Space4               float32
+	Space5               float32
+	Space6               float32
+	ControlHeightSmall   float32
+	ControlHeightMedium  float32
+	ControlHeightLarge   float32
+	ControlPaddingSmall  float32
+	ControlPaddingMedium float32
+	ControlPaddingLarge  float32
+	ControlGap           float32
+	FontSizeSmall        float32
+	FontSizeMedium       float32
+	FontSizeLarge        float32
+	IconSizeSmall        float32
+	IconSizeMedium       float32
+	IconSizeLarge        float32
+	ShadowOffsetY        float32
+	ShadowBlur           float32
+	DisabledOpacity      float32
+	TransitionFastMs     float32
+	TransitionNormalMs   float32
+}
+
+func Theme_DefaultStyleValue() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
 func Theme_ResolveDark(mode int32, system_dark bool) bool {
 	var value_0 int32 = mode
 	var value_1 int32 = ModePolicyModeLight
@@ -105,4 +177,572 @@ func Theme_ResolveDark(mode int32, system_dark bool) bool {
 	}
 	var value_8 bool = system_dark
 	return value_8
+}
+
+func Theme_PackedColor(rgb uint32, alpha uint32) uint32 {
+	var value_0 uint32 = rgb
+	var value_1 int32 = 8
+	var value_2 uint32 = uint32(number_f0bb83c3_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_f0bb83c3_bits(uint64(value_0), uint64(value_2), 32, false, 6))
+	var value_4 uint32 = alpha
+	var value_5 uint32 = uint32(number_f0bb83c3_bits(uint64(value_3), uint64(value_4), 32, false, 9))
+	return value_5
+}
+
+func Theme_DefaultPalette(dark bool) Palette {
+	var palette Palette = Palette{}
+	var value_0 bool = dark
+	if value_0 {
+		var value_1 int32 = 7480
+		var value_2 uint32 = uint32(number_f0bb83c3_bits(uint64(value_1), uint64(0), 32, false, 0))
+		var value_3 uint32 = value_2
+		var value_4 int32 = 255
+		var value_5 uint32 = uint32(number_f0bb83c3_bits(uint64(value_4), uint64(0), 32, false, 0))
+		var value_6 uint32 = value_5
+		var value_7 uint32 = Theme_PackedColor(value_3, value_6)
+		palette.Background = value_7
+		var value_8 int32 = 598073
+		var value_9 uint32 = uint32(number_f0bb83c3_bits(uint64(value_8), uint64(0), 32, false, 0))
+		var value_10 uint32 = value_9
+		var value_11 int32 = 255
+		var value_12 uint32 = uint32(number_f0bb83c3_bits(uint64(value_11), uint64(0), 32, false, 0))
+		var value_13 uint32 = value_12
+		var value_14 uint32 = Theme_PackedColor(value_10, value_13)
+		palette.Surface = value_14
+		var value_15 int32 = 1390680
+		var value_16 uint32 = uint32(number_f0bb83c3_bits(uint64(value_15), uint64(0), 32, false, 0))
+		var value_17 uint32 = value_16
+		var value_18 int32 = 255
+		var value_19 uint32 = uint32(number_f0bb83c3_bits(uint64(value_18), uint64(0), 32, false, 0))
+		var value_20 uint32 = value_19
+		var value_21 uint32 = Theme_PackedColor(value_17, value_20)
+		palette.SurfaceRaised = value_21
+		var value_22 int32 = 268075
+		var value_23 uint32 = uint32(number_f0bb83c3_bits(uint64(value_22), uint64(0), 32, false, 0))
+		var value_24 uint32 = value_23
+		var value_25 int32 = 255
+		var value_26 uint32 = uint32(number_f0bb83c3_bits(uint64(value_25), uint64(0), 32, false, 0))
+		var value_27 uint32 = value_26
+		var value_28 uint32 = Theme_PackedColor(value_24, value_27)
+		palette.SurfaceSunken = value_28
+		var value_29 int32 = 0
+		var value_30 uint32 = uint32(number_f0bb83c3_bits(uint64(value_29), uint64(0), 32, false, 0))
+		var value_31 uint32 = value_30
+		var value_32 int32 = 217
+		var value_33 uint32 = uint32(number_f0bb83c3_bits(uint64(value_32), uint64(0), 32, false, 0))
+		var value_34 uint32 = value_33
+		var value_35 uint32 = Theme_PackedColor(value_31, value_34)
+		palette.Overlay = value_35
+		var value_36 int32 = 16120063
+		var value_37 uint32 = uint32(number_f0bb83c3_bits(uint64(value_36), uint64(0), 32, false, 0))
+		var value_38 uint32 = value_37
+		var value_39 int32 = 255
+		var value_40 uint32 = uint32(number_f0bb83c3_bits(uint64(value_39), uint64(0), 32, false, 0))
+		var value_41 uint32 = value_40
+		var value_42 uint32 = Theme_PackedColor(value_38, value_41)
+		palette.Text = value_42
+		var value_43 int32 = 11123665
+		var value_44 uint32 = uint32(number_f0bb83c3_bits(uint64(value_43), uint64(0), 32, false, 0))
+		var value_45 uint32 = value_44
+		var value_46 int32 = 255
+		var value_47 uint32 = uint32(number_f0bb83c3_bits(uint64(value_46), uint64(0), 32, false, 0))
+		var value_48 uint32 = value_47
+		var value_49 uint32 = Theme_PackedColor(value_45, value_48)
+		palette.TextMuted = value_49
+		var value_50 int32 = 7504794
+		var value_51 uint32 = uint32(number_f0bb83c3_bits(uint64(value_50), uint64(0), 32, false, 0))
+		var value_52 uint32 = value_51
+		var value_53 int32 = 255
+		var value_54 uint32 = uint32(number_f0bb83c3_bits(uint64(value_53), uint64(0), 32, false, 0))
+		var value_55 uint32 = value_54
+		var value_56 uint32 = Theme_PackedColor(value_52, value_55)
+		palette.TextDisabled = value_56
+		var value_57 int32 = 14214645
+		var value_58 uint32 = uint32(number_f0bb83c3_bits(uint64(value_57), uint64(0), 32, false, 0))
+		var value_59 uint32 = value_58
+		var value_60 int32 = 255
+		var value_61 uint32 = uint32(number_f0bb83c3_bits(uint64(value_60), uint64(0), 32, false, 0))
+		var value_62 uint32 = value_61
+		var value_63 uint32 = Theme_PackedColor(value_59, value_62)
+		palette.Icon = value_63
+		var value_64 int32 = 11123665
+		var value_65 uint32 = uint32(number_f0bb83c3_bits(uint64(value_64), uint64(0), 32, false, 0))
+		var value_66 uint32 = value_65
+		var value_67 int32 = 255
+		var value_68 uint32 = uint32(number_f0bb83c3_bits(uint64(value_67), uint64(0), 32, false, 0))
+		var value_69 uint32 = value_68
+		var value_70 uint32 = Theme_PackedColor(value_66, value_69)
+		palette.IconMuted = value_70
+		var value_71 int32 = 3234949
+		var value_72 uint32 = uint32(number_f0bb83c3_bits(uint64(value_71), uint64(0), 32, false, 0))
+		var value_73 uint32 = value_72
+		var value_74 int32 = 255
+		var value_75 uint32 = uint32(number_f0bb83c3_bits(uint64(value_74), uint64(0), 32, false, 0))
+		var value_76 uint32 = value_75
+		var value_77 uint32 = Theme_PackedColor(value_73, value_76)
+		palette.Border = value_77
+		var value_78 int32 = 3234949
+		var value_79 uint32 = uint32(number_f0bb83c3_bits(uint64(value_78), uint64(0), 32, false, 0))
+		var value_80 uint32 = value_79
+		var value_81 int32 = 255
+		var value_82 uint32 = uint32(number_f0bb83c3_bits(uint64(value_81), uint64(0), 32, false, 0))
+		var value_83 uint32 = value_82
+		var value_84 uint32 = Theme_PackedColor(value_80, value_83)
+		palette.BorderStrong = value_84
+		var value_85 int32 = 3234949
+		var value_86 uint32 = uint32(number_f0bb83c3_bits(uint64(value_85), uint64(0), 32, false, 0))
+		var value_87 uint32 = value_86
+		var value_88 int32 = 255
+		var value_89 uint32 = uint32(number_f0bb83c3_bits(uint64(value_88), uint64(0), 32, false, 0))
+		var value_90 uint32 = value_89
+		var value_91 uint32 = Theme_PackedColor(value_87, value_90)
+		palette.Divider = value_91
+		var value_92 int32 = 4234495
+		var value_93 uint32 = uint32(number_f0bb83c3_bits(uint64(value_92), uint64(0), 32, false, 0))
+		var value_94 uint32 = value_93
+		var value_95 int32 = 255
+		var value_96 uint32 = uint32(number_f0bb83c3_bits(uint64(value_95), uint64(0), 32, false, 0))
+		var value_97 uint32 = value_96
+		var value_98 uint32 = Theme_PackedColor(value_94, value_97)
+		palette.Focus = value_98
+		var value_99 int32 = 1994208
+		var value_100 uint32 = uint32(number_f0bb83c3_bits(uint64(value_99), uint64(0), 32, false, 0))
+		var value_101 uint32 = value_100
+		var value_102 int32 = 255
+		var value_103 uint32 = uint32(number_f0bb83c3_bits(uint64(value_102), uint64(0), 32, false, 0))
+		var value_104 uint32 = value_103
+		var value_105 uint32 = Theme_PackedColor(value_101, value_104)
+		palette.Selection = value_105
+		var value_106 int32 = 27903
+		var value_107 uint32 = uint32(number_f0bb83c3_bits(uint64(value_106), uint64(0), 32, false, 0))
+		var value_108 uint32 = value_107
+		var value_109 int32 = 255
+		var value_110 uint32 = uint32(number_f0bb83c3_bits(uint64(value_109), uint64(0), 32, false, 0))
+		var value_111 uint32 = value_110
+		var value_112 uint32 = Theme_PackedColor(value_108, value_111)
+		palette.Accent = value_112
+		var value_113 int32 = 16777215
+		var value_114 uint32 = uint32(number_f0bb83c3_bits(uint64(value_113), uint64(0), 32, false, 0))
+		var value_115 uint32 = value_114
+		var value_116 int32 = 255
+		var value_117 uint32 = uint32(number_f0bb83c3_bits(uint64(value_116), uint64(0), 32, false, 0))
+		var value_118 uint32 = value_117
+		var value_119 uint32 = Theme_PackedColor(value_115, value_118)
+		palette.OnAccent = value_119
+		var value_120 int32 = 1477119
+		var value_121 uint32 = uint32(number_f0bb83c3_bits(uint64(value_120), uint64(0), 32, false, 0))
+		var value_122 uint32 = value_121
+		var value_123 int32 = 255
+		var value_124 uint32 = uint32(number_f0bb83c3_bits(uint64(value_123), uint64(0), 32, false, 0))
+		var value_125 uint32 = value_124
+		var value_126 uint32 = Theme_PackedColor(value_122, value_125)
+		palette.AccentHover = value_126
+		var value_127 int32 = 21972
+		var value_128 uint32 = uint32(number_f0bb83c3_bits(uint64(value_127), uint64(0), 32, false, 0))
+		var value_129 uint32 = value_128
+		var value_130 int32 = 255
+		var value_131 uint32 = uint32(number_f0bb83c3_bits(uint64(value_130), uint64(0), 32, false, 0))
+		var value_132 uint32 = value_131
+		var value_133 uint32 = Theme_PackedColor(value_129, value_132)
+		palette.AccentPressed = value_133
+		var value_134 int32 = 40826
+		var value_135 uint32 = uint32(number_f0bb83c3_bits(uint64(value_134), uint64(0), 32, false, 0))
+		var value_136 uint32 = value_135
+		var value_137 int32 = 255
+		var value_138 uint32 = uint32(number_f0bb83c3_bits(uint64(value_137), uint64(0), 32, false, 0))
+		var value_139 uint32 = value_138
+		var value_140 uint32 = Theme_PackedColor(value_136, value_139)
+		palette.Success = value_140
+		var value_141 int32 = 16777215
+		var value_142 uint32 = uint32(number_f0bb83c3_bits(uint64(value_141), uint64(0), 32, false, 0))
+		var value_143 uint32 = value_142
+		var value_144 int32 = 255
+		var value_145 uint32 = uint32(number_f0bb83c3_bits(uint64(value_144), uint64(0), 32, false, 0))
+		var value_146 uint32 = value_145
+		var value_147 uint32 = Theme_PackedColor(value_143, value_146)
+		palette.OnSuccess = value_147
+		var value_148 int32 = 13142784
+		var value_149 uint32 = uint32(number_f0bb83c3_bits(uint64(value_148), uint64(0), 32, false, 0))
+		var value_150 uint32 = value_149
+		var value_151 int32 = 255
+		var value_152 uint32 = uint32(number_f0bb83c3_bits(uint64(value_151), uint64(0), 32, false, 0))
+		var value_153 uint32 = value_152
+		var value_154 uint32 = Theme_PackedColor(value_150, value_153)
+		palette.Warning = value_154
+		var value_155 int32 = 16777215
+		var value_156 uint32 = uint32(number_f0bb83c3_bits(uint64(value_155), uint64(0), 32, false, 0))
+		var value_157 uint32 = value_156
+		var value_158 int32 = 255
+		var value_159 uint32 = uint32(number_f0bb83c3_bits(uint64(value_158), uint64(0), 32, false, 0))
+		var value_160 uint32 = value_159
+		var value_161 uint32 = Theme_PackedColor(value_157, value_160)
+		palette.OnWarning = value_161
+		var value_162 int32 = 15734314
+		var value_163 uint32 = uint32(number_f0bb83c3_bits(uint64(value_162), uint64(0), 32, false, 0))
+		var value_164 uint32 = value_163
+		var value_165 int32 = 255
+		var value_166 uint32 = uint32(number_f0bb83c3_bits(uint64(value_165), uint64(0), 32, false, 0))
+		var value_167 uint32 = value_166
+		var value_168 uint32 = Theme_PackedColor(value_164, value_167)
+		palette.Danger = value_168
+		var value_169 int32 = 16777215
+		var value_170 uint32 = uint32(number_f0bb83c3_bits(uint64(value_169), uint64(0), 32, false, 0))
+		var value_171 uint32 = value_170
+		var value_172 int32 = 255
+		var value_173 uint32 = uint32(number_f0bb83c3_bits(uint64(value_172), uint64(0), 32, false, 0))
+		var value_174 uint32 = value_173
+		var value_175 uint32 = Theme_PackedColor(value_171, value_174)
+		palette.OnDanger = value_175
+		var value_176 int32 = 1477586
+		var value_177 uint32 = uint32(number_f0bb83c3_bits(uint64(value_176), uint64(0), 32, false, 0))
+		var value_178 uint32 = value_177
+		var value_179 int32 = 255
+		var value_180 uint32 = uint32(number_f0bb83c3_bits(uint64(value_179), uint64(0), 32, false, 0))
+		var value_181 uint32 = value_180
+		var value_182 uint32 = Theme_PackedColor(value_178, value_181)
+		palette.Info = value_182
+		var value_183 int32 = 16777215
+		var value_184 uint32 = uint32(number_f0bb83c3_bits(uint64(value_183), uint64(0), 32, false, 0))
+		var value_185 uint32 = value_184
+		var value_186 int32 = 255
+		var value_187 uint32 = uint32(number_f0bb83c3_bits(uint64(value_186), uint64(0), 32, false, 0))
+		var value_188 uint32 = value_187
+		var value_189 uint32 = Theme_PackedColor(value_185, value_188)
+		palette.OnInfo = value_189
+		var value_190 int32 = 48127
+		var value_191 uint32 = uint32(number_f0bb83c3_bits(uint64(value_190), uint64(0), 32, false, 0))
+		var value_192 uint32 = value_191
+		var value_193 int32 = 255
+		var value_194 uint32 = uint32(number_f0bb83c3_bits(uint64(value_193), uint64(0), 32, false, 0))
+		var value_195 uint32 = value_194
+		var value_196 uint32 = Theme_PackedColor(value_192, value_195)
+		palette.Link = value_196
+		var value_197 int32 = 9093887
+		var value_198 uint32 = uint32(number_f0bb83c3_bits(uint64(value_197), uint64(0), 32, false, 0))
+		var value_199 uint32 = value_198
+		var value_200 int32 = 255
+		var value_201 uint32 = uint32(number_f0bb83c3_bits(uint64(value_200), uint64(0), 32, false, 0))
+		var value_202 uint32 = value_201
+		var value_203 uint32 = Theme_PackedColor(value_199, value_202)
+		palette.LinkHover = value_203
+		var value_204 int32 = 0
+		var value_205 uint32 = uint32(number_f0bb83c3_bits(uint64(value_204), uint64(0), 32, false, 0))
+		var value_206 uint32 = value_205
+		var value_207 int32 = 128
+		var value_208 uint32 = uint32(number_f0bb83c3_bits(uint64(value_207), uint64(0), 32, false, 0))
+		var value_209 uint32 = value_208
+		var value_210 uint32 = Theme_PackedColor(value_206, value_209)
+		palette.Shadow = value_210
+	} else {
+		var value_211 int32 = 16317439
+		var value_212 uint32 = uint32(number_f0bb83c3_bits(uint64(value_211), uint64(0), 32, false, 0))
+		var value_213 uint32 = value_212
+		var value_214 int32 = 255
+		var value_215 uint32 = uint32(number_f0bb83c3_bits(uint64(value_214), uint64(0), 32, false, 0))
+		var value_216 uint32 = value_215
+		var value_217 uint32 = Theme_PackedColor(value_213, value_216)
+		palette.Background = value_217
+		var value_218 int32 = 16777215
+		var value_219 uint32 = uint32(number_f0bb83c3_bits(uint64(value_218), uint64(0), 32, false, 0))
+		var value_220 uint32 = value_219
+		var value_221 int32 = 255
+		var value_222 uint32 = uint32(number_f0bb83c3_bits(uint64(value_221), uint64(0), 32, false, 0))
+		var value_223 uint32 = value_222
+		var value_224 uint32 = Theme_PackedColor(value_220, value_223)
+		palette.Surface = value_224
+		var value_225 int32 = 15594748
+		var value_226 uint32 = uint32(number_f0bb83c3_bits(uint64(value_225), uint64(0), 32, false, 0))
+		var value_227 uint32 = value_226
+		var value_228 int32 = 255
+		var value_229 uint32 = uint32(number_f0bb83c3_bits(uint64(value_228), uint64(0), 32, false, 0))
+		var value_230 uint32 = value_229
+		var value_231 uint32 = Theme_PackedColor(value_227, value_230)
+		palette.SurfaceRaised = value_231
+		var value_232 int32 = 15397628
+		var value_233 uint32 = uint32(number_f0bb83c3_bits(uint64(value_232), uint64(0), 32, false, 0))
+		var value_234 uint32 = value_233
+		var value_235 int32 = 255
+		var value_236 uint32 = uint32(number_f0bb83c3_bits(uint64(value_235), uint64(0), 32, false, 0))
+		var value_237 uint32 = value_236
+		var value_238 uint32 = Theme_PackedColor(value_234, value_237)
+		palette.SurfaceSunken = value_238
+		var value_239 int32 = 0
+		var value_240 uint32 = uint32(number_f0bb83c3_bits(uint64(value_239), uint64(0), 32, false, 0))
+		var value_241 uint32 = value_240
+		var value_242 int32 = 102
+		var value_243 uint32 = uint32(number_f0bb83c3_bits(uint64(value_242), uint64(0), 32, false, 0))
+		var value_244 uint32 = value_243
+		var value_245 uint32 = Theme_PackedColor(value_241, value_244)
+		palette.Overlay = value_245
+		var value_246 int32 = 9555
+		var value_247 uint32 = uint32(number_f0bb83c3_bits(uint64(value_246), uint64(0), 32, false, 0))
+		var value_248 uint32 = value_247
+		var value_249 int32 = 255
+		var value_250 uint32 = uint32(number_f0bb83c3_bits(uint64(value_249), uint64(0), 32, false, 0))
+		var value_251 uint32 = value_250
+		var value_252 uint32 = Theme_PackedColor(value_248, value_251)
+		palette.Text = value_252
+		var value_253 int32 = 5466755
+		var value_254 uint32 = uint32(number_f0bb83c3_bits(uint64(value_253), uint64(0), 32, false, 0))
+		var value_255 uint32 = value_254
+		var value_256 int32 = 255
+		var value_257 uint32 = uint32(number_f0bb83c3_bits(uint64(value_256), uint64(0), 32, false, 0))
+		var value_258 uint32 = value_257
+		var value_259 uint32 = Theme_PackedColor(value_255, value_258)
+		palette.TextMuted = value_259
+		var value_260 int32 = 8428475
+		var value_261 uint32 = uint32(number_f0bb83c3_bits(uint64(value_260), uint64(0), 32, false, 0))
+		var value_262 uint32 = value_261
+		var value_263 int32 = 255
+		var value_264 uint32 = uint32(number_f0bb83c3_bits(uint64(value_263), uint64(0), 32, false, 0))
+		var value_265 uint32 = value_264
+		var value_266 uint32 = Theme_PackedColor(value_262, value_265)
+		palette.TextDisabled = value_266
+		var value_267 int32 = 1588323
+		var value_268 uint32 = uint32(number_f0bb83c3_bits(uint64(value_267), uint64(0), 32, false, 0))
+		var value_269 uint32 = value_268
+		var value_270 int32 = 255
+		var value_271 uint32 = uint32(number_f0bb83c3_bits(uint64(value_270), uint64(0), 32, false, 0))
+		var value_272 uint32 = value_271
+		var value_273 uint32 = Theme_PackedColor(value_269, value_272)
+		palette.Icon = value_273
+		var value_274 int32 = 5466755
+		var value_275 uint32 = uint32(number_f0bb83c3_bits(uint64(value_274), uint64(0), 32, false, 0))
+		var value_276 uint32 = value_275
+		var value_277 int32 = 255
+		var value_278 uint32 = uint32(number_f0bb83c3_bits(uint64(value_277), uint64(0), 32, false, 0))
+		var value_279 uint32 = value_278
+		var value_280 uint32 = Theme_PackedColor(value_276, value_279)
+		palette.IconMuted = value_280
+		var value_281 int32 = 12967414
+		var value_282 uint32 = uint32(number_f0bb83c3_bits(uint64(value_281), uint64(0), 32, false, 0))
+		var value_283 uint32 = value_282
+		var value_284 int32 = 255
+		var value_285 uint32 = uint32(number_f0bb83c3_bits(uint64(value_284), uint64(0), 32, false, 0))
+		var value_286 uint32 = value_285
+		var value_287 uint32 = Theme_PackedColor(value_283, value_286)
+		palette.Border = value_287
+		var value_288 int32 = 12967414
+		var value_289 uint32 = uint32(number_f0bb83c3_bits(uint64(value_288), uint64(0), 32, false, 0))
+		var value_290 uint32 = value_289
+		var value_291 int32 = 255
+		var value_292 uint32 = uint32(number_f0bb83c3_bits(uint64(value_291), uint64(0), 32, false, 0))
+		var value_293 uint32 = value_292
+		var value_294 uint32 = Theme_PackedColor(value_290, value_293)
+		palette.BorderStrong = value_294
+		var value_295 int32 = 12967414
+		var value_296 uint32 = uint32(number_f0bb83c3_bits(uint64(value_295), uint64(0), 32, false, 0))
+		var value_297 uint32 = value_296
+		var value_298 int32 = 255
+		var value_299 uint32 = uint32(number_f0bb83c3_bits(uint64(value_298), uint64(0), 32, false, 0))
+		var value_300 uint32 = value_299
+		var value_301 uint32 = Theme_PackedColor(value_297, value_300)
+		palette.Divider = value_301
+		var value_302 int32 = 412927
+		var value_303 uint32 = uint32(number_f0bb83c3_bits(uint64(value_302), uint64(0), 32, false, 0))
+		var value_304 uint32 = value_303
+		var value_305 int32 = 179
+		var value_306 uint32 = uint32(number_f0bb83c3_bits(uint64(value_305), uint64(0), 32, false, 0))
+		var value_307 uint32 = value_306
+		var value_308 uint32 = Theme_PackedColor(value_304, value_307)
+		palette.Focus = value_308
+		var value_309 int32 = 14215679
+		var value_310 uint32 = uint32(number_f0bb83c3_bits(uint64(value_309), uint64(0), 32, false, 0))
+		var value_311 uint32 = value_310
+		var value_312 int32 = 255
+		var value_313 uint32 = uint32(number_f0bb83c3_bits(uint64(value_312), uint64(0), 32, false, 0))
+		var value_314 uint32 = value_313
+		var value_315 uint32 = Theme_PackedColor(value_311, value_314)
+		palette.Selection = value_315
+		var value_316 int32 = 27903
+		var value_317 uint32 = uint32(number_f0bb83c3_bits(uint64(value_316), uint64(0), 32, false, 0))
+		var value_318 uint32 = value_317
+		var value_319 int32 = 255
+		var value_320 uint32 = uint32(number_f0bb83c3_bits(uint64(value_319), uint64(0), 32, false, 0))
+		var value_321 uint32 = value_320
+		var value_322 uint32 = Theme_PackedColor(value_318, value_321)
+		palette.Accent = value_322
+		var value_323 int32 = 16777215
+		var value_324 uint32 = uint32(number_f0bb83c3_bits(uint64(value_323), uint64(0), 32, false, 0))
+		var value_325 uint32 = value_324
+		var value_326 int32 = 255
+		var value_327 uint32 = uint32(number_f0bb83c3_bits(uint64(value_326), uint64(0), 32, false, 0))
+		var value_328 uint32 = value_327
+		var value_329 uint32 = Theme_PackedColor(value_325, value_328)
+		palette.OnAccent = value_329
+		var value_330 int32 = 2196735
+		var value_331 uint32 = uint32(number_f0bb83c3_bits(uint64(value_330), uint64(0), 32, false, 0))
+		var value_332 uint32 = value_331
+		var value_333 int32 = 255
+		var value_334 uint32 = uint32(number_f0bb83c3_bits(uint64(value_333), uint64(0), 32, false, 0))
+		var value_335 uint32 = value_334
+		var value_336 uint32 = Theme_PackedColor(value_332, value_335)
+		palette.AccentHover = value_336
+		var value_337 int32 = 675256
+		var value_338 uint32 = uint32(number_f0bb83c3_bits(uint64(value_337), uint64(0), 32, false, 0))
+		var value_339 uint32 = value_338
+		var value_340 int32 = 255
+		var value_341 uint32 = uint32(number_f0bb83c3_bits(uint64(value_340), uint64(0), 32, false, 0))
+		var value_342 uint32 = value_341
+		var value_343 uint32 = Theme_PackedColor(value_339, value_342)
+		palette.AccentPressed = value_343
+		var value_344 int32 = 34154
+		var value_345 uint32 = uint32(number_f0bb83c3_bits(uint64(value_344), uint64(0), 32, false, 0))
+		var value_346 uint32 = value_345
+		var value_347 int32 = 255
+		var value_348 uint32 = uint32(number_f0bb83c3_bits(uint64(value_347), uint64(0), 32, false, 0))
+		var value_349 uint32 = value_348
+		var value_350 uint32 = Theme_PackedColor(value_346, value_349)
+		palette.Success = value_350
+		var value_351 int32 = 16777215
+		var value_352 uint32 = uint32(number_f0bb83c3_bits(uint64(value_351), uint64(0), 32, false, 0))
+		var value_353 uint32 = value_352
+		var value_354 int32 = 255
+		var value_355 uint32 = uint32(number_f0bb83c3_bits(uint64(value_354), uint64(0), 32, false, 0))
+		var value_356 uint32 = value_355
+		var value_357 uint32 = Theme_PackedColor(value_353, value_356)
+		palette.OnSuccess = value_357
+		var value_358 int32 = 11892736
+		var value_359 uint32 = uint32(number_f0bb83c3_bits(uint64(value_358), uint64(0), 32, false, 0))
+		var value_360 uint32 = value_359
+		var value_361 int32 = 255
+		var value_362 uint32 = uint32(number_f0bb83c3_bits(uint64(value_361), uint64(0), 32, false, 0))
+		var value_363 uint32 = value_362
+		var value_364 uint32 = Theme_PackedColor(value_360, value_363)
+		palette.Warning = value_364
+		var value_365 int32 = 2167808
+		var value_366 uint32 = uint32(number_f0bb83c3_bits(uint64(value_365), uint64(0), 32, false, 0))
+		var value_367 uint32 = value_366
+		var value_368 int32 = 255
+		var value_369 uint32 = uint32(number_f0bb83c3_bits(uint64(value_368), uint64(0), 32, false, 0))
+		var value_370 uint32 = value_369
+		var value_371 uint32 = Theme_PackedColor(value_367, value_370)
+		palette.OnWarning = value_371
+		var value_372 int32 = 14423332
+		var value_373 uint32 = uint32(number_f0bb83c3_bits(uint64(value_372), uint64(0), 32, false, 0))
+		var value_374 uint32 = value_373
+		var value_375 int32 = 255
+		var value_376 uint32 = uint32(number_f0bb83c3_bits(uint64(value_375), uint64(0), 32, false, 0))
+		var value_377 uint32 = value_376
+		var value_378 uint32 = Theme_PackedColor(value_374, value_377)
+		palette.Danger = value_378
+		var value_379 int32 = 16777215
+		var value_380 uint32 = uint32(number_f0bb83c3_bits(uint64(value_379), uint64(0), 32, false, 0))
+		var value_381 uint32 = value_380
+		var value_382 int32 = 255
+		var value_383 uint32 = uint32(number_f0bb83c3_bits(uint64(value_382), uint64(0), 32, false, 0))
+		var value_384 uint32 = value_383
+		var value_385 uint32 = Theme_PackedColor(value_381, value_384)
+		palette.OnDanger = value_385
+		var value_386 int32 = 556223
+		var value_387 uint32 = uint32(number_f0bb83c3_bits(uint64(value_386), uint64(0), 32, false, 0))
+		var value_388 uint32 = value_387
+		var value_389 int32 = 255
+		var value_390 uint32 = uint32(number_f0bb83c3_bits(uint64(value_389), uint64(0), 32, false, 0))
+		var value_391 uint32 = value_390
+		var value_392 uint32 = Theme_PackedColor(value_388, value_391)
+		palette.Info = value_392
+		var value_393 int32 = 16777215
+		var value_394 uint32 = uint32(number_f0bb83c3_bits(uint64(value_393), uint64(0), 32, false, 0))
+		var value_395 uint32 = value_394
+		var value_396 int32 = 255
+		var value_397 uint32 = uint32(number_f0bb83c3_bits(uint64(value_396), uint64(0), 32, false, 0))
+		var value_398 uint32 = value_397
+		var value_399 uint32 = Theme_PackedColor(value_395, value_398)
+		palette.OnInfo = value_399
+		var value_400 int32 = 13311
+		var value_401 uint32 = uint32(number_f0bb83c3_bits(uint64(value_400), uint64(0), 32, false, 0))
+		var value_402 uint32 = value_401
+		var value_403 int32 = 255
+		var value_404 uint32 = uint32(number_f0bb83c3_bits(uint64(value_403), uint64(0), 32, false, 0))
+		var value_405 uint32 = value_404
+		var value_406 uint32 = Theme_PackedColor(value_402, value_405)
+		palette.Link = value_406
+		var value_407 int32 = 215977
+		var value_408 uint32 = uint32(number_f0bb83c3_bits(uint64(value_407), uint64(0), 32, false, 0))
+		var value_409 uint32 = value_408
+		var value_410 int32 = 255
+		var value_411 uint32 = uint32(number_f0bb83c3_bits(uint64(value_410), uint64(0), 32, false, 0))
+		var value_412 uint32 = value_411
+		var value_413 uint32 = Theme_PackedColor(value_409, value_412)
+		palette.LinkHover = value_413
+		var value_414 int32 = 1520205
+		var value_415 uint32 = uint32(number_f0bb83c3_bits(uint64(value_414), uint64(0), 32, false, 0))
+		var value_416 uint32 = value_415
+		var value_417 int32 = 36
+		var value_418 uint32 = uint32(number_f0bb83c3_bits(uint64(value_417), uint64(0), 32, false, 0))
+		var value_419 uint32 = value_418
+		var value_420 uint32 = Theme_PackedColor(value_416, value_419)
+		palette.Shadow = value_420
+	}
+	var value_421 Palette = palette
+	return value_421
+}
+
+func Theme_DefaultMetrics() Metrics {
+	var metrics Metrics = Metrics{}
+	var value_0 float32 = 4.0
+	metrics.RadiusSmall = value_0
+	var value_1 float32 = 8.0
+	metrics.RadiusMedium = value_1
+	var value_2 float32 = 12.0
+	metrics.RadiusLarge = value_2
+	var value_3 float32 = 999.0
+	metrics.RadiusPill = value_3
+	var value_4 float32 = 1.0
+	metrics.BorderWidth = value_4
+	var value_5 float32 = 2.0
+	metrics.FocusWidth = value_5
+	var value_6 float32 = 2.0
+	metrics.FocusGap = value_6
+	var value_7 float32 = 4.0
+	metrics.Space1 = value_7
+	var value_8 float32 = 8.0
+	metrics.Space2 = value_8
+	var value_9 float32 = 12.0
+	metrics.Space3 = value_9
+	var value_10 float32 = 16.0
+	metrics.Space4 = value_10
+	var value_11 float32 = 24.0
+	metrics.Space5 = value_11
+	var value_12 float32 = 32.0
+	metrics.Space6 = value_12
+	var value_13 float32 = 32.0
+	metrics.ControlHeightSmall = value_13
+	var value_14 float32 = 40.0
+	metrics.ControlHeightMedium = value_14
+	var value_15 float32 = 48.0
+	metrics.ControlHeightLarge = value_15
+	var value_16 float32 = 12.0
+	metrics.ControlPaddingSmall = value_16
+	var value_17 float32 = 16.0
+	metrics.ControlPaddingMedium = value_17
+	var value_18 float32 = 20.0
+	metrics.ControlPaddingLarge = value_18
+	var value_19 float32 = 8.0
+	metrics.ControlGap = value_19
+	var value_20 float32 = 16.0
+	metrics.FontSizeSmall = value_20
+	var value_21 float32 = 18.0
+	metrics.FontSizeMedium = value_21
+	var value_22 float32 = 20.0
+	metrics.FontSizeLarge = value_22
+	var value_23 float32 = 14.0
+	metrics.IconSizeSmall = value_23
+	var value_24 float32 = 18.0
+	metrics.IconSizeMedium = value_24
+	var value_25 float32 = 20.0
+	metrics.IconSizeLarge = value_25
+	var value_26 float32 = 2.0
+	metrics.ShadowOffsetY = value_26
+	var value_27 float32 = 8.0
+	metrics.ShadowBlur = value_27
+	var value_28 float32 = 0.45
+	metrics.DisabledOpacity = value_28
+	var value_29 float32 = 80.0
+	metrics.TransitionFastMs = value_29
+	var value_30 float32 = 140.0
+	metrics.TransitionNormalMs = value_30
+	var value_31 Metrics = metrics
+	return value_31
 }

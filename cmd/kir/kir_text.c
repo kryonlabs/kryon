@@ -1,6 +1,7 @@
 #include "kir_text.h"
 
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
 int
@@ -94,6 +95,32 @@ kir_camel_ident(const char *s, char *dst, size_t dst_size)
         n++;
     }
     dst[n] = '\0';
+}
+
+void
+kir_go_field_ident(const char *s, char *dst, size_t dst_size)
+{
+    static const struct {
+        const char *camel;
+        const char *go;
+    } initialisms[] = {
+        {"Id", "ID"},
+        {"FocusId", "FocusID"},
+        {"MenuId", "MenuID"},
+        {"SelectedId", "SelectedID"},
+        {"ActivatedId", "ActivatedID"},
+        {"CanonicalUrl", "CanonicalURL"},
+    };
+
+    if(dst_size == 0)
+        return;
+    kir_camel_ident(s, dst, dst_size);
+    for(size_t i = 0; i < sizeof(initialisms) / sizeof(initialisms[0]); i++) {
+        if(strcmp(dst, initialisms[i].camel) == 0) {
+            snprintf(dst, dst_size, "%s", initialisms[i].go);
+            return;
+        }
+    }
 }
 
 int

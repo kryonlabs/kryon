@@ -237,14 +237,14 @@ grep -Fq 'int app_count = 0;' "$c"
 # calls wrap with Push/Pop + source line
 grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
-grep -Fq 'Text((TextProps){' "$c"
+grep -Fq 'Text(([&]() { TextProps record_value_0{};' "$c"
 grep -Fq '"hi"' "$c"
 grep -Fq 'TextWrapNone' "$c"
-grep -Fq 'Column((ColumnProps)' "$c"
-grep -Fq 'TextField((TextFieldProps)' "$c"
-grep -Fq 'TextArea((TextAreaProps)' "$c"
+grep -Fq 'Column(([&]() { ColumnProps record_value_0{};' "$c"
+grep -Fq 'TextField(([&]() { TextFieldProps record_value_0{};' "$c"
+grep -Fq 'TextArea(([&]() { TextAreaProps record_value_0{};' "$c"
 grep -Fq 'Row((' "$c"
-grep -Fq 'Button((ButtonProps)' "$c"
+grep -Fq 'Button(([&]() { ButtonProps record_value_0{};' "$c"
 grep -Fq 'MenuItem menu_items[2]' "$c"
 grep -Fq 'MenuCommand' "$c"
 grep -Fq 'MenuSeparator' "$c"
@@ -254,7 +254,7 @@ grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
 grep -Fq 'BottomNavItem nav_items[1]' "$c"
 grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
-grep -Fq 'TabBar((TabBarProps)' "$c"
+grep -Fq 'TabBar(([&]() { TabBarProps record_value_0{};' "$c"
 grep -Fq 'count = c_abs(-3);' "$c"
 grep -Fq 'PopUIInspectSource();' "$c"
 
@@ -326,10 +326,10 @@ mkdir -p "$work/composed"
     "$root/tests/parity/composed_combo.kry"
 sh "$root/tests/check_clean_generated_output.sh" "$work/composed"
 combo_cpp="$work/composed/tests/parity/composed_combo.cpp"
-grep -Fq 'BeginCombo((ComboProps)' "$combo_cpp"
+grep -Fq 'BeginCombo(([&]() { ComboProps record_value_0{};' "$combo_cpp"
 grep -Fq 'CloseCombo();' "$combo_cpp"
 grep -Fq 'EndCombo();' "$combo_cpp"
-grep -Fq 'BeginPopup((PopupProps)' "$combo_cpp"
+grep -Fq 'BeginPopup(([&]() { PopupProps record_value_0{};' "$combo_cpp"
 grep -Fq 'ClosePopup();' "$combo_cpp"
 grep -Fq 'EndPopup();' "$combo_cpp"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
@@ -341,15 +341,15 @@ grep -Fq 'extern "C" {' "$h"
 grep -Fq 'extern "C" {' "$c"
 
 grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.hpp"
-grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"
-grep -Fq 'Column((ColumnProps){.gap = 4, .key = Key("Main/root/body")});' "$hc"
+grep -Fq 'Screen(([&]() { ColumnProps record_value_0{}; record_value_0.bounds = viewport; record_value_0.padding = 8; record_value_0.key = Key("Main/root"); return record_value_0; }()));' "$hc"
+grep -Fq 'Column(([&]() { ColumnProps record_value_0{}; record_value_0.gap = 4; record_value_0.key = Key("Main/root/body"); return record_value_0; }()));' "$hc"
 grep -Fq '"Hello"' "$hc"
 grep -Fq 'BeginDisabled(2 >= 1);' "$hc"
 grep -Fq 'EndDisabled();' "$hc"
 grep -Fq 'BeginScroll(viewport, 480, NULL)' "$hc"
 grep -Fq 'BeginScroll(content, 0, NULL)' "$hc"
 grep -Fq 'EndScroll();' "$hc"
-grep -Fq 'BeginButton((ButtonProps){.bounds = {8, 40, 96, 28}, .label = "Block", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 77, });' "$hc"
+grep -Fq 'Button(([&]() { ButtonProps record_value_0{}; record_value_0.bounds = {8, 40, 96, 28}; record_value_0.label = "Block"; record_value_0.tone = ButtonToneNeutral; record_value_0.emphasis = ButtonEmphasisSoft; record_value_0.font = Text16; record_value_0.id = 77; return record_value_0; }()));' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
 grep -Fq 'host = CreateAppHost(APP_HOST_ABI_VERSION, ".");' "$project"
@@ -404,5 +404,42 @@ if "$k2cpp" --root "$work" -o "$work/out" "$work/src/missing_scroll_bounds.kry" 
     exit 1
 fi
 grep -Fq "Scroll requires 'bounds'" "$work/missing_scroll_bounds.err"
+
+cat > "$work/src/named_records.kry" <<'EOF'
+Sample :: struct {
+    first: int
+    second: int
+    omitted: int
+    label: const char*
+}
+state {
+    trace: int = 0
+}
+step :: (n: int) -> int {
+    trace = trace * 10 + n
+    return n
+}
+check :: () -> int #export {
+    record_value_0: int = 7
+    value: Sample = (Sample){.second=step(1), .first=step(2), .label="nil (Sample){.first=9}"}
+    if trace != 12 { return 1 }
+    if value.first != 2 { return 2 }
+    if value.second != 1 { return 3 }
+    if value.omitted != 0 { return 4 }
+    if value.label[0] != 'n' { return 5 }
+    captured: Sample = (Sample){.second=record_value_0, .first=3}
+    if captured.second != 7 { return 6 }
+    return 0
+}
+EOF
+"$k2cpp" --no-main --root "$work" -o "$work/records" "$work/src/named_records.kry"
+cat > "$work/records/driver.cpp" <<'EOF'
+#include "src/named_records.cpp"
+void PushUIInspectSource(const char *, int) {}
+void PopUIInspectSource(void) {}
+int main() { return check(); }
+EOF
+c++ -std=c++17 -I"$root/include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
+"$work/records/check"
 
 echo "k2cpp ok"

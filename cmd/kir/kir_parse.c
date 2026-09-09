@@ -366,8 +366,8 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     static const char *const widgets[] = {
         "Background", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt",
         "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Selectable",
-        "CheckboxFlags", "ImageWithBg", "ImageButton", "SmallButton",
+        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "MenuButton", "SplitButton", "Selectable",
+        "CheckboxFlags", "ImageWithBg", "ImageButton",
         "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
         "ColorEdit3",
         "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "IconButton",
@@ -458,6 +458,7 @@ typedef struct UiBlock {
     int opened;
     int emits_end;
     int prop_count;
+    int has_key;
     char *scope_args[3];
     unsigned scope_fields;
 } UiBlock;
@@ -489,6 +490,10 @@ ui_block_prop_type(const char *widget)
         return "ColumnProps";
     if(strcmp(widget, "Button") == 0)
         return "ButtonProps";
+    if(strcmp(widget, "MenuButton") == 0)
+        return "MenuButtonProps";
+    if(strcmp(widget, "SplitButton") == 0)
+        return "SplitButtonProps";
     if(strcmp(widget, "IconButton") == 0)
         return "IconButtonProps";
     if(strcmp(widget, "Href") == 0)
@@ -564,8 +569,10 @@ parse_ui_block_header(const char *text, char *widget, size_t widget_size,
         return 0;
     memcpy(widget, start, n);
     widget[n] = '\0';
-    if(ui_block_prop_type(widget) == NULL)
+    /* Switch labels share the colon-and-brace shape of a widget block. */
+    if(strcmp(widget, "case") == 0 || strcmp(widget, "default") == 0)
         return 0;
+    int known_widget = ui_block_prop_type(widget) != NULL;
     while(*p == ' ' || *p == '\t')
         p++;
     start = p;
@@ -578,11 +585,14 @@ parse_ui_block_header(const char *text, char *widget, size_t widget_size,
     name[n] = '\0';
     while(*p == ' ' || *p == '\t')
         p++;
-    if(*p == ':')
+    int has_colon = *p == ':';
+    if(has_colon)
         p++;
     while(*p == ' ' || *p == '\t')
         p++;
     if(p[0] != '{' || p[1] != '\0')
+        return 0;
+    if(!known_widget && !has_colon)
         return 0;
     return name[0] != '\0' || !is_layout_widget(widget) ||
            strcmp(widget, "Button") == 0;
@@ -621,24 +631,39 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
 }
 
 static void
-ui_block_append_prop(UiBlock *block, const char *field, const char *value)
+ui_block_append_prop(UiBlock *block, const char *field, const char *value,
+                     KirSourceSpan span)
 {
     size_t used = strlen(block->props);
-
-    if(used + strlen(field) + strlen(value) + 8 >= sizeof(block->props))
-        return;
-    snprintf(block->props + used, sizeof(block->props) - used, ".%.120s = %.3000s, ",
-             field, value);
+    int length = snprintf(block->props + used, sizeof(block->props) - used,
+                          ".%s = %s, ", field, value);
+    if(length < 0 || (size_t)length >= sizeof(block->props) - used)
+        die("%s:%d: widget properties exceed the declaration size limit: %s",
+            span.path, span.line, block->widget);
     block->prop_count++;
+    if(strcmp(field, "key") == 0 || strcmp(field, "Key") == 0)
+        block->has_key = 1;
 }
 
 static void
-ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
+ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
+                const char *format, ...)
+{
+    va_list arguments;
+    va_start(arguments, format);
+    int length = vsnprintf(destination, capacity, format, arguments);
+    va_end(arguments);
+    if(length < 0 || (size_t)length >= capacity)
+        die("%s:%d: widget properties exceed the lowering size limit",
+            span.path, span.line);
+}
+
+static void
+ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
 {
     char call[KIR_TEXT_MAX];
     char args[KIR_TEXT_MAX];
     const char *prop_type;
-    int has_key;
 
     if(block == NULL || block->opened)
         return;
@@ -668,7 +693,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
     if(strcmp(block->widget, "Disabled") == 0) {
         const char *condition = block->prop_count ? block->props : "true";
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
-        snprintf(call, sizeof(call), "BeginDisabled(%.3900s)", condition);
+        ui_block_format(call, sizeof(call), span, "BeginDisabled(%s)", condition);
         /* Scope conditions are boolean expressions, not legacy integer UI
          * widget arguments. Keep the ordinary typed call in the shared IR. */
         KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", span);
@@ -680,9 +705,9 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
        strcmp(block->widget, "Popup") == 0) {
         const char *type = strcmp(block->widget,"Combo") == 0 ?
                            "ComboProps" : "PopupProps";
-        snprintf(args, sizeof(args), "(%s){%.3800s}", type, block->props);
-        snprintf(call, sizeof(call), "if Begin%s(%.3900s) {",
-                 block->widget,args);
+        ui_block_format(args, sizeof(args), span, "(%s){%s}", type, block->props);
+        ui_block_format(call, sizeof(call), span, "if Begin%s(%s) {",
+                        block->widget, args);
         KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", span);
         snprintf(call,sizeof(call),"defer End%s()",block->widget);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
@@ -690,25 +715,46 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span)
         return;
     }
     if(strcmp(block->widget, "Button") == 0) {
-        snprintf(args, sizeof(args), "(ButtonProps){%.3800s}", block->props);
-        snprintf(call, sizeof(call), "BeginButton(%.3900s)", args);
-        KirFunctionAddWidget(fn, "BeginButton", args, call, span);
+        const char *constructor = closing ? "Button" : "BeginButton";
+        ui_block_format(args, sizeof(args), span, "(ButtonProps){%s}", block->props);
+        ui_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);
+        KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call, span);
+        if(statement == NULL)
+            die("out of memory parsing Button block");
+        if(closing) {
+            statement->declared_widget = 1;
+            statement->widget_fallback = 1;
+        }
+        block->emits_end = !closing;
         block->opened = 1;
         return;
     }
     prop_type = ui_block_prop_type(block->widget);
-    if(prop_type == NULL)
+    if(prop_type == NULL) {
+        if(!closing)
+            die("%s:%d: declared widget blocks do not yet accept child content: %s",
+                span.path, span.line, block->widget);
+        KirStmt *statement = KirFunctionAddWidget(fn, block->widget, block->props, "", span);
+        if(statement == NULL)
+            die("out of memory parsing declared widget");
+        statement->declared_widget = 1;
+        block->opened = 1;
         return;
-    has_key = strstr(block->props, ".key") != NULL ||
-              strstr(block->props, ".Key") != NULL;
-    if(!block->emits_end || has_key)
-        snprintf(args, sizeof(args), "(%s){%.3800s}", prop_type, block->props);
+    }
+    if(!block->emits_end || block->has_key)
+        ui_block_format(args, sizeof(args), span, "(%s){%s}", prop_type, block->props);
     else
-        snprintf(args, sizeof(args),
-                 "(%s){%.3000s.key = Key(\"%.900s\")}",
-                 prop_type, block->props, block->path);
-    snprintf(call, sizeof(call), "%.120s(%.3900s)", block->widget, args);
-    KirFunctionAddWidget(fn, block->widget, args, call, span);
+        ui_block_format(args, sizeof(args), span,
+                        "(%s){%s.key = Key(\"%s\")}",
+                        prop_type, block->props, block->path);
+    ui_block_format(call, sizeof(call), span, "%s(%s)", block->widget, args);
+    KirStmt *statement = KirFunctionAddWidget(fn, block->widget, args, call, span);
+    if(statement == NULL)
+        die("out of memory parsing widget block");
+    if(closing && !block->emits_end) {
+        statement->declared_widget = 1;
+        statement->widget_fallback = 1;
+    }
     block->opened = 1;
 }
 
@@ -2594,7 +2640,7 @@ kir_parse_file(const char *path, const char *root)
                       depth == ui_blocks[ui_block_count - 1].close_depth) {
                 UiBlock *block = &ui_blocks[ui_block_count - 1];
 
-                ui_block_open(fn, block, KirSpan(rel, line_no, 1));
+                ui_block_open(fn, block, KirSpan(rel, line_no, 1), 1);
                 if(strcmp(block->widget, "Disabled") == 0 ||
                    strcmp(block->widget, "Scroll") == 0 ||
                    strcmp(block->widget, "Combo") == 0 ||
@@ -2646,7 +2692,7 @@ kir_parse_file(const char *path, const char *root)
                 char block_name[KIR_NAME_MAX];
                 char prop_field[KIR_NAME_MAX];
                 char prop_value[KIR_TEXT_MAX];
-                char prop_line[K2KIR_LINE_MAX];
+                char prop_line[KIR_TEXT_MAX];
 
                 if(parse_ui_block_header(t, block_widget,
                                          sizeof(block_widget),
@@ -2655,7 +2701,7 @@ kir_parse_file(const char *path, const char *root)
 
                     if(ui_block_count > 0)
                         ui_block_open(fn, &ui_blocks[ui_block_count - 1],
-                                      KirSpan(rel, line_no, 1));
+                                      KirSpan(rel, line_no, 1), 0);
                     if(ui_block_count >=
                        (int)(sizeof(ui_blocks) / sizeof(ui_blocks[0])))
                         die("%s:%d: too many nested UI blocks", rel, line_no);
@@ -2714,7 +2760,8 @@ kir_parse_file(const char *path, const char *root)
                         kir_copy(block->props, sizeof(block->props), prop_value);
                         block->prop_count = 1;
                     } else {
-                        ui_block_append_prop(block, prop_field, prop_value);
+                        ui_block_append_prop(block, prop_field, prop_value,
+                                             KirSpan(rel, line_no, 1));
                     }
                     continue;
                 }
@@ -2723,7 +2770,7 @@ kir_parse_file(const char *path, const char *root)
                    !ui_blocks[ui_block_count - 1].opened &&
                    depth == ui_blocks[ui_block_count - 1].close_depth)
                     ui_block_open(fn, &ui_blocks[ui_block_count - 1],
-                                  KirSpan(rel, line_no, 1));
+                                  KirSpan(rel, line_no, 1), 0);
 
                 if(kind == KIR_STMT_EXPR &&
                    parse_widget_statement(t, widget, sizeof(widget),

@@ -55,7 +55,10 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			} else if op.SecondaryColor.A != 0 {
 				fillGradientH(img, op.Bounds, opaque(op.Color, LIGHTGRAY), opaque(op.SecondaryColor, LIGHTGRAY))
 			} else {
-				fillRect(img, op.Bounds, opaque(op.Color, LIGHTGRAY))
+				op.Opacity = 1
+				op.BorderWidth = 1
+				op.Material = MaterialFlat
+				renderMaterial(img, op)
 			}
 		case FrameOpLine:
 			drawLine(img, op.Bounds, opaque(op.Color, BLACK))
@@ -63,10 +66,12 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			if op.Rotation != 0 {
 				drawRotatedText(img, op)
 			} else {
-				drawText(img, op.Text, int(round(op.Bounds.X)), int(round(op.Bounds.Y)), op.FontSize, opaque(op.Color, BLACK), op.FontID)
+				drawText(img, op.Text, int(op.Bounds.X), int(op.Bounds.Y), op.FontSize, op.Color, op.FontID, op.LetterSpacing)
 			}
 		case FrameOpButton:
 			renderButton(img, op)
+		case FrameOpSurface:
+			renderMaterial(img, op)
 		case FrameOpIcon:
 			renderIcon(img, op)
 		case FrameOpPicture:
@@ -74,8 +79,11 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			strokeRect(img, op.Bounds, Color{136, 146, 160, 255})
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
-		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpScreen, FrameOpGrid, FrameOpPage, FrameOpSection:
+		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGrid, FrameOpPage, FrameOpSection:
 			strokeRect(img, op.Bounds, Color{220, 224, 229, 255})
+		case FrameOpScreen:
+			// A screen establishes a coordinate/layout scope, not a surface.
+			// Its appearance is provided explicitly by Surface or Background.
 		}
 	}
 
@@ -87,104 +95,156 @@ func RenderCurrentFrame() *image.RGBA {
 	return RenderFrame(int(rt.GetScreenWidth()), int(rt.GetScreenHeight()), FrameOps())
 }
 
-func renderButton(img *image.RGBA, op FrameOp) {
-	fill := Color{236, 240, 245, 255}
-	border := Color{136, 146, 160, 255}
-	text := Color{28, 36, 48, 255}
-	if op.Color.A != 0 {
-		fill = op.Color
+func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
+	fill, border := op.Color, op.BorderColor
+	face := op.Bounds
+	surface := op.Bounds
+	if op.SurfaceBounds.Width > 0 && op.SurfaceBounds.Height > 0 {
+		surface = op.SurfaceBounds
 	}
-	if op.BorderColor.A != 0 {
-		border = op.BorderColor
+	hover, press, focus := float32(0), float32(0), float32(0)
+	if op.Hovered {
+		hover = 1
 	}
-	if op.TextColor.A != 0 {
-		text = op.TextColor
+	if op.Pressed {
+		press = 1
 	}
-	if op.Disabled {
-		if op.Color.A == 0 {
-			fill = Color{226, 228, 232, 255}
-		}
-		if op.BorderColor.A == 0 {
-			border = Color{174, 181, 190, 255}
-		}
-		if op.TextColor.A == 0 {
-			text = Color{126, 134, 146, 255}
-		}
-	} else if op.Pressed {
-		if op.Color.A == 0 {
-			fill = Color{198, 217, 246, 255}
-		}
-		if op.BorderColor.A == 0 {
-			border = Color{58, 110, 190, 255}
-		}
-	}
-	fillRect(img, op.Bounds, fill)
-	strokeRect(img, op.Bounds, border)
 	if op.Focused {
-		focus := Rectangle{X: op.Bounds.X - 2, Y: op.Bounds.Y - 2,
-			Width: op.Bounds.Width + 4, Height: op.Bounds.Height + 4}
-		strokeRect(img, focus, opaque(op.BorderColor, Color{6, 108, 255, 255}))
+		focus = 1
 	}
+	if op.MotionValid {
+		hover, press, focus = op.HoverAmount, op.PressAmount, op.FocusAmount
+	}
+	for i := int32(0); i < Surface_MaterialLayerCount(int32(op.Material)); i++ {
+		layer := Surface_MaterialLayer(int32(op.Material), i, surface.Width, surface.Height,
+			op.Radius, op.BorderWidth, packRGBA(fill), packRGBA(border),
+			packRGBA(border), packRGBA(op.FocusColor), hover, press, focus,
+			op.Disabled, op.Opacity, packRGBA(op.AmbientColor))
+		if layer.IsFace {
+			if op.FillStatesValid {
+				layer = Surface_ApplyFillStates(layer, op.FillStates, op.Opacity)
+			} else {
+				layer = Surface_FillGradient(layer, op.HasBackgroundEnd, packRGBA(fill), packRGBA(op.BackgroundEnd), op.Opacity)
+			}
+		}
+		r := Rectangle{X: surface.X + layer.X, Y: surface.Y + layer.Y,
+			Width: layer.Width, Height: layer.Height}
+		c := unpackRGBA(layer.Color)
+		if c.A == 0 && (!layer.Gradient || layer.EndColor&255 == 0) {
+			continue
+		}
+		pixels := clipRect(img, Rectangle{X: r.X - layer.Blur, Y: r.Y - layer.Blur,
+			Width: r.Width + 2*layer.Blur, Height: r.Height + 2*layer.Blur})
+		for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+			shade := Surface_SampleColor(layer, (float32(y)+0.5-r.Y)/r.Height)
+			for x := pixels.Min.X; x < pixels.Max.X; x++ {
+				coverage := Surface_SampleCoverage(layer, float32(x)-r.X, float32(y)-r.Y, 1)
+				coverage *= Surface_SegmentCoverage(float32(x)-surface.X,
+					op.Bounds.X-surface.X, op.Bounds.Width, surface.Width)
+				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(shade, coverage)))
+			}
+		}
+	}
+	face.Y += Surface_MaterialOffset(int32(op.Material), hover, press, op.Disabled)
+	return face
+}
+
+func renderButton(img *image.RGBA, op FrameOp) {
+	face := renderMaterial(img, op)
+	text := op.TextColor
+	text = unpackRGBA(Surface_Opacity(packRGBA(text), op.Opacity))
 	if op.Loading {
-		renderSpinner(img, op.Bounds, text)
+		content := Button_ContentLayout(face.Width, face.Height, 0,
+			op.IconSize, 0, false, true, false, 0, 0)
+		ring := Surface_LoadingRing(face.Width, face.Height, content.IconSize,
+			op.ElapsedMS, packRGBA(text), packRGBA(op.AmbientColor))
+		renderLoadingRing(img, face.X+ring.X, face.Y+ring.Y, ring)
 		return
 	}
-	iconSize := int32(16)
-	if op.FontSize >= Text16 {
-		iconSize = 18
-	}
-	hasIcon := op.IconType != UIIconTypeNone
+	hasIcon := op.Disclosure || op.IconType != UIIconTypeNone
 	labelWidth := runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)
-	gap := 0
-	if hasIcon && !op.IconOnly && op.Text != "" {
-		gap = 8
-	}
-	contentWidth := labelWidth + gap
-	if hasIcon {
-		contentWidth += int(iconSize)
-	}
-	x := op.Bounds.X + (op.Bounds.Width-float32(contentWidth))/2
-	if hasIcon {
-		iconX := x
-		if op.IconPlacement == int32(IconPlacementTrailing) {
-			iconX += float32(labelWidth + gap)
+	content := Button_ContentLayout(face.Width, face.Height, float32(labelWidth),
+		op.IconSize, op.Gap, hasIcon, op.IconOnly,
+		op.IconPlacement == int32(IconPlacementTrailing), op.ContentOffset.X, op.ContentOffset.Y)
+	if op.Disclosure {
+		bounds := Rectangle{X: face.X + content.IconX, Y: face.Y + content.IconY,
+			Width: content.IconSize, Height: content.IconSize}
+		pixels := clipRect(img, bounds)
+		for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+			for x := pixels.Min.X; x < pixels.Max.X; x++ {
+				coverage := Surface_ChevronCoverage(float32(x)-bounds.X, float32(y)-bounds.Y, content.IconSize)
+				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(packRGBA(text), coverage)))
+			}
 		}
-		renderIcon(img, FrameOp{Bounds: Rectangle{X: iconX,
-			Y:     op.Bounds.Y + (op.Bounds.Height-float32(iconSize))/2,
-			Width: float32(iconSize), Height: float32(iconSize)},
-			Color: text, IconType: op.IconType, IconSize: iconSize})
+	} else if hasIcon {
+		renderIcon(img, FrameOp{Bounds: Rectangle{X: face.X + content.IconX,
+			Y: face.Y + content.IconY, Width: content.IconSize, Height: content.IconSize},
+			Color: text, IconType: op.IconType, IconSize: content.IconSize})
 	}
 	if !op.IconOnly && op.Text != "" {
-		textX := x
-		if hasIcon && op.IconPlacement == int32(IconPlacementLeading) {
-			textX += float32(iconSize) + float32(gap)
-		}
-		textBounds := op.Bounds
-		textBounds.X = textX
-		textBounds.Width = float32(labelWidth)
-		drawTextInBox(img, op.Text, textBounds, op.FontSize, text, op.FontID)
+		textBounds := face
+		textBounds.X += content.TextX
+		textBounds.Y += content.TextY
+		textBounds.Width = content.TextWidth
+		textBounds.Height = content.TextHeight
+		baseline := fontTextBaseline(op.Text, int(textBounds.Y),
+			int(textBounds.Height), op.FontSize, op.FontID)
+		drawText(img, op.Text, int(textBounds.X), baseline, op.FontSize, text, op.FontID)
 	}
 }
 
-func renderSpinner(img *image.RGBA, bounds Rectangle, c Color) {
-	cx := bounds.X + bounds.Width/2
-	cy := bounds.Y + bounds.Height/2
-	radius := float32(7)
-	for i := 0; i < 8; i++ {
-		angle := float64(i) * math.Pi / 4
-		x := int(round(cx + radius*float32(math.Cos(angle))))
-		y := int(round(cy + radius*float32(math.Sin(angle))))
-		shade := c
-		shade.A = uint8(64 + i*24)
-		fillRectPixels(img, x-1, y-1, 3, 3, shade)
+func renderLoadingRing(img *image.RGBA, cx, cy float32, ring Ring) {
+	inner, outer := ring.InnerRadius, ring.OuterRadius
+	if outer <= 0 || inner >= outer || ring.EndAngle <= ring.StartAngle {
+		return
+	}
+	paintRadius := Surface_LoadingPaintRadius(ring)
+	box := clipRect(img, Rectangle{X: cx - paintRadius, Y: cy - paintRadius, Width: 2 * paintRadius, Height: 2 * paintRadius})
+	for y := box.Min.Y; y < box.Max.Y; y++ {
+		for x := box.Min.X; x < box.Max.X; x++ {
+			px, py := float32(x)-cx, float32(y)-cy
+			sample := Surface_LoadingSample(ring, px, py)
+			blendPixel(img, x, y, unpackRGBA(sample.Glow))
+			blendPixel(img, x, y, unpackRGBA(sample.Track))
+			blendPixel(img, x, y, unpackRGBA(sample.Arc))
+			blendPixel(img, x, y, unpackRGBA(sample.Tip))
+		}
 	}
 }
 
 func renderIcon(img *image.RGBA, op FrameOp) {
-	tint := BLACK
-	if op.Color.A != 0 {
-		tint = op.Color
+	if op.Bounds.Width <= 0 || op.Bounds.Height <= 0 {
+		return
 	}
+	shape := int32(0)
+	switch op.IconType {
+	case UIIconTypePlus:
+		shape = 1
+	case UIIconTypePlay:
+		shape = 2
+	case UIIconTypeTrash:
+		shape = 3
+	case UIIconTypeSave:
+		shape = 4
+	}
+	if shape != 0 {
+		if op.IconSize > 0 {
+			op.Bounds.Width = op.IconSize
+			op.Bounds.Height = op.IconSize
+		}
+		pixels := clipRect(img, op.Bounds)
+		for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+			for x := pixels.Min.X; x < pixels.Max.X; x++ {
+				coverage := Surface_IconCoverage(shape, float32(x)-op.Bounds.X,
+					float32(y)-op.Bounds.Y, op.Bounds.Width, op.Bounds.Height)
+				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(packRGBA(op.Color), coverage)))
+			}
+		}
+		return
+	}
+	// Tint has already been resolved by the widget. Transparent is a value,
+	// not a request for a fallback color, for both vector and bitmap icons.
+	tint := op.Color
 	size := int(round(op.Bounds.Width))
 	if op.IconSize > 0 {
 		size = int(op.IconSize)
@@ -204,70 +264,17 @@ func renderIcon(img *image.RGBA, op FrameOp) {
 			if on == ' ' || on == '.' {
 				continue
 			}
-			fillRectPixels(img, x0+x*cell, y0+y*cell, cell, cell, tint)
+			for dy := 0; dy < cell; dy++ {
+				for dx := 0; dx < cell; dx++ {
+					blendPixel(img, x0+x*cell+dx, y0+y*cell+dy, tint)
+				}
+			}
 		}
 	}
 }
 
 func iconPattern(iconType int32) []string {
 	switch iconType {
-	case UIIconTypeSave:
-		return []string{
-			"................",
-			"..############..",
-			".##############.",
-			".###......#####.",
-			".###......#####.",
-			".##############.",
-			".##############.",
-			".####......####.",
-			".###........###.",
-			".###........###.",
-			".###........###.",
-			".###........###.",
-			".##############.",
-			".##############.",
-			"................",
-			"................",
-		}
-	case UIIconTypePlus:
-		return []string{
-			"................",
-			"................",
-			".......##.......",
-			".......##.......",
-			".......##.......",
-			".......##.......",
-			"..############..",
-			"..############..",
-			".......##.......",
-			".......##.......",
-			".......##.......",
-			".......##.......",
-			"................",
-			"................",
-			"................",
-			"................",
-		}
-	case UIIconTypeTrash:
-		return []string{
-			"................",
-			".....######.....",
-			"...##########...",
-			"...##......##...",
-			"..############..",
-			"....########....",
-			"....##.##.##....",
-			"....##.##.##....",
-			"....##.##.##....",
-			"....##.##.##....",
-			"....##.##.##....",
-			"....##.##.##....",
-			"....########....",
-			".....######.....",
-			"................",
-			"................",
-		}
 	case UIIconTypeX, UIIconTypeWorkbookClearFormatting:
 		return []string{
 			"................",
@@ -422,6 +429,49 @@ func fillRect(img *image.RGBA, r Rectangle, c Color) {
 	draw.Draw(img, clipRect(img, r), &image.Uniform{C: rgba(c)}, image.Point{}, draw.Src)
 }
 
+func roundedContains(x, y float32, r Rectangle, radius float32) bool {
+	if r.Width <= 0 || r.Height <= 0 || x < r.X || x >= r.X+r.Width || y < r.Y || y >= r.Y+r.Height {
+		return false
+	}
+	if radius <= 0 {
+		return x >= r.X && x < r.X+r.Width && y >= r.Y && y < r.Y+r.Height
+	}
+	radius = min(radius, min(r.Width, r.Height)/2)
+	cx := min(max(x, r.X+radius), r.X+r.Width-radius)
+	cy := min(max(y, r.Y+radius), r.Y+r.Height-radius)
+	dx, dy := x-cx, y-cy
+	return dx*dx+dy*dy <= radius*radius
+}
+
+func fillRoundedRect(img *image.RGBA, r Rectangle, radius float32, c Color) {
+	rect := clipRect(img, r)
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			if roundedContains(float32(x)+0.5, float32(y)+0.5, r, radius) {
+				blendPixel(img, x, y, c)
+			}
+		}
+	}
+}
+
+func strokeRoundedRect(img *image.RGBA, r Rectangle, radius float32, width int, c Color) {
+	if width <= 0 || c.A == 0 {
+		return
+	}
+	inner := Rectangle{X: r.X + float32(width), Y: r.Y + float32(width),
+		Width: r.Width - float32(width*2), Height: r.Height - float32(width*2)}
+	rect := clipRect(img, r)
+	for y := rect.Min.Y; y < rect.Max.Y; y++ {
+		for x := rect.Min.X; x < rect.Max.X; x++ {
+			px, py := float32(x)+0.5, float32(y)+0.5
+			if roundedContains(px, py, r, radius) &&
+				!roundedContains(px, py, inner, max(float32(0), radius-float32(width))) {
+				blendPixel(img, x, y, c)
+			}
+		}
+	}
+}
+
 func fillGradientH(img *image.RGBA, r Rectangle, left, right Color) {
 	rect := clipRect(img, r)
 	if rect.Empty() {
@@ -522,7 +572,7 @@ func drawRotatedText(img *image.RGBA, op FrameOp) {
 	font := max32(1, op.FontSize)
 	w := min(runtimeTextWidth(op.Text, font)+8, img.Bounds().Dx()+img.Bounds().Dy()+int(font)*2)
 	source := image.NewRGBA(image.Rect(0, 0, max(1, w), int(font)*2+8))
-	drawText(source, op.Text, 0, 0, font, opaque(op.Color, BLACK), op.FontID)
+	drawText(source, op.Text, 0, 0, font, op.Color, op.FontID)
 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
 			if op.HasPolygon && !pointInPolygon(float32(x)+0.5, float32(y)+0.5, op.Polygon[:]) {
@@ -535,15 +585,22 @@ func drawRotatedText(img *image.RGBA, op FrameOp) {
 			}
 			pixel := color.NRGBAModel.Convert(source.RGBAAt(sx, sy)).(color.NRGBA)
 			if pixel.A != 0 {
-				setPixel(img, x, y, Color{pixel.R, pixel.G, pixel.B, pixel.A})
+				blendPixel(img, x, y, Color{pixel.R, pixel.G, pixel.B, pixel.A})
 			}
 		}
 	}
 }
 
-func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, fontID uint32) {
-	if drawFontText(img, text, x, y, fontSize, c, fontID) {
+func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, fontID uint32, letterSpacing ...int32) {
+	if c.A == 0 {
 		return
+	}
+	if drawFontText(img, text, x, y, fontSize, c, fontID, letterSpacing...) {
+		return
+	}
+	spacing := 0
+	if len(letterSpacing) > 0 {
+		spacing = int(max(letterSpacing[0], 0))
 	}
 	scale := glyphScale(fontSize)
 	cursor := x
@@ -555,7 +612,7 @@ func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, f
 		}
 		pattern, ok := glyphPattern(r)
 		if !ok {
-			cursor += 6 * scale
+			cursor += 6*scale + spacing
 			continue
 		}
 		for gy, row := range pattern {
@@ -566,7 +623,7 @@ func drawText(img *image.RGBA, text string, x, y int, fontSize int32, c Color, f
 				fillRectPixels(img, cursor+gx*scale, y+gy*scale, scale, scale, c)
 			}
 		}
-		cursor += 6 * scale
+		cursor += 6*scale + spacing
 	}
 }
 
@@ -640,7 +697,8 @@ func fillRectPixels(img *image.RGBA, x, y, w, h int, c Color) {
 	if w <= 0 || h <= 0 {
 		return
 	}
-	draw.Draw(img, image.Rect(x, y, x+w, y+h).Intersect(img.Bounds()), &image.Uniform{C: rgba(c)}, image.Point{}, draw.Src)
+	draw.Draw(img, image.Rect(x, y, x+w, y+h).Intersect(img.Bounds()),
+		image.NewUniform(color.NRGBA{R: c.R, G: c.G, B: c.B, A: c.A}), image.Point{}, draw.Over)
 }
 
 func clipRect(img *image.RGBA, r Rectangle) image.Rectangle {
@@ -649,6 +707,22 @@ func clipRect(img *image.RGBA, r Rectangle) image.Rectangle {
 	x1 := int(math.Ceil(float64(r.X + r.Width)))
 	y1 := int(math.Ceil(float64(r.Y + r.Height)))
 	return image.Rect(x0, y0, x1, y1).Intersect(img.Bounds())
+}
+
+// Surface colors are straight alpha; image.RGBA stores premultiplied channels.
+func blendPixel(img *image.RGBA, x, y int, c Color) {
+	if !image.Pt(x, y).In(img.Bounds()) || c.A == 0 {
+		return
+	}
+	dst := img.RGBAAt(x, y)
+	a := uint32(c.A)
+	remaining := 255 - a
+	img.SetRGBA(x, y, color.RGBA{
+		R: uint8((uint32(c.R)*a + uint32(dst.R)*remaining + 127) / 255),
+		G: uint8((uint32(c.G)*a + uint32(dst.G)*remaining + 127) / 255),
+		B: uint8((uint32(c.B)*a + uint32(dst.B)*remaining + 127) / 255),
+		A: uint8(a + (uint32(dst.A)*remaining+127)/255),
+	})
 }
 
 func setPixel(img *image.RGBA, x, y int, c Color) {

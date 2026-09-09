@@ -1,0 +1,47 @@
+#module "imported_cast"
+#import "counter"
+
+ImportedPhase :: (value: i32) -> Phase #export {
+    return (Phase)value
+}
+
+Selection :: struct {
+    phase: Phase
+}
+
+Change :: (value: Selection, phase: Phase) -> Selection {
+    value.phase = phase
+    return value
+}
+
+CheckEnums :: () -> i32 #export {
+    if SignedPhaseNext != -2 { return 14 }
+    if SignedPhaseLastNegative != -1 { return 15 }
+    if SignedPhaseZero != 0 { return 16 }
+    if SignedPhaseAfterExpression != 7 { return 17 }
+    if SignedPhaseAfterReset != -1 { return 18 }
+    empty: Phase
+    original: Selection
+    if (i32)empty != 0 { return 1 }
+    if original.phase != empty { return 2 }
+    raised: Phase = (Phase)PhaseRaised
+    changed: Selection = Change(original, raised)
+    if original.phase != empty { return 3 }
+    if changed.phase != raised { return 4 }
+    copy: Selection = changed
+    copy.phase = empty
+    if changed.phase != raised { return 5 }
+    selected: Phase = true ? raised : empty
+    if selected != raised { return 6 }
+    selected = empty
+    if selected != empty { return 7 }
+    if (i32)ImportedPhase(-2147483648) != -2147483648 { return 8 }
+    if (i32)ImportedPhase(2147483647) != 2147483647 { return 9 }
+    wide: u64 = 4294967295
+    if (i32)(Phase)wide != -1 { return 10 }
+    if (i32)(Phase)true != 1 { return 11 }
+    if (i32)(Phase)3.75 != 3 { return 12 }
+    literal: Selection = (Selection){.phase=(Phase)PhaseRaised}
+    if literal.phase != raised { return 13 }
+    return 0
+}

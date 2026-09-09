@@ -234,11 +234,11 @@ names, or generated calls to stale prefixed C APIs. Explicit C externs with a
 `c.` target, such as `#extern "c.abs"`, are the opt-in exception: `k2go` emits
 their `import "C"` bridge in a separate generated `*_cgo.go` file.
 
-Handwritten Go can use the same package directly. Generated code keeps the
-explicit props form (`kryon.Button(kryon.ButtonProps{...})`,
-`kryon.TextField(kryon.TextFieldProps{...})`) for deterministic layout/state,
-while app code may use shorter direct calls such as `kryon.Button("Save")` and
-`kryon.TextField("Name", &name)`.
+Handwritten Go uses the same typed Button API as generated code:
+`kryon.Button(kryon.ButtonProps{Label: "Save"})`. Omitted size and font use
+the shared `.kry` defaults; identity is not derived from the label.
+TextField still supports both `kryon.TextField(kryon.TextFieldProps{...})`
+and the direct `kryon.TextField("Name", &name)` form during its migration.
 
 The native Go runtime records each frame as pure Go `FrameOp` values available
 through `FrameOps()`. That operation stream is the host boundary for native Go

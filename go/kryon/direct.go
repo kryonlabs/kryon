@@ -1,11 +1,9 @@
 package kryon
 
 const (
-	directButtonWidth  = 96
-	directButtonHeight = 32
-	directFieldWidth   = 180
-	directFieldHeight  = 32
-	directFieldBytes   = 256
+	directFieldWidth  = 180
+	directFieldHeight = 32
+	directFieldBytes  = 256
 )
 
 type directTextFieldState struct {
@@ -46,18 +44,6 @@ func endDirectFrame() {
 	}
 }
 
-func button(args ...any) bool {
-	if len(args) == 1 {
-		switch v := args[0].(type) {
-		case ButtonProps:
-			return active().Button(v)
-		case string:
-			return active().Button(defaultButtonProps(v))
-		}
-	}
-	return false
-}
-
 func textField(args ...any) bool {
 	if len(args) == 1 {
 		switch v := args[0].(type) {
@@ -80,15 +66,6 @@ func textField(args ...any) bool {
 		return textFieldString(label, value)
 	}
 	return false
-}
-
-func defaultButtonProps(label string) ButtonProps {
-	return ButtonProps{
-		Bounds: Rectangle{Width: directButtonWidth, Height: directButtonHeight},
-		Label:  label,
-		Font:   Text16,
-		ID:     int32(uint64(Key("Button:"+label)) & 0x7fffffff),
-	}
 }
 
 func textFieldString(label string, value *string) bool {

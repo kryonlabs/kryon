@@ -39,7 +39,7 @@ plots_frame :: () #ui {
         InputFloat((InputFloatProps){.bounds = {20,390,220,28}, .id = 927, .label = "Input float", .values = input_floats, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
         InputInt((InputIntProps){.bounds = {20,430,105,28}, .id = 928, .label = "Input int", .values = input_ints, .value_count = 2, .step = 1, .step_fast = 10})
         InputDouble((InputDoubleProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .values = input_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
-        SmallButton((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .id = 930})
+        Button((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .size = ControlSizeSmall, .id = 930})
         InvisibleButton((InvisibleButtonProps){.bounds = {100,475,40,24}, .id = 931})
         ArrowButton((ArrowButtonProps){.bounds = {150,475,30,24}, .id = 932, .direction = 3})
         Bullet((Rectangle){190,475,20,20})

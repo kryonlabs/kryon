@@ -1,0 +1,63 @@
+#module "text"
+#import "style"
+
+# Typeface lookup, shaping and glyph measurement remain host services.
+# Inheritance and layout policy must not differ between renderers.
+TextAppearance :: struct {
+    font: i32
+    color: u32
+    letter_spacing: i32
+}
+
+ResolveTextStyle :: (font: i32, inherited_font: i32, default_font: i32,
+    color: u32, inherited_color: u32, theme_color: u32, inherited_color_set: bool,
+    color_set: bool,
+    disabled: bool, inherited_disabled: bool, letter_spacing: i32) -> TextAppearance #export {
+    style: TextAppearance
+    style.font = ResolveFont(font, inherited_font, default_font)
+    style.color = color
+    # Both explicit and inherited foregrounds may intentionally be transparent.
+    # Presence is independent of alpha; only absent colors use the theme.
+    if !color_set {
+        style.color = theme_color
+        if inherited_color_set {
+            style.color = inherited_color
+        }
+    }
+    # A parent's resolved foreground already includes its disabled style.
+    # An explicit child color still needs disabled presentation of its own.
+    if (disabled || inherited_disabled) &&
+       (color_set || !inherited_color_set || !inherited_disabled) {
+        alpha: u32 = (u32)((float)(style.color & (u32)255) * 0.45)
+        style.color = ((style.color >> (u32)8) << (u32)8) | alpha
+    }
+    style.letter_spacing = letter_spacing
+    if style.letter_spacing < 0 {
+        style.letter_spacing = 0
+    }
+    return style
+}
+
+TextExtent :: (requested: float, measured: float) -> float #export {
+    if requested > 0.0 {
+        return requested
+    }
+    return measured
+}
+
+TextWrapPolicy :: (width: float, requested: i32) -> i32 #export {
+    if width <= 0.0 {
+        return 1
+    }
+    return requested
+}
+
+TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> float #export {
+    if alignment == 1 {
+        return (available - measured) * 0.5
+    }
+    if alignment == 2 {
+        return available - measured
+    }
+    return 0.0
+}

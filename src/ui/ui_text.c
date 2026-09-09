@@ -458,6 +458,11 @@ EnsureUIDefaultFont(void)
         NULL
     };
     char system_font_path[512];
+    static const char *semibold_paths[] = {
+        "fonts/noto/NotoSans-SemiBold.ttf",
+        "../fonts/noto/NotoSans-SemiBold.ttf",
+        "vendor/kryon/fonts/noto/NotoSans-SemiBold.ttf"
+    };
 
     if(g_ui_active_font >= 0 && g_ui_active_font < g_ui_font_count &&
        font_valid(entry_font_for_size(&g_ui_fonts[g_ui_active_font],
@@ -472,6 +477,8 @@ EnsureUIDefaultFont(void)
     for(int i = 0; paths[i] != NULL; i++) {
         if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
            UseUIFont(UI_FONT_DEFAULT_NAME)) {
+            if(font_entry_index("semibold") < 0)
+                RegisterUIFontFileSource("semibold", semibold_paths[i], NULL, 0);
             TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
             return 1;
         }
@@ -1018,6 +1025,22 @@ ui_text_normalize_token_size(int font_size)
     }
 }
 
+static int g_ui_text_letter_spacing;
+
+int
+ui_get_text_letter_spacing(void)
+{
+    return g_ui_text_letter_spacing;
+}
+
+int
+ui_set_text_letter_spacing(int spacing)
+{
+    int previous = g_ui_text_letter_spacing;
+    g_ui_text_letter_spacing = spacing > 0 ? spacing : 0;
+    return previous;
+}
+
 int
 TextWidth(const char *text, int font_size)
 {
@@ -1028,7 +1051,7 @@ TextWidth(const char *text, int font_size)
     if(text == NULL || !UIFontReady(font))
         return 0;
 
-    if(UIFontHasNativeText(font)) {
+    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
         int byte_len = 0;
 
         while(text[byte_len] != '\0' && text[byte_len] != '\n')
@@ -1050,8 +1073,13 @@ TextWidth(const char *text, int font_size)
                      codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)UIFontGlyph(glyph_font, codepoint).advanceX);
         }
-        width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
-                       font_size_scale(glyph_font, normalized_font_size) + 0.5f);
+        if(i > 0)
+            width += g_ui_text_letter_spacing;
+        if(UIFontHasNativeText(glyph_font))
+            width += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        else
+            width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
+                           font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
     return width;
@@ -1106,7 +1134,7 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
     if(text == NULL || byte_len <= 0 || !UIFontReady(font))
         return 0;
 
-    if(UIFontHasNativeText(font))
+    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0)
         return UIFontNativeTextWidth(font, text, byte_len);
 
     for(int i = 0; i < byte_len && text[i] != '\0';) {
@@ -1127,8 +1155,13 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
                      codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)UIFontGlyph(glyph_font, codepoint).advanceX);
         }
-        width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
-                       font_size_scale(glyph_font, normalized_font_size) + 0.5f);
+        if(i > 0)
+            width += g_ui_text_letter_spacing;
+        if(UIFontHasNativeText(glyph_font))
+            width += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        else
+            width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
+                           font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
 
@@ -1164,6 +1197,10 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
         }
         advance = (int)((float)UIFontAdvance(glyph_font, codepoint) *
                         font_size_scale(glyph_font, normalized_font_size) + 0.5f);
+        if(UIFontHasNativeText(glyph_font))
+            advance = UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        if(i + codepoint_byte_count < byte_len)
+            advance += g_ui_text_letter_spacing;
         if(target_x < cursor_x + advance / 2)
             return i;
         cursor_x += advance;
@@ -1215,6 +1252,10 @@ ui_text_draw_selection(const char *text, int x, int y, int font_size,
     line_h = TextLineHeight(font_size);
     start_x = x + ui_text_width_bytes(text, start, font_size);
     end_x = x + ui_text_width_bytes(text, end, font_size);
+    if(start > 0 && text[start] != '\0' && text[start] != '\n')
+        start_x += g_ui_text_letter_spacing;
+    if(end > 0 && text[end] != '\0' && text[end] != '\n')
+        end_x += g_ui_text_letter_spacing;
     if(end_x <= start_x)
         return;
 
@@ -1436,7 +1477,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         }
     }
 
-    if(UIFontHasNativeText(font)) {
+    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
         (void)UIFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
         return;
     }
@@ -1453,6 +1494,14 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
             break;
 
         glyph_font = font_for_codepoint(codepoint, font_size);
+        if(UIFontHasNativeText(glyph_font)) {
+            (void)UIFontDrawNativeText(glyph_font, &text[i], codepoint_byte_count,
+                                      cursor_x, y, font_size, color);
+            cursor_x += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count)
+                        + g_ui_text_letter_spacing;
+            i += codepoint_byte_count;
+            continue;
+        }
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
@@ -1479,7 +1528,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
             DrawTexturePro(UIFontAtlasTexture(glyph_font), src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
         }
 
-        cursor_x += (int)((float)glyph.advanceX * scale + 0.5f);
+        cursor_x += (int)((float)glyph.advanceX * scale + 0.5f) + g_ui_text_letter_spacing;
         i += codepoint_byte_count;
     }
 }

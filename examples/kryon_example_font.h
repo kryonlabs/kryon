@@ -7,21 +7,24 @@
 static void
 LoadExampleUIFont(void)
 {
-    Font font = LoadUIFontAsset("fonts/noto/NotoSans-Regular.ttf",
-                                TextBaseSize);
+    const char *paths[] = {
+        "fonts/noto/NotoSans-Regular.ttf",
+        "../fonts/noto/NotoSans-Regular.ttf",
+        "../../fonts/noto/NotoSans-Regular.ttf"
+    };
+    const char *semibold_paths[] = {
+        "fonts/noto/NotoSans-SemiBold.ttf",
+        "../fonts/noto/NotoSans-SemiBold.ttf",
+        "../../fonts/noto/NotoSans-SemiBold.ttf"
+    };
 
-    if(font.texture.id == 0)
-        font = LoadUIFontAsset("../fonts/noto/NotoSans-Regular.ttf",
-                               TextBaseSize);
-    if(font.texture.id == 0)
-        font = LoadUIFontAsset("../../fonts/noto/NotoSans-Regular.ttf",
-                               TextBaseSize);
-    if(font.texture.id == 0)
-        font = LoadUIFontAsset("/mnt/storage/Projects/kryon/fonts/noto/NotoSans-Regular.ttf",
-                               TextBaseSize);
-    if(font.texture.id != 0) {
-        RegisterUIFont("default", font);
-        UseUIFont("default");
+    /* Retain the source so headings and labels get exact-size rasters. */
+    for(unsigned int i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+        if(RegisterUIFontFileSource("default", paths[i], NULL, 0)) {
+            RegisterUIFontFileSource("semibold", semibold_paths[i], NULL, 0);
+            UseUIFont("default");
+            return;
+        }
     }
 }
 

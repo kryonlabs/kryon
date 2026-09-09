@@ -160,18 +160,21 @@ void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
 void ui_paint_text_box(const char *text, Rectangle bounds, int font,
                        Color color, int wrap, int align, int vertical_align,
-                       int font_token);
+                       int font_token, int letter_spacing);
+int ui_set_text_letter_spacing(int spacing);
+int ui_get_text_letter_spacing(void);
 void DrawUITransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int ui_scrollbar(int x, int y, int viewport_h, int content_h,
                  int *scroll_offset, int max_scroll, int overlay);
 void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
+ButtonProps ui_button_style_props(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 int HandleButton(ButtonSpec button);
-void PaintButton(ButtonSpec button, int hovered, int pressed);
+Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
 int DrawUIIconButton(IconButtonProps button);
 int DrawUIHref(HrefProps link);
 int RenderTextInputControl(TextInputProps input);
@@ -240,7 +243,6 @@ void DrawUISeparatorText(SeparatorTextProps separator);
 int DrawUIDragDropSource(DragDropSourceProps source);
 int DrawUIDragDropTarget(DragDropTargetProps target);
 int DrawUIMultiSelectList(MultiSelectListProps list);
-int DrawUISmallButton(ButtonProps button);
 int DrawUISelectable(SelectableProps selectable);
 int DrawUICheckboxFlags(CheckboxFlagsProps checkbox);
 int DrawUIInvisibleButton(InvisibleButtonProps button);

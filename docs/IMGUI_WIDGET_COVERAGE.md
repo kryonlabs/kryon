@@ -16,7 +16,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
 | Text and value helpers | `Text(TextProps)`, `LabelText`, `BulletText`, `SeparatorText`, `Value*` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation |
-| Buttons and boolean choices | `Button`, `SmallButton`, `InvisibleButton`, `ArrowButton`, `Toggle`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
+| Buttons and boolean choices | `Button` (including `ControlSizeSmall`), `InvisibleButton`, `ArrowButton`, `Toggle`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
 | Progress and links | `Progress`, `Href` | covered; `Href` represents both clickable text and open-URL links |
 | Images | `Picture`, `ImageWithBg`, `ImageButton` | covered; `ImageButton` shares ordinary focus and keyboard activation |
 | Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |

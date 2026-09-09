@@ -112,7 +112,7 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
             layout->elements[i].text_width = TextWidth(layout->elements[i].text, font_size);
     }
 
-    int space_width = TextWidth(" ", font_size);
+    int space_width = TextWidth(" ", font_size) + 2 * ui_get_text_letter_spacing();
     int icon_spacing = Scale(4);
     layout->line_count = 0;
     layout->line_breaks[0] = 0;
@@ -271,7 +271,7 @@ DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
         return;
 
     int current_y = *y;
-    int space_width = TextWidth(" ", font_size);
+    int space_width = TextWidth(" ", font_size) + 2 * ui_get_text_letter_spacing();
     int icon_spacing = Scale(4);
     int line_spacing = (layout->line_height > 0) ? layout->line_height : Scale(4);
     int drawn_line_height = TextLineHeight(font_size);

@@ -19,6 +19,23 @@ if ! grep -q '#include "kry_rlgl_blend.inc"' "$src_dir/rlgl.h"; then
     perl -0pi -e 's/(?=void rlSetBlendMode\(int mode\)\n\{)/#include "kry_rlgl_blend.inc"\n\n/ or die "rlgl blend hook insertion point missing\n"' "$src_dir/rlgl.h"
 fi
 
+# GLES vertex positions and the projection matrix need full precision at
+# desktop-sized coordinates. Keep interpolators at their original precision
+# so the default fragment shader still links on GLES2 implementations.
+# Only the GLES blocks of the default vertex shader are changed.
+perl -0pi -e '
+    s{(const char \*defaultVShaderCode =.*?)(?=const char \*defaultFShaderCode =)}{
+        my $vertex = $1;
+        $vertex =~ s{(\#(?:if|elif) defined\(GRAPHICS_API_OPENGL_ES[23]\)\n)(.*?)(?=^\#(?:elif|endif))}{
+            my ($directive, $body) = ($1, $2);
+            $body =~ s/precision mediump float/precision highp float/g;
+            $body =~ s/\b(out|varying) vec([24]) frag/$1 mediump vec$2 frag/g;
+            $directive . $body;
+        }gmse;
+        $vertex;
+    }gse;
+' "$src_dir/rlgl.h"
+
 if [ -f "$sdl_core" ] && ! grep -q 'Kryon: avoid X11 Font typedef collision' "$sdl_core"; then
     perl -0pi -e 's@(#elif defined\(USING_SDL2_PROJECT\)\n\s*#include "SDL2/SDL\.h"\n)(\s*#include "SDL2/SDL_syswm\.h"\s*// Required to get window handlers)@$1    // Kryon: avoid X11 Font typedef collision when SDL_syswm.h pulls X11 headers.\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #define Font X11Font\n    #endif\n$2\n    #if defined(__unix__) \&\& !defined(__APPLE__)\n        #undef Font\n    #endif@' "$sdl_core"
 fi

@@ -74,16 +74,56 @@ type_name(const ExprParser *p, const char *s)
         "signed", "unsigned", "const", "volatile", "size_t", "ptrdiff_t",
         "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t",
         "uint32_t", "uint64_t", "intptr_t", "uintptr_t", "i8", "i16", "i32",
-        "i64", "u8", "u16", "u32", "u64", "isize", "usize", "f32", "f64", NULL
+        "i64", "u8", "u16", "u32", "u64", "isize", "usize", "f32", "f64", "string", NULL
     };
     for(int i = 0; names[i]; i++) if(!strcmp(s, names[i])) return 1;
-    if(p->module)
-        for(int i = 0; i < p->module->type_count; i++)
-            if(!strcmp(s, p->module->types[i].name)) return 1;
-    return 0;
+    return p->module != NULL && KirFindType(p->module, s, NULL) != NULL;
 }
 
 static int expression(ExprParser *p, int minimum);
+
+static int
+record_initializer(ExprParser *p, size_t start, const char *type)
+{
+    int first = -1;
+    int last = -1;
+    expect(p, "{");
+    while(!p->failed && !is(p, "}") && p->token.kind != KIR_TOKEN_EOF) {
+        size_t field_start = p->begin;
+        char name[KIR_NAME_MAX] = "";
+        int named = take(p, ".");
+        if(named) {
+            if(p->token.kind != KIR_TOKEN_IDENT) {
+                p->failed = 1;
+                break;
+            }
+            kir_copy(name, sizeof(name), p->token.text);
+            next(p);
+            expect(p, "=");
+        }
+        int value = expression(p, 1);
+        if(value < 0) {
+            p->failed = 1;
+            break;
+        }
+        int field = node(p, KIR_EXPR_FIELD_INIT, field_start, name,
+                         named ? "=" : "", -1, value);
+        if(field < 0)
+            break;
+        if(last >= 0)
+            p->fn->exprs[last].next_sibling = field;
+        else
+            first = field;
+        last = field;
+        if(!take(p, ","))
+            break;
+    }
+    expect(p, "}");
+    int result = node(p, KIR_EXPR_COMPOUND, start, type, "", -1, -1);
+    if(result >= 0)
+        p->fn->exprs[result].first_child = first;
+    return result;
+}
 
 static int
 prefix(ExprParser *p)
@@ -122,9 +162,11 @@ prefix(ExprParser *p)
             memcpy(type, p->source + ts, length); type[length] = 0;
             kir_trim_in_place(type);
             expect(p, ")");
-            if(is(p, "{")) {
-                /* Compound initializers remain explicitly opaque until their
-                 * designated-field representation is available. */
+            const KirType *record = p->module ? KirFindType(p->module, type, NULL) : NULL;
+            if(is(p, "{") && record != NULL && !record->is_enum) {
+                result = record_initializer(p, start, type);
+            } else if(is(p, "{")) {
+                /* Foreign C aggregates retain their backend-owned syntax. */
                 int depth = 0;
                 do {
                     if(is(p, "{")) depth++;

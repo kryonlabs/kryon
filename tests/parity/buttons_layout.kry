@@ -7,6 +7,28 @@ app "Generated Buttons Layout Parity" {
 
 state {
     buttons_action: int = 0
+    buttons_reverse: bool = false
+}
+
+ActionProps :: struct {
+    x: float
+    y: float
+    width: float
+    height: float
+    id: i32
+    amount: i32
+}
+
+# Application-defined composition: block props must reach the real Button
+# runtime, including its theme defaults and activation result.
+CancelAction :: (props: ActionProps) -> bool #ui {
+    activated: bool = Button((ButtonProps){.bounds = {props.x, props.y, props.width, props.height},
+        .label = "Cancel", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+        .font = Text16, .id = props.id})
+    if activated {
+        buttons_action += props.amount
+    }
+    return activated
 }
 
 disabled_return_scope :: () {
@@ -31,6 +53,8 @@ disabled_loop_scope :: () {
 }
 
 buttons_frame :: () #ui {
+    label_align: TextAlign = TextAlignStart
+    label_wrap: TextWrap = TextWrapNone
     disabled_return_scope()
     disabled_loop_scope()
     Screen root: {
@@ -39,7 +63,7 @@ buttons_frame :: () #ui {
             gap = 6
             padding = 6
             key = Key("layout-column")
-            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Actions", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Actions", .font=Text16, .typeface="missing-face", .letter_spacing=2, .color=GetThemeText(), .align=label_align, .wrap=label_wrap})
             Row layout_row: {
                 bounds = {0,0,200,36}
                 gap = 8
@@ -54,8 +78,33 @@ buttons_frame :: () #ui {
                         }
                     }
                 }
-                if Button((ButtonProps){.bounds = {120,120,80,32}, .label = "Cancel", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 502}) {
-                    buttons_action += 10
+                if buttons_reverse {
+                    CancelAction second: {
+                        x = 220
+                        y = 120
+                        width = 80
+                        height = 32
+                        id = 503
+                        amount = 100
+                    }
+                }
+                CancelAction cancel: {
+                    x = 120
+                    y = 120
+                    width = 80
+                    height = 32
+                    id = 502
+                    amount = 10
+                }
+                if !buttons_reverse {
+                    CancelAction second: {
+                        x = 220
+                        y = 120
+                        width = 80
+                        height = 32
+                        id = 503
+                        amount = 100
+                    }
                 }
             }
         }

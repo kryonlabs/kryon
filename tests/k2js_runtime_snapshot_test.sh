@@ -117,7 +117,7 @@ const expected = new Map([
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
-  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "SmallButton", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Text", "Text", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt", "ValueUInt", "ValueFloat"]],
+  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "Button", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Text", "Text", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt", "ValueUInt", "ValueFloat"]],
   ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
   ["tests/parity/selection_images.js", ["Screen", "Selectable", "CheckboxFlags", "ImageWithBg", "ImageButton", "SeparatorText", "TabItemButton", "ClosableTabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
@@ -132,10 +132,19 @@ for (const [relPath, widgets] of expected) {
   const snap = mod.frame(undefined, state);
   const got = snap.frame.map((item) => item.name);
   if (relPath === "examples/02_buttons.js") {
-    assert.equal(got.filter((name) => name === "Button").length, 71,
-      `${relPath}: complete button matrix`);
-    assert.ok(got.includes("Screen") && got.includes("Rect") && got.includes("Text"),
+    assert.equal(got.filter((name) => name === "Button").length, 172,
+      `${relPath}: complete split-theme button matrices`);
+    assert.equal(got.filter((name) => name === "SplitButton" || name === "MenuButton").length, 8,
+      `${relPath}: split-theme compound controls`);
+    const headings = snap.frame.filter((item) => item.name === "Text").map((item) => item.args.text);
+    assert.ok(headings.includes("DARK THEME") && headings.includes("LIGHT THEME"),
+      `${relPath}: evaluated split-theme headings`);
+    assert.ok(got.includes("Screen") && got.includes("Text"),
       `${relPath}: required layout primitives`);
+    // Surface calls are currently recorded statements, not JS raster output.
+    // The example uses shared styled surfaces, not the former Rect panels.
+    assert.equal(snap.statements.filter((item) => /^Surface\(/.test(item.text)).length, 1540,
+      `${relPath}: shared header columns and two theme panel surfaces`);
     continue;
   }
   assert.deepEqual(got, widgets, `${relPath}: recorded widget stream`);

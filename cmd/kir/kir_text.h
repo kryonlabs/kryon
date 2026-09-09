@@ -10,6 +10,8 @@ char *kir_trim(char *s);
 char *kir_trim_in_place(char *s);
 void kir_strip_block_brace(char *s);
 void kir_camel_ident(const char *s, char *dst, size_t dst_size);
+/* One Go field spelling for declarations, initializers, reads, and writes. */
+void kir_go_field_ident(const char *s, char *dst, size_t dst_size);
 int kir_split_top(const char *s, char *parts, int max, size_t part_size);
 
 #endif /* KRYON_KIR_TEXT_H */

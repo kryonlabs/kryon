@@ -263,6 +263,7 @@ func DrawRing(center Vector2, innerRadius, outerRadius, startAngle, endAngle any
 	active().DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color)
 }
 func Rect(x, y, w, h int32, color Color, rest ...Color) { active().Rect(x, y, w, h, color, rest...) }
+func Surface(bounds Rectangle, style Style)             { active().Surface(bounds, style) }
 func RectGradientH(x, y, w, h int32, left, right Color) {
 	active().RectGradientH(x, y, w, h, left, right)
 }
@@ -280,7 +281,7 @@ func EndTableCell() { active().EndTableCell() }
 func BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	return active().BeginScroll(bounds, contentHeight, offset)
 }
-func Button(args ...any) bool                { return button(args...) }
+func Button(props ButtonProps) bool          { return active().Button(props) }
 func BeginButton(props ButtonProps)          { active().BeginButton(props) }
 func MenuButton(props MenuButtonProps) int32 { return active().MenuButton(props) }
 func SplitButton(props SplitButtonProps) SplitButtonResult {
@@ -292,7 +293,6 @@ func ImageWithBg(props ImageWithBgProps)               { active().ImageWithBg(pr
 func ImageButton(props ImageButtonProps) bool          { return active().ImageButton(props) }
 func TabItemButton(props TabItemButtonProps) bool      { return active().TabItemButton(props) }
 func ClosableTabBar(props ClosableTabBarProps) int32   { return active().ClosableTabBar(props) }
-func SmallButton(props ButtonProps) bool               { return active().SmallButton(props) }
 func InvisibleButton(props InvisibleButtonProps) bool  { return active().InvisibleButton(props) }
 func ArrowButton(props ArrowButtonProps) bool          { return active().ArrowButton(props) }
 func Bullet(bounds Rectangle)                          { active().Bullet(bounds) }
@@ -361,6 +361,7 @@ func Flow(props FlowProps)                           { active().Flow(props) }
 func PageGrid(props GridProps)                       { active().PageGrid(props) }
 func Fade(c Color, alpha float32) Color              { return active().Fade(c, alpha) }
 func GetThemeSurface() Color                         { return active().GetThemeSurface() }
+func GetThemeBorder() Color                          { return active().GetThemeBorder() }
 func GetThemeButton() Color                          { return active().GetThemeButton() }
 func GetThemeButtonHover() Color                     { return active().GetThemeButtonHover() }
 func GetThemeLink() Color                            { return active().GetThemeLink() }
@@ -454,5 +455,6 @@ func SetThemeDarkMode(dark int32)             { active().SetThemeDarkMode(dark) 
 func SetThemeStyle(style ThemeStyle)          { active().SetThemeStyle(style) }
 func SetThemeSource(source ThemeSource)       { active().SetThemeSource(source) }
 func SetThemeMode(mode ThemeMode)             { active().SetThemeMode(mode) }
+func GetThemeMode() ThemeMode                 { return active().GetThemeMode() }
 func GetThemeScheme() DefaultScheme           { return active().GetThemeScheme() }
 func SystemThemePrefersDark() bool            { return systemPrefersDark() }

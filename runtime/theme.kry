@@ -1,4 +1,7 @@
 #module "theme"
+DefaultStyleValue :: () -> i32 #export {
+    return 2
+}
 
 Mode :: enum {
     PolicyModeSystem = 0
@@ -10,4 +13,183 @@ ResolveDark :: (mode: i32, system_dark: bool) -> bool #export {
     if mode == PolicyModeLight { return false }
     if mode == PolicyModeDark { return true }
     return system_dark
+}
+
+# Canonical light/dark palette. Hosts only unpack these RGBA values.
+Palette :: struct {
+    background: u32
+    surface: u32
+    surface_raised: u32
+    surface_sunken: u32
+    overlay: u32
+    text: u32
+    text_muted: u32
+    text_disabled: u32
+    icon: u32
+    icon_muted: u32
+    border: u32
+    border_strong: u32
+    divider: u32
+    focus: u32
+    selection: u32
+    accent: u32
+    on_accent: u32
+    accent_hover: u32
+    accent_pressed: u32
+    success: u32
+    on_success: u32
+    warning: u32
+    on_warning: u32
+    danger: u32
+    on_danger: u32
+    info: u32
+    on_info: u32
+    link: u32
+    link_hover: u32
+    shadow: u32
+}
+
+PackedColor :: (rgb: u32, alpha: u32) -> u32 #export {
+    return (rgb << (u32)8) | alpha
+}
+
+DefaultPalette :: (dark: bool) -> Palette #export {
+    palette: Palette
+    if dark {
+        palette.background = PackedColor((u32)0x001D38, (u32)255)
+        palette.surface = PackedColor((u32)0x092039, (u32)255)
+        palette.surface_raised = PackedColor((u32)0x153858, (u32)255)
+        palette.surface_sunken = PackedColor((u32)0x04172B, (u32)255)
+        palette.overlay = PackedColor((u32)0x000000, (u32)217)
+        palette.text = PackedColor((u32)0xF5F8FF, (u32)255)
+        palette.text_muted = PackedColor((u32)0xA9BBD1, (u32)255)
+        palette.text_disabled = PackedColor((u32)0x72839A, (u32)255)
+        palette.icon = PackedColor((u32)0xD8E5F5, (u32)255)
+        palette.icon_muted = PackedColor((u32)0xA9BBD1, (u32)255)
+        palette.border = PackedColor((u32)0x315C85, (u32)255)
+        palette.border_strong = PackedColor((u32)0x315C85, (u32)255)
+        palette.divider = PackedColor((u32)0x315C85, (u32)255)
+        palette.focus = PackedColor((u32)0x409CFF, (u32)255)
+        palette.selection = PackedColor((u32)0x1E6DE0, (u32)255)
+        palette.accent = PackedColor((u32)0x006CFF, (u32)255)
+        palette.on_accent = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.accent_hover = PackedColor((u32)0x1689FF, (u32)255)
+        palette.accent_pressed = PackedColor((u32)0x0055D4, (u32)255)
+        palette.success = PackedColor((u32)0x009F7A, (u32)255)
+        palette.on_success = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.warning = PackedColor((u32)0xC88B00, (u32)255)
+        palette.on_warning = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.danger = PackedColor((u32)0xF0162A, (u32)255)
+        palette.on_danger = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.info = PackedColor((u32)0x168BD2, (u32)255)
+        palette.on_info = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.link = PackedColor((u32)0x00BBFF, (u32)255)
+        palette.link_hover = PackedColor((u32)0x8AC2FF, (u32)255)
+        palette.shadow = PackedColor((u32)0x000000, (u32)128)
+    } else {
+        palette.background = PackedColor((u32)0xF8FBFF, (u32)255)
+        palette.surface = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.surface_raised = PackedColor((u32)0xEDF4FC, (u32)255)
+        palette.surface_sunken = PackedColor((u32)0xEAF2FC, (u32)255)
+        palette.overlay = PackedColor((u32)0x000000, (u32)102)
+        palette.text = PackedColor((u32)0x002553, (u32)255)
+        palette.text_muted = PackedColor((u32)0x536A83, (u32)255)
+        palette.text_disabled = PackedColor((u32)0x809BBB, (u32)255)
+        palette.icon = PackedColor((u32)0x183C63, (u32)255)
+        palette.icon_muted = PackedColor((u32)0x536A83, (u32)255)
+        palette.border = PackedColor((u32)0xC5DDF6, (u32)255)
+        palette.border_strong = PackedColor((u32)0xC5DDF6, (u32)255)
+        palette.divider = PackedColor((u32)0xC5DDF6, (u32)255)
+        # A restrained violet-blue edge on pale material. Explicit focus
+        # overrides retain their own alpha in the shared surface policy.
+        palette.focus = PackedColor((u32)0x064CFF, (u32)179)
+        palette.selection = PackedColor((u32)0xD8E9FF, (u32)255)
+        palette.accent = PackedColor((u32)0x006CFF, (u32)255)
+        palette.on_accent = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.accent_hover = PackedColor((u32)0x2184FF, (u32)255)
+        palette.accent_pressed = PackedColor((u32)0x0A4DB8, (u32)255)
+        palette.success = PackedColor((u32)0x00856A, (u32)255)
+        palette.on_success = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.warning = PackedColor((u32)0xB57800, (u32)255)
+        palette.on_warning = PackedColor((u32)0x211400, (u32)255)
+        palette.danger = PackedColor((u32)0xDC1524, (u32)255)
+        palette.on_danger = PackedColor((u32)0xFFFFFF, (u32)255)
+        palette.info = PackedColor((u32)0x087CBF, (u32)255)
+        palette.on_info = PackedColor((u32)0xFFFFFF, (u32)255)
+        # Link ink is a deeper blue than the luminous accent material.
+        palette.link = PackedColor((u32)0x0033FF, (u32)255)
+        palette.link_hover = PackedColor((u32)0x034BA9, (u32)255)
+        palette.shadow = PackedColor((u32)0x17324D, (u32)36)
+    }
+    return palette
+}
+
+Metrics :: struct {
+    radius_small: float
+    radius_medium: float
+    radius_large: float
+    radius_pill: float
+    border_width: float
+    focus_width: float
+    focus_gap: float
+    space_1: float
+    space_2: float
+    space_3: float
+    space_4: float
+    space_5: float
+    space_6: float
+    control_height_small: float
+    control_height_medium: float
+    control_height_large: float
+    control_padding_small: float
+    control_padding_medium: float
+    control_padding_large: float
+    control_gap: float
+    font_size_small: float
+    font_size_medium: float
+    font_size_large: float
+    icon_size_small: float
+    icon_size_medium: float
+    icon_size_large: float
+    shadow_offset_y: float
+    shadow_blur: float
+    disabled_opacity: float
+    transition_fast_ms: float
+    transition_normal_ms: float
+}
+
+DefaultMetrics :: () -> Metrics #export {
+    metrics: Metrics
+    metrics.radius_small = 4.0
+    metrics.radius_medium = 8.0
+    metrics.radius_large = 12.0
+    metrics.radius_pill = 999.0
+    metrics.border_width = 1.0
+    metrics.focus_width = 2.0
+    metrics.focus_gap = 2.0
+    metrics.space_1 = 4.0
+    metrics.space_2 = 8.0
+    metrics.space_3 = 12.0
+    metrics.space_4 = 16.0
+    metrics.space_5 = 24.0
+    metrics.space_6 = 32.0
+    metrics.control_height_small = 32.0
+    metrics.control_height_medium = 40.0
+    metrics.control_height_large = 48.0
+    metrics.control_padding_small = 12.0
+    metrics.control_padding_medium = 16.0
+    metrics.control_padding_large = 20.0
+    metrics.control_gap = 8.0
+    metrics.font_size_small = 16.0
+    metrics.font_size_medium = 18.0
+    metrics.font_size_large = 20.0
+    metrics.icon_size_small = 14.0
+    metrics.icon_size_medium = 18.0
+    metrics.icon_size_large = 20.0
+    metrics.shadow_offset_y = 2.0
+    metrics.shadow_blur = 8.0
+    metrics.disabled_opacity = 0.45
+    metrics.transition_fast_ms = 80.0
+    metrics.transition_normal_ms = 140.0
+    return metrics
 }

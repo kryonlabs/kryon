@@ -23,21 +23,22 @@ static int current_theme_id = THEME_MONO;
 #if defined(KRYON_PLATFORM_PLAN9)
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
+static ThemeStyle theme_style = (ThemeStyle)-1;
 #else
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
+static ThemeStyle theme_style = (ThemeStyle)-1;
 #endif
 
 #else
 static int current_theme_id = THEME_MONO;
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = THEME_STYLE_SYSTEM;
+static ThemeStyle theme_style = (ThemeStyle)-1;
 #endif
 
 static Theme active_theme;
+static int default_theme_enabled = 1;
 static int active_theme_set = 0;
 static char active_theme_name[THEME_NAME_SIZE];
 static ThemeFamily active_theme_family;
@@ -688,6 +689,7 @@ void ReloadThemes(void)
 void
 SetThemeSource(ThemeSource source)
 {
+    default_theme_enabled = 0;
     if(source != THEME_SOURCE_SYSTEM)
         source = THEME_SOURCE_APP;
     theme_source = source;
@@ -716,8 +718,8 @@ SetThemeMode(ThemeMode mode)
         active_theme.mode = dark_mode ? THEME_MODE_DARK : THEME_MODE_LIGHT;
         active_theme_set = 1;
         SetThemeMetrics(active_theme.metrics);
-        ApplyCurrentTheme();
     }
+    ApplyCurrentTheme();
 }
 
 ThemeMode
@@ -738,15 +740,16 @@ SetThemeStyle(ThemeStyle style)
 ThemeStyle
 GetThemeStyle(void)
 {
-    return theme_style;
+    return (int)theme_style < 0 ? (ThemeStyle)DefaultStyleValue() : theme_style;
 }
 
 ThemeStyle
 GetEffectiveThemeStyle(void)
 {
-    if(theme_style == THEME_STYLE_SYSTEM)
+    ThemeStyle style = GetThemeStyle();
+    if(style == THEME_STYLE_SYSTEM)
         return GetDefaultPlatformThemeStyle();
-    return theme_style;
+    return style;
 }
 
 ThemeStyle
@@ -843,6 +846,7 @@ GetEffectiveThemeDarkMode(void)
 void
 SetCurrentTheme(int theme_id, int current_dark_mode)
 {
+    default_theme_enabled = 0;
     active_theme_family_set = 0;
     active_theme_set = 0;
     current_theme_id = NormalizeTheme(theme_id);
@@ -854,8 +858,9 @@ Color
 GetCurrentThemeColor(const char *key)
 {
     Color color = BLANK;
-    if(active_theme_set) {
-        ThemeColors *colors = &active_theme.colors;
+    const Theme *resolved = GetThemeRef();
+    if(resolved != NULL) {
+        const ThemeColors *colors = &resolved->colors;
         if(strcmp(key, "background") == 0) color = colors->background;
         else if(strcmp(key, "surface") == 0) color = colors->surface;
         else if(strcmp(key, "text") == 0) color = colors->text;
@@ -865,6 +870,9 @@ GetCurrentThemeColor(const char *key)
         else if(strcmp(key, "icon") == 0) color = colors->icon;
         else if(strcmp(key, "link") == 0) color = colors->link;
         else if(strcmp(key, "border") == 0) color = colors->border;
+        else if(strcmp(key, "text_muted") == 0) color = colors->text_muted;
+        else if(strcmp(key, "selection") == 0) color = colors->selection;
+        else if(strcmp(key, "on_accent") == 0) color = colors->on_accent;
         goto apply_alpha;
     }
     if(theme_source == THEME_SOURCE_SYSTEM) {
@@ -883,64 +891,41 @@ static Theme
 theme_default(int dark)
 {
     Theme theme;
+    Palette palette = DefaultPalette(dark != 0);
     memset(&theme, 0, sizeof(theme));
     theme.name = dark ? "Default dark" : "Default light";
     theme.mode = dark ? THEME_MODE_DARK : THEME_MODE_LIGHT;
     theme.metrics = GetThemeMetricsForThemeStyle(THEME_STYLE_DEFAULT);
-    if(dark) {
-        theme.colors.background=(Color){0x07,0x14,0x26,0xFF};
-        theme.colors.surface=(Color){0x0D,0x21,0x38,0xFF};
-        theme.colors.surface_raised=(Color){0x12,0x2B,0x48,0xFF};
-        theme.colors.surface_sunken=(Color){0x08,0x1A,0x2E,0xFF};
-        theme.colors.text=(Color){0xF5,0xF8,0xFF,0xFF};
-        theme.colors.text_muted=(Color){0xA9,0xBB,0xD1,0xFF};
-        theme.colors.text_disabled=(Color){0x72,0x83,0x9A,0xFF};
-        theme.colors.icon=(Color){0xD8,0xE5,0xF5,0xFF};
-        theme.colors.border=(Color){0x31,0x50,0x6F,0xFF};
-        theme.colors.focus=(Color){0x4D,0xA3,0xFF,0xFF};
-        theme.colors.selection=(Color){0x1E,0x6D,0xE0,0xFF};
-        theme.colors.accent=(Color){0x14,0x78,0xFF,0xFF};
-        theme.colors.on_accent=RAYWHITE;
-        theme.colors.accent_hover=(Color){0x2D,0x8C,0xFF,0xFF};
-        theme.colors.accent_pressed=(Color){0x08,0x62,0xD9,0xFF};
-        theme.colors.success=(Color){0x07,0x96,0x69,0xFF};
-        theme.colors.warning=(Color){0xC8,0x87,0x00,0xFF};
-        theme.colors.danger=(Color){0xDC,0x2F,0x4F,0xFF};
-        theme.colors.info=(Color){0x16,0x8B,0xD2,0xFF};
-        theme.colors.link=(Color){0x59,0xA8,0xFF,0xFF};
-        theme.colors.link_hover=(Color){0x8A,0xC2,0xFF,0xFF};
-    } else {
-        theme.colors.background=(Color){0xF5,0xF8,0xFC,0xFF};
-        theme.colors.surface=RAYWHITE;
-        theme.colors.surface_raised=RAYWHITE;
-        theme.colors.surface_sunken=(Color){0xEA,0xF1,0xF8,0xFF};
-        theme.colors.text=(Color){0x10,0x23,0x3A,0xFF};
-        theme.colors.text_muted=(Color){0x53,0x6A,0x83,0xFF};
-        theme.colors.text_disabled=(Color){0x8C,0x9A,0xA9,0xFF};
-        theme.colors.icon=(Color){0x18,0x3C,0x63,0xFF};
-        theme.colors.border=(Color){0xC5,0xD4,0xE3,0xFF};
-        theme.colors.focus=(Color){0x06,0x6C,0xFF,0xFF};
-        theme.colors.selection=(Color){0xD8,0xE9,0xFF,0xFF};
-        theme.colors.accent=(Color){0x17,0x69,0xE8,0xFF};
-        theme.colors.on_accent=RAYWHITE;
-        theme.colors.accent_hover=(Color){0x0F,0x5E,0xD8,0xFF};
-        theme.colors.accent_pressed=(Color){0x0A,0x4D,0xB8,0xFF};
-        theme.colors.success=(Color){0x07,0x80,0x5A,0xFF};
-        theme.colors.warning=(Color){0xB5,0x6D,0x00,0xFF};
-        theme.colors.danger=(Color){0xD6,0x24,0x45,0xFF};
-        theme.colors.info=(Color){0x08,0x7C,0xBF,0xFF};
-        theme.colors.link=(Color){0x07,0x5F,0xD1,0xFF};
-        theme.colors.link_hover=(Color){0x03,0x4B,0xA9,0xFF};
-    }
-    theme.colors.on_success=RAYWHITE;
-    theme.colors.on_warning=GetThemeReadableText(theme.colors.warning);
-    theme.colors.on_danger=RAYWHITE;
-    theme.colors.on_info=RAYWHITE;
-    theme.colors.icon_muted=theme.colors.text_muted;
-    theme.colors.border_strong=theme.colors.border;
-    theme.colors.divider=theme.colors.border;
-    theme.colors.overlay=(Color){0,0,0,dark ? 0xD9 : 0x66};
-    theme.colors.shadow=(Color){0,0,0,dark ? 0x80 : 0x24};
+    theme.colors.background = GetColor(palette.background);
+    theme.colors.surface = GetColor(palette.surface);
+    theme.colors.surface_raised = GetColor(palette.surface_raised);
+    theme.colors.surface_sunken = GetColor(palette.surface_sunken);
+    theme.colors.overlay = GetColor(palette.overlay);
+    theme.colors.text = GetColor(palette.text);
+    theme.colors.text_muted = GetColor(palette.text_muted);
+    theme.colors.text_disabled = GetColor(palette.text_disabled);
+    theme.colors.icon = GetColor(palette.icon);
+    theme.colors.icon_muted = GetColor(palette.icon_muted);
+    theme.colors.border = GetColor(palette.border);
+    theme.colors.border_strong = GetColor(palette.border_strong);
+    theme.colors.divider = GetColor(palette.divider);
+    theme.colors.focus = GetColor(palette.focus);
+    theme.colors.selection = GetColor(palette.selection);
+    theme.colors.accent = GetColor(palette.accent);
+    theme.colors.on_accent = GetColor(palette.on_accent);
+    theme.colors.accent_hover = GetColor(palette.accent_hover);
+    theme.colors.accent_pressed = GetColor(palette.accent_pressed);
+    theme.colors.success = GetColor(palette.success);
+    theme.colors.on_success = GetColor(palette.on_success);
+    theme.colors.warning = GetColor(palette.warning);
+    theme.colors.on_warning = GetColor(palette.on_warning);
+    theme.colors.danger = GetColor(palette.danger);
+    theme.colors.on_danger = GetColor(palette.on_danger);
+    theme.colors.info = GetColor(palette.info);
+    theme.colors.on_info = GetColor(palette.on_info);
+    theme.colors.link = GetColor(palette.link);
+    theme.colors.link_hover = GetColor(palette.link_hover);
+    theme.colors.shadow = GetColor(palette.shadow);
     return theme;
 }
 
@@ -950,6 +935,7 @@ Theme ThemeDefaultDark(void) { return theme_default(1); }
 void
 SetTheme(Theme theme)
 {
+    default_theme_enabled = 0;
     active_theme_family_set = 0;
     snprintf(active_theme_name, sizeof(active_theme_name), "%s",
              theme.name != NULL ? theme.name : "Theme");
@@ -965,6 +951,7 @@ SetTheme(Theme theme)
 void
 SetThemeFamily(ThemeFamily family)
 {
+    default_theme_enabled = 0;
     snprintf(active_theme_family_name, sizeof(active_theme_family_name), "%s",
              family.name != NULL ? family.name : "Theme family");
     snprintf(active_theme_light_name, sizeof(active_theme_light_name), "%s",
@@ -988,12 +975,23 @@ GetThemeFamily(void)
     ThemeFamily family;
     if(active_theme_family_set)
         return active_theme_family;
+    if(default_theme_enabled)
+        return (ThemeFamily){.name = "Default", .light = ThemeDefaultLight(), .dark = ThemeDefaultDark()};
     memset(&family, 0, sizeof(family));
     return family;
 }
 
 Theme GetTheme(void) { return active_theme_set ? active_theme : theme_default(GetEffectiveThemeDarkMode()); }
-const Theme *GetThemeRef(void) { return active_theme_set ? &active_theme : NULL; }
+const Theme *GetThemeRef(void)
+{
+    static Theme defaults;
+    if(active_theme_set)
+        return &active_theme;
+    if(!default_theme_enabled)
+        return NULL;
+    defaults = theme_default(GetEffectiveThemeDarkMode());
+    return &defaults;
+}
 
 static int
 theme_luminance(Color color)
@@ -1070,7 +1068,13 @@ Color GetThemeSurface(void) { return GetCurrentThemeColor("surface"); }
 Color GetThemeCircle(void) { return GetCurrentThemeColor("circle"); }
 Color GetThemeButton(void) { return GetCurrentThemeColor("button"); }
 Color GetThemeButtonHover(void) { return GetCurrentThemeColor("button_hover"); }
-Color GetThemeIcon(void) { return theme_readable_semantic_color("icon", "surface"); }
+Color
+GetThemeIcon(void)
+{
+    if(GetThemeRef() != NULL)
+        return GetCurrentThemeColor("icon");
+    return theme_readable_semantic_color("icon", "surface");
+}
 Color GetThemeLink(void) { return GetCurrentThemeColor("link"); }
 
 Color
@@ -1083,6 +1087,8 @@ GetThemeSurfaceAlt(void)
 Color
 GetThemeBorder(void)
 {
+    if(GetThemeRef() != NULL)
+        return GetCurrentThemeColor("border");
     return MixThemeColor(GetThemeText(), GetThemeSurface(),
                          IsThemeColorDark(GetThemeBackground()) ? 0.70f : 0.80f);
 }
@@ -1090,6 +1096,8 @@ GetThemeBorder(void)
 Color
 GetThemeMutedText(void)
 {
+    if(GetThemeRef() != NULL)
+        return GetCurrentThemeColor("text_muted");
     return MixThemeColor(GetThemeText(), GetThemeSurface(),
                          IsThemeColorDark(GetThemeBackground()) ? 0.36f : 0.48f);
 }
@@ -1097,6 +1105,8 @@ GetThemeMutedText(void)
 Color
 GetThemeSelection(void)
 {
+    if(GetThemeRef() != NULL)
+        return GetCurrentThemeColor("selection");
     return MixThemeColor(GetThemeSurface(), GetThemeButton(),
                          IsThemeColorDark(GetThemeBackground()) ? 0.26f : 0.16f);
 }
@@ -1104,5 +1114,7 @@ GetThemeSelection(void)
 Color
 GetThemeButtonText(void)
 {
+    if(GetThemeRef() != NULL)
+        return GetCurrentThemeColor("on_accent");
     return GetThemeReadableText(GetThemeButton());
 }

@@ -17,7 +17,7 @@ func TestHostFrameQueuesInputAndRenders(t *testing.T) {
 		})
 		Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "Host", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
 		TextField("Name", &value)
-		Button("Save")
+		Button(ButtonProps{Label: "Save"})
 		End()
 		EndFrame()
 	}

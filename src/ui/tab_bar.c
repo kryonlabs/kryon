@@ -639,7 +639,7 @@ DrawUITabBar(TabBarProps bar)
             } else if(ui_default_style()) {
                 ui_paint_text_box(tab->label, text_rect, font, text_color,
                                   TextWrapNone, TextAlignCenter,
-                                  TextAlignCenter, ui_active_font_token());
+                                  TextAlignCenter, ui_active_font_token(), 0);
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }

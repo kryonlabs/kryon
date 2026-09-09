@@ -73,6 +73,12 @@ export interface ThemeFamilyValue {
 }
 
 export function createRuntime(options?: RuntimeOptions): Runtime;
+export function viewport(rt: Runtime, app?: AppMeta | null): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 export function beginFrame(rt: Runtime): Runtime;
 export function endFrame(rt: Runtime): ReturnType<typeof snapshot>;
 export function snapshot(rt: Runtime): {
@@ -85,6 +91,8 @@ export function widget(rt: Runtime, name: string, args: string, state?: Record<s
 export function statement(rt: Runtime, text: string): RuntimeItem;
 export function expr(text: string): { kind: "expr"; text: string };
 export function struct(type: string, value: unknown): { type: string; value: unknown };
+export function copyValue<T>(value: T): T;
+export function recordValue<T>(type: string, value: T): T;
 export function ref<T>(object: Record<string, T>, key: string): Ref<T>;
 export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
@@ -112,6 +120,8 @@ export function SetTheme(theme: ThemeValue): void;
 export function SetThemeFamily(family: ThemeFamilyValue): void;
 export function GetThemeFamily(): ThemeFamilyValue | null;
 export function GetTheme(): ThemeValue;
+export function SetThemeMode(mode: number): void;
+export function GetThemeMode(): number;
 export function GetThemeButton(): ColorValue;
 export function GetThemeIcon(): ColorValue;
 export function GetThemeLink(): ColorValue;
@@ -179,6 +189,29 @@ export const ButtonEmphasisOutline: number;
 export const ButtonEmphasisGhost: number;
 export const ButtonEmphasisLink: number;
 export const ButtonStateAuto: number;
+export const ControlSizeMedium: number;
+export const ControlSizeSmall: number;
+export const ControlSizeLarge: number;
+export const IconPlacementLeading: number;
+export const IconPlacementTrailing: number;
+export const StyleBackground: number;
+export const StyleForeground: number;
+export const StyleBorder: number;
+export const StyleFocus: number;
+export const StyleRadius: number;
+export const StyleBorderWidth: number;
+export const StyleOpacity: number;
+export const StylePaddingX: number;
+export const StylePaddingY: number;
+export const StyleGap: number;
+export const StyleFontSize: number;
+export const StyleIconSize: number;
+export const StyleContentOffset: number;
+export const StyleBackgroundEnd: number;
+export const StyleMaterial: number;
+export const StyleTypeface: number;
+export const MaterialLightfield: number;
+export const MaterialFlat: number;
 export const ButtonStateNormal: number;
 export const ButtonStateHover: number;
 export const ButtonStatePressed: number;
@@ -208,6 +241,7 @@ export const MOUSE_BUTTON_LEFT: number;
 export const THEME_SKY: number;
 export const THEME_COUNT: number;
 export const THEME_MODE_SYSTEM: number;
+export const THEME_MODE_LIGHT: number;
 export const THEME_MODE_DARK: number;
 export const THEME_SOURCE_SYSTEM: number;
 export const THEME_SOURCE_APP: number;

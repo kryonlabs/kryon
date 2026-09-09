@@ -30,6 +30,8 @@ host_value :: (value: int) -> int #extern "smoke.HostValue"
 
 state {
     count: int = 0
+    viewport_width: float = 0
+    viewport_height: float = 0
     label: [64] char = "hello"
 }
 
@@ -38,16 +40,74 @@ app "JS Smoke" {
     fps 60
 }
 
+PreviewMode :: enum {
+    PreviewLight = 1
+    PreviewDark = 2
+}
+
+ApplyPreviewMode :: (value: int) -> int {
+    SetThemeMode((PreviewMode)value)
+    return (PreviewMode)(value + 1)
+}
+
+FractionalPreviewMode :: (value: float) -> int {
+    return (PreviewMode)value
+}
+
 call_host :: () -> int {
     return host_value(count)
 }
 
-App :: () #ui {
+DirectAction :: (x: float) -> bool {
+    return Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
+}
+StoredAction :: (x: float) -> bool {
+    activated: bool = Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
+    return activated
+}
+AssignedAction :: (x: float) -> bool {
+    activated: bool = false
+    activated = Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
+    return activated
+}
+
+PreviewProps :: struct {
+    value: i32
+}
+Preview :: (props: PreviewProps) #ui {
+    count += 1000
+}
+
+Scene :: (viewport: Rectangle) #ui {
+    viewport_width = viewport.width
+    viewport_height = viewport.height
+    left: int = 10
+    widths: [2] int = {100, 20}
+    button_bounds: Rectangle = {left, 50 + count, widths[0] + widths[1], 28}
+    button_bounds = (Rectangle){left, 50 + count, widths[0] + widths[1], 28}
     Screen root: {
         Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Button((ButtonProps){.bounds = {10, 50, 120, 28}, .label = "Tap"})
+        Button((ButtonProps){.bounds = button_bounds, .label = "Tap",
+            .style = (ControlStyle){.normal = (Style){.fields = StyleRadius, .radius = (float)6}}})
         count += 1
     }
+}
+
+StyleCopies :: () #ui {
+    source: ControlStyle = (ControlStyle){.normal=(Style){
+        .fields=StyleFontSize | StyleContentOffset, .font_size=19,
+        .content_offset=(Vector2){0, 1}}}
+    declared := source
+    assigned: ControlStyle = (ControlStyle){}
+    assigned = declared
+    assigned.normal.font_size = 32
+    assigned.normal.content_offset.y = -1
+    declared.normal.font_size = 24
+    bounds: Rectangle = {10, 20, 30, 40}
+    bounds.width = 50
+    Button((ButtonProps){.id=1, .label="Source", .style=source, .bounds=bounds})
+    Button((ButtonProps){.id=2, .label="Declared", .style=declared})
+    Button((ButtonProps){.id=3, .label="Assigned", .style=assigned})
 }
 EOF
 
@@ -66,17 +126,17 @@ grep -q 'export function setHost(host)' "$out"
 grep -q 'export const app = {' "$out"
 grep -q 'title: "JS Smoke"' "$out"
 grep -q 'export function Valid_CallHost' "$out"
-grep -q 'export function Valid_App' "$out"
+grep -q 'export function Valid_Scene' "$out"
 grep -q 'export function frame' "$out"
 grep -q 'export function main' "$out"
-grep -q 'kryon.widget(rt, "Text"' "$out"
-grep -q 'kryon.widget(rt, "Button"' "$out"
-if grep -q 'kryon.widget(rt, "End"' "$out"; then
+grep -q 'kryon.widget(\$rt, "Text"' "$out"
+grep -q 'kryon.widget(\$rt, "Button"' "$out"
+if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1
 fi
-grep -q 'state.count += 1' "$out"
-grep -Eq 'kryon.hostCall\(host \|\| moduleHost, "HostValue", \[value_[0-9]+\]\)' "$out"
+grep -q '\$state.count += 1' "$out"
+grep -Eq 'kryon.hostCall\(\$host \|\| moduleHost, "HostValue", \[value_[0-9]+\]\)' "$out"
 if grep -q 'TODO k2js' "$out"; then
     echo "k2js left a TODO lowering in JS output:" >&2
     grep 'TODO k2js' "$out" >&2
@@ -84,6 +144,54 @@ if grep -q 'TODO k2js' "$out"; then
 fi
 
 node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/out/kryon-runtime.js"
+
+# Keep the actual viewport-based Lightfield screen syntactically valid too;
+# this is not a visual parity assertion for the diagnostic browser runtime.
+"$k2js" --no-main --root "$root" -o "$work/out" "$root/examples/02_buttons.kry"
+node --check "$work/out/examples/02_buttons.js"
+node "$root/tests/lightfield_js_geometry_test.mjs" "$work/out/examples/02_buttons.js"
+
+cat > "$work/src/state_arrays.kry" <<'EOF'
+Counter :: struct {
+    value: i32
+}
+state {
+    counts: [3] i32
+    flags: [2] bool
+    wide: [2] i64
+    grid: [2] [2] i32
+    counters: [2] Counter
+}
+Read :: () -> i32 {
+    return counts[0]
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/state_arrays.kry"
+node --input-type=module - "$work/out/src/state_arrays.js" <<'EOF'
+import assert from "node:assert/strict";
+const module = await import(process.argv[2]);
+const state = module.createState();
+assert.deepEqual(state.counts, [0, 0, 0]);
+assert.deepEqual(state.flags, [false, false]);
+assert.deepEqual(state.wide, [0n, 0n]);
+assert.deepEqual(state.grid, [[0, 0], [0, 0]]);
+assert.deepEqual(state.counters, [{value: 0}, {value: 0}]);
+state.grid[0][0] = 7;
+state.counters[0].value = 9;
+assert.equal(state.grid[1][0], 0);
+assert.equal(state.counters[1].value, 0);
+assert.equal(module.createState().counters[0].value, 0);
+EOF
+
+"$k2js" --strict --root "$root" -o "$work/out" \
+    runtime/button.kry runtime/style.kry runtime/surface.kry runtime/theme.kry runtime/split_button.kry runtime/text.kry
+node "$root/tests/style_policy_test.mjs" "$work/out/runtime/style.js" \
+    "$work/out/runtime/button.js" "$work/out/runtime/theme.js"
+
+"$k2js" --strict --root "$root" -o "$work/out" \
+    tests/fixtures/module_calls.kry tests/fixtures/modules/counter.kry
+node "$root/tests/module_calls_test.mjs" "$work/out/tests/fixtures/module_calls.js" \
+    "$work/out/tests/fixtures/modules/counter.js"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"

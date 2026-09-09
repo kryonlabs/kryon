@@ -103,7 +103,7 @@
     },
     {
       "id": "examples-02_buttons",
-      "label": "Button states",
+      "label": "Magnetic Lightfield",
       "path": "examples/02_buttons.kry",
       "pipelines": {
         "k2b": {
@@ -197,7 +197,7 @@
       },
       "widgets": [
         "Button",
-        "Rect",
+        "Line",
         "Screen",
         "Text"
       ]
@@ -2866,6 +2866,7 @@
         }
       },
       "widgets": [
+        "Button",
         "Row",
         "Screen"
       ]
@@ -4067,6 +4068,7 @@
         }
       },
       "widgets": [
+        "Button",
         "Screen",
         "Text"
       ]
@@ -5084,7 +5086,7 @@
     "Background": 20,
     "Bevel": 2,
     "BottomNav": 2,
-    "Button": 15,
+    "Button": 17,
     "Canvas": 3,
     "CanvasGrid": 3,
     "Checkbox": 6,
@@ -5100,7 +5102,7 @@
     "IconLink": 1,
     "ImageBox": 2,
     "LabelFrame": 2,
-    "Line": 3,
+    "Line": 4,
     "ListBox": 4,
     "MenuBar": 3,
     "MessageDialog": 3,
@@ -5112,7 +5114,7 @@
     "Progress": 5,
     "PromptDialog": 3,
     "Radio": 4,
-    "Rect": 9,
+    "Rect": 8,
     "Row": 7,
     "Screen": 38,
     "Scroll": 2,
@@ -5205,10 +5207,11 @@
         "tests/parity/buttons_layout.kry",
         "tests/parity/composed_combo.kry",
         "tests/parity/generated_form.kry",
+        "tests/parity/plots.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/selection_images.kry"
       ],
-      "source_count": 15,
+      "source_count": 17,
       "sources": [
         "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
@@ -5219,9 +5222,11 @@
         "examples/16_dialogs.kry",
         "examples/18_accessibility.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/button_content.kry",
         "tests/parity/buttons_layout.kry",
         "tests/parity/composed_combo.kry",
         "tests/parity/generated_form.kry",
+        "tests/parity/plots.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
@@ -5432,8 +5437,9 @@
     {
       "id": "Line",
       "semantic_sources": [],
-      "source_count": 3,
+      "source_count": 4,
       "sources": [
+        "examples/02_buttons.kry",
         "examples/07_layout.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
@@ -5587,9 +5593,8 @@
       "semantic_sources": [
         "tests/parity/scroll_content.kry"
       ],
-      "source_count": 9,
+      "source_count": 8,
       "sources": [
-        "examples/02_buttons.kry",
         "examples/05_color.kry",
         "examples/06_scaling.kry",
         "examples/07_layout.kry",

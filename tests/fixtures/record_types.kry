@@ -1,0 +1,20 @@
+#module "record_types"
+
+Sample :: struct {
+    count: i32
+    active: bool
+    wide: u64
+    offset: float
+    id: i32
+    canonical_url: i32
+}
+
+Pair :: struct {
+    first: Sample
+    second: Sample
+}
+
+Frame :: struct {
+    content: Pair
+    active: bool
+}

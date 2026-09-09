@@ -145,12 +145,15 @@ typedef union UIWidgetData {
         int y2;
         int font;
         int font_token;
+        int letter_spacing;
         int heading_level;
         int wrap;
         int align;
         int vertical_align;
         Color color;
         Color border;
+        int styled;
+        Style style;
     } primitive;
     struct {
         ButtonSpec spec;
@@ -349,6 +352,7 @@ typedef struct {
 } ClosableTabBarProps;
 
 void Background(Color color);
+void Surface(Rectangle bounds, Style style);
 void Text(TextProps props);
 void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);
@@ -522,7 +526,6 @@ void ImageWithBg(ImageWithBgProps image);
 int ImageButton(ImageButtonProps image);
 int TabItemButton(TabItemButtonProps button);
 int ClosableTabBar(ClosableTabBarProps bar);
-int SmallButton(ButtonProps button);
 int InvisibleButton(InvisibleButtonProps button);
 int ArrowButton(ArrowButtonProps button);
 void Bullet(Rectangle bounds);

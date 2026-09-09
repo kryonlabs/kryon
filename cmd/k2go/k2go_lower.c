@@ -62,8 +62,10 @@ is_runtime_go_type(const char *type)
 		"Accelerator",
 		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
         "ButtonTone", "ButtonEmphasis", "ButtonState", "ControlSize",
-        "Style", "ControlStyle",
-        "Theme", "ThemeColors", "ThemeMetrics",
+        "TextAlign", "TextWrap",
+        "Style", "ControlStyle", "MaterialKind",
+        "Theme", "ThemeFamily", "ThemeColors", "ThemeMetrics",
+        "MenuButtonProps", "SplitButtonProps", "SplitButtonResult", "IconPlacement",
         "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "ThemeSettingsState", "ThemeSettingsProps",
         "ThemeSettingsResult", "PictureFit", "UISemanticKind",
@@ -280,25 +282,29 @@ typedef struct {
     char go[K2GO_NAME_MAX * 2];
     char guard[K2GO_NAME_MAX];
     int state_count;
+    const KirModule *module;
 } K2goGlobalFunction;
 
 static K2goGlobalFunction g_functions[512];
 static int g_function_count;
 
 static int
-k2go_global_function_index(const char *name, size_t len)
+k2go_global_function_index(const KirModule *module, const char *name, size_t len)
 {
-    int match = -1;
-
+    char ident[KIR_NAME_MAX];
+    const KirModule *owner = NULL;
+    const KirFunction *function = NULL;
+    if(len >= sizeof(ident))
+        return -1;
+    memcpy(ident, name, len);
+    ident[len] = '\0';
+    if(KirResolveFunction(module, ident, &owner, &function) != 1)
+        return -1;
     for(int i = 0; i < g_function_count; i++) {
-        if(strlen(g_functions[i].kry) != len ||
-           strncmp(g_functions[i].kry, name, len) != 0)
-            continue;
-        if(match >= 0)
-            return -2;
-        match = i;
+        if(g_functions[i].module == owner && strcmp(g_functions[i].kry, ident) == 0)
+            return i;
     }
-    return match;
+    return -1;
 }
 
 static void
@@ -329,6 +335,7 @@ k2go_build_global_functions(const KirProgram *const *progs, int prog_count)
                 snprintf(g_functions[g_function_count].go,
                          sizeof(g_functions[0].go), "%s_%s", guard, fname);
                 g_functions[g_function_count].state_count = m->state_count;
+                g_functions[g_function_count].module = m;
                 g_function_count++;
             }
         }
@@ -787,6 +794,38 @@ conv_arg(const char *kry_type, const char *expr)
 static void tx_expr(const KirModule *m, const char *src, char *dst,
                     size_t dst_size);
 
+/* Locate a postfix group's end without translating its contents. Quoted
+ * delimiters, including escaped quotes, must not terminate calls or indices. */
+static const char *
+postfix_group_end(const char *p)
+{
+    char open = *p;
+    char close = open == '(' ? ')' : ']';
+    int depth = 1;
+
+    p++;
+    while(*p != '\0' && depth > 0) {
+        if(*p == '"' || *p == '\'') {
+            char quote = *p++;
+
+            while(*p != '\0' && *p != quote) {
+                if(*p == '\\' && p[1] != '\0')
+                    p++;
+                p++;
+            }
+            if(*p == quote)
+                p++;
+            continue;
+        }
+        if(*p == open)
+            depth++;
+        else if(*p == close)
+            depth--;
+        p++;
+    }
+    return p;
+}
+
 /* Translate the inside of a braced/paren group starting after the opener;
  * returns the position after the matching closer. */
 static const char *
@@ -860,9 +899,31 @@ split_top(const char *s, char parts[][K2GO_TEXT_MAX], int max)
 /* C field order for the Props/Spec types .kry writes positionally, e.g.
  * Picture((PictureProps){"path", ...}). Designated initializers do not need
  * this table; positional parts index into it. Names are the Go field names. */
-static const char *
-props_field_at(const char *type, int index)
+static int
+source_record(const KirModule *module, const char *name)
 {
+    const KirType *record = KirFindType(module, name, NULL);
+    return record != NULL && !record->is_enum;
+}
+
+static int
+props_field_at(const KirModule *module, const char *type, int index,
+               char *name, size_t name_size)
+{
+    const KirType *record = KirFindType(module, type, NULL);
+    if(record != NULL && !record->is_enum) {
+        size_t offset = 0;
+        KirTypeField field;
+        int position = 0;
+
+        while(KirTypeNextField(record, &offset, &field) == 1) {
+            if(position++ == index) {
+                kir_go_field_ident(field.name, name, name_size);
+                return 1;
+            }
+        }
+        return 0;
+    }
     static const struct {
         const char *type;
         const char *fields[40];
@@ -891,9 +952,10 @@ props_field_at(const char *type, int index)
                              "Font", "LineGap", "Color", "Align"}},
         {"Style", {"Fields", "Background", "Foreground", "Border", "Focus",
                     "Radius", "BorderWidth", "Opacity", "PaddingX", "PaddingY",
-                    "Gap", "FontSize", "IconSize", "ContentOffset"}},
+                    "Gap", "FontSize", "IconSize", "ContentOffset", "BackgroundEnd", "Material"}},
         {"ControlStyle", {"Normal", "Hover", "Pressed", "Focused",
                            "Disabled", "Loading", "Selected"}},
+        {"ThemeFamily", {"Name", "Light", "Dark"}},
         {"ButtonProps", {"Bounds", "Label", "Font", "ID", "Tone",
                          "Emphasis", "Size", "Disabled", "Loading",
                          "Selected", "FullWidth", "Pill", "Circle", "Icon",
@@ -943,7 +1005,7 @@ props_field_at(const char *type, int index)
 		{"InputDoubleProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
 		                        "Step", "StepFast", "Format", "Disabled"}},
 		{"InvisibleButtonProps", {"Bounds", "ID", "Disabled"}},
-		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled"}},
+		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled", "LetterSpacing", "Typeface", "Style"}},
 		{"SeparatorTextProps", {"Bounds", "Label", "Font", "Disabled"}},
 		{"DragDropSourceProps", {"Bounds", "ID", "Type", "Data", "DataSize",
 		                           "Disabled"}},
@@ -1009,30 +1071,17 @@ props_field_at(const char *type, int index)
         if(strcmp(table[i].type, type) == 0) {
             size_t n = 0;
 
-            while(table[i].fields[n] != NULL && n < sizeof(table[i].fields))
+            while(n < sizeof(table[i].fields) / sizeof(table[i].fields[0]) &&
+                  table[i].fields[n] != NULL)
                 n++;
-            if(index >= 0 && (size_t)index < n)
-                return table[i].fields[index];
-            return NULL;
+            if(index >= 0 && (size_t)index < n) {
+                kir_copy(name, name_size, table[i].fields[index]);
+                return 1;
+            }
+            return 0;
         }
     }
-    return NULL;
-}
-
-static void
-go_field_name(const char *field, char *dst, size_t dst_size)
-{
-    kir_camel_ident(field, dst, dst_size);
-    if(strcmp(dst, "Id") == 0)
-        snprintf(dst, dst_size, "ID");
-    else if(strcmp(dst, "FocusId") == 0)
-        snprintf(dst, dst_size, "FocusID");
-    else if(strcmp(dst, "SelectedId") == 0)
-        snprintf(dst, dst_size, "SelectedID");
-    else if(strcmp(dst, "ActivatedId") == 0)
-        snprintf(dst, dst_size, "ActivatedID");
-    else if(strcmp(dst, "CanonicalUrl") == 0)
-        snprintf(dst, dst_size, "CanonicalURL");
+    return 0;
 }
 
 /* .kry array variables ('name: [N] T' state or local): references used in
@@ -1317,6 +1366,7 @@ static const char *
 tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 {
     char type[K2GO_NAME_MAX];
+    char first_field[K2GO_NAME_MAX];
     size_t tn = 0;
 
     while(*p != '\0' && *p != ')' && tn + 1 < sizeof(type))
@@ -1334,10 +1384,10 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         qualify_runtime_go_type(type, qtype, sizeof(qtype));
         p++;
         if(strcmp(type, "Vector2") == 0 || strcmp(type, "Rectangle") == 0) {
-            char inner[K2GO_TEXT_MAX], parts[4][K2GO_TEXT_MAX], out[K2GO_TEXT_MAX];
+            char parts[5][K2GO_TEXT_MAX], out[K2GO_TEXT_MAX];
             int n, i;
+            int field_count = strcmp(type, "Rectangle") == 0 ? 4 : 2;
             size_t on = 0;
-            const char *tail;
 
             /* consume to the matching '}' */
             {
@@ -1358,30 +1408,24 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 }
                 raw[rn] = '\0';
                 p = *q == '}' ? q + 1 : q;
-                n = split_top(raw, parts, 4);
+                n = *kir_skip_ws(raw) == '\0' ? 0 : split_top(raw, parts, 5);
             }
-            if(strcmp(type, "Vector2") == 0 && n == 2)
-                snprintf(out + on, sizeof(out) - on, "%s.NewVector2",
-                         K2GO_RUNTIME_PKG);
-            else if(strcmp(type, "Rectangle") == 0 && n == 4)
-                snprintf(out + on, sizeof(out) - on, "%s.NewRectangle",
-                         K2GO_RUNTIME_PKG);
-            else {
-                /* C permits partial zero initialization. Preserve the target
-                 * aggregate type for forms such as (Rectangle){0}. */
-                snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, "%s",
-                         strcmp(type, "Rectangle") == 0
-                             ? K2GO_RUNTIME_PKG ".NewRectangle(0, 0, 0, 0)"
-                             : K2GO_RUNTIME_PKG ".NewVector2(0, 0)");
-                *dn += strlen(dst + *dn);
-                return p;
+            if(n > field_count) {
+                fprintf(stderr, "k2go: %s initializer accepts at most %d fields\n",
+                        type, field_count);
+                exit(1);
             }
+            snprintf(out, sizeof(out), "%s.%s", K2GO_RUNTIME_PKG,
+                     field_count == 4 ? "NewRectangle" : "NewVector2");
             on = strlen(out);
             out[on++] = '(';
-            for(i = 0; i < n; i++) {
+            for(i = 0; i < field_count; i++) {
                 char arg[K2GO_TEXT_MAX];
 
-                tx_expr(m, kir_skip_ws(parts[i]), arg, sizeof(arg));
+                if(i < n)
+                    tx_expr(m, kir_skip_ws(parts[i]), arg, sizeof(arg));
+                else
+                    snprintf(arg, sizeof(arg), "0");
                 if(i > 0) {
                     out[on++] = ',';
                     out[on++] = ' ';
@@ -1404,8 +1448,6 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 memcpy(dst + *dn, out, on);
                 *dn += on;
             }
-            (void)inner;
-            (void)tail;
             return p;
         }
         if(strcmp(type, "Color") == 0) {
@@ -1450,12 +1492,13 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         /* Props/Spec use C designated initializers. Translate them to named
          * Go fields and give the untyped bounds literal its Rectangle type. */
         if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL ||
-           props_field_at(type, 0) != NULL) {
+           props_field_at(m, type, 0, first_field, sizeof(first_field))) {
             char raw[K2GO_TEXT_MAX], parts[32][K2GO_TEXT_MAX];
             size_t rn = 0;
             int depth = 1;
             const char *q = p;
             int count;
+            int declared_record = source_record(m, type);
 
             while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
                 if(*q == '{')
@@ -1480,21 +1523,22 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 
                 if(*part != '.') {
                     /* positional initializer: map by C field order */
-                    const char *mapped = props_field_at(type, positional++);
-
-                    if(mapped == NULL)
+                    if(*part == '\0') {
+                        positional++;
                         continue;
-                    snprintf(field, sizeof(field), "%s", mapped);
-                    if(*part == '\0')
-                        continue;
-                    if((strcmp(field, "Bounds") == 0 ||
+                    }
+                    if(!props_field_at(m, type, positional++, field, sizeof(field))) {
+                        fprintf(stderr, "k2go: no positional field %d in %s\n", positional, type);
+                        exit(1);
+                    }
+                    if(!declared_record && (strcmp(field, "Bounds") == 0 ||
                         strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
                        *kir_skip_ws(part) == '{') {
                         char rect[K2GO_TEXT_MAX];
 
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(part));
                         tx_expr(m, rect, value, sizeof(value));
-                    } else if(strcmp(field, "Color") == 0 &&
+                    } else if(!declared_record && strcmp(field, "Color") == 0 &&
                               *kir_skip_ws(part) == '{') {
                         char color[K2GO_TEXT_MAX];
 
@@ -1508,16 +1552,16 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     if(eq == NULL)
                         continue;
                     *eq = '\0';
-                    go_field_name(part + 1, field, sizeof(field));
-                    if(strcmp(field, "TextSize") == 0)
+                    kir_go_field_ident(part + 1, field, sizeof(field));
+                    if(!declared_record && strcmp(field, "TextSize") == 0)
                         continue;
-                    if((strcmp(field, "Bounds") == 0 ||
+                    if(!declared_record && (strcmp(field, "Bounds") == 0 ||
                         strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
                        *kir_skip_ws(eq + 1) == '{') {
                         char rect[K2GO_TEXT_MAX];
                         snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));
                         tx_expr(m, rect, value, sizeof(value));
-                    } else if(strcmp(field, "Color") == 0 &&
+                    } else if(!declared_record && strcmp(field, "Color") == 0 &&
                               *kir_skip_ws(eq + 1) == '{') {
                         char color[K2GO_TEXT_MAX];
 
@@ -1542,7 +1586,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 k2go_collapse_duplicate_slices(value);
                 if(emitted++)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, ", ");
-                if((bool_prop_field(field) ||
+                if(!declared_record && (bool_prop_field(field) ||
                     (strcmp(type, "TableViewProps") == 0 && strcmp(field, "CustomCells") == 0) ||
                     (strcmp(type, "CollapsibleProps") == 0 &&
                      (strcmp(field, "Tree") == 0 || strcmp(field, "Leaf") == 0 ||
@@ -1648,12 +1692,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                         identish = 0;
                 if(identish) {
                     p = tx_compound(m, p + 1, dst, &dn);
-                    /* for scalar casts, wrap the next operand in parens:
-                     * emit '(' now and rely on the trailing paren we add
-                     * below when the expression ends — simplest correct
-                     * form: emit operand inside parens manually */
+                    /* Go conversions wrap one operand, including its
+                     * postfix operations, rather than the remaining binary
+                     * expression. Compound literals are already complete. */
                     if(*(p - 1) == ')' && strchr(maybe, '{') == NULL) {
-                        /* scalar cast: consume one primary operand */
+                        /* Scalar casts bind after postfix calls, indexing,
+                         * and member access, but before binary operators. */
                         const char *op = kir_skip_ws(p);
                         char primary[K2GO_TEXT_MAX];
                         size_t pn = 0;
@@ -1669,9 +1713,28 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                                 dst[dn++] = ')';
                             p = after;
                         } else if(kir_is_ident_char((unsigned char)*op)) {
-                            while(kir_is_ident_char((unsigned char)*op) &&
-                                  pn + 1 < sizeof(primary))
-                                primary[pn++] = *op++;
+                            const char *start = op;
+
+                            while(kir_is_ident_char((unsigned char)*op))
+                                op++;
+                            for(;;) {
+                                const char *next = kir_skip_ws(op);
+
+                                if(*next == '[' || *next == '(') {
+                                    op = postfix_group_end(next);
+                                } else if(*next == '.' &&
+                                          kir_is_ident_char((unsigned char)next[1])) {
+                                    op = next + 1;
+                                    while(kir_is_ident_char((unsigned char)*op))
+                                        op++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            pn = (size_t)(op - start);
+                            if(pn >= sizeof(primary))
+                                pn = sizeof(primary) - 1;
+                            memcpy(primary, start, pn);
                             primary[pn] = '\0';
                             p = op;
                             {
@@ -1891,7 +1954,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 continue;
             }
             if(*kir_skip_ws(q) == '(') {
-                int gfi = k2go_global_function_index(ident, il);
+                int gfi = k2go_global_function_index(m, ident, il);
 
                 if(gfi >= 0 && strcmp(g_functions[gfi].guard, g_guard) != 0) {
                     size_t fl = strlen(g_functions[gfi].go);
@@ -1936,6 +1999,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"TextAlignCenter", "TextAlignCenter"},
 					{"TextAlignEnd", "TextAlignEnd"},
                     {"ButtonToneAccent", "ButtonToneAccent"},
+                    {"IconPlacementLeading", "IconPlacementLeading"},
+                    {"IconPlacementTrailing", "IconPlacementTrailing"},
+                    {"UI_ICON_TYPE_PLAY", "UIIconTypePlay"},
+                    {"UI_ICON_TYPE_PLUS", "UIIconTypePlus"},
+                    {"UI_ICON_TYPE_SAVE", "UIIconTypeSave"},
+                    {"UI_ICON_TYPE_TRASH", "UIIconTypeTrash"},
                     {"ButtonToneNeutral", "ButtonToneNeutral"},
                     {"ButtonToneDanger", "ButtonToneDanger"},
                     {"ButtonToneSuccess", "ButtonToneSuccess"},
@@ -1966,6 +2035,11 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"StyleFontSize", "StyleFontSize"},
                     {"StyleIconSize", "StyleIconSize"},
                     {"StyleContentOffset", "StyleContentOffset"},
+                    {"StyleBackgroundEnd", "StyleBackgroundEnd"},
+                    {"StyleMaterial", "StyleMaterial"},
+                    {"StyleTypeface", "StyleTypeface"},
+                    {"MaterialLightfield", "MaterialLightfield"},
+                    {"MaterialFlat", "MaterialFlat"},
                     {"ControlSizeSmall", "ControlSizeSmall"},
                     {"ControlSizeMedium", "ControlSizeMedium"},
                     {"ControlSizeLarge", "ControlSizeLarge"},
@@ -2076,6 +2150,20 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             }
             /* enum members: bare ALL_CAPS name -> qualified Go const */
             {
+                const KirModule *owner = NULL;
+                const KirType *type = NULL;
+                if(KirResolveEnumMember(g_mod, ident, &owner, &type) == 1 && owner != g_mod) {
+                    char prefix[K2GO_NAME_MAX] = "";
+                    char member[K2GO_NAME_MAX];
+                    kir_copy(member, sizeof(member), ident);
+                    if(strcmp(type->name, "#enum") != 0)
+                        kir_camel_ident(type->name, prefix, sizeof(prefix));
+                    else
+                        kir_camel_ident(ident, member, sizeof(member));
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s", prefix, member);
+                    p = q;
+                    continue;
+                }
                 K2goEnumMember *mem = k2go_const_entry(ident, il);
 
                 if(mem != NULL) {
@@ -2153,7 +2241,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             while(kir_is_ident_char((unsigned char)*q) && fl + 1 < sizeof(field))
                 field[fl++] = *q++;
             field[fl] = '\0';
-            go_field_name(field, mapped, sizeof(mapped));
+            kir_go_field_ident(field, mapped, sizeof(mapped));
             if(dn + strlen(mapped) + 2 < dst_size) {
                 dst[dn++] = '.';
                 memcpy(dst + dn, mapped, strlen(mapped));
@@ -2318,6 +2406,13 @@ init_done:
 static void
 resolve_body_symbol(void *context, const char *text, char *out, size_t size)
 {
+    const KirModule *module = context;
+    for(int i = 0; i < module->global_count; i++) {
+        if(!strcmp(text, module->globals[i].name)) {
+            kir_camel_ident(text, out, size);
+            return;
+        }
+    }
     tx_expr(context, text, out, size);
 }
 
@@ -2569,10 +2664,24 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", tbuf);
                 if(assign != NULL) {
                     const char *init = kir_skip_ws(assign + 2);
+                    const char *source_assign = strstr(st->text, "= ");
                     char translated[K2GO_TEXT_MAX];
 
                     /* Go composite literals carry their type: 'var x = T{...}' */
-                    if(*init == '{' && strstr(gt, "TODO") == NULL &&
+                    if(*init == '{' && source_assign != NULL &&
+                       (strcmp(gt, K2GO_RUNTIME_PKG ".Rectangle") == 0 ||
+                        strcmp(gt, K2GO_RUNTIME_PKG ".Vector2") == 0)) {
+                        char typed[K2GO_TEXT_MAX];
+                        const char *type = strrchr(gt, '.') + 1;
+
+                        /* Use the same conversions as an explicit compound
+                         * literal, starting from source rather than already
+                         * translated Go expressions. */
+                        snprintf(typed, sizeof(typed), "(%s)%s", type,
+                                 kir_skip_ws(source_assign + 2));
+                        tx_expr(m, typed, translated, sizeof(translated));
+                        fprintf(f, "var %s = %s\n", aname, translated);
+                    } else if(*init == '{' && strstr(gt, "TODO") == NULL &&
                        k2go_translate_array_literal(m, gt, init, translated,
                                                    sizeof(translated)))
                         fprintf(f, "var %s = %s\n", aname, translated);
@@ -2860,35 +2969,20 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         if(e->go_type[0] != '\0')
                             fprintf(f, "type %s int32\n\n", e->go_type);
                         fprintf(f, "const (\n");
-                        long counter = 0;   /* -1: unknown (non-literal value) */
-                        char last_expr[K2GO_TEXT_MAX];
-
-                        last_expr[0] = '\0';
                         for(int mI = 0; mI < e->count; mI++) {
                             K2goEnumMember *mem = &e->members[mI];
                             char val[K2GO_TEXT_MAX];
 
                             if(mem->val[0] != '\0') {
-                                char *end;
-                                long parsed;
-
                                 tx_expr(m, mem->val, val, sizeof(val));
-                                parsed = strtol(mem->val, &end, 0);
-                                if(*end == '\0')
-                                    counter = parsed + 1;
-                                else {
-                                    counter = -1;
-                                    snprintf(last_expr, sizeof(last_expr),
-                                             "%s", val);
-                                }
-                            } else if(counter >= 0) {
-                                snprintf(val, sizeof(val), "%ld", counter);
-                                counter++;
+                            } else if(mI == 0) {
+                                snprintf(val, sizeof(val), "0");
                             } else {
+                                /* Refer to the previous constant: negative
+                                 * values and expressions need no host-side
+                                 * evaluator or sentinel counter. */
                                 snprintf(val, sizeof(val), "%s + 1",
-                                         last_expr);
-                                snprintf(last_expr, sizeof(last_expr), "%s",
-                                         val);
+                                         e->members[mI - 1].go);
                             }
                             /* untyped: C enums convert implicitly; Go's
                              * typed consts would not mix with int fields */
@@ -2898,31 +2992,21 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     } else {
                         fprintf(f, "type %s struct {\n", t->name);
                     {
-                        char line[K2GO_TEXT_MAX];
-                        const char *p = t->body;
+                        size_t offset = 0;
+                        KirTypeField field;
+                        int status;
 
-                        while(*p != '\0') {
-                            const char *e = strchr(p, '\n');
-                            size_t len = e != NULL ? (size_t)(e - p)
-                                                   : strlen(p);
-                            char *colon;
-
-                            if(len >= sizeof(line))
-                                len = sizeof(line) - 1;
-                            memcpy(line, p, len);
-                            line[len] = '\0';
-                            colon = strchr(line, ':');
-                            if(colon != NULL) {
-                                char fname[K2GO_NAME_MAX], gt[K2GO_NAME_MAX];
-                                size_t fl = (size_t)(colon - line);
-
-                                kir_camel_ident(line, fname, sizeof(fname));
-                                if(!go_type(colon + 1, gt, sizeof(gt)))
-                                    snprintf(gt, sizeof(gt),
-                                             "/* TODO %s */ any", colon + 1);
-                                fprintf(f, "\t%s %s\n", fname, gt);
-                            }
-                            p = e != NULL ? e + 1 : p + len;
+                        while((status = KirTypeNextField(t, &offset, &field)) == 1) {
+                            char fname[K2GO_NAME_MAX], gt[K2GO_NAME_MAX];
+                            kir_go_field_ident(field.name, fname, sizeof(fname));
+                            if(!go_type(field.type, gt, sizeof(gt)))
+                                snprintf(gt, sizeof(gt), "/* TODO %s */ any", field.type);
+                            fprintf(f, "\t%s %s\n", fname, gt);
+                        }
+                        if(status < 0) {
+                            fprintf(stderr, "%s:%d: malformed field in %s\n",
+                                    t->span.path, t->span.line, t->name);
+                            exit(1);
                         }
                     }
                     fprintf(f, "}\n\n");

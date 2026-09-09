@@ -1,7 +1,187 @@
 #include "kir.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+
+int
+KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field)
+{
+    size_t length = strlen(record->body);
+
+    memset(field, 0, sizeof(*field));
+    if(record->is_enum)
+        return -1;
+    while(*offset < length) {
+        const char *start = record->body + *offset;
+        const char *newline = strchr(start, '\n');
+        const char *end = newline != NULL ? newline : record->body + length;
+        const char *colon;
+        const char *name_end;
+        const char *type_start;
+        size_t name_length;
+        size_t type_length;
+
+        *offset = newline != NULL ? (size_t)(newline - record->body) + 1 : length;
+        while(start < end && isspace((unsigned char)*start))
+            start++;
+        while(end > start && isspace((unsigned char)end[-1]))
+            end--;
+        if(start == end)
+            continue;
+        colon = memchr(start, ':', (size_t)(end - start));
+        if(colon == NULL)
+            return -1;
+        name_end = colon;
+        while(name_end > start && isspace((unsigned char)name_end[-1]))
+            name_end--;
+        type_start = colon + 1;
+        while(type_start < end && isspace((unsigned char)*type_start))
+            type_start++;
+        name_length = (size_t)(name_end - start);
+        type_length = (size_t)(end - type_start);
+        if(name_length == 0 || name_length >= sizeof(field->name) ||
+           type_length == 0 || type_length >= sizeof(field->type))
+            return -1;
+        if(!isalpha((unsigned char)*start) && *start != '_')
+            return -1;
+        for(const char *cursor = start + 1; cursor < name_end; cursor++) {
+            if(!isalnum((unsigned char)*cursor) && *cursor != '_')
+                return -1;
+        }
+        memcpy(field->name, start, name_length);
+        memcpy(field->type, type_start, type_length);
+        return 1;
+    }
+    return 0;
+}
+
+static int
+enum_has_member(const KirType *type, const char *name)
+{
+    if(!type->is_enum && strcmp(type->name, "#enum") != 0)
+        return 0;
+    const char *cursor = type->body;
+    while(*cursor) {
+        while(isspace((unsigned char)*cursor) || *cursor == ',')
+            cursor++;
+        const char *start = cursor;
+        while(isalnum((unsigned char)*cursor) || *cursor == '_')
+            cursor++;
+        if((size_t)(cursor - start) == strlen(name) &&
+           strncmp(start, name, (size_t)(cursor - start)) == 0)
+            return 1;
+        while(*cursor && *cursor != ',' && *cursor != '\n')
+            cursor++;
+    }
+    return 0;
+}
+
+int
+KirResolveEnumMember(const KirModule *module, const char *name,
+                     const KirModule **owner, const KirType **type)
+{
+    *owner = NULL;
+    *type = NULL;
+    /* Local declarations shadow imports, just as functions and types do. */
+    for(int pass = 0; pass < 2; pass++) {
+        int count = pass == 0 ? 1 : module->import_count;
+        for(int i = 0; i < count; i++) {
+            const KirModule *scope = module;
+            if(pass != 0) {
+                if(module->imports[i].kind != KIR_IMPORT_HEADER)
+                    continue;
+                scope = module->imports[i].resolved_module;
+            }
+            if(scope == NULL)
+                continue;
+            for(int j = 0; j < scope->type_count; j++) {
+                const KirType *candidate = &scope->types[j];
+                if(!enum_has_member(candidate, name))
+                    continue;
+                if(*type != NULL && *type != candidate) {
+                    *owner = NULL;
+                    *type = NULL;
+                    return -1;
+                }
+                *owner = scope;
+                *type = candidate;
+            }
+        }
+        if(*type != NULL)
+            return 1;
+    }
+    return 0;
+}
+
+int
+KirResolveFunction(const KirModule *module, const char *name,
+                   const KirModule **owner, const KirFunction **function)
+{
+    *owner = NULL;
+    *function = NULL;
+    for(int i = 0; i < module->function_count; i++) {
+        if(strcmp(module->functions[i].name, name) == 0) {
+            *owner = module;
+            *function = &module->functions[i];
+            return 1;
+        }
+    }
+    for(int i = 0; i < module->import_count; i++) {
+        const KirModule *imported = module->imports[i].resolved_module;
+        if(imported == NULL)
+            continue;
+        for(int f = 0; f < imported->function_count; f++) {
+            const KirFunction *candidate = &imported->functions[f];
+            if(!candidate->is_public || strcmp(candidate->name, name) != 0)
+                continue;
+            if(*function != NULL && *function != candidate) {
+                *owner = NULL;
+                *function = NULL;
+                return -1;
+            }
+            *owner = imported;
+            *function = candidate;
+        }
+    }
+    return *function != NULL;
+}
+
+const KirType *
+KirFindType(const KirModule *module, const char *name, const KirModule **owner)
+{
+    const KirType *found = NULL;
+    const KirModule *scope = NULL;
+
+    if(owner)
+        *owner = NULL;
+
+    for(int i = 0; i < module->type_count; i++) {
+        if(strcmp(module->types[i].name, name) == 0) {
+            if(owner)
+                *owner = module;
+            return &module->types[i];
+        }
+    }
+    for(int i = 0; i < module->import_count; i++) {
+        const KirImport *import = &module->imports[i];
+        const KirModule *target = import->resolved_module;
+        if(import->kind != KIR_IMPORT_HEADER || target == NULL)
+            continue;
+        for(int j = 0; j < target->type_count; j++) {
+            const KirType *candidate = &target->types[j];
+            if(strcmp(candidate->name, name) != 0)
+                continue;
+            if(found && found != candidate)
+                return NULL;
+            found = candidate;
+            scope = target;
+        }
+    }
+    if(owner)
+        *owner = scope;
+    return found;
+}
 
 static void *
 kir_realloc_array(void *ptr, int *cap, int count, size_t elem_size)
@@ -395,6 +575,7 @@ KirExprKindName(KirExprKind kind)
     case KIR_EXPR_INDEX: return "index";
     case KIR_EXPR_CAST: return "cast";
     case KIR_EXPR_COMPOUND: return "compound";
+    case KIR_EXPR_FIELD_INIT: return "field_initializer";
     case KIR_EXPR_SIZEOF: return "sizeof";
     case KIR_EXPR_CHAR: return "char";
     case KIR_EXPR_CONDITIONAL: return "conditional";

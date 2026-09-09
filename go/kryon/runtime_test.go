@@ -8,7 +8,60 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
+
+func TestFrameClockControlsAnimationTime(t *testing.T) {
+	now := time.Time{}
+	reads := 0
+	rt := New(AppConfig{FrameClock: func() time.Time {
+		reads++
+		return now
+	}}).(*runtime)
+	for index, elapsed := range []time.Duration{0, 20 * time.Millisecond, 60 * time.Millisecond} {
+		now = time.Time{}.Add(elapsed)
+		rt.BeginFrame()
+		wantDelta := [...]float32{0, 20, 40}[index]
+		if rt.frameDeltaMS != wantDelta || rt.elapsedTime != elapsed {
+			t.Fatalf("frame %d: delta=%g elapsed=%v", index, rt.frameDeltaMS, rt.elapsedTime)
+		}
+		rt.EndFrame()
+	}
+	if reads != 3 {
+		t.Fatalf("clock read %d times for three frames", reads)
+	}
+	other := New(AppConfig{}).(*runtime)
+	other.BeginFrame()
+	if other.frameStarted.IsZero() || other.elapsedTime != 0 || reads != 3 {
+		t.Fatal("frame clock leaked into another runtime or replaced its default clock")
+	}
+	other.EndFrame()
+}
+
+func TestLoadingClockRetainsSubMillisecondStepsAfterThirtyDays(t *testing.T) {
+	epoch := time.Unix(1, 0)
+	now := epoch
+	rt := New(AppConfig{FrameClock: func() time.Time { return now }}).(*runtime)
+	rt.BeginFrame()
+	rt.EndFrame()
+	for _, fraction := range []time.Duration{250, 500, 750} {
+		phase := 997*time.Millisecond + fraction*time.Microsecond
+		elapsed := 30*24*time.Hour + phase
+		now = epoch.Add(elapsed)
+		rt.BeginFrame()
+		frame, _ := rt.surfaceButtonFrame(ButtonProps{ID: 1, Loading: true,
+			Bounds: Rectangle{Width: 80, Height: 40}}, Rectangle{}, false)
+		if rt.elapsedTime != elapsed || frame.ElapsedMS != float64(elapsed)/float64(time.Millisecond) {
+			t.Fatalf("long-running clock lost precision: duration=%v frame=%g", rt.elapsedTime, frame.ElapsedMS)
+		}
+		got := Surface_LoadingRing(80, 40, 18, frame.ElapsedMS, 0x006cffff, 0x092039ff)
+		want := Surface_LoadingRing(80, 40, 18, float64(phase)/float64(time.Millisecond), 0x006cffff, 0x092039ff)
+		if got != want {
+			t.Fatalf("loading phase after thirty days: %+v, want %+v", got, want)
+		}
+		rt.EndFrame()
+	}
+}
 
 func TestCStringTrimsFixedBufferAtNUL(t *testing.T) {
 	buf := []byte{'s', 'e', 'c', 'r', 'e', 't', 0, 'x'}
@@ -324,7 +377,7 @@ func TestButtonConsumesTapInsideBounds(t *testing.T) {
 	}
 }
 
-func TestNestedDisabledScopeSuppressesAndDimsContent(t *testing.T) {
+func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 	bounds := Rectangle{X: 20, Y: 10, Width: 80, Height: 32}
 
@@ -346,8 +399,10 @@ func TestNestedDisabledScopeSuppressesAndDimsContent(t *testing.T) {
 	if len(ops) == 0 || !ops[0].Disabled {
 		t.Fatal("disabled scope did not mark recorded content disabled")
 	}
-	if got := ops[0].Color.A; got >= rt.theme().button.A {
-		t.Fatalf("disabled scope alpha = %d, want less than %d", got, rt.theme().button.A)
+	want := resolveButtonStyle(rt.theme(), rt.effectiveDark(), rt.activeTheme,
+		ButtonProps{Disabled: true}, ButtonStateDisabled)
+	if ops[0].Color != want.Background || ops[0].TextColor != want.Foreground || ops[0].BorderColor != want.Border {
+		t.Fatal("disabled scope did not use the canonical disabled button style")
 	}
 	if rt.contentDisabled() {
 		t.Fatal("disabled scope remained active after balanced end")
@@ -653,18 +708,49 @@ func TestRowPlacesZeroOriginButtons(t *testing.T) {
 	}
 }
 
-func TestDirectPackageButtonString(t *testing.T) {
+func TestDirectPackageButtonProps(t *testing.T) {
+	var drawButton func(ButtonProps) bool = Button
 	rt := New(AppConfig{}).(*runtime)
 	SetRuntime(rt)
 	defer SetRuntime(nil)
 
 	QueueTap(36, 12)
 	BeginFrame()
-	clicked := Button("Save")
+	clicked := drawButton(ButtonProps{Label: "Save"})
 	EndFrame()
 
 	if !clicked {
-		t.Fatal("direct Button string did not consume tap")
+		t.Fatal("typed Button did not consume tap")
+	}
+}
+
+func TestTypedPackageButtonsDoNotDeriveIdentityFromLabels(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	SetRuntime(rt)
+	defer SetRuntime(nil)
+
+	QueueTap(130, 30)
+	BeginFrame()
+	first := Button(ButtonProps{Bounds: Rectangle{X: 20, Y: 20}, Label: "Save"})
+	second := Button(ButtonProps{Bounds: Rectangle{X: 120, Y: 20}, Label: "Save"})
+	EndFrame()
+	if first || !second {
+		t.Fatalf("same-label activation: first=%t second=%t", first, second)
+	}
+	var buttons []FrameOp
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpButton {
+			buttons = append(buttons, op)
+		}
+	}
+	if len(buttons) != 2 || buttons[0].ID == buttons[1].ID {
+		t.Fatalf("same-label button instances share identity: %+v", buttons)
+	}
+	want := rt.resolveButtonProps(ButtonProps{Label: "Save"})
+	for _, button := range buttons {
+		if button.Bounds.Width != want.Bounds.Width || button.Bounds.Height != want.Bounds.Height {
+			t.Fatalf("package Button bypassed shared measurement: %+v, want %+v", button.Bounds, want.Bounds)
+		}
 	}
 }
 
@@ -1666,12 +1752,13 @@ func TestTableViewClickFocusEnablesArrowNavigation(t *testing.T) {
 	}
 }
 
-func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
+func TestTableViewUsesExplicitSystemTheme(t *testing.T) {
 	resetSystemThemeForTest()
 	defer resetSystemThemeForTest()
 	t.Setenv("KRYON_THEME_MODE", "dark")
 	t.Setenv("GTK_THEME", "KryonMissingTheme")
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	rt.SetThemeSource(ThemeSourceSystem)
 	selectedRow := int32(0)
 	selectedColumn := int32(0)
 	props := TableViewProps{
@@ -1703,7 +1790,7 @@ func TestTableViewUsesSystemThemeByDefault(t *testing.T) {
 	t.Fatalf("table surface op not found: %#v", ops)
 }
 
-func TestDefaultSystemThemeSelectionIsNeutral(t *testing.T) {
+func TestExplicitSystemThemeSelectionIsNeutral(t *testing.T) {
 	resetSystemThemeForTest()
 	defer resetSystemThemeForTest()
 	t.Setenv("GTK_THEME", "KryonMissingTheme")
@@ -1716,6 +1803,7 @@ func TestDefaultSystemThemeSelectionIsNeutral(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(temp, "config"))
 	t.Setenv("XDG_DATA_HOME", filepath.Join(temp, "data"))
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	rt.SetThemeSource(ThemeSourceSystem)
 	theme := rt.theme()
 	assertNotBlueSelection(t, theme.selectedHot)
 }
@@ -1761,6 +1849,7 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 	t.Setenv("KRYON_THEME_MODE", "")
 
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	rt.SetThemeSource(ThemeSourceSystem)
 	if got, want := rt.GetThemeBackground(), (Color{0x18, 0x1b, 0x28, 0xff}); got != want {
 		t.Fatalf("system CSS background = %#v, want %#v", got, want)
 	}

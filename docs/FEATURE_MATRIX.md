@@ -55,7 +55,7 @@ the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 operations; and `k2b` lowers a subset of it:
 
 `Background Text LabelText BulletText ValueBool ValueInt ValueUInt ValueFloat Paragraph TextLines Rect Line Bevel Icon
-Picture ImageWithBg ImageButton Button Selectable CheckboxFlags SmallButton InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip IconButton Href TextField TextArea Dropdown Slider Toggle
+Picture ImageWithBg ImageButton Button Selectable CheckboxFlags InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip IconButton Href TextField TextArea Dropdown Slider Toggle
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
 PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
 Canvas BeginDisabled EndDisabled Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
@@ -108,7 +108,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` / `kryon.Button("Save")` | ✅ node |
+| Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` | ✅ node |
 | Selectable / CheckboxFlags | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
 | IconButton / PaddedIconBtn | ✅ | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
@@ -132,7 +132,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | DragFloatRange2 / DragIntRange2 (ordered endpoints) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | SliderFloat / SliderInt / VSliderFloat / VSliderInt / SliderAngle | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | InputFloat / InputInt / InputDouble (scalar and N-component) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| SmallButton / InvisibleButton / ArrowButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Small-sized Button / InvisibleButton / ArrowButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | SeparatorText | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | ColorEdit3 / ColorEdit4 / ColorPicker3 / ColorPicker4 / ColorButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 

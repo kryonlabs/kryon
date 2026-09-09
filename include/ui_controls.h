@@ -30,8 +30,8 @@ typedef enum ButtonEmphasis {
 } ButtonEmphasis;
 
 typedef enum ControlSize {
-    ControlSizeSmall,
     ControlSizeMedium,
+    ControlSizeSmall,
     ControlSizeLarge
 } ControlSize;
 
@@ -51,6 +51,11 @@ typedef enum ButtonState {
     ButtonStateSelected
 } ButtonState;
 
+typedef enum MaterialKind {
+    MaterialLightfield = 0,
+    MaterialFlat = 1
+} MaterialKind;
+
 typedef enum StyleField {
     StyleBackground    = 1u << 0,
     StyleForeground    = 1u << 1,
@@ -64,7 +69,10 @@ typedef enum StyleField {
     StyleGap           = 1u << 9,
     StyleFontSize      = 1u << 10,
     StyleIconSize      = 1u << 11,
-    StyleContentOffset = 1u << 12
+    StyleContentOffset = 1u << 12,
+    StyleBackgroundEnd = 1u << 13,
+    StyleMaterial      = 1u << 14,
+    StyleTypeface      = 1u << 15
 } StyleField;
 
 /* A typed, renderer-independent set of visual properties. `fields` says
@@ -84,6 +92,9 @@ typedef struct Style {
     float font_size;
     float icon_size;
     Vector2 content_offset;
+    Color background_end;
+    MaterialKind material;
+    const char *typeface;
 } Style;
 
 /* State entries are partial Style values layered over `normal`. This type is
@@ -137,6 +148,8 @@ typedef struct {
     int loading;
     int selected;
     int style_resolved;
+    MaterialKind material;
+    ControlSize size;
     ButtonTone tone;
     ButtonEmphasis emphasis;
     ControlStyle style;
@@ -144,6 +157,8 @@ typedef struct {
     UIIconType icon_type;
     IconPlacement icon_placement;
     int icon_only;
+    Rectangle surface_bounds;
+    int disclosure;
 } ButtonSpec;
 
 Style MergeStyle(Style base, Style overrides);

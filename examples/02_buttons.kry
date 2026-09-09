@@ -1,205 +1,505 @@
 #import "kryon.h"
 
-app "Button states" {
-    size 800 1010
+app "Magnetic Lightfield" {
+    size 1536 1024
     fps 60
     font examples
 }
 
 state {
-    menu_open: int = 0
-    split_open: int = 0
-}
-
-ConfigureTheme :: () {
-    light := ThemeDefaultLight()
-    dark := ThemeDefaultDark()
-    family := (ThemeFamily){
-        .name = "Button example",
-        .light = light,
-        .dark = dark,
-    }
-    SetThemeFamily(family)
-}
-
-Label :: (text: const char *, x: int, y: int, font: int, color: Color) {
-    Text((TextProps){
-        .bounds = {Scale(x), Scale(y), 0, 0},
-        .text = text, .font = font, .color = color, .wrap = TextWrapNone,
-    })
+    menu_open: [4] int
+    split_open: [4] int
 }
 
 ButtonsExample :: (viewport: Rectangle) #ui {
+    chrome := ThemeDefaultDark()
+    ClearBackground(chrome.colors.background)
+    if viewport.width >= 1536 {
+        previous_mode := GetThemeMode()
+        left: Rectangle = {0, 0, 768, 1024}
+        right: Rectangle = {768, 0, 768, 1024}
+        SetThemeMode(THEME_MODE_DARK)
+        ButtonsPanel(left, 0, 0, 0, false)
+        SetThemeMode(THEME_MODE_LIGHT)
+        ButtonsPanel(right, 768, 10000, 2, false)
+        SetThemeMode(previous_mode)
+        LightfieldHeader()
+        Text((TextProps){.bounds={29, 11, 250, 30}, .text="KRYON",
+            .font=26, .letter_spacing=25, .color=chrome.colors.text, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={28, 38, 300, 20}, .text="DESIGN SYSTEM 2040",
+            .font=13, .letter_spacing=6, .color=chrome.colors.icon, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={321, 5, 900, 38}, .text="PROPOSAL 4 — MAGNETIC LIGHTFIELD",
+            .font=37, .typeface="semibold", .letter_spacing=2, .align=TextAlignCenter,
+            .color=chrome.colors.text, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={415, 43, 700, 22}, .text="LIVING INTERFACES. QUIETER POWER.",
+            .font=15, .letter_spacing=6, .align=TextAlignCenter,
+            .color=chrome.colors.icon, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={1335, 17, 200, 20}, .text="A MORE",
+            .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={1335, 33, 200, 20}, .text="HUMAN TOMORROW —",
+            .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
+    } else {
+        ButtonsPanel(viewport, 0, 0, 0, true)
+    }
+}
+
+HeaderLight :: (x: i32) -> float {
+    amount: float = ((float)x - 384.0) / 1151.0
+    if amount < 0.0 { amount = 0.0 }
+    return amount * amount * (3.0 - 2.0 * amount)
+}
+
+HeaderChannel :: (base: float, gain: float, amount: float) -> u8 {
+    return (u8)(base + gain * amount)
+}
+
+LightfieldHeader :: () #ui {
+    # The light gathers toward the right side of the shared header. Each
+    # column uses the same portable Surface gradient as the widget faces.
+    for int x = 0; x < 1536; x++ {
+        amount := HeaderLight(x)
+        top: Color = {HeaderChannel(0, 18, amount), HeaderChannel(25, 33, amount), HeaderChannel(54, 47, amount), 255}
+        bottom: Color = {HeaderChannel(0, 12, amount), HeaderChannel(24, 25, amount), HeaderChannel(52, 37, amount), 255}
+        Surface((Rectangle){x, 0, 1, 74},
+            (Style){.fields=StyleBackground | StyleBackgroundEnd | StyleRadius,
+                .background=top, .background_end=bottom, .radius=0})
+    }
+}
+
+ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int, theme_switch: bool) #ui {
     menu_items: [2] MenuItem = {
         {MenuCommand, "Open", "", 1, 0, 0, nil, 0},
         {MenuCommand, "Save", "", 2, 0, 0, nil, 0}
     }
-    state_names: [7] const char* = {
-        "Normal", "Hover", "Pressed", "Focus", "Disabled", "Loading", "Selected"
+    state_names: [6] const char* = {"Normal", "Hover", "Pressed", "Focus", "Disabled", "Loading"}
+    states: [6] ButtonState = {
+        ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
+        ButtonStateFocus, ButtonStateDisabled, ButtonStateLoading
     }
-    states: [7] ButtonState = {
-        ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus,
-        ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected
-    }
-    style_names: [8] const char* = {
-        "Primary", "Secondary", "Outline", "Ghost",
-        "Danger", "Success", "Warning", "Link"
+    tone_names: [8] const char* = {
+        "Primary", "Secondary", "Outline", "Ghost", "Danger", "Success", "Warning", "Link"
     }
     tones: [8] ButtonTone = {
-        ButtonToneAccent, ButtonToneNeutral, ButtonToneAccent,
-        ButtonToneNeutral, ButtonToneDanger, ButtonToneSuccess,
-        ButtonToneWarning, ButtonToneAccent
+        ButtonToneAccent, ButtonToneNeutral, ButtonToneAccent, ButtonToneNeutral,
+        ButtonToneDanger, ButtonToneSuccess, ButtonToneWarning, ButtonToneAccent
     }
-    styles: [8] ButtonEmphasis = {
-        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
-        ButtonEmphasisGhost, ButtonEmphasisFilled, ButtonEmphasisFilled,
-        ButtonEmphasisFilled, ButtonEmphasisLink
+    emphases: [8] ButtonEmphasis = {
+        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline, ButtonEmphasisGhost,
+        ButtonEmphasisFilled, ButtonEmphasisFilled, ButtonEmphasisFilled, ButtonEmphasisLink
     }
-    emphasis_names: [5] const char* = {
-        "Filled", "Soft", "Outline", "Ghost", "Link"
+    size_names: [3] const char* = {"Small", "Medium", "Large"}
+    sizes: [3] ControlSize = {ControlSizeSmall, ControlSizeMedium, ControlSizeLarge}
+    column_x: [8] int = {81, 166, 250, 334, 419, 503, 587, 671}
+    size_caption_y: [3] int = {518, 561, 617}
+    size_fonts: [3] int = {15, 18, 18}
+    size_label_x: [3] int = {-1, 0, 0}
+    size_label_y: [3] float = {0, 0, 0}
+    state_y: [6] int = {161, 206, 254, 305, 359, 409}
+    label_y: [6] int = {169, 215, 265, 316, 370, 419}
+    state_heights: [6] int = {34, 36, 36, 38, 38, 40}
+    icon_names: [8] const char* = {
+        "Text only", "Icon leading", "Icon trailing", "Icon only",
+        "Pill", "Square", "Split button", "Dropdown"
     }
-    emphases: [5] ButtonEmphasis = {
-        ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline,
-        ButtonEmphasisGhost, ButtonEmphasisLink
-    }
+    icon_label_x: [8] int = {30, 114, 209, 294, 402, 481, 557, 671}
+    text_labels: [2] const char* = {"Run", "Cancel"}
+    leading_labels: [2] const char* = {"Run", "Delete"}
+    trailing_labels: [2] const char* = {"Run", "Save"}
+    leading_icons: [2] int = {UI_ICON_TYPE_PLAY, UI_ICON_TYPE_TRASH}
+    trailing_icons: [2] int = {UI_ICON_TYPE_PLAY, UI_ICON_TYPE_SAVE}
 
+    panel_key := Key("lightfield-dark")
+    if id_base != 0 { panel_key = Key("lightfield-light") }
     Screen root: {
         bounds = viewport
-        ConfigureTheme()
-        ClearBackground(GetThemeBackground())
-        Rect(Scale(28), Scale(78), Scale(744), Scale(772),
-             GetThemeSurface(), GetThemeBorder())
-        Label("Button widget — complete canonical contract", 28, 24,
-              Text32, GetThemeText())
-        Label("One ButtonProps API; use Krait's Light / Dark toggle to test themes.",
-              30, 58, Text14, GetThemeIcon())
-
-        Label("STATE / TONE", 50, 100, Text16, GetThemeText())
-        for int tone = 0; tone < 8; tone++ {
-            Label(style_names[tone], 122 + tone * 80, 130,
-                  Text12, GetThemeIcon())
+        key = panel_key
+        current_theme := GetTheme()
+        chrome_theme := ThemeDefaultDark()
+        if current_theme.mode != THEME_MODE_DARK {
+            tones[3] = ButtonToneAccent
+            column_x[2] = 251
+            column_x[3] = 336
+            column_x[4] = 421
+            column_x[5] = 506
+            column_x[6] = 591
+            column_x[7] = 674
+            state_y[0] = 160
+            state_y[2] = 253
+            label_y[4] = 371
+            size_caption_y[1] = 562
+            size_fonts[1] = 19
+            size_fonts[2] = 19
+            size_label_x[1] = -1
+            size_label_x[2] = -1
+            icon_label_x[0] = 33
+            icon_label_x[1] = 111
+            icon_label_x[2] = 206
+            icon_label_x[3] = 293
+            icon_label_x[5] = 480
+            icon_label_x[7] = 670
+        } else {
+            state_heights[1] = 38
+            # The large face starts higher; retain the label's existing
+            # pixel baseline while aligning the upper edge.
+            size_label_y[2] = 1
         }
-        for int row = 0; row < 7; row++ {
-            y := 154 + row * 44
-            Label(state_names[row], 50, y + 9, Text14, GetThemeIcon())
-            for int tone = 0; tone < 8; tone++ {
-                Button((ButtonProps){
-                    .bounds = {Scale(118 + tone * 80), Scale(y),
-                               Scale(74), Scale(36)},
-                    .label = "Run",
-                    .id = 1000 + row * 10 + tone,
-                    .tone = tones[tone],
-                    .emphasis = styles[tone],
-                    .state = states[row],
-                })
+        focused_bounds: [8] Rectangle = {
+            {origin + 80, 305, 74, 38}, {origin + 166, 305, 72, 38},
+            {origin + 252, 305, 72, 38}, {origin + 336, 305, 72, 38},
+            {origin + 421, 305, 72, 38}, {origin + 506, 305, 72, 38},
+            {origin + 590, 305, 74, 38}, {origin + 674, 305, 72, 38}
+        }
+        small_bounds: [8] Rectangle = {
+            {origin + 94, 511, 56, 24}, {origin + 176, 511, 56, 24},
+            {origin + 262, 511, 57, 25}, {origin + 345, 511, 56, 25},
+            {origin + 430, 511, 56, 25}, {origin + 514, 511, 56, 25},
+            {origin + 598, 511, 56, 25}, {origin + 681, 511, 56, 25}
+        }
+        medium_bounds: [8] Rectangle = {
+            {origin + 87, 548, 70, 41}, {origin + 168, 549, 70, 38},
+            {origin + 254, 550, 71, 38}, {origin + 338, 549, 70, 38},
+            {origin + 423, 549, 70, 39}, {origin + 508, 549, 70, 39},
+            {origin + 592, 549, 71, 39}, {origin + 676, 549, 70, 38}
+        }
+        large_bounds: [8] Rectangle = {
+            {origin + 86, 600, 72, 51}, {origin + 166, 601, 74, 48},
+            {origin + 252, 599, 74, 51}, {origin + 336, 601, 74, 49},
+            {origin + 421, 601, 74, 49}, {origin + 506, 601, 74, 48},
+            {origin + 590, 601, 74, 48}, {origin + 674, 601, 74, 49}
+        }
+        if current_theme.mode == THEME_MODE_DARK {
+            large_bounds[0] = (Rectangle){origin + 81, 599, 75, 49}
+            large_bounds[1] = (Rectangle){origin + 166, 599, 75, 49}
+            large_bounds[2] = (Rectangle){origin + 250, 599, 75, 49}
+            large_bounds[3] = (Rectangle){origin + 333, 599, 75, 49}
+            large_bounds[4] = (Rectangle){origin + 418, 599, 74, 49}
+            large_bounds[5] = (Rectangle){origin + 502, 599, 74, 49}
+            large_bounds[6] = (Rectangle){origin + 585, 599, 74, 49}
+            large_bounds[7] = (Rectangle){origin + 669, 599, 75, 49}
+            medium_bounds[0] = (Rectangle){origin + 83, 548, 71, 38}
+            medium_bounds[1] = (Rectangle){origin + 168, 548, 71, 39}
+            medium_bounds[2] = (Rectangle){origin + 253, 548, 70, 38}
+            medium_bounds[3] = (Rectangle){origin + 335, 548, 71, 39}
+            medium_bounds[4] = (Rectangle){origin + 420, 548, 70, 39}
+            medium_bounds[5] = (Rectangle){origin + 504, 548, 70, 38}
+            medium_bounds[6] = (Rectangle){origin + 587, 548, 70, 38}
+            medium_bounds[7] = (Rectangle){origin + 671, 548, 70, 39}
+            small_bounds[0] = (Rectangle){origin + 91, 511, 56, 24}
+            small_bounds[1] = (Rectangle){origin + 175, 511, 57, 25}
+            small_bounds[2] = (Rectangle){origin + 260, 511, 57, 24}
+            small_bounds[3] = (Rectangle){origin + 343, 511, 56, 25}
+            small_bounds[4] = (Rectangle){origin + 428, 511, 56, 24}
+            small_bounds[5] = (Rectangle){origin + 512, 511, 56, 24}
+            small_bounds[6] = (Rectangle){origin + 594, 511, 56, 24}
+            small_bounds[7] = (Rectangle){origin + 677, 511, 56, 25}
+            focused_bounds[0] = (Rectangle){origin + 80, 305, 75, 38}
+            focused_bounds[1] = (Rectangle){origin + 166, 305, 72, 38}
+            focused_bounds[2] = (Rectangle){origin + 250, 305, 73, 38}
+            focused_bounds[3] = (Rectangle){origin + 334, 305, 72, 38}
+            focused_bounds[4] = (Rectangle){origin + 419, 305, 73, 38}
+            focused_bounds[5] = (Rectangle){origin + 503, 305, 73, 38}
+            focused_bounds[6] = (Rectangle){origin + 587, 305, 73, 39}
+            focused_bounds[7] = (Rectangle){origin + 671, 305, 73, 38}
+        }
+        grid_label_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
+            .font_size=17, .content_offset=(Vector2){0, 1}}
+        grid_hover_style: Style = (Style){}
+        full_run_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
+            .font_size=19, .content_offset=(Vector2){-3, -1}}
+        full_delete_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
+            .font_size=20, .content_offset=(Vector2){-8, -1}}
+        if current_theme.mode == THEME_MODE_DARK {
+            full_run_style.font_size = 18
+            full_run_style.content_offset.x = -13
+            full_delete_style.content_offset.x = -15
+        }
+        theme_heading: TextProps = (TextProps){.bounds={origin + 27, 83, 350, 26},
+            .text="LIGHT THEME", .font=Text24, .typeface="semibold", .letter_spacing=3, .wrap=TextWrapNone}
+        sizes_heading: TextProps = (TextProps){.bounds={origin + 26, 475, 200, 28},
+            .text="SIZES", .font=27, .typeface="semibold", .wrap=TextWrapNone}
+        icons_heading: TextProps = (TextProps){.bounds={origin + 25, 679, 300, 28},
+            .text="ICON VARIANTS", .font=27, .typeface="semibold", .wrap=TextWrapNone}
+        theme_caption: TextProps = (TextProps){.bounds={origin + 27, 108, 350, 20},
+            .text="DEPTH THROUGH LIGHT", .font=13, .letter_spacing=5,
+            .color=current_theme.colors.link_hover, .wrap=TextWrapNone}
+        footer_label: const char* = "KRYON / 2040 / BUILD WHAT'S NEXT"
+        footer_align: TextAlign = TextAlignEnd
+        footer_font: int = Text14
+        footer_spacing: int = 6
+        panel_x: int = 1
+        panel_border := current_theme.colors.background
+        panel_top: Color = {250, 252, 254, 255}
+        panel_bottom: Color = {249, 252, 254, 255}
+        if current_theme.mode == THEME_MODE_DARK {
+            grid_label_style.font_size = 19
+            grid_label_style.content_offset = (Vector2){0, 0}
+            grid_hover_style.fields = StyleContentOffset
+            grid_hover_style.content_offset = (Vector2){0, -1}
+            theme_heading.text = "DARK THEME"
+            theme_heading.bounds = (Rectangle){origin + 27, 81, 350, 26}
+            theme_heading.font = 27
+            theme_heading.letter_spacing = 2
+            sizes_heading.bounds = (Rectangle){origin + 25, 477, 200, 28}
+            sizes_heading.font = Text24
+            sizes_heading.letter_spacing = 2
+            icons_heading.bounds = (Rectangle){origin + 24, 681, 300, 28}
+            icons_heading.font = 25
+            icons_heading.letter_spacing = 1
+            theme_caption.text = "LIGHT CREATES DEPTH"
+            theme_caption.bounds = (Rectangle){origin + 26, 108, 350, 20}
+            footer_label = "INTELLIGENT DETAILS. LASTING IMPACT."
+            footer_align = TextAlignStart
+            footer_font = Text12
+            footer_spacing = 4
+            panel_x = 4
+            panel_border = current_theme.colors.link
+            panel_border.a = 80
+            panel_top = (Color){0, 25, 52, 255}
+            panel_bottom = (Color){1, 29, 56, 255}
+        }
+        heading_colors: [8] Color = {
+            current_theme.colors.link, current_theme.colors.text,
+            current_theme.colors.text, current_theme.colors.text,
+            current_theme.colors.danger, current_theme.colors.success,
+            current_theme.colors.warning, current_theme.colors.link
+        }
+        if current_theme.mode != THEME_MODE_DARK {
+            heading_colors[6] = current_theme.colors.on_warning
+        }
+        Surface((Rectangle){origin + 0, 0, 768, 74},
+            (Style){.fields=StyleBackground | StyleBackgroundEnd | StyleRadius,
+                .background=chrome_theme.colors.surface_raised,
+                .background_end=chrome_theme.colors.background, .radius=0})
+        Surface((Rectangle){origin + panel_x, 74, 766 - panel_x, 920},
+            (Style){.fields=StyleBackground | StyleBackgroundEnd | StyleBorder | StyleRadius,
+                .background=panel_top, .background_end=panel_bottom, .border=panel_border, .radius=12})
+        if theme_switch {
+            Text((TextProps){.bounds={origin + 24, 16, 490, 32},
+                .text="MAGNETIC LIGHTFIELD", .wrap=TextWrapNone,
+                .style=(Style){.fields=StyleForeground|StyleFontSize,
+                    .foreground=chrome_theme.colors.text, .font_size=(float)Text24}})
+            Text((TextProps){.bounds={origin + 25, 50, 490, 24},
+                .text="Living interfaces. Quieter power.", .wrap=TextWrapNone,
+                .style=(Style){.fields=StyleForeground|StyleFontSize,
+                    .foreground=chrome_theme.colors.icon, .font_size=(float)Text14}})
+            if Button((ButtonProps){.bounds={origin + 590, 22, 68, 32}, .label="Light", .id=id_base + 91}) {
+                SetThemeMode(THEME_MODE_LIGHT)
+            }
+            if Button((ButtonProps){.bounds={origin + 672, 22, 68, 32}, .label="Dark", .id=id_base + 92}) {
+                SetThemeMode(THEME_MODE_DARK)
             }
         }
+        Text(theme_heading)
+        Text(theme_caption)
 
-        Label("EMPHASIS", 50, 484, Text16, GetThemeText())
-        for int emphasis = 0; emphasis < 5; emphasis++ {
-            Button((ButtonProps){
-                .bounds = {Scale(50 + emphasis * 136), Scale(514),
-                           Scale(128), Scale(38)},
-                .label = emphasis_names[emphasis],
-                .id = 2000 + emphasis,
-                .emphasis = emphases[emphasis],
-            })
+        for int column = 0; column < 8; column++ {
+            Text((TextProps){.bounds={origin + column_x[column] - 2, 134, 76, 22},
+                .text=tone_names[column], .color=heading_colors[column],
+                .font=17, .align=TextAlignCenter, .wrap=TextWrapNone})
         }
-
-        Label("SIZE AND SHAPE", 50, 584, Text16, GetThemeText())
-        Button((ButtonProps){
-            .bounds = {Scale(50), Scale(614), Scale(96), Scale(32)},
-            .label = "Small",
-            .id = 3001,
-            .size = ControlSizeSmall,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(156), Scale(610), Scale(112), Scale(40)},
-            .label = "Medium",
-            .id = 3002,
-            .size = ControlSizeMedium,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(278), Scale(606), Scale(132), Scale(48)},
-            .label = "Large",
-            .id = 3003,
-            .size = ControlSizeLarge,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(420), Scale(610), Scale(116), Scale(40)},
-            .label = "Pill",
-            .id = 3004,
-            .pill = true,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(546), Scale(610), Scale(176), Scale(40)},
-            .label = "Full width",
-            .id = 3005,
-            .full_width = true,
-        })
-
-        Label("SIMPLE DEFAULT", 50, 686, Text16, GetThemeText())
-        Button((ButtonProps){
-            .bounds = {Scale(50), Scale(716), Scale(672), Scale(44)},
-            .label = "Only bounds and label are required",
-            .id = 4001,
-        })
-
-        Label("CONTENT", 50, 790, Text16, GetThemeText())
-        Button((ButtonProps){
-            .bounds = {Scale(50), Scale(820), Scale(150), 0},
-            .label = "Run",
-            .id = 5001,
-            .tone = ButtonToneAccent,
-            .icon_type = 31,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(214), Scale(820), Scale(150), 0},
-            .label = "Next",
-            .id = 5002,
-            .emphasis = ButtonEmphasisOutline,
-            .icon_type = 34,
-            .icon_placement = IconPlacementTrailing,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(378), Scale(820), 0, 0},
-            .label = "Add item",
-            .id = 5003,
-            .emphasis = ButtonEmphasisSoft,
-            .icon_type = 32,
-            .icon_only = true,
-            .circle = true,
-        })
-        MenuButton((MenuButtonProps){
-            .button = {
-                .bounds = {Scale(442), Scale(820), Scale(130), 0},
-                .label = "More",
-                .id = 5010,
-                .emphasis = ButtonEmphasisOutline,
-            },
-            .menu_id = 5011,
-            .items = menu_items,
-            .item_count = 2,
-            .open = &menu_open,
-        })
-        SplitButton((SplitButtonProps){
-            .button = {
-                .bounds = {Scale(586), Scale(820), Scale(136), 0},
-                .label = "Add",
-                .id = 5020,
-                .tone = ButtonToneAccent,
-            },
-            .menu_id = 5022,
-            .items = menu_items,
-            .item_count = 2,
-            .open = &split_open,
-        })
-        Button((ButtonProps){
-            .bounds = {Scale(50), Scale(878), 0, 0},
-            .label = "Uses the remaining row width",
-            .id = 5004,
-            .full_width = true,
-            .emphasis = ButtonEmphasisSoft,
-        })
+        for int row = 0; row < 6; row++ {
+            y := state_y[row]
+            Text((TextProps){.bounds={origin + 20, label_y[row], 60, 22},
+                .text=state_names[row], .font=17, .wrap=TextWrapNone})
+            for int column = 0; column < 8; column++ {
+                bounds: Rectangle = {origin + column_x[column], y, 72, state_heights[row]}
+                if current_theme.mode != THEME_MODE_DARK {
+                    if row == 0 && (column == 0 || column == 2) {
+                        bounds = (Rectangle){origin + column_x[column], 161, 72, state_heights[row]}
+                    }
+                    if row == 1 && column == 0 {
+                        bounds = (Rectangle){origin + 81, 206, 72, 39}
+                    }
+                    if row == 1 && column == 2 {
+                        bounds = (Rectangle){origin + 251, 205, 72, 38}
+                    }
+                } else {
+                    if row == 1 && column == 3 {
+                        bounds = (Rectangle){origin + 334, 206, 72, 36}
+                    }
+                    if row == 1 && column == 7 {
+                        bounds = (Rectangle){origin + 672, 206, 70, 36}
+                    }
+                }
+                if row == 3 {
+                    bounds = focused_bounds[column]
+                }
+                hover_style := grid_hover_style
+                if emphases[column] == ButtonEmphasisGhost || emphases[column] == ButtonEmphasisLink {
+                    hover_style.fields = 0
+                }
+                Button state_sample: {
+                    bounds = bounds
+                    label = "Run"
+                    id = id_base + 1000 + row * 10 + column
+                    tone = tones[column]
+                    emphasis = emphases[column]
+                    state = states[row]
+                    style = (ControlStyle){.normal=grid_label_style, .hover=hover_style}
+                }
+            }
+        }
+        Line(origin + 24, 468, origin + 744, 468, GetThemeBorder())
+        Text(sizes_heading)
+        for int row = 0; row < 3; row++ {
+            Text((TextProps){.bounds={origin + 24, size_caption_y[row], 56, 24},
+                .text=size_names[row], .font=17, .wrap=TextWrapNone})
+            for int column = 0; column < 8; column++ {
+                sample_bounds: Rectangle = large_bounds[column]
+                if row == 0 {
+                    sample_bounds = small_bounds[column]
+                }
+                if row == 1 {
+                    sample_bounds = medium_bounds[column]
+                }
+                Button size_sample: {
+                    bounds = sample_bounds
+                    label = "Run"
+                    id = id_base + 2000 + row * 10 + column
+                    tone = tones[column]
+                    emphasis = emphases[column]
+                    size = sizes[row]
+                    style = (ControlStyle){.normal=(Style){
+                        .fields=StyleFontSize | StyleContentOffset, .font_size=(float)size_fonts[row],
+                        .content_offset=(Vector2){size_label_x[row], size_label_y[row]}}}
+                }
+            }
+        }
+        Line(origin + 24, 674, origin + 744, 674, GetThemeBorder())
+        Text(icons_heading)
+        text_bounds: [2] Rectangle = {{origin + 24, 747, 70, 40}, {origin + 24, 801, 70, 40}}
+        leading_bounds: [2] Rectangle = {{origin + 104, 747, 85, 41}, {origin + 104, 801, 83, 40}}
+        trailing_bounds: [2] Rectangle = {{origin + 201, 747, 82, 41}, {origin + 200, 800, 82, 43}}
+        pill_bounds: [2] Rectangle = {{origin + 360, 747, 99, 41}, {origin + 360, 800, 100, 43}}
+        icon_origin := (float)origin
+        icon_bounds: [2] Rectangle = {{icon_origin + 296.5, 746.5, 43, 43}, {origin + 297, 800, 43, 43}}
+        square_bounds: [2] Rectangle = {{origin + 479, 747, 42, 42}, {origin + 479, 800, 43, 43}}
+        split_bounds: [2] Rectangle = {{origin + 540, 748, 98, 40}, {origin + 540, 801, 98, 40}}
+        menu_bounds: [2] Rectangle = {{origin + 657, 748, 88, 40}, {origin + 657, 801, 88, 40}}
+        if current_theme.mode == THEME_MODE_LIGHT {
+            text_bounds[0] = (Rectangle){origin + 23, 747, 70, 41}
+            text_bounds[1] = (Rectangle){origin + 23, 801, 70, 40}
+            leading_bounds[0] = (Rectangle){origin + 101, 747, 84, 41}
+            leading_bounds[1] = (Rectangle){origin + 101, 801, 84, 40}
+            trailing_bounds[0] = (Rectangle){origin + 198, 747, 83, 41}
+            trailing_bounds[1] = (Rectangle){origin + 200, 802, 81, 39}
+            pill_bounds[1] = (Rectangle){origin + 360, 801, 99, 41}
+            icon_bounds[0] = (Rectangle){origin + 297, 748, 40, 40}
+            icon_bounds[1] = (Rectangle){origin + 296, 802, 40, 40}
+            square_bounds[0] = (Rectangle){origin + 479, 748, 40, 40}
+            square_bounds[1] = (Rectangle){origin + 479, 802, 40, 40}
+            split_bounds[0] = (Rectangle){origin + 538, 747, 98, 40}
+            split_bounds[1] = (Rectangle){origin + 538, 801, 98, 40}
+            menu_bounds[0] = (Rectangle){origin + 656, 747, 88, 40}
+            menu_bounds[1] = (Rectangle){origin + 656, 801, 88, 40}
+        }
+        for int column = 0; column < 8; column++ {
+            Text((TextProps){.bounds={origin + icon_label_x[column], 720, 88, 22},
+                .text=icon_names[column], .font=Text16, .wrap=TextWrapNone})
+        }
+        for int row = 0; row < 2; row++ {
+            tone := tones[row]
+            emphasis := emphases[row]
+            icon_style: ControlStyle = (ControlStyle){}
+            if row == 1 {
+                icon_style.normal = (Style){.fields=StyleIconSize, .icon_size=20}
+            }
+            if current_theme.mode == THEME_MODE_LIGHT { emphasis = ButtonEmphasisSoft }
+            Button text_only: {
+                bounds = text_bounds[row]
+                label = text_labels[row]
+                id = id_base + 3000 + row * 20
+                tone = tone
+                emphasis = emphasis
+            }
+            Button icon_leading: {
+                bounds = leading_bounds[row]
+                label = leading_labels[row]
+                id = id_base + 3001 + row * 20
+                tone = tone
+                emphasis = emphasis
+                icon_type = leading_icons[row]
+            }
+            Button icon_trailing: {
+                bounds = trailing_bounds[row]
+                label = trailing_labels[row]
+                id = id_base + 3002 + row * 20
+                tone = tone
+                emphasis = emphasis
+                icon_type = trailing_icons[row]
+                icon_placement = IconPlacementTrailing
+            }
+            Button icon_only: {
+                bounds = icon_bounds[row]
+                label = leading_labels[row]
+                id = id_base + 3003 + row * 20
+                tone = tone
+                emphasis = emphasis
+                icon_type = leading_icons[row]
+                icon_only = true
+                circle = row == 0
+                style = icon_style
+            }
+            Button pill: {
+                bounds = pill_bounds[row]
+                label = "Continue"
+                id = id_base + 3004 + row * 20
+                tone = tone
+                emphasis = emphasis
+                pill = true
+            }
+            Button square: {
+                bounds = square_bounds[row]
+                label = "Add"
+                id = id_base + 3005 + row * 20
+                tone = tone
+                emphasis = emphasis
+                icon_type = UI_ICON_TYPE_PLUS
+                icon_only = true
+                square = true
+            }
+            SplitButton split: {
+                button = (ButtonProps){.bounds=split_bounds[row], .label="Add",
+                    .id=id_base + 3006 + row * 20, .tone=tone, .emphasis=emphasis}
+                menu_id = id_base + 4000 + row
+                items = menu_items
+                item_count = 2
+                open = &split_open[state_base + row]
+            }
+            MenuButton dropdown: {
+                button = (ButtonProps){.bounds=menu_bounds[row], .label="More",
+                    .id=id_base + 3008 + row * 20, .tone=tone, .emphasis=emphasis}
+                menu_id = id_base + 4010 + row
+                items = menu_items
+                item_count = 2
+                open = &menu_open[state_base + row]
+            }
+        }
+        Line(origin + 24, 864, origin + 744, 864, GetThemeBorder())
+        Text((TextProps){.bounds={origin + 25, 872, 400, 28},
+            .text="FULL WIDTH EXAMPLES", .font=Text24, .typeface="semibold", .letter_spacing=1, .wrap=TextWrapNone})
+        Button full_run: {
+            bounds = {origin + 24, 901, 720, 34}
+            label = "Run"
+            id = id_base + 5000
+            icon_type = UI_ICON_TYPE_PLAY
+            full_width = true
+            pill = true
+            tone = ButtonToneAccent
+            style = (ControlStyle){.normal=full_run_style}
+        }
+        Button full_delete: {
+            bounds = {origin + 24, 945, 720, 38}
+            label = "Delete"
+            id = id_base + 5001
+            icon_type = UI_ICON_TYPE_TRASH
+            full_width = true
+            tone = ButtonToneNeutral
+            emphasis = ButtonEmphasisSoft
+            style = (ControlStyle){.normal=full_delete_style}
+        }
+        Text((TextProps){.bounds={origin + 27, 1003, 714, 20},
+            .text=footer_label, .font=footer_font, .letter_spacing=footer_spacing, .align=footer_align,
+            .color=chrome_theme.colors.icon, .wrap=TextWrapNone})
     }
 }

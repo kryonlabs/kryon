@@ -68,11 +68,23 @@ GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
 BUTTON_POLICY_KRY = runtime/button.kry
 BUTTON_POLICY_C = $(GENERATED_SRC_DIR)/runtime/button.c
 BUTTON_POLICY_H = $(GENERATED_SRC_DIR)/runtime/button.h
-BUTTON_POLICY_STAMP = $(GENERATED_SRC_DIR)/runtime/.button.stamp
+BUTTON_POLICY_STAMP = $(GENERATED_SRC_DIR)/runtime/.controls.stamp
+SURFACE_RUNTIME_KRY = runtime/surface.kry
+SURFACE_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/surface.c
+SURFACE_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/surface.h
+SURFACE_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
 THEME_RUNTIME_KRY = runtime/theme.kry
 THEME_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/theme.c
 THEME_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/theme.h
-THEME_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.theme.stamp
+THEME_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
+STYLE_RUNTIME_KRY = runtime/style.kry
+STYLE_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/style.c
+STYLE_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/style.h
+STYLE_RUNTIME_STAMP = $(SURFACE_RUNTIME_STAMP)
+TEXT_RUNTIME_KRY = runtime/text.kry
+TEXT_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/text.c
+TEXT_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/text.h
+TEXT_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
 MENU_BUTTON_RUNTIME_KRY = runtime/menu_button.kry
 MENU_BUTTON_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/menu_button.c
 MENU_BUTTON_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/menu_button.h
@@ -91,7 +103,7 @@ ICON_TYPES_H = $(GENERATED_INCLUDE_DIR)/ui_icon_types.h
 # (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
 # the default UI loads them. Apps that need CJK can override:
 #   make EMBED_ASSETS="themes fonts/noto"
-EMBED_ASSETS ?= themes fonts/noto/NotoSans-Regular.ttf
+EMBED_ASSETS ?= themes fonts/noto/NotoSans-Regular.ttf fonts/noto/NotoSans-SemiBold.ttf fonts/noto/LICENSE.txt fonts/noto/NOTICE-SemiBold.txt
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FONT_SUBSET_OUT_DIR ?= $(BUILD_DIR)/fonts/subset
@@ -265,8 +277,8 @@ SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
 SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) \
-	$(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(MENU_BUTTON_RUNTIME_C) \
-	$(SPLIT_BUTTON_RUNTIME_C) $(KRYON_BACKEND_SRCS)
+	$(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(STYLE_RUNTIME_C) $(MENU_BUTTON_RUNTIME_C) \
+	$(SPLIT_BUTTON_RUNTIME_C) $(SURFACE_RUNTIME_C) $(TEXT_RUNTIME_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
@@ -480,6 +492,9 @@ language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
 	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c cmd/kir/kir.c cmd/kir/kir_expr.c cmd/kir/kir_token.c cmd/kir/kir_text.c -o $(BUILD_DIR)/tests/kir_expression_test
 	$(BUILD_DIR)/tests/kir_expression_test
 	python3 tests/language_semantics_test.py $(BUILD_DIR)
+	python3 tests/widget_declarations_test.py $(BUILD_DIR)
+	python3 tests/imported_cast_test.py $(BUILD_DIR)
+	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 
 spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
@@ -517,10 +532,80 @@ k2js-runtime-snapshot-test: $(K2JS)
 generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
+.PHONY: lightfield-capture-build
+.PHONY: lightfield-go-capture
+lightfield-go-capture: $(K2GO) generate-button-policy
+	mkdir -p $(BUILD_DIR)/lightfield-go
+	$(K2GO) --no-main --pkg lightfield --root . -o $(BUILD_DIR)/lightfield-go examples/02_buttons.kry
+	cp tests/lightfield_go_capture_test.go $(BUILD_DIR)/lightfield-go/capture_test.go
+	cd go/kryon && KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield(Split)?$$' -count=1
+
+.PHONY: lightfield-label-fit
+lightfield-label-fit: lightfield-go-capture
+	cd go/kryon && KRYON_FIT_BUTTON_LABELS=1 KRYON_LIGHTFIELD_LABEL_GROUP="$(or $(LIGHTFIELD_LABEL_GROUP),states)" KRYON_LIGHTFIELD_REFERENCE="$(abspath design/widget-proposals/08-magnetic-lightfield.png)" KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield$$' -v -count=1
+
+.PHONY: lightfield-geometry-fit
+lightfield-geometry-fit: lightfield-go-capture
+	cd go/kryon && KRYON_FIT_BUTTON_GEOMETRY=1 KRYON_LIGHTFIELD_GEOMETRY_GROUP="$(or $(LIGHTFIELD_GEOMETRY_GROUP),states)" KRYON_LIGHTFIELD_REFERENCE="$(abspath design/widget-proposals/08-magnetic-lightfield.png)" KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield$$' -v -count=1
+
+.PHONY: lightfield-test
+# Render fresh frames before checking the approved baseline and transitions.
+# This target never updates design/lightfield-baseline.
+lightfield-test: lightfield-capture-build lightfield-go-capture
+	xvfb-run -a $(BUILD_DIR)/lightfield/capture $(BUILD_DIR)/lightfield
+	$(MAKE) lightfield-reference-test lightfield-motion-test lightfield-translation-test
+
+lightfield-capture-build: $(K2C) $(LIB) $(KRYON_BACKEND_LIBS)
+	mkdir -p $(BUILD_DIR)/lightfield
+	$(K2C) --no-main --root . -o $(BUILD_DIR)/lightfield examples/02_buttons.kry
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(BUILD_DIR)/lightfield tests/lightfield_capture.c $(BUILD_DIR)/lightfield/examples/02_buttons.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=GetTime -Wl,--wrap=GetFrameTime -o $(BUILD_DIR)/lightfield/capture
+
+.PHONY: surface-policy-test lightfield-reference-test
+.PHONY: button-style-parity-test
+button-style-parity-test: $(BUILD_DIR)/button-style-parity
+	$(BUILD_DIR)/button-style-parity > $(BUILD_DIR)/button-style-parity.jsonl
+	cd go/kryon && KRYON_BUTTON_STYLE_FIXTURE="$(abspath $(BUILD_DIR)/button-style-parity.jsonl)" go test -run '^TestButtonStyleParityWithC$$' -count=1
+
+$(BUILD_DIR)/button-style-parity: tests/button_style_parity.c $(LIB) $(KRYON_BACKEND_LIBS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: lightfield-motion-test
+.PHONY: lightfield-backend-test
+lightfield-backend-test:
+	python3 tests/lightfield_backend_test.py --c-captures $(BUILD_DIR)/lightfield --go-captures $(BUILD_DIR)/lightfield-go/captures
+
+lightfield-motion-test:
+	python3 tests/lightfield_motion_test.py --captures $(BUILD_DIR)/lightfield
+	python3 tests/lightfield_motion_test.py --captures $(BUILD_DIR)/lightfield-go/captures
+
+.PHONY: lightfield-translation-test
+lightfield-translation-test:
+	sh tests/prepare_raylib_precision_test.sh
+	python3 tests/lightfield_translation_test.py --captures $(BUILD_DIR)/lightfield --isolated-offset
+	python3 tests/lightfield_translation_test.py --captures $(BUILD_DIR)/lightfield-go/captures
+
+.PHONY: style-policy-test
+.PHONY: text-policy-test
+text-policy-test: $(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H) $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C)
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(TEXT_RUNTIME_C) $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/text-policy-test
+	$(BUILD_DIR)/text-policy-test
+
+style-policy-test: $(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H) $(SURFACE_RUNTIME_C)
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/style-policy-test
+	$(BUILD_DIR)/style-policy-test
+
+surface-policy-test: $(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H)
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/surface-policy-test
+	$(BUILD_DIR)/surface-policy-test
+
+lightfield-reference-test:
+	python3 tests/lightfield_reference_test.py --captures $(BUILD_DIR)/lightfield
+
 preflight: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
 	git diff --check
 
 clean-text-api-check:
+	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
 test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
@@ -529,6 +614,10 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-ap
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
 	sh tests/k2go_syntax_test.sh $(K2GO)
 	sh tests/k2js_syntax_test.sh $(K2JS)
+	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
+	$(MAKE) surface-policy-test
+	$(MAKE) style-policy-test
+	$(MAKE) button-style-parity-test
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)
@@ -650,16 +739,15 @@ K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
 
-$(BUTTON_POLICY_STAMP): $(BUTTON_POLICY_KRY) $(K2C)
-	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(BUTTON_POLICY_KRY)
+$(BUTTON_POLICY_STAMP): $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY)
 	touch $@
 
 $(BUTTON_POLICY_C) $(BUTTON_POLICY_H): $(BUTTON_POLICY_STAMP)
 	@test -f $@
 
-$(THEME_RUNTIME_STAMP): $(THEME_RUNTIME_KRY) $(K2C)
-	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(THEME_RUNTIME_KRY)
-	touch $@
+$(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H): $(SURFACE_RUNTIME_STAMP)
+	@test -f $@
 
 $(THEME_RUNTIME_C) $(THEME_RUNTIME_H): $(THEME_RUNTIME_STAMP)
 	@test -f $@
@@ -679,16 +767,33 @@ $(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H): $(SPLIT_BUTTON_RUNTIME_STAM
 	@test -f $@
 
 $(BUILD_DIR)/core/theme.o: $(THEME_RUNTIME_H)
-$(BUILD_DIR)/ui/button.o: $(BUTTON_POLICY_H)
+$(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H): $(STYLE_RUNTIME_STAMP)
+	@test -f $@
+
+$(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H): $(TEXT_RUNTIME_STAMP)
+	@test -f $@
+
+$(BUILD_DIR)/ui/ui_tree.o: $(TEXT_RUNTIME_H)
+
+$(BUILD_DIR)/ui/ui_style.o: $(THEME_RUNTIME_H) $(STYLE_RUNTIME_H)
+$(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h
+$(BUILD_DIR)/ui/ui.o: $(SURFACE_RUNTIME_H)
+$(BUILD_DIR)/ui/ui_icons.o: $(SURFACE_RUNTIME_H)
+$(BUILD_DIR)/ui/ui_tree.o: $(SURFACE_RUNTIME_H)
+$(BUILD_DIR)/ui/button.o: $(BUTTON_POLICY_H) $(SURFACE_RUNTIME_H)
 $(BUILD_DIR)/ui/ui_tree.o: $(MENU_BUTTON_RUNTIME_H) $(SPLIT_BUTTON_RUNTIME_H)
 
 .PHONY: generate-button-policy
 generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) \
+	$(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H) \
 	$(THEME_RUNTIME_C) $(THEME_RUNTIME_H) \
+	$(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H) \
+	$(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H) \
 	$(MENU_BUTTON_RUNTIME_C) $(MENU_BUTTON_RUNTIME_H) \
 	$(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H) $(K2GO)
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY)
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(THEME_RUNTIME_KRY)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY)
+	gofmt -w go/kryon/text.go
+	gofmt -w go/kryon/surface.go go/kryon/style.go
 	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(MENU_BUTTON_RUNTIME_KRY)
 	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(SPLIT_BUTTON_RUNTIME_KRY)
 	gofmt -w go/kryon/button.go

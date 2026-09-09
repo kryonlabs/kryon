@@ -37,7 +37,7 @@ state {
 
 Counter :: (app: App*) {
     Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone})
-    if Button("Increment") {
+    if Button((ButtonProps){.label="Increment"}) {
         app->click_count += 1
     }
     value := click_count + 1
@@ -66,8 +66,8 @@ grep -Fq 'state click_count type int init 0' "$kir"
 grep -Fq 'function Counter args app: App* return void' "$kir"
 grep -Fq 'stmt widget widget Text args (TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone} text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone})' "$kir"
 grep -Fq 'expr call text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone}) name Text op' "$kir"
-grep -Fq 'stmt if widget  args  text if Button("Increment") {' "$kir"
-grep -Fq 'expr call text Button("Increment") name Button op' "$kir"
+grep -Fq 'stmt if widget  args  text if Button((ButtonProps){.label="Increment"}) {' "$kir"
+grep -Fq 'expr call text Button((ButtonProps){.label="Increment"}) name Button op' "$kir"
 grep -Fq 'stmt assign widget  args  text app->click_count += 1' "$kir"
 grep -Fq 'expr int text 1 name  op' "$kir"
 grep -Fq 'stmt decl widget  args  text value := click_count + 1' "$kir"

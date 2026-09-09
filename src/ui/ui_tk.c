@@ -16,6 +16,7 @@ static const TextInputStyle kryon_zero_text_input_style;
 #define UI_TK_MENU_DEPTH_MAX 8
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
+#define UI_BUTTON_MOTION_BUCKETS 512
 #define UI_DRAG_DROP_DATA_MAX 1024
 #define UI_NUMERIC_INPUT_BUCKETS 128
 typedef struct UINumericClickState {
@@ -75,6 +76,13 @@ typedef struct UITreeHeaderNav {
     int depth;
 } UITreeHeaderNav;
 
+typedef struct ButtonMotionEntry {
+    unsigned int key;
+    InteractionMotion motion;
+    unsigned long frame_seen;
+    struct ButtonMotionEntry *next;
+} ButtonMotionEntry;
+
 struct ToolkitStore {
     int drag_active;
     float drag_last_x;
@@ -86,6 +94,8 @@ struct ToolkitStore {
     int canvas_depth;
     int canvas_mode_depth;
     UIRadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
+    ButtonMotionEntry *button_motion[UI_BUTTON_MOTION_BUCKETS];
+    unsigned long button_motion_frame;
     int last_table_id;
     int last_table_row;
     int last_table_column;
@@ -152,6 +162,14 @@ toolkit_store_free(ToolkitStore *store)
         return;
     if(store == current_toolkit_store || store == &fallback_toolkit_store)
         abort();
+    for(int i = 0; i < UI_BUTTON_MOTION_BUCKETS; i++) {
+        ButtonMotionEntry *entry = store->button_motion[i];
+        while(entry != NULL) {
+            ButtonMotionEntry *next = entry->next;
+            free(entry);
+            entry = next;
+        }
+    }
     for(int i = 0; i < UI_NUMERIC_INPUT_BUCKETS; i++) {
         UINumericInputState *state = store->numeric_inputs[i];
 
@@ -180,6 +198,49 @@ ToolkitStore *
 toolkit_store_current(void)
 {
     return current_toolkit_store;
+}
+
+void
+toolkit_store_frame(ToolkitStore *store)
+{
+    if(store == NULL)
+        return;
+    unsigned long frame = ++store->button_motion_frame;
+    for(int i = 0; i < UI_BUTTON_MOTION_BUCKETS; i++) {
+        ButtonMotionEntry **link = &store->button_motion[i];
+        while(*link != NULL) {
+            ButtonMotionEntry *entry = *link;
+            if(MotionExpired((int64_t)(frame - entry->frame_seen))) {
+                *link = entry->next;
+                free(entry);
+            } else {
+                link = &entry->next;
+            }
+        }
+    }
+}
+
+InteractionMotion *
+toolkit_button_motion(unsigned int key)
+{
+    ToolkitStore *store = current_toolkit_store;
+    unsigned long frame = store->button_motion_frame;
+    unsigned int bucket = key % UI_BUTTON_MOTION_BUCKETS;
+    for(ButtonMotionEntry *entry = store->button_motion[bucket]; entry != NULL;
+        entry = entry->next) {
+        if(entry->key == key) {
+            entry->frame_seen = frame;
+            return &entry->motion;
+        }
+    }
+    ButtonMotionEntry *entry = calloc(1, sizeof(*entry));
+    if(entry == NULL)
+        abort();
+    entry->key = key;
+    entry->frame_seen = frame;
+    entry->next = store->button_motion[bucket];
+    store->button_motion[bucket] = entry;
+    return &entry->motion;
 }
 
 static ToolkitStore *
@@ -642,16 +703,6 @@ DrawUIMultiSelectList(MultiSelectListProps list)
         *list.selected_count = count;
     }
     return clicked;
-}
-
-int
-DrawUISmallButton(ButtonProps button)
-{
-    if(!IsWindowReady())
-        return 0;
-    ButtonSpec spec = {button.bounds, button.label, GetSmallFontSize(),
-                       button.id, button.disabled, {0}, {0}, {0}, {0}, 0.0f};
-    return RenderButton(spec);
 }
 
 int

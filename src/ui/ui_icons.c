@@ -1,6 +1,8 @@
 #include "ui_icons.h"
 #include "ui_internal.h"
 #include "kryon.h"
+#include "runtime/surface.h"
+#include <math.h>
 #include "../backend/kry_sw_png.h"
 #include <stdlib.h>
 #include <string.h>
@@ -137,13 +139,11 @@ draw_icon_asset(const UIIconAsset *asset, Rectangle bounds, Color tint)
 {
     Texture2D atlas;
 
-    if(asset == NULL || bounds.width <= 0 || bounds.height <= 0)
+    if(asset == NULL || bounds.width <= 0 || bounds.height <= 0 || tint.a == 0)
         return;
     atlas = LoadIconSheet(asset->sheet);
     if(atlas.id == 0)
         return;
-    if(tint.a == 0)
-        tint = WHITE;
     if(asset->sheet != UI_ICON_SHEET_UI)
         tint = (Color){255, 255, 255, tint.a};
     DrawTexturePro(atlas, asset->source, bounds, (Vector2){0}, 0.0f, tint);
@@ -152,13 +152,31 @@ draw_icon_asset(const UIIconAsset *asset, Rectangle bounds, Color tint)
 void
 DrawIcon(UIIconType type, Rectangle bounds, Color tint)
 {
+    int shape = 0;
+    if(type == UI_ICON_TYPE_PLUS) shape = 1;
+    if(type == UI_ICON_TYPE_PLAY) shape = 2;
+    if(type == UI_ICON_TYPE_TRASH) shape = 3;
+    if(type == UI_ICON_TYPE_SAVE) shape = 4;
+    if(shape != 0) {
+        for(int y = (int)floorf(bounds.y); y < (int)ceilf(bounds.y + bounds.height); y++) {
+            for(int x = (int)floorf(bounds.x); x < (int)ceilf(bounds.x + bounds.width); x++) {
+                float coverage = IconCoverage(shape, x - bounds.x, y - bounds.y,
+                    bounds.width, bounds.height);
+                if(coverage > 0)
+                    DrawRectangle(x, y, 1, 1, GetColor(Opacity(ColorToInt(tint), coverage)));
+            }
+        }
+        return;
+    }
     draw_icon_asset(GetUIIconAsset(type), bounds, tint);
 }
 
 void
 DrawIconByName(const char *name, Rectangle bounds, Color tint)
 {
-    draw_icon_asset(GetUIIconAssetByName(name), bounds, tint);
+    const UIIconAsset *asset = GetUIIconAssetByName(name);
+    if(asset != NULL)
+        DrawIcon(asset->type, bounds, tint);
 }
 
 void
