@@ -74,7 +74,7 @@ done
 
 # shellcheck disable=SC2086
 "$k2js" --root "$root" -o "$work/out" $source_args
-cp "$root/web/kryon-runtime.js" "$work/out/kryon-runtime.js"
+cp "$root"/web/*.js "$work/out/"
 printf '%s\n' '{"type":"module"}' > "$work/out/package.json"
 
 cat > "$work/runner.mjs" <<'EOF'

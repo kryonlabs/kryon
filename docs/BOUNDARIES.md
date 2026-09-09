@@ -40,6 +40,12 @@ application could use it without inheriting product assumptions. If the answer
 is no, keep it in the downstream app. If the answer is yes, name it after the
 domain concept directly and cover it with Kryon-owned tests.
 
+Instance storage is a host primitive: it allocates typed state by key and
+releases it with its render host. Widget declarations own the record shape and
+its updates. Generated runtime methods may bind to their owning host; generated
+application functions use the active host API without an injected runtime
+parameter. Product-specific state remains in application declarations.
+
 ## Generated And Showcase Material
 
 Generated files should describe their generator and source inputs. Do not hand

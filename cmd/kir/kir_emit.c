@@ -211,6 +211,16 @@ KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target)
     int used = 0;
     for(int i = 0; i < module->function_count; i++) used |= KirCanEmitBody(module, &module->functions[i]);
     if(!used) return;
+    if(target == KIR_C || target == KIR_CPP) {
+        int instances = 0;
+        for(int i = 0; i < module->function_count; i++) {
+            const KirFunction *fn = &module->functions[i];
+            for(int j = 0; j < fn->stmt_count; j++)
+                instances |= fn->stmts[j].is_instance;
+        }
+        if(instances)
+            fputs("#include \"ui_instance.h\"\n", out);
+    }
     number_prefix(module, p, sizeof(p));
     if(target == KIR_C || target == KIR_CPP) {
         fprintf(out, "#include <stdint.h>\n#include <stdbool.h>\n#include <stdlib.h>\n\n");
@@ -288,7 +298,11 @@ KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target)
     }
 }
 
-typedef struct Local { char name[KIR_NAME_MAX]; int depth; } Local;
+typedef struct Local {
+    char name[KIR_NAME_MAX];
+    int depth;
+    int is_instance;
+} Local;
 typedef struct Emitter {
     FILE *out;
     const KirModule *module;
@@ -296,6 +310,7 @@ typedef struct Emitter {
     KirTarget target;
     KirResolveTarget resolve;
     void *context;
+    const char *instance_host;
     int indent, serial, depth, local_count;
     Local *locals;
     char numbers[64];
@@ -434,7 +449,13 @@ static void
 resolve(Emitter *e, const char *name, char *out, size_t size)
 {
     for(int i = e->local_count - 1; i >= 0; i--)
-        if(!strcmp(e->locals[i].name, name)) { kir_copy(out,size,name); return; }
+        if(!strcmp(e->locals[i].name, name)) {
+            if(e->locals[i].is_instance)
+                format(out, size, e->target == KIR_JS ? "%s.value" : "(*%s)", name);
+            else
+                kir_copy(out, size, name);
+            return;
+        }
     e->resolve(e->context, name, out, size);
 }
 
@@ -874,12 +895,34 @@ emit_sequence(Emitter *e,int begin,int end)
         char value[KIR_TEXT_MAX],lhs[KIR_TEXT_MAX],result[KIR_TEXT_MAX];
         switch(st->kind) {
         case KIR_STMT_DECL:
-            if(st->expr_root>=0)emit_expr(e,st->expr_root,st->type,value,sizeof(value));
+            if(st->is_instance) {
+                const KirExpr *key = &e->fn->exprs[st->expr_root];
+                emit_expr(e, st->expr_root, key->kind == KIR_EXPR_INT ? "u64" : "i64",
+                          value, sizeof(value));
+                if(e->target == KIR_GO && *e->instance_host)
+                    line(e, "%s := instanceState[%s](%s, uint64(%s))",
+                         st->name, st->type, e->instance_host, value);
+                else if(e->target == KIR_GO)
+                    line(e, "%s := kryon.InstanceState[%s](uint64(%s))",
+                         st->name, st->type, value);
+                else if(e->target == KIR_JS) {
+                    for(int depth = 0; depth < e->indent; depth++)
+                        fputs("    ", e->out);
+                    fprintf(e->out, "const %s = kryon.instanceState($rt, \"%s\", %s, () => (",
+                            st->name, st->type, value);
+                    KirEmitJsRecordValue(e->out, e->module, st->type, NULL);
+                    fputs("));\n", e->out);
+                } else
+                    line(e, "%s *%s = (%s *)InstanceState(\"%s\", (uint64_t)%s, sizeof(%s));",
+                         st->type, st->name, st->type, st->type, value, st->type);
+            } else if(st->expr_root>=0)emit_expr(e,st->expr_root,st->type,value,sizeof(value));
             else if(record_type(e->module, st->type)) {
                 zero_record(e, st->type, value, sizeof(value));
             }
             else kir_copy(value, sizeof(value), zero_value(st->type, e->target));
-            declare(e,st->name,st->type,value);
+            if(!st->is_instance)
+                declare(e,st->name,st->type,value);
+            e->locals[e->local_count].is_instance = st->is_instance;
             kir_copy(e->locals[e->local_count].name,KIR_NAME_MAX,st->name);e->locals[e->local_count++].depth=e->depth;
             break;
         case KIR_STMT_ASSIGN:
@@ -934,11 +977,13 @@ emit_sequence(Emitter *e,int begin,int end)
 }
 
 int
-KirEmitBody(FILE *out,const KirModule *module,const KirFunction *fn,KirTarget target,KirResolveTarget resolver,void *context)
+KirEmitBody(FILE *out,const KirModule *module,const KirFunction *fn,KirTarget target,
+            KirResolveTarget resolver,void *context,const char *instance_host)
 {
     Emitter e={0};char params[64][KIR_TEXT_MAX];int count;
     if(!KirCanEmitBody(module, fn))return 0;
     e.out=out;e.module=module;e.fn=fn;e.target=target;e.resolve=resolver;e.context=context;e.indent=1;
+    e.instance_host = instance_host;
     e.locals=calloc((size_t)fn->stmt_count+65,sizeof(*e.locals));
     if(!e.locals) { fprintf(stderr,"out of memory during scalar emission\n"); exit(1); }
     number_prefix(module,e.numbers,sizeof(e.numbers));

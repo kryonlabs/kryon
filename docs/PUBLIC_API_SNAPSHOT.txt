@@ -1648,6 +1648,7 @@ include/ui_inspect.h function UIInspectInputCapturesClick
 include/ui_inspect.h function UIInspectNodeCount
 include/ui_inspect.h function UIInspectSelectAt
 include/ui_inspect.h function UIInspectWidgetCount
+include/ui_instance.h function InstanceState
 include/ui_layout.h function GetUICenteredColumn
 include/ui_layout.h function GetUIPageSidePadding
 include/ui_layout.h function GetUIViewHeight

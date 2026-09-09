@@ -316,13 +316,34 @@ KirStructureFunction(KirFunction *fn, const KirModule *module)
         char *value = NULL;
         kir_copy(text, sizeof(text), st->text);
         st->expr_root = st->lhs_root = -1;
+        st->is_instance = 0;
         if(st->kind == KIR_STMT_DECL) {
             char *colon = strchr(text, ':');
             if(colon) {
                 *colon++ = 0; kir_trim_in_place(text);
                 kir_copy(st->name, sizeof(st->name), text);
-                value = strchr(colon, '=');
-                if(value) *value++ = 0;
+                char *annotation = strstr(colon, "#instance");
+                char *assignment = strchr(colon, '=');
+                if(annotation != NULL && (assignment == NULL || annotation < assignment)) {
+                    char *key = annotation + strlen("#instance");
+                    char *end = strrchr(key, ')');
+                    const char *tail = end != NULL ? kir_skip_ws(end + 1) : "";
+                    if(*tail == ';')
+                        tail = kir_skip_ws(tail + 1);
+                    key = (char *)kir_skip_ws(key);
+                    if(*key != '(' || end == NULL || *tail != '\0') {
+                        fprintf(stderr, "%s:%d: expected #instance(key) after a record type\n",
+                                st->span.path, st->span.line);
+                        exit(1);
+                    }
+                    *annotation = '\0';
+                    *end = '\0';
+                    value = key + 1;
+                    st->is_instance = 1;
+                } else {
+                    value = assignment;
+                    if(value) *value++ = 0;
+                }
                 kir_trim_in_place(colon);
                 kir_copy(st->type, sizeof(st->type), colon);
             }

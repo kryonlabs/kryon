@@ -568,11 +568,19 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                     if(c.depth) c.depth--;
                 }
                 int errors_before_expression = c.errors;
-                if(st->declared_widget)
+                if(st->declared_widget || st->is_instance)
                     c.strict = 1;
                 type = expression_type(&c, st->expr_root);
                 if(st->kind == KIR_STMT_DECL) {
-                    if(!*st->type) kir_copy(st->type, sizeof(st->type),
+                    if(st->is_instance) {
+                        const KirType *record = KirFindType(c.module, st->type, NULL);
+                        if(record == NULL || record->is_enum)
+                            error(&c, st->span, "instance state requires a declared record type", st->type);
+                        const char *key_type = KirScalarType(type);
+                        if(st->expr_root < 0 || (strcmp(type, "integer") &&
+                           key_type[0] != 'i' && key_type[0] != 'u'))
+                            error(&c, st->span, "instance key requires an integer", st->name);
+                    } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
                         !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
                     else if(!compatible(st->type, type)) error(&c, st->span, "initializer type mismatch", st->name);
                     bind(&c, st->name, st->type, st->span);
@@ -599,16 +607,52 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                    st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
                     c.depth++;
                 c.strict = strict;
-                if(st->declared_widget && c.errors != errors_before_expression)
+                if((st->declared_widget || st->is_instance) && c.errors != errors_before_expression)
                     c.failed = 1;
             }
             c.fn->checked = c.errors == errors_before;
+            int has_instances = 0;
+            for(int i = 0; i < c.fn->stmt_count; i++)
+                has_instances |= c.fn->stmts[i].is_instance;
+            c.fn->uses_instance_host = has_instances;
+            if(has_instances && (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
+                fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
+                        c.fn->span.path, c.fn->span.line, c.fn->name);
+                c.failed = 1;
+            }
             if(strict && c.fn->checked && !c.fn->is_extern && !KirCanEmitBody(c.module, c.fn)) {
                 error(&c,c.fn->span,"function is not supported by portable scalar emission",c.fn->name);
                 c.fn->checked=0;
             }
         }
     }
+    /* Runtime implementations become host methods only when they need state.
+     * Propagate through resolved calls, including mutually recursive modules. */
+    int changed;
+    do {
+        changed = 0;
+        for(int p = 0; p < count; p++) {
+            for(int m = 0; m < programs[p]->module_count; m++) {
+                KirModule *module = &programs[p]->modules[m];
+                for(int f = 0; f < module->function_count; f++) {
+                    KirFunction *fn = &module->functions[f];
+                    if(fn->uses_instance_host)
+                        continue;
+                    for(int x = 0; x < fn->expr_count; x++) {
+                        const KirFunction *callee = NULL;
+                        const KirModule *owner = NULL;
+                        if(fn->exprs[x].kind == KIR_EXPR_CALL &&
+                           KirResolveFunction(module, fn->exprs[x].name, &owner, &callee) == 1 &&
+                           callee->uses_instance_host) {
+                            fn->uses_instance_host = 1;
+                            changed = 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    } while(changed);
     free(c.bindings);
     return !c.failed && (!strict || c.errors == 0);
 }

@@ -112,6 +112,7 @@ typedef struct KirStmt {
     char args[KIR_TEXT_MAX];
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
+    int is_instance; /* typed record binding retained by its explicit key */
     int expr_root;      /* index into enclosing function exprs, or -1 */
     int lhs_root;       /* structured assignment destination, or -1 */
     char name[KIR_NAME_MAX]; /* declaration binding */
@@ -145,6 +146,7 @@ typedef struct KirFunction {
     int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
     int is_public;  /* exported function or project route */
     int checked;    /* shared checker resolved the function without errors */
+    int uses_instance_host; /* direct or transitive retained-state access */
     char extern_target[KIR_NAME_MAX];   /* '#extern "pkg.Fn"' quoted symbol */
     char extern_symbol[KIR_NAME_MAX];   /* stripped C symbol for c.* externs */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */

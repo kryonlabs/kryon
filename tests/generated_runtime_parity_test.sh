@@ -2463,7 +2463,7 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
 fi
 
 if command -v node >/dev/null 2>&1; then
-    cp "$root/web/kryon-runtime.js" "$work/js/kryon-runtime.js"
+    cp "$root"/web/*.js "$work/js/"
     printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
     cat > "$work/js_runner.mjs" <<'EOF'
 import * as formMod from "./js/tests/parity/generated_form.js";

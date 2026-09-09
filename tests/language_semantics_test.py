@@ -224,7 +224,8 @@ func TestCleanup(t *testing.T) {
 }
 ''')
     run("go", "test", "./...", cwd=work / "go")
-    shutil.copyfile(ROOT / "web/kryon-runtime.js", work / "js/kryon-runtime.js")
+    for runtime_file in (ROOT / "web").glob("*.js"):
+        shutil.copyfile(runtime_file, work / "js" / runtime_file.name)
     (work / "js/package.json").write_text('{"type":"module"}\n')
     (work / "js/test.mjs").write_text('''import assert from "node:assert/strict";
 import * as m from "./cleanup.js";
@@ -315,7 +316,8 @@ Shared :: (value: bool) -> bool {
                         run("go", "test", str(output / f"{name}.go"), str(output / "first_provider.go"),
                             str(output / "second_provider.go"), str(driver))
                     else:
-                        shutil.copyfile(ROOT / "web/kryon-runtime.js", output / "kryon-runtime.js")
+                        for runtime_file in (ROOT / "web").glob("*.js"):
+                            shutil.copyfile(runtime_file, output / runtime_file.name)
                         (output / "package.json").write_text('{"type":"module"}\n')
                         driver = output / "scope_test.mjs"
                         driver.write_text(f'import {{ {symbol} }} from "./{name}.js";\nif ({symbol}(null) !== {expected}) throw new Error("wrong provider");\n')

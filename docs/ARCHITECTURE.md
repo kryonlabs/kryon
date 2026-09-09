@@ -142,8 +142,9 @@ not bypass the declaration's signature. Unresolved host-header APIs do not yet
 provide that declaration metadata to KIR; their migration remains necessary.
 Braced `case` and `default` labels remain control flow, not widget declarations;
 cross-target tests execute both switch paths around ordinary widget calls.
-This initial path does not provide child slots or per-instance state; child
-content is rejected explicitly. Built-in widget migration is still pending.
+Child slots are still unsupported; child content is rejected explicitly.
+Explicit-key instance bindings are described below. Built-in widget migration
+is still pending.
 Portable `#ui` bodies use the same checked emitter as ordinary functions;
 the annotation does not force backend-specific arithmetic or record handling.
 Strict tests execute narrow-integer overflow inside a declared widget through
@@ -244,8 +245,23 @@ hosts, and headless UI frames. Closing a host releases its instance storage.
 `runtime/instance.kry` supplies the shared twelve-frame retention rule. Each
 host sweeps its own store even when no buttons are drawn; another host's frames
 cannot expire its entries. Button uses this storage in both native runtimes.
-Compiler-managed state access, hierarchical instance keys, and typed child slots
-remain necessary before this is a complete declaration lifecycle.
+The shared compiler lowers `name: Record #instance(key)` to a borrowed typed
+record in C, C++, Go, and JavaScript. Keys evaluate once; ordinary copies retain
+value semantics, while field and whole-record assignments update the retained
+value. JavaScript uses the generated `instance.kry` expiration policy too.
+Integration tests execute custom blocks and ordinary calls against all four
+real hosts, including type isolation, reordered and wide keys, whole-record
+replacement, lexical shadowing, and expiration. Instance bodies must pass the
+shared portable checker, even without `--strict`; a fallback must not turn an
+instance binding into a local or module global. Hierarchical keys and typed
+child slots remain necessary before this is a complete declaration lifecycle.
+
+With `k2go --runtime-implementation`, functions that access instances
+are methods on their owning runtime. The checker propagates this requirement
+through calls, so composed helpers preserve their receiver without consulting
+another window's active host. Application declarations use the active host's
+generic instance service. Button's retained motion update now lives in `.kry`
+and uses this binding; C and Go no longer look up or mutate its stored tracks.
 
 Runtime generation discovers `runtime/*.kry` as one checked module set. Adding
 a shared module does not require another per-widget C or Go generation rule.

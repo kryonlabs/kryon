@@ -12,17 +12,26 @@ type instanceEntry struct {
 }
 
 func instanceState[T any](r *runtime, id uint64) *T {
-	key := instanceKey{typeID: (*T)(nil), id: id}
+	return r.InstanceValue((*T)(nil), id, func() any { return new(T) }).(*T)
+}
+
+// InstanceState binds a generated declaration to the active render host.
+func InstanceState[T any](id uint64) *T {
+	return active().InstanceValue((*T)(nil), id, func() any { return new(T) }).(*T)
+}
+
+func (r *runtime) InstanceValue(typeID any, id uint64, create func() any) any {
+	key := instanceKey{typeID: typeID, id: id}
 	if r.instances == nil {
 		r.instances = make(map[instanceKey]*instanceEntry)
 	}
 	entry := r.instances[key]
 	if entry == nil {
-		entry = &instanceEntry{value: new(T)}
+		entry = &instanceEntry{value: create()}
 		r.instances[key] = entry
 	}
 	entry.frameSeen = r.frames
-	return entry.value.(*T)
+	return entry.value
 }
 
 func (r *runtime) expireInstances() {

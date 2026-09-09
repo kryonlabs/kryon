@@ -8,6 +8,15 @@ ButtonInstance :: struct {
     motion: InteractionMotion
 }
 
+AdvanceButtonMotion :: (key: u64, hovered: bool, pressed: bool, focused: bool,
+    enabled: bool, explicit_state: bool, disabled: bool, loading: bool,
+    delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
+    retained: ButtonInstance #instance(key)
+    retained.motion = AdvanceInteractionMotion(retained.motion, hovered, pressed, focused,
+        enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms)
+    return retained.motion
+}
+
 # Widget defaults produce the shared Style value. Hosts adapt theme records;
 # they must not independently assemble button colors, sizing, or presence bits.
 DefaultButtonStyle :: (tone: i32, emphasis: i32, state: i32, size: i32,

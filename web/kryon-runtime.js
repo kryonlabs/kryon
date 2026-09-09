@@ -1,4 +1,5 @@
 // Kryon web runtime for k2js-generated ESM.
+import { Instance_InstanceExpired } from "./instance.js";
 
 export const Text8 = 8;
 export const Text12 = 12;
@@ -195,6 +196,8 @@ export function createRuntime(options = {}) {
     statements: [],
     hostCalls: [],
     mounted: false,
+    instanceFrame: 0,
+    instances: new Map(),
     disabledStack: [],
     tabBarScopes: [],
     input: {
@@ -222,6 +225,24 @@ export function createRuntime(options = {}) {
   return rt;
 }
 
+export function instanceState(rt, type, key, create) {
+  if (!rt)
+    throw new Error("instance state requires a render host");
+  let instances = rt.instances.get(type);
+  if (!instances) {
+    instances = new Map();
+    rt.instances.set(type, instances);
+  }
+  key = BigInt.asUintN(64, BigInt(key));
+  let entry = instances.get(key);
+  if (!entry) {
+    entry = { value: create(), frameSeen: rt.instanceFrame };
+    instances.set(key, entry);
+  }
+  entry.frameSeen = rt.instanceFrame;
+  return entry;
+}
+
 export function beginFrame(rt) {
   if (rt.tabBarScopes.length !== 0)
     throw new Error("unclosed tab bar scope at frame boundary");
@@ -229,6 +250,14 @@ export function beginFrame(rt) {
   rt.statements = [];
   rt.hostCalls = [];
   rt.disabledStack = [];
+  for (const [type, instances] of rt.instances) {
+    for (const [key, entry] of instances) {
+      if (Instance_InstanceExpired(null, null, null, BigInt(rt.instanceFrame - entry.frameSeen)))
+        instances.delete(key);
+    }
+    if (instances.size === 0)
+      rt.instances.delete(type);
+  }
   if (rt.input)
     rt.input.focusOrder = [];
   return rt;
@@ -241,6 +270,7 @@ export function endFrame(rt) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
     rt.input.events = [];
   }
+  rt.instanceFrame++;
   return snapshot(rt);
 }
 

@@ -1,0 +1,73 @@
+#module "widget_instances"
+
+CounterState :: struct {
+    value: i32
+    label: string
+}
+
+OtherState :: struct {
+    value: i32
+}
+
+CounterProps :: struct {
+    key: u64
+    amount: i32
+}
+
+Counter :: (props: CounterProps) -> i32 #ui #export {
+    retained: CounterState #instance(props.key)
+    retained.value += props.amount
+    retained.label = "retained"
+    return retained.value
+}
+
+ReadCounter :: (key: u64) -> i32 #export {
+    retained: CounterState #instance(key)
+    if retained.value != 0 && retained.label != "retained" { return -1 }
+    return retained.value
+}
+
+OtherCounter :: (key: u64) -> i32 #export {
+    retained: OtherState #instance(key)
+    retained.value += 1
+    return retained.value
+}
+
+CounterBlock :: () -> i32 #export {
+    Counter first: {
+        key = 7
+        amount = 2
+    }
+    Counter second: {
+        key = 8
+        amount = 3
+    }
+    return ReadCounter(7) + ReadCounter(8)
+}
+
+CheckInstanceReferences :: () -> i32 #export {
+    next: u64 = (u64)100
+    retained: CounterState #instance(next++)
+    if next != (u64)101 { return 1 }
+    alias: CounterState #instance((u64)100);
+    retained = (CounterState){.value = 3, .label = "retained"}
+    if alias.value != 3 { return 2 }
+    copy: CounterState = retained
+    copy.value = 99
+    if alias.value != 3 { return 3 }
+    if true {
+        retained: OtherState #instance((u64)100)
+        retained.value = 17
+    }
+    if retained.value != 3 { return 4 }
+    alias.value += 1
+    if retained.value != 4 { return 5 }
+    retained = (CounterState){}
+    if alias.value != 0 || alias.label != "" { return 6 }
+    signed_key: i64 = -1
+    negative: OtherState #instance(signed_key)
+    literal: OtherState #instance(-1)
+    negative.value = 23
+    if literal.value != 23 { return 7 }
+    return 0
+}

@@ -450,7 +450,7 @@ docs-site:
 		python3 scripts/update-showcase.py --output $(SITE_BUILD_DIR)/showcase-data.json --banner-dir $(SITE_BUILD_DIR)/showcase; \
 	fi
 	EMCC="$(EMCC)" sh scripts/build-site-web-ide.sh $(SITE_BUILD_DIR)
-	cp web/kryon-runtime.js web/kryon-runtime.d.ts $(SITE_BUILD_DIR)/ide-tools/
+	cp web/*.js web/kryon-runtime.d.ts $(SITE_BUILD_DIR)/ide-tools/
 	sh scripts/build-site-live-examples.sh $(SITE_BUILD_DIR)
 	sh scripts/render-api-html.sh docs/API.md $(SITE_DIR)/api-template.html $(SITE_BUILD_DIR)/api.html
 	rm -f $(SITE_BUILD_DIR)/api-template.html
@@ -506,6 +506,11 @@ k2js-runtime-snapshot-test: $(K2JS)
 
 generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+
+.PHONY: widget-instance-test
+preflight test: widget-instance-test
+widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS) web/instance.js
+	python3 tests/widget_instances_test.py $(BUILD_DIR) --cc="$(CC)" --cppflags="$(CPPFLAGS)" --ldflags="$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
 .PHONY: lightfield-capture-build
 .PHONY: lightfield-go-capture
@@ -734,9 +739,12 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATE
 
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
-generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO)
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
+generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js
+	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
+
+web/instance.js: runtime/instance.kry $(K2JS)
+	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/instance.kry
 
 K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
 K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)
@@ -854,14 +862,14 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
+$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh $(wildcard web/*.js) web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	rm -rf $(TOOLS_DIST_ROOT)
 	mkdir -p $(TOOLS_DIST_ROOT)/bin $(TOOLS_DIST_ROOT)/web $(DIST_DIR)
 	cp $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
 	chmod 755 $(TOOLS_DIST_ROOT)/bin/*
 	printf '%s\n' '$(VERSION)' > $(TOOLS_DIST_ROOT)/VERSION
 	cp README.md LICENSE THIRD_PARTY_NOTICES.md $(TOOLS_DIST_ROOT)/
-	cp web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(TOOLS_DIST_ROOT)/web/
+	cp web/*.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(TOOLS_DIST_ROOT)/web/
 	printf '%s\n' \
 		'{' \
 		'  "name": "kryon-tools",' \

@@ -262,7 +262,9 @@ if [ -n "$public_text_helper_matches" ]; then
 fi
 
 split_text_widget_matches="$(
-    rg -n '\b(TextInRect|TextColored|TextDisabled|TextWrapped)\b' \
+    # These are forbidden widget functions. A palette's TextDisabled field is
+    # a color property, not a second Text implementation.
+    rg -n '\b(TextInRect|TextColored|TextDisabled|TextWrapped)\s*\(' \
         include/ui_tree.h \
         go/kryon/api.go \
         go/kryon/runtime.go || true

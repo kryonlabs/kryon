@@ -277,7 +277,7 @@ Settings :: (viewport: Rectangle) #ui {
 }
 ```
 
-Custom stateless widgets can also use named blocks. Declare a void `#ui`
+Custom widgets can also use named blocks. Declare a `#ui`
 function with one record parameter, then supply its fields as block properties:
 
 ```kry
@@ -300,11 +300,37 @@ passed by value, and unknown, duplicate, or incorrectly typed properties are
 errors. Declarations can appear later in the file or in an explicitly imported
 module; imported declarations must be public and their props record must be
 directly visible without a conflicting local type. Custom blocks currently
-accept properties only: child slots and automatic per-instance state are not
-implemented. Their block names do not yet allocate persistent widget identity.
+accept properties only: child slots are not implemented. Their block names do
+not yet allocate persistent widget identity.
 Interactive compositions must therefore receive distinct stable control IDs
 from their caller; reusing a declaration does not automatically scope IDs in
 its body.
+
+A portable body can bind a typed retained record to an explicit integer key:
+
+```kry
+CounterState :: struct {
+    count: i32
+}
+CountProps :: struct {
+    key: u64
+    amount: i32
+}
+Count :: (props: CountProps) -> i32 #ui {
+    retained: CounterState #instance(props.key)
+    retained.count += props.amount
+    return retained.count
+}
+```
+
+`#instance(key)` evaluates the key once and borrows a zero-initialized record
+from the current render host. The same record type and 64-bit key share state
+across calls; different types or hosts remain independent. Assigning the binding
+updates retained state, while assigning it to an ordinary local copies its
+value. After more than twelve unused frames in its own host, the record expires.
+Bindings require a declared record, an integer key, and a fully checked portable
+body. Hierarchical identity and implicit keys are still pending; callers must
+supply distinct stable keys for independent instances of the same state type.
 
 Migrate callers to the current Kryon API directly so the backend boundary stays
 simple.

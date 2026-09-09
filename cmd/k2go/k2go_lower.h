@@ -18,6 +18,6 @@
  */
 int k2go_lower(const KirProgram *const *progs, int prog_count,
               const char *root, const char *out_dir, const char *pkg,
-              int no_main);
+              int no_main, int runtime_implementation);
 
 #endif

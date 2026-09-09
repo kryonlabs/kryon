@@ -1423,6 +1423,7 @@ type Accelerator struct {
 }
 
 type Runtime interface {
+	InstanceValue(typeID any, key uint64, create func() any) any
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
 	ClearTextComposition()
@@ -2478,12 +2479,11 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		loading, held || pressed, hovered, focused, props.Selected)
 	state := ButtonState(interaction.State)
 	hovered, held, focused = interaction.Hovered, interaction.Pressed, interaction.Focused
-	motion := &instanceState[ButtonInstance](r, uint64(uint32(props.ID))).Motion
 	metrics := defaultThemeMetrics()
 	if r.activeTheme != nil {
 		metrics = r.activeTheme.Metrics
 	}
-	*motion = Surface_AdvanceInteractionMotion(*motion, hovered, held, focused,
+	motion := r.Button_AdvanceButtonMotion(uint64(uint32(props.ID)), hovered, held, focused,
 		Surface_DefaultMotionEnabled(), props.State != ButtonStateAuto, props.Disabled, loading,
 		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
 	appearance := resolveButtonFrame(theme, r.effectiveDark(), r.activeTheme, props, state,

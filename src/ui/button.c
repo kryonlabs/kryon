@@ -3,7 +3,6 @@
 #include "runtime/button.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
-#include "toolkit_store.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -212,19 +211,15 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             while(*label != '\0')
                 key = (key ^ (unsigned char)*label++) * 16777619u;
         }
-        InteractionMotion *motion = &instance_state(ButtonInstance, key)->motion;
-        {
-            float dt = GetFrameTime();
-            ThemeMetrics metrics = GetThemeMetrics();
-            *motion = AdvanceInteractionMotion(*motion, hovered, retained_pressed, focused,
-                cues, button.state != ButtonStateAuto, button.disabled, button.loading,
-                dt * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
-            hover_amount = motion->hover.value;
-            press_amount = motion->press.value;
-            focus_amount = motion->focus.value;
-            if(motion->active)
-                InvalidateTree(UI_INVALIDATE_PAINT);
-        }
+        ThemeMetrics metrics = GetThemeMetrics();
+        InteractionMotion motion = AdvanceButtonMotion(key, hovered, retained_pressed, focused,
+            cues, button.state != ButtonStateAuto, button.disabled, button.loading,
+            GetFrameTime() * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
+        hover_amount = motion.hover.value;
+        press_amount = motion.press.value;
+        focus_amount = motion.focus.value;
+        if(motion.active)
+            InvalidateTree(UI_INVALIDATE_PAINT);
     } else {
         hover_amount = hovered ? 1.0f : 0.0f;
         press_amount = retained_pressed ? 1.0f : 0.0f;

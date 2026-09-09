@@ -15,6 +15,9 @@ int KirEmitJsRecordValue(FILE *out, const KirModule *module, const char *type,
                          const char *source);
 void KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target);
 void KirEmitStringType(FILE *out);
+/* instance_host is the native Go implementation receiver, or an empty string
+ * for application functions and the other targets. */
 int KirEmitBody(FILE *out, const KirModule *module, const KirFunction *fn,
-                KirTarget target, KirResolveTarget resolve, void *context);
+                KirTarget target, KirResolveTarget resolve, void *context,
+                const char *instance_host);
 #endif

@@ -50,7 +50,8 @@ with tempfile.TemporaryDirectory(prefix="kryon-imported-cast-") as directory:
                 '  t.Fatal("enum value check", result)\n }\n}\n')
             run("go", "test", cwd=output, env={**os.environ, "GO111MODULE": "off"})
         else:
-            shutil.copyfile(root / "web/kryon-runtime.js", output / "kryon-runtime.js")
+            for runtime_file in (root / "web").glob("*.js"):
+                shutil.copyfile(runtime_file, output / runtime_file.name)
             runner = output / "check.mjs"
             runner.write_text(
                 'import assert from "node:assert/strict";\n'

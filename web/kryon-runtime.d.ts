@@ -18,6 +18,8 @@ export interface Runtime {
   statements: RuntimeItem[];
   hostCalls: RuntimeItem[];
   mounted: boolean;
+  instanceFrame: number;
+  instances: Map<string, Map<bigint, { value: unknown; frameSeen: number }>>;
   input: {
     events: unknown[];
     focus: number;
@@ -73,6 +75,8 @@ export interface ThemeFamilyValue {
 }
 
 export function createRuntime(options?: RuntimeOptions): Runtime;
+export function instanceState<T>(rt: Runtime, type: string, key: number | bigint,
+  create: () => T): { value: T; frameSeen: number };
 export function viewport(rt: Runtime, app?: AppMeta | null): {
   x: number;
   y: number;

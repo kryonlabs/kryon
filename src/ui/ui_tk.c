@@ -226,7 +226,7 @@ toolkit_store_frame(ToolkitStore *store)
 }
 
 void *
-toolkit_instance(const char *type, uint64_t key, size_t size)
+InstanceState(const char *type, uint64_t key, size_t size)
 {
     ToolkitStore *store = current_toolkit_store;
     unsigned int bucket = key % UI_INSTANCE_BUCKETS;

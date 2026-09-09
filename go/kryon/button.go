@@ -147,6 +147,26 @@ const (
 	EmphasisPolicyEmphasisLink    = 4
 )
 
+func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, hovered bool, pressed bool, focused bool, enabled bool, explicit_state bool, disabled bool, loading bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
+	var value_0 uint64 = key
+	retained := instanceState[ButtonInstance](instance_host_0, uint64(value_0))
+	var value_1 InteractionMotion = (*retained).Motion
+	var value_2 bool = hovered
+	var value_3 bool = pressed
+	var value_4 bool = focused
+	var value_5 bool = enabled
+	var value_6 bool = explicit_state
+	var value_7 bool = disabled
+	var value_8 bool = loading
+	var value_9 float32 = delta_ms
+	var value_10 float32 = normal_ms
+	var value_11 float32 = fast_ms
+	var value_12 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_6, value_7, value_8, value_9, value_10, value_11)
+	(*retained).Motion = value_12
+	var value_13 InteractionMotion = (*retained).Motion
+	return value_13
+}
+
 func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, palette Palette, metrics Metrics) StyleData {
 	var style StyleData = StyleData{}
 	var value_0 int32 = tone

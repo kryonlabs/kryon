@@ -17,6 +17,7 @@
 #include "ui_layout.h"
 #include "ui_clip.h"
 #include "ui_core.h"
+#include "ui_instance.h"
 #include "ui_controls.h"
 #include "ui_tk.h"
 #include "ui_draw.h"

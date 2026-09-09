@@ -292,7 +292,8 @@ func TestDeclarations(t *testing.T) {
 ''')
                 run("go", "test", str(output / "consumer.go"), str(output / "cards.go"), str(driver))
             else:
-                shutil.copyfile(ROOT / "web/kryon-runtime.js", output / "kryon-runtime.js")
+                for runtime_file in (ROOT / "web").glob("*.js"):
+                    shutil.copyfile(runtime_file, output / runtime_file.name)
                 (output / "package.json").write_text('{"type":"module"}\n')
                 driver = output / "test.mjs"
                 driver.write_text('''import { Consumer_Run } from "./consumer.js";

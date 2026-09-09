@@ -59,7 +59,7 @@ cp "$root/go/kryon/go.sum" "$work/go-check/go.sum"
 
 "$k2js" --root "$root" -o "$work/js" "$root/$case_file"
 test -f "$work/js/tests/spec/language_contract.js"
-cp "$root/web/kryon-runtime.js" "$work/js/kryon-runtime.js"
+cp "$root"/web/*.js "$work/js/"
 printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
 if command -v node >/dev/null 2>&1; then
     node -e 'import(process.argv[1]).then((m) => { const s = m.frame(); if (!s || !Array.isArray(s.frame)) process.exit(1); })' "$work/js/tests/spec/language_contract.js"
